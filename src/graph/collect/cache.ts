@@ -11,6 +11,8 @@ export type EvidenceCacheMeta = {
   tenantId: string
   covered: { from: string; to: string }
   asOf: string
+  // Bumped when the Lane B $select changes; a mismatched cache is ignored.
+  schema?: number
 }
 
 export type GroupMembersCacheEntry = {
@@ -99,6 +101,7 @@ export async function saveEvidenceCache(
   tenantId: string,
   covered: { from: string; to: string },
   rows: StoredSignIn[],
+  schema: number,
 ): Promise<void> {
   try {
     const d = await db()
@@ -112,7 +115,7 @@ export async function saveEvidenceCache(
     for (const row of rows) {
       await store.put({ ...row, tenantId })
     }
-    await tx.objectStore('evidence-meta').put({ tenantId, covered, asOf: new Date().toISOString() })
+    await tx.objectStore('evidence-meta').put({ tenantId, covered, asOf: new Date().toISOString(), schema })
     await tx.done
   } catch {
     // Cache is an optimization; losing it must never fail the scan.
