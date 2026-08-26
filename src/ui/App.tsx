@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth, signIn, signOut } from '../graph/msal.ts'
 import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
+import { forgetTenant } from '../graph/collect/cache.ts'
 import { autoCheckAuthMethods } from '../graph/spikes/authMethods.ts'
 import { autoCheckReports } from '../graph/spikes/reportsCheck.ts'
 import { runSpike1, runSpike1Followup, runSpike1Paging, runSpike1Retest } from '../graph/spikes/spike1.ts'
@@ -127,7 +128,17 @@ function SignedIn({ account }: { account: AccountInfo }) {
         Signed in as <strong>{account.username}</strong> (tenant {account.tenantId})
       </p>
       <p>
-        <button onClick={() => void signOut()}>Sign out</button>
+        <button onClick={() => void signOut()}>Sign out</button>{' '}
+        <button
+          onClick={() => {
+            void forgetTenant(account.tenantId)
+              .catch(() => {})
+              .then(() => signOut())
+          }}
+          title="Deletes everything cached for this tenant on this device, then signs out"
+        >
+          Forget this tenant
+        </button>
       </p>
       <MfaViabilityScreen tenantId={account.tenantId} />
       {import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1' && (

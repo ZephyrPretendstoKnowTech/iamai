@@ -182,6 +182,7 @@ async function run(tenantId: string): Promise<void> {
   // (concurrency 1), independent of the aggregate pool.
   post({ type: 'section', source: 'signInEvidence', status: 'started' })
   const laneB = collectSignInEvidence(runCtx, {
+    tenantId,
     windowDays: EVIDENCE_WINDOW_DAYS,
     onPage: (p) => post({ type: 'signin-page', ...p }),
     onSlow: () => post({ type: 'state', value: 'slow' }),
