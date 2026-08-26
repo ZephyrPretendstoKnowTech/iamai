@@ -78,6 +78,20 @@ export type UserEvidence = {
   lastMfaSuccess: { at: string; method: string } | null
 }
 
+// The raw sign-in subset Lane B keeps: lives only in the worker and the
+// IndexedDB cache (§4 boundary rule), never in the snapshot.
+export type StoredSignIn = {
+  id: string
+  createdDateTime: string
+  userId: string
+  authenticationRequirement?: string
+  mfaDetail?: { authMethod?: string } | null
+  authenticationDetails?: { succeeded?: boolean; authenticationMethod?: string }[] | null
+  status?: { errorCode?: number } | null
+  clientAppUsed?: string
+  appId?: string
+}
+
 export type TenantSnapshot = {
   schemaVersion: 1
   tenantId: string
