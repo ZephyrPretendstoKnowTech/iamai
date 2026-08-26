@@ -275,14 +275,72 @@ export async function runDevicesSpike(): Promise<DevicesSpikeResults> {
   return results
 }
 
+export type AuthReqSpikeResults = {
+  startedAt: string
+  userCount: number
+  batch: { status: number | 'timeout' | 'error'; ms: number }
+  innerStatuses: Record<string, number>
+  perUserMfaStateReturned: boolean
+  sampleKeys: string[]
+  scopeError: string | null
+  finishedAt: string
+}
+
+// Data-model lock item 9: beta /users/{id}/authentication/requirements in a
+// $batch of 20 — scope needed, latency, and whether perUserMfaState comes back.
+export async function runAuthRequirementsSpike(): Promise<AuthReqSpikeResults> {
+  const token = await getGraphToken()
+  const results: AuthReqSpikeResults = {
+    startedAt: new Date().toISOString(),
+    userCount: 0,
+    batch: { status: 'error', ms: 0 },
+    innerStatuses: {},
+    perUserMfaStateReturned: false,
+    sampleKeys: [],
+    scopeError: null,
+    finishedAt: '',
+  }
+  const usersOut = await fetchTimed(token, `${V1}/users?$select=id&$top=20`)
+  const ids = (usersOut.body?.value ?? [])
+    .map((u) => String((u as Record<string, unknown>).id ?? ''))
+    .filter(Boolean)
+  results.userCount = ids.length
+  const out = await fetchTimed(token, `${BETA}/$batch`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      requests: ids.map((id, n) => ({ id: String(n + 1), method: 'GET', url: `/users/${id}/authentication/requirements` })),
+    }),
+  })
+  results.batch = { status: out.status, ms: out.ms }
+  const responses = (out.body as unknown as { responses?: { status: number; body?: Record<string, unknown> }[] })
+    ?.responses
+  for (const r of responses ?? []) {
+    results.innerStatuses[String(r.status)] = (results.innerStatuses[String(r.status)] ?? 0) + 1
+    if (r.status === 200 && r.body) {
+      if (results.sampleKeys.length === 0) results.sampleKeys = Object.keys(r.body)
+      if ('perUserMfaState' in r.body) results.perUserMfaStateReturned = true
+    } else if (r.body?.error) {
+      const err = r.body.error as { code?: string; message?: string }
+      results.scopeError ??= `${err.code}: ${String(err.message).slice(0, 200)}`
+    }
+  }
+  results.finishedAt = new Date().toISOString()
+  console.log('[authreq-spike] RESULTS', JSON.stringify(results, null, 2))
+  await saveDevResults('authreq-spike', results)
+  return results
+}
+
 declare global {
   interface Window {
     __runSpike1Extended?: typeof runSpike1Extended
     __runDevicesSpike?: typeof runDevicesSpike
+    __runAuthReqSpike?: typeof runAuthRequirementsSpike
   }
 }
 
 if (import.meta.env.DEV) {
   window.__runSpike1Extended = runSpike1Extended
   window.__runDevicesSpike = runDevicesSpike
+  window.__runAuthReqSpike = runAuthRequirementsSpike
 }

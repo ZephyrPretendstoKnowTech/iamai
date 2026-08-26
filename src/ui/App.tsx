@@ -7,7 +7,7 @@ import { forgetTenant } from '../graph/collect/cache.ts'
 import { autoCheckAuthMethods } from '../graph/spikes/authMethods.ts'
 import { autoCheckReports } from '../graph/spikes/reportsCheck.ts'
 import { runSpike1, runSpike1Followup, runSpike1Paging, runSpike1Retest } from '../graph/spikes/spike1.ts'
-import { runDevicesSpike, runSpike1Extended } from '../graph/spikes/spike1Extended.ts'
+import { runAuthRequirementsSpike, runDevicesSpike, runSpike1Extended } from '../graph/spikes/spike1Extended.ts'
 import { runPlatformCheck } from '../graph/spikes/platformCheck.ts'
 import type { Spike1Results, Spike1RetestResults } from '../graph/spikes/spike1.ts'
 
@@ -68,9 +68,19 @@ function SignedIn({ account }: { account: AccountInfo }) {
     autoCheckReports()
   }, [])
 
-  const run = async (which: 'original' | 'retest' | 'followup' | 'paging' | 'extended' | 'devices' | 'platform') => {
+  const run = async (
+    which: 'original' | 'retest' | 'followup' | 'paging' | 'extended' | 'devices' | 'platform' | 'authreq',
+  ) => {
     setSpike('running')
     try {
+      if (which === 'authreq') {
+        const a = await runAuthRequirementsSpike()
+        setSummary(
+          `authreq: batch=${String(a.batch.status)} in ${a.batch.ms} ms, inner=${JSON.stringify(a.innerStatuses)}, perUserMfaState=${String(a.perUserMfaStateReturned)}. Saved to docs/spikes/raw/.`,
+        )
+        setSpike('done')
+        return
+      }
       if (which === 'platform') {
         const p = await runPlatformCheck()
         setSummary(
@@ -150,8 +160,11 @@ function SignedIn({ account }: { account: AccountInfo }) {
         <div className="devtools">
           <h3>Dev spikes</h3>
           <p>
+            <button onClick={() => void run('authreq')} disabled={spike === 'running'}>
+              {spike === 'running' ? 'Running…' : 'Run auth-requirements spike (beta $batch)'}
+            </button>{' '}
             <button onClick={() => void run('platform')} disabled={spike === 'running'}>
-              {spike === 'running' ? 'Running…' : 'Run §10.5 platform derivation check'}
+              Run §10.5 platform derivation check
             </button>{' '}
             <button onClick={() => void run('devices')} disabled={spike === 'running'}>
               Run devices spike ($expand registeredOwners)
