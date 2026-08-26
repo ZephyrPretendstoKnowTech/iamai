@@ -182,28 +182,8 @@ export async function runSpike1(): Promise<Spike1Results> {
   return results
 }
 
-// Redact identifiers before anything reaches disk (CLAUDE.md: never commit
-// tenant-derived data). Placeholders are stable within one file so
-// correlations between rows survive redaction.
-export function redactIdentifiers(json: string): string {
-  const seen = new Map<string, string>()
-  let upns = 0
-  let guids = 0
-  const sub = (raw: string, make: () => string): string => {
-    const key = raw.toLowerCase()
-    let v = seen.get(key)
-    if (!v) {
-      v = make()
-      seen.set(key, v)
-    }
-    return v
-  }
-  return json
-    .replace(/[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => sub(m, () => `upn-${++upns}@redacted`))
-    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, (m) =>
-      sub(m, () => `guid-${String(++guids).padStart(4, '0')}`),
-    )
-}
+import { redactIdentifiers } from '../../redact.ts'
+export { redactIdentifiers }
 
 // Dev-only: hands result JSON to the local Vite dev server (see vite.config.ts),
 // which writes it to docs/spikes/raw/ (gitignored). UPNs and GUIDs are redacted

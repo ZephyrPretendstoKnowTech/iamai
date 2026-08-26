@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { hashTenantId, redactIdentifiers } from '../redact.ts'
 import { startScan } from '../graph/collect/runScan.ts'
 import type { SectionEvent, TenantSnapshot, WorkerOutMessage } from '../graph/collect/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
@@ -82,13 +83,36 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
     [snapshot],
   )
 
+  // Redacted diagnostics bundle (docs/design/diagnostics.md): statuses,
+  // timings, errors only — no UPNs, no user GUIDs, tenant id hashed.
+  const downloadDiagnostics = async () => {
+    const bundle = {
+      generatedAt: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      schemaVersion: snapshot?.schemaVersion ?? null,
+      tenantIdHash: await hashTenantId(tenantId),
+      sources: snapshot?.sources ?? null,
+      sections: Object.values(sections),
+    }
+    const json = redactIdentifiers(JSON.stringify(bundle, null, 2))
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `iamai-diagnostics-${Date.now()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <section>
       <h2>MFA viability</h2>
       <p>
         <button onClick={() => void scan()} disabled={scanState === 'running'}>
           {scanState === 'running' ? 'Scanning…' : snapshot ? 'Re-scan tenant' : 'Scan tenant'}
-        </button>
+        </button>{' '}
+        {(snapshot !== null || Object.keys(sections).length > 0) && (
+          <button onClick={() => void downloadDiagnostics()}>Download diagnostics (redacted)</button>
+        )}
       </p>
       {error && <p className="error">Scan failed: {error}</p>}
       {scanState === 'running' && slow && (
