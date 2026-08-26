@@ -142,6 +142,28 @@ Findings about the default source to hand to Jon when ready: one file with a JSO
 src/baseline/        adapter (done)         src/graph/    MSAL + Graph client + batch
 src/intents/         policy → intents       src/engine/   sign-in replay (worker)
 src/mapping/         reference resolution   src/roadmap/  phases, steps, plan file
+src/scoring/         MFA viability (done)   src/licensing/ capability derivation
 src/ui/              React                  baselines/    pinned indexes (paths only)
-scripts/             analyze-local, build-index
+scripts/             analyze-local, build-index, spec-scopes, refresh-first-party-apps
+data/                first-party apps, service plans, licence catalog
 ```
+
+Design documents: `docs/design/collection.md` (collection service, §10 MFA
+viability scoring), `docs/design/plan-file.md` (plan file schema and
+checkpoints), `docs/design/diagnostics.md` (redacted diagnostics bundle).
+Spike findings: `docs/spikes/01-signin-logs.md`. Request history:
+`docs/prompts/`.
+
+## 11. Roadmap-stage features (deferred, data already collected)
+
+Each feature names the snapshot/checkpoint field it depends on — all of which
+the collection service and plan file already carry, so these are UI/logic
+work only, no new Graph reads.
+
+| Feature | What it does | Depends on |
+|---|---|---|
+| Change-record generator per step | Emits scope, hard-block cohort export, risk statement, rollback, verification criteria, and comms text for a plan step | `Step` + `Checkpoint.tenantPolicies[].laneB` result counts + Lane B per-policy affected user ids |
+| Pilot cohort builder | Proposes a pilot group: active, MFA state Verified or Likely viable, spread across departments, exactly one admin, never a break-glass account; outputs UPNs | §10 per-user table (`activity`, `mfa`, `isAdmin`), `UserRow.department`, break-glass mapping ids |
+| Drift and exclusion-creep detection | Diffs consecutive checkpoints: policy state changes, exclusion-group member-count growth, coverage regressions | `Checkpoint.tenantPolicies`, `Checkpoint.exclusionGroups`, `Checkpoint.coverage` |
+| Microsoft-managed auto-enable dates | Places Microsoft's announced auto-enable dates for Microsoft-managed policies on the roadmap timeline | `TenantSnapshot.microsoftManagedPolicyIds` + policy `state` |
+| Recurring break-glass drill step | Inserts a recurring "test break-glass sign-in" step when the accounts' last sign-in is older than the drill interval | `Checkpoint.breakGlass[].lastSignIn` |
