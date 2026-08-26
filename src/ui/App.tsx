@@ -130,7 +130,7 @@ function SignedIn({ account }: { account: AccountInfo }) {
         <button onClick={() => void signOut()}>Sign out</button>
       </p>
       <MfaViabilityScreen tenantId={account.tenantId} />
-      {import.meta.env.DEV && (
+      {import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1' && (
         <div className="devtools">
           <h3>Dev spikes</h3>
           <p>

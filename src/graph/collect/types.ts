@@ -44,6 +44,7 @@ export type UserRow = {
   userPrincipalName: string | null
   userType: 'member' | 'guest'
   usageLocation: string | null
+  createdDateTime: string | null
   lastSuccessfulSignIn: string | null
 }
 
@@ -71,6 +72,12 @@ export type RegistrationRow = {
 
 export type MethodsByUser = Record<string, AuthMethodSummary[] | 'unknown'>
 
+export type UserEvidence = {
+  signInCount: number
+  lastSignIn: string | null
+  lastMfaSuccess: { at: string; method: string } | null
+}
+
 export type TenantSnapshot = {
   schemaVersion: 1
   tenantId: string
@@ -83,6 +90,7 @@ export type TenantSnapshot = {
   spActivity: unknown[]
   authMethods: MethodsByUser
   appSignInSummary: unknown[]
+  signInEvidence: Record<string, UserEvidence>
 }
 
 export type WorkerInMessage =
@@ -102,5 +110,7 @@ export type SectionEvent = {
 export type WorkerOutMessage =
   | SectionEvent
   | { type: 'token-needed' }
+  | { type: 'signin-page'; pages: number; rows: number; ms: number; oldest: string | null }
+  | { type: 'state'; value: 'normal' | 'slow' | 'done' }
   | { type: 'snapshot'; snapshot: TenantSnapshot }
   | { type: 'fatal'; message: string }

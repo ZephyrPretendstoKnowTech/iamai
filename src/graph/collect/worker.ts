@@ -3,7 +3,8 @@
 // the final TenantSnapshot. Requests a fresh token on 401 and never talks to
 // MSAL directly. Lane B (sign-in evidence) is not implemented yet — its source
 // reports 'pending'.
-import { LANE_A_CONCURRENCY } from './constants.ts'
+import { EVIDENCE_WINDOW_DAYS, LANE_A_CONCURRENCY } from './constants.ts'
+import { collectSignInEvidence } from './laneB.ts'
 import {
   CONFIG_KEYS,
   collectAppSignInSummary,
@@ -81,7 +82,7 @@ async function run(tenantId: string): Promise<void> {
       spActivity: sourceState('pending'),
       authMethods: sourceState('pending'),
       appSignInSummary: sourceState('pending'),
-      signInEvidence: sourceState('pending', 'sign-in evidence collection (Lane B) is not implemented yet'),
+      signInEvidence: sourceState('pending'),
     },
     config,
     registrationDetails: [],
@@ -90,6 +91,7 @@ async function run(tenantId: string): Promise<void> {
     spActivity: [],
     authMethods: {},
     appSignInSummary: [],
+    signInEvidence: {},
   }
 
   const section = async <T>(
@@ -176,7 +178,33 @@ async function run(tenantId: string): Promise<void> {
       }),
   ]
 
+  // Lane B runs alongside Lanes 0/A: strictly serialized internally
+  // (concurrency 1), independent of the aggregate pool.
+  post({ type: 'section', source: 'signInEvidence', status: 'started' })
+  const laneB = collectSignInEvidence(runCtx, {
+    windowDays: EVIDENCE_WINDOW_DAYS,
+    onPage: (p) => post({ type: 'signin-page', ...p }),
+    onSlow: () => post({ type: 'state', value: 'slow' }),
+  }).then((evidence) => {
+    snapshot.signInEvidence = evidence.perUser
+    snapshot.sources.signInEvidence = {
+      status: evidence.status,
+      coveredWindow: evidence.covered,
+      reason: evidence.reason,
+      asOf: new Date().toISOString(),
+    }
+    post({
+      type: 'section',
+      source: 'signInEvidence',
+      status: evidence.status,
+      rows: evidence.rows,
+      reason: evidence.reason ?? undefined,
+    })
+  })
+
   await pool(LANE_A_CONCURRENCY, [...lane0Tasks, ...laneATasks])
+  await laneB
+  post({ type: 'state', value: 'done' })
 
   // Config source status rolls up its sections.
   const states = CONFIG_KEYS.map((k) => config[k]?.status ?? 'error')

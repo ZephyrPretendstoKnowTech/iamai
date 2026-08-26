@@ -1,4 +1,5 @@
 // Named constants from docs/design/collection.md — single source of truth.
+export const EVIDENCE_WINDOW_DAYS = 30
 export const TIME_BUDGET_MS = 600_000
 export const ROW_MEMORY_CEILING = 50_000
 export const MIN_COVERAGE_HOURS = 24

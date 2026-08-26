@@ -3,17 +3,31 @@ import { startScan } from '../graph/collect/runScan.ts'
 import type { SectionEvent, TenantSnapshot, WorkerOutMessage } from '../graph/collect/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
-import type { MfaViability, MfaViabilityState } from '../scoring/mfaViability.ts'
+import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scoring/mfaViability.ts'
 
 type SectionRow = { source: string; status: string; rows?: number; reason?: string; ms?: number }
 
-const STATE_LABEL: Record<MfaViabilityState, string> = {
+const MFA_LABEL: Record<MfaState, string> = {
   verified: 'Verified',
   likelyViable: 'Likely viable',
   notChallenged: 'Not challenged',
   unverified: 'Unverified',
-  none: 'No MFA',
-  inactive: 'Inactive',
+  none: 'No method',
+}
+
+const ACTIVITY_LABEL: Record<ActivityState, string> = {
+  active: 'Active',
+  dormant: 'Dormant',
+  neverSignedIn: 'Never signed in',
+}
+
+const TIER_LABEL: Record<MethodTier, string> = {
+  phishingResistant: 'Phishing-resistant',
+  passwordless: 'Passwordless',
+  push: 'Push',
+  otp: 'OTP',
+  smsVoice: 'SMS/voice',
+  none: '—',
 }
 
 export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
@@ -21,13 +35,26 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
   const [sections, setSections] = useState<Record<string, SectionRow>>({})
   const [snapshot, setSnapshot] = useState<TenantSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [laneB, setLaneB] = useState<{ pages: number; rows: number; oldest: string | null } | null>(null)
+  const [slow, setSlow] = useState(false)
 
   const scan = async () => {
     setScanState('running')
     setSections({})
     setSnapshot(null)
     setError(null)
+    setLaneB(null)
+    setSlow(false)
     const handle = startScan(tenantId, (m: WorkerOutMessage) => {
+      if (m.type === 'signin-page') {
+        setLaneB({ pages: m.pages, rows: m.rows, oldest: m.oldest })
+        return
+      }
+      if (m.type === 'state') {
+        if (m.value === 'slow') setSlow(true)
+        if (m.value === 'done') setSlow(false)
+        return
+      }
       if (m.type !== 'section') return
       const s = m as SectionEvent
       setSections((prev) => ({
@@ -64,6 +91,18 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
         </button>
       </p>
       {error && <p className="error">Scan failed: {error}</p>}
+      {scanState === 'running' && slow && (
+        <p className="notice">
+          Graph is slow — still collecting sign-in evidence.
+          {laneB?.oldest && <> Covered back to {new Date(laneB.oldest).toLocaleString()} so far.</>}
+        </p>
+      )}
+      {scanState === 'running' && laneB && !slow && (
+        <p className="reason">
+          Sign-in evidence: {laneB.rows} rows over {laneB.pages} page{laneB.pages === 1 ? '' : 's'}
+          {laneB.oldest && <>, covered back to {new Date(laneB.oldest).toLocaleString()}</>}…
+        </p>
+      )}
 
       {Object.keys(sections).length > 0 && (
         <details open={scanState === 'running'}>
@@ -84,29 +123,57 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
       {scored && snapshot && (
         <>
           <p className="notice">
-            Sign-in evidence: <strong>{snapshot.sources.signInEvidence.status}</strong> —{' '}
-            {snapshot.sources.signInEvidence.reason ?? 'no evidence collected yet'}. States below are
-            metadata-only; nothing can be "verified" until the evidence lane runs. Predicted impact is
-            confirmed in report-only.
+            Sign-in evidence: <strong>{snapshot.sources.signInEvidence.status}</strong>
+            {snapshot.sources.signInEvidence.coveredWindow && (
+              <>
+                {' '}
+                — covers {new Date(snapshot.sources.signInEvidence.coveredWindow.from).toLocaleDateString()} to{' '}
+                {new Date(snapshot.sources.signInEvidence.coveredWindow.to).toLocaleDateString()}
+              </>
+            )}
+            {snapshot.sources.signInEvidence.reason && <> ({snapshot.sources.signInEvidence.reason})</>}
+            {snapshot.sources.signInEvidence.status === 'pending' && (
+              <> — sign-in evidence hasn't been collected yet; states below are based on registered methods only</>
+            )}
+            {(snapshot.sources.signInEvidence.status === 'insufficient' ||
+              snapshot.sources.signInEvidence.status === 'disabled' ||
+              snapshot.sources.signInEvidence.status === 'error') && (
+              <> — states below are metadata-only; nothing can be "verified" without usable evidence</>
+            )}
+            . Predicted impact, confirmed in report-only.
           </p>
           <div className="tiles">
-            {(Object.keys(STATE_LABEL) as MfaViabilityState[]).map((state) => (
+            {(Object.keys(MFA_LABEL) as MfaState[]).map((state) => (
               <div key={state} className={`tile state-${state}`}>
                 <div className="tile-count">{scored.summary.counts[state]}</div>
-                <div className="tile-label">{STATE_LABEL[state]}</div>
+                <div className="tile-label">{MFA_LABEL[state]}</div>
+              </div>
+            ))}
+            {(Object.keys(ACTIVITY_LABEL) as ActivityState[]).map((state) => (
+              <div key={state} className="tile">
+                <div className="tile-count">{scored.summary.activityCounts[state]}</div>
+                <div className="tile-label">{ACTIVITY_LABEL[state]}</div>
               </div>
             ))}
             <div className="tile">
               <div className="tile-count">{scored.summary.verificationPhaseSize}</div>
               <div className="tile-label">Verification phase size</div>
             </div>
+            {scored.summary.challengedRate !== null && (
+              <div className="tile">
+                <div className="tile-count">{Math.round(scored.summary.challengedRate * 100)}%</div>
+                <div className="tile-label">Challenged rate</div>
+              </div>
+            )}
           </div>
           <table className="viability">
             <thead>
               <tr>
                 <th>User</th>
                 <th>Admin</th>
-                <th>State</th>
+                <th>Activity</th>
+                <th>MFA state</th>
+                <th>Strongest method</th>
                 <th>Reasons</th>
               </tr>
             </thead>
@@ -121,8 +188,15 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
                     </td>
                     <td>{r.isAdmin ? 'yes' : ''}</td>
                     <td>
-                      <span className={`chip state-${r.state}`}>{STATE_LABEL[r.state]}</span>
+                      {ACTIVITY_LABEL[r.activity]}
+                      {r.activity === 'neverSignedIn' && r.accountCreated && (
+                        <span className="reason"> (created {new Date(r.accountCreated).toLocaleDateString()})</span>
+                      )}
                     </td>
+                    <td>
+                      <span className={`chip state-${r.mfa}`}>{MFA_LABEL[r.mfa]}</span>
+                    </td>
+                    <td>{TIER_LABEL[r.strongestMethod]}</td>
                     <td>{r.reasons.join('; ')}</td>
                   </tr>
                 )

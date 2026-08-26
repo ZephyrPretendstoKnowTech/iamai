@@ -220,6 +220,16 @@ sources. No I/O, no DOM. Runs in the worker; the UI receives the results table.
 The principle it encodes: **a registered method is a claim; evidence is proof;
 absence of evidence is planned as if the method may be dead.**
 
+Scoring is two independent dimensions per user (revised 2026-08-26):
+
+- **activity**: `active` | `dormant` (no successful sign-in in `INACTIVE_DAYS`)
+  | `neverSignedIn` (carries the account `createdDateTime` so the roadmap can
+  separate stale pre-provisioned accounts from fresh ones).
+- **mfa**: `none` | `verified` | `likelyViable` | `notChallenged` |
+  `unverified`. There is no `inactive` MFA state — dormant and never-signed-in
+  users still get an MFA state from metadata, but the evidence rules
+  (`verified`, `notChallenged`) apply **only to active users**.
+
 ### 10.1 Constants
 
 | Constant | Value | Meaning |
@@ -248,6 +258,7 @@ MfaViabilityInput {
   methods: AuthMethodSummary[] | 'unknown'   // A5; 'unknown' on inner-batch 403/error
   lastSuccessfulSignIn: string | null         // A2 signInActivity.lastSuccessfulSignInDateTime,
                                               // falling back to lastSignInDateTime
+  accountCreated: string | null               // A2 user createdDateTime
   evidence: {                                 // Lane B derived table entry for this user
     status: 'ok' | 'partial' | 'insufficient' | 'disabled' | 'pending'
     covered: { from: string, to: string } | null
@@ -282,10 +293,14 @@ A5 strips them before they leave the fetch layer (§11).
 ```
 MfaViability {
   userId: string
-  state: 'inactive' | 'none' | 'verified' | 'likelyViable' | 'notChallenged' | 'unverified'
+  activity: 'active' | 'dormant' | 'neverSignedIn'
+  accountCreated?: string                 // carried when activity is 'neverSignedIn'
+  mfa: 'none' | 'verified' | 'likelyViable' | 'notChallenged' | 'unverified'
   mfaCapable: boolean
   isAdmin: boolean
-  reasons: string[]                       // plain language, at least one for every state except 'verified'
+  strongestMethod: MethodTier
+  methodTiers: MethodTier[]               // tiers present, strongest first
+  reasons: string[]                       // plain language, at least one for every MFA state except 'verified'
   evidence?: { at: string, method: string }
   signals: {
     recentRegistration?: string           // method kind that qualified
@@ -298,6 +313,18 @@ MfaViability {
 }
 ```
 
+`MethodTier` is derived from `userRegistrationDetails.methodsRegistered`,
+strongest first — `email` and `securityQuestion` are not MFA:
+
+| Tier | methodsRegistered values |
+|---|---|
+| `phishingResistant` | `passKeyDeviceBound*`, `fido2SecurityKey`, `windowsHelloForBusiness`, `x509Certificate` |
+| `passwordless` | `microsoftAuthenticatorPasswordless` |
+| `push` | `microsoftAuthenticatorPush` |
+| `otp` | `softwareOneTimePasscode`, `hardwareOneTimePasscode` |
+| `smsVoice` | `mobilePhone`, `alternateMobilePhone`, `officePhone` |
+| `none` | nothing MFA-capable registered |
+
 ### 10.4 Evaluation order — first match wins
 
 MFA-capable method kinds: `microsoftAuthenticator`, `passkey`, `fido2`,
@@ -308,17 +335,22 @@ user capable.
 Evidence is usable only when `evidence.status` is `ok` or `partial`.
 `observableInWindow` = `lastSuccessfulSignIn` is within `evidence.covered`.
 
+**Activity** is derived first: `neverSignedIn` when `lastSuccessfulSignIn` is
+null (carry `accountCreated`); `dormant` when older than `INACTIVE_DAYS`;
+`active` otherwise.
+
+**MFA state** — first match wins:
+
 | # | State | Rule |
 |---|---|---|
-| 1 | **verified** | Evidence usable and `lastMfaSuccess` present. Record method and date. Evidence beats every metadata weakness (an SMS-only user who completed MFA yesterday is verified). |
-| 2 | **inactive** | `lastSuccessfulSignIn` is null or older than `INACTIVE_DAYS`. Reason: "no successful sign-in in N days". |
-| 3 | **none** | `registration.isMfaCapable` is false AND (methods is `'unknown'` OR contains no MFA-capable kind). A usable TAP adds the reason "TAP issued — registration pending" but does not change the state. |
-| 4 | **likelyViable** | Any one positive signal: (a) an Authenticator method whose `phoneAppVersion` is within `AUTHENTICATOR_VERSION_LAG` minor releases of the tenant's newest for the same platform; (b) any MFA-capable method with `createdDateTime` within `RECENT_REGISTRATION_DAYS`; (c) a Windows Hello method with `deviceLastSignIn` within `WHFB_DEVICE_ACTIVE_DAYS`. Record which. |
-| 5 | **notChallenged** | Evidence usable, `observableInWindow` true, and no `lastMfaSuccess`. The user was active in the window and nothing required MFA of them. Reason: "signed in N times in window, never challenged" (count if available, else omit). |
-| 6 | **unverified** | Everything else that is MFA-capable. Reasons, all that apply: "Authenticator version stale (seen X, newest Y, Z releases behind)"; "method registered N days ago, no usage signal" when older than `STALE_METHOD_DAYS`; "SMS/voice only" when the only MFA-capable kinds are `phone`; "FIDO2/passkey with no usage signal"; "methods unavailable for this user" when `'unknown'`; "not observable — last sign-in outside evidence window" when evidence exists but `observableInWindow` is false; "no sign-in evidence collected" when evidence status is `insufficient`, `disabled`, or `pending`. |
+| 1 | **verified** | Active users only. Evidence usable and `lastMfaSuccess` present. Record method and date. Evidence beats every metadata weakness (an SMS-only user who completed MFA yesterday is verified). |
+| 2 | **none** | `registration.isMfaCapable` is false AND (methods is `'unknown'` OR contains no MFA-capable kind). A usable TAP adds the reason "TAP issued — registration pending" but does not change the state. |
+| 3 | **likelyViable** | Any one positive signal: (a) an Authenticator method whose `phoneAppVersion` is within `AUTHENTICATOR_VERSION_LAG` minor releases of the tenant's newest for the same platform; (b) any MFA-capable method with `createdDateTime` within `RECENT_REGISTRATION_DAYS`; (c) a Windows Hello method with `deviceLastSignIn` within `WHFB_DEVICE_ACTIVE_DAYS`. Record which. |
+| 4 | **notChallenged** | Active users only. Evidence usable, `observableInWindow` true, and no `lastMfaSuccess`. The user was active in the window and nothing required MFA of them. |
+| 5 | **unverified** | Everything else that is MFA-capable. Reasons, all that apply: "Authenticator version stale (seen X, newest Y, Z releases behind)"; "method registered N days ago, no usage signal" when older than `STALE_METHOD_DAYS`; "SMS/voice only" when the only MFA-capable kinds are `phone`; "FIDO2/passkey with no usage signal"; "methods unavailable for this user" when `'unknown'`; "not observable — last sign-in outside evidence window" when evidence exists but `observableInWindow` is false; "no sign-in evidence collected" when evidence status is `insufficient`, `disabled`, or `pending`. |
 
-Rules 1 and 5 are skipped entirely when evidence is not usable; the user falls
-through to metadata (rules 2–4, 6).
+Rules 1 and 4 are skipped entirely when evidence is not usable or the user is
+not active; the user falls through to metadata (rules 2, 3, 5).
 
 ### 10.5 Tenant Authenticator version baseline
 
@@ -358,13 +390,14 @@ version signal and evidence matter more than planned.
 
 ### 10.6 Tenant-level derivations (from the per-user table)
 
-- Counts per state, and per state for admins (`isAdmin`) — admin rows sort
-  first everywhere.
+- Counts per MFA state (and per state for admins — admin rows sort first
+  everywhere) plus counts per activity state.
 - `challengedRate` = users with `lastMfaSuccess` ÷ users `observableInWindow`.
   A low rate with many `notChallenged` is the "nobody has been prompted in
   years" tenant, and is a tenant-level finding for the roadmap.
-- `verificationPhaseSize` = `unverified` + `none` + `notChallenged`. This sizes
-  the verification phase the roadmap inserts before any MFA enforcement step.
+- `verificationPhaseSize` = **active** users with MFA state `unverified`,
+  `none`, or `notChallenged`. Dormant and never-signed-in users are planned
+  separately (cleanup/first-sign-in phases), not verified.
 - These derivations, not the per-user rows' raw inputs, are what the roadmap
   consumes.
 
@@ -382,12 +415,15 @@ version signal and evidence matter more than planned.
 | T6 | SMS only; evidence ok; last sign-in inside window; no MFA success | **notChallenged** | — |
 | T7 | SMS only; evidence disabled | **unverified** | SMS/voice only; no sign-in evidence collected |
 | T8 | No methods; `isMfaCapable` false; usable TAP present | **none** | TAP issued — registration pending |
-| T9 | No successful sign-in for 200 days; Authenticator up to date | **inactive** | takes precedence over likelyViable |
+| T9 | No successful sign-in for 200 days; Authenticator up to date | activity **dormant**, mfa **likelyViable** | MFA is still computed for dormant users; evidence rules simply don't apply |
 | T10 | Methods `'unknown'` (inner 403); `isMfaCapable` true; evidence pending | **unverified** | methods unavailable; no sign-in evidence collected |
 | T11 | Windows Hello, bound device signed in 3 days ago; no evidence | **likelyViable** | whfbDeviceActive |
 | T12 | Authenticator is the only device on its platform (no baseline), registered 400 days ago; evidence ok; last sign-in outside window | **unverified** | method registered N days ago, no usage signal; not observable |
 | T13 | Guest user, Authenticator current, `lastMfaSuccess` in window | **verified** | userType does not change scoring; guest handling is a roadmap concern |
-| T14 | Admin (`isAdmin`) with state unverified | **unverified** | appears first in tenant-level ordering |
+| T14 | Admin (`isAdmin`) with state unverified | **unverified** | appears first in tenant-level ordering; verification phase counts active users only |
+| T15 | `lastSuccessfulSignIn` null | activity **neverSignedIn** | carries account `createdDateTime` |
+| T16 | `methodsRegistered` = passkey + push + mobilePhone + email | strongestMethod **phishingResistant** | tiers [phishingResistant, push, smsVoice]; email is not MFA |
+| T17 | `methodsRegistered` = softwareOneTimePasscode + officePhone | strongestMethod **otp** | tiers [otp, smsVoice], carried on the scored row |
 
 ## 11. Cache and privacy
 
