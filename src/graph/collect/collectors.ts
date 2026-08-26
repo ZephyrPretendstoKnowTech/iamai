@@ -31,6 +31,37 @@ const CONFIG_ENDPOINTS: Record<ConfigSectionKey, { url: string; paged?: boolean 
   roleAssignments: { url: `${V1}/roleManagement/directory/roleAssignments`, paged: true },
   pimEligibility: { url: `${V1}/roleManagement/directory/roleEligibilitySchedules`, paged: true },
   subscribedSkus: { url: `${V1}/subscribedSkus`, paged: true },
+  organization: { url: `${V1}/organization`, paged: true },
+  me: { url: `${V1}/me` },
+  meMemberOf: { url: `${V1}/me/memberOf`, paged: true },
+}
+
+// Item 2 of the data-model lock: Microsoft-managed CA policies are flagged by
+// display-name prefix or a present templateId.
+export function isMicrosoftManagedPolicy(policy: unknown): boolean {
+  const p = policy as Record<string, unknown>
+  const name = typeof p.displayName === 'string' ? p.displayName : ''
+  return name.startsWith('Microsoft-managed') || (typeof p.templateId === 'string' && p.templateId.length > 0)
+}
+
+// Item 10: split per-user role template ids into active vs PIM-eligible.
+export function deriveRoles(
+  roleAssignments: unknown[],
+  eligibilitySchedules: unknown[],
+): { active: Record<string, string[]>; eligible: Record<string, string[]> } {
+  const collect = (rows: unknown[]): Record<string, string[]> => {
+    const out: Record<string, string[]> = {}
+    for (const raw of rows) {
+      const r = raw as Record<string, unknown>
+      const principalId = typeof r.principalId === 'string' ? r.principalId : null
+      const roleId = typeof r.roleDefinitionId === 'string' ? r.roleDefinitionId : null
+      if (!principalId || !roleId) continue
+      const list = (out[principalId] ??= [])
+      if (!list.includes(roleId)) list.push(roleId)
+    }
+    return out
+  }
+  return { active: collect(roleAssignments), eligible: collect(eligibilitySchedules) }
 }
 
 export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Promise<ConfigSection> {
@@ -85,6 +116,7 @@ function mapUser(raw: unknown): UserRow {
     (typeof activity?.lastSuccessfulSignInDateTime === 'string' && activity.lastSuccessfulSignInDateTime) ||
     (typeof activity?.lastSignInDateTime === 'string' && activity.lastSignInDateTime) ||
     null
+  const plans = Array.isArray(u.assignedPlans) ? u.assignedPlans : []
   return {
     id: String(u.id ?? ''),
     displayName: typeof u.displayName === 'string' ? u.displayName : null,
@@ -93,6 +125,19 @@ function mapUser(raw: unknown): UserRow {
     usageLocation: typeof u.usageLocation === 'string' ? u.usageLocation : null,
     createdDateTime: typeof u.createdDateTime === 'string' ? u.createdDateTime : null,
     lastSuccessfulSignIn: last,
+    accountEnabled: typeof u.accountEnabled === 'boolean' ? u.accountEnabled : null,
+    assignedPlans: plans
+      .map((p) => p as Record<string, unknown>)
+      .filter((p) => typeof p.servicePlanId === 'string')
+      .map((p) => ({
+        servicePlanId: String(p.servicePlanId),
+        capabilityStatus: typeof p.capabilityStatus === 'string' ? p.capabilityStatus : '',
+      })),
+    onPremisesSyncEnabled: typeof u.onPremisesSyncEnabled === 'boolean' ? u.onPremisesSyncEnabled : null,
+    externalUserState: typeof u.externalUserState === 'string' ? u.externalUserState : null,
+    department: typeof u.department === 'string' ? u.department : null,
+    jobTitle: typeof u.jobTitle === 'string' ? u.jobTitle : null,
+    officeLocation: typeof u.officeLocation === 'string' ? u.officeLocation : null,
   }
 }
 
@@ -102,7 +147,8 @@ export async function collectUsers(
   ctx: Ctx,
   onUserPage: (users: UserRow[]) => Promise<void>,
 ): Promise<{ users: UserRow[]; partialReason: string | null }> {
-  const select = 'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,signInActivity'
+  const select =
+    'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation,signInActivity'
   try {
     const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${select}&$top=999`, {
       signal: ctx.signal,
@@ -113,7 +159,7 @@ export async function collectUsers(
     if (!(e instanceof SectionDisabledError)) throw e
     const rows = await graphPaged(
       ctx.tokens,
-      `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation,createdDateTime&$top=999`,
+      `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation&$top=999`,
       { signal: ctx.signal, onPage: async (page) => onUserPage(page.map(mapUser)) },
     )
     return { users: rows.map(mapUser), partialReason: `signInActivity unavailable: ${e.message}` }

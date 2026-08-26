@@ -31,6 +31,9 @@ export type ConfigSectionKey =
   | 'roleAssignments'
   | 'pimEligibility'
   | 'subscribedSkus'
+  | 'organization'
+  | 'me'
+  | 'meMemberOf'
 
 export type ConfigSection = {
   status: 'ok' | 'disabled' | 'error'
@@ -46,6 +49,13 @@ export type UserRow = {
   usageLocation: string | null
   createdDateTime: string | null
   lastSuccessfulSignIn: string | null
+  accountEnabled: boolean | null
+  assignedPlans: { servicePlanId: string; capabilityStatus: string }[]
+  onPremisesSyncEnabled: boolean | null
+  externalUserState: string | null
+  department: string | null
+  jobTitle: string | null
+  officeLocation: string | null
 }
 
 export type DeviceRow = {
@@ -105,6 +115,15 @@ export type TenantSnapshot = {
   authMethods: MethodsByUser
   appSignInSummary: unknown[]
   signInEvidence: Record<string, UserEvidence>
+  // CA policies that Microsoft manages (display-name prefix or templateId).
+  microsoftManagedPolicyIds: string[]
+  // Per-user directory roles, keyed by user id → role template ids. Eligible
+  // (PIM) is kept apart from active: eligible is out of CA role scope until
+  // activated, and scoring/impact must treat it that way.
+  roles: {
+    active: Record<string, string[]>
+    eligible: Record<string, string[]>
+  }
 }
 
 export type WorkerInMessage =

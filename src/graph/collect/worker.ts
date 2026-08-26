@@ -14,6 +14,8 @@ import {
   collectRegistrationDetails,
   collectSpActivity,
   collectUsers,
+  deriveRoles,
+  isMicrosoftManagedPolicy,
 } from './collectors.ts'
 import type { Ctx } from './collectors.ts'
 import { SectionDisabledError } from './http.ts'
@@ -92,6 +94,8 @@ async function run(tenantId: string): Promise<void> {
     authMethods: {},
     appSignInSummary: [],
     signInEvidence: {},
+    microsoftManagedPolicyIds: [],
+    roles: { active: {}, eligible: {} },
   }
 
   const section = async <T>(
@@ -206,6 +210,12 @@ async function run(tenantId: string): Promise<void> {
   await pool(LANE_A_CONCURRENCY, [...lane0Tasks, ...laneATasks])
   await laneB
   post({ type: 'state', value: 'done' })
+
+  snapshot.microsoftManagedPolicyIds = (config.caPolicies?.rows ?? [])
+    .filter(isMicrosoftManagedPolicy)
+    .map((p) => String((p as Record<string, unknown>).id ?? ''))
+    .filter(Boolean)
+  snapshot.roles = deriveRoles(config.roleAssignments?.rows ?? [], config.pimEligibility?.rows ?? [])
 
   // Config source status rolls up its sections.
   const states = CONFIG_KEYS.map((k) => config[k]?.status ?? 'error')
