@@ -41,8 +41,15 @@ rules, so the sick endpoint can never make the healthy ones look broken.
 
 The cheap config scan SPEC §3.7 requires on every load: CA policies, named
 locations, authentication strengths, auth-methods policy, security defaults,
-cross-tenant access. These unblock the diff engine and the UI shell; they run
+cross-tenant access, **role assignments, PIM eligibility
+(`roleEligibilitySchedules`, P2-gated — attempt and map the failure), and
+`subscribedSkus`**. These unblock the diff engine and the UI shell; they run
 before and independently of everything below.
+
+**On-demand, not in any lane:** group transitive counts and service-principal
+lookups run only after baseline selection, driven by the references the chosen
+baseline actually uses — there is no point resolving groups for a baseline the
+user hasn't picked.
 
 ### Lane A — aggregates (concurrency 4)
 
@@ -52,10 +59,10 @@ Run in parallel, rendering each section as its result lands:
 |---|---|---|---|
 | A1 | Registration details | v1.0 `/reports/authenticationMethods/userRegistrationDetails`, `$top=999` paged | 301 ms whole-tenant in spike (F8) |
 | A2 | Users + signInActivity | v1.0 `/users?$select=id,userType,usageLocation,signInActivity&$top=999` paged | pages stream into A5 |
-| A3 | Devices | v1.0 `/devices` with `$expand=registeredOwners($select=id)` paged | device→owner join in one pass; spike pending (see §13) |
-| A4 | SP activity | beta `/reports/servicePrincipalSignInActivities` | gate on `Reports.Read.All` even though it once answered without it (F9) |
+| A3 | Devices | v1.0 `/devices` with `$expand=registeredOwners($select=id)` paged | device→owner join in one pass — spiked 2026-08-26: 200 in 187 ms, owner expanded (1-device tenant; page-size clamp untested, §13) |
+| A4 | SP activity | beta `/reports/servicePrincipalSignInActivities` | **attempt the call**; a 403 maps to `section-disabled` with the scope Graph names (F9). No scope pre-check — it once answered without `Reports.Read.All`, and Graph's own 403 is fast and precise |
 | A5 | Auth methods | v1.0 `$batch`, 20 `/users/{id}/authentication/methods` per call | **streams**: a batch is dispatched per A2 page as it arrives, not after A2 completes. An inner-batch 403 marks that **user's methods "unknown"** — it never fails the section (12/12 inner 200s in spike, F8, but guests/roles may differ) |
-| A6 | App sign-in summary | beta `/reports/applicationSignInDetailedSummary` | 78 rows in 2.2 s once `Reports.Read.All` present (F9); gate on that scope |
+| A6 | App sign-in summary | beta `/reports/applicationSignInDetailedSummary` | 78 rows in 2.2 s once `Reports.Read.All` present (F9); same rule as A4 — attempt and map the 403, no pre-check |
 
 Lane A has no dependency on Lane B. Fully rendered aggregates with sign-in
 evidence still loading is the *expected* intermediate state.
@@ -92,11 +99,13 @@ truncated pull is always the most recent slice; the label says "covers the last
 X days of the requested Y".
 
 **Coverage below `MIN_COVERAGE_HOURS` (24 h) is "insufficient", not partial.**
-Insufficient evidence disables impact predictions outright (with the reason)
-rather than showing conclusions drawn from hours of data. At or above the
-threshold, results are usable-partial and downstream consumers scale their
-claims to the covered window. Product copy stays "predicted impact, confirmed
-in report-only."
+Insufficient evidence disables **only sign-in-derived findings** (impact
+predictions, §10 evidence rules, existence checks) with the reason — it never
+touches what Lanes 0/A support: readiness predictions, registration analysis,
+config diffs, and prerequisite checks all stay live. At or above the threshold,
+results are usable-partial and downstream consumers scale their claims to the
+covered window. Product copy stays "predicted impact, confirmed in
+report-only."
 
 Partials are first-class: cached, usable (if sufficient), resumable (§12).
 
@@ -192,8 +201,8 @@ sections degrade with a plain reason; the scan does not fail.
   live covered-back-to date and remaining budget. Aggregates stay usable.
 - **Partial (budget/ceiling hit)** — banner with the covered window and an
   "extend collection" affordance (§12).
-- **Insufficient** — coverage under `MIN_COVERAGE_HOURS`; impact predictions
-  disabled with the reason.
+- **Insufficient** — coverage under `MIN_COVERAGE_HOURS`; sign-in-derived
+  findings disabled with the reason, Lanes 0/A readiness findings stay live (§3).
 - **Section disabled** — per-section plain reason; the scan never fails (SPEC §4).
 - **Done** — with `asOf` for cache/re-scan logic.
 
@@ -206,10 +215,179 @@ automatically.
 
 ## 10. MFA viability scoring
 
-**Pending.** The review's specification for this section (states, evaluation
-order, thresholds as named constants, and the listed test cases) has not been
-provided to the author of this revision. To be inserted verbatim once supplied;
-nothing here is to be improvised.
+A pure, synchronous function evaluated once per user over the `TenantSnapshot`
+sources. No I/O, no DOM. Runs in the worker; the UI receives the results table.
+The principle it encodes: **a registered method is a claim; evidence is proof;
+absence of evidence is planned as if the method may be dead.**
+
+### 10.1 Constants
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `INACTIVE_DAYS` | 90 | no successful sign-in this long → user is planned separately, never counted as an MFA hit |
+| `RECENT_REGISTRATION_DAYS` | 30 | a method registered this recently is a positive signal |
+| `WHFB_DEVICE_ACTIVE_DAYS` | 30 | a Windows Hello method whose bound device signed in this recently is a positive signal |
+| `STALE_METHOD_DAYS` | 180 | a method older than this with no other signal is a stale-method reason |
+| `AUTHENTICATOR_VERSION_LAG` | 3 | minor releases behind the tenant's newest observed Authenticator version, same platform → stale device |
+
+### 10.2 Inputs (per user)
+
+```
+MfaViabilityInput {
+  userId: string
+  registration: {                       // A1 userRegistrationDetails row, or null if absent
+    isMfaCapable: boolean
+    isMfaRegistered: boolean
+    isPasswordlessCapable: boolean
+    methodsRegistered: string[]
+    defaultMfaMethod: string | null
+    userPreferredMethodForSecondaryAuthentication: string | null
+    isAdmin: boolean
+    userType: 'member' | 'guest'
+  } | null
+  methods: AuthMethodSummary[] | 'unknown'   // A5; 'unknown' on inner-batch 403/error
+  lastSuccessfulSignIn: string | null         // A2 signInActivity.lastSuccessfulSignInDateTime,
+                                              // falling back to lastSignInDateTime
+  evidence: {                                 // Lane B derived table entry for this user
+    status: 'ok' | 'partial' | 'insufficient' | 'disabled' | 'pending'
+    covered: { from: string, to: string } | null
+    lastMfaSuccess: { at: string, method: string } | null   // from mfaDetail / authenticationDetails
+  }
+  tenant: {
+    now: string
+    newestAuthenticatorVersionByPlatform: Record<string, string>  // see 10.5
+  }
+}
+
+AuthMethodSummary {
+  kind: 'microsoftAuthenticator' | 'passkey' | 'fido2' | 'windowsHelloForBusiness'
+      | 'phone' | 'softwareOath' | 'temporaryAccessPass' | 'email' | 'password' | 'other'
+  createdDateTime?: string
+  displayName?: string          // Authenticator: device name; FIDO2/passkey: key name
+  phoneAppVersion?: string      // Authenticator only
+  deviceTag?: string            // Authenticator only
+  platform?: string             // derived, see 10.5
+  model?: string                // FIDO2 / passkey
+  deviceLastSignIn?: string     // Windows Hello: bound device approximateLastSignInDateTime
+  phoneType?: 'mobile' | 'alternateMobile' | 'office'
+  isUsable?: boolean            // TAP only
+}
+```
+
+Method *values* (phone numbers, email addresses) are never part of the input;
+A5 strips them before they leave the fetch layer (§11).
+
+### 10.3 Output
+
+```
+MfaViability {
+  userId: string
+  state: 'inactive' | 'none' | 'verified' | 'likelyViable' | 'notChallenged' | 'unverified'
+  mfaCapable: boolean
+  isAdmin: boolean
+  reasons: string[]                       // plain language, at least one for every state except 'verified'
+  evidence?: { at: string, method: string }
+  signals: {
+    recentRegistration?: string           // method kind that qualified
+    authenticatorVersion?: { seen: string, newest: string, releasesBehind: number }
+    whfbDeviceActive?: string             // ISO of the device sign-in
+    smsVoiceOnly?: boolean
+    methodsUnknown?: boolean
+    observableInWindow?: boolean          // lastSuccessfulSignIn falls inside evidence.covered
+  }
+}
+```
+
+### 10.4 Evaluation order — first match wins
+
+MFA-capable method kinds: `microsoftAuthenticator`, `passkey`, `fido2`,
+`windowsHelloForBusiness`, `phone`, `softwareOath`. `email`, `password`,
+`other` are not. `temporaryAccessPass` is transitional and does not make a
+user capable.
+
+Evidence is usable only when `evidence.status` is `ok` or `partial`.
+`observableInWindow` = `lastSuccessfulSignIn` is within `evidence.covered`.
+
+| # | State | Rule |
+|---|---|---|
+| 1 | **verified** | Evidence usable and `lastMfaSuccess` present. Record method and date. Evidence beats every metadata weakness (an SMS-only user who completed MFA yesterday is verified). |
+| 2 | **inactive** | `lastSuccessfulSignIn` is null or older than `INACTIVE_DAYS`. Reason: "no successful sign-in in N days". |
+| 3 | **none** | `registration.isMfaCapable` is false AND (methods is `'unknown'` OR contains no MFA-capable kind). A usable TAP adds the reason "TAP issued — registration pending" but does not change the state. |
+| 4 | **likelyViable** | Any one positive signal: (a) an Authenticator method whose `phoneAppVersion` is within `AUTHENTICATOR_VERSION_LAG` minor releases of the tenant's newest for the same platform; (b) any MFA-capable method with `createdDateTime` within `RECENT_REGISTRATION_DAYS`; (c) a Windows Hello method with `deviceLastSignIn` within `WHFB_DEVICE_ACTIVE_DAYS`. Record which. |
+| 5 | **notChallenged** | Evidence usable, `observableInWindow` true, and no `lastMfaSuccess`. The user was active in the window and nothing required MFA of them. Reason: "signed in N times in window, never challenged" (count if available, else omit). |
+| 6 | **unverified** | Everything else that is MFA-capable. Reasons, all that apply: "Authenticator version stale (seen X, newest Y, Z releases behind)"; "method registered N days ago, no usage signal" when older than `STALE_METHOD_DAYS`; "SMS/voice only" when the only MFA-capable kinds are `phone`; "FIDO2/passkey with no usage signal"; "methods unavailable for this user" when `'unknown'`; "not observable — last sign-in outside evidence window" when evidence exists but `observableInWindow` is false; "no sign-in evidence collected" when evidence status is `insufficient`, `disabled`, or `pending`. |
+
+Rules 1 and 5 are skipped entirely when evidence is not usable; the user falls
+through to metadata (rules 2–4, 6).
+
+### 10.5 Tenant Authenticator version baseline
+
+Computed once per snapshot from every Authenticator method in A5:
+
+- `platform` is derived per method from `deviceTag` when it identifies an OS;
+  otherwise from the `phoneAppVersion` numbering scheme (iOS and Android
+  Authenticator use distinct version lines); otherwise `'unknown'`.
+  **Confirm the derivation against the tenant's real methods before locking
+  it** — this is the one heuristic in the section written without spike data.
+- `newestAuthenticatorVersionByPlatform[platform]` = max version, comparing
+  `major.minor.patch` numerically.
+- `releasesBehind` = newest.minor − seen.minor when majors are equal; a lower
+  major counts as stale regardless of minor.
+- A platform with a single observed device has no baseline; rule 4(a) is not
+  applicable and rule 4(b) (registration age) decides.
+
+Why relative rather than a version table: a phone that stops checking in
+freezes at its last reported version, so lag against the tenant's own newest
+device is the signal, and it needs no maintained list of current releases.
+
+**Confirmation note (2026-08-26, against this tenant's 19 real methods — 12
+password, 4 Authenticator, 2 FIDO2, 1 TAP):** all 4 Authenticator methods
+derived a platform (all Android). Findings that adjust expectations:
+`deviceTag` identified an OS on only 1 of 4 (`"Android"`); the other 3 carried
+the generic `"SoftwareTokenActivated"`, so the **version-scheme rule is the
+workhorse**, not the deviceTag rule. The date-based-minor heuristic
+(minor ≥ 1000 → Android) matched on all 4, corroborated 4/4 by displayName
+keywords (`SM-`, `samsung`) and by the one authoritative deviceTag. The iOS
+side of the scheme is **unconfirmed** — the tenant has no iOS Authenticator —
+re-verify when one appears. Baseline computed correctly: `android →
+6.2607.4697` from 4 devices, with a 6.2606 device sitting 1 minor behind.
+Separate caveat for §10.4: `createdDateTime` was **null on 3 of 4**
+Authenticator methods, so rule 4(b) (recent registration) and the stale-method
+reason will often be unavailable for Authenticator on real tenants — the
+version signal and evidence matter more than planned.
+
+### 10.6 Tenant-level derivations (from the per-user table)
+
+- Counts per state, and per state for admins (`isAdmin`) — admin rows sort
+  first everywhere.
+- `challengedRate` = users with `lastMfaSuccess` ÷ users `observableInWindow`.
+  A low rate with many `notChallenged` is the "nobody has been prompted in
+  years" tenant, and is a tenant-level finding for the roadmap.
+- `verificationPhaseSize` = `unverified` + `none` + `notChallenged`. This sizes
+  the verification phase the roadmap inserts before any MFA enforcement step.
+- These derivations, not the per-user rows' raw inputs, are what the roadmap
+  consumes.
+
+### 10.7 Test cases (required in the implementation)
+
+`now` = 2026-08-26. Evidence `covered` = last 30 days unless stated.
+
+| # | Input summary | Expected state | Expected reason / signal |
+|---|---|---|---|
+| T1 | Authenticator registered 2022-03, `phoneAppVersion` 8 minor releases behind tenant newest (same platform); active user; evidence ok, no `lastMfaSuccess`; last sign-in inside window | **notChallenged** | observable in window, never challenged (rule 5 precedes 6) |
+| T2 | Same as T1 but evidence `insufficient` | **unverified** | Authenticator version stale; no sign-in evidence collected |
+| T3 | Authenticator registered 6 days ago; no evidence | **likelyViable** | recentRegistration = microsoftAuthenticator |
+| T4 | FIDO2 key only, registered 2024-01; evidence ok; last sign-in 45 days ago (outside covered window) | **unverified** | FIDO2/passkey with no usage signal; not observable |
+| T5 | SMS only; evidence ok; `lastMfaSuccess` yesterday, method "Text message" | **verified** | evidence beats method weakness |
+| T6 | SMS only; evidence ok; last sign-in inside window; no MFA success | **notChallenged** | — |
+| T7 | SMS only; evidence disabled | **unverified** | SMS/voice only; no sign-in evidence collected |
+| T8 | No methods; `isMfaCapable` false; usable TAP present | **none** | TAP issued — registration pending |
+| T9 | No successful sign-in for 200 days; Authenticator up to date | **inactive** | takes precedence over likelyViable |
+| T10 | Methods `'unknown'` (inner 403); `isMfaCapable` true; evidence pending | **unverified** | methods unavailable; no sign-in evidence collected |
+| T11 | Windows Hello, bound device signed in 3 days ago; no evidence | **likelyViable** | whfbDeviceActive |
+| T12 | Authenticator is the only device on its platform (no baseline), registered 400 days ago; evidence ok; last sign-in outside window | **unverified** | method registered N days ago, no usage signal; not observable |
+| T13 | Guest user, Authenticator current, `lastMfaSuccess` in window | **verified** | userType does not change scoring; guest handling is a roadmap concern |
+| T14 | Admin (`isAdmin`) with state unverified | **unverified** | appears first in tenant-level ordering |
 
 ## 11. Cache and privacy
 
