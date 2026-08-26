@@ -136,13 +136,26 @@ function mapUser(raw: unknown): UserRow {
 }
 
 // A2 with an A5 hook: onUserPage fires per page so auth-method batches stream
-// (§2, A5). Falls back to a plain user read when signInActivity is licence-gated.
+// (§2, A5). Falls back to a plain user read when signInActivity is licence-gated;
+// callers that already know the licence lacks P1 skip the first attempt.
 export async function collectUsers(
   ctx: Ctx,
   onUserPage: (users: UserRow[]) => Promise<void>,
+  opts: { includeSignInActivity: boolean } = { includeSignInActivity: true },
 ): Promise<{ users: UserRow[]; partialReason: string | null }> {
-  const select =
-    'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation,signInActivity'
+  const baseSelect =
+    'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation'
+  const select = `${baseSelect},signInActivity`
+  if (!opts.includeSignInActivity) {
+    const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${baseSelect}&$top=999`, {
+      signal: ctx.signal,
+      onPage: async (page) => onUserPage(page.map(mapUser)),
+    })
+    return {
+      users: rows.map(mapUser),
+      partialReason: 'signInActivity not available on this licence (needs Entra ID P1)',
+    }
+  }
   try {
     const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${select}&$top=999`, {
       signal: ctx.signal,
