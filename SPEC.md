@@ -43,7 +43,7 @@ tenant's current state to a chosen baseline without lockouts.
 
 ## 4. Graph scopes (delegated, read-only) and gates
 
-`Policy.Read.All Directory.Read.All Application.Read.All AuditLog.Read.All RoleManagement.Read.Directory openid profile offline_access`
+`Policy.Read.All Directory.Read.All Application.Read.All AuditLog.Read.All RoleManagement.Read.Directory UserAuthenticationMethod.Read.All Reports.Read.All openid profile offline_access`
 
 | Need | Endpoint | Gate |
 |---|---|---|
@@ -53,9 +53,11 @@ tenant's current state to a chosen baseline without lockouts.
 | MFA/passkey registration per user | `/reports/authenticationMethods/userRegistrationDetails` | P1/P2; gives method **types**, no phone numbers |
 | Break-glass last used | `/users?$select=signInActivity` | P1/P2 |
 | PIM eligible vs permanent | `/roleManagement/directory/roleEligibilitySchedules` | P2, Global Reader+ |
+| Per-user registered auth methods (v1.0; response can include phone numbers — never persist them) | `/me/authentication/methods`, `/users/{id}/authentication/methods` | none; delegated needs admin consent |
+| App sign-in summaries (aggregated usage reports) | `/reports/applicationSignInDetailedSummary`, `/reports/servicePrincipalSignInActivities` | **beta only**; `Reports.Read.All` (added 2026-08-26; SP activities responded without it once in spike 1 — do not rely on that) |
 | SP sign-ins, device-code / auth-transfer detection | `signInEventTypes`, `authenticationProtocol`, `originalTransferMethod` | **beta only** — degrade cleanly per check |
 
-Not requested in v1: `UserAuthenticationMethod.Read.All` (phone numbers), Intune scopes (Entra device objects suffice), `Agreement.Read.All` (add only if a baseline references Terms of Use).
+Not requested in v1: Intune scopes (Entra device objects suffice), `Agreement.Read.All` (add only if a baseline references Terms of Use). `UserAuthenticationMethod.Read.All` was originally excluded (phone numbers) but added 2026-08-26 by Lachlan's decision; tenants consented before that date will see one incremental consent prompt.
 
 Degradation rule: a 403 or licence error disables a **section** with a plain reason; it never fails the scan.
 
