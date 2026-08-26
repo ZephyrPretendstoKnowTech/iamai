@@ -4,10 +4,28 @@
   "private": true,
   "type": "module",
   "description": "IAMAI — read-only, browser-only Entra Conditional Access rollout planner. Baseline adapter core.",
-  "engines": { "node": ">=22.18" },
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "node --test src/**/*.test.ts",
     "analyze": "node scripts/analyze-local.ts",
     "build-index": "node scripts/build-index.ts"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^5.19.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.3.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^6.1.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
   }
 }

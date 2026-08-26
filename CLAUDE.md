@@ -10,6 +10,7 @@ Read `SPEC.md` first. It holds every product decision; do not re-decide anything
 - Baseline `state` from any source is lab state; treat every baseline policy as intended-enforced.
 - Never bundle policy content from third-party baseline repos; ship path indexes (`baselines/*.index.json`) and fetch raw files at a pinned commit.
 - Any Graph 403 or licence error disables a section with a plain reason; it never fails the scan.
+- Never commit tenant-derived data. Diagnostic and spike outputs go under gitignored `docs/spikes/raw/`; findings docs use redacted identifiers (no UPNs, user object IDs, or tenant GUIDs). The spike harness redacts UPNs/GUIDs in anything it writes to disk.
 
 ## Stack
 Vite + TypeScript + React, `@azure/msal-browser`, Web Worker for the replay engine, IndexedDB via `idb`.
