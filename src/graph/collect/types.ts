@@ -99,8 +99,34 @@ export type StoredSignIn = {
   mfaDetail?: { authMethod?: string } | null
   authenticationDetails?: { succeeded?: boolean; authenticationMethod?: string }[] | null
   status?: { errorCode?: number } | null
+  conditionalAccessStatus?: string
+  appliedConditionalAccessPolicies?: { id?: string; displayName?: string; result?: string }[] | null
   clientAppUsed?: string
   appId?: string
+}
+
+export type PolicyResultClass =
+  | 'reportOnlyFailure'
+  | 'reportOnlyInterrupted'
+  | 'reportOnlySuccess'
+  | 'enforcedFailure'
+  | 'enforcedSuccess'
+
+// Lane B derived table: per-policy applied results across the covered window
+// (collection.md §4) — what moves a step planned → report-only → enforced.
+export type PolicyAppliedResult = {
+  policyId: string
+  displayName: string | null
+  counts: Record<PolicyResultClass, number>
+  affectedUserIds: Record<PolicyResultClass, string[]>
+}
+
+// Lane B derived table: users whose most recent sign-in in the window failed
+// Conditional Access, grouped by the failing policy.
+export type BlockedTodayEntry = {
+  policyId: string
+  displayName: string | null
+  userIds: string[]
 }
 
 export type TenantSnapshot = {
@@ -116,6 +142,8 @@ export type TenantSnapshot = {
   authMethods: MethodsByUser
   appSignInSummary: unknown[]
   signInEvidence: Record<string, UserEvidence>
+  evidencePolicyResults: PolicyAppliedResult[]
+  blockedToday: BlockedTodayEntry[]
   // Tenant licence capabilities derived from subscribedSkus (SPEC §12).
   capabilities: Record<Capability, { enabled: boolean; seats: number; consumed: number }>
   // CA policies that Microsoft manages (display-name prefix or templateId).

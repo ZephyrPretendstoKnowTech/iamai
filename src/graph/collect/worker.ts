@@ -115,6 +115,8 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     authMethods: {},
     appSignInSummary: [],
     signInEvidence: {},
+    evidencePolicyResults: [],
+    blockedToday: [],
     capabilities: emptyCapabilities(),
     microsoftManagedPolicyIds: [],
     roles: { active: {}, eligible: {} },
@@ -301,6 +303,8 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     onSlow: () => post({ type: 'state', value: 'slow' }),
   }).then((evidence) => {
     snapshot.signInEvidence = evidence.perUser
+    snapshot.evidencePolicyResults = evidence.policyResults
+    snapshot.blockedToday = evidence.blockedToday
     snapshot.sources.signInEvidence = {
       status: evidence.status,
       coveredWindow: evidence.covered,

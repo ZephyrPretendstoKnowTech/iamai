@@ -190,6 +190,26 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
               </div>
             )}
           </div>
+          {snapshot.blockedToday.length > 0 && (
+            <div className="notice">
+              <strong>
+                Blocked today:{' '}
+                {new Set(snapshot.blockedToday.flatMap((b) => b.userIds)).size} user(s) whose most
+                recent sign-in failed Conditional Access
+              </strong>
+              <ul>
+                {snapshot.blockedToday.map((b) => (
+                  <li key={b.policyId}>
+                    {b.displayName ?? (b.policyId === 'unknown' ? 'No policy identified' : b.policyId)} —{' '}
+                    {b.userIds.length} user(s):{' '}
+                    {b.userIds
+                      .map((id) => userById.get(id)?.displayName ?? userById.get(id)?.userPrincipalName ?? id)
+                      .join(', ')}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <table className="viability">
             <thead>
               <tr>
