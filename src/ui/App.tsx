@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth, signIn, signOut } from '../graph/msal.ts'
 import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
+import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { forgetTenant } from '../graph/collect/cache.ts'
 import { autoCheckAuthMethods } from '../graph/spikes/authMethods.ts'
 import { autoCheckReports } from '../graph/spikes/reportsCheck.ts'
@@ -141,6 +142,10 @@ function SignedIn({ account }: { account: AccountInfo }) {
         </button>
       </p>
       <MfaViabilityScreen tenantId={account.tenantId} />
+      <details>
+        <summary>What IAMAI reads</summary>
+        <WhatIamaiReads />
+      </details>
       {import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1' && (
         <div className="devtools">
           <h3>Dev spikes</h3>

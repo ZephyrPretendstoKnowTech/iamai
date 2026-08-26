@@ -3,6 +3,7 @@
 // a 403/licence error disables its section, never the scan.
 import { graphPaged, graphRequest, SectionDisabledError, V1, BETA } from './http.ts'
 import type { TokenSource } from './http.ts'
+import { COLLECTOR_REGISTRY } from './registry.ts'
 import { deriveAuthenticatorPlatform } from '../../scoring/platform.ts'
 import type { AuthMethodSummary, MethodKind } from '../../scoring/mfaViability.ts'
 import type {
@@ -21,20 +22,13 @@ export type Ctx = {
 
 // ---------- Lane 0: config reads ----------
 
-const CONFIG_ENDPOINTS: Record<ConfigSectionKey, { url: string; paged?: boolean }> = {
-  caPolicies: { url: `${V1}/identity/conditionalAccess/policies`, paged: true },
-  namedLocations: { url: `${V1}/identity/conditionalAccess/namedLocations`, paged: true },
-  authStrengths: { url: `${V1}/policies/authenticationStrengthPolicies`, paged: true },
-  authMethodsPolicy: { url: `${V1}/policies/authenticationMethodsPolicy` },
-  securityDefaults: { url: `${V1}/policies/identitySecurityDefaultsEnforcementPolicy` },
-  crossTenantAccess: { url: `${V1}/policies/crossTenantAccessPolicy` },
-  roleAssignments: { url: `${V1}/roleManagement/directory/roleAssignments`, paged: true },
-  pimEligibility: { url: `${V1}/roleManagement/directory/roleEligibilitySchedules`, paged: true },
-  subscribedSkus: { url: `${V1}/subscribedSkus`, paged: true },
-  organization: { url: `${V1}/organization`, paged: true },
-  me: { url: `${V1}/me` },
-  meMemberOf: { url: `${V1}/me/memberOf`, paged: true },
-}
+// Lane 0 endpoints come from the declarative registry (registry.ts).
+const CONFIG_ENDPOINTS = Object.fromEntries(
+  COLLECTOR_REGISTRY.filter((s) => s.lane === '0' && s.configKey).map((s) => [
+    s.configKey,
+    { url: `${s.version === 'beta' ? BETA : V1}${s.endpoint}`, paged: s.paged },
+  ]),
+) as Record<ConfigSectionKey, { url: string; paged?: boolean }>
 
 // Item 2 of the data-model lock: Microsoft-managed CA policies are flagged by
 // display-name prefix or a present templateId.
