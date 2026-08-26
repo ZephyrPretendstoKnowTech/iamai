@@ -45,17 +45,40 @@ tenant's current state to a chosen baseline without lockouts.
 
 `Policy.Read.All Directory.Read.All Application.Read.All AuditLog.Read.All RoleManagement.Read.Directory UserAuthenticationMethod.Read.All Reports.Read.All openid profile offline_access`
 
-| Need | Endpoint | Gate |
-|---|---|---|
-| CA policies, named locations, auth-methods policy, auth strengths, security defaults, cross-tenant access, CA templates (beta), What If | `/identity/conditionalAccess/*`, `/policies/*` | none |
-| Users, groups (transitive counts), devices (`isCompliant`, `isManaged`, `trustType`), roles, `subscribedSkus`, service principals | `/users`, `/groups/{id}/transitiveMembers/$count`, `/devices`, `/roleManagement/directory/roleAssignments`, `/servicePrincipals` | none |
-| Sign-in logs (evidence pull) | `/auditLogs/signIns` | **beta only** (spike 1, 2026-08-26: v1.0 store never returned data reliably; interactive lambda and `authenticationRequirement` are beta-only). Entra ID **P1/P2** required; user must be Security Reader / Reports Reader / Global Reader / GA; 7–30 day retention; **no server-side filter is usable in practice** (date/property filters stall or 400 — filter client-side; the `signInEventTypes` lambda is the sole exception); pull interactive newest-first, page through in a worker, cap by row/time budget for 10k+ users (see `docs/design/collection.md`) |
-| MFA/passkey registration per user | `/reports/authenticationMethods/userRegistrationDetails` | P1/P2; gives method **types**, no phone numbers |
-| Break-glass last used | `/users?$select=signInActivity` | P1/P2 |
-| PIM eligible vs permanent | `/roleManagement/directory/roleEligibilitySchedules` | P2, Global Reader+ |
-| Per-user registered auth methods (v1.0; response can include phone numbers — never persist them) | `/me/authentication/methods`, `/users/{id}/authentication/methods` | none; delegated needs admin consent |
-| App sign-in summaries (aggregated usage reports) | `/reports/applicationSignInDetailedSummary`, `/reports/servicePrincipalSignInActivities` | **beta only**; `Reports.Read.All` (added 2026-08-26; SP activities responded without it once in spike 1 — do not rely on that) |
-| SP sign-ins, device-code / auth-transfer detection | `signInEventTypes`, `authenticationProtocol`, `originalTransferMethod` | **beta only** — degrade cleanly per check |
+The table below is **generated from the collector registry**
+(`src/graph/collect/registry.ts`) by `node scripts/spec-scopes.ts` — edit the
+registry, then regenerate; do not hand-edit rows. Lanes are defined in
+`docs/design/collection.md` §2 (0 = config on every load, A = aggregates,
+B = sign-in evidence, on-demand = after baseline selection).
+
+| Lane | Need | Endpoint | API | Scopes | Gate |
+|---|---|---|---|---|---|
+| 0 | The tenant policy set the diff and roadmap work from; Microsoft-managed policies are flagged. | `/identity/conditionalAccess/policies` | v1.0 | Policy.Read.All | none |
+| 0 | Trusted-location validation and location-based intents. | `/identity/conditionalAccess/namedLocations` | v1.0 | Policy.Read.All | none |
+| 0 | Resolve strength references in policies, incl. custom strengths. | `/policies/authenticationStrengthPolicies` | v1.0 | Policy.Read.All | none |
+| 0 | Method availability, registrationEnforcement, policyMigrationState. | `/policies/authenticationMethodsPolicy` | v1.0 | Policy.Read.All | none |
+| 0 | Whether security defaults are on (mutually exclusive with CA). | `/policies/identitySecurityDefaultsEnforcementPolicy` | v1.0 | Policy.Read.All | none |
+| 0 | Guest/B2B posture affecting external-user intents. | `/policies/crossTenantAccessPolicy` | v1.0 | Policy.Read.All | none |
+| 0 | Active admin roles per user for admin-targeting intents. | `/roleManagement/directory/roleAssignments` | v1.0 | RoleManagement.Read.Directory | none |
+| 0 | Eligible vs permanent roles; eligible is out of CA role scope until activated. | `/roleManagement/directory/roleEligibilitySchedules` | v1.0 | RoleManagement.Read.Directory | Entra ID P2 |
+| 0 | Tenant licence capabilities and seat coverage. | `/subscribedSkus` | v1.0 | Directory.Read.All | none |
+| 0 | Tenant name and verified domains for the plan-file header. | `/organization` | v1.0 | Directory.Read.All | none |
+| 0 | Operator identity recorded in the plan file. | `/me` | v1.0 | User.Read | none |
+| 0 | Warn when the operator sits inside groups a plan step targets. | `/me/memberOf` | v1.0 | User.Read | none |
+| A | Per-user registered method types (no phone numbers) for MFA viability. | `/reports/authenticationMethods/userRegistrationDetails` | v1.0 | AuditLog.Read.All | Entra ID P1/P2 |
+| A | User inventory with activity, licence plans, and org attributes. | `/users` | v1.0 | Directory.Read.All AuditLog.Read.All | signInActivity needs Entra ID P1/P2 (degrades to a plain user list) |
+| A | Compliance/trust state with registered owners for device intents. | `/devices` | v1.0 | Directory.Read.All | none |
+| A | Workload identity usage for later phases. | `/reports/servicePrincipalSignInActivities` | beta | Reports.Read.All | attempt and map the 403 (documented scope: Reports.Read.All) |
+| A | Registered method detail (values stripped; never phone numbers). | `/users/{id}/authentication/methods ($batch of 20)` | v1.0 | UserAuthenticationMethod.Read.All | inner 403 marks that user unknown |
+| A | Aggregated per-app usage for app-scoping decisions. | `/reports/applicationSignInDetailedSummary` | beta | Reports.Read.All | attempt and map the 403 |
+| B | Interactive sign-in evidence for the replay engine and MFA verification. | `/auditLogs/signIns` | beta | AuditLog.Read.All | Entra ID P1/P2; beta-only in practice (spike 1); no usable server-side filter — unfiltered newest-first with client-side cutoff |
+| on-demand | Affected-population counts and exclusion-group sanity checks. | `/groups/{id}/transitiveMembers (+ $count)` | v1.0 | Directory.Read.All | runs only for groups the chosen baseline references; count-and-sample above 20k |
+
+Planned but not yet in the registry: CA templates (beta), What If
+(`/identity/conditionalAccess/evaluate`), `/servicePrincipals`
+(Application.Read.All — the reason that scope is consented), and device-code /
+auth-transfer detection via beta sign-in fields (`authenticationProtocol`,
+`originalTransferMethod`) — each gets a registry row when its collector lands.
 
 Not requested in v1: Intune scopes (Entra device objects suffice), `Agreement.Read.All` (add only if a baseline references Terms of Use). `UserAuthenticationMethod.Read.All` was originally excluded (phone numbers) but added 2026-08-26 by Lachlan's decision; tenants consented before that date will see one incremental consent prompt.
 
