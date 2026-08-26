@@ -219,12 +219,70 @@ export async function runSpike1Extended(): Promise<Spike1ExtendedResults> {
   return results
 }
 
+export type DevicesSpikeResults = {
+  startedAt: string
+  startUrl: string
+  pages: { status: number | 'timeout' | 'error'; ms: number; itemCount: number; withOwner: number; retryAfter?: string }[]
+  attempts: Attempt[]
+  totalItems: number
+  devicesWithOwner: number
+  totalMs: number
+  stoppedBecause: string
+  finishedAt: string
+}
+
+// Devices spike (SPEC §9 #3): device → owner join in one pass via $expand,
+// paged, capped at 5 minutes. Watch for expand clamping the page size.
+export async function runDevicesSpike(): Promise<DevicesSpikeResults> {
+  const token = await getGraphToken()
+  const startUrl = `${V1}/devices?$select=id,displayName,isCompliant,isManaged,trustType&$expand=${encodeURIComponent('registeredOwners($select=id)')}&$top=999`
+  const results: DevicesSpikeResults = {
+    startedAt: new Date().toISOString(),
+    startUrl: short(startUrl),
+    pages: [],
+    attempts: [],
+    totalItems: 0,
+    devicesWithOwner: 0,
+    totalMs: 0,
+    stoppedBecause: 'exhausted (no nextLink)',
+    finishedAt: '',
+  }
+  const wallStart = performance.now()
+  let next: string | null = startUrl
+  while (next) {
+    if (performance.now() - wallStart > 300_000) {
+      results.stoppedBecause = 'time cap (5 min)'
+      break
+    }
+    const out = await getWithRetry(token, next, results.attempts)
+    const items = Array.isArray(out.body?.value) ? (out.body.value as { registeredOwners?: unknown[] }[]) : []
+    const withOwner = items.filter((d) => Array.isArray(d.registeredOwners) && d.registeredOwners.length > 0).length
+    results.pages.push({ status: out.status, ms: out.ms, itemCount: items.length, withOwner, retryAfter: out.retryAfter })
+    console.log(`[devices-spike] page ${results.pages.length}: ${items.length} devices (${withOwner} with owner) in ${out.ms} ms, status=${String(out.status)}`)
+    if (out.status !== 200) {
+      results.stoppedBecause = `error ${String(out.status)}`
+      break
+    }
+    results.totalItems += items.length
+    results.devicesWithOwner += withOwner
+    next = out.body?.['@odata.nextLink'] ?? null
+  }
+  results.totalMs = Math.round(performance.now() - wallStart)
+  results.finishedAt = new Date().toISOString()
+  console.log('[devices-spike] RESULTS', JSON.stringify(results, null, 2))
+  ;(window as { __devicesSpike?: DevicesSpikeResults }).__devicesSpike = results
+  await saveDevResults('devices-spike', results)
+  return results
+}
+
 declare global {
   interface Window {
     __runSpike1Extended?: typeof runSpike1Extended
+    __runDevicesSpike?: typeof runDevicesSpike
   }
 }
 
 if (import.meta.env.DEV) {
   window.__runSpike1Extended = runSpike1Extended
+  window.__runDevicesSpike = runDevicesSpike
 }

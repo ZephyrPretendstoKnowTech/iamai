@@ -68,6 +68,16 @@ honouring `Retry-After` (none occurred). Tenant has 12 users.
 | f2 | beta `applicationSignInDetailedSummary`, first page | **403** | 117 ms | `Authentication_MSGraphPermissionMissing: … Reports.Read.All` |
 | g | v1.0 `$batch` × 12 `/users/{id}/authentication/methods` | 200 | **835 ms** | all 12 inner 200s, 19 methods total |
 
+### Devices spike (19:09 UTC) — `$expand` owner join (SPEC §9 #3)
+
+`/v1.0/devices?$select=id,displayName,isCompliant,isManaged,trustType&$expand=registeredOwners($select=id)&$top=999`,
+paged, 5-minute cap: **200 in 187 ms — 1 device, 1 with a registered owner, one
+page, no nextLink.** The expand join works and costs nothing on this tenant.
+Caveat: with a single device, whether `$expand` clamps the effective page size
+below `$top=999` is untestable here — re-check on the large tenant before
+committing to expand-in-one-pass over the `$batch` fallback
+(`docs/design/collection.md` §13).
+
 Request IDs for a support case: `986b0081…` (66 s success), `b8cf8c38…` (504),
 `51339a0e…` (429), `da9b7621…` (504), `160ca5d3…` (429), `cec70776…` (beta success),
 `d3c4e598…` (beta 504).
