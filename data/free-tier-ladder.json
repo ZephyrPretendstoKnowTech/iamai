@@ -1,0 +1,15 @@
+{
+  "$comment": "The ~10 free-tier hardening items (SPEC §12) — the plan spine for tenants with no paid Entra. Placeholders to be curated from Microsoft guidance; keep the order as the intended sequence.",
+  "items": [
+    { "id": "security-defaults", "name": "Enable security defaults", "status": "placeholder" },
+    { "id": "break-glass-accounts", "name": "Create and validate break-glass accounts", "status": "placeholder" },
+    { "id": "legacy-auth-inventory", "name": "Inventory legacy authentication usage", "status": "placeholder" },
+    { "id": "app-passwords", "name": "Eliminate app passwords", "status": "placeholder" },
+    { "id": "per-user-mfa-cleanup", "name": "Reconcile per-user MFA states", "status": "placeholder" },
+    { "id": "admin-accounts-separate", "name": "Separate admin accounts from daily-driver accounts", "status": "placeholder" },
+    { "id": "global-admin-count", "name": "Reduce Global Administrator count", "status": "placeholder" },
+    { "id": "guest-review", "name": "Review guest accounts and external state", "status": "placeholder" },
+    { "id": "stale-accounts", "name": "Disable dormant and never-signed-in accounts", "status": "placeholder" },
+    { "id": "authenticator-over-sms", "name": "Move users from SMS/voice to Authenticator", "status": "placeholder" }
+  ]
+}

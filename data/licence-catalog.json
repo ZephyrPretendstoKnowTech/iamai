@@ -1,0 +1,20 @@
+{
+  "$comment": "Educational catalog of higher-tier implementations (SPEC §12). Shaped, to be curated: tier → features, each with description, use case, a hook naming the tenant-computed value that makes it concrete, and a docs link. Never rendered as an upsell or a lock.",
+  "tiers": {
+    "entraP1": { "features": [] },
+    "entraP2": { "features": [] },
+    "intune": { "features": [] },
+    "workloadIdPremium": { "features": [] },
+    "globalSecureAccess": { "features": [] },
+    "defenderForCloudApps": { "features": [] },
+    "purviewInsiderRisk": { "features": [] }
+  },
+  "featureShape": {
+    "id": "kebab-case-id",
+    "name": "Feature name",
+    "description": "What it does, in plain language.",
+    "useCase": "When a tenant would want it.",
+    "tenantValueHook": "snapshot or checkpoint field that makes this concrete for THIS tenant (e.g. counts.notChallenged)",
+    "docsUrl": "https://learn.microsoft.com/..."
+  }
+}

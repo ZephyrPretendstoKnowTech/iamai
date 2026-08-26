@@ -37,7 +37,12 @@ export function startScan(tenantId: string, onEvent: (m: WorkerOutMessage) => vo
           }
           onEvent(msg)
         }
-        worker.postMessage({ type: 'start', token, tenantId })
+        // ?dev=1&licence=free|p1|p2 simulates a licence profile (SPEC §12).
+        const params = new URLSearchParams(window.location.search)
+        const licence = params.get('dev') === '1' ? params.get('licence') : null
+        const licenceOverride =
+          licence === 'free' || licence === 'p1' || licence === 'p2' ? licence : undefined
+        worker.postMessage({ type: 'start', token, tenantId, licenceOverride })
       }).finally(() => {
         worker?.terminate()
         worker = null

@@ -1,6 +1,7 @@
 // Types for the collection service (docs/design/collection.md §4). Types
 // only — no runtime imports beyond the pure scoring types.
 import type { AuthMethodSummary } from '../../scoring/mfaViability.ts'
+import type { Capability } from './registry.ts'
 
 export type SourceKey =
   | 'config'
@@ -115,6 +116,8 @@ export type TenantSnapshot = {
   authMethods: MethodsByUser
   appSignInSummary: unknown[]
   signInEvidence: Record<string, UserEvidence>
+  // Tenant licence capabilities derived from subscribedSkus (SPEC §12).
+  capabilities: Record<Capability, { enabled: boolean; seats: number; consumed: number }>
   // CA policies that Microsoft manages (display-name prefix or templateId).
   microsoftManagedPolicyIds: string[]
   // Per-user directory roles, keyed by user id → role template ids. Eligible
@@ -127,7 +130,7 @@ export type TenantSnapshot = {
 }
 
 export type WorkerInMessage =
-  | { type: 'start'; token: string; tenantId: string }
+  | { type: 'start'; token: string; tenantId: string; licenceOverride?: 'free' | 'p1' | 'p2' }
   | { type: 'token'; token: string }
   | { type: 'cancel' }
 

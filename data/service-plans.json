@@ -1,0 +1,13 @@
+{
+  "$comment": "Service plan ids/names to capability mapping. Refresh with: node scripts/refresh-service-plans.ts (pulls Microsoft's licensing CSV). namePatterns are regex sources matched against servicePlanName.",
+  "asOf": "2026-08-26",
+  "capabilities": {
+    "entraP1": { "servicePlanIds": ["41781fb2-bc02-4b7c-bd55-b576c07bb09d"], "namePatterns": ["^AAD_PREMIUM$"] },
+    "entraP2": { "servicePlanIds": ["eec0eb4f-6444-4f95-aba0-50c24d67f998"], "namePatterns": ["^AAD_PREMIUM_P2$"] },
+    "intune": { "servicePlanIds": ["c1ec4a95-1f05-45b3-a911-aa3fa01094f5"], "namePatterns": ["^INTUNE_A$"] },
+    "workloadIdPremium": { "servicePlanIds": [], "namePatterns": ["WORKLOAD_IDENTITIES", "AAD_WRKLDID"] },
+    "globalSecureAccess": { "servicePlanIds": [], "namePatterns": ["ENTRA_INTERNET_ACCESS", "ENTRA_PRIVATE_ACCESS", "GLOBAL_SECURE_ACCESS"] },
+    "defenderForCloudApps": { "servicePlanIds": [], "namePatterns": ["^ADALLOM_S_STANDALONE$", "^ADALLOM_S_O365"] },
+    "purviewInsiderRisk": { "servicePlanIds": [], "namePatterns": ["INSIDER_RISK"] }
+  }
+}

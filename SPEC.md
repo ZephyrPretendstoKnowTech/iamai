@@ -167,3 +167,36 @@ work only, no new Graph reads.
 | Drift and exclusion-creep detection | Diffs consecutive checkpoints: policy state changes, exclusion-group member-count growth, coverage regressions | `Checkpoint.tenantPolicies`, `Checkpoint.exclusionGroups`, `Checkpoint.coverage` |
 | Microsoft-managed auto-enable dates | Places Microsoft's announced auto-enable dates for Microsoft-managed policies on the roadmap timeline | `TenantSnapshot.microsoftManagedPolicyIds` + policy `state` |
 | Recurring break-glass drill step | Inserts a recurring "test break-glass sign-in" step when the accounts' last sign-in is older than the drill interval | `Checkpoint.breakGlass[].lastSignIn` |
+
+## 12. Licensing principle
+
+The tool **hardens what the tenant has**. Intents are security goals with
+per-tier implementations (free / P1 / P2 / add-on); coverage is scored against
+the **best implementation the tenant's licence allows**. Nothing is ever
+locked, upsold, or marked "accepted risk" because of licence tier — a free
+tenant gets a complete plan for a free tenant.
+
+Mechanics:
+
+- Tenant capabilities (`entraP1`, `entraP2`, `intune`, `workloadIdPremium`,
+  `globalSecureAccess`, `defenderForCloudApps`, `purviewInsiderRisk`) derive
+  from `subscribedSkus` service plans with enabled seat counts and consumed
+  units (`data/service-plans.json`, refreshed by
+  `scripts/refresh-service-plans.ts`; derivation in
+  `src/licensing/capabilities.ts`, unit-tested against free / P1-only / P2 /
+  mixed-seats / trial / disabled-plan fixtures).
+- Per-user capabilities derive from `assignedPlans` entries with
+  `capabilityStatus` Enabled — mixed tenants (fewer P2 seats than users) are
+  first-class.
+- Collectors consult capabilities **before** calling licence-gated endpoints
+  and report "not available on this licence" as a section-disable; they never
+  burn a request to discover a licence gap the SKU data already shows.
+- Higher-tier implementations appear only in a separate **educational
+  catalog** (`data/licence-catalog.json`: tier → features → description, use
+  case, tenant-computed value hook, docs link), never inline as "you can't
+  have this".
+- `data/free-tier-ladder.json` holds the curated ~10 free-tier hardening items
+  (security defaults, per-user MFA states, legacy-auth app passwords, etc.),
+  the plan spine for tenants with no paid Entra at all.
+- Dev override: `?dev=1&licence=free|p1|p2` simulates a licence profile for UI
+  and gating tests.

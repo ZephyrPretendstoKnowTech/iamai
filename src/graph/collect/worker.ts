@@ -4,6 +4,13 @@
 // MSAL directly. Lane B (sign-in evidence) is not implemented yet — its source
 // reports 'pending'.
 import { redactIdentifiers } from '../../redact.ts'
+import {
+  deriveTenantCapabilities,
+  emptyCapabilities,
+  simulatedCapabilities,
+} from '../../licensing/capabilities.ts'
+import type { LicenceProfile } from '../../licensing/capabilities.ts'
+import { COLLECTOR_REGISTRY } from './registry.ts'
 import { EVIDENCE_WINDOW_DAYS, LANE_A_CONCURRENCY } from './constants.ts'
 import { collectSignInEvidence } from './laneB.ts'
 import {
@@ -83,7 +90,7 @@ function sourceState(status: SourceState['status'], reason: string | null = null
   }
 }
 
-async function run(tenantId: string): Promise<void> {
+async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<void> {
   const runCtx: Ctx = { tokens, signal: laneAbort.signal }
   const config = {} as Record<ConfigSectionKey, ConfigSection>
   const snapshot: TenantSnapshot = {
@@ -108,6 +115,7 @@ async function run(tenantId: string): Promise<void> {
     authMethods: {},
     appSignInSummary: [],
     signInEvidence: {},
+    capabilities: emptyCapabilities(),
     microsoftManagedPolicyIds: [],
     roles: { active: {}, eligible: {} },
   }
@@ -141,7 +149,7 @@ async function run(tenantId: string): Promise<void> {
   const methods: MethodsByUser = {}
   let methodsFailure: string | null = null
 
-  const lane0Tasks = CONFIG_KEYS.map((key) => async () => {
+  const runConfigTask = async (key: ConfigSectionKey): Promise<void> => {
     post({ type: 'section', source: `config:${key}`, status: 'started' })
     const t0 = performance.now()
     const result = await collectConfigSection(runCtx, key)
@@ -154,25 +162,67 @@ async function run(tenantId: string): Promise<void> {
       reason: result.reason ?? undefined,
       ms: Math.round(performance.now() - t0),
     })
+  }
+
+  // Licence first (SPEC §12): capabilities gate licence-dependent sections,
+  // which report "not available on this licence" before calling and continue.
+  await runConfigTask('subscribedSkus')
+  const caps = licenceOverride
+    ? simulatedCapabilities(licenceOverride)
+    : deriveTenantCapabilities(config.subscribedSkus?.rows ?? [])
+  snapshot.capabilities = caps
+
+  const CAP_LABEL: Record<string, string> = { entraP1: 'Entra ID P1', entraP2: 'Entra ID P2' }
+  const missingCapability = (key: ConfigSectionKey): string | null => {
+    const rc = COLLECTOR_REGISTRY.find((s) => s.configKey === key)?.requiredCapability
+    if (rc && !caps[rc].enabled) return CAP_LABEL[rc] ?? rc
+    return null
+  }
+
+  const lane0Tasks = CONFIG_KEYS.filter((k) => k !== 'subscribedSkus').map((key) => async () => {
+    const missing = missingCapability(key)
+    if (missing) {
+      config[key] = { status: 'disabled', reason: `not available on this licence (needs ${missing})`, rows: [] }
+      post({ type: 'section', source: `config:${key}`, status: 'disabled', reason: config[key].reason ?? undefined })
+      return
+    }
+    await runConfigTask(key)
   })
 
   const laneATasks: (() => Promise<void>)[] = [
     () =>
-      section('registrationDetails', () => collectRegistrationDetails(runCtx), (rows) => {
-        snapshot.registrationDetails = rows
-        return rows.length
-      }),
+      caps.entraP1.enabled
+        ? section('registrationDetails', () => collectRegistrationDetails(runCtx), (rows) => {
+            snapshot.registrationDetails = rows
+            return rows.length
+          })
+        : Promise.resolve().then(() => {
+            snapshot.sources.registrationDetails = sourceState(
+              'disabled',
+              'not available on this licence (needs Entra ID P1)',
+            )
+            post({
+              type: 'section',
+              source: 'registrationDetails',
+              status: 'disabled',
+              reason: snapshot.sources.registrationDetails.reason ?? undefined,
+            })
+          }),
     () =>
       section(
         'users',
         () =>
-          collectUsers(runCtx, async (page) => {
-            try {
-              Object.assign(methods, await collectMethodsForUsers(runCtx, page.map((u) => u.id)))
-            } catch (e) {
-              methodsFailure = e instanceof Error ? e.message : String(e)
-            }
-          }),
+          collectUsers(
+            runCtx,
+            async (page) => {
+              try {
+                Object.assign(methods, await collectMethodsForUsers(runCtx, page.map((u) => u.id)))
+              } catch (e) {
+                methodsFailure = e instanceof Error ? e.message : String(e)
+              }
+            },
+            { includeSignInActivity: caps.entraP1.enabled },
+          ),
         ({ users, partialReason }) => {
           snapshot.users = users
           if (partialReason) snapshot.sources.users = sourceState('partial', partialReason)
@@ -196,8 +246,53 @@ async function run(tenantId: string): Promise<void> {
       }),
   ]
 
+  const finishAggregates = (): void => {
+    snapshot.microsoftManagedPolicyIds = (config.caPolicies?.rows ?? [])
+      .filter(isMicrosoftManagedPolicy)
+      .map((p) => String((p as Record<string, unknown>).id ?? ''))
+      .filter(Boolean)
+    snapshot.roles = deriveRoles(config.roleAssignments?.rows ?? [], config.pimEligibility?.rows ?? [])
+
+    const states = CONFIG_KEYS.map((k) => config[k]?.status ?? 'error')
+    snapshot.sources.config = states.every((s) => s === 'ok')
+      ? sourceState('ok')
+      : states.every((s) => s !== 'ok')
+        ? sourceState('error', 'every config read failed')
+        : sourceState('partial', 'some config reads unavailable')
+
+    snapshot.authMethods = methods
+    const unknownCount = Object.values(methods).filter((m) => m === 'unknown').length
+    snapshot.sources.authMethods = methodsFailure
+      ? sourceState('partial', `some method batches failed: ${methodsFailure}`)
+      : unknownCount > 0
+        ? sourceState('partial', `${unknownCount} users' methods unavailable`)
+        : sourceState('ok')
+    post({
+      type: 'section',
+      source: 'authMethods',
+      status: snapshot.sources.authMethods.status,
+      rows: Object.keys(methods).length,
+      reason: snapshot.sources.authMethods.reason ?? undefined,
+    })
+  }
+
   // Lane B runs alongside Lanes 0/A: strictly serialized internally
-  // (concurrency 1), independent of the aggregate pool.
+  // (concurrency 1), independent of the aggregate pool. Licence-gated on P1.
+  if (!caps.entraP1.enabled) {
+    snapshot.sources.signInEvidence = sourceState('disabled', 'not available on this licence (needs Entra ID P1)')
+    post({
+      type: 'section',
+      source: 'signInEvidence',
+      status: 'disabled',
+      reason: snapshot.sources.signInEvidence.reason ?? undefined,
+    })
+    await pool(LANE_A_CONCURRENCY, [...lane0Tasks, ...laneATasks])
+    finishAggregates()
+    snapshot.asOf = new Date().toISOString()
+    post({ type: 'state', value: 'done' })
+    post({ type: 'snapshot', snapshot })
+    return
+  }
   post({ type: 'section', source: 'signInEvidence', status: 'started' })
   const laneB = collectSignInEvidence(runCtx, {
     tenantId,
@@ -224,35 +319,7 @@ async function run(tenantId: string): Promise<void> {
   await pool(LANE_A_CONCURRENCY, [...lane0Tasks, ...laneATasks])
   await laneB
   post({ type: 'state', value: 'done' })
-
-  snapshot.microsoftManagedPolicyIds = (config.caPolicies?.rows ?? [])
-    .filter(isMicrosoftManagedPolicy)
-    .map((p) => String((p as Record<string, unknown>).id ?? ''))
-    .filter(Boolean)
-  snapshot.roles = deriveRoles(config.roleAssignments?.rows ?? [], config.pimEligibility?.rows ?? [])
-
-  // Config source status rolls up its sections.
-  const states = CONFIG_KEYS.map((k) => config[k]?.status ?? 'error')
-  snapshot.sources.config = states.every((s) => s === 'ok')
-    ? sourceState('ok')
-    : states.every((s) => s !== 'ok')
-      ? sourceState('error', 'every config read failed')
-      : sourceState('partial', 'some config reads unavailable')
-
-  snapshot.authMethods = methods
-  const unknownCount = Object.values(methods).filter((m) => m === 'unknown').length
-  snapshot.sources.authMethods = methodsFailure
-    ? sourceState('partial', `some method batches failed: ${methodsFailure}`)
-    : unknownCount > 0
-      ? sourceState('partial', `${unknownCount} users' methods unavailable`)
-      : sourceState('ok')
-  post({
-    type: 'section',
-    source: 'authMethods',
-    status: snapshot.sources.authMethods.status,
-    rows: Object.keys(methods).length,
-    reason: snapshot.sources.authMethods.reason ?? undefined,
-  })
+  finishAggregates()
 
   snapshot.asOf = new Date().toISOString()
   post({ type: 'snapshot', snapshot })
@@ -262,7 +329,7 @@ ctx.onmessage = (e: MessageEvent<WorkerInMessage>) => {
   const msg = e.data
   if (msg.type === 'start') {
     currentToken = msg.token
-    void run(msg.tenantId).catch((err: unknown) =>
+    void run(msg.tenantId, msg.licenceOverride).catch((err: unknown) =>
       post({ type: 'fatal', message: err instanceof Error ? err.message : String(err) }),
     )
   } else if (msg.type === 'token') {
