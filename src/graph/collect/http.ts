@@ -30,6 +30,8 @@ type GraphBody = {
   '@odata.nextLink'?: string
   error?: { code?: string; message?: string }
   responses?: { id: string; status: number; body?: unknown }[]
+  // Set when the response body is a bare number (e.g. a $count endpoint).
+  count?: number
 }
 
 export type GraphRequestOpts = {
@@ -37,6 +39,7 @@ export type GraphRequestOpts = {
   signal?: AbortSignal
   method?: 'GET' | 'POST'
   jsonBody?: unknown
+  headers?: Record<string, string>
 }
 
 function jitter(ms: number): number {
@@ -72,6 +75,7 @@ export async function graphRequest(tokens: TokenSource, url: string, opts: Graph
         headers: {
           Authorization: `Bearer ${tokens.get()}`,
           ...(opts.jsonBody !== undefined ? { 'content-type': 'application/json' } : {}),
+          ...(opts.headers ?? {}),
         },
         body: opts.jsonBody !== undefined ? JSON.stringify(opts.jsonBody) : undefined,
         signal: ctrl.signal,
@@ -104,7 +108,8 @@ export async function graphRequest(tokens: TokenSource, url: string, opts: Graph
 
     let body: GraphBody = {}
     try {
-      body = (await res.json()) as GraphBody
+      const parsed: unknown = await res.json()
+      body = typeof parsed === 'number' ? { count: parsed } : ((parsed ?? {}) as GraphBody)
     } catch {
       body = {}
     }
