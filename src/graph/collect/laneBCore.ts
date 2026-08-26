@@ -17,11 +17,13 @@ import type {
   UserEvidence,
 } from './types.ts'
 
-// Bump when LANE_B_SELECT changes; mismatched caches are ignored.
-export const EVIDENCE_SCHEMA = 2
+// Bump when the fetched row shape changes; mismatched caches are ignored.
+export const EVIDENCE_SCHEMA = 3
 
-export const LANE_B_SELECT =
-  'id,createdDateTime,userId,authenticationRequirement,mfaDetail,authenticationDetails,status,conditionalAccessStatus,appliedConditionalAccessPolicies,clientAppUsed,appId'
+// No $select on the Lane B pull: mfaDetail and authenticationDetails are not
+// selectable on beta /auditLogs/signIns (400 "Unsupported Query", confirmed
+// live 2026-08-26 — the same error spike 1 extended case (a) hit). The full
+// entity carries both; mapRow strips to the StoredSignIn subset client-side.
 
 export type SignInEvidence = {
   status: 'ok' | 'partial' | 'insufficient' | 'disabled' | 'error'

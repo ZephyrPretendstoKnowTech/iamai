@@ -5,7 +5,7 @@ import { PAGE_ABORT_MS } from './constants.ts'
 import { BETA, graphRequest } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { loadEvidenceCache, saveEvidenceCache } from './cache.ts'
-import { EVIDENCE_SCHEMA, LANE_B_SELECT, runLaneB } from './laneBCore.ts'
+import { EVIDENCE_SCHEMA, runLaneB } from './laneBCore.ts'
 import type { LaneBProgress, SignInEvidence } from './laneBCore.ts'
 
 export type { LaneBProgress, SignInEvidence }
@@ -21,7 +21,7 @@ export async function collectSignInEvidence(
 ): Promise<SignInEvidence> {
   const lambda = encodeURIComponent("signInEventTypes/any(t: t eq 'interactiveUser')")
   return runLaneB({
-    startUrl: `${BETA}/auditLogs/signIns?$filter=${lambda}&$select=${LANE_B_SELECT}&$top=200`,
+    startUrl: `${BETA}/auditLogs/signIns?$filter=${lambda}&$top=200`,
     windowDays: opts.windowDays,
     nowMs: Date.now(),
     clock: () => performance.now(),

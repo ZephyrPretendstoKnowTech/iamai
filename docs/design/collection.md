@@ -74,9 +74,12 @@ All calls go to **beta** `/auditLogs/signIns` (see §7). One strategy, no probe:
 1. Unfiltered newest-first paging with the
    `signInEventTypes/any(t: t eq 'interactiveUser')` lambda — the only filter
    that has ever returned data (F7) — `$top=200` (honoured exactly, F5), with
-   `$select` for the replay fields. Stop client-side when a page's oldest
-   `createdDateTime` falls before the window start (proven in the paging test:
-   full ~29-day history, 224 rows, 81.8 s, 2 pages).
+   **no `$select`**: `mfaDetail` and `authenticationDetails` are rejected in
+   `$select` with 400 "Unsupported Query" (confirmed live 2026-08-26), and the
+   full entity carries them; the worker strips to the stored subset
+   client-side. Stop client-side when a page's oldest `createdDateTime` falls
+   before the window start (proven in the paging test: full ~29-day history,
+   224 rows, 81.8 s, 2 pages).
 2. All slicing — per-user, legacy-auth existence, geo — happens **client-side**
    over the pulled window. No server-side property filters, ever (F7).
 

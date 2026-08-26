@@ -58,7 +58,7 @@ honouring `Retry-After` (none occurred). Tenant has 12 users.
 
 | Case | Query | Status | Wall-clock | Result |
 |---|---|---|---|---|
-| a | beta signIns `authenticationRequirement eq 'multiFactorAuthentication'`, `$top=200` + `$select` | **400** | 391 ms | `Unsupported Query` — property is not filterable at all |
+| a | beta signIns `authenticationRequirement eq 'multiFactorAuthentication'`, `$top=200` + `$select` | **400** | 391 ms | `Unsupported Query` — originally attributed to the filter; a live Lane B failure (2026-08-26, no such filter present) showed the same error comes from **`mfaDetail`/`authenticationDetails` in `$select`**. Filterability of `authenticationRequirement` is therefore unproven, and those two fields are select-rejected — pull the full entity instead |
 | b | beta signIns `userId eq '<me>'`, `$top=50` | **timeout** | 30 s | aborted |
 | c1 | beta signIns `clientAppUsed eq 'IMAP4'`, `$top=50` | **timeout** | 31 s | aborted |
 | c2 | beta signIns `location/countryOrRegion eq 'US'`, `$top=50` | **timeout** | 31 s | aborted |
