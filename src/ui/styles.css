@@ -34,3 +34,75 @@ button {
   border: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
   border-radius: 6px;
 }
+
+.notice {
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid color-mix(in srgb, currentColor 40%, transparent);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.sections {
+  font-size: 0.9em;
+}
+
+.reason {
+  color: color-mix(in srgb, currentColor 60%, transparent);
+}
+
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.tile {
+  min-width: 6.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.tile-count {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.tile-label {
+  font-size: 0.8em;
+}
+
+table.viability {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table.viability th,
+table.viability td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  vertical-align: top;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.chip:first-child {
+  margin-left: 0;
+}
+
+.state-verified { border-color: #2e8b57; }
+.state-likelyViable { border-color: #6aa84f; }
+.state-notChallenged { border-color: #e0a800; }
+.state-unverified { border-color: #e07b00; }
+.state-none { border-color: #c0392b; }
+.state-inactive { border-color: #888; }
