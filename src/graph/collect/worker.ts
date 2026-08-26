@@ -3,6 +3,7 @@
 // the final TenantSnapshot. Requests a fresh token on 401 and never talks to
 // MSAL directly. Lane B (sign-in evidence) is not implemented yet — its source
 // reports 'pending'.
+import { redactIdentifiers } from '../../redact.ts'
 import { EVIDENCE_WINDOW_DAYS, LANE_A_CONCURRENCY } from './constants.ts'
 import { collectSignInEvidence } from './laneB.ts'
 import {
@@ -35,7 +36,15 @@ const ctx = self as unknown as {
   onmessage: ((e: MessageEvent<WorkerInMessage>) => void) | null
 }
 
-const post = (m: WorkerOutMessage) => ctx.postMessage(m)
+// Every reason string passes redaction before leaving the worker
+// (docs/design/diagnostics.md) — Graph error messages can carry UPNs.
+const post = (m: WorkerOutMessage) => {
+  if (m.type === 'section' && m.reason) {
+    ctx.postMessage({ ...m, reason: redactIdentifiers(m.reason) })
+    return
+  }
+  ctx.postMessage(m)
+}
 
 let currentToken = ''
 let tokenWaiter: ((t: string) => void) | null = null
@@ -66,7 +75,12 @@ async function pool(limit: number, tasks: (() => Promise<void>)[]): Promise<void
 }
 
 function sourceState(status: SourceState['status'], reason: string | null = null): SourceState {
-  return { status, coveredWindow: null, reason, asOf: new Date().toISOString() }
+  return {
+    status,
+    coveredWindow: null,
+    reason: reason === null ? null : redactIdentifiers(reason),
+    asOf: new Date().toISOString(),
+  }
 }
 
 async function run(tenantId: string): Promise<void> {
@@ -195,7 +209,7 @@ async function run(tenantId: string): Promise<void> {
     snapshot.sources.signInEvidence = {
       status: evidence.status,
       coveredWindow: evidence.covered,
-      reason: evidence.reason,
+      reason: evidence.reason === null ? null : redactIdentifiers(evidence.reason),
       asOf: new Date().toISOString(),
     }
     post({
