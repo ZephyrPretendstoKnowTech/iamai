@@ -133,6 +133,20 @@ TenantSnapshot {
 }
 ```
 
+Lane B's derived tables (extended 2026-08-26, data-model lock item 8):
+
+- **Per-user evidence** — `signInCount`, `lastSignIn`, `lastMfaSuccess`
+  (`{at, method}`), as consumed by §10.
+- **Per-policy applied results** — for every policy id seen in
+  `appliedConditionalAccessPolicies` across the covered window: counts of
+  `reportOnlyFailure`, `reportOnlyInterrupted`, `reportOnlySuccess`,
+  enforced `failure` and `success`, plus the affected user ids per result
+  class. This is what moves a plan step planned → report-only observed →
+  enforced (SPEC §3.7) and what checkpoints record.
+- **Currently-failing cohort** — users whose most recent sign-in in the window
+  has `conditionalAccessStatus = failure`, with the failing policy ids: the
+  "blocked today" population, surfaced before any plan step is taken.
+
 **Boundary rule: the UI receives derived tables only, never raw sign-in rows.**
 Raw rows live in the worker and the IndexedDB cache exclusively. What crosses
 the worker boundary is aggregations keyed by stable ids (per-user counters,
