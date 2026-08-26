@@ -91,6 +91,7 @@ function mapUser(raw: unknown): UserRow {
     userPrincipalName: typeof u.userPrincipalName === 'string' ? u.userPrincipalName : null,
     userType: u.userType === 'Guest' || u.userType === 'guest' ? 'guest' : 'member',
     usageLocation: typeof u.usageLocation === 'string' ? u.usageLocation : null,
+    createdDateTime: typeof u.createdDateTime === 'string' ? u.createdDateTime : null,
     lastSuccessfulSignIn: last,
   }
 }
@@ -101,7 +102,7 @@ export async function collectUsers(
   ctx: Ctx,
   onUserPage: (users: UserRow[]) => Promise<void>,
 ): Promise<{ users: UserRow[]; partialReason: string | null }> {
-  const select = 'id,displayName,userPrincipalName,userType,usageLocation,signInActivity'
+  const select = 'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,signInActivity'
   try {
     const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${select}&$top=999`, {
       signal: ctx.signal,
@@ -112,7 +113,7 @@ export async function collectUsers(
     if (!(e instanceof SectionDisabledError)) throw e
     const rows = await graphPaged(
       ctx.tokens,
-      `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation&$top=999`,
+      `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation,createdDateTime&$top=999`,
       { signal: ctx.signal, onPage: async (page) => onUserPage(page.map(mapUser)) },
     )
     return { users: rows.map(mapUser), partialReason: `signInActivity unavailable: ${e.message}` }

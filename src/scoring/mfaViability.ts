@@ -1,7 +1,9 @@
 // §10 of docs/design/collection.md — MFA viability scoring. Pure, synchronous,
 // no DOM or network; runs in the worker and in Node tests. The principle: a
 // registered method is a claim; evidence is proof; absence of evidence is
-// planned as if the method may be dead.
+// planned as if the method may be dead. Two dimensions per user: activity
+// (active / dormant / neverSignedIn) and MFA state — evidence rules apply only
+// to active users.
 import { releasesBehind } from './platform.ts'
 
 // §10.1 constants
@@ -52,6 +54,7 @@ export type MfaViabilityInput = {
   } | null
   methods: AuthMethodSummary[] | 'unknown'
   lastSuccessfulSignIn: string | null
+  accountCreated: string | null
   evidence: {
     status: EvidenceStatus
     covered: { from: string; to: string } | null
@@ -63,19 +66,50 @@ export type MfaViabilityInput = {
   }
 }
 
-export type MfaViabilityState =
-  | 'inactive'
-  | 'none'
-  | 'verified'
-  | 'likelyViable'
-  | 'notChallenged'
-  | 'unverified'
+export type ActivityState = 'active' | 'dormant' | 'neverSignedIn'
+export type MfaState = 'none' | 'verified' | 'likelyViable' | 'notChallenged' | 'unverified'
+
+// Method tiers from userRegistrationDetails.methodsRegistered, strongest
+// first. email and securityQuestion are not MFA.
+export type MethodTier = 'phishingResistant' | 'passwordless' | 'push' | 'otp' | 'smsVoice' | 'none'
+
+const TIER_ORDER: MethodTier[] = ['phishingResistant', 'passwordless', 'push', 'otp', 'smsVoice']
+
+function tierOf(method: string): MethodTier | null {
+  if (
+    method.startsWith('passKeyDeviceBound') ||
+    method === 'fido2SecurityKey' ||
+    method === 'windowsHelloForBusiness' ||
+    method === 'x509Certificate'
+  ) {
+    return 'phishingResistant'
+  }
+  if (method === 'microsoftAuthenticatorPasswordless') return 'passwordless'
+  if (method === 'microsoftAuthenticatorPush') return 'push'
+  if (method === 'softwareOneTimePasscode' || method === 'hardwareOneTimePasscode') return 'otp'
+  if (method === 'mobilePhone' || method === 'alternateMobilePhone' || method === 'officePhone') return 'smsVoice'
+  return null
+}
+
+export function methodTiersOf(methodsRegistered: string[]): { strongestMethod: MethodTier; methodTiers: MethodTier[] } {
+  const present = new Set<MethodTier>()
+  for (const m of methodsRegistered) {
+    const tier = tierOf(m)
+    if (tier) present.add(tier)
+  }
+  const methodTiers = TIER_ORDER.filter((t) => present.has(t))
+  return { strongestMethod: methodTiers[0] ?? 'none', methodTiers }
+}
 
 export type MfaViability = {
   userId: string
-  state: MfaViabilityState
+  activity: ActivityState
+  accountCreated?: string
+  mfa: MfaState
   mfaCapable: boolean
   isAdmin: boolean
+  strongestMethod: MethodTier
+  methodTiers: MethodTier[]
   reasons: string[]
   evidence?: { at: string; method: string }
   signals: {
@@ -101,7 +135,8 @@ function daysBetween(fromIso: string, toIso: string): number {
   return (Date.parse(toIso) - Date.parse(fromIso)) / 86_400_000
 }
 
-// §10.4 — first match wins.
+// §10.4 — activity first, then MFA state (first match wins). Evidence rules
+// (verified, notChallenged) apply only to active users.
 export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
   const { registration, methods, lastSuccessfulSignIn, evidence, tenant } = input
   const methodsUnknown = methods === 'unknown'
@@ -109,6 +144,14 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
   const capable = list.filter((m) => MFA_CAPABLE_KINDS.includes(m.kind))
   const mfaCapable = (registration?.isMfaCapable ?? false) || capable.length > 0
   const isAdmin = registration?.isAdmin ?? false
+  const { strongestMethod, methodTiers } = methodTiersOf(registration?.methodsRegistered ?? [])
+
+  const activity: ActivityState =
+    lastSuccessfulSignIn === null
+      ? 'neverSignedIn'
+      : daysBetween(lastSuccessfulSignIn, tenant.now) > INACTIVE_DAYS
+        ? 'dormant'
+        : 'active'
 
   const evidenceUsable = evidence.status === 'ok' || evidence.status === 'partial'
   const observable =
@@ -124,35 +167,33 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
   const smsVoiceOnly = capable.length > 0 && capable.every((m) => m.kind === 'phone')
   if (smsVoiceOnly) signals.smsVoiceOnly = true
 
-  const base = { userId: input.userId, mfaCapable, isAdmin, signals }
-
-  // 1 — verified: evidence beats every metadata weakness.
-  if (evidenceUsable && evidence.lastMfaSuccess) {
-    return { ...base, state: 'verified', reasons: [], evidence: evidence.lastMfaSuccess }
+  const base = {
+    userId: input.userId,
+    activity,
+    ...(activity === 'neverSignedIn' && input.accountCreated ? { accountCreated: input.accountCreated } : {}),
+    mfaCapable,
+    isAdmin,
+    strongestMethod,
+    methodTiers,
+    signals,
   }
 
-  // 2 — inactive, with a capability suffix so the roadmap can split the
-  // inactive population without re-joining tables.
-  if (lastSuccessfulSignIn === null || daysBetween(lastSuccessfulSignIn, tenant.now) > INACTIVE_DAYS) {
-    const suffix = methodsUnknown
-      ? '— methods unknown'
-      : capable.length > 0
-        ? `— ${capable[0].kind} registered`
-        : '— no MFA method registered'
-    return { ...base, state: 'inactive', reasons: [`no successful sign-in in ${INACTIVE_DAYS} days ${suffix}`] }
+  // 1 — verified: active users only; evidence beats every metadata weakness.
+  if (activity === 'active' && evidenceUsable && evidence.lastMfaSuccess) {
+    return { ...base, mfa: 'verified', reasons: [], evidence: evidence.lastMfaSuccess }
   }
 
-  // 3 — none.
+  // 2 — none.
   if (!(registration?.isMfaCapable ?? false) && (methodsUnknown || capable.length === 0)) {
     const reasons: string[] = []
     if (registration === null) reasons.push('no registration data')
     const tap = list.find((m) => m.kind === 'temporaryAccessPass' && m.isUsable)
     if (tap) reasons.push('TAP issued — registration pending')
     if (reasons.length === 0) reasons.push('no MFA-capable method registered')
-    return { ...base, state: 'none', reasons }
+    return { ...base, mfa: 'none', reasons }
   }
 
-  // 4 — likelyViable: any one positive signal.
+  // 3 — likelyViable: any one positive signal.
   for (const m of capable) {
     if (m.kind === 'microsoftAuthenticator' && m.phoneAppVersion && m.platform) {
       const newest = tenant.newestAuthenticatorVersionByPlatform[m.platform]
@@ -162,7 +203,7 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
           signals.authenticatorVersion = { seen: m.phoneAppVersion, newest, releasesBehind: behind }
           return {
             ...base,
-            state: 'likelyViable',
+            mfa: 'likelyViable',
             reasons: [`Authenticator current (seen ${m.phoneAppVersion}, newest ${newest})`],
           }
         }
@@ -174,7 +215,7 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
       signals.recentRegistration = m.kind
       return {
         ...base,
-        state: 'likelyViable',
+        mfa: 'likelyViable',
         reasons: [`${m.kind} registered ${Math.round(daysBetween(m.createdDateTime, tenant.now))} days ago`],
       }
     }
@@ -186,20 +227,20 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
       daysBetween(m.deviceLastSignIn, tenant.now) <= WHFB_DEVICE_ACTIVE_DAYS
     ) {
       signals.whfbDeviceActive = m.deviceLastSignIn
-      return { ...base, state: 'likelyViable', reasons: ['Windows Hello device recently active'] }
+      return { ...base, mfa: 'likelyViable', reasons: ['Windows Hello device recently active'] }
     }
   }
 
-  // 5 — notChallenged.
-  if (evidenceUsable && observable && !evidence.lastMfaSuccess) {
+  // 4 — notChallenged: active users only.
+  if (activity === 'active' && evidenceUsable && observable && !evidence.lastMfaSuccess) {
     return {
       ...base,
-      state: 'notChallenged',
+      mfa: 'notChallenged',
       reasons: ['signed in during the evidence window, never challenged for MFA'],
     }
   }
 
-  // 6 — unverified: reasons, all that apply.
+  // 5 — unverified: reasons, all that apply.
   const reasons: string[] = []
   for (const m of capable) {
     if (m.kind === 'microsoftAuthenticator' && m.phoneAppVersion && m.platform) {
@@ -238,19 +279,20 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
     reasons.push('no sign-in evidence collected')
   }
   if (reasons.length === 0) reasons.push('no usage signal for any registered method')
-  return { ...base, state: 'unverified', reasons }
+  return { ...base, mfa: 'unverified', reasons }
 }
 
-// §10.6 tenant-level derivations.
+// §10.6 tenant-level derivations. The verification phase counts active users
+// only — dormant and never-signed-in populations are planned separately.
 export type TenantMfaSummary = {
-  counts: Record<MfaViabilityState, number>
-  adminCounts: Record<MfaViabilityState, number>
+  counts: Record<MfaState, number>
+  adminCounts: Record<MfaState, number>
+  activityCounts: Record<ActivityState, number>
   challengedRate: number | null
   verificationPhaseSize: number
 }
 
-const EMPTY_COUNTS = (): Record<MfaViabilityState, number> => ({
-  inactive: 0,
+const EMPTY_MFA_COUNTS = (): Record<MfaState, number> => ({
   none: 0,
   verified: 0,
   likelyViable: 0,
@@ -259,33 +301,43 @@ const EMPTY_COUNTS = (): Record<MfaViabilityState, number> => ({
 })
 
 export function summarizeTenant(rows: MfaViability[]): TenantMfaSummary {
-  const counts = EMPTY_COUNTS()
-  const adminCounts = EMPTY_COUNTS()
+  const counts = EMPTY_MFA_COUNTS()
+  const adminCounts = EMPTY_MFA_COUNTS()
+  const activityCounts: Record<ActivityState, number> = { active: 0, dormant: 0, neverSignedIn: 0 }
   let observable = 0
   let challenged = 0
+  let verificationPhaseSize = 0
   for (const r of rows) {
-    counts[r.state] += 1
-    if (r.isAdmin) adminCounts[r.state] += 1
+    counts[r.mfa] += 1
+    if (r.isAdmin) adminCounts[r.mfa] += 1
+    activityCounts[r.activity] += 1
     if (r.signals.observableInWindow) observable += 1
     if (r.evidence) challenged += 1
+    if (r.activity === 'active' && (r.mfa === 'unverified' || r.mfa === 'none' || r.mfa === 'notChallenged')) {
+      verificationPhaseSize += 1
+    }
   }
   return {
     counts,
     adminCounts,
+    activityCounts,
     challengedRate: observable > 0 ? challenged / observable : null,
-    verificationPhaseSize: counts.unverified + counts.none + counts.notChallenged,
+    verificationPhaseSize,
   }
 }
 
 // Admin rows sort first everywhere (§10.6); then by how much attention the
-// state needs, then stable by userId.
-const STATE_ORDER: MfaViabilityState[] = ['none', 'unverified', 'notChallenged', 'inactive', 'likelyViable', 'verified']
+// MFA state needs, then active before dormant/never, then stable by userId.
+const MFA_ORDER: MfaState[] = ['none', 'unverified', 'notChallenged', 'likelyViable', 'verified']
+const ACTIVITY_ORDER: ActivityState[] = ['active', 'dormant', 'neverSignedIn']
 
 export function sortViability(rows: MfaViability[]): MfaViability[] {
   return [...rows].sort((a, b) => {
     if (a.isAdmin !== b.isAdmin) return a.isAdmin ? -1 : 1
-    const s = STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state)
+    const s = MFA_ORDER.indexOf(a.mfa) - MFA_ORDER.indexOf(b.mfa)
     if (s !== 0) return s
+    const act = ACTIVITY_ORDER.indexOf(a.activity) - ACTIVITY_ORDER.indexOf(b.activity)
+    if (act !== 0) return act
     return a.userId < b.userId ? -1 : 1
   })
 }
