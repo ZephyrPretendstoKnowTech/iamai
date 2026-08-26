@@ -1,0 +1,26 @@
+# CLAUDE.md — working rules for this repo
+
+Read `SPEC.md` first. It holds every product decision; do not re-decide anything in its §2 table.
+
+## Non-negotiables
+- Read-only. Never add a Graph write scope or any call that mutates a tenant, even behind a flag.
+- No server, no telemetry, no CDN imports. Everything ships in the bundle. The trust story is "review the code, then connect."
+- One admin-consent screen with the full read scope set from `SPEC.md` §4. No staged consent.
+- Product copy says "predicted impact, confirmed in report-only." Never promise no lockouts.
+- Baseline `state` from any source is lab state; treat every baseline policy as intended-enforced.
+- Never bundle policy content from third-party baseline repos; ship path indexes (`baselines/*.index.json`) and fetch raw files at a pinned commit.
+- Any Graph 403 or licence error disables a section with a plain reason; it never fails the scan.
+
+## Stack
+Vite + TypeScript + React, `@azure/msal-browser`, Web Worker for the replay engine, IndexedDB via `idb`.
+`tsconfig` uses `erasableSyntaxOnly` so Node can run `.ts` directly; keep it that way (no enums, no parameter properties).
+
+## Commands
+- `npm test` — Node's built-in runner over `src/**/*.test.ts`
+- `npm run analyze -- <path-to-cloned-baseline-repo>` — run the adapter on real data
+- `npm run build-index -- <clone> <owner> <repo> "<label>" > baselines/<owner>-<repo>.index.json`
+
+## Conventions
+- Pure logic (adapter, intents, engine) has no DOM or network imports so it runs in Node tests and in the worker.
+- Tests use small authored fixtures, never copied third-party policy files.
+- When adding a Graph call, record its scope, licence gate, and beta/v1.0 status in `SPEC.md` §4.
