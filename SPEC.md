@@ -49,7 +49,7 @@ tenant's current state to a chosen baseline without lockouts.
 |---|---|---|
 | CA policies, named locations, auth-methods policy, auth strengths, security defaults, cross-tenant access, CA templates (beta), What If | `/identity/conditionalAccess/*`, `/policies/*` | none |
 | Users, groups (transitive counts), devices (`isCompliant`, `isManaged`, `trustType`), roles, `subscribedSkus`, service principals | `/users`, `/groups/{id}/transitiveMembers/$count`, `/devices`, `/roleManagement/directory/roleAssignments`, `/servicePrincipals` | none |
-| Sign-in logs | `/auditLogs/signIns` | Entra ID **P1/P2** required; user must be Security Reader / Reports Reader / Global Reader / GA; 7–30 day retention; filters limited to eq/ge/le/startswith (no negation); pull interactive only, page through in a worker, cap by window/sampling for 10k+ users |
+| Sign-in logs (evidence pull) | `/auditLogs/signIns` | **beta only** (spike 1, 2026-08-26: v1.0 store never returned data reliably; interactive lambda and `authenticationRequirement` are beta-only). Entra ID **P1/P2** required; user must be Security Reader / Reports Reader / Global Reader / GA; 7–30 day retention; **no server-side filter is usable in practice** (date/property filters stall or 400 — filter client-side; the `signInEventTypes` lambda is the sole exception); pull interactive newest-first, page through in a worker, cap by row/time budget for 10k+ users (see `docs/design/collection.md`) |
 | MFA/passkey registration per user | `/reports/authenticationMethods/userRegistrationDetails` | P1/P2; gives method **types**, no phone numbers |
 | Break-glass last used | `/users?$select=signInActivity` | P1/P2 |
 | PIM eligible vs permanent | `/roleManagement/directory/roleEligibilitySchedules` | P2, Global Reader+ |

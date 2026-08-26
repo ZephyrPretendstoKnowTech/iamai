@@ -4,7 +4,7 @@ import { initAuth, signIn, signOut } from '../graph/msal.ts'
 import { autoCheckAuthMethods } from '../graph/spikes/authMethods.ts'
 import { autoCheckReports } from '../graph/spikes/reportsCheck.ts'
 import { runSpike1, runSpike1Followup, runSpike1Paging, runSpike1Retest } from '../graph/spikes/spike1.ts'
-import { runSpike1Extended } from '../graph/spikes/spike1Extended.ts'
+import { runDevicesSpike, runSpike1Extended } from '../graph/spikes/spike1Extended.ts'
 import type { Spike1Results, Spike1RetestResults } from '../graph/spikes/spike1.ts'
 
 export function App() {
@@ -64,9 +64,17 @@ function SignedIn({ account }: { account: AccountInfo }) {
     autoCheckReports()
   }, [])
 
-  const run = async (which: 'original' | 'retest' | 'followup' | 'paging' | 'extended') => {
+  const run = async (which: 'original' | 'retest' | 'followup' | 'paging' | 'extended' | 'devices') => {
     setSpike('running')
     try {
+      if (which === 'devices') {
+        const d = await runDevicesSpike()
+        setSummary(
+          `devices: ${d.totalItems} devices (${d.devicesWithOwner} with owner) over ${d.pages.length} pages in ${d.totalMs} ms — ${d.stoppedBecause}. Saved to docs/spikes/raw/.`,
+        )
+        setSpike('done')
+        return
+      }
       if (which === 'extended') {
         const x = await runSpike1Extended()
         setSummary(
@@ -115,8 +123,11 @@ function SignedIn({ account }: { account: AccountInfo }) {
         <div className="devtools">
           <h3>Dev spikes</h3>
           <p>
+            <button onClick={() => void run('devices')} disabled={spike === 'running'}>
+              {spike === 'running' ? 'Running…' : 'Run devices spike ($expand registeredOwners)'}
+            </button>{' '}
             <button onClick={() => void run('extended')} disabled={spike === 'running'}>
-              {spike === 'running' ? 'Running…' : 'Run spike 1 extended (cases a–g)'}
+              Run spike 1 extended (cases a–g)
             </button>{' '}
             <button onClick={() => void run('paging')} disabled={spike === 'running'}>
               Run spike 1 paging test (no date filter)
