@@ -1,16 +1,27 @@
 // Date and CSV helpers. Dates render relative (with the absolute form on
 // hover) via Intl in the browser's locale and time zone — nothing hand-rolled.
 
-const ABS = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-const ABS_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 const REL = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
 
+// Display time zone is a Setup answer; storage stays UTC.
+let displayTimeZone: string | undefined
+
+export function setDisplayTimeZone(tz: string | null): void {
+  displayTimeZone = tz ?? undefined
+}
+
 export function absolute(iso: string): string {
-  return ABS.format(new Date(iso))
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: displayTimeZone,
+  }).format(new Date(iso))
 }
 
 export function absoluteDate(iso: string): string {
-  return ABS_DATE.format(new Date(iso))
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: displayTimeZone }).format(
+    new Date(iso),
+  )
 }
 
 export function relative(iso: string): string {
