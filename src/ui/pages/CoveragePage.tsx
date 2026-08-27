@@ -7,6 +7,9 @@ import type { GoalStatus } from '../../coverage/types.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { saveDevResults } from '../../graph/spikes/spike1.ts'
+import { buildQuestions } from '../../mapping/questions.ts'
+import { loadMappingState, toCoverageMapping } from '../../mapping/store.ts'
+import type { MappingState } from '../../mapping/types.ts'
 import { absolute, relative } from '../format.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
 import type { BaselineResult } from './BaselinePage.tsx'
@@ -63,6 +66,12 @@ export function CoveragePage({
 }) {
   const [groups, setGroups] = useState<GroupMembers>(new Map())
   const [groupsLoaded, setGroupsLoaded] = useState(false)
+  const [mapping, setMapping] = useState<MappingState | null>(null)
+
+  useEffect(() => {
+    if (!scan) return
+    void loadMappingState(scan.snapshot.tenantId).then(setMapping)
+  }, [scan])
 
   const tenantPolicies = useMemo(
     () => (scan ? (scan.snapshot.config.caPolicies?.rows ?? []) : []),
@@ -93,17 +102,30 @@ export function CoveragePage({
     }
   }, [scan, tenantPolicies])
 
+  const notInScope = useMemo(
+    () =>
+      Object.entries(mapping?.targetState ?? {})
+        .filter(([, t]) => !t.include)
+        .map(([name, t]) => ({ name, reason: t.reason })),
+    [mapping],
+  )
+
   const report: CoverageReport | null = useMemo(() => {
     if (!scan || !groupsLoaded) return null
+    const excluded = new Set(notInScope.map((p) => p.name))
+    const includedBaseline = (baseline?.pkg.policies ?? []).filter((p) => !excluded.has(p.displayName))
+    const questions = baseline ? buildQuestions(baseline.pkg) : []
     return computeCoverage({
       snapshot: scan.snapshot,
       tenantPolicies,
-      baselinePolicies: baseline?.pkg.policies ?? [],
+      baselinePolicies: includedBaseline,
       baselineUnusable: baseline?.pkg.report.warnings ?? [],
       strengths: buildStrengthLookup(scan.snapshot.config.authStrengths?.rows ?? []),
       groupMembers: groups,
+      mapping: mapping && baseline ? toCoverageMapping(mapping, questions) : undefined,
+      facetOverrides: mapping?.facetOverrides,
     })
-  }, [scan, groupsLoaded, groups, tenantPolicies, baseline])
+  }, [scan, groupsLoaded, groups, tenantPolicies, baseline, mapping, notInScope])
 
   // First-run capture (prompt 05 item 12): behind ?dev=1, save the outcome so
   // it can be compared with the worked example in intents.md §11.
@@ -254,6 +276,20 @@ export function CoveragePage({
               </div>
             )
           })}
+
+          {notInScope.length > 0 && (
+            <div className="card">
+              <h3>Not in scope for this tenant</h3>
+              <ul className="sections">
+                {notInScope.map((p) => (
+                  <li key={p.name}>
+                    <em>{p.name}</em>
+                    {p.reason && <> — {p.reason}</>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {report.couldNotEvaluate.length > 0 && (
             <div className="card">
