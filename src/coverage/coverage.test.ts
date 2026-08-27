@@ -43,6 +43,7 @@ function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     signInEvidence: {},
     evidencePolicyResults: [],
     blockedToday: [],
+    evidenceUsage: null,
     capabilities: {
       entraP1: caps(true),
       entraP2: caps(true),

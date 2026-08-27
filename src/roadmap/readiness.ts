@@ -1,0 +1,73 @@
+// Readiness numbers per goal family (roadmap.md §4). Pure.
+import type { MfaViability } from '../scoring/mfaViability.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { Readiness } from './types.ts'
+
+const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected', 'sign-in-risk', 'user-risk'])
+const ADMIN_GOALS = new Set(['admins-phishing-resistant', 'admin-session'])
+const DEVICE_GOALS = new Set(['require-managed-device', 'block-unsupported-platforms', 'mobile-app-protection'])
+const GUEST_GOALS = new Set(['guests-mfa'])
+const BLOCK_GOALS = new Set(['block-legacy-auth', 'block-device-code', 'block-auth-transfer'])
+const LOCATION_GOALS = new Set(['geo-restriction'])
+
+export function goalFamily(goalId: string): Readiness['family'] {
+  if (MFA_GOALS.has(goalId)) return 'mfa'
+  if (ADMIN_GOALS.has(goalId)) return 'admin'
+  if (DEVICE_GOALS.has(goalId)) return 'device'
+  if (GUEST_GOALS.has(goalId)) return 'guest'
+  if (BLOCK_GOALS.has(goalId)) return 'block'
+  if (LOCATION_GOALS.has(goalId)) return 'location'
+  return 'other'
+}
+
+export function readinessFor(
+  goalId: string,
+  populationIds: string[],
+  viability: MfaViability[],
+  snapshot: TenantSnapshot,
+): Readiness {
+  const family = goalFamily(goalId)
+  const pop = new Set(populationIds)
+  const rows = viability.filter((v) => pop.has(v.userId))
+  const active = rows.filter((v) => v.activity === 'active')
+
+  if (family === 'mfa' || family === 'guest') {
+    const count = (s: MfaViability['mfa']) => rows.filter((v) => v.mfa === s).length
+    const good = active.filter((v) => v.mfa === 'verified' || v.mfa === 'likelyViable').length
+    const percent = active.length > 0 ? Math.round((good / active.length) * 100) : 0
+    const lines = [
+      `${count('verified')} verified, ${count('likelyViable')} likely viable, ${count('notChallenged')} not challenged, ${count('unverified')} unverified, ${count('none')} without a method`,
+      `${percent}% of ${active.length} active user(s) ready`,
+    ]
+    if (family === 'guest') lines.push(`${active.length} active guest(s) in the window`)
+    return { family, percent, lines }
+  }
+  if (family === 'admin') {
+    const withPr = rows.filter((v) => v.methodTiers.includes('phishingResistant')).length
+    const percent = rows.length > 0 ? Math.round((withPr / rows.length) * 100) : 0
+    const eligibleOnly = Object.entries(snapshot.roles.eligible).filter(
+      ([id]) => !(id in snapshot.roles.active) && pop.has(id),
+    ).length
+    const lines = [`${withPr} of ${rows.length} admin(s) hold a phishing-resistant method`]
+    if (eligibleOnly > 0) lines.push(`${eligibleOnly} eligible-only admin(s) out of scope until activation`)
+    return { family, percent, lines }
+  }
+  if (family === 'device') {
+    const owners = new Set(snapshot.devices.filter((d) => d.isCompliant === true).flatMap((d) => d.ownerIds))
+    const members = active.filter((v) => pop.has(v.userId)).length
+    const withDevice = [...pop].filter((id) => owners.has(id)).length
+    const percent = members > 0 ? Math.round((withDevice / members) * 100) : 0
+    return {
+      family,
+      percent,
+      lines: [`${withDevice} of ${members} active member(s) own a compliant device`],
+    }
+  }
+  if (family === 'block' ) {
+    return { family, percent: null, lines: ['readiness is evidence — see the blast radius below'] }
+  }
+  if (family === 'location') {
+    return { family, percent: null, lines: ['compare countries seen in the sign-in window with the allowed list'] }
+  }
+  return { family, percent: null, lines: [] }
+}

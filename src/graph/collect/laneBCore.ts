@@ -18,7 +18,7 @@ import type {
 } from './types.ts'
 
 // Bump when the fetched row shape changes; mismatched caches are ignored.
-export const EVIDENCE_SCHEMA = 3
+export const EVIDENCE_SCHEMA = 4
 
 // No $select on the Lane B pull: mfaDetail and authenticationDetails are not
 // selectable on beta /auditLogs/signIns (400 "Unsupported Query", confirmed
@@ -33,6 +33,7 @@ export type SignInEvidence = {
   perUser: Record<string, UserEvidence>
   policyResults: PolicyAppliedResult[]
   blockedToday: BlockedTodayEntry[]
+  usage: import('./types.ts').EvidenceUsage
 }
 
 export type LaneBProgress = { pages: number; rows: number; ms: number; oldest: string | null }
@@ -64,7 +65,50 @@ export function mapRow(raw: unknown): StoredSignIn | null {
     appliedConditionalAccessPolicies: applied,
     clientAppUsed: typeof r.clientAppUsed === 'string' ? r.clientAppUsed : undefined,
     appId: typeof r.appId === 'string' ? r.appId : undefined,
+    authenticationProtocol: typeof r.authenticationProtocol === 'string' ? r.authenticationProtocol : undefined,
+    originalTransferMethod: typeof r.originalTransferMethod === 'string' ? r.originalTransferMethod : undefined,
   }
+}
+
+const LEGACY_CLIENT_APPS = new Set([
+  'exchangeactivesync',
+  'other clients',
+  'imap4',
+  'pop3',
+  'smtp',
+  'mapi over http',
+  'exchange web services',
+  'authenticated smtp',
+  'autodiscover',
+  'exchange online powershell',
+  'offline address book',
+  'outlook anywhere (rpc over http)',
+  'reporting web services',
+  'universal outlook',
+])
+
+// Block-goal evidence (roadmap.md §5): who used legacy protocols, device-code
+// flow, or authentication transfer inside the window.
+export function deriveUsageSignals(rows: Iterable<StoredSignIn>): import('./types.ts').EvidenceUsage {
+  const mk = () => ({ count: 0, users: new Set<string>(), byDetail: {} as Record<string, number> })
+  const legacy = mk()
+  const device = mk()
+  const transfer = mk()
+  const hit = (sig: ReturnType<typeof mk>, row: StoredSignIn, detail: string): void => {
+    sig.count += 1
+    if (row.userId) sig.users.add(row.userId)
+    sig.byDetail[detail] = (sig.byDetail[detail] ?? 0) + 1
+  }
+  for (const row of rows) {
+    const client = (row.clientAppUsed ?? '').toLowerCase()
+    if (LEGACY_CLIENT_APPS.has(client)) hit(legacy, row, row.clientAppUsed ?? 'legacy')
+    if (row.authenticationProtocol === 'deviceCode') hit(device, row, 'deviceCode')
+    if (row.originalTransferMethod && row.originalTransferMethod !== 'none') {
+      hit(transfer, row, row.originalTransferMethod)
+    }
+  }
+  const out = (sig: ReturnType<typeof mk>) => ({ count: sig.count, userIds: [...sig.users], byDetail: sig.byDetail })
+  return { legacyAuth: out(legacy), deviceCode: out(device), authTransfer: out(transfer) }
 }
 
 function mfaSuccessOf(row: StoredSignIn): string | null {
@@ -242,6 +286,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       perUser: aggregate(contiguous),
       policyResults: derivePolicyResults(contiguous),
       blockedToday: deriveBlockedToday(contiguous),
+      usage: deriveUsageSignals(contiguous),
     }
   }
 

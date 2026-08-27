@@ -45,12 +45,16 @@ interface IamaiDB extends DBSchema {
     key: string
     value: { tenantId: string } & Record<string, unknown>
   }
+  plan: {
+    key: string
+    value: { tenantId: string } & Record<string, unknown>
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<IamaiDB>> | null = null
 
 function db(): Promise<IDBPDatabase<IamaiDB>> {
-  dbPromise ??= openDB<IamaiDB>('iamai', 3, {
+  dbPromise ??= openDB<IamaiDB>('iamai', 4, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         const rows = d.createObjectStore('signin-rows', { keyPath: ['tenantId', 'id'] })
@@ -63,6 +67,9 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
       }
       if (oldVersion < 3) {
         d.createObjectStore('mapping', { keyPath: 'tenantId' })
+      }
+      if (oldVersion < 4) {
+        d.createObjectStore('plan', { keyPath: 'tenantId' })
       }
     },
   })
@@ -147,9 +154,27 @@ export async function saveMappingRecord(tenantId: string, value: Record<string, 
   }
 }
 
+export async function loadPlanRecord<T>(tenantId: string): Promise<T | null> {
+  try {
+    const d = await db()
+    return ((await d.get('plan', tenantId)) as T | undefined) ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function savePlanRecord(tenantId: string, value: Record<string, unknown>): Promise<void> {
+  try {
+    const d = await db()
+    await d.put('plan', { ...value, tenantId })
+  } catch {
+    // Cache is an optimization; losing it must never fail the page.
+  }
+}
+
 export async function forgetTenant(tenantId: string): Promise<void> {
   const d = await db()
-  const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping'], 'readwrite')
+  const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping', 'plan'], 'readwrite')
   for (const storeName of ['signin-rows', 'group-members'] as const) {
     const store = tx.objectStore(storeName)
     let cursor = await store.index('byTenant').openCursor(tenantId)
@@ -160,5 +185,6 @@ export async function forgetTenant(tenantId: string): Promise<void> {
   }
   await tx.objectStore('evidence-meta').delete(tenantId)
   await tx.objectStore('mapping').delete(tenantId)
+  await tx.objectStore('plan').delete(tenantId)
   await tx.done
 }
