@@ -68,6 +68,18 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
         if (!(value as string[]).every((c) => f.clientApps.has(c.toLowerCase()) || f.clientApps.has('all')))
           return false
         break
+      case 'clientAppsAll':
+        // A policy narrowed to specific client apps (e.g. a legacy-auth block)
+        // cannot deliver an all-client-apps goal.
+        if (f.clientApps.size > 0 && !f.clientApps.has('all')) return false
+        break
+      case 'byodDiscriminator':
+        // A BYOD session policy must actually discriminate unmanaged devices:
+        // a device filter, or app-enforced restrictions. A generic MFA policy
+        // with a sign-in frequency is not a BYOD control (first run, §13).
+        if (f.deviceFilter === null && !f.session.appEnforced && f.session.cloudAppSecurity === null)
+          return false
+        break
       case 'clientAppsIncludeBrowser':
         if (!(f.clientApps.has('browser') || f.clientApps.has('all') || f.clientApps.size === 0)) return false
         break
@@ -145,6 +157,25 @@ export function goalsMatching(facts: PolicyFacts, goals: Goal[]): Goal[] {
   return goals.filter((g) => g.implementations.some((impl) => impl.kind === 'ca' && matchesSignature(facts, impl.signature)))
 }
 
+// A baseline policy may only raise a goal's floor when its own scope covers
+// the goal's expected population — an admin-scoped baseline policy must not
+// raise the all-users floor (first run, §13).
+function coversPopulation(b: PolicyFacts, kind: string): boolean {
+  switch (kind) {
+    case 'all':
+    case 'members':
+      return b.who.all
+    case 'guests':
+      return b.who.all || b.who.guests !== null
+    case 'coreAdmins':
+      return b.who.all || [...b.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))
+    case 'workload':
+      return b.workload !== null
+    default:
+      return b.who.all
+  }
+}
+
 // §5 floor raising: a baseline policy that matches a goal and is stricter
 // raises the goal's floor for this baseline. Returns the effective floor and
 // what raised it.
@@ -156,6 +187,7 @@ export function raiseFloor(
   const floor: Floor = { ...impl.floor }
   let raised: { from: string; to: string; by: string } | null = null
   for (const b of baselineMatches) {
+    if (!coversPopulation(b, impl.expectedWho.kind)) continue
     const tier = b.grant?.strength
     if (
       floor.grant !== undefined &&
@@ -182,6 +214,24 @@ export function raiseFloor(
 
 // §4: unmatched baseline policies become ad-hoc goals — signature is their
 // own facts minus who/whoNot; expected who is their who; floor their grant.
+// Facet inference for ad-hoc goals: a baseline policy scoped to a workload's
+// app inherits that workload's applicability facet, so ad-hoc goals go
+// not-applicable when the tenant doesn't use the workload (first run, §13).
+const FACET_BY_APP: { facet: string; ids: string[]; namePattern: RegExp }[] = [
+  { facet: 'avd', ids: ['9cdead84-a844-4324-93f2-b2e6bb768d07'], namePattern: /virtual desktop|\bavd\b/i },
+  { facet: 'azureDevOps', ids: ['499b84ac-1321-427f-aa17-267ca6975798'], namePattern: /devops/i },
+  { facet: 'copilot', ids: [], namePattern: /copilot/i },
+  { facet: 'agents', ids: [], namePattern: /\bagents?\b/i },
+]
+
+export function inferAdHocFacet(facts: PolicyFacts): string | null {
+  for (const { facet, ids, namePattern } of FACET_BY_APP) {
+    if ([...facts.apps.ids].some((id) => ids.includes(id.toLowerCase()))) return facet
+    if (namePattern.test(facts.name)) return facet
+  }
+  return null
+}
+
 export function adHocGoal(facts: PolicyFacts): Goal {
   const sig: Signature = {}
   if (facts.grant && [...controlsLower(facts)].includes('block')) sig.grantBlock = true
@@ -205,6 +255,17 @@ export function adHocGoal(facts: PolicyFacts): Goal {
     else if ([...controls].some((c) => APP_PROTECTION_CONTROLS.has(c))) floor.grant = 'approvedApplication'
     else if (controls.has('mfa')) floor.grant = 'mfa'
   }
+  // Session intent survives into the ad-hoc floor (first run, §13): a
+  // sign-in-frequency or persistence requirement is part of the goal.
+  if (facts.session.signInFrequencyHours !== null) {
+    floor.session = { ...floor.session, maxSignInFrequencyHours: facts.session.signInFrequencyHours }
+  }
+  if (facts.session.persistentBrowser === 'never') {
+    floor.session = { ...floor.session, persistentBrowserNever: true }
+  }
+  if (facts.session.secureSignInSession) {
+    floor.session = { ...floor.session, secureSignInSession: true }
+  }
 
   const who = facts.who.all
     ? ({ kind: 'all' } as const)
@@ -217,7 +278,7 @@ export function adHocGoal(facts: PolicyFacts): Goal {
     name: facts.name,
     description: `Ad-hoc goal from baseline policy "${facts.name}" — not in the catalogue; evaluated structurally.`,
     phase: 8,
-    applicability: null,
+    applicability: inferAdHocFacet(facts),
     implementations: [
       {
         tier: 'p1',

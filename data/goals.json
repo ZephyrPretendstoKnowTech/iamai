@@ -11,11 +11,27 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "grantHasAuthControl": true, "appsAll": true, "noRisk": true, "noFlows": true, "noPlatforms": true, "noLocations": true, "noUserActions": true },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "grantHasAuthControl": true,
+            "appsAll": true,
+            "noRisk": true,
+            "noFlows": true,
+            "noPlatforms": true,
+            "noLocations": true,
+            "noUserActions": true,
+            "clientAppsAll": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "mfa" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -30,11 +46,23 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "rolesIntersectCoreAdmins": true, "appsAll": true },
-          "expectedWho": { "kind": "coreAdmins" },
+          "signature": {
+            "rolesIntersectCoreAdmins": true,
+            "appsAll": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "coreAdmins"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "phishingResistant" },
-          "allowedExclusions": ["breakGlass"]
+          "floor": {
+            "grant": "phishingResistant"
+          },
+          "allowedExclusions": [
+            "breakGlass"
+          ]
         }
       ],
       "free": []
@@ -49,11 +77,23 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "appsAdminPortals": true },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "appsAdminPortals": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "adminPortals",
-          "floor": { "grant": "mfa" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -68,11 +108,23 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "whoGuests": true, "appsAll": true },
-          "expectedWho": { "kind": "guests" },
+          "signature": {
+            "whoGuests": true,
+            "appsAll": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "guests"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "mfa" },
-          "allowedExclusions": ["breakGlass"]
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass"
+          ]
         }
       ],
       "free": []
@@ -87,11 +139,23 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "userActionsInclude": ["urn:user:registersecurityinfo"] },
-          "expectedWho": { "kind": "members" },
+          "signature": {
+            "userActionsInclude": [
+              "urn:user:registersecurityinfo"
+            ],
+            "clientAppsAll": true
+          },
+          "expectedWho": {
+            "kind": "members"
+          },
           "expectedApps": "userAction",
-          "floor": { "grant": "mfa" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -106,11 +170,25 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "clientAppsInclude": ["exchangeActiveSync", "other"], "grantBlock": true },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "clientAppsInclude": [
+              "exchangeActiveSync",
+              "other"
+            ],
+            "grantBlock": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "block" },
-          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "serviceAccounts"
+          ]
         }
       ],
       "free": []
@@ -125,11 +203,23 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "flowsInclude": ["deviceCodeFlow"], "grantBlock": true },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "flowsInclude": [
+              "deviceCodeFlow"
+            ],
+            "grantBlock": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "block" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -144,11 +234,23 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "flowsInclude": ["authenticationTransfer"], "grantBlock": true },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "flowsInclude": [
+              "authenticationTransfer"
+            ],
+            "grantBlock": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "block" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -163,11 +265,26 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "locationsPresent": true, "grantBlock": true, "appsAll": true },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "locationsPresent": true,
+            "grantBlock": true,
+            "appsAll": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "block" },
-          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "serviceAccounts"
+          ]
         }
       ],
       "free": []
@@ -182,11 +299,22 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "rolesIntersectCoreAdmins": true },
-          "expectedWho": { "kind": "coreAdmins" },
+          "signature": {
+            "rolesIntersectCoreAdmins": true
+          },
+          "expectedWho": {
+            "kind": "coreAdmins"
+          },
           "expectedApps": "all",
-          "floor": { "session": { "maxSignInFrequencyHours": 12, "persistentBrowserNever": true } },
-          "allowedExclusions": ["breakGlass"]
+          "floor": {
+            "session": {
+              "maxSignInFrequencyHours": 12,
+              "persistentBrowserNever": true
+            }
+          },
+          "allowedExclusions": [
+            "breakGlass"
+          ]
         }
       ],
       "free": []
@@ -201,11 +329,28 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "clientAppsIncludeBrowser": true, "deviceFilterOrNoDeviceGrant": true, "sessionAnyOf": ["appEnforced", "persistentBrowserNever", "signInFrequency"] },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "clientAppsIncludeBrowser": true,
+            "sessionAnyOf": [
+              "appEnforced",
+              "persistentBrowserNever",
+              "signInFrequency"
+            ],
+            "byodDiscriminator": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "session": { "anyOf": true } },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "session": {
+              "anyOf": true
+            }
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -220,11 +365,25 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "grantDeviceControl": true, "appsOffice365OrAll": true },
-          "expectedWho": { "kind": "members" },
+          "signature": {
+            "grantDeviceControl": true,
+            "appsOffice365OrAll": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "members"
+          },
           "expectedApps": "office365",
-          "floor": { "grant": "compliantDevice" },
-          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+          "floor": {
+            "grant": "compliantDevice"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "serviceAccounts"
+          ]
         }
       ],
       "free": []
@@ -239,11 +398,21 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "platformsAllWithExclusions": true, "grantBlock": true },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "platformsAllWithExclusions": true,
+            "grantBlock": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "block" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -258,11 +427,21 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "platformsSubsetMobile": true, "grantAppProtection": true },
-          "expectedWho": { "kind": "members" },
+          "signature": {
+            "platformsSubsetMobile": true,
+            "grantAppProtection": true
+          },
+          "expectedWho": {
+            "kind": "members"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "approvedApplication" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "approvedApplication"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -277,11 +456,23 @@
         {
           "tier": "p2",
           "kind": "ca",
-          "signature": { "signInRiskInclude": ["high"] },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "signInRiskInclude": [
+              "high"
+            ],
+            "clientAppsAll": true,
+            "noFlows": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "mfa" },
-          "allowedExclusions": ["breakGlass"]
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass"
+          ]
         }
       ],
       "free": []
@@ -296,11 +487,23 @@
         {
           "tier": "p2",
           "kind": "ca",
-          "signature": { "userRiskInclude": ["high"] },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "userRiskInclude": [
+              "high"
+            ],
+            "clientAppsAll": true,
+            "noFlows": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "passwordChange" },
-          "allowedExclusions": ["breakGlass"]
+          "floor": {
+            "grant": "passwordChange"
+          },
+          "allowedExclusions": [
+            "breakGlass"
+          ]
         }
       ],
       "free": []
@@ -315,11 +518,26 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "appsIdsInclude": ["797f4846-ba00-4fd7-ba43-dac1f8f63013"] },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "appsIdsInclude": [
+              "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+            ],
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "azureManagement",
-          "floor": { "grant": "mfa" },
-          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "serviceAccounts"
+          ]
         }
       ],
       "free": []
@@ -334,11 +552,23 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "userActionsInclude": ["urn:user:registerdevice"] },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "userActionsInclude": [
+              "urn:user:registerdevice"
+            ],
+            "clientAppsAll": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "userAction",
-          "floor": { "grant": "mfa" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": []
@@ -353,11 +583,24 @@
         {
           "tier": "p1",
           "kind": "ca",
-          "signature": { "secureSignInSession": true, "platformsIncludeWindows": true },
-          "expectedWho": { "kind": "all" },
+          "signature": {
+            "secureSignInSession": true,
+            "platformsIncludeWindows": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "session": { "secureSignInSession": true } },
-          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+          "floor": {
+            "session": {
+              "secureSignInSession": true
+            }
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "serviceAccounts"
+          ]
         }
       ],
       "free": []
@@ -372,10 +615,17 @@
         {
           "tier": "workloadId",
           "kind": "ca",
-          "signature": { "workloadPresent": true, "grantBlockOrSpRisk": true },
-          "expectedWho": { "kind": "workload" },
+          "signature": {
+            "workloadPresent": true,
+            "grantBlockOrSpRisk": true
+          },
+          "expectedWho": {
+            "kind": "workload"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "block" },
+          "floor": {
+            "grant": "block"
+          },
           "allowedExclusions": []
         }
       ],
