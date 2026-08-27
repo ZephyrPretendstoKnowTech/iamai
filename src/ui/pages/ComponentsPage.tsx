@@ -22,6 +22,10 @@ import {
   Tabs,
 } from '../components/index.ts'
 import type { ChipStatus, Column, IconName, PickerOption } from '../components/index.ts'
+import { InventoryPage } from './InventoryPage.tsx'
+import { fixtureSnapshot } from './fixtureSnapshot.ts'
+
+const FIXTURE = fixtureSnapshot()
 
 const ICONS: IconName[] = [
   'shield', 'user', 'users', 'key', 'device', 'location', 'policy', 'chart', 'check', 'alert',
@@ -187,6 +191,10 @@ export function ComponentsPage() {
             reference={[{ route: 'reads', label: 'What IAMAI reads' }]}
           />
         </div>
+      </Section>
+
+      <Section id="inventory" title="Inventory (synthetic tenant)">
+        <InventoryPage snapshot={FIXTURE} />
       </Section>
 
       <Section id="icon" title="Icon">

@@ -118,6 +118,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     evidencePolicyResults: [],
     blockedToday: [],
     evidenceUsage: null,
+    evidenceAggregates: null,
     capabilities: emptyCapabilities(),
     microsoftManagedPolicyIds: [],
     roles: { active: {}, eligible: {} },
@@ -307,6 +308,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     snapshot.evidencePolicyResults = evidence.policyResults
     snapshot.blockedToday = evidence.blockedToday
     snapshot.evidenceUsage = evidence.usage
+    snapshot.evidenceAggregates = evidence.aggregates
     snapshot.sources.signInEvidence = {
       status: evidence.status,
       coveredWindow: evidence.covered,

@@ -10,8 +10,11 @@ import { loadMappingState } from '../mapping/store.ts'
 import { SCAN } from '../copy/pages.ts'
 import { ACTIVITY_STATE, CHIP, LEGEND, METHOD_TIER, MFA_STATE, TILE } from '../copy/definitions.ts'
 import { StepFrame } from './shell/AppShell.tsx'
-import { Button, Callout, Chip, DataTable, ExpandCard, FilterChip, ProgressBar, StatTile, Stats } from './components/index.ts'
+import { Button, Callout, Card, Chip, DataTable, ExpandCard, FilterChip, LinkButton, ProgressBar, StatTile, Stats, Tabs } from './components/index.ts'
 import type { ChipStatus, Column } from './components/index.ts'
+import { InventoryPage } from './pages/InventoryPage.tsx'
+
+const DEV = import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
 
 type SectionRow = { source: string; status: string; rows?: number; reason?: string; ms?: number }
 
@@ -41,11 +44,13 @@ export function MfaViabilityScreen({
   initial,
   onRunningChange,
   onComplete,
+  view = 'readiness',
 }: {
   tenantId: string
   initial: { snapshot: TenantSnapshot; at: string } | null
   onRunningChange: (running: boolean) => void
   onComplete: (snapshot: TenantSnapshot, at: string) => void
+  view?: 'readiness' | 'inventory'
 }) {
   const [scanState, setScanState] = useState<'idle' | 'running' | 'done' | 'failed'>(initial ? 'done' : 'idle')
   const [sections, setSections] = useState<Record<string, SectionRow>>({})
@@ -152,15 +157,13 @@ export function MfaViabilityScreen({
   }
 
   const evidence = snapshot?.sources.signInEvidence
-  const finishedSections = Object.values(sections).filter((s) => s.status !== 'started').length
-  const progressPercent = scanState === 'running' ? Math.min(95, Math.round((finishedSections / TOTAL_SECTIONS) * 100)) : null
+  const sectionList = Object.values(sections).filter((s) => s.source !== 'signInEvidence')
+  const finishedSections = sectionList.filter((s) => s.status !== 'started').length
+  const sectionTotal = TOTAL_SECTIONS - 1
+  const sectionsPercent = Math.min(100, Math.round((finishedSections / sectionTotal) * 100))
+  const inProgress = sectionList.filter((s) => s.status === 'started').map((s) => SCAN.sections[s.source] ?? s.source)
   const elapsed = startedAt !== null ? elapsedLabel(startedAt, nowTick) : null
-  const nowLine =
-    scanState !== 'running'
-      ? undefined
-      : laneB
-        ? SCAN.readingSignIns(laneB.rows, laneB.oldest ? absoluteDate(laneB.oldest) : null, elapsed)
-        : SCAN.readingConfig(finishedSections, TOTAL_SECTIONS, elapsed)
+  const signInSection = sections['signInEvidence']
 
   const columns: Column<Row>[] = [
     {
@@ -268,17 +271,50 @@ export function MfaViabilityScreen({
       </p>
       {error && <Callout kind="danger" title={SCAN.failed}>{error}</Callout>}
       {scanState !== 'running' && initial && snapshot === initial.snapshot && <Callout kind="info">{SCAN.usingSaved(whenAt(initial.at))}</Callout>}
-      {scanState === 'running' && <ProgressBar percent={laneB ? null : progressPercent} caption={nowLine} />}
+      {scanState === 'running' && (
+        <Card>
+          <ProgressBar percent={sectionsPercent} caption={SCAN.sectionsBar(finishedSections, sectionTotal)} />
+          {signInSection && (
+            <ProgressBar
+              percent={signInSection.status === 'started' ? null : 100}
+              caption={SCAN.signInsBar(laneB?.rows ?? 0, laneB?.oldest ? absoluteDate(laneB.oldest) : null)}
+            />
+          )}
+          <p className="reason">
+            {SCAN.nowReading(inProgress)}
+            {elapsed && ` · ${SCAN.elapsed(elapsed)}`}
+          </p>
+        </Card>
+      )}
       {scanState === 'running' && slow && <Callout kind="warning">{SCAN.slow}</Callout>}
+
+      {scanState === 'done' && snapshot && (
+        <Card title={SCAN.completeTitle}>
+          <p>
+            {SCAN.completeLine(
+              snapshot.users.length,
+              snapshot.config.caPolicies?.rows.length ?? 0,
+              evidence?.coveredWindow ? `${absoluteDate(evidence.coveredWindow.from)} – ${absoluteDate(evidence.coveredWindow.to)}` : null,
+            )}
+          </p>
+          <p>
+            <LinkButton href="#/mapping">{`Next: ${SCAN.next}`}</LinkButton>
+          </p>
+        </Card>
+      )}
 
       {Object.keys(sections).length > 0 && (
         <ExpandCard summary={SCAN.details} open={false}>
           <ul className="sections">
             {Object.values(sections).map((s) => (
               <li key={s.source}>
-                {SCAN.sections[s.source] ?? s.source}: {s.status === 'started' ? SCAN.reading : s.status}
-                {s.rows !== undefined && ` — ${SCAN.items(s.rows)}`}
+                {s.status === 'started'
+                  ? `${SCAN.sections[s.source] ?? s.source}: ${SCAN.reading}`
+                  : s.rows !== undefined
+                    ? SCAN.found(SCAN.sections[s.source] ?? s.source, s.rows)
+                    : `${SCAN.sections[s.source] ?? s.source}: ${s.status}`}
                 {s.reason && <span className="muted"> ({s.reason})</span>}
+                {DEV && s.ms !== undefined && <span className="muted"> · {s.ms} ms</span>}
               </li>
             ))}
           </ul>
@@ -286,6 +322,21 @@ export function MfaViabilityScreen({
       )}
 
       {scored && snapshot && evidence && (
+        <Tabs
+          initial={view}
+          tabs={[
+            { id: 'readiness', label: SCAN.tabs.readiness, render: () => readinessView() },
+            { id: 'inventory', label: SCAN.tabs.inventory, render: () => <InventoryPage snapshot={snapshot} /> },
+          ]}
+        />
+      )}
+    </StepFrame>
+  )
+
+  function readinessView() {
+    if (!scored || !snapshot || !evidence) return null
+    return (
+      <div>
         <>
           <h3>{SCAN.readiness}</h3>
           <Callout kind={evidence.status === 'ok' ? 'success' : evidence.status === 'partial' ? 'info' : 'warning'}>
@@ -395,7 +446,7 @@ export function MfaViabilityScreen({
             ))}
           </ExpandCard>
         </>
-      )}
-    </StepFrame>
-  )
+      </div>
+    )
+  }
 }

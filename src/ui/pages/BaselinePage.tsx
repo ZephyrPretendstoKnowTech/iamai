@@ -57,7 +57,9 @@ export function BaselinePage({
         <Button variant="primary" onClick={() => void loadPinned()} loading={busy !== null}>
           {BASELINE.load}
         </Button>
-        <span className="muted">{BASELINE.orUpload}</span>
+        <span className="muted">
+          {BASELINE.orUpload} (<a href="#/baseline/package">{BASELINE.howToPackage}</a>):
+        </span>
         <input type="file" accept=".json" multiple onChange={(e) => void loadUpload(e.currentTarget.files)} disabled={busy !== null} />
       </p>
       {busy && <p className="muted">{busy}</p>}

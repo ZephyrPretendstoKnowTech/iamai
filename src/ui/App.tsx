@@ -18,6 +18,7 @@ import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { DevSpikes } from './DevSpikes.tsx'
 import { ComponentsPage } from './pages/ComponentsPage.tsx'
+import { PackagePage } from './pages/PackagePage.tsx'
 import { SHELL } from '../copy/pages.ts'
 
 const DEV_PANEL =
@@ -81,9 +82,12 @@ export function App() {
             />
           )}
           {route === 'baseline' && <BaselinePage result={baseline} onLoaded={setBaseline} />}
-          {route === 'scan' &&
+          {route === 'baseline/package' && <PackagePage />}
+          {(route === 'scan' || route === 'inventory') &&
             (account ? (
               <MfaViabilityScreen
+                key={route}
+                view={route === 'inventory' ? 'inventory' : 'readiness'}
                 tenantId={account.tenantId}
                 initial={lastScan}
                 onRunningChange={setScanRunning}

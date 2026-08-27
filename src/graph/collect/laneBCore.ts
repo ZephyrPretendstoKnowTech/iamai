@@ -11,6 +11,7 @@ import {
 import { SectionDisabledError } from './http.ts'
 import type {
   BlockedTodayEntry,
+  EvidenceAggregates,
   PolicyAppliedResult,
   PolicyResultClass,
   StoredSignIn,
@@ -18,7 +19,7 @@ import type {
 } from './types.ts'
 
 // Bump when the fetched row shape changes; mismatched caches are ignored.
-export const EVIDENCE_SCHEMA = 4
+export const EVIDENCE_SCHEMA = 5
 
 // No $select on the Lane B pull: mfaDetail and authenticationDetails are not
 // selectable on beta /auditLogs/signIns (400 "Unsupported Query", confirmed
@@ -34,6 +35,7 @@ export type SignInEvidence = {
   policyResults: PolicyAppliedResult[]
   blockedToday: BlockedTodayEntry[]
   usage: import('./types.ts').EvidenceUsage
+  aggregates: EvidenceAggregates
 }
 
 export type LaneBProgress = { pages: number; rows: number; ms: number; oldest: string | null }
@@ -67,7 +69,32 @@ export function mapRow(raw: unknown): StoredSignIn | null {
     appId: typeof r.appId === 'string' ? r.appId : undefined,
     authenticationProtocol: typeof r.authenticationProtocol === 'string' ? r.authenticationProtocol : undefined,
     originalTransferMethod: typeof r.originalTransferMethod === 'string' ? r.originalTransferMethod : undefined,
+    country: (() => {
+      const loc = (r.location ?? null) as Record<string, unknown> | null
+      return typeof loc?.countryOrRegion === 'string' ? loc.countryOrRegion : undefined
+    })(),
   }
+}
+
+// Inventory counts (prompt 10 §B): by client app, by protocol, by country
+// (distinct users). Counts only — no raw rows leave the worker.
+export function deriveAggregates(rows: Iterable<StoredSignIn>): EvidenceAggregates {
+  const byClientApp: Record<string, number> = {}
+  const byProtocol: Record<string, number> = {}
+  const byCountryUsers: Record<string, Set<string>> = {}
+  const users = new Set<string>()
+  let total = 0
+  for (const row of rows) {
+    total += 1
+    if (row.userId) users.add(row.userId)
+    const client = row.clientAppUsed || 'Unknown'
+    byClientApp[client] = (byClientApp[client] ?? 0) + 1
+    const proto = row.authenticationProtocol || 'none'
+    byProtocol[proto] = (byProtocol[proto] ?? 0) + 1
+    if (row.country && row.userId) (byCountryUsers[row.country] ??= new Set()).add(row.userId)
+  }
+  const byCountry = Object.fromEntries(Object.entries(byCountryUsers).map(([c, s]) => [c, s.size]))
+  return { total, distinctUsers: users.size, byClientApp, byProtocol, byCountry }
 }
 
 const LEGACY_CLIENT_APPS = new Set([
@@ -287,6 +314,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       policyResults: derivePolicyResults(contiguous),
       blockedToday: deriveBlockedToday(contiguous),
       usage: deriveUsageSignals(contiguous),
+      aggregates: deriveAggregates(contiguous),
     }
   }
 
