@@ -19,6 +19,14 @@ export interface BaselineIndex {
   files: string[];
   /** Optional attribution/licence note shown next to the source. */
   attribution?: string;
+  /** About-card fields (SPEC §7): sources without them show "no description provided". */
+  author?: string;
+  authorUrl?: string;
+  repoUrl?: string;
+  description?: string;
+  goal?: string;
+  /** Licence tiers the baseline targets, e.g. ["Entra ID P1", "Entra ID P2"]. */
+  tiers?: string[];
 }
 
 export function rawUrl(index: BaselineIndex, path: string): string {

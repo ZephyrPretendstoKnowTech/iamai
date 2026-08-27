@@ -1,63 +1,81 @@
-/* Design tokens — the single source for colour, spacing, type, and radii.
-   Light and dark follow the OS. No component library, no CDN. */
+/* Design tokens — single source for colour, spacing, type, and radii.
+   Navy/blue system: dark by default, light via [data-theme='light'] on <html>,
+   print always light. No component library, no CDN. */
 :root {
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* spacing scale */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2.5rem;
+  /* 8px spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 40px;
 
-  /* type scale */
-  --text-xs: 0.75rem;
-  --text-sm: 0.85rem;
-  --text-md: 1rem;
-  --text-lg: 1.25rem;
-  --text-xl: 1.6rem;
+  /* type scale: 15px base, 28/20/16/14 hierarchy */
+  --text-base: 15px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
 
   /* radii */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
-  /* colour — light */
-  --bg: #f7f7f5;
-  --bg-raised: #ffffff;
-  --bg-inset: #eeeeeb;
-  --text: #1b1b18;
-  --text-muted: #6b6b64;
-  --border: #d9d9d3;
-  --accent: #245edb;
+  /* dark (default) */
+  --bg: #0b1220;
+  --surface: #111a2e;
+  --surface-raised: #16213a;
+  --border: #24304a;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
   --accent-contrast: #ffffff;
-
-  /* state colours */
-  --state-ok: #2e7d4f;
-  --state-good: #5d9648;
-  --state-warn: #b98a00;
-  --state-alert: #c46a00;
-  --state-bad: #b3372b;
-  --state-neutral: #77776f;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #38bdf8;
+  /* readable chip fills on both themes */
+  --chip-bg: rgba(59, 130, 246, 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161614;
-    --bg-raised: #1f1f1c;
-    --bg-inset: #262622;
-    --text: #ecece7;
-    --text-muted: #a3a399;
-    --border: #3a3a34;
-    --accent: #7aa2ff;
-    --accent-contrast: #10131c;
+:root[data-theme='light'] {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-contrast: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --info: #0284c7;
+  --chip-bg: rgba(59, 130, 246, 0.06);
+}
 
-    --state-ok: #58b384;
-    --state-good: #8fbf6f;
-    --state-warn: #d9b34a;
-    --state-alert: #dd9245;
-    --state-bad: #d97b6c;
-    --state-neutral: #8b8b81;
+/* Print is always light. */
+@media print {
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text-muted: #475569;
+    --accent: #2563eb;
+    --accent-hover: #2563eb;
+    --accent-contrast: #ffffff;
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --info: #0284c7;
+    --chip-bg: transparent;
   }
 }

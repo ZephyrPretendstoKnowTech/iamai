@@ -116,6 +116,7 @@ Findings about the default source to hand to Jon when ready: one file with a JSO
 - Strongly recommended: `namedLocations.json`; `lookup.json` (id → displayName/type for every referenced group/user/SP).
 - Optional: `manifest.json` — placeholder roles, variant sets, phases, author/version.
 - Validator: schema, unresolved references, licence-dependent controls, policy count.
+- Every baseline source must supply the About fields (`author`, `authorUrl`, `repoUrl`, `description`, `goal`, `tiers` on its index/manifest); sources without them show "no description provided".
 - Best path: connect a reference tenant with the same read-only flow → "Export as baseline package" (emits lookup + manifest). How-to page lists the Graph/PowerShell one-liners for manual exports and the accepted tool outputs (idPowerToys, CA Policy Copier, DCToolbox, CIPP templates, Jon's/Kenneth's/Joey's repos).
 
 ## 8. Tool deployment
