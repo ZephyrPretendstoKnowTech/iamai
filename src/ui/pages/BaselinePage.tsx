@@ -1,57 +1,64 @@
 import { useState } from 'react'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { fetchBaselineFiles, loadBaseline, unresolvedReferences } from '../../baseline/index.ts'
-import type { BaselineFile, BaselinePackage } from '../../baseline/index.ts'
+import type { BaselineFile, BaselineIndex, BaselinePackage } from '../../baseline/index.ts'
+import { absoluteDate } from '../format.ts'
+import { StepFrame } from '../shell/AppShell.tsx'
 
-type LoadState =
-  | { kind: 'idle' }
-  | { kind: 'loading'; note: string }
-  | { kind: 'loaded'; source: string; pkg: BaselinePackage; fetchFailures: number }
-  | { kind: 'failed'; error: string }
+export type BaselineResult = { source: string; pkg: BaselinePackage; fetchFailures: number }
 
-export function BaselinePage() {
-  const [state, setState] = useState<LoadState>({ kind: 'idle' })
+const index = baselineIndex as BaselineIndex
+
+export function BaselinePage({
+  result,
+  onLoaded,
+}: {
+  result: BaselineResult | null
+  onLoaded: (r: BaselineResult) => void
+}) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const loadPinned = async () => {
-    setState({ kind: 'loading', note: `fetching ${baselineIndex.files.length} files from GitHub at the pinned commit…` })
+    setBusy(`fetching ${index.files.length} files from GitHub at the pinned commit…`)
+    setError(null)
     try {
-      const { files, failures } = await fetchBaselineFiles(baselineIndex)
-      const pkg = loadBaseline(files)
-      setState({ kind: 'loaded', source: baselineIndex.label, pkg, fetchFailures: failures.length })
+      const { files, failures } = await fetchBaselineFiles(index)
+      onLoaded({ source: index.label, pkg: loadBaseline(files), fetchFailures: failures.length })
     } catch (e) {
-      setState({ kind: 'failed', error: e instanceof Error ? e.message : String(e) })
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(null)
     }
   }
 
   const loadUpload = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
-    setState({ kind: 'loading', note: `reading ${fileList.length} uploaded file(s)…` })
+    setBusy(`reading ${fileList.length} uploaded file(s)…`)
+    setError(null)
     try {
       const files: BaselineFile[] = await Promise.all(
         [...fileList].map(async (f) => ({ path: f.name, text: await f.text() })),
       )
-      const pkg = loadBaseline(files)
-      setState({ kind: 'loaded', source: `uploaded package (${fileList.length} files)`, pkg, fetchFailures: 0 })
+      onLoaded({ source: `uploaded package (${fileList.length} files)`, pkg: loadBaseline(files), fetchFailures: 0 })
     } catch (e) {
-      setState({ kind: 'failed', error: e instanceof Error ? e.message : String(e) })
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(null)
     }
   }
 
   return (
-    <section>
-      <h2>Baseline</h2>
+    <StepFrame
+      title="Baseline"
+      does="Picks the target policy set your rollout plan aims for."
+      next={result ? 'scan' : undefined}
+      nextLabel="Scan"
+    >
+      <AboutCard index={index} />
       <p>
-        The baseline is the policy set your rollout plan aims for. The default is{' '}
-        <strong>{baselineIndex.label}</strong> — loaded live from{' '}
-        <a href={`https://github.com/${baselineIndex.owner}/${baselineIndex.repo}`} target="_blank" rel="noreferrer">
-          {baselineIndex.owner}/{baselineIndex.repo}
-        </a>{' '}
-        at pinned commit <code>{baselineIndex.commit.slice(0, 10)}</code>. IAMAI ships only a path
-        index; policy content is fetched from the source repo and never bundled.
-      </p>
-      <p>
-        <button onClick={() => void loadPinned()} disabled={state.kind === 'loading'}>
-          {state.kind === 'loading' ? 'Loading…' : 'Load the default baseline'}
+        <button className="primary" onClick={() => void loadPinned()} disabled={busy !== null}>
+          {busy !== null ? 'Loading…' : 'Load this baseline'}
         </button>
       </p>
       <p>
@@ -62,62 +69,110 @@ export function BaselinePage() {
           accept=".json"
           multiple
           onChange={(e) => void loadUpload(e.currentTarget.files)}
-          disabled={state.kind === 'loading'}
+          disabled={busy !== null}
         />
       </p>
-
-      {state.kind === 'loading' && <p className="reason">{state.note}</p>}
-      {state.kind === 'failed' && <p className="error">Load failed: {state.error}</p>}
-      {state.kind === 'loaded' && <LoadReportView source={state.source} pkg={state.pkg} fetchFailures={state.fetchFailures} />}
-    </section>
+      {busy && <p className="reason">{busy}</p>}
+      {error && <p className="error">Load failed: {error}</p>}
+      {result && <LoadReportView result={result} />}
+    </StepFrame>
   )
 }
 
-// The adapter's load report, in plain language.
-function LoadReportView({ source, pkg, fetchFailures }: { source: string; pkg: BaselinePackage; fetchFailures: number }) {
+function AboutCard({ index }: { index: BaselineIndex }) {
+  return (
+    <div className="card">
+      <h3>About this baseline</h3>
+      <p>
+        <strong>{index.label}</strong>
+        {index.author && (
+          <>
+            {' '}
+            by{' '}
+            {index.authorUrl ? (
+              <a href={index.authorUrl} target="_blank" rel="noreferrer">
+                {index.author}
+              </a>
+            ) : (
+              index.author
+            )}
+          </>
+        )}
+        {index.repoUrl && (
+          <>
+            {' · '}
+            <a href={index.repoUrl} target="_blank" rel="noreferrer">
+              repository
+            </a>
+          </>
+        )}
+      </p>
+      <p>
+        snapshot from {absoluteDate(index.generatedAt)}
+        <br />
+        <span className="mono">commit {index.commit}</span>
+      </p>
+      <p>{index.description ?? 'No description provided.'}</p>
+      {index.goal && <p className="reason">{index.goal}</p>}
+      <p className="reason">
+        {index.files.length} files in the snapshot
+        {index.tiers && index.tiers.length > 0 && <> · targets {index.tiers.join(', ')}</>}
+      </p>
+    </div>
+  )
+}
+
+// The load report, in user language; the mechanics live under Technical details.
+function LoadReportView({ result }: { result: BaselineResult }) {
+  const { pkg, source, fetchFailures } = result
   const { report } = pkg
   const unresolved = unresolvedReferences(pkg.references)
   const variantSets = pkg.variantSets.filter((v) => v.relation === 'variant')
   const duplicateSets = pkg.variantSets.filter((v) => v.relation === 'duplicate')
   return (
-    <div>
-      <h3>Load report — {source}</h3>
+    <div className="card">
+      <h3>Loaded — {source}</h3>
       <ul>
         <li>
-          <strong>{pkg.policies.length} policies kept</strong> out of {report.considered} files
-          considered ({report.parsed} parsed cleanly).
+          <strong>{pkg.policies.length} policies ready to compare.</strong>
         </li>
         {report.warnings.length > 0 && (
           <li>
-            <strong>{report.warnings.length} unusable as written</strong> — kept but flagged (for
-            example, exported without any targets):{' '}
-            {report.warnings.map((w) => w.policyName).join('; ')}
+            {report.warnings.length} polic{report.warnings.length === 1 ? 'y' : 'ies'} in the source
+            can't be used yet (they were exported without targets) — this doesn't affect your plan.
           </li>
         )}
         {variantSets.length > 0 && (
           <li>
-            <strong>{variantSets.length} choose-one variant set(s)</strong> — same intent, different
-            scoping; the plan will ask you to pick one from each set.
+            {variantSets.length} choice{variantSets.length === 1 ? '' : 's'} you'll make in Mapping
+            ({variantSets.length === 1 ? 'two styles of the same policy' : 'alternative styles of the same policies'}).
           </li>
         )}
-        {duplicateSets.length > 0 && <li>{duplicateSets.length} duplicate pair(s) collapsed.</li>}
         <li>
-          <strong>{unresolved.length} reference(s) need mapping</strong> to your tenant (groups,
-          locations, custom strengths and similar that only exist per-tenant). The Mapping step
-          resolves these.
+          {unresolved.length} things to map to your tenant — Mapping handles this.
         </li>
-        {report.errors.length > 0 && (
-          <li>
-            {report.errors.length} file(s) failed to parse and were skipped:{' '}
-            {report.errors.map((e) => e.path).join('; ')}
-          </li>
-        )}
-        {fetchFailures > 0 && <li>{fetchFailures} file(s) could not be fetched from the source repo.</li>}
       </ul>
-      <p className="reason">
-        Baseline policy states are the author's lab state; every baseline policy is treated as
-        intended-enforced unless a manifest says otherwise.
-      </p>
+      <details>
+        <summary>Technical details</summary>
+        <ul className="sections">
+          <li>{report.considered} files considered, {report.parsed} parsed cleanly.</li>
+          {duplicateSets.length > 0 && <li>{duplicateSets.length} duplicate pair(s) collapsed.</li>}
+          {report.errors.length > 0 && (
+            <li>
+              {report.errors.length} file(s) failed to parse and were skipped:{' '}
+              {report.errors.map((e) => e.path).join('; ')}
+            </li>
+          )}
+          {report.warnings.length > 0 && (
+            <li>Unusable as written: {report.warnings.map((w) => w.policyName).join('; ')}</li>
+          )}
+          {fetchFailures > 0 && <li>{fetchFailures} file(s) could not be fetched from the source repo.</li>}
+          <li>
+            Baseline policy states are the author's lab state; every baseline policy is treated as
+            intended-enforced unless a manifest says otherwise.
+          </li>
+        </ul>
+      </details>
     </div>
   )
 }

@@ -4,41 +4,45 @@ import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { signOut } from '../../graph/msal.ts'
 
-// Footer links. LINKEDIN_URL is still the prompt's placeholder — replace when
-// provided; the GitHub profile is derived from the repo owner.
-const LINKEDIN_URL: string | null = null // TODO: set to Lachlan's LinkedIn profile URL
-const GITHUB_URL = 'https://github.com/ZephyrPretendstoKnowTech'
-const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
+export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
+export const GITHUB_URL = 'https://github.com/ZephyrPretendstoKnowTech'
+export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 
 export type Route =
-  | 'baseline'
+  | 'start'
   | 'connect'
+  | 'baseline'
+  | 'scan'
   | 'mapping'
   | 'coverage'
-  | 'readiness'
   | 'roadmap'
   | 'licensing'
   | 'reads'
 
-// Left navigation in flow order; placeholders are pages that exist but only
-// describe what they will show.
-const NAV: { route: Route; label: string; live: boolean }[] = [
-  { route: 'baseline', label: 'Baseline', live: true },
-  { route: 'connect', label: 'Connect', live: true },
-  { route: 'mapping', label: 'Mapping', live: false },
-  { route: 'coverage', label: 'Coverage', live: false },
-  { route: 'readiness', label: 'Readiness', live: true },
-  { route: 'roadmap', label: 'Roadmap', live: false },
-  { route: 'licensing', label: 'Licensing guide', live: false },
-  { route: 'reads', label: 'What IAMAI reads', live: true },
+export type StepStatus = 'notStarted' | 'inProgress' | 'done' | 'attention'
+
+const STEPS: { route: Route; label: string }[] = [
+  { route: 'start', label: 'Start' },
+  { route: 'connect', label: 'Connect' },
+  { route: 'baseline', label: 'Baseline' },
+  { route: 'scan', label: 'Scan' },
+  { route: 'mapping', label: 'Mapping' },
+  { route: 'coverage', label: 'Coverage' },
+  { route: 'roadmap', label: 'Roadmap' },
 ]
 
-const VALID = new Set(NAV.map((n) => n.route))
+const REFERENCE: { route: Route; label: string }[] = [
+  { route: 'licensing', label: 'Licensing guide' },
+  { route: 'reads', label: 'What IAMAI reads' },
+]
+
+const VALID = new Set<string>([...STEPS, ...REFERENCE].map((n) => n.route))
 
 export function useHashRoute(): Route {
   const read = (): Route => {
     const h = window.location.hash.replace(/^#\//, '')
-    return VALID.has(h as Route) ? (h as Route) : 'baseline'
+    if (h === 'readiness') return 'scan'
+    return VALID.has(h) ? (h as Route) : 'start'
   }
   const [route, setRoute] = useState<Route>(read)
   useEffect(() => {
@@ -49,73 +53,165 @@ export function useHashRoute(): Route {
   return route
 }
 
+const BADGE: Record<StepStatus, { className: string; text: string } | null> = {
+  notStarted: null,
+  inProgress: { className: 'badge progress', text: 'in progress' },
+  done: { className: 'badge done', text: 'done' },
+  attention: { className: 'badge attention', text: 'needs attention' },
+}
+
+function useTheme(): [string, () => void] {
+  const [theme, setTheme] = useState<string>(() => {
+    try {
+      return localStorage.getItem('iamai-theme') ?? 'dark'
+    } catch {
+      return 'dark'
+    }
+  })
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try {
+      localStorage.setItem('iamai-theme', theme)
+    } catch {
+      // storage unavailable — theme just won't persist
+    }
+  }, [theme])
+  return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
+}
+
 export function AppShell({
   account,
+  tenantName,
   route,
+  stepStatus,
   children,
 }: {
   account: AccountInfo | null
+  tenantName: string | null
   route: Route
+  stepStatus: Partial<Record<Route, StepStatus>>
   children: ReactNode
 }) {
+  const [theme, toggleTheme] = useTheme()
   return (
     <div className="shell">
       <header className="topbar">
         <span className="wordmark">IAMAI</span>
         <span className="tagline">Conditional Access rollout planner</span>
-        {account && (
-          <span className="topbar-tenant">
-            {account.name ?? account.username}
-            <br />
-            tenant {account.tenantId}{' '}
-            <button
-              onClick={() => {
-                void forgetTenant(account.tenantId)
-                  .catch(() => {})
-                  .then(() => signOut())
-              }}
-              title="Deletes everything cached for this tenant on this device, then signs out"
-            >
-              Forget this tenant
-            </button>
-          </span>
-        )}
+        <span className="topbar-tenant">
+          <button onClick={toggleTheme} title="Switch between dark and light themes">
+            {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          </button>{' '}
+          {account && (
+            <>
+              <strong>{tenantName ?? account.username}</strong>{' '}
+              <button
+                onClick={() => {
+                  void forgetTenant(account.tenantId)
+                    .catch(() => {})
+                    .then(() => signOut())
+                }}
+                title="Deletes everything cached for this tenant on this device, then signs out"
+              >
+                Forget this tenant
+              </button>
+              <div className="sub">tenant {account.tenantId}</div>
+            </>
+          )}
+        </span>
       </header>
       <div className="body-grid">
         <nav className="sidenav">
-          {NAV.map((n) => (
-            <a
-              key={n.route}
-              href={`#/${n.route}`}
-              className={`${route === n.route ? 'active' : ''} ${n.live ? '' : 'placeholder'}`}
-            >
-              {n.label}
-            </a>
-          ))}
+          <div className="nav-group">
+            <div className="nav-group-title">Steps</div>
+            {STEPS.map((n, i) => {
+              const status = stepStatus[n.route] ?? 'notStarted'
+              const badge = BADGE[status]
+              return (
+                <a key={n.route} href={`#/${n.route}`} className={route === n.route ? 'active' : ''}>
+                  <span>
+                    {i + 1}. {n.label}
+                  </span>
+                  {badge && <span className={badge.className}>{badge.text}</span>}
+                </a>
+              )
+            })}
+          </div>
+          <div className="nav-group">
+            <div className="nav-group-title">Reference</div>
+            {REFERENCE.map((n) => (
+              <a key={n.route} href={`#/${n.route}`} className={route === n.route ? 'active' : ''}>
+                {n.label}
+              </a>
+            ))}
+          </div>
         </nav>
         <main className="page">{children}</main>
       </div>
-      <footer className="footer">
-        <span>
-          Built by Lachlan Robinette
-          {LINKEDIN_URL !== null && (
-            <>
-              {' · '}
-              <a href={LINKEDIN_URL} target="_blank" rel="noreferrer">
-                LinkedIn
-              </a>
-            </>
-          )}
-          {' · '}
-          <a href={GITHUB_URL} target="_blank" rel="noreferrer">
-            GitHub
-          </a>
-        </span>
-        <a href={REPO_URL} target="_blank" rel="noreferrer">
-          Source code
-        </a>
-        <span>Read-only. Review the code, then connect.</span>
-      </footer>
+      <Footer />
     </div>
+  )
+}
+
+export function Footer() {
+  return (
+    <footer className="footer">
+      <span>
+        Follow me here:{' '}
+        <a href={LINKEDIN_URL} target="_blank" rel="noreferrer">
+          <strong>Lachlan Robinette</strong>
+        </a>
+      </span>
+      <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+        GitHub
+      </a>
+      <a href={REPO_URL} target="_blank" rel="noreferrer">
+        Source
+      </a>
+    </footer>
+  )
+}
+
+// Step-page framing: what the step does, what it needs, and the next step.
+export function StepFrame({
+  title,
+  does,
+  needs,
+  next,
+  nextLabel,
+  children,
+}: {
+  title: string
+  does: string
+  needs?: { met: boolean; text: string; href?: string }[]
+  next?: Route
+  nextLabel?: string
+  children: ReactNode
+}) {
+  return (
+    <section>
+      <h2>{title}</h2>
+      <p className="step-does">{does}</p>
+      {needs && needs.length > 0 && (
+        <p className="step-needs">
+          Needs:{' '}
+          {needs.map((n, i) => (
+            <span key={i} className={n.met ? '' : 'unmet'}>
+              {i > 0 && ' · '}
+              {n.met ? '✓ ' : ''}
+              {n.href && !n.met ? <a href={n.href}>{n.text}</a> : n.text}
+            </span>
+          ))}
+        </p>
+      )}
+      {children}
+      {next && (
+        <p className="step-next">
+          <a href={`#/${next}`}>
+            <button className="primary">Next: {nextLabel}</button>
+          </a>
+        </p>
+      )}
+    </section>
   )
 }

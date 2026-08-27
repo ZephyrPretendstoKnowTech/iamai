@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { hashTenantId, redactIdentifiers } from '../redact.ts'
 import { startScan } from '../graph/collect/runScan.ts'
 import type { SectionEvent, TenantSnapshot, UserRow, WorkerOutMessage } from '../graph/collect/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scoring/mfaViability.ts'
-import { absolute, absoluteDate, downloadFile, relative, toCsv } from './format.ts'
+import { absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative, toCsv } from './format.ts'
+import { StepFrame } from './shell/AppShell.tsx'
 
 type SectionRow = { source: string; status: string; rows?: number; reason?: string; ms?: number }
 
@@ -68,10 +69,22 @@ const MFA_ORDER: MfaState[] = ['none', 'unverified', 'notChallenged', 'likelyVia
 const ACTIVITY_ORDER: ActivityState[] = ['active', 'dormant', 'neverSignedIn']
 const TIER_ORDER: MethodTier[] = ['phishingResistant', 'passwordless', 'push', 'otp', 'smsVoice', 'none']
 
-export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
-  const [scanState, setScanState] = useState<'idle' | 'running' | 'done' | 'failed'>('idle')
+export function MfaViabilityScreen({
+  tenantId,
+  initial,
+  onRunningChange,
+  onComplete,
+}: {
+  tenantId: string
+  initial: { snapshot: TenantSnapshot; at: string } | null
+  onRunningChange: (running: boolean) => void
+  onComplete: (snapshot: TenantSnapshot, at: string) => void
+}) {
+  const [scanState, setScanState] = useState<'idle' | 'running' | 'done' | 'failed'>(initial ? 'done' : 'idle')
   const [sections, setSections] = useState<Record<string, SectionRow>>({})
-  const [snapshot, setSnapshot] = useState<TenantSnapshot | null>(null)
+  const [snapshot, setSnapshot] = useState<TenantSnapshot | null>(initial?.snapshot ?? null)
+  const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [nowTick, setNowTick] = useState(Date.now())
   const [error, setError] = useState<string | null>(null)
   const [laneB, setLaneB] = useState<{ pages: number; rows: number; oldest: string | null } | null>(null)
   const [slow, setSlow] = useState(false)
@@ -81,8 +94,16 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null)
 
+  useEffect(() => {
+    if (scanState !== 'running') return
+    const t = setInterval(() => setNowTick(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [scanState])
+
   const scan = async () => {
     setScanState('running')
+    onRunningChange(true)
+    setStartedAt(Date.now())
     setSections({})
     setSnapshot(null)
     setError(null)
@@ -106,11 +127,15 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
       }))
     })
     try {
-      setSnapshot(await handle.done)
+      const result = await handle.done
+      setSnapshot(result)
       setScanState('done')
+      onComplete(result, new Date().toISOString())
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setScanState('failed')
+    } finally {
+      onRunningChange(false)
     }
   }
 
@@ -216,10 +241,15 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
   const evidence = snapshot?.sources.signInEvidence
 
   return (
-    <section>
-      <h2>Readiness</h2>
+    <StepFrame
+      title="Scan"
+      does="Reads your tenant's configuration, inventory, and sign-in evidence into a local snapshot — nothing is written, and nothing leaves your browser."
+      needs={[{ met: true, text: 'connected tenant' }]}
+      next={snapshot ? 'mapping' : undefined}
+      nextLabel="Mapping"
+    >
       <p>
-        <button onClick={() => void scan()} disabled={scanState === 'running'}>
+        <button className="primary" onClick={() => void scan()} disabled={scanState === 'running'}>
           {scanState === 'running' ? 'Scanning…' : snapshot ? 'Re-scan tenant' : 'Scan tenant'}
         </button>{' '}
         {scored && <button onClick={exportCsv}>Export CSV ({visibleRows.length} rows)</button>}{' '}
@@ -228,16 +258,16 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
         )}
       </p>
       {error && <p className="error">Scan failed: {error}</p>}
-      {scanState === 'running' && slow && (
-        <p className="notice">
-          Graph is slow — still collecting sign-in evidence.
-          {laneB?.oldest && <> Covered back to <span title={absolute(laneB.oldest)}>{relative(laneB.oldest)}</span> so far.</>}
-        </p>
-      )}
-      {scanState === 'running' && laneB && !slow && (
-        <p className="reason">
-          Sign-in evidence: {laneB.rows} rows over {laneB.pages} page{laneB.pages === 1 ? '' : 's'}
-          {laneB.oldest && <>, covered back to <span title={absolute(laneB.oldest)}>{relative(laneB.oldest)}</span></>}…
+      {scanState === 'running' && (laneB !== null || slow) && (
+        <p className={slow ? 'notice' : 'reason'}>
+          Collecting sign-in evidence — this can take several minutes on larger tenants.
+          {laneB?.oldest && (
+            <>
+              {' '}
+              Covered back to <span title={absolute(laneB.oldest)}>{absoluteDate(laneB.oldest)}</span> so far.
+            </>
+          )}
+          {startedAt !== null && <> ({elapsedLabel(startedAt, nowTick)} elapsed)</>}
         </p>
       )}
 
@@ -259,6 +289,7 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
 
       {scored && snapshot && evidence && (
         <>
+          <h3>Readiness</h3>
           <p className="notice">
             Sign-in evidence: <strong>{evidence.status}</strong>
             {evidence.coveredWindow && (
@@ -277,39 +308,54 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
             . Predicted impact, confirmed in report-only.
           </p>
 
-          <div className="tiles">
-            {(Object.keys(MFA_LABEL) as MfaState[]).map((state) => (
-              <button
-                key={state}
-                className={`tile state-${state} ${mfaFilter.has(state) ? 'selected' : ''}`}
-                title={DEFS[MFA_LABEL[state]]}
-                onClick={() => toggle(mfaFilter, state, setMfaFilter)}
-              >
-                <div className="tile-count">{scored.summary.counts[state]}</div>
-                <div className="tile-label">{MFA_LABEL[state]}</div>
-              </button>
-            ))}
-            {(Object.keys(ACTIVITY_LABEL) as ActivityState[]).map((state) => (
-              <button
-                key={state}
-                className={`tile ${activityFilter.has(state) ? 'selected' : ''}`}
-                title={DEFS[ACTIVITY_LABEL[state]]}
-                onClick={() => toggle(activityFilter, state, setActivityFilter)}
-              >
-                <div className="tile-count">{scored.summary.activityCounts[state]}</div>
-                <div className="tile-label">{ACTIVITY_LABEL[state]}</div>
-              </button>
-            ))}
-            <div className="tile" title={DEFS['Verification phase size']}>
-              <div className="tile-count">{scored.summary.verificationPhaseSize}</div>
-              <div className="tile-label">Verification phase size</div>
+          <div className="tile-group">
+            <h4>MFA state</h4>
+            <div className="tiles">
+              {(Object.keys(MFA_LABEL) as MfaState[]).map((state) => (
+                <button
+                  key={state}
+                  className={`tile state-${state} ${mfaFilter.has(state) ? 'selected' : ''}`}
+                  onClick={() => toggle(mfaFilter, state, setMfaFilter)}
+                >
+                  <span className="tile-help" title={DEFS[MFA_LABEL[state]]}>?</span>
+                  <div className="tile-count">{scored.summary.counts[state]}</div>
+                  <div className="tile-label">{MFA_LABEL[state]}</div>
+                </button>
+              ))}
             </div>
-            {scored.summary.challengedRate !== null && (
-              <div className="tile" title={DEFS['Challenged rate']}>
-                <div className="tile-count">{Math.round(scored.summary.challengedRate * 100)}%</div>
-                <div className="tile-label">Challenged rate</div>
+          </div>
+          <div className="tile-group">
+            <h4>Activity</h4>
+            <div className="tiles">
+              {(Object.keys(ACTIVITY_LABEL) as ActivityState[]).map((state) => (
+                <button
+                  key={state}
+                  className={`tile ${activityFilter.has(state) ? 'selected' : ''}`}
+                  onClick={() => toggle(activityFilter, state, setActivityFilter)}
+                >
+                  <span className="tile-help" title={DEFS[ACTIVITY_LABEL[state]]}>?</span>
+                  <div className="tile-count">{scored.summary.activityCounts[state]}</div>
+                  <div className="tile-label">{ACTIVITY_LABEL[state]}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="tile-group">
+            <h4>Rollout</h4>
+            <div className="tiles">
+              <div className="tile">
+                <span className="tile-help" title={DEFS['Verification phase size']}>?</span>
+                <div className="tile-count">{scored.summary.verificationPhaseSize}</div>
+                <div className="tile-label">Verification phase size</div>
               </div>
-            )}
+              {scored.summary.challengedRate !== null && (
+                <div className="tile">
+                  <span className="tile-help" title={DEFS['Challenged rate']}>?</span>
+                  <div className="tile-count">{Math.round(scored.summary.challengedRate * 100)}%</div>
+                  <div className="tile-label">Challenged rate</div>
+                </div>
+              )}
+            </div>
           </div>
 
           {snapshot.blockedToday.length > 0 && (
@@ -384,6 +430,7 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
             )}
           </div>
 
+          <div className="table-wrap">
           <table className="viability">
             <thead>
               <tr>
@@ -423,11 +470,17 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
                       {TIER_LABEL[r.strongestMethod]}
                     </td>
                     <td>
-                      {r.evidence && (
-                        <span title={absolute(r.evidence.at)}>
-                          MFA via {r.evidence.method} {relative(r.evidence.at)}
-                        </span>
-                      )}
+                      {r.evidence &&
+                        (() => {
+                          const name = friendlyMethod(r.evidence.method)
+                          return (
+                            <span title={absolute(r.evidence.at)}>
+                              {name
+                                ? `MFA via ${name} ${relative(r.evidence.at)}`
+                                : `MFA completed ${relative(r.evidence.at)}`}
+                            </span>
+                          )
+                        })()}
                       {r.reasons.map((reason, i) => {
                         const d = displayReason(reason)
                         return (
@@ -443,6 +496,7 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
               })}
             </tbody>
           </table>
+          </div>
 
           <details className="legend">
             <summary>Legend</summary>
@@ -457,6 +511,6 @@ export function MfaViabilityScreen({ tenantId }: { tenantId: string }) {
           </details>
         </>
       )}
-    </section>
+    </StepFrame>
   )
 }

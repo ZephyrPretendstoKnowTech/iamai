@@ -4,6 +4,16 @@
   "commit": "ceccdc2a6dc2e4a3e1f960fc2d91f05c8963265b",
   "label": "Jon Hope — Defense in Depth CA baseline",
   "generatedAt": "2026-08-25T23:09:44.406Z",
+  "author": "Jon Hope",
+  "authorUrl": "https://github.com/Jhope188",
+  "repoUrl": "https://github.com/Jhope188/ConditionalAccessPolicies",
+  "description": "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.",
+  "goal": "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.",
+  "tiers": [
+    "Entra ID P1",
+    "Entra ID P2"
+  ],
+  "attribution": "Policies and documentation © Jhope188 (Jhope188/ConditionalAccessPolicies). Fetched live from GitHub at commit ceccdc2; not redistributed by IAMAI.",
   "files": [
     "Documents/readme.md",
     "Images/readme.md",
@@ -160,6 +170,5 @@
     "Updated/Policies/IAC_-_AGENT_-_BLOCK_-_HighRiskAgent.json",
     "Updated/Policies/Test/IAC - APP - SESSION - O365 - Timeoutsettings.json",
     "Updated/readme.md"
-  ],
-  "attribution": "Policies and documentation © Jhope188 (Jhope188/ConditionalAccessPolicies). Fetched live from GitHub at commit ceccdc2; not redistributed by IAMAI."
+  ]
 }
