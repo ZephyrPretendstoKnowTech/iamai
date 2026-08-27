@@ -136,7 +136,7 @@ function build(args: {
   return { input, snapshot }
 }
 
-const stepFor = (steps: ReturnType<typeof generateRoadmap>, goalId: string) => {
+const stepFor = (steps: ReturnType<typeof generateRoadmap>['steps'], goalId: string) => {
   const s = steps.find((x) => x.goalId === goalId)
   assert.ok(s, `step for ${goalId}`)
   return s
@@ -144,7 +144,7 @@ const stepFor = (steps: ReturnType<typeof generateRoadmap>, goalId: string) => {
 
 test('1: enforced goal → step created as done', () => {
   const { input } = build({ tenantPolicies: [mkPolicy({ displayName: 'MFA All' })] })
-  const steps = generateRoadmap(input)
+  const steps = generateRoadmap(input).steps
   assert.equal(stepFor(steps, 'mfa-all-users').status, 'done')
 })
 
@@ -169,7 +169,7 @@ test('2: absent goal with mapped references → create step JSON has mapped ids,
     validation: null,
   }
   const { input } = build({ baselinePolicies: [baseline], mapping })
-  const step = stepFor(generateRoadmap(input), 'mfa-all-users')
+  const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
   assert.equal(step.kind, 'create')
   assert.ok(step.action.json)
   assert.match(step.action.json!, /new-group-id/)
@@ -197,7 +197,7 @@ test('3: unresolved reference → step blocked by the phase-0 prerequisite', () 
       evidence: null,
     },
   ]
-  const steps = generateRoadmap(input)
+  const steps = generateRoadmap(input).steps
   const step = stepFor(steps, 'mfa-all-users')
   assert.equal(step.status, 'blocked')
   assert.equal(step.blockedBy.length, 1)
@@ -212,7 +212,7 @@ test('4: partial weaker-control → adjust step with the exact field change', ()
     grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: PR } },
   })
   const { input } = build({ tenantPolicies: [mkPolicy({ displayName: 'Plain MFA' })], baselinePolicies: [baseline] })
-  const step = stepFor(generateRoadmap(input), 'mfa-all-users')
+  const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
   assert.equal(step.kind, 'adjust')
   assert.ok(step.action.summary.some((s) => /phishingResistant/i.test(s)))
 })
@@ -220,7 +220,7 @@ test('4: partial weaker-control → adjust step with the exact field change', ()
 test('5: MFA step with readiness 60% → blocked with the unblocking numbers', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
   const { input } = build({ baselinePolicies: [baseline], ready: 6 })
-  const step = stepFor(generateRoadmap(input), 'mfa-all-users')
+  const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
   assert.equal(step.status, 'blocked')
   assert.ok(step.unblockNotes.some((n) => n.includes('60%') && n.includes('90%')))
 })
@@ -228,7 +228,7 @@ test('5: MFA step with readiness 60% → blocked with the unblocking numbers', (
 test('6: re-scan matching — report-only, then exit criterion, then enabled', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
   const { input } = build({ baselinePolicies: [baseline] })
-  const steps = generateRoadmap(input)
+  const steps = generateRoadmap(input).steps
   const step = stepFor(steps, 'mfa-all-users')
   const tag = `[IAMAI:${PLAN}:${step.id}]`
 
@@ -255,7 +255,7 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
 test('7: regression after done → re-opened adjust with a note', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
   const { input } = build({ baselinePolicies: [baseline] })
-  const steps = generateRoadmap(input)
+  const steps = generateRoadmap(input).steps
   const step = stepFor(steps, 'mfa-all-users')
   mergePersisted(steps, { [step.id]: { status: 'done', history: [{ at: '2026-08-01T00:00:00Z', from: 'ready', to: 'done', note: null }], skipReason: null } })
   assert.equal(step.status, 'done')
@@ -269,7 +269,7 @@ test('7: regression after done → re-opened adjust with a note', () => {
 test('8: skipping requires a reason and never "risk accepted"', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
   const { input } = build({ baselinePolicies: [baseline] })
-  const step = stepFor(generateRoadmap(input), 'mfa-all-users')
+  const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
   assert.equal(skipStep(step, '   ').ok, false)
   assert.equal(skipStep(step, 'risk accepted by CISO').ok, false)
   const ok = skipStep(step, 'not applicable to us — no such workload')

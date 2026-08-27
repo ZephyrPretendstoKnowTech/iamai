@@ -74,7 +74,8 @@ export function applyProgress(
       }
       if (policy?.state === 'enabledForReportingButNotEnforced') {
         advance(step, 'in-report-only', 'tagged policy found in report-only')
-        if (step.evidence.reportOnly?.meetsExitCriterion) {
+        // Handle-with-care users gate enforcement: evidence alone is not enough.
+        if (step.evidence.reportOnly?.meetsExitCriterion && step.highCare.ready) {
           advance(step, 'ready-to-enforce', 'report-only evidence meets the exit criterion')
         }
         continue

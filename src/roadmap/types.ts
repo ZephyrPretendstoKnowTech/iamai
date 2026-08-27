@@ -59,4 +59,16 @@ export type Step = {
   rollback: string
   history: StepHistoryEntry[]
   skipReason: string | null
+  // ---- 2026-08-27 redesign ----
+  /** One sentence: what this changes for THIS tenant, in numbers. */
+  impact: string
+  /** Zero observed usage + ready → promoted to the "safe today" lane. */
+  safeToday: boolean
+  /** Handle-with-care users this step touches; enforcement gates on ready. */
+  highCare: { userIds: string[]; ready: boolean; notes: string[] }
+  /** Paste-ready end-user announcement, personalized for this tenant. */
+  comms: string | null
+  learn: { url: string; tldr: string; cis: string[] } | null
+  includesOperator: boolean
+  operatorSafe: boolean | null // null when not applicable/unknown
 }
