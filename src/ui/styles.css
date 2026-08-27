@@ -439,10 +439,36 @@ button.chip {
   font-size: var(--text-sm);
 }
 
+.code-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  overflow-x: auto;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: var(--text-xs);
+}
+
+/* Print: the whole plan in phase order, light theme (tokens.css), JSON in
+   monospace, page breaks between phases, all step detail expanded. */
 @media print {
   nav.sidenav,
   .topbar button,
-  .devtools {
-    display: none;
+  .devtools,
+  .no-print,
+  .filters {
+    display: none !important;
+  }
+  .step-card > *:not(summary) {
+    display: block !important;
+  }
+  .phase-group {
+    break-before: page;
+  }
+  .phase-group:first-of-type {
+    break-before: auto;
+  }
+  .code-block {
+    white-space: pre-wrap;
   }
 }

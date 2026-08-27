@@ -103,6 +103,17 @@ export type StoredSignIn = {
   appliedConditionalAccessPolicies?: { id?: string; displayName?: string; result?: string }[] | null
   clientAppUsed?: string
   appId?: string
+  authenticationProtocol?: string
+  originalTransferMethod?: string
+}
+
+// Lane B usage signals for block-goal evidence (roadmap.md §5): who was seen
+// using the thing a block step would block — the exact blast radius.
+export type UsageSignal = { count: number; userIds: string[]; byDetail: Record<string, number> }
+export type EvidenceUsage = {
+  legacyAuth: UsageSignal
+  deviceCode: UsageSignal
+  authTransfer: UsageSignal
 }
 
 export type PolicyResultClass =
@@ -144,6 +155,7 @@ export type TenantSnapshot = {
   signInEvidence: Record<string, UserEvidence>
   evidencePolicyResults: PolicyAppliedResult[]
   blockedToday: BlockedTodayEntry[]
+  evidenceUsage: EvidenceUsage | null
   // Tenant licence capabilities derived from subscribedSkus (SPEC §12).
   capabilities: Record<Capability, { enabled: boolean; seats: number; consumed: number }>
   // CA policies that Microsoft manages (display-name prefix or templateId).

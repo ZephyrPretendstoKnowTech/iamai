@@ -54,6 +54,7 @@ function snapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     signInEvidence: {},
     evidencePolicyResults: [],
     blockedToday: [],
+    evidenceUsage: null,
     capabilities: {} as TenantSnapshot['capabilities'],
     microsoftManagedPolicyIds: [],
     roles: { active: { bg1: [GA], bg2: [GA] }, eligible: {} },

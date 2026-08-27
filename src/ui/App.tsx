@@ -9,9 +9,10 @@ import { StartPage } from './pages/StartPage.tsx'
 import { ConnectPage } from './pages/ConnectPage.tsx'
 import { BaselinePage } from './pages/BaselinePage.tsx'
 import type { BaselineResult } from './pages/BaselinePage.tsx'
-import { LicensingGuidePage, RoadmapPage } from './pages/PlaceholderPage.tsx'
+import { LicensingGuidePage } from './pages/PlaceholderPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
 import { MappingPage } from './pages/MappingPage.tsx'
+import { RoadmapPage } from './pages/RoadmapPage.tsx'
 import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { DevSpikes } from './DevSpikes.tsx'
@@ -79,7 +80,13 @@ export function App() {
             <MappingPage scan={lastScan} baseline={baseline} onProgress={setMapProgress} />
           )}
           {route === 'coverage' && <CoveragePage scan={lastScan} baseline={baseline} />}
-          {route === 'roadmap' && <RoadmapPage scanAt={lastScan?.at ?? null} />}
+          {route === 'roadmap' && (
+            <RoadmapPage
+              scan={lastScan}
+              baseline={baseline}
+              operator={account ? { userId: account.localAccountId, userPrincipalName: account.username } : null}
+            />
+          )}
           {route === 'licensing' && <LicensingGuidePage />}
           {route === 'reads' && <WhatIamaiReads />}
           {DEV_PANEL && account && <DevSpikes />}
