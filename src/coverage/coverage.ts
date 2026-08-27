@@ -40,25 +40,23 @@ const TIER_CAPABILITY: Record<string, keyof TenantSnapshot['capabilities'] | nul
 export function assumedExclusions(tenantPolicies: unknown[]): AssumedExclusions {
   const groups = new Map<string, string>()
   for (const sig of groupSignatures(tenantPolicies as CaPolicy[])) {
-    if (sig.inferredRole === 'globalExclusion') groups.set(sig.id, 'globalExclusion')
-    if (sig.inferredRole === 'broadExclusion') groups.set(sig.id, 'globalExclusion')
+    // §11 labels the excluded-from-most group "break-glass/global exclusion" —
+    // in small tenants they are the same group, so the assumed label carries
+    // both roles until Mapping separates them (first run, §13).
+    if (sig.inferredRole === 'globalExclusion') groups.set(sig.id, 'breakGlass/globalExclusion')
+    if (sig.inferredRole === 'broadExclusion') groups.set(sig.id, 'breakGlass/globalExclusion')
     if (sig.inferredRole === 'serviceAccounts') groups.set(sig.id, 'serviceAccounts')
   }
-  // Users excluded directly from a majority of policies → assumed break-glass.
-  const counts = new Map<string, number>()
-  let considered = 0
+  // §11 tenant note: users excluded directly from a policy are inferred
+  // break-glass accounts — provisional, confirmed in Mapping.
+  const users = new Set<string>()
   for (const raw of tenantPolicies) {
     const p = raw as { state?: string; conditions?: { users?: { excludeUsers?: string[] } } }
     if (p.state === 'disabled') continue
-    considered += 1
     for (const u of p.conditions?.users?.excludeUsers ?? []) {
       if (/^guestsorexternalusers$/i.test(u)) continue
-      counts.set(u, (counts.get(u) ?? 0) + 1)
+      users.add(u)
     }
-  }
-  const users = new Set<string>()
-  for (const [id, n] of counts) {
-    if (considered > 0 && n / considered >= 0.5) users.add(id)
   }
   return { groups, users, confirmed: false }
 }
@@ -281,13 +279,24 @@ function evaluateGoal(
   const covered = new Set([...enforced, ...weak, ...reportOnly])
   const missing = [...E].filter((id) => !covered.has(id))
   const expectedExcluded: string[] = []
+  // Dedupe exclusion hits by source (the same group excludes users from every
+  // candidate; one reason, not one per candidate).
+  const bySource = new Map<string, { kind: string; id: string; userIds: Set<string> }>()
   for (const ex of exclusionHits) {
+    const key = `${ex.kind}:${ex.id}`
+    const entry = bySource.get(key) ?? { kind: ex.kind, id: ex.id, userIds: new Set<string>() }
+    for (const id of ex.userIds) entry.userIds.add(id)
+    bySource.set(key, entry)
+  }
+  for (const ex of bySource.values()) {
     const stillMissing = [...ex.userIds].filter((id) => missing.includes(id))
     if (stillMissing.length === 0) continue
     const label = ex.kind === 'group' ? (assumed.groups.get(ex.id) ?? null) : null
     const isBreakGlassUser = ex.kind === 'user' && assumed.users.has(ex.id)
+    // Combined assumed labels ("breakGlass/globalExclusion") match on any part.
+    const labelParts = label !== null ? label.split('/') : []
     const isExpected =
-      (label !== null && impl.allowedExclusions.includes(label)) ||
+      labelParts.some((l) => impl.allowedExclusions.includes(l)) ||
       (isBreakGlassUser && impl.allowedExclusions.includes('breakGlass'))
     reasons.push({
       kind: 'excluded',

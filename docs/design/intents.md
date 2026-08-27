@@ -264,3 +264,54 @@ Fixtures are authored, never copied tenant data. Cases:
 12. P2 goal on a P1 tenant → licence-limited, excluded from score.
 13. Unclassifiable baseline policy → ad-hoc goal created and evaluated structurally.
 14. Guests excluded from an all-users policy with a separate guests policy → enforced by union.
+
+## 13. First run (2026-08-26, GetIAMAI vs Jon Hope baseline)
+
+The engine's first live run was compared with §11 goal by goal. Eight goals
+matched exactly (the three flow/legacy blocks, admin-session partial with the
+4 h floor raise, token-protection, the absents for portals / register-info /
+geo / managed-device / platforms / mobile / device-registration / sign-in-risk,
+and workload not-applicable). Five engine defects surfaced; all fixed:
+
+1. **Client-app narrowing wasn't checked.** The legacy-auth block (client apps
+   EAS+other) matched `mfa-all-users` and counted as strong MFA coverage.
+   Fixed: `clientAppsAll` signature key, applied to every all-client-apps goal;
+   blocks and risk policies no longer pollute MFA/guest/azure-management
+   candidates. Statements now match §11's candidate lists.
+2. **Floor raising ignored scope.** The admin-scoped baseline policy
+   (*…MFA - AllAdmins*) raised the `mfa-all-users` floor to passwordless, and a
+   break-glass-scoped policy raised azure-management's. Fixed: a baseline
+   policy raises a floor only when its own scope covers the goal's expected
+   population.
+3. **BYOD signature was too loose.** Any MFA policy with a sign-in frequency
+   matched `byod-session-controls` (§11: absent). Fixed: the signature now
+   requires a genuine unmanaged-device discriminator (device filter,
+   app-enforced restrictions, or MCAS session control).
+4. **Assumed exclusions were labelled too narrowly.** The
+   excluded-from-most group is §11's "break-glass/global exclusion" — one
+   group in small tenants. It now carries both roles until Mapping separates
+   them, and directly-excluded users are assumed break-glass (per this
+   section's tenant note), so `admins-phishing-resistant` and `user-risk`
+   come out enforced-with-expected-note as §11 says. Duplicate excluded
+   reasons (one per candidate) are deduped by source.
+5. **Ad-hoc goals ignored facets and session intent.** The AVD baseline
+   policy's ad-hoc goal was "enforced" by generic all-app MFA policies. Fixed:
+   ad-hoc goals infer a facet from their app ids / name (AVD → not-applicable
+   here), and carry their source's session controls into the floor, so
+   SIF-every-time policies aren't "covered" by a 7-day-SIF tenant policy.
+
+Where the worked example was wrong, the example, not the engine:
+
+- **guests-mfa**: Jon's guest policy requires a passwordless-tier strength, so
+  §5 raises the guests floor and the tenant's plain-MFA guest policy is
+  `weaker-control` — §11's flat "enforced" ignored the guest policy's own
+  strength. The engine result (partial, weaker-control) stands.
+- **byod-session-controls**: the report-only *Defender for Cloud Apps Test*
+  policy is a genuine (if tiny) BYOD session candidate; if it matches after
+  the tightened signature the goal is partial-report-only rather than §11's
+  clean absent. Report-only candidates are real signals; the engine keeps them.
+
+Also observed: the two agent-identity baseline policies were correctly listed
+under "could not be evaluated" with the adapter's re-export guidance, and the
+organisation report found the tenant's `Core -` naming convention (70%) with
+the expected outliers.
