@@ -28,6 +28,16 @@ Vite + TypeScript + React, `@azure/msal-browser`, Web Worker for the replay engi
 - Handle-with-care users are never excluded — changes apply, with extra caution, verification gating, and named callouts.
 - Every step: per-tenant impact, a Learn link or exact instructions, the danger areas by name.
 
+## UX rules (binding)
+
+- Voice: IAMAI is the subject or the sentence is imperative. Never first person. No reassurance adjectives. See docs/design/ux-review-01.md §1.
+- No developer vocabulary in user-facing copy: no lane names, snapshot, beta, rows, ms, GUIDs, raw ISO dates.
+- Every number a user sees has an InfoTip definition in src/copy/definitions.ts.
+- Every page ends with a Next action or says why it can't.
+- Generated sentences have explicit branches for 0, 1, all, and none. A contradiction is a failing test.
+- Use the shared components in src/ui/components; do not write bespoke CSS for something a component covers.
+- Before committing any UI change, list the pages touched in the commit message.
+
 ## Conventions
 - Pure logic (adapter, intents, engine) has no DOM or network imports so it runs in Node tests and in the worker.
 - Tests use small authored fixtures, never copied third-party policy files.
