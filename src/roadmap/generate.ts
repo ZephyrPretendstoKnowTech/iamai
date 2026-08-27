@@ -35,7 +35,9 @@ import type { Schedule } from './schedule.ts'
 import type { Action, Blocker, Step, StepPopulation, StepStatus } from './types.ts'
 import type { Pace } from './constants.ts'
 import { DEFAULT_PACE } from './constants.ts'
-import { BLOCKER } from '../copy/steps.ts'
+import { BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
+import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
+import { SETUP_QUESTIONS } from '../copy/setup.ts'
 
 export type RoadmapInput = {
   planId: string
@@ -84,11 +86,19 @@ function population(ids: string[], snapshot: TenantSnapshot, viability: MfaViabi
 
 type RawPolicy = Record<string, unknown>
 
-function replaceReferences(policy: RawPolicy, mapping: MappingState): RawPolicy {
+/** Placeholder token for a baseline reference no Setup answer has resolved yet — never a GUID. */
+export function setupToken(questionNumber: number, role: string): string {
+  return `__IAMAI_SETUP_QUESTION_${questionNumber}_${role.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}__`
+}
+
+export type Placeholders = Map<string, { label: string; token: string }>
+
+function replaceReferences(policy: RawPolicy, mapping: MappingState, placeholders: Placeholders = new Map()): RawPolicy {
   const resolved = new Map<string, string>()
   for (const r of Object.values(mapping.records)) {
     if (r.resolvedId !== null && !r.placeholder.startsWith('__')) resolved.set(r.placeholder, r.resolvedId)
   }
+  for (const [id, p] of placeholders) if (!resolved.has(id)) resolved.set(id, p.token)
   const g = mapping.records['__globalExclusion']
   const walk = (v: unknown): unknown => {
     if (Array.isArray(v)) return v.map(walk)
@@ -130,10 +140,24 @@ function createdWithinStepKeys(policy: RawPolicy, mapping: MappingState): { key:
     .map((r) => ({ key: r.placeholder, group: r.group }))
 }
 
-export function portalSteps(policy: RawPolicy, names?: NameDirectory): string[] {
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const TOKEN_RE = /^__IAMAI_SETUP_QUESTION_(\d+)_(.+)__$/
+
+export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholders: Placeholders = new Map()): string[] {
+  const one = (x: unknown): string => {
+    if (typeof x !== 'string') return String(x)
+    const p = placeholders.get(x)
+    if (p) return p.label
+    const t = TOKEN_RE.exec(x)
+    if (t) return [...placeholders.values()].find((v) => v.token === x)?.label ?? `Setup question ${t[1]}`
+    const name = names?.nameOf(x) ?? null
+    if (name) return name
+    if (GUID_RE.test(x)) return 'an object not in this tenant'
+    return names ? names.label(x) : x
+  }
   const label = (v: unknown): string => {
     if (!Array.isArray(v) || v.length === 0) return ''
-    return v.map((x) => (typeof x === 'string' && names ? names.label(x) : String(x))).join(', ')
+    return v.map(one).join(', ')
   }
   const c = (policy.conditions ?? {}) as RawPolicy
   const users = (c.users ?? {}) as RawPolicy
@@ -205,23 +229,33 @@ export function buildCreateAction(
   planId: string,
   stepId: string,
   names?: NameDirectory,
+  opts: { placeholders?: Placeholders; displayName?: string } = {},
 ): Action {
-  const body = replaceReferences(baselinePolicy, mapping)
+  const body = replaceReferences(baselinePolicy, mapping, opts.placeholders)
   delete body.id
   delete body.createdDateTime
   delete body.modifiedDateTime
   body.state = 'enabledForReportingButNotEnforced'
+  if (opts.displayName) body.displayName = opts.displayName
   const tag = `[IAMAI:${planId}:${stepId}]`
   body.description = `${tag}${typeof baselinePolicy.description === 'string' && baselinePolicy.description ? ' ' + baselinePolicy.description : ''}`
   const json = JSON.stringify(body, null, 2)
   const fileName = `${stepId}.json`
+  const unresolved = [...(opts.placeholders?.values() ?? [])].filter((p) => json.includes(p.token))
+  const comment = unresolved.length > 0 ? `# Replace the __IAMAI_SETUP_QUESTION_…__ tokens first: ${unresolved.map((p) => p.label).join('; ')}\n` : ''
   return {
     kind: 'create',
     summary: [ACTION.createReportOnly],
     json,
-    portalSteps: portalSteps(body, names),
-    powershell: `Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`,
+    portalSteps: portalSteps(body, names, opts.placeholders),
+    powershell: `${comment}Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`,
   }
+}
+
+/** A tenant-convention name for a policy the plan creates — never the baseline's own name. */
+export function proposedPolicyName(title: string, naming: { prefix: string | null; separator: string | null } | null): string {
+  if (naming?.prefix && naming.separator) return `${naming.prefix}${naming.separator}${title}`
+  return title
 }
 
 function adjustSummary(result: GoalResult): string[] {
@@ -285,6 +319,34 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const q = activeQuestions.find((x) => x.id === id)
     return q ? UNBLOCK.question(questionNumber(id), q.title, q.question.replace(/\?$/, '').toLowerCase()) : UNBLOCK.setup
   }
+  // Unresolved baseline references render as "<role> — Setup question N", never a GUID.
+  const placeholders: Placeholders = new Map()
+  const ROLE_QUESTION: Partial<Record<MappingQuestion['group'], WizardQuestionId>> = {
+    breakGlass: 'breakGlass',
+    globalExclusion: 'globalExclusion',
+    exclusionGroups: 'globalExclusion',
+    namedLocations: 'trustedLocations',
+  }
+  const ROLE_LABEL: Record<MappingQuestion['group'], string> = {
+    breakGlass: 'your break-glass account',
+    globalExclusion: 'your exclusions group',
+    exclusionGroups: 'your exclusions group',
+    personaGroups: 'the pilot group this step creates',
+    namedLocations: 'your trusted location',
+    customStrengths: 'your authentication strength',
+    servicePrincipals: 'the app',
+    placeholders: 'the referenced object',
+  }
+  for (const q of questions) {
+    const r = mapping.records[q.key]
+    if (r && r.resolvedId !== null) continue
+    const qid = ROLE_QUESTION[q.group]
+    const n = qid ? questionNumber(qid) : 0
+    const label = n > 0 ? `${ROLE_LABEL[q.group]} — Setup question ${n}` : ROLE_LABEL[q.group]
+    placeholders.set(q.key, { label, token: setupToken(n, q.group) })
+  }
+  const naming = input.coverage.organisation.naming
+
   const variantNames = new Set(
     input.baseline.variantSets.filter((v) => v.relation === 'variant' && mapping.variantChoices[v.intentKey] === undefined).flatMap((v) => v.policyNames),
   )
@@ -402,7 +464,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             created.group === 'breakGlass' ? bgStepId : created.group === 'namedLocations' ? locStepId : geStepId
           if (steps.some((s) => s.id === pid)) blockByStep(pid, UNBLOCK.createObject)
         }
-        action = buildCreateAction(source.policy, mapping, planId, stepId, input.names)
+        action = buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
+          placeholders,
+          displayName: proposedPolicyName(stepTitle(goal.name), naming),
+        })
         const personas = createdWithinStepKeys(source.policy, mapping).filter((c) => c.group === 'personaGroups')
         for (const p of personas) {
           action.summary.push(ACTION.createsGroup(p.key))
@@ -418,8 +483,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       }
     } else {
       kind = 'adjust'
+      // An adjust step edits the tenant's own policy, so it keeps that policy's name — never the baseline's.
+      const existingName = result.candidates.find((c) => c.contribution !== 'disabled')?.policyName ?? proposedPolicyName(stepTitle(goal.name), naming)
       action = source
-        ? { ...buildCreateAction(source.policy, mapping, planId, stepId, input.names), kind: 'adjust', summary: adjustSummary(result) }
+        ? {
+            ...buildCreateAction(source.policy, mapping, planId, stepId, input.names, { placeholders, displayName: existingName }),
+            kind: 'adjust',
+            summary: adjustSummary(result),
+          }
         : { kind: 'adjust', summary: adjustSummary(result), json: null, portalSteps: [], powershell: null }
     }
 
@@ -449,6 +520,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         unblockNotes.push(label)
       }
       if (blockedBy.length > 0) status = 'blocked'
+    }
+    // Precise blocked sentences (prompt 13 §9): one per cause group.
+    if (status === 'blocked') {
+      const sentences: string[] = []
+      const qNumbers = [...new Set(blockers.filter((b) => b.kind === 'setup').map((b) => (b as { questionNumber: number }).questionNumber))].sort((a, b) => a - b)
+      if (qNumbers.length > 0) sentences.push(BLOCKED.setup(qNumbers))
+      for (const b of blockers) {
+        if (b.kind === 'step') sentences.push(BLOCKED.step(steps.find((s) => s.id === b.stepId)?.title ?? b.stepId))
+        if (b.kind === 'readiness') sentences.push(BLOCKED.readiness(b.label))
+        if (b.kind === 'evidence') sentences.push(BLOCKED.evidence)
+      }
+      unblockNotes.splice(0, unblockNotes.length, ...sentences)
     }
 
     // ---- Redesign extras ----
@@ -494,9 +577,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       impact = notReadyActive > 0 ? IMPACT.mfaNotReady(notReadyActive, pop.active) : IMPACT.mfaAllReady(pop.active)
     else impact = IMPACT.inScope(pop.active)
 
-    const userFacing =
-      status !== 'done' && (readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'device')
-    const comms = userFacing ? COMMS.rollout(tenantName, '{DATE}', readiness.family === 'device') : null
+    // Announcements by goal family (prompt 13 §8); nobody affected → no template.
+    const evidenceUsable = evidence.status === 'ok' || evidence.status === 'partial'
+    const nobodyAffected = evidenceUsable && readiness.family === 'block' && evidence.affectedUserIds.length === 0
+    const comms =
+      status === 'done' ? null : nobodyAffected ? NO_ANNOUNCEMENT : announcementFor(readiness.family, goal.id, tenantName, '{DATE}')
+
+    // Operator evidence sentence (prompt 13 §7) — never a promise.
+    const opEvidence = operatorId !== null ? snapshot.signInEvidence[operatorId] : undefined
+    const operatorNote = includesOperator
+      ? OPERATOR.inScope(
+          evidenceUsable ? (evidence.affectedUserIds.includes(operatorId!) ? 'some' : 0) : null,
+          opEvidence?.signInCount ?? null,
+        )
+      : null
 
     const exitCriteria =
       status === 'done'
@@ -538,6 +632,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       learn: goal.learnUrl ? { url: goal.learnUrl, tldr: goal.tldr ?? '', cis: goal.cis ?? [] } : null,
       includesOperator,
       operatorSafe,
+      operatorNote,
+      operatorWhatIf: null,
+      naming:
+        kind === 'create' && status !== 'done'
+          ? { proposed: proposedPolicyName(stepTitle(goal.name), naming), fromBaseline: source?.facts.name ?? null }
+          : null,
     })
   }
 

@@ -4,13 +4,14 @@ import { COMPONENTS } from '../../copy/components.ts'
 
 const T = COMPONENTS.stepper
 
-export type StepperStatus = 'notStarted' | 'inProgress' | 'done' | 'attention'
+export type StepperStatus = 'notStarted' | 'inProgress' | 'done' | 'attention' | 'provisional'
 
 const CHIP: Record<StepperStatus, { status: ChipStatus; text: string } | null> = {
   notStarted: null,
   inProgress: { status: 'in-progress', text: T.inProgress },
   done: { status: 'done', text: T.done },
   attention: { status: 'warning', text: T.attention },
+  provisional: { status: 'neutral', text: T.provisional },
 }
 
 export type StepperItem = { route: string; label: string; status?: StepperStatus }

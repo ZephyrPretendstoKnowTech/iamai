@@ -29,10 +29,16 @@ export type Suggestion = {
 
 export type Provenance = 'auto' | 'confirmed' | 'overridden'
 
+export type ValidationAction = { label: string; href: string }
+
 export type ValidationResult = {
   checkedAt: string
   passed: boolean
   findings: string[] // plain language; empty when passed with nothing to note
+  /** Aligned with findings: the fix path for each (plan step or portal path). */
+  actions?: (ValidationAction | null)[]
+  /** Findings that need fixing (hard fails) — the "N to fix" count. */
+  toFix?: number
 }
 
 export type MappingRecord = {

@@ -32,6 +32,31 @@ export const PHASE_NAME: Record<number, string> = {
   7: 'Advanced',
 }
 
+/** One precise sentence per blocker group (prompt 13 §9). */
+export const BLOCKED = {
+  setup: (numbers: number[]) =>
+    numbers.length === 1
+      ? `Blocked until Setup question ${numbers[0]} is answered`
+      : `Blocked until Setup questions ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are answered`,
+  step: (title: string) => `Blocked until '${title}' is done`,
+  readiness: (label: string) => `Blocked while ${label}`,
+  evidence: 'Blocked until report-only evidence is clean',
+}
+
+export const OPERATOR = {
+  inScope: (n: number | 'some' | null, total: number | null) =>
+    n === null
+      ? 'Your account is in scope. No sign-in records are available to say how many of your sign-ins would have been affected.'
+      : n === 'some'
+        ? `Your account is in scope. In the last 30 days, some of your ${total ?? ''} sign-ins would have been affected.`.replace('  ', ' ')
+        : `Your account is in scope. In the last 30 days, ${n}${total !== null ? ` of your ${total}` : ''} sign-in${n === 1 ? '' : 's'} would have been affected.`,
+  whatIf: (result: string) => `What If: ${result}`,
+}
+
+export const NAMING = {
+  fromBaseline: (name: string) => `from baseline: ${name}`,
+}
+
 export const BLOCKER = {
   trustedLocation: 'needs the trusted named location first',
   countriesChoice: 'needs the countries policy style chosen',
@@ -233,7 +258,7 @@ export const EVIDENCE = {
   reportOnly: (signIns: number, days: number, failures: number) =>
     `Report-only results: ${count(signIns, 'sign-in')} over ${count(days, 'day')}, ${count(failures, 'failure or interruption', 'failures or interruptions')}.`,
   notSeenYet: 'The created policy has not appeared in sign-in results yet.',
-  none: 'No goal-specific evidence for this step; see readiness.',
+  none: "No sign-ins in the last 30 days matched this policy's conditions.",
   legacyAuth: 'legacy authentication',
   deviceCode: 'the device-code flow',
   authTransfer: 'authentication transfer',

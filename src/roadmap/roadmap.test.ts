@@ -293,7 +293,8 @@ test('10: missing required answer → dependent step blocked with the question n
   ]
   const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
   assert.equal(step.status, 'blocked')
-  assert.match(step.unblockNotes[0], /Blocked until Setup question 2 — Exclusion group/)
+  assert.match(step.unblockNotes[0], /Blocked until Setup question 2 is answered/)
+  assert.equal(step.blockers[0].kind, 'setup')
 })
 
 test('11: unanswered style choice → the variant policy step is blocked by question 6', () => {
@@ -303,7 +304,7 @@ test('11: unanswered style choice → the variant policy step is blocked by ques
   input.baseline.variantSets = [{ intentKey: 'countries', relation: 'variant', policyNames: ['Countries - allow list', 'Countries - block list'] } as never]
   input.baseline.policies = [a, b] as never
   const steps = generateRoadmap(input).steps
-  const blocked = steps.filter((s) => s.status === 'blocked' && s.unblockNotes.some((n) => /Setup question 6 — Style choices/.test(n)))
+  const blocked = steps.filter((s) => s.status === 'blocked' && s.unblockNotes.some((n) => /Setup questions? .*6.* answered/.test(n)))
   assert.ok(blocked.length >= 1)
 })
 

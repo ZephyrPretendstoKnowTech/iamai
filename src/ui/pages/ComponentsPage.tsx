@@ -33,11 +33,32 @@ const FIXTURE_BASELINE: BaselineResult = {
   source: 'synthetic baseline',
   fetchFailures: 0,
   pkg: {
-    policies: [],
+    policies: [
+      {
+        id: 'b-1',
+        displayName: 'ACME - GLOBAL - BLOCK - LegacyAuth - ExludeSvcAccounts',
+        state: 'enabled',
+        conditions: {
+          users: { includeUsers: ['All'], excludeGroups: ['11111111-1111-1111-1111-111111111111'] },
+          applications: { includeApplications: ['All'] },
+          clientAppTypes: ['exchangeActiveSync', 'other'],
+        },
+        grantControls: { operator: 'OR', builtInControls: ['block'] },
+      },
+    ],
     origins: {},
-    report: { considered: 0, parsed: 0, skipped: [], errors: [], duplicates: [], warnings: [] },
-    references: [],
-    groupSignatures: [],
+    report: { considered: 1, parsed: 1, skipped: [], errors: [], duplicates: [], warnings: [] },
+    references: [
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+        kind: 'group',
+        portability: 'tenantSpecific',
+        uses: [{ policyName: 'ACME - GLOBAL - BLOCK - LegacyAuth - ExludeSvcAccounts', side: 'exclude' }],
+      },
+    ],
+    groupSignatures: [
+      { id: '11111111-1111-1111-1111-111111111111', inferredRole: 'globalExclusion', confidence: 'high', evidence: 'excluded from 1 of 1 user-targeting policies, never included' },
+    ],
     variantSets: [{ intentKey: 'countries', relation: 'variant', policyNames: ['Countries - allow list', 'Countries - block list'] }],
     docs: [],
   } as unknown as BaselineResult['pkg'],

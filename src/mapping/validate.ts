@@ -3,15 +3,19 @@
 import type { AuthMethodSummary } from '../scoring/mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { GroupMembersCacheEntry } from '../graph/collect/cache.ts'
-import type { ValidationResult } from './types.ts'
+import type { ValidationAction, ValidationResult } from './types.ts'
+import { absoluteDate } from '../copy/dates.ts'
+import { VALIDATION_ACTION as A } from '../copy/setup.ts'
 
 const GLOBAL_ADMIN = '62e90394-69f5-4237-9190-012177145e10'
 const PHISHING_RESISTANT_KINDS = new Set(['fido2', 'passkey', 'windowsHelloForBusiness'])
 
-const result = (findings: string[], hardFails: number): ValidationResult => ({
+const result = (findings: string[], hardFails: number, actions: (ValidationAction | null)[] = []): ValidationResult => ({
   checkedAt: new Date().toISOString(),
   passed: hardFails === 0,
   findings,
+  actions: findings.map((_, i) => actions[i] ?? null),
+  toFix: hardFails,
 })
 
 export type BreakGlassContext = {
@@ -24,28 +28,32 @@ export type BreakGlassContext = {
 
 export function validateBreakGlass(userId: string, ctx: BreakGlassContext): ValidationResult {
   const findings: string[] = []
+  const actions: (ValidationAction | null)[] = []
   let hard = 0
-  const fail = (msg: string): void => {
+  const fail = (msg: string, action: ValidationAction | null = null): void => {
     findings.push(msg)
+    actions.push(action)
     hard += 1
   }
-  const note = (msg: string): void => {
+  const note = (msg: string, action: ValidationAction | null = null): void => {
     findings.push(msg)
+    actions.push(action)
   }
 
   const user = ctx.snapshot.users.find((u) => u.id === userId)
-  if (!user) return result(['account not found in the tenant snapshot'], 1)
+  if (!user) return result(['account not found in the tenant'], 1)
+  const userPortal = A.userMethods(userId)
 
-  if (user.onPremisesSyncEnabled === true) fail('not cloud-only: the account syncs from on-premises')
-  if (user.accountEnabled === false) fail('the account is disabled')
+  if (user.onPremisesSyncEnabled === true) fail('not cloud-only: the account syncs from on-premises', A.pickAnother)
+  if (user.accountEnabled === false) fail('the account is disabled', A.userProfile(userId))
 
   const active = ctx.snapshot.roles.active[userId] ?? []
   const eligible = ctx.snapshot.roles.eligible[userId] ?? []
   const isActiveGA = active.some((r) => r.toLowerCase() === GLOBAL_ADMIN)
   const isEligibleGA = eligible.some((r) => r.toLowerCase() === GLOBAL_ADMIN)
   if (!isActiveGA) {
-    if (isEligibleGA) fail('Global Administrator is eligible-only — break-glass must hold it permanently active')
-    else fail('not a Global Administrator')
+    if (isEligibleGA) fail('Global Administrator is eligible-only — break-glass must hold it permanently active', A.roles)
+    else fail('not a Global Administrator', A.roles)
   }
 
   // Excluded from every policy, incl. report-only and Microsoft-managed.
@@ -64,23 +72,23 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
     if (!direct && !viaGroup) notExcludedFrom.push(p.displayName ?? '(unnamed)')
   }
   if (notExcludedFrom.length > 0) {
-    fail(`not excluded from every policy — missing from: ${notExcludedFrom.join(', ')}`)
+    fail(`not excluded from every policy — missing from: ${notExcludedFrom.join(', ')}`, A.policies)
   }
 
   // Methods: MFA-capable, phishing-resistant preferred, SMS-only flagged.
   const methods = ctx.snapshot.authMethods[userId]
   if (methods === undefined || methods === 'unknown') {
-    note('registered methods could not be read for this account')
+    note('registered methods could not be read for this account', userPortal)
   } else {
     const kinds = new Set(methods.map((m) => m.kind))
     const mfaKinds = [...kinds].filter((k) => k !== 'password' && k !== 'email' && k !== 'other')
-    if (mfaKinds.length === 0) fail('no MFA-capable method registered')
+    if (mfaKinds.length === 0) fail('no MFA-capable method registered', userPortal)
     else if ([...kinds].some((k) => PHISHING_RESISTANT_KINDS.has(k))) {
       note('phishing-resistant method registered')
     } else if (mfaKinds.every((k) => k === 'phone')) {
-      fail('SMS/voice is the only MFA method — register a FIDO2 key')
+      fail('SMS/voice is the only MFA method — register a FIDO2 key', userPortal)
     } else {
-      note('no phishing-resistant method — a FIDO2 key is preferred for break-glass')
+      note('no phishing-resistant method — a FIDO2 key is preferred for break-glass', userPortal)
     }
     // Shared-device check (SPEC §3.3): Authenticator displayName matching
     // another user's device.
@@ -97,6 +105,7 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
           const other = ctx.snapshot.users.find((u) => u.id === otherId)
           fail(
             `Authenticator device "${clash.displayName}" matches ${other?.displayName ?? 'another user'}'s — shared-device risk`,
+            userPortal,
           )
           break
         }
@@ -105,9 +114,9 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
   }
 
   if (user.lastSuccessfulSignIn !== null) {
-    note(`last successful sign-in ${user.lastSuccessfulSignIn.slice(0, 10)}`)
+    note(`last successful sign-in ${absoluteDate(user.lastSuccessfulSignIn)}`, A.drill)
   } else {
-    note('never signed in — schedule a break-glass drill')
+    note('never signed in — schedule a break-glass drill', A.drill)
   }
 
   // Dynamic-group sweep: any known dynamic group whose members include it.
@@ -117,14 +126,15 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
   if (dynamicHit) {
     fail(
       `swept into dynamic group ${dynamicHit.displayName ?? dynamicHit.groupId} (rule: ${dynamicHit.membershipRule}) — dynamic membership can silently change policy scope`,
+      A.group(dynamicHit.groupId),
     )
   }
 
   if (ctx.confirmedBreakGlassIds.length < 2) {
-    fail('fewer than two break-glass accounts — at least two are required')
+    fail('fewer than two break-glass accounts — at least two are required', A.pickAnother)
   }
 
-  return result(findings, hard)
+  return result(findings, hard, actions)
 }
 
 export function validateExclusionGroup(
@@ -133,15 +143,20 @@ export function validateExclusionGroup(
 ): ValidationResult {
   if (!entry) return result(['group members could not be read'], 1)
   const findings: string[] = []
+  const actions: (ValidationAction | null)[] = []
   let hard = 0
-  findings.push(`${entry.memberCount} member${entry.memberCount === 1 ? '' : 's'}${entry.sampled ? ' (estimated)' : ''}`)
+  const push = (msg: string, action: ValidationAction | null, isFail = false): void => {
+    findings.push(msg)
+    actions.push(action)
+    if (isFail) hard += 1
+  }
+  push(`${entry.memberCount} member${entry.memberCount === 1 ? '' : 's'}${entry.sampled ? ' (estimated)' : ''}`, A.group(entry.groupId))
   const adminIds = entry.memberIds.filter((id) => (ctx.snapshot.roles.active[id] ?? []).length > 0)
   if (adminIds.length > 0) {
-    findings.push(`${adminIds.length} member(s) hold active admin roles — exclusion removes their protection`)
+    push(`${adminIds.length} member(s) hold active admin roles — exclusion removes their protection`, A.group(entry.groupId))
   }
   if (entry.membershipRule !== null) {
-    findings.push(`dynamic membership rule: ${entry.membershipRule} — membership can change without review`)
-    hard += 1
+    push(`dynamic membership rule: ${entry.membershipRule} — membership can change without review`, A.group(entry.groupId), true)
   }
   let excludedFrom = 0
   let enabledCount = 0
@@ -152,34 +167,33 @@ export function validateExclusionGroup(
     if ((p.conditions?.users?.excludeGroups ?? []).includes(entry.groupId)) excludedFrom += 1
   }
   if (enabledCount > 0 && excludedFrom > 0 && excludedFrom < enabledCount) {
-    findings.push(`excluded from ${excludedFrom} of ${enabledCount} enabled policies — inconsistent use`)
+    push(`excluded from ${excludedFrom} of ${enabledCount} enabled policies — inconsistent use`, A.roadmap)
   }
-  return result(findings, hard)
+  return result(findings, hard, actions)
 }
 
 export function validateTrustedLocation(raw: unknown): ValidationResult {
-  const l = raw as { isTrusted?: boolean; ipRanges?: { cidrAddress?: string }[] }
+  const l = raw as { id?: string; isTrusted?: boolean; ipRanges?: { cidrAddress?: string }[] }
   const findings: string[] = []
+  const actions: (ValidationAction | null)[] = []
   let hard = 0
-  if (l.isTrusted !== true) {
-    findings.push('not marked as trusted (isTrusted is unset)')
+  const fail = (msg: string): void => {
+    findings.push(msg)
+    actions.push(A.namedLocations)
     hard += 1
   }
+  if (l.isTrusted !== true) fail('not marked as trusted (isTrusted is unset)')
   for (const range of l.ipRanges ?? []) {
     const cidr = range.cidrAddress
     if (typeof cidr !== 'string') continue
     if (cidr === '0.0.0.0/0' || cidr === '::/0') {
-      findings.push(`${cidr} trusts the entire internet`)
-      hard += 1
+      fail(`${cidr} trusts the entire internet`)
       continue
     }
     const prefix = Number(cidr.split('/')[1])
-    if (Number.isFinite(prefix) && prefix < 16) {
-      findings.push(`${cidr} is wider than /16 — too broad for a trusted location`)
-      hard += 1
-    }
+    if (Number.isFinite(prefix) && prefix < 16) fail(`${cidr} is wider than /16 — too broad for a trusted location`)
   }
-  return result(findings, hard)
+  return result(findings, hard, actions)
 }
 
 export function validateStrength(

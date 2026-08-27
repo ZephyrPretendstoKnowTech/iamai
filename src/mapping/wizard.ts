@@ -181,11 +181,13 @@ export function applyWizardAnswers(state: MappingState, pkg: BaselinePackage): M
   return next
 }
 
-export function wizardProgress(state: MappingState): { answered: number; total: number; complete: boolean } {
+export type WizardProgress = { answered: number; total: number; complete: boolean; requiredMissing: number }
+
+export function wizardProgress(state: MappingState): WizardProgress {
   const required = WIZARD_QUESTIONS.filter((q) => q.required)
   const answered = WIZARD_QUESTIONS.filter((q) => state.wizardAnswered[q.id] === true)
-  const requiredDone = required.every((q) => state.wizardAnswered[q.id] === true)
-  return { answered: answered.length, total: WIZARD_QUESTIONS.length, complete: requiredDone }
+  const requiredMissing = required.filter((q) => state.wizardAnswered[q.id] !== true).length
+  return { answered: answered.length, total: WIZARD_QUESTIONS.length, complete: requiredMissing === 0, requiredMissing }
 }
 
 /** Human-facing question count can shrink: variants only when the baseline has any. */

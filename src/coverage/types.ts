@@ -179,7 +179,14 @@ export type AssumedExclusions = {
 export type OrganisationReport = {
   notInBaseline: { id: string; name: string; state: string }[]
   consolidation: { goalId: string; goalName: string; policyNames: string[] }[]
-  naming: { pattern: string | null; share: number; outliers: string[] }
+  naming: {
+    pattern: string | null
+    share: number
+    outliers: string[]
+    /** The dominant prefix as written ("Core") and its separator (" - "). */
+    prefix: string | null
+    separator: string | null
+  }
   microsoftManaged: { id: string; name: string; state: string }[]
 }
 

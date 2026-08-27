@@ -25,7 +25,9 @@ import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies
 import { ROADMAP as C } from '../../copy/pages.ts'
 import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
 import { roadmapOverview } from '../../copy/statements.ts'
-import { PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
+import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
+import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
+import { planSummary } from '../../roadmap/summary.ts'
 import { DEFAULT_PACE, PACES } from '../../roadmap/constants.ts'
 import type { Pace } from '../../roadmap/constants.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
@@ -246,6 +248,8 @@ export function RoadmapPage({
 
   const { steps, schedule, dangers } = computed
   const nameOf = (id: string) => computed.names.label(id)
+  // One derived summary feeds every tab (prompt 13 §11).
+  const summary = planSummary(steps)
   const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
   const done = steps.filter((s) => s.status === 'done')
   const safe = steps.filter((s) => s.safeToday)
@@ -325,8 +329,8 @@ export function RoadmapPage({
 
   const overviewText = roadmapOverview({
     tenant: tenantName,
-    done: done.length,
-    total: steps.length,
+    done: summary.done,
+    total: summary.total,
     pace: C.paceWord[schedule.pace] ?? schedule.pace,
     finishes: when(schedule.targetEnd),
     weeks: schedule.weeks,
@@ -487,7 +491,7 @@ export function RoadmapPage({
                 })
               }
             >
-              {C.filterCount(STEP_STATUS_LABEL[s], steps.filter((x) => x.status === s).length)}
+              {C.filterCount(STEP_STATUS_LABEL[s], summary.byStatus[s])}
             </FilterChip>
           ))}
         </div>
@@ -531,7 +535,7 @@ export function RoadmapPage({
           { id: 'overview', label: C.tabs.overview, render: overview },
           { id: 'timeline', label: C.tabs.timeline, badge: C.weeksBadge(schedule.weeks), render: timeline },
           { id: 'danger', label: C.tabs.danger, badge: dangers.length || '', render: dangerAreas },
-          { id: 'steps', label: C.tabs.steps, badge: `${done.length}/${steps.length}`, render: stepsView },
+          { id: 'steps', label: C.tabs.steps, badge: `${summary.done}/${summary.total}`, render: stepsView },
         ]}
       />
       <PrintPlan
@@ -678,9 +682,18 @@ function StepCard({
       )}
 
       {step.includesOperator && (
-        <Callout kind={step.operatorSafe ? 'success' : 'danger'}>
-          {C.operatorBefore} <strong>{C.operatorAccount}</strong>. {step.operatorSafe ? C.operatorSafe : C.operatorUnsafe}
+        <Callout kind={step.operatorSafe ? 'info' : 'warning'}>
+          {step.operatorNote}
+          {!step.operatorSafe && ` ${C.operatorUnsafe}`}
+          {step.operatorWhatIf && <div>{OPERATOR.whatIf(step.operatorWhatIf)}</div>}
         </Callout>
+      )}
+
+      {step.naming && (
+        <p>
+          <strong>{C.proposedName}</strong> {step.naming.proposed}
+          {step.naming.fromBaseline && <div className="sub">{NAMING.fromBaseline(step.naming.fromBaseline)}</div>}
+        </p>
       )}
 
       {step.population.total > 0 && (
@@ -750,14 +763,20 @@ function StepCard({
       {step.comms && (
         <>
           <h4>{C.tellPeople}</h4>
-          <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>
-            {step.comms}
-          </pre>
-          <p className="no-print">
-            <Button size="sm" icon="copy" onClick={() => void onCopy(step.id, step.comms!)}>
-              {copied === step.id ? C.copied : C.copyAnnouncement}
-            </Button>
-          </p>
+          {step.comms === NO_ANNOUNCEMENT ? (
+            <p className="reason">{step.comms}</p>
+          ) : (
+            <>
+              <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>
+                {step.comms}
+              </pre>
+              <p className="no-print">
+                <Button size="sm" icon="copy" onClick={() => void onCopy(step.id, step.comms!)}>
+                  {copied === step.id ? C.copied : C.copyAnnouncement}
+                </Button>
+              </p>
+            </>
+          )}
         </>
       )}
 
