@@ -154,6 +154,19 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   }
 }
 
+// Seen = in the app sign-in summary, service-principal activity, or targeted
+// by an existing tenant policy. (No service-principal inventory is collected.)
+function vendorAppSeen(appIds: string[], snapshot: TenantSnapshot, tenantPolicies: unknown[]): boolean {
+  const wanted = new Set(appIds.map((a) => a.toLowerCase()))
+  const rows = [...(snapshot.appSignInSummary as { appId?: string }[]), ...(snapshot.spActivity as { appId?: string }[])]
+  if (rows.some((r) => typeof r.appId === 'string' && wanted.has(r.appId.toLowerCase()))) return true
+  for (const raw of tenantPolicies) {
+    const apps = (raw as { conditions?: { applications?: { includeApplications?: string[] } } }).conditions?.applications?.includeApplications ?? []
+    if (apps.some((a) => wanted.has(String(a).toLowerCase()))) return true
+  }
+  return false
+}
+
 function confirmedExclusions(mapping: NonNullable<CoverageInput['mapping']>): AssumedExclusions {
   return {
     groups: new Map(Object.entries(mapping.exclusionGroups ?? {})),
@@ -182,6 +195,11 @@ function evaluateGoal(
     reasons: [],
     candidates: [],
     floorRaised: null,
+  }
+
+  // Vendor-specific policy (SPEC §7): applies only when the vendor's app is seen.
+  if (goal.vendor && !vendorAppSeen(goal.vendor.appIds, input.snapshot, input.tenantPolicies)) {
+    return { ...base, status: 'not-applicable', statement: notApplicableStatement(goal.name, `the ${goal.vendor.name} app is not present in this tenant`) }
   }
 
   // Applicability facet (§9).

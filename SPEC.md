@@ -120,6 +120,7 @@ Findings about the default source to hand to Jon when ready: one file with a JSO
 - Validator: schema, unresolved references, licence-dependent controls, policy count.
 - Every baseline source must supply the About fields (`author`, `authorUrl`, `repoUrl`, `description`, `goal`, `tiers` on its index/manifest); sources without them show "no description provided".
 - Best path: connect a reference tenant with the same read-only flow → "Export as baseline package" (emits lookup + manifest). How-to page lists the Graph/PowerShell one-liners for manual exports and the accepted tool outputs (idPowerToys, CA Policy Copier, DCToolbox, CIPP templates, Jon's/Kenneth's/Joey's repos).
+- Vendor-specific policies: a baseline policy that targets a third-party app (`data/vendor-apps.json`, starting with Inforcer) carries `vendor` metadata and is not-applicable unless that app is seen in the tenant (sign-in summary, service-principal activity, or an existing policy that targets it). It is shown under Findings → Details → "Does not apply" with the vendor named. The vendor-specific policies in the default baseline are pending review with the baseline author (2026-08-27).
 
 ## 8. Tool deployment
 

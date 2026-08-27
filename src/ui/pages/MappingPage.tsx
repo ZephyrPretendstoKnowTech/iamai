@@ -1,5 +1,6 @@
-// Setup — the 5–9 questions a human actually answers (2026-08-27 redesign).
-// Everything else the baseline references is auto-resolved in wizard.ts.
+// Setup — the 5–9 questions a human actually answers (2026-08-27 redesign,
+// polished in prompt 11). Everything else the baseline references is
+// auto-resolved in wizard.ts.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { getGroupMembers, searchGroups } from '../../graph/collect/onDemand.ts'
@@ -10,17 +11,14 @@ import { docFor } from '../../baseline/index.ts'
 import { loadMappingState, saveMappingState } from '../../mapping/store.ts'
 import { validateBreakGlass, validateExclusionGroup, validateTrustedLocation } from '../../mapping/validate.ts'
 import type { MappingState, ValidationResult } from '../../mapping/types.ts'
-import {
-  activeWizardQuestions,
-  applyAutoResolution,
-  applyWizardAnswers,
-  wizardProgress,
-} from '../../mapping/wizard.ts'
-import type { WizardQuestionDef } from '../../mapping/wizard.ts'
+import { activeWizardQuestions, applyAutoResolution, applyWizardAnswers, wizardProgress } from '../../mapping/wizard.ts'
+import type { WizardQuestionDef, WizardQuestionId } from '../../mapping/wizard.ts'
+import { suggestForWizard } from '../../mapping/wizardSuggest.ts'
+import type { WizardSuggestContext } from '../../mapping/wizardSuggest.ts'
 import { COMMON_TIMEZONES, FRAMEWORK_OPTIONS, SETUP_PAGE as C } from '../../copy/setup.ts'
 import { setDisplayTimeZone } from '../format.ts'
-import { Button, Callout, Card, Chip, ExpandCard, FilterChip, Picker } from '../components/index.ts'
-import type { PickerOption } from '../components/index.ts'
+import { Button, Callout, Card, Chip, Icon, Picker, Toggle } from '../components/index.ts'
+import type { IconName, PickerOption } from '../components/index.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
 import type { BaselineResult } from './BaselinePage.tsx'
 
@@ -49,8 +47,7 @@ export function MappingPage({
     let cancelled = false
     const ids = new Set<string>()
     for (const raw of snapshot.config.caPolicies?.rows ?? []) {
-      const users = (raw as { conditions?: { users?: { includeGroups?: string[]; excludeGroups?: string[] } } })
-        .conditions?.users
+      const users = (raw as { conditions?: { users?: { includeGroups?: string[]; excludeGroups?: string[] } } }).conditions?.users
       for (const g of users?.includeGroups ?? []) ids.add(g)
       for (const g of users?.excludeGroups ?? []) ids.add(g)
     }
@@ -70,10 +67,7 @@ export function MappingPage({
     }
   }, [snapshot])
 
-  const progress = useMemo(
-    () => (state ? wizardProgress(state) : { answered: 0, total: 0, complete: false }),
-    [state],
-  )
+  const progress = useMemo(() => (state ? wizardProgress(state) : { answered: 0, total: 0, complete: false }), [state])
   useEffect(() => onProgress(progress), [progress, onProgress])
   useEffect(() => {
     if (state?.displayTimeZone) setDisplayTimeZone(state.displayTimeZone)
@@ -90,17 +84,20 @@ export function MappingPage({
     })
   }
 
-  const answered = (id: string): void =>
-    update((s) => ({ ...s, wizardAnswered: { ...s.wizardAnswered, [id]: true } }))
+  const answered = (id: string): void => update((s) => ({ ...s, wizardAnswered: { ...s.wizardAnswered, [id]: true } }))
 
   const questions = useMemo(() => activeWizardQuestions(baseline?.pkg ?? null), [baseline])
+  const suggestCtx: WizardSuggestContext | null = useMemo(
+    () => (snapshot ? { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [], knownGroups } : null),
+    [snapshot, knownGroups],
+  )
 
   const needs = [
     { met: baseline !== null, text: baseline !== null ? C.needsBaseline : C.needBaseline, href: '#/baseline' },
     { met: scan !== null, text: scan !== null ? C.needsScan : C.needScan, href: '#/scan' },
   ]
 
-  if (!baseline || !snapshot || !state) {
+  if (!baseline || !snapshot || !state || !suggestCtx) {
     return (
       <StepFrame title={C.title} does={C.does} needs={needs}>
         <Card>
@@ -115,16 +112,17 @@ export function MappingPage({
   }
 
   const autoCount = Object.values(state.records).filter((r) => r.resolvedId !== null || r.doesNotExist).length
+  const requiredLeft = questions.filter((q) => q.required && state.wizardAnswered[q.id] !== true)
 
   return (
     <StepFrame title={C.title} does={C.does} needs={needs} next="coverage" nextLabel={C.next}>
-      <Callout kind={progress.complete ? 'success' : 'info'} title={C.progress(progress.answered, progress.total)}>
-        {progress.complete ? C.complete : C.incomplete}
+      <Callout kind={progress.complete ? 'success' : 'info'} title={C.progress(progress.answered, questions.length, requiredLeft.length)}>
+        {requiredLeft.length > 0 ? C.requiredList(requiredLeft.map((q) => q.title)) : C.complete}
         {autoCount > 0 && <span className="reason"> {C.autoResolved(autoCount)}</span>}
       </Callout>
 
       {questions.map((q, i) => (
-        <WizardCard
+        <QuestionSection
           key={q.id}
           index={i + 1}
           def={q}
@@ -132,6 +130,7 @@ export function MappingPage({
           snapshot={snapshot}
           baseline={baseline}
           knownGroups={knownGroups}
+          suggestCtx={suggestCtx}
           update={update}
           answered={answered}
         />
@@ -140,40 +139,39 @@ export function MappingPage({
   )
 }
 
-// ---------- individual question cards ----------
+// ---------- question sections ----------
 
-function WizardCard(props: {
+type QProps = {
   index: number
   def: WizardQuestionDef
   state: MappingState
   snapshot: TenantSnapshot
   baseline: BaselineResult
   knownGroups: GroupMembersCacheEntry[]
+  suggestCtx: WizardSuggestContext
   update: (mut: (s: MappingState) => MappingState) => void
   answered: (id: string) => void
-}) {
-  const { def, state } = props
+}
+
+function QuestionSection(props: QProps) {
+  const { def, state, index } = props
   const done = state.wizardAnswered[def.id] === true
   return (
-    <ExpandCard
-      className="wizard-card"
-      open={!done}
-      summary={
-        <>
-          <Chip status={done ? 'done' : def.required ? 'warning' : 'neutral'}>{done ? C.answered : def.required ? C.required : C.optional}</Chip>{' '}
-          <strong>
-            {props.index}. {def.question}
-          </strong>
-        </>
-      }
-    >
+    <section className="card setup-question" id={`q-${index}`}>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <span className="muted">{C.questionNumber(index)}</span>
+        <Chip status={done ? 'done' : def.required ? 'warning' : 'neutral'}>{done ? C.answered : def.required ? C.required : C.optional}</Chip>
+      </div>
+      <h3>
+        {index}. {def.question}
+      </h3>
       <p className="reason">{def.help}</p>
       <QuestionBody {...props} />
-    </ExpandCard>
+    </section>
   )
 }
 
-function QuestionBody(props: Parameters<typeof WizardCard>[0]) {
+function QuestionBody(props: QProps) {
   switch (props.def.id) {
     case 'breakGlass':
       return <BreakGlassQuestion {...props} />
@@ -196,22 +194,33 @@ function QuestionBody(props: Parameters<typeof WizardCard>[0]) {
   }
 }
 
+function suggestions(id: WizardQuestionId, ctx: WizardSuggestContext): PickerOption[] {
+  return suggestForWizard(id, ctx).map((s) => ({ id: s.id, name: s.name, secondary: s.secondary, why: s.why }))
+}
+
 function UserMultiPicker({
+  questionId,
   snapshot,
+  suggestCtx,
   selected,
   onChange,
   placeholder,
 }: {
+  questionId: WizardQuestionId
   snapshot: TenantSnapshot
+  suggestCtx: WizardSuggestContext
   selected: string[]
   onChange: (ids: string[]) => void
   placeholder: string
 }) {
   const [query, setQuery] = useState('')
+  const suggested = useMemo(() => suggestions(questionId, suggestCtx), [questionId, suggestCtx])
+  const whyById = useMemo(() => new Map(suggested.map((s) => [s.id, s.why])), [suggested])
   const toOption = (u: TenantSnapshot['users'][number]): PickerOption => ({
     id: u.id,
     name: u.displayName ?? u.userPrincipalName ?? u.id,
     secondary: u.userPrincipalName ?? undefined,
+    why: whyById.get(u.id),
   })
   const options = useMemo(() => {
     const q = query.toLowerCase()
@@ -219,7 +228,8 @@ function UserMultiPicker({
       .filter((u) => (u.displayName ?? '').toLowerCase().includes(q) || (u.userPrincipalName ?? '').toLowerCase().includes(q))
       .slice(0, 8)
       .map(toOption)
-  }, [snapshot, query])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot, query, whyById])
   const selectedOptions = selected.map((id) => {
     const u = snapshot.users.find((x) => x.id === id)
     return u ? toOption(u) : { id, name: id }
@@ -228,6 +238,7 @@ function UserMultiPicker({
     <Picker
       selected={selectedOptions}
       options={options}
+      suggestions={suggested}
       onSearch={setQuery}
       onChange={(next) => onChange(next.map((o) => o.id))}
       placeholder={placeholder}
@@ -236,12 +247,16 @@ function UserMultiPicker({
 }
 
 function GroupPicker({
+  questionId,
+  suggestCtx,
   selected,
   selectedName,
   knownGroups,
   onPick,
   onClear,
 }: {
+  questionId: WizardQuestionId
+  suggestCtx: WizardSuggestContext
   selected: string | null
   selectedName: string | null
   knownGroups: GroupMembersCacheEntry[]
@@ -261,23 +276,23 @@ function GroupPicker({
       void searchGroups(query).then(setRemote).catch(() => setRemote([]))
     }, 300)
   }, [query])
+  const suggested = useMemo(() => suggestions(questionId, suggestCtx), [questionId, suggestCtx])
+  const whyById = new Map(suggested.map((s) => [s.id, s.why]))
   const toOption = (g: GroupMembersCacheEntry): PickerOption => ({
     id: g.groupId,
     name: g.displayName ?? g.groupId,
     secondary: C.members(g.memberCount),
     badge: C.usedInPolicy,
+    why: whyById.get(g.groupId),
   })
   const local = knownGroups.filter((g) => g.displayName !== null && g.displayName.toLowerCase().includes(query.toLowerCase())).map(toOption)
-  const options: PickerOption[] = [
-    ...local,
-    ...remote.filter((r) => !local.some((l) => l.id === r.id)).map((r) => ({ id: r.id, name: r.displayName })),
-  ]
+  const options: PickerOption[] = [...local, ...remote.filter((r) => !local.some((l) => l.id === r.id)).map((r) => ({ id: r.id, name: r.displayName }))]
   return (
     <Picker
       single
       selected={selected !== null ? [{ id: selected, name: selectedName ?? selected }] : []}
       options={options}
-      suggestions={knownGroups.map(toOption)}
+      suggestions={suggested}
       onSearch={setQuery}
       onChange={(next) => {
         const o = next[next.length - 1]
@@ -289,10 +304,10 @@ function GroupPicker({
   )
 }
 
-function ValidationView({ v }: { v: ValidationResult | null }) {
+function ValidationView({ v, name }: { v: ValidationResult | null; name?: string }) {
   if (!v) return null
   return (
-    <Callout kind={v.passed ? 'success' : 'warning'} title={v.passed ? C.checksPassed : C.needsAttention}>
+    <Callout kind={v.passed ? 'success' : 'warning'} title={`${name ? `${name}: ` : ''}${v.passed ? C.checksPassed : C.needsAttention}`}>
       <ul className="sections">
         {v.findings.map((f, i) => (
           <li key={i}>{f}</li>
@@ -302,25 +317,36 @@ function ValidationView({ v }: { v: ValidationResult | null }) {
   )
 }
 
-function BreakGlassQuestion({ state, snapshot, knownGroups, update, answered }: Parameters<typeof WizardCard>[0]) {
+function DoesNotExist({ onClick }: { onClick: () => void }) {
+  return (
+    <p>
+      <Button size="sm" variant="quiet" onClick={onClick}>
+        {C.doesNotExist}
+      </Button>
+    </p>
+  )
+}
+
+function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered }: QProps) {
   const [validations, setValidations] = useState<Record<string, ValidationResult>>({})
   const runValidation = (ids: string[]): void => {
     const tenantPolicies = snapshot.config.caPolicies?.rows ?? []
     const out: Record<string, ValidationResult> = {}
     for (const id of ids) {
-      out[id] = validateBreakGlass(id, {
-        snapshot,
-        tenantPolicies,
-        groupMembers: knownGroups,
-        confirmedBreakGlassIds: ids,
-      })
+      out[id] = validateBreakGlass(id, { snapshot, tenantPolicies, groupMembers: knownGroups, confirmedBreakGlassIds: ids })
     }
     setValidations(out)
   }
+  useEffect(() => {
+    if (state.breakGlassUserIds.length > 0) runValidation(state.breakGlassUserIds)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
     <div>
       <UserMultiPicker
+        questionId="breakGlass"
         snapshot={snapshot}
+        suggestCtx={suggestCtx}
         selected={state.breakGlassUserIds}
         placeholder={C.searchUsers}
         onChange={(ids) => {
@@ -330,47 +356,51 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, update, answered }: 
         }}
       />
       {state.breakGlassUserIds.map((id) => (
-        <div key={id}>
-          <p className="reason">{snapshot.users.find((u) => u.id === id)?.displayName ?? id}:</p>
-          <ValidationView v={validations[id] ?? null} />
-        </div>
+        <ValidationView key={id} name={snapshot.users.find((u) => u.id === id)?.displayName ?? id} v={validations[id] ?? null} />
       ))}
-      <p>
-        <Button
-          size="sm"
-          onClick={() => {
-            update((s) => ({
-              ...s,
-              records: {
-                ...s.records,
-                __breakGlassMissing: {
-                  placeholder: '__breakGlassMissing',
-                  kind: 'user',
-                  group: 'breakGlass',
-                  resolvedId: null,
-                  resolvedName: null,
-                  provenance: 'confirmed',
-                  doesNotExist: true,
-                  validation: null,
-                },
+      <DoesNotExist
+        onClick={() => {
+          update((s) => ({
+            ...s,
+            records: {
+              ...s.records,
+              __breakGlassMissing: {
+                placeholder: '__breakGlassMissing',
+                kind: 'user',
+                group: 'breakGlass',
+                resolvedId: null,
+                resolvedName: null,
+                provenance: 'confirmed',
+                doesNotExist: true,
+                validation: null,
               },
-            }))
-            answered('breakGlass')
-          }}
-        >
-          {C.noBreakGlass}
-        </Button>
-      </p>
+            },
+          }))
+          answered('breakGlass')
+        }}
+      />
     </div>
   )
 }
 
-function GlobalExclusionQuestion({ state, snapshot, knownGroups, update, answered }: Parameters<typeof WizardCard>[0]) {
+function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered }: QProps) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const rec = state.records['__globalExclusion']
+  const validate = (id: string): void => {
+    const entry = knownGroups.find((g) => g.groupId === id) ?? null
+    const ctx = { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [] }
+    if (entry) setValidation(validateExclusionGroup(entry, ctx))
+    else void getGroupMembers(snapshot.tenantId, id).then((g) => setValidation(validateExclusionGroup(g, ctx))).catch(() => setValidation(null))
+  }
+  useEffect(() => {
+    if (rec?.resolvedId) validate(rec.resolvedId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
     <div>
       <GroupPicker
+        questionId="globalExclusion"
+        suggestCtx={suggestCtx}
         selected={rec?.resolvedId ?? null}
         selectedName={rec?.resolvedName ?? null}
         knownGroups={knownGroups}
@@ -386,67 +416,37 @@ function GlobalExclusionQuestion({ state, snapshot, knownGroups, update, answere
             ...s,
             records: {
               ...s.records,
-              __globalExclusion: {
-                placeholder: '__globalExclusion',
-                kind: 'group',
-                group: 'globalExclusion',
-                resolvedId: id,
-                resolvedName: name,
-                provenance: 'confirmed',
-                doesNotExist: false,
-                validation: null,
-              },
+              __globalExclusion: { placeholder: '__globalExclusion', kind: 'group', group: 'globalExclusion', resolvedId: id, resolvedName: name, provenance: 'confirmed', doesNotExist: false, validation: null },
             },
           }))
           answered('globalExclusion')
-          const entry = knownGroups.find((g) => g.groupId === id) ?? null
-          if (entry) {
-            setValidation(validateExclusionGroup(entry, { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [] }))
-          } else {
-            void getGroupMembers(snapshot.tenantId, id)
-              .then((g) =>
-                setValidation(validateExclusionGroup(g, { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [] })),
-              )
-              .catch(() => setValidation(null))
-          }
+          validate(id)
         }}
       />
       <ValidationView v={validation} />
-      <p>
-        <Button
-          size="sm"
-          onClick={() => {
-            update((s) => ({
-              ...s,
-              records: {
-                ...s.records,
-                __globalExclusion: {
-                  placeholder: '__globalExclusion',
-                  kind: 'group',
-                  group: 'globalExclusion',
-                  resolvedId: null,
-                  resolvedName: null,
-                  provenance: 'confirmed',
-                  doesNotExist: true,
-                  validation: null,
-                },
-              },
-            }))
-            answered('globalExclusion')
-          }}
-        >
-          {C.noExclusionGroup}
-        </Button>
-      </p>
+      <DoesNotExist
+        onClick={() => {
+          update((s) => ({
+            ...s,
+            records: {
+              ...s.records,
+              __globalExclusion: { placeholder: '__globalExclusion', kind: 'group', group: 'globalExclusion', resolvedId: null, resolvedName: null, provenance: 'confirmed', doesNotExist: true, validation: null },
+            },
+          }))
+          answered('globalExclusion')
+        }}
+      />
     </div>
   )
 }
 
-function HighCareQuestion({ state, snapshot, update, answered }: Parameters<typeof WizardCard>[0]) {
+function HighCareQuestion({ state, snapshot, suggestCtx, update, answered }: QProps) {
   return (
     <div>
       <UserMultiPicker
+        questionId="highCare"
         snapshot={snapshot}
+        suggestCtx={suggestCtx}
         selected={state.highCareUserIds}
         placeholder={C.searchVips}
         onChange={(ids) => {
@@ -456,7 +456,7 @@ function HighCareQuestion({ state, snapshot, update, answered }: Parameters<type
       />
       {state.highCareUserIds.length > 0 && <p className="reason">{C.careExplained(state.highCareUserIds.length)}</p>}
       <p>
-        <Button size="sm" onClick={() => answered('highCare')}>
+        <Button size="sm" variant="quiet" onClick={() => answered('highCare')}>
           {C.nobodyNeedsCare}
         </Button>
       </p>
@@ -464,55 +464,50 @@ function HighCareQuestion({ state, snapshot, update, answered }: Parameters<type
   )
 }
 
-function TrustedLocationsQuestion({ state, snapshot, update, answered }: Parameters<typeof WizardCard>[0]) {
+function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answered }: QProps) {
   const locations = (snapshot.config.namedLocations?.rows ?? []) as { id?: string; displayName?: string; isTrusted?: boolean }[]
+  const suggested = useMemo(() => suggestions('trustedLocations', suggestCtx), [suggestCtx])
+  const whyById = new Map(suggested.map((s) => [s.id, s.why]))
+  const options: PickerOption[] = locations.map((l) => ({
+    id: String(l.id ?? ''),
+    name: l.displayName ?? String(l.id ?? ''),
+    secondary: l.isTrusted ? C.markedTrusted : C.notMarkedTrusted,
+    why: whyById.get(String(l.id ?? '')),
+  }))
+  const selected = options.filter((o) => state.trustedLocationIds.includes(o.id))
   return (
     <div>
       {locations.length === 0 && <p className="reason">{C.noNamedLocations}</p>}
-      <div className="row">
-        {locations.map((l) => {
-          const id = String(l.id ?? '')
-          const on = state.trustedLocationIds.includes(id)
-          return (
-            <FilterChip
-              key={id}
-              selected={on}
-              title={l.isTrusted ? C.markedTrusted : C.notMarkedTrusted}
-              onToggle={() => {
-                const next = on ? state.trustedLocationIds.filter((x) => x !== id) : [...state.trustedLocationIds, id]
-                update((s) => ({ ...s, trustedLocationIds: next }))
-                answered('trustedLocations')
-              }}
-            >
-              {l.displayName ?? id}
-              {l.isTrusted ? ' ✓' : ''}
-            </FilterChip>
-          )
-        })}
-      </div>
+      <Picker
+        selected={selected}
+        options={options}
+        suggestions={suggested}
+        onChange={(next) => {
+          update((s) => ({ ...s, trustedLocationIds: next.map((o) => o.id) }))
+          answered('trustedLocations')
+        }}
+        placeholder={C.searchLocations}
+      />
       {state.trustedLocationIds.map((id) => {
         const loc = locations.find((l) => String(l.id) === id)
-        return <ValidationView key={id} v={loc ? validateTrustedLocation(loc) : null} />
+        return <ValidationView key={id} name={loc?.displayName ?? id} v={loc ? validateTrustedLocation(loc) : null} />
       })}
-      <p>
-        <Button
-          size="sm"
-          onClick={() => {
-            update((s) => ({ ...s, trustedLocationIds: [] }))
-            answered('trustedLocations')
-          }}
-        >
-          {C.noLocationYet}
-        </Button>
-      </p>
+      <DoesNotExist
+        onClick={() => {
+          update((s) => ({ ...s, trustedLocationIds: [] }))
+          answered('trustedLocations')
+        }}
+      />
     </div>
   )
 }
 
-function ServiceAccountsQuestion({ state, knownGroups, update, answered }: Parameters<typeof WizardCard>[0]) {
+function ServiceAccountsQuestion({ state, knownGroups, suggestCtx, update, answered }: QProps) {
   return (
     <div>
       <GroupPicker
+        questionId="serviceAccounts"
+        suggestCtx={suggestCtx}
         selected={state.serviceAccountsGroupId}
         selectedName={knownGroups.find((g) => g.groupId === state.serviceAccountsGroupId)?.displayName ?? state.serviceAccountsGroupId}
         knownGroups={knownGroups}
@@ -525,6 +520,7 @@ function ServiceAccountsQuestion({ state, knownGroups, update, answered }: Param
       <p>
         <Button
           size="sm"
+          variant="quiet"
           onClick={() => {
             update((s) => ({ ...s, serviceAccountsGroupId: null }))
             answered('serviceAccounts')
@@ -537,7 +533,7 @@ function ServiceAccountsQuestion({ state, knownGroups, update, answered }: Param
   )
 }
 
-function VariantsQuestion({ state, baseline, update, answered }: Parameters<typeof WizardCard>[0]) {
+function VariantsQuestion({ state, baseline, update, answered }: QProps) {
   const sets = baseline.pkg.variantSets.filter((v) => v.relation === 'variant')
   const chosenAll = sets.every((v) => state.variantChoices[v.intentKey] !== undefined)
   useEffect(() => {
@@ -545,7 +541,7 @@ function VariantsQuestion({ state, baseline, update, answered }: Parameters<type
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chosenAll])
   return (
-    <div>
+    <div className="grid-cards">
       {sets.map((v) => (
         <Card key={v.intentKey}>
           {v.policyNames.map((name) => {
@@ -569,7 +565,7 @@ function VariantsQuestion({ state, baseline, update, answered }: Parameters<type
   )
 }
 
-function TimeZoneQuestion({ state, update, answered }: Parameters<typeof WizardCard>[0]) {
+function TimeZoneQuestion({ state, update, answered }: QProps) {
   const browser = Intl.DateTimeFormat().resolvedOptions().timeZone
   const zones = [browser, ...COMMON_TIMEZONES.filter((z) => z !== browser)]
   return (
@@ -591,69 +587,86 @@ function TimeZoneQuestion({ state, update, answered }: Parameters<typeof WizardC
   )
 }
 
-function FrameworksQuestion({ state, update, answered }: Parameters<typeof WizardCard>[0]) {
+function FrameworksQuestion({ state, update, answered }: QProps) {
+  const noneChosen = state.wizardAnswered.frameworks === true && state.frameworks.length === 0
   return (
     <div className="row">
       {FRAMEWORK_OPTIONS.map((f) => {
         const on = state.frameworks.includes(f)
         return (
-          <FilterChip
+          <Button
             key={f}
-            selected={on}
-            onToggle={() => {
+            size="sm"
+            variant={on ? 'primary' : 'secondary'}
+            onClick={() => {
               update((s) => ({ ...s, frameworks: on ? s.frameworks.filter((x) => x !== f) : [...s.frameworks, f] }))
               answered('frameworks')
             }}
           >
             {f}
-          </FilterChip>
+          </Button>
         )
       })}
-      <FilterChip
-        selected={state.wizardAnswered.frameworks === true && state.frameworks.length === 0}
-        onToggle={() => {
+      <Button
+        size="sm"
+        variant={noneChosen ? 'primary' : 'secondary'}
+        onClick={() => {
           update((s) => ({ ...s, frameworks: [] }))
           answered('frameworks')
         }}
       >
         {C.frameworkNone}
-      </FilterChip>
+      </Button>
     </div>
   )
 }
 
-function ApplicabilityQuestion({ state, snapshot, update, answered }: Parameters<typeof WizardCard>[0]) {
+const FACET_ICON: Record<string, IconName> = {
+  avd: 'device',
+  copilot: 'chart',
+  azureDevOps: 'policy',
+  intune: 'device',
+  sharepoint: 'policy',
+  workload: 'key',
+  agents: 'users',
+  azureManagement: 'shield',
+}
+
+function ApplicabilityQuestion({ state, snapshot, update, answered }: QProps) {
   const facets = detectFacets(snapshot, state.facetOverrides as Partial<Record<Facet, { on: boolean; reason: string }>>)
+  const R = C.workloadReason
+  const reasonText = (facet: string, f: { on: boolean; reason: string; source: string }): string => {
+    if (f.source === 'override') return `${f.reason} ${C.yourAnswer}`
+    if (facet === 'intune') return f.on ? R.licence('Intune') : R.noLicence('Intune')
+    if (facet === 'workload') return f.on ? R.licence('Workload Identities Premium') : R.noLicence('Workload Identities Premium')
+    return f.on ? R.seen : R.notSeen
+  }
   return (
     <div>
-      {(Object.entries(facets) as [Facet, (typeof facets)[Facet]][]).map(([facet, f]) => (
-        <p key={facet}>
-          <label>
-            <input
-              type="checkbox"
-              checked={f.on}
-              onChange={(e) => {
-                const on = e.currentTarget.checked
+      <div className="grid-cards">
+        {(Object.entries(facets) as [Facet, (typeof facets)[Facet]][]).map(([facet, f]) => (
+          <Card key={facet} className="workload-card">
+            <Icon name={FACET_ICON[facet] ?? 'policy'} size={24} />
+            <div className="grow">
+              <strong>{C.workloadNames[facet] ?? facet}</strong>
+              <div className="sub">{C.workloadEvidence(C.workloadNames[facet] ?? facet, reasonText(facet, f))}</div>
+            </div>
+            <Toggle
+              on={f.on}
+              label={C.workloadNames[facet] ?? facet}
+              onChange={(on) => {
                 update((s) => ({
                   ...s,
-                  facetOverrides: {
-                    ...s.facetOverrides,
-                    [facet]: { on, reason: on ? C.confirmedByOperator : C.notUsed },
-                  },
+                  facetOverrides: { ...s.facetOverrides, [facet]: { on, reason: on ? C.confirmedByOperator : C.notUsed } },
                 }))
                 answered('applicability')
               }}
-            />{' '}
-            <strong>{facet}</strong>{' '}
-            <span className="reason">
-              — {f.reason}
-              {f.source === 'override' ? ` ${C.yourAnswer}` : ''}
-            </span>
-          </label>
-        </p>
-      ))}
+            />
+          </Card>
+        ))}
+      </div>
       <p>
-        <Button size="sm" variant="primary" onClick={() => answered('applicability')}>
+        <Button variant="primary" onClick={() => answered('applicability')}>
           {C.detectionsRight}
         </Button>
       </p>

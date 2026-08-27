@@ -23,9 +23,24 @@ import {
 } from '../components/index.ts'
 import type { ChipStatus, Column, IconName, PickerOption } from '../components/index.ts'
 import { InventoryPage } from './InventoryPage.tsx'
+import { MappingPage } from './MappingPage.tsx'
+import type { BaselineResult } from './BaselinePage.tsx'
 import { fixtureSnapshot } from './fixtureSnapshot.ts'
 
 const FIXTURE = fixtureSnapshot()
+const FIXTURE_BASELINE: BaselineResult = {
+  source: 'synthetic baseline',
+  fetchFailures: 0,
+  pkg: {
+    policies: [],
+    origins: {},
+    report: { considered: 0, parsed: 0, skipped: [], errors: [], duplicates: [], warnings: [] },
+    references: [],
+    groupSignatures: [],
+    variantSets: [{ intentKey: 'countries', relation: 'variant', policyNames: ['Countries - allow list', 'Countries - block list'] }],
+    docs: [],
+  } as unknown as BaselineResult['pkg'],
+}
 
 const ICONS: IconName[] = [
   'shield', 'user', 'users', 'key', 'device', 'location', 'policy', 'chart', 'check', 'alert',
@@ -191,6 +206,10 @@ export function ComponentsPage() {
             reference={[{ route: 'reads', label: 'What IAMAI reads' }]}
           />
         </div>
+      </Section>
+
+      <Section id="setup" title="Setup (synthetic tenant)">
+        <MappingPage scan={{ snapshot: FIXTURE, at: FIXTURE.asOf }} baseline={FIXTURE_BASELINE} onProgress={() => {}} />
       </Section>
 
       <Section id="inventory" title="Inventory (synthetic tenant)">

@@ -10,7 +10,8 @@ import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingState } from '../mapping/types.ts'
-import { WIZARD_QUESTIONS } from '../mapping/wizard.ts'
+import { activeWizardQuestions } from '../mapping/wizard.ts'
+import type { WizardQuestionId } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { absoluteDate } from '../copy/dates.ts'
@@ -272,7 +273,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   })
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
-  const missingSetup = WIZARD_QUESTIONS.filter((q) => q.required && mapping.wizardAnswered[q.id] !== true)
+  const activeQuestions = activeWizardQuestions(input.baseline)
+  const missingSetup = activeQuestions.filter((q) => q.required && mapping.wizardAnswered[q.id] !== true)
+  const questionNumber = (id: WizardQuestionId): number => activeQuestions.findIndex((q) => q.id === id) + 1
+  const questionNote = (id: WizardQuestionId): string => {
+    const q = activeQuestions.find((x) => x.id === id)
+    return q ? UNBLOCK.question(questionNumber(id), q.title, q.question.replace(/\?$/, '').toLowerCase()) : UNBLOCK.setup
+  }
+  const variantNames = new Set(
+    input.baseline.variantSets.filter((v) => v.relation === 'variant' && mapping.variantChoices[v.intentKey] === undefined).flatMap((v) => v.policyNames),
+  )
   const setupStepId = 's-setup-questions'
   if (missingSetup.length > 0) {
     const p = PREREQ.setupQuestions
@@ -357,11 +367,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'create'
       if (source) {
         for (const key of unmappedKeysUsedBy(source.policy, questions, mapping)) {
-          void key
           if (missingSetup.length > 0 && !blockedBy.includes(setupStepId)) {
+            const group = questions.find((q) => q.key === key)?.group
+            const qid: WizardQuestionId | null =
+              group === 'breakGlass' ? 'breakGlass' : group === 'globalExclusion' || group === 'exclusionGroups' ? 'globalExclusion' : null
             blockedBy.push(setupStepId)
-            unblockNotes.push(UNBLOCK.setup)
+            unblockNotes.push(qid && missingSetup.some((q) => q.id === qid) ? questionNote(qid) : UNBLOCK.setup)
           }
+        }
+        if (variantNames.has(source.facts.name) && !blockedBy.includes(setupStepId)) {
+          blockedBy.push(setupStepId)
+          unblockNotes.push(questionNote('variants'))
         }
         for (const created of createdWithinStepKeys(source.policy, mapping)) {
           if (created.group === 'personaGroups') {

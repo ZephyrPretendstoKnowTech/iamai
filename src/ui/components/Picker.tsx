@@ -11,6 +11,7 @@ export type PickerOption = {
   name: string
   secondary?: string // UPN, member count, type
   badge?: string // inferred role
+  why?: string // "why suggested" line
 }
 
 // Typeahead multi-select over tenant objects. Empty query shows ranked
@@ -122,6 +123,7 @@ export function Picker({
               <span>
                 <span>{o.name}</span>
                 {o.secondary && <div className="picker-option-secondary">{o.secondary}</div>}
+                {o.why && <div className="picker-option-secondary">{o.why}</div>}
               </span>
               {o.badge && <Chip status="neutral">{o.badge}</Chip>}
             </button>
