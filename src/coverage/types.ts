@@ -51,6 +51,8 @@ export type PolicyFacts = {
   } | null
   session: {
     signInFrequencyHours: number | null
+    /** frequencyInterval "everyTime" — reauthenticate on every sign-in. */
+    signInFrequencyEveryTime: boolean
     persistentBrowser: 'always' | 'never' | null
     secureSignInSession: boolean
     cloudAppSecurity: string | null
@@ -69,6 +71,8 @@ export type GrantFloor =
 
 export type SessionFloor = {
   maxSignInFrequencyHours?: number
+  signInFrequencyEveryTime?: boolean
+  appEnforced?: boolean
   persistentBrowserNever?: boolean
   secureSignInSession?: boolean
   anyOf?: boolean

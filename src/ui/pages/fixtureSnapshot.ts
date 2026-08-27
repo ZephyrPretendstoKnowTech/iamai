@@ -39,14 +39,14 @@ export function fixtureSnapshot(): TenantSnapshot {
             id: 'p-1',
             displayName: 'CA001 - Require MFA for all users',
             state: 'enabled',
-            conditions: { users: { includeUsers: ['All'], excludeGroups: ['g-1'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] },
+            conditions: { users: { includeUsers: ['All'], excludeUsers: ['u-4'] },applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] },
             grantControls: { operator: 'OR', builtInControls: ['mfa'] },
           },
           {
             id: 'p-2',
             displayName: 'CA002 - Block legacy authentication',
             state: 'enabledForReportingButNotEnforced',
-            conditions: { users: { includeUsers: ['All'], excludeGroups: ['g-1'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['exchangeActiveSync', 'other'] },
+            conditions: { users: { includeUsers: ['All'], excludeUsers: ['u-4'] },applications: { includeApplications: ['All'] }, clientAppTypes: ['exchangeActiveSync', 'other'] },
             grantControls: { operator: 'OR', builtInControls: ['block'] },
           },
           {

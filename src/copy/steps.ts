@@ -30,7 +30,41 @@ export const PHASE_NAME: Record<number, string> = {
   5: 'Devices',
   6: 'Sessions',
   7: 'Advanced',
-  8: 'From this baseline',
+}
+
+export const BLOCKER = {
+  trustedLocation: 'needs the trusted named location first',
+  countriesChoice: 'needs the countries policy style chosen',
+  deviceReadiness: (percent: number, threshold: number) => `device readiness is ${percent}% — the threshold is ${threshold}%`,
+  evidence: 'report-only evidence is not clean yet',
+}
+
+export const PRINT = {
+  title: (tenant: string) => `Conditional Access rollout plan — ${tenant}`,
+  cover: {
+    baseline: 'Baseline',
+    dates: 'Plan dates',
+    generated: 'Generated',
+    pace: 'Pace',
+    prepared: (by: string) => `Prepared with IAMAI by ${by}`,
+  },
+  contents: 'Contents',
+  summary: 'Summary',
+  timeline: 'Timeline',
+  timelineColumns: { wave: 'Wave', dates: 'Dates', steps: 'Steps' },
+  appendix: 'Appendix — policy JSON',
+  step: {
+    kind: 'Kind',
+    status: 'Status',
+    why: 'Why',
+    who: 'Who is affected',
+    readiness: 'Readiness',
+    change: 'The change',
+    portal: 'Portal steps',
+    exit: 'Done when',
+    rollback: 'If it goes wrong',
+  },
+  runningHeader: (tenant: string, date: string) => `IAMAI plan · ${tenant} · ${date}`,
 }
 
 /** Step titles are the goal name as an imperative — the kind is a chip, never a prefix. */

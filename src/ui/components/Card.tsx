@@ -14,15 +14,17 @@ export function ExpandCard({
   summary,
   open,
   className,
+  id,
   children,
 }: {
   summary: ReactNode
   open?: boolean
   className?: string
+  id?: string
   children: ReactNode
 }) {
   return (
-    <details className={`card ${className ?? ''}`} open={open}>
+    <details className={`card ${className ?? ''}`} open={open} id={id}>
       <summary>{summary}</summary>
       {children}
     </details>

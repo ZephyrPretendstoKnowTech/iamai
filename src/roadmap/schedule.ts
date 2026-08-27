@@ -1,41 +1,45 @@
-// Auto-scheduling (2026-08-27 redesign): the operator picks a start date and
-// every phase gets real calendar dates, scaled by complexity — 2–4 weeks
-// typical, longer only when report-only observation windows demand it. Pure.
-import { EXIT_MIN_DAYS_OBSERVED } from './constants.ts'
+// Pacing model (prompt 12 §A): waves, not phases in series. Day 0 creates
+// every "New policy" step in report-only in one batch; one shared observation
+// window runs for all of them; enforcement then happens in waves that follow
+// the phase order. Done steps consume no time. Blocked steps are scheduled
+// after their blocker resolves, never inside a wave they cannot join. Pure.
+import { PACES } from './constants.ts'
+import type { Pace } from './constants.ts'
 import type { Step } from './types.ts'
-import { SCHEDULE_NOTE } from '../copy/steps.ts'
 
-export const PHASE_BASE_DAYS = 2
-export const DAYS_PER_TWO_STEPS = 1
-export const LARGE_TENANT_ACTIVE_USERS = 500
-export const LARGE_TENANT_EXTRA_DAYS = 3
 export const TARGET_MIN_DAYS = 14
 export const TARGET_TYPICAL_MAX_DAYS = 28
 
-export type PhaseSchedule = {
+export type WaveSchedule = {
+  wave: number // 1..7 = phase 1..7; 0 = day 0 (foundations + report-only creation)
   phase: number
   start: string
   end: string
   days: number
+  stepIds: string[]
   note: string | null
 }
 
 export type Schedule = {
+  pace: Pace
   start: string
   targetEnd: string
   totalDays: number
   weeks: number
   withinTypicalTarget: boolean
-  phases: PhaseSchedule[]
+  observation: { start: string; end: string; days: number }
+  waves: WaveSchedule[]
+  /** step id → the wave it enforces in (0 for day 0 / done). */
+  waveOf: Record<string, number>
 }
 
-function addDays(iso: string, days: number): string {
+export function addDays(iso: string, days: number): string {
   const d = new Date(iso)
-  d.setUTCDate(d.getUTCDate() + days)
+  d.setUTCDate(d.getUTCDate() + Math.round(days))
   return d.toISOString()
 }
 
-function toWeekday(iso: string): string {
+export function toWeekday(iso: string): string {
   const d = new Date(iso)
   const day = d.getUTCDay()
   if (day === 6) return addDays(iso, 2) // Saturday → Monday
@@ -47,50 +51,83 @@ export function nextMonday(fromIso: string): string {
   const d = new Date(fromIso)
   const day = d.getUTCDay()
   const delta = day === 1 ? 7 : (8 - day) % 7 || 7
-  return addDays(fromIso.slice(0, 10) + 'T00:00:00.000Z', delta)
+  // Noon UTC so the calendar day reads the same in every display time zone.
+  return addDays(fromIso.slice(0, 10) + 'T12:00:00.000Z', delta)
 }
 
-// Days a phase needs, from what actually has to happen in it.
-export function phaseDuration(steps: Step[], activeUsers: number): { days: number; note: string | null } {
-  const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
-  if (work.length === 0) return { days: 0, note: SCHEDULE_NOTE.complete }
-  let days = PHASE_BASE_DAYS + Math.ceil(work.length / 2) * DAYS_PER_TWO_STEPS
-  let note: string | null = null
-  const needsObservation = work.some((s) => s.kind === 'create' || s.kind === 'adjust')
-  if (needsObservation) {
-    days += EXIT_MIN_DAYS_OBSERVED
-    note = SCHEDULE_NOTE.observation(EXIT_MIN_DAYS_OBSERVED)
-  }
-  if (activeUsers > LARGE_TENANT_ACTIVE_USERS) {
-    days += LARGE_TENANT_EXTRA_DAYS
-    note = note ? `${note}; ${SCHEDULE_NOTE.largeTenant}` : SCHEDULE_NOTE.largeTenant
-  }
-  return { days, note }
+const isWork = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped'
+
+/** Wave a step naturally enforces in: its phase (0 stays on day 0). */
+function naturalWave(s: Step): number {
+  if (!isWork(s)) return 0
+  if (s.kind === 'prerequisite' || s.kind === 'recurring') return 0
+  return Math.min(7, Math.max(1, s.phase))
 }
 
-export function buildSchedule(steps: Step[], startIso: string, activeUsers: number): Schedule {
-  const phases = [...new Set(steps.map((s) => s.phase))].sort((a, b) => a - b)
-  const out: PhaseSchedule[] = []
-  let cursor = toWeekday(startIso)
-  let totalDays = 0
-  for (const phase of phases) {
-    const inPhase = steps.filter((s) => s.phase === phase)
-    const { days, note } = phaseDuration(inPhase, activeUsers)
-    const start = cursor
-    const end = days === 0 ? cursor : addDays(cursor, days)
-    out.push({ phase, start, end, days, note })
-    if (days > 0) {
-      cursor = toWeekday(end)
-      totalDays += days
+export function buildSchedule(steps: Step[], startIso: string, activeUsers: number, pace: Pace = 'standard'): Schedule {
+  const preset = PACES[pace]
+  const day0 = toWeekday(startIso)
+  const byId = new Map(steps.map((s) => [s.id, s]))
+
+  // Wave assignment: natural wave, then pushed after blockers (iterate to a fixed point).
+  const waveOf: Record<string, number> = {}
+  for (const s of steps) waveOf[s.id] = naturalWave(s)
+  for (let pass = 0; pass < 8; pass += 1) {
+    let changed = false
+    for (const s of steps) {
+      if (!isWork(s)) continue
+      for (const b of s.blockedBy) {
+        const blocker = byId.get(b)
+        if (!blocker || !isWork(blocker)) continue
+        const need = Math.min(7, Math.max(waveOf[s.id], waveOf[b] + 1))
+        if (need !== waveOf[s.id]) {
+          waveOf[s.id] = need
+          changed = true
+        }
+      }
     }
+    if (!changed) break
   }
-  const targetEnd = out.length > 0 ? out[out.length - 1].end : startIso
+
+  const needsObservation = steps.some((s) => isWork(s) && (s.kind === 'create' || s.kind === 'adjust'))
+  const needsVerification = steps.some((s) => isWork(s) && s.kind === 'verify')
+  const obsDays = needsObservation ? preset.observationDays : 0
+  const observation = { start: day0, end: addDays(day0, obsDays), days: obsDays }
+
+  const waves: WaveSchedule[] = []
+  // Wave 0: day 0 — foundations, report-only creation, anything already done.
+  const day0Steps = steps.filter((s) => waveOf[s.id] === 0).map((s) => s.id)
+  waves.push({ wave: 0, phase: 0, start: day0, end: day0, days: 0, stepIds: day0Steps, note: null })
+
+  let cursor = toWeekday(observation.end)
+  let totalDays = obsDays
+  const largeTenant = activeUsers > 500 ? 1 : 0
+  for (let w = 1; w <= 7; w += 1) {
+    const ids = steps.filter((s) => waveOf[s.id] === w).map((s) => s.id)
+    if (ids.length === 0) continue
+    let days = Math.max(1, Math.round(preset.waveGapDays)) + largeTenant
+    let note: string | null = null
+    if (w === 2 && needsVerification) {
+      days += preset.verificationDays
+      note = `includes ${preset.verificationDays} days for the MFA verification campaign`
+    }
+    const start = cursor
+    const end = addDays(start, days)
+    waves.push({ wave: w, phase: w, start, end, days, stepIds: ids, note })
+    cursor = toWeekday(end)
+    totalDays += days
+  }
+
+  const targetEnd = waves.length > 1 ? waves[waves.length - 1].end : day0
   return {
-    start: startIso,
+    pace,
+    start: day0,
     targetEnd,
     totalDays,
     weeks: Math.max(1, Math.round(totalDays / 7)),
     withinTypicalTarget: totalDays >= TARGET_MIN_DAYS ? totalDays <= TARGET_TYPICAL_MAX_DAYS : true,
-    phases: out,
+    observation,
+    waves,
+    waveOf,
   }
 }

@@ -485,8 +485,8 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .lane-safe { border-left: 3px solid var(--success); }
 .danger-high { border-left: 3px solid var(--danger); }
 .danger-medium { border-left: 3px solid var(--warning); }
-.timeline-row { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: var(--space-3); align-items: baseline; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
-.timeline-dates { font-size: var(--text-sm); color: var(--muted); white-space: nowrap; font-family: var(--font-mono); }
+.timeline-row { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: var(--space-3); align-items: baseline; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.timeline-dates { font-size: var(--text-sm); color: var(--muted); font-family: var(--font-mono); }
 .code-block {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -502,14 +502,36 @@ table.datatable tbody tr:hover { background: var(--raised); }
 
 /* ================= print ================= */
 
+.print-plan { display: none; }
+
 @media print {
-  nav.stepper, .topbar button, .devtools, .no-print, .tabs, footer.footer { display: none !important; }
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  nav.stepper, header.topbar, footer.footer, .devtools, .no-print, .tabs { display: none !important; }
+  /* Pages without a dedicated print layout fall back to the screen layout. */
   .step-card > *:not(summary) { display: block !important; }
   .tab-panel { display: block !important; }
   .print-only { display: block; }
-  .phase-group { break-before: page; }
-  .phase-group:first-of-type { break-before: auto; }
   .code-block { white-space: pre-wrap; }
   main.page { max-width: none; padding: 0; }
   .card { box-shadow: none; }
+  /* The Roadmap has a dedicated print document (portalled onto body): hide the app, show it. */
+  body.has-print-plan > #root { display: none !important; }
+  body.has-print-plan > .print-plan { display: block; }
+  body { background: #ffffff; }
+  .print-plan { color: #0f172a; font-size: 11pt; line-height: 1.45; }
+  .print-plan a { color: inherit; text-decoration: none; }
+  .print-running { position: fixed; top: -12mm; left: 0; right: 0; font-size: 9pt; color: #5b6b82; border-bottom: 1px solid #dce3ee; padding-bottom: 2mm; }
+  .print-cover { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; break-after: page; }
+  .print-cover h1 { font-size: 26pt; margin: 0 0 12mm; }
+  .print-cover dl { display: grid; grid-template-columns: 8rem 1fr; gap: 3mm 6mm; }
+  .print-cover dt { color: #5b6b82; }
+  .print-page { break-before: page; }
+  .print-page h2 { font-size: 18pt; margin: 0 0 4mm; border-bottom: 2px solid #0b7f72; padding-bottom: 2mm; }
+  .print-page h3 { font-size: 13pt; margin: 6mm 0 2mm; }
+  .print-page h4 { font-size: 10pt; text-transform: uppercase; letter-spacing: 0.04em; color: #5b6b82; margin: 3mm 0 1mm; }
+  .print-step { break-inside: avoid-page; border-top: 1px solid #dce3ee; padding-top: 3mm; margin-top: 4mm; }
+  .print-json { break-inside: auto; }
+  .print-plan .datatable { width: 100%; border-collapse: collapse; }
+  .print-plan .datatable th, .print-plan .datatable td { border: 1px solid #dce3ee; padding: 2mm; text-align: left; vertical-align: top; font-size: 10pt; }
+  .print-plan .code-block { font-size: 8.5pt; border: 1px solid #dce3ee; background: #f6f8fb; }
 }
