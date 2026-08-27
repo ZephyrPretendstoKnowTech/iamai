@@ -156,7 +156,8 @@ viability scoring), `docs/design/plan-file.md` (plan file schema and
 checkpoints), `docs/design/diagnostics.md` (redacted diagnostics bundle),
 `docs/design/intents.md` (policy → intent compilation and coverage),
 `docs/design/roadmap.md` (step generation, gating, and plan progress),
-`docs/design/ux-review-01.md` (UX review and binding UX rules).
+`docs/design/ux-review-01.md` (UX review and binding UX rules),
+`docs/design/ux-review-02-live.md` (live UX review; prompt 13 fixes).
 Spike findings: `docs/spikes/01-signin-logs.md`. Request history:
 `docs/prompts/`.
 

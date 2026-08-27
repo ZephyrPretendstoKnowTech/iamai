@@ -33,3 +33,4 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `10-scan-inventory.md` | Scan progress bar, inventory sub-pages, info tips, package instructions page | 09 done |
 | `11-setup-polish.md` | Pickers with suggestions and multi-select, frameworks, workload cards, vendor policies, Setup→roadmap consistency | 10 done |
 | `12-roadmap-pacing-print.md` | Wave scheduling and pace presets, dependency gating, classifier fixes, real print layout | 11 done |
+| `13-live-review-fixes.md` | Responsive layout, one stepper status rule, one name per step, Setup section behaviour, names-not-GUIDs in actions, tenant naming convention, announcements by goal family, precise blocked reasons, single derived plan result | 12 done; docs/design/ux-review-02-live.md present |
