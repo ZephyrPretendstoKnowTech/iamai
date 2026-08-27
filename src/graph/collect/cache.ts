@@ -49,12 +49,16 @@ interface IamaiDB extends DBSchema {
     key: string
     value: { tenantId: string } & Record<string, unknown>
   }
+  snapshot: {
+    key: string
+    value: { tenantId: string } & Record<string, unknown>
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<IamaiDB>> | null = null
 
 function db(): Promise<IDBPDatabase<IamaiDB>> {
-  dbPromise ??= openDB<IamaiDB>('iamai', 4, {
+  dbPromise ??= openDB<IamaiDB>('iamai', 5, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         const rows = d.createObjectStore('signin-rows', { keyPath: ['tenantId', 'id'] })
@@ -70,6 +74,9 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
       }
       if (oldVersion < 4) {
         d.createObjectStore('plan', { keyPath: 'tenantId' })
+      }
+      if (oldVersion < 5) {
+        d.createObjectStore('snapshot', { keyPath: 'tenantId' })
       }
     },
   })
@@ -172,9 +179,28 @@ export async function savePlanRecord(tenantId: string, value: Record<string, unk
   }
 }
 
+// The last completed scan, so nobody has to re-scan just to look around.
+export async function loadSnapshotRecord<T>(tenantId: string): Promise<T | null> {
+  try {
+    const d = await db()
+    return ((await d.get('snapshot', tenantId)) as T | undefined) ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function saveSnapshotRecord(tenantId: string, value: Record<string, unknown>): Promise<void> {
+  try {
+    const d = await db()
+    await d.put('snapshot', { ...value, tenantId })
+  } catch {
+    // Cache is an optimization; losing it must never fail the scan.
+  }
+}
+
 export async function forgetTenant(tenantId: string): Promise<void> {
   const d = await db()
-  const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping', 'plan'], 'readwrite')
+  const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping', 'plan', 'snapshot'], 'readwrite')
   for (const storeName of ['signin-rows', 'group-members'] as const) {
     const store = tx.objectStore(storeName)
     let cursor = await store.index('byTenant').openCursor(tenantId)
@@ -186,5 +212,6 @@ export async function forgetTenant(tenantId: string): Promise<void> {
   await tx.objectStore('evidence-meta').delete(tenantId)
   await tx.objectStore('mapping').delete(tenantId)
   await tx.objectStore('plan').delete(tenantId)
+  await tx.objectStore('snapshot').delete(tenantId)
   await tx.done
 }

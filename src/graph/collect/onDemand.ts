@@ -21,6 +21,29 @@ async function msalTokens(): Promise<TokenSource> {
   }
 }
 
+// Resolve leftover GUIDs to display names so the UI never shows a bare id.
+export async function resolveNames(ids: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (ids.length === 0) return out
+  const tokens = await msalTokens()
+  for (let i = 0; i < ids.length; i += 20) {
+    const chunk = ids.slice(i, i + 20)
+    try {
+      const body = await graphRequest(tokens, `${V1}/directoryObjects/getByIds`, {
+        method: 'POST',
+        jsonBody: { ids: chunk },
+      })
+      for (const raw of body.value ?? []) {
+        const o = raw as { id?: string; displayName?: string }
+        if (typeof o.id === 'string' && typeof o.displayName === 'string') out.set(o.id, o.displayName)
+      }
+    } catch {
+      // Unknown ids stay unknown; the UI shows a shortened id instead.
+    }
+  }
+  return out
+}
+
 // Typeahead group search for the Mapping pickers — runs only while the
 // operator types; returns id + displayName.
 export async function searchGroups(query: string): Promise<{ id: string; displayName: string }[]> {

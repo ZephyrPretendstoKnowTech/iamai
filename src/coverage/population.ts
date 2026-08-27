@@ -5,7 +5,10 @@ import { CORE_ADMIN_ROLE_IDS } from './classify.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { PolicyFacts, PopulationSpec, ResolvedPopulation } from './types.ts'
 
-export type GroupMembers = Map<string, { memberIds: string[]; memberCount: number; sampled: boolean }>
+export type GroupMembers = Map<
+  string,
+  { memberIds: string[]; memberCount: number; sampled: boolean; displayName?: string | null }
+>
 
 export function usersWithActiveRole(snapshot: TenantSnapshot, roleTemplateIds: Set<string>): Set<string> {
   const out = new Set<string>()
