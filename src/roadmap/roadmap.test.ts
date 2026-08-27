@@ -266,6 +266,47 @@ test('7: regression after done → re-opened adjust with a note', () => {
   assert.match(step.history.at(-1)?.note ?? '', /changed since/)
 })
 
+test('9: valid break-glass answers → no create-break-glass step; drill depends on their last sign-in', () => {
+  const mapping = emptyMappingState('t')
+  mapping.breakGlassUserIds = ['u1', 'u2']
+  mapping.wizardAnswered = { breakGlass: true, globalExclusion: true, variants: true }
+  const snapshot = mkSnapshot()
+  snapshot.users[1].lastSuccessfulSignIn = '2026-01-01T00:00:00Z' // u1 stale
+  const { input } = build({ baselinePolicies: [mkPolicy({ displayName: 'Baseline MFA All' })], mapping, snapshot })
+  const steps = generateRoadmap(input).steps
+  assert.ok(!steps.some((s) => s.id === 's-prereq-break-glass'))
+  assert.ok(!steps.some((s) => s.id === 's-setup-questions'))
+  const drill = steps.find((s) => s.id === 's-recurring-break-glass-drill')
+  assert.ok(drill)
+  assert.equal(drill.status, 'ready')
+  assert.match(drill.readiness.lines[0], /User 1/)
+})
+
+test('10: missing required answer → dependent step blocked with the question named', () => {
+  const baseline = mkPolicy({
+    displayName: 'Baseline MFA All',
+    conditions: { users: { includeUsers: ['All'], excludeGroups: ['mystery-group'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] },
+  })
+  const { input } = build({ baselinePolicies: [baseline] })
+  input.questions = [
+    { key: 'mystery-group', group: 'globalExclusion', reference: { id: 'mystery-group', kind: 'group', portability: 'tenantSpecific', uses: [] }, usage: [], evidence: null },
+  ]
+  const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
+  assert.equal(step.status, 'blocked')
+  assert.match(step.unblockNotes[0], /Blocked until Setup question 2 — Exclusion group/)
+})
+
+test('11: unanswered style choice → the variant policy step is blocked by question 6', () => {
+  const a = mkPolicy({ displayName: 'Countries - allow list' })
+  const b = mkPolicy({ displayName: 'Countries - block list' })
+  const { input } = build({ baselinePolicies: [a] })
+  input.baseline.variantSets = [{ intentKey: 'countries', relation: 'variant', policyNames: ['Countries - allow list', 'Countries - block list'] } as never]
+  input.baseline.policies = [a, b] as never
+  const steps = generateRoadmap(input).steps
+  const blocked = steps.filter((s) => s.status === 'blocked' && s.unblockNotes.some((n) => /Setup question 6 — Style choices/.test(n)))
+  assert.ok(blocked.length >= 1)
+})
+
 test('8: skipping requires a reason and never "risk accepted"', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
   const { input } = build({ baselinePolicies: [baseline] })

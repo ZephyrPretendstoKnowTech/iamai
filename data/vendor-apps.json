@@ -1,0 +1,10 @@
+{
+  "_comment": "Third-party apps that make a baseline policy vendor-specific (SPEC §7). appIds are public multi-tenant application ids, not tenant data.",
+  "vendors": [
+    {
+      "name": "Inforcer",
+      "appIds": ["708861da-226e-4d65-a57a-24128df64524"],
+      "namePattern": "inforcer"
+    }
+  ]
+}

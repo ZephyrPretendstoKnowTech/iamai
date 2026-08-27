@@ -1,5 +1,6 @@
 // Signature evaluation, ad-hoc goals, floor raising (intents.md §4–§5). Pure.
 import coreAdminRoles from '../../data/core-admin-roles.json' with { type: 'json' }
+import vendorApps from '../../data/vendor-apps.json' with { type: 'json' }
 import { grantFloorRank, satisfiesFloor } from './strength.ts'
 import type { Floor, Goal, PolicyFacts, Signature } from './types.ts'
 
@@ -292,7 +293,22 @@ export function adHocGoal(facts: PolicyFacts): Goal {
     ],
     free: [],
     adHocSource: facts.name,
+    ...(vendorOf(facts) ? { vendor: vendorOf(facts)! } : {}),
   }
+}
+
+type Vendor = { name: string; appIds: string[]; namePattern: string }
+const VENDORS = (vendorApps as { vendors: Vendor[] }).vendors
+
+/** The third-party vendor a policy targets, by app id or policy name (SPEC §7). */
+export function vendorOf(facts: PolicyFacts): { name: string; appIds: string[] } | null {
+  const ids = new Set([...facts.apps.ids].map((a) => a.toLowerCase()))
+  for (const v of VENDORS) {
+    const byId = v.appIds.some((id) => ids.has(id.toLowerCase()))
+    const byName = new RegExp(v.namePattern, 'i').test(facts.name)
+    if (byId || byName) return { name: v.name, appIds: v.appIds }
+  }
+  return null
 }
 
 export { satisfiesFloor }

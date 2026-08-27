@@ -8,7 +8,7 @@ import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { buildQuestions } from '../../mapping/questions.ts'
-import { loadMappingState, toCoverageMapping } from '../../mapping/store.ts'
+import { loadMappingState, saveMappingState, toCoverageMapping } from '../../mapping/store.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
@@ -293,6 +293,11 @@ export function RoadmapPage({
     )
     const start = startDate ?? undefined
     await savePlanRecord(snapshot.tenantId, { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: start })
+    // Setup answers travel with the plan file (provenance intact); re-opening Setup shows them.
+    if (plan.mappings && plan.mappings.tenantId === snapshot.tenantId) {
+      await saveMappingState(plan.mappings)
+      setMapping(plan.mappings)
+    }
     setSaved({ planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: start })
     setVersion((v) => v + 1)
   }

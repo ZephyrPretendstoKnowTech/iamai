@@ -105,6 +105,8 @@ export type Goal = {
   cis?: string[]
   /** Set for ad-hoc goals built from unmatched baseline policies. */
   adHocSource?: string
+  /** Third-party vendor the policy targets (SPEC §7); not-applicable unless the app is seen in the tenant. */
+  vendor?: { name: string; appIds: string[] }
 }
 
 export type ResolvedPopulation = {

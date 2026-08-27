@@ -125,6 +125,7 @@ export const ACTION = {
 
 export const UNBLOCK = {
   setup: 'finish the Setup questions first',
+  question: (n: number, title: string, ask: string) => `Blocked until Setup question ${n} — ${title}: ${ask}`,
   createObject: 'create the missing object first (phase 0)',
   readiness: (percent: number, family: string, threshold: number) =>
     `readiness is ${percent}% — the ${family} threshold is ${threshold}%; verify users first (phase 2)`,

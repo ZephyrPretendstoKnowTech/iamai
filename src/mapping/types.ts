@@ -80,7 +80,7 @@ export function emptyMappingState(tenantId: string): MappingState {
     trustedLocationIds: [],
     serviceAccountsGroupId: null,
     displayTimeZone: null,
-    frameworks: ['CIS Controls v8'],
+    frameworks: [], // nothing pre-selected (prompt 11 §4)
     wizardAnswered: {},
     updatedAt: new Date().toISOString(),
   }
