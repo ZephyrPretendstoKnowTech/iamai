@@ -34,7 +34,13 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-all-users-mfa",
+      "tldr": "Require MFA for all users on all apps - the single highest-value Conditional Access policy.",
+      "cis": [
+        "6.3",
+        "6.4"
+      ]
     },
     {
       "id": "admins-phishing-resistant",
@@ -65,7 +71,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa",
+      "tldr": "Admins are the crown jewels: require passkeys/FIDO2 or certificate auth, not just push approvals.",
+      "cis": [
+        "6.5"
+      ]
     },
     {
       "id": "admin-portals-protected",
@@ -96,7 +107,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-mfa-admin-portals",
+      "tldr": "Gate the Microsoft admin portals behind strong auth.",
+      "cis": [
+        "6.5"
+      ]
     },
     {
       "id": "guests-mfa",
@@ -127,7 +143,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-policy-guest-mfa",
+      "tldr": "External users get MFA too - their home tenant's hygiene is not your control.",
+      "cis": [
+        "6.3"
+      ]
     },
     {
       "id": "register-info-protected",
@@ -158,7 +179,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-registration",
+      "tldr": "Stop attackers registering their own MFA method on a compromised account.",
+      "cis": [
+        "6.3"
+      ]
     },
     {
       "id": "block-legacy-auth",
@@ -191,7 +217,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy",
+      "tldr": "Legacy protocols skip MFA entirely; blocking them closes the biggest password-spray door.",
+      "cis": [
+        "4.8"
+      ]
     },
     {
       "id": "block-device-code",
@@ -222,7 +253,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows",
+      "tldr": "Device-code phishing is a favourite attacker technique; block the flow unless you need it for TVs/kiosks.",
+      "cis": [
+        "4.8"
+      ]
     },
     {
       "id": "block-auth-transfer",
@@ -253,7 +289,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows",
+      "tldr": "Authentication transfer moves a session to another device via QR code - block it unless used.",
+      "cis": [
+        "4.8"
+      ]
     },
     {
       "id": "geo-restriction",
@@ -287,7 +328,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-location",
+      "tldr": "Block sign-ins from countries you never operate in.",
+      "cis": [
+        "6.3"
+      ]
     },
     {
       "id": "admin-session",
@@ -317,7 +363,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
+      "tldr": "Short admin sessions that never persist limit what a stolen admin token is worth.",
+      "cis": [
+        "4.3"
+      ]
     },
     {
       "id": "byod-session-controls",
@@ -353,7 +404,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-policy-app-enforced-restriction",
+      "tldr": "On unmanaged devices, let people read but limit downloads and session lifetime.",
+      "cis": [
+        "4.3"
+      ]
     },
     {
       "id": "require-managed-device",
@@ -386,7 +442,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-compliant-device",
+      "tldr": "Office data only on devices you manage (compliant or domain-joined).",
+      "cis": [
+        "4.1"
+      ]
     },
     {
       "id": "block-unsupported-platforms",
@@ -415,7 +476,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+      "tldr": "If you only support Windows/iOS/Android/macOS, block everything else.",
+      "cis": [
+        "4.1"
+      ]
     },
     {
       "id": "mobile-app-protection",
@@ -444,7 +510,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-policy-approved-app-or-app-protection",
+      "tldr": "On phones, require approved apps with app-protection policies so company data stays contained.",
+      "cis": [
+        "4.1"
+      ]
     },
     {
       "id": "sign-in-risk",
@@ -475,7 +546,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/id-protection/howto-identity-protection-configure-risk-policies",
+      "tldr": "When Microsoft says a sign-in looks risky, demand MFA or block it automatically.",
+      "cis": [
+        "13.1"
+      ]
     },
     {
       "id": "user-risk",
@@ -506,7 +582,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/id-protection/howto-identity-protection-configure-risk-policies",
+      "tldr": "A likely-compromised account must change its password through a secured flow.",
+      "cis": [
+        "13.1"
+      ]
     },
     {
       "id": "azure-management-mfa",
@@ -540,7 +621,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-azure-management",
+      "tldr": "The Azure control plane deserves its own strong-auth gate.",
+      "cis": [
+        "6.5"
+      ]
     },
     {
       "id": "device-registration-mfa",
@@ -571,7 +657,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+      "tldr": "Joining or registering a device should itself require MFA.",
+      "cis": [
+        "6.3"
+      ]
     },
     {
       "id": "token-protection",
@@ -603,7 +694,12 @@
           ]
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-token-protection",
+      "tldr": "Bind Windows sign-in tokens to the device so stolen tokens are useless elsewhere.",
+      "cis": [
+        "4.3"
+      ]
     },
     {
       "id": "workload-identity-block",
@@ -629,7 +725,12 @@
           "allowedExclusions": []
         }
       ],
-      "free": []
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity",
+      "tldr": "Service principals can be scoped and risk-gated too (Workload ID Premium).",
+      "cis": [
+        "5.4"
+      ]
     }
   ]
 }

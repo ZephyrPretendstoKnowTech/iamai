@@ -98,6 +98,11 @@ export type Goal = {
   applicability: string | null
   implementations: Implementation[]
   free: unknown[]
+  /** Microsoft Learn reference with a one-line summary, for every step/finding. */
+  learnUrl?: string
+  tldr?: string
+  /** Related CIS Controls v8 safeguard ids. */
+  cis?: string[]
   /** Set for ad-hoc goals built from unmatched baseline policies. */
   adHocSource?: string
 }

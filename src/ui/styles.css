@@ -439,6 +439,90 @@ button.chip {
   font-size: var(--text-sm);
 }
 
+/* ---- section tabs ---- */
+
+.section-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  margin: 0 0 var(--space-4) 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.section-tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
+}
+
+.section-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.section-tab .badge {
+  margin-left: var(--space-2);
+}
+
+.section-panel {
+  display: none;
+}
+
+.section-panel.active {
+  display: block;
+}
+
+.print-only {
+  display: none;
+}
+
+/* ---- advisor voice ---- */
+
+.advisor {
+  font-size: var(--text-md);
+  line-height: 1.6;
+  max-width: 62rem;
+}
+
+.advisor p {
+  margin: 0 0 var(--space-3) 0;
+}
+
+.lane-safe {
+  border-left: 3px solid var(--success);
+}
+
+.danger-high {
+  border-left: 3px solid var(--danger);
+}
+
+.danger-medium {
+  border-left: 3px solid var(--warning);
+}
+
+.timeline-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline-dates {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .code-block {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -461,6 +545,12 @@ button.chip {
   }
   .step-card > *:not(summary) {
     display: block !important;
+  }
+  .section-panel {
+    display: block !important;
+  }
+  .print-only {
+    display: block;
   }
   .phase-group {
     break-before: page;
