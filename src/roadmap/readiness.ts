@@ -2,6 +2,7 @@
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Readiness } from './types.ts'
+import { READINESS } from '../copy/steps.ts'
 
 const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected', 'sign-in-risk', 'user-risk'])
 const ADMIN_GOALS = new Set(['admins-phishing-resistant', 'admin-session'])
@@ -36,10 +37,16 @@ export function readinessFor(
     const good = active.filter((v) => v.mfa === 'verified' || v.mfa === 'likelyViable').length
     const percent = active.length > 0 ? Math.round((good / active.length) * 100) : 0
     const lines = [
-      `${count('verified')} verified, ${count('likelyViable')} likely viable, ${count('notChallenged')} not challenged, ${count('unverified')} unverified, ${count('none')} without a method`,
-      `${percent}% of ${active.length} active user(s) ready`,
+      READINESS.mfaCounts({
+        verified: count('verified'),
+        likelyViable: count('likelyViable'),
+        notChallenged: count('notChallenged'),
+        unverified: count('unverified'),
+        none: count('none'),
+      }),
+      READINESS.mfaReady(percent, active.length),
     ]
-    if (family === 'guest') lines.push(`${active.length} active guest(s) in the window`)
+    if (family === 'guest') lines.push(READINESS.guests(active.length))
     return { family, percent, lines }
   }
   if (family === 'admin') {
@@ -48,8 +55,8 @@ export function readinessFor(
     const eligibleOnly = Object.entries(snapshot.roles.eligible).filter(
       ([id]) => !(id in snapshot.roles.active) && pop.has(id),
     ).length
-    const lines = [`${withPr} of ${rows.length} admin(s) hold a phishing-resistant method`]
-    if (eligibleOnly > 0) lines.push(`${eligibleOnly} eligible-only admin(s) out of scope until activation`)
+    const lines = [READINESS.adminsPr(withPr, rows.length)]
+    if (eligibleOnly > 0) lines.push(READINESS.eligibleOnly(eligibleOnly))
     return { family, percent, lines }
   }
   if (family === 'device') {
@@ -57,17 +64,13 @@ export function readinessFor(
     const members = active.filter((v) => pop.has(v.userId)).length
     const withDevice = [...pop].filter((id) => owners.has(id)).length
     const percent = members > 0 ? Math.round((withDevice / members) * 100) : 0
-    return {
-      family,
-      percent,
-      lines: [`${withDevice} of ${members} active member(s) own a compliant device`],
-    }
+    return { family, percent, lines: [READINESS.devices(withDevice, members)] }
   }
-  if (family === 'block' ) {
-    return { family, percent: null, lines: ['readiness is evidence — see the blast radius below'] }
+  if (family === 'block') {
+    return { family, percent: null, lines: [READINESS.block] }
   }
   if (family === 'location') {
-    return { family, percent: null, lines: ['compare countries seen in the sign-in window with the allowed list'] }
+    return { family, percent: null, lines: [READINESS.location] }
   }
   return { family, percent: null, lines: [] }
 }

@@ -13,8 +13,13 @@ import type { MappingQuestion, MappingState } from '../mapping/types.ts'
 import { WIZARD_QUESTIONS } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
+import { absoluteDate } from '../copy/dates.ts'
+import { ACTION, CARE, COMMS, EXIT, IMPACT, PREREQ, ROLLBACK, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import {
   BREAK_GLASS_DRILL_DAYS,
+  EXIT_MIN_DAYS_OBSERVED,
+  EXIT_MIN_SIGNINS_ABSOLUTE,
+  EXIT_SIGNINS_PER_ACTIVE_USER,
   READINESS_THRESHOLD_ADMINS_PERCENT,
   READINESS_THRESHOLD_DEVICES_PERCENT,
   READINESS_THRESHOLD_MFA_PERCENT,
@@ -44,26 +49,6 @@ export type RoadmapInput = {
 }
 
 export type RoadmapResult = { steps: Step[]; schedule: Schedule }
-
-const PREREQ_HOWTO: Record<string, string[]> = {
-  breakGlass: [
-    'Create two cloud-only accounts (no on-premises sync) with long random passwords stored offline.',
-    'Assign Global Administrator as a permanent active assignment (not PIM-eligible).',
-    'Register a FIDO2 security key on each; never SMS-only.',
-    'Add them to the exclusions group, then answer the Setup question so I can validate them.',
-  ],
-  globalExclusion: [
-    'Entra admin center → Groups → New group → Security, assigned membership (never dynamic).',
-    'Name it clearly, e.g. "CA - Policy Exclusions".',
-    'Add only the break-glass accounts.',
-    'Then answer the Setup question so I bind every policy to it.',
-  ],
-  trustedLocations: [
-    'Entra admin center → Protection → Conditional Access → Named locations → + IP ranges location.',
-    'Add your egress ranges (never 0.0.0.0/0, nothing wider than /16) and mark as trusted.',
-    'Then answer the Setup question.',
-  ],
-}
 
 const EXTRAS: Pick<
   Step,
@@ -227,7 +212,7 @@ export function buildCreateAction(
   const fileName = `${stepId}.json`
   return {
     kind: 'create',
-    summary: ['Create this policy in report-only mode; the description tag lets re-scans track it.'],
+    summary: [ACTION.createReportOnly],
     json,
     portalSteps: portalSteps(body, names),
     powershell: `Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`,
@@ -237,15 +222,15 @@ export function buildCreateAction(
 function adjustSummary(result: GoalResult): string[] {
   const out: string[] = []
   for (const r of result.reasons) {
-    if (r.kind === 'weaker-control') out.push(`Raise the grant control: ${r.detail}.`)
-    if (r.kind === 'session-weaker') out.push(`Tighten the session controls: ${r.detail}.`)
-    if (r.kind === 'excluded' && !r.expected) out.push(`Review the exclusion (${r.detail}) — remove it or confirm it in Setup.`)
-    if (r.kind === 'not-targeted') out.push(`Extend the include scope: ${r.userIds.length} expected user(s) are never targeted.`)
-    if (r.kind === 'apps-narrower') out.push('Broaden the target resources to all apps (currently narrower than the goal).')
-    if (r.kind === 'report-only') out.push('The covering policy is report-only — move it to enforced once evidence is clean.')
+    if (r.kind === 'weaker-control') out.push(ACTION.raiseGrant(r.detail))
+    if (r.kind === 'session-weaker') out.push(ACTION.tightenSession(r.detail))
+    if (r.kind === 'excluded' && !r.expected) out.push(ACTION.reviewExclusion(r.detail))
+    if (r.kind === 'not-targeted') out.push(ACTION.extendScope(r.userIds.length))
+    if (r.kind === 'apps-narrower') out.push(ACTION.broadenApps)
+    if (r.kind === 'report-only') out.push(ACTION.moveToEnforced)
   }
-  if (result.floorRaised) out.push(`The baseline raises the bar to ${result.floorRaised.to} (via ${result.floorRaised.by}).`)
-  if (out.length === 0) out.push('Bring the covering policies up to the goal floor.')
+  if (result.floorRaised) out.push(ACTION.floorRaised(result.floorRaised.to, result.floorRaised.by))
+  if (out.length === 0) out.push(ACTION.bringToFloor)
   return out
 }
 
@@ -280,7 +265,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
     action: { kind: 'prerequisite', summary, json: null, portalSteps: [], powershell: null },
     exitCriteria: exit,
-    rollback: 'Nothing destructive here — objects created can simply be deleted.',
+    rollback: ROLLBACK.prerequisite,
     history: [],
     skipReason: null,
     ...EXTRAS,
@@ -290,45 +275,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const missingSetup = WIZARD_QUESTIONS.filter((q) => q.required && mapping.wizardAnswered[q.id] !== true)
   const setupStepId = 's-setup-questions'
   if (missingSetup.length > 0) {
-    steps.push(
-      prereq(
-        setupStepId,
-        `Answer ${missingSetup.length} setup question${missingSetup.length === 1 ? '' : 's'}`,
-        'A few answers about your tenant let me generate exact, safe policy changes instead of templates.',
-        [
-          `Open the Setup step and answer: ${missingSetup.map((q) => q.title).join(', ')}.`,
-          'Each takes under a minute; I validate every pick.',
-        ],
-        ['Every required Setup question answered.'],
-      ),
-    )
+    const p = PREREQ.setupQuestions
+    steps.push(prereq(setupStepId, p.title(missingSetup.length), p.why, p.how(missingSetup.map((q) => q.title)), p.exit))
   }
 
   const bgMissing = mapping.records['__breakGlassMissing']?.doesNotExist === true
   const bgStepId = 's-prereq-break-glass'
   if (bgMissing) {
-    steps.push(
-      prereq(
-        bgStepId,
-        'Create two break-glass accounts',
-        'Emergency access that works when everything else fails — the non-negotiable first move of any lockout-proof rollout.',
-        PREREQ_HOWTO.breakGlass,
-        ['Two accounts exist, validated by the Setup question.'],
-      ),
-    )
+    const p = PREREQ.breakGlass
+    steps.push(prereq(bgStepId, p.title, p.why, p.how, p.exit))
   }
   const geMissing = mapping.records['__globalExclusion']?.doesNotExist === true
   const geStepId = 's-prereq-exclusion-group'
   if (geMissing) {
-    steps.push(
-      prereq(
-        geStepId,
-        'Create the policy exclusions group',
-        'One assigned group, containing only break-glass, excluded from every policy I create — a single, auditable escape hatch.',
-        PREREQ_HOWTO.globalExclusion,
-        ['The group exists and is picked in Setup.'],
-      ),
-    )
+    const p = PREREQ.globalExclusion
+    steps.push(prereq(geStepId, p.title, p.why, p.how, p.exit))
   }
   const locMissing =
     mapping.wizardAnswered.trustedLocations === true &&
@@ -336,31 +297,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     questions.some((q) => q.group === 'namedLocations')
   const locStepId = 's-prereq-trusted-location'
   if (locMissing) {
-    steps.push(
-      prereq(
-        locStepId,
-        'Create a trusted named location',
-        'Some baseline policies treat your office network as a safe context; that needs a named location.',
-        PREREQ_HOWTO.trustedLocations,
-        ['A trusted location exists and is picked in Setup.'],
-      ),
-    )
+    const p = PREREQ.trustedLocation
+    steps.push(prereq(locStepId, p.title, p.why, p.how, p.exit))
   }
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
   if (secDefaults?.isEnabled === true) {
-    steps.push(
-      prereq(
-        's-prereq-security-defaults',
-        'Turn off security defaults',
-        'Security defaults and Conditional Access are mutually exclusive; the first policy cannot exist while they are on.',
-        [
-          'Entra admin center → Identity → Overview → Properties → Manage security defaults → Disabled.',
-          'Do this only when the phase 1–2 policies are ready to take over.',
-        ],
-        ['Security defaults report disabled on the next scan.'],
-      ),
-    )
+    const p = PREREQ.securityDefaults
+    steps.push(prereq('s-prereq-security-defaults', p.title, p.why, p.how, p.exit))
   }
 
   // ---- Goal steps ----
@@ -404,7 +348,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       status = 'done'
       action = {
         kind: 'create',
-        summary: ["Already delivered by the tenant's existing policies — nothing to do."],
+        summary: [ACTION.alreadyDelivered],
         json: null,
         portalSteps: [],
         powershell: null,
@@ -416,7 +360,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           void key
           if (missingSetup.length > 0 && !blockedBy.includes(setupStepId)) {
             blockedBy.push(setupStepId)
-            unblockNotes.push('finish the Setup questions first')
+            unblockNotes.push(UNBLOCK.setup)
           }
         }
         for (const created of createdWithinStepKeys(source.policy, mapping)) {
@@ -428,20 +372,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             created.group === 'breakGlass' ? bgStepId : created.group === 'namedLocations' ? locStepId : geStepId
           if (steps.some((s) => s.id === pid) && !blockedBy.includes(pid)) {
             blockedBy.push(pid)
-            unblockNotes.push(`create the missing object first (phase 0)`)
+            unblockNotes.push(UNBLOCK.createObject)
           }
         }
         action = buildCreateAction(source.policy, mapping, planId, stepId, input.names)
         const personas = createdWithinStepKeys(source.policy, mapping).filter((c) => c.group === 'personaGroups')
         for (const p of personas) {
-          action.summary.push(
-            `This step also creates the assigned group "${p.key}" it targets — create it empty first, pilot users go in later.`,
-          )
+          action.summary.push(ACTION.createsGroup(p.key))
         }
       } else {
         action = {
           kind: 'create',
-          summary: ['No baseline policy matches this goal directly — create a policy meeting the goal floor.'],
+          summary: [ACTION.noBaselineMatch],
           json: null,
           portalSteps: [],
           powershell: null,
@@ -466,9 +408,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               : null
       if (threshold !== null && readiness.percent !== null && readiness.percent < threshold) {
         status = 'blocked'
-        unblockNotes.push(
-          `readiness is ${readiness.percent}% — the ${readiness.family} threshold is ${threshold}%; verify users first (phase 2)`,
-        )
+        unblockNotes.push(UNBLOCK.readiness(readiness.percent, readiness.family, threshold))
       }
       if (blockedBy.length > 0) status = 'blocked'
     }
@@ -482,16 +422,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const ok = v !== undefined && (v.mfa === 'verified' || v.mfa === 'likelyViable')
       if (!ok) {
         careReady = false
-        careNotes.push(
-          `${nameOf(id)} — ${v?.mfa === 'none' ? 'no MFA method yet: issue a Temporary Access Pass and set up Authenticator together' : 'not verified yet: have them complete one MFA sign-in before this is enforced'}`,
-        )
+        careNotes.push(v?.mfa === 'none' ? CARE.noMethod(nameOf(id)) : CARE.unverified(nameOf(id)))
       }
     }
-    if (care.length > 0) {
-      careNotes.unshift(
-        `Rollout order for this step: pilot → everyone else → these ${care.length} user(s) last, after the approach is proven.`,
-      )
-    }
+    if (care.length > 0) careNotes.unshift(CARE.order(care.length))
 
     const includesOperator = operatorId !== null && popIds.includes(operatorId)
     const opV = operatorId !== null ? viabilityById.get(operatorId) : undefined
@@ -510,44 +444,33 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         return v !== undefined && v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')
       }).length
 
+    void floorGrant
     let impact: string
-    if (status === 'done') impact = 'Already in force — no change for anyone.'
+    if (status === 'done') impact = IMPACT.done
     else if (readiness.family === 'block')
-      impact = zeroUsage
-        ? 'Zero sign-ins would have been affected in the last 30 days — free security.'
-        : `${evidence.affectedUserIds.length} user(s) used this in the last 30 days and would be affected — contact them first.`
+      impact = zeroUsage ? IMPACT.blockZero : IMPACT.blockSome(evidence.affectedUserIds.length)
     else if (kind === 'adjust') {
-      const affected = new Set(result.reasons.flatMap((r) => r.userIds)).size
-      impact = `${affected} user(s) see a change; nobody new is targeted.`
+      const affectedIds = new Set(result.reasons.flatMap((r) => r.userIds))
+      const affectedAdmins = [...affectedIds].filter((id) => (snapshot.roles.active[id] ?? []).length > 0).length
+      impact = IMPACT.adjust(affectedIds.size, affectedAdmins)
     } else if (readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'admin')
-      impact =
-        notReadyActive > 0
-          ? `${notReadyActive} of ${pop.active} active user(s) aren't verified yet — they'd be interrupted at their next sign-in.`
-          : `All ${pop.active} active user(s) are ready — enforcement should be a non-event.`
-    else impact = `${pop.active} active user(s) in scope.`
+      impact = notReadyActive > 0 ? IMPACT.mfaNotReady(notReadyActive, pop.active) : IMPACT.mfaAllReady(pop.active)
+    else impact = IMPACT.inScope(pop.active)
 
     const userFacing =
       status !== 'done' && (readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'device')
-    const comms = userFacing
-      ? `Hi everyone — from {DATE}, ${tenantName} is stepping up sign-in security. ${
-          readiness.family === 'device'
-            ? 'Access to company data will require a company-managed device.'
-            : 'You may be asked to confirm sign-ins with Microsoft Authenticator.'
-        } It takes about two minutes to get ready: go to https://aka.ms/mfasetup and add ${
-          readiness.family === 'device' ? 'your work account' : 'Microsoft Authenticator'
-        }. Questions or trouble? Reply here and we'll help before the change lands. — IT`
-      : null
+    const comms = userFacing ? COMMS.rollout(tenantName, '{DATE}', readiness.family === 'device') : null
 
     const exitCriteria =
       status === 'done'
-        ? ['Stays enforced on every re-scan.']
+        ? [EXIT.staysEnforced]
         : [
-            'Policy live in report-only for at least 7 days.',
-            'At least 1 sign-in per active user in the population (or 500 total).',
-            'Zero report-only failures or interruptions.',
-            ...(care.length > 0 ? [`Every handle-with-care user in scope is verified (${care.length} to check).`] : []),
-            ...(includesOperator ? ['Your own account has a strong method registered — I check this.'] : []),
-            'Then enable the policy (Enforce).',
+            EXIT.reportOnlyDays(EXIT_MIN_DAYS_OBSERVED),
+            EXIT.signIns(EXIT_SIGNINS_PER_ACTIVE_USER, EXIT_MIN_SIGNINS_ABSOLUTE),
+            EXIT.zeroFailures,
+            ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []),
+            ...(includesOperator ? [EXIT.operatorStrong] : []),
+            EXIT.thenEnforce,
           ]
 
     steps.push({
@@ -555,8 +478,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       goalId: goal.id,
       phase: goal.phase,
       kind,
-      title:
-        kind === 'adjust' ? `Adjust: ${goal.name}` : status === 'done' ? goal.name : `${floorGrant === 'block' ? 'Block' : 'Create'}: ${goal.name}`,
+      title: stepTitle(goal.name),
       why,
       whyAttribution,
       status,
@@ -567,10 +489,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       evidence,
       action,
       exitCriteria,
-      rollback:
-        kind === 'adjust'
-          ? 'Revert the changed fields to their previous values; the previous body is in the policy history.'
-          : 'Switch the policy back to report-only (or delete it); nothing else changes.',
+      rollback: kind === 'adjust' ? ROLLBACK.adjust : ROLLBACK.create,
       history: [],
       skipReason: null,
       ...EXTRAS,
@@ -591,27 +510,28 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     for (const v of viability) counts.set(v.mfa, (counts.get(v.mfa) ?? 0) + 1)
     const departments = new Set(snapshot.users.map((u) => u.department).filter(Boolean))
     const careList = [...highCareIds].map(nameOf)
+    const p = PREREQ.verifyMfa
     steps.push({
       ...prereq(
         's-verify-mfa',
-        'Run the MFA verification campaign',
-        'Before MFA is enforced, every active user should have a working, verified method — enforcement should be a non-event.',
-        [
-          `Work the Readiness table top-down: ${counts.get('none') ?? 0} without a method (issue Temporary Access Passes), ${counts.get('unverified') ?? 0} unverified, ${counts.get('notChallenged') ?? 0} never challenged.`,
-          ...(careList.length > 0 ? [`Personally walk through setup with: ${careList.join(', ')} — never an email blast for them.`] : []),
-          departments.size > 1
-            ? `Pilot suggestion: Verified/Likely-viable users across the ${departments.size} departments, one admin, never break-glass or handle-with-care.`
-            : 'Pilot suggestion: a handful of Verified users plus one admin; never break-glass or handle-with-care.',
-        ],
-        [`Readiness reaches ${READINESS_THRESHOLD_MFA_PERCENT}% of active users.`],
+        p.title,
+        p.why,
+        p.how(
+          { none: counts.get('none') ?? 0, unverified: counts.get('unverified') ?? 0, notChallenged: counts.get('notChallenged') ?? 0 },
+          careList,
+          departments.size,
+        ),
+        p.exit(READINESS_THRESHOLD_MFA_PERCENT),
       ),
       phase: 2,
       kind: 'verify',
       goalId: 'mfa-all-users',
       population: population(viability.map((v) => v.userId), snapshot, viability),
       readiness: readinessFor('mfa-all-users', viability.map((v) => v.userId), viability, snapshot),
-      comms: `Hi everyone — over the next two weeks ${tenantName} is checking that everyone can use Microsoft Authenticator. Two minutes now saves a lockout later: go to https://aka.ms/mfasetup and add Microsoft Authenticator. We'll follow up personally with anyone who gets stuck. — IT`,
-      impact: `${viability.filter((v) => v.activity === 'active' && v.mfa !== 'verified' && v.mfa !== 'likelyViable').length} active user(s) need attention before MFA can be enforced safely.`,
+      comms: COMMS.verify(tenantName),
+      impact: IMPACT.verifyCampaign(
+        viability.filter((v) => v.activity === 'active' && v.mfa !== 'verified' && v.mfa !== 'likelyViable').length,
+      ),
     })
   }
 
@@ -625,14 +545,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         Date.parse(snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn) > BREAK_GLASS_DRILL_DAYS * 86_400_000
       )
     })
+    const p = PREREQ.breakGlassDrill
     steps.push({
-      ...prereq(
-        's-recurring-break-glass-drill',
-        'Break-glass sign-in drill',
-        `An emergency account that has not signed in for ${BREAK_GLASS_DRILL_DAYS} days is unproven exactly when it matters.`,
-        ['Sign in with each break-glass account, complete its strong method, and record the drill.'],
-        [`Every break-glass account has a successful sign-in within ${BREAK_GLASS_DRILL_DAYS} days.`],
-      ),
+      ...prereq('s-recurring-break-glass-drill', p.title, p.why(BREAK_GLASS_DRILL_DAYS), p.how, p.exit(BREAK_GLASS_DRILL_DAYS)),
       kind: 'recurring',
       goalId: 'recurring:break-glass',
       status: stale.length > 0 ? 'ready' : 'done',
@@ -640,14 +555,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       readiness: {
         family: 'other',
         percent: null,
-        lines: stale.length > 0 ? [`${stale.length} account(s) overdue: ${stale.map(nameOf).join(', ')}`] : ['all accounts recently drilled'],
+        lines: stale.length > 0 ? [p.overdue(stale.map(nameOf))] : [p.allDrilled],
       },
     })
   }
 
   // ---- Ordering: phase, then safe-today first, then risk score ----
   const stepSeverity = (s: Step): number => {
-    if (s.title.startsWith('Block')) return SEVERITY_BLOCK
+    if (/^block/i.test(s.title)) return SEVERITY_BLOCK
     if (/phishing|device|protection/i.test(s.title)) return SEVERITY_STRENGTH_OR_DEVICE
     return SEVERITY_DEFAULT
   }
@@ -666,7 +581,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   for (const s of steps) {
     if (s.comms?.includes('{DATE}')) {
       const date = phaseStart.get(s.phase) ?? startIso
-      s.comms = s.comms.replaceAll('{DATE}', date.slice(0, 10))
+      s.comms = s.comms.replaceAll('{DATE}', absoluteDate(date))
     }
   }
 

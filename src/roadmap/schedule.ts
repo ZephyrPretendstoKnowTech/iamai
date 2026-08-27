@@ -3,6 +3,7 @@
 // typical, longer only when report-only observation windows demand it. Pure.
 import { EXIT_MIN_DAYS_OBSERVED } from './constants.ts'
 import type { Step } from './types.ts'
+import { SCHEDULE_NOTE } from '../copy/steps.ts'
 
 export const PHASE_BASE_DAYS = 2
 export const DAYS_PER_TWO_STEPS = 1
@@ -52,17 +53,17 @@ export function nextMonday(fromIso: string): string {
 // Days a phase needs, from what actually has to happen in it.
 export function phaseDuration(steps: Step[], activeUsers: number): { days: number; note: string | null } {
   const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
-  if (work.length === 0) return { days: 0, note: 'already complete' }
+  if (work.length === 0) return { days: 0, note: SCHEDULE_NOTE.complete }
   let days = PHASE_BASE_DAYS + Math.ceil(work.length / 2) * DAYS_PER_TWO_STEPS
   let note: string | null = null
   const needsObservation = work.some((s) => s.kind === 'create' || s.kind === 'adjust')
   if (needsObservation) {
     days += EXIT_MIN_DAYS_OBSERVED
-    note = `includes the ${EXIT_MIN_DAYS_OBSERVED}-day report-only observation window`
+    note = SCHEDULE_NOTE.observation(EXIT_MIN_DAYS_OBSERVED)
   }
   if (activeUsers > LARGE_TENANT_ACTIVE_USERS) {
     days += LARGE_TENANT_EXTRA_DAYS
-    note = note ? `${note}; extra time for a larger tenant` : 'extra time for a larger tenant'
+    note = note ? `${note}; ${SCHEDULE_NOTE.largeTenant}` : SCHEDULE_NOTE.largeTenant
   }
   return { days, note }
 }

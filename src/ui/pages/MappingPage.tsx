@@ -17,27 +17,12 @@ import {
   wizardProgress,
 } from '../../mapping/wizard.ts'
 import type { WizardQuestionDef } from '../../mapping/wizard.ts'
+import { COMMON_TIMEZONES, FRAMEWORK_OPTIONS, SETUP_PAGE as C } from '../../copy/setup.ts'
 import { setDisplayTimeZone } from '../format.ts'
 import { Button, Callout, Card, Chip, ExpandCard, FilterChip, Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
 import type { BaselineResult } from './BaselinePage.tsx'
-
-const COMMON_TIMEZONES = [
-  'Australia/Sydney',
-  'Australia/Brisbane',
-  'Australia/Perth',
-  'Pacific/Auckland',
-  'Europe/London',
-  'Europe/Berlin',
-  'America/New_York',
-  'America/Chicago',
-  'America/Los_Angeles',
-  'Asia/Singapore',
-  'UTC',
-]
-
-const FRAMEWORK_OPTIONS = ['CIS Controls v8', 'Essential Eight (ACSC)', 'NIST CSF']
 
 export function MappingPage({
   scan,
@@ -111,22 +96,18 @@ export function MappingPage({
   const questions = useMemo(() => activeWizardQuestions(baseline?.pkg ?? null), [baseline])
 
   const needs = [
-    { met: baseline !== null, text: baseline !== null ? 'baseline loaded' : 'load a baseline', href: '#/baseline' },
-    { met: scan !== null, text: scan !== null ? 'scan complete' : 'run a scan', href: '#/scan' },
+    { met: baseline !== null, text: baseline !== null ? C.needsBaseline : C.needBaseline, href: '#/baseline' },
+    { met: scan !== null, text: scan !== null ? C.needsScan : C.needScan, href: '#/scan' },
   ]
 
   if (!baseline || !snapshot || !state) {
     return (
-      <StepFrame
-        title="Setup"
-        does="A handful of questions about your tenant — I work out everything else myself."
-        needs={needs}
-      >
+      <StepFrame title={C.title} does={C.does} needs={needs}>
         <Card>
           <p>
-            Setup needs a loaded baseline and a scan. {!baseline && <a href="#/baseline">Load a baseline</a>}
+            {C.blocked} {!baseline && <a href="#/baseline">{C.loadBaseline}</a>}
             {!baseline && !scan && ' and '}
-            {!scan && <a href="#/scan">run a scan</a>}.
+            {!scan && <a href="#/scan">{C.runScan}</a>}.
           </p>
         </Card>
       </StepFrame>
@@ -136,20 +117,10 @@ export function MappingPage({
   const autoCount = Object.values(state.records).filter((r) => r.resolvedId !== null || r.doesNotExist).length
 
   return (
-    <StepFrame
-      title="Setup"
-      does="A handful of questions about your tenant — I work out everything else myself."
-      needs={needs}
-      next="coverage"
-      nextLabel="Findings"
-    >
-      <Callout kind={progress.complete ? 'success' : 'info'} title={`${progress.answered} of ${progress.total} answered`}>
-        {progress.complete
-          ? '— that covers everything I need. The optional ones below sharpen the plan.'
-          : '— the required ones unlock the plan; the rest are optional.'}
-        {autoCount > 0 && (
-          <span className="reason"> I resolved {autoCount} baseline reference(s) automatically so you don't have to.</span>
-        )}
+    <StepFrame title={C.title} does={C.does} needs={needs} next="coverage" nextLabel={C.next}>
+      <Callout kind={progress.complete ? 'success' : 'info'} title={C.progress(progress.answered, progress.total)}>
+        {progress.complete ? C.complete : C.incomplete}
+        {autoCount > 0 && <span className="reason"> {C.autoResolved(autoCount)}</span>}
       </Callout>
 
       {questions.map((q, i) => (
@@ -189,9 +160,7 @@ function WizardCard(props: {
       open={!done}
       summary={
         <>
-          <Chip status={done ? 'done' : def.required ? 'warning' : 'neutral'}>
-            {done ? 'Answered' : def.required ? 'Required' : 'Optional'}
-          </Chip>{' '}
+          <Chip status={done ? 'done' : def.required ? 'warning' : 'neutral'}>{done ? C.answered : def.required ? C.required : C.optional}</Chip>{' '}
           <strong>
             {props.index}. {def.question}
           </strong>
@@ -292,32 +261,30 @@ function GroupPicker({
       void searchGroups(query).then(setRemote).catch(() => setRemote([]))
     }, 300)
   }, [query])
-  const local: PickerOption[] = knownGroups
-    .filter((g) => g.displayName !== null && g.displayName.toLowerCase().includes(query.toLowerCase()))
-    .map((g) => ({ id: g.groupId, name: g.displayName ?? g.groupId, secondary: `${g.memberCount} members`, badge: 'used in a policy' }))
+  const toOption = (g: GroupMembersCacheEntry): PickerOption => ({
+    id: g.groupId,
+    name: g.displayName ?? g.groupId,
+    secondary: C.members(g.memberCount),
+    badge: C.usedInPolicy,
+  })
+  const local = knownGroups.filter((g) => g.displayName !== null && g.displayName.toLowerCase().includes(query.toLowerCase())).map(toOption)
   const options: PickerOption[] = [
     ...local,
     ...remote.filter((r) => !local.some((l) => l.id === r.id)).map((r) => ({ id: r.id, name: r.displayName })),
   ]
-  const suggestions: PickerOption[] = knownGroups.map((g) => ({
-    id: g.groupId,
-    name: g.displayName ?? g.groupId,
-    secondary: `${g.memberCount} members`,
-    badge: 'used in a policy',
-  }))
   return (
     <Picker
       single
       selected={selected !== null ? [{ id: selected, name: selectedName ?? selected }] : []}
       options={options}
-      suggestions={suggestions}
+      suggestions={knownGroups.map(toOption)}
       onSearch={setQuery}
       onChange={(next) => {
         const o = next[next.length - 1]
         if (!o) onClear()
         else onPick(o.id, o.name)
       }}
-      placeholder="Start typing a group name…"
+      placeholder={C.searchGroups}
     />
   )
 }
@@ -325,7 +292,7 @@ function GroupPicker({
 function ValidationView({ v }: { v: ValidationResult | null }) {
   if (!v) return null
   return (
-    <Callout kind={v.passed ? 'success' : 'warning'} title={v.passed ? 'Checks passed' : 'Needs attention before this is safe'}>
+    <Callout kind={v.passed ? 'success' : 'warning'} title={v.passed ? C.checksPassed : C.needsAttention}>
       <ul className="sections">
         {v.findings.map((f, i) => (
           <li key={i}>{f}</li>
@@ -355,7 +322,7 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, update, answered }: 
       <UserMultiPicker
         snapshot={snapshot}
         selected={state.breakGlassUserIds}
-        placeholder="Search your users…"
+        placeholder={C.searchUsers}
         onChange={(ids) => {
           update((s) => ({ ...s, breakGlassUserIds: ids }))
           runValidation(ids)
@@ -391,7 +358,7 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, update, answered }: 
             answered('breakGlass')
           }}
         >
-          We don't have break-glass accounts yet — put creating them in the plan
+          {C.noBreakGlass}
         </Button>
       </p>
     </div>
@@ -468,7 +435,7 @@ function GlobalExclusionQuestion({ state, snapshot, knownGroups, update, answere
             answered('globalExclusion')
           }}
         >
-          We don't have one — put creating it in the plan
+          {C.noExclusionGroup}
         </Button>
       </p>
     </div>
@@ -481,21 +448,16 @@ function HighCareQuestion({ state, snapshot, update, answered }: Parameters<type
       <UserMultiPicker
         snapshot={snapshot}
         selected={state.highCareUserIds}
-        placeholder="Search your users (executives, VIPs)…"
+        placeholder={C.searchVips}
         onChange={(ids) => {
           update((s) => ({ ...s, highCareUserIds: ids }))
           answered('highCare')
         }}
       />
-      {state.highCareUserIds.length > 0 && (
-        <p className="reason">
-          These {state.highCareUserIds.length} user(s) get white-glove treatment: named on every step that touches
-          them, verified before anything is enforced, and sequenced after the approach is proven.
-        </p>
-      )}
+      {state.highCareUserIds.length > 0 && <p className="reason">{C.careExplained(state.highCareUserIds.length)}</p>}
       <p>
         <Button size="sm" onClick={() => answered('highCare')}>
-          Nobody needs special care
+          {C.nobodyNeedsCare}
         </Button>
       </p>
     </div>
@@ -506,7 +468,7 @@ function TrustedLocationsQuestion({ state, snapshot, update, answered }: Paramet
   const locations = (snapshot.config.namedLocations?.rows ?? []) as { id?: string; displayName?: string; isTrusted?: boolean }[]
   return (
     <div>
-      {locations.length === 0 && <p className="reason">Your tenant has no named locations yet.</p>}
+      {locations.length === 0 && <p className="reason">{C.noNamedLocations}</p>}
       <div className="row">
         {locations.map((l) => {
           const id = String(l.id ?? '')
@@ -515,7 +477,7 @@ function TrustedLocationsQuestion({ state, snapshot, update, answered }: Paramet
             <FilterChip
               key={id}
               selected={on}
-              title={l.isTrusted ? 'marked trusted in the tenant' : 'not marked trusted'}
+              title={l.isTrusted ? C.markedTrusted : C.notMarkedTrusted}
               onToggle={() => {
                 const next = on ? state.trustedLocationIds.filter((x) => x !== id) : [...state.trustedLocationIds, id]
                 update((s) => ({ ...s, trustedLocationIds: next }))
@@ -540,7 +502,7 @@ function TrustedLocationsQuestion({ state, snapshot, update, answered }: Paramet
             answered('trustedLocations')
           }}
         >
-          None yet — put creating one in the plan
+          {C.noLocationYet}
         </Button>
       </p>
     </div>
@@ -568,7 +530,7 @@ function ServiceAccountsQuestion({ state, knownGroups, update, answered }: Param
             answered('serviceAccounts')
           }}
         >
-          Not applicable
+          {C.notApplicable}
         </Button>
       </p>
     </div>
@@ -621,7 +583,7 @@ function TimeZoneQuestion({ state, update, answered }: Parameters<typeof WizardC
       >
         {zones.map((z) => (
           <option key={z} value={z}>
-            {z === browser ? `${z} (your browser)` : z}
+            {z === browser ? C.browserZone(z) : z}
           </option>
         ))}
       </select>
@@ -647,6 +609,15 @@ function FrameworksQuestion({ state, update, answered }: Parameters<typeof Wizar
           </FilterChip>
         )
       })}
+      <FilterChip
+        selected={state.wizardAnswered.frameworks === true && state.frameworks.length === 0}
+        onToggle={() => {
+          update((s) => ({ ...s, frameworks: [] }))
+          answered('frameworks')
+        }}
+      >
+        {C.frameworkNone}
+      </FilterChip>
     </div>
   )
 }
@@ -667,19 +638,23 @@ function ApplicabilityQuestion({ state, snapshot, update, answered }: Parameters
                   ...s,
                   facetOverrides: {
                     ...s.facetOverrides,
-                    [facet]: { on, reason: on ? 'confirmed by operator' : 'operator says this workload is not used' },
+                    [facet]: { on, reason: on ? C.confirmedByOperator : C.notUsed },
                   },
                 }))
                 answered('applicability')
               }}
             />{' '}
-            <strong>{facet}</strong> <span className="reason">— {f.reason}{f.source === 'override' ? ' (your answer)' : ''}</span>
+            <strong>{facet}</strong>{' '}
+            <span className="reason">
+              — {f.reason}
+              {f.source === 'override' ? ` ${C.yourAnswer}` : ''}
+            </span>
           </label>
         </p>
       ))}
       <p>
         <Button size="sm" variant="primary" onClick={() => answered('applicability')}>
-          Detections look right
+          {C.detectionsRight}
         </Button>
       </p>
     </div>

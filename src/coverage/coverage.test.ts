@@ -177,7 +177,7 @@ test('4: exclusion group mapped as break-glass → enforced with expected note',
   )
   const g = goal(r, 'mfa-all-users')
   assert.equal(g.status, 'enforced')
-  assert.match(g.statement, /excluded as break-glass \(expected\)/)
+  assert.match(g.statement, /2 accounts excluded as break-glass/)
 })
 
 test('5: OR grant [mfa, compliantDevice] vs floor mfa → weaker-control', () => {

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Icon } from './Icon.tsx'
+import { COMPONENTS } from '../../copy/components.ts'
 
 // ⓘ glyph with a hover/click popover: a title and one or two sentences.
 // Replaces every "?" in the app. Keyboard: focus + Enter/Space toggles, Esc closes.
@@ -27,7 +28,7 @@ export function InfoTip({ title, text }: { title: string; text: string }) {
       <button
         type="button"
         className="infotip-btn"
-        aria-label={`About ${title}`}
+        aria-label={COMPONENTS.infoTip.about(title)}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((o) => !o)}

@@ -3,6 +3,8 @@ import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { signOut } from '../../graph/msal.ts'
+import { SHELL } from '../../copy/pages.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { Button, LinkButton, Stepper } from '../components/index.ts'
 import type { StepperStatus } from '../components/index.ts'
 
@@ -25,18 +27,18 @@ export type Route =
 export type StepStatus = StepperStatus
 
 const STEPS: { route: Route; label: string }[] = [
-  { route: 'start', label: 'Start' },
-  { route: 'connect', label: 'Connect' },
-  { route: 'baseline', label: 'Baseline' },
-  { route: 'scan', label: 'Scan' },
-  { route: 'mapping', label: 'Setup' },
-  { route: 'coverage', label: 'Findings' },
-  { route: 'roadmap', label: 'Roadmap' },
+  { route: 'start', label: SHELL.steps.start },
+  { route: 'connect', label: SHELL.steps.connect },
+  { route: 'baseline', label: SHELL.steps.baseline },
+  { route: 'scan', label: SHELL.steps.scan },
+  { route: 'mapping', label: SHELL.steps.mapping },
+  { route: 'coverage', label: SHELL.steps.coverage },
+  { route: 'roadmap', label: SHELL.steps.roadmap },
 ]
 
 const REFERENCE: { route: Route; label: string }[] = [
-  { route: 'licensing', label: 'Licensing guide' },
-  { route: 'reads', label: 'What IAMAI reads' },
+  { route: 'licensing', label: SHELL.steps.licensing },
+  { route: 'reads', label: SHELL.steps.reads },
 ]
 
 const VALID = new Set<string>([...STEPS, ...REFERENCE].map((n) => n.route).concat('components'))
@@ -92,16 +94,16 @@ export function AppShell({
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="wordmark">IAMAI</span>
-        <span className="tagline">Conditional Access rollout planner</span>
+        <span className="wordmark">{SHELL.wordmark}</span>
+        <span className="tagline">{SHELL.tagline}</span>
         <div className="topbar-right">
           {account && (
-            <span className="tenant-name" title={`Tenant ID ${account.tenantId} · signed in as ${account.username}`}>
+            <span className="tenant-name" title={SHELL.tenantTooltip(account.tenantId, account.username)}>
               {tenantName ?? account.username}
             </span>
           )}
-          <Button size="sm" onClick={toggleTheme} title="Switch between dark and light themes">
-            {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          <Button size="sm" onClick={toggleTheme} title={SHELL.themeTooltip}>
+            {theme === 'dark' ? SHELL.lightTheme : SHELL.darkTheme}
           </Button>
           {account && (
             <Button
@@ -112,9 +114,9 @@ export function AppShell({
                   .catch(() => {})
                   .then(() => signOut())
               }}
-              title="Deletes everything IAMAI stored for this tenant on this device, then signs out"
+              title={SHELL.forgetTooltip}
             >
-              Forget this tenant
+              {SHELL.forget}
             </Button>
           )}
         </div>
@@ -128,8 +130,7 @@ export function AppShell({
         <main className="page">
           {account && (
             <div className="print-only muted">
-              IAMAI plan for {tenantName ?? account.username} · prepared {new Date().toLocaleDateString()} by{' '}
-              {account.username}
+              {SHELL.printHeader(tenantName ?? account.username, absoluteDate(new Date().toISOString()), account.username)}
             </div>
           )}
           {children}
@@ -143,19 +144,19 @@ export function AppShell({
 export function Footer() {
   return (
     <footer className="footer">
-      <span>Read-only · nothing leaves your browser</span>
+      <span>{SHELL.footerLeft}</span>
       <span className="footer-links">
         <span>
-          Follow me here:{' '}
+          {SHELL.footerFollow}{' '}
           <a href={LINKEDIN_URL} target="_blank" rel="noreferrer">
-            <strong>Lachlan Robinette</strong>
+            <strong>{SHELL.footerAuthor}</strong>
           </a>
         </span>
         <a href={GITHUB_URL} target="_blank" rel="noreferrer">
-          GitHub
+          {SHELL.footerGithub}
         </a>
         <a href={REPO_URL} target="_blank" rel="noreferrer">
-          Source
+          {SHELL.footerSource}
         </a>
       </span>
     </footer>
@@ -184,7 +185,7 @@ export function StepFrame({
       <p className="step-does">{does}</p>
       {needs && needs.length > 0 && (
         <p className="step-needs">
-          Needs:{' '}
+          {SHELL.needs}{' '}
           {needs.map((n, i) => (
             <span key={i} className={n.met ? '' : 'unmet'}>
               {i > 0 && ' · '}
@@ -197,7 +198,7 @@ export function StepFrame({
       {children}
       {next && (
         <p className="step-next">
-          <LinkButton href={`#/${next}`}>Next: {nextLabel}</LinkButton>
+          <LinkButton href={`#/${next}`}>{SHELL.next(nextLabel ?? next)}</LinkButton>
         </p>
       )}
     </section>

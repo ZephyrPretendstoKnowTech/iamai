@@ -3,6 +3,9 @@ import type { ReactNode } from 'react'
 import { Button } from './Button.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { downloadFile, toCsv } from '../format.ts'
+import { COMPONENTS } from '../../copy/components.ts'
+
+const T = COMPONENTS.table
 
 export type Column<T> = {
   key: string
@@ -24,7 +27,7 @@ export function DataTable<T>({
   rowKey,
   expand,
   csvName,
-  empty = 'Nothing to show yet.',
+  empty = T.empty,
   initialSort,
 }: {
   rows: T[]
@@ -114,22 +117,22 @@ export function DataTable<T>({
       </div>
       <div className="datatable-footer no-print">
         <span>
-          {sorted.length} row{sorted.length === 1 ? '' : 's'}
-          {pages > 1 && ` · page ${current + 1} of ${pages}`}
+          {T.rows(sorted.length)}
+          {pages > 1 && ` · ${T.page(current + 1, pages)}`}
         </span>
         {pages > 1 && (
           <>
             <Button size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={current === 0}>
-              Previous
+              {T.previous}
             </Button>
             <Button size="sm" onClick={() => setPage((p) => Math.min(pages - 1, p + 1))} disabled={current >= pages - 1}>
-              Next
+              {T.next}
             </Button>
           </>
         )}
         {csvName && (
           <Button size="sm" icon="download" onClick={exportCsv}>
-            Export CSV
+            {T.exportCsv}
           </Button>
         )}
       </div>

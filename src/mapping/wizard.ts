@@ -7,6 +7,7 @@ import { strengthTier } from '../coverage/strength.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingRecord, MappingState, QuestionGroup } from './types.ts'
 import { buildQuestions } from './questions.ts'
+import { SETUP_QUESTIONS } from '../copy/setup.ts'
 
 export type WizardQuestionId =
   | 'breakGlass'
@@ -29,71 +30,23 @@ export type WizardQuestionDef = {
 
 // Ordered, plain-language, professional. Required questions gate the plan;
 // optional ones improve it.
-export const WIZARD_QUESTIONS: WizardQuestionDef[] = [
-  {
-    id: 'breakGlass',
-    title: 'Emergency access',
-    question: 'Which accounts are your emergency (break-glass) admins?',
-    help: 'Two cloud-only Global Administrator accounts, kept out of every policy, used only when everything else fails. I validate each pick and tell you exactly what to fix.',
-    required: true,
-  },
-  {
-    id: 'globalExclusion',
-    title: 'Exclusion group',
-    question: 'Which group holds your policy exclusions?',
-    help: "Usually a small assigned group containing only the break-glass accounts. If you don't have one, say so — I'll put creating it at the start of the plan.",
-    required: true,
-  },
-  {
-    id: 'highCare',
-    title: 'Handle with care',
-    question: 'Who should I treat with extra care?',
-    help: 'Executives, VIPs, or anyone where an accidental lockout would hurt. The changes still apply to them — but I gate enforcement until each of them is verified, list them by name on every step that touches them, and sequence them after the approach is proven.',
-    required: false,
-  },
-  {
-    id: 'trustedLocations',
-    title: 'Trusted locations',
-    question: 'Which named locations count as trusted?',
-    help: 'Office IP ranges you trust for things like security-info registration. I check each one for ranges that are too broad.',
-    required: false,
-  },
-  {
-    id: 'serviceAccounts',
-    title: 'Service accounts',
-    question: 'Do you keep service accounts in a group?',
-    help: 'Legacy-auth or automation accounts that need carve-outs from some policies. Optional — skip it if that does not apply.',
-    required: false,
-  },
-  {
-    id: 'variants',
-    title: 'Style choices',
-    question: 'A few policies come in two styles — pick one of each.',
-    help: 'Same security outcome, different shape. Pick whichever suits how you operate; I show both side by side.',
-    required: true,
-  },
-  {
-    id: 'timeZone',
-    title: 'Time zone',
-    question: 'What time zone should dates and sign-in data display in?',
-    help: 'Affects display only; everything is stored in UTC.',
-    required: false,
-  },
-  {
-    id: 'frameworks',
-    title: 'Frameworks',
-    question: 'Which security frameworks are you working toward?',
-    help: 'I tag findings and plan steps with the matching controls so the plan doubles as compliance evidence.',
-    required: false,
-  },
-  {
-    id: 'applicability',
-    title: 'What applies',
-    question: 'Did I detect your workloads correctly?',
-    help: 'I switch off recommendations for workloads you do not use. Correct me if a detection is wrong.',
-    required: false,
-  },
-]
+const REQUIRED: Record<WizardQuestionId, boolean> = {
+  breakGlass: true,
+  globalExclusion: true,
+  highCare: false,
+  trustedLocations: false,
+  serviceAccounts: false,
+  variants: true,
+  timeZone: false,
+  frameworks: false,
+  applicability: false,
+}
+
+export const WIZARD_QUESTIONS: WizardQuestionDef[] = (Object.keys(REQUIRED) as WizardQuestionId[]).map((id) => ({
+  id,
+  ...SETUP_QUESTIONS[id],
+  required: REQUIRED[id],
+}))
 
 const record = (
   key: string,

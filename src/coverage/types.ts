@@ -129,6 +129,10 @@ export type Reason = {
   detail: string
   /** true when the exclusion is an expected one (break-glass etc.) — reported, not a gap. */
   expected?: boolean
+  /** weaker-control / session-weaker: what the policy does today, in words. */
+  current?: string
+  /** weaker-control / session-weaker: what the baseline expects, in words. */
+  floor?: string
 }
 
 export type CandidateContribution = {

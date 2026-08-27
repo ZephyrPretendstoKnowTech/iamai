@@ -2,6 +2,7 @@ import { useState } from 'react'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { fetchBaselineFiles, loadBaseline, unresolvedReferences } from '../../baseline/index.ts'
 import type { BaselineFile, BaselineIndex, BaselinePackage } from '../../baseline/index.ts'
+import { BASELINE } from '../../copy/pages.ts'
 import { Button, Card, Callout, ExpandCard } from '../components/index.ts'
 import { absoluteDate } from '../format.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
@@ -21,7 +22,7 @@ export function BaselinePage({
   const [error, setError] = useState<string | null>(null)
 
   const loadPinned = async () => {
-    setBusy(`Fetching ${index.files.length} files from GitHub at the pinned commit…`)
+    setBusy(BASELINE.fetching(index.files.length))
     setError(null)
     try {
       const { files, failures } = await fetchBaselineFiles(index)
@@ -35,13 +36,13 @@ export function BaselinePage({
 
   const loadUpload = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
-    setBusy(`Reading ${fileList.length} uploaded file(s)…`)
+    setBusy(BASELINE.reading(fileList.length))
     setError(null)
     try {
       const files: BaselineFile[] = await Promise.all(
         [...fileList].map(async (f) => ({ path: f.name, text: await f.text() })),
       )
-      onLoaded({ source: `uploaded package (${fileList.length} files)`, pkg: loadBaseline(files), fetchFailures: 0 })
+      onLoaded({ source: BASELINE.uploadedSource(fileList.length), pkg: loadBaseline(files), fetchFailures: 0 })
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -50,17 +51,17 @@ export function BaselinePage({
   }
 
   return (
-    <StepFrame title="Baseline" does="Picks the target policy set your rollout plan aims for." next={result ? 'scan' : undefined} nextLabel="Scan">
+    <StepFrame title={BASELINE.title} does={BASELINE.does} next={result ? 'scan' : undefined} nextLabel={BASELINE.next}>
       <AboutCard index={index} />
       <p className="row">
         <Button variant="primary" onClick={() => void loadPinned()} loading={busy !== null}>
-          Load this baseline
+          {BASELINE.load}
         </Button>
-        <span className="muted">or upload a package (Graph <code>conditionalAccessPolicy</code> JSON, one per file or arrays):</span>
+        <span className="muted">{BASELINE.orUpload}</span>
         <input type="file" accept=".json" multiple onChange={(e) => void loadUpload(e.currentTarget.files)} disabled={busy !== null} />
       </p>
       {busy && <p className="muted">{busy}</p>}
-      {error && <Callout kind="danger" title="Load failed.">{error}</Callout>}
+      {error && <Callout kind="danger" title={BASELINE.loadFailed}>{error}</Callout>}
       {result && <LoadReportView result={result} />}
     </StepFrame>
   )
@@ -68,13 +69,13 @@ export function BaselinePage({
 
 function AboutCard({ index }: { index: BaselineIndex }) {
   return (
-    <Card title="About this baseline">
+    <Card title={BASELINE.aboutTitle}>
       <p>
         <strong>{index.label}</strong>
         {index.author && (
           <>
             {' '}
-            by{' '}
+            {BASELINE.by}{' '}
             {index.authorUrl ? (
               <a href={index.authorUrl} target="_blank" rel="noreferrer">
                 {index.author}
@@ -88,21 +89,23 @@ function AboutCard({ index }: { index: BaselineIndex }) {
           <>
             {' · '}
             <a href={index.repoUrl} target="_blank" rel="noreferrer">
-              repository
+              {BASELINE.repository}
             </a>
           </>
         )}
       </p>
       <p>
-        Snapshot from {absoluteDate(index.generatedAt)}
+        {BASELINE.capturedOn(absoluteDate(index.generatedAt))}
         <br />
-        <span className="mono muted">commit {index.commit}</span>
+        <span className="mono muted" title={index.commit}>
+          {BASELINE.commit(index.commit)}
+        </span>
       </p>
-      <p>{index.description ?? 'No description provided.'}</p>
+      <p>{index.description ?? BASELINE.noDescription}</p>
       {index.goal && <p className="muted">{index.goal}</p>}
       <p className="muted">
-        {index.files.length} files in the snapshot
-        {index.tiers && index.tiers.length > 0 && <> · targets {index.tiers.join(', ')}</>}
+        {BASELINE.filesIn(index.files.length)}
+        {index.tiers && index.tiers.length > 0 && <> · {BASELINE.targets(index.tiers.join(', '))}</>}
       </p>
     </Card>
   )
@@ -115,37 +118,23 @@ function LoadReportView({ result }: { result: BaselineResult }) {
   const variantSets = pkg.variantSets.filter((v) => v.relation === 'variant')
   const duplicateSets = pkg.variantSets.filter((v) => v.relation === 'duplicate')
   return (
-    <Card title={`Loaded — ${source}`}>
+    <Card title={BASELINE.loadedTitle(source)}>
       <ul>
         <li>
-          <strong>{pkg.policies.length} policies ready to compare.</strong>
+          <strong>{BASELINE.policiesReady(pkg.policies.length)}</strong>
         </li>
-        {report.warnings.length > 0 && (
-          <li>
-            {report.warnings.length} polic{report.warnings.length === 1 ? 'y' : 'ies'} in the source can't be used yet (exported without targets) — this doesn't affect your plan.
-          </li>
-        )}
-        {variantSets.length > 0 && (
-          <li>
-            {variantSets.length} choice{variantSets.length === 1 ? '' : 's'} to make in Setup ({variantSets.length === 1 ? 'two styles of the same policy' : 'alternative styles of the same policies'}).
-          </li>
-        )}
-        <li>{unresolved.length} references to your tenant — Setup resolves the ones that need a human; the rest are automatic.</li>
+        {report.warnings.length > 0 && <li>{BASELINE.unusable(report.warnings.length)}</li>}
+        {variantSets.length > 0 && <li>{BASELINE.choices(variantSets.length)}</li>}
+        <li>{BASELINE.references(unresolved.length)}</li>
       </ul>
-      <ExpandCard summary="Technical details">
+      <ExpandCard summary={BASELINE.technical}>
         <ul className="sections">
-          <li>
-            {report.considered} files considered, {report.parsed} parsed cleanly.
-          </li>
-          {duplicateSets.length > 0 && <li>{duplicateSets.length} duplicate pair(s) collapsed.</li>}
-          {report.errors.length > 0 && (
-            <li>
-              {report.errors.length} file(s) failed to parse and were skipped: {report.errors.map((e) => e.path).join('; ')}
-            </li>
-          )}
-          {report.warnings.length > 0 && <li>Unusable as written: {report.warnings.map((w) => w.policyName).join('; ')}</li>}
-          {fetchFailures > 0 && <li>{fetchFailures} file(s) could not be fetched from the source repo.</li>}
-          <li>Baseline policy states are the author's lab state; every baseline policy is treated as intended-enforced unless a manifest says otherwise.</li>
+          <li>{BASELINE.considered(report.considered, report.parsed)}</li>
+          {duplicateSets.length > 0 && <li>{BASELINE.duplicates(duplicateSets.length)}</li>}
+          {report.errors.length > 0 && <li>{BASELINE.parseErrors(report.errors.length, report.errors.map((e) => e.path).join('; '))}</li>}
+          {report.warnings.length > 0 && <li>{BASELINE.unusableList(report.warnings.map((w) => w.policyName).join('; '))}</li>}
+          {fetchFailures > 0 && <li>{BASELINE.fetchFailures(fetchFailures)}</li>}
+          <li>{BASELINE.labState}</li>
         </ul>
       </ExpandCard>
     </Card>
