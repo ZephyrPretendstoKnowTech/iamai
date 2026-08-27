@@ -38,7 +38,13 @@ export type Action = {
   powershell: string | null
 }
 
-export type StepHistoryEntry = { at: string; from: StepStatus; to: StepStatus; note: string | null }
+export type Blocker =
+  | { kind: 'step'; stepId: string; label: string }
+  | { kind: 'setup'; questionNumber: number; label: string }
+  | { kind: 'readiness'; label: string }
+  | { kind: 'evidence'; label: string }
+
+export type StepHistoryEntry ={ at: string; from: StepStatus; to: StepStatus; note: string | null }
 
 export type Step = {
   id: string
@@ -50,6 +56,8 @@ export type Step = {
   whyAttribution: { author: string; url: string } | null
   status: StepStatus
   blockedBy: string[]
+  /** Named causes (prompt 12 §B): a step, a Setup question, a readiness threshold, or evidence. */
+  blockers: Blocker[]
   unblockNotes: string[] // exactly what unblocks it (roadmap.md §6)
   population: StepPopulation
   readiness: Readiness

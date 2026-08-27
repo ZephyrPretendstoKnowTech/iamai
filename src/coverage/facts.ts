@@ -135,6 +135,7 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
     session: {
       signInFrequencyHours:
         sifEnabled && sifValue !== null ? (sifType === 'days' ? sifValue * 24 : sifValue) : null,
+      signInFrequencyEveryTime: sifEnabled && String(sif?.frequencyInterval ?? '').toLowerCase() === 'everytime',
       persistentBrowser:
         persistent?.isEnabled === true && typeof persistent.mode === 'string'
           ? (persistent.mode as 'always' | 'never')

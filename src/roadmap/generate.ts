@@ -32,7 +32,10 @@ import { evidenceFor } from './evidence.ts'
 import { goalFamily, readinessFor } from './readiness.ts'
 import { buildSchedule, nextMonday } from './schedule.ts'
 import type { Schedule } from './schedule.ts'
-import type { Action, Step, StepPopulation, StepStatus } from './types.ts'
+import type { Action, Blocker, Step, StepPopulation, StepStatus } from './types.ts'
+import type { Pace } from './constants.ts'
+import { DEFAULT_PACE } from './constants.ts'
+import { BLOCKER } from '../copy/steps.ts'
 
 export type RoadmapInput = {
   planId: string
@@ -45,6 +48,7 @@ export type RoadmapInput = {
   viability: MfaViability[]
   strengths: StrengthLookup
   startDate?: string
+  pace?: Pace
   operatorUserId?: string | null
   names?: NameDirectory
 }
@@ -260,6 +264,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     whyAttribution: null,
     status: 'ready',
     blockedBy: [],
+    blockers: [],
     unblockNotes: [],
     population: { total: 0, active: 0, admins: 0, guests: 0, ids: [] },
     readiness: { family: 'other', percent: null, lines: [] },
@@ -347,7 +352,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const whyAttribution = doc?.intent && input.baselineAuthor ? input.baselineAuthor : null
 
     const blockedBy: string[] = []
+    const blockers: Blocker[] = []
     const unblockNotes: string[] = []
+    const blockByStep = (id: string, label: string): void => {
+      if (blockedBy.includes(id)) return
+      blockedBy.push(id)
+      blockers.push({ kind: 'step', stepId: id, label })
+      unblockNotes.push(label)
+    }
+    const blockBySetup = (qid: WizardQuestionId): void => {
+      if (blockedBy.includes(setupStepId)) return
+      blockedBy.push(setupStepId)
+      blockers.push({ kind: 'setup', questionNumber: questionNumber(qid), label: questionNote(qid) })
+      unblockNotes.push(questionNote(qid))
+    }
     let action: Action
     let kind: Step['kind']
     let status: StepStatus = 'ready'
@@ -370,14 +388,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             const group = questions.find((q) => q.key === key)?.group
             const qid: WizardQuestionId | null =
               group === 'breakGlass' ? 'breakGlass' : group === 'globalExclusion' || group === 'exclusionGroups' ? 'globalExclusion' : null
-            blockedBy.push(setupStepId)
-            unblockNotes.push(qid && missingSetup.some((q) => q.id === qid) ? questionNote(qid) : UNBLOCK.setup)
+            if (qid && missingSetup.some((q) => q.id === qid)) blockBySetup(qid)
+            else blockBySetup(missingSetup[0].id)
           }
         }
-        if (variantNames.has(source.facts.name) && !blockedBy.includes(setupStepId)) {
-          blockedBy.push(setupStepId)
-          unblockNotes.push(questionNote('variants'))
-        }
+        if (variantNames.has(source.facts.name)) blockBySetup('variants')
         for (const created of createdWithinStepKeys(source.policy, mapping)) {
           if (created.group === 'personaGroups') {
             // Created as part of this step — no separate phase-0 noise.
@@ -385,10 +400,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           }
           const pid =
             created.group === 'breakGlass' ? bgStepId : created.group === 'namedLocations' ? locStepId : geStepId
-          if (steps.some((s) => s.id === pid) && !blockedBy.includes(pid)) {
-            blockedBy.push(pid)
-            unblockNotes.push(UNBLOCK.createObject)
-          }
+          if (steps.some((s) => s.id === pid)) blockByStep(pid, UNBLOCK.createObject)
         }
         action = buildCreateAction(source.policy, mapping, planId, stepId, input.names)
         const personas = createdWithinStepKeys(source.policy, mapping).filter((c) => c.group === 'personaGroups')
@@ -411,6 +423,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         : { kind: 'adjust', summary: adjustSummary(result), json: null, portalSteps: [], powershell: null }
     }
 
+    // Named dependencies (prompt 12 §B).
+    if (status !== 'done') {
+      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId)) blockByStep(locStepId, BLOCKER.trustedLocation)
+      if (goal.id === 'geo-restriction' && mapping.wizardAnswered.variants !== true && activeQuestions.some((q) => q.id === 'variants')) {
+        blockBySetup('variants')
+      }
+    }
+
     // Gating (roadmap.md §6).
     if (status !== 'done') {
       const threshold =
@@ -423,7 +443,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               : null
       if (threshold !== null && readiness.percent !== null && readiness.percent < threshold) {
         status = 'blocked'
-        unblockNotes.push(UNBLOCK.readiness(readiness.percent, readiness.family, threshold))
+        const label =
+          readiness.family === 'device' ? BLOCKER.deviceReadiness(readiness.percent, threshold) : UNBLOCK.readiness(readiness.percent, readiness.family, threshold)
+        blockers.push({ kind: 'readiness', label })
+        unblockNotes.push(label)
       }
       if (blockedBy.length > 0) status = 'blocked'
     }
@@ -497,6 +520,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       whyAttribution,
       status,
       blockedBy,
+      blockers,
       unblockNotes,
       population: pop,
       readiness,
@@ -587,14 +611,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   steps.sort((a, b) => a.phase - b.phase || score(a) - score(b) || a.id.localeCompare(b.id))
 
-  // ---- Schedule + comms dates ----
+  // ---- Schedule (waves) + comms dates ----
   const startIso = input.startDate ?? nextMonday(snapshot.asOf)
   const activeTotal = viability.filter((v) => v.activity === 'active').length
-  const schedule = buildSchedule(steps, startIso, activeTotal)
-  const phaseStart = new Map(schedule.phases.map((p) => [p.phase, p.start]))
+  const schedule = buildSchedule(steps, startIso, activeTotal, input.pace ?? DEFAULT_PACE)
+  const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
   for (const s of steps) {
     if (s.comms?.includes('{DATE}')) {
-      const date = phaseStart.get(s.phase) ?? startIso
+      const date = waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso
       s.comms = s.comms.replaceAll('{DATE}', absoluteDate(date))
     }
   }

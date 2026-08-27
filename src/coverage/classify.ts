@@ -1,6 +1,7 @@
 // Signature evaluation, ad-hoc goals, floor raising (intents.md §4–§5). Pure.
 import coreAdminRoles from '../../data/core-admin-roles.json' with { type: 'json' }
 import vendorApps from '../../data/vendor-apps.json' with { type: 'json' }
+import firstPartyApps from '../../data/first-party-apps.json' with { type: 'json' }
 import { grantFloorRank, satisfiesFloor } from './strength.ts'
 import type { Floor, Goal, PolicyFacts, Signature } from './types.ts'
 
@@ -146,6 +147,53 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
       case 'workloadPresent':
         if (f.workload === null) return false
         break
+      case 'authContextPresent':
+        if (f.apps.authContexts.size === 0) return false
+        break
+      case 'signInFrequencyEveryTime':
+        if (!f.session.signInFrequencyEveryTime) return false
+        break
+      case 'appEnforcedRestrictions':
+        if (!f.session.appEnforced) return false
+        break
+      case 'deviceFilterPresent':
+        if (f.deviceFilter === null) return false
+        break
+      case 'grantPasswordChange':
+        if (!controls.has('passwordchange')) return false
+        break
+      // ---- exact-match keys for ad-hoc goals (prompt 12 §7) ----
+      case 'appsExact': {
+        const want = value as { all: boolean; ids: string[]; office365: boolean; adminPortals: boolean }
+        const ids = [...f.apps.ids].map((a) => a.toLowerCase()).sort()
+        if (f.apps.all !== want.all || f.apps.office365 !== want.office365 || f.apps.adminPortals !== want.adminPortals) return false
+        if (ids.join(',') !== [...want.ids].map((a) => a.toLowerCase()).sort().join(',')) return false
+        break
+      }
+      case 'userActionsExact':
+        if ([...f.apps.userActions].sort().join(',') !== [...(value as string[])].map((a) => a.toLowerCase()).sort().join(',')) return false
+        break
+      case 'grantExact': {
+        const want = value as { controls: string[]; strengthTier: string | null; operator: string } | null
+        if (want === null) {
+          if (f.grant !== null) return false
+          break
+        }
+        if (f.grant === null) return false
+        if ([...controls].sort().join(',') !== [...want.controls].map((c) => c.toLowerCase()).sort().join(',')) return false
+        if ((f.grant.strength ?? null) !== want.strengthTier) return false
+        if (want.controls.length > 1 && f.grant.operator !== want.operator) return false
+        break
+      }
+      case 'sessionExact': {
+        const want = value as { signInFrequencyHours: number | null; everyTime: boolean; persistentBrowser: string | null; secure: boolean; appEnforced: boolean }
+        if (f.session.signInFrequencyHours !== want.signInFrequencyHours) return false
+        if (f.session.signInFrequencyEveryTime !== want.everyTime) return false
+        if ((f.session.persistentBrowser ?? null) !== want.persistentBrowser) return false
+        if (f.session.secureSignInSession !== want.secure) return false
+        if (f.session.appEnforced !== want.appEnforced) return false
+        break
+      }
       default:
         return false // unknown signature key: fail closed
     }
@@ -233,14 +281,23 @@ export function inferAdHocFacet(facts: PolicyFacts): string | null {
   return null
 }
 
+// Ad-hoc goals match exactly on apps, user actions, and grant/session
+// controls (prompt 12 §7) — a session goal can never be "delivered" by a
+// block policy, and a generic MFA policy never matches an app-scoped one.
 export function adHocGoal(facts: PolicyFacts): Goal {
   const sig: Signature = {}
-  if (facts.grant && [...controlsLower(facts)].includes('block')) sig.grantBlock = true
-  else if (facts.grant) sig.grantHasAuthControl = true
-  if (facts.apps.all) sig.appsAll = true
-  if (facts.apps.adminPortals) sig.appsAdminPortals = true
-  if (facts.apps.ids.size > 0) sig.appsIdsInclude = [...facts.apps.ids]
-  if (facts.apps.userActions.size > 0) sig.userActionsInclude = [...facts.apps.userActions]
+  sig.appsExact = { all: facts.apps.all, ids: [...facts.apps.ids], office365: facts.apps.office365, adminPortals: facts.apps.adminPortals }
+  sig.userActionsExact = [...facts.apps.userActions]
+  sig.grantExact = facts.grant
+    ? { controls: [...facts.grant.controls], strengthTier: facts.grant.strength ?? null, operator: facts.grant.operator }
+    : null
+  sig.sessionExact = {
+    signInFrequencyHours: facts.session.signInFrequencyHours,
+    everyTime: facts.session.signInFrequencyEveryTime,
+    persistentBrowser: facts.session.persistentBrowser ?? null,
+    secure: facts.session.secureSignInSession,
+    appEnforced: facts.session.appEnforced,
+  }
   if (facts.flows.size > 0) sig.flowsInclude = [...facts.flows]
   if (facts.signInRisk.size > 0) sig.signInRiskInclude = [...facts.signInRisk]
   if (facts.userRisk.size > 0) sig.userRiskInclude = [...facts.userRisk]
@@ -276,9 +333,9 @@ export function adHocGoal(facts: PolicyFacts): Goal {
 
   return {
     id: `adhoc:${facts.name}`,
-    name: facts.name,
-    description: `Ad-hoc goal from baseline policy "${facts.name}" — not in the catalogue; evaluated structurally.`,
-    phase: 8,
+    name: adHocTitle(facts),
+    description: `From the baseline policy "${facts.name}" — not in the goal catalogue; compared structurally.`,
+    phase: adHocPhase(facts, who.kind),
     applicability: inferAdHocFacet(facts),
     implementations: [
       {
@@ -295,6 +352,68 @@ export function adHocGoal(facts: PolicyFacts): Goal {
     adHocSource: facts.name,
     ...(vendorOf(facts) ? { vendor: vendorOf(facts)! } : {}),
   }
+}
+
+const FIRST_PARTY_NAME = new Map(firstPartyApps.apps.map((a) => [a.appId.toLowerCase(), a.displayName]))
+const LEGACY_CLIENT = /activesync|other|imap|pop|smtp|exchange/i
+
+/** Phase 8 is gone: an ad-hoc goal sits in the phase its facts imply (prompt 12 §8). */
+export function adHocPhase(facts: PolicyFacts, who: string): number {
+  const controls = controlsLower(facts)
+  if (controls.has('block')) {
+    const legacy = [...facts.clientApps].some((c) => LEGACY_CLIENT.test(c)) || facts.flows.size > 0
+    return legacy ? 1 : 4
+  }
+  if ([...controls].some((c) => DEVICE_CONTROLS.has(c) || APP_PROTECTION_CONTROLS.has(c))) return 5
+  if (facts.signInRisk.size > 0 || facts.userRisk.size > 0 || facts.workload !== null) return 7
+  const sessionOnly =
+    !controls.has('mfa') &&
+    (facts.session.signInFrequencyHours !== null || facts.session.persistentBrowser !== null || facts.session.secureSignInSession || facts.session.appEnforced)
+  if (sessionOnly) return 6
+  if (who === 'coreAdmins' || [...facts.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))) return 3
+  if (who === 'guests') return 4
+  return 2
+}
+
+/** Plain-language title from the facts: "Require MFA for the Inforcer app". */
+export function adHocTitle(facts: PolicyFacts): string {
+  const controls = controlsLower(facts)
+  const vendor = vendorOf(facts)
+  const appNames = [...facts.apps.ids].map((id) => FIRST_PARTY_NAME.get(id.toLowerCase()) ?? null)
+  const object = facts.apps.all
+    ? 'all apps'
+    : vendor
+      ? `the ${vendor.name} app`
+      : facts.apps.userActions.size > 0
+        ? [...facts.apps.userActions].some((a) => a.includes('registersecurityinfo'))
+          ? 'security-info registration'
+          : 'device registration'
+        : facts.apps.adminPortals
+          ? 'the admin portals'
+          : facts.apps.office365
+            ? 'Office 365'
+            : appNames.length === 1 && appNames[0]
+              ? appNames[0]
+              : appNames.length > 0
+                ? `${appNames.length} apps`
+                : 'the targeted apps'
+  const audience = [...facts.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))
+    ? ' for admins'
+    : facts.who.guests !== null && !facts.who.all
+      ? ' for guests'
+      : ''
+  let verb: string
+  if (controls.has('block')) verb = 'Block access to'
+  else if (facts.grant?.strength === 'phishingResistant') verb = 'Require phishing-resistant MFA for'
+  else if (facts.grant?.strength === 'passwordless') verb = 'Require passwordless sign-in for'
+  else if ([...controls].some((c) => DEVICE_CONTROLS.has(c))) verb = 'Require a managed device for'
+  else if ([...controls].some((c) => APP_PROTECTION_CONTROLS.has(c))) verb = 'Require app protection for'
+  else if (controls.has('mfa')) verb = 'Require MFA for'
+  else if (facts.session.appEnforced) verb = 'Limit downloads on'
+  else if (facts.session.signInFrequencyHours !== null || facts.session.signInFrequencyEveryTime || facts.session.persistentBrowser !== null) verb = 'Limit sessions on'
+  else if (facts.session.secureSignInSession) verb = 'Require token protection for'
+  else verb = 'Apply the baseline policy to'
+  return `${verb} ${object}${audience}`
 }
 
 type Vendor = { name: string; appIds: string[]; namePattern: string }

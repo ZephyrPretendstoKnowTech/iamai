@@ -20,12 +20,14 @@ export function organisationReport(
     .filter((f) => !matchedPolicyIds.has(f.id))
     .map((f) => ({ id: f.id, name: f.name, state: f.state }))
 
+  // "Consider consolidating" only when more than two *enabled* policies match
+  // the goal's own signature (prompt 12 §7) — never for ad-hoc goals.
   const consolidation = results
-    .filter((r) => r.candidates.filter((c) => c.contribution === 'strong' || c.contribution === 'weak').length > 2)
+    .filter((r) => !r.goal.adHocSource && r.candidates.filter((c) => c.state === 'enabled').length > 2)
     .map((r) => ({
       goalId: r.goal.id,
       goalName: r.goal.name,
-      policyNames: r.candidates.map((c) => c.policyName),
+      policyNames: r.candidates.filter((c) => c.state === 'enabled').map((c) => c.policyName),
     }))
 
   const tokens = new Map<string, number>()

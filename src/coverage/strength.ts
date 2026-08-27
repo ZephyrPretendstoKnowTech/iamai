@@ -130,6 +130,8 @@ export function sessionSatisfiesFloor(session: PolicyFacts['session'], floor: No
   }
   if (floor.persistentBrowserNever && !persistOk) return false
   if (floor.secureSignInSession && !secureOk) return false
+  if (floor.signInFrequencyEveryTime && !session.signInFrequencyEveryTime) return false
+  if (floor.appEnforced && !appOk) return false
   return true
 }
 

@@ -26,6 +26,10 @@ import { ROADMAP as C } from '../../copy/pages.ts'
 import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
 import { roadmapOverview } from '../../copy/statements.ts'
 import { PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
+import { DEFAULT_PACE, PACES } from '../../roadmap/constants.ts'
+import type { Pace } from '../../roadmap/constants.ts'
+import type { Schedule } from '../../roadmap/schedule.ts'
+import { PrintPlan } from './PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
 import { Button, Callout, Card, Chip, ExpandCard, FilterChip, StatTile, Stats, Tabs } from '../components/index.ts'
@@ -33,7 +37,7 @@ import type { ChipStatus } from '../components/index.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }>
-type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string }
+type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; pace?: Pace }
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
   done: 'done',
@@ -109,6 +113,7 @@ export function RoadmapPage({
   }, [snapshot])
 
   const startDate = saved?.startDate ?? (snapshot ? nextMonday(new Date().toISOString()) : null)
+  const pace: Pace = saved?.pace ?? DEFAULT_PACE
 
   const computed = useMemo(() => {
     if (!snapshot || !baseline || !mapping || !groupsLoaded || !loadedStores || !startDate) return null
@@ -143,6 +148,7 @@ export function RoadmapPage({
       viability,
       strengths,
       startDate,
+      pace,
       operatorUserId: operator?.userId ?? null,
       names,
     })
@@ -156,7 +162,16 @@ export function RoadmapPage({
       breakGlassUserIds: mapping.breakGlassUserIds,
     })
     return { steps, schedule, coverage, viability, names, dangers }
-  }, [snapshot, baseline, mapping, groupsLoaded, loadedStores, groups, saved, planId, version, startDate, operator, extraNames])
+  }, [snapshot, baseline, mapping, groupsLoaded, loadedStores, groups, saved, planId, version, startDate, pace, operator, extraNames])
+
+  // The print document exists only once the plan is computed; until then the
+  // screen layout prints as-is.
+  const hasPlan = computed !== null
+  useEffect(() => {
+    if (!hasPlan) return
+    document.body.classList.add('has-print-plan')
+    return () => document.body.classList.remove('has-print-plan')
+  }, [hasPlan])
 
   // Resolve any ids the directory could not name (portal steps, exclusions).
   useEffect(() => {
@@ -181,8 +196,9 @@ export function RoadmapPage({
       steps: stepsRecord,
       checkpoints: saved?.checkpoints ?? [],
       startDate,
+      pace,
     })
-  }, [computed, snapshot, planId, saved, startDate])
+  }, [computed, snapshot, planId, saved, startDate, pace])
 
   useEffect(() => {
     if (!computed || !import.meta.env.DEV) return
@@ -234,7 +250,6 @@ export function RoadmapPage({
   const done = steps.filter((s) => s.status === 'done')
   const safe = steps.filter((s) => s.safeToday)
   const blocked = steps.filter((s) => s.status === 'blocked')
-  const phases = [...new Set(steps.map((s) => s.phase))].sort((a, b) => a - b)
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'This tenant'
 
@@ -252,6 +267,12 @@ export function RoadmapPage({
     setSaved((p) => (p ? { ...p, startDate: iso } : p))
     setVersion((v) => v + 1)
   }
+  const setPace = (next: Pace): void => {
+    setSaved((p) => (p ? { ...p, pace: next } : p))
+    setVersion((v) => v + 1)
+  }
+  const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
+  const stepById = new Map(steps.map((s) => [s.id, s]))
 
   const savePlan = (): void => {
     if (!mapping || !operator) return
@@ -306,7 +327,7 @@ export function RoadmapPage({
     tenant: tenantName,
     done: done.length,
     total: steps.length,
-    pace: C.pace,
+    pace: C.paceWord[schedule.pace] ?? schedule.pace,
     finishes: when(schedule.targetEnd),
     weeks: schedule.weeks,
   })
@@ -334,17 +355,26 @@ export function RoadmapPage({
         </p>
       )}
       {blocked.length > 0 && <p>{C.blockedSteps(blocked.length)}</p>}
-      <p className="no-print">
+      <p className="row no-print">
         <label>
           {C.startDate}{' '}
           <input
             type="date"
             value={schedule.start.slice(0, 10)}
-            onChange={(e) => e.currentTarget.value && setStart(`${e.currentTarget.value}T00:00:00.000Z`)}
+            onChange={(e) => e.currentTarget.value && setStart(`${e.currentTarget.value}T12:00:00.000Z`)}
           />{' '}
           <span className="muted">{when(schedule.start)}</span>
         </label>
       </p>
+      <div className="row no-print">
+        <span className="muted">{C.paceLabel}</span>
+        {(Object.keys(PACES) as Pace[]).map((p) => (
+          <FilterChip key={p} selected={pace === p} title={C.paces[p].text} onToggle={() => setPace(p)}>
+            {C.paces[p].label}
+          </FilterChip>
+        ))}
+        <span className="muted">{C.paces[pace].text}</span>
+      </div>
       <p className="row no-print">
         <Button variant="primary" icon="download" onClick={savePlan}>
           {C.save}
@@ -362,36 +392,50 @@ export function RoadmapPage({
     </div>
   )
 
-  const timeline = () => (
-    <div>
-      {schedule.phases.map((p) => {
-        const inPhase = steps.filter((s) => s.phase === p.phase)
-        const phaseDone = inPhase.filter((s) => s.status === 'done').length
-        return (
-          <div key={p.phase} className="timeline-row">
-            <div className="timeline-dates">{p.days === 0 ? C.complete : dateRange(p.start, p.end)}</div>
-            <div>
-              <strong>{C.phase(p.phase, PHASE_NAME[p.phase] ?? '')}</strong>{' '}
-              <span className="reason">
-                {C.phaseDone(phaseDone, inPhase.length)}
-                {p.note ? ` · ${p.note}` : ''}
-              </span>
-              <ul className="sections">
-                {inPhase.map((s) => (
-                  <li key={s.id}>
-                    <Chip status={STATUS_CHIP[s.status]} title={STEP_STATUS[s.status].text}>
-                      {STEP_STATUS_LABEL[s.status]}
-                    </Chip>{' '}
-                    {s.title}
-                  </li>
-                ))}
-              </ul>
+  const timeline = () => {
+    const created = steps.filter((s) => s.kind === 'create' && s.status !== 'done' && s.status !== 'skipped').length
+    const stepLine = (s: Step) => (
+      <li key={s.id}>
+        <Chip status={STATUS_CHIP[s.status]} title={STEP_STATUS[s.status].text}>
+          {STEP_STATUS_LABEL[s.status]}
+        </Chip>{' '}
+        <a href={`#step-${s.id}`}>{s.title}</a>
+      </li>
+    )
+    return (
+      <div>
+        {schedule.waves.map((w) => {
+          const inWave = w.stepIds.map((id) => stepById.get(id)).filter((s): s is Step => s !== undefined)
+          const waveDone = inWave.filter((s) => s.status === 'done').length
+          return (
+            <div key={w.wave}>
+              <div className="timeline-row">
+                <div className="timeline-dates">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</div>
+                <div>
+                  <strong>{waveTitle(w)}</strong>{' '}
+                  <span className="reason">
+                    {C.phaseDone(waveDone, inWave.length)}
+                    {w.note ? ` · ${w.note}` : ''}
+                  </span>
+                  {w.wave === 0 && created > 0 && <p className="reason">{C.day0Text(created)}</p>}
+                  <ul className="sections">{inWave.map(stepLine)}</ul>
+                </div>
+              </div>
+              {w.wave === 0 && schedule.observation.days > 0 && (
+                <div className="timeline-row">
+                  <div className="timeline-dates">{dateRange(schedule.observation.start, schedule.observation.end)}</div>
+                  <div>
+                    <strong>{C.observation(schedule.observation.days)}</strong>
+                    <p className="reason">{C.observationText}</p>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )
-      })}
-    </div>
-  )
+          )
+        })}
+      </div>
+    )
+  }
 
   const dangerAreas = () => (
     <div>
@@ -447,20 +491,19 @@ export function RoadmapPage({
             </FilterChip>
           ))}
         </div>
-        {phases.map((phase) => {
-          const inPhase = visible.filter((s) => s.phase === phase)
-          if (inPhase.length === 0) return null
-          const sched = schedule.phases.find((p) => p.phase === phase)
+        {schedule.waves.map((w) => {
+          const inWave = w.stepIds.map((id) => stepById.get(id)).filter((s): s is Step => s !== undefined && visible.includes(s))
+          if (inWave.length === 0) return null
           return (
-            <div key={phase} className="phase-group">
+            <div key={w.wave} className="phase-group">
               <h3>
-                {C.phase(phase, PHASE_NAME[phase] ?? '')}{' '}
-                {sched && sched.days > 0 && <span className="reason">{dateRange(sched.start, sched.end)}</span>}
+                {waveTitle(w)} <span className="reason">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</span>
               </h3>
-              {inPhase.map((step) => (
+              {inWave.map((step) => (
                 <StepCard
                   key={step.id}
                   step={step}
+                  stepById={stepById}
                   nameOf={nameOf}
                   copied={copied}
                   onCopy={copy}
@@ -491,6 +534,15 @@ export function RoadmapPage({
           { id: 'steps', label: C.tabs.steps, badge: `${done.length}/${steps.length}`, render: stepsView },
         ]}
       />
+      <PrintPlan
+        tenantName={tenantName}
+        baselineLabel={baseline ? baselineIndex.label : ''}
+        operator={operator?.userPrincipalName ?? ''}
+        steps={steps}
+        schedule={schedule}
+        dangers={dangers}
+        nameOf={nameOf}
+      />
     </StepFrame>
   )
 }
@@ -499,7 +551,7 @@ export function RoadmapPage({
 function planMarkdown(
   tenantName: string,
   steps: Step[],
-  schedule: { start: string; targetEnd: string; weeks: number; phases: { phase: number; start: string; end: string; days: number }[] },
+  schedule: Schedule,
   dangers: { title: string; people: { name: string; need: string }[] }[],
   nameOf: (id: string) => string,
 ): string {
@@ -512,10 +564,12 @@ function planMarkdown(
     }
     lines.push('')
   }
-  for (const p of schedule.phases) {
-    const inPhase = steps.filter((s) => s.phase === p.phase)
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  for (const w of schedule.waves) {
+    const inPhase = w.stepIds.map((id) => byId.get(id)).filter((s): s is Step => s !== undefined)
     if (inPhase.length === 0) continue
-    lines.push(`## ${C.phase(p.phase, PHASE_NAME[p.phase] ?? '')} (${p.days === 0 ? C.complete : dateRange(p.start, p.end)})`)
+    const title = w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? '')
+    lines.push(`## ${title} (${w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)})`)
     for (const s of inPhase) {
       lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** (${STEP_KIND_LABEL[s.kind]}) — ${s.impact}`)
       if (s.highCare.userIds.length > 0) lines.push(`  - ${C.markdown.care(s.highCare.userIds.map(nameOf).join(', '))}`)
@@ -528,6 +582,7 @@ function planMarkdown(
 
 function StepCard({
   step,
+  stepById,
   nameOf,
   copied,
   onCopy,
@@ -536,6 +591,7 @@ function StepCard({
   onSkipped,
 }: {
   step: Step
+  stepById: Map<string, Step>
   nameOf: (id: string) => string
   copied: string | null
   onCopy: (id: string, text: string) => Promise<void>
@@ -547,6 +603,7 @@ function StepCard({
   return (
     <ExpandCard
       className={`step-card ${step.safeToday ? 'lane-safe' : ''}`}
+      id={`step-${step.id}`}
       summary={
         <>
           <Chip status={STATUS_CHIP[step.status]} title={STEP_STATUS[step.status].text}>
@@ -592,9 +649,19 @@ function StepCard({
         </p>
       )}
 
-      {step.status === 'blocked' && step.unblockNotes.length > 0 && (
-        <Callout kind="warning" title={C.unblockedBy}>
-          {step.unblockNotes.join('; ')}
+      {step.status === 'blocked' && (step.blockers.length > 0 || step.unblockNotes.length > 0) && (
+        <Callout kind="warning" title={C.blockedBy}>
+          <ul className="sections">
+            {step.blockers.map((b, i) => (
+              <li key={i}>
+                {b.kind === 'step' && <a href={`#step-${b.stepId}`}>{stepById.get(b.stepId)?.title ?? b.stepId}</a>}
+                {b.kind === 'setup' && <a href={`#/mapping`}>{C.setupQuestionLink(b.questionNumber)}</a>}
+                {(b.kind === 'step' || b.kind === 'setup') && ' — '}
+                {b.label}
+              </li>
+            ))}
+            {step.blockers.length === 0 && step.unblockNotes.map((n, i) => <li key={`n${i}`}>{n}</li>)}
+          </ul>
         </Callout>
       )}
 
