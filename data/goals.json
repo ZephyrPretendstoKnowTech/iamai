@@ -1,0 +1,385 @@
+{
+  "$comment": "Goal catalogue v1 (intents.md §4). P1/P2 'ca' implementations only; free-tier setting implementations arrive in a later pass from free-tier-ladder.json. Signatures are declarative predicates interpreted by src/coverage/classify.ts.",
+  "goals": [
+    {
+      "id": "mfa-all-users",
+      "name": "Every user satisfies MFA on every app",
+      "description": "All members and guests must complete multifactor authentication for every application.",
+      "phase": 2,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "grantHasAuthControl": true, "appsAll": true, "noRisk": true, "noFlows": true, "noPlatforms": true, "noLocations": true, "noUserActions": true },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "grant": "mfa" },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "admins-phishing-resistant",
+      "name": "Admins use phishing-resistant auth",
+      "description": "Core admin roles must authenticate with phishing-resistant methods.",
+      "phase": 3,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "rolesIntersectCoreAdmins": true, "appsAll": true },
+          "expectedWho": { "kind": "coreAdmins" },
+          "expectedApps": "all",
+          "floor": { "grant": "phishingResistant" },
+          "allowedExclusions": ["breakGlass"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "admin-portals-protected",
+      "name": "Admin portals need strong auth or are blocked for non-admins",
+      "description": "Access to Microsoft admin portals requires strong authentication or is blocked outright.",
+      "phase": 3,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "appsAdminPortals": true },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "adminPortals",
+          "floor": { "grant": "mfa" },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "guests-mfa",
+      "name": "Guests satisfy MFA",
+      "description": "Every guest and external user type present in the tenant must complete MFA.",
+      "phase": 4,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "whoGuests": true, "appsAll": true },
+          "expectedWho": { "kind": "guests" },
+          "expectedApps": "all",
+          "floor": { "grant": "mfa" },
+          "allowedExclusions": ["breakGlass"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "register-info-protected",
+      "name": "Security-info registration requires a trusted context",
+      "description": "Registering security info requires MFA or happens only from trusted locations.",
+      "phase": 0,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "userActionsInclude": ["urn:user:registersecurityinfo"] },
+          "expectedWho": { "kind": "members" },
+          "expectedApps": "userAction",
+          "floor": { "grant": "mfa" },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "block-legacy-auth",
+      "name": "Legacy protocols blocked",
+      "description": "Exchange ActiveSync and other legacy clients are blocked for everyone.",
+      "phase": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "clientAppsInclude": ["exchangeActiveSync", "other"], "grantBlock": true },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "grant": "block" },
+          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "block-device-code",
+      "name": "Device-code flow blocked",
+      "description": "The device-code authentication flow is blocked.",
+      "phase": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "flowsInclude": ["deviceCodeFlow"], "grantBlock": true },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "grant": "block" },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "block-auth-transfer",
+      "name": "Authentication transfer blocked",
+      "description": "The authentication-transfer flow is blocked.",
+      "phase": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "flowsInclude": ["authenticationTransfer"], "grantBlock": true },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "grant": "block" },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "geo-restriction",
+      "name": "Sign-ins outside allowed countries blocked",
+      "description": "Sign-ins from outside the allowed countries are blocked.",
+      "phase": 4,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "locationsPresent": true, "grantBlock": true, "appsAll": true },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "grant": "block" },
+          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "admin-session",
+      "name": "Admin sessions expire quickly and never persist",
+      "description": "Core admin roles get a short sign-in frequency and no persistent browser sessions.",
+      "phase": 3,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "rolesIntersectCoreAdmins": true },
+          "expectedWho": { "kind": "coreAdmins" },
+          "expectedApps": "all",
+          "floor": { "session": { "maxSignInFrequencyHours": 12, "persistentBrowserNever": true } },
+          "allowedExclusions": ["breakGlass"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "byod-session-controls",
+      "name": "Unmanaged-device browser sessions are limited",
+      "description": "Browser sessions from unmanaged devices get app-enforced restrictions, no persistence, or a sign-in frequency.",
+      "phase": 6,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "clientAppsIncludeBrowser": true, "deviceFilterOrNoDeviceGrant": true, "sessionAnyOf": ["appEnforced", "persistentBrowserNever", "signInFrequency"] },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "session": { "anyOf": true } },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "require-managed-device",
+      "name": "Office apps require a compliant or joined device",
+      "description": "Office 365 access requires a compliant or domain-joined device.",
+      "phase": 5,
+      "applicability": "intune",
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "grantDeviceControl": true, "appsOffice365OrAll": true },
+          "expectedWho": { "kind": "members" },
+          "expectedApps": "office365",
+          "floor": { "grant": "compliantDevice" },
+          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "block-unsupported-platforms",
+      "name": "Unknown platforms blocked",
+      "description": "Platforms outside the supported set are blocked.",
+      "phase": 5,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "platformsAllWithExclusions": true, "grantBlock": true },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "grant": "block" },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "mobile-app-protection",
+      "name": "Mobile access requires approved or protected apps",
+      "description": "iOS and Android access requires approved client apps or app protection policies.",
+      "phase": 5,
+      "applicability": "intune",
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "platformsSubsetMobile": true, "grantAppProtection": true },
+          "expectedWho": { "kind": "members" },
+          "expectedApps": "all",
+          "floor": { "grant": "approvedApplication" },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "sign-in-risk",
+      "name": "Risky sign-ins get MFA or are blocked",
+      "description": "High (and medium) sign-in risk requires MFA or blocks the sign-in.",
+      "phase": 7,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p2",
+          "kind": "ca",
+          "signature": { "signInRiskInclude": ["high"] },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "grant": "mfa" },
+          "allowedExclusions": ["breakGlass"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "user-risk",
+      "name": "High-risk users must change password",
+      "description": "High user risk forces a secured password change or blocks access.",
+      "phase": 7,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p2",
+          "kind": "ca",
+          "signature": { "userRiskInclude": ["high"] },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "grant": "passwordChange" },
+          "allowedExclusions": ["breakGlass"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "azure-management-mfa",
+      "name": "Azure management requires strong auth",
+      "description": "The Azure management plane requires MFA.",
+      "phase": 3,
+      "applicability": "azureManagement",
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "appsIdsInclude": ["797f4846-ba00-4fd7-ba43-dac1f8f63013"] },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "azureManagement",
+          "floor": { "grant": "mfa" },
+          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "device-registration-mfa",
+      "name": "Registering or joining a device requires MFA",
+      "description": "The register-or-join-device user action requires MFA.",
+      "phase": 5,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "userActionsInclude": ["urn:user:registerdevice"] },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "userAction",
+          "floor": { "grant": "mfa" },
+          "allowedExclusions": ["breakGlass", "globalExclusion"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "token-protection",
+      "name": "Windows desktop sessions require token protection",
+      "description": "Windows sessions require token protection (secure sign-in session).",
+      "phase": 6,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": { "secureSignInSession": true, "platformsIncludeWindows": true },
+          "expectedWho": { "kind": "all" },
+          "expectedApps": "all",
+          "floor": { "session": { "secureSignInSession": true } },
+          "allowedExclusions": ["breakGlass", "globalExclusion", "serviceAccounts"]
+        }
+      ],
+      "free": []
+    },
+    {
+      "id": "workload-identity-block",
+      "name": "Service principals restricted",
+      "description": "Workload identities are blocked or risk-restricted by policy.",
+      "phase": 7,
+      "applicability": "workload",
+      "implementations": [
+        {
+          "tier": "workloadId",
+          "kind": "ca",
+          "signature": { "workloadPresent": true, "grantBlockOrSpRisk": true },
+          "expectedWho": { "kind": "workload" },
+          "expectedApps": "all",
+          "floor": { "grant": "block" },
+          "allowedExclusions": []
+        }
+      ],
+      "free": []
+    }
+  ]
+}

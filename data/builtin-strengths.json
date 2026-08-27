@@ -1,0 +1,41 @@
+{
+  "$comment": "The three built-in authentication strengths with their allowedCombinations (intents.md §2). Ids are identical in every tenant.",
+  "strengths": [
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "displayName": "Multifactor authentication",
+      "allowedCombinations": [
+        "windowsHelloForBusiness",
+        "fido2",
+        "x509CertificateMultiFactor",
+        "deviceBasedPush",
+        "temporaryAccessPassOneTime",
+        "temporaryAccessPassMultiUse",
+        "password,microsoftAuthenticatorPush",
+        "password,softwareOath",
+        "password,hardwareOath",
+        "password,sms",
+        "password,voice",
+        "federatedMultiFactor",
+        "microsoftAuthenticatorPush,federatedSingleFactor",
+        "sms,federatedSingleFactor",
+        "voice,federatedSingleFactor"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "displayName": "Passwordless MFA",
+      "allowedCombinations": [
+        "windowsHelloForBusiness",
+        "fido2",
+        "x509CertificateMultiFactor",
+        "deviceBasedPush"
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000004",
+      "displayName": "Phishing-resistant MFA",
+      "allowedCombinations": ["windowsHelloForBusiness", "fido2", "x509CertificateMultiFactor"]
+    }
+  ]
+}
