@@ -1,9 +1,9 @@
 // Licensing guide (SPEC §12): what this tenant's licence enables, scored
-// honestly — nothing locked, nothing "accepted risk". Higher tiers appear only
-// as education, grounded in this tenant's numbers.
+// honestly — nothing locked, nothing "accepted risk".
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { CATALOGUE } from '../../coverage/coverage.ts'
 import ladder from '../../../data/free-tier-ladder.json' with { type: 'json' }
+import { Card, Chip, DataTable, EmptyState, LinkButton } from '../components/index.ts'
 
 const CAP_LABEL: Record<string, string> = {
   entraP1: 'Entra ID P1',
@@ -30,13 +30,7 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
     return (
       <section>
         <h2>Licensing guide</h2>
-        <div className="card">
-          <p>
-            Once you <a href="#/scan">run a scan</a>, I'll show what your licence enables, where seat counts fall short
-            of your user count, and which goals I score you on. Nothing is ever locked or marked accepted-risk because
-            of licence — I harden what you have.
-          </p>
-        </div>
+        <EmptyState icon="key" text="After a scan, this page shows what your licence enables, where seat counts fall short, and which goals are scored." action={<LinkButton href="#/scan">Run a scan</LinkButton>} />
       </section>
     )
   }
@@ -47,67 +41,42 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
     const tier = g.implementations[0]?.tier ?? 'p1'
     goalsByTier.set(tier, [...(goalsByTier.get(tier) ?? []), g.name])
   }
-  const hasP1 = caps.entraP1.enabled
+  const capRows = Object.entries(caps).map(([key, c]) => ({ key, ...c }))
 
   return (
     <section>
       <h2>Licensing guide</h2>
-      <div className="advisor">
-        <p>
-          <strong>I harden what you have.</strong> Every goal is scored against the best implementation your licence
-          allows. If a tier is missing, the goals that need it simply aren't scored — they're listed below as education,
-          never as a gap you "accepted".
-        </p>
-        {!hasP1 && (
-          <p>
-            Without Entra ID P1 there is no Conditional Access at all — your plan is the free-tier ladder below plus
-            security defaults, and I say so plainly rather than pretending.
-          </p>
-        )}
-      </div>
+      <p className="advisor">
+        IAMAI hardens what you have. Every goal is scored against the best implementation your licence allows. Goals
+        that need a missing tier are listed as education, never as a gap you accepted.
+        {!caps.entraP1.enabled && ' Without Entra ID P1 there is no Conditional Access; the plan is the free-tier ladder plus security defaults.'}
+      </p>
 
-      <div className="card">
-        <h3>What your tenant has</h3>
-        <table className="viability">
-          <thead>
-            <tr>
-              <th>Capability</th>
-              <th>Status</th>
-              <th>Seats</th>
-              <th>Covers your users?</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(caps).map(([key, c]) => (
-              <tr key={key}>
-                <td>{CAP_LABEL[key] ?? key}</td>
-                <td>
-                  <span className={`chip ${c.enabled ? 'state-verified' : ''}`}>{c.enabled ? 'enabled' : 'not licensed'}</span>
-                </td>
-                <td>{c.enabled ? `${c.seats} (${c.consumed} assigned)` : '—'}</td>
-                <td>
-                  {c.enabled
-                    ? c.seats >= users
-                      ? 'yes'
-                      : `no — ${users - c.seats} more user(s) than seats; features gate per assigned user`
-                    : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Card title="What your tenant has">
+        <DataTable
+          rows={capRows}
+          rowKey={(r) => r.key}
+          columns={[
+            { key: 'cap', header: 'Capability', render: (r) => CAP_LABEL[r.key] ?? r.key },
+            { key: 'status', header: 'Status', render: (r) => <Chip status={r.enabled ? 'done' : 'neutral'}>{r.enabled ? 'enabled' : 'not licensed'}</Chip> },
+            { key: 'seats', header: 'Seats', render: (r) => (r.enabled ? `${r.seats} (${r.consumed} assigned)` : '—') },
+            {
+              key: 'covers',
+              header: 'Covers your users?',
+              render: (r) => (r.enabled ? (r.seats >= users ? 'yes' : `no — ${users - r.seats} more user(s) than seats`) : '—'),
+            },
+          ]}
+        />
+      </Card>
 
-      <div className="card">
-        <h3>Goals by the licence they need</h3>
+      <Card title="Goals by the licence they need">
         {[...goalsByTier.entries()].map(([tier, names]) => {
           const cap = TIER_CAP[tier]
           const have = cap ? caps[cap as keyof typeof caps]?.enabled : true
           return (
             <div key={tier}>
               <h4>
-                {cap ? CAP_LABEL[cap] : tier}{' '}
-                <span className={`chip ${have ? 'state-verified' : ''}`}>{have ? 'scored' : 'education only'}</span>
+                {cap ? CAP_LABEL[cap] : tier} <Chip status={have ? 'done' : 'neutral'}>{have ? 'scored' : 'education only'}</Chip>
               </h4>
               <ul className="sections">
                 {names.map((n) => (
@@ -117,19 +86,16 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
             </div>
           )
         })}
-      </div>
+      </Card>
 
-      <div className="card">
-        <h3>The free-tier ladder</h3>
-        <p className="reason">
-          The spine of every plan, regardless of licence — curated from Microsoft guidance (placeholders until curated).
-        </p>
+      <Card title="The free-tier ladder">
+        <p className="muted">The spine of every plan, regardless of licence — curated from Microsoft guidance (placeholders until curated).</p>
         <ol className="sections">
           {ladder.items.map((i) => (
             <li key={i.id}>{i.name}</li>
           ))}
         </ol>
-      </div>
+      </Card>
     </section>
   )
 }

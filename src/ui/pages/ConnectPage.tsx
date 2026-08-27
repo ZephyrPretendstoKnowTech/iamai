@@ -1,5 +1,6 @@
 import type { AccountInfo } from '@azure/msal-browser'
 import { signIn, signOut } from '../../graph/msal.ts'
+import { Button, Card } from '../components/index.ts'
 import { REPO_URL, StepFrame } from '../shell/AppShell.tsx'
 
 export function ConnectPage({
@@ -22,24 +23,26 @@ export function ConnectPage({
       nextLabel="Baseline"
     >
       {account ? (
-        <div className="card">
+        <Card>
           <p>
             Signed in to <strong>{tenantName ?? 'your tenant'}</strong> as {account.username}
           </p>
-          <p className="sub">tenant ID {account.tenantId}</p>
+          <p className="muted">
+            Tenant ID <code>{account.tenantId}</code>
+          </p>
           {lastScanAt && (
-            <p className="reason">
-              I already have a scan from {new Date(lastScanAt).toLocaleString()}
-              {userCount ? ` (${userCount} users)` : ''} — jump straight to <a href="#/coverage">Findings</a> or{' '}
-              <a href="#/roadmap">Roadmap</a>.
+            <p className="muted">
+              A scan from {new Date(lastScanAt).toLocaleString()}
+              {userCount ? ` (${userCount} users)` : ''} is saved on this device — go straight to{' '}
+              <a href="#/coverage">Findings</a> or <a href="#/roadmap">Roadmap</a>.
             </p>
           )}
           <p>
-            <button onClick={() => void signOut()}>Sign out</button>
+            <Button onClick={() => void signOut()}>Sign out</Button>
           </p>
-        </div>
+        </Card>
       ) : (
-        <div className="card">
+        <Card>
           <ul>
             <li>
               IAMAI is read-only. It never creates, edits, or deletes anything in your tenant — not
@@ -57,10 +60,10 @@ export function ConnectPage({
               To remove all access later, delete that enterprise app — nothing else is left behind.
             </li>
           </ul>
-          <button className="primary" onClick={() => void signIn()}>
+          <Button variant="primary" onClick={() => void signIn()}>
             Sign in with Microsoft
-          </button>
-        </div>
+          </Button>
+        </Card>
       )}
     </StepFrame>
   )

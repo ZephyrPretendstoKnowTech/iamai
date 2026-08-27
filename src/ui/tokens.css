@@ -1,81 +1,101 @@
-/* Design tokens — single source for colour, spacing, type, and radii.
-   Navy/blue system: dark by default, light via [data-theme='light'] on <html>,
-   print always light. No component library, no CDN. */
+/* Design tokens v2 — mirrors src/ui/tokens.ts (the source of truth; the
+   contrast test runs against that file). Dark by default, light via
+   [data-theme='light'], print always light. */
 :root {
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
 
-  /* 8px spacing scale */
+  /* type: 30/22/17/15/13 */
+  --text-xl: 30px;
+  --text-lg: 22px;
+  --text-md: 17px;
+  --text-base: 15px;
+  --text-sm: 13px;
+
+  /* spacing 4/8/12/16/24/32/48 */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
-  --space-6: 40px;
+  --space-6: 32px;
+  --space-7: 48px;
 
-  /* type scale: 15px base, 28/20/16/14 hierarchy */
-  --text-base: 15px;
-  --text-xs: 12px;
-  --text-sm: 14px;
-  --text-md: 16px;
-  --text-lg: 20px;
-  --text-xl: 28px;
+  /* radius 12 cards / 8 inputs / 999 chips */
+  --radius-card: 12px;
+  --radius-input: 8px;
+  --radius-chip: 999px;
 
-  /* radii */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --max-content: 1100px;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --motion: 180ms ease;
 
   /* dark (default) */
-  --bg: #0b1220;
-  --surface: #111a2e;
-  --surface-raised: #16213a;
-  --border: #24304a;
-  --text: #e2e8f0;
-  --text-muted: #94a3b8;
-  --accent: #3b82f6;
-  --accent-hover: #60a5fa;
-  --accent-contrast: #ffffff;
+  --bg: #0a1220;
+  --surface: #0f182b;
+  --raised: #152038;
+  --border: #22304a;
+  --text: #e6edf7;
+  --muted: #8fa3bf;
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-ink: #04221e;
   --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #38bdf8;
-  /* readable chip fills on both themes */
-  --chip-bg: rgba(59, 130, 246, 0.08);
+  --warning: #f5b301;
+  --danger: #f04e4e;
+  --info: #60a5fa;
+  --focus: rgba(94, 234, 212, 0.6);
+  --accent-soft: rgba(45, 212, 191, 0.12);
+  --success-soft: rgba(34, 197, 94, 0.14);
+  --warning-soft: rgba(245, 179, 1, 0.14);
+  --danger-soft: rgba(240, 78, 78, 0.14);
+  --info-soft: rgba(96, 165, 250, 0.14);
 }
 
 :root[data-theme='light'] {
-  --bg: #f8fafc;
+  --bg: #f6f8fb;
   --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --border: #e2e8f0;
+  --raised: #f1f5f9;
+  --border: #dce3ee;
   --text: #0f172a;
-  --text-muted: #475569;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-contrast: #ffffff;
-  --success: #16a34a;
-  --warning: #d97706;
-  --danger: #dc2626;
-  --info: #0284c7;
-  --chip-bg: rgba(59, 130, 246, 0.06);
+  --muted: #5b6b82;
+  --accent: #0b7f72;
+  --accent-hover: #095f55;
+  --accent-ink: #ffffff;
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #c62828;
+  --info: #1d4ed8;
+  --focus: rgba(15, 159, 143, 0.6);
+  --accent-soft: rgba(11, 127, 114, 0.1);
+  --success-soft: rgba(21, 128, 61, 0.1);
+  --warning-soft: rgba(180, 83, 9, 0.1);
+  --danger-soft: rgba(198, 40, 40, 0.1);
+  --info-soft: rgba(29, 78, 216, 0.1);
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
-/* Print is always light. */
 @media print {
   :root {
     --bg: #ffffff;
     --surface: #ffffff;
-    --surface-raised: #ffffff;
-    --border: #e2e8f0;
+    --raised: #f6f8fb;
+    --border: #dce3ee;
     --text: #0f172a;
-    --text-muted: #475569;
-    --accent: #2563eb;
-    --accent-hover: #2563eb;
-    --accent-contrast: #ffffff;
-    --success: #16a34a;
-    --warning: #d97706;
-    --danger: #dc2626;
-    --info: #0284c7;
-    --chip-bg: transparent;
+    --muted: #5b6b82;
+    --accent: #0b7f72;
+    --accent-hover: #095f55;
+    --accent-ink: #ffffff;
+    --success: #15803d;
+    --warning: #b45309;
+    --danger: #c62828;
+    --info: #1d4ed8;
+    --focus: transparent;
+    --accent-soft: transparent;
+    --success-soft: transparent;
+    --warning-soft: transparent;
+    --danger-soft: transparent;
+    --info-soft: transparent;
+    --shadow-1: none;
   }
 }

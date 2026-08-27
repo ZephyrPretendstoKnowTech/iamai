@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from './components/index.ts'
 import { autoCheckAuthMethods } from '../graph/spikes/authMethods.ts'
 import { autoCheckReports } from '../graph/spikes/reportsCheck.ts'
 import { runPlatformCheck } from '../graph/spikes/platformCheck.ts'
@@ -91,9 +92,9 @@ export function DevSpikes() {
       <p>
         {buttons.map((b) => (
           <span key={b.key}>
-            <button onClick={() => void run(b.key)} disabled={spike === 'running'}>
+            <Button size="sm" onClick={() => void run(b.key)} disabled={spike === 'running'}>
               {b.label}
-            </button>{' '}
+            </Button>{' '}
           </span>
         ))}
       </p>

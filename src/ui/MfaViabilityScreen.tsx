@@ -5,9 +5,11 @@ import type { SectionEvent, TenantSnapshot, UserRow, WorkerOutMessage } from '..
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scoring/mfaViability.ts'
-import { absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative, toCsv } from './format.ts'
+import { absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative } from './format.ts'
 import { loadMappingState } from '../mapping/store.ts'
 import { StepFrame } from './shell/AppShell.tsx'
+import { Button, Callout, Chip, DataTable, ExpandCard, FilterChip, ProgressBar, StatTile, Stats } from './components/index.ts'
+import type { ChipStatus, Column } from './components/index.ts'
 
 type SectionRow = { source: string; status: string; rows?: number; reason?: string; ms?: number }
 
@@ -17,6 +19,14 @@ const MFA_LABEL: Record<MfaState, string> = {
   notChallenged: 'Not challenged',
   unverified: 'Unverified',
   none: 'No method',
+}
+
+const MFA_CHIP: Record<MfaState, ChipStatus> = {
+  verified: 'done',
+  likelyViable: 'ready',
+  notChallenged: 'warning',
+  unverified: 'warning',
+  none: 'blocked',
 }
 
 const ACTIVITY_LABEL: Record<ActivityState, string> = {
@@ -34,22 +44,19 @@ const TIER_LABEL: Record<MethodTier, string> = {
   none: '—',
 }
 
-// Hover definitions for every state and tile (the legend uses the same text).
+// Definitions behind every number a user sees (InfoTip + legend).
 const DEFS: Record<string, string> = {
   Verified: 'Completed MFA in the collected sign-in window — proven, not assumed.',
   'Likely viable':
     'A positive signal (current Authenticator, recent registration, or a recently active Windows Hello device) suggests MFA would succeed if required.',
-  'Not challenged':
-    'Signed in during the evidence window but nothing ever required MFA of them — enforcement is their first real test.',
+  'Not challenged': 'Signed in during the window but nothing ever required MFA of them — enforcement is their first real test.',
   Unverified: 'MFA-capable on paper with no usage signal — verify before enforcing.',
   'No method': 'No MFA-capable method registered. Email and security questions do not count.',
   Active: 'Successful sign-in within the last 90 days.',
   Dormant: 'No successful sign-in for more than 90 days — planned separately, never counted as an MFA success.',
   'Never signed in': 'No successful sign-in on record; the account creation date is shown.',
-  'Verification phase size':
-    'Active users whose MFA state is Unverified, Not challenged, or No method — the population to verify before any MFA enforcement step.',
-  'Challenged rate':
-    'Of the users active in the evidence window, the share who actually completed MFA. A low rate with many Not challenged means enforcement is largely untested.',
+  'Verification phase size': 'Active users whose MFA state is Unverified, Not challenged, or No method — the population to verify before any MFA enforcement step.',
+  'Challenged rate': 'Of the users active in the sign-in window, the share who actually completed MFA.',
   'Phishing-resistant': 'Passkeys / FIDO2 security keys, Windows Hello for Business, or certificates.',
   Passwordless: 'Microsoft Authenticator passwordless phone sign-in.',
   Push: 'Microsoft Authenticator push approval.',
@@ -57,18 +64,42 @@ const DEFS: Record<string, string> = {
   'SMS/voice': 'Phone-based methods only — works, but the weakest tier.',
 }
 
-// Plain-language wording in the cell; the version numbers live in the tooltip.
 function displayReason(r: string): { text: string; title?: string } {
   if (r.startsWith('Authenticator version stale')) return { text: 'Authenticator app out of date', title: r }
   if (r.startsWith('Authenticator current')) return { text: 'Authenticator app up to date', title: r }
   return { text: r }
 }
 
-type SortKey = 'name' | 'admin' | 'activity' | 'mfa' | 'method' | 'reasons'
-
 const MFA_ORDER: MfaState[] = ['none', 'unverified', 'notChallenged', 'likelyViable', 'verified']
 const ACTIVITY_ORDER: ActivityState[] = ['active', 'dormant', 'neverSignedIn']
 const TIER_ORDER: MethodTier[] = ['phishingResistant', 'passwordless', 'push', 'otp', 'smsVoice', 'none']
+
+// Friendly labels for the collection sections (no developer vocabulary).
+const SECTION_LABEL: Record<string, string> = {
+  'config:caPolicies': 'Conditional Access policies',
+  'config:namedLocations': 'Named locations',
+  'config:authStrengths': 'Authentication strengths',
+  'config:authMethodsPolicy': 'Authentication methods policy',
+  'config:securityDefaults': 'Security defaults',
+  'config:crossTenantAccess': 'Cross-tenant access',
+  'config:roleAssignments': 'Role assignments',
+  'config:pimEligibility': 'PIM eligibility',
+  'config:subscribedSkus': 'Licences',
+  'config:organization': 'Organisation',
+  'config:me': 'Your account',
+  'config:meMemberOf': 'Your groups',
+  registrationDetails: 'MFA registration',
+  users: 'People',
+  devices: 'Devices',
+  spActivity: 'Service principal activity',
+  authMethods: 'Registered methods',
+  appSignInSummary: 'App usage',
+  signInEvidence: 'Sign-in records',
+}
+
+const TOTAL_SECTIONS = Object.keys(SECTION_LABEL).length
+
+type Row = MfaViability & { user: UserRow | undefined; name: string }
 
 export function MfaViabilityScreen({
   tenantId,
@@ -87,9 +118,6 @@ export function MfaViabilityScreen({
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState(Date.now())
   const [highCare, setHighCare] = useState<Set<string>>(new Set())
-  useEffect(() => {
-    void loadMappingState(tenantId).then((m) => setHighCare(new Set(m.highCareUserIds)))
-  }, [tenantId])
   const [error, setError] = useState<string | null>(null)
   const [laneB, setLaneB] = useState<{ pages: number; rows: number; oldest: string | null } | null>(null)
   const [slow, setSlow] = useState(false)
@@ -97,7 +125,10 @@ export function MfaViabilityScreen({
   const [activityFilter, setActivityFilter] = useState<Set<ActivityState>>(new Set())
   const [tierFilter, setTierFilter] = useState<Set<MethodTier>>(new Set())
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null)
+
+  useEffect(() => {
+    void loadMappingState(tenantId).then((m) => setHighCare(new Set(m.highCareUserIds)))
+  }, [tenantId])
 
   useEffect(() => {
     if (scanState !== 'running') return
@@ -126,10 +157,7 @@ export function MfaViabilityScreen({
       }
       if (m.type !== 'section') return
       const s = m as SectionEvent
-      setSections((prev) => ({
-        ...prev,
-        [s.source]: { source: s.source, status: s.status, rows: s.rows, reason: s.reason, ms: s.ms },
-      }))
+      setSections((prev) => ({ ...prev, [s.source]: { source: s.source, status: s.status, rows: s.rows, reason: s.reason, ms: s.ms } }))
     })
     try {
       const result = await handle.done
@@ -150,85 +178,30 @@ export function MfaViabilityScreen({
     return { rows, summary: summarizeTenant(rows) }
   }, [snapshot])
 
-  const userById = useMemo(
-    () => new Map<string, UserRow>((snapshot?.users ?? []).map((u) => [u.id, u])),
-    [snapshot],
-  )
+  const userById = useMemo(() => new Map<string, UserRow>((snapshot?.users ?? []).map((u) => [u.id, u])), [snapshot])
 
-  const visibleRows = useMemo(() => {
+  const visibleRows: Row[] = useMemo(() => {
     if (!scored) return []
     const q = search.trim().toLowerCase()
-    let rows = scored.rows.filter((r) => {
-      if (mfaFilter.size > 0 && !mfaFilter.has(r.mfa)) return false
-      if (activityFilter.size > 0 && !activityFilter.has(r.activity)) return false
-      if (tierFilter.size > 0 && !tierFilter.has(r.strongestMethod)) return false
-      if (q) {
-        const u = userById.get(r.userId)
-        const hay = `${u?.displayName ?? ''} ${u?.userPrincipalName ?? ''}`.toLowerCase()
-        if (!hay.includes(q)) return false
-      }
-      return true
-    })
-    if (sort) {
-      const name = (r: MfaViability) => {
-        const u = userById.get(r.userId)
-        return (u?.displayName ?? u?.userPrincipalName ?? r.userId).toLowerCase()
-      }
-      const val: Record<SortKey, (r: MfaViability) => string | number> = {
-        name,
-        admin: (r) => (r.isAdmin ? 0 : 1),
-        activity: (r) => ACTIVITY_ORDER.indexOf(r.activity),
-        mfa: (r) => MFA_ORDER.indexOf(r.mfa),
-        method: (r) => TIER_ORDER.indexOf(r.strongestMethod),
-        reasons: (r) => r.reasons.join('; ').toLowerCase(),
-      }
-      const f = val[sort.key]
-      rows = [...rows].sort((a, b) => {
-        const va = f(a)
-        const vb = f(b)
-        return (va < vb ? -1 : va > vb ? 1 : 0) * sort.dir
+    return scored.rows
+      .map((r) => {
+        const user = userById.get(r.userId)
+        return { ...r, user, name: user?.displayName ?? user?.userPrincipalName ?? r.userId }
       })
-    }
-    return rows
-  }, [scored, mfaFilter, activityFilter, tierFilter, search, sort, userById])
+      .filter((r) => {
+        if (mfaFilter.size > 0 && !mfaFilter.has(r.mfa)) return false
+        if (activityFilter.size > 0 && !activityFilter.has(r.activity)) return false
+        if (tierFilter.size > 0 && !tierFilter.has(r.strongestMethod)) return false
+        if (q && !`${r.user?.displayName ?? ''} ${r.user?.userPrincipalName ?? ''}`.toLowerCase().includes(q)) return false
+        return true
+      })
+  }, [scored, mfaFilter, activityFilter, tierFilter, search, userById])
 
   const toggle = <T,>(set: Set<T>, value: T, apply: (s: Set<T>) => void) => {
     const next = new Set(set)
     if (next.has(value)) next.delete(value)
     else next.add(value)
     apply(next)
-  }
-
-  const headerClick = (key: SortKey) =>
-    setSort((s) => (s?.key === key ? (s.dir === 1 ? { key, dir: -1 } : null) : { key, dir: 1 }))
-
-  const sortMark = (key: SortKey) => (sort?.key === key ? (sort.dir === 1 ? ' ▲' : ' ▼') : '')
-
-  const exportCsv = () => {
-    const rows = visibleRows.map((r) => {
-      const u = userById.get(r.userId)
-      return [
-        u?.displayName ?? '',
-        u?.userPrincipalName ?? r.userId,
-        r.isAdmin ? 'yes' : '',
-        ACTIVITY_LABEL[r.activity],
-        r.accountCreated ?? '',
-        MFA_LABEL[r.mfa],
-        TIER_LABEL[r.strongestMethod],
-        r.methodTiers.map((t) => TIER_LABEL[t]).join('; '),
-        r.reasons.join('; '),
-        r.evidence ? `${r.evidence.method} at ${r.evidence.at}` : '',
-        highCare.has(r.userId) ? 'yes' : '',
-      ]
-    })
-    downloadFile(
-      'iamai-readiness.csv',
-      toCsv(
-        ['Name', 'UPN', 'Admin', 'Activity', 'Account created', 'MFA state', 'Strongest method', 'Method tiers', 'Reasons', 'Evidence', 'Handle with care'],
-        rows,
-      ),
-      'text/csv',
-    )
   }
 
   const downloadDiagnostics = async () => {
@@ -240,196 +213,227 @@ export function MfaViabilityScreen({
       sources: snapshot?.sources ?? null,
       sections: Object.values(sections),
     }
-    const json = redactIdentifiers(JSON.stringify(bundle, null, 2))
-    downloadFile(`iamai-diagnostics-${Date.now()}.json`, json, 'application/json')
+    downloadFile(`iamai-diagnostics-${Date.now()}.json`, redactIdentifiers(JSON.stringify(bundle, null, 2)), 'application/json')
   }
 
   const evidence = snapshot?.sources.signInEvidence
+  const finishedSections = Object.values(sections).filter((s) => s.status !== 'started').length
+  const progressPercent = scanState === 'running' ? Math.min(95, Math.round((finishedSections / TOTAL_SECTIONS) * 100)) : null
+  const nowLine =
+    scanState !== 'running'
+      ? undefined
+      : laneB
+        ? `Reading sign-in records — ${laneB.rows} so far${laneB.oldest ? `, back to ${absoluteDate(laneB.oldest)}` : ''}${startedAt !== null ? ` · ${elapsedLabel(startedAt, nowTick)} elapsed` : ''}`
+        : `Reading configuration and inventory (${finishedSections} of ${TOTAL_SECTIONS})${startedAt !== null ? ` · ${elapsedLabel(startedAt, nowTick)} elapsed` : ''}`
+
+  const columns: Column<Row>[] = [
+    {
+      key: 'name',
+      header: 'User',
+      sortValue: (r) => r.name.toLowerCase(),
+      csv: (r) => r.name,
+      render: (r) => (
+        <>
+          {r.name}
+          {r.user?.userType === 'guest' && <Chip>guest</Chip>}
+          {highCare.has(r.userId) && (
+            <Chip status="warning" title="Handle with care — verified before enforcement, sequenced last">
+              care
+            </Chip>
+          )}
+          {r.user?.userPrincipalName && <div className="sub">{r.user.userPrincipalName}</div>}
+        </>
+      ),
+    },
+    { key: 'upn', header: 'UPN', hidden: true, render: () => null, csv: (r) => r.user?.userPrincipalName ?? '' },
+    { key: 'admin', header: 'Admin', sortValue: (r) => (r.isAdmin ? 0 : 1), csv: (r) => (r.isAdmin ? 'yes' : ''), render: (r) => (r.isAdmin ? 'yes' : '') },
+    {
+      key: 'activity',
+      header: 'Activity',
+      sortValue: (r) => ACTIVITY_ORDER.indexOf(r.activity),
+      csv: (r) => ACTIVITY_LABEL[r.activity],
+      render: (r) => (
+        <>
+          <span title={DEFS[ACTIVITY_LABEL[r.activity]]}>{ACTIVITY_LABEL[r.activity]}</span>
+          {r.activity === 'neverSignedIn' && r.accountCreated && (
+            <div className="sub" title={absolute(r.accountCreated)}>
+              created {relative(r.accountCreated)}
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      key: 'mfa',
+      header: 'MFA state',
+      sortValue: (r) => MFA_ORDER.indexOf(r.mfa),
+      csv: (r) => MFA_LABEL[r.mfa],
+      render: (r) => (
+        <Chip status={MFA_CHIP[r.mfa]} title={DEFS[MFA_LABEL[r.mfa]]}>
+          {MFA_LABEL[r.mfa]}
+        </Chip>
+      ),
+    },
+    {
+      key: 'method',
+      header: 'Strongest method',
+      sortValue: (r) => TIER_ORDER.indexOf(r.strongestMethod),
+      csv: (r) => TIER_LABEL[r.strongestMethod],
+      render: (r) => <span title={r.methodTiers.map((t) => TIER_LABEL[t]).join(', ') || undefined}>{TIER_LABEL[r.strongestMethod]}</span>,
+    },
+    {
+      key: 'reasons',
+      header: 'Reasons',
+      sortValue: (r) => r.reasons.join('; ').toLowerCase(),
+      csv: (r) => r.reasons.join('; '),
+      render: (r) => (
+        <>
+          {r.evidence &&
+            (() => {
+              const name = friendlyMethod(r.evidence.method)
+              return <span title={absolute(r.evidence.at)}>{name ? `MFA via ${name} ${relative(r.evidence.at)}` : `MFA completed ${relative(r.evidence.at)}`}</span>
+            })()}
+          {r.reasons.map((reason, i) => {
+            const d = displayReason(reason)
+            return (
+              <span key={i} title={d.title}>
+                {i > 0 || r.evidence ? '; ' : ''}
+                {d.text}
+              </span>
+            )
+          })}
+        </>
+      ),
+    },
+    { key: 'care', header: 'Handle with care', hidden: true, render: () => null, csv: (r) => (highCare.has(r.userId) ? 'yes' : '') },
+  ]
 
   return (
     <StepFrame
       title="Scan"
-      does="Reads your tenant's configuration, inventory, and sign-in evidence into a local snapshot — nothing is written, and nothing leaves your browser."
+      does="Reads your tenant's configuration, inventory, and sign-in records into a local snapshot — nothing is written, and nothing leaves your browser."
       needs={[{ met: true, text: 'connected tenant' }]}
       next={snapshot ? 'mapping' : undefined}
-      nextLabel="Mapping"
+      nextLabel="Setup"
     >
-      <p>
-        <button className="primary" onClick={() => void scan()} disabled={scanState === 'running'}>
-          {scanState === 'running' ? 'Scanning…' : snapshot ? 'Re-scan tenant' : 'Scan tenant'}
-        </button>{' '}
-        {scored && <button onClick={exportCsv}>Export CSV ({visibleRows.length} rows)</button>}{' '}
+      <p className="row">
+        <Button variant="primary" icon="refresh" onClick={() => void scan()} loading={scanState === 'running'}>
+          {snapshot ? 'Re-scan tenant' : 'Scan tenant'}
+        </Button>
         {(snapshot !== null || Object.keys(sections).length > 0) && (
-          <button onClick={() => void downloadDiagnostics()}>Download diagnostics (redacted)</button>
+          <Button icon="download" onClick={() => void downloadDiagnostics()}>
+            Download diagnostics (redacted)
+          </Button>
         )}
       </p>
-      {error && <p className="error">Scan failed: {error}</p>}
+      {error && <Callout kind="danger" title="Scan failed.">{error}</Callout>}
       {scanState !== 'running' && initial && snapshot === initial.snapshot && (
-        <p className="notice">
-          Using your scan from <strong title={absolute(initial.at)}>{relative(initial.at)}</strong> — it's saved on this
-          device, so nobody has to re-scan just to look around. Re-scan whenever you want fresh numbers.
-        </p>
+        <Callout kind="info">
+          Using the scan from <strong title={absolute(initial.at)}>{relative(initial.at)}</strong>, saved on this device. Re-scan any time for fresh numbers.
+        </Callout>
       )}
-      {scanState === 'running' && (laneB !== null || slow) && (
-        <p className={slow ? 'notice' : 'reason'}>
-          Collecting sign-in evidence — this can take several minutes on larger tenants.
-          {laneB?.oldest && (
-            <>
-              {' '}
-              Covered back to <span title={absolute(laneB.oldest)}>{absoluteDate(laneB.oldest)}</span> so far.
-            </>
-          )}
-          {startedAt !== null && <> ({elapsedLabel(startedAt, nowTick)} elapsed)</>}
-        </p>
+      {scanState === 'running' && <ProgressBar percent={laneB ? null : progressPercent} caption={nowLine} />}
+      {scanState === 'running' && slow && (
+        <Callout kind="warning">Microsoft's sign-in record service is slow right now — this can take several minutes on larger tenants. Everything else is already collected.</Callout>
       )}
 
       {Object.keys(sections).length > 0 && (
-        <details open={scanState === 'running'}>
-          <summary>Collection sections</summary>
+        <ExpandCard summary="Details" open={false}>
           <ul className="sections">
             {Object.values(sections).map((s) => (
               <li key={s.source}>
-                <code>{s.source}</code>: {s.status}
-                {s.rows !== undefined && ` — ${s.rows} rows`}
-                {s.ms !== undefined && ` in ${s.ms} ms`}
-                {s.reason && <span className="reason"> ({s.reason})</span>}
+                {SECTION_LABEL[s.source] ?? s.source}: {s.status === 'started' ? 'reading…' : s.status}
+                {s.rows !== undefined && ` — ${s.rows} item${s.rows === 1 ? '' : 's'}`}
+                {s.reason && <span className="muted"> ({s.reason})</span>}
               </li>
             ))}
           </ul>
-        </details>
+        </ExpandCard>
       )}
 
       {scored && snapshot && evidence && (
         <>
           <h3>Readiness</h3>
-          <p className="notice">
-            Sign-in evidence: <strong>{evidence.status}</strong>
-            {evidence.coveredWindow && (
-              <>
-                {' '}
-                — covers {absoluteDate(evidence.coveredWindow.from)} to {absoluteDate(evidence.coveredWindow.to)}
-              </>
-            )}
+          <Callout kind={evidence.status === 'ok' ? 'success' : evidence.status === 'partial' ? 'info' : 'warning'}>
+            Sign-in records: <strong>{evidence.status === 'ok' ? 'complete' : evidence.status}</strong>
+            {evidence.coveredWindow && <> — covering {absoluteDate(evidence.coveredWindow.from)} to {absoluteDate(evidence.coveredWindow.to)}</>}
             {evidence.reason && <> ({evidence.reason})</>}
-            {evidence.status === 'pending' && (
-              <> — sign-in evidence hasn't been collected yet; states below are based on registered methods only</>
-            )}
+            {evidence.status === 'pending' && <>. Sign-in records haven't been collected yet; states below are based on registered methods only</>}
             {(evidence.status === 'insufficient' || evidence.status === 'disabled' || evidence.status === 'error') && (
-              <> — states below are metadata-only; nothing can be "verified" without usable evidence</>
+              <>. States below are based on registered methods only; nothing can be "verified" without usable records</>
             )}
-            . Predicted impact, confirmed in report-only.
-          </p>
+            .
+          </Callout>
 
-          <div className="tile-group">
-            <h4>MFA state</h4>
-            <div className="tiles">
-              {(Object.keys(MFA_LABEL) as MfaState[]).map((state) => (
-                <button
-                  key={state}
-                  className={`tile state-${state} ${mfaFilter.has(state) ? 'selected' : ''}`}
-                  onClick={() => toggle(mfaFilter, state, setMfaFilter)}
-                >
-                  <span className="tile-help" title={DEFS[MFA_LABEL[state]]}>?</span>
-                  <div className="tile-count">{scored.summary.counts[state]}</div>
-                  <div className="tile-label">{MFA_LABEL[state]}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="tile-group">
-            <h4>Activity</h4>
-            <div className="tiles">
-              {(Object.keys(ACTIVITY_LABEL) as ActivityState[]).map((state) => (
-                <button
-                  key={state}
-                  className={`tile ${activityFilter.has(state) ? 'selected' : ''}`}
-                  onClick={() => toggle(activityFilter, state, setActivityFilter)}
-                >
-                  <span className="tile-help" title={DEFS[ACTIVITY_LABEL[state]]}>?</span>
-                  <div className="tile-count">{scored.summary.activityCounts[state]}</div>
-                  <div className="tile-label">{ACTIVITY_LABEL[state]}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="tile-group">
-            <h4>Rollout</h4>
-            <div className="tiles">
-              <div className="tile">
-                <span className="tile-help" title={DEFS['Verification phase size']}>?</span>
-                <div className="tile-count">{scored.summary.verificationPhaseSize}</div>
-                <div className="tile-label">Verification phase size</div>
-              </div>
-              {scored.summary.challengedRate !== null && (
-                <div className="tile">
-                  <span className="tile-help" title={DEFS['Challenged rate']}>?</span>
-                  <div className="tile-count">{Math.round(scored.summary.challengedRate * 100)}%</div>
-                  <div className="tile-label">Challenged rate</div>
-                </div>
-              )}
-            </div>
-          </div>
+          <h4>MFA state</h4>
+          <Stats>
+            {(Object.keys(MFA_LABEL) as MfaState[]).map((state) => (
+              <StatTile
+                key={state}
+                value={scored.summary.counts[state]}
+                label={MFA_LABEL[state]}
+                tone={state === 'verified' ? 'success' : state === 'likelyViable' ? 'info' : state === 'none' ? 'danger' : 'warning'}
+                tip={{ title: MFA_LABEL[state], text: DEFS[MFA_LABEL[state]] }}
+                onClick={() => toggle(mfaFilter, state, setMfaFilter)}
+                active={mfaFilter.has(state)}
+              />
+            ))}
+          </Stats>
+          <h4>Activity</h4>
+          <Stats>
+            {(Object.keys(ACTIVITY_LABEL) as ActivityState[]).map((state) => (
+              <StatTile
+                key={state}
+                value={scored.summary.activityCounts[state]}
+                label={ACTIVITY_LABEL[state]}
+                tip={{ title: ACTIVITY_LABEL[state], text: DEFS[ACTIVITY_LABEL[state]] }}
+                onClick={() => toggle(activityFilter, state, setActivityFilter)}
+                active={activityFilter.has(state)}
+              />
+            ))}
+          </Stats>
+          <h4>Rollout</h4>
+          <Stats>
+            <StatTile value={scored.summary.verificationPhaseSize} label="Verification phase size" tip={{ title: 'Verification phase size', text: DEFS['Verification phase size'] }} />
+            {scored.summary.challengedRate !== null && (
+              <StatTile value={`${Math.round(scored.summary.challengedRate * 100)}%`} label="Challenged rate" tip={{ title: 'Challenged rate', text: DEFS['Challenged rate'] }} />
+            )}
+          </Stats>
 
           {snapshot.blockedToday.length > 0 && (
-            <div className="notice">
-              <strong>
-                Blocked today: {new Set(snapshot.blockedToday.flatMap((b) => b.userIds)).size} user(s) whose most
-                recent sign-in failed Conditional Access
-              </strong>
-              <ul>
+            <Callout kind="danger" title={`Blocked today: ${new Set(snapshot.blockedToday.flatMap((b) => b.userIds)).size} user(s) whose most recent sign-in failed Conditional Access.`}>
+              <ul className="sections">
                 {snapshot.blockedToday.map((b) => (
                   <li key={b.policyId}>
-                    {b.displayName ?? (b.policyId === 'unknown' ? 'No policy identified' : b.policyId)} —{' '}
-                    {b.userIds.length} user(s):{' '}
-                    {b.userIds
-                      .map((id) => userById.get(id)?.displayName ?? userById.get(id)?.userPrincipalName ?? id)
-                      .join(', ')}
+                    {b.displayName ?? (b.policyId === 'unknown' ? 'No policy identified' : b.policyId)} — {b.userIds.length} user(s):{' '}
+                    {b.userIds.map((id) => userById.get(id)?.displayName ?? userById.get(id)?.userPrincipalName ?? id).join(', ')}
                   </li>
                 ))}
               </ul>
-            </div>
+            </Callout>
           )}
 
-          <div className="filters">
-            <input
-              type="search"
-              placeholder="Search name or UPN…"
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-            />
+          <div className="row no-print">
+            <input type="search" placeholder="Search name or UPN…" aria-label="Search users" value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
             {(Object.keys(MFA_LABEL) as MfaState[]).map((s) => (
-              <button
-                key={s}
-                className={`chip state-${s} ${mfaFilter.has(s) ? 'selected' : ''}`}
-                title={DEFS[MFA_LABEL[s]]}
-                onClick={() => toggle(mfaFilter, s, setMfaFilter)}
-              >
+              <FilterChip key={s} selected={mfaFilter.has(s)} title={DEFS[MFA_LABEL[s]]} onToggle={() => toggle(mfaFilter, s, setMfaFilter)}>
                 {MFA_LABEL[s]}
-              </button>
+              </FilterChip>
             ))}
             {(Object.keys(ACTIVITY_LABEL) as ActivityState[]).map((s) => (
-              <button
-                key={s}
-                className={`chip ${activityFilter.has(s) ? 'selected' : ''}`}
-                title={DEFS[ACTIVITY_LABEL[s]]}
-                onClick={() => toggle(activityFilter, s, setActivityFilter)}
-              >
+              <FilterChip key={s} selected={activityFilter.has(s)} title={DEFS[ACTIVITY_LABEL[s]]} onToggle={() => toggle(activityFilter, s, setActivityFilter)}>
                 {ACTIVITY_LABEL[s]}
-              </button>
+              </FilterChip>
             ))}
             {TIER_ORDER.filter((t) => t !== 'none').map((t) => (
-              <button
-                key={t}
-                className={`chip ${tierFilter.has(t) ? 'selected' : ''}`}
-                title={DEFS[TIER_LABEL[t]]}
-                onClick={() => toggle(tierFilter, t, setTierFilter)}
-              >
+              <FilterChip key={t} selected={tierFilter.has(t)} title={DEFS[TIER_LABEL[t]]} onToggle={() => toggle(tierFilter, t, setTierFilter)}>
                 {TIER_LABEL[t]}
-              </button>
+              </FilterChip>
             ))}
             {(mfaFilter.size > 0 || activityFilter.size > 0 || tierFilter.size > 0 || search) && (
-              <button
-                className="chip"
+              <Button
+                size="sm"
+                variant="quiet"
                 onClick={() => {
                   setMfaFilter(new Set())
                   setActivityFilter(new Set())
@@ -438,86 +442,14 @@ export function MfaViabilityScreen({
                 }}
               >
                 Clear filters
-              </button>
+              </Button>
             )}
           </div>
 
-          <div className="table-wrap">
-          <table className="viability">
-            <thead>
-              <tr>
-                <th className="sortable" onClick={() => headerClick('name')}>User{sortMark('name')}</th>
-                <th className="sortable" onClick={() => headerClick('admin')}>Admin{sortMark('admin')}</th>
-                <th className="sortable" onClick={() => headerClick('activity')}>Activity{sortMark('activity')}</th>
-                <th className="sortable" onClick={() => headerClick('mfa')}>MFA state{sortMark('mfa')}</th>
-                <th className="sortable" onClick={() => headerClick('method')}>Strongest method{sortMark('method')}</th>
-                <th className="sortable" onClick={() => headerClick('reasons')}>Reasons{sortMark('reasons')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((r: MfaViability) => {
-                const u = userById.get(r.userId)
-                return (
-                  <tr key={r.userId}>
-                    <td>
-                      {u?.displayName ?? u?.userPrincipalName ?? r.userId}
-                      {u?.userType === 'guest' && <span className="chip">guest</span>}
-                      {highCare.has(r.userId) && (
-                        <span className="chip state-notChallenged" title="Handle with care — verified before enforcement, sequenced last">
-                          care
-                        </span>
-                      )}
-                      {u?.userPrincipalName && <div className="sub">{u.userPrincipalName}</div>}
-                    </td>
-                    <td>{r.isAdmin ? 'yes' : ''}</td>
-                    <td>
-                      <span title={DEFS[ACTIVITY_LABEL[r.activity]]}>{ACTIVITY_LABEL[r.activity]}</span>
-                      {r.activity === 'neverSignedIn' && r.accountCreated && (
-                        <div className="sub" title={absolute(r.accountCreated)}>
-                          created {relative(r.accountCreated)}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`chip state-${r.mfa}`} title={DEFS[MFA_LABEL[r.mfa]]}>
-                        {MFA_LABEL[r.mfa]}
-                      </span>
-                    </td>
-                    <td title={r.methodTiers.map((t) => TIER_LABEL[t]).join(', ') || undefined}>
-                      {TIER_LABEL[r.strongestMethod]}
-                    </td>
-                    <td>
-                      {r.evidence &&
-                        (() => {
-                          const name = friendlyMethod(r.evidence.method)
-                          return (
-                            <span title={absolute(r.evidence.at)}>
-                              {name
-                                ? `MFA via ${name} ${relative(r.evidence.at)}`
-                                : `MFA completed ${relative(r.evidence.at)}`}
-                            </span>
-                          )
-                        })()}
-                      {r.reasons.map((reason, i) => {
-                        const d = displayReason(reason)
-                        return (
-                          <span key={i} title={d.title}>
-                            {i > 0 || r.evidence ? '; ' : ''}
-                            {d.text}
-                          </span>
-                        )
-                      })}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          </div>
+          <DataTable rows={visibleRows} columns={columns} rowKey={(r) => r.userId} csvName="iamai-readiness.csv" empty="No users match these filters." />
 
-          <details className="legend">
-            <summary>Legend</summary>
-            <dl>
+          <ExpandCard summary="Legend">
+            <dl className="legend">
               {Object.entries(DEFS).map(([term, def]) => (
                 <div key={term}>
                   <dt>{term}</dt>
@@ -525,7 +457,7 @@ export function MfaViabilityScreen({
                 </div>
               ))}
             </dl>
-          </details>
+          </ExpandCard>
         </>
       )}
     </StepFrame>
