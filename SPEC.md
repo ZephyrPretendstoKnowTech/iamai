@@ -73,6 +73,7 @@ B = sign-in evidence, on-demand = after baseline selection).
 | A | Aggregated per-app usage for app-scoping decisions. | `/reports/applicationSignInDetailedSummary` | beta | Reports.Read.All | attempt and map the 403 |
 | B | Interactive sign-in evidence for the replay engine and MFA verification. | `/auditLogs/signIns` | beta | AuditLog.Read.All | Entra ID P1/P2; beta-only in practice (spike 1); no usable server-side filter — unfiltered newest-first with client-side cutoff |
 | on-demand | Affected-population counts and exclusion-group sanity checks. | `/groups/{id}/transitiveMembers (+ $count)` | v1.0 | Directory.Read.All | runs only for groups the chosen baseline references; count-and-sample above 20k |
+| on-demand | Find the tenant group a baseline reference maps to. | `/groups?$filter=startswith(displayName,…)` | v1.0 | Directory.Read.All | runs only while the operator types in a Mapping picker |
 
 Planned but not yet in the registry: CA templates (beta), What If
 (`/identity/conditionalAccess/evaluate`), `/servicePrincipals`

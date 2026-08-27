@@ -1,45 +1,9 @@
 import { StepFrame } from '../shell/AppShell.tsx'
 import { relative, absolute } from '../format.ts'
 
-// Step pages that are not implemented yet. Not placeholders in the old sense:
-// each explains what to do first and links there, per prompt 04.
-
-export function MappingPage({ baselineLoaded, scanDone }: { baselineLoaded: boolean; scanDone: boolean }) {
-  return (
-    <StepFrame
-      title="Mapping"
-      does="Matches every tenant-specific reference in the baseline — break-glass accounts, exclusion groups, trusted locations — to your tenant, with validation of each pick."
-      needs={[
-        { met: baselineLoaded, text: baselineLoaded ? 'baseline loaded' : 'load a baseline', href: '#/baseline' },
-        { met: scanDone, text: scanDone ? 'scan complete' : 'run a scan', href: '#/scan' },
-      ]}
-      next="coverage"
-      nextLabel="Coverage"
-    >
-      <div className="card">
-        <p>
-          Mapping isn't built yet. When it is, it opens as a short questionnaire: IAMAI suggests
-          matches from your scan (groups named like break-glass, users excluded from most policies,
-          trusted locations) and validates every confirmed pick. Anything that doesn't exist yet
-          becomes a Phase 0 step with a how-to.
-        </p>
-        {!baselineLoaded && (
-          <p>
-            First, <a href="#/baseline">load a baseline</a> so there is something to map.
-          </p>
-        )}
-        {!scanDone && (
-          <p>
-            {baselineLoaded ? 'Then' : 'And'} <a href="#/scan">run a scan</a> so IAMAI can suggest
-            matches from your tenant.
-          </p>
-        )}
-      </div>
-    </StepFrame>
-  )
-}
-
-// Coverage is real now — see pages/CoveragePage.tsx.
+// Step pages that are not implemented yet — each explains what to do first
+// and links there (prompt 04). Mapping and Coverage are real now, in their
+// own files under pages/.
 
 export function RoadmapPage({ scanAt }: { scanAt: string | null }) {
   return (

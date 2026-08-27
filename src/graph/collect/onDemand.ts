@@ -21,6 +21,22 @@ async function msalTokens(): Promise<TokenSource> {
   }
 }
 
+// Typeahead group search for the Mapping pickers — runs only while the
+// operator types; returns id + displayName.
+export async function searchGroups(query: string): Promise<{ id: string; displayName: string }[]> {
+  const q = query.trim().replace(/'/g, "''")
+  if (q.length < 2) return []
+  const tokens = await msalTokens()
+  const body = await graphRequest(
+    tokens,
+    `${V1}/groups?$filter=${encodeURIComponent(`startswith(displayName,'${q}')`)}&$select=id,displayName&$top=20`,
+  )
+  return (body.value ?? [])
+    .map((g) => g as Record<string, unknown>)
+    .filter((g) => typeof g.id === 'string')
+    .map((g) => ({ id: String(g.id), displayName: typeof g.displayName === 'string' ? g.displayName : String(g.id) }))
+}
+
 // Transitive member ids for a group plus its membershipRule, cached per
 // tenant. Groups above the ceiling return a first-page sample and the count.
 export async function getGroupMembers(

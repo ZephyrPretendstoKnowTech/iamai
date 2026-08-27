@@ -52,4 +52,5 @@ export const COLLECTOR_REGISTRY: CollectorSpec[] = [
   { name: 'Sign-in logs', lane: 'B', endpoint: '/auditLogs/signIns', version: 'beta', paged: true, scopes: ['AuditLog.Read.All'], requiredCapability: 'entraP1', gate: 'Entra ID P1/P2; beta-only in practice (spike 1); no usable server-side filter — unfiltered newest-first with client-side cutoff', purpose: 'Interactive sign-in evidence for the replay engine and MFA verification.' },
   // ---- On demand ----
   { name: 'Group transitive members', lane: 'on-demand', endpoint: '/groups/{id}/transitiveMembers (+ $count)', version: 'v1.0', paged: true, scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'runs only for groups the chosen baseline references; count-and-sample above 20k', purpose: 'Affected-population counts and exclusion-group sanity checks.' },
+  { name: 'Group search', lane: 'on-demand', endpoint: "/groups?$filter=startswith(displayName,…)", version: 'v1.0', scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'runs only while the operator types in a Mapping picker', purpose: 'Find the tenant group a baseline reference maps to.' },
 ]

@@ -9,8 +9,9 @@ import { StartPage } from './pages/StartPage.tsx'
 import { ConnectPage } from './pages/ConnectPage.tsx'
 import { BaselinePage } from './pages/BaselinePage.tsx'
 import type { BaselineResult } from './pages/BaselinePage.tsx'
-import { LicensingGuidePage, MappingPage, RoadmapPage } from './pages/PlaceholderPage.tsx'
+import { LicensingGuidePage, RoadmapPage } from './pages/PlaceholderPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
+import { MappingPage } from './pages/MappingPage.tsx'
 import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { DevSpikes } from './DevSpikes.tsx'
@@ -26,6 +27,7 @@ export function App() {
   const [baseline, setBaseline] = useState<BaselineResult | null>(null)
   const [lastScan, setLastScan] = useState<{ snapshot: TenantSnapshot; at: string } | null>(null)
   const [scanRunning, setScanRunning] = useState(false)
+  const [mapProgress, setMapProgress] = useState<{ answered: number; total: number; complete: boolean } | null>(null)
   const route = useHashRoute()
 
   useEffect(() => {
@@ -43,6 +45,7 @@ export function App() {
     connect: account ? 'done' : 'notStarted',
     baseline: baseline ? 'done' : 'notStarted',
     scan: scanRunning ? 'inProgress' : lastScan ? 'done' : 'notStarted',
+    mapping: mapProgress?.complete ? 'done' : (mapProgress?.answered ?? 0) > 0 ? 'inProgress' : 'notStarted',
   }
 
   return (
@@ -73,7 +76,7 @@ export function App() {
               </section>
             ))}
           {route === 'mapping' && (
-            <MappingPage baselineLoaded={baseline !== null} scanDone={lastScan !== null} />
+            <MappingPage scan={lastScan} baseline={baseline} onProgress={setMapProgress} />
           )}
           {route === 'coverage' && <CoveragePage scan={lastScan} baseline={baseline} />}
           {route === 'roadmap' && <RoadmapPage scanAt={lastScan?.at ?? null} />}

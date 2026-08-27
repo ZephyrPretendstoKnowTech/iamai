@@ -1,0 +1,256 @@
+// Validation of mapping picks (prompt 06 item 3; SPEC §3.3). Pure and
+// Node-testable — every rule takes plain data and returns plain findings.
+import type { AuthMethodSummary } from '../scoring/mfaViability.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { GroupMembersCacheEntry } from '../graph/collect/cache.ts'
+import type { ValidationResult } from './types.ts'
+
+const GLOBAL_ADMIN = '62e90394-69f5-4237-9190-012177145e10'
+const PHISHING_RESISTANT_KINDS = new Set(['fido2', 'passkey', 'windowsHelloForBusiness'])
+
+const result = (findings: string[], hardFails: number): ValidationResult => ({
+  checkedAt: new Date().toISOString(),
+  passed: hardFails === 0,
+  findings,
+})
+
+export type BreakGlassContext = {
+  snapshot: TenantSnapshot
+  tenantPolicies: unknown[]
+  groupMembers: GroupMembersCacheEntry[]
+  /** All confirmed break-glass user ids including this one. */
+  confirmedBreakGlassIds: string[]
+}
+
+export function validateBreakGlass(userId: string, ctx: BreakGlassContext): ValidationResult {
+  const findings: string[] = []
+  let hard = 0
+  const fail = (msg: string): void => {
+    findings.push(msg)
+    hard += 1
+  }
+  const note = (msg: string): void => {
+    findings.push(msg)
+  }
+
+  const user = ctx.snapshot.users.find((u) => u.id === userId)
+  if (!user) return result(['account not found in the tenant snapshot'], 1)
+
+  if (user.onPremisesSyncEnabled === true) fail('not cloud-only: the account syncs from on-premises')
+  if (user.accountEnabled === false) fail('the account is disabled')
+
+  const active = ctx.snapshot.roles.active[userId] ?? []
+  const eligible = ctx.snapshot.roles.eligible[userId] ?? []
+  const isActiveGA = active.some((r) => r.toLowerCase() === GLOBAL_ADMIN)
+  const isEligibleGA = eligible.some((r) => r.toLowerCase() === GLOBAL_ADMIN)
+  if (!isActiveGA) {
+    if (isEligibleGA) fail('Global Administrator is eligible-only — break-glass must hold it permanently active')
+    else fail('not a Global Administrator')
+  }
+
+  // Excluded from every policy, incl. report-only and Microsoft-managed.
+  const excludedGroups = new Set<string>()
+  for (const g of ctx.groupMembers) if (g.memberIds.includes(userId)) excludedGroups.add(g.groupId)
+  const notExcludedFrom: string[] = []
+  for (const raw of ctx.tenantPolicies) {
+    const p = raw as {
+      displayName?: string
+      state?: string
+      conditions?: { users?: { excludeUsers?: string[]; excludeGroups?: string[] } }
+    }
+    if (p.state === 'disabled') continue
+    const direct = (p.conditions?.users?.excludeUsers ?? []).includes(userId)
+    const viaGroup = (p.conditions?.users?.excludeGroups ?? []).some((g) => excludedGroups.has(g))
+    if (!direct && !viaGroup) notExcludedFrom.push(p.displayName ?? '(unnamed)')
+  }
+  if (notExcludedFrom.length > 0) {
+    fail(`not excluded from every policy — missing from: ${notExcludedFrom.join(', ')}`)
+  }
+
+  // Methods: MFA-capable, phishing-resistant preferred, SMS-only flagged.
+  const methods = ctx.snapshot.authMethods[userId]
+  if (methods === undefined || methods === 'unknown') {
+    note('registered methods could not be read for this account')
+  } else {
+    const kinds = new Set(methods.map((m) => m.kind))
+    const mfaKinds = [...kinds].filter((k) => k !== 'password' && k !== 'email' && k !== 'other')
+    if (mfaKinds.length === 0) fail('no MFA-capable method registered')
+    else if ([...kinds].some((k) => PHISHING_RESISTANT_KINDS.has(k))) {
+      note('phishing-resistant method registered')
+    } else if (mfaKinds.every((k) => k === 'phone')) {
+      fail('SMS/voice is the only MFA method — register a FIDO2 key')
+    } else {
+      note('no phishing-resistant method — a FIDO2 key is preferred for break-glass')
+    }
+    // Shared-device check (SPEC §3.3): Authenticator displayName matching
+    // another user's device.
+    const myNames = new Set(
+      methods.filter((m) => m.kind === 'microsoftAuthenticator' && m.displayName).map((m) => m.displayName),
+    )
+    if (myNames.size > 0) {
+      for (const [otherId, otherMethods] of Object.entries(ctx.snapshot.authMethods)) {
+        if (otherId === userId || otherMethods === 'unknown') continue
+        const clash = otherMethods.find(
+          (m: AuthMethodSummary) => m.kind === 'microsoftAuthenticator' && m.displayName && myNames.has(m.displayName),
+        )
+        if (clash) {
+          const other = ctx.snapshot.users.find((u) => u.id === otherId)
+          fail(
+            `Authenticator device "${clash.displayName}" matches ${other?.displayName ?? 'another user'}'s — shared-device risk`,
+          )
+          break
+        }
+      }
+    }
+  }
+
+  if (user.lastSuccessfulSignIn !== null) {
+    note(`last successful sign-in ${user.lastSuccessfulSignIn.slice(0, 10)}`)
+  } else {
+    note('never signed in — schedule a break-glass drill')
+  }
+
+  // Dynamic-group sweep: any known dynamic group whose members include it.
+  const dynamicHit = ctx.groupMembers.find(
+    (g) => g.membershipRule !== null && g.memberIds.includes(userId),
+  )
+  if (dynamicHit) {
+    fail(
+      `swept into dynamic group ${dynamicHit.displayName ?? dynamicHit.groupId} (rule: ${dynamicHit.membershipRule}) — dynamic membership can silently change policy scope`,
+    )
+  }
+
+  if (ctx.confirmedBreakGlassIds.length < 2) {
+    fail('fewer than two break-glass accounts — at least two are required')
+  }
+
+  return result(findings, hard)
+}
+
+export function validateExclusionGroup(
+  entry: GroupMembersCacheEntry | null,
+  ctx: { snapshot: TenantSnapshot; tenantPolicies: unknown[] },
+): ValidationResult {
+  if (!entry) return result(['group members could not be read'], 1)
+  const findings: string[] = []
+  let hard = 0
+  findings.push(`${entry.memberCount} member${entry.memberCount === 1 ? '' : 's'}${entry.sampled ? ' (estimated)' : ''}`)
+  const adminIds = entry.memberIds.filter((id) => (ctx.snapshot.roles.active[id] ?? []).length > 0)
+  if (adminIds.length > 0) {
+    findings.push(`${adminIds.length} member(s) hold active admin roles — exclusion removes their protection`)
+  }
+  if (entry.membershipRule !== null) {
+    findings.push(`dynamic membership rule: ${entry.membershipRule} — membership can change without review`)
+    hard += 1
+  }
+  let excludedFrom = 0
+  let enabledCount = 0
+  for (const raw of ctx.tenantPolicies) {
+    const p = raw as { state?: string; conditions?: { users?: { excludeGroups?: string[] } } }
+    if (p.state === 'disabled') continue
+    enabledCount += 1
+    if ((p.conditions?.users?.excludeGroups ?? []).includes(entry.groupId)) excludedFrom += 1
+  }
+  if (enabledCount > 0 && excludedFrom > 0 && excludedFrom < enabledCount) {
+    findings.push(`excluded from ${excludedFrom} of ${enabledCount} enabled policies — inconsistent use`)
+  }
+  return result(findings, hard)
+}
+
+export function validateTrustedLocation(raw: unknown): ValidationResult {
+  const l = raw as { isTrusted?: boolean; ipRanges?: { cidrAddress?: string }[] }
+  const findings: string[] = []
+  let hard = 0
+  if (l.isTrusted !== true) {
+    findings.push('not marked as trusted (isTrusted is unset)')
+    hard += 1
+  }
+  for (const range of l.ipRanges ?? []) {
+    const cidr = range.cidrAddress
+    if (typeof cidr !== 'string') continue
+    if (cidr === '0.0.0.0/0' || cidr === '::/0') {
+      findings.push(`${cidr} trusts the entire internet`)
+      hard += 1
+      continue
+    }
+    const prefix = Number(cidr.split('/')[1])
+    if (Number.isFinite(prefix) && prefix < 16) {
+      findings.push(`${cidr} is wider than /16 — too broad for a trusted location`)
+      hard += 1
+    }
+  }
+  return result(findings, hard)
+}
+
+export function validateStrength(
+  tenantStrength: { allowedCombinations?: string[] } | null,
+  baselineCombinations: string[] | null,
+): ValidationResult {
+  const findings: string[] = []
+  let hard = 0
+  if (!tenantStrength || !Array.isArray(tenantStrength.allowedCombinations)) {
+    findings.push('strength not found in the tenant')
+    return result(findings, 1)
+  }
+  findings.push(`allows: ${tenantStrength.allowedCombinations.join('; ')}`)
+  if (baselineCombinations === null) {
+    findings.push(
+      "the baseline's strength ships without allowedCombinations — compare with the built-in strengths and pick the closest",
+    )
+  } else {
+    const a = new Set(tenantStrength.allowedCombinations)
+    const missing = baselineCombinations.filter((c) => !a.has(c))
+    const extra = tenantStrength.allowedCombinations.filter((c) => !baselineCombinations.includes(c))
+    if (missing.length === 0 && extra.length === 0) findings.push('identical to the baseline strength')
+    else {
+      if (extra.length > 0) {
+        findings.push(`allows combinations the baseline does not: ${extra.join('; ')}`)
+        hard += 1
+      }
+      if (missing.length > 0) findings.push(`missing combinations the baseline allows: ${missing.join('; ')}`)
+    }
+  }
+  return result(findings, hard)
+}
+
+// Azure Credential Configuration Endpoint — needed for FIDO2 provisioning.
+const ACCE_NAME = /credential configuration/i
+
+export function validatePasskeyPilot(
+  groupId: string,
+  authMethodsPolicy: unknown,
+  spSignals: { appDisplayName?: string }[],
+): ValidationResult {
+  const findings: string[] = []
+  let hard = 0
+  const policy = authMethodsPolicy as {
+    authenticationMethodConfigurations?: {
+      id?: string
+      state?: string
+      includeTargets?: { id?: string }[]
+    }[]
+  } | null
+  const configs = policy?.authenticationMethodConfigurations ?? []
+  const check = (id: string, label: string): void => {
+    const c = configs.find((x) => x.id?.toLowerCase() === id.toLowerCase())
+    if (!c || c.state !== 'enabled') {
+      findings.push(`${label} is not enabled in the authentication methods policy`)
+      hard += 1
+      return
+    }
+    const targets = c.includeTargets ?? []
+    const targeted = targets.some((t) => t.id === groupId || t.id === 'all_users')
+    if (!targeted) {
+      findings.push(`${label} is enabled but not targeted to this group`)
+      hard += 1
+    }
+  }
+  check('Fido2', 'FIDO2/passkey')
+  check('TemporaryAccessPass', 'Temporary Access Pass')
+  if (!spSignals.some((s) => typeof s.appDisplayName === 'string' && ACCE_NAME.test(s.appDisplayName))) {
+    findings.push(
+      'Azure Credential Configuration Endpoint service principal not observed — could not verify (no service principal inventory is collected)',
+    )
+  }
+  return result(findings, hard)
+}

@@ -41,12 +41,16 @@ interface IamaiDB extends DBSchema {
     value: GroupMembersCacheEntry
     indexes: { byTenant: string }
   }
+  mapping: {
+    key: string
+    value: { tenantId: string } & Record<string, unknown>
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<IamaiDB>> | null = null
 
 function db(): Promise<IDBPDatabase<IamaiDB>> {
-  dbPromise ??= openDB<IamaiDB>('iamai', 2, {
+  dbPromise ??= openDB<IamaiDB>('iamai', 3, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         const rows = d.createObjectStore('signin-rows', { keyPath: ['tenantId', 'id'] })
@@ -56,6 +60,9 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
       if (oldVersion < 2) {
         const groups = d.createObjectStore('group-members', { keyPath: ['tenantId', 'groupId'] })
         groups.createIndex('byTenant', 'tenantId')
+      }
+      if (oldVersion < 3) {
+        d.createObjectStore('mapping', { keyPath: 'tenantId' })
       }
     },
   })
@@ -122,9 +129,27 @@ export async function saveEvidenceCache(
   }
 }
 
+export async function loadMappingRecord<T>(tenantId: string): Promise<T | null> {
+  try {
+    const d = await db()
+    return ((await d.get('mapping', tenantId)) as T | undefined) ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function saveMappingRecord(tenantId: string, value: Record<string, unknown>): Promise<void> {
+  try {
+    const d = await db()
+    await d.put('mapping', { ...value, tenantId })
+  } catch {
+    // Cache is an optimization; losing it must never fail the page.
+  }
+}
+
 export async function forgetTenant(tenantId: string): Promise<void> {
   const d = await db()
-  const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members'], 'readwrite')
+  const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping'], 'readwrite')
   for (const storeName of ['signin-rows', 'group-members'] as const) {
     const store = tx.objectStore(storeName)
     let cursor = await store.index('byTenant').openCursor(tenantId)
@@ -134,5 +159,6 @@ export async function forgetTenant(tenantId: string): Promise<void> {
     }
   }
   await tx.objectStore('evidence-meta').delete(tenantId)
+  await tx.objectStore('mapping').delete(tenantId)
   await tx.done
 }
