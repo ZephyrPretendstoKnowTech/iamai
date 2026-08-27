@@ -346,7 +346,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const why = doc?.intent ?? goal.tldr ?? goal.description
     const whyAttribution = doc?.intent && input.baselineAuthor ? input.baselineAuthor : null
 
-    const floorGrant = impl.floor.grant
     const blockedBy: string[] = []
     const unblockNotes: string[] = []
     let action: Action
@@ -460,7 +459,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         return v !== undefined && v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')
       }).length
 
-    void floorGrant
     let impact: string
     if (status === 'done') impact = IMPACT.done
     else if (readiness.family === 'block')

@@ -85,15 +85,3 @@ export function emptyMappingState(tenantId: string): MappingState {
     updatedAt: new Date().toISOString(),
   }
 }
-
-/** Progress = answered questions (resolved or marked doesn't-exist). */
-export function mappingProgress(
-  questions: MappingQuestion[],
-  state: MappingState,
-): { answered: number; total: number; complete: boolean } {
-  const answered = questions.filter((q) => {
-    const r = state.records[q.key]
-    return r !== undefined && (r.resolvedId !== null || r.doesNotExist) && r.provenance !== 'auto'
-  }).length
-  return { answered, total: questions.length, complete: answered === questions.length && questions.length > 0 }
-}

@@ -86,16 +86,6 @@ export type CoverageInput = {
 
 export function computeCoverage(input: CoverageInput): CoverageReport {
   const { snapshot } = input
-  const nameById = new Map(snapshot.users.map((u) => [u.id, u.displayName ?? u.userPrincipalName ?? u.id]))
-  const activeIds = new Set(
-    snapshot.users
-      .filter(
-        (u) =>
-          u.lastSuccessfulSignIn !== null &&
-          Date.parse(snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn) <= 90 * 86_400_000,
-      )
-      .map((u) => u.id),
-  )
 
   const tenantFacts = input.tenantPolicies.map((p) =>
     policyFacts(p, input.strengths, snapshot.microsoftManagedPolicyIds.includes(String((p as { id?: string }).id ?? ''))),
@@ -125,7 +115,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   }
 
   const results: GoalResult[] = goals.map(({ goal, baselineMatches }) =>
-    evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets, nameById, activeIds),
+    evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets),
   )
 
   const couldNotEvaluate = input.baselineUnusable.map((w) => ({
@@ -182,8 +172,6 @@ function evaluateGoal(
   input: CoverageInput,
   assumed: AssumedExclusions,
   facets: ReturnType<typeof detectFacets>,
-  nameById: Map<string, string>,
-  activeIds: Set<string>,
 ): GoalResult {
   const impl = goal.implementations[0]
   const base: Omit<GoalResult, 'status' | 'statement'> = {
@@ -374,8 +362,6 @@ function evaluateGoal(
   else if (enforced.size > 0 || reportOnly.size > 0 || weak.size > 0) status = 'partial'
   else status = 'absent'
 
-  void nameById
-  void activeIds
   const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot)
   return { ...base, status, statement }
 }
