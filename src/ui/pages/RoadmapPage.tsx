@@ -358,6 +358,9 @@ export function RoadmapPage({
         <button className="primary" onClick={savePlan}>
           Save plan
         </button>{' '}
+        <button onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
+          {copied === 'plan-md' ? 'Copied ✓' : 'Copy as Markdown'}
+        </button>{' '}
         <label className="chip">
           Load plan <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => void loadPlan(e.currentTarget.files)} />
         </label>{' '}
@@ -503,6 +506,42 @@ export function RoadmapPage({
       />
     </StepFrame>
   )
+}
+
+// Paste-into-a-ticket version of the plan (MSPs live in PSA tools).
+function planMarkdown(
+  tenantName: string,
+  steps: Step[],
+  schedule: { start: string; targetEnd: string; weeks: number; phases: { phase: number; start: string; end: string; days: number }[] },
+  dangers: { title: string; people: { name: string; need: string }[] }[],
+  nameOf: (id: string) => string,
+): string {
+  const lines: string[] = [
+    `# IAMAI rollout plan — ${tenantName}`,
+    '',
+    `Start ${schedule.start.slice(0, 10)} → target ${schedule.targetEnd.slice(0, 10)} (${schedule.weeks} weeks)`,
+    '',
+  ]
+  if (dangers.length > 0) {
+    lines.push('## Danger areas')
+    for (const d of dangers) {
+      lines.push(`- **${d.title}**`)
+      for (const p of d.people) lines.push(`  - ${p.name} — ${p.need}`)
+    }
+    lines.push('')
+  }
+  for (const p of schedule.phases) {
+    const inPhase = steps.filter((s) => s.phase === p.phase)
+    if (inPhase.length === 0) continue
+    lines.push(`## Phase ${p.phase}: ${PHASE_NAME[p.phase] ?? ''} (${p.days === 0 ? 'complete' : `${p.start.slice(0, 10)} → ${p.end.slice(0, 10)}`})`)
+    for (const s of inPhase) {
+      lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** — ${s.impact}`)
+      if (s.highCare.userIds.length > 0) lines.push(`  - Handle with care: ${s.highCare.userIds.map(nameOf).join(', ')}`)
+      if (s.status === 'blocked') lines.push(`  - Blocked: ${s.unblockNotes.join('; ')}`)
+    }
+    lines.push('')
+  }
+  return lines.join('\n')
 }
 
 function StepCard({

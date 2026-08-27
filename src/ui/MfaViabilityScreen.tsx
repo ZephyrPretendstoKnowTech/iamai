@@ -6,6 +6,7 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scoring/mfaViability.ts'
 import { absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative, toCsv } from './format.ts'
+import { loadMappingState } from '../mapping/store.ts'
 import { StepFrame } from './shell/AppShell.tsx'
 
 type SectionRow = { source: string; status: string; rows?: number; reason?: string; ms?: number }
@@ -85,6 +86,10 @@ export function MfaViabilityScreen({
   const [snapshot, setSnapshot] = useState<TenantSnapshot | null>(initial?.snapshot ?? null)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState(Date.now())
+  const [highCare, setHighCare] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    void loadMappingState(tenantId).then((m) => setHighCare(new Set(m.highCareUserIds)))
+  }, [tenantId])
   const [error, setError] = useState<string | null>(null)
   const [laneB, setLaneB] = useState<{ pages: number; rows: number; oldest: string | null } | null>(null)
   const [slow, setSlow] = useState(false)
@@ -213,12 +218,13 @@ export function MfaViabilityScreen({
         r.methodTiers.map((t) => TIER_LABEL[t]).join('; '),
         r.reasons.join('; '),
         r.evidence ? `${r.evidence.method} at ${r.evidence.at}` : '',
+        highCare.has(r.userId) ? 'yes' : '',
       ]
     })
     downloadFile(
       'iamai-readiness.csv',
       toCsv(
-        ['Name', 'UPN', 'Admin', 'Activity', 'Account created', 'MFA state', 'Strongest method', 'Method tiers', 'Reasons', 'Evidence'],
+        ['Name', 'UPN', 'Admin', 'Activity', 'Account created', 'MFA state', 'Strongest method', 'Method tiers', 'Reasons', 'Evidence', 'Handle with care'],
         rows,
       ),
       'text/csv',
@@ -456,6 +462,11 @@ export function MfaViabilityScreen({
                     <td>
                       {u?.displayName ?? u?.userPrincipalName ?? r.userId}
                       {u?.userType === 'guest' && <span className="chip">guest</span>}
+                      {highCare.has(r.userId) && (
+                        <span className="chip state-notChallenged" title="Handle with care — verified before enforcement, sequenced last">
+                          care
+                        </span>
+                      )}
                       {u?.userPrincipalName && <div className="sub">{u.userPrincipalName}</div>}
                     </td>
                     <td>{r.isAdmin ? 'yes' : ''}</td>
