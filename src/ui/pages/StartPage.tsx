@@ -1,33 +1,5 @@
+import { Card, Icon, LinkButton } from '../components/index.ts'
 import { REPO_URL } from '../shell/AppShell.tsx'
-
-const ICONS = {
-  connect: (
-    <svg className="card-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" />
-      <path d="M9 12l2 2 4-4" />
-    </svg>
-  ),
-  baseline: (
-    <svg className="card-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <path d="M5 4h14v16H5z" />
-      <path d="M8 8h8M8 12h8M8 16h5" />
-    </svg>
-  ),
-  scan: (
-    <svg className="card-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 12l4-3" />
-      <path d="M12 4v2M20 12h-2M12 20v-2M4 12h2" />
-    </svg>
-  ),
-  roadmap: (
-    <svg className="card-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <path d="M4 19V5M4 17c4-3 6 1 10-2M4 9c4-3 6 1 10-2" />
-      <circle cx="19" cy="6" r="2" />
-      <circle cx="19" cy="14" r="2" />
-    </svg>
-  ),
-}
 
 export function StartPage() {
   return (
@@ -35,40 +7,38 @@ export function StartPage() {
       <div className="band hero">
         <h1>Turn your Conditional Access baseline into a rollout plan that won't lock anyone out.</h1>
         <p>
-          I read your tenant's real policies, people, and sign-ins, compare them with a proven
-          baseline, and hand you a dated plan — who each step touches, what could go wrong, the exact
-          change to make, and the email to send first. Predicted impact, confirmed in report-only.
+          IAMAI reads your tenant's real policies, people, and sign-ins, compares them with a proven
+          baseline, and produces a dated plan — who each step touches, what could go wrong, and the
+          exact change to make. Predicted impact, confirmed in report-only.
         </p>
         <p>
-          <a href="#/connect">
-            <button className="primary">Get started</button>
-          </a>
+          <LinkButton href="#/connect">Get started</LinkButton>
         </p>
       </div>
 
       <div className="band">
         <h3>How it works</h3>
-        <div className="cards-row">
-          <div className="card">
-            {ICONS.connect}
+        <div className="grid-cards">
+          <Card>
+            <Icon name="shield" size={28} />
             <h4>Connect</h4>
-            <p className="reason">A read-only sign-in. IAMAI can never change anything in your tenant.</p>
-          </div>
-          <div className="card">
-            {ICONS.baseline}
+            <p className="muted">A read-only sign-in. IAMAI can never change anything in your tenant.</p>
+          </Card>
+          <Card>
+            <Icon name="policy" size={28} />
             <h4>Choose a baseline</h4>
-            <p className="reason">Start from a maintained policy set, or upload your own package.</p>
-          </div>
-          <div className="card">
-            {ICONS.scan}
+            <p className="muted">Start from a maintained policy set, or upload your own package.</p>
+          </Card>
+          <Card>
+            <Icon name="chart" size={28} />
             <h4>Scan and see readiness</h4>
-            <p className="reason">Who could pass MFA today, who needs a hand, and who's blocked right now — by name.</p>
-          </div>
-          <div className="card">
-            {ICONS.roadmap}
+            <p className="muted">Who could pass MFA today, who needs a hand, and who is blocked right now — by name.</p>
+          </Card>
+          <Card>
+            <Icon name="check" size={28} />
             <h4>Follow the roadmap</h4>
-            <p className="reason">Dated phases, the safe wins to ship today, danger areas called out, and the announcement to send.</p>
-          </div>
+            <p className="muted">Dated phases, the safe wins to ship today, and danger areas called out.</p>
+          </Card>
         </div>
       </div>
 
@@ -76,7 +46,7 @@ export function StartPage() {
         <h3>What you'll need</h3>
         <ul>
           <li>A Global Administrator or Global Reader account.</li>
-          <li>Entra ID P1 for sign-in evidence — IAMAI works without it, with less evidence.</li>
+          <li>Entra ID P1 for sign-in records — IAMAI works without it, with less evidence.</li>
           <li>About ten minutes for the first scan.</li>
         </ul>
       </div>
@@ -100,7 +70,7 @@ export function StartPage() {
           <li>Nothing leaves your browser. There is no server.</li>
           <li>No account required with us.</li>
         </ul>
-        <p className="reason">
+        <p className="muted">
           IAMAI runs entirely in your browser and only reads.{' '}
           <a href={REPO_URL} target="_blank" rel="noreferrer">
             The source is public

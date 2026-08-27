@@ -19,7 +19,8 @@ import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.t
 import type { TenantMfaSummary } from '../../scoring/mfaViability.ts'
 import { absolute, absoluteDate, relative } from '../format.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
-import { SectionTabs } from '../shell/SectionTabs.tsx'
+import { Callout, Chip, StatTile, Stats, Tabs } from '../components/index.ts'
+import type { ChipStatus } from '../components/index.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 
@@ -32,13 +33,13 @@ const STATUS_LABEL: Record<GoalStatus, string> = {
   unknown: "Couldn't tell",
 }
 
-const STATUS_CHIP: Record<GoalStatus, string> = {
-  enforced: 'state-verified',
-  partial: 'state-notChallenged',
-  absent: 'state-none',
-  'not-applicable': '',
-  'licence-limited': '',
-  unknown: 'state-unverified',
+const STATUS_CHIP: Record<GoalStatus, ChipStatus> = {
+  enforced: 'done',
+  partial: 'warning',
+  absent: 'blocked',
+  'not-applicable': 'neutral',
+  'licence-limited': 'neutral',
+  unknown: 'warning',
 }
 
 function renderStatement(s: string) {
@@ -224,31 +225,31 @@ export function CoveragePage({
       )}
       {delta && <p><strong>Since your last checkpoint ({delta.when}):</strong> {delta.text}</p>}
       {!report.assumed.confirmed && (report.assumed.groups.size > 0 || report.assumed.users.size > 0) && (
-        <p className="reason">
+        <Callout kind="info">
           I inferred {report.assumed.groups.size} exclusion group(s) and {report.assumed.users.size} likely break-glass
           account(s) from how your policies use them — confirm them in <a href="#/mapping">Setup</a> and I'll stop
           hedging.
-        </p>
+        </Callout>
       )}
       {licence.length > 0 && (
         <p className="reason">
           {licence.length} goal(s) need a licence tier you don't have; I don't score you on those — see the Licensing guide.
         </p>
       )}
-      <div className="tiles">
-        <Tile n={enforced.length} label="In place" cls="state-verified" />
-        <Tile n={partial.length} label="Partly" cls="state-notChallenged" />
-        <Tile n={absent.length} label="Missing" cls="state-none" />
-        <Tile n={`${report.summary.scoredPercent}%`} label="of scored goals in place" />
-        <Tile n={`${readyPct}%`} label="active users MFA-ready" />
-      </div>
+      <Stats>
+        <StatTile value={enforced.length} label="In place" tone="success" />
+        <StatTile value={partial.length} label="Partly" tone="warning" />
+        <StatTile value={absent.length} label="Missing" tone="danger" />
+        <StatTile value={`${report.summary.scoredPercent}%`} label="of scored goals in place" tip={{ title: 'Scored goals', text: 'Goals that apply to this tenant and its licence. Not-applicable and licence-limited goals are left out.' }} />
+        <StatTile value={`${readyPct}%`} label="active users MFA-ready" tip={{ title: 'MFA-ready', text: 'Active users whose MFA state is Verified or Likely viable.' }} />
+      </Stats>
     </div>
   )
 
   const goalCard = (r: GoalResult) => (
     <details key={r.goal.id} className="card">
       <summary>
-        <span className={`chip ${STATUS_CHIP[r.status]}`}>{STATUS_LABEL[r.status]}</span> {renderStatement(nameify(r.statement))}
+        <Chip status={STATUS_CHIP[r.status]}>{STATUS_LABEL[r.status]}</Chip> {renderStatement(nameify(r.statement))}
       </summary>
       {r.goal.tldr && <p className="reason">{r.goal.tldr}</p>}
       {r.goal.learnUrl && (
@@ -257,9 +258,9 @@ export function CoveragePage({
             Microsoft Learn →
           </a>{' '}
           {(r.goal.cis ?? []).map((c) => (
-            <span key={c} className="chip">
+            <Chip key={c} status="neutral">
               CIS {c}
-            </span>
+            </Chip>
           ))}
         </p>
       )}
@@ -394,8 +395,8 @@ export function CoveragePage({
         Based on the scan from <span title={absolute(scan.at)}>{relative(scan.at)}</span> —{' '}
         <a href="#/scan">Re-scan</a>
       </p>
-      <SectionTabs
-        sections={[
+      <Tabs
+        tabs={[
           { id: 'summary', label: 'Summary', render: summaryTab },
           { id: 'working', label: "What's working", badge: enforced.length, render: workingTab },
           { id: 'attention', label: 'Needs attention', badge: absent.length + partial.length + unknown.length, render: attentionTab },
@@ -403,15 +404,6 @@ export function CoveragePage({
         ]}
       />
     </StepFrame>
-  )
-}
-
-function Tile({ n, label, cls }: { n: number | string; label: string; cls?: string }) {
-  return (
-    <div className={`tile ${cls ?? ''}`}>
-      <div className="tile-count">{n}</div>
-      <div className="tile-label">{label}</div>
-    </div>
   )
 }
 

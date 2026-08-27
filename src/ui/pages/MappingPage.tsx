@@ -18,6 +18,8 @@ import {
 } from '../../mapping/wizard.ts'
 import type { WizardQuestionDef } from '../../mapping/wizard.ts'
 import { setDisplayTimeZone } from '../format.ts'
+import { Button, Callout, Card, Chip, ExpandCard, FilterChip, Picker } from '../components/index.ts'
+import type { PickerOption } from '../components/index.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
 import type { BaselineResult } from './BaselinePage.tsx'
 
@@ -120,13 +122,13 @@ export function MappingPage({
         does="A handful of questions about your tenant — I work out everything else myself."
         needs={needs}
       >
-        <div className="card">
+        <Card>
           <p>
             Setup needs a loaded baseline and a scan. {!baseline && <a href="#/baseline">Load a baseline</a>}
             {!baseline && !scan && ' and '}
             {!scan && <a href="#/scan">run a scan</a>}.
           </p>
-        </div>
+        </Card>
       </StepFrame>
     )
   }
@@ -141,17 +143,14 @@ export function MappingPage({
       next="coverage"
       nextLabel="Findings"
     >
-      <p className="notice">
-        <strong>
-          {progress.answered} of {progress.total} answered
-        </strong>
+      <Callout kind={progress.complete ? 'success' : 'info'} title={`${progress.answered} of ${progress.total} answered`}>
         {progress.complete
-          ? ' — that covers everything I need. The optional ones below sharpen the plan.'
-          : ' — the required ones unlock the plan; the rest are optional.'}
+          ? '— that covers everything I need. The optional ones below sharpen the plan.'
+          : '— the required ones unlock the plan; the rest are optional.'}
         {autoCount > 0 && (
           <span className="reason"> I resolved {autoCount} baseline reference(s) automatically so you don't have to.</span>
         )}
-      </p>
+      </Callout>
 
       {questions.map((q, i) => (
         <WizardCard
@@ -185,18 +184,23 @@ function WizardCard(props: {
   const { def, state } = props
   const done = state.wizardAnswered[def.id] === true
   return (
-    <details className="card wizard-card" open={!done}>
-      <summary>
-        <span className={`chip ${done ? 'state-verified' : def.required ? 'state-notChallenged' : ''}`}>
-          {done ? 'Answered' : def.required ? 'Required' : 'Optional'}
-        </span>{' '}
-        <strong>
-          {props.index}. {def.question}
-        </strong>
-      </summary>
+    <ExpandCard
+      className="wizard-card"
+      open={!done}
+      summary={
+        <>
+          <Chip status={done ? 'done' : def.required ? 'warning' : 'neutral'}>
+            {done ? 'Answered' : def.required ? 'Required' : 'Optional'}
+          </Chip>{' '}
+          <strong>
+            {props.index}. {def.question}
+          </strong>
+        </>
+      }
+    >
       <p className="reason">{def.help}</p>
       <QuestionBody {...props} />
-    </details>
+    </ExpandCard>
   )
 }
 
@@ -235,49 +239,30 @@ function UserMultiPicker({
   placeholder: string
 }) {
   const [query, setQuery] = useState('')
+  const toOption = (u: TenantSnapshot['users'][number]): PickerOption => ({
+    id: u.id,
+    name: u.displayName ?? u.userPrincipalName ?? u.id,
+    secondary: u.userPrincipalName ?? undefined,
+  })
   const options = useMemo(() => {
     const q = query.toLowerCase()
     return snapshot.users
-      .filter(
-        (u) =>
-          !selected.includes(u.id) &&
-          ((u.displayName ?? '').toLowerCase().includes(q) || (u.userPrincipalName ?? '').toLowerCase().includes(q)),
-      )
-      .slice(0, 6)
-  }, [snapshot, query, selected])
-  const nameOf = (id: string) => {
+      .filter((u) => (u.displayName ?? '').toLowerCase().includes(q) || (u.userPrincipalName ?? '').toLowerCase().includes(q))
+      .slice(0, 8)
+      .map(toOption)
+  }, [snapshot, query])
+  const selectedOptions = selected.map((id) => {
     const u = snapshot.users.find((x) => x.id === id)
-    return u?.displayName ?? u?.userPrincipalName ?? id
-  }
+    return u ? toOption(u) : { id, name: id }
+  })
   return (
-    <div>
-      <p>
-        {selected.map((id) => (
-          <button key={id} className="chip selected" title="Remove" onClick={() => onChange(selected.filter((x) => x !== id))}>
-            {nameOf(id)} ✕
-          </button>
-        ))}
-      </p>
-      <input type="search" placeholder={placeholder} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
-      {query.length > 0 && (
-        <p>
-          {options.map((u) => (
-            <button
-              key={u.id}
-              className="chip"
-              onClick={() => {
-                onChange([...selected, u.id])
-                setQuery('')
-              }}
-            >
-              {u.displayName ?? u.userPrincipalName}
-              <span className="sub"> {u.userPrincipalName}</span>
-            </button>
-          ))}
-          {options.length === 0 && <span className="reason">no matches</span>}
-        </p>
-      )}
-    </div>
+    <Picker
+      selected={selectedOptions}
+      options={options}
+      onSearch={setQuery}
+      onChange={(next) => onChange(next.map((o) => o.id))}
+      placeholder={placeholder}
+    />
   )
 }
 
@@ -307,53 +292,46 @@ function GroupPicker({
       void searchGroups(query).then(setRemote).catch(() => setRemote([]))
     }, 300)
   }, [query])
-  const local = knownGroups
+  const local: PickerOption[] = knownGroups
     .filter((g) => g.displayName !== null && g.displayName.toLowerCase().includes(query.toLowerCase()))
-    .map((g) => ({ id: g.groupId, displayName: g.displayName ?? g.groupId }))
-  const options = [...local, ...remote.filter((r) => !local.some((l) => l.id === r.id))].slice(0, 6)
-  if (selected !== null) {
-    return (
-      <p>
-        <span className="chip state-verified">{selectedName ?? selected}</span>{' '}
-        <button className="chip" onClick={onClear}>
-          Change
-        </button>
-      </p>
-    )
-  }
+    .map((g) => ({ id: g.groupId, name: g.displayName ?? g.groupId, secondary: `${g.memberCount} members`, badge: 'used in a policy' }))
+  const options: PickerOption[] = [
+    ...local,
+    ...remote.filter((r) => !local.some((l) => l.id === r.id)).map((r) => ({ id: r.id, name: r.displayName })),
+  ]
+  const suggestions: PickerOption[] = knownGroups.map((g) => ({
+    id: g.groupId,
+    name: g.displayName ?? g.groupId,
+    secondary: `${g.memberCount} members`,
+    badge: 'used in a policy',
+  }))
   return (
-    <div>
-      <input
-        type="search"
-        placeholder="Start typing a group name…"
-        value={query}
-        onChange={(e) => setQuery(e.currentTarget.value)}
-      />
-      {query.length > 1 && (
-        <p>
-          {options.map((o) => (
-            <button key={o.id} className="chip" onClick={() => onPick(o.id, o.displayName)}>
-              {o.displayName}
-            </button>
-          ))}
-          {options.length === 0 && <span className="reason">no matches yet…</span>}
-        </p>
-      )}
-    </div>
+    <Picker
+      single
+      selected={selected !== null ? [{ id: selected, name: selectedName ?? selected }] : []}
+      options={options}
+      suggestions={suggestions}
+      onSearch={setQuery}
+      onChange={(next) => {
+        const o = next[next.length - 1]
+        if (!o) onClear()
+        else onPick(o.id, o.name)
+      }}
+      placeholder="Start typing a group name…"
+    />
   )
 }
 
 function ValidationView({ v }: { v: ValidationResult | null }) {
   if (!v) return null
   return (
-    <div className={v.passed ? 'notice' : 'notice error'}>
-      {v.passed ? 'Checks passed' : 'Needs attention before this is safe'}
+    <Callout kind={v.passed ? 'success' : 'warning'} title={v.passed ? 'Checks passed' : 'Needs attention before this is safe'}>
       <ul className="sections">
         {v.findings.map((f, i) => (
           <li key={i}>{f}</li>
         ))}
       </ul>
-    </div>
+    </Callout>
   )
 }
 
@@ -391,8 +369,8 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, update, answered }: 
         </div>
       ))}
       <p>
-        <button
-          className="chip"
+        <Button
+          size="sm"
           onClick={() => {
             update((s) => ({
               ...s,
@@ -414,7 +392,7 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, update, answered }: 
           }}
         >
           We don't have break-glass accounts yet — put creating them in the plan
-        </button>
+        </Button>
       </p>
     </div>
   )
@@ -468,8 +446,8 @@ function GlobalExclusionQuestion({ state, snapshot, knownGroups, update, answere
       />
       <ValidationView v={validation} />
       <p>
-        <button
-          className="chip"
+        <Button
+          size="sm"
           onClick={() => {
             update((s) => ({
               ...s,
@@ -491,7 +469,7 @@ function GlobalExclusionQuestion({ state, snapshot, knownGroups, update, answere
           }}
         >
           We don't have one — put creating it in the plan
-        </button>
+        </Button>
       </p>
     </div>
   )
@@ -516,9 +494,9 @@ function HighCareQuestion({ state, snapshot, update, answered }: Parameters<type
         </p>
       )}
       <p>
-        <button className="chip" onClick={() => answered('highCare')}>
+        <Button size="sm" onClick={() => answered('highCare')}>
           Nobody needs special care
-        </button>
+        </Button>
       </p>
     </div>
   )
@@ -529,16 +507,16 @@ function TrustedLocationsQuestion({ state, snapshot, update, answered }: Paramet
   return (
     <div>
       {locations.length === 0 && <p className="reason">Your tenant has no named locations yet.</p>}
-      <p>
+      <div className="row">
         {locations.map((l) => {
           const id = String(l.id ?? '')
           const on = state.trustedLocationIds.includes(id)
           return (
-            <button
+            <FilterChip
               key={id}
-              className={`chip ${on ? 'selected' : ''}`}
+              selected={on}
               title={l.isTrusted ? 'marked trusted in the tenant' : 'not marked trusted'}
-              onClick={() => {
+              onToggle={() => {
                 const next = on ? state.trustedLocationIds.filter((x) => x !== id) : [...state.trustedLocationIds, id]
                 update((s) => ({ ...s, trustedLocationIds: next }))
                 answered('trustedLocations')
@@ -546,24 +524,24 @@ function TrustedLocationsQuestion({ state, snapshot, update, answered }: Paramet
             >
               {l.displayName ?? id}
               {l.isTrusted ? ' ✓' : ''}
-            </button>
+            </FilterChip>
           )
         })}
-      </p>
+      </div>
       {state.trustedLocationIds.map((id) => {
         const loc = locations.find((l) => String(l.id) === id)
         return <ValidationView key={id} v={loc ? validateTrustedLocation(loc) : null} />
       })}
       <p>
-        <button
-          className="chip"
+        <Button
+          size="sm"
           onClick={() => {
             update((s) => ({ ...s, trustedLocationIds: [] }))
             answered('trustedLocations')
           }}
         >
           None yet — put creating one in the plan
-        </button>
+        </Button>
       </p>
     </div>
   )
@@ -583,15 +561,15 @@ function ServiceAccountsQuestion({ state, knownGroups, update, answered }: Param
         }}
       />
       <p>
-        <button
-          className="chip"
+        <Button
+          size="sm"
           onClick={() => {
             update((s) => ({ ...s, serviceAccountsGroupId: null }))
             answered('serviceAccounts')
           }}
         >
           Not applicable
-        </button>
+        </Button>
       </p>
     </div>
   )
@@ -607,7 +585,7 @@ function VariantsQuestion({ state, baseline, update, answered }: Parameters<type
   return (
     <div>
       {sets.map((v) => (
-        <div key={v.intentKey} className="card">
+        <Card key={v.intentKey}>
           {v.policyNames.map((name) => {
             const doc = docFor(baseline.pkg.docs, name)
             return (
@@ -623,7 +601,7 @@ function VariantsQuestion({ state, baseline, update, answered }: Parameters<type
               </label>
             )
           })}
-        </div>
+        </Card>
       ))}
     </div>
   )
@@ -653,23 +631,23 @@ function TimeZoneQuestion({ state, update, answered }: Parameters<typeof WizardC
 
 function FrameworksQuestion({ state, update, answered }: Parameters<typeof WizardCard>[0]) {
   return (
-    <p>
+    <div className="row">
       {FRAMEWORK_OPTIONS.map((f) => {
         const on = state.frameworks.includes(f)
         return (
-          <button
+          <FilterChip
             key={f}
-            className={`chip ${on ? 'selected' : ''}`}
-            onClick={() => {
+            selected={on}
+            onToggle={() => {
               update((s) => ({ ...s, frameworks: on ? s.frameworks.filter((x) => x !== f) : [...s.frameworks, f] }))
               answered('frameworks')
             }}
           >
             {f}
-          </button>
+          </FilterChip>
         )
       })}
-    </p>
+    </div>
   )
 }
 
@@ -700,9 +678,9 @@ function ApplicabilityQuestion({ state, snapshot, update, answered }: Parameters
         </p>
       ))}
       <p>
-        <button className="chip" onClick={() => answered('applicability')}>
+        <Button size="sm" variant="primary" onClick={() => answered('applicability')}>
           Detections look right
-        </button>
+        </Button>
       </p>
     </div>
   )

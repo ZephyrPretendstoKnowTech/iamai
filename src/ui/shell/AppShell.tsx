@@ -3,6 +3,8 @@ import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { signOut } from '../../graph/msal.ts'
+import { Button, LinkButton, Stepper } from '../components/index.ts'
+import type { StepperStatus } from '../components/index.ts'
 
 export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
 export const GITHUB_URL = 'https://github.com/ZephyrPretendstoKnowTech'
@@ -18,8 +20,9 @@ export type Route =
   | 'roadmap'
   | 'licensing'
   | 'reads'
+  | 'components'
 
-export type StepStatus = 'notStarted' | 'inProgress' | 'done' | 'attention'
+export type StepStatus = StepperStatus
 
 const STEPS: { route: Route; label: string }[] = [
   { route: 'start', label: 'Start' },
@@ -36,7 +39,7 @@ const REFERENCE: { route: Route; label: string }[] = [
   { route: 'reads', label: 'What IAMAI reads' },
 ]
 
-const VALID = new Set<string>([...STEPS, ...REFERENCE].map((n) => n.route))
+const VALID = new Set<string>([...STEPS, ...REFERENCE].map((n) => n.route).concat('components'))
 
 export function useHashRoute(): Route {
   const read = (): Route => {
@@ -51,13 +54,6 @@ export function useHashRoute(): Route {
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
   return route
-}
-
-const BADGE: Record<StepStatus, { className: string; text: string } | null> = {
-  notStarted: null,
-  inProgress: { className: 'badge progress', text: 'in progress' },
-  done: { className: 'badge done', text: 'done' },
-  attention: { className: 'badge attention', text: 'needs attention' },
 }
 
 function useTheme(): [string, () => void] {
@@ -98,57 +94,40 @@ export function AppShell({
       <header className="topbar">
         <span className="wordmark">IAMAI</span>
         <span className="tagline">Conditional Access rollout planner</span>
-        <span className="topbar-tenant">
-          <button onClick={toggleTheme} title="Switch between dark and light themes">
-            {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-          </button>{' '}
+        <div className="topbar-right">
           {account && (
-            <>
-              <strong>{tenantName ?? account.username}</strong>{' '}
-              <button
-                onClick={() => {
-                  void forgetTenant(account.tenantId)
-                    .catch(() => {})
-                    .then(() => signOut())
-                }}
-                title="Deletes everything cached for this tenant on this device, then signs out"
-              >
-                Forget this tenant
-              </button>
-              <div className="sub">tenant {account.tenantId}</div>
-            </>
+            <span className="tenant-name" title={`Tenant ID ${account.tenantId} · signed in as ${account.username}`}>
+              {tenantName ?? account.username}
+            </span>
           )}
-        </span>
+          <Button size="sm" onClick={toggleTheme} title="Switch between dark and light themes">
+            {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          </Button>
+          {account && (
+            <Button
+              size="sm"
+              variant="quiet"
+              onClick={() => {
+                void forgetTenant(account.tenantId)
+                  .catch(() => {})
+                  .then(() => signOut())
+              }}
+              title="Deletes everything IAMAI stored for this tenant on this device, then signs out"
+            >
+              Forget this tenant
+            </Button>
+          )}
+        </div>
       </header>
       <div className="body-grid">
-        <nav className="sidenav">
-          <div className="nav-group">
-            <div className="nav-group-title">Steps</div>
-            {STEPS.map((n, i) => {
-              const status = stepStatus[n.route] ?? 'notStarted'
-              const badge = BADGE[status]
-              return (
-                <a key={n.route} href={`#/${n.route}`} className={route === n.route ? 'active' : ''}>
-                  <span>
-                    {i + 1}. {n.label}
-                  </span>
-                  {badge && <span className={badge.className}>{badge.text}</span>}
-                </a>
-              )
-            })}
-          </div>
-          <div className="nav-group">
-            <div className="nav-group-title">Reference</div>
-            {REFERENCE.map((n) => (
-              <a key={n.route} href={`#/${n.route}`} className={route === n.route ? 'active' : ''}>
-                {n.label}
-              </a>
-            ))}
-          </div>
-        </nav>
+        <Stepper
+          steps={STEPS.map((s) => ({ ...s, status: stepStatus[s.route] ?? 'notStarted' }))}
+          reference={REFERENCE}
+          active={route}
+        />
         <main className="page">
           {account && (
-            <div className="print-only reason">
+            <div className="print-only muted">
               IAMAI plan for {tenantName ?? account.username} · prepared {new Date().toLocaleDateString()} by{' '}
               {account.username}
             </div>
@@ -164,18 +143,21 @@ export function AppShell({
 export function Footer() {
   return (
     <footer className="footer">
-      <span>
-        Follow me here:{' '}
-        <a href={LINKEDIN_URL} target="_blank" rel="noreferrer">
-          <strong>Lachlan Robinette</strong>
+      <span>Read-only · nothing leaves your browser</span>
+      <span className="footer-links">
+        <span>
+          Follow me here:{' '}
+          <a href={LINKEDIN_URL} target="_blank" rel="noreferrer">
+            <strong>Lachlan Robinette</strong>
+          </a>
+        </span>
+        <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+          GitHub
+        </a>
+        <a href={REPO_URL} target="_blank" rel="noreferrer">
+          Source
         </a>
       </span>
-      <a href={GITHUB_URL} target="_blank" rel="noreferrer">
-        GitHub
-      </a>
-      <a href={REPO_URL} target="_blank" rel="noreferrer">
-        Source
-      </a>
     </footer>
   )
 }
@@ -215,9 +197,7 @@ export function StepFrame({
       {children}
       {next && (
         <p className="step-next">
-          <a href={`#/${next}`}>
-            <button className="primary">Next: {nextLabel}</button>
-          </a>
+          <LinkButton href={`#/${next}`}>Next: {nextLabel}</LinkButton>
         </p>
       )}
     </section>

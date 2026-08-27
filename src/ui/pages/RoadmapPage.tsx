@@ -24,7 +24,8 @@ import { saveDevResults } from '../../graph/spikes/spike1.ts'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { absolute, absoluteDate, downloadFile, relative } from '../format.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
-import { SectionTabs } from '../shell/SectionTabs.tsx'
+import { Button, Callout, Chip, FilterChip, StatTile, Stats, Tabs } from '../components/index.ts'
+import type { ChipStatus } from '../components/index.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }>
@@ -39,13 +40,13 @@ const STATUS_LABEL: Record<StepStatus, string> = {
   skipped: 'Skipped',
 }
 
-const STATUS_CHIP: Record<StepStatus, string> = {
-  done: 'state-verified',
-  ready: 'state-likelyViable',
-  blocked: 'state-none',
-  'in-report-only': 'state-notChallenged',
-  'ready-to-enforce': 'state-likelyViable',
-  skipped: '',
+const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
+  done: 'done',
+  ready: 'ready',
+  blocked: 'blocked',
+  'in-report-only': 'in-progress',
+  'ready-to-enforce': 'ready',
+  skipped: 'neutral',
 }
 
 const PHASE_NAME: Record<number, string> = {
@@ -354,17 +355,19 @@ export function RoadmapPage({
           />
         </label>
       </p>
-      <p className="no-print">
-        <button className="primary" onClick={savePlan}>
+      <p className="row no-print">
+        <Button variant="primary" icon="download" onClick={savePlan}>
           Save plan
-        </button>{' '}
-        <button onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
+        </Button>
+        <Button icon="copy" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
           {copied === 'plan-md' ? 'Copied ✓' : 'Copy as Markdown'}
-        </button>{' '}
-        <label className="chip">
+        </Button>
+        <label className="btn">
           Load plan <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => void loadPlan(e.currentTarget.files)} />
-        </label>{' '}
-        <button onClick={() => window.print()}>Print the plan</button>
+        </label>
+        <Button icon="print" onClick={() => window.print()}>
+          Print the plan
+        </Button>
       </p>
     </div>
   )
@@ -389,7 +392,7 @@ export function RoadmapPage({
               <ul className="sections">
                 {inPhase.map((s) => (
                   <li key={s.id}>
-                    <span className={`chip ${STATUS_CHIP[s.status]}`}>{STATUS_LABEL[s.status]}</span> {s.title}
+                    <Chip status={STATUS_CHIP[s.status]}>{STATUS_LABEL[s.status]}</Chip> {s.title}
                   </li>
                 ))}
               </ul>
@@ -437,12 +440,12 @@ export function RoadmapPage({
     const visible = steps.filter((s) => statusFilter.size === 0 || statusFilter.has(s.status))
     return (
       <div>
-        <div className="filters no-print">
+        <div className="row no-print">
           {(Object.keys(STATUS_LABEL) as StepStatus[]).map((s) => (
-            <button
+            <FilterChip
               key={s}
-              className={`chip ${STATUS_CHIP[s]} ${statusFilter.has(s) ? 'selected' : ''}`}
-              onClick={() =>
+              selected={statusFilter.has(s)}
+              onToggle={() =>
                 setStatusFilter((prev) => {
                   const next = new Set(prev)
                   if (next.has(s)) next.delete(s)
@@ -452,7 +455,7 @@ export function RoadmapPage({
               }
             >
               {STATUS_LABEL[s]} ({steps.filter((x) => x.status === s).length})
-            </button>
+            </FilterChip>
           ))}
         </div>
         {phases.map((phase) => {
@@ -496,8 +499,8 @@ export function RoadmapPage({
           <a href="#/scan">Re-scan</a>
         </p>
       )}
-      <SectionTabs
-        sections={[
+      <Tabs
+        tabs={[
           { id: 'overview', label: 'Overview', render: overview },
           { id: 'timeline', label: 'Timeline', badge: `${schedule.weeks}w`, render: timeline },
           { id: 'danger', label: 'Danger areas', badge: dangers.length || '', render: dangerAreas },
@@ -565,8 +568,8 @@ function StepCard({
   return (
     <details className={`card step-card ${step.safeToday ? 'lane-safe' : ''}`}>
       <summary>
-        <span className={`chip ${STATUS_CHIP[step.status]}`}>{STATUS_LABEL[step.status]}</span>{' '}
-        {step.safeToday && <span className="chip state-verified">safe today</span>} {step.title}
+        <Chip status={STATUS_CHIP[step.status]}>{STATUS_LABEL[step.status]}</Chip>{' '}
+        {step.safeToday && <Chip status="done">safe today</Chip>} {step.title}
         <div className="sub">{step.impact}</div>
       </summary>
 
@@ -590,15 +593,15 @@ function StepCard({
           </a>{' '}
           {step.learn.tldr}
           {step.learn.cis.map((c) => (
-            <span key={c} className="chip">
+            <Chip key={c} status="neutral">
               CIS {c}
-            </span>
+            </Chip>
           ))}
         </p>
       )}
 
       {step.status === 'blocked' && step.unblockNotes.length > 0 && (
-        <p className="notice">Unblocked by: {step.unblockNotes.join('; ')}</p>
+        <Callout kind="warning" title="Unblocked by:">{step.unblockNotes.join('; ')}</Callout>
       )}
 
       {step.highCare.userIds.length > 0 && (
@@ -614,12 +617,12 @@ function StepCard({
       )}
 
       {step.includesOperator && (
-        <p className={step.operatorSafe ? 'notice' : 'notice error'}>
+        <Callout kind={step.operatorSafe ? 'success' : 'danger'}>
           This policy applies to <strong>your own account</strong>.{' '}
           {step.operatorSafe
-            ? 'I checked your registered methods — you have a strong one. You will not lock yourself out.'
+            ? 'Your registered methods include a strong one — you will not lock yourself out.'
             : 'Register a passkey/FIDO2 key and complete one MFA sign-in before enforcing this.'}
-        </p>
+        </Callout>
       )}
 
       {step.population.total > 0 && (
@@ -665,13 +668,13 @@ function StepCard({
       </ul>
       {step.action.json && (
         <div>
-          <p className="no-print">
-            <button className={`chip ${tab === 'portal' ? 'selected' : ''}`} onClick={() => setTab('portal')}>Portal steps</button>{' '}
-            <button className={`chip ${tab === 'json' ? 'selected' : ''}`} onClick={() => setTab('json')}>JSON</button>{' '}
-            <button className={`chip ${tab === 'ps' ? 'selected' : ''}`} onClick={() => setTab('ps')}>PowerShell</button>{' '}
-            <button className="chip" onClick={() => downloadFile(`${step.id}.json`, step.action.json!, 'application/json')}>
+          <p className="row no-print">
+            <FilterChip selected={tab === 'portal'} onToggle={() => setTab('portal')}>Portal steps</FilterChip>
+            <FilterChip selected={tab === 'json'} onToggle={() => setTab('json')}>JSON</FilterChip>
+            <FilterChip selected={tab === 'ps'} onToggle={() => setTab('ps')}>PowerShell</FilterChip>
+            <Button size="sm" icon="download" onClick={() => downloadFile(`${step.id}.json`, step.action.json!, 'application/json')}>
               Download JSON
-            </button>
+            </Button>
           </p>
           {tab === 'portal' && (
             <ol className="sections">
@@ -690,9 +693,9 @@ function StepCard({
           <h4>Tell your people</h4>
           <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>{step.comms}</pre>
           <p className="no-print">
-            <button className="chip" onClick={() => void onCopy(step.id, step.comms!)}>
+            <Button size="sm" icon="copy" onClick={() => void onCopy(step.id, step.comms!)}>
               {copied === step.id ? 'Copied ✓' : 'Copy announcement'}
-            </button>
+            </Button>
           </p>
         </>
       )}
@@ -731,7 +734,8 @@ function StepCard({
                 value={skipDraft.reason}
                 onChange={(e) => setSkipDraft({ id: step.id, reason: e.currentTarget.value })}
               />{' '}
-              <button
+              <Button
+                size="sm"
                 onClick={() => {
                   const r = skipStep(step, skipDraft.reason)
                   if (r.ok) {
@@ -741,10 +745,12 @@ function StepCard({
                 }}
               >
                 Confirm skip
-              </button>
+              </Button>
             </>
           ) : (
-            <button onClick={() => setSkipDraft({ id: step.id, reason: '' })}>Skip this step…</button>
+            <Button size="sm" variant="quiet" onClick={() => setSkipDraft({ id: step.id, reason: '' })}>
+              Skip this step…
+            </Button>
           )}
         </p>
       )}

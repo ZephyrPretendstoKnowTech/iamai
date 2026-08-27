@@ -17,6 +17,7 @@ import { RoadmapPage } from './pages/RoadmapPage.tsx'
 import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { DevSpikes } from './DevSpikes.tsx'
+import { ComponentsPage } from './pages/ComponentsPage.tsx'
 
 const DEV_PANEL =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
@@ -108,6 +109,7 @@ export function App() {
           )}
           {route === 'licensing' && <LicensingPage scan={lastScan} />}
           {route === 'reads' && <WhatIamaiReads />}
+          {route === 'components' && (import.meta.env.DEV ? <ComponentsPage /> : <StartPage />)}
           {DEV_PANEL && account && <DevSpikes />}
         </>
       )}
