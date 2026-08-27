@@ -10,7 +10,7 @@ import { StartPage } from './pages/StartPage.tsx'
 import { ConnectPage } from './pages/ConnectPage.tsx'
 import { BaselinePage } from './pages/BaselinePage.tsx'
 import type { BaselineResult } from './pages/BaselinePage.tsx'
-import { LicensingGuidePage } from './pages/PlaceholderPage.tsx'
+import { LicensingPage } from './pages/LicensingPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
 import { MappingPage } from './pages/MappingPage.tsx'
 import { RoadmapPage } from './pages/RoadmapPage.tsx'
@@ -54,6 +54,8 @@ export function App() {
     baseline: baseline ? 'done' : 'notStarted',
     scan: scanRunning ? 'inProgress' : lastScan ? 'done' : 'notStarted',
     mapping: mapProgress?.complete ? 'done' : (mapProgress?.answered ?? 0) > 0 ? 'inProgress' : 'notStarted',
+    coverage: lastScan && baseline ? 'done' : 'notStarted',
+    roadmap: lastScan && baseline ? (mapProgress?.complete ? 'done' : 'inProgress') : 'notStarted',
   }
 
   return (
@@ -97,7 +99,7 @@ export function App() {
               operator={account ? { userId: account.localAccountId, userPrincipalName: account.username } : null}
             />
           )}
-          {route === 'licensing' && <LicensingGuidePage />}
+          {route === 'licensing' && <LicensingPage scan={lastScan} />}
           {route === 'reads' && <WhatIamaiReads />}
           {DEV_PANEL && account && <DevSpikes />}
         </>
