@@ -7,18 +7,16 @@ import {
 } from './constants.ts'
 import type { TenantSnapshot, UsageSignal } from '../graph/collect/types.ts'
 import type { Evidence } from './types.ts'
+import { EVIDENCE } from '../copy/steps.ts'
 
 function usageLines(label: string, sig: UsageSignal | undefined): { lines: string[]; ids: string[] } {
   if (!sig || sig.count === 0) {
-    return { lines: [`no ${label} observed in the window — expect zero impact`], ids: [] }
+    return { lines: [EVIDENCE.noUsage(label)], ids: [] }
   }
   const detail = Object.entries(sig.byDetail)
     .map(([k, n]) => `${k}: ${n}`)
     .join(', ')
-  return {
-    lines: [`${sig.userIds.length} user(s) seen using ${label} (${sig.count} sign-ins; ${detail}) — this is the blast radius`],
-    ids: sig.userIds,
-  }
+  return { lines: [EVIDENCE.usage(sig.userIds.length, label, sig.count, detail)], ids: sig.userIds }
 }
 
 // Exit criterion for ready-to-enforce (roadmap.md §5) — thresholds are the
@@ -44,21 +42,21 @@ export function evidenceFor(
   const base: Evidence = { status, lines: [], affectedUserIds: [], reportOnly: null }
 
   if (!usable) {
-    base.lines.push('sign-in evidence is not usable for this scan — falling back to readiness alone; nothing is hidden')
+    base.lines.push(EVIDENCE.unusable)
     return base
   }
 
   const usage = snapshot.evidenceUsage
   if (goalId === 'block-legacy-auth') {
-    const u = usageLines('legacy authentication', usage?.legacyAuth)
+    const u = usageLines(EVIDENCE.legacyAuth, usage?.legacyAuth)
     base.lines.push(...u.lines)
     base.affectedUserIds = u.ids
   } else if (goalId === 'block-device-code') {
-    const u = usageLines('the device-code flow', usage?.deviceCode)
+    const u = usageLines(EVIDENCE.deviceCode, usage?.deviceCode)
     base.lines.push(...u.lines)
     base.affectedUserIds = u.ids
   } else if (goalId === 'block-auth-transfer') {
-    const u = usageLines('authentication transfer', usage?.authTransfer)
+    const u = usageLines(EVIDENCE.authTransfer, usage?.authTransfer)
     base.lines.push(...u.lines)
     base.affectedUserIds = u.ids
   }
@@ -83,18 +81,16 @@ export function evidenceFor(
         failures,
         meetsExitCriterion: meetsExitCriterion(daysObserved, signIns, failures, activeUsers),
       }
-      base.lines.push(
-        `report-only results: ${signIns} sign-in(s) over ${daysObserved} day(s), ${failures} failure(s)/interruption(s)`,
-      )
+      base.lines.push(EVIDENCE.reportOnly(signIns, daysObserved, failures))
       const failedUsers = [
         ...new Set([...pr.affectedUserIds.reportOnlyFailure, ...pr.affectedUserIds.reportOnlyInterrupted]),
       ]
       if (failedUsers.length > 0) base.affectedUserIds = failedUsers
     } else {
-      base.lines.push('the created policy has not appeared in sign-in results yet')
+      base.lines.push(EVIDENCE.notSeenYet)
     }
   }
 
-  if (base.lines.length === 0) base.lines.push('no goal-specific evidence for this step; see readiness')
+  if (base.lines.length === 0) base.lines.push(EVIDENCE.none)
   return base
 }

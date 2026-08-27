@@ -18,6 +18,7 @@ import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { DevSpikes } from './DevSpikes.tsx'
 import { ComponentsPage } from './pages/ComponentsPage.tsx'
+import { SHELL } from '../copy/pages.ts'
 
 const DEV_PANEL =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
@@ -62,10 +63,14 @@ export function App() {
   return (
     <AppShell account={account} tenantName={tenantName} route={route} stepStatus={stepStatus}>
       {!ready ? (
-        'Loading…'
+        SHELL.loading
       ) : (
         <>
-          {authError && <p className="error">Sign-in error: {authError}</p>}
+          {authError && (
+            <p className="error">
+              {SHELL.signInError} {authError}
+            </p>
+          )}
           {route === 'start' && <StartPage />}
           {route === 'connect' && (
             <ConnectPage
@@ -89,10 +94,9 @@ export function App() {
               />
             ) : (
               <section>
-                <h2>Scan</h2>
+                <h2>{SHELL.steps.scan}</h2>
                 <p>
-                  The scan reads your tenant into a local snapshot. <a href="#/connect">Connect a
-                  tenant</a> first.
+                  {SHELL.scanNeedsConnect} <a href="#/connect">{SHELL.connectLink}</a>
                 </p>
               </section>
             ))}

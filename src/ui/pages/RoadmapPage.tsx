@@ -22,23 +22,18 @@ import type { Checkpoint } from '../../roadmap/plan.ts'
 import type { Step, StepStatus } from '../../roadmap/types.ts'
 import { saveDevResults } from '../../graph/spikes/spike1.ts'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
-import { absolute, absoluteDate, downloadFile, relative } from '../format.ts'
+import { ROADMAP as C } from '../../copy/pages.ts'
+import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
+import { roadmapOverview } from '../../copy/statements.ts'
+import { PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
+import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
-import { Button, Callout, Chip, FilterChip, StatTile, Stats, Tabs } from '../components/index.ts'
+import { Button, Callout, Card, Chip, ExpandCard, FilterChip, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }>
 type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string }
-
-const STATUS_LABEL: Record<StepStatus, string> = {
-  done: 'Done',
-  ready: 'Ready',
-  blocked: 'Blocked',
-  'in-report-only': 'In report-only',
-  'ready-to-enforce': 'Ready to enforce',
-  skipped: 'Skipped',
-}
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
   done: 'done',
@@ -47,18 +42,6 @@ const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
   'in-report-only': 'in-progress',
   'ready-to-enforce': 'ready',
   skipped: 'neutral',
-}
-
-const PHASE_NAME: Record<number, string> = {
-  0: 'Foundations',
-  1: 'Low-impact blocks',
-  2: 'MFA for everyone',
-  3: 'Admin hardening',
-  4: 'Guests and locations',
-  5: 'Devices',
-  6: 'Sessions',
-  7: 'Advanced',
-  8: 'From this baseline',
 }
 
 export function RoadmapPage({
@@ -223,24 +206,24 @@ export function RoadmapPage({
   }, [computed])
 
   const needs = [
-    { met: scan !== null, text: scan !== null ? 'scan complete' : 'run a scan', href: '#/scan' },
-    { met: baseline !== null, text: baseline !== null ? 'baseline loaded' : 'load a baseline', href: '#/baseline' },
+    { met: scan !== null, text: scan !== null ? C.needsScan : C.needScan, href: '#/scan' },
+    { met: baseline !== null, text: baseline !== null ? C.needsBaseline : C.needBaseline, href: '#/baseline' },
   ]
 
   if (!computed || !snapshot) {
     return (
-      <StepFrame title="Roadmap" does="Your dated plan from here to the baseline — with the danger areas called out by name." needs={needs}>
-        <div className="card">
+      <StepFrame title={C.title} does={C.does} needs={needs}>
+        <Card>
           {scan && baseline ? (
-            <p className="reason">Preparing the plan (resolving group memberships)…</p>
+            <p className="reason">{C.preparing}</p>
           ) : (
             <p>
-              The plan builds from a scan and a baseline. {!scan && <a href="#/scan">Run a scan</a>}
-              {!scan && !baseline && ' and '}
-              {!baseline && <a href="#/baseline">load a baseline</a>}.
+              {C.blocked} {!scan && <a href="#/scan">{C.runScan}</a>}
+              {!scan && !baseline && ` ${C.and} `}
+              {!baseline && <a href="#/baseline">{C.loadBaseline}</a>}.
             </p>
           )}
-        </div>
+        </Card>
       </StepFrame>
     )
   }
@@ -253,7 +236,7 @@ export function RoadmapPage({
   const blocked = steps.filter((s) => s.status === 'blocked')
   const phases = [...new Set(steps.map((s) => s.phase))].sort((a, b) => a - b)
   const tenantName =
-    ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'your tenant'
+    ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'This tenant'
 
   const copy = async (id: string, text: string): Promise<void> => {
     try {
@@ -302,7 +285,7 @@ export function RoadmapPage({
     if (!files || files.length === 0) return
     const { plan, error } = parsePlanFile(await files[0].text())
     if (!plan) {
-      window.alert?.(error ?? 'could not read the plan file')
+      window.alert?.(error ?? C.couldNotRead)
       return
     }
     const stepsRecord: SavedSteps = Object.fromEntries(
@@ -314,59 +297,61 @@ export function RoadmapPage({
     setVersion((v) => v + 1)
   }
 
+  const overviewText = roadmapOverview({
+    tenant: tenantName,
+    done: done.length,
+    total: steps.length,
+    pace: C.pace,
+    finishes: when(schedule.targetEnd),
+    weeks: schedule.weeks,
+  })
+
   const overview = () => (
     <div className="advisor">
       <p>
-        <strong>
-          {tenantName}: {done.length} of {steps.length} steps are already in place
-        </strong>{' '}
-        — {work.length} to go. Starting{' '}
-        <span title={absolute(schedule.start)}>{absoluteDate(schedule.start)}</span>, I'd have this done by{' '}
-        <strong title={absolute(schedule.targetEnd)}>{absoluteDate(schedule.targetEnd)}</strong> — about{' '}
-        {schedule.weeks} week{schedule.weeks === 1 ? '' : 's'}
-        {schedule.withinTypicalTarget ? ', inside the usual 2–4 week window' : ' — longer than usual because of the observation windows each new policy needs'}
-        .
+        <strong>{overviewText}</strong>
+        {!schedule.withinTypicalTarget && work.length > 0 && ` ${C.longerThanUsual}`}
       </p>
+      <Stats>
+        <StatTile value={`${done.length}/${steps.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} />
+        <StatTile value={schedule.weeks} label={TILE.weeks.title} tip={TILE.weeks} />
+        <StatTile value={safe.length} label={CHIP.safeToday.title} tone="info" tip={CHIP.safeToday} />
+        <StatTile value={blocked.length} label={STEP_STATUS.blocked.title} tone={blocked.length > 0 ? 'warning' : 'neutral'} tip={STEP_STATUS.blocked} />
+      </Stats>
       {safe.length > 0 && (
         <p>
-          <strong>Do these {safe.length} today:</strong> {safe.map((s) => s.title.replace(/^Block: /, '')).join('; ')}.
-          Nobody in {tenantName} used what they block in the last 30 days — free security, zero interruption.
+          <strong>{C.safeToday(safe.length)}</strong> {safe.map((s) => s.title).join('; ')}. {C.safeTodayWhy(tenantName)}
         </p>
       )}
       {dangers.length > 0 && (
         <p>
-          <strong>{dangers.filter((d) => d.severity === 'high').length} thing(s) need care before we start</strong> — the
-          Danger areas tab names the people and the exact settings.
+          <strong>{C.dangers(dangers.filter((d) => d.severity === 'high').length)}</strong> {C.dangersAfter}
         </p>
       )}
-      {blocked.length > 0 && (
-        <p>
-          {blocked.length} step(s) are blocked right now; each one says exactly what unblocks it. Most of them clear once
-          the verification campaign in phase 2 lands.
-        </p>
-      )}
+      {blocked.length > 0 && <p>{C.blockedSteps(blocked.length)}</p>}
       <p className="no-print">
         <label>
-          Plan start date:{' '}
+          {C.startDate}{' '}
           <input
             type="date"
             value={schedule.start.slice(0, 10)}
             onChange={(e) => e.currentTarget.value && setStart(`${e.currentTarget.value}T00:00:00.000Z`)}
-          />
+          />{' '}
+          <span className="muted">{when(schedule.start)}</span>
         </label>
       </p>
       <p className="row no-print">
         <Button variant="primary" icon="download" onClick={savePlan}>
-          Save plan
+          {C.save}
         </Button>
         <Button icon="copy" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
-          {copied === 'plan-md' ? 'Copied ✓' : 'Copy as Markdown'}
+          {copied === 'plan-md' ? C.copied : C.copyMarkdown}
         </Button>
         <label className="btn">
-          Load plan <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => void loadPlan(e.currentTarget.files)} />
+          {C.load} <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => void loadPlan(e.currentTarget.files)} />
         </label>
         <Button icon="print" onClick={() => window.print()}>
-          Print the plan
+          {C.print}
         </Button>
       </p>
     </div>
@@ -379,20 +364,20 @@ export function RoadmapPage({
         const phaseDone = inPhase.filter((s) => s.status === 'done').length
         return (
           <div key={p.phase} className="timeline-row">
-            <div className="timeline-dates">
-              {p.days === 0 ? 'complete' : `${absoluteDate(p.start)} → ${absoluteDate(p.end)}`}
-            </div>
+            <div className="timeline-dates">{p.days === 0 ? C.complete : dateRange(p.start, p.end)}</div>
             <div>
-              <strong>
-                Phase {p.phase}: {PHASE_NAME[p.phase] ?? ''}
-              </strong>{' '}
+              <strong>{C.phase(p.phase, PHASE_NAME[p.phase] ?? '')}</strong>{' '}
               <span className="reason">
-                {phaseDone}/{inPhase.length} done{p.note ? ` · ${p.note}` : ''}
+                {C.phaseDone(phaseDone, inPhase.length)}
+                {p.note ? ` · ${p.note}` : ''}
               </span>
               <ul className="sections">
                 {inPhase.map((s) => (
                   <li key={s.id}>
-                    <Chip status={STATUS_CHIP[s.status]}>{STATUS_LABEL[s.status]}</Chip> {s.title}
+                    <Chip status={STATUS_CHIP[s.status]} title={STEP_STATUS[s.status].text}>
+                      {STEP_STATUS_LABEL[s.status]}
+                    </Chip>{' '}
+                    {s.title}
                   </li>
                 ))}
               </ul>
@@ -405,9 +390,7 @@ export function RoadmapPage({
 
   const dangerAreas = () => (
     <div>
-      {dangers.length === 0 && (
-        <p className="advisor">Nothing alarming: no one is blocked today, and everyone flagged for care can already use MFA.</p>
-      )}
+      {dangers.length === 0 && <p className="advisor">{C.noDangers}</p>}
       {dangers.map((d, i) => (
         <div key={i} className={`card danger-${d.severity}`}>
           <h4>{d.title}</h4>
@@ -421,7 +404,7 @@ export function RoadmapPage({
           </ul>
           {d.entraPath && (
             <p className="reason">
-              Where: <code>{d.entraPath}</code>
+              {C.where} <code>{d.entraPath}</code>
             </p>
           )}
           {d.link && (
@@ -441,10 +424,11 @@ export function RoadmapPage({
     return (
       <div>
         <div className="row no-print">
-          {(Object.keys(STATUS_LABEL) as StepStatus[]).map((s) => (
+          {(Object.keys(STEP_STATUS_LABEL) as StepStatus[]).map((s) => (
             <FilterChip
               key={s}
               selected={statusFilter.has(s)}
+              title={STEP_STATUS[s].text}
               onToggle={() =>
                 setStatusFilter((prev) => {
                   const next = new Set(prev)
@@ -454,7 +438,7 @@ export function RoadmapPage({
                 })
               }
             >
-              {STATUS_LABEL[s]} ({steps.filter((x) => x.status === s).length})
+              {C.filterCount(STEP_STATUS_LABEL[s], steps.filter((x) => x.status === s).length)}
             </FilterChip>
           ))}
         </div>
@@ -465,12 +449,8 @@ export function RoadmapPage({
           return (
             <div key={phase} className="phase-group">
               <h3>
-                Phase {phase}: {PHASE_NAME[phase] ?? ''}{' '}
-                {sched && sched.days > 0 && (
-                  <span className="reason">
-                    {absoluteDate(sched.start)} → {absoluteDate(sched.end)}
-                  </span>
-                )}
+                {C.phase(phase, PHASE_NAME[phase] ?? '')}{' '}
+                {sched && sched.days > 0 && <span className="reason">{dateRange(sched.start, sched.end)}</span>}
               </h3>
               {inPhase.map((step) => (
                 <StepCard
@@ -492,19 +472,18 @@ export function RoadmapPage({
   }
 
   return (
-    <StepFrame title="Roadmap" does="Your dated plan from here to the baseline — with the danger areas called out by name." needs={needs}>
+    <StepFrame title={C.title} does={C.does} needs={needs}>
       {scan && (
         <p className="reason">
-          Based on the scan from <span title={absolute(scan.at)}>{relative(scan.at)}</span> —{' '}
-          <a href="#/scan">Re-scan</a>
+          {C.basedOn(whenAt(scan.at))} <a href="#/scan">{C.rescan}</a>
         </p>
       )}
       <Tabs
         tabs={[
-          { id: 'overview', label: 'Overview', render: overview },
-          { id: 'timeline', label: 'Timeline', badge: `${schedule.weeks}w`, render: timeline },
-          { id: 'danger', label: 'Danger areas', badge: dangers.length || '', render: dangerAreas },
-          { id: 'steps', label: 'Steps', badge: `${done.length}/${steps.length}`, render: stepsView },
+          { id: 'overview', label: C.tabs.overview, render: overview },
+          { id: 'timeline', label: C.tabs.timeline, badge: C.weeksBadge(schedule.weeks), render: timeline },
+          { id: 'danger', label: C.tabs.danger, badge: dangers.length || '', render: dangerAreas },
+          { id: 'steps', label: C.tabs.steps, badge: `${done.length}/${steps.length}`, render: stepsView },
         ]}
       />
     </StepFrame>
@@ -519,14 +498,9 @@ function planMarkdown(
   dangers: { title: string; people: { name: string; need: string }[] }[],
   nameOf: (id: string) => string,
 ): string {
-  const lines: string[] = [
-    `# IAMAI rollout plan — ${tenantName}`,
-    '',
-    `Start ${schedule.start.slice(0, 10)} → target ${schedule.targetEnd.slice(0, 10)} (${schedule.weeks} weeks)`,
-    '',
-  ]
+  const lines: string[] = [C.markdown.title(tenantName), '', C.markdown.range(absoluteDate(schedule.start), absoluteDate(schedule.targetEnd), schedule.weeks), '']
   if (dangers.length > 0) {
-    lines.push('## Danger areas')
+    lines.push(C.markdown.dangers)
     for (const d of dangers) {
       lines.push(`- **${d.title}**`)
       for (const p of d.people) lines.push(`  - ${p.name} — ${p.need}`)
@@ -536,11 +510,11 @@ function planMarkdown(
   for (const p of schedule.phases) {
     const inPhase = steps.filter((s) => s.phase === p.phase)
     if (inPhase.length === 0) continue
-    lines.push(`## Phase ${p.phase}: ${PHASE_NAME[p.phase] ?? ''} (${p.days === 0 ? 'complete' : `${p.start.slice(0, 10)} → ${p.end.slice(0, 10)}`})`)
+    lines.push(`## ${C.phase(p.phase, PHASE_NAME[p.phase] ?? '')} (${p.days === 0 ? C.complete : dateRange(p.start, p.end)})`)
     for (const s of inPhase) {
-      lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** — ${s.impact}`)
-      if (s.highCare.userIds.length > 0) lines.push(`  - Handle with care: ${s.highCare.userIds.map(nameOf).join(', ')}`)
-      if (s.status === 'blocked') lines.push(`  - Blocked: ${s.unblockNotes.join('; ')}`)
+      lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** (${STEP_KIND_LABEL[s.kind]}) — ${s.impact}`)
+      if (s.highCare.userIds.length > 0) lines.push(`  - ${C.markdown.care(s.highCare.userIds.map(nameOf).join(', '))}`)
+      if (s.status === 'blocked') lines.push(`  - ${C.markdown.blocked(s.unblockNotes.join('; '))}`)
     }
     lines.push('')
   }
@@ -566,20 +540,33 @@ function StepCard({
 }) {
   const [tab, setTab] = useState<'json' | 'portal' | 'ps'>('portal')
   return (
-    <details className={`card step-card ${step.safeToday ? 'lane-safe' : ''}`}>
-      <summary>
-        <Chip status={STATUS_CHIP[step.status]}>{STATUS_LABEL[step.status]}</Chip>{' '}
-        {step.safeToday && <Chip status="done">safe today</Chip>} {step.title}
-        <div className="sub">{step.impact}</div>
-      </summary>
-
-      <h4>Why</h4>
+    <ExpandCard
+      className={`step-card ${step.safeToday ? 'lane-safe' : ''}`}
+      summary={
+        <>
+          <Chip status={STATUS_CHIP[step.status]} title={STEP_STATUS[step.status].text}>
+            {STEP_STATUS_LABEL[step.status]}
+          </Chip>{' '}
+          <Chip status="neutral" title={STEP_KIND[step.kind].text}>
+            {STEP_KIND_LABEL[step.kind]}
+          </Chip>{' '}
+          {step.safeToday && (
+            <Chip status="done" title={CHIP.safeToday.text}>
+              {C.safeChip}
+            </Chip>
+          )}{' '}
+          {step.title}
+          <div className="sub">{step.impact}</div>
+        </>
+      }
+    >
+      <h4>{C.why}</h4>
       <p>
         {step.why}
         {step.whyAttribution && (
           <span className="reason">
             {' '}
-            — the baseline author's intent,{' '}
+            {C.authorIntent}{' '}
             <a href={step.whyAttribution.url} target="_blank" rel="noreferrer">
               {step.whyAttribution.author}
             </a>
@@ -589,55 +576,51 @@ function StepCard({
       {step.learn && (
         <p className="reason">
           <a href={step.learn.url} target="_blank" rel="noreferrer">
-            Microsoft Learn →
+            {C.learn}
           </a>{' '}
           {step.learn.tldr}
           {step.learn.cis.map((c) => (
-            <Chip key={c} status="neutral">
-              CIS {c}
+            <Chip key={c} status="neutral" title={CHIP.cis.text}>
+              {C.cis(c)}
             </Chip>
           ))}
         </p>
       )}
 
       {step.status === 'blocked' && step.unblockNotes.length > 0 && (
-        <Callout kind="warning" title="Unblocked by:">{step.unblockNotes.join('; ')}</Callout>
+        <Callout kind="warning" title={C.unblockedBy}>
+          {step.unblockNotes.join('; ')}
+        </Callout>
       )}
 
       {step.highCare.userIds.length > 0 && (
         <div className={`card ${step.highCare.ready ? '' : 'danger-high'}`}>
-          <h4>Handle with care — {step.highCare.userIds.map(nameOf).join(', ')}</h4>
+          <h4>{C.careTitle(step.highCare.userIds.map(nameOf).join(', '))}</h4>
           <ul className="sections">
             {step.highCare.notes.map((n, i) => (
               <li key={i}>{n}</li>
             ))}
-            {step.highCare.ready && <li>All verified — this step can be enforced for them when the evidence is clean.</li>}
+            {step.highCare.ready && <li>{CHIP.care.text}</li>}
           </ul>
         </div>
       )}
 
       {step.includesOperator && (
         <Callout kind={step.operatorSafe ? 'success' : 'danger'}>
-          This policy applies to <strong>your own account</strong>.{' '}
-          {step.operatorSafe
-            ? 'Your registered methods include a strong one — you will not lock yourself out.'
-            : 'Register a passkey/FIDO2 key and complete one MFA sign-in before enforcing this.'}
+          {C.operatorBefore} <strong>{C.operatorAccount}</strong>. {step.operatorSafe ? C.operatorSafe : C.operatorUnsafe}
         </Callout>
       )}
 
       {step.population.total > 0 && (
         <>
-          <h4>Who it touches</h4>
-          <p className="reason">
-            {step.population.total} total · {step.population.active} active · {step.population.admins} admin(s) ·{' '}
-            {step.population.guests} guest(s)
-          </p>
+          <h4>{C.whoItTouches}</h4>
+          <p className="reason">{affectedLine(step.population.total, step.population.active, step.population.admins, step.population.guests)}</p>
         </>
       )}
 
       {step.readiness.lines.length > 0 && (
         <>
-          <h4>Readiness</h4>
+          <h4>{C.readiness}</h4>
           <ul className="sections">
             {step.readiness.lines.map((l, i) => (
               <li key={i}>{l}</li>
@@ -648,19 +631,17 @@ function StepCard({
 
       {step.evidence.lines.length > 0 && (
         <>
-          <h4>What the last 30 days say</h4>
+          <h4>{C.last30}</h4>
           <ul className="sections">
             {step.evidence.lines.map((l, i) => (
               <li key={i}>{l}</li>
             ))}
-            {step.evidence.affectedUserIds.length > 0 && (
-              <li>affected: {step.evidence.affectedUserIds.map(nameOf).join(', ')}</li>
-            )}
+            {step.evidence.affectedUserIds.length > 0 && <li>{C.affected(step.evidence.affectedUserIds.map(nameOf).join(', '))}</li>}
           </ul>
         </>
       )}
 
-      <h4>What to do</h4>
+      <h4>{C.whatToDo}</h4>
       <ul className="sections">
         {step.action.summary.map((l, i) => (
           <li key={i}>{l}</li>
@@ -669,11 +650,17 @@ function StepCard({
       {step.action.json && (
         <div>
           <p className="row no-print">
-            <FilterChip selected={tab === 'portal'} onToggle={() => setTab('portal')}>Portal steps</FilterChip>
-            <FilterChip selected={tab === 'json'} onToggle={() => setTab('json')}>JSON</FilterChip>
-            <FilterChip selected={tab === 'ps'} onToggle={() => setTab('ps')}>PowerShell</FilterChip>
+            <FilterChip selected={tab === 'portal'} onToggle={() => setTab('portal')}>
+              {C.portalSteps}
+            </FilterChip>
+            <FilterChip selected={tab === 'json'} onToggle={() => setTab('json')}>
+              {C.json}
+            </FilterChip>
+            <FilterChip selected={tab === 'ps'} onToggle={() => setTab('ps')}>
+              {C.powershell}
+            </FilterChip>
             <Button size="sm" icon="download" onClick={() => downloadFile(`${step.id}.json`, step.action.json!, 'application/json')}>
-              Download JSON
+              {C.downloadJson}
             </Button>
           </p>
           {tab === 'portal' && (
@@ -690,33 +677,35 @@ function StepCard({
 
       {step.comms && (
         <>
-          <h4>Tell your people</h4>
-          <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>{step.comms}</pre>
+          <h4>{C.tellPeople}</h4>
+          <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>
+            {step.comms}
+          </pre>
           <p className="no-print">
             <Button size="sm" icon="copy" onClick={() => void onCopy(step.id, step.comms!)}>
-              {copied === step.id ? 'Copied ✓' : 'Copy announcement'}
+              {copied === step.id ? C.copied : C.copyAnnouncement}
             </Button>
           </p>
         </>
       )}
 
-      <h4>Done when</h4>
+      <h4>{C.doneWhen}</h4>
       <ul className="sections">
         {step.exitCriteria.map((l, i) => (
           <li key={i}>{l}</li>
         ))}
       </ul>
 
-      <h4>If it goes wrong</h4>
+      <h4>{C.ifWrong}</h4>
       <p className="reason">{step.rollback}</p>
 
       {step.history.length > 0 && (
         <>
-          <h4>History</h4>
+          <h4>{C.history}</h4>
           <ul className="sections">
             {step.history.map((h, i) => (
               <li key={i}>
-                <span title={absolute(h.at)}>{relative(h.at)}</span>: {h.from} → {h.to}
+                <span title={absolute(h.at)}>{relative(h.at)}</span>: {STEP_STATUS_LABEL[h.from]} → {STEP_STATUS_LABEL[h.to]}
                 {h.note && ` — ${h.note}`}
               </li>
             ))}
@@ -730,7 +719,7 @@ function StepCard({
             <>
               <input
                 type="text"
-                placeholder='Why is this not applicable? (never "risk accepted")'
+                placeholder={C.skipPlaceholder}
                 value={skipDraft.reason}
                 onChange={(e) => setSkipDraft({ id: step.id, reason: e.currentTarget.value })}
               />{' '}
@@ -744,16 +733,16 @@ function StepCard({
                   } else window.alert?.(r.error)
                 }}
               >
-                Confirm skip
+                {C.confirmSkip}
               </Button>
             </>
           ) : (
             <Button size="sm" variant="quiet" onClick={() => setSkipDraft({ id: step.id, reason: '' })}>
-              Skip this step…
+              {C.skip}
             </Button>
           )}
         </p>
       )}
-    </details>
+    </ExpandCard>
   )
 }

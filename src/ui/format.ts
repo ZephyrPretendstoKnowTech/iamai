@@ -1,40 +1,6 @@
-// Date and CSV helpers. Dates render relative (with the absolute form on
-// hover) via Intl in the browser's locale and time zone — nothing hand-rolled.
-
-const REL = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
-
-// Display time zone is a Setup answer; storage stays UTC.
-let displayTimeZone: string | undefined
-
-export function setDisplayTimeZone(tz: string | null): void {
-  displayTimeZone = tz ?? undefined
-}
-
-export function absolute(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: displayTimeZone,
-  }).format(new Date(iso))
-}
-
-export function absoluteDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: displayTimeZone }).format(
-    new Date(iso),
-  )
-}
-
-export function relative(iso: string): string {
-  const diffMs = Date.parse(iso) - Date.now()
-  const abs = Math.abs(diffMs)
-  const minute = 60_000
-  const hour = 3_600_000
-  const day = 86_400_000
-  if (abs < hour) return REL.format(Math.round(diffMs / minute), 'minute')
-  if (abs < day) return REL.format(Math.round(diffMs / hour), 'hour')
-  if (abs < 60 * day) return REL.format(Math.round(diffMs / day), 'day')
-  return REL.format(Math.round(diffMs / (30 * day)), 'month')
-}
+// UI helpers: dates come from src/copy/dates.ts (shared with the engine);
+// CSV and download live here because they touch the DOM.
+export { absolute, absoluteDate, dateRange, relative, relativeDays, setDisplayTimeZone, when, whenAt } from '../copy/dates.ts'
 
 export function toCsv(header: string[], rows: (string | number | null | undefined)[][]): string {
   const cell = (v: string | number | null | undefined): string => {

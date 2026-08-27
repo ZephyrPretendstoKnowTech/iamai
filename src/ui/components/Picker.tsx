@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chip } from './Chip.tsx'
 import { Icon } from './Icon.tsx'
 import { Button } from './Button.tsx'
+import { COMPONENTS } from '../../copy/components.ts'
+
+const T = COMPONENTS.picker
 
 export type PickerOption = {
   id: string
@@ -18,7 +21,7 @@ export function Picker({
   suggestions = [],
   onChange,
   onSearch,
-  placeholder = 'Search…',
+  placeholder = T.placeholder,
   single = false,
   loading = false,
 }: {
@@ -65,7 +68,7 @@ export function Picker({
       {selected.length > 0 && (
         <div className="picker-chips">
           {selected.map((s) => (
-            <button key={s.id} type="button" className="chip chip-select chip-selected" title="Remove" onClick={() => remove(s.id)}>
+            <button key={s.id} type="button" className="chip chip-select chip-selected" title={T.remove} onClick={() => remove(s.id)}>
               {s.name} <Icon name="close" size={12} />
             </button>
           ))}
@@ -104,10 +107,8 @@ export function Picker({
       </div>
       {open && (
         <div className="picker-list" role="listbox">
-          {loading && <div className="picker-footer">Searching…</div>}
-          {list.length === 0 && !loading && (
-            <div className="picker-footer">{query ? 'No matches' : 'Type to search'}</div>
-          )}
+          {loading && <div className="picker-footer">{T.searching}</div>}
+          {list.length === 0 && !loading && <div className="picker-footer">{query ? T.noMatches : T.typeToSearch}</div>}
           {list.map((o, i) => (
             <button
               key={o.id}
@@ -126,9 +127,9 @@ export function Picker({
             </button>
           ))}
           <div className="picker-footer">
-            <span>{query.trim().length === 0 ? 'Suggestions' : `${list.length} result${list.length === 1 ? '' : 's'}`}</span>
+            <span>{query.trim().length === 0 ? T.suggestions : T.results(list.length)}</span>
             <Button size="sm" variant="quiet" onClick={() => setOpen(false)}>
-              Done
+              {T.done}
             </Button>
           </div>
         </div>
