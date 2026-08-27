@@ -134,3 +134,43 @@ per plan-file.md; "Load plan" restores and re-runs progress matching.
 6. Re-scan finds the tagged policy in report-only → `in-report-only`; evidence meets criterion → `ready-to-enforce`; enabled → `done`.
 7. Regression after `done` → re-opened `adjust` with note.
 8. Skipped step requires a reason; never shown as risk accepted.
+
+## 10. First run and the 2026-08-27 redesign
+
+The first live run (prompt 07) produced ~49 phase-0 steps, almost all "map
+service principal X" — the engine was right and the experience was wrong.
+Lachlan's review that night reset the product from checklist to advisor;
+this section records what changed in the roadmap as built (all tests in §9
+still pass, plus schedule tests):
+
+- **Phase 0 collapsed.** One "answer N setup questions" step when required
+  Setup answers are missing; real create steps only for break-glass, the
+  exclusions group, and a trusted location when they genuinely don't exist;
+  first-party apps, strengths, and persona groups are auto-resolved (persona
+  groups are created inside the step that targets them).
+- **Impact per step, for this tenant**: block steps quote the last 30 days'
+  usage ("zero sign-ins would have been affected"); MFA steps quote how many
+  active users aren't verified yet.
+- **Safe-today lane**: zero-usage blocks sort first and are promoted on the
+  Overview as free security.
+- **Handle-with-care users** (Setup answer): named on every step that
+  touches them with per-user setup notes, sequenced last, and enforcement
+  gated (`ready-to-enforce` requires `highCare.ready` in addition to the
+  evidence criterion). Never an exclusion.
+- **Comms drafts**: user-facing steps carry a paste-ready announcement with
+  the scheduled date and the aka.ms/mfasetup link.
+- **Operator self-safety**: steps whose population includes the signed-in
+  operator state whether the operator has a strong method.
+- **Learn link + TLDR + CIS tags** per goal (`data/goals.json`).
+- **Auto-schedule** (`schedule.ts`): phases get calendar dates from a
+  chosen start; duration scales with work and includes the 7-day report-only
+  window; weekday starts; 2–4 weeks typical, longer stated honestly.
+- **Danger areas** (`dangers.ts`): blocked-today users, high-care users who
+  can't pass MFA, admins without phishing-resistant methods, the operator's
+  own gap, stale break-glass — each with named people, the exact Entra path,
+  and a link.
+- **Names, never IDs** via `src/names.ts` + `getByIds` resolution.
+
+Still open: a live run of the redesigned plan against the tenant with Setup
+completed (the dev capture `roadmap-run` records it when opened with
+`?dev=1`).

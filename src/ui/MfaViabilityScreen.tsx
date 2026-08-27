@@ -258,6 +258,12 @@ export function MfaViabilityScreen({
         )}
       </p>
       {error && <p className="error">Scan failed: {error}</p>}
+      {scanState !== 'running' && initial && snapshot === initial.snapshot && (
+        <p className="notice">
+          Using your scan from <strong title={absolute(initial.at)}>{relative(initial.at)}</strong> — it's saved on this
+          device, so nobody has to re-scan just to look around. Re-scan whenever you want fresh numbers.
+        </p>
+      )}
       {scanState === 'running' && (laneB !== null || slow) && (
         <p className={slow ? 'notice' : 'reason'}>
           Collecting sign-in evidence — this can take several minutes on larger tenants.
