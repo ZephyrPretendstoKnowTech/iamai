@@ -54,6 +54,17 @@ export type MappingState = {
   /** Baseline policy name → include-in-plan; off requires a reason ("not in
    *  scope for this tenant" — never "risk accepted"). */
   targetState: Record<string, { include: boolean; reason: string | null }>
+  // ---- Setup wizard answers (the 5–9 questions a human actually sees) ----
+  breakGlassUserIds: string[]
+  /** High-priority care targets: changes still apply; the plan takes extra
+   *  caution (verify-before-enforce, white-glove callouts, sequenced last). */
+  highCareUserIds: string[]
+  trustedLocationIds: string[]
+  serviceAccountsGroupId: string | null
+  displayTimeZone: string | null
+  frameworks: string[]
+  /** Which wizard questions the operator has answered (progress + auto vs human). */
+  wizardAnswered: Record<string, boolean>
   updatedAt: string
 }
 
@@ -64,6 +75,13 @@ export function emptyMappingState(tenantId: string): MappingState {
     variantChoices: {},
     facetOverrides: {},
     targetState: {},
+    breakGlassUserIds: [],
+    highCareUserIds: [],
+    trustedLocationIds: [],
+    serviceAccountsGroupId: null,
+    displayTimeZone: null,
+    frameworks: ['CIS Controls v8'],
+    wizardAnswered: {},
     updatedAt: new Date().toISOString(),
   }
 }

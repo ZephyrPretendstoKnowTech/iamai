@@ -26,8 +26,8 @@ const STEPS: { route: Route; label: string }[] = [
   { route: 'connect', label: 'Connect' },
   { route: 'baseline', label: 'Baseline' },
   { route: 'scan', label: 'Scan' },
-  { route: 'mapping', label: 'Mapping' },
-  { route: 'coverage', label: 'Coverage' },
+  { route: 'mapping', label: 'Setup' },
+  { route: 'coverage', label: 'Findings' },
   { route: 'roadmap', label: 'Roadmap' },
 ]
 
