@@ -146,7 +146,15 @@ export function AppShell({
             ))}
           </div>
         </nav>
-        <main className="page">{children}</main>
+        <main className="page">
+          {account && (
+            <div className="print-only reason">
+              IAMAI plan for {tenantName ?? account.username} · prepared {new Date().toLocaleDateString()} by{' '}
+              {account.username}
+            </div>
+          )}
+          {children}
+        </main>
       </div>
       <Footer />
     </div>

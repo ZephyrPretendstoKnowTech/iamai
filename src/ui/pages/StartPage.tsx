@@ -35,8 +35,9 @@ export function StartPage() {
       <div className="band hero">
         <h1>Turn your Conditional Access baseline into a rollout plan that won't lock anyone out.</h1>
         <p>
-          IAMAI hardens what your tenant already has — reading its real policies, users, and
-          sign-ins to build a phased plan with predicted impact, confirmed in report-only.
+          I read your tenant's real policies, people, and sign-ins, compare them with a proven
+          baseline, and hand you a dated plan — who each step touches, what could go wrong, the exact
+          change to make, and the email to send first. Predicted impact, confirmed in report-only.
         </p>
         <p>
           <a href="#/connect">
@@ -61,12 +62,12 @@ export function StartPage() {
           <div className="card">
             {ICONS.scan}
             <h4>Scan and see readiness</h4>
-            <p className="reason">Who is ready for MFA today, who needs help, and who would be blocked.</p>
+            <p className="reason">Who could pass MFA today, who needs a hand, and who's blocked right now — by name.</p>
           </div>
           <div className="card">
             {ICONS.roadmap}
             <h4>Follow the roadmap</h4>
-            <p className="reason">Phased steps with pilots, report-only checks, and rollback paths.</p>
+            <p className="reason">Dated phases, the safe wins to ship today, danger areas called out, and the announcement to send.</p>
           </div>
         </div>
       </div>

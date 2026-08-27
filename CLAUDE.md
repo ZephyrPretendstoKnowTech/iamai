@@ -21,6 +21,13 @@ Vite + TypeScript + React, `@azure/msal-browser`, Web Worker for the replay engi
 - `npm run analyze -- <path-to-cloned-baseline-repo>` — run the adapter on real data
 - `npm run build-index -- <clone> <owner> <repo> "<label>" > baselines/<owner>-<repo>.index.json`
 
+## Product rules (2026-08-27)
+- IAMAI speaks as a first-person advisor ("I looked at…"), never as a checklist.
+- Names, never IDs, anywhere a human reads (`src/names.ts`); an id in parentheses only when it matters.
+- Ask the operator only what cannot be inferred (the Setup wizard's ≤9 questions); auto-resolve the rest.
+- Handle-with-care users are never excluded — changes apply, with extra caution, verification gating, and named callouts.
+- Every step: per-tenant impact, a Learn link or exact instructions, the danger areas by name.
+
 ## Conventions
 - Pure logic (adapter, intents, engine) has no DOM or network imports so it runs in Node tests and in the worker.
 - Tests use small authored fixtures, never copied third-party policy files.
