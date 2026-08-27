@@ -22,6 +22,8 @@ export type Route =
   | 'roadmap'
   | 'licensing'
   | 'reads'
+  | 'inventory'
+  | 'baseline/package'
   | 'components'
 
 export type StepStatus = StepperStatus
@@ -37,11 +39,12 @@ const STEPS: { route: Route; label: string }[] = [
 ]
 
 const REFERENCE: { route: Route; label: string }[] = [
+  { route: 'inventory', label: SHELL.steps.inventory },
   { route: 'licensing', label: SHELL.steps.licensing },
   { route: 'reads', label: SHELL.steps.reads },
 ]
 
-const VALID = new Set<string>([...STEPS, ...REFERENCE].map((n) => n.route).concat('components'))
+const VALID = new Set<string>([...STEPS, ...REFERENCE].map((n) => n.route).concat('components', 'baseline/package'))
 
 export function useHashRoute(): Route {
   const read = (): Route => {
@@ -125,7 +128,7 @@ export function AppShell({
         <Stepper
           steps={STEPS.map((s) => ({ ...s, status: stepStatus[s.route] ?? 'notStarted' }))}
           reference={REFERENCE}
-          active={route}
+          active={route === 'baseline/package' ? 'baseline' : route}
         />
         <main className="page">
           {account && (

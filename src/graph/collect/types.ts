@@ -66,6 +66,8 @@ export type DeviceRow = {
   isManaged: boolean | null
   trustType: string | null
   ownerIds: string[]
+  operatingSystem?: string | null
+  approximateLastSignIn?: string | null
 }
 
 export type RegistrationRow = {
@@ -105,6 +107,17 @@ export type StoredSignIn = {
   appId?: string
   authenticationProtocol?: string
   originalTransferMethod?: string
+  country?: string
+}
+
+// Lane B derived table for the Inventory page: counts only, never raw rows.
+export type EvidenceAggregates = {
+  total: number
+  distinctUsers: number
+  byClientApp: Record<string, number>
+  byProtocol: Record<string, number>
+  /** country → distinct users seen from it */
+  byCountry: Record<string, number>
 }
 
 // Lane B usage signals for block-goal evidence (roadmap.md §5): who was seen
@@ -156,6 +169,7 @@ export type TenantSnapshot = {
   evidencePolicyResults: PolicyAppliedResult[]
   blockedToday: BlockedTodayEntry[]
   evidenceUsage: EvidenceUsage | null
+  evidenceAggregates?: EvidenceAggregates | null
   // Tenant licence capabilities derived from subscribedSkus (SPEC §12).
   capabilities: Record<Capability, { enabled: boolean; seats: number; consumed: number }>
   // CA policies that Microsoft manages (display-name prefix or templateId).
