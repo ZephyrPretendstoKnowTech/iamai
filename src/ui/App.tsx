@@ -66,7 +66,14 @@ export function App() {
         <>
           {authError && <p className="error">Sign-in error: {authError}</p>}
           {route === 'start' && <StartPage />}
-          {route === 'connect' && <ConnectPage account={account} tenantName={tenantName} />}
+          {route === 'connect' && (
+            <ConnectPage
+              account={account}
+              tenantName={tenantName}
+              lastScanAt={lastScan?.at ?? null}
+              userCount={lastScan?.snapshot.users.length ?? null}
+            />
+          )}
           {route === 'baseline' && <BaselinePage result={baseline} onLoaded={setBaseline} />}
           {route === 'scan' &&
             (account ? (

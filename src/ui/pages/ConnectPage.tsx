@@ -2,7 +2,17 @@ import type { AccountInfo } from '@azure/msal-browser'
 import { signIn, signOut } from '../../graph/msal.ts'
 import { REPO_URL, StepFrame } from '../shell/AppShell.tsx'
 
-export function ConnectPage({ account, tenantName }: { account: AccountInfo | null; tenantName: string | null }) {
+export function ConnectPage({
+  account,
+  tenantName,
+  lastScanAt,
+  userCount,
+}: {
+  account: AccountInfo | null
+  tenantName: string | null
+  lastScanAt?: string | null
+  userCount?: number | null
+}) {
   return (
     <StepFrame
       title="Connect"
@@ -17,6 +27,13 @@ export function ConnectPage({ account, tenantName }: { account: AccountInfo | nu
             Signed in to <strong>{tenantName ?? 'your tenant'}</strong> as {account.username}
           </p>
           <p className="sub">tenant ID {account.tenantId}</p>
+          {lastScanAt && (
+            <p className="reason">
+              I already have a scan from {new Date(lastScanAt).toLocaleString()}
+              {userCount ? ` (${userCount} users)` : ''} — jump straight to <a href="#/coverage">Findings</a> or{' '}
+              <a href="#/roadmap">Roadmap</a>.
+            </p>
+          )}
           <p>
             <button onClick={() => void signOut()}>Sign out</button>
           </p>

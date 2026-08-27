@@ -13,6 +13,11 @@ Run one by saying, in Claude Code:
 Run them in numeric order. Do not run the next one until the previous one has
 committed.
 
+History: 00–07 were executed 2026-08-26/27. That night's review reset the
+product from "engine + checklist" to an advisor (see `docs/design/roadmap.md`
+§10 and the "Overnight" commits); later prompts should assume the Setup
+wizard, Findings narrative, and dated Roadmap as the baseline experience.
+
 | File | Purpose | Precondition |
 |---|---|---|
 | `00-scoring-split.md` | Activity vs MFA as two dimensions; strongest method; UI copy fixes | Skip if the table already shows Activity and MFA state as separate columns |
