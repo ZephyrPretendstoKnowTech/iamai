@@ -298,13 +298,15 @@ function evaluateGoal(
     const isExpected =
       labelParts.some((l) => impl.allowedExclusions.includes(l)) ||
       (isBreakGlassUser && impl.allowedExclusions.includes('breakGlass'))
+    const groupLabel =
+      ex.kind === 'group' ? (input.groupMembers.get(ex.id)?.displayName ?? ex.id) : ex.id
     reasons.push({
       kind: 'excluded',
       userIds: stillMissing,
       detail:
         ex.kind === 'group'
-          ? `excluded by group ${ex.id}${label ? ` (${label}${assumed.confirmed ? '' : ' — assumed, confirm in Mapping'})` : ''}`
-          : `excluded directly${isBreakGlassUser ? ` (break-glass${assumed.confirmed ? '' : ' — assumed, confirm in Mapping'})` : ''}`,
+          ? `excluded by group ${groupLabel}${label ? ` (${label}${assumed.confirmed ? '' : ' — assumed, confirm in Setup'})` : ''}`
+          : `excluded directly${isBreakGlassUser ? ` (break-glass${assumed.confirmed ? '' : ' — assumed, confirm in Setup'})` : ''}`,
       expected: isExpected,
     })
     if (isExpected) expectedExcluded.push(...stillMissing)

@@ -3,6 +3,7 @@ import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/msal.ts'
 import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { loadSnapshotRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import { AppShell, useHashRoute } from './shell/AppShell.tsx'
 import type { Route, StepStatus } from './shell/AppShell.tsx'
 import { StartPage } from './pages/StartPage.tsx'
@@ -35,7 +36,13 @@ export function App() {
     initAuth()
       .then((a) => {
         setAccount(a)
-        if (a) void fetchTenantName().then(setTenantName)
+        if (a) {
+          void fetchTenantName().then(setTenantName)
+          // Restore the last scan so nobody re-scans just to look around.
+          void loadSnapshotRecord<{ snapshot: TenantSnapshot; at: string }>(a.tenantId).then((stored) => {
+            if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
+          })
+        }
       })
       .catch((e: unknown) => setAuthError(e instanceof Error ? e.message : String(e)))
       .finally(() => setReady(true))
@@ -65,7 +72,10 @@ export function App() {
                 tenantId={account.tenantId}
                 initial={lastScan}
                 onRunningChange={setScanRunning}
-                onComplete={(snapshot, at) => setLastScan({ snapshot, at })}
+                onComplete={(snapshot, at) => {
+                  setLastScan({ snapshot, at })
+                  void saveSnapshotRecord(account.tenantId, { snapshot, at })
+                }}
               />
             ) : (
               <section>
