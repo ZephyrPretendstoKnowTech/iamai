@@ -44,11 +44,22 @@ export function organisationReport(
     }
   }
   const outliers = pattern ? tenantFacts.filter((f) => prefixToken(f.name) !== pattern).map((f) => f.name) : []
+  // Prefix as written and its separator, from the first policy that carries the pattern.
+  let prefix: string | null = null
+  let separator: string | null = null
+  if (pattern) {
+    const sample = tenantFacts.find((f) => prefixToken(f.name) === pattern)
+    const m = sample ? /^([A-Za-z0-9]+)(\s*[-–—:]\s*)/.exec(sample.name.trim()) : null
+    if (m) {
+      prefix = m[1]
+      separator = m[2]
+    }
+  }
 
   const managedIds = new Set(snapshot.microsoftManagedPolicyIds)
   const microsoftManaged = tenantFacts
     .filter((f) => managedIds.has(f.id))
     .map((f) => ({ id: f.id, name: f.name, state: f.state }))
 
-  return { notInBaseline, consolidation, naming: { pattern, share, outliers }, microsoftManaged }
+  return { notInBaseline, consolidation, naming: { pattern, share, outliers, prefix, separator }, microsoftManaged }
 }

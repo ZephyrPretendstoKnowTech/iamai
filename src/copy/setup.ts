@@ -102,6 +102,7 @@ export const SETUP_PAGE = {
   searchLocations: 'Search named locations…',
   usedInPolicy: 'used in a policy',
   members: (n: number) => `${n} member${n === 1 ? '' : 's'}`,
+  toFix: (n: number) => `${n} to fix`,
   checksPassed: 'Checks passed',
   needsAttention: 'Needs attention before this is safe',
   noBreakGlass: 'No break-glass accounts yet — put creating them in the plan',
@@ -122,7 +123,29 @@ export const SETUP_PAGE = {
   detectionsRight: 'Detections look right',
 }
 
-export const FRAMEWORK_OPTIONS = ['CIS Controls v8', 'Essential Eight (ACSC)', 'NIST CSF']
+/** Fix paths for validation findings: a plan step, or the exact portal path. */
+export const VALIDATION_ACTION = {
+  roadmap: { label: 'See the step in the Roadmap', href: '#/roadmap' },
+  drill: { label: 'Break-glass drill step in the Roadmap', href: '#/roadmap' },
+  pickAnother: { label: 'Pick a different account above', href: '#/mapping' },
+  policies: { label: 'Entra admin center → Protection → Conditional Access → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/Policies' },
+  roles: { label: 'Entra admin center → Roles & admins → Global Administrator', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles' },
+  namedLocations: { label: 'Entra admin center → Protection → Conditional Access → Named locations', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/NamedLocations' },
+  userMethods: (userId: string) => ({
+    label: 'Entra admin center → Users → this user → Authentication methods',
+    href: `https://entra.microsoft.com/#view/Microsoft_AAD_UsersAndTenants/UserProfileMenuBlade/~/AuthenticationMethods/userId/${userId}`,
+  }),
+  userProfile: (userId: string) => ({
+    label: 'Entra admin center → Users → this user',
+    href: `https://entra.microsoft.com/#view/Microsoft_AAD_UsersAndTenants/UserProfileMenuBlade/~/overview/userId/${userId}`,
+  }),
+  group: (groupId: string) => ({
+    label: 'Entra admin center → Groups → this group → Members',
+    href: `https://entra.microsoft.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/${groupId}`,
+  }),
+}
+
+export const FRAMEWORK_OPTIONS =['CIS Controls v8', 'Essential Eight (ACSC)', 'NIST CSF']
 
 export const COMMON_TIMEZONES = [
   'Australia/Sydney',

@@ -20,6 +20,8 @@ import { DevSpikes } from './DevSpikes.tsx'
 import { ComponentsPage } from './pages/ComponentsPage.tsx'
 import { PackagePage } from './pages/PackagePage.tsx'
 import { SHELL } from '../copy/pages.ts'
+import { computeStepStatus } from './stepStatus.ts'
+import type { WizardProgress } from '../mapping/wizard.ts'
 
 const DEV_PANEL =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
@@ -32,8 +34,24 @@ export function App() {
   const [baseline, setBaseline] = useState<BaselineResult | null>(null)
   const [lastScan, setLastScan] = useState<{ snapshot: TenantSnapshot; at: string } | null>(null)
   const [scanRunning, setScanRunning] = useState(false)
-  const [mapProgress, setMapProgress] = useState<{ answered: number; total: number; complete: boolean } | null>(null)
+  const [mapProgress, setMapProgress] = useState<WizardProgress | null>(null)
   const route = useHashRoute()
+  const [visitedStart, setVisitedStart] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('iamai-visited-start') === '1'
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    if (route !== 'start' || visitedStart) return
+    setVisitedStart(true)
+    try {
+      localStorage.setItem('iamai-visited-start', '1')
+    } catch {
+      // storage unavailable — the status resets next visit
+    }
+  }, [route, visitedStart])
 
   useEffect(() => {
     initAuth()
@@ -51,15 +69,14 @@ export function App() {
       .finally(() => setReady(true))
   }, [])
 
-  const stepStatus: Partial<Record<Route, StepStatus>> = {
-    start: account ? 'done' : 'notStarted',
-    connect: account ? 'done' : 'notStarted',
-    baseline: baseline ? 'done' : 'notStarted',
-    scan: scanRunning ? 'inProgress' : lastScan ? 'done' : 'notStarted',
-    mapping: mapProgress?.complete ? 'done' : (mapProgress?.answered ?? 0) > 0 ? 'inProgress' : 'notStarted',
-    coverage: lastScan && baseline ? 'done' : 'notStarted',
-    roadmap: lastScan && baseline ? (mapProgress?.complete ? 'done' : 'inProgress') : 'notStarted',
-  }
+  const stepStatus: Partial<Record<Route, StepStatus>> = computeStepStatus({
+    visitedStart,
+    signedIn: account !== null,
+    baselineLoaded: baseline !== null,
+    scanRunning,
+    hasSnapshot: lastScan !== null,
+    setup: mapProgress ? { answered: mapProgress.answered, requiredMissing: mapProgress.requiredMissing } : null,
+  })
 
   return (
     <AppShell account={account} tenantName={tenantName} route={route} stepStatus={stepStatus}>

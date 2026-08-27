@@ -141,7 +141,7 @@ export const SCAN = {
   rescan: 'Re-scan tenant',
   diagnostics: 'Download diagnostics (redacted)',
   failed: 'Scan failed.',
-  usingSaved: (when: string) => `Using the scan from ${when}, saved on this device. Re-scan any time for fresh numbers.`,
+  usingSaved: (when: string) => `Scan completed ${when} · saved on this device. Re-scan any time for fresh numbers.`,
   readingSignIns: (rows: number, oldest: string | null, elapsed: string | null) =>
     `Reading sign-in records — ${rows} so far${oldest ? `, back to ${oldest}` : ''}${elapsed ? ` · ${elapsed} elapsed` : ''}`,
   readingConfig: (done: number, total: number, elapsed: string | null) =>
@@ -329,10 +329,9 @@ export const ROADMAP = {
   cis: (c: string) => `CIS ${c}`,
   unblockedBy: 'Unblocked by:',
   careTitle: (names: string) => `Handle with care — ${names}`,
-  operatorBefore: 'This policy applies to',
-  operatorAccount: 'the signed-in account',
-  operatorSafe: 'Its registered methods include a strong one — no lockout risk from this step.',
   operatorUnsafe: 'Register a passkey or FIDO2 key and complete one MFA sign-in before enforcing this.',
+  noAnnouncement: 'No announcement needed — nobody is affected.',
+  proposedName: 'Proposed name:',
   whoItTouches: 'Who it touches',
   readiness: 'Readiness',
   last30: 'What the last 30 days say',

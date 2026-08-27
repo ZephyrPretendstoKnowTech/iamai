@@ -79,4 +79,11 @@ export type Step = {
   learn: { url: string; tldr: string; cis: string[] } | null
   includesOperator: boolean
   operatorSafe: boolean | null // null when not applicable/unknown
+  // ---- prompt 13 ----
+  /** Evidence sentence for the operator's own account, when in scope. */
+  operatorNote?: string | null
+  /** What-If result for the operator, when available. */
+  operatorWhatIf?: string | null
+  /** Proposed policy name in the tenant's convention, and the baseline's original. */
+  naming?: { proposed: string; fromBaseline: string | null } | null
 }

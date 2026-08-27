@@ -116,7 +116,11 @@ main.page {
   max-width: var(--max-content);
   width: 100%;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
+main.page img, main.page svg, main.page table, main.page pre { max-width: 100%; }
+main.page pre { white-space: pre-wrap; }
+.row > * { min-width: 0; }
 
 footer.footer {
   padding: var(--space-3) var(--space-5);
@@ -225,6 +229,17 @@ nav.stepper {
   main.page {
     padding: var(--space-4);
   }
+}
+
+@media (max-width: 560px) {
+  .topbar { flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+  .tagline { display: none; }
+  .tenant-name { max-width: 10rem; }
+  main.page { padding: var(--space-3); }
+  .grid-cards { grid-template-columns: 1fr; }
+  .timeline-row { grid-template-columns: 1fr; }
+  footer.footer { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .hero h1 { font-size: var(--text-lg); }
 }
 
 /* ================= components ================= */

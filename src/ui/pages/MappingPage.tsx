@@ -12,7 +12,7 @@ import { loadMappingState, saveMappingState } from '../../mapping/store.ts'
 import { validateBreakGlass, validateExclusionGroup, validateTrustedLocation } from '../../mapping/validate.ts'
 import type { MappingState, ValidationResult } from '../../mapping/types.ts'
 import { activeWizardQuestions, applyAutoResolution, applyWizardAnswers, wizardProgress } from '../../mapping/wizard.ts'
-import type { WizardQuestionDef, WizardQuestionId } from '../../mapping/wizard.ts'
+import type { WizardProgress, WizardQuestionDef, WizardQuestionId } from '../../mapping/wizard.ts'
 import { suggestForWizard } from '../../mapping/wizardSuggest.ts'
 import type { WizardSuggestContext } from '../../mapping/wizardSuggest.ts'
 import { COMMON_TIMEZONES, FRAMEWORK_OPTIONS, SETUP_PAGE as C } from '../../copy/setup.ts'
@@ -29,7 +29,7 @@ export function MappingPage({
 }: {
   scan: { snapshot: TenantSnapshot; at: string } | null
   baseline: BaselineResult | null
-  onProgress: (p: { answered: number; total: number; complete: boolean }) => void
+  onProgress: (p: WizardProgress) => void
 }) {
   const [state, setState] = useState<MappingState | null>(null)
   const [knownGroups, setKnownGroups] = useState<GroupMembersCacheEntry[]>([])
@@ -67,7 +67,11 @@ export function MappingPage({
     }
   }, [snapshot])
 
-  const progress = useMemo(() => (state ? wizardProgress(state) : { answered: 0, total: 0, complete: false }), [state])
+  const progress = useMemo<WizardProgress>(
+    () => (state ? wizardProgress(state) : { answered: 0, total: 0, complete: false, requiredMissing: 0 }),
+    [state],
+  )
+  const [openFindings, setOpenFindings] = useState<Record<string, number>>({})
   useEffect(() => onProgress(progress), [progress, onProgress])
   useEffect(() => {
     if (state?.displayTimeZone) setDisplayTimeZone(state.displayTimeZone)
@@ -133,6 +137,8 @@ export function MappingPage({
           suggestCtx={suggestCtx}
           update={update}
           answered={answered}
+          openFindings={openFindings[q.id] ?? 0}
+          reportFindings={(n) => setOpenFindings((prev) => (prev[q.id] === n ? prev : { ...prev, [q.id]: n }))}
         />
       ))}
     </StepFrame>
@@ -151,23 +157,32 @@ type QProps = {
   suggestCtx: WizardSuggestContext
   update: (mut: (s: MappingState) => MappingState) => void
   answered: (id: string) => void
+  openFindings: number
+  reportFindings: (n: number) => void
 }
 
+// Sections stay open after an answer (prompt 13 §4); the header carries the
+// status chip and, when there are findings to fix, an "N to fix" chip.
 function QuestionSection(props: QProps) {
-  const { def, state, index } = props
+  const { def, state, index, openFindings } = props
   const done = state.wizardAnswered[def.id] === true
   return (
-    <section className="card setup-question" id={`q-${index}`}>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <span className="muted">{C.questionNumber(index)}</span>
-        <Chip status={done ? 'done' : def.required ? 'warning' : 'neutral'}>{done ? C.answered : def.required ? C.required : C.optional}</Chip>
-      </div>
-      <h3>
-        {index}. {def.question}
-      </h3>
+    <details className="card setup-question" id={`q-${index}`} open>
+      <summary>
+        <span className="row" style={{ justifyContent: 'space-between' }}>
+          <span>
+            <span className="muted">{C.questionNumber(index)} · </span>
+            <strong>{def.question}</strong>
+          </span>
+          <span className="row">
+            {openFindings > 0 && <Chip status="warning">{C.toFix(openFindings)}</Chip>}
+            <Chip status={done ? 'done' : def.required ? 'warning' : 'neutral'}>{done ? C.answered : def.required ? C.required : C.optional}</Chip>
+          </span>
+        </span>
+      </summary>
       <p className="reason">{def.help}</p>
       <QuestionBody {...props} />
-    </section>
+    </details>
   )
 }
 
@@ -309,12 +324,29 @@ function ValidationView({ v, name }: { v: ValidationResult | null; name?: string
   return (
     <Callout kind={v.passed ? 'success' : 'warning'} title={`${name ? `${name}: ` : ''}${v.passed ? C.checksPassed : C.needsAttention}`}>
       <ul className="sections">
-        {v.findings.map((f, i) => (
-          <li key={i}>{f}</li>
-        ))}
+        {v.findings.map((f, i) => {
+          const a = v.actions?.[i] ?? null
+          return (
+            <li key={i}>
+              {f}
+              {a && (
+                <>
+                  {' — '}
+                  <a href={a.href} target={a.href.startsWith('#') ? undefined : '_blank'} rel="noreferrer">
+                    {a.label}
+                  </a>
+                </>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </Callout>
   )
+}
+
+function toFixCount(results: (ValidationResult | null)[]): number {
+  return results.reduce((n, r) => n + (r?.toFix ?? 0), 0)
 }
 
 function DoesNotExist({ onClick }: { onClick: () => void }) {
@@ -327,8 +359,9 @@ function DoesNotExist({ onClick }: { onClick: () => void }) {
   )
 }
 
-function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered }: QProps) {
+function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings }: QProps) {
   const [validations, setValidations] = useState<Record<string, ValidationResult>>({})
+  useEffect(() => reportFindings(toFixCount(Object.values(validations))), [validations, reportFindings])
   const runValidation = (ids: string[]): void => {
     const tenantPolicies = snapshot.config.caPolicies?.rows ?? []
     const out: Record<string, ValidationResult> = {}
@@ -383,8 +416,9 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
   )
 }
 
-function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered }: QProps) {
+function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings }: QProps) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
+  useEffect(() => reportFindings(toFixCount([validation])), [validation, reportFindings])
   const rec = state.records['__globalExclusion']
   const validate = (id: string): void => {
     const entry = knownGroups.find((g) => g.groupId === id) ?? null
@@ -464,8 +498,14 @@ function HighCareQuestion({ state, snapshot, suggestCtx, update, answered }: QPr
   )
 }
 
-function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answered }: QProps) {
+function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answered, reportFindings }: QProps) {
   const locations = (snapshot.config.namedLocations?.rows ?? []) as { id?: string; displayName?: string; isTrusted?: boolean }[]
+  const locValidations = state.trustedLocationIds.map((id) => {
+    const loc = locations.find((l) => String(l.id) === id)
+    return loc ? validateTrustedLocation(loc) : null
+  })
+  const toFix = toFixCount(locValidations)
+  useEffect(() => reportFindings(toFix), [toFix, reportFindings])
   const suggested = useMemo(() => suggestions('trustedLocations', suggestCtx), [suggestCtx])
   const whyById = new Map(suggested.map((s) => [s.id, s.why]))
   const options: PickerOption[] = locations.map((l) => ({

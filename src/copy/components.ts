@@ -12,7 +12,7 @@ export const COMPONENTS = {
     results: (n: number) => count(n, 'result'),
     done: 'Done',
   },
-  stepper: { nav: 'Steps', steps: 'Steps', reference: 'Reference', inProgress: 'in progress', done: 'done', attention: 'needs attention' },
+  stepper: { nav: 'Steps', steps: 'Steps', reference: 'Reference', inProgress: 'in progress', done: 'done', attention: 'needs attention', provisional: 'provisional' },
   table: {
     empty: 'Nothing to show yet.',
     rows: (n: number) => count(n, 'row'),
