@@ -28,3 +28,8 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `05-coverage-engine.md` | Goals, classification, population-set coverage, Coverage page | 04 done; docs/design/intents.md present |
 | `06-mapping.md` | Mapping questionnaire with validation, variants, applicability, target state | 05 done |
 | `07-roadmap-v1.md` | Step generation, actions, gating, progress, print, save/load plan | 06 done; docs/design/roadmap.md present |
+| `08-design-system-v2.md` | Vibrant navy/teal tokens, shared component set, header and footer fixes | 07 done; docs/design/ux-review-01.md present |
+| `09-voice-and-copy.md` | Product voice, central copy, human statement templates, no first person | 08 done |
+| `10-scan-inventory.md` | Scan progress bar, inventory sub-pages, info tips, package instructions page | 09 done |
+| `11-setup-polish.md` | Pickers with suggestions and multi-select, frameworks, workload cards, vendor policies, Setup→roadmap consistency | 10 done |
+| `12-roadmap-pacing-print.md` | Wave scheduling and pace presets, dependency gating, classifier fixes, real print layout | 11 done |
