@@ -39,37 +39,7 @@ export function MappingPage({ baselineLoaded, scanDone }: { baselineLoaded: bool
   )
 }
 
-export function CoveragePage({ scanAt }: { scanAt: string | null }) {
-  return (
-    <StepFrame
-      title="Coverage"
-      does="Shows which baseline intents your tenant's enabled policies already cover — enforced, partial, or absent — ignoring policy names."
-      needs={[{ met: scanAt !== null, text: scanAt !== null ? 'scan complete' : 'run a scan', href: '#/scan' }]}
-      next="roadmap"
-      nextLabel="Roadmap"
-    >
-      {scanAt !== null && (
-        <p className="reason">
-          Based on the scan from <span title={absolute(scanAt)}>{relative(scanAt)}</span> —{' '}
-          <a href="#/scan">Re-scan</a>
-        </p>
-      )}
-      <div className="card">
-        <p>
-          Coverage isn't built yet. When it is, each baseline policy is compiled to intents and
-          scored against the effective union of your enabled policies minus exclusions, with
-          statements like "no policy named X, but Y and Z cover it, except one group is excluded
-          from both."
-        </p>
-        {scanAt === null && (
-          <p>
-            First, <a href="#/scan">run a scan</a> — coverage reads from the scan snapshot.
-          </p>
-        )}
-      </div>
-    </StepFrame>
-  )
-}
+// Coverage is real now — see pages/CoveragePage.tsx.
 
 export function RoadmapPage({ scanAt }: { scanAt: string | null }) {
   return (

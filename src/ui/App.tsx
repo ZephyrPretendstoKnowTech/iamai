@@ -9,7 +9,8 @@ import { StartPage } from './pages/StartPage.tsx'
 import { ConnectPage } from './pages/ConnectPage.tsx'
 import { BaselinePage } from './pages/BaselinePage.tsx'
 import type { BaselineResult } from './pages/BaselinePage.tsx'
-import { CoveragePage, LicensingGuidePage, MappingPage, RoadmapPage } from './pages/PlaceholderPage.tsx'
+import { LicensingGuidePage, MappingPage, RoadmapPage } from './pages/PlaceholderPage.tsx'
+import { CoveragePage } from './pages/CoveragePage.tsx'
 import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { DevSpikes } from './DevSpikes.tsx'
@@ -74,7 +75,7 @@ export function App() {
           {route === 'mapping' && (
             <MappingPage baselineLoaded={baseline !== null} scanDone={lastScan !== null} />
           )}
-          {route === 'coverage' && <CoveragePage scanAt={lastScan?.at ?? null} />}
+          {route === 'coverage' && <CoveragePage scan={lastScan} baseline={baseline} />}
           {route === 'roadmap' && <RoadmapPage scanAt={lastScan?.at ?? null} />}
           {route === 'licensing' && <LicensingGuidePage />}
           {route === 'reads' && <WhatIamaiReads />}
