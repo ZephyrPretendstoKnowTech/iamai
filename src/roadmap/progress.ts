@@ -24,7 +24,7 @@ function advance(step: Step, to: StepStatus, note: string | null): void {
 // Merge persisted status/history/skips into freshly generated steps by id.
 export function mergePersisted(
   steps: Step[],
-  saved: Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }> | null,
+  saved: Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null; owner?: string | null; scheduledDate?: string | null }> | null,
 ): Step[] {
   if (!saved) return steps
   for (const step of steps) {
@@ -32,6 +32,8 @@ export function mergePersisted(
     if (!s) continue
     step.history = s.history
     step.skipReason = s.skipReason
+    step.owner = s.owner ?? null
+    step.scheduledDate = s.scheduledDate ?? null
     if (s.status === 'skipped') step.status = 'skipped'
     // Recurring steps are re-evaluated every scan (a drill can become overdue
     // again); a saved "done" must not pin them.

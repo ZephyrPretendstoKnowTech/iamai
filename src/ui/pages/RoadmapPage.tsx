@@ -28,6 +28,9 @@ import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
 import { overrunList, roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
 import { CALENDAR } from '../../copy/schedule.ts'
 import { POPULATION } from '../../copy/population.ts'
+import { ROLLBACK_V2, SECTION } from '../../copy/stepContent.ts'
+import { RINGS } from '../../copy/rings.ts'
+import type { Dependency } from '../../roadmap/schedule.ts'
 import { POPULATION_CSV_HEADER, populationContext, populationRows } from '../../roadmap/population.ts'
 import { ringContextIndexes } from '../../roadmap/rings.ts'
 import { adminUserIds } from '../../roles.ts'
@@ -48,7 +51,7 @@ import { compareScores } from '../../scoring/priority.ts'
 import type { ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
-type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }>
+type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null; owner?: string | null; scheduledDate?: string | null }>
 type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; band?: SizeBand | null; owner?: string; freeze?: ChangeFreeze | null }
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
@@ -184,6 +187,7 @@ export function RoadmapPage({
       names,
       groupMembers: groups,
       changeFreeze: saved?.freeze ?? null,
+      scheduled: Object.fromEntries(Object.entries(saved?.steps ?? {}).flatMap(([id, v]) => (v.scheduledDate ? [[id, v.scheduledDate]] : []))),
     })
     mergePersisted(steps, saved?.steps ?? null)
     annotateStateReasons(steps)
@@ -316,6 +320,17 @@ export function RoadmapPage({
     setVersion((v) => v + 1)
   }
   const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
+  // Owner and scheduled date travel with the plan (roadmap-v2.md §4.12); a date re-plans in place.
+  const saveStepMeta = (st: Step, meta: { owner?: string | null; scheduledDate?: string | null }): void => {
+    setSaved((p) => {
+      const base = p ?? { planId, steps: {}, checkpoints: [] }
+      const prev = base.steps[st.id] ?? { status: st.status, history: st.history, skipReason: st.skipReason }
+      const next = { ...base, steps: { ...base.steps, [st.id]: { ...prev, ...meta } } }
+      void savePlanRecord(snapshot.tenantId, next)
+      return next
+    })
+    if (meta.scheduledDate !== undefined) setVersion((v) => v + 1)
+  }
   // The population export is built in the browser from the scan (roadmap-v2.md §3): nothing leaves this machine.
   const exportPopulation = (step: Step): void => {
     const viabilityById = new Map(computed.viability.map((v) => [v.userId, v]))
@@ -801,6 +816,8 @@ export function RoadmapPage({
                         setSkipDraft={setSkipDraft}
                         onExportPopulation={exportPopulation}
                         boundedNames={boundedNames}
+                        dependencies={schedule.graph[step.id] ?? []}
+                        onMeta={saveStepMeta}
                         onSkipped={(st) => {
                           // Persist the skip before regenerating, or mergePersisted forgets it.
                           setSaved((p) =>
@@ -941,6 +958,8 @@ function StepCard({
   onSkipped,
   onExportPopulation,
   boundedNames,
+  dependencies,
+  onMeta,
 }: {
   step: Step
   linked: boolean
@@ -953,8 +972,11 @@ function StepCard({
   onSkipped: (step: Step) => void
   onExportPopulation: (step: Step) => void
   boundedNames: (ids: string[]) => string
+  dependencies: Dependency[]
+  onMeta: (step: Step, meta: { owner?: string | null; scheduledDate?: string | null }) => void
 }) {
   const [tab, setTab] = useState<'json' | 'portal' | 'ps'>('portal')
+  const [ownerDraft, setOwnerDraft] = useState<string | null>(null)
   return (
     <ExpandCard
       className={`step-card ${step.safeToday ? 'lane-safe' : ''}`}
@@ -980,7 +1002,12 @@ function StepCard({
         </>
       }
     >
-      <h4>{C.why}</h4>
+      {/* 1. What changes (roadmap-v2.md §4) */}
+      <h4>{SECTION.whatChanges}</h4>
+      <p>{step.whatChanges}</p>
+
+      {/* 2. Why it matters */}
+      <h4>{SECTION.whyItMatters}</h4>
       {step.whyLink && (
         <p className="reason">
           <a href={step.whyLink} target="_blank" rel="noreferrer">
@@ -1034,6 +1061,26 @@ function StepCard({
         </Callout>
       )}
 
+
+      {/* 3. Who it touches, with the operator's own exposure */}
+      {step.population.total > 0 && (
+        <>
+          <h4>{C.whoItTouches}</h4>
+          <p className="reason">
+            {step.populationBasis} · {affectedLine(step.population.total, step.population.active, step.population.admins, step.population.guests)}
+          </p>
+          {step.populationView && <PopulationBody view={step.populationView} total={step.population.total} onExport={() => onExportPopulation(step)} />}
+        </>
+      )}
+
+      {step.includesOperator && (
+        <Callout kind={step.operatorSafe ? 'info' : 'warning'}>
+          {step.operatorNote}
+          {!step.operatorSafe && ` ${C.operatorUnsafe}`}
+          {step.operatorWhatIf && <div>{OPERATOR.whatIf(step.operatorWhatIf)}</div>}
+        </Callout>
+      )}
+
       {step.highCare.userIds.length > 0 && (
         <div className={`card ${step.highCare.ready ? '' : 'danger-high'}`}>
           <h4>{C.careTitle(boundedNames(step.highCare.userIds))}</h4>
@@ -1046,31 +1093,40 @@ function StepCard({
         </div>
       )}
 
-      {step.includesOperator && (
-        <Callout kind={step.operatorSafe ? 'info' : 'warning'}>
-          {step.operatorNote}
-          {!step.operatorSafe && ` ${C.operatorUnsafe}`}
-          {step.operatorWhatIf && <div>{OPERATOR.whatIf(step.operatorWhatIf)}</div>}
-        </Callout>
-      )}
 
-      {step.naming && (
-        <p>
-          <strong>{C.proposedName}</strong> {step.naming.proposed}
-          {step.naming.fromBaseline && <div className="sub">{NAMING.fromBaseline(step.naming.fromBaseline)}</div>}
-        </p>
-      )}
-
-      {step.population.total > 0 && (
+      {/* 4. What could go wrong, with this tenant's evidence */}
+      {step.failureModes.length > 0 && (
         <>
-          <h4>{C.whoItTouches}</h4>
-          <p className="reason">
-            {step.populationBasis} · {affectedLine(step.population.total, step.population.active, step.population.admins, step.population.guests)}
-          </p>
-          {step.populationView && <PopulationBody view={step.populationView} total={step.population.total} onExport={() => onExportPopulation(step)} />}
+          <h4>{SECTION.couldGoWrong}</h4>
+          <ul className="sections failure-modes">
+            {step.failureModes.map((m, i) => (
+              <li key={i} className={`applies-${m.applies}`}>
+                <strong>{m.title}</strong> <Chip status={m.applies === 'yes' ? 'warning' : m.applies === 'no' ? 'done' : 'neutral'}>{SECTION.applies[m.applies]}</Chip>
+                <div className="sub">{m.evidence}</div>
+              </li>
+            ))}
+          </ul>
         </>
       )}
 
+      {/* 5. Prerequisites, each linked to its step */}
+      {step.status !== 'done' && (
+        <>
+          <h4>{SECTION.prerequisites}</h4>
+          {dependencies.filter((d) => d.kind === 'hard').length === 0 && step.blockers.length === 0 && <p className="reason">{SECTION.noPrerequisites}</p>}
+          {dependencies.filter((d) => d.kind === 'hard').length > 0 && (
+            <ul className="sections">
+              {dependencies
+                .filter((d) => d.kind === 'hard')
+                .map((d) => (
+                  <li key={d.stepId}>
+                    <a href={stepHref(d.stepId)}>{stepById.get(d.stepId)?.title ?? d.stepId}</a> <span className="reason">· {d.reason}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </>
+      )}
       {step.readiness.lines.length > 0 && (
         <>
           <h4>{C.readiness}</h4>
@@ -1094,7 +1150,40 @@ function StepCard({
         </>
       )}
 
-      <h4>{C.whatToDo}</h4>
+
+      {/* 6. The change */}
+      <h4>{SECTION.theChange}</h4>
+      {step.naming && (
+        <p>
+          <strong>{C.proposedName}</strong> {step.naming.proposed}
+          {step.naming.fromBaseline && <div className="sub">{NAMING.fromBaseline(step.naming.fromBaseline)}</div>}
+        </p>
+      )}
+
+      {step.action.changes && step.action.changes.length > 0 && (
+        <table className="cohort-table change-table">
+          <thead>
+            <tr>
+              <th>{SECTION.changeField}</th>
+              <th>{SECTION.changeFrom}</th>
+              <th>{SECTION.changeTo}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {step.action.changes.map((c) => (
+              <tr key={c.field}>
+                <td>{c.field}</td>
+                <td>
+                  <code>{c.from}</code>
+                </td>
+                <td>
+                  <code>{c.to}</code>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <ul className="sections">
         {step.action.summary.map((l, i) => (
           <li key={i}>{l}</li>
@@ -1136,11 +1225,114 @@ function StepCard({
         </div>
       )}
 
+      {/* 7. Ring plan */}
+      {step.rings.length > 0 && (
+        <>
+          <h4>{SECTION.ringPlan}</h4>
+          <ol className="sections rings">
+            {step.rings.map((r) => (
+              <li key={r.index}>
+                <strong>{r.name}</strong> <span className="reason">· {dateRange(r.plannedStart, r.plannedEnd)} · {SECTION.ringSoak(r.soakDays)}</span>
+                <div className="sub">
+                  {r.targeting.groupName && <span>{r.targeting.groupName} · </span>}
+                  {r.targeting.advice}
+                  {r.targeting.filter && <div><code>{RINGS.filter(r.targeting.filter)}</code></div>}
+                  {r.targeting.suggestedMemberIds.length > 0 && r.targeting.kind === 'group' && <div>{boundedNames(r.targeting.suggestedMemberIds)}</div>}
+                </div>
+                <details>
+                  <summary>{SECTION.ringEntry}</summary>
+                  <ul className="sections">
+                    {r.entryCriteria.map((c, i) => (
+                      <li key={i}>{c}</li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+
+      {/* 8. How to verify */}
+      {step.verify && (
+        <>
+          <h4>{SECTION.howToVerify}</h4>
+          <ul className="sections">
+            {step.verify.where.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+            {step.verify.filter && (
+              <li>
+                {SECTION.filterLabel} <code>{step.verify.filter}</code>
+              </li>
+            )}
+            <li>
+              {SECTION.goodLooksLike} {step.verify.good}
+            </li>
+          </ul>
+        </>
+      )}
+
+      {/* 9. Exit criteria, per ring and for the step */}
+      <h4>{SECTION.exitCriteria}</h4>
+      <ul className="sections">
+        {step.exitCriteria.map((l, i) => (
+          <li key={i}>{l}</li>
+        ))}
+      </ul>
+      {step.rings.length > 0 && (
+        <ul className="sections">
+          {step.rings.map((r) => (
+            <li key={r.index}>
+              <strong>{r.name}</strong> · {SECTION.ringExit}
+              <ul className="sections">
+                {r.exitCriteria.map((c, i) => (
+                  <li key={i}>{c}</li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* 10. Rollback, with the previous body */}
+      <h4>{SECTION.rollback}</h4>
+      <p className="reason">
+        {step.rollback} {ROLLBACK_V2.timing}
+      </p>
+      {step.rollbackBody && (
+        <details>
+          <summary>{SECTION.previousBody}</summary>
+          <p className="reason">{ROLLBACK_V2.storedBody}</p>
+          <pre className="code-block">{step.rollbackBody}</pre>
+          <p className="no-print">
+            <Button size="sm" icon="download" onClick={() => downloadFile(`${step.id}-previous.json`, step.rollbackBody!, 'application/json')}>
+              {C.downloadJson}
+            </Button>
+          </p>
+        </details>
+      )}
+
+      {/* 11. Comms: per ring, dated, and the help-desk version */}
       {step.comms && (
         <>
-          <h4>{C.tellPeople}</h4>
+          <h4>{SECTION.comms}</h4>
           {step.comms === NO_ANNOUNCEMENT ? (
             <p className="reason">{step.comms}</p>
+          ) : step.ringComms.length > 1 ? (
+            step.ringComms.map((rc) => (
+              <details key={rc.ring}>
+                <summary>{SECTION.ringAnnouncement(rc.ring, rc.date)}</summary>
+                <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>
+                  {rc.text}
+                </pre>
+                <p className="no-print">
+                  <Button size="sm" icon="copy" onClick={() => void onCopy(`${step.id}:${rc.ring}`, rc.text)}>
+                    {copied === `${step.id}:${rc.ring}` ? C.copied : C.copyAnnouncement}
+                  </Button>
+                </p>
+              </details>
+            ))
           ) : (
             <>
               <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>
@@ -1155,16 +1347,68 @@ function StepCard({
           )}
         </>
       )}
+      {step.helpDesk && (
+        <details className="card">
+          <summary>{SECTION.helpDeskTitle}</summary>
+          <p>
+            <strong>{SECTION.callsAbout}</strong>
+          </p>
+          <ul className="sections">
+            {step.helpDesk.callsAbout.map((l, i) => (
+              <li key={i}>{l}</li>
+            ))}
+          </ul>
+          <p>
+            <strong>{SECTION.whatToSay}</strong>
+          </p>
+          <ul className="sections">
+            {step.helpDesk.whatToSay.map((l, i) => (
+              <li key={i}>{l}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
-      <h4>{C.doneWhen}</h4>
-      <ul className="sections">
-        {step.exitCriteria.map((l, i) => (
-          <li key={i}>{l}</li>
-        ))}
-      </ul>
-
-      <h4>{C.ifWrong}</h4>
-      <p className="reason">{step.rollback}</p>
+      {/* 12. Owner and scheduled date */}
+      {step.status !== 'done' && step.status !== 'skipped' && (
+        <>
+          <h4>{SECTION.ownerAndDate}</h4>
+          <p className="row no-print">
+            <label>
+              {SECTION.owner}{' '}
+              <input
+                type="text"
+                value={ownerDraft ?? step.owner ?? ''}
+                placeholder={SECTION.ownerPlaceholder}
+                aria-label={SECTION.owner}
+                onChange={(e) => setOwnerDraft(e.currentTarget.value)}
+                onBlur={() => {
+                  if (ownerDraft !== null && ownerDraft !== (step.owner ?? '')) onMeta(step, { owner: ownerDraft.trim() || null })
+                  setOwnerDraft(null)
+                }}
+              />
+            </label>
+            <label>
+              {SECTION.scheduledDate}{' '}
+              <input
+                type="date"
+                value={step.scheduledDate?.slice(0, 10) ?? ''}
+                aria-label={SECTION.scheduledDate}
+                onChange={(e) => e.currentTarget.value && onMeta(step, { scheduledDate: `${e.currentTarget.value}T12:00:00.000Z` })}
+              />
+            </label>
+            {step.scheduledDate && (
+              <Button size="sm" variant="quiet" onClick={() => onMeta(step, { scheduledDate: null })}>
+                {SECTION.scheduledClear}
+              </Button>
+            )}
+            <InfoTip title={SECTION.scheduledDate} text={SECTION.scheduledHint} />
+          </p>
+          <p className="reason print-only">
+            {SECTION.owner}: {step.owner ?? '—'} · {SECTION.scheduledDate}: {step.scheduledDate ? absoluteDate(step.scheduledDate) : step.rings[0] ? absoluteDate(step.rings[0].plannedStart) : '—'}
+          </p>
+        </>
+      )}
 
       {step.history.length > 0 && (
         <>

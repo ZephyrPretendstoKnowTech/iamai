@@ -39,6 +39,14 @@ function step(over: Partial<Step>): Step {
     populationBasis: '',
     populationNames: [],
     populationView: null,
+    whatChanges: '',
+    failureModes: [],
+    verify: null,
+    helpDesk: null,
+    ringComms: [],
+    rollbackBody: null,
+    owner: null,
+    scheduledDate: null,
     ...over,
   }
 }

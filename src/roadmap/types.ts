@@ -39,6 +39,8 @@ export type Action = {
   powershell: string | null
   /** The roles a collapsed "All N directory roles" stands for (ux-review-05 §6). */
   roleList?: { summary: string; names: string[] } | null
+  /** For a change to an existing policy: current value → new value, field by field (roadmap-v2.md §4). */
+  changes?: { field: string; from: string; to: string }[]
 }
 
 export type Blocker =
@@ -141,4 +143,21 @@ export type Step = {
   /** Everyone under 25 people; the ten riskiest above. */
   populationNames: string[]
   populationView: PopulationView | null
+  // ---- step content (roadmap-v2.md §4) ----
+  /** One sentence a non-technical manager understands. */
+  whatChanges: string
+  failureModes: FailureMode[]
+  verify: Verify | null
+  helpDesk: HelpDesk | null
+  /** The announcement per ring, dated. */
+  ringComms: { ring: string; date: string; text: string }[]
+  /** The previous policy body for a change step, to restore byte for byte. */
+  rollbackBody: string | null
+  owner: string | null
+  /** An operator-set start date; the schedule moves the step and its dependants to it. */
+  scheduledDate: string | null
 }
+
+export type FailureMode = { title: string; applies: 'yes' | 'no' | 'unknown'; evidence: string }
+export type Verify = { where: string[]; filter: string | null; good: string }
+export type HelpDesk = { callsAbout: string[]; whatToSay: string[] }

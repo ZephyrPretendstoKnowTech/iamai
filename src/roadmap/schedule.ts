@@ -31,7 +31,7 @@ export type Dependency = {
   reason: string
 }
 
-export type ConstraintKind = 'none' | 'verification' | 'dependency' | 'rings' | 'cap' | 'freeze' | 'soft' | 'prerequisites'
+export type ConstraintKind = 'none' | 'verification' | 'dependency' | 'rings' | 'cap' | 'freeze' | 'soft' | 'prerequisites' | 'scheduled'
 
 export type Derivation = {
   /** The one sentence for the Overview (§2). */
@@ -91,6 +91,8 @@ export type Schedule = {
 
 export type ScheduleOptions = {
   freeze?: ChangeFreeze | null
+  /** step id → operator-set start date: the step starts no earlier (roadmap-v2.md §4.12). */
+  scheduled?: Record<string, string> | null
 }
 
 /** Enforcement events per week by band (§2). */
@@ -323,6 +325,11 @@ export function buildSchedule(
       if (s.kind === 'create') reportOnlyAt[s.id] = creation
       let earliest = s.kind === 'create' ? observation.end : creation
       const reason: { kind: ConstraintKind; ref: string | null } = { kind: s.kind === 'create' ? 'rings' : 'none', ref: null }
+      const pinned = options.scheduled?.[s.id]
+      if (pinned && pinned > earliest) {
+        earliest = pinned
+        reason.kind = 'scheduled'
+      }
       for (const d of deps) {
         const p = placed.get(d.stepId)
         if (!p) continue
@@ -525,6 +532,9 @@ function derive(
       break
     case 'freeze':
       reason = CRITICAL.freeze(freeze ? absoluteDate(freeze.to) : '', last.title)
+      break
+    case 'scheduled':
+      reason = CRITICAL.scheduled(last.title, absoluteDate(p.start))
       break
     default:
       constraint = 'rings'
