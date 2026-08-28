@@ -7,7 +7,7 @@ export const DANGER = {
 
   blockedToday: {
     title: (n: number) => `${count(n, 'user is', 'users are')} blocked today, before this plan changes anything`,
-    detail: 'Their most recent sign-in failed an existing Conditional Access policy. Fix this first — otherwise the rollout gets the blame.',
+    detail: 'Their most recent sign-in failed an existing Conditional Access policy. Fix this first: otherwise the rollout gets the blame.',
     need: 'investigate the failing sign-in',
     path: 'Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)',
     link: {
@@ -17,16 +17,16 @@ export const DANGER = {
   },
   careAtRisk: {
     title: (n: number) => `${count(n, 'handle-with-care user')} would struggle with MFA today`,
-    detail: 'Set these people up personally before their step goes live — a call or a desk visit, not an email blast. Enforcement stays gated until each is ready.',
-    noMethod: 'has no MFA method — issue a Temporary Access Pass and walk them through Authenticator',
-    smsOnly: 'has only text or call — upgrade them to Microsoft Authenticator',
-    unproven: 'method registered but unproven — have them complete one MFA sign-in',
+    detail: 'Set these people up personally before their step goes live: a call or a desk visit, not an email blast. Enforcement stays gated until each is ready.',
+    noMethod: 'has no MFA method: issue a Temporary Access Pass and walk them through Authenticator',
+    smsOnly: 'has only text or call: upgrade them to Microsoft Authenticator',
+    unproven: 'method registered but unproven: have them complete one MFA sign-in',
     path: (base: string) => `${base} (enable Temporary Access Pass, then Users → user → Authentication methods → Add)`,
   },
   weakAdmins: {
     title: (n: number) => `${count(n, 'admin has', 'admins have')} no phishing-resistant method`,
     detail: 'The admin-hardening phase requires passkeys or FIDO2 keys. Get keys into their hands early.',
-    need: (strongest: string) => `strongest today: ${strongest} — register a passkey or FIDO2 key`,
+    need: (strongest: string) => `strongest today: ${strongest}: register a passkey or FIDO2 key`,
     nothing: 'nothing',
     path: (base: string) => `${base} → Passkey (FIDO2) → Enable and target these admins`,
     link: {
@@ -37,7 +37,7 @@ export const DANGER = {
   operator: {
     title: 'The signed-in account is not provably safe yet',
     detail:
-      'This account is making the changes. Before enforcing anything that includes it, register a strong method and complete one MFA sign-in — the most common lockout is the operator\'s own.',
+      'This account is making the changes. Before enforcing anything that includes it, register a strong method and complete one MFA sign-in: the most common lockout is the operator\'s own.',
     need: 'register a passkey or FIDO2 key and complete one MFA sign-in',
     path: 'My sign-ins → Security info → Add method',
   },

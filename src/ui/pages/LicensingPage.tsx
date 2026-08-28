@@ -1,5 +1,5 @@
 // Licensing guide (SPEC §12): what this tenant's licence enables, scored
-// honestly — nothing locked, nothing "accepted risk".
+// honestly: nothing locked, nothing "accepted risk".
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { CATALOGUE } from '../../coverage/coverage.ts'
 import ladder from '../../../data/free-tier-ladder.json' with { type: 'json' }

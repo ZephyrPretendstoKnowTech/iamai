@@ -1,35 +1,38 @@
-// Definitions behind every state, tile, and chip a user sees — written for a
+// Definitions behind every state, tile, and chip a user sees: written for a
 // novice. Every number on screen has an InfoTip that reads from here.
+
+import { TERMS } from './terms.ts'
 
 export type Definition = { title: string; text: string }
 
+// Titles come from the terminology dictionary (ux-review-03 §A8).
 export const MFA_STATE = {
-  verified: { title: 'Verified', text: 'Completed MFA in the collected sign-in records — proven, not assumed.' },
+  verified: { title: TERMS.mfaState.verified, text: 'Completed MFA in the collected sign-in records: proven, not assumed.' },
   likelyViable: {
-    title: 'Likely viable',
+    title: TERMS.mfaState.likelyViable,
     text: 'A current Authenticator app, a recent registration, or a recently active Windows Hello device suggests MFA would succeed if required.',
   },
   notChallenged: {
-    title: 'Not challenged',
-    text: 'Signed in during the collected window, but nothing ever required MFA of them — enforcement is their first real test.',
+    title: TERMS.mfaState.notChallenged,
+    text: 'Signed in during the collected window, but nothing ever required MFA of them: enforcement is their first real test.',
   },
-  unverified: { title: 'Unverified', text: 'MFA-capable on paper with no usage signal — verify before enforcing.' },
-  none: { title: 'No method', text: 'No MFA-capable method registered. Email and security questions do not count.' },
+  unverified: { title: TERMS.mfaState.unverified, text: 'MFA-capable on paper with no usage signal: verify before enforcing.' },
+  none: { title: TERMS.mfaState.none, text: 'No MFA-capable method registered. Email and security questions do not count.' },
 } as const satisfies Record<string, Definition>
 
 export const ACTIVITY_STATE = {
-  active: { title: 'Active', text: 'A successful sign-in within the last 90 days.' },
-  dormant: { title: 'Dormant', text: 'No successful sign-in for more than 90 days — planned separately, never counted as an MFA success.' },
-  neverSignedIn: { title: 'Never signed in', text: 'No successful sign-in on record; the account creation date is shown instead.' },
+  active: { title: TERMS.activity.active, text: 'A successful sign-in within the last 90 days.' },
+  dormant: { title: TERMS.activity.dormant, text: 'No successful sign-in for more than 90 days: planned separately, never counted as an MFA success.' },
+  neverSignedIn: { title: TERMS.activity.neverSignedIn, text: 'No successful sign-in on record; the account creation date is shown instead.' },
 } as const satisfies Record<string, Definition>
 
 export const METHOD_TIER = {
-  phishingResistant: { title: 'Phishing-resistant', text: 'Passkeys / FIDO2 security keys, Windows Hello for Business, or certificates.' },
-  passwordless: { title: 'Passwordless', text: 'Microsoft Authenticator passwordless phone sign-in.' },
-  push: { title: 'Push', text: 'Microsoft Authenticator push approval.' },
-  otp: { title: 'One-time code', text: 'Software or hardware one-time passcodes.' },
-  smsVoice: { title: 'Text or call', text: 'Phone-based methods only — they work, but they are the weakest tier.' },
-  none: { title: 'None', text: 'No MFA-capable method registered.' },
+  phishingResistant: { title: TERMS.methodTier.phishingResistant, text: 'Passkeys / FIDO2 security keys, Windows Hello for Business, or certificates.' },
+  passwordless: { title: TERMS.methodTier.passwordless, text: 'Microsoft Authenticator passwordless phone sign-in.' },
+  push: { title: TERMS.methodTier.push, text: 'Microsoft Authenticator push approval.' },
+  otp: { title: TERMS.methodTier.otp, text: 'Software or hardware one-time passcodes.' },
+  smsVoice: { title: TERMS.methodTier.smsVoice, text: 'Phone-based methods only: they work, but they are the weakest tier.' },
+  none: { title: TERMS.methodTier.none, text: 'No MFA-capable method registered.' },
 } as const satisfies Record<string, Definition>
 
 export const GOAL_STATUS = {
@@ -51,7 +54,7 @@ export const STEP_STATUS = {
 } as const satisfies Record<string, Definition>
 
 export const STEP_KIND = {
-  prerequisite: { title: 'Prerequisite', text: 'Something that has to exist before policies can be created — an account, a group, a location.' },
+  prerequisite: { title: 'Prerequisite', text: 'Something that has to exist before policies can be created: an account, a group, a location.' },
   create: { title: 'New policy', text: 'A policy to create in report-only mode, observe, then enforce.' },
   adjust: { title: 'Change', text: 'An existing policy that needs its scope or controls changed to meet the baseline.' },
   verify: { title: 'Verify', text: 'A campaign to prove people can complete MFA before anything is enforced.' },
@@ -64,11 +67,11 @@ export const TILE = {
   partly: { title: 'Partly', text: 'Goals a policy delivers for some people, or with a weaker control than the baseline expects.' },
   missing: { title: 'Missing', text: 'Goals no enabled policy delivers yet.' },
   scoredGoals: { title: 'Scored goals', text: 'Goals that apply to this tenant and its licence. Goals that do not apply, or need a missing licence, are left out.' },
-  mfaReady: { title: 'MFA-ready', text: 'Active users whose MFA state is Verified or Likely viable.' },
+  mfaReady: { title: 'MFA-ready', text: `Active users whose MFA state is ${TERMS.mfaState.verified} or ${TERMS.mfaState.likelyViable}.` },
   activeUsers: { title: 'Active users', text: 'People with a successful sign-in in the last 90 days.' },
   verificationPhase: {
     title: 'To verify',
-    text: 'Active users whose MFA state is Unverified, Not challenged, or No method — the people to check before any MFA step is enforced.',
+    text: `Active users whose MFA state is ${TERMS.mfaState.unverified}, ${TERMS.mfaState.notChallenged}, or ${TERMS.mfaState.none}: the people to check before any MFA step is enforced.`,
   },
   challengedRate: { title: 'Challenged rate', text: 'Of the users active in the collected sign-in records, the share who completed MFA at least once.' },
   stepsDone: { title: 'Steps done', text: 'Plan steps already delivered by existing policies or completed since the plan started.' },
@@ -87,15 +90,15 @@ export const CHIP = {
   care: { title: 'Handle with care', text: 'Named in Setup as someone an accidental lockout would hurt. Changes still apply; enforcement waits until they are verified, and they go last.' },
   guest: { title: 'Guest', text: 'An external account invited into this tenant.' },
   admin: { title: 'Admin', text: 'Holds at least one active directory role.' },
-  cis: { title: 'CIS Controls', text: 'The CIS Controls v8 safeguard this goal supports — evidence for a compliance framework.' },
-  expectedExclusion: { title: 'Expected exclusion', text: 'A break-glass account or the exclusions group — meant to be left out, so not counted as a gap.' },
+  cis: { title: 'CIS Controls', text: 'The CIS Controls v8 safeguard this goal supports: evidence for a compliance framework.' },
+  expectedExclusion: { title: 'Expected exclusion', text: 'A break-glass account or the exclusions group: meant to be left out, so not counted as a gap.' },
 } as const satisfies Record<string, Definition>
 
 /** Legend groups in display order, for the Scan and Roadmap legends. */
 export const LEGEND: { heading: string; items: Definition[] }[] = [
-  { heading: 'MFA state', items: Object.values(MFA_STATE) },
-  { heading: 'Activity', items: Object.values(ACTIVITY_STATE) },
-  { heading: 'Method tier', items: Object.values(METHOD_TIER).filter((d) => d.title !== 'None') },
+  { heading: TERMS.legendGroups.mfaState, items: Object.values(MFA_STATE) },
+  { heading: TERMS.legendGroups.activity, items: Object.values(ACTIVITY_STATE) },
+  { heading: TERMS.legendGroups.methodTier, items: Object.values(METHOD_TIER).filter((d) => d.title !== TERMS.methodTier.none) },
   { heading: 'Goal status', items: Object.values(GOAL_STATUS) },
   { heading: 'Step status', items: Object.values(STEP_STATUS) },
   { heading: 'Step kind', items: Object.values(STEP_KIND) },

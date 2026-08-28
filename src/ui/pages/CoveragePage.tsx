@@ -1,4 +1,4 @@
-// Findings — what the scan found: what's working, what needs attention, and
+// Findings: what the scan found: what's working, what needs attention, and
 // the detail behind it. Generated sentences come from src/copy/statements.ts.
 import { useEffect, useMemo, useState } from 'react'
 import { loadPlanRecord } from '../../graph/collect/cache.ts'
@@ -22,7 +22,8 @@ import { INVENTORY } from '../../copy/inventory.ts'
 import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
 import { findingsSummary } from '../../copy/statements.ts'
 import { absoluteDate, whenAt } from '../format.ts'
-import { StepFrame } from '../shell/AppShell.tsx'
+import { StepFrame, stepHref } from '../shell/AppShell.tsx'
+import { stepIdForGoal } from '../../roadmap/generate.ts'
 import { Callout, Card, Chip, ExpandCard, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
@@ -257,7 +258,7 @@ export function CoveragePage({
           <ul className="sections">
             {r.candidates.map((c) => (
               <li key={c.policyId || c.policyName}>
-                <em>{c.policyName}</em> — {INVENTORY.policies.state[c.state]};{' '}
+                <em>{c.policyName}</em>: {INVENTORY.policies.state[c.state]};{' '}
                 {c.contribution === 'strong' ? C.delivers : c.contribution === 'weak' ? C.tooWeak : c.contribution === 'reportOnly' ? C.reportOnly : C.disabledCandidate}
                 {c.caveats.length > 0 && ` (${c.caveats.join(', ')})`}
               </li>
@@ -290,7 +291,7 @@ export function CoveragePage({
       )}
       {(r.status === 'absent' || r.status === 'partial' || r.status === 'unknown') && (
         <p className="reason">
-          <a href="#/roadmap">{C.seeStep}</a>
+          <a href={stepHref(stepIdForGoal(r.goal.id))}>{C.seeStep}</a>
         </p>
       )}
     </ExpandCard>
@@ -319,7 +320,7 @@ export function CoveragePage({
             {notInScope.map((p) => (
               <li key={p.name}>
                 <em>{p.name}</em>
-                {p.reason && <> — {p.reason}</>}
+                {p.reason && <>: {p.reason}</>}
               </li>
             ))}
           </ul>
@@ -330,7 +331,7 @@ export function CoveragePage({
           <ul className="sections">
             {report.couldNotEvaluate.map((c) => (
               <li key={c.name}>
-                <em>{c.name}</em> — {c.reason}
+                <em>{c.name}</em>: {c.reason}
               </li>
             ))}
           </ul>
@@ -343,7 +344,7 @@ export function CoveragePage({
           <ul className="sections">
             {report.organisation.notInBaseline.map((p) => (
               <li key={p.id}>
-                <em>{p.name}</em> ({INVENTORY.policies.state[p.state as keyof typeof INVENTORY.policies.state] ?? p.state}) — {C.fineToKeep}
+                <em>{p.name}</em> ({INVENTORY.policies.state[p.state as keyof typeof INVENTORY.policies.state] ?? p.state}): {C.fineToKeep}
               </li>
             ))}
           </ul>
@@ -390,7 +391,7 @@ export function CoveragePage({
   )
 }
 
-// "Since the last checkpoint" — the delta against the most recent saved checkpoint.
+// "Since the last checkpoint": the delta against the most recent saved checkpoint.
 function sinceLastScan(
   checkpoints: Checkpoint[],
   report: CoverageReport,

@@ -50,10 +50,13 @@ const VALID = new Set<string>([
   ...(import.meta.env.DEV ? ['components'] : []),
 ])
 
+const STEP_LINK = /^roadmap\/step\/(.+)$/
+
 export function useHashRoute(): Route {
   const read = (): Route => {
     const h = window.location.hash.replace(/^#\//, '')
     if (h === 'readiness') return 'scan'
+    if (STEP_LINK.test(h)) return 'roadmap'
     return VALID.has(h) ? (h as Route) : 'start'
   }
   const [route, setRoute] = useState<Route>(read)
@@ -63,6 +66,25 @@ export function useHashRoute(): Route {
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
   return route
+}
+
+/** Deep link to a Roadmap step: #/roadmap/step/<id> (prompt 14 §8). */
+export function stepHref(stepId: string): string {
+  return `#/roadmap/step/${stepId}`
+}
+
+export function useHashStepId(): string | null {
+  const read = (): string | null => {
+    const m = STEP_LINK.exec(window.location.hash.replace(/^#\//, ''))
+    return m ? decodeURIComponent(m[1]) : null
+  }
+  const [id, setId] = useState<string | null>(read)
+  useEffect(() => {
+    const onChange = () => setId(read())
+    window.addEventListener('hashchange', onChange)
+    return () => window.removeEventListener('hashchange', onChange)
+  }, [])
+  return id
 }
 
 function useTheme(): [string, () => void] {
@@ -78,7 +100,7 @@ function useTheme(): [string, () => void] {
     try {
       localStorage.setItem('iamai-theme', theme)
     } catch {
-      // storage unavailable — theme just won't persist
+      // storage unavailable: theme just won't persist
     }
   }, [theme])
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]

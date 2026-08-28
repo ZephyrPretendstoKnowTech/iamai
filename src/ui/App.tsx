@@ -3,12 +3,12 @@ import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/msal.ts'
 import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { loadSnapshotRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
+import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import { AppShell, useHashRoute } from './shell/AppShell.tsx'
 import type { Route, StepStatus } from './shell/AppShell.tsx'
 import { StartPage } from './pages/StartPage.tsx'
 import { ConnectPage } from './pages/ConnectPage.tsx'
-import { BaselinePage } from './pages/BaselinePage.tsx'
+import { BaselinePage, loadPinnedBaseline, loadUploadedBaseline } from './pages/BaselinePage.tsx'
 import type { BaselineResult } from './pages/BaselinePage.tsx'
 import { LicensingPage } from './pages/LicensingPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
@@ -53,7 +53,7 @@ export function App() {
     try {
       localStorage.setItem('iamai-visited-start', '1')
     } catch {
-      // storage unavailable — the status resets next visit
+      // storage unavailable: the status resets next visit
     }
   }, [route, visitedStart])
 
@@ -69,6 +69,17 @@ export function App() {
           })
           // Saved Setup answers drive the stepper before Setup is opened.
           void loadMappingState(a.tenantId).then((m) => setMapProgress(wizardProgress(m)))
+          // The loaded baseline comes back too (prompt 14 §6): pinned index by
+          // commit, or the uploaded files themselves.
+          void loadBaselineRecord<BaselineResult['origin']>(a.tenantId).then(async (origin) => {
+            if (!origin) return
+            try {
+              if (origin.kind === 'upload') setBaseline(loadUploadedBaseline(origin.files))
+              else setBaseline(await loadPinnedBaseline())
+            } catch {
+              // A failed restore is not an error: the Baseline step offers the load again.
+            }
+          })
         }
       })
       .catch((e: unknown) => setAuthError(e instanceof Error ? e.message : String(e)))
@@ -104,7 +115,15 @@ export function App() {
               userCount={lastScan?.snapshot.users.length ?? null}
             />
           )}
-          {route === 'baseline' && <BaselinePage result={baseline} onLoaded={setBaseline} />}
+          {route === 'baseline' && (
+            <BaselinePage
+              result={baseline}
+              onLoaded={(r) => {
+                setBaseline(r)
+                if (account) void saveBaselineRecord(account.tenantId, r.origin)
+              }}
+            />
+          )}
           {route === 'baseline/package' && <PackagePage />}
           {(route === 'scan' || route === 'inventory') &&
             (account ? (

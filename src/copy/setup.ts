@@ -9,7 +9,7 @@ export const SETUP_QUESTIONS = {
   globalExclusion: {
     title: 'Exclusion group',
     question: 'Which group holds the policy exclusions?',
-    help: 'Usually a small assigned group containing only the break-glass accounts. If there is none, say so — creating it goes at the start of the plan.',
+    help: 'Usually a small assigned group containing only the break-glass accounts. If there is none, say so: creating it goes at the start of the plan.',
   },
   highCare: {
     title: 'Handle with care',
@@ -24,11 +24,11 @@ export const SETUP_QUESTIONS = {
   serviceAccounts: {
     title: 'Service accounts',
     question: 'Are service accounts kept in a group?',
-    help: 'Legacy-authentication or automation accounts that need carve-outs from some policies. Optional — skip it if that does not apply.',
+    help: 'Legacy-authentication or automation accounts that need carve-outs from some policies. Optional: skip it if that does not apply.',
   },
   variants: {
     title: 'Style choices',
-    question: 'A few policies come in two styles — pick one of each.',
+    question: 'A few policies come in two styles: pick one of each.',
     help: 'Same security outcome, different shape. Pick whichever suits how the tenant is run; both are shown side by side.',
   },
   timeZone: {
@@ -52,9 +52,9 @@ export const SETUP_PAGE = {
   title: 'Setup',
   does: 'A handful of questions about the tenant. Everything else is worked out from the scan.',
   needsBaseline: 'baseline loaded',
-  needBaseline: 'load a baseline',
+  needBaseline: 'Load a baseline in the Baseline step',
   needsScan: 'scan complete',
-  needScan: 'run a scan',
+  needScan: 'Run a scan in the Scan step',
   next: 'Findings',
   blocked: 'Setup needs a loaded baseline and a scan.',
   loading: 'Loading the saved answers…',
@@ -72,8 +72,8 @@ export const SETUP_PAGE = {
     cloudOnlyGa: 'cloud-only Global Administrator',
     trusted: 'marked trusted in the tenant',
   },
-  doesNotExist: "Doesn't exist yet — add it to the plan",
-  workloadEvidence: (name: string, reason: string) => `${name} — ${reason}`,
+  doesNotExist: "Doesn't exist yet: add it to the plan",
+  workloadEvidence: (name: string, reason: string) => `${name}. ${reason}`,
   workloadNames: {
     avd: 'Azure Virtual Desktop',
     copilot: 'Microsoft 365 Copilot',
@@ -90,8 +90,8 @@ export const SETUP_PAGE = {
     licence: (name: string) => `${name} licence present`,
     noLicence: (name: string) => `no ${name} licence`,
   },
-  complete: '— that covers everything the plan needs. The optional ones below sharpen it.',
-  incomplete: '— the required ones unlock the plan; the rest are optional.',
+  complete: 'that covers everything the plan needs. The optional ones below sharpen it.',
+  incomplete: 'the required ones unlock the plan; the rest are optional.',
   autoResolved: (n: number) => `${n} baseline reference${n === 1 ? '' : 's'} resolved automatically.`,
   answered: 'Answered',
   required: 'Required',
@@ -122,8 +122,8 @@ export const SETUP_PAGE = {
 
 /** Fix paths for validation findings: a plan step, or the exact portal path. */
 export const VALIDATION_ACTION = {
-  roadmap: { label: 'See the step in the Roadmap', href: '#/roadmap' },
-  drill: { label: 'Break-glass drill step in the Roadmap', href: '#/roadmap' },
+  roadmap: { label: 'See the exclusions group step in the Roadmap', href: '#/roadmap/step/s-prereq-exclusion-group' },
+  drill: { label: 'Break-glass drill step in the Roadmap', href: '#/roadmap/step/s-recurring-break-glass-drill' },
   pickAnother: { label: 'Pick a different account above', href: '#/mapping' },
   policies: { label: 'Entra admin center → Protection → Conditional Access → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/Policies' },
   roles: { label: 'Entra admin center → Roles & admins → Global Administrator', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles' },

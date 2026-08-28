@@ -1,4 +1,4 @@
-// Inventory — the data as found (prompt 10 §B). Read-only DataTables, no
+// Inventory: the data as found (prompt 10 §B). Read-only DataTables, no
 // analysis; every table exports CSV and says where its data comes from.
 import { useEffect, useMemo, useState } from 'react'
 import type { TenantSnapshot, UserRow } from '../../graph/collect/types.ts'

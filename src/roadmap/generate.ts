@@ -74,6 +74,13 @@ function idFor(prefix: string, key: string): string {
   return `s-${prefix}-${key.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}`
 }
 
+/** The stable step id for a goal (deep links from Findings and Setup). */
+export function stepIdForGoal(goalId: string): string {
+  return idFor('goal', goalId)
+}
+export const DRILL_STEP_ID = 's-recurring-break-glass-drill'
+export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
+
 function population(ids: string[], snapshot: TenantSnapshot, viability: MfaViability[]): StepPopulation {
   const set = new Set(ids)
   const active = viability.filter((v) => set.has(v.userId) && v.activity === 'active').length

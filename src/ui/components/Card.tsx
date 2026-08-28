@@ -9,7 +9,7 @@ export function Card({ title, children, className, ...rest }: HTMLAttributes<HTM
   )
 }
 
-/** Expandable card — summary always visible, body on open. */
+/** Expandable card: summary always visible, body on open. */
 export function ExpandCard({
   summary,
   open,

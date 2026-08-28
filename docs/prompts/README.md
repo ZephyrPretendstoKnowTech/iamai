@@ -34,3 +34,8 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `11-setup-polish.md` | Pickers with suggestions and multi-select, frameworks, workload cards, vendor policies, Setup→roadmap consistency | 10 done |
 | `12-roadmap-pacing-print.md` | Wave scheduling and pace presets, dependency gating, classifier fixes, real print layout | 11 done |
 | `13-live-review-fixes.md` | Responsive layout, one stepper status rule, one name per step, Setup section behaviour, names-not-GUIDs in actions, tenant naming convention, announcements by goal family, precise blocked reasons, single derived plan result | 12 done; docs/design/ux-review-02-live.md present |
+| `14-copy-lint-terms-and-navigation.md` | Copy lint test, final terminology, timezone everywhere, baseline persistence, sticky sidebar, deep links, first-batch wait state | 13 done; docs/design/ux-review-03.md present |
+| `15-inventory-fixes.md` | Role template catalogue, resolved holders, friendly licence names, shared Authenticator device column | 14 done |
+| `16-setup-redesign.md` | Advanced options, answer feedback, detected service accounts, countries allowlist, workload labels, Q7 fix | 15 done |
+| `17-scoring-and-findings.md` | Three-dimension scoring, group/sort controls, badges, step copy fixes | 16 done |
+| `18-pacing-by-size-and-timeline.md` | Pace preset by tenant size, schedule rationale, timeline auto-hide, verification on this tenant | 17 done |

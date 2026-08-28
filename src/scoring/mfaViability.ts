@@ -267,7 +267,7 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
       break
     }
   }
-  if (smsVoiceOnly) reasons.push('SMS/voice only')
+  if (smsVoiceOnly) reasons.push('text or call only')
   if (capable.some((m) => m.kind === 'fido2' || m.kind === 'passkey')) {
     reasons.push('FIDO2/passkey with no usage signal')
   }

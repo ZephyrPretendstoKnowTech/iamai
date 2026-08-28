@@ -10,7 +10,7 @@ export function Chip({ status = 'neutral', title, children }: { status?: ChipSta
   )
 }
 
-/** Selectable filter chip — consistent 24px height, keyboard accessible. */
+/** Selectable filter chip: consistent 24px height, keyboard accessible. */
 export function FilterChip({
   selected,
   onToggle,

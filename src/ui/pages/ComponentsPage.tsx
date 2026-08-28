@@ -32,6 +32,7 @@ const FIXTURE = fixtureSnapshot()
 const FIXTURE_BASELINE: BaselineResult = {
   source: 'synthetic baseline',
   fetchFailures: 0,
+  origin: { kind: 'upload', files: [] },
   pkg: {
     policies: [
       {

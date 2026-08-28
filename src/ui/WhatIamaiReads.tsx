@@ -3,7 +3,7 @@ import type { CollectorSpec } from '../graph/collect/registry.ts'
 import { READS } from '../copy/pages.ts'
 import { DataTable, LinkButton } from './components/index.ts'
 
-// Generated view over the collector registry — the same source of truth that
+// Generated view over the collector registry: the same source of truth that
 // drives the collectors and SPEC §4.
 export function WhatIamaiReads() {
   const lanes: CollectorSpec['lane'][] = ['0', 'A', 'B', 'on-demand']
