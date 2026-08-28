@@ -50,6 +50,7 @@ export const SHELL = {
   },
   loading: 'Loading…',
   signInError: 'Sign-in error:',
+  storageBlocked: 'Saved data is not available yet',
   scanNeedsConnect: 'The scan reads the tenant into a local record. Connect a tenant first.',
   connectLink: 'Connect a tenant',
   inventoryNeedsConnect: 'The inventory comes from a scan of a connected tenant. Connect a tenant first.',

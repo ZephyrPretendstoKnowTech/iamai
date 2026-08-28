@@ -1,4 +1,4 @@
-import { useId, useState, useRef } from 'react'
+import { useId, useState, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
 
 export type TabDef = { id: string; label: string; badge?: string | number; render: () => ReactNode }
@@ -24,6 +24,24 @@ export function Tabs({
   }
   const base = useId()
   const listRef = useRef<HTMLDivElement>(null)
+  // Panels render once visited (ux-review-06 §16): the heavy Steps and
+  // attention lists are not laid out while another tab is open. Printing
+  // needs every panel, so beforeprint mounts them all.
+  const [visited, setVisited] = useState<Set<string>>(() => new Set([controlled ?? initial ?? tabs[0]?.id ?? '']))
+  const [printing, setPrinting] = useState(false)
+  useEffect(() => {
+    const on = () => setPrinting(true)
+    const off = () => setPrinting(false)
+    window.addEventListener('beforeprint', on)
+    window.addEventListener('afterprint', off)
+    return () => {
+      window.removeEventListener('beforeprint', on)
+      window.removeEventListener('afterprint', off)
+    }
+  }, [])
+  useEffect(() => {
+    setVisited((v) => (v.has(active) ? v : new Set([...v, active])))
+  }, [active])
   // Switching tabs lands at the top of the panel, never mid-content (ux-review-05 §41).
   const choose = (id: string): void => {
     setActive(id)
@@ -58,7 +76,7 @@ export function Tabs({
           className={`tab-panel ${active === t.id ? 'active' : ''}`}
         >
           <h3 className="print-only">{t.label}</h3>
-          {t.render()}
+          {(printing || visited.has(t.id) || active === t.id) && t.render()}
         </section>
       ))}
     </div>

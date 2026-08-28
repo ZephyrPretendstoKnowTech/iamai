@@ -5,7 +5,7 @@ import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import { AppShell, useHashRoute } from './shell/AppShell.tsx'
-import { BackToTop, ErrorBoundary } from './components/index.ts'
+import { BackToTop, Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
 import type { Route, StepStatus } from './shell/AppShell.tsx'
 import { StartPage } from './pages/StartPage.tsx'
@@ -45,6 +45,7 @@ export function App() {
   const [tenantName, setTenantName] = useState<string | null>(null)
   const [baseline, setBaseline] = useState<BaselineResult | null>(null)
   const [baselineRestoreError, setBaselineRestoreError] = useState<string | null>(null)
+  const [storageWarning, setStorageWarning] = useState<string | null>(null)
   const [lastScan, setLastScan] = useState<{ snapshot: TenantSnapshot; at: string } | null>(null)
   const [scanRunning, setScanRunning] = useState(false)
   const [mapProgress, setMapProgress] = useState<WizardProgress | null>(null)
@@ -100,7 +101,7 @@ export function App() {
             if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
           })
           // A blocked store shows as a plain sentence, never as a silently empty app.
-          void probeStorage().catch((e: unknown) => setAuthError(e instanceof Error ? e.message : String(e)))
+          void probeStorage().catch((e: unknown) => setStorageWarning(e instanceof Error ? e.message : String(e)))
           // Saved Setup answers drive the stepper before Setup is opened.
           void loadMappingState(a.tenantId).then((m) => setMapProgress(wizardProgress(m)))
           // The loaded baseline comes back too (prompt 14 §6): pinned index by
@@ -140,6 +141,7 @@ export function App() {
               {SHELL.signInError} {authError}
             </p>
           )}
+          {storageWarning && <Callout kind="warning" title={SHELL.storageBlocked}>{storageWarning}</Callout>}
           {route === 'start' && <StartPage />}
           {route === 'connect' && (
             <ConnectPage
