@@ -30,6 +30,10 @@ import { CALENDAR } from '../../copy/schedule.ts'
 import { POPULATION } from '../../copy/population.ts'
 import { ROLLBACK_V2, SECTION } from '../../copy/stepContent.ts'
 import { RINGS } from '../../copy/rings.ts'
+import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
+import { changesSince, groupGrowth, progressHeadline, stepProgress } from '../../roadmap/tracking.ts'
+import { buildIcs } from '../../roadmap/ics.ts'
+import { savedStepOf } from '../../roadmap/progress.ts'
 import type { Dependency } from '../../roadmap/schedule.ts'
 import { POPULATION_CSV_HEADER, cohortsFor, populationContext, populationRows } from '../../roadmap/population.ts'
 import { ringContextIndexes } from '../../roadmap/rings.ts'
@@ -51,8 +55,21 @@ import { compareScores } from '../../scoring/priority.ts'
 import type { ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
-type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null; owner?: string | null; scheduledDate?: string | null }>
-type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; band?: SizeBand | null; owner?: string; freeze?: ChangeFreeze | null }
+type SavedSteps = Record<string, import('../../roadmap/progress.ts').SavedStep>
+type PlanStore = {
+  planId: string
+  steps: SavedSteps
+  checkpoints: Checkpoint[]
+  startDate?: string
+  band?: SizeBand | null
+  owner?: string
+  freeze?: ChangeFreeze | null
+  /** Re-plan record (roadmap-v2.md §5): counts up when the step set or the baseline pin changes. */
+  revision?: number
+  revisions?: { revision: number; at: string; note: string }[]
+  stepIds?: string[]
+  baselinePin?: string | null
+}
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
   done: 'done',
@@ -90,10 +107,10 @@ export function RoadmapPage({
   const [copied, setCopied] = useState<string | null>(null)
   // Deep link #/roadmap/step/<id>: open the Steps tab with that step expanded.
   const linkedStepId = useHashStepId()
-  const [activeTab, setActiveTab] = useState<string>(linkedStepId ? 'steps' : 'overview')
+  const [activeTab, setActiveTab] = useState<string>(linkedStepId ? 'plan' : 'progress')
   useEffect(() => {
     if (!linkedStepId) return
-    setActiveTab('steps')
+    setActiveTab('plan')
     const el = document.getElementById(`step-${linkedStepId}`)
     if (el) {
       el.setAttribute('open', '')
@@ -226,17 +243,38 @@ export function RoadmapPage({
 
   useEffect(() => {
     if (!computed || !snapshot) return
-    const stepsRecord: SavedSteps = Object.fromEntries(
-      computed.steps.map((s) => [s.id, { status: s.status, history: s.history, skipReason: s.skipReason }]),
-    )
+    const stepsRecord: SavedSteps = Object.fromEntries(computed.steps.map((s) => [s.id, { ...(saved?.steps[s.id] ?? {}), ...savedStepOf(s) }]))
+    // Re-plan in place (roadmap-v2.md §5): the step set or the baseline pin changing is a revision, recorded, never a fresh plan.
+    const ids = computed.steps.map((s) => s.id)
+    const pin = baselineIndex.commit ?? null
+    const prevIds = saved?.stepIds ?? null
+    const revisions = [...(saved?.revisions ?? [{ revision: 1, at: new Date().toISOString(), note: PROGRESS.revisionNote.created }])]
+    let revision = saved?.revision ?? 1
+    const notes: string[] = []
+    if (prevIds) {
+      const added = ids.filter((id) => !prevIds.includes(id)).length
+      const gone = prevIds.filter((id) => !ids.includes(id)).length
+      if (added > 0) notes.push(PROGRESS.revisionNote.stepsAdded(added))
+      if (gone > 0) notes.push(PROGRESS.revisionNote.stepsGone(gone))
+    }
+    if (saved?.baselinePin && pin && saved.baselinePin !== pin) notes.push(PROGRESS.revisionNote.baseline(pin.slice(0, 7)))
+    if (notes.length > 0) {
+      revision += 1
+      revisions.push({ revision, at: new Date().toISOString(), note: notes.join('; ') })
+    }
     void savePlanRecord(snapshot.tenantId, {
+      ...(saved ?? { planId, checkpoints: [] }),
       planId,
       steps: stepsRecord,
       checkpoints: saved?.checkpoints ?? [],
       startDate,
       band,
+      revision,
+      revisions,
+      stepIds: ids,
+      baselinePin: pin,
     })
-  }, [computed, snapshot, planId, saved, startDate, band])
+  }, [computed, snapshot, planId, saved, startDate, band, baselineIndex.commit])
 
   useEffect(() => {
     if (!computed || !import.meta.env.DEV) return
@@ -377,7 +415,9 @@ export function RoadmapPage({
       mapping,
       steps,
       checkpoints,
-      schedule: startDate ? { startDate, band: band ?? undefined, owner: owner || undefined } : { startDate: schedule.start, band: band ?? undefined, owner: owner || undefined },
+      schedule: { startDate: startDate ?? schedule.start, band: band ?? undefined, owner: owner || undefined, freeze: saved?.freeze ?? null },
+      revision: saved?.revision,
+      revisions: saved?.revisions,
     })
     downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json')
   }
@@ -397,12 +437,22 @@ export function RoadmapPage({
       window.alert?.(error ?? C.couldNotRead)
       return
     }
-    const stepsRecord: SavedSteps = Object.fromEntries(
-      plan.steps.map((s) => [s.id, { status: s.status, history: s.history, skipReason: s.skipReason }]),
-    )
+    const stepsRecord: SavedSteps = Object.fromEntries(plan.steps.map((s) => [s.id, savedStepOf(s)]))
     const start = plan.schedule?.startDate ?? startDate ?? undefined
     const loadedBand = plan.schedule?.band && BANDS[plan.schedule.band as SizeBand] ? (plan.schedule.band as SizeBand) : band
-    const record: PlanStore = { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: start, band: loadedBand }
+    const record: PlanStore = {
+      planId: plan.planId,
+      steps: stepsRecord,
+      checkpoints: plan.checkpoints,
+      startDate: start,
+      band: loadedBand,
+      owner: plan.schedule?.owner,
+      freeze: plan.schedule?.freeze ?? null,
+      revision: plan.revision,
+      revisions: plan.revisions,
+      stepIds: plan.steps.map((s) => s.id),
+      baselinePin: plan.baselinePin,
+    }
     await savePlanRecord(snapshot.tenantId, record)
     // Setup answers travel with the plan file (provenance intact); re-opening Setup shows them.
     if (plan.mappings && plan.mappings.tenantId === snapshot.tenantId) {
@@ -451,7 +501,7 @@ export function RoadmapPage({
   }
   const openSteps = (status: StepStatus | null): void => {
     setStatusFilter(status ? new Set([status]) : new Set())
-    setActiveTab('steps')
+    setActiveTab('plan')
   }
   // The critical path in one sentence (roadmap-v2.md §2), plus what the scheduler relaxed to land on the band.
   const constraint = work.length === 0 ? null : [schedule.derivation.criticalPath, ...schedule.derivation.relaxed].join(' ')
@@ -471,14 +521,14 @@ export function RoadmapPage({
       <div className="overview-band">
         <Stats>
           <StatTile value={`${done.length}/${steps.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} onClick={() => openSteps('done')} />
-          <StatTile value={schedule.weeks} label={TILE.weeks.title} tip={TILE.weeks} onClick={() => setActiveTab('timeline')} />
+          <StatTile value={schedule.weeks} label={TILE.weeks.title} tip={TILE.weeks} onClick={() => setActiveTab('schedule')} />
           <StatTile value={readyToday.length} label={C.readyToday} tone={readyToday.length > 0 ? 'info' : 'neutral'} tip={TILE.readyToday} onClick={() => openSteps('ready')} />
           <StatTile value={blocked.length} label={STEP_STATUS.blocked.title} tone={blocked.length > 0 ? 'warning' : 'neutral'} tip={STEP_STATUS.blocked} onClick={() => openSteps('blocked')} />
         </Stats>
       </div>
 
       {/* Band 3: what needs attention, and the plan settings (§8). */}
-      <div className="overview-band overview-grid">
+      <div className="overview-band">
         <div>
           <h4>{C.attentionTitle}</h4>
           <Callout kind={highDangers > 0 ? 'danger' : dangers.length > 0 ? 'warning' : 'success'}>
@@ -526,6 +576,180 @@ export function RoadmapPage({
             </details>
           )}
         </div>
+      </div>
+
+    </div>
+  )
+
+  // ---- Progress (roadmap-v2.md §5, §8): the overview plus the journey ----
+  const progressRows = stepProgress(steps, schedule)
+  const headline = progressHeadline(steps, schedule)
+  const lastCheckpoint = saved?.checkpoints.at(-1) ?? null
+  const changes = [...changesSince(snapshot, lastCheckpoint, steps, planId), ...groupGrowth(lastCheckpoint, groups)]
+  const STAGES: { id: (typeof progressRows)[number]['stage']; label: string }[] = [
+    { id: 'planned', label: TRACK.stage.planned },
+    { id: 'reportOnly', label: TRACK.stage.reportOnly },
+    { id: 'soaking', label: TRACK.stage.soaking },
+    { id: 'readyToEnforce', label: TRACK.stage.readyToEnforce },
+    { id: 'enforced', label: TRACK.stage.enforced },
+    { id: 'verified', label: TRACK.stage.verified },
+  ]
+  const weekKey = (iso: string): string => {
+    const d = new Date(iso)
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
+    return d.toISOString().slice(0, 10)
+  }
+  const stripWeeks = (): { week: string; planned: number; actual: number }[] => {
+    const last = [schedule.targetEnd, headline.projectedEnd ?? schedule.targetEnd].sort().at(-1) as string
+    const out: { week: string; planned: number; actual: number }[] = []
+    const first = [schedule.start, headline.started ?? schedule.start].sort()[0]
+    for (let d = new Date(weekKey(first) + 'T12:00:00.000Z'); d.toISOString() <= last; d.setUTCDate(d.getUTCDate() + 7)) {
+      const wk = d.toISOString().slice(0, 10)
+      out.push({
+        week: wk,
+        planned: progressRows.filter((r) => r.plannedStart && weekKey(r.plannedStart) === wk).length,
+        actual: progressRows.filter((r) => r.actualStart && weekKey(r.actualStart) === wk).length,
+      })
+    }
+    return out
+  }
+  const progressTab = () => (
+    <div>
+      {overview()}
+      <div className="overview-band">
+        <h3 className="overview-headline">{headline.sentence}</h3>
+      </div>
+      <h4>{PROGRESS.journeyTitle}</h4>
+      <p className="reason">{PROGRESS.journeyHint}</p>
+      <div className="journey">
+        {STAGES.map((st) => (
+          <div key={st.id} className="journey-col">
+            <div className="journey-head">
+              {st.label} <span className="reason">{progressRows.filter((r) => r.stage === st.id).length}</span>
+            </div>
+            {progressRows
+              .filter((r) => r.stage === st.id)
+              .map((r) => (
+                <a key={r.stepId} className={`journey-dot ring-${Math.min(r.ring, 3)}`} href={stepHref(r.stepId)} title={r.title} onClick={(e) => { e.preventDefault(); setActiveTab('plan'); setOpenStepId(r.stepId) }}>
+                  {r.title}
+                </a>
+              ))}
+          </div>
+        ))}
+      </div>
+      <h4>{PROGRESS.stripTitle}</h4>
+      <div className="strip" aria-label={PROGRESS.stripTitle}>
+        {stripWeeks().map((w) => (
+          <div key={w.week} className="strip-week" title={`${PROGRESS.stripWeek(absoluteDate(w.week + 'T12:00:00.000Z'))}: ${PROGRESS.stripPlanned(w.planned)}, ${PROGRESS.stripActual(w.actual)}`}>
+            <div className="strip-bars">
+              <span className="strip-planned" style={{ height: `${Math.min(100, w.planned * 20)}%` }} />
+              <span className="strip-actual" style={{ height: `${Math.min(100, w.actual * 20)}%` }} />
+            </div>
+            <span className="strip-label">{absoluteDate(w.week + 'T12:00:00.000Z').replace(/,? \d{4}$/, '')}</span>
+          </div>
+        ))}
+      </div>
+      <h4>{PROGRESS.perStepTitle}</h4>
+      <div className="table-scroll">
+        <table className="cohort-table progress-table">
+          <thead>
+            <tr>
+              <th>{SCHEDULE_TAB.colStep}</th>
+              <th>{PROGRESS.colPlanned}</th>
+              <th>{PROGRESS.colActual}</th>
+              <th>{PROGRESS.colSlip}</th>
+              <th>{PROGRESS.colWhy}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {progressRows.map((r) => (
+              <tr key={r.stepId}>
+                <td>
+                  <a href={stepHref(r.stepId)} onClick={(e) => { e.preventDefault(); setActiveTab('plan'); setOpenStepId(r.stepId) }}>{r.title}</a>
+                </td>
+                <td>{r.plannedStart ? absoluteDate(r.plannedStart) : '—'}</td>
+                <td>{r.actualStart ? absoluteDate(r.actualStart) : PROGRESS.notStartedYet}</td>
+                <td>{r.slipDays === null ? '—' : PROGRESS.slipDays(r.slipDays)}</td>
+                <td className="reason">{r.slipReason ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <h4>{PROGRESS.changesTitle}</h4>
+      {!lastCheckpoint && <p className="reason">{PROGRESS.changesNoCheckpoint}</p>}
+      {lastCheckpoint && changes.length === 0 && <p className="reason">{PROGRESS.changesNone}</p>}
+      {changes.length > 0 && (
+        <>
+          <p className="reason">{PROGRESS.driftNote(changes.filter((c) => !c.planned).length)}</p>
+          <ul className="sections">
+            {changes.map((c, i) => (
+              <li key={i}>
+                <Chip status={c.planned ? 'done' : 'warning'}>{c.planned ? PROGRESS.planned : PROGRESS.unplanned}</Chip> {c.text}
+                {c.at && <span className="reason"> · {absoluteDate(c.at)}</span>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {(saved?.revisions ?? []).length > 0 && (
+        <details>
+          <summary>{PROGRESS.revision(saved?.revision ?? 1, absoluteDate((saved?.revisions ?? []).at(-1)?.at ?? new Date().toISOString()))}</summary>
+          <ul className="sections">
+            {(saved?.revisions ?? []).map((r) => (
+              <li key={r.revision}>
+                {PROGRESS.revision(r.revision, absoluteDate(r.at))}: {r.note}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  )
+
+  // ---- Schedule (§8): the timeline with owners, editable dates, the critical path, ICS ----
+  const exportIcs = (): void => downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId), 'text/calendar')
+  const scheduleTab = () => (
+    <div>
+      <p className="overview-constraint">{schedule.derivation.criticalPath}</p>
+      {timeline()}
+      <h4>{SCHEDULE_TAB.ownersTitle}</h4>
+      <div className="table-scroll">
+        <table className="cohort-table progress-table">
+          <thead>
+            <tr>
+              <th>{SCHEDULE_TAB.colStep}</th>
+              <th>{SCHEDULE_TAB.colOwner}</th>
+              <th>{SCHEDULE_TAB.colStart}</th>
+              <th>{SCHEDULE_TAB.colEnd}</th>
+              <th>{SCHEDULE_TAB.colRing}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {work.map((st) => (
+              <tr key={st.id}>
+                <td>
+                  <a href={stepHref(st.id)} onClick={(e) => { e.preventDefault(); setActiveTab('plan'); setOpenStepId(st.id) }}>{st.title}</a>
+                </td>
+                <td>
+                  <input type="text" value={st.owner ?? ''} placeholder={SECTION.ownerPlaceholder} aria-label={`${SECTION.owner}: ${st.title}`} onChange={(e) => saveStepMeta(st, { owner: e.currentTarget.value || null })} />
+                </td>
+                <td>
+                  <input type="date" value={(st.scheduledDate ?? st.rings[0]?.plannedStart ?? '').slice(0, 10)} aria-label={`${SECTION.scheduledDate}: ${st.title}`} onChange={(e) => e.currentTarget.value && saveStepMeta(st, { scheduledDate: `${e.currentTarget.value}T12:00:00.000Z` })} />
+                </td>
+                <td>{st.rings.at(-1) ? absoluteDate(st.rings.at(-1)!.plannedEnd) : SCHEDULE_TAB.unscheduled}</td>
+                <td>{st.rings.length > 0 ? st.rings.map((r) => r.name).join(' → ') : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="row no-print">
+        <Button icon="download" onClick={exportIcs}>
+          {SCHEDULE_TAB.exportIcs}
+        </Button>
+        <span className="reason">{SCHEDULE_TAB.icsNote}</span>
+      </p>
         <Card title={C.settingsTitle} className="settings-card no-print">
           <p>
             <label>
@@ -589,10 +813,28 @@ export function RoadmapPage({
             {CALENDAR.noFriday} {CALENDAR.weeklyCap(schedule.enforcementCap)}
           </p>
         </Card>
-      </div>
+    </div>
+  )
 
-      {/* One row of actions, right-aligned (§9). */}
-      <p className="row actions-row no-print">
+  // ---- Export (§8): the plan file, the document, the change record, markdown ----
+  const changeRecord = (): string => {
+    const lines: string[] = [`# Change record: ${tenantName}`, `Plan ${planId}, revision ${saved?.revision ?? 1}`, '']
+    for (const st of steps) {
+      lines.push(`## ${st.title}`)
+      lines.push(`- ${SECTION.whatChanges}: ${st.whatChanges}`)
+      lines.push(`- Status: ${STEP_STATUS_LABEL[st.status]}${st.owner ? ` · ${SECTION.owner}: ${st.owner}` : ''}`)
+      if (st.tracking) lines.push(`- Policy: ${st.tracking.policyName} (${st.tracking.note})${st.tracking.enforcedAt ? `; ${TRACK.enforced(absoluteDate(st.tracking.enforcedAt))}` : ''}`)
+      for (const r of st.rings) lines.push(`- ${r.name}: ${absoluteDate(r.plannedStart)} to ${absoluteDate(r.plannedEnd)}${r.actualStart ? ` (started ${absoluteDate(r.actualStart)})` : ''}`)
+      for (const h of st.history) lines.push(`- ${absoluteDate(h.at)}: ${STEP_STATUS_LABEL[h.from]} → ${STEP_STATUS_LABEL[h.to]}${h.note ? ` — ${h.note}` : ''}`)
+      lines.push('')
+    }
+    return lines.join('\n')
+  }
+  const exportTab = () => (
+    <div className="export-grid">
+      <Card title={EXPORT_TAB.planFile}>
+        <p className="reason">{EXPORT_TAB.planFileText}</p>
+      <p className="row no-print">
         <Button variant="primary" icon="download" onClick={savePlan}>
           {C.save}
         </Button>
@@ -607,6 +849,18 @@ export function RoadmapPage({
           {C.print}
         </Button>
       </p>
+      </Card>
+      <Card title={EXPORT_TAB.changeRecord}>
+        <p className="reason">{EXPORT_TAB.changeRecordText}</p>
+        <p className="row no-print">
+          <Button icon="download" onClick={() => downloadFile(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.md`, changeRecord(), 'text/markdown')}>
+            {EXPORT_TAB.downloadChangeRecord}
+          </Button>
+        </p>
+      </Card>
+      <Card title={EXPORT_TAB.pdf}>
+        <p className="reason">{EXPORT_TAB.pdfText}</p>
+      </Card>
     </div>
   )
 
@@ -653,7 +907,7 @@ export function RoadmapPage({
     return (
       <div>
         {/* Mini-map: the whole plan in one bar, segmented by phase, today marked (§10). */}
-        <div className="minimap no-print" aria-label={C.tabs.timeline}>
+        <div className="minimap no-print" aria-label={C.tabs.schedule}>
           {waves.map((w) => {
             const all = phaseSteps(w)
             const doneN = all.filter((st) => st.status === 'done').length
@@ -707,7 +961,7 @@ export function RoadmapPage({
                     </span>
                   </summary>
                   {w.wave === 0 && created > 0 && <p className="reason">{C.day0Text(created)}</p>}
-                  <div className="step-grid">{inWave.map((st) => stepTile(st, () => { setActiveTab('steps'); setOpenStepId(st.id) }))}</div>
+                  <div className="step-grid">{inWave.map((st) => stepTile(st, () => { setActiveTab('plan'); setOpenStepId(st.id) }))}</div>
                 </details>
               )}
               {w.wave === 0 && schedule.verification.days > 0 && windowCard('window-verification', C.verificationWindow(schedule.verification.days), C.verificationText(rollout.toSetUp, rollout.enabled), schedule.verification)}
@@ -861,10 +1115,11 @@ export function RoadmapPage({
         active={activeTab}
         onChange={setActiveTab}
         tabs={[
-          { id: 'overview', label: C.tabs.overview, render: overview },
-          { id: 'timeline', label: C.tabs.timeline, badge: C.weeksBadge(schedule.weeks), render: timeline },
+          { id: 'progress', label: C.tabs.progress, badge: C.stepsBadge(summary.done, summary.total), render: progressTab },
+          { id: 'plan', label: C.tabs.plan, render: stepsView },
           { id: 'danger', label: C.tabs.danger, badge: dangers.length || '', render: dangerAreas },
-          { id: 'steps', label: C.tabs.steps, badge: C.stepsBadge(summary.done, summary.total), render: stepsView },
+          { id: 'schedule', label: C.tabs.schedule, badge: C.weeksBadge(schedule.weeks), render: scheduleTab },
+          { id: 'export', label: C.tabs.export, render: exportTab },
         ]}
       />
       <PrintPlan

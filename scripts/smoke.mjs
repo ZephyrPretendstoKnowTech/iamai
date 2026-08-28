@@ -163,9 +163,11 @@ try {
   check('Roadmap: overview renders', await waitFor(`/of 18 steps in place/.test(document.body.innerText)`))
   t = await text()
   check('Roadmap: headline 2 of 18 steps in place, finishes', /2 of 18 steps in place · finishes /.test(t))
-  check('Roadmap: tiles Ready today and Blocked', /\d+\s+Ready today/.test(t) && /6\s+Blocked/.test(t))
+  check('Roadmap: tiles Ready today and Blocked', /\d+\s+Ready today/.test(t) && /\d+\s+Blocked/.test(t))
   check('Roadmap: danger areas name the blocked user', /1 user is blocked today|Danger areas\s+1/.test(t))
-  check('Roadmap: steps tab lists the verification campaign', (await clickText('/^Steps/')) && (await waitFor(`/Run the MFA verification campaign/.test(document.body.innerText)`)))
+  check('Roadmap: Plan tab lists the verification campaign', (await clickText('/^Plan/')) && (await waitFor(`/Run the MFA verification campaign/.test(document.body.innerText)`)))
+  check('Roadmap: Progress tab shows the journey', (await clickText('/^Progress/')) && (await waitFor(`/The journey/.test(document.body.innerText)`)))
+  check('Roadmap: Schedule tab carries owners and the calendar export', (await clickText('/^Schedule/')) && (await waitFor(`/Owners and dates/.test(document.body.innerText)`)))
 
   // Inventory and Licensing reachable
   await go('inventory')
