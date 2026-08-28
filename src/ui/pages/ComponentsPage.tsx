@@ -23,48 +23,14 @@ import {
 } from '../components/index.ts'
 import type { ChipStatus, Column, IconName, PickerOption } from '../components/index.ts'
 import { InventoryPage } from './InventoryPage.tsx'
+import { MfaViabilityScreen } from '../MfaViabilityScreen.tsx'
 import { MappingPage } from './MappingPage.tsx'
 import { CoveragePage } from './CoveragePage.tsx'
 import { RoadmapPage } from './RoadmapPage.tsx'
-import type { BaselineResult } from './BaselinePage.tsx'
-import { fixtureSnapshot } from './fixtureSnapshot.ts'
+import { fixtureBaseline, fixtureSnapshot } from './fixtureSnapshot.ts'
 
 const FIXTURE = fixtureSnapshot()
-const FIXTURE_BASELINE: BaselineResult = {
-  source: 'synthetic baseline',
-  fetchFailures: 0,
-  origin: { kind: 'upload', files: [] },
-  pkg: {
-    policies: [
-      {
-        id: 'b-1',
-        displayName: 'ACME - GLOBAL - BLOCK - LegacyAuth - ExludeSvcAccounts',
-        state: 'enabled',
-        conditions: {
-          users: { includeUsers: ['All'], excludeGroups: ['11111111-1111-1111-1111-111111111111'] },
-          applications: { includeApplications: ['All'] },
-          clientAppTypes: ['exchangeActiveSync', 'other'],
-        },
-        grantControls: { operator: 'OR', builtInControls: ['block'] },
-      },
-    ],
-    origins: {},
-    report: { considered: 1, parsed: 1, skipped: [], errors: [], duplicates: [], warnings: [] },
-    references: [
-      {
-        id: '11111111-1111-1111-1111-111111111111',
-        kind: 'group',
-        portability: 'tenantSpecific',
-        uses: [{ policyName: 'ACME - GLOBAL - BLOCK - LegacyAuth - ExludeSvcAccounts', side: 'exclude' }],
-      },
-    ],
-    groupSignatures: [
-      { id: '11111111-1111-1111-1111-111111111111', inferredRole: 'globalExclusion', confidence: 'high', evidence: 'excluded from 1 of 1 user-targeting policies, never included' },
-    ],
-    variantSets: [{ intentKey: 'countries', relation: 'variant', policyNames: ['Countries - allow list', 'Countries - block list'] }],
-    docs: [],
-  } as unknown as BaselineResult['pkg'],
-}
+const FIXTURE_BASELINE = fixtureBaseline()
 
 const ICONS: IconName[] = [
   'shield', 'user', 'users', 'key', 'device', 'location', 'policy', 'chart', 'check', 'alert',
@@ -230,6 +196,10 @@ export function ComponentsPage() {
             reference={[{ route: 'reads', label: 'What IAMAI reads' }]}
           />
         </div>
+      </Section>
+
+      <Section id="scan" title="Scan (synthetic tenant)">
+        <MfaViabilityScreen tenantId={FIXTURE.tenantId} initial={{ snapshot: FIXTURE, at: FIXTURE.asOf }} onRunningChange={() => {}} onComplete={() => {}} />
       </Section>
 
       <Section id="setup" title="Setup (synthetic tenant)">
