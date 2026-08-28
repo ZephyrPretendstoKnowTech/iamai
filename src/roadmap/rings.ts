@@ -9,6 +9,7 @@ import { RINGS } from '../copy/rings.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { OBSERVATION_DAYS } from './constants.ts'
 import type { Ring, RingTargeting, Step } from './types.ts'
+import { canDenyAccess } from './strand.ts'
 
 /** Ring counts and sizes by active users (roadmap-v2.md §1 table). */
 export type RingBand = {
@@ -36,16 +37,15 @@ const IT_DEPARTMENT = /^(it|i\.t\.|information technology|technology|ict|infrast
 const RING_SUCCESS_PERCENT = 95
 const ANNOUNCE_DAYS_BEFORE = 3
 
-export function ringBandFor(activeUsers: number): RingBand {
+export function ringBandFor(activeUsers: number, longSoak = true): RingBand {
   const band = RING_BANDS.find((b) => activeUsers <= b.maxActive) ?? RING_BANDS[RING_BANDS.length - 1]
-  return activeUsers > LONG_SOAK_ACTIVE ? { ...band, soakDays: LONG_SOAK_DAYS } : band
+  return longSoak && activeUsers > LONG_SOAK_ACTIVE ? { ...band, soakDays: LONG_SOAK_DAYS } : band
 }
 
 /** Steps that can deny access get rings; prerequisites, report-only creation and verification have one. */
 export function ringable(step: Step): boolean {
-  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring') return false
   if (step.status === 'done' || step.status === 'skipped') return false
-  return step.readiness.family !== 'other'
+  return canDenyAccess(step)
 }
 
 export type RingContext = {
@@ -202,6 +202,7 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
       memberCount: n,
       suggestedMemberIds: useFilter ? [] : d.ids,
       filter: useFilter && d.kind === 'group' ? rule(index === 0 ? ['IT', ...d.departments].filter((x, i, a) => a.indexOf(x) === i) : d.departments) : null,
+      departments: d.departments,
       advice:
         n === 0
           ? RINGS.emptyRing

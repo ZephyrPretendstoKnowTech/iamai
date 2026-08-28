@@ -59,6 +59,8 @@ export type RingTargeting = {
   suggestedMemberIds: string[]
   /** Dynamic membership rule in Entra's terms, when a list would be too long. */
   filter: string | null
+  /** Departments the ring draws from (how two rings are compared above the filter threshold). */
+  departments: string[]
   /** One sentence of targeting advice for this ring. */
   advice: string
 }
@@ -122,7 +124,7 @@ export type Step = {
   /** What-If result for the operator, when available. */
   operatorWhatIf?: string | null
   /** Proposed policy name in the tenant's convention, and the baseline's original. */
-  naming?: { proposed: string; fromBaseline: string | null } | null
+  naming?: { proposed: string; fromBaseline: string | null; note?: string | null } | null
   // ---- prompt 17 ----
   /** Security value, effort, disruption, priority; null for prerequisite and recurring steps. */
   score?: GoalScore | null
@@ -130,4 +132,6 @@ export type Step = {
   /** Ordered rollout rings; one entry (or none) for steps that cannot deny access. */
   rings: Ring[]
   currentRing: number
+  /** Whether enforcing this step can deny or interrupt access (grant, block, session), from the goal's floor. */
+  denies?: boolean
 }

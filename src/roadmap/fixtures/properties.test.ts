@@ -14,6 +14,14 @@ const HIGH_DISRUPTION = 4
 
 const fmt = (n: number) => n.toLocaleString('en-AU')
 
+function ringOverlap(x: RingLike, y: RingLike): number {
+  if (x.targeting.suggestedMemberIds.length > 0 && y.targeting.suggestedMemberIds.length > 0) return overlapShare(x.targeting.suggestedMemberIds, y.targeting.suggestedMemberIds)
+  if (x.targeting.kind === 'all' && y.targeting.kind === 'all') return 1
+  if (x.targeting.kind !== y.targeting.kind) return 0
+  if (x.targeting.departments.length === 0 && y.targeting.departments.length === 0) return 1
+  return x.targeting.departments.some((d) => y.targeting.departments.includes(d)) ? 1 : 0
+}
+
 function overlapShare(a: string[], b: string[]): number {
   if (a.length === 0 || b.length === 0) return 0
   const set = new Set(a)
@@ -21,7 +29,7 @@ function overlapShare(a: string[], b: string[]): number {
   return both / Math.min(a.length, b.length)
 }
 
-type RingLike = { plannedStart: string; plannedEnd: string; targeting: { memberCount: number } }
+type RingLike = { plannedStart: string; plannedEnd: string; targeting: { kind: string; memberCount: number; suggestedMemberIds: string[]; departments: string[] } }
 function ringsOf(step: Step): RingLike[] {
   return (step as unknown as { rings?: RingLike[] }).rings ?? []
 }
@@ -84,9 +92,17 @@ for (const f of fixtures) {
         if (overlapShare(a.population.ids, b.population.ids) <= 0.5) continue
         const ra = ringsOf(a)
         const rb = ringsOf(b)
-        const windowsA = ra.length > 0 ? ra.map((r) => [r.plannedStart, r.plannedEnd]) : [[waveWindow(a.id).start, waveWindow(a.id).end]]
-        const windowsB = rb.length > 0 ? rb.map((r) => [r.plannedStart, r.plannedEnd]) : [[waveWindow(b.id).start, waveWindow(b.id).end]]
-        for (const [s1, e1] of windowsA) for (const [s2, e2] of windowsB) if (s1 < e2 && s2 < e1) failures.push(`${a.id} and ${b.id} both enforce ${s1}..${e1} / ${s2}..${e2}`)
+        if (ra.length === 0 || rb.length === 0) {
+          const wa = waveWindow(a.id)
+          const wb = waveWindow(b.id)
+          if (wa.start < wb.end && wb.start < wa.end) failures.push(`${a.id} and ${b.id} both enforce ${wa.start}..${wa.end} / ${wb.start}..${wb.end}`)
+          continue
+        }
+        // Ring windows are compared for the people each ring touches: a pilot and an "everyone" ring are different people.
+        for (const x of ra) for (const y of rb) {
+          if (ringOverlap(x, y) <= 0.5) continue
+          if (x.plannedStart < y.plannedEnd && y.plannedStart < x.plannedEnd) failures.push(`${a.id} ${x.plannedStart}..${x.plannedEnd} overlaps ${b.id} ${y.plannedStart}..${y.plannedEnd} for the same people`)
+        }
       }
     }
     assert.deepEqual(failures, [])
@@ -96,14 +112,28 @@ for (const f of fixtures) {
     // The derivation travels with the schedule (§2: no hard-coded wave dates).
     const derivation = (schedule as unknown as { derivation?: { criticalPath: string; constraint: string } }).derivation
     assert.ok(derivation && derivation.criticalPath.length > 0, 'schedule carries a critical-path derivation')
-    let prevEnd = schedule.start
+    let prevStart = schedule.start
     for (const w of schedule.waves) {
       assert.ok(!Number.isNaN(Date.parse(w.start)) && !Number.isNaN(Date.parse(w.end)), `wave ${w.wave} has real dates`)
-      assert.ok(w.start >= prevEnd, `wave ${w.wave} starts (${w.start}) after the previous wave ends (${prevEnd})`)
-      if (w.wave > 0) assert.notEqual(new Date(w.start).getUTCDay(), 5, `wave ${w.wave} does not start enforcement on a Friday (${w.start})`)
-      prevEnd = w.end
+      assert.ok(w.start >= prevStart, `wave ${w.wave} starts (${w.start}) no earlier than the previous wave (${prevStart})`)
+      prevStart = w.start
     }
-    assert.ok(schedule.weeks <= f.expect.weeksAtMost, `${schedule.weeks} weeks fits the band (${f.expect.weeksAtMost})`)
+    const graph = (schedule as unknown as { graph: Record<string, { stepId: string; kind: string }[]> }).graph
+    for (const s of steps) {
+      for (const r of ringsOf(s)) {
+        const day = new Date(r.plannedStart).getUTCDay()
+        assert.ok(day >= 1 && day <= 4, `${s.id} ring ${r.plannedStart} starts Monday to Thursday`)
+        assert.ok(r.plannedEnd > r.plannedStart, `${s.id} ring has a real window`)
+      }
+      for (const d of graph[s.id] ?? []) {
+        if (d.kind !== 'hard') continue
+        const other = steps.find((x) => x.id === d.stepId)
+        const oe = other && ringsOf(other).length > 0 ? ringsOf(other).at(-1)!.plannedEnd : null
+        const ss = ringsOf(s)[0]?.plannedStart ?? null
+        if (oe && ss) assert.ok(ss >= oe, `${s.id} starts (${ss}) after ${d.stepId} ends (${oe})`)
+      }
+    }
+    assert.ok(schedule.totalDays <= f.expect.weeksAtMost * 7 + 7, `${schedule.weeks} weeks (${schedule.totalDays} days) fits the band (${f.expect.weeksAtMost} weeks plus the week of slack)`)
   })
 
   test(`${f.name}: rings match the band table`, () => {

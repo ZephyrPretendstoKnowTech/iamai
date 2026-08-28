@@ -26,12 +26,13 @@ import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies
 import { ROADMAP as C } from '../../copy/pages.ts'
 import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
 import { overrunList, roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
+import { CALENDAR } from '../../copy/schedule.ts'
 import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import { planSummary } from '../../roadmap/summary.ts'
 import { BANDS } from '../../roadmap/constants.ts'
 import type { SizeBand } from '../../roadmap/constants.ts'
-import type { Schedule } from '../../roadmap/schedule.ts'
+import type { ChangeFreeze, Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
 import { ScanAge, StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
@@ -44,7 +45,7 @@ import type { ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }>
-type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; band?: SizeBand | null; owner?: string }
+type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; band?: SizeBand | null; owner?: string; freeze?: ChangeFreeze | null }
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
   done: 'done',
@@ -178,6 +179,7 @@ export function RoadmapPage({
       operatorUserId: operator?.userId ?? null,
       names,
       groupMembers: groups,
+      changeFreeze: saved?.freeze ?? null,
     })
     mergePersisted(steps, saved?.steps ?? null)
     annotateStateReasons(steps)
@@ -303,6 +305,12 @@ export function RoadmapPage({
     setSaved((p) => (p ? { ...p, band: next } : p))
     setVersion((v) => v + 1)
   }
+  // The change freeze travels with the plan (roadmap-v2.md §2): the schedule moves around it.
+  const setFreeze = (next: ChangeFreeze | null): void => {
+    setSaved((p) => (p ? { ...p, freeze: next } : p))
+    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), freeze: next })
+    setVersion((v) => v + 1)
+  }
   const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
   const stepById = new Map(steps.map((s) => [s.id, s]))
 
@@ -406,13 +414,9 @@ export function RoadmapPage({
     setStatusFilter(status ? new Set([status]) : new Set())
     setActiveTab('steps')
   }
-  const campaignWeeks = schedule.verification.days > 0 ? Math.round(schedule.verification.days / 7) : 0
-  const constraint =
-    work.length === 0
-      ? null
-      : campaignWeeks > 0
-        ? C.constraintCampaign(schedule.weeks, rollout.toSetUp, campaignWeeks)
-        : C.constraintWaves(schedule.weeks, schedule.waves.filter((w) => w.wave > 0).length, schedule.observation.days)
+  // The critical path in one sentence (roadmap-v2.md §2), plus what the scheduler relaxed to land on the band.
+  const constraint = work.length === 0 ? null : [schedule.derivation.criticalPath, ...schedule.derivation.relaxed].join(' ')
+  const policyCount = schedule.policyCount
   const readyToday = steps.filter((s) => s.status === 'ready')
   const highDangers = dangers.filter((d) => d.severity === 'high').length
 
@@ -454,6 +458,23 @@ export function RoadmapPage({
               </a>
             )}
           </Callout>
+          {policyCount && (
+            <Callout kind={policyCount.warning ? 'warning' : 'info'}>
+              {policyCount.statement}
+              {policyCount.warning && ` ${policyCount.warning}`}
+              {policyCount.consolidation.length > 0 && (
+                <>
+                  {' '}
+                  {C.consolidationLead(policyCount.consolidation.length)}
+                  <ul className="sections">
+                    {policyCount.consolidation.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </Callout>
+          )}
           {overrun && overrunSteps.length > 0 && (
             <details className="card">
               <summary>{C.overrunShow(schedule.extendedBy.filter((id) => id !== 's-verify-mfa').length)}</summary>
@@ -496,6 +517,37 @@ export function RoadmapPage({
               {C.owner}{' '}
               <input type="text" value={owner} placeholder={C.ownerPlaceholder} aria-label={C.owner} onChange={(e) => setOwner(e.currentTarget.value)} style={{ minWidth: '16rem' }} />
             </label>
+          </p>
+          <div className="row">
+            <span className="muted">{CALENDAR.freezeLabel}</span>
+            <label>
+              {CALENDAR.freezeFrom}{' '}
+              <input
+                type="date"
+                value={saved?.freeze?.from.slice(0, 10) ?? ''}
+                aria-label={`${CALENDAR.freezeLabel} ${CALENDAR.freezeFrom}`}
+                onChange={(e) => e.currentTarget.value && setFreeze({ from: `${e.currentTarget.value}T00:00:00.000Z`, to: saved?.freeze?.to ?? `${e.currentTarget.value}T23:59:59.000Z` })}
+              />
+            </label>
+            <label>
+              {CALENDAR.freezeTo}{' '}
+              <input
+                type="date"
+                value={saved?.freeze?.to.slice(0, 10) ?? ''}
+                aria-label={`${CALENDAR.freezeLabel} ${CALENDAR.freezeTo}`}
+                onChange={(e) => e.currentTarget.value && setFreeze({ from: saved?.freeze?.from ?? `${e.currentTarget.value}T00:00:00.000Z`, to: `${e.currentTarget.value}T23:59:59.000Z` })}
+              />
+            </label>
+            {saved?.freeze && (
+              <Button size="sm" variant="quiet" onClick={() => setFreeze(null)}>
+                {CALENDAR.freezeClear}
+              </Button>
+            )}
+            <InfoTip title={CALENDAR.freezeLabel} text={CALENDAR.freezeHint} />
+          </div>
+          {schedule.freeze && <p className="reason">{CALENDAR.freeze(absoluteDate(schedule.freeze.from), absoluteDate(schedule.freeze.to))}</p>}
+          <p className="reason">
+            {CALENDAR.noFriday} {CALENDAR.weeklyCap(schedule.enforcementCap)}
           </p>
         </Card>
       </div>

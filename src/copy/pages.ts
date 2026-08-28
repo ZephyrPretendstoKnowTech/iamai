@@ -356,10 +356,7 @@ export const ROADMAP = {
   // Overview redesign (prompt 26 §6-§9)
   headline: (done: number, total: number, finishes: string) => `${done} of ${total} steps in place · finishes ${finishes}`,
   headlineDone: (total: number) => `All ${count(total, 'step')} in place`,
-  constraintCampaign: (weeks: number, people: number, campaignWeeks: number) =>
-    `${count(weeks, 'week')}, because MFA registration for ${count(people, 'person', 'people')} takes ${campaignWeeks === 1 ? 'one' : campaignWeeks === 2 ? 'two' : campaignWeeks} of them.`,
-  constraintWaves: (weeks: number, waves: number, observationDays: number) =>
-    `${count(weeks, 'week')}: ${count(waves, 'enforcement wave')}${observationDays > 0 ? ` with a ${observationDays}-day observation window` : ''}.`,
+  consolidationLead: (n: number) => `${count(n, 'consolidation candidate')}:`,
   readyToday: 'Ready today',
   attentionTitle: 'What needs attention before you start',
   attentionDangers: (n: number) => (n === 0 ? 'No danger areas: nobody is blocked today.' : `${count(n, 'danger area')} to look at first.`),
