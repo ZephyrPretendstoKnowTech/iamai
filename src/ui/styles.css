@@ -656,3 +656,12 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .cohort-table caption { text-align: left; font-weight: 600; color: var(--muted); padding-bottom: 0.25rem; }
 .cohort-table td { padding: 0.15rem 0.25rem; border-top: 1px solid var(--border); }
 .cohort-table td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Step content (roadmap-v2.md §4) */
+.failure-modes li { margin-bottom: 0.35rem; }
+.failure-modes li.applies-yes > strong { color: var(--warning-fg, inherit); }
+.change-table th { text-align: left; font-weight: 600; color: var(--muted); padding: 0.15rem 0.25rem; }
+.change-table code { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-xs, 0.8rem); }
+.rings > li { margin-bottom: 0.5rem; }
+.print-only { display: none; }
+@media print { .print-only { display: block; } }

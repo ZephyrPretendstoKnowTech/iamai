@@ -42,6 +42,7 @@ export const CRITICAL = {
       : `${step} rolls through ${count(rings, 'ring')} of ${count(soak, 'day')} each`,
   cap: (n: number, step: string) => `only ${count(n, 'enforcement event')} a week fit this size of tenant, which places ${step} last`,
   freeze: (to: string, step: string) => `the change freeze ends on ${to} and ${step} starts after it`,
+  scheduled: (step: string, date: string) => `${step} is scheduled by hand for ${date}`,
   soft: (step: string, other: string) => `${step} cannot overlap ${other} for the same people`,
   prerequisites: (n: number) => `${count(n, 'prerequisite')} take the first days`,
   shorterSoak: (from: number, to: number) => `Each ring soaks ${count(to, 'day')} instead of ${from}; the longer soak would run past the size band.`,

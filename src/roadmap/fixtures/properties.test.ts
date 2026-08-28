@@ -7,6 +7,7 @@ import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
 import { canDenyAccess, wouldStrand } from '../strand.ts'
 import { buildPlanFile } from '../plan.ts'
+import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import type { Step } from '../types.ts'
 
 const fixtures = allFixtures()
@@ -251,4 +252,56 @@ test('hostile: every step still produced with readiness marked unknown', () => {
     const said = [...s.readiness.lines, ...s.evidence.lines].some((l) => /not (be )?read|unknown|could not|unavailable|no sign-in|not readable|not usable/i.test(l))
     assert.ok(said, `${s.id}: says what is unknown (${[...s.readiness.lines, ...s.evidence.lines].join(' | ')})`)
   }
+})
+
+// ---- step content (roadmap-v2.md §4) ----
+
+for (const f of fixtures) {
+  const run = runFixture(f)
+  test(`${f.name}: every step answers the twelve parts it applies to`, () => {
+    for (const s of run.steps) {
+      assert.ok(s.whatChanges.length > 0, `${s.id}: what changes`)
+      assert.ok(s.verify && s.verify.where.length > 0 && s.verify.good.length > 0, `${s.id}: how to verify`)
+      if (s.status === 'done' || s.status === 'skipped') continue
+      if (canDenyAccess(s)) {
+        assert.ok(s.failureModes.length > 0, `${s.id}: what could go wrong`)
+        for (const m of s.failureModes) assert.ok(m.evidence.length > 0, `${s.id}: ${m.title} has evidence`)
+        assert.ok(s.verify?.filter, `${s.id}: an exact sign-in log filter`)
+        assert.ok(s.helpDesk && s.helpDesk.callsAbout.length > 0 && s.helpDesk.whatToSay.length > 0, `${s.id}: help-desk notes`)
+        if (s.comms && s.comms !== NO_ANNOUNCEMENT && s.rings.length > 1) assert.equal(s.ringComms.length, s.rings.length, `${s.id}: one announcement per ring`)
+        for (const r of s.rings) assert.ok(r.entryCriteria.length > 0 && r.exitCriteria.length > 0, `${s.id}: ring ${r.name} has criteria`)
+      }
+      if (s.kind === 'adjust' && s.action.json) {
+        assert.ok(s.rollbackBody, `${s.id}: previous policy body stored`)
+        assert.ok((s.action.changes?.length ?? 0) > 0, `${s.id}: field-by-field changes`)
+      }
+    }
+  })
+}
+
+test('owner and scheduled date travel with the plan and move the schedule', () => {
+  const f = byName('small')
+  const first = runFixture(f)
+  const target = first.steps.find((s) => s.rings.length > 0 && s.status !== 'done')!
+  const later = '2026-11-02T12:00:00.000Z'
+  const second = runFixture(f, { scheduled: { [target.id]: later } })
+  const moved = second.steps.find((s) => s.id === target.id)!
+  assert.ok(moved.rings[0].plannedStart >= later, `${moved.rings[0].plannedStart} is on or after the scheduled date`)
+  assert.equal(second.schedule.derivation.constraint === 'scheduled' || second.schedule.derivation.chain.length > 0, true)
+  moved.owner = 'Identity team'
+  moved.scheduledDate = later
+  const file = buildPlanFile({
+    planId: f.planId,
+    snapshot: f.snapshot,
+    operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' },
+    baselineSource: { owner: 'fixture', repo: 'baseline', label: 'Fixture', commit: 'abc' } as never,
+    mapping: f.mapping,
+    steps: second.steps,
+    checkpoints: [],
+  })
+  const back = JSON.parse(JSON.stringify(file)) as typeof file
+  const saved = back.steps.find((s) => s.id === target.id)!
+  assert.equal(saved.owner, 'Identity team')
+  assert.equal(saved.scheduledDate, later)
+  assert.deepEqual(saved.rings, moved.rings)
 })

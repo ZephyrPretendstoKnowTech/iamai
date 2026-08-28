@@ -13,6 +13,8 @@ import { proposeRings, ringContextIndexes } from './rings.ts'
 import { accountVerdict } from './strand.ts'
 import { policyCountFor } from './policyCount.ts'
 import { describePopulation, populationContext } from './population.ts'
+import { failureModesFor, helpDeskFor, verifyFor } from './content.ts'
+import { ROLLBACK_V2, WHAT_CHANGES } from '../copy/stepContent.ts'
 import { NAMING } from '../copy/schedule.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingState } from '../mapping/types.ts'
@@ -43,7 +45,7 @@ import { evidenceFor } from './evidence.ts'
 import { goalFamily, readinessFor } from './readiness.ts'
 import { buildSchedule, nextMonday } from './schedule.ts'
 import type { ChangeFreeze, Schedule } from './schedule.ts'
-import type { Action, Blocker, Step, StepPopulation, StepStatus } from './types.ts'
+import type { Action, Blocker, Readiness, Step, StepPopulation, StepStatus } from './types.ts'
 import type { SizeBand } from './constants.ts'
 import { ADJUST, BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
 import { INVENTORY } from '../copy/inventory.ts'
@@ -71,13 +73,16 @@ export type RoadmapInput = {
   groupMembers?: GroupMembers
   /** A date range in which nothing is enforced (roadmap-v2.md §2). */
   changeFreeze?: ChangeFreeze | null
+  /** Operator-set start dates per step (roadmap-v2.md §4.12). */
+  scheduled?: Record<string, string> | null
 }
 
 export type RoadmapResult = { steps: Step[]; schedule: Schedule }
 
 const EXTRAS: Pick<
   Step,
-  'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
+  | 'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
+  | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate'
 > = {
   impact: '',
   safeToday: false,
@@ -91,6 +96,14 @@ const EXTRAS: Pick<
   populationBasis: '',
   populationNames: [],
   populationView: null,
+  whatChanges: '',
+  failureModes: [],
+  verify: null,
+  helpDesk: null,
+  ringComms: [],
+  rollbackBody: null,
+  owner: null,
+  scheduledDate: null,
 }
 
 function idFor(prefix: string, key: string): string {
@@ -337,6 +350,16 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
   }
   if (sections.has('state')) patch.state = 'enabled'
   const json = JSON.stringify(patch, null, 2)
+  // Current value → new value, field by field (roadmap-v2.md §4.6); nothing else is touched.
+  const show = (v: unknown): string => (v === undefined || v === null ? '—' : JSON.stringify(v))
+  const changes: NonNullable<Action['changes']> = []
+  const ex = (existing ?? {}) as RawPolicy
+  const exConditions = (ex.conditions ?? {}) as RawPolicy
+  if (sections.has('grantControls')) changes.push({ field: 'Grant controls', from: show(ex.grantControls), to: show(body.grantControls) })
+  if (sections.has('sessionControls')) changes.push({ field: 'Session controls', from: show(ex.sessionControls), to: show(body.sessionControls) })
+  if (sections.has('users')) changes.push({ field: 'Users', from: show(exConditions.users), to: show(conditions.users) })
+  if (sections.has('applications')) changes.push({ field: 'Target resources', from: show(exConditions.applications), to: show(conditions.applications) })
+  if (sections.has('state')) changes.push({ field: 'State', from: show(ex.state), to: '"enabled"' })
 
   const label = (v: unknown): string => (Array.isArray(v) && v.length > 0 ? [...new Set(v.map((x) => (names ? names.label(String(x)) : String(x))))].join(', ') : '')
   const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
@@ -359,7 +382,7 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
     full.portalSteps[full.portalSteps.length - 1],
   ].filter((s): s is string => typeof s === 'string')
   const powershell = full.powershell ? full.powershell.replace(/-Method POST/, '-Method PATCH') : null
-  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null }
+  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
 }
 
 function adjustSummary(result: GoalResult): string[] {
@@ -397,6 +420,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const rowsFor = (ids: string[]): MfaViability[] => ids.map((id) => viabilityById.get(id)).filter((v): v is MfaViability => v !== undefined)
   const expectedCache = new Map<string, string[]>()
   const populationCache = new Map<string, StepPopulation>()
+  const readinessCache = new Map<string, Readiness>()
   // Everyone the proposed policies exclude is out of every step's population:
   // break-glass accounts, confirmed service accounts, and the members of the
   // confirmed exclusion groups (roadmap-v2.md §7: a step never touches them).
@@ -429,6 +453,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     stateReason: '',
     ...EXTRAS,
     impact: IMPACT.prerequisite,
+    whatChanges: WHAT_CHANGES.prerequisite,
   })
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
@@ -575,7 +600,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const popIds = expectedCache.get(whoKey) ?? []
     if (!populationCache.has(whoKey)) populationCache.set(whoKey, population(popIds, popIndex))
     const pop = { ...(populationCache.get(whoKey) as StepPopulation) }
-    const readiness = readinessFor(goal.id, popIds, rowsFor(popIds), snapshot)
+    const readinessKey = `${goalFamily(goal.id)}|${whoKey}`
+    if (!readinessCache.has(readinessKey)) readinessCache.set(readinessKey, readinessFor(goal.id, popIds, rowsFor(popIds), snapshot))
+    const readiness = { ...(readinessCache.get(readinessKey) as Readiness), lines: [...(readinessCache.get(readinessKey) as Readiness).lines] }
     const matchedPolicyId = findTaggedPolicy(snapshot, planId, stepId)
     const measuredEvidence = evidenceFor(goal.id, snapshot, pop.active, matchedPolicyId)
     // A goal an existing policy already enforces has nothing in report-only to
@@ -640,6 +667,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     let kind: Step['kind']
     let status: StepStatus = 'ready'
     let namingNote: { name: string; note: string | null } | null = null
+    let existing: GoalResult['candidates'][number] | null = null
+    let existingRaw: RawPolicy | null = null
 
     if (result.status === 'enforced') {
       kind = 'create'
@@ -680,13 +709,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'adjust'
       // An adjust step edits the tenant's own policy: its name, its id, its
       // current state — never a second policy named after the baseline.
-      const existing =
+      existing =
         result.candidates.find((c) => c.contribution === 'weak') ??
         result.candidates.find((c) => c.contribution === 'reportOnly') ??
         result.candidates.find((c) => c.contribution !== 'disabled') ??
         null
       if (source) blockUnmapped(source.policy)
-      const existingRaw = existing ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existing.policyId) as RawPolicy | undefined) ?? null : null
+      const existingId = existing?.policyId ?? null
+      existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       action = source
         ? adjustAction(
             buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
@@ -877,7 +907,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       evidence,
       action,
       exitCriteria,
-      rollback: kind === 'adjust' ? ROLLBACK.adjust : ROLLBACK.create,
+      rollback: kind === 'adjust' ? ROLLBACK_V2.adjust : ROLLBACK_V2.create,
       history: [],
       skipReason: null,
       ...EXTRAS,
@@ -895,6 +925,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         .map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`),
       stateReason: '',
       denies: impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location',
+      rollbackBody: kind === 'adjust' && existingRaw ? JSON.stringify(existingRaw, null, 2) : null,
+      whatChanges:
+        status === 'done' ? WHAT_CHANGES.done : kind === 'adjust' ? WHAT_CHANGES.adjust(existing?.policyName ?? stepTitle(goal.name), action.changes?.length ?? adjustSections.size) : WHAT_CHANGES.create(stepTitle(goal.name), pop.total),
       naming:
         kind === 'create' && status !== 'done'
           ? { proposed: namingNote?.name ?? proposedPolicyName(stepTitle(goal.name), naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
@@ -940,6 +973,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       readiness: verifyReadiness,
       comms: COMMS.verify(tenantName),
       impact: IMPACT.verifyCampaign(toSetUp),
+      whatChanges: WHAT_CHANGES.verify(toSetUp),
     })
   }
 
@@ -961,6 +995,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push({
       ...prereq('s-recurring-break-glass-drill', p.title, p.why(BREAK_GLASS_DRILL_DAYS), p.how, p.exit(BREAK_GLASS_DRILL_DAYS)),
       impact: phoneOnly.length > 0 ? p.weakMethod(phoneOnly.map(nameOf)) : IMPACT.prerequisite,
+      whatChanges: WHAT_CHANGES.recurring,
       kind: 'recurring',
       rollback: ROLLBACK.recurring,
       goalId: 'recurring:break-glass',
@@ -1011,6 +1046,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.populationNames = view.named.map((n) => n.name)
   }
 
+  // ---- What could go wrong, help desk (roadmap-v2.md §4) ----
+  const policyNameOf = (s: Step): string => s.naming?.proposed ?? s.deliveredBy[0]?.replace(/ \([^)]*\)$/, '') ?? s.title
+  const contentCtx = {
+    snapshot,
+    viability: viabilityById,
+    adminIds: popIndex.admins,
+    breakGlassIds: new Set(mapping.breakGlassUserIds),
+    serviceAccountIds: new Set(mapping.serviceAccountUserIds),
+    deviceReady: ringContextIndexes(snapshot).deviceReady,
+    allowedCountries: mapping.allowedCountries,
+    policyName: policyNameOf,
+    guestIds: popIndex.guests,
+  }
+  for (const s of steps) {
+    s.failureModes = failureModesFor(s, contentCtx)
+    s.helpDesk = helpDeskFor(s)
+  }
+
   // ---- Rings (roadmap-v2.md §1): proposed from readiness data, dated by the schedule ----
   const startIso = input.startDate ?? nextMonday(snapshot.asOf)
   const activeTotal = viability.filter((v) => v.activity === 'active').length
@@ -1027,14 +1080,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   for (const s of steps) s.rings = proposeRings(s, ringCtx)
 
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
-  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, { freeze: input.changeFreeze ?? null })
+  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, { freeze: input.changeFreeze ?? null, scheduled: input.scheduled ?? null })
   schedule.policyCount = policyCountFor(snapshot, steps, input.coverage.organisation)
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
   for (const s of steps) {
+    // Comms per ring, dated (§4.11); the step's own announcement is the first ring's.
     if (s.comms?.includes('{DATE}')) {
-      const date = waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso
-      s.comms = s.comms.replaceAll('{DATE}', absoluteDate(date))
+      const template = s.comms
+      const firstDate = s.rings[0]?.plannedStart ?? waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso
+      s.ringComms = s.rings.map((r) => ({ ring: r.name, date: absoluteDate(r.plannedStart), text: template.replaceAll('{DATE}', absoluteDate(r.plannedStart)) }))
+      s.comms = template.replaceAll('{DATE}', absoluteDate(firstDate))
     }
+    s.verify = verifyFor(s, contentCtx, s.rings[0]?.name ?? null)
   }
 
   annotateStateReasons(steps)

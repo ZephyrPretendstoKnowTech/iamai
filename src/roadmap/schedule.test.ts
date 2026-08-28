@@ -61,6 +61,14 @@ function step(over: Partial<Step> & { id: string }): Step {
     populationBasis: '',
     populationNames: [],
     populationView: null,
+    whatChanges: '',
+    failureModes: [],
+    verify: null,
+    helpDesk: null,
+    ringComms: [],
+    rollbackBody: null,
+    owner: null,
+    scheduledDate: null,
     ...over,
   }
 }
