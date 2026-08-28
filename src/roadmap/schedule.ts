@@ -41,6 +41,8 @@ export type Schedule = {
   extendedBy: string[]
   /** Steps blocked on a Setup question. */
   waitingOnSetup: number
+  /** The question numbers those steps wait on (ux-review-05 §14). */
+  waitingOnSetupQuestions: number[]
 }
 
 export function addDays(iso: string, days: number): string {
@@ -152,6 +154,7 @@ export function buildSchedule(steps: Step[], startIso: string, activeUsers: numb
   const expectedEnd = addDays(day0, expectedDays + 7)
   const extendedBy = waves.filter((w) => w.wave > 0 && Date.parse(w.end) > Date.parse(expectedEnd)).flatMap((w) => w.stepIds)
   const waitingOnSetup = steps.filter((s) => isWork(s) && s.blockers.some((b) => b.kind === 'setup')).length
+  const waitingOnSetupQuestions = [...new Set(steps.filter(isWork).flatMap((s) => s.blockers.filter((b) => b.kind === 'setup').map((b) => (b as { questionNumber: number }).questionNumber)))].sort((a, b) => a - b)
   return {
     band,
     bandSource: bandOverride ? 'override' : 'auto',
@@ -168,5 +171,6 @@ export function buildSchedule(steps: Step[], startIso: string, activeUsers: numb
     waveOf,
     extendedBy,
     waitingOnSetup,
+    waitingOnSetupQuestions,
   }
 }
