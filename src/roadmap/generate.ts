@@ -15,6 +15,7 @@ import type { WizardQuestionId } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
+import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { ACTION, CARE, COMMS, EXIT, IMPACT, PREREQ, ROLLBACK, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import {
@@ -328,7 +329,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   })
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
-  const activeQuestions = activeWizardQuestions(input.baseline)
+  const activeQuestions = activeWizardQuestions(input.baseline, { snapshot, state: mapping })
   const missingSetup = activeQuestions.filter((q) => q.required && mapping.wizardAnswered[q.id] !== true)
   const questionNumber = (id: WizardQuestionId): number => activeQuestions.findIndex((q) => q.id === id) + 1
   const questionNote = (id: WizardQuestionId): string => {
@@ -356,16 +357,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   for (const q of questions) {
     const r = mapping.records[q.key]
     if (r && r.resolvedId !== null) continue
-    const qid = ROLE_QUESTION[q.group]
+    const country = q.group === 'namedLocations' && isCountryLocationRef(q.key, input.baseline.policies)
+    const qid = country ? 'countries' : ROLE_QUESTION[q.group]
     const n = qid ? questionNumber(qid) : 0
-    const label = n > 0 ? `${ROLE_LABEL[q.group]} — Setup question ${n}` : ROLE_LABEL[q.group]
+    const role = country ? 'your allowed countries' : ROLE_LABEL[q.group]
+    const label = n > 0 ? `${role} — Setup question ${n}` : role
     placeholders.set(q.key, { label, token: setupToken(n, q.group) })
   }
   const naming = input.coverage.organisation.naming
 
-  const variantNames = new Set(
-    input.baseline.variantSets.filter((v) => v.relation === 'variant' && mapping.variantChoices[v.intentKey] === undefined).flatMap((v) => v.policyNames),
-  )
   const setupStepId = 's-setup-questions'
   if (missingSetup.length > 0) {
     const p = PREREQ.setupQuestions
@@ -394,6 +394,25 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(prereq(locStepId, p.title, p.why, p.how, p.exit))
   }
 
+  // Allowed countries (prompt 16 §4): the named location is created in phase
+  // 0 unless the tenant already has one with exactly that list.
+  const countriesStepId = 's-prereq-allowed-countries'
+  const countriesMissing =
+    mapping.wizardAnswered.countries === true &&
+    mapping.allowedCountries.length > 0 &&
+    tenantCountryLocation(snapshot, mapping.allowedCountries) === null &&
+    input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'enforced' && r.status !== 'not-applicable')
+  if (countriesMissing) {
+    const p = PREREQ.allowedCountries
+    steps.push(prereq(countriesStepId, p.title, p.why, p.how(mapping.allowedCountries.map(countryName)), p.exit))
+  }
+  // Confirmed service accounts with no group holding them (prompt 16 §3).
+  const saStepId = 's-prereq-service-accounts-group'
+  if (mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
+    const p = PREREQ.serviceAccountsGroup
+    steps.push(prereq(saStepId, p.title, p.why, p.how(mapping.serviceAccountUserIds.map(nameOf)), p.exit))
+  }
+
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
   if (secDefaults?.isEnabled === true) {
     const p = PREREQ.securityDefaults
@@ -412,8 +431,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const impl = goal.implementations[0]
     const stepId = idFor('goal', goal.id)
 
-    const matches = baselineFactsList.filter((b) => matchesSignature(b.facts, impl.signature))
-    let source = matches[0] ?? null
+    // Style variants are decided by data, never by a question (prompt 16 §4):
+    // the geo policy is always the allowlist style, and "NoExclusions"
+    // variants are never considered.
+    const matches = baselineFactsList
+      .filter((b) => matchesSignature(b.facts, impl.signature))
+      .filter((b) => !/no[-_ ]?exclusions?/i.test(b.facts.name))
+    let source = matches.find((m) => goal.id === 'geo-restriction' && isAllowlistGeoPolicy(m.policy as never)) ?? matches[0] ?? null
     for (const [, chosen] of Object.entries(mapping.variantChoices)) {
       const hit = matches.find((m) => m.facts.name === chosen)
       if (hit) source = hit
@@ -452,12 +476,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const blockUnmapped = (policy: RawPolicy): void => {
       for (const key of unmappedKeysUsedBy(policy, questions, mapping)) {
         const group = questions.find((q) => q.key === key)?.group
-        const qid = group ? ROLE_QUESTION[group] : undefined
+        const qid = group === 'namedLocations' && isCountryLocationRef(key, input.baseline.policies) ? 'countries' : group ? ROLE_QUESTION[group] : undefined
         if (qid && activeQuestions.some((q) => q.id === qid)) blockBySetup(qid)
       }
       for (const created of createdWithinStepKeys(policy, mapping)) {
         if (created.group === 'personaGroups') continue // created inside this step
-        const pid = created.group === 'breakGlass' ? bgStepId : created.group === 'namedLocations' ? locStepId : geStepId
+        const pid =
+          created.group === 'breakGlass'
+            ? bgStepId
+            : created.group === 'namedLocations'
+              ? isCountryLocationRef(created.key, input.baseline.policies)
+                ? countriesStepId
+                : locStepId
+              : created.group === 'exclusionGroups' && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null
+                ? saStepId
+                : geStepId
         if (steps.some((s) => s.id === pid)) blockByStep(pid, UNBLOCK.createObject)
       }
     }
@@ -479,7 +512,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'create'
       if (source) {
         blockUnmapped(source.policy)
-        if (variantNames.has(source.facts.name)) blockBySetup('variants')
         action = buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
           placeholders,
           displayName: proposedPolicyName(stepTitle(goal.name), naming),
@@ -519,8 +551,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Named dependencies (prompt 12 §B).
     if (status !== 'done') {
       if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId)) blockByStep(locStepId, BLOCKER.trustedLocation)
-      if (goal.id === 'geo-restriction' && mapping.wizardAnswered.variants !== true && activeQuestions.some((q) => q.id === 'variants')) {
-        blockBySetup('variants')
+      if (goal.id === 'geo-restriction') {
+        if (mapping.wizardAnswered.countries !== true) blockBySetup('countries')
+        else if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, UNBLOCK.createObject)
       }
     }
 

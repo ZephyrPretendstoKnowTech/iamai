@@ -1,50 +1,63 @@
 // Setup wizard copy: the questions a human answers, and the page around them.
+import { count } from './statements.ts'
 
+// Each question: a title, the question, an "Explain this" tip (help), and a
+// one-line "Why this matters" (why). Nothing above a picker runs past two
+// sentences.
 export const SETUP_QUESTIONS = {
   breakGlass: {
     title: 'Emergency access',
     question: 'Which accounts are the emergency access (break-glass) admins?',
-    help: 'Two cloud-only Global Administrator accounts, kept out of every policy, used only when everything else fails. IAMAI validates each pick and says exactly what to fix.',
+    help: 'Two cloud-only Global Administrator accounts, kept out of every policy and used only when everything else fails. IAMAI validates each pick and says exactly what to fix.',
+    why: 'Every policy in the plan excludes these accounts, so a mistake can never lock the whole tenant out.',
   },
   globalExclusion: {
     title: 'Exclusion group',
     question: 'Which group holds the policy exclusions?',
     help: 'Usually a small assigned group containing only the break-glass accounts. If there is none, say so: creating it goes at the start of the plan.',
+    why: 'One auditable group excluded from every policy keeps the escape hatch in a single place.',
+  },
+  countries: {
+    title: 'Countries',
+    question: 'Countries where your people sign in: add any that are missing.',
+    help: 'Pre-selected from the countries seen in sign-in records and from each user\'s usage location. Sign-ins from anywhere else will be blocked once the geo policy is enforced.',
+    why: 'The allowed list becomes a named location and the block-everywhere-else policy; a missing country is a lockout for whoever is there.',
   },
   highCare: {
     title: 'Handle with care',
     question: 'Who needs extra care?',
-    help: 'Executives, VIPs, or anyone an accidental lockout would hurt. The changes still apply to them: enforcement waits until each is verified, every step that touches them names them, and they go after the approach is proven.',
+    help: 'Executives, VIPs, or anyone an accidental lockout would hurt. The changes still apply to them: enforcement waits until each is verified and every step that touches them names them.',
+    why: 'These people are verified before anything is enforced and sequenced after the approach is proven.',
   },
   trustedLocations: {
     title: 'Trusted locations',
     question: 'Which named locations count as trusted?',
     help: 'Office IP ranges trusted for things like security-info registration. IAMAI checks each one for ranges that are too broad.',
+    why: 'A trusted location lets registration and other sensitive actions happen only from the office network.',
   },
   serviceAccounts: {
     title: 'Service accounts',
-    question: 'Are service accounts kept in a group?',
-    help: 'Legacy-authentication or automation accounts that need carve-outs from some policies. Optional: skip it if that does not apply.',
-  },
-  variants: {
-    title: 'Style choices',
-    question: 'A few policies come in two styles: pick one of each.',
-    help: 'Same security outcome, different shape. Pick whichever suits how the tenant is run; both are shown side by side.',
+    question: 'Are these service accounts?',
+    help: 'Accounts that look like automation, mailboxes, or devices rather than people, each with the evidence that put it here. Confirm the real ones; reject the rest.',
+    why: 'Service accounts cannot complete MFA: confirmed ones get carve-outs from the policies that would break them.',
   },
   timeZone: {
     title: 'Time zone',
     question: 'Which time zone should dates display in?',
     help: 'Affects display only; everything is stored in UTC.',
+    why: 'Plan dates and sign-in times read correctly for whoever runs the rollout.',
   },
   frameworks: {
     title: 'Frameworks',
     question: 'Which security frameworks is the tenant working toward?',
     help: 'Findings and plan steps are tagged with the matching controls so the plan doubles as compliance evidence.',
+    why: 'Tagged steps let the plan stand in as evidence for an audit.',
   },
   applicability: {
-    title: 'What applies',
+    title: 'Workloads',
     question: 'Are the detected workloads right?',
     help: 'Recommendations are switched off for workloads the tenant does not use. Correct any detection that is wrong.',
+    why: 'A workload marked off removes its goals from the plan; one marked on adds them.',
   },
 } as const
 
@@ -118,6 +131,52 @@ export const SETUP_PAGE = {
   notUsed: 'marked as not used in Setup',
   yourAnswer: '(your answer)',
   detectionsRight: 'Detections look right',
+  // ---- prompt 16 layout and feedback ----
+  advanced: 'Advanced options',
+  advancedHint: (n: number) => `${count(n, 'optional question')}: each one sharpens the plan.`,
+  requiredOpen: (names: string[]) => `Still to answer: ${names.join(', ')}.`,
+  allRequiredDone: 'Every required question is answered.',
+  answeredAs: (choice: string) => `Answered: ${choice}`,
+  edit: 'Edit',
+  explain: 'Explain this',
+  whyMatters: 'Why this matters',
+  toast: (title: string) => `${title} saved`,
+  nobody: 'nobody',
+  noneChosen: 'none',
+  notApplicableAnswer: 'not applicable',
+  detected: 'Detected',
+  markedInUse: 'Marked in use by you',
+  markedOff: 'Marked off',
+  offReasonPrompt: 'Why is this workload not in use? A short reason goes in the plan.',
+  offReasonPlaceholder: 'e.g. no Azure subscriptions',
+  confirmOff: 'Mark off',
+  cancel: 'Cancel',
+  // Service accounts (§A5)
+  serviceEvidence: {
+    name: (hit: string) => `name contains "${hit}"`,
+    noMethod: 'no MFA method registered',
+    neverInteractive: 'never signed in interactively',
+    legacyOnly: 'uses legacy authentication',
+    exchangeOnly: 'Exchange-only licence',
+    noProfile: 'no department or job title',
+  },
+  confirmService: 'Confirm',
+  notService: 'Not a service account',
+  serviceConfirmed: (n: number) => `${count(n, 'service account')} confirmed`,
+  serviceGroupFound: (name: string) => `All confirmed accounts are in ${name}: that group carries the carve-outs.`,
+  serviceGroupMissing: 'No existing group holds all of them: the plan starts with a step to create the service accounts group.',
+  serviceNoneLeft: 'No candidates left to review.',
+  serviceCount: (n: number) => `${count(n, 'candidate')} found`,
+  // Countries (§A4)
+  countriesSeen: (n: number) => `${count(n, 'distinct user')} signed in from here`,
+  countriesUsage: (n: number) => `usage location of ${count(n, 'user')}`,
+  countriesNoSignIns: 'No sign-in record carried a location: the list below comes from usage locations only.',
+  countriesNone: 'No location data at all: add the countries by hand.',
+  countriesLooksRight: 'Looks right',
+  addCountry: 'Add a country (two-letter code or name)…',
+  countriesChosen: (n: number) => count(n, 'country', 'countries'),
+  countriesExisting: (name: string) => `Matches the existing named location "${name}".`,
+  countriesToCreate: 'The plan starts with a step that creates this named location.',
 }
 
 /** Fix paths for validation findings: a plan step, or the exact portal path. */
