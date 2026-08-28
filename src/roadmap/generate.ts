@@ -8,6 +8,10 @@ import { policyFacts } from '../coverage/facts.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
+import type { GroupMembers } from '../coverage/population.ts'
+import { proposeRings, placeRings, ringContextIndexes } from './rings.ts'
+import { accountVerdict } from './strand.ts'
+import { toWeekday } from './schedule.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingState } from '../mapping/types.ts'
 import { activeWizardQuestions } from '../mapping/wizard.ts'
@@ -61,13 +65,15 @@ export type RoadmapInput = {
   band?: SizeBand | null
   operatorUserId?: string | null
   names?: NameDirectory
+  /** Cached group memberships: the confirmed exclusion groups leave every step's population. */
+  groupMembers?: GroupMembers
 }
 
 export type RoadmapResult = { steps: Step[]; schedule: Schedule }
 
 const EXTRAS: Pick<
   Step,
-  'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe'
+  'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing'
 > = {
   impact: '',
   safeToday: false,
@@ -76,6 +82,8 @@ const EXTRAS: Pick<
   learn: null,
   includesOperator: false,
   operatorSafe: null,
+  rings: [],
+  currentRing: 0,
 }
 
 function idFor(prefix: string, key: string): string {
@@ -89,12 +97,24 @@ export function stepIdForGoal(goalId: string): string {
 export const DRILL_STEP_ID = 's-recurring-break-glass-drill'
 export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
 
-function population(ids: string[], snapshot: TenantSnapshot, viability: MfaViability[]): StepPopulation {
-  const set = new Set(ids)
-  const active = viability.filter((v) => set.has(v.userId) && v.activity === 'active').length
-  const adminSet = adminUserIds(snapshot.roles)
-  const admins = ids.filter((id) => adminSet.has(id)).length
-  const guests = snapshot.users.filter((u) => set.has(u.id) && u.userType === 'guest').length
+type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
+function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
+  return {
+    active: new Set(viability.filter((v) => v.activity === 'active').map((v) => v.userId)),
+    admins: adminUserIds(snapshot.roles),
+    guests: new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)),
+  }
+}
+/** Counts for a step's population; the index is built once per plan so 25,000 users are not rescanned per step. */
+function population(ids: string[], index: PopulationIndex): StepPopulation {
+  let active = 0
+  let admins = 0
+  let guests = 0
+  for (const id of ids) {
+    if (index.active.has(id)) active += 1
+    if (index.admins.has(id)) admins += 1
+    if (index.guests.has(id)) guests += 1
+  }
   return { total: ids.length, active, admins, guests, ids }
 }
 
@@ -366,6 +386,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'your organisation'
   const steps: Step[] = []
+  const popIndex = populationIndex(snapshot, viability)
+  const rowsFor = (ids: string[]): MfaViability[] => ids.map((id) => viabilityById.get(id)).filter((v): v is MfaViability => v !== undefined)
+  const expectedCache = new Map<string, string[]>()
+  const populationCache = new Map<string, StepPopulation>()
+  // Everyone the proposed policies exclude is out of every step's population:
+  // break-glass accounts, confirmed service accounts, and the members of the
+  // confirmed exclusion groups (roadmap-v2.md §7: a step never touches them).
+  const excluded = new Set<string>([...mapping.breakGlassUserIds, ...mapping.serviceAccountUserIds])
+  const exclusionGroupIds = [mapping.records['__globalExclusion']?.resolvedId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
+  for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
   const prereq = (id: string, title: string, why: string, summary: string[], exit: string[]): Step => ({
     id,
@@ -510,9 +540,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (hit) source = hit
     }
 
-    const popIds = impl.expectedWho.kind === 'workload' ? [] : [...resolvePopulation(impl.expectedWho, snapshot).ids]
-    const pop = population(popIds, snapshot, viability)
-    const readiness = readinessFor(goal.id, popIds, viability, snapshot)
+    const whoKey = impl.expectedWho.kind
+    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : [...resolvePopulation(impl.expectedWho, snapshot).ids].filter((id) => !excluded.has(id)))
+    const popIds = expectedCache.get(whoKey) ?? []
+    if (!populationCache.has(whoKey)) populationCache.set(whoKey, population(popIds, popIndex))
+    const pop = { ...(populationCache.get(whoKey) as StepPopulation) }
+    const readiness = readinessFor(goal.id, popIds, rowsFor(popIds), snapshot)
     const matchedPolicyId = findTaggedPolicy(snapshot, planId, stepId)
     const measuredEvidence = evidenceFor(goal.id, snapshot, pop.active, matchedPolicyId)
     // A goal an existing policy already enforces has nothing in report-only to
@@ -688,10 +721,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (care.length > 0) careNotes.unshift(CARE.order(care.length))
 
     const includesOperator = operatorId !== null && popIds.includes(operatorId)
-    const opV = operatorId !== null ? viabilityById.get(operatorId) : undefined
-    const operatorSafe = includesOperator
-      ? (opV !== undefined && (opV.mfa === 'verified' || opV.methodTiers.includes('phishingResistant'))) || false
-      : null
+    // The strand simulator decides (roadmap-v2.md §7): the same check the
+    // property tests run, so a step that would lock the operator out is
+    // never offered as ready.
+    const opVerdict = includesOperator && operatorId !== null ? accountVerdict(readiness.family, operatorId, snapshot, mapping.allowedCountries) : null
+    const operatorSafe = opVerdict === null ? null : !opVerdict.stranded
+    if (opVerdict?.stranded && status !== 'done') {
+      status = 'blocked'
+      const label = BLOCKER.operator(opVerdict.reason)
+      blockers.push({ kind: 'readiness', label })
+      unblockNotes.push(BLOCKED.readiness(label))
+    }
 
     const zeroUsage =
       readiness.family === 'block' &&
@@ -778,6 +818,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       newObjects: source ? createdWithinStepKeys(source.policy, mapping).length : 0,
       evidenceClean: zeroUsage || evidence.reportOnly?.meetsExitCriterion === true,
       affectedByBlock: evidenceUsable && readiness.family === 'block' ? evidence.affectedUserIds.length : null,
+      precomputed: { popIds, activeIn: pop.active, tenantActive: popIndex.active.size, readiness },
     })
 
     steps.push({
@@ -856,7 +897,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       rollback: ROLLBACK.verify,
       goalId: 'mfa-all-users',
       status: verifyDone ? 'done' : 'ready',
-      population: population(viability.map((v) => v.userId), snapshot, viability),
+      population: population(viability.map((v) => v.userId), popIndex),
       readiness: verifyReadiness,
       comms: COMMS.verify(tenantName),
       impact: IMPACT.verifyCampaign(toSetUp),
@@ -880,7 +921,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       rollback: ROLLBACK.recurring,
       goalId: 'recurring:break-glass',
       status: stale.length > 0 ? 'ready' : 'done',
-      population: population(bgIds, snapshot, viability),
+      population: population(bgIds, popIndex),
       readiness: {
         family: 'other',
         percent: null,
@@ -915,11 +956,28 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   steps.sort((a, b) => a.phase - b.phase || score(a) - score(b) || a.id.localeCompare(b.id))
 
-  // ---- Schedule (waves) + comms dates ----
+  // ---- Rings (roadmap-v2.md §1): proposed from readiness data, dated by the schedule ----
   const startIso = input.startDate ?? nextMonday(snapshot.asOf)
   const activeTotal = viability.filter((v) => v.activity === 'active').length
+  const ringCtx = {
+    snapshot,
+    viability: viabilityById,
+    breakGlassIds: new Set(mapping.breakGlassUserIds),
+    highCareIds,
+    operatorId,
+    naming,
+    activeUsers: activeTotal,
+    ...ringContextIndexes(snapshot),
+  }
+  for (const s of steps) s.rings = proposeRings(s, ringCtx)
+
+  // ---- Schedule (waves) + comms dates ----
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null)
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
+  for (const s of steps) {
+    if (s.rings.length === 0) continue
+    placeRings(s.rings, waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso, toWeekday)
+  }
   for (const s of steps) {
     if (s.comms?.includes('{DATE}')) {
       const date = waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso

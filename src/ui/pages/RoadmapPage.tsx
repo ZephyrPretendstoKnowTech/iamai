@@ -177,6 +177,7 @@ export function RoadmapPage({
       band,
       operatorUserId: operator?.userId ?? null,
       names,
+      groupMembers: groups,
     })
     mergePersisted(steps, saved?.steps ?? null)
     annotateStateReasons(steps)

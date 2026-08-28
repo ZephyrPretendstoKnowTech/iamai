@@ -17,8 +17,10 @@ export type FixtureRun = ReturnType<typeof generateRoadmap> & {
   input: RoadmapInput
   coverage: RoadmapInput['coverage']
   viability: RoadmapInput['viability']
-  /** Engine time in milliseconds, from coverage to annotated steps. */
+  /** Whole engine time in milliseconds, coverage included. */
   ms: number
+  /** The roadmap engine alone (generate, state reasons, progress): what a re-plan costs. */
+  roadmapMs: number
 }
 
 export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}): FixtureRun {
@@ -51,10 +53,13 @@ export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}): Fixtur
     startDate: '2026-08-31',
     operatorUserId: f.operatorId,
     names,
+    groupMembers: f.groups,
     ...over,
   }
+  const t1 = performance.now()
   const result = generateRoadmap(input)
   annotateStateReasons(result.steps)
   applyProgress(result.steps, snapshot, coverage, f.planId)
-  return { ...result, input, coverage, viability, ms: performance.now() - t0 }
+  const end = performance.now()
+  return { ...result, input, coverage, viability, ms: end - t0, roadmapMs: end - t1 }
 }

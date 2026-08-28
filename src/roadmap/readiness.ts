@@ -29,12 +29,18 @@ export function readinessFor(
 ): Readiness {
   const family = goalFamily(goalId)
   const pop = new Set(populationIds)
-  const rows = viability.filter((v) => pop.has(v.userId))
+  const rows = viability.length === populationIds.length && viability.every((v, i) => v.userId === populationIds[i]) ? viability : viability.filter((v) => pop.has(v.userId))
   const active = rows.filter((v) => v.activity === 'active')
 
   if (family === 'mfa' || family === 'guest') {
-    const count = (s: MfaViability['mfa']) => rows.filter((v) => v.mfa === s).length
-    const good = active.filter((v) => v.mfa === 'verified' || v.mfa === 'likelyViable').length
+    // One pass over the rows: five filters per step were the cost at 25,000 users.
+    const counts: Record<MfaViability['mfa'], number> = { none: 0, verified: 0, likelyViable: 0, notChallenged: 0, unverified: 0 }
+    let good = 0
+    for (const v of rows) {
+      counts[v.mfa] += 1
+      if (v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')) good += 1
+    }
+    const count = (s: MfaViability['mfa']) => counts[s]
     // Nobody in scope → nothing to be ready; null so the gate does not block.
     const percent = active.length > 0 ? Math.round((good / active.length) * 100) : null
     const lines = [

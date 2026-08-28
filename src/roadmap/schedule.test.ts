@@ -35,6 +35,8 @@ function step(over: Partial<Step>): Step {
     learn: null,
     includesOperator: false,
     operatorSafe: null,
+    rings: [],
+    currentRing: 0,
     ...over,
   }
 }
