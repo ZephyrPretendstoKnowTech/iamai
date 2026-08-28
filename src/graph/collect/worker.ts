@@ -55,6 +55,24 @@ const post = (m: WorkerOutMessage) => {
 }
 
 let currentToken = ''
+
+// Dev-only failure injection (ux-review-06 §34): named locations answer 403
+// (a disabled section) and the first two device pages answer 429 with a
+// short Retry-After (the slow path). Nothing reaches the tenant differently.
+function installDevFailures(): void {
+  const real = self.fetch.bind(self)
+  let deviceHits = 0
+  self.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+    if (url.includes('/identity/conditionalAccess/namedLocations')) {
+      return new Response(JSON.stringify({ error: { code: 'Authorization_RequestDenied', message: 'Forced 403 (?fail=1): insufficient privileges' } }), { status: 403, headers: { 'content-type': 'application/json' } })
+    }
+    if (url.includes('/devices') && deviceHits++ < 2) {
+      return new Response(JSON.stringify({ error: { code: 'TooManyRequests', message: 'Forced 429 (?fail=1)' } }), { status: 429, headers: { 'content-type': 'application/json', 'Retry-After': '2' } })
+    }
+    return real(input, init)
+  }) as typeof fetch
+}
 let tokenWaiter: ((t: string) => void) | null = null
 // One in-flight refresh shared by every concurrent 401 — a second caller must
 // never overwrite the waiter and strand the first.
@@ -349,6 +367,7 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
 ctx.onmessage = (e: MessageEvent<WorkerInMessage>) => {
   const msg = e.data
   if (msg.type === 'start') {
+    if (msg.devFail) installDevFailures()
     currentToken = msg.token
     void run(msg.tenantId, msg.licenceOverride).catch((err: unknown) =>
       post({ type: 'fatal', message: redactIdentifiers(err instanceof Error ? err.message : String(err)) }),

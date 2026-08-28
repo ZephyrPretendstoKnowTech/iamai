@@ -38,7 +38,7 @@ export function Stepper({
             href={`#/${s.route}`}
             className={`stepper-item ${active === s.route ? 'active' : ''}`}
             aria-current={active === s.route ? 'step' : undefined}
-            aria-label={`${i + 1}. ${s.label}${chip ? `, ${chip.text}` : ''}`}
+            aria-label={`${i + 1}. ${s.label}${chip ? `, ${chip.text}` : ''}${active === s.route ? `, ${T.currentStep}` : ''}`}
           >
             <span className="stepper-num">{i + 1}</span>
             <span>{s.label}</span>

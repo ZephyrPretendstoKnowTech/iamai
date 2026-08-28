@@ -27,6 +27,7 @@
   --radius-chip: 999px;
 
   --max-content: 1440px;
+  --max-content-wide: 1600px;
   --gutter: 32px;
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.25);
   --motion: 180ms ease;

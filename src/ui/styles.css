@@ -111,6 +111,7 @@ select {
   min-height: 0;
 }
 
+main.page.page-wide { max-width: var(--max-content-wide); }
 main.page {
   /* Centred in the viewport with 32px gutters; tables may use the full width (ux-review-04 §3). */
   padding: var(--space-5) var(--gutter);

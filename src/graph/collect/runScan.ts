@@ -49,7 +49,9 @@ export function startScan(tenantId: string, onEvent: (m: WorkerOutMessage) => vo
         const licence = params.get('dev') === '1' ? params.get('licence') : null
         const licenceOverride =
           licence === 'free' || licence === 'p1' || licence === 'p2' ? licence : undefined
-        worker.postMessage({ type: 'start', token, tenantId, licenceOverride })
+        // ?dev=1&fail=1 forces one 403 and one 429 so the disabled and slow states show (ux-review-06 §34).
+        const devFail = params.get('dev') === '1' && params.get('fail') === '1'
+        worker.postMessage({ type: 'start', token, tenantId, licenceOverride, devFail })
       }).finally(() => {
         worker?.terminate()
         worker = null

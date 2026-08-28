@@ -44,6 +44,9 @@ const REFERENCE: { route: Route; label: string }[] = [
   { route: 'reads', label: SHELL.steps.reads },
 ]
 
+// Pages whose main content is a table read better with the wider cap (ux-review-06 §28).
+const WIDE_ROUTES = new Set<string>(['scan', 'inventory', 'reads', 'licensing'])
+
 const VALID = new Set<string>([
   ...[...STEPS, ...REFERENCE].map((n) => n.route as string),
   'baseline/package',
@@ -157,7 +160,7 @@ export function AppShell({
           reference={REFERENCE}
           active={route === 'baseline/package' ? 'baseline' : route}
         />
-        <main className="page">
+        <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`}>
           {account && (
             <div className="print-only muted">
               {SHELL.printHeader(tenantName ?? account.username, absoluteDate(new Date().toISOString()), account.username)}
