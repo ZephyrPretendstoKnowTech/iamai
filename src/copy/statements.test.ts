@@ -97,7 +97,11 @@ test('statement shapes', () => {
     partialScopeStatement('Guests need MFA', 0, 1, 'guest', [{ reason: 'never targeted', count: 1 }]),
     '**Guests need MFA** applies to none of the 1 guest. Not covered: never targeted (1).',
   )
-  assert.equal(missingStatement('Block legacy authentication', 'CA001'), "**Block legacy authentication**. No policy does this yet; the baseline's policy for it is *CA001*.")
+  assert.equal(missingStatement('Block legacy authentication', null, 'CA001'), '**Block legacy authentication**. No policy does this yet.')
+  assert.equal(
+    missingStatement('Block legacy authentication', 'CA - GLOBAL - Block legacy authentication', 'ACME - GLOBAL - BLOCK - LegacyAuth'),
+    "**Block legacy authentication**. No policy does this yet. Proposed: *CA - GLOBAL - Block legacy authentication* (from the baseline's *ACME - GLOBAL - BLOCK - LegacyAuth*).",
+  )
   assert.equal(reportOnlyStatement('Require MFA', 'CA002', 9, 0), '**Require MFA** is in report-only via *CA002* (9 days, no would-be failures).')
   assert.equal(reportOnlyStatement('Require MFA', 'CA002', 1, 1), '**Require MFA** is in report-only via *CA002* (1 day, 1 would-be failure).')
 })
@@ -108,7 +112,7 @@ test('no finding statement runs past two sentences (prompt 17 §5)', () => {
     inPlaceStatement('Require MFA', ['A', 'B'], 2),
     partialControlStatement('Admin sessions', 'MFA', 'phishing-resistant MFA', 3, 4, 'admin'),
     partialScopeStatement('Guests need MFA', 2, 5, 'guest', [{ reason: 'never targeted', count: 2 }, { reason: 'excluded', count: 1 }]),
-    missingStatement('Block legacy authentication', 'CA001'),
+    missingStatement('Block legacy authentication', null, 'CA001'),
     reportOnlyStatement('Require MFA', 'CA002', 9, 0),
   ]
   for (const s of samples) assert.ok(sentences(s) <= 2, s)

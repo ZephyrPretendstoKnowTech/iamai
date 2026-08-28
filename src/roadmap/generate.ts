@@ -14,6 +14,7 @@ import { activeWizardQuestions } from '../mapping/wizard.ts'
 import type { WizardQuestionId } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds, roleListSummary } from '../roles.ts'
+import { proposedPolicyName } from '../coverage/naming.ts'
 import { summarizeTenant } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
@@ -275,11 +276,7 @@ export function buildCreateAction(
   return { kind: opts.adjust ? 'adjust' : 'create', summary: [ACTION.createReportOnly], json, portalSteps: steps, powershell }
 }
 
-/** A tenant-convention name for a policy the plan creates — never the baseline's own name. */
-export function proposedPolicyName(title: string, naming: { prefix: string | null; separator: string | null } | null): string {
-  if (naming?.prefix && naming.separator) return `${naming.prefix}${naming.separator}${title}`
-  return title
-}
+export { proposedPolicyName } from '../coverage/naming.ts'
 
 // A Change step shows the tenant's current include/exclude and carries only
 // the fields that change (prompt 17 §4): the JSON is a patch, the portal

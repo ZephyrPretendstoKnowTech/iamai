@@ -246,6 +246,8 @@ export function ScanAge({ at, baseline }: { at: string; baseline?: string | null
       <p className="reason">
         {SHELL.basedOn(whenAt(at))} <a href="#/scan">{SHELL.rescan}</a>
         {baseline && <> · {SHELL.baselineLoaded(baseline)}</>}
+        {' '}
+        <span className="muted">{SHELL.evidenceAgeNote}</span>
       </p>
       {days >= STALE_SCAN_DAYS && (
         <Callout kind="warning" title={SHELL.scanStale(days)}>

@@ -71,8 +71,8 @@ export function App() {
 
   useEffect(() => {
     if (MOCK) {
-      void import('./pages/fixtureSnapshot.ts').then(({ fixtureSnapshot, fixtureBaseline }) => {
-        const snapshot = fixtureSnapshot()
+      void Promise.all([import('./pages/fixtureSnapshot.ts'), import('./pages/bigFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }]) => {
+        const snapshot = new URLSearchParams(window.location.search).get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
         setAccount({
           homeAccountId: 'mock',
           environment: 'login.windows.net',
