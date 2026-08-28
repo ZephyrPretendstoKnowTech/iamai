@@ -31,7 +31,7 @@ import { POPULATION } from '../../copy/population.ts'
 import { ROLLBACK_V2, SECTION } from '../../copy/stepContent.ts'
 import { RINGS } from '../../copy/rings.ts'
 import type { Dependency } from '../../roadmap/schedule.ts'
-import { POPULATION_CSV_HEADER, populationContext, populationRows } from '../../roadmap/population.ts'
+import { POPULATION_CSV_HEADER, cohortsFor, populationContext, populationRows } from '../../roadmap/population.ts'
 import { ringContextIndexes } from '../../roadmap/rings.ts'
 import { adminUserIds } from '../../roles.ts'
 import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
@@ -332,11 +332,20 @@ export function RoadmapPage({
     if (meta.scheduledDate !== undefined) setVersion((v) => v + 1)
   }
   // The population export is built in the browser from the scan (roadmap-v2.md §3): nothing leaves this machine.
-  const exportPopulation = (step: Step): void => {
-    const viabilityById = new Map(computed.viability.map((v) => [v.userId, v]))
-    const ctx = populationContext(snapshot, viabilityById, adminUserIds(snapshot.roles), new Set(mapping?.highCareUserIds ?? []), ringContextIndexes(snapshot).deviceReady, nameOf)
-    downloadFile(`${step.id}-people.csv`, toCsv(POPULATION_CSV_HEADER, populationRows(step, ctx)), 'text/csv')
+  // Built on demand (after the early returns above, so no hook); cohorts and the CSV share it.
+  let populationCtxCache: ReturnType<typeof populationContext> | null = null
+  const populationCtx = (): ReturnType<typeof populationContext> => {
+    if (!populationCtxCache) {
+      const viabilityById = new Map(computed.viability.map((v) => [v.userId, v]))
+      populationCtxCache = populationContext(snapshot, viabilityById, adminUserIds(snapshot.roles), new Set(mapping?.highCareUserIds ?? []), ringContextIndexes(snapshot).deviceReady, nameOf)
+    }
+    return populationCtxCache
   }
+  const exportPopulation = (step: Step): void => {
+    downloadFile(`${step.id}-people.csv`, toCsv(POPULATION_CSV_HEADER, populationRows(step, populationCtx())), 'text/csv')
+  }
+  // Cohorts are built when a step opens (25,000 users are not bucketed for every step of every plan).
+  const cohortsOf = (step: Step) => (step.populationView && step.populationView.mode !== 'names' ? cohortsFor(step.population.ids, populationCtx()) : [])
   /** At most ten names, then "and N more" (roadmap-v2.md §3: nothing renders unbounded). */
   const boundedNames = (ids: string[]): string => {
     const shown = ids.slice(0, 10).map(nameOf)
@@ -815,6 +824,7 @@ export function RoadmapPage({
                         skipDraft={skipDraft}
                         setSkipDraft={setSkipDraft}
                         onExportPopulation={exportPopulation}
+                        cohortsOf={cohortsOf}
                         boundedNames={boundedNames}
                         dependencies={schedule.graph[step.id] ?? []}
                         onMeta={saveStepMeta}
@@ -957,6 +967,7 @@ function StepCard({
   setSkipDraft,
   onSkipped,
   onExportPopulation,
+  cohortsOf,
   boundedNames,
   dependencies,
   onMeta,
@@ -971,6 +982,7 @@ function StepCard({
   setSkipDraft: (d: { id: string; reason: string } | null) => void
   onSkipped: (step: Step) => void
   onExportPopulation: (step: Step) => void
+  cohortsOf: (step: Step) => NonNullable<Step['populationView']>['cohorts']
   boundedNames: (ids: string[]) => string
   dependencies: Dependency[]
   onMeta: (step: Step, meta: { owner?: string | null; scheduledDate?: string | null }) => void
@@ -1069,7 +1081,7 @@ function StepCard({
           <p className="reason">
             {step.populationBasis} · {affectedLine(step.population.total, step.population.active, step.population.admins, step.population.guests)}
           </p>
-          {step.populationView && <PopulationBody view={step.populationView} total={step.population.total} onExport={() => onExportPopulation(step)} />}
+          {step.populationView && <PopulationBody view={{ ...step.populationView, cohorts: cohortsOf(step) }} total={step.population.total} onExport={() => onExportPopulation(step)} />}
         </>
       )}
 

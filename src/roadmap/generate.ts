@@ -421,6 +421,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const expectedCache = new Map<string, string[]>()
   const populationCache = new Map<string, StepPopulation>()
   const readinessCache = new Map<string, Readiness>()
+  const readyActiveCache = new Map<string, number>()
   // Everyone the proposed policies exclude is out of every step's population:
   // break-glass accounts, confirmed service accounts, and the members of the
   // confirmed exclusion groups (roadmap-v2.md §7: a step never touches them).
@@ -805,12 +806,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       readiness.family === 'block' &&
       (evidence.status === 'ok' || evidence.status === 'partial') &&
       evidence.affectedUserIds.length === 0
-    const notReadyActive =
-      pop.active -
-      popIds.filter((id) => {
-        const v = viabilityById.get(id)
-        return v !== undefined && v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')
-      }).length
+    if (!readyActiveCache.has(whoKey))
+      readyActiveCache.set(
+        whoKey,
+        popIds.filter((id) => {
+          const v = viabilityById.get(id)
+          return v !== undefined && v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')
+        }).length,
+      )
+    const notReadyActive = pop.active - (readyActiveCache.get(whoKey) ?? 0)
 
     let impact: string
     if (status === 'done') impact = IMPACT.done
@@ -1038,9 +1042,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   steps.sort((a, b) => a.phase - b.phase || score(a) - score(b) || a.id.localeCompare(b.id))
 
   // ---- Populations at scale (roadmap-v2.md §3): basis, names or cohorts, the riskiest ----
-  const popCtx = populationContext(snapshot, viabilityById, popIndex.admins, highCareIds, ringContextIndexes(snapshot).deviceReady, nameOf)
+  const indexes = ringContextIndexes(snapshot)
+  const popCtx = populationContext(snapshot, viabilityById, popIndex.admins, highCareIds, indexes.deviceReady, nameOf)
   for (const s of steps) {
-    const view = describePopulation(s, popCtx)
+    const view = describePopulation(s, popCtx, { cohorts: false })
     s.populationView = view
     s.populationBasis = view.basis
     s.populationNames = view.named.map((n) => n.name)
@@ -1054,7 +1059,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     adminIds: popIndex.admins,
     breakGlassIds: new Set(mapping.breakGlassUserIds),
     serviceAccountIds: new Set(mapping.serviceAccountUserIds),
-    deviceReady: ringContextIndexes(snapshot).deviceReady,
+    deviceReady: indexes.deviceReady,
     allowedCountries: mapping.allowedCountries,
     policyName: policyNameOf,
     guestIds: popIndex.guests,
@@ -1075,7 +1080,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     operatorId,
     naming,
     activeUsers: activeTotal,
-    ...ringContextIndexes(snapshot),
+    ...indexes,
   }
   for (const s of steps) s.rings = proposeRings(s, ringCtx)
 

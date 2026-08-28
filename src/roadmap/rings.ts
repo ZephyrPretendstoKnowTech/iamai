@@ -153,6 +153,14 @@ const rule = (departments: string[]): string =>
 // the same member partition; only names, criteria and dates differ per step.
 const partitionCache = new WeakMap<string[], { name: string; who: string | null; ids: string[]; kind: RingTargeting['kind']; departments: string[] }[]>()
 
+const memoCache = new WeakMap<string[], Map<string, number>>()
+function memo(ids: string[], key: string, compute: () => number): number {
+  let m = memoCache.get(ids)
+  if (!m) memoCache.set(ids, (m = new Map()))
+  if (!m.has(key)) m.set(key, compute())
+  return m.get(key) as number
+}
+
 /** Propose the rings for one step: names, targeting, criteria; dates come from the scheduler. */
 export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   if (!ringable(step)) return []
@@ -171,7 +179,7 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
 
   type Draft = { name: string; who: string | null; ids: string[]; kind: RingTargeting['kind']; departments: string[] }
   const cached = partitionCache.get(step.population.ids)
-  const drafts: Draft[] = cached ? cached.map((d) => ({ ...d })) : []
+  const drafts: Draft[] = cached ? cached : []
   if (!cached) {
   const pilotIds = take(pickPilot(remaining, Math.min(band.pilot, total), ctx))
   drafts.push({ name: RINGS.pilot, who: null, ids: pilotIds, kind: 'group', departments: [] })
@@ -189,17 +197,20 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
     drafts.push({ name: RINGS.ring(2, who), who, ids: take(depts.flatMap(([, ids]) => ids)), kind: 'group', departments: names })
   }
   drafts.push({ name: RINGS.everyone, who: null, ids: take([...remaining]), kind: 'all', departments: [] })
-  partitionCache.set(step.population.ids, drafts.map((d) => ({ ...d })))
+  partitionCache.set(step.population.ids, drafts)
   }
 
   const family = step.readiness.family
+  // Ring member arrays are shared across steps of one audience: count once per array.
   const readyCount = (ids: string[]): number =>
-    ids.filter((id) => {
-      const v = ctx.viability.get(id)
-      if (family === 'device') return ctx.deviceReady.has(id)
-      return v !== undefined && (v.mfa === 'verified' || v.mfa === 'likelyViable')
-    }).length
-  const departmentsCount = (ids: string[]): number => departmentsOf(ids, ctx).size
+    memo(ids, `ready:${family === 'device' ? 'device' : 'mfa'}`, () =>
+      ids.filter((id) => {
+        const v = ctx.viability.get(id)
+        if (family === 'device') return ctx.deviceReady.has(id)
+        return v !== undefined && (v.mfa === 'verified' || v.mfa === 'likelyViable')
+      }).length,
+    )
+  const departmentsCount = (ids: string[]): number => memo(ids, 'departments', () => departmentsOf(ids, ctx).size)
 
   return drafts.map((d, index) => {
     const n = d.ids.length
