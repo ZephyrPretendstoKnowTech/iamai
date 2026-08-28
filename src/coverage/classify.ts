@@ -293,7 +293,7 @@ export function inferAdHocFacet(facts: PolicyFacts): string | null {
 // Ad-hoc goals match exactly on apps, user actions, and grant/session
 // controls (prompt 12 §7) — a session goal can never be "delivered" by a
 // block policy, and a generic MFA policy never matches an app-scoped one.
-export function adHocGoal(facts: PolicyFacts): Goal {
+export function adHocGoal(facts: PolicyFacts, appNames: Map<string, string> = new Map()): Goal {
   const sig: Signature = {}
   sig.appsExact = { all: facts.apps.all, ids: [...facts.apps.ids], office365: facts.apps.office365, adminPortals: facts.apps.adminPortals }
   sig.userActionsExact = [...facts.apps.userActions]
@@ -348,7 +348,7 @@ export function adHocGoal(facts: PolicyFacts): Goal {
   const scoring = adHocScoring(facts, who.kind)
   return {
     id: `adhoc:${facts.name}`,
-    name: adHocTitle(facts),
+    name: adHocTitle(facts, appNames),
     domain: scoring.domain,
     securityValue: scoring.securityValue,
     baseEffort: scoring.baseEffort,
@@ -384,10 +384,10 @@ export function adHocPhase(facts: PolicyFacts, who: string): number {
   }
   if ([...controls].some((c) => DEVICE_CONTROLS.has(c) || APP_PROTECTION_CONTROLS.has(c))) return 5
   if (facts.signInRisk.size > 0 || facts.userRisk.size > 0 || facts.workload !== null) return 7
-  const sessionOnly =
-    !controls.has('mfa') &&
-    (facts.session.signInFrequencyHours !== null || facts.session.persistentBrowser !== null || facts.session.secureSignInSession || facts.session.appEnforced)
-  if (sessionOnly) return 6
+  // A session control is a session step even when the grant also asks for MFA (§10).
+  const sessionControl =
+    facts.session.signInFrequencyHours !== null || facts.session.signInFrequencyEveryTime || facts.session.persistentBrowser !== null || facts.session.secureSignInSession || facts.session.appEnforced
+  if (sessionControl) return 6
   if (who === 'coreAdmins' || [...facts.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))) return 3
   if (who === 'guests') return 4
   return 2
@@ -403,13 +403,15 @@ export function adHocScoring(facts: PolicyFacts, who: 'all' | 'members' | 'guest
   const controls = controlsLower(facts)
   const device = [...controls].some((c) => DEVICE_CONTROLS.has(c) || APP_PROTECTION_CONTROLS.has(c))
   const session = facts.session.signInFrequencyHours !== null || facts.session.signInFrequencyEveryTime || facts.session.persistentBrowser !== null || facts.session.secureSignInSession || facts.session.appEnforced
+  // Controls decide the domain; a location or app condition never does (ux-review-06 §10).
+  const blockByLocation = controls.has('block') && facts.locations !== null && facts.locations.include.size > 0
   const domain: Domain =
     who === 'coreAdmins' ? 'Admins'
     : who === 'guests' ? 'Guests'
     : facts.signInRisk.size > 0 || facts.userRisk.size > 0 ? 'Risk'
-    : facts.locations !== null && facts.locations.include.size > 0 ? 'Locations'
     : device ? 'Devices'
-    : session && !facts.grant ? 'Sessions'
+    : session && !controls.has('mfa') && !controls.has('block') ? 'Sessions'
+    : blockByLocation ? 'Locations'
     : 'Identity'
   const securityValue =
     facts.grant?.strength === 'phishingResistant' ? 5
@@ -421,10 +423,17 @@ export function adHocScoring(facts: PolicyFacts, who: 'all' | 'members' | 'guest
   return { domain, securityValue, baseEffort: 2 }
 }
 
-export function adHocTitle(facts: PolicyFacts): string {
+function listNames(names: string[]): string {
+  const unique = [...new Set(names)]
+  if (unique.length <= 3) return unique.length === 1 ? unique[0] : `${unique.slice(0, -1).join(', ')} and ${unique[unique.length - 1]}`
+  return `${unique.slice(0, 2).join(', ')} and ${unique.length - 2} other apps`
+}
+
+export function adHocTitle(facts: PolicyFacts, tenantAppNames: Map<string, string> = new Map()): string {
   const controls = controlsLower(facts)
   const vendor = vendorOf(facts)
-  const appNames = [...facts.apps.ids].map((id) => FIRST_PARTY_NAME.get(id.toLowerCase()) ?? null)
+  // First-party catalogue, then the tenant's own app names from the scan (ux-review-06 §12).
+  const appNames = [...facts.apps.ids].map((id) => FIRST_PARTY_NAME.get(id.toLowerCase()) ?? tenantAppNames.get(id.toLowerCase()) ?? null)
   const object = facts.apps.all
     ? 'all apps'
     : vendor
@@ -437,11 +446,13 @@ export function adHocTitle(facts: PolicyFacts): string {
           ? 'the admin portals'
           : facts.apps.office365
             ? 'Office 365'
-            : appNames.length === 1 && appNames[0]
-              ? appNames[0]
-              : appNames.length > 0
-                ? `${appNames.length} apps`
-                : 'the targeted apps'
+            : appNames.length > 0 && appNames.every((n) => n !== null)
+              ? listNames(appNames as string[])
+              : appNames.length === 1
+                ? 'one app'
+                : appNames.length > 0
+                  ? `${appNames.length} apps`
+                  : 'the targeted apps'
   const audience = [...facts.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))
     ? ' for admins'
     : facts.who.guests !== null && !facts.who.all

@@ -28,6 +28,7 @@ import { computeStepStatus } from './stepStatus.ts'
 import { wizardProgress } from '../mapping/wizard.ts'
 import type { WizardProgress } from '../mapping/wizard.ts'
 import { loadMappingState } from '../mapping/store.ts'
+import { probeStorage } from '../graph/collect/cache.ts'
 
 const DEV_PANEL =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
@@ -98,6 +99,8 @@ export function App() {
           void loadSnapshotRecord<{ snapshot: TenantSnapshot; at: string }>(a.tenantId).then((stored) => {
             if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
           })
+          // A blocked store shows as a plain sentence, never as a silently empty app.
+          void probeStorage().catch((e: unknown) => setAuthError(e instanceof Error ? e.message : String(e)))
           // Saved Setup answers drive the stepper before Setup is opened.
           void loadMappingState(a.tenantId).then((m) => setMapProgress(wizardProgress(m)))
           // The loaded baseline comes back too (prompt 14 §6): pinned index by

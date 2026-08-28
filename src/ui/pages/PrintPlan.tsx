@@ -171,7 +171,7 @@ export function PrintPlan({
                 {s.whyLink && <p className="muted">{ROADMAP.whyLink} {s.whyLink}</p>}
                 {s.learn && (
                   <p className="muted">
-                    {ROADMAP.learn}: {s.learn.url}
+                    {C.step.learn} {s.learn.url}
                   </p>
                 )}
                 {(s.population.total > 0 || s.highCare.userIds.length > 0) && (

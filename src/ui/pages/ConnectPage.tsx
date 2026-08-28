@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { signIn, signOut } from '../../graph/msal.ts'
 import { CONNECT } from '../../copy/pages.ts'
@@ -16,6 +17,8 @@ export function ConnectPage({
   lastScanAt?: string | null
   userCount?: number | null
 }) {
+  // The redirect takes seconds to start; the button must not look inert (ux-review-06 §2).
+  const [opening, setOpening] = useState(false)
   return (
     <StepFrame
       title={CONNECT.title}
@@ -59,8 +62,15 @@ export function ConnectPage({
               {CONNECT.sourceAfter}
             </li>
           </ul>
-          <Button variant="primary" onClick={() => void signIn()}>
-            {CONNECT.signIn}
+          <Button
+            variant="primary"
+            loading={opening}
+            onClick={() => {
+              setOpening(true)
+              void signIn().catch(() => setOpening(false))
+            }}
+          >
+            {opening ? CONNECT.signInOpening : CONNECT.signIn}
           </Button>
         </Card>
       )}

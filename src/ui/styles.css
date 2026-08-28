@@ -502,7 +502,7 @@ details.card > summary::marker { color: var(--muted); }
   text-align: left;
   cursor: pointer;
 }
-.picker-option:hover, .picker-option.focused { background: var(--accent-soft); }
+.picker-option:hover, .picker-option.focused { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .picker-option-secondary { color: var(--muted); font-size: var(--text-sm); }
 .picker-option .chip { margin-left: auto; }
 .picker-footer { display: flex; justify-content: space-between; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); font-size: var(--text-sm); color: var(--muted); }

@@ -60,9 +60,17 @@ interface IamaiDB extends DBSchema {
 }
 
 let dbPromise: Promise<IDBPDatabase<IamaiDB>> | null = null
+const DB_OPEN_TIMEOUT_MS = 6000
+
+export class StorageBlockedError extends Error {
+  constructor() {
+    super('Local storage is held open by another IAMAI tab on an older version; close or reload that tab.')
+    this.name = 'StorageBlockedError'
+  }
+}
 
 function db(): Promise<IDBPDatabase<IamaiDB>> {
-  dbPromise ??= openDB<IamaiDB>('iamai', 6, {
+  dbPromise ??= openDB<IamaiDB>('iamai', 7, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         const rows = d.createObjectStore('signin-rows', { keyPath: ['tenantId', 'id'] })
@@ -82,10 +90,28 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
       if (oldVersion < 5) {
         d.createObjectStore('snapshot', { keyPath: 'tenantId' })
       }
-      if (oldVersion < 6) {
-        d.createObjectStore('baseline', { keyPath: 'tenantId' })
-      }
+      // Version 7 (prompt 23): the store was first declared under version 6 without a
+      // bump, so browsers already at 6 never got it and every baseline save failed silently.
+      if (!d.objectStoreNames.contains('baseline')) d.createObjectStore('baseline', { keyPath: 'tenantId' })
     },
+  })
+  // Another tab on an older schema blocks the upgrade, and every read would
+  // queue behind it forever (ux-review-06 §3). Each connection therefore
+  // closes itself when a newer version asks, and an open that takes too long
+  // fails loudly instead of hanging the page.
+  const opening = dbPromise
+  dbPromise = Promise.race([
+    opening.then((d) => {
+      d.addEventListener('versionchange', () => {
+        d.close()
+        dbPromise = null
+      })
+      return d
+    }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new StorageBlockedError()), DB_OPEN_TIMEOUT_MS)),
+  ]).catch((e: unknown) => {
+    dbPromise = null
+    throw e
   })
   return dbPromise
 }
@@ -244,4 +270,9 @@ export async function forgetTenant(tenantId: string): Promise<void> {
   await tx.objectStore('snapshot').delete(tenantId)
   await tx.objectStore('baseline').delete(tenantId)
   await tx.done
+}
+
+/** Opens the store once so a blocked upgrade is reported early (App). */
+export async function probeStorage(): Promise<void> {
+  await db()
 }

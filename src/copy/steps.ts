@@ -87,6 +87,7 @@ export const PRINT = {
     change: 'The change',
     portal: 'Portal steps',
     exit: 'Done when',
+    learn: 'Microsoft Learn:',
     rollback: 'If it goes wrong',
   },
   runningHeader: (tenant: string, date: string) => `IAMAI plan · ${tenant} · ${date}`,
@@ -193,7 +194,7 @@ export const PREREQ = {
 export const ACTION = {
   alreadyDelivered: 'Already delivered by existing policies: nothing to do.',
   createReportOnly: 'Create this policy in report-only mode; the description tag lets re-scans track it.',
-  createsGroup: (name: string) => `This step also creates the assigned group "${name}" it targets: create it empty first; pilot users go in later.`,
+  createsGroup: (name: string) => `This step also creates a new pilot group it targets, for example "${name}": create it empty first; pilot users go in later.`,
   noBaselineMatch: 'No baseline policy matches this goal directly: create a policy that meets the goal floor.',
   raiseGrant: (detail: string) => `Raise the grant control: ${detail}.`,
   tightenSession: (detail: string) => `Tighten the session controls: ${detail}.`,
@@ -327,4 +328,29 @@ export const STATE_REASON = {
   safeToday: `nobody used what it blocks in ${WINDOW}`,
   prerequisite: 'a foundation the later steps need',
   verifyPending: 'enabled users still need setting up',
+}
+
+// The portal's own words for API values (ux-review-06 §5).
+const CLIENT_APP_WORDS: Record<string, string> = {
+  all: 'All client apps',
+  browser: 'Browser',
+  mobileappsanddesktopclients: 'Mobile apps and desktop clients',
+  exchangeactivesync: 'Exchange ActiveSync clients',
+  other: 'Other clients',
+}
+const PLATFORM_WORDS: Record<string, string> = {
+  all: 'Any device',
+  android: 'Android',
+  ios: 'iOS',
+  windows: 'Windows',
+  windowsphone: 'Windows Phone',
+  macos: 'macOS',
+  linux: 'Linux',
+  unknownfuturevalue: 'Other',
+}
+export const PORTAL_WORDS = {
+  clientApps: (values: unknown): string =>
+    Array.isArray(values) && values.length > 0 ? values.map((v) => CLIENT_APP_WORDS[String(v).toLowerCase()] ?? String(v)).join(', ') : '',
+  platforms: (values: unknown): string =>
+    Array.isArray(values) && values.length > 0 ? values.map((v) => PLATFORM_WORDS[String(v).toLowerCase()] ?? String(v)).join(', ') : '',
 }

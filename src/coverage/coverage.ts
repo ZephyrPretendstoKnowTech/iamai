@@ -125,10 +125,17 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   // Ad-hoc goals with the same intent fingerprint are one goal (§12); the
   // other source policies stay named in the detail.
   const byFingerprint = new Map<string, { goal: Goal; baselineMatches: PolicyFacts[] }>()
+  // App names the tenant knows, so an ad-hoc goal can be named by its app.
+  const appNames = new Map<string, string>()
+  for (const raw of snapshot.appSignInSummary) {
+    const a = raw as { appId?: string; appDisplayName?: string }
+    if (typeof a.appId === 'string' && typeof a.appDisplayName === 'string') appNames.set(a.appId.toLowerCase(), a.appDisplayName)
+  }
   for (const b of baselineFacts) {
     if (matchedBaseline.has(b.name)) continue
-    const goal = adHocGoal(b)
-    const key = JSON.stringify(goal.implementations[0].signature)
+    const goal = adHocGoal(b, appNames)
+    // Same fingerprint, or the same generated title, is one goal (§12).
+    const key = [...byFingerprint.entries()].find(([, e]) => e.goal.name === goal.name)?.[0] ?? JSON.stringify(goal.implementations[0].signature)
     const existing = byFingerprint.get(key)
     if (existing) {
       existing.baselineMatches.push(b)
@@ -381,7 +388,7 @@ function evaluateGoal(
           ? REASON.excludedByRole(ex.id.split(',').length)
           : ex.kind === 'guests'
             ? REASON.guestsExcluded
-            : REASON.excludedDirectly(isBreakGlassUser, assumedNote)
+            : REASON.excludedDirectly(isBreakGlassUser, assumedNote, stillMissing)
     reasons.push({
       kind: 'excluded',
       userIds: stillMissing,

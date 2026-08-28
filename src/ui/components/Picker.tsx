@@ -83,7 +83,10 @@ export function Picker({
           value={query}
           aria-label={placeholder}
           aria-expanded={open}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true)
+            setFocused(0)
+          }}
           onChange={(e) => {
             setQuery(e.currentTarget.value)
             setOpen(true)

@@ -22,13 +22,30 @@ export function organisationReport(
 
   // "Consider consolidating" only when more than two *enabled* policies match
   // the goal's own signature (prompt 12 §7) — never for ad-hoc goals.
+  // "Consider consolidating" only when enabled policies for one goal target the
+  // same people with the same controls; persona splits (admins, members,
+  // guests) are deliberate and never flagged (ux-review-06 §11).
+  const factsById = new Map(tenantFacts.map((f) => [f.id, f]))
+  const shape = (id: string): string | null => {
+    const f = factsById.get(id)
+    if (!f) return null
+    const who = [...f.who.users, ...f.who.groups, ...f.who.roles].map((x) => x.toLowerCase()).sort()
+    const grant = f.grant ? `${[...f.grant.controls].map((c) => c.toLowerCase()).sort().join('+')}|${f.grant.strength ?? ''}|${f.grant.operator}` : 'none'
+    return JSON.stringify({ all: f.who.all, guests: f.who.guests, who, grant })
+  }
   const consolidation = results
-    .filter((r) => !r.goal.adHocSource && r.candidates.filter((c) => c.state === 'enabled').length > 2)
-    .map((r) => ({
-      goalId: r.goal.id,
-      goalName: r.goal.name,
-      policyNames: r.candidates.filter((c) => c.state === 'enabled').map((c) => c.policyName),
-    }))
+    .filter((r) => !r.goal.adHocSource)
+    .flatMap((r) => {
+      const enabled = r.candidates.filter((c) => c.state === 'enabled')
+      const groups = new Map<string, string[]>()
+      for (const c of enabled) {
+        const k = shape(c.policyId)
+        if (k === null) continue
+        groups.set(k, [...(groups.get(k) ?? []), c.policyName])
+      }
+      const dup = [...groups.values()].find((names) => names.length > 1)
+      return dup ? [{ goalId: r.goal.id, goalName: r.goal.name, policyNames: dup }] : []
+    })
 
   // Naming convention over the tenant's own policies — Microsoft-managed ones
   // are named by Microsoft and never count as outliers.

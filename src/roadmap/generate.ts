@@ -20,7 +20,7 @@ import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { ACTION, CARE, COMMS, EVIDENCE, EXIT, IMPACT, PREREQ, ROLLBACK, UNBLOCK, stepTitle } from '../copy/steps.ts'
+import { ACTION, CARE, COMMS, EVIDENCE, EXIT, IMPACT, PORTAL_WORDS, PREREQ, ROLLBACK, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import {
   BREAK_GLASS_DRILL_DAYS,
   EXIT_MIN_DAYS_OBSERVED,
@@ -204,13 +204,14 @@ export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholde
       ? `Target resources → User actions: ${actions}`
       : `Target resources → Cloud apps → Include: ${appInc === 'All users' || appInc === 'All' ? 'All resources' : appInc || 'as exported'}`,
   )
-  if (label(c.clientAppTypes) && label(c.clientAppTypes) !== 'all') {
-    lines.push(`Conditions → Client apps: ${label(c.clientAppTypes)}`)
+  const clientApps = PORTAL_WORDS.clientApps(c.clientAppTypes)
+  if (clientApps && clientApps !== PORTAL_WORDS.clientApps(['all'])) {
+    lines.push(`Conditions → Client apps: ${clientApps}`)
   }
   const platforms = (c.platforms ?? null) as RawPolicy | null
   if (platforms)
     lines.push(
-      `Conditions → Device platforms → Include: ${label(platforms.includePlatforms)}${label(platforms.excludePlatforms) ? `; Exclude: ${label(platforms.excludePlatforms)}` : ''}`,
+      `Conditions → Device platforms → Include: ${PORTAL_WORDS.platforms(platforms.includePlatforms)}${PORTAL_WORDS.platforms(platforms.excludePlatforms) ? `; Exclude: ${PORTAL_WORDS.platforms(platforms.excludePlatforms)}` : ''}`,
     )
   const locations = (c.locations ?? null) as RawPolicy | null
   if (locations)
@@ -592,7 +593,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         })
         const personas = createdWithinStepKeys(source.policy, mapping).filter((c) => c.group === 'personaGroups')
         for (const p of personas) {
-          action.summary.push(ACTION.createsGroup(p.key))
+          // The baseline names the group by id; the plan names it in the tenant's convention (ux-review-06 §4).
+          action.summary.push(ACTION.createsGroup(proposedPolicyName(`Pilot${naming?.separator ?? ' - '}${stepTitle(goal.name)}`, naming)))
         }
       } else {
         action = {

@@ -114,6 +114,7 @@ export const CONNECT = {
   sourceLink: 'The source is public',
   sourceAfter: ', so anyone can verify that.',
   signIn: 'Sign in with Microsoft',
+  signInOpening: 'Opening the Microsoft sign-in…',
   readOnlyTip: {
     title: 'Not even report-only',
     text: 'A report-only policy is a Conditional Access policy that only records what it would have done. IAMAI never creates one either: the plan asks you to create each policy yourself.',
@@ -133,6 +134,7 @@ export const BASELINE = {
   does: 'Picks the target policy set the rollout plan aims for.',
   next: 'Scan',
   fetching: (n: number) => `Fetching ${count(n, 'file')} from GitHub at the pinned commit…`,
+  readingProgress: (done: number, total: number) => `Reading ${done} of ${total} files…`,
   reading: (n: number) => `Reading ${count(n, 'uploaded file')}…`,
   uploadedSource: (n: number) => `uploaded package (${count(n, 'file')})`,
   load: 'Load this baseline',
