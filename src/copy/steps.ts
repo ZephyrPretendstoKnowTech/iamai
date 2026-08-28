@@ -215,7 +215,7 @@ export const UNBLOCK = {
 
 export const IMPACT = {
   done: 'Already in force: no change for anyone.',
-  blockZero: 'Zero sign-ins would have been affected in the last 30 days: free security.',
+  blockZero: 'No sign-in in the last 30 days would have been affected.',
   blockSome: (n: number) => `${count(n, 'user')} used this in the last 30 days and would be affected: contact them first.`,
   adjust: (affected: number, admins: number) =>
     `${count(affected, 'user')} ${affected === 1 ? 'sees' : 'see'} a change${admins > 0 ? ` (${count(admins, 'admin')})` : ''}; nobody new is targeted.`,
@@ -287,6 +287,7 @@ export const EVIDENCE = {
   notSeenYet: 'The created policy has not appeared in sign-in results yet.',
   none: "No sign-ins in the last 30 days matched this policy's conditions.",
   notMeasured: 'Sign-in records measure this once the policy exists in report-only; until then readiness is the guide.',
+  alreadyEnforced: 'An existing policy already enforces this; its sign-in outcomes show in the Readiness table, not here.',
   legacyAuth: 'legacy authentication',
   deviceCode: 'the device-code flow',
   authTransfer: 'authentication transfer',

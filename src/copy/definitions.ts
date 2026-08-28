@@ -16,7 +16,7 @@ export const MFA_STATE = {
     title: TERMS.mfaState.notChallenged,
     text: 'Signed in during the collected window, but nothing ever required MFA of them: enforcement is their first real test.',
   },
-  unverified: { title: TERMS.mfaState.unverified, text: 'MFA-capable on paper with no usage signal: verify before enforcing.' },
+  unverified: { title: TERMS.mfaState.unverified, text: 'A method is registered but nothing shows it working: verify before enforcing.' },
   none: { title: TERMS.mfaState.none, text: 'No MFA-capable method registered. Email and security questions do not count.' },
 } as const satisfies Record<string, Definition>
 

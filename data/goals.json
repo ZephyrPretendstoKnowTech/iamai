@@ -39,7 +39,7 @@
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-all-users-mfa",
-      "tldr": "Require MFA for all users on all apps - the single highest-value Conditional Access policy.",
+      "tldr": "Require MFA for all users on all apps: the single highest-value Conditional Access policy.",
       "cis": [
         "6.3",
         "6.4"
@@ -157,7 +157,7 @@
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-policy-guest-mfa",
-      "tldr": "External users get MFA too - their home tenant's hygiene is not your control.",
+      "tldr": "External users get MFA too: their home tenant's hygiene is not your control.",
       "cis": [
         "6.3"
       ]
@@ -316,7 +316,7 @@
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows",
-      "tldr": "Authentication transfer moves a session to another device via QR code - block it unless used.",
+      "tldr": "Authentication transfer moves a session to another device via QR code: block it unless used.",
       "cis": [
         "4.8"
       ]

@@ -224,3 +224,8 @@ export function scheduleOverrun(band: string, expectedWeeks: number, weeks: numb
   const by = extendedBy.length > 0 ? ` ${list(extendedBy)} ${extendedBy.length === 1 ? 'extends' : 'extend'} it.` : ''
   return `Longer than the ${band} band's ${count(expectedWeeks, 'week')} (${count(weeks, 'week')}).${by}`
 }
+
+/** Lowercases a name for mid-sentence use without touching acronyms ("MFA", "CA"). */
+export function lowerFirst(s: string): string {
+  return s.length > 1 && s[1] === s[1].toLowerCase() ? s[0].toLowerCase() + s.slice(1) : s
+}

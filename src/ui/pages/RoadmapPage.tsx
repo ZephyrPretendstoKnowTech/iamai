@@ -752,7 +752,6 @@ function StepCard({
           <a href={step.learn.url} target="_blank" rel="noreferrer">
             {C.learn}
           </a>{' '}
-          {step.learn.tldr}
           {step.learn.cis.map((c) => (
             <Chip key={c} status="neutral" title={CHIP.cis.text}>
               {C.cis(c)}
