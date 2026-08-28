@@ -1,5 +1,6 @@
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser'
 import type { AccountInfo } from '@azure/msal-browser'
+import { SessionExpiredError } from './collect/tokenGate.ts'
 
 // SPEC.md §4 — the full read scope set, requested once at sign-in (no staged consent).
 export const GRAPH_SCOPES = [
@@ -51,7 +52,12 @@ export function signOut(): Promise<void> {
   return msal.logoutRedirect()
 }
 
-export async function getGraphToken(): Promise<string> {
+/**
+ * A Graph token. When the silent refresh needs the operator: 'redirect' leaves
+ * the page (first sign-in), 'popup' keeps it (mid-scan, prompt 20 §3), and
+ * 'silent' reports a SessionExpiredError so the caller can pause.
+ */
+export async function getGraphToken(mode: 'redirect' | 'popup' | 'silent' = 'redirect'): Promise<string> {
   const account = msal.getActiveAccount()
   if (!account) throw new Error('Not signed in')
   try {
@@ -59,7 +65,9 @@ export async function getGraphToken(): Promise<string> {
     return result.accessToken
   } catch (e) {
     if (e instanceof InteractionRequiredAuthError) {
-      await msal.acquireTokenRedirect({ scopes: GRAPH_SCOPES, account })
+      if (mode === 'popup') return (await msal.acquireTokenPopup({ scopes: GRAPH_SCOPES, account })).accessToken
+      if (mode === 'redirect') await msal.acquireTokenRedirect({ scopes: GRAPH_SCOPES, account })
+      throw new SessionExpiredError()
     }
     throw e
   }

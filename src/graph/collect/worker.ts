@@ -27,6 +27,7 @@ import {
 } from './collectors.ts'
 import type { Ctx } from './collectors.ts'
 import { SectionDisabledError } from './http.ts'
+import { pool, settleLanes } from './orchestrate.ts'
 import type {
   ConfigSection,
   ConfigSectionKey,
@@ -74,17 +75,6 @@ const tokens = {
     })
     return tokenRefresh
   },
-}
-
-async function pool(limit: number, tasks: (() => Promise<void>)[]): Promise<void> {
-  const queue = [...tasks]
-  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
-    while (queue.length > 0) {
-      const task = queue.shift()
-      if (task) await task()
-    }
-  })
-  await Promise.all(workers)
 }
 
 function sourceState(status: SourceState['status'], reason: string | null = null): SourceState {
@@ -342,8 +332,13 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     })
   })
 
-  await pool(LANE_A_CONCURRENCY, [...lane0Tasks, ...laneATasks])
-  await laneB
+  // Lanes settle independently (prompt 20 §4): a Lane B failure lands as a
+  // labelled evidence error, never as a fatal scan.
+  const outcome = await settleLanes(() => pool(LANE_A_CONCURRENCY, [...lane0Tasks, ...laneATasks]), () => laneB)
+  if (!outcome.laneB.ok) {
+    snapshot.sources.signInEvidence = sourceState('error', outcome.laneB.error)
+    post({ type: 'section', source: 'signInEvidence', status: 'error', reason: outcome.laneB.error })
+  }
   post({ type: 'state', value: 'done' })
   finishAggregates()
 
