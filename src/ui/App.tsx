@@ -30,6 +30,11 @@ import { loadMappingState } from '../mapping/store.ts'
 
 const DEV_PANEL =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
+// ?dev=1&mock=1: the smoke test's tenant (prompt 20 §10). A synthetic account,
+// scan and baseline stand in for Graph so the walk from Start to Roadmap runs
+// headless with no sign-in. Dev builds only; the fixture is loaded lazily so
+// it never ships.
+const MOCK = DEV_PANEL && new URLSearchParams(window.location.search).get('mock') === '1'
 
 export function App() {
   const [account, setAccount] = useState<AccountInfo | null>(null)
@@ -59,6 +64,25 @@ export function App() {
   }, [route, visitedStart])
 
   useEffect(() => {
+    if (MOCK) {
+      void import('./pages/fixtureSnapshot.ts').then(({ fixtureSnapshot, fixtureBaseline }) => {
+        const snapshot = fixtureSnapshot()
+        setAccount({
+          homeAccountId: 'mock',
+          environment: 'login.windows.net',
+          tenantId: snapshot.tenantId,
+          username: 'alex@example.com',
+          localAccountId: 'u-1',
+          name: 'Alex Morgan',
+        } as AccountInfo)
+        setTenantName('Contoso Pty Ltd')
+        setLastScan({ snapshot, at: snapshot.asOf })
+        setBaseline(fixtureBaseline())
+        void loadMappingState(snapshot.tenantId).then((m) => setMapProgress(wizardProgress(m)))
+        setReady(true)
+      })
+      return
+    }
     initAuth()
       .then((a) => {
         setAccount(a)

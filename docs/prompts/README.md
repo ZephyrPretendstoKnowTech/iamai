@@ -39,3 +39,5 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `16-setup-redesign.md` | Advanced options, answer feedback, detected service accounts, countries allowlist, workload labels, Q7 fix | 15 done |
 | `17-scoring-and-findings.md` | Three-dimension scoring, group/sort controls, badges, step copy fixes | 16 done |
 | `18-pacing-by-size-and-timeline.md` | Pace preset by tenant size, schedule rationale, timeline auto-hide, verification on this tenant | 17 done |
+| `19-qa-sweep.md` | Button ink, question count, legend cards, findings controls; a full audit (docs/qa/audit-01.md) and its fixes; cross-page consistency test | 18 done |
+| `20-hardening-and-trust.md` | Hygiene scan, error boundary, session-expiry pause, retry and lane-isolation tests, plan round-trip, accessibility, performance guard, print check, scan age, CI smoke test | 19 done |
