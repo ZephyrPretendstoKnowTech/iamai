@@ -24,8 +24,12 @@ import { findingsSummary } from '../../copy/statements.ts'
 import { absoluteDate, whenAt } from '../format.ts'
 import { StepFrame, stepHref } from '../shell/AppShell.tsx'
 import { stepIdForGoal } from '../../roadmap/generate.ts'
-import { Callout, Card, Chip, ExpandCard, StatTile, Stats, Tabs } from '../components/index.ts'
+import { Callout, Card, Chip, ExpandCard, InfoTip, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
+import { SCORE } from '../../copy/definitions.ts'
+import { scoreResult } from '../../roadmap/score.ts'
+import { DOMAINS, compareScores } from '../../scoring/priority.ts'
+import type { GoalScore, ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 const STATUS_CHIP: Record<GoalStatus, ChipStatus> = {
@@ -65,6 +69,9 @@ export function CoveragePage({
   const [groupsLoaded, setGroupsLoaded] = useState(false)
   const [mapping, setMapping] = useState<MappingState | null>(null)
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([])
+  // Control bar (prompt 17 §2): "needs attention" opens sorted by priority.
+  const [groupBy, setGroupBy] = useState<'none' | 'domain'>('none')
+  const [sortBy, setSortBy] = useState<ScoreSort>('priority')
 
   const snapshot = scan?.snapshot ?? null
   const tenantPolicies = useMemo(() => (snapshot ? (snapshot.config.caPolicies?.rows ?? []) : []), [snapshot])
@@ -123,7 +130,8 @@ export function CoveragePage({
     const viability = buildViabilityInputs(snapshot, new Date().toISOString()).map(scoreMfaViability)
     const summary = summarizeTenant(viability)
     const names = buildNameDirectory(snapshot, groups)
-    return { report, summary, names }
+    const scores = new Map<string, GoalScore | null>(report.results.map((r) => [r.goal.id, scoreResult(r, snapshot, viability)]))
+    return { report, summary, names, scores }
   }, [snapshot, groupsLoaded, groups, tenantPolicies, baseline, mapping, notInScope])
 
   useEffect(() => {
@@ -166,7 +174,9 @@ export function CoveragePage({
     )
   }
 
-  const { report, summary, names } = computed
+  const { report, summary, names, scores } = computed
+  const scoreOf = (r: GoalResult): GoalScore | null => scores.get(r.goal.id) ?? null
+  const sorted = (rows: GoalResult[]): GoalResult[] => [...rows].sort((a, b) => compareScores(scoreOf(a), scoreOf(b), sortBy) || a.goal.phase - b.goal.phase)
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'this tenant'
   const enabledPolicies = tenantPolicies.filter((p) => (p as { state?: string }).state === 'enabled').length
@@ -236,6 +246,11 @@ export function CoveragePage({
             {GOAL_STATUS[r.status].title}
           </Chip>{' '}
           {renderStatement(nameify(r.statement))}
+          <ScoreBadges score={scoreOf(r)} />
+          <InfoTip title={C.whyMatters} text={r.goal.tldr ?? r.goal.description} />
+          {r.status !== 'enforced' && r.status !== 'not-applicable' && r.status !== 'licence-limited' && (
+            <InfoTip title={C.howToFix} text={C.fixText(r.goal.name)} link={{ href: stepHref(stepIdForGoal(r.goal.id)), label: C.fixLink }} />
+          )}
         </>
       }
     >
@@ -297,17 +312,57 @@ export function CoveragePage({
     </ExpandCard>
   )
 
+  const controlBar = (
+    <div className="control-bar no-print">
+      <label>
+        {C.groupBy}
+        <select value={groupBy} onChange={(e) => setGroupBy(e.currentTarget.value as 'none' | 'domain')}>
+          <option value="none">{C.groupNone}</option>
+          <option value="domain">{C.groupDomain}</option>
+        </select>
+      </label>
+      <label>
+        {C.sortBy}
+        <select value={sortBy} onChange={(e) => setSortBy(e.currentTarget.value as ScoreSort)}>
+          {(['priority', 'value', 'effort', 'disruption'] as ScoreSort[]).map((k) => (
+            <option key={k} value={k}>
+              {C.sort[k]}
+            </option>
+          ))}
+        </select>
+        <InfoTip title={SCORE[sortBy].title} text={SCORE[sortBy].text} />
+      </label>
+    </div>
+  )
+
+  const grouped = (rows: GoalResult[]) => {
+    const list = sorted(rows)
+    if (groupBy === 'none') return list.map(goalCard)
+    return DOMAINS.map((d) => {
+      const inDomain = list.filter((r) => (scoreOf(r)?.domain ?? r.goal.domain ?? 'Identity') === d)
+      if (inDomain.length === 0) return null
+      return (
+        <div key={d} className="phase-group">
+          <h3>{d}</h3>
+          {inDomain.map(goalCard)}
+        </div>
+      )
+    })
+  }
+
   const workingTab = () => (
     <div>
+      {controlBar}
       {enforced.length === 0 && <p className="advisor">{C.nothingInPlace}</p>}
-      {enforced.map(goalCard)}
+      {grouped(enforced)}
     </div>
   )
 
   const attentionTab = () => (
     <div>
+      {controlBar}
       {absent.length + partial.length + unknown.length === 0 && <p className="advisor">{C.allInPlace}</p>}
-      {[...partial, ...absent, ...unknown].sort((a, b) => a.goal.phase - b.goal.phase).map(goalCard)}
+      {grouped([...partial, ...absent, ...unknown])}
     </div>
   )
 

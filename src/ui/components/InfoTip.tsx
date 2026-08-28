@@ -4,7 +4,7 @@ import { COMPONENTS } from '../../copy/components.ts'
 
 // ⓘ glyph with a hover/click popover: a title and one or two sentences.
 // Replaces every "?" in the app. Keyboard: focus + Enter/Space toggles, Esc closes.
-export function InfoTip({ title, text }: { title: string; text: string }) {
+export function InfoTip({ title, text, link }: { title: string; text: string; link?: { href: string; label: string } }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
   const id = useId()
@@ -42,6 +42,12 @@ export function InfoTip({ title, text }: { title: string; text: string }) {
         <span className="infotip-pop" role="tooltip" id={id}>
           <strong>{title}</strong>
           {text}
+          {link && (
+            <>
+              {' '}
+              <a href={link.href}>{link.label}</a>
+            </>
+          )}
         </span>
       )}
     </span>

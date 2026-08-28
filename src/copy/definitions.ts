@@ -85,6 +85,14 @@ export const TILE = {
   phaseProgress: { title: 'Done in this wave', text: 'Steps in this wave already delivered by existing policies or completed since the plan started.' },
 } as const satisfies Record<string, Definition>
 
+/** The three scores on every finding and step (ux-review-03 §A7). */
+export const SCORE = {
+  value: { title: 'Security value', text: 'How much the goal reduces risk, 1 to 5, from the catalogue; raised by one when the tenant shows the exposure it closes.' },
+  effort: { title: 'Effort', text: 'How much work the change is, 1 to 5: the base effort plus prerequisites, objects to create, and a readiness gap.' },
+  disruption: { title: 'Disruption', text: 'How many active users feel it and how hard, 1 to 5; lower when they are ready, when evidence is clean, and in smaller tenants.' },
+  priority: { title: 'Priority', text: 'Security value × (6 − disruption): the biggest gain for the least interruption comes first; ties go to the easier change.' },
+} as const satisfies Record<string, Definition>
+
 export const CHIP = {
   safeToday: { title: 'Safe today', text: 'Nobody used what this policy blocks in the last 30 days, so enforcing it interrupts no one.' },
   care: { title: 'Handle with care', text: 'Named in Setup as someone an accidental lockout would hurt. Changes still apply; enforcement waits until they are verified, and they go last.' },

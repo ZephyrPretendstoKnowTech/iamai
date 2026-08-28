@@ -85,7 +85,7 @@ test('share branches: none, one, all', () => {
 
 test('statement shapes', () => {
   assert.equal(inPlaceStatement('Require MFA', ['A', 'B'], 0), '**Require MFA**. Delivered by *A* and *B*.')
-  assert.equal(inPlaceStatement('Require MFA', ['A'], 2), '**Require MFA**. Delivered by *A*. 2 accounts excluded as break-glass.')
+  assert.equal(inPlaceStatement('Require MFA', ['A'], 2), '**Require MFA**. Delivered by *A*, with 2 break-glass accounts excluded.')
   assert.equal(
     partialControlStatement('Admin sessions', 'MFA', 'phishing-resistant MFA', 3, 4, 'admin'),
     '**Admin sessions**: the current policy requires MFA; the baseline expects phishing-resistant MFA. 3 of 4 admins affected.',
@@ -94,9 +94,21 @@ test('statement shapes', () => {
     partialScopeStatement('Guests need MFA', 0, 1, 'guest', [{ reason: 'never targeted', count: 1 }]),
     '**Guests need MFA** applies to none of the 1 guest. Not covered: never targeted (1).',
   )
-  assert.equal(missingStatement('Block legacy authentication', 'CA001'), "**Block legacy authentication**. No policy does this yet. The baseline's policy for it: *CA001*.")
+  assert.equal(missingStatement('Block legacy authentication', 'CA001'), "**Block legacy authentication**. No policy does this yet; the baseline's policy for it is *CA001*.")
   assert.equal(reportOnlyStatement('Require MFA', 'CA002', 9, 0), '**Require MFA** is in report-only via *CA002* (9 days, no would-be failures).')
   assert.equal(reportOnlyStatement('Require MFA', 'CA002', 1, 1), '**Require MFA** is in report-only via *CA002* (1 day, 1 would-be failure).')
+})
+
+test('no finding statement runs past two sentences (prompt 17 §5)', () => {
+  const sentences = (s: string) => s.replace(/\*\*?[^*]+\*\*?/g, 'x').split(/\.\s+(?=[A-Z])/).filter(Boolean).length
+  const samples = [
+    inPlaceStatement('Require MFA', ['A', 'B'], 2),
+    partialControlStatement('Admin sessions', 'MFA', 'phishing-resistant MFA', 3, 4, 'admin'),
+    partialScopeStatement('Guests need MFA', 2, 5, 'guest', [{ reason: 'never targeted', count: 2 }, { reason: 'excluded', count: 1 }]),
+    missingStatement('Block legacy authentication', 'CA001'),
+    reportOnlyStatement('Require MFA', 'CA002', 9, 0),
+  ]
+  for (const s of samples) assert.ok(sentences(s) <= 2, s)
 })
 
 test('roadmap overview branches', () => {
