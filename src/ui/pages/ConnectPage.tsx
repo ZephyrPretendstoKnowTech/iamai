@@ -2,7 +2,7 @@ import type { AccountInfo } from '@azure/msal-browser'
 import { signIn, signOut } from '../../graph/msal.ts'
 import { CONNECT } from '../../copy/pages.ts'
 import { whenAt } from '../../copy/dates.ts'
-import { Button, Card } from '../components/index.ts'
+import { Button, Card, InfoTip } from '../components/index.ts'
 import { REPO_URL, StepFrame } from '../shell/AppShell.tsx'
 
 export function ConnectPage({
@@ -45,8 +45,11 @@ export function ConnectPage({
       ) : (
         <Card>
           <ul>
-            {CONNECT.bullets.map((b) => (
-              <li key={b}>{b}</li>
+            {CONNECT.bullets.map((b, i) => (
+              <li key={b}>
+                {b}
+                {i === 0 && <InfoTip title={CONNECT.readOnlyTip.title} text={CONNECT.readOnlyTip.text} />}
+              </li>
             ))}
             <li>
               {CONNECT.sourceBefore}

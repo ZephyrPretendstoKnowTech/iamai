@@ -123,7 +123,10 @@ test('schedule rationale branches on campaigns, observation, and Setup waits', (
     scheduleRationale({ weeks: 1, campaigns: 0, verificationDays: 0, observationDays: 0, waves: 1, waitingOnSetup: 0 }),
     '1 week: no verification campaign needed, no observation window, 1 enforcement wave.',
   )
-  assert.equal(scheduleOverrun('small', 4, 6, ['Unknown platforms blocked']), "Longer than the small band's 4 weeks (6 weeks). Unknown platforms blocked extends it.")
+  assert.equal(scheduleOverrun('small', 4, 6, ['Unknown platforms blocked']), 'Two weeks longer than a typical small tenant. 1 step extends it: Unknown platforms blocked.')
+  assert.equal(scheduleOverrun('small', 4, 5, [], 2), 'One week longer than a typical small tenant, because the verification campaign needs two weeks.')
+  const many = scheduleOverrun('mid', 8, 10, ['A', 'B', 'C', 'D', 'E', 'F', 'G'])
+  assert.match(many, /7 steps extend it: A, B, C, D, and E and 2 more\.$|7 steps extend it: A, B, C, D and E and 2 more\.$/)
 })
 
 test('roadmap overview branches', () => {

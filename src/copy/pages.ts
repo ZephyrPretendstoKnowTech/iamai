@@ -27,7 +27,7 @@ export const SHELL = {
   forgetTooltip: 'Deletes everything IAMAI stored for this tenant on this device, then signs out',
   printHeader: (tenant: string, date: string, by: string) => `IAMAI plan for ${tenant} · prepared ${date} by ${by}`,
   footerLeft: 'Read-only · nothing leaves your browser',
-  footerFollow: 'Made by',
+  footerFollow: 'Follow me here:',
   footerAuthor: 'Lachlan Robinette',
   footerGithub: 'GitHub',
   footerSource: 'Source',
@@ -104,13 +104,17 @@ export const CONNECT = {
   roadmap: 'Roadmap',
   signOut: 'Sign out',
   bullets: [
-    'IAMAI is read-only. It never creates, edits, or deletes anything in the tenant: not even report-only policies.',
+    'IAMAI is read-only. It never creates, edits, or deletes anything in the tenant.',
     'Admin consent creates an enterprise app named IAMAI in the tenant. To remove all access later, delete that enterprise app: nothing else is left behind.',
   ],
   sourceBefore: 'IAMAI runs entirely in the browser and only reads. ',
   sourceLink: 'The source is public',
   sourceAfter: ', so anyone can verify that.',
   signIn: 'Sign in with Microsoft',
+  readOnlyTip: {
+    title: 'Not even report-only',
+    text: 'A report-only policy is a Conditional Access policy that only records what it would have done. IAMAI never creates one either: the plan asks you to create each policy yourself.',
+  },
 }
 
 /** Branches: none, all required, none required, some required (prompt 19 §A2). */
@@ -138,7 +142,7 @@ export const BASELINE = {
   capturedOn: (date: string) => `Captured ${date}`,
   commit: (c: string) => `version ${c.slice(0, 7)}`,
   noDescription: 'No description provided.',
-  filesIn: (n: number) => `${count(n, 'file')} in this baseline`,
+  filesIn: (files: number, policies: number | null) => (policies === null ? `${count(files, 'file')} in this baseline` : `${count(files, 'file')}, ${count(policies, 'usable policy', 'usable policies')}`),
   targets: (tiers: string) => `targets ${tiers}`,
   loadedTitle: (source: string) => `Loaded: ${source}`,
   restoreFailed: 'The baseline saved with the scan could not be restored. Load it again below.',
@@ -176,7 +180,7 @@ export const SCAN = {
   slow: "Microsoft's sign-in record service is slow right now: this can take several minutes on larger tenants. Everything else is already collected.",
   details: 'Details',
   reading: 'reading…',
-  found: (label: string, n: number) => `${label}. ${n} found`,
+  found: (label: string, n: number) => `${label}: ${n.toLocaleString('en')}`,
   sectionsBar: (done: number, total: number) => `Configuration and inventory · ${done} of ${total}`,
   signInsBar: (rows: number, oldest: string | null) => `Sign-in records · ${rows} read${oldest ? ` · covered back to ${oldest}` : ''}`,
   waitingFirstBatch: 'Sign-in records · waiting for the first batch from Microsoft (about a minute)',
@@ -257,7 +261,7 @@ export const SCAN = {
 
 export const FINDINGS = {
   title: 'Findings',
-  does: "What the scan found in the tenant: what's working, what needs attention, and why.",
+  does: 'What the scan found in the tenant.',
   next: 'Roadmap',
   needsScan: 'scan complete',
   needScan: 'Run a scan in the Scan step',
@@ -367,6 +371,7 @@ export const ROADMAP = {
   wave: (n: number, name: string) => `Wave ${n} · ${name}`,
   blockedBy: 'Blocked by',
   showRoles: (n: number) => `Show the ${count(n, 'role')}`,
+  whyLink: 'Reference from the baseline author →',
   setupQuestionLink: (n: number) => `Setup question ${n}`,
   sortBy: 'Sort by',
   sortSchedule: 'Schedule',
@@ -445,6 +450,7 @@ export const LICENSING = {
   scored: 'scored',
   reference: 'reference only',
   ladderTitle: 'The free-tier ladder',
+  openStep: 'Open the step →',
   ladderIntro: 'The spine of every plan, regardless of licence: curated from Microsoft guidance.',
   nextAfterScan: 'Next: Findings',
   caps: {

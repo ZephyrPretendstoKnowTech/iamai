@@ -92,7 +92,7 @@ export const INVENTORY = {
     passwordless: 'Passwordless-capable',
     byMethod: (m: string) => `Registered: ${m}`,
     campaign: 'Registration campaign',
-    campaignState: (s: string) => `Campaign: ${s}`,
+    campaignState: (s: string) => `Authenticator registration campaign: ${s === 'enabled' ? 'on' : s === 'disabled' ? 'off' : s === 'default' ? 'Microsoft default' : s}`,
     securityDefaults: 'Security defaults',
     on: 'on',
     off: 'off',
@@ -259,6 +259,19 @@ const METHOD_NAMES: Record<string, string> = {
   deviceboundpasskey: 'Passkey (device-bound)',
   qrcodepin: 'QR code and PIN',
   externalauthenticationmethod: 'External authentication method',
+  devicebasedpush: 'Microsoft Authenticator (device-based push)',
+  temporaryaccesspassonetime: 'Temporary Access Pass (one-time)',
+  temporaryaccesspassmultiuse: 'Temporary Access Pass (multi-use)',
+  verifiablecredentials: 'Verified ID credentials',
+  phoneappnotification: 'Microsoft Authenticator (notification)',
+  phoneappotp: 'Microsoft Authenticator (code)',
+  onewaysms: 'Text message',
+  twowayvoicemobile: 'Phone call',
+  twowayvoiceoffice: 'Phone call (office)',
+  fido2securitykeys: 'Passkey or FIDO2 security key',
+  hardwareoathtoken: 'Hardware token code',
+  softwareoathtoken: 'Authenticator app code (software)',
+  passwordlessmicrosoftauthenticator: 'Microsoft Authenticator (passwordless)',
 }
 export function methodName(id: string): string {
   return METHOD_NAMES[id.toLowerCase()] ?? id

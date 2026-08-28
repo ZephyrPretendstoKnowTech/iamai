@@ -69,7 +69,7 @@ test('window cutoff: stops when a page reaches past the window start; covered = 
 test('history exhausted inside the window is ok with a retention note', async () => {
   const r = await runLaneB(deps([{ value: [row({ hoursAgo: 5 })] }]))
   assert.equal(r.status, 'ok')
-  assert.match(r.reason ?? '', /retention may be shorter/)
+  assert.match(r.reason ?? '', /or less if the tenant keeps fewer/)
 })
 
 test('time budget: stop is labelled and coverage decides partial', async () => {

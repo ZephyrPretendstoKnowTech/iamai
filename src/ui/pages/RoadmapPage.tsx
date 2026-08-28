@@ -373,7 +373,13 @@ export function RoadmapPage({
   })
   const overrun =
     !schedule.withinBand && work.length > 0
-      ? scheduleOverrun(C.bands[schedule.band].label.toLowerCase(), BANDS[schedule.band].weeks, schedule.weeks, schedule.extendedBy.map((id) => stepById.get(id)?.title ?? id))
+      ? scheduleOverrun(
+          C.bands[schedule.band].label.toLowerCase(),
+          BANDS[schedule.band].weeks,
+          schedule.weeks,
+          schedule.extendedBy.filter((id) => id !== 's-verify-mfa').map((id) => stepById.get(id)?.title ?? id),
+          schedule.verification.days > 0 ? Math.round(schedule.verification.days / 7) : null,
+        )
       : null
 
   const overview = () => (
@@ -750,6 +756,13 @@ function StepCard({
       }
     >
       <h4>{C.why}</h4>
+      {step.whyLink && (
+        <p className="reason">
+          <a href={step.whyLink} target="_blank" rel="noreferrer">
+            {C.whyLink}
+          </a>
+        </p>
+      )}
       <p>
         {step.why}
         {step.whyAttribution && (
@@ -783,8 +796,7 @@ function StepCard({
               <li key={i}>
                 {b.kind === 'step' && <a href={stepHref(b.stepId)}>{stepById.get(b.stepId)?.title ?? b.stepId}</a>}
                 {b.kind === 'setup' && <a href={`#/mapping`}>{C.setupQuestionLink(b.questionNumber)}</a>}
-                {(b.kind === 'step' || b.kind === 'setup') && ': '}
-                {b.label}
+                {b.kind !== 'step' && b.kind !== 'setup' && b.label}
               </li>
             ))}
             {step.blockers.length === 0 && step.unblockNotes.map((n, i) => <li key={`n${i}`}>{n}</li>)}

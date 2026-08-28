@@ -374,6 +374,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     title,
     why,
     whyAttribution: null,
+    whyLink: null,
     status: 'ready',
     blockedBy: [],
     blockers: [],
@@ -521,7 +522,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         : measuredEvidence
 
     const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined
-    const why = doc?.intent ?? goal.tldr ?? goal.description
+    const rawWhy = doc?.intent ?? goal.tldr ?? goal.description
+    const whyUrl = rawWhy.match(/https?:\/\/[^\s)]+/)?.[0] ?? null
+    const why = whyUrl ? rawWhy.replace(whyUrl, '').replace(/[\s:;,.]+$/, '').replace(/\.\s*:?$/, '') + '.' : rawWhy
     const whyAttribution = doc?.intent && input.baselineAuthor ? input.baselineAuthor : null
 
     const blockedBy: string[] = []
@@ -774,6 +777,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       title: stepTitle(goal.name),
       why,
       whyAttribution,
+      whyLink: whyUrl,
       status,
       blockedBy,
       blockers,

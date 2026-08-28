@@ -1,15 +1,58 @@
 {
-  "$comment": "The ~10 free-tier hardening items (SPEC §12) — the plan spine for tenants with no paid Entra. Placeholders to be curated from Microsoft guidance; keep the order as the intended sequence.",
+  "$comment": "The ~10 free-tier hardening items (SPEC 12): the plan spine for tenants with no paid Entra. Order is the intended sequence. goalId links to the catalogue goal's step where one exists.",
   "items": [
-    { "id": "security-defaults", "name": "Enable security defaults", "status": "placeholder" },
-    { "id": "break-glass-accounts", "name": "Create and validate break-glass accounts", "status": "placeholder" },
-    { "id": "legacy-auth-inventory", "name": "Inventory legacy authentication usage", "status": "placeholder" },
-    { "id": "app-passwords", "name": "Eliminate app passwords", "status": "placeholder" },
-    { "id": "per-user-mfa-cleanup", "name": "Reconcile per-user MFA states", "status": "placeholder" },
-    { "id": "admin-accounts-separate", "name": "Separate admin accounts from daily-driver accounts", "status": "placeholder" },
-    { "id": "global-admin-count", "name": "Reduce Global Administrator count", "status": "placeholder" },
-    { "id": "guest-review", "name": "Review guest accounts and external state", "status": "placeholder" },
-    { "id": "stale-accounts", "name": "Disable dormant and never-signed-in accounts", "status": "placeholder" },
-    { "id": "authenticator-over-sms", "name": "Move users from SMS/voice to Authenticator", "status": "placeholder" }
+    {
+      "id": "security-defaults",
+      "name": "Enable security defaults",
+      "description": "Microsoft's free baseline: MFA for admins, MFA registration for everyone, legacy authentication blocked. The starting point when there is no Conditional Access."
+    },
+    {
+      "id": "break-glass-accounts",
+      "name": "Create and validate break-glass accounts",
+      "description": "Two cloud-only emergency accounts, excluded from every policy and signed in on a schedule, so a mistaken policy still leaves a way back in."
+    },
+    {
+      "id": "legacy-auth-inventory",
+      "name": "Inventory legacy authentication usage",
+      "description": "Find every sign-in that still uses basic authentication (POP, IMAP, SMTP, ActiveSync) before it can be blocked.",
+      "goalId": "block-legacy-auth"
+    },
+    {
+      "id": "app-passwords",
+      "name": "Eliminate app passwords",
+      "description": "App passwords bypass MFA; move the apps that use them to modern authentication and turn the feature off."
+    },
+    {
+      "id": "per-user-mfa-cleanup",
+      "name": "Reconcile per-user MFA states",
+      "description": "Legacy per-user MFA fights with Conditional Access and security defaults; set every user to disabled there before policies take over."
+    },
+    {
+      "id": "admin-accounts-separate",
+      "name": "Separate admin accounts from daily-driver accounts",
+      "description": "Admin roles on a mailbox-holding account make every phishing email a tenant-wide risk; give admins a second, role-only account."
+    },
+    {
+      "id": "global-admin-count",
+      "name": "Reduce Global Administrator count",
+      "description": "Two to four Global Administrators is Microsoft's guidance; everyone else gets the least role that does their job."
+    },
+    {
+      "id": "guest-review",
+      "name": "Review guest accounts and external state",
+      "description": "Remove guests nobody sponsors and invitations never accepted; what remains is what guest policies protect.",
+      "goalId": "guests-mfa"
+    },
+    {
+      "id": "stale-accounts",
+      "name": "Disable dormant and never-signed-in accounts",
+      "description": "An account nobody uses is an account nobody notices being used; disable after 90 days of silence."
+    },
+    {
+      "id": "authenticator-over-sms",
+      "name": "Move users from SMS/voice to Authenticator",
+      "description": "Text and call codes are the weakest tier; the verification campaign moves people to Microsoft Authenticator or passkeys.",
+      "goalId": "mfa-all-users"
+    }
   ]
 }

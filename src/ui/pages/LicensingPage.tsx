@@ -4,6 +4,8 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { CATALOGUE } from '../../coverage/coverage.ts'
 import ladder from '../../../data/free-tier-ladder.json' with { type: 'json' }
 import { LICENSING } from '../../copy/pages.ts'
+import { stepIdForGoal } from '../../roadmap/generate.ts'
+import { stepHref } from '../shell/AppShell.tsx'
 import { TILE } from '../../copy/definitions.ts'
 import { Card, Chip, DataTable, EmptyState, InfoTip, LinkButton } from '../components/index.ts'
 import { ScanAge } from '../shell/AppShell.tsx'
@@ -29,10 +31,10 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
   }
   const caps = snapshot.capabilities
   const users = snapshot.users.length
-  const goalsByTier = new Map<string, string[]>()
+  const goalsByTier = new Map<string, { name: string; tldr: string | null }[]>()
   for (const g of CATALOGUE) {
     const tier = g.implementations[0]?.tier ?? 'p1'
-    goalsByTier.set(tier, [...(goalsByTier.get(tier) ?? []), g.name])
+    goalsByTier.set(tier, [...(goalsByTier.get(tier) ?? []), { name: g.name, tldr: g.tldr ?? null }])
   }
   const capRows = Object.entries(caps).map(([key, c]) => ({ key, ...c }))
 
@@ -96,8 +98,12 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
                 {cap ? LICENSING.caps[cap] : tier} <Chip status={have ? 'done' : 'neutral'}>{have ? LICENSING.scored : LICENSING.reference}</Chip>
               </h4>
               <ul className="sections">
-                {names.map((n) => (
-                  <li key={n}>{n}</li>
+                {names.map((g) => (
+                  <li key={g.name}>
+                    {g.name}
+                    {/* Reference-only goals say what the licence would unlock (ux-review-05 §27). */}
+                    {!have && g.tldr && <span className="reason">: {g.tldr}</span>}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -109,7 +115,16 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
         <p className="muted">{LICENSING.ladderIntro}</p>
         <ol className="sections">
           {ladder.items.map((i) => (
-            <li key={i.id}>{i.name}</li>
+            <li key={i.id}>
+              <strong>{i.name}</strong>
+              {i.description && <span className="reason">: {i.description}</span>}
+              {i.goalId && (
+                <>
+                  {' '}
+                  <a href={stepHref(stepIdForGoal(i.goalId))}>{LICENSING.openStep}</a>
+                </>
+              )}
+            </li>
           ))}
         </ol>
       </Card>

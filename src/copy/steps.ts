@@ -31,11 +31,11 @@ export const PHASE_NAME: Record<number, string> = {
 export const BLOCKED = {
   setup: (numbers: number[]) =>
     numbers.length === 1
-      ? `Blocked until Setup question ${numbers[0]} is answered`
-      : `Blocked until Setup questions ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are answered`,
-  step: (title: string) => `Blocked until '${title}' is done`,
+      ? `Setup question ${numbers[0]} is still unanswered`
+      : `Setup questions ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are still unanswered`,
+  step: (title: string) => `${title} is not done yet`,
   readiness: (label: string) => `Blocked while ${label}`,
-  evidence: 'Blocked until report-only evidence is clean',
+  evidence: 'report-only evidence is not clean yet',
 }
 
 export const OPERATOR = {
@@ -247,7 +247,7 @@ export const EXIT = {
   signIns: (perUser: number, absolute: number) => `At least ${count(perUser, 'sign-in')} per active user in the population (or ${absolute} total).`,
   zeroFailures: 'Zero report-only failures or interruptions.',
   careVerified: (n: number) => `Every handle-with-care user in scope is verified (${n} to check).`,
-  operatorStrong: 'The signed-in account has a strong method registered. IAMAI checks this.',
+  operatorStrong: 'The signed-in account holds a strong MFA method (checked at every re-scan).',
   thenEnforce: 'Then enable the policy (Enforce).',
   adjustApplied: 'The changed fields match the baseline on the next re-scan.',
   adjustNoRegression: 'No new sign-in failures on the changed policy in the week after the change.',

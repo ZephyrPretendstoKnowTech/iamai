@@ -108,7 +108,7 @@ export function BaselinePage({
 
   return (
     <StepFrame title={BASELINE.title} does={BASELINE.does} next={result ? 'scan' : undefined} nextLabel={BASELINE.next}>
-      <AboutCard index={index} />
+      <AboutCard index={index} policies={result?.pkg.policies.length ?? null} />
       <p className="row">
         <Button variant="primary" onClick={() => void loadPinned()} loading={busy !== null}>
           {BASELINE.load}
@@ -126,7 +126,7 @@ export function BaselinePage({
   )
 }
 
-function AboutCard({ index }: { index: BaselineIndex }) {
+function AboutCard({ index, policies }: { index: BaselineIndex; policies: number | null }) {
   return (
     <Card title={BASELINE.aboutTitle}>
       <p>
@@ -163,7 +163,7 @@ function AboutCard({ index }: { index: BaselineIndex }) {
       <p>{index.description ?? BASELINE.noDescription}</p>
       {index.goal && <p className="muted">{index.goal}</p>}
       <p className="muted">
-        {BASELINE.filesIn(index.files.length)}
+        {BASELINE.filesIn(index.files.length, policies)}
         {index.tiers && index.tiers.length > 0 && <> · {BASELINE.targets(index.tiers.join(', '))}</>}
       </p>
     </Card>
