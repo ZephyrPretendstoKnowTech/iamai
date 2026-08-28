@@ -75,6 +75,7 @@ export function RoadmapPage({
   // Hide completed defaults on once more than a third of the steps are done (ux-review-04 §5).
   const [showCompletedChoice, setShowCompletedChoice] = useState<boolean | null>(null)
   const [skipDraft, setSkipDraft] = useState<{ id: string; reason: string } | null>(null)
+  const [planLoading, setPlanLoading] = useState(false)
   const [version, setVersion] = useState(0)
   const [copied, setCopied] = useState<string | null>(null)
   // Deep link #/roadmap/step/<id>: open the Steps tab with that step expanded.
@@ -331,7 +332,6 @@ export function RoadmapPage({
     downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json')
   }
 
-  const [planLoading, setPlanLoading] = useState(false)
   const loadPlan = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return
     setPlanLoading(true)
