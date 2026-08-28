@@ -196,7 +196,7 @@ export function basisFor(step: Step, ctx: PopulationContext): string {
   return sentence
 }
 
-export function describePopulation(step: Step, ctx: PopulationContext): PopulationView {
+export function describePopulation(step: Step, ctx: PopulationContext, options: { cohorts?: boolean } = {}): PopulationView {
   const ids = step.population.ids
   const mode: PopulationMode = ids.length < NAME_ALL_BELOW ? 'names' : ids.length <= COHORTS_ONLY_ABOVE ? 'cohorts' : 'percentages'
   let named: NamedPerson[]
@@ -230,7 +230,7 @@ export function describePopulation(step: Step, ctx: PopulationContext): Populati
     mode,
     basis: basisFor(step, ctx),
     named,
-    cohorts: mode === 'names' ? [] : cohortsFor(ids, ctx),
+    cohorts: mode === 'names' || options.cohorts === false ? [] : cohortsFor(ids, ctx),
     namedIsSample: mode !== 'names',
   }
 }

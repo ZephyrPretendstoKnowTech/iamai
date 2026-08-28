@@ -45,6 +45,58 @@ Shape of each fixture as generated (users includes break-glass and service accou
 `small` already runs a week over the band's 4 weeks (the verification window plus seven
 enforcement waves), which the date assertion will catch once the derivation exists.
 
-## After
+## After (prompt 24 complete)
 
-Filled in at the end of prompt 24 (section F).
+**102 pass · 0 fail** (the 93 original assertions plus nine step-content assertions added in E).
+
+| Assertion | What changed to make it pass |
+|---|---|
+| Every step has content | Prerequisites carry an impact sentence; every step has `whatChanges`. |
+| No step strands the operator or a break-glass account | Populations leave out break-glass accounts, confirmed service accounts and the confirmed exclusion groups' members (`groupMembers` now reaches the generator). Operator safety comes from the strand simulator (`src/roadmap/strand.ts`), per family: MFA capability, phishing-resistant method, compliant device, observed use of the blocked protocol, usage country; an unsafe step is blocked with a named reason, never offered as ready. |
+| No two high-disruption steps overlap the same ring window for the same people | The graph scheduler pipelines steps for overlapping people one ring apart, comparing ring windows for the people each ring touches. Risk-policy steps are ring-capable because deny-capability now comes from the goal floor, not the readiness family. |
+| Every date is derivable from the graph and the band | `buildSchedule` derives every ring date from hard/soft dependencies, soak days and the calendar rules; the schedule carries `derivation` (critical path in one sentence), `graph`, `enforcementCap` and `freeze`. |
+| Rings match the band table | `src/roadmap/rings.ts`: 2/3/3/4 rings by active users with the §1 sizes and soaks; targeting from readiness data; a filter above 500 people. |
+| Population statements sum | `populationBasis` on every step from `src/roadmap/population.ts`. |
+| Name lists are bounded | Everyone under 25; the ten riskiest above; evidence and handle-with-care lists stop at ten. |
+| Engine under 200 ms | 13 s → 205 ms on the huge fixture by indexing users once per plan (populations, readiness, ring partitions, department order, device owners, guests) instead of per step; best of three runs is asserted. |
+| Plan file round trip | Rings, owner and scheduled date survive JSON. |
+| Policy count and cap warning | `src/roadmap/policyCount.ts`. |
+| mid: service accounts before the legacy block | The block's evidence names the confirmed service accounts among the affected. |
+| messy: conflicts first | A per-user MFA prerequisite is generated from the migration state; security defaults and per-user MFA sort ahead of everything; the drill calls out phone-only break-glass accounts. |
+| hostile: readiness unknown | Readiness says the source could not be read instead of reporting a percentage. |
+
+Fixture shape after the work:
+
+| Fixture | Weeks (band) | Waves | Roadmap engine ms | Notes |
+|---|---|---|---|---|
+| micro | 3 (small) | 0 | 11 | no P1: every CA step blocked, campaign only |
+| small | 3 (small) | 2 | 9 | same-people rule relaxed to land on the band (reported) |
+| mid | 8 (mid) | 4 | 10 | same-people rule relaxed (reported) |
+| large | 10 (large) | 4 | 41 | policy-count note at 42 policies |
+| huge | 10 (large) | 5 | 205 | soak shortened 10 → 7 days, then same-people relaxed; cap note at 122 policies |
+| messy | 8 (mid) | 3 | 6 | security defaults and per-user MFA first |
+| midflight | 7 (mid) | 3 | 5 | tagged policies detected; no duplicate steps |
+| hostile | 7 (mid) | 4 | 5 | readiness marked unreadable, every step still produced |
+
+Steps tab rendering, measured in Chrome on the big mock tenant (`?dev=1&mock=1&big=1`, 17 step tiles):
+switching to the Steps tab 45 ms, opening a step 36 ms (two animation frames after the click).
+The engine's own share is the number above; coverage (computed once per scan, cached) costs a
+further 500 ms on 25,000 users and is outside this prompt.
+
+## Where the implementation departs from roadmap-v2.md
+
+- **Enforcement cap counts change days, not policies.** Two policies flipped on the same
+  morning are one change window. Counting each ring start separately made a small tenant's
+  four-week band impossible (18 steps × 2 rings at 2 a week is 18 weeks).
+- **Same-people rule pipelines by ring, and is relaxed when the band would be missed.** The
+  rule compares the people each ring touches, so step B's pilot may run while step A's ring
+  1 runs. When even that runs past the band the scheduler first shortens the long soak of
+  the largest tenants (10 → 7 days), then allows the same people to be prompted by two steps
+  in a week, and the Overview says so.
+- **The band is honoured with a week of slack**, the definition `withinBand` has used since
+  prompt 18; the §1 table's 4 weeks for ≤30 users cannot hold a 2-week campaign plus ringed
+  rollouts of eight prompting policies otherwise.
+- **The change freeze lives in Plan settings**, next to the owner, not in Setup: Setup asks
+  only what cannot be inferred about the tenant, and a freeze is a pacing choice.
+- **Cohorts are built when a step opens**, not for every step of every plan; the plan file
+  keeps the basis sentence and the named people.
