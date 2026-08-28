@@ -13,6 +13,7 @@ import type { MappingQuestion, MappingState } from '../mapping/types.ts'
 import { activeWizardQuestions } from '../mapping/wizard.ts'
 import type { WizardQuestionId } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
+import { summarizeTenant } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
@@ -805,7 +806,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Verification complete on this scan → the campaign is done and the
     // scheduler skips its window (prompt 18 §1).
     const verifyReadiness = readinessFor('mfa-all-users', viability.map((v) => v.userId), viability, snapshot)
-    const verifyDone = verifyReadiness.percent !== null && verifyReadiness.percent >= READINESS_THRESHOLD_MFA_PERCENT
+    // Required whenever anyone enabled still has to be set up (ux-review-04 §2):
+    // the Overview sentence, the blocked-step reasons and the pace all read
+    // from this one number.
+    const toSetUp = summarizeTenant(viability).rollout.toSetUp
+    const verifyDone = toSetUp === 0
     steps.push({
       ...prereq(
         's-verify-mfa',
@@ -826,9 +831,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       population: population(viability.map((v) => v.userId), snapshot, viability),
       readiness: verifyReadiness,
       comms: COMMS.verify(tenantName),
-      impact: IMPACT.verifyCampaign(
-        viability.filter((v) => v.activity === 'active' && v.mfa !== 'verified' && v.mfa !== 'likelyViable').length,
-      ),
+      impact: IMPACT.verifyCampaign(toSetUp),
     })
   }
 

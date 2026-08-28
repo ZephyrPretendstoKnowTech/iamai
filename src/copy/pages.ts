@@ -210,6 +210,8 @@ export const SCAN = {
   clearFilters: 'Clear filters',
   noMatch: 'No users match these filters.',
   legend: 'Legend',
+  /** "12 · 40%": count first, share of enabled users second (ux-review-04 §1). */
+  rolloutValue: (n: number, enabled: number) => (enabled === 0 ? '0' : `${n.toLocaleString('en')} · ${Math.round((n / enabled) * 100)}%`),
   columns: {
     user: 'User',
     signInAddress: 'Sign-in address',
@@ -272,7 +274,7 @@ export const FINDINGS = {
     `IAMAI inferred ${count(groups, 'exclusion group')} and ${count(users, 'likely break-glass account')} from how the policies use them. Confirm them in`,
   assumedLink: 'Setup',
   assumedAfter: 'to remove the hedging.',
-  tiles: { inPlace: 'In place', partly: 'Partly', missing: 'Missing', scored: 'of scored goals in place', ready: 'active users MFA-ready' },
+  tiles: { inPlace: 'In place', partly: 'Partly', missing: 'Missing', scored: 'of scored goals in place', proven: 'of enabled users proved MFA in the last 30 days', toSetUp: 'enabled users to set up before enforcement' },
   nothingInPlace: 'Nothing is fully in place yet: that is what the plan is for.',
   allInPlace: 'Everything the baseline asks for is in place. Re-scan periodically; drift is flagged.',
   policiesInvolved: 'Policies involved',

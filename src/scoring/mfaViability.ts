@@ -42,6 +42,8 @@ export type EvidenceStatus = 'ok' | 'partial' | 'insufficient' | 'disabled' | 'p
 
 export type MfaViabilityInput = {
   userId: string
+  /** Sign-in enabled in the directory; headline metrics count enabled users only (ux-review-04 §1). */
+  accountEnabled?: boolean
   registration: {
     isMfaCapable: boolean
     isMfaRegistered: boolean
@@ -103,6 +105,7 @@ export function methodTiersOf(methodsRegistered: string[]): { strongestMethod: M
 
 export type MfaViability = {
   userId: string
+  enabled: boolean
   activity: ActivityState
   accountCreated?: string
   mfa: MfaState
@@ -169,6 +172,7 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
 
   const base = {
     userId: input.userId,
+    enabled: input.accountEnabled ?? true,
     activity,
     ...(activity === 'neverSignedIn' && input.accountCreated ? { accountCreated: input.accountCreated } : {}),
     mfaCapable,
@@ -284,12 +288,26 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
 
 // §10.6 tenant-level derivations. The verification phase counts active users
 // only — dormant and never-signed-in populations are planned separately.
+/**
+ * The rollout picture over every enabled user (ux-review-04 §1): proven means
+ * a successful MFA sign-in in the collected records; the other two buckets
+ * are what the verification campaign has to work through.
+ */
+export type RolloutBucket = 'proven' | 'noMethod' | 'unproven'
+export type RolloutSummary = { enabled: number; proven: number; noMethod: number; unproven: number; toSetUp: number }
+
+export function rolloutBucket(r: MfaViability): RolloutBucket | null {
+  if (!r.enabled) return null
+  if (r.evidence) return 'proven'
+  if (!r.mfaCapable) return 'noMethod'
+  return 'unproven'
+}
+
 export type TenantMfaSummary = {
   counts: Record<MfaState, number>
+  rollout: RolloutSummary
   adminCounts: Record<MfaState, number>
   activityCounts: Record<ActivityState, number>
-  challengedRate: number | null
-  verificationPhaseSize: number
 }
 
 const EMPTY_MFA_COUNTS = (): Record<MfaState, number> => ({
@@ -304,25 +322,23 @@ export function summarizeTenant(rows: MfaViability[]): TenantMfaSummary {
   const counts = EMPTY_MFA_COUNTS()
   const adminCounts = EMPTY_MFA_COUNTS()
   const activityCounts: Record<ActivityState, number> = { active: 0, dormant: 0, neverSignedIn: 0 }
-  let observable = 0
-  let challenged = 0
-  let verificationPhaseSize = 0
+  const rollout: RolloutSummary = { enabled: 0, proven: 0, noMethod: 0, unproven: 0, toSetUp: 0 }
   for (const r of rows) {
+    const bucket = rolloutBucket(r)
+    if (bucket) {
+      rollout.enabled += 1
+      rollout[bucket] += 1
+    }
     counts[r.mfa] += 1
     if (r.isAdmin) adminCounts[r.mfa] += 1
     activityCounts[r.activity] += 1
-    if (r.signals.observableInWindow) observable += 1
-    if (r.evidence) challenged += 1
-    if (r.activity === 'active' && (r.mfa === 'unverified' || r.mfa === 'none' || r.mfa === 'notChallenged')) {
-      verificationPhaseSize += 1
-    }
   }
+  rollout.toSetUp = rollout.noMethod + rollout.unproven
   return {
     counts,
+    rollout,
     adminCounts,
     activityCounts,
-    challengedRate: observable > 0 ? challenged / observable : null,
-    verificationPhaseSize,
   }
 }
 

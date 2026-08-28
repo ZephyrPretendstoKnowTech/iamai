@@ -4,7 +4,8 @@ import { startScan } from '../graph/collect/runScan.ts'
 import type { ScanHandle } from '../graph/collect/runScan.ts'
 import type { SectionEvent, TenantSnapshot, UserRow, WorkerOutMessage } from '../graph/collect/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
-import { scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
+import { rolloutBucket, scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
+import type { RolloutBucket } from '../scoring/mfaViability.ts'
 import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scoring/mfaViability.ts'
 import { STALE_SCAN_DAYS, absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative, scanAgeDays, whenAt } from './format.ts'
 import { loadMappingState } from '../mapping/store.ts'
@@ -71,6 +72,8 @@ export function MfaViabilityScreen({
   const [mfaFilter, setMfaFilter] = useState<Set<MfaState>>(new Set())
   const [activityFilter, setActivityFilter] = useState<Set<ActivityState>>(new Set())
   const [tierFilter, setTierFilter] = useState<Set<MethodTier>>(new Set())
+  // Rollout tiles filter to exactly their population (ux-review-04 §1).
+  const [rolloutFilter, setRolloutFilter] = useState<RolloutBucket | 'toSetUp' | null>(null)
   const [search, setSearch] = useState('')
 
   useEffect(() => {
@@ -157,10 +160,14 @@ export function MfaViabilityScreen({
         if (mfaFilter.size > 0 && !mfaFilter.has(r.mfa)) return false
         if (activityFilter.size > 0 && !activityFilter.has(r.activity)) return false
         if (tierFilter.size > 0 && !tierFilter.has(r.strongestMethod)) return false
+        if (rolloutFilter !== null) {
+          const b = rolloutBucket(r)
+          if (rolloutFilter === 'toSetUp' ? b !== 'noMethod' && b !== 'unproven' : b !== rolloutFilter) return false
+        }
         if (q && !`${r.user?.displayName ?? ''} ${r.user?.userPrincipalName ?? ''}`.toLowerCase().includes(q)) return false
         return true
       })
-  }, [scored, mfaFilter, activityFilter, tierFilter, search, userById])
+  }, [scored, mfaFilter, activityFilter, tierFilter, rolloutFilter, search, userById])
 
   const toggle = <T,>(set: Set<T>, value: T, apply: (s: Set<T>) => void) => {
     const next = new Set(set)
@@ -427,10 +434,24 @@ export function MfaViabilityScreen({
           </Stats>
           <h4>{SCAN.rollout}</h4>
           <Stats>
-            <StatTile value={scored.summary.verificationPhaseSize} label={TILE.verificationPhase.title} tip={TILE.verificationPhase} />
-            {scored.summary.challengedRate !== null && (
-              <StatTile value={`${Math.round(scored.summary.challengedRate * 100)}%`} label={TILE.challengedRate.title} tip={TILE.challengedRate} />
-            )}
+            {(
+              [
+                ['proven', TILE.mfaProven, scored.summary.rollout.proven, 'success'],
+                ['noMethod', TILE.noMethod, scored.summary.rollout.noMethod, 'danger'],
+                ['unproven', TILE.registeredUnproven, scored.summary.rollout.unproven, 'warning'],
+                ['toSetUp', TILE.toSetUp, scored.summary.rollout.toSetUp, 'warning'],
+              ] as const
+            ).map(([key, tip, n, tone]) => (
+              <StatTile
+                key={key}
+                value={SCAN.rolloutValue(n, scored.summary.rollout.enabled)}
+                label={tip.title}
+                tone={n === 0 && key !== 'proven' ? 'neutral' : tone}
+                tip={tip}
+                onClick={() => setRolloutFilter((f) => (f === key ? null : key))}
+                active={rolloutFilter === key}
+              />
+            ))}
           </Stats>
 
           {snapshot.blockedToday.length > 0 && (
@@ -463,7 +484,7 @@ export function MfaViabilityScreen({
                 {METHOD_TIER[t].title}
               </FilterChip>
             ))}
-            {(mfaFilter.size > 0 || activityFilter.size > 0 || tierFilter.size > 0 || search) && (
+            {(mfaFilter.size > 0 || activityFilter.size > 0 || tierFilter.size > 0 || rolloutFilter !== null || search) && (
               <Button
                 size="sm"
                 variant="quiet"

@@ -2,6 +2,11 @@
 // novice. Every number on screen has an InfoTip that reads from here.
 
 import { TERMS } from './terms.ts'
+import { EVIDENCE_WINDOW_DAYS } from '../graph/collect/constants.ts'
+
+/** Every headline percentage names its population and, where one applies, its window (ux-review-04 §1). */
+export const POPULATION = { enabled: 'enabled users', active: 'active users', scored: 'scored goals' } as const
+export const WINDOW = `the last ${EVIDENCE_WINDOW_DAYS} days`
 
 export type Definition = { title: string; text: string }
 
@@ -67,13 +72,25 @@ export const TILE = {
   partly: { title: 'Partly', text: 'Goals a policy delivers for some people, or with a weaker control than the baseline expects.' },
   missing: { title: 'Missing', text: 'Goals no enabled policy delivers yet.' },
   scoredGoals: { title: 'Scored goals', text: 'Goals that apply to this tenant and its licence. Goals that do not apply, or need a missing licence, are left out.' },
-  mfaReady: { title: 'MFA-ready', text: `Active users whose MFA state is ${TERMS.mfaState.verified} or ${TERMS.mfaState.likelyViable}.` },
   activeUsers: { title: 'Active users', text: 'People with a successful sign-in in the last 90 days.' },
-  verificationPhase: {
-    title: 'To verify',
-    text: `Active users whose MFA state is ${TERMS.mfaState.unverified}, ${TERMS.mfaState.notChallenged}, or ${TERMS.mfaState.none}: the people to check before any MFA step is enforced.`,
+  // Rollout tiles (ux-review-04 §1): every one is computed over all enabled
+  // users, names that population, and names the sign-in window.
+  mfaProven: {
+    title: `MFA proven in ${WINDOW}`,
+    text: `Enabled users with a successful MFA sign-in in the collected sign-in records (${WINDOW}), as a share of all enabled users. Proven means seen in a record, never assumed from a registered method; this is the share the old challenged rate described.`,
   },
-  challengedRate: { title: 'Challenged rate', text: 'Of the users active in the collected sign-in records, the share who completed MFA at least once.' },
+  noMethod: {
+    title: 'No MFA method',
+    text: 'Enabled users with no MFA-capable method registered, as a share of all enabled users. Email and security questions do not count.',
+  },
+  registeredUnproven: {
+    title: 'Registered but unproven',
+    text: `Enabled users with a method but no successful MFA sign-in in ${WINDOW}: never prompted, or possibly broken. As a share of all enabled users.`,
+  },
+  toSetUp: {
+    title: 'To set up before enforcement',
+    text: `No MFA method plus Registered but unproven, over all enabled users: the people the verification campaign has to work through before any MFA policy is enforced.`,
+  },
   stepsDone: { title: 'Steps done', text: 'Plan steps already delivered by existing policies or completed since the plan started.' },
   weeks: { title: 'Weeks', text: 'Calendar weeks from the start date to the last phase end, counting the report-only observation windows.' },
   seats: { title: 'Seats', text: 'Licences purchased, and how many are assigned to users.' },
@@ -111,4 +128,18 @@ export const LEGEND: { heading: string; items: Definition[] }[] = [
   { heading: 'Step status', items: Object.values(STEP_STATUS) },
   { heading: 'Step kind', items: Object.values(STEP_KIND) },
   { heading: 'Numbers', items: Object.values(TILE) },
+]
+
+/**
+ * Headline metrics and the population each is computed over. The
+ * definitions test asserts the tile text names that population (and the
+ * window, when one applies), so a filtered percentage can never read as a
+ * whole-tenant one (ux-review-04 §1).
+ */
+export const HEADLINE_METRICS: { tile: Definition; population: string; window: string | null }[] = [
+  { tile: TILE.mfaProven, population: POPULATION.enabled, window: WINDOW },
+  { tile: TILE.noMethod, population: POPULATION.enabled, window: null },
+  { tile: TILE.registeredUnproven, population: POPULATION.enabled, window: WINDOW },
+  { tile: TILE.toSetUp, population: POPULATION.enabled, window: null },
+  { tile: TILE.scoredGoals, population: POPULATION.scored, window: null },
 ]

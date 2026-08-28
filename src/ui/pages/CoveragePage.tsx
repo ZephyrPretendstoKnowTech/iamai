@@ -212,7 +212,6 @@ export function CoveragePage({
   const licence = report.results.filter((r) => r.status === 'licence-limited')
   const scoredCount = report.results.filter((r) => r.status !== 'not-applicable' && r.status !== 'licence-limited').length
   const active = summary.activityCounts.active
-  const readyPct = active > 0 ? Math.round(((summary.counts.verified + summary.counts.likelyViable) / active) * 100) : 0
   const nameify = (s: string) => nameifyText(s, names)
 
   const delta = sinceLastScan(checkpoints, report, summary)
@@ -228,10 +227,7 @@ export function CoveragePage({
     scored: scoredCount,
     users: snapshot.users.length,
     active,
-    readyPercent: readyPct,
-    noMethod: summary.counts.none,
-    notChallenged: summary.counts.notChallenged,
-    challengedRate: summary.challengedRate,
+    rollout: summary.rollout,
     working: enforced.map((r) => lowerFirst(r.goal.name)),
     fixFirst: [...absent, ...partial].sort((a, b) => a.goal.phase - b.goal.phase).map((r) => lowerFirst(r.goal.name)),
     licenceLimited: licence.length,
@@ -257,7 +253,8 @@ export function CoveragePage({
         <StatTile value={partial.length} label={C.tiles.partly} tone="warning" tip={TILE.partly} />
         <StatTile value={absent.length} label={C.tiles.missing} tone="danger" tip={TILE.missing} />
         <StatTile value={`${report.summary.scoredPercent}%`} label={C.tiles.scored} tip={TILE.scoredGoals} />
-        <StatTile value={`${readyPct}%`} label={C.tiles.ready} tip={TILE.mfaReady} />
+        <StatTile value={`${summary.rollout.enabled === 0 ? 0 : Math.round((summary.rollout.proven / summary.rollout.enabled) * 100)}%`} label={C.tiles.proven} tone="success" tip={TILE.mfaProven} />
+        <StatTile value={summary.rollout.toSetUp} label={C.tiles.toSetUp} tone={summary.rollout.toSetUp === 0 ? 'neutral' : 'warning'} tip={TILE.toSetUp} />
       </Stats>
     </div>
   )

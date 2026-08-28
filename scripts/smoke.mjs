@@ -139,6 +139,7 @@ try {
   t = await text()
   check('Scan: 5 users · 3 policies', /5 users · 3 policies/.test(t))
   check('Scan: tiles 1 Verified, 4 Active', /1\s+Verified/.test(t) && /4\s+Active/.test(t))
+  check('Scan: rollout tiles name the window and the population', /MFA proven in the last 30 days/.test(t) && /To set up before enforcement/.test(t) && !/Challenged rate/.test(t))
   check('Scan: legend has three cards', (await evaluate(`document.querySelectorAll('.legend-card').length`)) === 3)
 
   // Setup: 8 questions, 3 required
@@ -153,7 +154,7 @@ try {
   check('Findings: tiles render', await waitFor(`document.querySelectorAll('.stat').length >= 5`))
   t = await text()
   check('Findings: 2 in place, 1 partly, 13 missing', /2\s+In place[\s\S]*1\s+Partly[\s\S]*13\s+Missing/.test(t))
-  check('Findings: 25% of active users MFA-ready', /25%\s+active users MFA-ready/.test(t))
+  check('Findings: MFA proven share and to-set-up count over enabled users', /%\s+of enabled users proved MFA in the last 30 days/.test(t) && /\d+\s+enabled users to set up before enforcement/.test(t))
   check('Findings: grouped by domain by default', (await clickText('/needs attention/')) && (await waitFor(`[...document.querySelectorAll('select')].some(s => s.value === 'domain') && /Identity.*Admins/s.test(document.body.innerText)`)))
   check('Findings: scan age shown', /Based on the scan from/.test(t))
 

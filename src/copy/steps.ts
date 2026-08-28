@@ -224,7 +224,7 @@ export const IMPACT = {
   mfaAllReady: (active: number) =>
     active === 0 ? 'No active users in scope: enforcement changes nothing today.' : `All ${count(active, 'active user')} ${active === 1 ? 'is' : 'are'} ready: enforcement changes nothing for them.`,
   inScope: (active: number) => `${count(active, 'active user')} in scope.`,
-  verifyCampaign: (n: number) => `${count(n, 'active user')} ${n === 1 ? 'needs' : 'need'} attention before MFA can be enforced safely.`,
+  verifyCampaign: (n: number) => `${count(n, 'enabled user')} ${n === 1 ? 'needs' : 'need'} setting up before MFA can be enforced safely.`,
 }
 
 export const CARE = {

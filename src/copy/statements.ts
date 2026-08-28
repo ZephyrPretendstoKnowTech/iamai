@@ -110,17 +110,16 @@ export type FindingsSummaryInput = {
   scored: number
   users: number
   active: number
-  readyPercent: number
-  noMethod: number
-  notChallenged: number
-  /** 0–1, or null when no sign-in records were collected. */
-  challengedRate: number | null
+  /** The four rollout numbers over enabled users (ux-review-04 §1). */
+  rollout: { enabled: number; proven: number; noMethod: number; unproven: number; toSetUp: number }
   working: string[]
   fixFirst: string[]
   licenceLimited: number
 }
 
 /** Paragraphs for the Findings summary; no sentence can contradict a number. */
+import { WINDOW } from './definitions.ts'
+
 export function findingsSummary(i: FindingsSummaryInput): string[] {
   const out: string[] = []
   const baseline = i.baselinePolicies !== null ? `${i.baselineLabel} (${count(i.baselinePolicies, 'policy', 'policies')})` : i.baselineLabel
@@ -136,26 +135,21 @@ export function findingsSummary(i: FindingsSummaryInput): string[] {
     `IAMAI compared ${i.tenant}'s ${count(i.enabledPolicies, 'enabled Conditional Access policy', 'enabled Conditional Access policies')} with ${baseline}, matching each policy on what it does. ${goals}`,
   )
 
-  const ready =
-    i.active === 0
-      ? 'No user has signed in within the last 90 days, so MFA readiness cannot be measured yet.'
-      : i.readyPercent === 100
-        ? `All ${count(i.active, 'active user')} could complete MFA today.`
-        : i.readyPercent === 0
-          ? `None of the ${count(i.active, 'active user')} could complete MFA today.`
-          : `${i.readyPercent}% of the ${count(i.active, 'active user')} could complete MFA today.`
-  const extras: string[] = []
-  if (i.noMethod > 0) extras.push(`${count(i.noMethod, 'user has', 'users have')} no MFA method at all`)
-  if (i.notChallenged > 0) extras.push(`${count(i.notChallenged, 'user has', 'users have')} never been asked for MFA`)
-  const challenged =
-    i.challengedRate === null
-      ? ''
-      : i.challengedRate >= 1
-        ? ' Every user active in the collected sign-in records completed MFA at least once: enforcement is well tested here.'
-        : i.challengedRate === 0
-          ? ' No user active in the collected sign-in records completed MFA: enforcement is untested here.'
-          : ` ${Math.round(i.challengedRate * 100)}% of users active in the collected sign-in records completed MFA at least once${i.challengedRate < 0.5 ? ': enforcement is largely untested here' : ''}.`
-  out.push(`${count(i.users, 'user')} in the directory, ${i.active} active in the last 90 days. ${ready}${extras.length > 0 ? ` ${capital(list(extras))}.` : ''}${challenged}`)
+  // The rollout picture uses the same four numbers as the Scan tiles, over
+  // enabled users; enforcement is never called tested from these numbers.
+  const r = i.rollout
+  const gaps: string[] = []
+  if (r.noMethod > 0) gaps.push(`${count(r.noMethod, 'user has', 'users have')} no MFA method`)
+  if (r.unproven > 0) gaps.push(`${count(r.unproven, 'user is', 'users are')} registered but unproven`)
+  const rollout =
+    r.enabled === 0
+      ? 'No enabled users yet, so the rollout picture cannot be drawn.'
+      : r.toSetUp === 0
+        ? `Every one of the ${count(r.enabled, 'enabled user')} proved MFA in ${WINDOW}: nobody needs setting up before enforcement.`
+        : r.proven === 0
+          ? `None of the ${count(r.enabled, 'enabled user')} proved MFA in ${WINDOW}. ${capital(list(gaps))}: all ${r.toSetUp} need setting up before enforcement.`
+          : `${r.proven} of ${r.enabled} enabled users (${Math.round((r.proven / r.enabled) * 100)}%) proved MFA in ${WINDOW}. ${capital(list(gaps))}: ${count(r.toSetUp, 'user')} to set up before enforcement.`
+  out.push(`${count(i.users, 'user')} in the directory, ${i.active} active in the last 90 days. ${rollout}`)
 
   if (i.working.length > 0) {
     const more = i.working.length > 4 ? ` and ${i.working.length - 4} more` : ''

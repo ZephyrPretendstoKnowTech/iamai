@@ -25,6 +25,8 @@ export function buildViabilityInputs(snapshot: TenantSnapshot, now: string): Mfa
     }
     return {
       userId: u.id,
+      // Unknown (null) reads as enabled: never hide a user from the rollout picture.
+      accountEnabled: u.accountEnabled ?? true,
       registration: reg
         ? {
             isMfaCapable: reg.isMfaCapable,
