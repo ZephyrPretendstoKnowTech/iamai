@@ -820,6 +820,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ),
       phase: 2,
       kind: 'verify',
+      rollback: ROLLBACK.verify,
       goalId: 'mfa-all-users',
       status: verifyDone ? 'done' : 'ready',
       population: population(viability.map((v) => v.userId), snapshot, viability),
@@ -845,6 +846,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push({
       ...prereq('s-recurring-break-glass-drill', p.title, p.why(BREAK_GLASS_DRILL_DAYS), p.how, p.exit(BREAK_GLASS_DRILL_DAYS)),
       kind: 'recurring',
+      rollback: ROLLBACK.recurring,
       goalId: 'recurring:break-glass',
       status: stale.length > 0 ? 'ready' : 'done',
       population: population(bgIds, snapshot, viability),
