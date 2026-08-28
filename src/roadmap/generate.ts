@@ -13,7 +13,7 @@ import type { MappingQuestion, MappingState } from '../mapping/types.ts'
 import { activeWizardQuestions } from '../mapping/wizard.ts'
 import type { WizardQuestionId } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { adminUserIds, roleListSummary } from '../roles.ts'
+import { adminUserIds, learnRoleNames, roleListSummary } from '../roles.ts'
 import { proposedPolicyName } from '../coverage/naming.ts'
 import { summarizeTenant } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
@@ -314,7 +314,8 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
   const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
   const roleList = cur && Array.isArray(cur.includeRoles) && cur.includeRoles.length > 0 ? roleListSummary(cur.includeRoles.map(String)) : null
   const currentInclude = cur ? [label(cur.includeUsers), label(cur.includeGroups), roleList?.summary ?? ''].filter(Boolean).join('; ') : ''
-  const currentExclude = cur ? [label(cur.excludeUsers), label(cur.excludeGroups), label(cur.excludeRoles)].filter(Boolean).join('; ') : ''
+  const excludeRoles = cur && Array.isArray(cur.excludeRoles) && cur.excludeRoles.length > 0 ? roleListSummary(cur.excludeRoles.map(String)) : null
+  const currentExclude = cur ? [label(cur.excludeUsers), label(cur.excludeGroups), excludeRoles?.summary ?? ''].filter(Boolean).join('; ') : ''
   const portal = [
     full.portalSteps[0],
     ...(currentInclude ? [ADJUST.currentInclude(currentInclude)] : []),
@@ -330,7 +331,7 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
     full.portalSteps[full.portalSteps.length - 1],
   ].filter((s): s is string => typeof s === 'string')
   const powershell = full.powershell ? full.powershell.replace(/-Method POST/, '-Method PATCH') : null
-  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell, roleList: roleList && roleList.names.length > 5 ? roleList : null }
+  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null }
 }
 
 function adjustSummary(result: GoalResult): string[] {
@@ -351,6 +352,8 @@ function adjustSummary(result: GoalResult): string[] {
 // ---- generation ----
 
 export function generateRoadmap(input: RoadmapInput): RoadmapResult {
+  // Role names travel with the scan ($expand=roleDefinition); learn them before any label is built.
+  learnRoleNames(input.snapshot.config.roleAssignments?.rows ?? [])
   const { snapshot, mapping, questions, viability, planId } = input
   const highCareIds = new Set(mapping.highCareUserIds)
   const operatorId = input.operatorUserId ?? null
@@ -604,7 +607,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'adjust'
       // An adjust step edits the tenant's own policy: its name, its id, its
       // current state — never a second policy named after the baseline.
-      const existing = result.candidates.find((c) => c.contribution !== 'disabled') ?? null
+      const existing =
+        result.candidates.find((c) => c.contribution === 'weak') ??
+        result.candidates.find((c) => c.contribution === 'reportOnly') ??
+        result.candidates.find((c) => c.contribution !== 'disabled') ??
+        null
       if (source) blockUnmapped(source.policy)
       const existingRaw = existing ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existing.policyId) as RawPolicy | undefined) ?? null : null
       action = source
