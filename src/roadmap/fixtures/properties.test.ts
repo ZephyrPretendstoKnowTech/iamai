@@ -1,0 +1,222 @@
+// roadmap-v2.md §7 — the property assertions, run over every synthetic tenant.
+// These are the specification for rings, sequencing, populations and step
+// content; docs/qa/roadmap-v2-baseline.md records how they failed first.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { allFixtures } from './index.ts'
+import { runFixture } from './run.ts'
+import { canDenyAccess, wouldStrand } from '../strand.ts'
+import { buildPlanFile } from '../plan.ts'
+import type { Step } from '../types.ts'
+
+const fixtures = allFixtures()
+const HIGH_DISRUPTION = 4
+
+const fmt = (n: number) => n.toLocaleString('en-AU')
+
+function overlapShare(a: string[], b: string[]): number {
+  if (a.length === 0 || b.length === 0) return 0
+  const set = new Set(a)
+  const both = b.filter((x) => set.has(x)).length
+  return both / Math.min(a.length, b.length)
+}
+
+type RingLike = { plannedStart: string; plannedEnd: string; targeting: { memberCount: number } }
+function ringsOf(step: Step): RingLike[] {
+  return (step as unknown as { rings?: RingLike[] }).rings ?? []
+}
+
+for (const f of fixtures) {
+  const run = runFixture(f)
+  const { steps, schedule } = run
+  const { snapshot } = f
+  const waveWindow = (stepId: string): { start: string; end: string } => {
+    const w = schedule.waves.find((x) => x.wave === (schedule.waveOf[stepId] ?? 0))
+    return w ? { start: w.start, end: w.end } : { start: schedule.start, end: schedule.start }
+  }
+
+  test(`${f.name}: builds a plan without crashing and every step has content`, () => {
+    assert.ok(steps.length > 0)
+    for (const s of steps) {
+      assert.ok(s.title.length > 0, `${s.id} has a title`)
+      assert.ok(s.impact.length > 0, `${s.id} has an impact sentence`)
+      assert.ok(s.stateReason.length > 0, `${s.id} has a state reason`)
+    }
+  })
+
+  test(`${f.name}: no step strands the operator or a break-glass account`, () => {
+    const failures: string[] = []
+    for (const s of steps) {
+      for (const bg of f.mapping.breakGlassUserIds) {
+        const v = wouldStrand(s, bg, snapshot, { breakGlass: true, allowedCountries: f.mapping.allowedCountries })
+        if (v.stranded) failures.push(`${s.id} strands break-glass: ${v.reason}`)
+      }
+      const v = wouldStrand(s, f.operatorId, snapshot, { breakGlass: false, allowedCountries: f.mapping.allowedCountries })
+      // A step that would lock the operator out must say so and must not be offered as ready.
+      if (v.stranded && (s.operatorSafe !== false || s.status === 'ready' || s.status === 'ready-to-enforce'))
+        failures.push(`${s.id} strands the operator (${v.reason}) yet is ${s.status}, operatorSafe=${String(s.operatorSafe)}`)
+    }
+    assert.deepEqual(failures, [])
+  })
+
+  test(`${f.name}: every prerequisite appears earlier in the schedule`, () => {
+    const order = new Map(steps.map((s, i) => [s.id, i]))
+    const failures: string[] = []
+    for (const s of steps) {
+      for (const b of s.blockedBy) {
+        if (!order.has(b)) continue
+        const wb = schedule.waveOf[b] ?? 0
+        const ws = schedule.waveOf[s.id] ?? 0
+        if (wb > ws || (wb === ws && (order.get(b) ?? 0) > (order.get(s.id) ?? 0))) failures.push(`${s.id} (wave ${ws}) depends on ${b} (wave ${wb})`)
+      }
+    }
+    assert.deepEqual(failures, [])
+  })
+
+  test(`${f.name}: no two high-disruption steps overlap the same ring window for the same population`, () => {
+    const risky = steps.filter((s) => (s.score?.disruption ?? 0) >= HIGH_DISRUPTION && s.status !== 'done' && s.status !== 'skipped')
+    const failures: string[] = []
+    for (let i = 0; i < risky.length; i++) {
+      for (let j = i + 1; j < risky.length; j++) {
+        const a = risky[i]
+        const b = risky[j]
+        if (overlapShare(a.population.ids, b.population.ids) <= 0.5) continue
+        const ra = ringsOf(a)
+        const rb = ringsOf(b)
+        const windowsA = ra.length > 0 ? ra.map((r) => [r.plannedStart, r.plannedEnd]) : [[waveWindow(a.id).start, waveWindow(a.id).end]]
+        const windowsB = rb.length > 0 ? rb.map((r) => [r.plannedStart, r.plannedEnd]) : [[waveWindow(b.id).start, waveWindow(b.id).end]]
+        for (const [s1, e1] of windowsA) for (const [s2, e2] of windowsB) if (s1 < e2 && s2 < e1) failures.push(`${a.id} and ${b.id} both enforce ${s1}..${e1} / ${s2}..${e2}`)
+      }
+    }
+    assert.deepEqual(failures, [])
+  })
+
+  test(`${f.name}: every date is derivable from the graph and the band`, () => {
+    // The derivation travels with the schedule (§2: no hard-coded wave dates).
+    const derivation = (schedule as unknown as { derivation?: { criticalPath: string; constraint: string } }).derivation
+    assert.ok(derivation && derivation.criticalPath.length > 0, 'schedule carries a critical-path derivation')
+    let prevEnd = schedule.start
+    for (const w of schedule.waves) {
+      assert.ok(!Number.isNaN(Date.parse(w.start)) && !Number.isNaN(Date.parse(w.end)), `wave ${w.wave} has real dates`)
+      assert.ok(w.start >= prevEnd, `wave ${w.wave} starts (${w.start}) after the previous wave ends (${prevEnd})`)
+      if (w.wave > 0) assert.notEqual(new Date(w.start).getUTCDay(), 5, `wave ${w.wave} does not start enforcement on a Friday (${w.start})`)
+      prevEnd = w.end
+    }
+    assert.ok(schedule.weeks <= f.expect.weeksAtMost, `${schedule.weeks} weeks fits the band (${f.expect.weeksAtMost})`)
+  })
+
+  test(`${f.name}: rings match the band table`, () => {
+    for (const s of steps) {
+      const rings = ringsOf(s)
+      if (!canDenyAccess(s) || s.status === 'done' || s.status === 'skipped') {
+        assert.ok(rings.length <= 1, `${s.id} (${s.kind}) has at most one ring`)
+        continue
+      }
+      assert.equal(rings.length, f.expect.rings, `${s.id} has ${f.expect.rings} rings`)
+      const members = rings.reduce((n, r) => n + r.targeting.memberCount, 0)
+      assert.equal(members, s.population.total, `${s.id}: ring members sum to the population`)
+    }
+  })
+
+  test(`${f.name}: every population statement sums against the fixture`, () => {
+    const enabled = snapshot.users.filter((u: { accountEnabled: boolean | null }) => u.accountEnabled !== false).length
+    for (const s of steps) {
+      const p = s.population
+      assert.equal(p.total, p.ids.length, `${s.id}: total equals ids`)
+      assert.equal(new Set(p.ids).size, p.ids.length, `${s.id}: no duplicate ids`)
+      assert.ok(p.active <= p.total && p.admins <= p.total && p.guests <= p.total, `${s.id}: parts fit the total`)
+      assert.ok(p.total <= enabled, `${s.id}: population within enabled users`)
+      const basis = (s as unknown as { populationBasis?: string }).populationBasis
+      assert.ok(basis, `${s.id} carries a population basis sentence`)
+      const m = /^([\d,]+) of ([\d,]+) enabled users \((\d+)%\)/.exec(basis ?? '')
+      assert.ok(m, `${s.id}: basis "${basis}" states N of M enabled users (P%)`)
+      assert.equal(m?.[1], fmt(p.total))
+      assert.equal(m?.[2], fmt(enabled))
+      assert.equal(Number(m?.[3]), Math.round((p.total / enabled) * 100))
+    }
+  })
+
+  test(`${f.name}: name lists are bounded`, () => {
+    for (const s of steps) {
+      const listed = (s as unknown as { populationNames?: string[] }).populationNames ?? []
+      if (s.population.total < 25) assert.equal(listed.length, s.population.total, `${s.id}: everyone named under 25`)
+      else assert.ok(listed.length <= 10, `${s.id}: at most the 10 riskiest named at ${s.population.total}`)
+    }
+  })
+
+  test(`${f.name}: the engine finishes under 200 ms`, () => {
+    assert.ok(run.ms < 200, `${run.ms.toFixed(0)} ms`)
+  })
+
+  test(`${f.name}: the plan file round-trips with every number preserved`, () => {
+    const file = buildPlanFile({
+      planId: f.planId,
+      snapshot,
+      operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' },
+      baselineSource: { owner: 'fixture', repo: 'baseline', label: 'Fixture', commit: 'abc' } as never,
+      mapping: f.mapping,
+      steps,
+      checkpoints: [],
+      schedule: { startDate: schedule.start, band: schedule.band },
+    })
+    const back = JSON.parse(JSON.stringify(file)) as typeof file
+    assert.equal(back.steps.length, steps.length)
+    for (const [i, s] of steps.entries()) {
+      const b = back.steps[i] as unknown as Record<string, unknown>
+      assert.equal(b.id, s.id)
+      assert.deepEqual(b.population, s.population, `${s.id}: population preserved`)
+      if (ringsOf(s).length > 0) assert.deepEqual(b.rings, ringsOf(s), `${s.id}: rings preserved`)
+    }
+  })
+
+  test(`${f.name}: policy count is stated and the cap warning matches`, () => {
+    const count = (schedule as unknown as { policyCount?: { existing: number; added: number; cap: number; warning: string | null } }).policyCount
+    assert.ok(count, 'schedule carries the policy count')
+    assert.equal(count?.existing, snapshot.config.caPolicies.rows.length)
+    assert.equal(Boolean(count?.warning), f.expect.policyCapWarning)
+  })
+}
+
+// ---- fixture-specific shapes (§7 table) ----
+
+const byName = (name: string) => fixtures.find((x) => x.name === name)!
+
+test('micro: free-tier ladder, no Conditional Access steps offered as ready', () => {
+  const { steps } = runFixture(byName('micro'))
+  assert.ok(steps.every((s) => s.action.json === null || s.status === 'blocked'), 'no ready CA policy creation without P1')
+})
+
+test('mid: service accounts surface before the legacy-auth block', () => {
+  const { steps } = runFixture(byName('mid'))
+  const block = steps.find((s) => s.goalId === 'block-legacy-auth')
+  assert.ok(block, 'legacy block step exists')
+  assert.ok(/service account/i.test(`${block?.impact} ${block?.stateReason} ${block?.evidence.lines.join(' ')}`), 'the block names the service accounts')
+  const idx = steps.findIndex((s) => s.id === block?.id)
+  assert.ok(steps.slice(0, idx).some((s) => /service account/i.test(s.title)), 'a service-account step precedes the block')
+})
+
+test('messy: conflicts are detected and ordered first', () => {
+  const { steps } = runFixture(byName('messy'))
+  const first = steps.filter((s) => s.status !== 'done').slice(0, 3)
+  assert.ok(first.some((s) => /security defaults/i.test(s.title)), 'security defaults conflict comes first')
+  assert.ok(steps.some((s) => /per-user/i.test(s.title) || /per-user/i.test(s.impact)), 'per-user MFA is named')
+  const sms = steps.find((s) => /break-glass/i.test(s.title) && /(phishing|method|SMS|text message)/i.test(s.title + s.impact + s.stateReason))
+  assert.ok(sms, 'the SMS-only break-glass accounts are called out')
+})
+
+test('midflight: no duplicate steps', () => {
+  const { steps } = runFixture(byName('midflight'))
+  assert.equal(new Set(steps.map((s) => s.id)).size, steps.length)
+  assert.equal(new Set(steps.map((s) => s.title)).size, steps.length, 'no two steps share a title')
+})
+
+test('hostile: every step still produced with readiness marked unknown', () => {
+  const { steps } = runFixture(byName('hostile'))
+  const normal = runFixture(byName('small')).steps
+  assert.ok(steps.length >= normal.length - 2, `hostile produced ${steps.length} steps vs ${normal.length}`)
+  for (const s of steps) {
+    if (!canDenyAccess(s)) continue
+    const said = [...s.readiness.lines, ...s.evidence.lines].some((l) => /not (be )?read|unknown|could not|unavailable|no sign-in|not readable/i.test(l))
+    assert.ok(said, `${s.id}: says what is unknown (${[...s.readiness.lines, ...s.evidence.lines].join(' | ')})`)
+  }
+})
