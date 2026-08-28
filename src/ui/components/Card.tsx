@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { HTMLAttributes, ReactNode } from 'react'
+import { usePrinting } from './usePrinting.ts'
 
 export function Card({ title, children, className, ...rest }: HTMLAttributes<HTMLDivElement> & { title?: string; children: ReactNode }) {
   return (
@@ -23,10 +25,21 @@ export function ExpandCard({
   id?: string
   children: ReactNode
 }) {
+  // The body mounts only once the card is opened (ux-review-06 §16): a page of
+  // closed cards costs their summaries, not their contents. Printing mounts all.
+  const [opened, setOpened] = useState(open === true)
+  const printing = usePrinting()
   return (
-    <details className={`card ${className ?? ''}`} open={open} id={id}>
+    <details
+      className={`card ${className ?? ''}`}
+      open={open}
+      id={id}
+      onToggle={(e) => {
+        if ((e.currentTarget as HTMLDetailsElement).open) setOpened(true)
+      }}
+    >
       <summary>{summary}</summary>
-      {children}
+      {(opened || open || printing) && children}
     </details>
   )
 }
