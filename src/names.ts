@@ -1,7 +1,7 @@
 // "Names, never IDs." One directory that turns any id the UI might meet into
 // a display name: users, groups, policies, locations, strengths, admin roles,
 // first-party apps, and Graph's special tokens. Pure.
-import coreAdminRoles from '../data/core-admin-roles.json' with { type: 'json' }
+import { ROLE_TEMPLATES } from './roles.ts'
 import firstPartyApps from '../data/first-party-apps.json' with { type: 'json' }
 import builtinStrengths from '../data/builtin-strengths.json' with { type: 'json' }
 import type { TenantSnapshot } from './graph/collect/types.ts'
@@ -39,7 +39,7 @@ export function buildNameDirectory(
     }
   }
 
-  for (const r of coreAdminRoles.roles) put(r.templateId, r.name)
+  for (const r of ROLE_TEMPLATES) put(r.templateId, r.name)
   for (const a of firstPartyApps.apps) put(a.appId, a.displayName)
   for (const s of builtinStrengths.strengths) put(s.id, s.displayName)
 

@@ -105,20 +105,26 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
     const myNames = new Set(
       methods.filter((m) => m.kind === 'microsoftAuthenticator' && m.displayName).map((m) => m.displayName),
     )
+    // Every account with the same device name is listed (ux-review-03 §A6):
+    // the name is a model code, so this is medium confidence.
     if (myNames.size > 0) {
+      const matches = new Map<string, string[]>()
       for (const [otherId, otherMethods] of Object.entries(ctx.snapshot.authMethods)) {
         if (otherId === userId || otherMethods === 'unknown') continue
-        const clash = otherMethods.find(
-          (m: AuthMethodSummary) => m.kind === 'microsoftAuthenticator' && m.displayName && myNames.has(m.displayName),
-        )
-        if (clash) {
+        for (const m of otherMethods as AuthMethodSummary[]) {
+          if (m.kind !== 'microsoftAuthenticator' || !m.displayName || !myNames.has(m.displayName)) continue
           const other = ctx.snapshot.users.find((u) => u.id === otherId)
-          fail(
-            `Authenticator device "${clash.displayName}" matches ${other?.displayName ?? 'another user'}'s — shared-device risk`,
-            userPortal,
-          )
-          break
+          const list = matches.get(m.displayName) ?? []
+          const who = other?.displayName ?? other?.userPrincipalName ?? 'another account'
+          if (!list.includes(who)) list.push(who)
+          matches.set(m.displayName, list)
         }
+      }
+      for (const [device, who] of matches) {
+        fail(
+          `Authenticator device "${device}" is also registered by ${who.join(', ')}: same device name, likely the same phone (shared-device risk)`,
+          userPortal,
+        )
       }
     }
   }

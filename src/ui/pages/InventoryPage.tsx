@@ -10,6 +10,10 @@ import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import { CAPABILITIES, deriveTenantCapabilities, deriveUserCapabilities } from '../../licensing/capabilities.ts'
 import { buildNameDirectory } from '../../names.ts'
+import { ROLE_TEMPLATES, coversAdminSet, roleLabel, roleTemplate } from '../../roles.ts'
+import { resolveObjects } from '../../graph/collect/onDemand.ts'
+import type { ResolvedObject } from '../../graph/collect/onDemand.ts'
+import productNames from '../../../data/product-names.json' with { type: 'json' }
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
@@ -18,7 +22,7 @@ import { LICENSING } from '../../copy/pages.ts'
 import { SETUP_PAGE } from '../../copy/setup.ts'
 import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE, TILE } from '../../copy/definitions.ts'
 import { absoluteDate, relative } from '../format.ts'
-import { Card, Chip, DataTable, EmptyState, InfoTip, Tabs } from '../components/index.ts'
+import { Button, Card, Chip, DataTable, EmptyState, InfoTip, Tabs } from '../components/index.ts'
 import type { ChipStatus, Column } from '../components/index.ts'
 
 type Raw = Record<string, unknown>
@@ -112,11 +116,20 @@ function usersSummary(f: PolicyFacts): string {
   const bits: string[] = []
   if (f.who.all) bits.push(P.allUsers)
   if (f.who.groups.size > 0) bits.push(P.groups(f.who.groups.size))
-  if (f.who.roles.size > 0) bits.push(P.roles(f.who.roles.size))
+  if (f.who.roles.size > 0) bits.push(coversAdminSet(f.who.roles) ? P.allAdminRoles(f.who.roles.size) : P.roles(f.who.roles.size))
   if (f.who.users.size > 0) bits.push(P.users(f.who.users.size))
   if (f.who.guests !== null && !f.who.all) bits.push(P.guests)
   if (f.workload) bits.push(P.workload(f.workload.sps.size))
   return bits.join(', ') || P.none
+}
+
+// Tooltip for the Users column: the names behind the counts.
+function usersDetail(f: PolicyFacts, label: (id: string) => string): string {
+  const parts: string[] = []
+  if (f.who.users.size > 0) parts.push([...f.who.users].map(label).join(', '))
+  if (f.who.groups.size > 0) parts.push([...f.who.groups].map(label).join(', '))
+  if (f.who.roles.size > 0 && !coversAdminSet(f.who.roles)) parts.push([...f.who.roles].map(roleLabel).join(', '))
+  return parts.join('\n')
 }
 
 function appsSummary(f: PolicyFacts): string {
@@ -202,13 +215,14 @@ function PoliciesTab({ facts, names }: { facts: { raw: Raw; facts: PolicyFacts }
       csv: (r) => P.state[r.state],
       render: (r) => <Chip status={STATE_CHIP[r.state]}>{P.state[r.state]}</Chip>,
     },
-    { key: 'users', header: P.columns.users, csv: (r) => usersSummary(r), render: (r) => usersSummary(r) },
+    { key: 'users', header: P.columns.users, csv: (r) => usersSummary(r), render: (r) => <span title={usersDetail(r, names.label) || undefined}>{usersSummary(r)}</span> },
     { key: 'apps', header: P.columns.apps, csv: (r) => appsSummary(r), render: (r) => appsSummary(r) },
     { key: 'conditions', header: P.columns.conditions, csv: (r) => conditionsSummary(r, names.label), render: (r) => conditionsSummary(r, names.label) },
     { key: 'grant', header: P.columns.grant, csv: (r) => grantSummary(r, names.label), render: (r) => grantSummary(r, names.label) },
     { key: 'session', header: P.columns.session, csv: (r) => sessionSummary(r), render: (r) => sessionSummary(r) },
   ]
   const list = (ids: Iterable<string>) => [...ids].map(names.label).join(', ')
+  const roleList = (ids: Set<string>) => (coversAdminSet(ids) ? P.allAdminRoles(ids.size) : [...ids].map(roleLabel).join(', '))
   return (
     <div>
       <Heading text={C.tabs.policies} source="policies" />
@@ -221,10 +235,10 @@ function PoliciesTab({ facts, names }: { facts: { raw: Raw; facts: PolicyFacts }
         expand={(r) => (
           <div className="sub">
             <div>
-              <strong>{P.include}:</strong> {[r.who.all ? P.allUsers : '', list(r.who.users), list(r.who.groups), list(r.who.roles)].filter(Boolean).join('; ') || P.none}
+              <strong>{P.include}:</strong> {[r.who.all ? P.allUsers : '', list(r.who.users), list(r.who.groups), roleList(r.who.roles)].filter(Boolean).join('; ') || P.none}
             </div>
             <div>
-              <strong>{P.exclude}:</strong> {[list(r.whoNot.users), list(r.whoNot.groups), list(r.whoNot.roles), r.whoNot.guests ? P.guests : ''].filter(Boolean).join('; ') || P.none}
+              <strong>{P.exclude}:</strong> {[list(r.whoNot.users), list(r.whoNot.groups), roleList(r.whoNot.roles), r.whoNot.guests ? P.guests : ''].filter(Boolean).join('; ') || P.none}
             </div>
           </div>
         )}
@@ -388,7 +402,7 @@ function PeopleTab({
   const rows: Row[] = snapshot.users.map((u) => ({
     ...u,
     v: viabilityById.get(u.id),
-    roles: (snapshot.roles.active[u.id] ?? []).map(names.label).join(', '),
+    roles: (snapshot.roles.active[u.id] ?? []).map(roleLabel).join(', '),
   }))
   const usersTable = () => (
     <div>
@@ -456,6 +470,24 @@ function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById
   const D = C.devices
   const yn = (v: boolean | null) => (v === null ? D.unknown : v ? D.yes : D.no)
   const owner = (ids: string[]) => ids.map((id) => userById.get(id)?.displayName ?? userById.get(id)?.userPrincipalName ?? '').filter(Boolean).join(', ')
+  // Authenticator registrations by device name (ux-review-03 §A6): the name
+  // is a model code, so every account with the same name is listed.
+  const byDeviceName = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const [userId, methods] of Object.entries(snapshot.authMethods)) {
+      if (methods === 'unknown') continue
+      for (const m of methods) {
+        if (m.kind !== 'microsoftAuthenticator' || !m.displayName) continue
+        const who = userById.get(userId)?.displayName ?? userById.get(userId)?.userPrincipalName ?? null
+        if (!who) continue
+        const list = map.get(m.displayName) ?? []
+        if (!list.includes(who)) list.push(who)
+        map.set(m.displayName, list)
+      }
+    }
+    return map
+  }, [snapshot, userById])
+  const registrations = (name: string | null) => (name ? (byDeviceName.get(name) ?? []).join(', ') : '')
   return (
     <div>
       <Heading text={C.tabs.devices} source="devices" />
@@ -472,6 +504,19 @@ function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById
           { key: 'managed', header: D.columns.managed, sortValue: (r) => (r.isManaged ? 0 : 1), csv: (r) => yn(r.isManaged), render: (r) => yn(r.isManaged) },
           { key: 'last', header: D.columns.lastSignIn, sortValue: (r) => r.approximateLastSignIn ?? '', csv: (r) => (r.approximateLastSignIn ? absoluteDate(r.approximateLastSignIn) : ''), render: (r) => (r.approximateLastSignIn ? <span title={absoluteDate(r.approximateLastSignIn)}>{relative(r.approximateLastSignIn)}</span> : D.unknown) },
           { key: 'owner', header: D.columns.owner, csv: (r) => owner(r.ownerIds), render: (r) => owner(r.ownerIds) || D.unknown },
+          {
+            key: 'authenticator',
+            header: D.columns.authenticator,
+            csv: (r) => registrations(r.displayName),
+            render: (r) =>
+              registrations(r.displayName) ? (
+                <>
+                  {registrations(r.displayName)} <InfoTip title={D.sameDevice.title} text={D.sameDevice.text} />
+                </>
+              ) : (
+                D.unknown
+              ),
+          },
         ]}
       />
     </div>
@@ -482,29 +527,74 @@ function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById
 
 function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnType<typeof buildNameDirectory> }) {
   const R = C.roles
-  const byRole = new Map<string, { active: Set<string>; eligible: Set<string> }>()
-  const add = (map: Record<string, string[]>, key: 'active' | 'eligible') => {
-    for (const [userId, roles] of Object.entries(map)) {
-      for (const role of roles) {
-        const e = byRole.get(role) ?? { active: new Set<string>(), eligible: new Set<string>() }
-        e[key].add(userId)
-        byRole.set(role, e)
+  const [showAll, setShowAll] = useState(false)
+  const [resolved, setResolved] = useState<Map<string, ResolvedObject> | null>(null)
+  const byRole = useMemo(() => {
+    const map = new Map<string, { active: Set<string>; eligible: Set<string> }>()
+    const add = (src: Record<string, string[]>, key: 'active' | 'eligible') => {
+      for (const [holderId, roles] of Object.entries(src)) {
+        for (const role of roles) {
+          const id = role.toLowerCase()
+          const e = map.get(id) ?? { active: new Set<string>(), eligible: new Set<string>() }
+          e[key].add(holderId)
+          map.set(id, e)
+        }
       }
     }
+    add(snapshot.roles.active, 'active')
+    add(snapshot.roles.eligible, 'eligible')
+    return map
+  }, [snapshot])
+
+  // Holders that are not users (groups, service principals) get their name
+  // and kind on demand.
+  useEffect(() => {
+    const holders = new Set<string>()
+    for (const e of byRole.values()) for (const id of [...e.active, ...e.eligible]) holders.add(id)
+    const unknown = names.unknown(holders)
+    if (unknown.length === 0) {
+      setResolved(new Map())
+      return
+    }
+    let cancelled = false
+    void resolveObjects(unknown).then((m) => {
+      if (!cancelled) setResolved(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [byRole, names])
+
+  const holder = (id: string): string => {
+    const o = resolved?.get(id)
+    if (o) return o.kind === 'servicePrincipal' ? R.service(o.displayName) : o.displayName
+    return names.label(id)
   }
-  add(snapshot.roles.active, 'active')
-  add(snapshot.roles.eligible, 'eligible')
-  type Row = { id: string; name: string; active: string; eligible: string; activeN: number }
-  const rows: Row[] = [...byRole.entries()].map(([id, e]) => ({
-    id,
-    name: names.label(id),
-    active: [...e.active].map(names.label).join(', '),
-    eligible: [...e.eligible].map(names.label).join(', '),
-    activeN: e.active.size,
-  }))
+  type Row = { id: string; name: string; privileged: boolean; active: string; eligible: string; activeN: number; held: boolean }
+  const ids = showAll ? new Set([...ROLE_TEMPLATES.map((r) => r.templateId), ...byRole.keys()]) : new Set(byRole.keys())
+  const rows: Row[] = [...ids].map((id) => {
+    const e = byRole.get(id) ?? { active: new Set<string>(), eligible: new Set<string>() }
+    return {
+      id,
+      name: roleLabel(id),
+      privileged: roleTemplate(id)?.privileged ?? false,
+      active: [...e.active].map(holder).join(', '),
+      eligible: [...e.eligible].map(holder).join(', '),
+      activeN: e.active.size,
+      held: e.active.size + e.eligible.size > 0,
+    }
+  })
+  const hidden = ROLE_TEMPLATES.filter((r) => !byRole.has(r.templateId)).length
   return (
     <div>
       <Heading text={C.tabs.roles} source="roles" />
+      <p className="reason">
+        {resolved === null && `${R.resolving} `}
+        {!showAll && hidden > 0 && `${R.hiddenNote(hidden)} `}
+        <Button size="sm" variant="quiet" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? R.showHeld : R.showAll}
+        </Button>
+      </p>
       <DataTable
         rows={rows}
         rowKey={(r) => r.id}
@@ -512,7 +602,17 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
         empty={R.empty}
         initialSort={{ key: 'active', dir: -1 }}
         columns={[
-          { key: 'role', header: R.columns.role, sortValue: (r) => r.name.toLowerCase(), csv: (r) => r.name, render: (r) => r.name },
+          {
+            key: 'role',
+            header: R.columns.role,
+            sortValue: (r) => r.name.toLowerCase(),
+            csv: (r) => r.name,
+            render: (r) => (
+              <>
+                {r.name} {r.privileged && <Chip status="warning">{R.privileged}</Chip>}
+              </>
+            ),
+          },
           { key: 'active', header: R.columns.active, sortValue: (r) => r.activeN, csv: (r) => r.active, render: (r) => r.active || '—' },
           { key: 'eligible', header: R.columns.eligible, csv: (r) => r.eligible, render: (r) => r.eligible || '—' },
         ]}
@@ -525,29 +625,59 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
 
 function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
   const L = C.licensing
+  const [showZero, setShowZero] = useState(false)
   const skus = (snapshot.config.subscribedSkus?.rows ?? []) as Raw[]
-  type Row = { id: string; sku: string; seats: number; consumed: number; caps: string }
-  const rows: Row[] = skus.map((s) => {
+  const friendly = productNames.products as Record<string, string>
+  type Row = { id: string; sku: string; name: string; seats: number; consumed: number; caps: string }
+  const all: Row[] = skus.map((s) => {
     const caps = deriveTenantCapabilities([s])
     const unlocked = CAPABILITIES.filter((c) => caps[c].enabled).map((c) => LICENSING.caps[c] ?? c)
+    const sku = String(s.skuPartNumber ?? s.skuId ?? '')
     return {
       id: String(s.skuId ?? s.skuPartNumber ?? ''),
-      sku: String(s.skuPartNumber ?? s.skuId ?? ''),
+      sku,
+      name: friendly[sku.toUpperCase()] ?? sku,
       seats: Number((s.prepaidUnits as Raw | undefined)?.enabled ?? 0),
       consumed: Number(s.consumedUnits ?? 0),
       caps: unlocked.join(', ') || L.none,
     }
   })
+  const rows = showZero ? all : all.filter((r) => r.seats > 0)
+  const zero = all.length - all.filter((r) => r.seats > 0).length
   return (
     <div>
       <Heading text={C.tabs.licensing} source="licensing" />
+      {zero > 0 && (
+        <p className="reason">
+          {!showZero && `${L.hiddenZero(zero)} `}
+          <Button size="sm" variant="quiet" onClick={() => setShowZero((v) => !v)}>
+            {showZero ? L.hideZero : L.showZero}
+          </Button>
+        </p>
+      )}
       <DataTable
         rows={rows}
         rowKey={(r) => r.id}
         csvName="iamai-licences.csv"
         empty={L.empty}
         columns={[
-          { key: 'sku', header: L.columns.sku, sortValue: (r) => r.sku, csv: (r) => r.sku, render: (r) => r.sku },
+          {
+            key: 'sku',
+            header: L.columns.sku,
+            sortValue: (r) => r.name.toLowerCase(),
+            csv: (r) => (r.name === r.sku ? r.sku : `${r.name} (${r.sku})`),
+            render: (r) => (
+              <>
+                {r.name}
+                {r.name !== r.sku && (
+                  <>
+                    <br />
+                    <span className="sub muted">{r.sku}</span>
+                  </>
+                )}
+              </>
+            ),
+          },
           { key: 'seats', header: L.columns.seats, sortValue: (r) => r.seats, csv: (r) => r.seats, render: (r) => r.seats },
           { key: 'consumed', header: L.columns.consumed, sortValue: (r) => r.consumed, csv: (r) => r.consumed, render: (r) => r.consumed },
           { key: 'caps', header: L.columns.capabilities, csv: (r) => r.caps, render: (r) => r.caps },
