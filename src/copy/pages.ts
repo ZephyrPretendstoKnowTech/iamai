@@ -351,7 +351,7 @@ export const ROADMAP = {
   loadBaseline: 'load a baseline',
   basedOn: (when: string) => `Based on the scan from ${when}.`,
   rescan: 'Re-scan',
-  tabs: { overview: 'Overview', timeline: 'Timeline', danger: 'Danger areas', steps: 'Steps' },
+  tabs: { progress: 'Progress', plan: 'Plan', danger: 'Danger areas', schedule: 'Schedule', export: 'Export' },
   weeksBadge: (w: number) => `${w}w`,
   // Overview redesign (prompt 26 §6-§9)
   headline: (done: number, total: number, finishes: string) => `${done} of ${total} steps in place · finishes ${finishes}`,
