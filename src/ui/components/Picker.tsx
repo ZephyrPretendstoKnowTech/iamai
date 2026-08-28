@@ -90,7 +90,12 @@ export function Picker({
             setFocused(0)
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setOpen(false)
+            if (e.key === 'Escape') {
+              // A search input clears itself on Escape and fires onChange, which
+              // would reopen the list (prompt 19 §B): keep the text, close the list.
+              e.preventDefault()
+              setOpen(false)
+            }
             if (e.key === 'ArrowDown') {
               e.preventDefault()
               setFocused((f) => Math.min(f + 1, list.length - 1))

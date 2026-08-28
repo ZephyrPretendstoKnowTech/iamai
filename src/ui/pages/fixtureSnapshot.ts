@@ -1,6 +1,7 @@
 // Synthetic tenant for the dev-only component gallery — invented names,
 // no real identifiers. Never used outside DEV builds.
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import type { BaselineResult } from './BaselinePage.tsx'
 import { emptyCapabilities } from '../../licensing/capabilities.ts'
 
 const now = new Date()
@@ -180,4 +181,43 @@ export function fixtureSnapshot(): TenantSnapshot {
     microsoftManagedPolicyIds: [],
     roles: { active: { 'u-1': ['62e90394-69f5-4237-9190-012177145e10'] }, eligible: {} },
   }
+}
+
+/** The gallery's synthetic baseline: one legacy-auth block with a tenant-specific exclusion group. */
+export function fixtureBaseline(): BaselineResult {
+  return {
+  source: 'synthetic baseline',
+  fetchFailures: 0,
+  origin: { kind: 'upload', files: [] },
+  pkg: {
+    policies: [
+      {
+        id: 'b-1',
+        displayName: 'ACME - GLOBAL - BLOCK - LegacyAuth - ExludeSvcAccounts',
+        state: 'enabled',
+        conditions: {
+          users: { includeUsers: ['All'], excludeGroups: ['11111111-1111-1111-1111-111111111111'] },
+          applications: { includeApplications: ['All'] },
+          clientAppTypes: ['exchangeActiveSync', 'other'],
+        },
+        grantControls: { operator: 'OR', builtInControls: ['block'] },
+      },
+    ],
+    origins: {},
+    report: { considered: 1, parsed: 1, skipped: [], errors: [], duplicates: [], warnings: [] },
+    references: [
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+        kind: 'group',
+        portability: 'tenantSpecific',
+        uses: [{ policyName: 'ACME - GLOBAL - BLOCK - LegacyAuth - ExludeSvcAccounts', side: 'exclude' }],
+      },
+    ],
+    groupSignatures: [
+      { id: '11111111-1111-1111-1111-111111111111', inferredRole: 'globalExclusion', confidence: 'high', evidence: 'excluded from 1 of 1 user-targeting policies, never included' },
+    ],
+    variantSets: [{ intentKey: 'countries', relation: 'variant', policyNames: ['Countries - allow list', 'Countries - block list'] }],
+    docs: [],
+  } as unknown as BaselineResult['pkg'],
+}
 }
