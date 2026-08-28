@@ -101,8 +101,8 @@ export const INVENTORY = {
   },
   people: {
     columns: { name: 'Name', upn: 'Sign-in address', type: 'Type', activity: 'Activity', mfa: 'MFA state', method: 'Strongest method', licence: 'Licence', roles: 'Roles' },
-    member: 'member',
-    guest: 'guest',
+    member: 'Member',
+    guest: 'Guest',
     p2: 'P2',
     p1: 'P1',
     free: 'Free',

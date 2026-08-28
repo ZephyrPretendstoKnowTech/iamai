@@ -221,7 +221,7 @@ export const SCAN = {
     care: 'Handle with care',
   },
   yes: 'yes',
-  guest: 'guest',
+  guest: 'Guest',
   care: 'care',
   createdAgo: (rel: string) => `created ${rel}`,
   mfaVia: (method: string, rel: string) => `MFA via ${method} ${rel}`,

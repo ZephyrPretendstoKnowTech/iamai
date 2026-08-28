@@ -10,6 +10,7 @@ import { resolveFactsWho, resolvePopulation } from './population.ts'
 import type { GroupMembers } from './population.ts'
 import { detectFacets } from './applicability.ts'
 import type { FacetOverrides } from './applicability.ts'
+import { REASON } from '../copy/reasons.ts'
 import { organisationReport } from './organisation.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type {
@@ -282,7 +283,7 @@ function evaluateGoal(
         reasons.push({
           kind: 'apps-narrower',
           userIds: [...strongPop],
-          detail: `${c.name} covers a narrower app set than the goal expects`,
+          detail: REASON.appsNarrower(c.name),
         })
       }
     } else {
@@ -293,7 +294,7 @@ function evaluateGoal(
         reasons.push({
           kind: sessionOnly ? 'session-weaker' : 'weaker-control',
           userIds: [...pop],
-          detail: `${c.name} applies but does not meet the floor (${describeFloor(floor)})`,
+          detail: REASON.weakerControl(c.name, describeFloor(floor)),
           current: sessionOnly ? describeSession(c.session) : describeGrant(c.grant),
           floor: describeFloor(floor),
         })
@@ -338,15 +339,15 @@ function evaluateGoal(
       (isBreakGlassUser && impl.allowedExclusions.includes('breakGlass'))
     const groupLabel =
       ex.kind === 'group' ? (input.groupMembers.get(ex.id)?.displayName ?? ex.id) : ex.id
-    const assumedNote = assumed.confirmed ? '' : ' — assumed, confirm in Setup'
+    const assumedNote = assumed.confirmed ? '' : ': assumed, confirm in Setup'
     const detail =
       ex.kind === 'group'
         ? `excluded by the group ${groupLabel}${label ? ` (${label}${assumedNote})` : ''}`
         : ex.kind === 'role'
-          ? `excluded by role (${ex.id.split(',').length === 1 ? 'one role' : `${ex.id.split(',').length} roles`})`
+          ? REASON.excludedByRole(ex.id.split(',').length)
           : ex.kind === 'guests'
-            ? 'guests are excluded'
-            : `excluded directly${isBreakGlassUser ? ` (break-glass${assumedNote})` : ''}`
+            ? REASON.guestsExcluded
+            : REASON.excludedDirectly(isBreakGlassUser, assumedNote)
     reasons.push({
       kind: 'excluded',
       userIds: stillMissing,
@@ -359,20 +360,17 @@ function evaluateGoal(
   const accounted = new Set([...covered, ...reasons.flatMap((r) => (r.kind === 'excluded' ? r.userIds : []))])
   const notTargeted = [...E].filter((id) => !accounted.has(id) && !targeted.has(id))
   if (notTargeted.length > 0) {
-    reasons.push({ kind: 'not-targeted', userIds: notTargeted, detail: 'never included by any candidate policy' })
+    reasons.push({ kind: 'not-targeted', userIds: notTargeted, detail: REASON.notTargeted(notTargeted.length, E.size) })
   }
   if (reportOnly.size > 0) {
-    reasons.push({ kind: 'report-only', userIds: [...reportOnly], detail: 'covered only in report-only' })
+    reasons.push({ kind: 'report-only', userIds: [...reportOnly], detail: REASON.reportOnly })
   }
   const disabledOnly = contributions.length > 0 && contributions.every((c) => c.contribution === 'disabled')
   if (contributions.some((c) => c.contribution === 'disabled')) {
     reasons.push({
       kind: 'disabled-candidate',
       userIds: [],
-      detail: `matching but disabled: ${contributions
-        .filter((c) => c.contribution === 'disabled')
-        .map((c) => c.policyName)
-        .join(', ')}`,
+      detail: REASON.disabledCandidates(contributions.filter((c) => c.contribution === 'disabled').map((c) => c.policyName)),
     })
   }
   base.reasons = reasons

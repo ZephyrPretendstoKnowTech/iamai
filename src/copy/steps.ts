@@ -256,6 +256,8 @@ export const ROLLBACK = {
   prerequisite: 'Nothing destructive here: objects created can be deleted.',
   adjust: 'Revert the changed fields to their previous values; the previous body is in the policy history.',
   create: 'Switch the policy back to report-only (or delete it); nothing else changes.',
+  verify: 'Nothing to undo: the campaign changes no policy. Pause the announcements if people are confused; the readiness numbers stay.',
+  recurring: 'Nothing to undo: this is a check, not a change.',
 }
 
 export const COMMS = {

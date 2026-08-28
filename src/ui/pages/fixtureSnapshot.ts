@@ -13,7 +13,7 @@ export function fixtureSnapshot(): TenantSnapshot {
     ['u-2', 'Sam Lee', 'sam@example.com', 'member', 5],
     ['u-3', 'Priya Nair', 'priya@example.com', 'member', 40],
     ['u-4', 'Break-glass 01', 'bg01@example.com', 'member', 120],
-    ['u-5', 'Jordan Kim (guest)', 'jordan_partner.example.com#EXT#@example.com', 'guest', 9],
+    ['u-5', 'Jordan Kim', 'jordan_partner.example.com#EXT#@example.com', 'guest', 9],
   ] as const
   const caps = emptyCapabilities()
   caps.entraP1 = { enabled: true, seats: 25, consumed: 5 }
