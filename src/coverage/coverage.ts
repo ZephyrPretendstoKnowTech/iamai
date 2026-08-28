@@ -33,6 +33,7 @@ import {
   reportOnlyStatement,
   structuralPartialStatement,
   unknownStatement,
+  belowBaselineStatement,
 } from '../copy/statements.ts'
 
 export const CATALOGUE: Goal[] = goalsData.goals as unknown as Goal[]
@@ -100,6 +101,13 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const assumed = input.mapping?.confirmed
     ? confirmedExclusions(input.mapping)
     : assumedExclusions(input.tenantPolicies)
+  // Membership decides expected exclusions (ux-review-05 §1): a group whose
+  // every member is a break-glass account is an expected exclusion whether or
+  // not Setup named it, before and after the questions are answered.
+  for (const [groupId, g] of input.groupMembers) {
+    if (assumed.groups.has(groupId) || g.sampled || g.memberIds.length === 0) continue
+    if (g.memberIds.every((id) => assumed.users.has(id))) assumed.groups.set(groupId, 'breakGlass')
+  }
 
   const facets = detectFacets(snapshot, input.facetOverrides ?? {})
 
@@ -113,10 +121,22 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     for (const b of baselineMatches) matchedBaseline.add(b.name)
     return { goal, baselineMatches }
   })
+  // Ad-hoc goals with the same intent fingerprint are one goal (§12); the
+  // other source policies stay named in the detail.
+  const byFingerprint = new Map<string, { goal: Goal; baselineMatches: PolicyFacts[] }>()
   for (const b of baselineFacts) {
-    if (!matchedBaseline.has(b.name)) {
-      goals.push({ goal: adHocGoal(b), baselineMatches: [b] })
+    if (matchedBaseline.has(b.name)) continue
+    const goal = adHocGoal(b)
+    const key = JSON.stringify(goal.implementations[0].signature)
+    const existing = byFingerprint.get(key)
+    if (existing) {
+      existing.baselineMatches.push(b)
+      existing.goal.adHocSources = [...(existing.goal.adHocSources ?? [existing.goal.adHocSource ?? '']), b.name]
+      continue
     }
+    const entry = { goal, baselineMatches: [b] }
+    byFingerprint.set(key, entry)
+    goals.push(entry)
   }
 
   const results: GoalResult[] = goals.map(({ goal, baselineMatches }) =>
@@ -132,7 +152,8 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const enforcedCount = scored.filter((r) => r.status === 'enforced').length
   const summary = {
     enforced: enforcedCount,
-    partial: results.filter((r) => r.status === 'partial').length,
+    partial: results.filter((r) => r.status === 'partial' || r.status === 'below-baseline').length,
+    belowBaseline: results.filter((r) => r.status === 'below-baseline').length,
     absent: results.filter((r) => r.status === 'absent').length,
     notApplicable: results.filter((r) => r.status === 'not-applicable').length,
     licenceLimited: results.filter((r) => r.status === 'licence-limited').length,
@@ -259,6 +280,8 @@ function evaluateGoal(
     if (live) anyUnresolved ||= who.unresolvedGroups.length > 0
     const pop = new Set([...who.effective].filter((id) => E.has(id)))
     const meetsFloor = satisfiesFloor(c.grant, c.session, floor)
+    // Met at the catalogue floor but not at the baseline's raised one (§10).
+    const meetsCatalogueFloor = raised !== null && !meetsFloor ? satisfiesFloor(c.grant, c.session, impl.floor) : meetsFloor
     const strongPop = meetsFloor ? pop : new Set<string>()
 
     if (live) {
@@ -294,7 +317,8 @@ function evaluateGoal(
         reasons.push({
           kind: sessionOnly ? 'session-weaker' : 'weaker-control',
           userIds: [...pop],
-          detail: REASON.weakerControl(c.name, describeFloor(floor)),
+          detail: meetsCatalogueFloor ? REASON.belowBaseline(c.name, describeFloor(floor)) : REASON.weakerControl(c.name, describeFloor(floor)),
+          ...(meetsCatalogueFloor ? { belowBaseline: true } : {}),
           current: sessionOnly ? describeSession(c.session) : describeGrant(c.grant),
           floor: describeFloor(floor),
         })
@@ -388,6 +412,8 @@ function evaluateGoal(
   if (anyUnresolved) status = 'unknown'
   else if (contributions.length === 0 || disabledOnly) status = 'absent'
   else if (fullyEnforced) status = 'enforced'
+  else if (enforced.size === 0 && reportOnly.size === 0 && weak.size > 0 && reasons.some((r) => r.belowBaseline) && reasons.every((r) => r.belowBaseline || (r.kind === 'excluded' && r.expected)))
+    status = 'below-baseline'
   else if (enforced.size > 0 || reportOnly.size > 0 || weak.size > 0) status = 'partial'
   else status = 'absent'
 
@@ -524,6 +550,11 @@ function buildStatement(
   if (status === 'absent') return missingStatement(goal.name, baselineMatches[0]?.name ?? null)
   if (status === 'unknown') return unknownStatement(goal.name) + est
   if (status === 'not-applicable' || status === 'licence-limited') return `**${goal.name}**.`
+  if (status === 'below-baseline') {
+    const below = base.reasons.find((r) => r.belowBaseline)
+    const names = base.candidates.filter((c) => c.contribution === 'weak').map((c) => c.policyName)
+    return belowBaselineStatement(goal.name, names, below?.current ?? 'the goal\'s control', below?.floor ?? 'more', base.floorRaised?.by ?? null) + est
+  }
 
   // partial — pick the shape from what is actually wrong.
   const control = base.reasons.find((r) => r.kind === 'weaker-control')

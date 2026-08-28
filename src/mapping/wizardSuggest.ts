@@ -27,6 +27,8 @@ export type WizardSuggestContext = {
   snapshot: TenantSnapshot
   tenantPolicies: unknown[]
   knownGroups: GroupMembersCacheEntry[]
+  /** Break-glass accounts confirmed in question 1 (ux-review-05 §1). */
+  breakGlassUserIds?: string[]
 }
 
 function nameHit(text: string | null, pattern: RegExp): string | null {
@@ -77,6 +79,18 @@ export function suggestForWizard(id: WizardQuestionId, ctx: WizardSuggestContext
     }
   }
 
+  if (id === 'globalExclusion') {
+    // A group whose only members are the confirmed emergency-access accounts
+    // is the exclusions group in all but name: first, with the evidence.
+    const bg = new Set(ctx.breakGlassUserIds ?? [])
+    if (bg.size > 0) {
+      const userName = (uid: string) => ctx.snapshot.users.find((u) => u.id === uid)?.displayName ?? uid
+      for (const g of ctx.knownGroups) {
+        if (g.sampled || g.memberIds.length === 0 || !g.memberIds.every((m) => bg.has(m))) continue
+        add({ id: g.groupId, name: g.displayName ?? g.groupId, secondary: SETUP_PAGE.members(g.memberCount), why: W.onlyBreakGlassMembers(g.memberIds.map(userName)), rank: 0 })
+      }
+    }
+  }
   if (id === 'globalExclusion' || id === 'serviceAccounts') {
     const nameOf = (gid: string) => ctx.knownGroups.find((g) => g.groupId === gid)?.displayName ?? gid
     const members = (gid: string) => {

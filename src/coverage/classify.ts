@@ -4,7 +4,7 @@ import vendorApps from '../../data/vendor-apps.json' with { type: 'json' }
 import firstPartyApps from '../../data/first-party-apps.json' with { type: 'json' }
 import { FACET_APPS } from './applicability.ts'
 import { grantFloorRank, satisfiesFloor } from './strength.ts'
-import type { Floor, Goal, PolicyFacts, Signature } from './types.ts'
+import type { Domain, Floor, Goal, PolicyFacts, Signature } from './types.ts'
 
 export const CORE_ADMIN_ROLE_IDS = new Set(coreAdminRoles.roles.map((r) => r.templateId.toLowerCase()))
 
@@ -174,7 +174,9 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
       case 'appsExact': {
         const want = value as { all: boolean; ids: string[]; office365: boolean; adminPortals: boolean }
         const ids = [...f.apps.ids].map((a) => a.toLowerCase()).sort()
-        if (f.apps.all !== want.all || f.apps.office365 !== want.office365 || f.apps.adminPortals !== want.adminPortals) return false
+        const broader = f.apps.all && !want.all && want.office365 && !want.adminPortals && want.ids.length === 0
+        if (!broader && (f.apps.all !== want.all || f.apps.office365 !== want.office365 || f.apps.adminPortals !== want.adminPortals)) return false
+        if (broader) break
         if (ids.join(',') !== [...want.ids].map((a) => a.toLowerCase()).sort().join(',')) return false
         break
       }
@@ -343,9 +345,13 @@ export function adHocGoal(facts: PolicyFacts): Goal {
         : ({ kind: 'all' } as const)
 
   const vendor = vendorOf(facts)
+  const scoring = adHocScoring(facts, who.kind)
   return {
     id: `adhoc:${facts.name}`,
     name: adHocTitle(facts),
+    domain: scoring.domain,
+    securityValue: scoring.securityValue,
+    baseEffort: scoring.baseEffort,
     description: `From the baseline policy "${facts.name}" — not in the goal catalogue; compared structurally.`,
     phase: adHocPhase(facts, who.kind),
     applicability: inferAdHocFacet(facts),
@@ -388,6 +394,33 @@ export function adHocPhase(facts: PolicyFacts, who: string): number {
 }
 
 /** Plain-language title from the facts: "Require MFA for the Inforcer app". */
+/**
+ * Scores for a goal the catalogue does not know (ux-review-05 §11): a domain
+ * from what the policy touches, a value from the strength of what it asks
+ * for, and a base effort of 2 (a single policy with no prerequisites).
+ */
+export function adHocScoring(facts: PolicyFacts, who: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload'): { domain: Domain; securityValue: number; baseEffort: number } {
+  const controls = controlsLower(facts)
+  const device = [...controls].some((c) => DEVICE_CONTROLS.has(c) || APP_PROTECTION_CONTROLS.has(c))
+  const session = facts.session.signInFrequencyHours !== null || facts.session.signInFrequencyEveryTime || facts.session.persistentBrowser !== null || facts.session.secureSignInSession || facts.session.appEnforced
+  const domain: Domain =
+    who === 'coreAdmins' ? 'Admins'
+    : who === 'guests' ? 'Guests'
+    : facts.signInRisk.size > 0 || facts.userRisk.size > 0 ? 'Risk'
+    : facts.locations !== null && facts.locations.include.size > 0 ? 'Locations'
+    : device ? 'Devices'
+    : session && !facts.grant ? 'Sessions'
+    : 'Identity'
+  const securityValue =
+    facts.grant?.strength === 'phishingResistant' ? 5
+    : controls.has('block') ? 4
+    : controls.has('mfa') || facts.grant?.strength ? 4
+    : device ? 3
+    : session ? 2
+    : 3
+  return { domain, securityValue, baseEffort: 2 }
+}
+
 export function adHocTitle(facts: PolicyFacts): string {
   const controls = controlsLower(facts)
   const vendor = vendorOf(facts)
@@ -424,7 +457,8 @@ export function adHocTitle(facts: PolicyFacts): string {
   else if (facts.session.appEnforced) verb = 'Limit downloads on'
   else if (facts.session.signInFrequencyHours !== null || facts.session.signInFrequencyEveryTime || facts.session.persistentBrowser !== null) verb = 'Limit sessions on'
   else if (facts.session.secureSignInSession) verb = 'Require token protection for'
-  else verb = 'Control access to'
+  else if (facts.grant?.strength) verb = 'Require a stronger sign-in for'
+  else verb = 'Restrict access to'
   return `${verb} ${object}${audience}`
 }
 

@@ -21,6 +21,7 @@ export const SHELL = {
   // Scan age (prompt 20 §9)
   basedOn: (when: string) => `Based on the scan from ${when}.`,
   rescan: 'Re-scan',
+  baselineLoaded: (source: string) => `Baseline: ${source}`,
   scanStale: (days: number) => `This scan is ${days} days old. Numbers, names and sign-in evidence may have moved on.`,
   scanStaleAction: 'Re-scan the tenant',
   forgetTooltip: 'Deletes everything IAMAI stored for this tenant on this device, then signs out',
@@ -140,9 +141,10 @@ export const BASELINE = {
   filesIn: (n: number) => `${count(n, 'file')} in this baseline`,
   targets: (tiers: string) => `targets ${tiers}`,
   loadedTitle: (source: string) => `Loaded: ${source}`,
+  restoreFailed: 'The baseline saved with the scan could not be restored. Load it again below.',
   uploadLabel: 'Upload baseline policy files',
   summaryLine: (policies: number, goals: number, questions: { total: number; required: number }) =>
-    `${count(policies, 'policy', 'policies')} · ${count(goals, 'security goal')} · ${BASELINE_QUESTIONS(questions)}`,
+    `${count(policies, 'policy', 'policies')} · ${count(goals, 'security goal')} in this baseline (Findings shows how many apply to the tenant) · ${BASELINE_QUESTIONS(questions)}`,
   authorNote: 'For the baseline author: these lines describe the export, not this tenant.',
   policiesReady: (n: number) => `${count(n, 'policy', 'policies')} ready to compare.`,
   unusable: (n: number) =>
@@ -294,6 +296,10 @@ export const FINDINGS = {
   sort: { priority: 'Priority', value: 'Security value', effort: 'Effort', disruption: 'Disruption' } as Record<string, string>,
   whyMatters: 'Why this matters',
   proposedName: 'Proposed name:',
+  goalCounts: (inBaseline: number, apply: number) =>
+    inBaseline === apply
+      ? `${count(inBaseline, 'goal')} in this baseline; every one applies to this tenant.`
+      : `${count(inBaseline, 'goal')} in this baseline, ${apply} apply to this tenant. The rest are under Details with the reason each one does not apply.`,
   howToFix: 'How to fix this',
   fixText: (goal: string) => `The Roadmap has a dated step for "${goal}" with the exact change, who it touches, and what to check before enforcing.`,
   fixLink: 'Open the step',
@@ -360,6 +366,7 @@ export const ROADMAP = {
   observationText: 'Every new policy collects report-only evidence at the same time.',
   wave: (n: number, name: string) => `Wave ${n} · ${name}`,
   blockedBy: 'Blocked by',
+  showRoles: (n: number) => `Show the ${count(n, 'role')}`,
   setupQuestionLink: (n: number) => `Setup question ${n}`,
   sortBy: 'Sort by',
   sortSchedule: 'Schedule',

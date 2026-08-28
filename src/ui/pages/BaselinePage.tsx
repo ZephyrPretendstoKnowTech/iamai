@@ -20,7 +20,8 @@ export type BaselineResult = {
   pkg: BaselinePackage
   fetchFailures: number
   /** How to restore it on reload (prompt 14 §6). */
-  origin: { kind: 'github'; owner: string; repo: string; commit: string } | { kind: 'upload'; files: BaselineFile[] }
+  /** The pinned baseline keeps its fetched files so a reload restores it without the network (ux-review-05 §8). */
+  origin: { kind: 'github'; owner: string; repo: string; commit: string; files?: BaselineFile[] } | { kind: 'upload'; files: BaselineFile[] }
 }
 
 const index = baselineIndex as BaselineIndex
@@ -32,8 +33,17 @@ export async function loadPinnedBaseline(): Promise<BaselineResult> {
     source: index.label,
     pkg: loadBaseline(files),
     fetchFailures: failures.length,
-    origin: { kind: 'github', owner: index.owner, repo: index.repo, commit: index.commit },
+    origin: { kind: 'github', owner: index.owner, repo: index.repo, commit: index.commit, files },
   }
+}
+
+/** Restore a saved baseline from its stored files; the pinned one is refetched only when no files were kept. */
+export async function restoreBaseline(origin: BaselineResult['origin']): Promise<BaselineResult> {
+  if (origin.kind === 'upload') return loadUploadedBaseline(origin.files)
+  if (origin.files && origin.files.length > 0) {
+    return { source: index.label, pkg: loadBaseline(origin.files), fetchFailures: 0, origin }
+  }
+  return loadPinnedBaseline()
 }
 
 export function loadUploadedBaseline(files: BaselineFile[]): BaselineResult {
@@ -58,10 +68,12 @@ export function BaselinePage({
   result,
   onLoaded,
   scan = null,
+  restoreError = null,
 }: {
   result: BaselineResult | null
   onLoaded: (r: BaselineResult) => void
   scan?: { snapshot: TenantSnapshot; at: string } | null
+  restoreError?: string | null
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -108,6 +120,7 @@ export function BaselinePage({
       </p>
       {busy && <p className="muted">{busy}</p>}
       {error && <Callout kind="danger" title={BASELINE.loadFailed}>{error}</Callout>}
+      {!result && restoreError && <Callout kind="warning" title={BASELINE.restoreFailed}>{restoreError}</Callout>}
       {result && <LoadReportView result={result} snapshot={scan?.snapshot ?? null} />}
     </StepFrame>
   )

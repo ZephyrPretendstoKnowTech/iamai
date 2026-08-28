@@ -13,6 +13,7 @@ import type { MappingQuestion, MappingState } from '../mapping/types.ts'
 import { activeWizardQuestions } from '../mapping/wizard.ts'
 import type { WizardQuestionId } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
+import { adminUserIds, roleListSummary } from '../roles.ts'
 import { summarizeTenant } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
@@ -90,7 +91,8 @@ export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
 function population(ids: string[], snapshot: TenantSnapshot, viability: MfaViability[]): StepPopulation {
   const set = new Set(ids)
   const active = viability.filter((v) => set.has(v.userId) && v.activity === 'active').length
-  const admins = ids.filter((id) => (snapshot.roles.active[id] ?? []).length > 0).length
+  const adminSet = adminUserIds(snapshot.roles)
+  const admins = ids.filter((id) => adminSet.has(id)).length
   const guests = snapshot.users.filter((u) => set.has(u.id) && u.userType === 'guest').length
   return { total: ids.length, active, admins, guests, ids }
 }
@@ -313,7 +315,8 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
 
   const label = (v: unknown): string => (Array.isArray(v) && v.length > 0 ? [...new Set(v.map((x) => (names ? names.label(String(x)) : String(x))))].join(', ') : '')
   const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
-  const currentInclude = cur ? [label(cur.includeUsers), label(cur.includeGroups), label(cur.includeRoles)].filter(Boolean).join('; ') : ''
+  const roleList = cur && Array.isArray(cur.includeRoles) && cur.includeRoles.length > 0 ? roleListSummary(cur.includeRoles.map(String)) : null
+  const currentInclude = cur ? [label(cur.includeUsers), label(cur.includeGroups), roleList?.summary ?? ''].filter(Boolean).join('; ') : ''
   const currentExclude = cur ? [label(cur.excludeUsers), label(cur.excludeGroups), label(cur.excludeRoles)].filter(Boolean).join('; ') : ''
   const portal = [
     full.portalSteps[0],
@@ -330,7 +333,7 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
     full.portalSteps[full.portalSteps.length - 1],
   ].filter((s): s is string => typeof s === 'string')
   const powershell = full.powershell ? full.powershell.replace(/-Method POST/, '-Method PATCH') : null
-  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell }
+  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell, roleList: roleList && roleList.names.length > 5 ? roleList : null }
 }
 
 function adjustSummary(result: GoalResult): string[] {
@@ -735,7 +738,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const opEvidence = operatorId !== null ? snapshot.signInEvidence[operatorId] : undefined
     const measured = evidenceUsable && (readiness.family === 'block' || evidence.reportOnly !== null)
     const operatorNote = includesOperator && result.status !== 'enforced'
-      ? OPERATOR.inScope(measured ? (evidence.affectedUserIds.includes(operatorId!) ? 'some' : 0) : null, opEvidence?.signInCount ?? null)
+      ? OPERATOR.inScope(measured ? (evidence.affectedUserIds.includes(operatorId!) ? 'some' : 0) : null, opEvidence?.signInCount ?? null, evidenceUsable)
       : null
 
     // "Done when" bullets only for criteria that apply to the step kind

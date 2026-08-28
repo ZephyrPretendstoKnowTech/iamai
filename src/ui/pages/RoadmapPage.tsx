@@ -639,7 +639,7 @@ export function RoadmapPage({
 
   return (
     <StepFrame title={C.title} does={C.does} needs={needs}>
-      {scan && <ScanAge at={scan.at} />}
+      {scan && <ScanAge at={scan.at} baseline={baseline?.source ?? null} />}
       <Tabs
         active={activeTab}
         onChange={setActiveTab}
@@ -878,6 +878,14 @@ function StepCard({
           </p>
           {tab === 'portal' && (
             <ol className="sections">
+              {step.action.roleList && (
+                <li>
+                  <details>
+                    <summary>{C.showRoles(step.action.roleList.names.length)}</summary>
+                    <p className="reason">{step.action.roleList.names.join(', ')}</p>
+                  </details>
+                </li>
+              )}
               {step.action.portalSteps.map((l, i) => (
                 <li key={i}>{l}</li>
               ))}

@@ -227,7 +227,9 @@ test('7: baseline phishing-resistant policy raises the floor; plain-MFA tenant p
     },
   )
   const g = goal(r, 'mfa-all-users')
-  assert.equal(g.status, 'partial')
+  // The goal is met at the catalogue floor (MFA); only the baseline's raised floor is missed (ux-review-05 §10).
+  assert.equal(g.status, 'below-baseline')
+  assert.match(g.statement, /is met: .* requires .*\. Below the baseline: it expects /)
   assert.equal(g.floorRaised?.to, 'phishingResistant')
   const weak = g.reasons.find((x) => x.kind === 'weaker-control')
   assert.equal(weak?.userIds.length, 10)

@@ -10,7 +10,7 @@ import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import { CAPABILITIES, deriveTenantCapabilities, deriveUserCapabilities } from '../../licensing/capabilities.ts'
 import { buildNameDirectory } from '../../names.ts'
-import { ROLE_TEMPLATES, coversAdminSet, roleLabel, roleTemplate } from '../../roles.ts'
+import { ROLE_TEMPLATES, coversAdminSet, roleLabel, roleName, roleTemplate } from '../../roles.ts'
 import { resolveObjects } from '../../graph/collect/onDemand.ts'
 import type { ResolvedObject } from '../../graph/collect/onDemand.ts'
 import productNames from '../../../data/product-names.json' with { type: 'json' }
@@ -577,7 +577,8 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
     const e = byRole.get(id) ?? { active: new Set<string>(), eligible: new Set<string>() }
     return {
       id,
-      name: roleLabel(id),
+      // A role the catalogue and the scan cannot name is labelled by who holds it, never by an id (ux-review-05 §7).
+      name: roleName(id) ?? (e.active.size + e.eligible.size > 0 ? R.usedBy([...e.active, ...e.eligible].slice(0, 2).map(holder).join(', ')) : roleLabel(id)),
       privileged: roleTemplate(id)?.privileged ?? false,
       active: [...e.active].map(holder).join(', '),
       eligible: [...e.eligible].map(holder).join(', '),
@@ -782,6 +783,7 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
         <>
           <p>
             {S.window(absoluteDate(src.coveredWindow.from), absoluteDate(src.coveredWindow.to), agg.total)} · {S.distinctUsers(agg.distinctUsers)}
+            <InfoTip title={S.distinctUsersTip.title} text={S.distinctUsersTip.text} />
           </p>
           {table(S.byClientApp, agg.byClientApp, S.columns.count, 'iamai-signins-by-client-app.csv')}
           {table(S.byProtocol, Object.fromEntries(Object.entries(agg.byProtocol).map(([k, v]) => [protocolName(k), v])), S.columns.count, 'iamai-signins-by-protocol.csv')}

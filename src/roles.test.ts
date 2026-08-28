@@ -8,7 +8,7 @@ test('role catalogue resolves every built-in template, unknown ids say so once',
   assert.ok(ROLE_TEMPLATES.length > 100)
   assert.equal(roleName(GA), 'Global Administrator')
   assert.equal(roleName(GA.toUpperCase()), 'Global Administrator')
-  assert.equal(roleLabel('00000000-0000-0000-0000-000000000000'), 'Unknown role (id 00000000-0000-0000-0000-000000000000)')
+  assert.equal(roleLabel('00000000-0000-0000-0000-000000000000'), 'Unknown role')
   assert.ok(ADMIN_ROLE_IDS.has(GA))
 })
 

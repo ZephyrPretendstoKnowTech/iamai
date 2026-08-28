@@ -35,6 +35,7 @@ import type { GoalScore, ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 const STATUS_CHIP: Record<GoalStatus, ChipStatus> = {
+  'below-baseline': 'warning',
   enforced: 'done',
   partial: 'warning',
   absent: 'blocked',
@@ -207,11 +208,12 @@ export function CoveragePage({
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'this tenant'
   const enabledPolicies = tenantPolicies.filter((p) => (p as { state?: string }).state === 'enabled').length
   const enforced = report.results.filter((r) => r.status === 'enforced')
-  const partial = report.results.filter((r) => r.status === 'partial')
+  const partial = report.results.filter((r) => r.status === 'partial' || r.status === 'below-baseline')
   const absent = report.results.filter((r) => r.status === 'absent')
   const unknown = report.results.filter((r) => r.status === 'unknown')
   const licence = report.results.filter((r) => r.status === 'licence-limited')
   const scoredCount = report.results.filter((r) => r.status !== 'not-applicable' && r.status !== 'licence-limited').length
+  const baselineGoals = report.results.length
   const active = summary.activityCounts.active
   const nameify = (s: string) => nameifyText(s, names)
 
@@ -278,7 +280,7 @@ export function CoveragePage({
       }
     >
       {r.goal.tldr && <p className="reason">{r.goal.tldr}</p>}
-      {(r.status === 'absent' || r.status === 'partial') && (
+      {(r.status === 'absent' || r.status === 'partial' || r.status === 'below-baseline') && (
         // The name the plan proposes, in the tenant's convention; the baseline's own name beneath (ux-review-04 §6).
         <p>
           <strong>{C.proposedName}</strong> {proposedPolicyName(stepTitle(r.goal.name), report.organisation.naming)}
@@ -335,7 +337,7 @@ export function CoveragePage({
           </ul>
         </>
       )}
-      {(r.status === 'absent' || r.status === 'partial' || r.status === 'unknown') && (
+      {(r.status === 'absent' || r.status === 'partial' || r.status === 'below-baseline' || r.status === 'unknown') && (
         <p className="reason">
           <a href={stepHref(stepIdForGoal(r.goal.id))}>{C.seeStep}</a>
         </p>
@@ -459,7 +461,8 @@ export function CoveragePage({
 
   return (
     <StepFrame title={C.title} does={C.does} needs={needs} next="roadmap" nextLabel={C.next}>
-      <ScanAge at={scan.at} />
+      <ScanAge at={scan.at} baseline={baseline?.source ?? null} />
+      <p className="reason">{C.goalCounts(baselineGoals, scoredCount)}</p>
       <Tabs
         tabs={[
           { id: 'summary', label: C.tabs.summary, render: summaryTab },

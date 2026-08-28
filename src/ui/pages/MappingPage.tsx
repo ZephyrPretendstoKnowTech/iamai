@@ -115,8 +115,8 @@ export function MappingPage({
     setEditing((e) => ({ ...e, [id]: true }))
   }
   const suggestCtx: WizardSuggestContext | null = useMemo(
-    () => (snapshot ? { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [], knownGroups } : null),
-    [snapshot, knownGroups],
+    () => (snapshot ? { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [], knownGroups, breakGlassUserIds: state?.breakGlassUserIds ?? [] } : null),
+    [snapshot, knownGroups, state?.breakGlassUserIds],
   )
 
   const needs = [

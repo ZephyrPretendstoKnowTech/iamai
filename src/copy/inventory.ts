@@ -132,6 +132,7 @@ export const INVENTORY = {
     },
   },
   roles: {
+    usedBy: (holders: string) => `Role used by ${holders}`,
     columns: { role: 'Role', active: 'Active holders', eligible: 'Eligible holders' },
     empty: 'No role assignments were read.',
     showAll: 'Show all roles',
@@ -164,6 +165,10 @@ export const INVENTORY = {
     window: (from: string, to: string, n: number) => `${count(n, 'sign-in')} covering ${from} to ${to}`,
     noWindow: 'No sign-in records were collected.',
     distinctUsers: (n: number) => `${count(n, 'distinct user')}`,
+    distinctUsersTip: {
+      title: 'Distinct users',
+      text: 'Users with at least one record inside the collected window (the last 30 days). Readiness counts activity over 90 days, so Active users can be higher than this number.',
+    },
     byClientApp: 'By client app',
     byProtocol: 'By protocol',
     byCountry: 'By country (distinct users)',
