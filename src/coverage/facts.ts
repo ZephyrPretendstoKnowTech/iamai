@@ -127,7 +127,7 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
       ? {
           operator: g.operator === 'OR' ? 'OR' : 'AND',
           controls,
-          strength: combos !== null ? strengthTier(combos) : strengthId !== null ? null : null,
+          strength: combos !== null ? strengthTier(combos) : null,
           strengthId,
           tou: set(g.termsOfUse).size > 0,
         }

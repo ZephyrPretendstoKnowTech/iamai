@@ -1,7 +1,7 @@
 // Setup — the 5–9 questions a human actually answers (2026-08-27 redesign,
 // polished in prompt 11). Everything else the baseline references is
 // auto-resolved in wizard.ts.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { getGroupMembers, searchGroups } from '../../graph/collect/onDemand.ts'
 import type { GroupMembersCacheEntry } from '../../graph/collect/cache.ts'
@@ -34,9 +34,6 @@ export function MappingPage({
   const [state, setState] = useState<MappingState | null>(null)
   const [knownGroups, setKnownGroups] = useState<GroupMembersCacheEntry[]>([])
   const snapshot = scan?.snapshot ?? null
-  const stateRef = useRef(state)
-  stateRef.current = state
-
   useEffect(() => {
     if (!snapshot) return
     void loadMappingState(snapshot.tenantId).then(setState)
@@ -67,30 +64,41 @@ export function MappingPage({
     }
   }, [snapshot])
 
+  const questions = useMemo(() => activeWizardQuestions(baseline?.pkg ?? null), [baseline])
   const progress = useMemo<WizardProgress>(
-    () => (state ? wizardProgress(state) : { answered: 0, total: 0, complete: false, requiredMissing: 0 }),
-    [state],
+    () => (state ? wizardProgress(state, questions) : { answered: 0, total: 0, complete: false, requiredMissing: 0 }),
+    [state, questions],
   )
   const [openFindings, setOpenFindings] = useState<Record<string, number>>({})
+  // Stable callback: children report by question id, so effects do not re-run per render.
+  const reportFindings = useCallback((id: string, n: number) => {
+    setOpenFindings((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }))
+  }, [])
   useEffect(() => onProgress(progress), [progress, onProgress])
   useEffect(() => {
     if (state?.displayTimeZone) setDisplayTimeZone(state.displayTimeZone)
   }, [state?.displayTimeZone])
 
+  // Pure updater; persistence happens once per committed state below (never
+  // inside the updater, which StrictMode runs twice).
+  const [dirty, setDirty] = useState(false)
   const update = (mut: (s: MappingState) => MappingState): void => {
     setState((prev) => {
       if (!prev || !baseline || !snapshot) return prev
       let next = mut(prev)
       next = applyWizardAnswers(next, baseline.pkg)
       next = applyAutoResolution(next, baseline.pkg, snapshot).state
-      void saveMappingState(next)
       return next
     })
+    setDirty(true)
   }
+  useEffect(() => {
+    if (!dirty || !state) return
+    setDirty(false)
+    void saveMappingState(state)
+  }, [dirty, state])
 
   const answered = (id: string): void => update((s) => ({ ...s, wizardAnswered: { ...s.wizardAnswered, [id]: true } }))
-
-  const questions = useMemo(() => activeWizardQuestions(baseline?.pkg ?? null), [baseline])
   const suggestCtx: WizardSuggestContext | null = useMemo(
     () => (snapshot ? { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [], knownGroups } : null),
     [snapshot, knownGroups],
@@ -102,14 +110,19 @@ export function MappingPage({
   ]
 
   if (!baseline || !snapshot || !state || !suggestCtx) {
+    const loading = baseline !== null && snapshot !== null
     return (
       <StepFrame title={C.title} does={C.does} needs={needs}>
         <Card>
-          <p>
-            {C.blocked} {!baseline && <a href="#/baseline">{C.loadBaseline}</a>}
-            {!baseline && !scan && ' and '}
-            {!scan && <a href="#/scan">{C.runScan}</a>}.
-          </p>
+          {loading ? (
+            <p className="reason">{C.loading}</p>
+          ) : (
+            <p>
+              {C.blocked} {!baseline && <a href="#/baseline">{C.loadBaseline}</a>}
+              {!baseline && !scan && ' and '}
+              {!scan && <a href="#/scan">{C.runScan}</a>}.
+            </p>
+          )}
         </Card>
       </StepFrame>
     )
@@ -138,7 +151,7 @@ export function MappingPage({
           update={update}
           answered={answered}
           openFindings={openFindings[q.id] ?? 0}
-          reportFindings={(n) => setOpenFindings((prev) => (prev[q.id] === n ? prev : { ...prev, [q.id]: n }))}
+          reportFindings={reportFindings}
         />
       ))}
     </StepFrame>
@@ -158,7 +171,7 @@ type QProps = {
   update: (mut: (s: MappingState) => MappingState) => void
   answered: (id: string) => void
   openFindings: number
-  reportFindings: (n: number) => void
+  reportFindings: (id: string, n: number) => void
 }
 
 // Sections stay open after an answer (prompt 13 §4); the header carries the
@@ -286,10 +299,21 @@ function GroupPicker({
       setRemote([])
       return
     }
+    let stale = false
     if (debounce.current) clearTimeout(debounce.current)
     debounce.current = setTimeout(() => {
-      void searchGroups(query).then(setRemote).catch(() => setRemote([]))
+      void searchGroups(query)
+        .then((r) => {
+          if (!stale) setRemote(r)
+        })
+        .catch(() => {
+          if (!stale) setRemote([])
+        })
     }, 300)
+    return () => {
+      stale = true
+      if (debounce.current) clearTimeout(debounce.current)
+    }
   }, [query])
   const suggested = useMemo(() => suggestions(questionId, suggestCtx), [questionId, suggestCtx])
   const whyById = new Map(suggested.map((s) => [s.id, s.why]))
@@ -361,7 +385,7 @@ function DoesNotExist({ onClick }: { onClick: () => void }) {
 
 function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings }: QProps) {
   const [validations, setValidations] = useState<Record<string, ValidationResult>>({})
-  useEffect(() => reportFindings(toFixCount(Object.values(validations))), [validations, reportFindings])
+  useEffect(() => reportFindings('breakGlass', toFixCount(Object.values(validations))), [validations, reportFindings])
   const runValidation = (ids: string[]): void => {
     const tenantPolicies = snapshot.config.caPolicies?.rows ?? []
     const out: Record<string, ValidationResult> = {}
@@ -418,7 +442,7 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
 
 function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings }: QProps) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
-  useEffect(() => reportFindings(toFixCount([validation])), [validation, reportFindings])
+  useEffect(() => reportFindings('globalExclusion', toFixCount([validation])), [validation, reportFindings])
   const rec = state.records['__globalExclusion']
   const validate = (id: string): void => {
     const entry = knownGroups.find((g) => g.groupId === id) ?? null
@@ -505,7 +529,7 @@ function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answere
     return loc ? validateTrustedLocation(loc) : null
   })
   const toFix = toFixCount(locValidations)
-  useEffect(() => reportFindings(toFix), [toFix, reportFindings])
+  useEffect(() => reportFindings('trustedLocations', toFix), [toFix, reportFindings])
   const suggested = useMemo(() => suggestions('trustedLocations', suggestCtx), [suggestCtx])
   const whyById = new Map(suggested.map((s) => [s.id, s.why]))
   const options: PickerOption[] = locations.map((l) => ({

@@ -106,11 +106,14 @@ export async function saveGroupMembersCache(entry: GroupMembersCacheEntry): Prom
 
 export async function loadEvidenceCache(
   tenantId: string,
+  expectedSchema?: number,
 ): Promise<{ meta: EvidenceCacheMeta; rows: StoredSignIn[] } | null> {
   try {
     const d = await db()
     const meta = await d.get('evidence-meta', tenantId)
     if (!meta) return null
+    // A stale schema is discarded before its rows are loaded.
+    if (expectedSchema !== undefined && meta.schema !== expectedSchema) return null
     const rows = await d.getAllFromIndex('signin-rows', 'byTenant', tenantId)
     return { meta, rows }
   } catch {

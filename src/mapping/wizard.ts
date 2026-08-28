@@ -2,7 +2,6 @@
 // questions; everything else the baseline references is auto-resolved here so
 // the roadmap never asks for input it doesn't absolutely need. Pure.
 import type { BaselinePackage } from '../baseline/types.ts'
-import { unresolvedReferences } from '../baseline/index.ts'
 import { strengthTier } from '../coverage/strength.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingRecord, MappingState, QuestionGroup } from './types.ts'
@@ -55,16 +54,28 @@ const record = (
   resolvedId: string | null,
   resolvedName: string | null,
   doesNotExist = false,
+  provenance: MappingRecord['provenance'] = 'confirmed',
 ): MappingRecord => ({
   placeholder: key,
   kind,
   group,
   resolvedId,
   resolvedName,
-  provenance: 'confirmed',
+  provenance,
   doesNotExist,
   validation: null,
 })
+
+// Auto-resolutions carry provenance 'auto' so they are recomputed on every
+// answer instead of freezing at the first one.
+const auto = (
+  key: string,
+  kind: string,
+  group: QuestionGroup,
+  resolvedId: string | null,
+  resolvedName: string | null,
+  doesNotExist = false,
+): MappingRecord => record(key, kind, group, resolvedId, resolvedName, doesNotExist, 'auto')
 
 /**
  * Auto-resolve every reference a human should never be asked about:
@@ -98,7 +109,7 @@ export function applyAutoResolution(
       case 'servicePrincipals': {
         // First-party app ids are identical in every tenant (portability
         // "verify") — nothing to ask; presence is verified at plan time.
-        next.records[q.key] = record(q.key, q.reference.kind, q.group, q.key, null)
+        next.records[q.key] = auto(q.key, q.reference.kind, q.group, q.key, null)
         break
       }
       case 'customStrengths': {
@@ -110,23 +121,27 @@ export function applyAutoResolution(
         )
         const resolved = tenantMatch?.id ?? '00000000-0000-0000-0000-000000000004'
         const name = tenantMatch?.displayName ?? 'Phishing-resistant MFA (built-in)'
-        next.records[q.key] = record(q.key, q.reference.kind, q.group, resolved, name)
+        next.records[q.key] = auto(q.key, q.reference.kind, q.group, resolved, name)
         notes.push(`Authentication strength "${q.key}" → ${name}`)
         break
       }
       case 'personaGroups': {
         // Pilot/persona groups are created by the plan step that needs them —
         // never a setup question, never a separate phase-0 step.
-        next.records[q.key] = record(q.key, q.reference.kind, q.group, null, null, true)
+        next.records[q.key] = auto(q.key, q.reference.kind, q.group, null, null, true)
         break
       }
       case 'placeholders': {
-        // Named tokens bind to the matching wizard answer.
-        if (/exclusion|breakglass|glass/i.test(q.key) && next.records['__globalExclusion']?.resolvedId) {
-          const g = next.records['__globalExclusion']
-          next.records[q.key] = record(q.key, q.reference.kind, q.group, g.resolvedId, g.resolvedName)
+        // Named group tokens bind to the exclusions answer; user tokens bind to
+        // the first break-glass pick. Kinds never cross.
+        const g = next.records['__globalExclusion']
+        const bg = next.breakGlassUserIds[0] ?? null
+        if (q.reference.kind === 'group' && /exclusion|breakglass|glass/i.test(q.key) && g?.resolvedId) {
+          next.records[q.key] = auto(q.key, q.reference.kind, q.group, g.resolvedId, g.resolvedName)
+        } else if (q.reference.kind === 'user' && /breakglass|glass|emergency/i.test(q.key) && bg !== null) {
+          next.records[q.key] = auto(q.key, q.reference.kind, q.group, bg, null)
         } else {
-          next.records[q.key] = record(q.key, q.reference.kind, q.group, null, null, true)
+          next.records[q.key] = auto(q.key, q.reference.kind, q.group, null, null, true)
         }
         break
       }
@@ -135,8 +150,8 @@ export function applyAutoResolution(
         // given, else the global exclusion group.
         const sa = next.serviceAccountsGroupId
         const g = next.records['__globalExclusion']
-        if (sa !== null) next.records[q.key] = record(q.key, q.reference.kind, q.group, sa, null)
-        else if (g?.resolvedId) next.records[q.key] = record(q.key, q.reference.kind, q.group, g.resolvedId, g.resolvedName)
+        if (sa !== null) next.records[q.key] = auto(q.key, q.reference.kind, q.group, sa, null)
+        else if (g?.resolvedId) next.records[q.key] = auto(q.key, q.reference.kind, q.group, g.resolvedId, g.resolvedName)
         break
       }
       default:
@@ -149,7 +164,11 @@ export function applyAutoResolution(
 /** Bind the wizard's answers onto the underlying reference records. */
 export function applyWizardAnswers(state: MappingState, pkg: BaselinePackage): MappingState {
   const questions = buildQuestions(pkg)
-  const next: MappingState = { ...state, records: { ...state.records } }
+  const next: MappingState = { ...state, records: { ...state.records }, wizardAnswered: { ...state.wizardAnswered } }
+
+  // A baseline with no style choices has nothing to ask: the question is
+  // inactive and counts as answered, so progress and "confirmed" can complete.
+  if (!pkg.variantSets.some((v) => v.relation === 'variant')) next.wizardAnswered.variants = true
 
   // Break-glass: baseline user references pair with the chosen accounts.
   const userRefs = questions.filter((q) => q.group === 'breakGlass')
@@ -183,11 +202,11 @@ export function applyWizardAnswers(state: MappingState, pkg: BaselinePackage): M
 
 export type WizardProgress = { answered: number; total: number; complete: boolean; requiredMissing: number }
 
-export function wizardProgress(state: MappingState): WizardProgress {
-  const required = WIZARD_QUESTIONS.filter((q) => q.required)
-  const answered = WIZARD_QUESTIONS.filter((q) => state.wizardAnswered[q.id] === true)
+export function wizardProgress(state: MappingState, active: WizardQuestionDef[] = WIZARD_QUESTIONS): WizardProgress {
+  const required = active.filter((q) => q.required)
+  const answered = active.filter((q) => state.wizardAnswered[q.id] === true)
   const requiredMissing = required.filter((q) => state.wizardAnswered[q.id] !== true).length
-  return { answered: answered.length, total: WIZARD_QUESTIONS.length, complete: requiredMissing === 0, requiredMissing }
+  return { answered: answered.length, total: active.length, complete: requiredMissing === 0, requiredMissing }
 }
 
 /** Human-facing question count can shrink: variants only when the baseline has any. */

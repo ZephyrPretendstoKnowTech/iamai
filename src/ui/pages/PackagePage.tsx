@@ -2,7 +2,7 @@
 // make one, and what happens to the upload.
 import { useState } from 'react'
 import { PACKAGE as C } from '../../copy/inventory.ts'
-import { Button, Card, LinkButton } from '../components/index.ts'
+import { Button, Card } from '../components/index.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
 
 function CopyBlock({ text, id, copied, onCopy }: { text: string; id: string; copied: string | null; onCopy: (id: string, text: string) => void }) {
@@ -30,7 +30,7 @@ export function PackagePage() {
       .catch(() => {})
   }
   return (
-    <StepFrame title={C.title} does={C.does} next="baseline" nextLabel="Baseline">
+    <StepFrame title={C.title} does={C.does} next="baseline" nextLabel={C.next}>
       <Card title={C.whatTitle}>
         <ul>
           {C.what.map((w) => (
@@ -71,11 +71,6 @@ export function PackagePage() {
           ))}
         </ul>
       </Card>
-      <p>
-        <LinkButton href="#/baseline" variant="secondary">
-          {C.back}
-        </LinkButton>
-      </p>
     </StepFrame>
   )
 }

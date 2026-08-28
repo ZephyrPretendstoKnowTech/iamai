@@ -31,7 +31,10 @@ export function InfoTip({ title, text }: { title: string; text: string }) {
         aria-label={COMPONENTS.infoTip.about(title)}
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen((o) => !o)}
+        onClick={(e) => {
+          e.stopPropagation() // never toggles a clickable tile around it
+          setOpen((o) => !o)
+        }}
       >
         <Icon name="info" size={16} />
       </button>

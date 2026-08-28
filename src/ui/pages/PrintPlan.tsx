@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { DangerArea } from '../../roadmap/dangers.ts'
-import { PHASE_NAME, PRINT as C, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
+import { NAMING, PHASE_NAME, PRINT as C, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
 import { ROADMAP } from '../../copy/pages.ts'
 import { roadmapOverview } from '../../copy/statements.ts'
 import { absoluteDate, dateRange, when } from '../../copy/dates.ts'
@@ -31,7 +31,7 @@ export function PrintPlan({
   const byId = new Map(steps.map((s) => [s.id, s]))
   const waves = schedule.waves.filter((w) => w.stepIds.length > 0)
   const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? ROADMAP.day0 : ROADMAP.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
-  const jsonSteps = steps.filter((s) => s.action.json && s.kind === 'create' && s.status !== 'done')
+  const jsonSteps = steps.filter((s) => s.action.json && (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done')
   const overview = roadmapOverview({
     tenant: tenantName,
     done: done.length,
@@ -82,7 +82,14 @@ export function PrintPlan({
             <ul>
               {dangers.map((d, i) => (
                 <li key={i}>
-                  <strong>{d.title}</strong> — {d.people.map((p) => p.name).join(', ')}
+                  <strong>{d.title}</strong> — {d.detail}
+                  <ul>
+                    {d.people.map((p, j) => (
+                      <li key={j}>
+                        {p.name} — {p.need}
+                      </li>
+                    ))}
+                  </ul>
                 </li>
               ))}
             </ul>
@@ -123,13 +130,42 @@ export function PrintPlan({
                   {C.step.kind}: {STEP_KIND_LABEL[s.kind]} · {C.step.status}: {STEP_STATUS_LABEL[s.status]}
                 </p>
                 <p>{s.impact}</p>
+                {s.naming && (
+                  <p>
+                    <strong>{ROADMAP.proposedName}</strong> {s.naming.proposed}
+                    {s.naming.fromBaseline && <span className="muted"> ({NAMING.fromBaseline(s.naming.fromBaseline)})</span>}
+                  </p>
+                )}
                 <h4>{C.step.why}</h4>
-                <p>{s.why}</p>
-                {s.population.total > 0 && (
+                <p>
+                  {s.why}
+                  {s.learn && <span className="muted"> — {s.learn.url}</span>}
+                </p>
+                {(s.population.total > 0 || s.highCare.userIds.length > 0) && (
                   <>
                     <h4>{C.step.who}</h4>
-                    <p>{affectedLine(s.population.total, s.population.active, s.population.admins, s.population.guests)}</p>
-                    {s.highCare.userIds.length > 0 && <p>{ROADMAP.careTitle(s.highCare.userIds.map(nameOf).join(', '))}</p>}
+                    {s.population.total > 0 && <p>{affectedLine(s.population.total, s.population.active, s.population.admins, s.population.guests)}</p>}
+                    {s.highCare.userIds.length > 0 && (
+                      <>
+                        <p>{ROADMAP.careTitle(s.highCare.userIds.map(nameOf).join(', '))}</p>
+                        <ul>
+                          {s.highCare.notes.map((n, i) => (
+                            <li key={i}>{n}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {s.operatorNote && <p>{s.operatorNote}</p>}
+                  </>
+                )}
+                {s.evidence.lines.length > 0 && (
+                  <>
+                    <h4>{ROADMAP.last30}</h4>
+                    <ul>
+                      {s.evidence.lines.map((l, i) => (
+                        <li key={i}>{l}</li>
+                      ))}
+                    </ul>
                   </>
                 )}
                 {s.readiness.lines.length > 0 && (
@@ -142,9 +178,9 @@ export function PrintPlan({
                     </ul>
                   </>
                 )}
-                {s.blockers.length > 0 && (
+                {s.status === 'blocked' && (s.blockers.length > 0 || s.unblockNotes.length > 0) && (
                   <p>
-                    <strong>{ROADMAP.blockedBy}:</strong> {s.blockers.map((b) => b.label).join('; ')}
+                    <strong>{ROADMAP.blockedBy}:</strong> {(s.unblockNotes.length > 0 ? s.unblockNotes : s.blockers.map((b) => b.label)).join('; ')}
                   </p>
                 )}
                 <h4>{C.step.change}</h4>
@@ -171,6 +207,12 @@ export function PrintPlan({
                 </ul>
                 <h4>{C.step.rollback}</h4>
                 <p>{s.rollback}</p>
+                {s.comms && (
+                  <>
+                    <h4>{ROADMAP.tellPeople}</h4>
+                    <p>{s.comms}</p>
+                  </>
+                )}
               </article>
             )
           })}

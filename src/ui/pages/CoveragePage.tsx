@@ -18,6 +18,7 @@ import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.ts'
 import type { TenantMfaSummary } from '../../scoring/mfaViability.ts'
 import { FINDINGS as C } from '../../copy/pages.ts'
+import { INVENTORY } from '../../copy/inventory.ts'
 import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
 import { findingsSummary } from '../../copy/statements.ts'
 import { absoluteDate, whenAt } from '../format.ts'
@@ -25,7 +26,6 @@ import { StepFrame } from '../shell/AppShell.tsx'
 import { Callout, Card, Chip, ExpandCard, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
-import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 
 const STATUS_CHIP: Record<GoalStatus, ChipStatus> = {
   enforced: 'done',
@@ -141,7 +141,7 @@ export function CoveragePage({
 
   if (!scan || !snapshot) {
     return (
-      <StepFrame title={C.title} does={C.does} needs={needs} next="roadmap" nextLabel={C.next}>
+      <StepFrame title={C.title} does={C.does} needs={needs}>
         <Card>
           <p>
             {C.blocked} <a href="#/scan">{C.runScan}</a>
@@ -184,7 +184,7 @@ export function CoveragePage({
   const paragraphs = findingsSummary({
     tenant: tenantName,
     enabledPolicies,
-    baselineLabel: baseline ? baselineIndex.label : 'the goal catalogue',
+    baselineLabel: baseline ? baseline.source : 'the goal catalogue',
     baselinePolicies: baseline ? baseline.pkg.policies.length : null,
     inPlace: enforced.length,
     partly: partial.length,
@@ -257,8 +257,8 @@ export function CoveragePage({
           <ul className="sections">
             {r.candidates.map((c) => (
               <li key={c.policyId || c.policyName}>
-                <em>{c.policyName}</em> — {c.state === 'enabledForReportingButNotEnforced' ? C.reportOnly : c.state};{' '}
-                {c.contribution === 'strong' ? C.delivers : c.contribution === 'weak' ? C.tooWeak : c.contribution}
+                <em>{c.policyName}</em> — {INVENTORY.policies.state[c.state]};{' '}
+                {c.contribution === 'strong' ? C.delivers : c.contribution === 'weak' ? C.tooWeak : c.contribution === 'reportOnly' ? C.reportOnly : C.disabledCandidate}
                 {c.caveats.length > 0 && ` (${c.caveats.join(', ')})`}
               </li>
             ))}
@@ -288,7 +288,7 @@ export function CoveragePage({
           </ul>
         </>
       )}
-      {r.status !== 'enforced' && (
+      {(r.status === 'absent' || r.status === 'partial' || r.status === 'unknown') && (
         <p className="reason">
           <a href="#/roadmap">{C.seeStep}</a>
         </p>
@@ -343,7 +343,7 @@ export function CoveragePage({
           <ul className="sections">
             {report.organisation.notInBaseline.map((p) => (
               <li key={p.id}>
-                <em>{p.name}</em> ({p.state === 'enabledForReportingButNotEnforced' ? C.reportOnly : p.state}) — {C.fineToKeep}
+                <em>{p.name}</em> ({INVENTORY.policies.state[p.state as keyof typeof INVENTORY.policies.state] ?? p.state}) — {C.fineToKeep}
               </li>
             ))}
           </ul>
@@ -360,7 +360,13 @@ export function CoveragePage({
             <li key={c.goalId}>{C.consolidate(c.goalName, c.policyNames.length)}</li>
           ))}
           {report.organisation.microsoftManaged.length > 0 && (
-            <li>{C.microsoftManaged(report.organisation.microsoftManaged.map((p) => `${p.name} (${p.state})`).join('; '))}</li>
+            <li>
+              {C.microsoftManaged(
+                report.organisation.microsoftManaged
+                  .map((p) => `${p.name} (${INVENTORY.policies.state[p.state as keyof typeof INVENTORY.policies.state] ?? p.state})`)
+                  .join('; '),
+              )}
+            </li>
           )}
         </ul>
       </Card>

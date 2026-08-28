@@ -1,6 +1,6 @@
 # Design: Graph collection service
 
-**Status:** revised after review — no implementation yet.
+**Status:** implemented (prompts 01–02, 10). Where this document and `src/graph/collect/` differ, the code is current: A2 selects 13 user fields; the collection states emitted are `normal | slow | done`; resume is newest-gap-first with no backward extension; the "extend collection" affordance is not built.
 **Basis:** `docs/spikes/01-signin-logs.md` (findings referenced as F1–F9).
 
 Named constants used throughout (single source of truth at implementation time):

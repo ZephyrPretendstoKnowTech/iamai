@@ -167,12 +167,11 @@ export const INVENTORY = {
 export const PACKAGE = {
   title: 'Baseline packages',
   does: 'What a package is, three ways to make one, and what IAMAI does with it.',
-  back: 'Back to Baseline',
   whatTitle: 'What a package is',
   what: [
     'One or more Conditional Access policies as Microsoft Graph JSON (the conditionalAccessPolicy shape).',
     'One policy per file, or an array of policies in one file. Property casing does not matter.',
-    'Optional extras: named locations, authentication strengths, and a names lookup — see below.',
+    'Optional extras: named locations and authentication strengths — see below.',
   ],
   waysTitle: 'Three ways to make one',
   way1Title: '1. Entra admin center',
@@ -195,7 +194,6 @@ export const PACKAGE = {
   best: [
     'Named locations — so location conditions resolve to real places instead of ids.',
     'Authentication strengths — so custom strengths resolve to their allowed combinations.',
-    'A names lookup (a JSON object of id → display name) — so groups and users referenced by the policies show by name.',
   ],
   missing: 'References that are not included are not a problem: Setup asks about the ones that need a human and resolves the rest from the scan.',
   doesTitle: 'What IAMAI does with the upload',
@@ -207,5 +205,5 @@ export const PACKAGE = {
   ],
   copy: 'Copy',
   copied: 'Copied ✓',
-  next: 'Next: Baseline',
+  next: 'Baseline',
 }

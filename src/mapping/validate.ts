@@ -57,9 +57,13 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
   }
 
   // Excluded from every policy, incl. report-only and Microsoft-managed.
+  // Groups whose membership was never read cannot prove either way: they are
+  // reported as unverified, never as a hard fail.
+  const known = new Set(ctx.groupMembers.map((g) => g.groupId))
   const excludedGroups = new Set<string>()
   for (const g of ctx.groupMembers) if (g.memberIds.includes(userId)) excludedGroups.add(g.groupId)
   const notExcludedFrom: string[] = []
+  const unverified: string[] = []
   for (const raw of ctx.tenantPolicies) {
     const p = raw as {
       displayName?: string
@@ -67,12 +71,18 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
       conditions?: { users?: { excludeUsers?: string[]; excludeGroups?: string[] } }
     }
     if (p.state === 'disabled') continue
+    const groups = p.conditions?.users?.excludeGroups ?? []
     const direct = (p.conditions?.users?.excludeUsers ?? []).includes(userId)
-    const viaGroup = (p.conditions?.users?.excludeGroups ?? []).some((g) => excludedGroups.has(g))
-    if (!direct && !viaGroup) notExcludedFrom.push(p.displayName ?? '(unnamed)')
+    const viaGroup = groups.some((g) => excludedGroups.has(g))
+    if (direct || viaGroup) continue
+    if (groups.some((g) => !known.has(g))) unverified.push(p.displayName ?? '(unnamed)')
+    else notExcludedFrom.push(p.displayName ?? '(unnamed)')
   }
   if (notExcludedFrom.length > 0) {
     fail(`not excluded from every policy — missing from: ${notExcludedFrom.join(', ')}`, A.policies)
+  }
+  if (unverified.length > 0) {
+    note(`exclusion could not be verified for: ${unverified.join(', ')} (excluded groups not read)`, A.policies)
   }
 
   // Methods: MFA-capable, phishing-resistant preferred, SMS-only flagged.

@@ -63,6 +63,9 @@ export function StartPage() {
         </p>
         <p className="muted">{START.caveat}</p>
       </div>
+      <p className="step-next">
+        <LinkButton href="#/connect">{START.cta}</LinkButton>
+      </p>
     </div>
   )
 }

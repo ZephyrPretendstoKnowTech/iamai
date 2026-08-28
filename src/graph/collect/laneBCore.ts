@@ -97,8 +97,11 @@ export function deriveAggregates(rows: Iterable<StoredSignIn>): EvidenceAggregat
   return { total, distinctUsers: users.size, byClientApp, byProtocol, byCountry }
 }
 
+// Graph reports "Exchange ActiveSync" (with a space) in clientAppUsed; the
+// enum form is kept for older rows and tests.
 const LEGACY_CLIENT_APPS = new Set([
   'exchangeactivesync',
+  'exchange activesync',
   'other clients',
   'imap4',
   'pop3',

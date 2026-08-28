@@ -201,6 +201,7 @@
               "exchangeActiveSync",
               "other"
             ],
+            "clientAppsNarrowed": true,
             "grantBlock": true
           },
           "expectedWho": {

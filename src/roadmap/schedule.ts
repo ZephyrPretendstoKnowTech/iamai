@@ -96,11 +96,18 @@ export function buildSchedule(steps: Step[], startIso: string, activeUsers: numb
 
   const waves: WaveSchedule[] = []
   // Wave 0: day 0 — foundations, report-only creation, anything already done.
+  // Human foundation work (accounts, groups, locations, Setup answers) takes
+  // real days before any policy can be created; observation starts after it.
   const day0Steps = steps.filter((s) => waveOf[s.id] === 0).map((s) => s.id)
-  waves.push({ wave: 0, phase: 0, start: day0, end: day0, days: 0, stepIds: day0Steps, note: null })
+  const foundationWork = steps.filter((s) => waveOf[s.id] === 0 && isWork(s) && s.kind === 'prerequisite').length
+  const day0Days = foundationWork > 0 ? Math.min(5, 1 + foundationWork) : 0
+  const day0End = addDays(day0, day0Days)
+  waves.push({ wave: 0, phase: 0, start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })
+  observation.start = toWeekday(day0End)
+  observation.end = addDays(observation.start, obsDays)
 
   let cursor = toWeekday(observation.end)
-  let totalDays = obsDays
+  let totalDays = day0Days + obsDays
   const largeTenant = activeUsers > 500 ? 1 : 0
   for (let w = 1; w <= 7; w += 1) {
     const ids = steps.filter((s) => waveOf[s.id] === w).map((s) => s.id)

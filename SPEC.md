@@ -23,13 +23,13 @@ tenant's current state to a chosen baseline without lockouts.
 | Consent | **One** admin-consent screen with the full read scope set. No staged consent, no opt-out checkbox. |
 | Baseline v1 | Jon Hope's repo `Jhope188/ConditionalAccessPolicies` as the shipped default, loaded live from GitHub at a pinned commit. Upload of a package is the second path. Custom repo URL later. |
 | Diff priority | 1) actual security gaps (intent coverage, exclusion-aware) 2) naming/organization as a secondary report. |
-| Output | In-browser roadmap. Print → PDF via print stylesheet. "Save plan" = single self-contained HTML with embedded JSON state; the same file re-imports. |
+| Output | In-browser roadmap. Print → PDF via a dedicated print document. "Save plan" writes a JSON plan file (v1) that re-imports, carrying Setup answers, pace and start date; the self-contained HTML wrapper is planned. |
 | Persistence | None server-side. Plan file + IndexedDB cache. |
 | Old project | `ZephyrPretendstoKnowTech/iamai` (installer-based) is being retired: salvage, then make private. Nothing from it is a dependency here. |
 
 ## 3. Flow
 
-1. **Choose baseline** — default: Jon's repo (pinned SHA, live fetch, bundled index). Alt: upload package (folder/zip of Graph `conditionalAccessPolicy` JSON, any casing). Later: any public GitHub repo URL (same conventions as Jon's analyzer: root, `Policies/`, `policies/`, `CA/`, `Updated/` preferred).
+1. **Choose baseline** — default: Jon's repo (pinned SHA, live fetch, bundled index). Alt: upload package (one or more Graph `conditionalAccessPolicy` JSON files, any casing; zip is planned). Later: any public GitHub repo URL (same conventions as Jon's analyzer: root, `Policies/`, `policies/`, `CA/`, `Updated/` preferred).
 2. **Connect tenant** — MSAL redirect flow, authority `organizations`, optional tenant-ID field (GDAP / guest scenarios). Admin consent creates an enterprise app in the customer tenant; removal = delete that enterprise app. Say so on the sign-in page.
 3. **Resolve references** — three layers:
    - Declared roles the baseline expects (from manifest if present; otherwise inferred by usage signature — see §6).
@@ -63,8 +63,8 @@ B = sign-in evidence, on-demand = after baseline selection).
 | 0 | Eligible vs permanent roles; eligible is out of CA role scope until activated. | `/roleManagement/directory/roleEligibilitySchedules` | v1.0 | RoleManagement.Read.Directory | Entra ID P2 |
 | 0 | Tenant licence capabilities and seat coverage. | `/subscribedSkus` | v1.0 | Directory.Read.All | none |
 | 0 | Tenant name and verified domains for the plan-file header. | `/organization` | v1.0 | Directory.Read.All | none |
-| 0 | Operator identity recorded in the plan file. | `/me` | v1.0 | User.Read | none |
-| 0 | Warn when the operator sits inside groups a plan step targets. | `/me/memberOf` | v1.0 | User.Read | none |
+| 0 | Operator identity recorded in the plan file. | `/me` | v1.0 | Directory.Read.All | none |
+| 0 | Warn when the operator sits inside groups a plan step targets. | `/me/memberOf` | v1.0 | Directory.Read.All | none |
 | A | Per-user registered method types (no phone numbers) for MFA viability. | `/reports/authenticationMethods/userRegistrationDetails` | v1.0 | AuditLog.Read.All | Entra ID P1/P2 |
 | A | User inventory with activity, licence plans, and org attributes. | `/users` | v1.0 | Directory.Read.All AuditLog.Read.All | signInActivity needs Entra ID P1/P2 (degrades to a plain user list) |
 | A | Compliance/trust state with registered owners for device intents. | `/devices` | v1.0 | Directory.Read.All | none |
@@ -115,9 +115,8 @@ Findings about the default source to hand to Jon when ready: one file with a JSO
 ## 7. Package format (upload path) — "what is sufficient"
 
 - Required: `conditionalAccessPolicy` JSON (v1.0 or beta, any casing, any state), one per file or an array.
-- Strongly recommended: `namedLocations.json`; `lookup.json` (id → displayName/type for every referenced group/user/SP).
-- Optional: `manifest.json` — placeholder roles, variant sets, phases, author/version.
-- Validator: schema, unresolved references, licence-dependent controls, policy count.
+- Recommended: `namedLocations.json` and authentication strengths JSON (read today).
+- Planned, not yet read by the app: `lookup.json` (id → displayName/type), `manifest.json` (placeholder roles, variant sets, phases, author/version), the package validator, and "Export as baseline package".
 - Every baseline source must supply the About fields (`author`, `authorUrl`, `repoUrl`, `description`, `goal`, `tiers` on its index/manifest); sources without them show "no description provided".
 - Best path: connect a reference tenant with the same read-only flow → "Export as baseline package" (emits lookup + manifest). How-to page lists the Graph/PowerShell one-liners for manual exports and the accepted tool outputs (idPowerToys, CA Policy Copier, DCToolbox, CIPP templates, Jon's/Kenneth's/Joey's repos).
 - Vendor-specific policies: a baseline policy that targets a third-party app (`data/vendor-apps.json`, starting with Inforcer) carries `vendor` metadata and is not-applicable unless that app is seen in the tenant (sign-in summary, service-principal activity, or an existing policy that targets it). It is shown under Findings → Details → "Does not apply" with the vendor named. The vendor-specific policies in the default baseline are pending review with the baseline author (2026-08-27).
@@ -144,7 +143,7 @@ Findings about the default source to hand to Jon when ready: one file with a JSO
 
 ```
 src/baseline/        adapter (done)         src/graph/    MSAL + Graph client + batch
-src/intents/         policy → intents       src/engine/   sign-in replay (worker)
+src/coverage/        policy → goals (intents.md)   src/roadmap/  steps, waves, print   (sign-in replay engine / What If: not built)
 src/mapping/         reference resolution   src/roadmap/  phases, steps, plan file
 src/scoring/         MFA viability (done)   src/licensing/ capability derivation
 src/ui/              React                  baselines/    pinned indexes (paths only)
@@ -174,7 +173,7 @@ work only, no new Graph reads.
 | Pilot cohort builder | Proposes a pilot group: active, MFA state Verified or Likely viable, spread across departments, exactly one admin, never a break-glass account; outputs UPNs | §10 per-user table (`activity`, `mfa`, `isAdmin`), `UserRow.department`, break-glass mapping ids |
 | Drift and exclusion-creep detection | Diffs consecutive checkpoints: policy state changes, exclusion-group member-count growth, coverage regressions | `Checkpoint.tenantPolicies`, `Checkpoint.exclusionGroups`, `Checkpoint.coverage` |
 | Microsoft-managed auto-enable dates | Places Microsoft's announced auto-enable dates for Microsoft-managed policies on the roadmap timeline | `TenantSnapshot.microsoftManagedPolicyIds` + policy `state` |
-| Recurring break-glass drill step | Inserts a recurring "test break-glass sign-in" step when the accounts' last sign-in is older than the drill interval | `Checkpoint.breakGlass[].lastSignIn` |
+| Recurring break-glass drill step — **built** (`s-recurring-break-glass-drill`, 90-day interval) | Inserts a recurring "test break-glass sign-in" step when the accounts' last sign-in is older than the drill interval | `Checkpoint.breakGlass[].lastSignIn` |
 
 ## 12. Licensing principle
 

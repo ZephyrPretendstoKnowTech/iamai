@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/msal.ts'
 import { fetchTenantName } from '../graph/organization.ts'
@@ -16,12 +16,16 @@ import { MappingPage } from './pages/MappingPage.tsx'
 import { RoadmapPage } from './pages/RoadmapPage.tsx'
 import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
-import { DevSpikes } from './DevSpikes.tsx'
-import { ComponentsPage } from './pages/ComponentsPage.tsx'
 import { PackagePage } from './pages/PackagePage.tsx'
+
+// Dev-only modules are loaded on demand so they never enter the production bundle.
+const DevSpikes = lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m.DevSpikes })))
+const ComponentsPage = lazy(() => import('./pages/ComponentsPage.tsx').then((m) => ({ default: m.ComponentsPage })))
 import { SHELL } from '../copy/pages.ts'
 import { computeStepStatus } from './stepStatus.ts'
+import { wizardProgress } from '../mapping/wizard.ts'
 import type { WizardProgress } from '../mapping/wizard.ts'
+import { loadMappingState } from '../mapping/store.ts'
 
 const DEV_PANEL =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
@@ -63,6 +67,8 @@ export function App() {
           void loadSnapshotRecord<{ snapshot: TenantSnapshot; at: string }>(a.tenantId).then((stored) => {
             if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
           })
+          // Saved Setup answers drive the stepper before Setup is opened.
+          void loadMappingState(a.tenantId).then((m) => setMapProgress(wizardProgress(m)))
         }
       })
       .catch((e: unknown) => setAuthError(e instanceof Error ? e.message : String(e)))
@@ -134,8 +140,16 @@ export function App() {
           )}
           {route === 'licensing' && <LicensingPage scan={lastScan} />}
           {route === 'reads' && <WhatIamaiReads />}
-          {route === 'components' && (import.meta.env.DEV ? <ComponentsPage /> : <StartPage />)}
-          {DEV_PANEL && account && <DevSpikes />}
+          {route === 'components' && import.meta.env.DEV && (
+            <Suspense fallback={null}>
+              <ComponentsPage />
+            </Suspense>
+          )}
+          {DEV_PANEL && account && (
+            <Suspense fallback={null}>
+              <DevSpikes />
+            </Suspense>
+          )}
         </>
       )}
     </AppShell>

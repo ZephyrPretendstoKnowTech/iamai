@@ -10,7 +10,10 @@ import { SETUP_PAGE } from '../copy/setup.ts'
 import type { WizardQuestionId } from './wizard.ts'
 
 const GA_ROLE = '62e90394-69f5-4237-9190-012177145e10'
-const NAME_PATTERN = /break.?glass|emergency|admin|it[-_]|svc|service|exclusion|ca-/i
+// Word-bounded so "Rebecca-Lee" (ca-), "Editor" (it-) and "Customer Service"
+// do not surface; the tokens are the ones operators actually use.
+const ACCOUNT_PATTERN = /\bbreak.?glass\b|\bemergency\b|\bglass\b|(?:^|[\s._-])admin(?:$|[\s._-])|^it[-_]|[\s._]it[-_]|\bsvc\b|\bservice[-_]|\bexclusion|^ca[-_]|[\s_]ca[-_]/i
+const VIP_PATTERN = /\b(?:ceo|cfo|coo|cto|ciso|cio|chief|director|executive|exec|vip|president|founder|owner|partner|principal)\b/i
 
 export type WizardSuggestion = {
   id: string
@@ -26,9 +29,9 @@ export type WizardSuggestContext = {
   knownGroups: GroupMembersCacheEntry[]
 }
 
-function nameHit(text: string | null): string | null {
-  const m = text?.match(NAME_PATTERN)
-  return m ? m[0].toLowerCase() : null
+function nameHit(text: string | null, pattern: RegExp): string | null {
+  const m = text?.match(pattern)
+  return m ? m[0].trim().replace(/^[\s._-]+|[\s._-]+$/g, '').toLowerCase() : null
 }
 
 export function suggestForWizard(id: WizardQuestionId, ctx: WizardSuggestContext): WizardSuggestion[] {
@@ -38,28 +41,39 @@ export function suggestForWizard(id: WizardQuestionId, ctx: WizardSuggestContext
     const cur = out.get(s.id)
     if (!cur || s.rank < cur.rank) out.set(s.id, s)
   }
+  const userOption = (u: TenantSnapshot['users'][number], why: string, rank: 0 | 1 | 2): WizardSuggestion => ({
+    id: u.id,
+    name: u.displayName ?? u.userPrincipalName ?? u.id,
+    secondary: u.userPrincipalName ?? undefined,
+    why,
+    rank,
+  })
 
-  if (id === 'breakGlass' || id === 'highCare') {
-    if (id === 'breakGlass') {
-      const direct = new Set<string>()
-      for (const raw of ctx.tenantPolicies) {
-        const p = raw as { state?: string; conditions?: { users?: { excludeUsers?: string[] } } }
-        if (p.state === 'disabled') continue
-        for (const u of p.conditions?.users?.excludeUsers ?? []) if (!/^guestsorexternalusers$/i.test(u)) direct.add(u)
-      }
-      for (const u of ctx.snapshot.users) {
-        if (direct.has(u.id)) add({ id: u.id, name: u.displayName ?? u.userPrincipalName ?? u.id, secondary: u.userPrincipalName ?? undefined, why: W.inferredBreakGlass, rank: 0 })
-      }
+  if (id === 'breakGlass') {
+    const direct = new Set<string>()
+    for (const raw of ctx.tenantPolicies) {
+      const p = raw as { state?: string; conditions?: { users?: { excludeUsers?: string[] } } }
+      if (p.state === 'disabled') continue
+      for (const u of p.conditions?.users?.excludeUsers ?? []) if (!/^guestsorexternalusers$/i.test(u)) direct.add(u)
     }
     for (const u of ctx.snapshot.users) {
-      const hit = nameHit(u.displayName) ?? nameHit(u.userPrincipalName)
-      if (hit) add({ id: u.id, name: u.displayName ?? u.userPrincipalName ?? u.id, secondary: u.userPrincipalName ?? undefined, why: W.nameMatch(hit), rank: 1 })
+      if (direct.has(u.id)) add(userOption(u, W.inferredBreakGlass, 0))
     }
-    if (id === 'breakGlass') {
-      for (const u of ctx.snapshot.users) {
-        const ga = (ctx.snapshot.roles.active[u.id] ?? []).some((r) => r.toLowerCase() === GA_ROLE)
-        if (ga && u.onPremisesSyncEnabled !== true) add({ id: u.id, name: u.displayName ?? u.userPrincipalName ?? u.id, secondary: u.userPrincipalName ?? undefined, why: W.cloudOnlyGa, rank: 2 })
-      }
+    for (const u of ctx.snapshot.users) {
+      const hit = nameHit(u.displayName, ACCOUNT_PATTERN) ?? nameHit(u.userPrincipalName, ACCOUNT_PATTERN)
+      if (hit) add(userOption(u, W.nameMatch(hit), 1))
+    }
+    for (const u of ctx.snapshot.users) {
+      const ga = (ctx.snapshot.roles.active[u.id] ?? []).some((r) => r.toLowerCase() === GA_ROLE)
+      if (ga && u.onPremisesSyncEnabled !== true) add(userOption(u, W.cloudOnlyGa, 2))
+    }
+  }
+
+  if (id === 'highCare') {
+    // Extra-care candidates are executives, not emergency accounts.
+    for (const u of ctx.snapshot.users) {
+      const hit = nameHit(u.displayName, VIP_PATTERN) ?? nameHit(u.jobTitle, VIP_PATTERN)
+      if (hit) add(userOption(u, W.nameMatch(hit), 1))
     }
   }
 
@@ -75,7 +89,7 @@ export function suggestForWizard(id: WizardQuestionId, ctx: WizardSuggestContext
       if (wantGlobal || wantSvc) add({ id: s.id, name: nameOf(s.id), secondary: members(s.id), why: wantGlobal ? W.inferredExclusion : W.inferredServiceAccounts, rank: 0 })
     }
     for (const g of ctx.knownGroups) {
-      const hit = nameHit(g.displayName)
+      const hit = nameHit(g.displayName, ACCOUNT_PATTERN)
       if (hit) add({ id: g.groupId, name: g.displayName ?? g.groupId, secondary: SETUP_PAGE.members(g.memberCount), why: W.nameMatch(hit), rank: 1 })
     }
   }

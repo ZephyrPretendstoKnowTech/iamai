@@ -139,6 +139,8 @@ export type Reason = {
   current?: string
   /** weaker-control / session-weaker: what the baseline expects, in words. */
   floor?: string
+  /** excluded: the inferred/confirmed role of the excluding object ("breakGlass", "serviceAccounts"…). */
+  role?: string | null
 }
 
 export type CandidateContribution = {

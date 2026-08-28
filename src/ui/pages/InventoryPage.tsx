@@ -15,7 +15,8 @@ import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
 import { LICENSING } from '../../copy/pages.ts'
-import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE } from '../../copy/definitions.ts'
+import { SETUP_PAGE } from '../../copy/setup.ts'
+import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE, TILE } from '../../copy/definitions.ts'
 import { absoluteDate, relative } from '../format.ts'
 import { Card, Chip, DataTable, EmptyState, InfoTip, Tabs } from '../components/index.ts'
 import type { ChipStatus, Column } from '../components/index.ts'
@@ -337,7 +338,10 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
         ]}
       />
 
-      <h4>{A.registration}</h4>
+      <h4>
+        {A.registration}
+        <InfoTip title={TILE.registration.title} text={TILE.registration.text} />
+      </h4>
       <DataTable
         rows={regRows}
         rowKey={(r) => r.measure}
@@ -607,7 +611,7 @@ function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnT
         <div className="row">
           {Object.entries(facets).map(([facet, f]) => (
             <Chip key={facet} status={f.on ? 'done' : 'neutral'} title={f.reason}>
-              {facet}: {f.on ? A.on : A.off}
+              {SETUP_PAGE.workloadNames[facet] ?? facet}: {f.on ? A.on : A.off}
             </Chip>
           ))}
         </div>

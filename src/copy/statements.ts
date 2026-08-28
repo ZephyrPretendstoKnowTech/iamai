@@ -73,6 +73,12 @@ export function reportOnlyStatement(goal: string, policy: string, days: number |
   return `${strong(goal)} is in report-only via ${em(policy)} (${obs}).`
 }
 
+/** Workload (structural) goals: a policy exists but is report-only or too weak. */
+export function structuralPartialStatement(goal: string, policies: string[], reportOnly: boolean): string {
+  const by = policies.length > 0 ? list(policies.map(em)) : 'a policy'
+  return reportOnly ? `${strong(goal)} is in report-only via ${by}.` : `${strong(goal)} — ${by} ${policies.length === 1 ? 'applies' : 'apply'} but ${policies.length === 1 ? 'does' : 'do'} not meet the baseline.`
+}
+
 export function unknownStatement(goal: string): string {
   return `${strong(goal)} — a group's members could not be read, so the people it covers could not be counted. Reported with what is known.`
 }
@@ -168,6 +174,8 @@ export type RoadmapOverviewInput = {
   tenant: string
   done: number
   total: number
+  /** Skipped steps are neither done nor remaining. */
+  skipped?: number
   pace: string
   /** Already rendered with when(): "in 27 days · Sep 23, 2026". */
   finishes: string
@@ -175,14 +183,14 @@ export type RoadmapOverviewInput = {
 }
 
 export function roadmapOverview(i: RoadmapOverviewInput): string {
-  const remain = i.total - i.done
+  const remain = i.total - i.done - (i.skipped ?? 0)
   if (i.total === 0) return `${i.tenant}: the plan has no steps yet — load a baseline and run a scan.`
   const head =
-    i.done === i.total
+    remain === 0
       ? `${i.tenant}: all ${count(i.total, 'step')} ${i.total === 1 ? 'is' : 'are'} already in place. Nothing remains.`
       : i.done === 0
         ? `${i.tenant}: none of the ${count(i.total, 'step')} ${i.total === 1 ? 'is' : 'are'} in place yet. ${remain === 1 ? '1 remains' : `${remain} remain`}.`
         : `${i.tenant}: ${i.done} of ${i.total} steps already in place. ${remain === 1 ? '1 remains' : `${remain} remain`}.`
-  if (i.done === i.total) return head
+  if (remain === 0) return head
   return `${head} With a ${i.pace} pace, the plan finishes ${i.finishes} (${count(i.weeks, 'week')}).`
 }

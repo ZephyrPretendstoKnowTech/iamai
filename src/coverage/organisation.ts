@@ -12,12 +12,12 @@ export function organisationReport(
   tenantFacts: PolicyFacts[],
   results: GoalResult[],
   snapshot: TenantSnapshot,
+  matchedTenantIds?: Set<string>,
 ): OrganisationReport {
-  const matchedPolicyIds = new Set(
-    results.flatMap((r) => r.candidates.map((c) => c.policyId)),
-  )
+  const matchedPolicyIds = matchedTenantIds ?? new Set(results.flatMap((r) => r.candidates.map((c) => c.policyId)))
+  const managedIds = new Set(snapshot.microsoftManagedPolicyIds)
   const notInBaseline = tenantFacts
-    .filter((f) => !matchedPolicyIds.has(f.id))
+    .filter((f) => !matchedPolicyIds.has(f.id) && !managedIds.has(f.id))
     .map((f) => ({ id: f.id, name: f.name, state: f.state }))
 
   // "Consider consolidating" only when more than two *enabled* policies match
@@ -30,25 +30,28 @@ export function organisationReport(
       policyNames: r.candidates.filter((c) => c.state === 'enabled').map((c) => c.policyName),
     }))
 
+  // Naming convention over the tenant's own policies — Microsoft-managed ones
+  // are named by Microsoft and never count as outliers.
+  const own = tenantFacts.filter((f) => !managedIds.has(f.id))
   const tokens = new Map<string, number>()
-  for (const f of tenantFacts) {
+  for (const f of own) {
     const t = prefixToken(f.name)
     if (t) tokens.set(t, (tokens.get(t) ?? 0) + 1)
   }
   let pattern: string | null = null
   let share = 0
   for (const [t, n] of tokens) {
-    if (n / Math.max(1, tenantFacts.length) >= 0.6 && n > (pattern ? tokens.get(pattern)! : 0)) {
+    if (n / Math.max(1, own.length) >= 0.6 && n > (pattern ? tokens.get(pattern)! : 0)) {
       pattern = t
-      share = n / tenantFacts.length
+      share = n / own.length
     }
   }
-  const outliers = pattern ? tenantFacts.filter((f) => prefixToken(f.name) !== pattern).map((f) => f.name) : []
+  const outliers = pattern ? own.filter((f) => prefixToken(f.name) !== pattern).map((f) => f.name) : []
   // Prefix as written and its separator, from the first policy that carries the pattern.
   let prefix: string | null = null
   let separator: string | null = null
   if (pattern) {
-    const sample = tenantFacts.find((f) => prefixToken(f.name) === pattern)
+    const sample = own.find((f) => prefixToken(f.name) === pattern)
     const m = sample ? /^([A-Za-z0-9]+)(\s*[-–—:]\s*)/.exec(sample.name.trim()) : null
     if (m) {
       prefix = m[1]
@@ -56,7 +59,6 @@ export function organisationReport(
     }
   }
 
-  const managedIds = new Set(snapshot.microsoftManagedPolicyIds)
   const microsoftManaged = tenantFacts
     .filter((f) => managedIds.has(f.id))
     .map((f) => ({ id: f.id, name: f.name, state: f.state }))

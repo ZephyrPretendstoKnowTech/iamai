@@ -9,6 +9,8 @@ import type { TenantSnapshot, UsageSignal } from '../graph/collect/types.ts'
 import type { Evidence } from './types.ts'
 import { EVIDENCE } from '../copy/steps.ts'
 
+const BLOCK_GOALS = new Set(['block-legacy-auth', 'block-device-code', 'block-auth-transfer'])
+
 function usageLines(label: string, sig: UsageSignal | undefined): { lines: string[]; ids: string[] } {
   if (!sig || sig.count === 0) {
     return { lines: [EVIDENCE.noUsage(label)], ids: [] }
@@ -64,9 +66,17 @@ export function evidenceFor(
   if (matchedPolicyId !== null) {
     const pr = snapshot.evidencePolicyResults.find((p) => p.policyId === matchedPolicyId)
     const covered = src?.coveredWindow
-    const daysObserved = covered
-      ? Math.floor((Date.parse(covered.to) - Date.parse(covered.from)) / 86_400_000)
-      : 0
+    // Days observed = days since the tagged policy was created, capped by the
+    // collected window — never the whole window for a policy created yesterday.
+    const raw = (snapshot.config.caPolicies?.rows ?? []).find((p) => (p as { id?: string }).id === matchedPolicyId) as
+      | { createdDateTime?: string }
+      | undefined
+    const windowDays = covered ? Math.floor((Date.parse(covered.to) - Date.parse(covered.from)) / 86_400_000) : 0
+    const sinceCreated =
+      covered && typeof raw?.createdDateTime === 'string'
+        ? Math.max(0, Math.floor((Date.parse(covered.to) - Date.parse(raw.createdDateTime)) / 86_400_000))
+        : windowDays
+    const daysObserved = Math.min(windowDays, sinceCreated)
     if (pr) {
       const failures = pr.counts.reportOnlyFailure + pr.counts.reportOnlyInterrupted
       const signIns =
@@ -91,6 +101,8 @@ export function evidenceFor(
     }
   }
 
-  if (base.lines.length === 0) base.lines.push(EVIDENCE.none)
+  // Only block goals are measured against sign-in usage; for everything else
+  // the records say nothing yet, and the line says so.
+  if (base.lines.length === 0) base.lines.push(BLOCK_GOALS.has(goalId) ? EVIDENCE.none : EVIDENCE.notMeasured)
   return base
 }

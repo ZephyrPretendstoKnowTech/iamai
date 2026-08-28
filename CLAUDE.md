@@ -22,7 +22,7 @@ Vite + TypeScript + React, `@azure/msal-browser`, Web Worker for the replay engi
 - `npm run build-index -- <clone> <owner> <repo> "<label>" > baselines/<owner>-<repo>.index.json`
 
 ## Product rules (2026-08-27)
-- IAMAI speaks as a first-person advisor ("I looked at…"), never as a checklist.
+- IAMAI speaks as an advisor, never as a checklist — in the third person or the imperative (the UX rules below override the earlier first-person voice).
 - Names, never IDs, anywhere a human reads (`src/names.ts`); an id in parentheses only when it matters.
 - Ask the operator only what cannot be inferred (the Setup wizard's ≤9 questions); auto-resolve the rest.
 - Handle-with-care users are never excluded — changes apply, with extra caution, verification gating, and named callouts.

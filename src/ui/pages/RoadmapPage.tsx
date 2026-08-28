@@ -1,6 +1,6 @@
 // Roadmap — an actual plan (2026-08-27 redesign): dated phases, danger areas
 // with named people, a safe-today lane, and steps with per-tenant impact.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers, resolveNames } from '../../graph/collect/onDemand.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -34,7 +34,7 @@ import type { Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
-import { Button, Callout, Card, Chip, ExpandCard, FilterChip, StatTile, Stats, Tabs } from '../components/index.ts'
+import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
@@ -69,6 +69,7 @@ export function RoadmapPage({
   const [skipDraft, setSkipDraft] = useState<{ id: string; reason: string } | null>(null)
   const [version, setVersion] = useState(0)
   const [copied, setCopied] = useState<string | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
 
   const snapshot = scan?.snapshot ?? null
   const planId = snapshot ? `plan-${snapshot.tenantId.slice(0, 8)}` : 'plan'
@@ -302,6 +303,7 @@ export function RoadmapPage({
       mapping,
       steps,
       checkpoints,
+      schedule: startDate ? { startDate, pace } : undefined,
     })
     downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json')
   }
@@ -316,14 +318,16 @@ export function RoadmapPage({
     const stepsRecord: SavedSteps = Object.fromEntries(
       plan.steps.map((s) => [s.id, { status: s.status, history: s.history, skipReason: s.skipReason }]),
     )
-    const start = startDate ?? undefined
-    await savePlanRecord(snapshot.tenantId, { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: start })
+    const start = plan.schedule?.startDate ?? startDate ?? undefined
+    const loadedPace = (plan.schedule?.pace as Pace | undefined) && PACES[plan.schedule!.pace as Pace] ? (plan.schedule!.pace as Pace) : pace
+    const record: PlanStore = { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: start, pace: loadedPace }
+    await savePlanRecord(snapshot.tenantId, record)
     // Setup answers travel with the plan file (provenance intact); re-opening Setup shows them.
     if (plan.mappings && plan.mappings.tenantId === snapshot.tenantId) {
       await saveMappingState(plan.mappings)
       setMapping(plan.mappings)
     }
-    setSaved({ planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: start })
+    setSaved(record)
     setVersion((v) => v + 1)
   }
 
@@ -331,6 +335,7 @@ export function RoadmapPage({
     tenant: tenantName,
     done: summary.done,
     total: summary.total,
+    skipped: summary.byStatus.skipped,
     pace: C.paceWord[schedule.pace] ?? schedule.pace,
     finishes: when(schedule.targetEnd),
     weeks: schedule.weeks,
@@ -353,10 +358,12 @@ export function RoadmapPage({
           <strong>{C.safeToday(safe.length)}</strong> {safe.map((s) => s.title).join('; ')}. {C.safeTodayWhy(tenantName)}
         </p>
       )}
-      {dangers.length > 0 && (
+      {dangers.some((d) => d.severity === 'high') ? (
         <p>
           <strong>{C.dangers(dangers.filter((d) => d.severity === 'high').length)}</strong> {C.dangersAfter}
         </p>
+      ) : (
+        dangers.length > 0 && <p>{C.dangersMedium(dangers.length)}</p>
       )}
       {blocked.length > 0 && <p>{C.blockedSteps(blocked.length)}</p>}
       <p className="row no-print">
@@ -386,9 +393,10 @@ export function RoadmapPage({
         <Button icon="copy" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
           {copied === 'plan-md' ? C.copied : C.copyMarkdown}
         </Button>
-        <label className="btn">
-          {C.load} <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => void loadPlan(e.currentTarget.files)} />
-        </label>
+        <Button icon="refresh" onClick={() => fileInput.current?.click()}>
+          {C.load}
+        </Button>
+        <input ref={fileInput} type="file" accept=".json" style={{ display: 'none' }} aria-hidden onChange={(e) => void loadPlan(e.currentTarget.files)} />
         <Button icon="print" onClick={() => window.print()}>
           {C.print}
         </Button>
@@ -419,6 +427,7 @@ export function RoadmapPage({
                   <strong>{waveTitle(w)}</strong>{' '}
                   <span className="reason">
                     {C.phaseDone(waveDone, inWave.length)}
+                    <InfoTip title={TILE.phaseProgress.title} text={TILE.phaseProgress.text} />
                     {w.note ? ` · ${w.note}` : ''}
                   </span>
                   {w.wave === 0 && created > 0 && <p className="reason">{C.day0Text(created)}</p>}
@@ -513,7 +522,13 @@ export function RoadmapPage({
                   onCopy={copy}
                   skipDraft={skipDraft}
                   setSkipDraft={setSkipDraft}
-                  onSkipped={() => setVersion((v) => v + 1)}
+                  onSkipped={(s) => {
+                    // Persist the skip before regenerating, or mergePersisted forgets it.
+                    setSaved((p) =>
+                      p ? { ...p, steps: { ...p.steps, [s.id]: { status: s.status, history: s.history, skipReason: s.skipReason } } } : p,
+                    )
+                    setVersion((v) => v + 1)
+                  }}
                 />
               ))}
             </div>
@@ -524,7 +539,7 @@ export function RoadmapPage({
   }
 
   return (
-    <StepFrame title={C.title} does={C.does} needs={needs}>
+    <StepFrame title={C.title} does={C.does} needs={needs} next="scan" nextLabel={C.nextRescan}>
       {scan && (
         <p className="reason">
           {C.basedOn(whenAt(scan.at))} <a href="#/scan">{C.rescan}</a>
@@ -538,9 +553,10 @@ export function RoadmapPage({
           { id: 'steps', label: C.tabs.steps, badge: `${summary.done}/${summary.total}`, render: stepsView },
         ]}
       />
+      <p className="reason">{C.lastStep}</p>
       <PrintPlan
         tenantName={tenantName}
-        baselineLabel={baseline ? baselineIndex.label : ''}
+        baselineLabel={baseline?.source ?? ''}
         operator={operator?.userPrincipalName ?? ''}
         steps={steps}
         schedule={schedule}
@@ -601,7 +617,7 @@ function StepCard({
   onCopy: (id: string, text: string) => Promise<void>
   skipDraft: { id: string; reason: string } | null
   setSkipDraft: (d: { id: string; reason: string } | null) => void
-  onSkipped: () => void
+  onSkipped: (step: Step) => void
 }) {
   const [tab, setTab] = useState<'json' | 'portal' | 'ps'>('portal')
   return (
@@ -665,6 +681,11 @@ function StepCard({
               </li>
             ))}
             {step.blockers.length === 0 && step.unblockNotes.map((n, i) => <li key={`n${i}`}>{n}</li>)}
+            {step.blockers.length > 0 && step.blockedBy.length > 0 && step.blockedBy.filter((id) => !step.blockers.some((b) => b.kind === 'step' && b.stepId === id)).map((id) => (
+              <li key={id}>
+                <a href={`#step-${id}`}>{stepById.get(id)?.title ?? id}</a>
+              </li>
+            ))}
           </ul>
         </Callout>
       )}
@@ -820,7 +841,7 @@ function StepCard({
                   const r = skipStep(step, skipDraft.reason)
                   if (r.ok) {
                     setSkipDraft(null)
-                    onSkipped()
+                    onSkipped(step)
                   } else window.alert?.(r.error)
                 }}
               >

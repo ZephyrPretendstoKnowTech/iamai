@@ -1,6 +1,6 @@
 # Design: intents and coverage
 
-**Status:** ready to implement.
+**Status:** implemented (`src/coverage/`). The catalogue (`data/goals.json`) has grown past §4 — six goals added in prompt 12 — and §8's statement wording is superseded by the generators in `src/copy/statements.ts` (0/1/all/none branches). The code is the source of truth where they differ.
 **Depends on:** `src/baseline/` (adapter), `TenantSnapshot` (Lane 0/A, on-demand group members), SPEC §12 licensing principle.
 **Produces:** the Coverage page and the input to the Roadmap.
 

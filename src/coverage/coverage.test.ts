@@ -252,6 +252,53 @@ test('9: only a disabled candidate → absent with disabled-candidate note', () 
   assert.ok(g.reasons.some((x) => x.kind === 'disabled-candidate'))
 })
 
+test('audit-1: an all-client-apps block (geo/device-code) does not count as the legacy-auth block', () => {
+  const r = run([
+    mkPolicy({
+      displayName: 'Block outside countries',
+      conditions: mergeConditions({ locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } }),
+      grantControls: { operator: 'OR', builtInControls: ['block'] },
+    }),
+  ])
+  assert.equal(goal(r, 'block-legacy-auth').status, 'absent')
+  const r2 = run([
+    mkPolicy({
+      displayName: 'Block legacy',
+      conditions: mergeConditions({ clientAppTypes: ['exchangeActiveSync', 'other'] }),
+      grantControls: { operator: 'OR', builtInControls: ['block'] },
+    }),
+  ])
+  assert.equal(goal(r2, 'block-legacy-auth').status, 'enforced')
+})
+
+test('audit-2: an enabled strong policy with nobody in scope is in place, not missing', () => {
+  const r = run(
+    [
+      mkPolicy({
+        displayName: 'MFA for Guests',
+        conditions: mergeConditions({ users: { includeUsers: ['GuestsOrExternalUsers'] } }),
+      }),
+    ],
+    { snapshot: mkSnapshot({ users: mkSnapshot().users.filter((u) => u.userType !== 'guest') }) },
+  )
+  assert.equal(goal(r, 'guests-mfa').status, 'enforced')
+})
+
+test('audit-3: sign-in frequency "every time" satisfies any session floor', () => {
+  const r = run([
+    mkPolicy({
+      displayName: 'Admin sessions',
+      conditions: mergeConditions({ users: { includeUsers: [], includeRoles: ['62e90394-69f5-4237-9190-012177145e10'] } }),
+      grantControls: { operator: 'OR', builtInControls: ['mfa'] },
+      sessionControls: {
+        signInFrequency: { isEnabled: true, frequencyInterval: 'everyTime', value: null, type: null },
+        persistentBrowser: { isEnabled: true, mode: 'never' },
+      },
+    }),
+  ])
+  assert.equal(goal(r, 'admin-session').status, 'enforced')
+})
+
 test('10: group over the member cap → estimated percentages', () => {
   const r = run(
     [

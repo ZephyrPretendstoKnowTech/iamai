@@ -20,7 +20,7 @@ export function ConnectPage({
     <StepFrame
       title={CONNECT.title}
       does={CONNECT.does}
-      needs={[{ met: true, text: CONNECT.needs }]}
+      needs={[{ met: account !== null, text: CONNECT.needs }]}
       next={account ? 'baseline' : undefined}
       nextLabel={CONNECT.next}
     >

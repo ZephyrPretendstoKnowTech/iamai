@@ -84,9 +84,17 @@ export function DataTable<T>({
                   key={c.key}
                   className={c.sortValue ? 'sortable' : ''}
                   aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}
+                  tabIndex={c.sortValue ? 0 : undefined}
+                  role={c.sortValue ? 'button' : undefined}
                   onClick={() =>
                     c.sortValue && setSort((s) => (s?.key === c.key ? (s.dir === 1 ? { key: c.key, dir: -1 } : null) : { key: c.key, dir: 1 }))
                   }
+                  onKeyDown={(e) => {
+                    if (c.sortValue && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault()
+                      setSort((s) => (s?.key === c.key ? (s.dir === 1 ? { key: c.key, dir: -1 } : null) : { key: c.key, dir: 1 }))
+                    }
+                  }}
                 >
                   {c.header}
                   {sort?.key === c.key ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
@@ -99,7 +107,22 @@ export function DataTable<T>({
               const k = rowKey(r)
               return (
                 <RowGroup key={k}>
-                  <tr onClick={expand ? () => setOpenRow((o) => (o === k ? null : k)) : undefined} style={expand ? { cursor: 'pointer' } : undefined}>
+                  <tr
+                    onClick={expand ? () => setOpenRow((o) => (o === k ? null : k)) : undefined}
+                    onKeyDown={
+                      expand
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              setOpenRow((o) => (o === k ? null : k))
+                            }
+                          }
+                        : undefined
+                    }
+                    tabIndex={expand ? 0 : undefined}
+                    aria-expanded={expand ? openRow === k : undefined}
+                    style={expand ? { cursor: 'pointer' } : undefined}
+                  >
                     {shown.map((c) => (
                       <td key={c.key}>{c.render(r)}</td>
                     ))}
