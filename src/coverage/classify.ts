@@ -447,6 +447,21 @@ export function adHocTitle(facts: PolicyFacts): string {
     : facts.who.guests !== null && !facts.who.all
       ? ' for guests'
       : ''
+  // The client scope is part of the intent: a policy for native clients only
+  // is not a policy for every app (ux-review-05 §11, §12).
+  const clients = [...facts.clientApps].map((c) => c.toLowerCase()).filter((c) => c !== 'all')
+  const scopeNoun =
+    clients.length === 0
+      ? null
+      : clients.every((c) => c === 'browser')
+        ? 'browsers'
+        : clients.every((c) => c === 'mobileappsanddesktopclients')
+          ? 'mobile and desktop apps'
+          : clients.every((c) => c === 'exchangeactivesync' || c === 'other')
+            ? 'legacy protocols'
+            : 'specific client types'
+  // Over every app the scope is the object itself; over named apps it qualifies them.
+  const clientScope = scopeNoun === null ? '' : facts.apps.all ? '' : ` from ${scopeNoun}`
   let verb: string
   if (controls.has('block')) verb = 'Block access to'
   else if (facts.grant?.strength === 'phishingResistant') verb = 'Require phishing-resistant MFA for'
@@ -459,7 +474,8 @@ export function adHocTitle(facts: PolicyFacts): string {
   else if (facts.session.secureSignInSession) verb = 'Require token protection for'
   else if (facts.grant?.strength) verb = 'Require a stronger sign-in for'
   else verb = 'Restrict access to'
-  return `${verb} ${object}${audience}`
+  const subject = scopeNoun !== null && facts.apps.all ? scopeNoun : object
+  return `${verb} ${subject}${clientScope}${audience}`
 }
 
 type Vendor = { name: string; appIds: string[]; namePattern: string }

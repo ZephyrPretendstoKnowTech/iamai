@@ -283,8 +283,8 @@ export function CoveragePage({
       }
     >
       {r.goal.tldr && <p className="reason">{r.goal.tldr}</p>}
-      {(r.status === 'absent' || r.status === 'partial' || r.status === 'below-baseline') && (
-        // The name the plan proposes, in the tenant's convention; the baseline's own name beneath (ux-review-04 §6).
+      {(r.status === 'partial' || r.status === 'below-baseline') && (
+        // A missing goal already names its proposal in the sentence (ux-review-05 §46); partial ones name it here.
         <p>
           <strong>{C.proposedName}</strong> {proposedPolicyName(stepTitle(r.goal.name), report.organisation.naming)}
           {r.goal.adHocSource && <span className="sub"> {NAMING.fromBaseline(r.goal.adHocSource)}</span>}
