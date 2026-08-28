@@ -199,8 +199,9 @@ Mechanics:
   and report "not available on this licence" as a section-disable; they never
   burn a request to discover a licence gap the SKU data already shows.
 - Higher-tier implementations appear only in a separate **educational
-  catalog** (`data/service-plans.json` via `src/licensing/capabilities.ts`: tier → features → description, use
-  case, tenant-computed value hook, docs link), never inline as "you can't
+  catalog** (the Licensing guide: goals from `data/goals.json` grouped by
+  tier, each reference-only goal with the one line it would unlock, licence
+  detection in `src/licensing/capabilities.ts`), never inline as "you can't
   have this".
 - `data/free-tier-ladder.json` holds the curated ~10 free-tier hardening items
   (security defaults, per-user MFA states, legacy-auth app passwords, etc.),
