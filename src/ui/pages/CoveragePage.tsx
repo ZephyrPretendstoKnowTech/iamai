@@ -33,6 +33,7 @@ import { arrangeGoals } from '../../scoring/arrange.ts'
 import type { GroupBy } from '../../scoring/arrange.ts'
 import type { GoalScore, ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
+import { goalsCoveredBy } from './BaselinePage.tsx'
 
 const STATUS_CHIP: Record<GoalStatus, ChipStatus> = {
   'below-baseline': 'warning',
@@ -213,7 +214,8 @@ export function CoveragePage({
   const unknown = report.results.filter((r) => r.status === 'unknown')
   const licence = report.results.filter((r) => r.status === 'licence-limited')
   const scoredCount = report.results.filter((r) => r.status !== 'not-applicable' && r.status !== 'licence-limited').length
-  const baselineGoals = report.results.length
+  // Same count as the Baseline step (ux-review-05 §9): catalogue goals the baseline has a policy for, plus its ad-hoc goals.
+  const baselineGoals = baseline ? goalsCoveredBy(baseline.pkg) : report.results.length
   const active = summary.activityCounts.active
   const nameify = (s: string) => nameifyText(s, names)
 

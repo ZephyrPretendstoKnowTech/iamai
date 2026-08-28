@@ -167,10 +167,13 @@ export function PrintPlan({
                   </p>
                 )}
                 <h4>{C.step.why}</h4>
-                <p>
-                  {s.why}
-                  {s.learn && <span className="muted">: {s.learn.url}</span>}
-                </p>
+                <p>{s.why}</p>
+                {s.whyLink && <p className="muted">{ROADMAP.whyLink} {s.whyLink}</p>}
+                {s.learn && (
+                  <p className="muted">
+                    {ROADMAP.learn}: {s.learn.url}
+                  </p>
+                )}
                 {(s.population.total > 0 || s.highCare.userIds.length > 0) && (
                   <>
                     <h4>{C.step.who}</h4>
