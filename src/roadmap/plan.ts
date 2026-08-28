@@ -6,8 +6,9 @@ import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
+import { PROGRESS } from '../copy/progress.ts'
 
-export const PLAN_SCHEMA_VERSION = 1
+export const PLAN_SCHEMA_VERSION = 2
 
 export type Checkpoint = {
   at: string
@@ -22,6 +23,8 @@ export type Checkpoint = {
   activityCounts: TenantMfaSummary['activityCounts']
   exclusionGroups: { groupId: string; memberCount: number }[]
   breakGlass: { userId: string; lastSignIn: string | null }[]
+  /** Active admins at the checkpoint, so "admins added" is knowable (v2). */
+  adminIds?: string[]
   capabilities: TenantSnapshot['capabilities']
   laneBCoveredWindow: { from: string; to: string } | null
 }
@@ -45,7 +48,13 @@ export type PlanFile = {
   steps: Step[]
   checkpoints: Checkpoint[]
   /** Pacing choices travel with the plan (prompt 13 audit). */
-  schedule?: { startDate: string; band?: string; pace?: string; owner?: string }
+  schedule?: { startDate: string; band?: string; pace?: string; owner?: string; freeze?: { from: string; to: string } | null }
+  // ---- v2 (roadmap-v2.md §6) ----
+  /** Counts up on every re-plan that changes the step set or the baseline pin. */
+  revision: number
+  revisions: { revision: number; at: string; note: string }[]
+  /** The baseline commit the plan was generated from. */
+  baselinePin: string | null
 }
 
 export function makeCheckpoint(args: {
@@ -85,6 +94,7 @@ export function makeCheckpoint(args: {
       userId,
       lastSignIn: snapshot.users.find((u) => u.id === userId)?.lastSuccessfulSignIn ?? null,
     })),
+    adminIds: Object.keys(snapshot.roles.active),
     capabilities: snapshot.capabilities,
     laneBCoveredWindow: snapshot.sources.signInEvidence?.coveredWindow ?? null,
   }
@@ -104,7 +114,9 @@ export function buildPlanFile(args: {
   mapping: MappingState
   steps: Step[]
   checkpoints: Checkpoint[]
-  schedule?: { startDate: string; band?: string; pace?: string; owner?: string }
+  schedule?: { startDate: string; band?: string; pace?: string; owner?: string; freeze?: { from: string; to: string } | null }
+  revision?: number
+  revisions?: PlanFile['revisions']
 }): PlanFile {
   const org = (args.snapshot.config.organization?.rows?.[0] ?? {}) as {
     displayName?: string
@@ -132,6 +144,9 @@ export function buildPlanFile(args: {
     steps: args.steps,
     checkpoints: trimCheckpoints(args.checkpoints),
     ...(args.schedule ? { schedule: args.schedule } : {}),
+    revision: args.revision ?? 1,
+    revisions: args.revisions ?? [{ revision: 1, at: new Date().toISOString(), note: PROGRESS.revisionNote.created }],
+    baselinePin: args.baselineSource.kind === 'github' ? args.baselineSource.commit : null,
   }
 }
 
@@ -151,18 +166,52 @@ export function parsePlanFile(text: string): { plan: PlanFile | null; error: str
 }
 
 /**
- * Older plan files load with defaults for what they lack (prompt 20 §5):
- * pre-1 files had no checkpoints and no travelling Setup answers.
+ * Older plan files load with defaults for what they lack: pre-1 files had no
+ * checkpoints and no travelling Setup answers; v1 files (prompt 20) had no
+ * rings, owners, scheduled dates, tracking, history evidence or revisions
+ * (roadmap-v2.md §6). A v1 file becomes an equivalent v2 plan: every step,
+ * status, history entry, skip reason, Setup answer and checkpoint kept.
  */
-function upgradePlanFile(parsed: PlanFile): PlanFile {
+export function upgradePlanFile(parsed: PlanFile): PlanFile {
   if (parsed.schemaVersion >= PLAN_SCHEMA_VERSION) return parsed
   const tenantId = parsed.tenant?.id ?? parsed.mappings?.tenantId ?? ''
-  return {
+  const base: PlanFile = {
     ...parsed,
-    schemaVersion: PLAN_SCHEMA_VERSION,
     tenant: parsed.tenant ?? { id: tenantId, name: '', domains: [], operator: { userId: '', userPrincipalName: '' } },
     baseline: parsed.baseline ?? { source: { kind: 'upload', fileName: 'unknown' }, variantChoices: [] },
     mappings: parsed.mappings ?? emptyMappingState(tenantId),
     checkpoints: Array.isArray(parsed.checkpoints) ? parsed.checkpoints : [],
+  }
+  const at = new Date().toISOString()
+  return {
+    ...base,
+    schemaVersion: PLAN_SCHEMA_VERSION,
+    steps: base.steps.map((s) => upgradeStep(s)),
+    revision: typeof parsed.revision === 'number' ? parsed.revision : 1,
+    revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [{ revision: 1, at, note: PROGRESS.revisionNote.imported }],
+    baselinePin: parsed.baselinePin ?? (base.baseline.source.kind === 'github' ? base.baseline.source.commit : null),
+  }
+}
+
+/** A v1 step gains the v2 fields with honest defaults; nothing it had is lost. */
+function upgradeStep(s: Step): Step {
+  const p = s as Partial<Step> & Step
+  return {
+    ...s,
+    rings: Array.isArray(p.rings) ? p.rings : [],
+    currentRing: typeof p.currentRing === 'number' ? p.currentRing : 0,
+    populationBasis: p.populationBasis ?? '',
+    populationNames: Array.isArray(p.populationNames) ? p.populationNames : [],
+    populationView: p.populationView ?? null,
+    whatChanges: p.whatChanges ?? s.impact ?? '',
+    failureModes: Array.isArray(p.failureModes) ? p.failureModes : [],
+    verify: p.verify ?? null,
+    helpDesk: p.helpDesk ?? null,
+    ringComms: Array.isArray(p.ringComms) ? p.ringComms : [],
+    rollbackBody: p.rollbackBody ?? null,
+    owner: p.owner ?? null,
+    scheduledDate: p.scheduledDate ?? null,
+    tracking: p.tracking ?? null,
+    history: Array.isArray(s.history) ? s.history : [],
   }
 }

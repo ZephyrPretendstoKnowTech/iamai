@@ -156,6 +156,27 @@ export type Step = {
   owner: string | null
   /** An operator-set start date; the schedule moves the step and its dependants to it. */
   scheduledDate: string | null
+  /** What actually happened, from evidence (roadmap-v2.md §5); null until a policy matches. */
+  tracking: StepTracking | null
+}
+
+export type StepTracking = {
+  policyId: string
+  policyName: string
+  matchedBy: 'tag' | 'fingerprint'
+  note: string
+  createdAt: string | null
+  modifiedAt: string | null
+  state: string
+  reportOnlyAt: string | null
+  enforcedAt: string | null
+  regressedAt: string | null
+  daysInReportOnly: number
+  signIns: number
+  failures: number
+  interruptions: number
+  failuresByUser: { userId: string; count: number }[]
+  evidenceQuality: 'enough' | 'thin' | 'none'
 }
 
 export type FailureMode = { title: string; applies: 'yes' | 'no' | 'unknown'; evidence: string }

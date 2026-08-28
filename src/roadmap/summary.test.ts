@@ -47,6 +47,7 @@ function step(over: Partial<Step>): Step {
     rollbackBody: null,
     owner: null,
     scheduledDate: null,
+    tracking: null,
     ...over,
   }
 }
