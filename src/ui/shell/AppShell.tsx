@@ -5,7 +5,7 @@ import { forgetTenant } from '../../graph/collect/cache.ts'
 import { signOut } from '../../graph/msal.ts'
 import { SHELL } from '../../copy/pages.ts'
 import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/dates.ts'
-import { Button, Callout, LinkButton, Stepper } from '../components/index.ts'
+import { Button, Callout, InfoTip, LinkButton, Stepper } from '../components/index.ts'
 import type { StepperStatus } from '../components/index.ts'
 
 export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
@@ -246,8 +246,7 @@ export function ScanAge({ at, baseline }: { at: string; baseline?: string | null
       <p className="reason">
         {SHELL.basedOn(whenAt(at))} <a href="#/scan">{SHELL.rescan}</a>
         {baseline && <> · {SHELL.baselineLoaded(baseline)}</>}
-        {' '}
-        <span className="muted">{SHELL.evidenceAgeNote}</span>
+        <InfoTip title={SHELL.scanAgeTip} text={SHELL.evidenceAgeNote} />
       </p>
       {days >= STALE_SCAN_DAYS && (
         <Callout kind="warning" title={SHELL.scanStale(days)}>

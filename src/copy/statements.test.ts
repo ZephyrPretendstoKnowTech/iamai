@@ -11,6 +11,7 @@ import {
   scheduleOverrun,
   scheduleRationale,
   share,
+  overrunList,
 } from './statements.ts'
 import type { FindingsSummaryInput } from './statements.ts'
 
@@ -81,7 +82,7 @@ test('summary with no active users does not divide by zero in prose', () => {
 
 test('share branches: none, one, all', () => {
   assert.equal(share(0, 5, 'member'), 'none of the 5 members')
-  assert.equal(share(1, 1, 'member'), 'the only member')
+  assert.equal(share(1, 1, 'member'), '1 member')
   assert.equal(share(5, 5, 'member'), 'all 5 members')
   assert.equal(share(2, 5, 'member'), '2 of 5 members')
 })
@@ -127,10 +128,11 @@ test('schedule rationale branches on campaigns, observation, and Setup waits', (
     scheduleRationale({ weeks: 1, campaigns: 0, verificationDays: 0, observationDays: 0, waves: 1, waitingOnSetup: 0 }),
     '1 week: no verification campaign needed, no observation window, 1 enforcement wave.',
   )
-  assert.equal(scheduleOverrun('small', 4, 6, ['Unknown platforms blocked']), 'Two weeks longer than a typical small tenant. 1 step extends it: Unknown platforms blocked.')
+  assert.equal(scheduleOverrun('small', 4, 6, ['Unknown platforms blocked']), 'Two weeks longer than a typical small tenant. 1 step runs past it:')
   assert.equal(scheduleOverrun('small', 4, 5, [], 2), 'One week longer than a typical small tenant, because the verification campaign needs two weeks.')
   const many = scheduleOverrun('mid', 8, 10, ['A', 'B', 'C', 'D', 'E', 'F', 'G'])
-  assert.match(many, /7 steps extend it: A, B, C, D, E and 2 more\.$/)
+  assert.match(many, /7 steps run past it:$/)
+  assert.deepEqual(overrunList(['A', 'B', 'C', 'D', 'E', 'F', 'G']), ['A', 'B', 'C', 'D', 'E', 'and 2 more'])
 })
 
 test('roadmap overview branches', () => {

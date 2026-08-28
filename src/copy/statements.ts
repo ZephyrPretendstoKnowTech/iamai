@@ -25,7 +25,7 @@ const strong = (s: string): string => `**${s}**`
 export function share(n: number, total: number, one: string, many = `${one}s`): string {
   if (total === 0) return `no ${many}`
   if (n === 0) return `none of the ${count(total, one, many)}`
-  if (n === total) return total === 1 ? `the only ${one}` : `all ${total} ${many}`
+  if (n === total) return total === 1 ? `1 ${one}` : `all ${total} ${many}`
   return `${n} of ${total} ${many}`
 }
 
@@ -246,16 +246,19 @@ const WEEK_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
 export function scheduleOverrun(band: string, expectedWeeks: number, weeks: number, extendedBy: string[], campaignWeeks: number | null = null): string {
   const diff = Math.max(1, weeks - expectedWeeks)
   const longer = `${capital(WEEK_WORDS[diff] ?? String(diff))} ${diff === 1 ? 'week' : 'weeks'} longer than a typical ${band} tenant`
-  const steps = extendedBy.slice(0, 5)
-  const more = extendedBy.length > 5 ? ` and ${extendedBy.length - 5} more` : ''
-  // With a tail, the named steps join on commas so "and" appears once.
-  const named = more ? steps.join(', ') : list(steps)
+  // The steps themselves are listed under the sentence (ux-review-06 §17), never run into it.
   if (campaignWeeks !== null && campaignWeeks > 0) {
     const because = `because the verification campaign needs ${WEEK_WORDS[campaignWeeks] ?? campaignWeeks} ${campaignWeeks === 1 ? 'week' : 'weeks'}`
-    return steps.length === 0 ? `${longer}, ${because}.` : `${longer}, ${because}. ${count(extendedBy.length, 'step')} also ${extendedBy.length === 1 ? 'extends' : 'extend'} it: ${named}${more}.`
+    return extendedBy.length === 0 ? `${longer}, ${because}.` : `${longer}, ${because}. ${count(extendedBy.length, 'step')} also ${extendedBy.length === 1 ? 'runs' : 'run'} past it:`
   }
-  if (steps.length === 0) return `${longer}.`
-  return `${longer}. ${count(extendedBy.length, 'step')} ${extendedBy.length === 1 ? 'extends' : 'extend'} it: ${named}${more}.`
+  if (extendedBy.length === 0) return `${longer}.`
+  return `${longer}. ${count(extendedBy.length, 'step')} ${extendedBy.length === 1 ? 'runs' : 'run'} past it:`
+}
+
+/** At most five named steps for the list under the overrun sentence, then "and N more". */
+export function overrunList(extendedBy: string[]): string[] {
+  const shown = extendedBy.slice(0, 5)
+  return extendedBy.length > 5 ? [...shown, `and ${extendedBy.length - 5} more`] : shown
 }
 
 /** Lowercases a name for mid-sentence use without touching acronyms ("MFA", "CA"). */

@@ -630,6 +630,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         : { kind: 'adjust', summary: adjustSummary(result), json: null, portalSteps: [], powershell: null }
     }
 
+    if (kind === 'create' && status !== 'done') action.summary.push(ACTION.thenEnforce)
+
     // Named dependencies (prompt 12 §B).
     if (status !== 'done') {
       if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId)) blockByStep(locStepId, BLOCKER.trustedLocation)
@@ -716,7 +718,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // Announcements by goal family (prompt 13 §8); nobody affected → no template.
     const evidenceUsable = evidence.status === 'ok' || evidence.status === 'partial'
-    const nobodyAffected = evidenceUsable && readiness.family === 'block' && evidence.affectedUserIds.length === 0
+    const nobodyAffected =
+      (evidenceUsable && readiness.family === 'block' && evidence.affectedUserIds.length === 0) ||
+      ((readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'admin') && notReadyActive === 0) ||
+      (readiness.family === 'device' && readiness.percent === 100) ||
+      pop.active === 0
     // The change itself decides the wording (prompt 17 §4): an adjust that
     // only tightens sessions gets session wording; a strength raise gets
     // passkey wording; a block names the affected users or needs none.
@@ -765,7 +771,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               EXIT.zeroFailures,
               ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []),
               ...(includesOperator ? [EXIT.operatorStrong] : []),
-              EXIT.thenEnforce,
             ]
 
     const score = scoreResult(result, snapshot, viability, {

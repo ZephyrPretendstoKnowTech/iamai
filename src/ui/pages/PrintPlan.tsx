@@ -16,6 +16,7 @@ export function PrintPlan({
   operator,
   steps,
   schedule,
+  verificationNote,
   dangers,
   nameOf,
 }: {
@@ -23,6 +24,8 @@ export function PrintPlan({
   baselineLabel: string
   operator: string
   steps: Step[]
+  /** Who the verification window is for, already worded (ux-review-06 §24). */
+  verificationNote: string
   schedule: Schedule
   dangers: DangerArea[]
   nameOf: (id: string) => string
@@ -129,7 +132,7 @@ export function PrintPlan({
                   <tr key="verification">
                     <td>{ROADMAP.verificationWindow(schedule.verification.days)}</td>
                     <td>{dateRange(schedule.verification.start, schedule.verification.end)}</td>
-                    <td>{ROADMAP.verificationText}</td>
+                    <td>{verificationNote}</td>
                   </tr>
                 )}
                 {w.wave === 0 && schedule.observation.days > 0 && (

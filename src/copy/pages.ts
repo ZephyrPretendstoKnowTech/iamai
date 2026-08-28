@@ -24,6 +24,7 @@ export const SHELL = {
   basedOn: (when: string) => `Based on the scan from ${when}.`,
   rescan: 'Re-scan',
   baselineLoaded: (source: string) => `Baseline: ${source}`,
+  scanAgeTip: 'Scan age',
   evidenceAgeNote: 'Sign-in evidence covers the last 30 days; re-scan once the scan is more than 7 days old.',
   scanStale: (days: number) => `This scan is ${days} days old. Numbers, names and sign-in evidence may have moved on.`,
   scanStaleAction: 'Re-scan the tenant',
@@ -366,7 +367,10 @@ export const ROADMAP = {
   bandReset: 'Back to detected',
   expected: (weeks: number) => `this pace usually takes ${count(weeks, 'week')}`,
   verificationWindow: (days: number) => `Registration and verification window · ${days} days`,
-  verificationText: 'Everyone active registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.',
+  verificationText: (toSetUp: number, active: number) =>
+    toSetUp === 0
+      ? 'Nobody needs setting up: the window is skipped.'
+      : `${count(toSetUp, 'user')} still ${toSetUp === 1 ? 'needs' : 'need'} setting up (${count(active, 'active user')} in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.`,
   verificationDone: 'Verification complete: the window is skipped and the waves pull forward.',
   showCompleted: 'Show completed',
   hideCompleted: 'Hide completed',

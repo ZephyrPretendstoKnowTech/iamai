@@ -192,6 +192,7 @@ export const PREREQ = {
 }
 
 export const ACTION = {
+  thenEnforce: 'When every Done-when line holds, switch the policy from report-only to On.',
   alreadyDelivered: 'Already delivered by existing policies: nothing to do.',
   createReportOnly: 'Create this policy in report-only mode; the description tag lets re-scans track it.',
   createsGroup: (name: string) => `This step also creates a new pilot group it targets, for example "${name}": create it empty first; pilot users go in later.`,
@@ -249,7 +250,7 @@ export const EXIT = {
   zeroFailures: 'Zero report-only failures or interruptions.',
   careVerified: (n: number) => `Every handle-with-care user in scope is verified (${n} to check).`,
   operatorStrong: 'The signed-in account holds a strong MFA method (checked at every re-scan).',
-  thenEnforce: 'Then enable the policy (Enforce).',
+  thenEnforce: 'Once the evidence is clean, switch the policy from report-only to On.',
   adjustApplied: 'The changed fields match the baseline on the next re-scan.',
   adjustNoRegression: 'No new sign-in failures on the changed policy in the week after the change.',
 }
