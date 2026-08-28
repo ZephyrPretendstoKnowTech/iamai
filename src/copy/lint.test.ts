@@ -32,6 +32,8 @@ const RULES: { rule: string; test: (s: string) => boolean }[] = [
   { rule: 'banned-phrase', test: (s) => /credit where due|\bsimply\b|\bseamless|\brobust\b/i.test(s) },
   // Raw ISO 8601 must never be rendered (prompt 14 §4).
   { rule: 'iso-date', test: (s) => /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) },
+  // CLAUDE.md: never promise no lockouts; the promise is predicted impact, confirmed in report-only.
+  { rule: 'lockout-promise', test: (s) => /(won'?t|never|cannot|can'?t|no) (lock|lockout)/i.test(s) },
 ]
 
 function isUserFacing(s: string): boolean {

@@ -89,8 +89,8 @@ test('T4: FIDO2 only, old, evidence ok but last sign-in outside window → unver
   )
   assert.equal(r.activity, 'active')
   assert.equal(r.mfa, 'unverified')
-  assert.ok(hasReason(r.reasons, 'FIDO2/passkey with no usage signal'))
-  assert.ok(hasReason(r.reasons, 'not observable'))
+  assert.ok(hasReason(r.reasons, 'passkey registered but never seen'))
+  assert.ok(hasReason(r.reasons, 'older than the collected sign-in records'))
 })
 
 test('T5: SMS only but MFA success yesterday → verified (evidence beats method weakness)', () => {
@@ -130,7 +130,7 @@ test('T8: no methods, not capable, usable TAP → none with TAP reason', () => {
     }),
   )
   assert.equal(r.mfa, 'none')
-  assert.ok(hasReason(r.reasons, 'TAP issued'))
+  assert.ok(hasReason(r.reasons, 'Temporary Access Pass issued'))
 })
 
 test('T9: 200 days since sign-in → activity dormant, MFA still computed (likelyViable)', () => {
@@ -178,8 +178,8 @@ test('T12: single-device platform (no baseline), old registration, outside windo
     }),
   )
   assert.equal(r.mfa, 'unverified')
-  assert.ok(hasReason(r.reasons, 'no usage signal'))
-  assert.ok(hasReason(r.reasons, 'not observable'))
+  assert.ok(hasReason(r.reasons, 'never seen in a sign-in'))
+  assert.ok(hasReason(r.reasons, 'older than the collected sign-in records'))
 })
 
 test('T13: guest with current Authenticator and MFA success in window → verified', () => {

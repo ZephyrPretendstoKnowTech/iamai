@@ -188,7 +188,7 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
     const reasons: string[] = []
     if (registration === null) reasons.push('no registration data')
     const tap = list.find((m) => m.kind === 'temporaryAccessPass' && m.isUsable)
-    if (tap) reasons.push('TAP issued — registration pending')
+    if (tap) reasons.push('Temporary Access Pass issued: registration pending')
     if (reasons.length === 0) reasons.push('no MFA-capable method registered')
     return { ...base, mfa: 'none', reasons }
   }
@@ -262,23 +262,23 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
   for (const m of capable) {
     if (m.createdDateTime && daysBetween(m.createdDateTime, tenant.now) > STALE_METHOD_DAYS) {
       reasons.push(
-        `method registered ${Math.round(daysBetween(m.createdDateTime, tenant.now))} days ago, no usage signal`,
+        `method registered ${Math.round(daysBetween(m.createdDateTime, tenant.now))} days ago, never seen in a sign-in`,
       )
       break
     }
   }
   if (smsVoiceOnly) reasons.push('text or call only')
   if (capable.some((m) => m.kind === 'fido2' || m.kind === 'passkey')) {
-    reasons.push('FIDO2/passkey with no usage signal')
+    reasons.push('passkey registered but never seen in a sign-in')
   }
   if (methodsUnknown) reasons.push('methods unavailable for this user')
   if (evidenceUsable && !observable) {
-    reasons.push('not observable — last sign-in outside evidence window')
+    reasons.push('last sign-in is older than the collected sign-in records')
   }
   if (evidence.status === 'insufficient' || evidence.status === 'disabled' || evidence.status === 'pending') {
     reasons.push('no sign-in evidence collected')
   }
-  if (reasons.length === 0) reasons.push('no usage signal for any registered method')
+  if (reasons.length === 0) reasons.push('no registered method seen in a sign-in')
   return { ...base, mfa: 'unverified', reasons }
 }
 

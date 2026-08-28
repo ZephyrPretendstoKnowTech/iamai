@@ -9,7 +9,7 @@ export const SETUP_QUESTIONS = {
     title: 'Emergency access',
     question: 'Which accounts are the emergency access (break-glass) admins?',
     help: 'Two cloud-only Global Administrator accounts, kept out of every policy and used only when everything else fails. IAMAI validates each pick and says exactly what to fix.',
-    why: 'Every policy in the plan excludes these accounts, so a mistake can never lock the whole tenant out.',
+    why: 'Every policy in the plan excludes these accounts, so a mistaken policy still leaves a way back in.',
   },
   globalExclusion: {
     title: 'Exclusion group',

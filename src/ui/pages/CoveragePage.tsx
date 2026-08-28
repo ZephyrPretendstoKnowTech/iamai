@@ -20,7 +20,7 @@ import type { TenantMfaSummary } from '../../scoring/mfaViability.ts'
 import { FINDINGS as C } from '../../copy/pages.ts'
 import { INVENTORY } from '../../copy/inventory.ts'
 import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
-import { findingsSummary } from '../../copy/statements.ts'
+import { findingsSummary, lowerFirst } from '../../copy/statements.ts'
 import { absoluteDate, whenAt } from '../format.ts'
 import { StepFrame, stepHref } from '../shell/AppShell.tsx'
 import { stepIdForGoal } from '../../roadmap/generate.ts'
@@ -232,8 +232,8 @@ export function CoveragePage({
     noMethod: summary.counts.none,
     notChallenged: summary.counts.notChallenged,
     challengedRate: summary.challengedRate,
-    working: enforced.map((r) => r.goal.name.toLowerCase()),
-    fixFirst: [...absent, ...partial].sort((a, b) => a.goal.phase - b.goal.phase).map((r) => r.goal.name.toLowerCase()),
+    working: enforced.map((r) => lowerFirst(r.goal.name)),
+    fixFirst: [...absent, ...partial].sort((a, b) => a.goal.phase - b.goal.phase).map((r) => lowerFirst(r.goal.name)),
     licenceLimited: licence.length,
   })
 
@@ -298,8 +298,9 @@ export function CoveragePage({
           <ul className="sections">
             {r.candidates.map((c) => (
               <li key={c.policyId || c.policyName}>
-                <em>{c.policyName}</em>: {INVENTORY.policies.state[c.state]};{' '}
-                {c.contribution === 'strong' ? C.delivers : c.contribution === 'weak' ? C.tooWeak : c.contribution === 'reportOnly' ? C.reportOnly : C.disabledCandidate}
+                <em>{c.policyName}</em>: {INVENTORY.policies.state[c.state]}
+                {/* Report-only and off already say it; only add what the state does not (prompt 19 §B). */}
+                {c.contribution === 'strong' ? `; ${C.delivers}` : c.contribution === 'weak' ? `; ${C.tooWeak}` : ''}
                 {c.caveats.length > 0 && ` (${c.caveats.join(', ')})`}
               </li>
             ))}

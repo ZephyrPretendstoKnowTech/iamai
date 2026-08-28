@@ -35,10 +35,11 @@ export const SHELL = {
   signInError: 'Sign-in error:',
   scanNeedsConnect: 'The scan reads the tenant into a local record. Connect a tenant first.',
   connectLink: 'Connect a tenant',
+  inventoryNeedsConnect: 'The inventory comes from a scan of a connected tenant. Connect a tenant first.',
 }
 
 export const START = {
-  headline: "Turn your Conditional Access baseline into a rollout plan that won't lock anyone out.",
+  headline: 'Turn your Conditional Access baseline into a dated rollout plan that names who each step touches before anything is enforced.',
   subhead:
     "IAMAI reads your tenant's policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.",
   caveat: 'Predicted impact, confirmed in report-only.',
@@ -326,7 +327,7 @@ export const ROADMAP = {
   bandAuto: (active: number, label: string) => `${count(active, 'active user')}: ${label} band, detected`,
   bandOverride: (active: number, label: string) => `${count(active, 'active user')}: ${label} band, your choice`,
   bandReset: 'Back to detected',
-  expected: (weeks: number) => `expected ${count(weeks, 'week')}`,
+  expected: (weeks: number) => `this pace usually takes ${count(weeks, 'week')}`,
   verificationWindow: (days: number) => `Registration and verification window · ${days} days`,
   verificationText: 'Everyone active registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.',
   verificationDone: 'Verification complete: the window is skipped and the waves pull forward.',
@@ -344,7 +345,7 @@ export const ROADMAP = {
   sortSchedule: 'Schedule',
   currentScope: 'Today the policy targets',
   safeToday: (n: number) => `Safe today (${n}):`,
-  safeTodayWhy: (tenant: string) => `Nobody in ${tenant} used what these block in the last 30 days: free security, zero interruption.`,
+  safeTodayWhy: (tenant: string) => `Nobody in ${tenant} used what these block in the last 30 days, so enforcing them is predicted to interrupt no one.`,
   dangers: (high: number) => `${count(high, 'thing needs', 'things need')} care before the plan starts:`,
   dangersAfter: 'the Danger areas tab names the people and the exact settings.',
   dangersMedium: (n: number) => `${count(n, 'area')} to watch, none urgent: the Danger areas tab names the people.`,
