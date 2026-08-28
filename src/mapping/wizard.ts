@@ -33,16 +33,18 @@ export type WizardQuestionDef = {
 
 // Ordered: required questions first (they gate the plan), then the optional
 // ones under "Advanced options".
+// Every question that is shown is required (prompt 26 §2): a question either
+// gets an answer, "not applicable to us" with a reason, or "doesn't exist yet".
 const REQUIRED: Record<WizardQuestionId, boolean> = {
   breakGlass: true,
   globalExclusion: true,
   countries: true,
-  highCare: false,
-  trustedLocations: false,
-  serviceAccounts: false,
-  timeZone: false,
-  frameworks: false,
-  applicability: false,
+  highCare: true,
+  trustedLocations: true,
+  serviceAccounts: true,
+  timeZone: true,
+  frameworks: true,
+  applicability: true,
 }
 
 export const WIZARD_QUESTIONS: WizardQuestionDef[] = (Object.keys(REQUIRED) as WizardQuestionId[]).map((id) => ({
@@ -236,6 +238,11 @@ export function activeWizardQuestions(_pkg: BaselinePackage | null, ctx: WizardC
       const confirmed = ctx.state?.serviceAccountUserIds.length ?? 0
       if (confirmed > 0 || ctx.state?.serviceAccountsGroupId) return true
       return detectServiceAccounts(ctx.snapshot, [...(ctx.state?.breakGlassUserIds ?? []), ...(ctx.state?.serviceAccountRejectedIds ?? [])]).length > 0
+    }
+    // No named locations in the tenant: nothing to mark trusted, so the question is not asked.
+    if (q.id === 'trustedLocations' && ctx.snapshot) {
+      if ((ctx.state?.trustedLocationIds.length ?? 0) > 0) return true
+      return (ctx.snapshot.config.namedLocations?.rows ?? []).length > 0
     }
     return true
   })

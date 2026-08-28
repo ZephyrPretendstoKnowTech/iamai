@@ -111,7 +111,11 @@ export function MappingPage({
     notify(C.toast(title))
   }
   const reopen = (id: WizardQuestionId): void => {
-    update((s) => ({ ...s, wizardAnswered: { ...s.wizardAnswered, [id]: false } }))
+    update((s) => {
+      const notApplicable = { ...(s.notApplicable ?? {}) }
+      delete notApplicable[id]
+      return { ...s, notApplicable, wizardAnswered: { ...s.wizardAnswered, [id]: false } }
+    })
     setEditing((e) => ({ ...e, [id]: true }))
   }
   const suggestCtx: WizardSuggestContext | null = useMemo(
@@ -145,8 +149,6 @@ export function MappingPage({
 
   const autoCount = Object.values(state.records).filter((r) => r.resolvedId !== null || r.doesNotExist).length
   const requiredLeft = questions.filter((q) => q.required && state.wizardAnswered[q.id] !== true)
-  const required = questions.filter((q) => q.required)
-  const optional = questions.filter((q) => !q.required)
   const section = (q: WizardQuestionDef) => (
     <QuestionSection
       key={q.id}
@@ -171,6 +173,8 @@ export function MappingPage({
       {scan && <ScanAge at={scan.at} />}
       <Callout kind={progress.complete ? 'success' : 'info'} title={C.progress(progress.answered, questions.length, requiredLeft.length)}>
         {requiredLeft.length > 0 ? C.requiredOpen(requiredLeft.map((q) => q.title)) : C.allRequiredDone}
+        {!questions.some((q) => q.id === 'serviceAccounts') && <span className="reason"> {C.noServiceAccounts}</span>}
+        {!questions.some((q) => q.id === 'trustedLocations') && <span className="reason"> {C.noTrustedLocations}</span>}
         {autoCount > 0 && (
           <span className="reason">
             {' '}
@@ -180,16 +184,7 @@ export function MappingPage({
         )}
       </Callout>
 
-      {required.map(section)}
-
-      {optional.length > 0 && (
-        <details className="setup-advanced">
-          <summary>
-            {C.advanced} <span className="reason">{C.advancedHint(optional.length)}</span>
-          </summary>
-          {optional.map(section)}
-        </details>
-      )}
+      {questions.map(section)}
       <Toast message={toast} />
     </StepFrame>
   )
@@ -215,6 +210,8 @@ type QProps = {
 
 /** One line that says what was answered, for the collapsed state. */
 function answerSummary(def: WizardQuestionDef, state: MappingState, snapshot: TenantSnapshot, knownGroups: GroupMembersCacheEntry[]): string {
+  const na = state.notApplicable?.[def.id]
+  if (na) return C.notApplicableAnswered(na)
   const userName = (id: string) => snapshot.users.find((u) => u.id === id)?.displayName ?? id
   const groupName = (id: string) => knownGroups.find((g) => g.groupId === id)?.displayName ?? id
   switch (def.id) {
@@ -268,7 +265,8 @@ function QuestionSection(props: QProps) {
           </span>
           <span className="row">
             {openFindings > 0 && <Chip status="warning">{C.toFix(openFindings)}</Chip>}
-            <Chip status={done ? 'done' : def.required ? 'warning' : 'neutral'}>{done ? C.answered : def.required ? C.required : C.optional}</Chip>
+            {openFindings === 0 && done && (def.id === 'breakGlass' || def.id === 'globalExclusion') && !state.notApplicable?.[def.id] && <Chip status="done">{C.findingsCount(0)}</Chip>}
+            <Chip status={done ? 'done' : 'warning'}>{done ? C.answered : C.required}</Chip>
           </span>
         </span>
       </summary>
@@ -288,9 +286,10 @@ function QuestionSection(props: QProps) {
             <strong>{C.whyMatters}:</strong> {def.why}
           </p>
           <QuestionBody {...props} />
+          <NotApplicable questionId={def.id} update={props.update} answered={props.answered} />
         </>
       )}
-      {collapsed && (openFindings > 0 || def.id === 'globalExclusion') && <QuestionFindings {...props} />}
+      {collapsed && !state.notApplicable?.[def.id] && (openFindings > 0 || def.id === 'globalExclusion' || def.id === 'breakGlass') && <QuestionFindings {...props} />}
     </details>
   )
 }
@@ -474,6 +473,37 @@ function ValidationView({ v, name }: { v: ValidationResult | null; name?: string
 
 function toFixCount(results: (ValidationResult | null)[]): number {
   return results.reduce((n, r) => n + (r?.toFix ?? 0), 0)
+}
+
+/** The third answer every question allows (prompt 26 §2): not applicable to us, with a reason that goes in the plan. */
+function NotApplicable({ questionId, update, answered }: { questionId: WizardQuestionId; update: QProps['update']; answered: QProps['answered'] }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  if (!open) {
+    return (
+      <p>
+        <Button size="sm" variant="quiet" onClick={() => setOpen(true)}>
+          {C.notApplicableToUs}
+        </Button>
+      </p>
+    )
+  }
+  return (
+    <p className="row">
+      <input type="text" value={reason} placeholder={C.notApplicableReason} aria-label={C.notApplicableReason} onChange={(e) => setReason(e.currentTarget.value)} style={{ minWidth: '20rem' }} />
+      <Button
+        size="sm"
+        variant="primary"
+        disabled={reason.trim().length === 0}
+        onClick={() => {
+          update((st) => ({ ...st, notApplicable: { ...(st.notApplicable ?? {}), [questionId]: reason.trim() } }))
+          answered(questionId)
+        }}
+      >
+        {C.confirmService}
+      </Button>
+    </p>
+  )
 }
 
 function DoesNotExist({ onClick }: { onClick: () => void }) {
@@ -834,7 +864,7 @@ function TimeZoneQuestion({ state, update, answered }: QProps) {
   const browser = Intl.DateTimeFormat().resolvedOptions().timeZone
   const zones = [browser, ...COMMON_TIMEZONES.filter((z) => z !== browser)]
   return (
-    <p>
+    <p className="row">
       <select
         aria-label={SETUP_QUESTIONS.timeZone.title}
         value={state.displayTimeZone ?? browser}
@@ -850,6 +880,17 @@ function TimeZoneQuestion({ state, update, answered }: QProps) {
           </option>
         ))}
       </select>
+      {/* A pre-filled default always has a one-click confirm (prompt 26 §4, §5). */}
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() => {
+          update((s) => ({ ...s, displayTimeZone: s.displayTimeZone ?? browser }))
+          answered('timeZone')
+        }}
+      >
+        {C.timeZoneCorrect}
+      </Button>
     </p>
   )
 }

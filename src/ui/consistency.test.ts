@@ -84,7 +84,7 @@ test('percentages: the MFA-ready share reads the same on Findings and on the all
 test('question count: the Baseline promise equals the Setup list', () => {
   const counts = wizardQuestionCounts(baseline.pkg, { snapshot, state: mapping })
   assert.equal(counts.total, 8, 'no service-account candidates in the fixture, so 8 of the 9 questions')
-  assert.equal(counts.required, 3)
+  assert.equal(counts.required, 8, 'every shown question is required')
   const setupStep = steps.find((s) => s.kind === 'prerequisite' && /setup question/i.test(s.title))
-  if (setupStep) assert.match(setupStep.title, /\b3\b/, 'the Setup prerequisite step counts the same required questions')
+  if (setupStep) assert.match(setupStep.title, /\b8\b/, 'the Setup prerequisite step counts the same required questions')
 })

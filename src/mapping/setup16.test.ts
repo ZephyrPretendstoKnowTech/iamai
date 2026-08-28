@@ -137,14 +137,14 @@ test('countries: the allowlist geo ref resolves to a matching tenant location, e
 test('question counts follow the rendered list and split required from optional', () => {
   const noScan = wizardQuestionCounts(null)
   assert.equal(noScan.total, 9)
-  assert.equal(noScan.required, 3)
+  assert.equal(noScan.required, 9, 'every shown question is required (prompt 26)')
 
   const plain = snapshot([user('alice')])
   const withScan = wizardQuestionCounts(null, { snapshot: plain, state: emptyMappingState('t') })
   assert.equal(withScan.total, activeWizardQuestions(null, { snapshot: plain, state: emptyMappingState('t') }).length)
-  assert.equal(withScan.total, 8, 'service accounts is hidden when nothing looks like one')
-  assert.equal(withScan.required, 3)
+  assert.equal(withScan.total, 7, 'service accounts and trusted locations are hidden when the tenant has neither')
+  assert.equal(withScan.required, withScan.total)
 
   const confirmed = { ...emptyMappingState('t'), serviceAccountUserIds: ['svc'] }
-  assert.equal(wizardQuestionCounts(null, { snapshot: plain, state: confirmed }).total, 9)
+  assert.equal(wizardQuestionCounts(null, { snapshot: plain, state: confirmed }).total, 8, "service accounts return; trusted locations stay hidden without named locations")
 })

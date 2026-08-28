@@ -77,6 +77,8 @@ export type MappingState = {
   frameworks: string[]
   /** Which wizard questions the operator has answered (progress + auto vs human). */
   wizardAnswered: Record<string, boolean>
+  /** Questions answered "not applicable to us", with the reason (prompt 26 §2). */
+  notApplicable?: Record<string, string>
   updatedAt: string
 }
 
@@ -97,6 +99,7 @@ export function emptyMappingState(tenantId: string): MappingState {
     displayTimeZone: null,
     frameworks: [], // nothing pre-selected (prompt 11 §4)
     wizardAnswered: {},
+    notApplicable: {},
     updatedAt: new Date().toISOString(),
   }
 }

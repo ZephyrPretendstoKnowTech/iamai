@@ -74,7 +74,7 @@ export const SETUP_PAGE = {
   loadBaseline: 'Load a baseline',
   runScan: 'run a scan',
   progress: (answered: number, total: number, requiredLeft: number) =>
-    `${answered} of ${total} answered · ${requiredLeft === 0 ? 'nothing required remaining' : `${requiredLeft} required remaining`}`,
+    requiredLeft === 0 ? `${answered} of ${total} answered` : `${answered} of ${total} answered · ${requiredLeft} to go`,
   requiredList: (names: string[]) => `Still required: ${names.join(', ')}.`,
   questionNumber: (n: number) => `Question ${n}`,
   why: {
@@ -150,6 +150,13 @@ export const SETUP_PAGE = {
   nobody: 'nobody',
   noneChosen: 'none',
   notApplicableAnswer: 'not applicable',
+  notApplicableToUs: 'Not applicable to us',
+  notApplicableReason: 'Why does this not apply? A short reason goes in the plan.',
+  notApplicableAnswered: (reason: string) => `Not applicable to us: ${reason}`,
+  noServiceAccounts: 'No service accounts detected, so nothing needs a carve-out; the plan records that.',
+  noTrustedLocations: 'No named locations exist yet, so there is nothing to mark trusted.',
+  timeZoneCorrect: 'This is correct',
+  findingsCount: (n: number) => (n === 0 ? 'checks passed' : `${n} to fix`),
   detected: 'Detected',
   markedInUse: 'Marked in use by you',
   markedOff: 'Marked off',

@@ -239,3 +239,17 @@ test('passkey pilot: untargeted FIDO2 and missing TAP fail; ACCE absence is a no
   )
   assert.equal(ok.passed, true)
 })
+
+// Prompt 26 §1: a single SMS-only break-glass account trips every applicable check, each with an action.
+test('break-glass: a single SMS-only account renders every applicable finding', () => {
+  const snap = snapshot({
+    authMethods: { bg1: [{ kind: 'phone', phoneType: 'mobile' }], bg2: [{ kind: 'fido2' }] } as unknown as TenantSnapshot['authMethods'],
+  })
+  const r = validateBreakGlass('bg1', bgCtx({ snapshot: snap, confirmedBreakGlassIds: ['bg1'] }))
+  assert.equal(r.passed, false)
+  const text = r.findings.join(' | ')
+  assert.match(text, /fewer than two break-glass accounts/)
+  assert.match(text, /text or call is the only MFA method/)
+  assert.match(text, /last successful sign-in|never signed in/)
+  assert.ok(r.actions && r.actions.filter(Boolean).length >= 3, 'each finding ends with an action link')
+})
