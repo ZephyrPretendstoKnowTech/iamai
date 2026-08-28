@@ -178,6 +178,7 @@ export type RoadmapOverviewInput = {
   total: number
   /** Skipped steps are neither done nor remaining. */
   skipped?: number
+  /** "small-tenant" / "mid-size" / "large-tenant" pace label. */
   pace: string
   /** Already rendered with when(): "in 27 days · Sep 23, 2026". */
   finishes: string
@@ -195,4 +196,31 @@ export function roadmapOverview(i: RoadmapOverviewInput): string {
         : `${i.tenant}: ${i.done} of ${i.total} steps already in place. ${remain === 1 ? '1 remains' : `${remain} remain`}.`
   if (remain === 0) return head
   return `${head} With a ${i.pace} pace, the plan finishes ${i.finishes} (${count(i.weeks, 'week')}).`
+}
+
+export type ScheduleRationaleInput = {
+  weeks: number
+  /** 0 or 1 today; the sentence branches on both. */
+  campaigns: number
+  verificationDays: number
+  observationDays: number
+  waves: number
+  waitingOnSetup: number
+}
+
+/** "4 weeks: a 2-week verification campaign, 7-day observation window, 3 enforcement waves, 2 steps waiting on Setup." */
+export function scheduleRationale(i: ScheduleRationaleInput): string {
+  const parts: string[] = []
+  if (i.campaigns === 0) parts.push('no verification campaign needed')
+  else if (i.campaigns === 1) parts.push(`a ${Math.round(i.verificationDays / 7)}-week verification campaign`)
+  else parts.push(`${i.campaigns} verification campaigns`)
+  parts.push(i.observationDays === 0 ? 'no observation window' : `${i.observationDays}-day observation window`)
+  parts.push(count(i.waves, 'enforcement wave'))
+  if (i.waitingOnSetup > 0) parts.push(`${count(i.waitingOnSetup, 'step')} waiting on Setup`)
+  return `${count(i.weeks, 'week')}: ${parts.join(', ')}.`
+}
+
+export function scheduleOverrun(band: string, expectedWeeks: number, weeks: number, extendedBy: string[]): string {
+  const by = extendedBy.length > 0 ? ` ${list(extendedBy)} ${extendedBy.length === 1 ? 'extends' : 'extend'} it.` : ''
+  return `Longer than the ${band} band's ${count(expectedWeeks, 'week')} (${count(weeks, 'week')}).${by}`
 }

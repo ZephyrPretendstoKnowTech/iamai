@@ -1,12 +1,13 @@
 // Dedicated print layout for the plan (prompt 12 §D). Hidden on screen;
 // the screen layout is hidden in print. Light theme via tokens.css @media print.
+import { Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { DangerArea } from '../../roadmap/dangers.ts'
 import { NAMING, PHASE_NAME, PRINT as C, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
 import { ROADMAP } from '../../copy/pages.ts'
-import { roadmapOverview } from '../../copy/statements.ts'
+import { roadmapOverview, scheduleRationale } from '../../copy/statements.ts'
 import { absoluteDate, dateRange, when } from '../../copy/dates.ts'
 
 export function PrintPlan({
@@ -36,9 +37,17 @@ export function PrintPlan({
     tenant: tenantName,
     done: done.length,
     total: steps.length,
-    pace: ROADMAP.paceWord[schedule.pace] ?? schedule.pace,
+    pace: ROADMAP.bandWord[schedule.band] ?? schedule.band,
     finishes: when(schedule.targetEnd),
     weeks: schedule.weeks,
+  })
+  const rationale = scheduleRationale({
+    weeks: schedule.weeks,
+    campaigns: schedule.verification.days > 0 ? 1 : 0,
+    verificationDays: schedule.verification.days,
+    observationDays: schedule.observation.days,
+    waves: schedule.waves.filter((w) => w.wave > 0).length,
+    waitingOnSetup: schedule.waitingOnSetup,
   })
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
@@ -55,7 +64,9 @@ export function PrintPlan({
           <dt>{C.cover.dates}</dt>
           <dd>{dateRange(schedule.start, schedule.targetEnd)}</dd>
           <dt>{C.cover.pace}</dt>
-          <dd>{ROADMAP.paces[schedule.pace]?.label ?? schedule.pace}</dd>
+          <dd>
+            {ROADMAP.bands[schedule.band]?.label ?? schedule.band} · {ROADMAP.expected(schedule.expectedDays / 7)}
+          </dd>
           <dt>{C.cover.generated}</dt>
           <dd>{today}</dd>
         </dl>
@@ -75,7 +86,9 @@ export function PrintPlan({
 
       <section className="print-page">
         <h2>{C.summary}</h2>
-        <p>{overview}</p>
+        <p>
+          {overview} {rationale}
+        </p>
         {dangers.length > 0 && (
           <>
             <h3>{ROADMAP.tabs.danger}</h3>
@@ -106,11 +119,27 @@ export function PrintPlan({
           </thead>
           <tbody>
             {waves.map((w) => (
-              <tr key={w.wave}>
-                <td>{waveTitle(w)}</td>
-                <td>{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</td>
-                <td>{w.stepIds.map((id) => byId.get(id)?.title).filter(Boolean).join('; ')}</td>
-              </tr>
+              <Fragment key={w.wave}>
+                <tr>
+                  <td>{waveTitle(w)}</td>
+                  <td>{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</td>
+                  <td>{w.stepIds.map((id) => byId.get(id)?.title).filter(Boolean).join('; ')}</td>
+                </tr>
+                {w.wave === 0 && schedule.verification.days > 0 && (
+                  <tr key="verification">
+                    <td>{ROADMAP.verificationWindow(schedule.verification.days)}</td>
+                    <td>{dateRange(schedule.verification.start, schedule.verification.end)}</td>
+                    <td>{ROADMAP.verificationText}</td>
+                  </tr>
+                )}
+                {w.wave === 0 && schedule.observation.days > 0 && (
+                  <tr key="observation">
+                    <td>{ROADMAP.observation(schedule.observation.days)}</td>
+                    <td>{dateRange(schedule.observation.start, schedule.observation.end)}</td>
+                    <td>{ROADMAP.observationText}</td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

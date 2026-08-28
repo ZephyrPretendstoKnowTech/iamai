@@ -8,6 +8,8 @@ import {
   partialScopeStatement,
   reportOnlyStatement,
   roadmapOverview,
+  scheduleOverrun,
+  scheduleRationale,
   share,
 } from './statements.ts'
 import type { FindingsSummaryInput } from './statements.ts'
@@ -109,6 +111,18 @@ test('no finding statement runs past two sentences (prompt 17 §5)', () => {
     reportOnlyStatement('Require MFA', 'CA002', 9, 0),
   ]
   for (const s of samples) assert.ok(sentences(s) <= 2, s)
+})
+
+test('schedule rationale branches on campaigns, observation, and Setup waits', () => {
+  assert.equal(
+    scheduleRationale({ weeks: 4, campaigns: 1, verificationDays: 14, observationDays: 7, waves: 3, waitingOnSetup: 2 }),
+    '4 weeks: a 2-week verification campaign, 7-day observation window, 3 enforcement waves, 2 steps waiting on Setup.',
+  )
+  assert.equal(
+    scheduleRationale({ weeks: 1, campaigns: 0, verificationDays: 0, observationDays: 0, waves: 1, waitingOnSetup: 0 }),
+    '1 week: no verification campaign needed, no observation window, 1 enforcement wave.',
+  )
+  assert.equal(scheduleOverrun('small', 4, 6, ['Unknown platforms blocked']), "Longer than the small band's 4 weeks (6 weeks). Unknown platforms blocked extends it.")
 })
 
 test('roadmap overview branches', () => {
