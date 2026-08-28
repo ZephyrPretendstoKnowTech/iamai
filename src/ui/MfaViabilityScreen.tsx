@@ -32,6 +32,11 @@ function displayReason(r: string): { text: string; title?: string } {
   return { text: r }
 }
 
+// The legend shows MFA states with the same chip the table uses for them.
+const MFA_CHIP_BY_TITLE: Record<string, ChipStatus | undefined> = Object.fromEntries(
+  (Object.keys(MFA_STATE) as MfaState[]).map((k) => [MFA_STATE[k].title, MFA_CHIP[k]]),
+)
+
 const MFA_ORDER: MfaState[] = ['none', 'unverified', 'notChallenged', 'likelyViable', 'verified']
 const ACTIVITY_ORDER: ActivityState[] = ['active', 'dormant', 'neverSignedIn']
 const TIER_ORDER: MethodTier[] = ['phishingResistant', 'passwordless', 'push', 'otp', 'smsVoice', 'none']
@@ -441,19 +446,21 @@ export function MfaViabilityScreen({
           <DataTable rows={visibleRows} columns={columns} rowKey={(r) => r.userId} csvName="iamai-readiness.csv" empty={SCAN.noMatch} />
 
           <ExpandCard summary={SCAN.legend}>
-            {LEGEND.slice(0, 3).map((group) => (
-              <div key={group.heading}>
-                <h4>{group.heading}</h4>
-                <dl className="legend">
-                  {group.items.map((d) => (
-                    <div key={d.title}>
-                      <dt>{d.title}</dt>
-                      <dd>{d.text}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            ))}
+            {/* Three labelled cards, one term per row, chips as the table shows them (prompt 19 §A3). */}
+            <div className="grid-cards legend-grid">
+              {LEGEND.slice(0, 3).map((group) => (
+                <Card key={group.heading} title={group.heading} className="legend-card">
+                  <dl className="legend">
+                    {group.items.map((d) => (
+                      <div key={d.title} className="legend-row">
+                        <dt>{MFA_CHIP_BY_TITLE[d.title] ? <Chip status={MFA_CHIP_BY_TITLE[d.title]}>{d.title}</Chip> : d.title}</dt>
+                        <dd>{d.text}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </Card>
+              ))}
+            </div>
           </ExpandCard>
         </>
       </div>

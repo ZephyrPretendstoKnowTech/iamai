@@ -98,6 +98,14 @@ export const CONNECT = {
   signIn: 'Sign in with Microsoft',
 }
 
+/** Branches: none, all required, none required, some required (prompt 19 §A2). */
+function BASELINE_QUESTIONS({ total, required }: { total: number; required: number }): string {
+  if (total === 0) return 'Setup has nothing to ask'
+  if (required === total) return `Setup will ask ${count(total, 'question')} (all required)`
+  if (required === 0) return `Setup will ask ${count(total, 'question')} (none required)`
+  return `Setup will ask ${count(total, 'question')} (${required} required)`
+}
+
 export const BASELINE = {
   title: 'Baseline',
   does: 'Picks the target policy set the rollout plan aims for.',
@@ -118,8 +126,8 @@ export const BASELINE = {
   filesIn: (n: number) => `${count(n, 'file')} in this baseline`,
   targets: (tiers: string) => `targets ${tiers}`,
   loadedTitle: (source: string) => `Loaded: ${source}`,
-  summaryLine: (policies: number, goals: number, questions: number) =>
-    `${count(policies, 'policy', 'policies')} · ${count(goals, 'security goal')} · Setup will ask ${count(questions, 'question')}`,
+  summaryLine: (policies: number, goals: number, questions: { total: number; required: number }) =>
+    `${count(policies, 'policy', 'policies')} · ${count(goals, 'security goal')} · ${BASELINE_QUESTIONS(questions)}`,
   authorNote: 'For the baseline author: these lines describe the export, not this tenant.',
   policiesReady: (n: number) => `${count(n, 'policy', 'policies')} ready to compare.`,
   unusable: (n: number) =>

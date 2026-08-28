@@ -28,7 +28,8 @@ import { Callout, Card, Chip, ExpandCard, InfoTip, ScoreBadges, StatTile, Stats,
 import type { ChipStatus } from '../components/index.ts'
 import { SCORE } from '../../copy/definitions.ts'
 import { scoreResult } from '../../roadmap/score.ts'
-import { DOMAINS, compareScores } from '../../scoring/priority.ts'
+import { arrangeGoals } from '../../scoring/arrange.ts'
+import type { GroupBy } from '../../scoring/arrange.ts'
 import type { GoalScore, ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
@@ -58,6 +59,28 @@ function referencedGroupIds(tenantPolicies: unknown[]): string[] {
   return [...ids]
 }
 
+const SORTS: ScoreSort[] = ['priority', 'value', 'effort', 'disruption']
+const CONTROL_KEY = 'iamai.findings.controls'
+
+/** The session's last choice for a control, if it is still a valid value. */
+function readControl<T extends string>(name: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(CONTROL_KEY) ?? '{}') as Record<string, unknown>
+    const v = saved[name]
+    return allowed.includes(v as T) ? (v as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+function writeControl(name: string, value: string): void {
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(CONTROL_KEY) ?? '{}') as Record<string, unknown>
+    window.sessionStorage.setItem(CONTROL_KEY, JSON.stringify({ ...saved, [name]: value }))
+  } catch {
+    // session storage unavailable: the default still applies
+  }
+}
+
 export function CoveragePage({
   scan,
   baseline,
@@ -69,9 +92,12 @@ export function CoveragePage({
   const [groupsLoaded, setGroupsLoaded] = useState(false)
   const [mapping, setMapping] = useState<MappingState | null>(null)
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([])
-  // Control bar (prompt 17 §2): "needs attention" opens sorted by priority.
-  const [groupBy, setGroupBy] = useState<'none' | 'domain'>('none')
-  const [sortBy, setSortBy] = useState<ScoreSort>('priority')
+  // Control bar (prompt 17 §2, prompt 19 §A4): grouped by domain and sorted by
+  // priority unless this session chose otherwise. The two are independent.
+  const [groupBy, setGroupBy] = useState<GroupBy>(() => readControl('groupBy', ['none', 'domain'], 'domain'))
+  const [sortBy, setSortBy] = useState<ScoreSort>(() => readControl('sortBy', SORTS, 'priority'))
+  useEffect(() => writeControl('groupBy', groupBy), [groupBy])
+  useEffect(() => writeControl('sortBy', sortBy), [sortBy])
 
   const snapshot = scan?.snapshot ?? null
   const tenantPolicies = useMemo(() => (snapshot ? (snapshot.config.caPolicies?.rows ?? []) : []), [snapshot])
@@ -176,7 +202,6 @@ export function CoveragePage({
 
   const { report, summary, names, scores } = computed
   const scoreOf = (r: GoalResult): GoalScore | null => scores.get(r.goal.id) ?? null
-  const sorted = (rows: GoalResult[]): GoalResult[] => [...rows].sort((a, b) => compareScores(scoreOf(a), scoreOf(b), sortBy) || a.goal.phase - b.goal.phase)
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'this tenant'
   const enabledPolicies = tenantPolicies.filter((p) => (p as { state?: string }).state === 'enabled').length
@@ -316,7 +341,7 @@ export function CoveragePage({
     <div className="control-bar no-print">
       <label>
         {C.groupBy}
-        <select value={groupBy} onChange={(e) => setGroupBy(e.currentTarget.value as 'none' | 'domain')}>
+        <select value={groupBy} onChange={(e) => setGroupBy(e.currentTarget.value as GroupBy)}>
           <option value="none">{C.groupNone}</option>
           <option value="domain">{C.groupDomain}</option>
         </select>
@@ -324,7 +349,7 @@ export function CoveragePage({
       <label>
         {C.sortBy}
         <select value={sortBy} onChange={(e) => setSortBy(e.currentTarget.value as ScoreSort)}>
-          {(['priority', 'value', 'effort', 'disruption'] as ScoreSort[]).map((k) => (
+          {SORTS.map((k) => (
             <option key={k} value={k}>
               {C.sort[k]}
             </option>
@@ -335,20 +360,17 @@ export function CoveragePage({
     </div>
   )
 
-  const grouped = (rows: GoalResult[]) => {
-    const list = sorted(rows)
-    if (groupBy === 'none') return list.map(goalCard)
-    return DOMAINS.map((d) => {
-      const inDomain = list.filter((r) => (scoreOf(r)?.domain ?? r.goal.domain ?? 'Identity') === d)
-      if (inDomain.length === 0) return null
-      return (
-        <div key={d} className="phase-group">
-          <h3>{d}</h3>
-          {inDomain.map(goalCard)}
+  const grouped = (rows: GoalResult[]) =>
+    arrangeGoals(rows, scoreOf, (r) => scoreOf(r)?.domain ?? r.goal.domain ?? 'Identity', (r) => r.goal.phase, groupBy, sortBy).map((g) =>
+      g.domain === null ? (
+        g.rows.map(goalCard)
+      ) : (
+        <div key={g.domain} className="phase-group">
+          <h3>{g.domain}</h3>
+          {g.rows.map(goalCard)}
         </div>
-      )
-    })
-  }
+      ),
+    )
 
   const workingTab = () => (
     <div>

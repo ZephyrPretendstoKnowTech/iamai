@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import { detectServiceAccounts } from './serviceAccounts.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, suggestCountries, tenantCountryLocation } from './countries.ts'
-import { activeWizardQuestions, applyWizardAnswers } from './wizard.ts'
+import { activeWizardQuestions, applyWizardAnswers, wizardQuestionCounts } from './wizard.ts'
 import { emptyMappingState } from './types.ts'
 
 function user(id: string, over: Partial<UserRow> = {}): UserRow {
@@ -131,4 +131,20 @@ test('countries: the allowlist geo ref resolves to a matching tenant location, e
   const created = applyWizardAnswers(state, pkg, snapshot([]))
   assert.equal(created.records['loc-ref'].resolvedId, null)
   assert.equal(created.records['loc-ref'].doesNotExist, true)
+})
+
+// Prompt 19 §A2: the Baseline promise and the Setup list share one function.
+test('question counts follow the rendered list and split required from optional', () => {
+  const noScan = wizardQuestionCounts(null)
+  assert.equal(noScan.total, 9)
+  assert.equal(noScan.required, 3)
+
+  const plain = snapshot([user('alice')])
+  const withScan = wizardQuestionCounts(null, { snapshot: plain, state: emptyMappingState('t') })
+  assert.equal(withScan.total, activeWizardQuestions(null, { snapshot: plain, state: emptyMappingState('t') }).length)
+  assert.equal(withScan.total, 8, 'service accounts is hidden when nothing looks like one')
+  assert.equal(withScan.required, 3)
+
+  const confirmed = { ...emptyMappingState('t'), serviceAccountUserIds: ['svc'] }
+  assert.equal(wizardQuestionCounts(null, { snapshot: plain, state: confirmed }).total, 9)
 })

@@ -2,7 +2,7 @@
 // large text / UI components such as chips and accent buttons.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DARK, LIGHT, contrastRatio } from './tokens.ts'
+import { BUTTON_STATES, BUTTON_VARIANTS, DARK, LIGHT, buttonColours, contrastRatio } from './tokens.ts'
 import type { Palette } from './tokens.ts'
 
 const AA_TEXT = 4.5
@@ -28,3 +28,16 @@ function check(name: string, p: Palette): void {
 
 check('dark', DARK)
 check('light', LIGHT)
+
+// Prompt 19 §A1: no button variant may lose its label in any state.
+for (const [name, p] of [['dark', DARK], ['light', LIGHT]] as const) {
+  test(`${name}: every button variant keeps AA text in every state`, () => {
+    for (const variant of BUTTON_VARIANTS) {
+      for (const state of BUTTON_STATES) {
+        const { text, background } = buttonColours(p, variant, state)
+        assert.notEqual(text.toUpperCase(), background.toUpperCase(), `${variant}/${state} text equals background`)
+        assert.ok(contrastRatio(text, background) >= AA_TEXT, `${variant}/${state}: ${text} on ${background} = ${contrastRatio(text, background).toFixed(2)}`)
+      }
+    }
+  })
+}
