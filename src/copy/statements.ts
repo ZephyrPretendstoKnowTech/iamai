@@ -43,6 +43,13 @@ export function partialControlStatement(goal: string, requires: string, floor: s
   return `${strong(goal)}: the current policy requires ${requires}; the baseline expects ${floor}. ${capital(share(affected, total, noun))} affected.`
 }
 
+/** Met at the catalogue floor; only the baseline's stricter version is missed (ux-review-05 §10). */
+export function belowBaselineStatement(goal: string, policies: string[], requires: string, baselineFloor: string, raisedBy: string | null): string {
+  const by = policies.length === 0 ? 'The current policy' : policies.length === 1 ? policies[0] : list(policies)
+  const source = raisedBy ? ` (${raisedBy})` : ''
+  return `${strong(goal)} is met: ${by} requires ${requires}. Below the baseline: it expects ${baselineFloor}${source}.`
+}
+
 export function partialScopeStatement(
   goal: string,
   covered: number,

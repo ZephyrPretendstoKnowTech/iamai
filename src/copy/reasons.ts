@@ -14,6 +14,7 @@ export const REASON = {
   reportOnly: 'Covered only by a report-only policy, so nothing is enforced yet',
   appsNarrower: (policy: string): string => `${policy} covers fewer apps than the goal expects`,
   weakerControl: (policy: string, floor: string): string => `${policy} applies but is weaker than the goal needs (${floor})`,
+  belowBaseline: (policy: string, floor: string): string => `${policy} meets the goal but not the baseline's stricter version (${floor})`,
   disabledCandidates: (names: string[]): string =>
     names.length === 1 ? `A matching policy is switched off: ${names[0]}` : `${count(names.length, 'matching policy', 'matching policies')} are switched off: ${list(names)}`,
   excludedByRole: (roles: number): string => `Excluded by role (${roles === 1 ? 'one role' : count(roles, 'role')})`,

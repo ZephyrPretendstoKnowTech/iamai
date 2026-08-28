@@ -37,6 +37,8 @@ export type Action = {
   json: string | null // the policy body to create (report-only, tagged)
   portalSteps: string[] // Entra admin center click path, portal vocabulary
   powershell: string | null
+  /** The roles a collapsed "All N directory roles" stands for (ux-review-05 §6). */
+  roleList?: { summary: string; names: string[] } | null
 }
 
 export type Blocker =

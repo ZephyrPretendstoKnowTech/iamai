@@ -6,10 +6,11 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import { AppShell, useHashRoute } from './shell/AppShell.tsx'
 import { ErrorBoundary } from './components/index.ts'
+import { learnRoleNames } from '../roles.ts'
 import type { Route, StepStatus } from './shell/AppShell.tsx'
 import { StartPage } from './pages/StartPage.tsx'
 import { ConnectPage } from './pages/ConnectPage.tsx'
-import { BaselinePage, loadPinnedBaseline, loadUploadedBaseline } from './pages/BaselinePage.tsx'
+import { BaselinePage, restoreBaseline } from './pages/BaselinePage.tsx'
 import type { BaselineResult } from './pages/BaselinePage.tsx'
 import { LicensingPage } from './pages/LicensingPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
@@ -42,10 +43,15 @@ export function App() {
   const [authError, setAuthError] = useState<string | null>(null)
   const [tenantName, setTenantName] = useState<string | null>(null)
   const [baseline, setBaseline] = useState<BaselineResult | null>(null)
+  const [baselineRestoreError, setBaselineRestoreError] = useState<string | null>(null)
   const [lastScan, setLastScan] = useState<{ snapshot: TenantSnapshot; at: string } | null>(null)
   const [scanRunning, setScanRunning] = useState(false)
   const [mapProgress, setMapProgress] = useState<WizardProgress | null>(null)
   const route = useHashRoute()
+  // Role names the scan carries ($expand=roleDefinition) resolve ids the bundled catalogue lacks.
+  useEffect(() => {
+    if (lastScan) learnRoleNames(lastScan.snapshot.config.roleAssignments?.rows ?? [])
+  }, [lastScan])
   const [visitedStart, setVisitedStart] = useState<boolean>(() => {
     try {
       return localStorage.getItem('iamai-visited-start') === '1'
@@ -99,10 +105,10 @@ export function App() {
           void loadBaselineRecord<BaselineResult['origin']>(a.tenantId).then(async (origin) => {
             if (!origin) return
             try {
-              if (origin.kind === 'upload') setBaseline(loadUploadedBaseline(origin.files))
-              else setBaseline(await loadPinnedBaseline())
-            } catch {
-              // A failed restore is not an error: the Baseline step offers the load again.
+              setBaseline(await restoreBaseline(origin))
+            } catch (e) {
+              // Say so on the Baseline step rather than silently offering the load again.
+              setBaselineRestoreError(e instanceof Error ? e.message : String(e))
             }
           })
         }
@@ -143,6 +149,7 @@ export function App() {
           {route === 'baseline' && (
             <BaselinePage
               result={baseline}
+              restoreError={baselineRestoreError}
               scan={lastScan}
               onLoaded={(r) => {
                 setBaseline(r)

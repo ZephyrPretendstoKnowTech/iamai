@@ -1,7 +1,7 @@
 // Populations as user-id sets (intents.md §6). Pure — group members are
 // passed in (fetched on demand by the caller; counts-and-sample above the
 // cap yields the estimate path).
-import { CORE_ADMIN_ROLE_IDS } from './classify.ts'
+import { adminUserIds } from '../roles.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { PolicyFacts, PopulationSpec, ResolvedPopulation } from './types.ts'
 
@@ -35,7 +35,8 @@ export function resolvePopulation(
       for (const u of snapshot.users) if (u.userType === 'guest') ids.add(u.id)
       break
     case 'coreAdmins':
-      for (const id of usersWithActiveRole(snapshot, CORE_ADMIN_ROLE_IDS)) ids.add(id)
+      // One admin set everywhere (ux-review-05 §4): the admin catalogue, not only the core roles.
+      for (const id of adminUserIds(snapshot.roles)) ids.add(id)
       break
     case 'workload':
       break // not user-based; scored structurally

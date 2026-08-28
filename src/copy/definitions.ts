@@ -42,7 +42,8 @@ export const METHOD_TIER = {
 
 export const GOAL_STATUS = {
   enforced: { title: 'In place', text: 'An enabled policy delivers this goal for everyone it should cover.' },
-  partial: { title: 'Partly in place', text: 'A policy covers some of the people, or covers them with a weaker control than the baseline expects.' },
+  partial: { title: 'Partly in place', text: 'A policy covers some of the people, or covers them with a weaker control than the goal needs.' },
+  'below-baseline': { title: 'Below the baseline', text: 'The goal itself is met; the baseline sets a stricter bar (a stronger control or tighter limits) that the current policy does not reach.' },
   absent: { title: 'Missing', text: 'No enabled policy does this yet.' },
   'not-applicable': { title: 'Does not apply', text: 'The workload this goal protects is not used in this tenant, so it is left out of the score.' },
   'licence-limited': { title: 'Needs a licence', text: 'This goal needs a licence tier the tenant does not have. Listed for reference, not scored.' },
@@ -72,7 +73,10 @@ export const TILE = {
   partly: { title: 'Partly', text: 'Goals a policy delivers for some people, or with a weaker control than the baseline expects.' },
   missing: { title: 'Missing', text: 'Goals no enabled policy delivers yet.' },
   scoredGoals: { title: 'Scored goals', text: 'Goals that apply to this tenant and its licence. Goals that do not apply, or need a missing licence, are left out.' },
-  activeUsers: { title: 'Active users', text: 'People with a successful sign-in in the last 90 days.' },
+  activeUsers: {
+    title: 'Active users',
+    text: `People with a successful sign-in in the last 90 days. The collected sign-in records cover only ${WINDOW}, so Sign-in records can show fewer distinct users than there are active users.`,
+  },
   // Rollout tiles (ux-review-04 §1): every one is computed over all enabled
   // users, names that population, and names the sign-in window.
   mfaProven: {

@@ -39,9 +39,15 @@ export const BLOCKED = {
 }
 
 export const OPERATOR = {
-  inScope: (n: number | 'some' | null, total: number | null) =>
-    n === null
+  inScope: (n: number | 'some' | null, total: number | null, evidenceUsable = true) =>
+    n === null && !evidenceUsable
       ? 'Your account is in scope. No sign-in records are available to say how many of your sign-ins would have been affected.'
+      : n === null
+        ? total === null || total === 0
+          ? `Your account is in scope. The collected sign-in records hold none of your sign-ins from ${WINDOW}, so nothing of yours would have been affected yet.`
+          : `Your account is in scope. The records hold ${count(total, 'sign-in')} of yours from ${WINDOW}; the effect on them is measured once the policy exists in report-only.`
+      : n === 0
+        ? `Your account is in scope. None of your ${total !== null ? `${total} ` : ''}sign-ins in ${WINDOW} would have been affected.`
       : n === 'some'
         ? `Your account is in scope. In the last 30 days, some of your ${total ?? ''} sign-ins would have been affected.`.replace('  ', ' ')
         : `Your account is in scope. In the last 30 days, ${n}${total !== null ? ` of your ${total}` : ''} sign-in${n === 1 ? '' : 's'} would have been affected.`,

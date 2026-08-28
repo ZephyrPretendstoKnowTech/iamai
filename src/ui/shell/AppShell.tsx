@@ -239,12 +239,13 @@ export function StepFrame({
  * The scan a page is based on, with a warning past STALE_SCAN_DAYS
  * (prompt 20 §9). Every page that reads the scan shows this.
  */
-export function ScanAge({ at }: { at: string }) {
+export function ScanAge({ at, baseline }: { at: string; baseline?: string | null }) {
   const days = scanAgeDays(at)
   return (
     <>
       <p className="reason">
         {SHELL.basedOn(whenAt(at))} <a href="#/scan">{SHELL.rescan}</a>
+        {baseline && <> · {SHELL.baselineLoaded(baseline)}</>}
       </p>
       {days >= STALE_SCAN_DAYS && (
         <Callout kind="warning" title={SHELL.scanStale(days)}>

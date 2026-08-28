@@ -115,6 +115,8 @@ export type Goal = {
   cis?: string[]
   /** Set for ad-hoc goals built from unmatched baseline policies. */
   adHocSource?: string
+  /** Every baseline policy merged into this ad-hoc goal (§12). */
+  adHocSources?: string[]
   /** Third-party vendor the policy targets (SPEC §7); not-applicable unless the app is seen in the tenant. */
   vendor?: { name: string; appIds: string[] }
 }
@@ -141,6 +143,8 @@ export type Reason = {
   detail: string
   /** true when the exclusion is an expected one (break-glass etc.) — reported, not a gap. */
   expected?: boolean
+  /** weaker-control only: the policy meets the catalogue floor and misses only the baseline's raised one. */
+  belowBaseline?: boolean
   /** weaker-control / session-weaker: what the policy does today, in words. */
   current?: string
   /** weaker-control / session-weaker: what the baseline expects, in words. */
@@ -158,6 +162,8 @@ export type CandidateContribution = {
 }
 
 export type GoalStatus =
+  /** The goal is met at the catalogue floor; only the baseline's raised floor is missed (ux-review-05 §10). */
+  | 'below-baseline'
   | 'enforced'
   | 'partial'
   | 'absent'
@@ -206,6 +212,8 @@ export type CoverageReport = {
   summary: {
     enforced: number
     partial: number
+  /** Counted inside partial; shown with its own chip. */
+  belowBaseline: number
     absent: number
     notApplicable: number
     licenceLimited: number

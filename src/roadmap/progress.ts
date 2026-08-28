@@ -55,7 +55,7 @@ export function applyProgress(
 
     // Drift (§7): a done step whose goal regressed to partial/absent re-opens
     // as adjust. Unknown (unreadable group) or not-applicable is not drift.
-    if (step.status === 'done' && (goalStatus === 'absent' || goalStatus === 'partial')) {
+    if (step.status === 'done' && (goalStatus === 'absent' || goalStatus === 'partial' || goalStatus === 'below-baseline')) {
       const since = step.history.at(-1)?.at
       step.history.push({
         at: new Date().toISOString(),

@@ -80,6 +80,8 @@ export const SETUP_PAGE = {
   why: {
     inferredBreakGlass: 'directly excluded from an existing policy',
     inferredExclusion: 'the tenant\'s policies exclude this group the way a break-glass group is excluded',
+    onlyBreakGlassMembers: (names: string[]) =>
+      names.length === 1 ? `only member is ${names[0]}, your confirmed emergency access account` : `only members are ${names.join(' and ')}, your confirmed emergency access accounts`,
     inferredServiceAccounts: 'excluded only from MFA or block policies, the way service accounts are',
     nameMatch: (m: string) => `name contains "${m}"`,
     cloudOnlyGa: 'cloud-only Global Administrator',
