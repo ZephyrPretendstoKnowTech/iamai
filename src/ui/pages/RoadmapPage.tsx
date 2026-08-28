@@ -44,7 +44,7 @@ import type { ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }>
-type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; band?: SizeBand | null }
+type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; band?: SizeBand | null; owner?: string }
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
   done: 'done',
@@ -76,6 +76,8 @@ export function RoadmapPage({
   const [showCompletedChoice, setShowCompletedChoice] = useState<boolean | null>(null)
   const [skipDraft, setSkipDraft] = useState<{ id: string; reason: string } | null>(null)
   const [planLoading, setPlanLoading] = useState(false)
+  // The step opened in place on the Steps tab (prompt 26 §15).
+  const [openStepId, setOpenStepId] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
   const [copied, setCopied] = useState<string | null>(null)
   // Deep link #/roadmap/step/<id>: open the Steps tab with that step expanded.
@@ -327,7 +329,7 @@ export function RoadmapPage({
       mapping,
       steps,
       checkpoints,
-      schedule: startDate ? { startDate, band: band ?? undefined } : undefined,
+      schedule: startDate ? { startDate, band: band ?? undefined, owner: owner || undefined } : { startDate: schedule.start, band: band ?? undefined, owner: owner || undefined },
     })
     downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json')
   }
@@ -394,76 +396,121 @@ export function RoadmapPage({
         )
       : null
 
+  const owner = saved?.owner ?? ''
+  const setOwner = (value: string): void => {
+    setSaved((p) => (p ? { ...p, owner: value } : p))
+    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), owner: value })
+  }
+  const openSteps = (status: StepStatus | null): void => {
+    setStatusFilter(status ? new Set([status]) : new Set())
+    setActiveTab('steps')
+  }
+  const campaignWeeks = schedule.verification.days > 0 ? Math.round(schedule.verification.days / 7) : 0
+  const constraint =
+    work.length === 0
+      ? null
+      : campaignWeeks > 0
+        ? C.constraintCampaign(schedule.weeks, rollout.toSetUp, campaignWeeks)
+        : C.constraintWaves(schedule.weeks, schedule.waves.filter((w) => w.wave > 0).length, schedule.observation.days)
+  const readyToday = steps.filter((s) => s.status === 'ready')
+  const highDangers = dangers.filter((d) => d.severity === 'high').length
+
   const overview = () => (
-    <div className="advisor">
-      <p>
-        <strong>{overviewText}</strong> {work.length > 0 && (overrun ?? rationale)}
-      </p>
-      {overrun && overrunSteps.length > 0 && (
-        <ul className="sections">
-          {overrunSteps.map((t) => (
-            <li key={t}>{t}</li>
-          ))}
-        </ul>
-      )}
-      <Stats>
-        <StatTile value={`${done.length}/${steps.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} />
-        <StatTile value={schedule.weeks} label={TILE.weeks.title} tip={TILE.weeks} />
-        <StatTile value={safe.length} label={CHIP.safeToday.title} tone="info" tip={CHIP.safeToday} />
-        <StatTile value={blocked.length} label={STEP_STATUS.blocked.title} tone={blocked.length > 0 ? 'warning' : 'neutral'} tip={STEP_STATUS.blocked} />
-      </Stats>
-      {safe.length > 0 && (
-        <p>
-          <strong>{C.safeToday(safe.length)}</strong> {safe.map((s) => s.title).join('; ')}. {C.safeTodayWhy(tenantName)}
-        </p>
-      )}
-      {dangers.some((d) => d.severity === 'high') ? (
-        <p>
-          <strong>{C.dangers(dangers.filter((d) => d.severity === 'high').length)}</strong> {C.dangersAfter}
-        </p>
-      ) : (
-        dangers.length > 0 && <p>{C.dangersMedium(dangers.length)}</p>
-      )}
-      {blocked.length > 0 && <p>{C.blockedSteps(blocked.length)}</p>}
-      <p className="row no-print">
-        <label>
-          {C.startDate}{' '}
-          <input
-            type="date"
-            value={schedule.start.slice(0, 10)}
-            onChange={(e) => e.currentTarget.value && setStart(`${e.currentTarget.value}T12:00:00.000Z`)}
-          />{' '}
-          <span className="muted">{when(schedule.start)}</span>
-        </label>
-      </p>
-      <div className="row no-print">
-        <span className="muted">{C.paceLabel}</span>
-        {(Object.keys(BANDS) as SizeBand[]).map((b) => (
-          <FilterChip key={b} selected={schedule.band === b} title={C.bands[b].text} onToggle={() => setBand(b === schedule.band && band !== null ? null : b)}>
-            {C.bands[b].label}
-          </FilterChip>
-        ))}
-        <span className="muted">
-          {schedule.bandSource === 'auto' ? C.bandAuto(schedule.activeUsers, C.bands[schedule.band].label) : C.bandOverride(schedule.activeUsers, C.bands[schedule.band].label)} ·{' '}
-          {C.expected(BANDS[schedule.band].weeks)}
-        </span>
-        {schedule.bandSource === 'override' && (
-          <Button size="sm" variant="quiet" onClick={() => setBand(null)}>
-            {C.bandReset}
-          </Button>
-        )}
+    <div className="overview">
+      {/* Band 1: the headline and the one constraint that sets the length (prompt 26 §6). */}
+      <div className="overview-band">
+        <h3 className="overview-headline">{work.length === 0 ? C.headlineDone(steps.length) : C.headline(done.length, steps.length, absoluteDate(schedule.targetEnd))}</h3>
+        {constraint && <p className="overview-constraint">{constraint}</p>}
       </div>
-      <p className="row no-print">
+
+      {/* Band 2: four tiles, each opening the Steps tab pre-filtered (§7). */}
+      <div className="overview-band">
+        <Stats>
+          <StatTile value={`${done.length}/${steps.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} onClick={() => openSteps('done')} />
+          <StatTile value={schedule.weeks} label={TILE.weeks.title} tip={TILE.weeks} onClick={() => setActiveTab('timeline')} />
+          <StatTile value={readyToday.length} label={C.readyToday} tone={readyToday.length > 0 ? 'info' : 'neutral'} tip={TILE.readyToday} onClick={() => openSteps('ready')} />
+          <StatTile value={blocked.length} label={STEP_STATUS.blocked.title} tone={blocked.length > 0 ? 'warning' : 'neutral'} tip={STEP_STATUS.blocked} onClick={() => openSteps('blocked')} />
+        </Stats>
+      </div>
+
+      {/* Band 3: what needs attention, and the plan settings (§8). */}
+      <div className="overview-band overview-grid">
+        <div>
+          <h4>{C.attentionTitle}</h4>
+          <Callout kind={highDangers > 0 ? 'danger' : dangers.length > 0 ? 'warning' : 'success'}>
+            {C.attentionDangers(dangers.length)}{' '}
+            {dangers.length > 0 && (
+              <a href="#/roadmap" onClick={(e) => { e.preventDefault(); setActiveTab('danger') }}>
+                {C.openDangers}
+              </a>
+            )}
+          </Callout>
+          <Callout kind={blocked.length > 0 ? 'warning' : 'success'}>
+            {C.attentionBlocked(blocked.length)}{' '}
+            {blocked.length > 0 && (
+              <a href="#/roadmap" onClick={(e) => { e.preventDefault(); openSteps('blocked') }}>
+                {C.openBlocked}
+              </a>
+            )}
+          </Callout>
+          {overrun && overrunSteps.length > 0 && (
+            <details className="card">
+              <summary>{C.overrunShow(schedule.extendedBy.filter((id) => id !== 's-verify-mfa').length)}</summary>
+              <p className="reason">{overrun}</p>
+              <ul className="sections">
+                {overrunSteps.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+        <Card title={C.settingsTitle} className="settings-card no-print">
+          <p>
+            <label>
+              {C.startDate}{' '}
+              <input type="date" value={schedule.start.slice(0, 10)} onChange={(e) => e.currentTarget.value && setStart(`${e.currentTarget.value}T12:00:00.000Z`)} />{' '}
+              <span className="muted">{when(schedule.start)}</span>
+            </label>
+          </p>
+          <div className="row">
+            <span className="muted">{C.paceLabel}</span>
+            {(Object.keys(BANDS) as SizeBand[]).map((b) => (
+              <FilterChip key={b} selected={schedule.band === b} title={C.bands[b].text} onToggle={() => setBand(b === schedule.band && band !== null ? null : b)}>
+                {C.bands[b].label}
+              </FilterChip>
+            ))}
+            {schedule.bandSource === 'override' && (
+              <Button size="sm" variant="quiet" onClick={() => setBand(null)}>
+                {C.bandReset}
+              </Button>
+            )}
+          </div>
+          <p className="reason">
+            {schedule.bandSource === 'auto' ? C.bandAuto(schedule.activeUsers, C.bands[schedule.band].label) : C.bandOverride(schedule.activeUsers, C.bands[schedule.band].label)} ·{' '}
+            {C.expected(BANDS[schedule.band].weeks)}
+          </p>
+          <p>
+            <label>
+              {C.owner}{' '}
+              <input type="text" value={owner} placeholder={C.ownerPlaceholder} aria-label={C.owner} onChange={(e) => setOwner(e.currentTarget.value)} style={{ minWidth: '16rem' }} />
+            </label>
+          </p>
+        </Card>
+      </div>
+
+      {/* One row of actions, right-aligned (§9). */}
+      <p className="row actions-row no-print">
         <Button variant="primary" icon="download" onClick={savePlan}>
           {C.save}
-        </Button>
-        <Button icon="copy" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
-          {copied === 'plan-md' ? C.copied : C.copyMarkdown}
         </Button>
         <Button icon="refresh" loading={planLoading} onClick={() => fileInput.current?.click()}>
           {C.load}
         </Button>
         <input ref={fileInput} type="file" accept=".json" style={{ display: 'none' }} aria-hidden onChange={(e) => void loadPlan(e.currentTarget.files)} />
+        <Button icon="copy" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
+          {copied === 'plan-md' ? C.copied : C.copyMarkdown}
+        </Button>
         <Button icon="print" onClick={() => window.print()}>
           {C.print}
         </Button>
@@ -471,36 +518,69 @@ export function RoadmapPage({
     </div>
   )
 
-  // Timeline (prompt 18 §3): only waves with steps; completed steps hidden
-  // behind a toggle; every step a link; dates relative and absolute.
-  const timeline = () => {
-    const created = steps.filter((s) => s.kind === 'create' && s.status !== 'done' && s.status !== 'skipped').length
-    const completedCount = steps.filter((s) => s.status === 'done').length
-    const stepLine = (s: Step) => (
-      <li key={s.id}>
-        <Chip status={STATUS_CHIP[s.status]} title={STEP_STATUS[s.status].text}>
-          {STEP_STATUS_LABEL[s.status]}
-        </Chip>{' '}
-        <a href={stepHref(s.id)}>{s.title}</a>
-      </li>
-    )
-    const dates = (start: string, end: string, days: number) => (
-      <div className="timeline-dates">
-        <div>{days === 0 ? absoluteDate(start) : dateRange(start, end)}</div>
-        <div className="sub">{relative(start)}</div>
+  /** A compact tile for a step inside a phase card; the whole tile is the link (prompt 26 §12). */
+  const stepTile = (st: Step, onOpen?: () => void) => (
+    <a
+      key={st.id}
+      className={`step-tile ${st.safeToday ? 'lane-safe' : ''}`}
+      href={stepHref(st.id)}
+      onClick={onOpen ? (e) => { e.preventDefault(); onOpen() } : undefined}
+    >
+      <div className="row">
+        <Chip status={STATUS_CHIP[st.status]} title={STEP_STATUS[st.status].text}>
+          {STEP_STATUS_LABEL[st.status]}
+        </Chip>
+        <Chip status="neutral" title={STEP_KIND[st.kind].text}>
+          {STEP_KIND_LABEL[st.kind]}
+        </Chip>
       </div>
-    )
-    const window = (title: string, text: string, w: { start: string; end: string; days: number }) => (
-      <div className="timeline-row">
-        {dates(w.start, w.end, w.days)}
-        <div>
-          <strong>{title}</strong>
-          <p className="reason">{text}</p>
+      <strong className="step-tile-title">{st.title}</strong>
+      <div className="sub state-reason">{st.stateReason}</div>
+    </a>
+  )
+  const dates = (start: string, end: string, days: number) => (days === 0 ? absoluteDate(start) : dateRange(start, end))
+  const phaseSteps = (w: Schedule['waves'][number]) => w.stepIds.map((id) => stepById.get(id)).filter((x): x is Step => x !== undefined)
+
+  const timeline = () => {
+    const created = steps.filter((st) => st.kind === 'create' && st.status !== 'done' && st.status !== 'skipped').length
+    const completedCount = steps.filter((st) => st.status === 'done').length
+    const waves = schedule.waves.filter((w) => phaseSteps(w).length > 0)
+    const totalDays = Math.max(1, Math.round((Date.parse(schedule.targetEnd) - Date.parse(schedule.start)) / 86_400_000))
+    const todayPct = Math.min(100, Math.max(0, ((Date.now() - Date.parse(schedule.start)) / 86_400_000 / totalDays) * 100))
+    const windowCard = (id: string, title: string, text: string, w: { start: string; end: string; days: number }) => (
+      <div key={id} className="card window-card" id={id}>
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <span>
+            <Chip status="neutral">{C.windowChip}</Chip> <strong>{title}</strong>
+          </span>
+          <span className="reason">{dates(w.start, w.end, w.days)}</span>
         </div>
+        <p className="reason">{text}</p>
       </div>
     )
     return (
       <div>
+        {/* Mini-map: the whole plan in one bar, segmented by phase, today marked (§10). */}
+        <div className="minimap no-print" aria-label={C.tabs.timeline}>
+          {waves.map((w) => {
+            const all = phaseSteps(w)
+            const doneN = all.filter((st) => st.status === 'done').length
+            const days = Math.max(1, w.days)
+            return (
+              <a
+                key={w.wave}
+                href={`#phase-${w.wave}`}
+                className={`minimap-seg ${doneN === all.length ? 'is-done' : doneN > 0 ? 'is-partial' : ''}`}
+                style={{ flexGrow: days }}
+                title={`${waveTitle(w)} · ${C.phaseProgress(doneN, all.length)}`}
+                onClick={(e) => { e.preventDefault(); document.getElementById(`phase-${w.wave}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }) }}
+              >
+                <span className="minimap-label">{waveTitle(w)}</span>
+              </a>
+            )
+          })}
+          <span className="minimap-today" style={{ left: `${todayPct}%` }} title={C.minimapToday} />
+        </div>
         <p className="reason">
           {rationale}
           {completedCount > 0 && (
@@ -514,42 +594,35 @@ export function RoadmapPage({
           )}
         </p>
         {schedule.waves.map((w) => {
-          const all = w.stepIds.map((id) => stepById.get(id)).filter((s): s is Step => s !== undefined)
-          const inWave = showCompleted ? all : all.filter((s) => s.status !== 'done')
-          const waveDone = all.filter((s) => s.status === 'done').length
+          const all = phaseSteps(w)
+          const inWave = showCompleted ? all : all.filter((st) => st.status !== 'done')
+          const waveDone = all.filter((st) => st.status === 'done').length
+          const allDone = all.length > 0 && waveDone === all.length
           return (
             <div key={w.wave}>
-              {inWave.length > 0 && (
-                <div
-                  className="timeline-row timeline-link"
-                  role="link"
-                  tabIndex={0}
-                  onClick={() => setActiveTab('steps')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      setActiveTab('steps')
-                    }
-                  }}
-                >
-                  {dates(w.start, w.end, w.days)}
-                  <div>
-                    <strong>{waveTitle(w)}</strong>{' '}
-                    <span className="reason">
-                      {C.phaseDone(waveDone, all.length)}
-                      <InfoTip title={TILE.phaseProgress.title} text={TILE.phaseProgress.text} />
-                      {w.note ? ` · ${w.note}` : ''}
+              {all.length > 0 && (
+                <details className="card phase-card" id={`phase-${w.wave}`} open={!allDone}>
+                  <summary>
+                    <span className="row" style={{ justifyContent: 'space-between' }}>
+                      <span>
+                        <strong>{waveTitle(w)}</strong> <span className="reason">{dates(w.start, w.end, w.days)}</span>
+                        {w.note ? <span className="reason"> · {w.note}</span> : null}
+                      </span>
+                      <span className="reason">
+                        {allDone ? C.phaseAllDone(waveDone) : C.phaseProgress(waveDone, all.length)}
+                        <InfoTip title={TILE.phaseProgress.title} text={TILE.phaseProgress.text} />
+                      </span>
                     </span>
-                    {w.wave === 0 && created > 0 && <p className="reason">{C.day0Text(created)}</p>}
-                    <ul className="sections">{inWave.map(stepLine)}</ul>
-                  </div>
-                </div>
+                  </summary>
+                  {w.wave === 0 && created > 0 && <p className="reason">{C.day0Text(created)}</p>}
+                  <div className="step-grid">{inWave.map((st) => stepTile(st, () => { setActiveTab('steps'); setOpenStepId(st.id) }))}</div>
+                </details>
               )}
-              {w.wave === 0 && schedule.verification.days > 0 && window(C.verificationWindow(schedule.verification.days), C.verificationText(rollout.toSetUp, rollout.enabled), schedule.verification)}
-              {w.wave === 0 && schedule.verification.days === 0 && steps.some((s) => s.kind === 'verify') && work.length > 0 && (
+              {w.wave === 0 && schedule.verification.days > 0 && windowCard('window-verification', C.verificationWindow(schedule.verification.days), C.verificationText(rollout.toSetUp, rollout.enabled), schedule.verification)}
+              {w.wave === 0 && schedule.verification.days === 0 && steps.some((st) => st.kind === 'verify') && work.length > 0 && (
                 <p className="reason">{C.verificationDone}</p>
               )}
-              {w.wave === 0 && schedule.observation.days > 0 && window(C.observation(schedule.observation.days), C.observationText, schedule.observation)}
+              {w.wave === 0 && schedule.observation.days > 0 && windowCard('window-observation', C.observation(schedule.observation.days), C.observationText, schedule.observation)}
             </div>
           )
         })}
@@ -636,36 +709,47 @@ export function RoadmapPage({
           </label>
         </div>
         {schedule.waves.map((w) => {
-          const inWave = w.stepIds
-            .map((id) => stepById.get(id))
-            .filter((s): s is Step => s !== undefined && visible.includes(s))
+          const inWave = phaseSteps(w)
+            .filter((st) => visible.includes(st))
             .sort((a, b) => (stepSort === 'schedule' ? 0 : compareScores(a.score ?? null, b.score ?? null, stepSort)))
           if (inWave.length === 0) return null
           return (
-            <div key={w.wave} className="phase-group">
-              <h3>
-                {waveTitle(w)} <span className="reason">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</span>
+            <div key={w.wave} className="card phase-card" id={`steps-phase-${w.wave}`}>
+              <h3 className="phase-title">
+                {waveTitle(w)} <span className="reason">{dates(w.start, w.end, w.days)}</span>
               </h3>
-              {inWave.map((step) => (
-                <StepCard
-                  key={step.id}
-                  step={step}
-                  linked={step.id === linkedStepId}
-                  stepById={stepById}
-                  nameOf={nameOf}
-                  copied={copied}
-                  onCopy={copy}
-                  skipDraft={skipDraft}
-                  setSkipDraft={setSkipDraft}
-                  onSkipped={(s) => {
-                    // Persist the skip before regenerating, or mergePersisted forgets it.
-                    setSaved((p) =>
-                      p ? { ...p, steps: { ...p.steps, [s.id]: { status: s.status, history: s.history, skipReason: s.skipReason } } } : p,
-                    )
-                    setVersion((v) => v + 1)
-                  }}
-                />
-              ))}
+              <div className="step-grid">
+                {inWave.map((step) =>
+                  openStepId === step.id || step.id === linkedStepId ? (
+                    <div key={step.id} className="grid-span">
+                      <StepCard
+                        step={step}
+                        linked
+                        stepById={stepById}
+                        nameOf={nameOf}
+                        copied={copied}
+                        onCopy={copy}
+                        skipDraft={skipDraft}
+                        setSkipDraft={setSkipDraft}
+                        onSkipped={(st) => {
+                          // Persist the skip before regenerating, or mergePersisted forgets it.
+                          setSaved((p) =>
+                            p ? { ...p, steps: { ...p.steps, [st.id]: { status: st.status, history: st.history, skipReason: st.skipReason } } } : p,
+                          )
+                          setVersion((v) => v + 1)
+                        }}
+                      />
+                      <p className="no-print">
+                        <Button size="sm" variant="quiet" onClick={() => setOpenStepId(null)}>
+                          {C.collapseStep}
+                        </Button>
+                      </p>
+                    </div>
+                  ) : (
+                    stepTile(step, () => setOpenStepId(step.id))
+                  ),
+                )}
+              </div>
             </div>
           )
         })}
@@ -686,12 +770,6 @@ export function RoadmapPage({
           { id: 'steps', label: C.tabs.steps, badge: C.stepsBadge(summary.done, summary.total), render: stepsView },
         ]}
       />
-      <p className="reason">{C.lastStep}</p>
-      <p className="step-next">
-        <LinkButton href="#/scan" variant="secondary">
-          {C.rescanProgress}
-        </LinkButton>
-      </p>
       <PrintPlan
         tenantName={tenantName}
         baselineLabel={baseline?.source ?? ''}
