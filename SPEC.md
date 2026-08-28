@@ -208,3 +208,12 @@ Mechanics:
   the plan spine for tenants with no paid Entra at all.
 - Dev override: `?dev=1&licence=free|p1|p2` simulates a licence profile for UI
   and gating tests.
+
+## Testing decision: the smoke test mocks at the snapshot boundary
+
+The CI smoke test (`scripts/smoke.mjs`, `?dev=1&mock=1`) loads the synthetic
+tenant snapshot and baseline instead of answering raw Graph requests from a
+fixture. Answering every collector endpoint with Graph-shaped JSON would mean a
+second fixture format kept consistent with `src/ui/pages/fixtureSnapshot.ts`;
+the walk, the numbers and the console check are the same either way. Revisit
+only if the collectors change shape (deferred D6, decided 2026-08-28).

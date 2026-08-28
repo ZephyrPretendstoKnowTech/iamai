@@ -2,6 +2,7 @@
 import { count } from './statements.ts'
 
 export const COMPONENTS = {
+  stepperCurrent: 'current step',
   backToTop: 'Back to top',
   picker: {
     placeholder: 'Search…',
@@ -13,7 +14,7 @@ export const COMPONENTS = {
     results: (n: number) => count(n, 'result'),
     done: 'Done',
   },
-  stepper: { nav: 'Steps', steps: 'Steps', reference: 'Reference', inProgress: 'in progress', done: 'done', attention: 'needs attention', provisional: 'provisional' },
+  stepper: { nav: 'Steps', steps: 'Steps', reference: 'Reference', inProgress: 'in progress', done: 'done', attention: 'needs attention', provisional: 'provisional', currentStep: 'current step' },
   table: {
     empty: 'Nothing to show yet.',
     rows: (n: number) => count(n, 'entry', 'entries'),

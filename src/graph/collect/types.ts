@@ -184,7 +184,7 @@ export type TenantSnapshot = {
 }
 
 export type WorkerInMessage =
-  | { type: 'start'; token: string; tenantId: string; licenceOverride?: 'free' | 'p1' | 'p2' }
+  | { type: 'start'; token: string; tenantId: string; licenceOverride?: 'free' | 'p1' | 'p2'; devFail?: boolean }
   | { type: 'token'; token: string }
   | { type: 'cancel' }
 
