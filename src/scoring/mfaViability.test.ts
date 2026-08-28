@@ -117,7 +117,7 @@ test('T7: SMS only, evidence disabled → unverified with SMS/voice only + no ev
     }),
   )
   assert.equal(r.mfa, 'unverified')
-  assert.ok(hasReason(r.reasons, 'SMS/voice only'))
+  assert.ok(hasReason(r.reasons, 'text or call only'))
   assert.ok(hasReason(r.reasons, 'no sign-in evidence collected'))
 })
 

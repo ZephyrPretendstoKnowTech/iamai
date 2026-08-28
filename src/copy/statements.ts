@@ -1,6 +1,6 @@
 // Generated sentences (Findings statements, the Findings summary, the Roadmap
 // overview). Every function has explicit branches for 0, 1, all, and none.
-// Markup: **goal** and *policy* — the page renders them as strong/em.
+// Markup: **goal** and *policy*: the page renders them as strong/em.
 
 export function plural(n: number, one: string, many = `${one}s`): string {
   return n === 1 ? one : many
@@ -38,7 +38,7 @@ export function inPlaceStatement(goal: string, policies: string[], breakGlassExc
 }
 
 export function partialControlStatement(goal: string, requires: string, floor: string, affected: number, total: number, noun: string): string {
-  return `${strong(goal)} — the current policy requires ${requires}; the baseline expects ${floor}. ${capital(share(affected, total, noun))} affected.`
+  return `${strong(goal)}: the current policy requires ${requires}; the baseline expects ${floor}. ${capital(share(affected, total, noun))} affected.`
 }
 
 export function partialScopeStatement(
@@ -57,7 +57,7 @@ export function partialScopeStatement(
 }
 
 export function partialSessionStatement(goal: string, current: string, floor: string, affected: number, total: number, noun: string): string {
-  return `${strong(goal)} — sessions currently ${current}; the baseline expects ${floor}. ${capital(share(affected, total, noun))} affected.`
+  return `${strong(goal)}: sessions currently ${current}; the baseline expects ${floor}. ${capital(share(affected, total, noun))} affected.`
 }
 
 export function missingStatement(goal: string, baselinePolicy: string | null): string {
@@ -76,19 +76,19 @@ export function reportOnlyStatement(goal: string, policy: string, days: number |
 /** Workload (structural) goals: a policy exists but is report-only or too weak. */
 export function structuralPartialStatement(goal: string, policies: string[], reportOnly: boolean): string {
   const by = policies.length > 0 ? list(policies.map(em)) : 'a policy'
-  return reportOnly ? `${strong(goal)} is in report-only via ${by}.` : `${strong(goal)} — ${by} ${policies.length === 1 ? 'applies' : 'apply'} but ${policies.length === 1 ? 'does' : 'do'} not meet the baseline.`
+  return reportOnly ? `${strong(goal)} is in report-only via ${by}.` : `${strong(goal)}. ${by} ${policies.length === 1 ? 'applies' : 'apply'} but ${policies.length === 1 ? 'does' : 'do'} not meet the baseline.`
 }
 
 export function unknownStatement(goal: string): string {
-  return `${strong(goal)} — a group's members could not be read, so the people it covers could not be counted. Reported with what is known.`
+  return `${strong(goal)}: a group's members could not be read, so the people it covers could not be counted. Reported with what is known.`
 }
 
 export function notApplicableStatement(goal: string, reason: string): string {
-  return `${strong(goal)} — does not apply (${reason}).`
+  return `${strong(goal)}: does not apply (${reason}).`
 }
 
 export function licenceLimitedStatement(goal: string, tier: string): string {
-  return `${strong(goal)} — needs a licence tier this tenant does not have (${tier}). Listed on the Licensing guide, not scored.`
+  return `${strong(goal)}: needs a licence tier this tenant does not have (${tier}). Listed on the Licensing guide, not scored.`
 }
 
 function capital(s: string): string {
@@ -131,7 +131,7 @@ export function findingsSummary(i: FindingsSummaryInput): string[] {
           ? `None of the ${count(i.scored, 'security goal')} ${i.scored === 1 ? 'is' : 'are'} in place yet: ${count(i.partly, 'goal')} partly, ${i.missing} missing.`
           : `${i.inPlace} of ${i.scored} security goals are in place; ${i.partly} partly, ${i.missing} missing.`
   out.push(
-    `IAMAI compared ${i.tenant}'s ${count(i.enabledPolicies, 'enabled Conditional Access policy', 'enabled Conditional Access policies')} with ${baseline} by what each policy does, not what it is called. ${goals}`,
+    `IAMAI compared ${i.tenant}'s ${count(i.enabledPolicies, 'enabled Conditional Access policy', 'enabled Conditional Access policies')} with ${baseline}, matching each policy on what it does. ${goals}`,
   )
 
   const ready =
@@ -149,10 +149,10 @@ export function findingsSummary(i: FindingsSummaryInput): string[] {
     i.challengedRate === null
       ? ''
       : i.challengedRate >= 1
-        ? ' Every user active in the collected sign-in records completed MFA at least once — enforcement is well tested here.'
+        ? ' Every user active in the collected sign-in records completed MFA at least once: enforcement is well tested here.'
         : i.challengedRate === 0
-          ? ' No user active in the collected sign-in records completed MFA — enforcement is untested here.'
-          : ` ${Math.round(i.challengedRate * 100)}% of users active in the collected sign-in records completed MFA at least once${i.challengedRate < 0.5 ? ' — enforcement is largely untested here' : ''}.`
+          ? ' No user active in the collected sign-in records completed MFA: enforcement is untested here.'
+          : ` ${Math.round(i.challengedRate * 100)}% of users active in the collected sign-in records completed MFA at least once${i.challengedRate < 0.5 ? ': enforcement is largely untested here' : ''}.`
   out.push(`${count(i.users, 'user')} in the directory, ${i.active} active in the last 90 days. ${ready}${extras.length > 0 ? ` ${capital(list(extras))}.` : ''}${challenged}`)
 
   if (i.working.length > 0) {
@@ -184,7 +184,7 @@ export type RoadmapOverviewInput = {
 
 export function roadmapOverview(i: RoadmapOverviewInput): string {
   const remain = i.total - i.done - (i.skipped ?? 0)
-  if (i.total === 0) return `${i.tenant}: the plan has no steps yet — load a baseline and run a scan.`
+  if (i.total === 0) return `${i.tenant}: the plan has no steps yet: load a baseline and run a scan.`
   const head =
     remain === 0
       ? `${i.tenant}: all ${count(i.total, 'step')} ${i.total === 1 ? 'is' : 'are'} already in place. Nothing remains.`

@@ -118,7 +118,7 @@ test('resume newest-gap-first: stops at the cached boundary and merges', async (
   )
   const r = await runLaneB(d)
   assert.equal(r.status, 'ok')
-  assert.match(r.reason ?? '', /resumed from cache/)
+  assert.match(r.reason ?? '', /resumed from the saved records/)
   assert.equal(r.covered?.from, iso(30 * 24))
   // cached row + both fetched rows survive the merge
   assert.equal(r.rows, 3)

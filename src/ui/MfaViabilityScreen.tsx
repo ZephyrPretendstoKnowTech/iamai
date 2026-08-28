@@ -286,7 +286,11 @@ export function MfaViabilityScreen({
           {signInSection && (
             <ProgressBar
               percent={signInSection.status === 'started' ? null : 100}
-              caption={SCAN.signInsBar(laneB?.rows ?? 0, laneB?.oldest ? absoluteDate(laneB.oldest) : null)}
+              caption={
+                laneB === null && signInSection.status === 'started'
+                  ? SCAN.waitingFirstBatch
+                  : SCAN.signInsBar(laneB?.rows ?? 0, laneB?.oldest ? absoluteDate(laneB.oldest) : null)
+              }
             />
           )}
           <p className="reason">
@@ -303,7 +307,7 @@ export function MfaViabilityScreen({
             {SCAN.completeLine(
               snapshot.users.length,
               snapshot.config.caPolicies?.rows.length ?? 0,
-              evidence?.coveredWindow ? `${absoluteDate(evidence.coveredWindow.from)} – ${absoluteDate(evidence.coveredWindow.to)}` : null,
+              evidence?.coveredWindow ? `${absoluteDate(evidence.coveredWindow.from)} to ${absoluteDate(evidence.coveredWindow.to)}` : null,
             )}
           </p>
         </Card>
@@ -347,7 +351,7 @@ export function MfaViabilityScreen({
           <h3>{SCAN.readiness}</h3>
           <Callout kind={evidence.status === 'ok' ? 'success' : evidence.status === 'partial' ? 'info' : 'warning'}>
             {SCAN.signInRecords} <strong>{SCAN.evidenceStatus[evidence.status] ?? evidence.status}</strong>
-            {evidence.coveredWindow && <> — {SCAN.covering(absoluteDate(evidence.coveredWindow.from), absoluteDate(evidence.coveredWindow.to))}</>}
+            {evidence.coveredWindow && <>: {SCAN.covering(absoluteDate(evidence.coveredWindow.from), absoluteDate(evidence.coveredWindow.to))}</>}
             {evidence.reason && <> ({evidence.reason})</>}
             {evidence.status === 'pending' && <>. {SCAN.pending}</>}
             {(evidence.status === 'insufficient' || evidence.status === 'disabled' || evidence.status === 'error') && <>. {SCAN.unusable}</>}.
@@ -393,7 +397,7 @@ export function MfaViabilityScreen({
               <ul className="sections">
                 {snapshot.blockedToday.map((b) => (
                   <li key={b.policyId}>
-                    {b.displayName ?? (b.policyId === 'unknown' ? SCAN.noPolicyIdentified : b.policyId)} — {SCAN.users(b.userIds.length)}:{' '}
+                    {b.displayName ?? (b.policyId === 'unknown' ? SCAN.noPolicyIdentified : b.policyId)}: {SCAN.users(b.userIds.length)}:{' '}
                     {b.userIds.map((id) => userById.get(id)?.displayName ?? userById.get(id)?.userPrincipalName ?? id).join(', ')}
                   </li>
                 ))}

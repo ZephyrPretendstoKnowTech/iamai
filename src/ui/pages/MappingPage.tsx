@@ -1,4 +1,4 @@
-// Setup — the 5–9 questions a human actually answers (2026-08-27 redesign,
+// Setup: the 5–9 questions a human actually answers (2026-08-27 redesign,
 // polished in prompt 11). Everything else the baseline references is
 // auto-resolved in wizard.ts.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -355,7 +355,7 @@ function ValidationView({ v, name }: { v: ValidationResult | null; name?: string
               {f}
               {a && (
                 <>
-                  {' — '}
+                  {': '}
                   <a href={a.href} target={a.href.startsWith('#') ? undefined : '_blank'} rel="noreferrer">
                     {a.label}
                   </a>

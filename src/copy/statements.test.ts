@@ -88,7 +88,7 @@ test('statement shapes', () => {
   assert.equal(inPlaceStatement('Require MFA', ['A'], 2), '**Require MFA**. Delivered by *A*. 2 accounts excluded as break-glass.')
   assert.equal(
     partialControlStatement('Admin sessions', 'MFA', 'phishing-resistant MFA', 3, 4, 'admin'),
-    '**Admin sessions** — the current policy requires MFA; the baseline expects phishing-resistant MFA. 3 of 4 admins affected.',
+    '**Admin sessions**: the current policy requires MFA; the baseline expects phishing-resistant MFA. 3 of 4 admins affected.',
   )
   assert.equal(
     partialScopeStatement('Guests need MFA', 0, 1, 'guest', [{ reason: 'never targeted', count: 1 }]),

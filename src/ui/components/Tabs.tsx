@@ -4,8 +4,24 @@ import type { ReactNode } from 'react'
 export type TabDef = { id: string; label: string; badge?: string | number; render: () => ReactNode }
 
 // Sticky section tabs with count badges. Print renders every panel in order.
-export function Tabs({ tabs, initial }: { tabs: TabDef[]; initial?: string }) {
-  const [active, setActive] = useState(initial ?? tabs[0]?.id ?? '')
+export function Tabs({
+  tabs,
+  initial,
+  active: controlled,
+  onChange,
+}: {
+  tabs: TabDef[]
+  initial?: string
+  /** Controlled mode: the parent owns the active tab (deep links). */
+  active?: string
+  onChange?: (id: string) => void
+}) {
+  const [own, setOwn] = useState(initial ?? tabs[0]?.id ?? '')
+  const active = controlled ?? own
+  const setActive = (id: string): void => {
+    setOwn(id)
+    onChange?.(id)
+  }
   const base = useId()
   return (
     <div>

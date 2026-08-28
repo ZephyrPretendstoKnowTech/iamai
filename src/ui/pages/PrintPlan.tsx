@@ -82,11 +82,11 @@ export function PrintPlan({
             <ul>
               {dangers.map((d, i) => (
                 <li key={i}>
-                  <strong>{d.title}</strong> — {d.detail}
+                  <strong>{d.title}</strong>: {d.detail}
                   <ul>
                     {d.people.map((p, j) => (
                       <li key={j}>
-                        {p.name} — {p.need}
+                        {p.name}: {p.need}
                       </li>
                     ))}
                   </ul>
@@ -139,7 +139,7 @@ export function PrintPlan({
                 <h4>{C.step.why}</h4>
                 <p>
                   {s.why}
-                  {s.learn && <span className="muted"> — {s.learn.url}</span>}
+                  {s.learn && <span className="muted">: {s.learn.url}</span>}
                 </p>
                 {(s.population.total > 0 || s.highCare.userIds.length > 0) && (
                   <>

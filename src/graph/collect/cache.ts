@@ -53,12 +53,16 @@ interface IamaiDB extends DBSchema {
     key: string
     value: { tenantId: string } & Record<string, unknown>
   }
+  baseline: {
+    key: string
+    value: { tenantId: string } & Record<string, unknown>
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<IamaiDB>> | null = null
 
 function db(): Promise<IDBPDatabase<IamaiDB>> {
-  dbPromise ??= openDB<IamaiDB>('iamai', 5, {
+  dbPromise ??= openDB<IamaiDB>('iamai', 6, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         const rows = d.createObjectStore('signin-rows', { keyPath: ['tenantId', 'id'] })
@@ -77,6 +81,9 @@ function db(): Promise<IDBPDatabase<IamaiDB>> {
       }
       if (oldVersion < 5) {
         d.createObjectStore('snapshot', { keyPath: 'tenantId' })
+      }
+      if (oldVersion < 6) {
+        d.createObjectStore('baseline', { keyPath: 'tenantId' })
       }
     },
   })
@@ -201,9 +208,28 @@ export async function saveSnapshotRecord(tenantId: string, value: Record<string,
   }
 }
 
+// The loaded baseline (index id and commit, or the uploaded files), per tenant.
+export async function loadBaselineRecord<T>(tenantId: string): Promise<T | null> {
+  try {
+    const d = await db()
+    return ((await d.get('baseline', tenantId)) as T | undefined) ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function saveBaselineRecord(tenantId: string, value: Record<string, unknown>): Promise<void> {
+  try {
+    const d = await db()
+    await d.put('baseline', { ...value, tenantId })
+  } catch {
+    // Cache is an optimization; losing it must never fail the page.
+  }
+}
+
 export async function forgetTenant(tenantId: string): Promise<void> {
   const d = await db()
-  const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping', 'plan', 'snapshot'], 'readwrite')
+  const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping', 'plan', 'snapshot', 'baseline'], 'readwrite')
   for (const storeName of ['signin-rows', 'group-members'] as const) {
     const store = tx.objectStore(storeName)
     let cursor = await store.index('byTenant').openCursor(tenantId)
@@ -216,5 +242,6 @@ export async function forgetTenant(tenantId: string): Promise<void> {
   await tx.objectStore('mapping').delete(tenantId)
   await tx.objectStore('plan').delete(tenantId)
   await tx.objectStore('snapshot').delete(tenantId)
+  await tx.objectStore('baseline').delete(tenantId)
   await tx.done
 }

@@ -119,7 +119,7 @@ test('break-glass: SMS-only is a hard fail', () => {
   snap.authMethods.bg1 = [{ kind: 'phone', phoneType: 'mobile' }]
   const r = validateBreakGlass('bg1', bgCtx({ snapshot: snap }))
   assert.equal(r.passed, false)
-  assert.ok(r.findings.some((f) => f.includes('SMS/voice')))
+  assert.ok(r.findings.some((f) => f.includes('text or call')))
 })
 
 test('break-glass: shared Authenticator displayName flags the other user', () => {

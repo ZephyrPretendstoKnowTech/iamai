@@ -3,7 +3,7 @@ import { count } from './statements.ts'
 
 export const INVENTORY = {
   title: 'Inventory',
-  intro: 'Everything the scan read, as found — no analysis. Every table exports to CSV.',
+  intro: 'Everything the scan read, as found: no analysis. Every table exports to CSV.',
   tabs: {
     policies: 'Policies',
     locations: 'Named locations',
@@ -24,7 +24,7 @@ export const INVENTORY = {
     groups: { title: 'Where this comes from', text: 'Every group any policy includes or excludes, with members read on demand (/groups/{id}/transitiveMembers).' },
     devices: { title: 'Where this comes from', text: 'Registered devices (/devices) with compliance, management, trust type, and registered owners.' },
     roles: { title: 'Where this comes from', text: 'Active role assignments (/roleManagement/directory/roleAssignments) and PIM-eligible schedules where Entra ID P2 is present.' },
-    licensing: { title: 'Where this comes from', text: 'Subscribed SKUs (/subscribedSkus) — seats, assigned units, and the service plans that unlock each capability.' },
+    licensing: { title: 'Where this comes from', text: 'Subscribed SKUs (/subscribedSkus): seats, assigned units, and the service plans that unlock each capability.' },
     apps: { title: 'Where this comes from', text: 'Aggregated app sign-in summary and service principal sign-in activity (/reports, 30 days). Detected workloads drive which goals apply.' },
     signIns: { title: 'Where this comes from', text: 'Counts derived from the interactive sign-in records collected for the window. Raw records stay in the browser and are never shown.' },
   },
@@ -171,7 +171,7 @@ export const PACKAGE = {
   what: [
     'One or more Conditional Access policies as Microsoft Graph JSON (the conditionalAccessPolicy shape).',
     'One policy per file, or an array of policies in one file. Property casing does not matter.',
-    'Optional extras: named locations and authentication strengths — see below.',
+    'Optional extras: named locations and authentication strengths: see below.',
   ],
   waysTitle: 'Three ways to make one',
   way1Title: '1. Entra admin center',
@@ -189,11 +189,11 @@ export const PACKAGE = {
     'Get-MgPolicyAuthenticationStrengthPolicy -All | ConvertTo-Json -Depth 10 | Set-Content .\\package\\authenticationStrengths.json',
   ],
   way3Title: '3. Exports from other tools',
-  way3: 'Exports from idPowerToys, CA Policy Copier, DCToolbox, CIPP, or any public GitHub repository of policy JSON load as they are — IAMAI reads the Graph shape all of them produce.',
+  way3: 'Exports from idPowerToys, CA Policy Copier, DCToolbox, CIPP, or any public GitHub repository of policy JSON load as they are. IAMAI reads the Graph shape all of them produce.',
   bestTitle: 'What to include for best results',
   best: [
-    'Named locations — so location conditions resolve to real places instead of ids.',
-    'Authentication strengths — so custom strengths resolve to their allowed combinations.',
+    'Named locations: so location conditions resolve to real places instead of ids.',
+    'Authentication strengths: so custom strengths resolve to their allowed combinations.',
   ],
   missing: 'References that are not included are not a problem: Setup asks about the ones that need a human and resolves the rest from the scan.',
   doesTitle: 'What IAMAI does with the upload',

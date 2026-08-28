@@ -1,4 +1,4 @@
-// Roadmap — an actual plan (2026-08-27 redesign): dated phases, danger areas
+// Roadmap: an actual plan (2026-08-27 redesign): dated phases, danger areas
 // with named people, a safe-today lane, and steps with per-tenant impact.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
@@ -33,7 +33,7 @@ import type { Pace } from '../../roadmap/constants.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
-import { StepFrame } from '../shell/AppShell.tsx'
+import { StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
 import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
@@ -69,6 +69,18 @@ export function RoadmapPage({
   const [skipDraft, setSkipDraft] = useState<{ id: string; reason: string } | null>(null)
   const [version, setVersion] = useState(0)
   const [copied, setCopied] = useState<string | null>(null)
+  // Deep link #/roadmap/step/<id>: open the Steps tab with that step expanded.
+  const linkedStepId = useHashStepId()
+  const [activeTab, setActiveTab] = useState<string>(linkedStepId ? 'steps' : 'overview')
+  useEffect(() => {
+    if (!linkedStepId) return
+    setActiveTab('steps')
+    const el = document.getElementById(`step-${linkedStepId}`)
+    if (el) {
+      el.setAttribute('open', '')
+      el.scrollIntoView({ block: 'start' })
+    }
+  }, [linkedStepId])
   const fileInput = useRef<HTMLInputElement>(null)
 
   const snapshot = scan?.snapshot ?? null
@@ -264,7 +276,7 @@ export function RoadmapPage({
       setCopied(id)
       setTimeout(() => setCopied(null), 1500)
     } catch {
-      // clipboard unavailable — the text is visible on screen anyway
+      // clipboard unavailable: the text is visible on screen anyway
     }
   }
 
@@ -411,7 +423,7 @@ export function RoadmapPage({
         <Chip status={STATUS_CHIP[s.status]} title={STEP_STATUS[s.status].text}>
           {STEP_STATUS_LABEL[s.status]}
         </Chip>{' '}
-        <a href={`#step-${s.id}`}>{s.title}</a>
+        <a href={stepHref(s.id)}>{s.title}</a>
       </li>
     )
     return (
@@ -460,7 +472,7 @@ export function RoadmapPage({
           <ul className="sections">
             {d.people.map((p, j) => (
               <li key={j}>
-                <strong>{p.name}</strong> — {p.need}
+                <strong>{p.name}</strong>: {p.need}
               </li>
             ))}
           </ul>
@@ -516,6 +528,7 @@ export function RoadmapPage({
                 <StepCard
                   key={step.id}
                   step={step}
+                  linked={step.id === linkedStepId}
                   stepById={stepById}
                   nameOf={nameOf}
                   copied={copied}
@@ -546,6 +559,8 @@ export function RoadmapPage({
         </p>
       )}
       <Tabs
+        active={activeTab}
+        onChange={setActiveTab}
         tabs={[
           { id: 'overview', label: C.tabs.overview, render: overview },
           { id: 'timeline', label: C.tabs.timeline, badge: C.weeksBadge(schedule.weeks), render: timeline },
@@ -580,7 +595,7 @@ function planMarkdown(
     lines.push(C.markdown.dangers)
     for (const d of dangers) {
       lines.push(`- **${d.title}**`)
-      for (const p of d.people) lines.push(`  - ${p.name} — ${p.need}`)
+      for (const p of d.people) lines.push(`  - ${p.name}. ${p.need}`)
     }
     lines.push('')
   }
@@ -591,7 +606,7 @@ function planMarkdown(
     const title = w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? '')
     lines.push(`## ${title} (${w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)})`)
     for (const s of inPhase) {
-      lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** (${STEP_KIND_LABEL[s.kind]}) — ${s.impact}`)
+      lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** (${STEP_KIND_LABEL[s.kind]}). ${s.impact}`)
       if (s.highCare.userIds.length > 0) lines.push(`  - ${C.markdown.care(s.highCare.userIds.map(nameOf).join(', '))}`)
       if (s.status === 'blocked') lines.push(`  - ${C.markdown.blocked(s.unblockNotes.join('; '))}`)
     }
@@ -602,6 +617,7 @@ function planMarkdown(
 
 function StepCard({
   step,
+  linked,
   stepById,
   nameOf,
   copied,
@@ -611,6 +627,7 @@ function StepCard({
   onSkipped,
 }: {
   step: Step
+  linked: boolean
   stepById: Map<string, Step>
   nameOf: (id: string) => string
   copied: string | null
@@ -624,6 +641,7 @@ function StepCard({
     <ExpandCard
       className={`step-card ${step.safeToday ? 'lane-safe' : ''}`}
       id={`step-${step.id}`}
+      open={linked || undefined}
       summary={
         <>
           <Chip status={STATUS_CHIP[step.status]} title={STEP_STATUS[step.status].text}>
@@ -652,6 +670,7 @@ function StepCard({
             <a href={step.whyAttribution.url} target="_blank" rel="noreferrer">
               {step.whyAttribution.author}
             </a>
+            {C.authorIntentEnd}
           </span>
         )}
       </p>
@@ -674,16 +693,16 @@ function StepCard({
           <ul className="sections">
             {step.blockers.map((b, i) => (
               <li key={i}>
-                {b.kind === 'step' && <a href={`#step-${b.stepId}`}>{stepById.get(b.stepId)?.title ?? b.stepId}</a>}
+                {b.kind === 'step' && <a href={stepHref(b.stepId)}>{stepById.get(b.stepId)?.title ?? b.stepId}</a>}
                 {b.kind === 'setup' && <a href={`#/mapping`}>{C.setupQuestionLink(b.questionNumber)}</a>}
-                {(b.kind === 'step' || b.kind === 'setup') && ' — '}
+                {(b.kind === 'step' || b.kind === 'setup') && ': '}
                 {b.label}
               </li>
             ))}
             {step.blockers.length === 0 && step.unblockNotes.map((n, i) => <li key={`n${i}`}>{n}</li>)}
             {step.blockers.length > 0 && step.blockedBy.length > 0 && step.blockedBy.filter((id) => !step.blockers.some((b) => b.kind === 'step' && b.stepId === id)).map((id) => (
               <li key={id}>
-                <a href={`#step-${id}`}>{stepById.get(id)?.title ?? id}</a>
+                <a href={stepHref(id)}>{stepById.get(id)?.title ?? id}</a>
               </li>
             ))}
           </ul>
@@ -818,7 +837,7 @@ function StepCard({
             {step.history.map((h, i) => (
               <li key={i}>
                 <span title={absolute(h.at)}>{relative(h.at)}</span>: {STEP_STATUS_LABEL[h.from]} → {STEP_STATUS_LABEL[h.to]}
-                {h.note && ` — ${h.note}`}
+                {h.note && `. ${h.note}`}
               </li>
             ))}
           </ul>

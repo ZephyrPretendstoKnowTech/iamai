@@ -96,7 +96,7 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
     else if ([...kinds].some((k) => PHISHING_RESISTANT_KINDS.has(k))) {
       note('phishing-resistant method registered')
     } else if (mfaKinds.every((k) => k === 'phone')) {
-      fail('SMS/voice is the only MFA method — register a FIDO2 key', userPortal)
+      fail('text or call is the only MFA method: register a FIDO2 key', userPortal)
     } else {
       note('no phishing-resistant method — a FIDO2 key is preferred for break-glass', userPortal)
     }

@@ -144,6 +144,12 @@ nav.stepper {
   border-right: 1px solid var(--border);
   padding: var(--space-4) 0;
   background: var(--surface);
+  /* Stays in view while the page scrolls; scrolls itself when taller than the window. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .stepper-group-title {

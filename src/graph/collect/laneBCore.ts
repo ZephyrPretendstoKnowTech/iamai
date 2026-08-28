@@ -9,6 +9,7 @@ import {
   TIME_BUDGET_MS,
 } from './constants.ts'
 import { SectionDisabledError } from './http.ts'
+import { absolute } from '../../copy/dates.ts'
 import type {
   BlockedTodayEntry,
   EvidenceAggregates,
@@ -365,7 +366,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
         stop === 'history exhausted'
           ? `full available history inside the ${deps.windowDays}-day window (retention may be shorter)`
           : cacheCoversTail
-            ? `resumed from cache: fetched the gap since ${cached!.covered.to}`
+            ? `resumed from the saved records: fetched the gap since ${absolute(cached!.covered.to)}`
             : null
       return await finalize('ok', reason, true)
     }
