@@ -19,8 +19,8 @@ export const SETUP_QUESTIONS = {
   },
   countries: {
     title: 'Countries',
-    question: 'Countries where your people sign in: add any that are missing.',
-    help: 'Pre-selected from the countries seen in sign-in records and from each user\'s usage location. Sign-ins from anywhere else will be blocked once the geo policy is enforced.',
+    question: 'Which countries do your people sign in from?',
+    help: 'Add any that are missing. Pre-selected from the countries seen in sign-in records and from each user\'s usage location. Sign-ins from anywhere else will be blocked once the geo policy is enforced.',
     why: 'The allowed list becomes a named location and the block-everywhere-else policy; a missing country is a lockout for whoever is there.',
   },
   highCare: {
@@ -108,6 +108,10 @@ export const SETUP_PAGE = {
   complete: 'that covers everything the plan needs. The optional ones below sharpen it.',
   incomplete: 'the required ones unlock the plan; the rest are optional.',
   autoResolved: (n: number) => `${n} baseline reference${n === 1 ? '' : 's'} resolved automatically.`,
+  referenceTip: {
+    title: 'Baseline reference',
+    text: 'A group, user, location or authentication strength that a baseline policy points at by id. Each one has to map to something in this tenant; IAMAI resolves the obvious ones itself and asks only about the rest.',
+  },
   answered: 'Answered',
   required: 'Required',
   optional: 'Optional',

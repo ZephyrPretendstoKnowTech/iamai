@@ -57,6 +57,8 @@ export type Step = {
   title: string
   why: string
   whyAttribution: { author: string; url: string } | null
+  /** A reference the baseline author pasted into the intent, shown as a named link (ux-review-05 §18). */
+  whyLink: string | null
   status: StepStatus
   blockedBy: string[]
   /** Named causes (prompt 12 §B): a step, a Setup question, a readiness threshold, or evidence. */

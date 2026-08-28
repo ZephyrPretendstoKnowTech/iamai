@@ -171,7 +171,13 @@ export function MappingPage({
       {scan && <ScanAge at={scan.at} />}
       <Callout kind={progress.complete ? 'success' : 'info'} title={C.progress(progress.answered, questions.length, requiredLeft.length)}>
         {requiredLeft.length > 0 ? C.requiredOpen(requiredLeft.map((q) => q.title)) : C.allRequiredDone}
-        {autoCount > 0 && <span className="reason"> {C.autoResolved(autoCount)}</span>}
+        {autoCount > 0 && (
+          <span className="reason">
+            {' '}
+            {C.autoResolved(autoCount)}
+            <InfoTip title={C.referenceTip.title} text={C.referenceTip.text} />
+          </span>
+        )}
       </Callout>
 
       {required.map(section)}

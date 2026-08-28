@@ -127,6 +127,9 @@ export type FindingsSummaryInput = {
 /** Paragraphs for the Findings summary; no sentence can contradict a number. */
 import { WINDOW } from './definitions.ts'
 
+/** "partly" carries its meaning for a first-time reader (ux-review-05 §22). */
+const PARTLY_MEANS = (n: number): string => (n > 0 ? ' (a policy covers some of the people, or a weaker control than the goal needs)' : '')
+
 export function findingsSummary(i: FindingsSummaryInput): string[] {
   const out: string[] = []
   const baseline = i.baselinePolicies !== null ? `${i.baselineLabel} (${count(i.baselinePolicies, 'policy', 'policies')})` : i.baselineLabel
@@ -136,8 +139,8 @@ export function findingsSummary(i: FindingsSummaryInput): string[] {
       : i.inPlace === i.scored
         ? `All ${count(i.scored, 'security goal')} ${i.scored === 1 ? 'is' : 'are'} in place.`
         : i.inPlace === 0
-          ? `None of the ${count(i.scored, 'security goal')} ${i.scored === 1 ? 'is' : 'are'} in place yet: ${count(i.partly, 'goal')} partly, ${i.missing} missing.`
-          : `${i.inPlace} of ${i.scored} security goals are in place; ${i.partly} partly, ${i.missing} missing.`
+          ? `None of the ${count(i.scored, 'security goal')} ${i.scored === 1 ? 'is' : 'are'} in place yet: ${count(i.partly, 'goal')} partly${PARTLY_MEANS(i.partly)}, ${i.missing} missing.`
+          : `${i.inPlace} of ${i.scored} security goals are in place; ${i.partly} partly${PARTLY_MEANS(i.partly)}, ${i.missing} missing.`
   out.push(
     `IAMAI compared ${i.tenant}'s ${count(i.enabledPolicies, 'enabled Conditional Access policy', 'enabled Conditional Access policies')} with ${baseline}, matching each policy on what it does. ${goals}`,
   )
@@ -221,9 +224,24 @@ export function scheduleRationale(i: ScheduleRationaleInput): string {
   return `${count(i.weeks, 'week')}: ${parts.join(', ')}.`
 }
 
-export function scheduleOverrun(band: string, expectedWeeks: number, weeks: number, extendedBy: string[]): string {
-  const by = extendedBy.length > 0 ? ` ${list(extendedBy)} ${extendedBy.length === 1 ? 'extends' : 'extend'} it.` : ''
-  return `Longer than the ${band} band's ${count(expectedWeeks, 'week')} (${count(weeks, 'week')}).${by}`
+const WEEK_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
+
+/**
+ * Why the plan runs past its band (ux-review-05 §15, §16): a short sentence,
+ * the campaign named as the cause when it is one, and at most five steps
+ * with "and N more".
+ */
+export function scheduleOverrun(band: string, expectedWeeks: number, weeks: number, extendedBy: string[], campaignWeeks: number | null = null): string {
+  const diff = Math.max(1, weeks - expectedWeeks)
+  const longer = `${capital(WEEK_WORDS[diff] ?? String(diff))} ${diff === 1 ? 'week' : 'weeks'} longer than a typical ${band} tenant`
+  const steps = extendedBy.slice(0, 5)
+  const more = extendedBy.length > 5 ? ` and ${extendedBy.length - 5} more` : ''
+  if (campaignWeeks !== null && campaignWeeks > 0) {
+    const because = `because the verification campaign needs ${WEEK_WORDS[campaignWeeks] ?? campaignWeeks} ${campaignWeeks === 1 ? 'week' : 'weeks'}`
+    return steps.length === 0 ? `${longer}, ${because}.` : `${longer}, ${because}. ${count(extendedBy.length, 'step')} also ${extendedBy.length === 1 ? 'extends' : 'extend'} it: ${list(steps)}${more}.`
+  }
+  if (steps.length === 0) return `${longer}.`
+  return `${longer}. ${count(extendedBy.length, 'step')} ${extendedBy.length === 1 ? 'extends' : 'extend'} it: ${list(steps)}${more}.`
 }
 
 /** Lowercases a name for mid-sentence use without touching acronyms ("MFA", "CA"). */

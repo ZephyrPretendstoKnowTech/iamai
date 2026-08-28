@@ -27,6 +27,7 @@ function step(over: Partial<Step>): Step {
     skipReason: null,
     deliveredBy: [],
     stateReason: '',
+    whyLink: null,
     impact: '',
     safeToday: false,
     highCare: { userIds: [], ready: true, notes: [] },

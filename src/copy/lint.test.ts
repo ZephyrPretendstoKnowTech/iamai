@@ -27,7 +27,8 @@ export type Violation = { file: string; line: number; rule: string; text: string
 const RULES: { rule: string; test: (s: string) => boolean }[] = [
   // An en dash between digits is a range (2–4 weeks), not punctuation.
   { rule: 'dash', test: (s) => /—/.test(s) || /(?<!\d)–|–(?!\d)/.test(s) },
-  { rule: 'first-person', test: (s) => /(^|[^\w'])(I|I'd|I'll|I'm|I've|me|myself|my|let's)(?=[^\w']|$)/.test(s) && !/^config:me$/.test(s) },
+  // The footer is the author's own voice by agreement (ux-review-05 §30), not IAMAI's.
+  { rule: 'first-person', test: (s) => /(^|[^\w'])(I|I'd|I'll|I'm|I've|me|myself|my|let's)(?=[^\w']|$)/.test(s) && !/^config:me$/.test(s) && s !== 'Follow me here:' },
   { rule: 'not-x-but-y', test: (s) => /\bnot\b[^.!?]{0,60},\s*but\b/i.test(s) || /\bit'?s not\b[^.!?]{0,80}\bit'?s\b/i.test(s) },
   { rule: 'banned-phrase', test: (s) => /credit where due|\bsimply\b|\bseamless|\brobust\b/i.test(s) },
   // Raw ISO 8601 must never be rendered (prompt 14 §4).

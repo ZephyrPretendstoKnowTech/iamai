@@ -364,7 +364,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
     if (stop === 'boundary' || stop === 'history exhausted') {
       const reason =
         stop === 'history exhausted'
-          ? `full available history inside the ${deps.windowDays}-day window (retention may be shorter)`
+          ? `the last ${deps.windowDays} days, or less if the tenant keeps fewer`
           : cacheCoversTail
             ? `resumed from the saved records: fetched the gap since ${absolute(cached!.covered.to)}`
             : null
