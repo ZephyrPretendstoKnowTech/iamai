@@ -143,7 +143,8 @@ export function CoveragePage({
   )
 
   const computed = useMemo(() => {
-    if (!snapshot || !groupsLoaded) return null
+    // No baseline, no results: the prerequisite line is the whole page (ux-review-06 §3).
+    if (!snapshot || !groupsLoaded || !baseline) return null
     const excluded = new Set(notInScope.map((p) => p.name))
     const questions = baseline ? buildQuestions(baseline.pkg) : []
     const report = computeCoverage({
@@ -224,7 +225,7 @@ export function CoveragePage({
   const paragraphs = findingsSummary({
     tenant: tenantName,
     enabledPolicies,
-    baselineLabel: baseline ? baseline.source : 'the goal catalogue',
+    baselineLabel: baseline?.source ?? '',
     baselinePolicies: baseline ? baseline.pkg.policies.length : null,
     inPlace: enforced.length,
     partly: partial.length,
@@ -385,6 +386,7 @@ export function CoveragePage({
 
   const workingTab = () => (
     <div>
+      {controlBar}
       {enforced.length === 0 && <p className="advisor">{C.nothingInPlace}</p>}
       {grouped(enforced)}
     </div>
@@ -392,6 +394,7 @@ export function CoveragePage({
 
   const attentionTab = () => (
     <div>
+      {controlBar}
       {absent.length + partial.length + unknown.length === 0 && <p className="advisor">{C.allInPlace}</p>}
       {grouped([...partial, ...absent, ...unknown])}
     </div>
@@ -440,7 +443,7 @@ export function CoveragePage({
         <ul className="sections">
           <li>
             {report.organisation.naming.pattern
-              ? C.naming(Math.round(report.organisation.naming.share * 100), report.organisation.naming.pattern, report.organisation.naming.outliers.join(', '))
+              ? C.naming(Math.round(report.organisation.naming.share * 100), report.organisation.naming.prefix ?? report.organisation.naming.pattern, report.organisation.naming.outliers.join(', '))
               : C.noNaming}
           </li>
           {report.organisation.consolidation.map((c) => (
@@ -464,7 +467,6 @@ export function CoveragePage({
     <StepFrame title={C.title} does={C.does} needs={needs} next="roadmap" nextLabel={C.next}>
       <ScanAge at={scan.at} baseline={baseline?.source ?? null} />
       <p className="reason">{C.goalCounts(baselineGoals, scoredCount)}</p>
-      {controlBar}
       <Tabs
         tabs={[
           { id: 'summary', label: C.tabs.summary, render: summaryTab },

@@ -331,8 +331,17 @@ export function RoadmapPage({
     downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json')
   }
 
+  const [planLoading, setPlanLoading] = useState(false)
   const loadPlan = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return
+    setPlanLoading(true)
+    try {
+      await loadPlanInner(files)
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+  const loadPlanInner = async (files: FileList): Promise<void> => {
     const { plan, error } = parsePlanFile(await files[0].text())
     if (!plan) {
       window.alert?.(error ?? C.couldNotRead)
@@ -443,7 +452,7 @@ export function RoadmapPage({
         <Button icon="copy" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
           {copied === 'plan-md' ? C.copied : C.copyMarkdown}
         </Button>
-        <Button icon="refresh" onClick={() => fileInput.current?.click()}>
+        <Button icon="refresh" loading={planLoading} onClick={() => fileInput.current?.click()}>
           {C.load}
         </Button>
         <input ref={fileInput} type="file" accept=".json" style={{ display: 'none' }} aria-hidden onChange={(e) => void loadPlan(e.currentTarget.files)} />

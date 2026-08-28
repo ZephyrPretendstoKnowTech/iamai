@@ -19,5 +19,7 @@ export const REASON = {
     names.length === 1 ? `A matching policy is switched off: ${names[0]}` : `${count(names.length, 'matching policy', 'matching policies')} are switched off: ${list(names)}`,
   excludedByRole: (roles: number): string => `Excluded by role (${roles === 1 ? 'one role' : count(roles, 'role')})`,
   guestsExcluded: 'Guests are excluded',
-  excludedDirectly: (breakGlass: boolean, assumedNote: string): string => `Excluded directly${breakGlass ? ` (break-glass${assumedNote})` : ''}`,
+  /** The ids are replaced by names before display (nameifyText), so the account is named (ux-review-06 §14). */
+  excludedDirectly: (breakGlass: boolean, assumedNote: string, userIds: string[] = []): string =>
+    `Excluded directly${userIds.length > 0 ? `: ${userIds.join(', ')}` : ''}${breakGlass ? ` (break-glass${assumedNote})` : ''}`,
 }

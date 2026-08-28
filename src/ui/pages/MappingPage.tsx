@@ -222,7 +222,9 @@ function answerSummary(def: WizardQuestionDef, state: MappingState, snapshot: Te
       return state.breakGlassUserIds.length > 0 ? state.breakGlassUserIds.map(userName).join(', ') : C.doesNotExist
     case 'globalExclusion': {
       const r = state.records['__globalExclusion']
-      return r?.resolvedId ? (r.resolvedName ?? groupName(r.resolvedId)) : C.doesNotExist
+      if (!r?.resolvedId) return C.doesNotExist
+      const g = knownGroups.find((x) => x.groupId === r.resolvedId)
+      return `${r.resolvedName ?? groupName(r.resolvedId)}${g ? ` · ${C.members(g.memberCount)}` : ''}`
     }
     case 'countries':
       return state.allowedCountries.length > 0 ? state.allowedCountries.map(countryName).join(', ') : C.noneChosen
@@ -288,7 +290,7 @@ function QuestionSection(props: QProps) {
           <QuestionBody {...props} />
         </>
       )}
-      {collapsed && openFindings > 0 && <QuestionFindings {...props} />}
+      {collapsed && (openFindings > 0 || def.id === 'globalExclusion') && <QuestionFindings {...props} />}
     </details>
   )
 }
@@ -296,6 +298,7 @@ function QuestionSection(props: QProps) {
 // Findings stay visible under a collapsed answer so "N to fix" is never hidden.
 function QuestionFindings(props: QProps) {
   if (props.def.id === 'breakGlass') return <BreakGlassQuestion {...props} findingsOnly />
+  if (props.def.id === 'globalExclusion') return <GlobalExclusionQuestion {...props} findingsOnly />
   return null
 }
 
@@ -542,7 +545,7 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
   )
 }
 
-function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings }: QProps) {
+function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings, findingsOnly = false }: QProps & { findingsOnly?: boolean }) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   useEffect(() => reportFindings('globalExclusion', toFixCount([validation])), [validation, reportFindings])
   const rec = state.records['__globalExclusion']
@@ -556,6 +559,7 @@ function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, upd
     if (rec?.resolvedId) validate(rec.resolvedId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  if (findingsOnly) return <ValidationView v={validation} />
   return (
     <div>
       <GroupPicker

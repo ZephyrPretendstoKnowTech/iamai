@@ -27,8 +27,8 @@ export type BaselineResult = {
 const index = baselineIndex as BaselineIndex
 
 /** Load the bundled, pinned baseline (used by the page and by the reload restore). */
-export async function loadPinnedBaseline(): Promise<BaselineResult> {
-  const { files, failures } = await fetchBaselineFiles(index)
+export async function loadPinnedBaseline(onProgress?: (done: number, total: number) => void): Promise<BaselineResult> {
+  const { files, failures } = await fetchBaselineFiles(index, { onProgress })
   return {
     source: index.label,
     pkg: loadBaseline(files),
@@ -79,10 +79,11 @@ export function BaselinePage({
   const [error, setError] = useState<string | null>(null)
 
   const loadPinned = async () => {
+    if (busy !== null) return // one load at a time: a second click must not start a parallel fetch (ux-review-06 §1)
     setBusy(BASELINE.fetching(index.files.length))
     setError(null)
     try {
-      onLoaded(await loadPinnedBaseline())
+      onLoaded(await loadPinnedBaseline((done, total) => setBusy(BASELINE.readingProgress(done, total))))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
