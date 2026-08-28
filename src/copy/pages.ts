@@ -293,6 +293,7 @@ export const FINDINGS = {
   groupDomain: 'Domain',
   sort: { priority: 'Priority', value: 'Security value', effort: 'Effort', disruption: 'Disruption' } as Record<string, string>,
   whyMatters: 'Why this matters',
+  proposedName: 'Proposed name:',
   howToFix: 'How to fix this',
   fixText: (goal: string) => `The Roadmap has a dated step for "${goal}" with the exact change, who it touches, and what to check before enforcing.`,
   fixLink: 'Open the step',

@@ -35,9 +35,11 @@ export function stateReasonFor(step: Step, stepById: Map<string, Step>): string 
       const causes = step.blockers.map((b) =>
         b.kind === 'step' ? (stepById.get(b.stepId)?.title ?? b.stepId) : b.label,
       )
-      const extra = step.blockedBy
-        .filter((id) => !step.blockers.some((b) => b.kind === 'step' && b.stepId === id))
-        .map((id) => stepById.get(id)?.title ?? id)
+      // A readiness blocker and the campaign it waits for are one cause: name the blocker, not both.
+      const extra =
+        causes.length > 0
+          ? []
+          : step.blockedBy.map((id) => stepById.get(id)?.title ?? id)
       const all = [...causes, ...extra]
       return STATE_REASON.blocked(all.length > 0 ? all : step.unblockNotes)
     }
@@ -49,7 +51,8 @@ export function stateReasonFor(step: Step, stepById: Map<string, Step>): string 
     case 'ready': {
       const checks: string[] = [STATE_REASON.noBlockers]
       const threshold = thresholdFor(step.readiness.family)
-      if (threshold !== null && step.readiness.percent !== null) checks.push(STATE_REASON.readiness(step.readiness.percent, threshold))
+      // A threshold is only cited when it was actually met; the campaign step is ready because people still need setting up, not because readiness passed.
+      if (step.kind !== 'verify' && threshold !== null && step.readiness.percent !== null && step.readiness.percent >= threshold) checks.push(STATE_REASON.readiness(step.readiness.percent, threshold))
       if (step.safeToday) checks.push(STATE_REASON.safeToday)
       if (step.kind === 'prerequisite') checks.push(STATE_REASON.prerequisite)
       if (step.kind === 'verify') checks.push(STATE_REASON.verifyPending)

@@ -424,7 +424,7 @@ export function adHocTitle(facts: PolicyFacts): string {
   else if (facts.session.appEnforced) verb = 'Limit downloads on'
   else if (facts.session.signInFrequencyHours !== null || facts.session.signInFrequencyEveryTime || facts.session.persistentBrowser !== null) verb = 'Limit sessions on'
   else if (facts.session.secureSignInSession) verb = 'Require token protection for'
-  else verb = 'Apply the baseline policy to'
+  else verb = 'Control access to'
   return `${verb} ${object}${audience}`
 }
 

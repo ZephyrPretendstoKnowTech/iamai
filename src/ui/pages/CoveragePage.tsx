@@ -23,7 +23,8 @@ import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
 import { findingsSummary, lowerFirst } from '../../copy/statements.ts'
 import { absoluteDate, whenAt } from '../format.ts'
 import { ScanAge, StepFrame, stepHref } from '../shell/AppShell.tsx'
-import { stepIdForGoal } from '../../roadmap/generate.ts'
+import { proposedPolicyName, stepIdForGoal } from '../../roadmap/generate.ts'
+import { NAMING, stepTitle } from '../../copy/steps.ts'
 import { Callout, Card, Chip, ExpandCard, InfoTip, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 import { SCORE } from '../../copy/definitions.ts'
@@ -277,6 +278,13 @@ export function CoveragePage({
       }
     >
       {r.goal.tldr && <p className="reason">{r.goal.tldr}</p>}
+      {(r.status === 'absent' || r.status === 'partial') && (
+        // The name the plan proposes, in the tenant's convention; the baseline's own name beneath (ux-review-04 §6).
+        <p>
+          <strong>{C.proposedName}</strong> {proposedPolicyName(stepTitle(r.goal.name), report.organisation.naming)}
+          {r.goal.adHocSource && <span className="sub"> {NAMING.fromBaseline(r.goal.adHocSource)}</span>}
+        </p>
+      )}
       {r.goal.learnUrl && (
         <p className="reason">
           <a href={r.goal.learnUrl} target="_blank" rel="noreferrer">
