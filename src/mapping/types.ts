@@ -67,6 +67,12 @@ export type MappingState = {
   highCareUserIds: string[]
   trustedLocationIds: string[]
   serviceAccountsGroupId: string | null
+  /** Accounts confirmed as service accounts (prompt 16 §3); rejected ones
+   *  stay out of the candidate list. */
+  serviceAccountUserIds: string[]
+  serviceAccountRejectedIds: string[]
+  /** ISO 3166 country codes people are allowed to sign in from (prompt 16 §4). */
+  allowedCountries: string[]
   displayTimeZone: string | null
   frameworks: string[]
   /** Which wizard questions the operator has answered (progress + auto vs human). */
@@ -85,6 +91,9 @@ export function emptyMappingState(tenantId: string): MappingState {
     highCareUserIds: [],
     trustedLocationIds: [],
     serviceAccountsGroupId: null,
+    serviceAccountUserIds: [],
+    serviceAccountRejectedIds: [],
+    allowedCountries: [],
     displayTimeZone: null,
     frameworks: [], // nothing pre-selected (prompt 11 §4)
     wizardAnswered: {},

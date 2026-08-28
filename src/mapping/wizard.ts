@@ -1,20 +1,23 @@
-// The Setup wizard (2026-08-27 redesign): a human answers 5–9 plain-language
-// questions; everything else the baseline references is auto-resolved here so
-// the roadmap never asks for input it doesn't absolutely need. Pure.
+// The Setup wizard (2026-08-27 redesign, restructured in prompt 16): a human
+// answers up to 9 plain-language questions; everything else the baseline
+// references is auto-resolved here so the roadmap never asks for input it
+// doesn't absolutely need. Pure.
 import type { BaselinePackage } from '../baseline/types.ts'
 import { strengthTier } from '../coverage/strength.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingRecord, MappingState, QuestionGroup } from './types.ts'
 import { buildQuestions } from './questions.ts'
+import { detectServiceAccounts } from './serviceAccounts.ts'
+import { isCountryLocationRef, tenantCountryLocation } from './countries.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
 
 export type WizardQuestionId =
   | 'breakGlass'
   | 'globalExclusion'
-  | 'trustedLocations'
+  | 'countries'
   | 'highCare'
+  | 'trustedLocations'
   | 'serviceAccounts'
-  | 'variants'
   | 'timeZone'
   | 'frameworks'
   | 'applicability'
@@ -24,18 +27,19 @@ export type WizardQuestionDef = {
   title: string
   question: string
   help: string
+  why: string
   required: boolean
 }
 
-// Ordered, plain-language, professional. Required questions gate the plan;
-// optional ones improve it.
+// Ordered: required questions first (they gate the plan), then the optional
+// ones under "Advanced options".
 const REQUIRED: Record<WizardQuestionId, boolean> = {
   breakGlass: true,
   globalExclusion: true,
+  countries: true,
   highCare: false,
   trustedLocations: false,
   serviceAccounts: false,
-  variants: true,
   timeZone: false,
   frameworks: false,
   applicability: false,
@@ -146,11 +150,13 @@ export function applyAutoResolution(
         break
       }
       case 'exclusionGroups': {
-        // Non-global exclusion groups follow the service-accounts answer when
-        // given, else the global exclusion group.
+        // Non-global exclusion groups follow the service-accounts group when
+        // one exists; confirmed service accounts with no group mean the plan
+        // creates it (phase 0); else the global exclusion group.
         const sa = next.serviceAccountsGroupId
         const g = next.records['__globalExclusion']
         if (sa !== null) next.records[q.key] = auto(q.key, q.reference.kind, q.group, sa, null)
+        else if (next.serviceAccountUserIds.length > 0) next.records[q.key] = auto(q.key, q.reference.kind, q.group, null, null, true)
         else if (g?.resolvedId) next.records[q.key] = auto(q.key, q.reference.kind, q.group, g.resolvedId, g.resolvedName)
         break
       }
@@ -162,13 +168,9 @@ export function applyAutoResolution(
 }
 
 /** Bind the wizard's answers onto the underlying reference records. */
-export function applyWizardAnswers(state: MappingState, pkg: BaselinePackage): MappingState {
+export function applyWizardAnswers(state: MappingState, pkg: BaselinePackage, snapshot?: TenantSnapshot): MappingState {
   const questions = buildQuestions(pkg)
   const next: MappingState = { ...state, records: { ...state.records }, wizardAnswered: { ...state.wizardAnswered } }
-
-  // A baseline with no style choices has nothing to ask: the question is
-  // inactive and counts as answered, so progress and "confirmed" can complete.
-  if (!pkg.variantSets.some((v) => v.relation === 'variant')) next.wizardAnswered.variants = true
 
   // Break-glass: baseline user references pair with the chosen accounts.
   const userRefs = questions.filter((q) => q.group === 'breakGlass')
@@ -188,8 +190,17 @@ export function applyWizardAnswers(state: MappingState, pkg: BaselinePackage): M
     }
   }
 
-  // Trusted locations: every baseline location ref maps to the first pick.
+  // Named locations: the allowlist-style geo location follows the Countries
+  // answer (a matching tenant location, else created in phase 0); every
+  // other location ref maps to the first trusted pick.
+  const countryLoc = snapshot ? tenantCountryLocation(snapshot, next.allowedCountries) : null
   for (const q of questions.filter((x) => x.group === 'namedLocations')) {
+    if (isCountryLocationRef(q.key, pkg.policies)) {
+      next.records[q.key] = countryLoc
+        ? record(q.key, q.reference.kind, q.group, countryLoc.id, countryLoc.displayName)
+        : record(q.key, q.reference.kind, q.group, null, null, next.wizardAnswered.countries === true)
+      continue
+    }
     const pick = next.trustedLocationIds[0] ?? null
     next.records[q.key] =
       pick !== null
@@ -209,11 +220,19 @@ export function wizardProgress(state: MappingState, active: WizardQuestionDef[] 
   return { answered: answered.length, total: active.length, complete: requiredMissing === 0, requiredMissing }
 }
 
-/** Human-facing question count can shrink: variants only when the baseline has any. */
-export function activeWizardQuestions(pkg: BaselinePackage | null): WizardQuestionDef[] {
+export type WizardContext = { snapshot?: TenantSnapshot | null; state?: MappingState | null }
+
+/**
+ * The questions a human sees. Service accounts appears only when detection
+ * finds candidates (or something was already confirmed); without a scan it is
+ * counted, since the count is a promise made before the scan runs.
+ */
+export function activeWizardQuestions(_pkg: BaselinePackage | null, ctx: WizardContext = {}): WizardQuestionDef[] {
   return WIZARD_QUESTIONS.filter((q) => {
-    if (q.id === 'variants') {
-      return (pkg?.variantSets ?? []).some((v) => v.relation === 'variant')
+    if (q.id === 'serviceAccounts' && ctx.snapshot) {
+      const confirmed = ctx.state?.serviceAccountUserIds.length ?? 0
+      if (confirmed > 0 || ctx.state?.serviceAccountsGroupId) return true
+      return detectServiceAccounts(ctx.snapshot, [...(ctx.state?.breakGlassUserIds ?? []), ...(ctx.state?.serviceAccountRejectedIds ?? [])]).length > 0
     }
     return true
   })

@@ -269,7 +269,7 @@ test('7: regression after done → re-opened adjust with a note', () => {
 test('9: valid break-glass answers → no create-break-glass step; drill depends on their last sign-in', () => {
   const mapping = emptyMappingState('t')
   mapping.breakGlassUserIds = ['u1', 'u2']
-  mapping.wizardAnswered = { breakGlass: true, globalExclusion: true, variants: true }
+  mapping.wizardAnswered = { breakGlass: true, globalExclusion: true, countries: true }
   const snapshot = mkSnapshot()
   snapshot.users[1].lastSuccessfulSignIn = '2026-01-01T00:00:00Z' // u1 stale
   const { input } = build({ baselinePolicies: [mkPolicy({ displayName: 'Baseline MFA All' })], mapping, snapshot })
@@ -297,15 +297,54 @@ test('10: missing required answer → dependent step blocked with the question n
   assert.equal(step.blockers[0].kind, 'setup')
 })
 
-test('11: unanswered style choice → the variant policy step is blocked by question 6', () => {
-  const a = mkPolicy({ displayName: 'Countries - allow list' })
-  const b = mkPolicy({ displayName: 'Countries - block list' })
-  const { input } = build({ baselinePolicies: [a] })
-  input.baseline.variantSets = [{ intentKey: 'countries', relation: 'variant', policyNames: ['Countries - allow list', 'Countries - block list'] } as never]
-  input.baseline.policies = [a, b] as never
+test('11: geo policy: allowlist style chosen by data, NoExclusions dropped, blocked until Countries (question 3) is answered', () => {
+  const geo = (displayName: string, locations: { includeLocations: string[]; excludeLocations: string[] }) =>
+    mkPolicy({
+      displayName,
+      conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations },
+      grantControls: { operator: 'OR', builtInControls: ['block'] },
+    })
+  const allow = geo('Countries - allow list', { includeLocations: ['All'], excludeLocations: ['loc-allowed'] })
+  const block = geo('Countries - block list', { includeLocations: ['loc-blocked'], excludeLocations: [] })
+  const noEx = geo('Countries - allow list - NoExclusions', { includeLocations: ['All'], excludeLocations: ['loc-allowed'] })
+  const { input } = build({ baselinePolicies: [noEx, block, allow] })
   const steps = generateRoadmap(input).steps
-  const blocked = steps.filter((s) => s.status === 'blocked' && s.unblockNotes.some((n) => /Setup questions? .*6.* answered/.test(n)))
-  assert.ok(blocked.length >= 1)
+  const step = stepFor(steps, 'geo-restriction')
+  assert.equal(step.status, 'blocked')
+  assert.ok(step.blockers.some((b) => b.kind === 'setup' && b.questionNumber === 3))
+  // Allowlist style: everywhere except the allowed location, block.
+  const json = JSON.parse(step.action.json ?? '{}') as { conditions: { locations: { includeLocations: string[]; excludeLocations: string[] } } }
+  assert.deepEqual(json.conditions.locations, { includeLocations: ['All'], excludeLocations: ['loc-allowed'] })
+  assert.doesNotMatch(step.action.json ?? '', /NoExclusions|loc-blocked/)
+})
+
+test('12: answered Countries with no matching tenant location → phase-0 step creates it and gates the geo policy', () => {
+  const allow = mkPolicy({
+    displayName: 'Countries - allow list',
+    conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'], locations: { includeLocations: ['All'], excludeLocations: ['loc-allowed'] } },
+    grantControls: { operator: 'OR', builtInControls: ['block'] },
+  })
+  const mapping = emptyMappingState('t')
+  mapping.allowedCountries = ['AU', 'NZ']
+  mapping.wizardAnswered = { countries: true }
+  const { input } = build({ baselinePolicies: [allow], mapping })
+  const steps = generateRoadmap(input).steps
+  const create = steps.find((s) => s.id === 's-prereq-allowed-countries')
+  assert.ok(create && create.phase === 0)
+  assert.match(create.action.summary.join(' '), /Australia/)
+  const step = stepFor(steps, 'geo-restriction')
+  assert.ok(step.blockedBy.includes('s-prereq-allowed-countries'))
+})
+
+test('13: confirmed service accounts with no group → phase-0 step creates the group', () => {
+  const mapping = emptyMappingState('t')
+  mapping.serviceAccountUserIds = ['u1']
+  mapping.wizardAnswered = { breakGlass: true, globalExclusion: true, countries: true }
+  const { input } = build({ baselinePolicies: [mkPolicy({ displayName: 'Baseline MFA All' })], mapping })
+  const steps = generateRoadmap(input).steps
+  const create = steps.find((s) => s.id === 's-prereq-service-accounts-group')
+  assert.ok(create && create.kind === 'prerequisite')
+  assert.match(create.action.summary.join(' '), /User 1/)
 })
 
 test('8: skipping requires a reason and never "risk accepted"', () => {

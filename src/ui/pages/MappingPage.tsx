@@ -1,13 +1,14 @@
-// Setup: the 5–9 questions a human actually answers (2026-08-27 redesign,
-// polished in prompt 11). Everything else the baseline references is
-// auto-resolved in wizard.ts.
+// Setup: the questions a human actually answers (2026-08-27 redesign,
+// restructured in prompt 16: required first, optional under Advanced
+// options, answered questions collapse to a one-line summary). Everything
+// else the baseline references is auto-resolved in wizard.ts.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { getGroupMembers, searchGroups } from '../../graph/collect/onDemand.ts'
 import type { GroupMembersCacheEntry } from '../../graph/collect/cache.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import type { Facet } from '../../coverage/applicability.ts'
-import { docFor } from '../../baseline/index.ts'
 import { loadMappingState, saveMappingState } from '../../mapping/store.ts'
 import { validateBreakGlass, validateExclusionGroup, validateTrustedLocation } from '../../mapping/validate.ts'
 import type { MappingState, ValidationResult } from '../../mapping/types.ts'
@@ -15,9 +16,11 @@ import { activeWizardQuestions, applyAutoResolution, applyWizardAnswers, wizardP
 import type { WizardProgress, WizardQuestionDef, WizardQuestionId } from '../../mapping/wizard.ts'
 import { suggestForWizard } from '../../mapping/wizardSuggest.ts'
 import type { WizardSuggestContext } from '../../mapping/wizardSuggest.ts'
+import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
+import { countryName, suggestCountries, tenantCountryLocation } from '../../mapping/countries.ts'
 import { COMMON_TIMEZONES, FRAMEWORK_OPTIONS, SETUP_PAGE as C } from '../../copy/setup.ts'
 import { setDisplayTimeZone } from '../format.ts'
-import { Button, Callout, Card, Chip, Icon, Picker, Toggle } from '../components/index.ts'
+import { Button, Callout, Card, Chip, Icon, InfoTip, Picker, Toast, Toggle, useToast } from '../components/index.ts'
 import type { IconName, PickerOption } from '../components/index.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
 import type { BaselineResult } from './BaselinePage.tsx'
@@ -33,6 +36,7 @@ export function MappingPage({
 }) {
   const [state, setState] = useState<MappingState | null>(null)
   const [knownGroups, setKnownGroups] = useState<GroupMembersCacheEntry[]>([])
+  const [toast, notify] = useToast()
   const snapshot = scan?.snapshot ?? null
   useEffect(() => {
     if (!snapshot) return
@@ -64,7 +68,7 @@ export function MappingPage({
     }
   }, [snapshot])
 
-  const questions = useMemo(() => activeWizardQuestions(baseline?.pkg ?? null), [baseline])
+  const questions = useMemo(() => activeWizardQuestions(baseline?.pkg ?? null, { snapshot, state }), [baseline, snapshot, state])
   const progress = useMemo<WizardProgress>(
     () => (state ? wizardProgress(state, questions) : { answered: 0, total: 0, complete: false, requiredMissing: 0 }),
     [state, questions],
@@ -86,7 +90,7 @@ export function MappingPage({
     setState((prev) => {
       if (!prev || !baseline || !snapshot) return prev
       let next = mut(prev)
-      next = applyWizardAnswers(next, baseline.pkg)
+      next = applyWizardAnswers(next, baseline.pkg, snapshot)
       next = applyAutoResolution(next, baseline.pkg, snapshot).state
       return next
     })
@@ -98,7 +102,18 @@ export function MappingPage({
     void saveMappingState(state)
   }, [dirty, state])
 
-  const answered = (id: string): void => update((s) => ({ ...s, wizardAnswered: { ...s.wizardAnswered, [id]: true } }))
+  // Which answered questions are open for editing (collapsed otherwise).
+  const [editing, setEditing] = useState<Record<string, boolean>>({})
+  const answered = (id: WizardQuestionId): void => {
+    update((s) => ({ ...s, wizardAnswered: { ...s.wizardAnswered, [id]: true } }))
+    setEditing((e) => ({ ...e, [id]: false }))
+    const title = questions.find((q) => q.id === id)?.title ?? id
+    notify(C.toast(title))
+  }
+  const reopen = (id: WizardQuestionId): void => {
+    update((s) => ({ ...s, wizardAnswered: { ...s.wizardAnswered, [id]: false } }))
+    setEditing((e) => ({ ...e, [id]: true }))
+  }
   const suggestCtx: WizardSuggestContext | null = useMemo(
     () => (snapshot ? { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [], knownGroups } : null),
     [snapshot, knownGroups],
@@ -130,30 +145,45 @@ export function MappingPage({
 
   const autoCount = Object.values(state.records).filter((r) => r.resolvedId !== null || r.doesNotExist).length
   const requiredLeft = questions.filter((q) => q.required && state.wizardAnswered[q.id] !== true)
+  const required = questions.filter((q) => q.required)
+  const optional = questions.filter((q) => !q.required)
+  const section = (q: WizardQuestionDef) => (
+    <QuestionSection
+      key={q.id}
+      index={questions.indexOf(q) + 1}
+      def={q}
+      state={state}
+      snapshot={snapshot}
+      baseline={baseline}
+      knownGroups={knownGroups}
+      suggestCtx={suggestCtx}
+      update={update}
+      answered={answered}
+      reopen={reopen}
+      editing={editing[q.id] === true}
+      openFindings={openFindings[q.id] ?? 0}
+      reportFindings={reportFindings}
+    />
+  )
 
   return (
     <StepFrame title={C.title} does={C.does} needs={needs} next="coverage" nextLabel={C.next}>
       <Callout kind={progress.complete ? 'success' : 'info'} title={C.progress(progress.answered, questions.length, requiredLeft.length)}>
-        {requiredLeft.length > 0 ? C.requiredList(requiredLeft.map((q) => q.title)) : C.complete}
+        {requiredLeft.length > 0 ? C.requiredOpen(requiredLeft.map((q) => q.title)) : C.allRequiredDone}
         {autoCount > 0 && <span className="reason"> {C.autoResolved(autoCount)}</span>}
       </Callout>
 
-      {questions.map((q, i) => (
-        <QuestionSection
-          key={q.id}
-          index={i + 1}
-          def={q}
-          state={state}
-          snapshot={snapshot}
-          baseline={baseline}
-          knownGroups={knownGroups}
-          suggestCtx={suggestCtx}
-          update={update}
-          answered={answered}
-          openFindings={openFindings[q.id] ?? 0}
-          reportFindings={reportFindings}
-        />
-      ))}
+      {required.map(section)}
+
+      {optional.length > 0 && (
+        <details className="setup-advanced">
+          <summary>
+            {C.advanced} <span className="reason">{C.advancedHint(optional.length)}</span>
+          </summary>
+          {optional.map(section)}
+        </details>
+      )}
+      <Toast message={toast} />
     </StepFrame>
   )
 }
@@ -169,16 +199,55 @@ type QProps = {
   knownGroups: GroupMembersCacheEntry[]
   suggestCtx: WizardSuggestContext
   update: (mut: (s: MappingState) => MappingState) => void
-  answered: (id: string) => void
+  answered: (id: WizardQuestionId) => void
+  reopen: (id: WizardQuestionId) => void
+  editing: boolean
   openFindings: number
   reportFindings: (id: string, n: number) => void
 }
 
-// Sections stay open after an answer (prompt 13 §4); the header carries the
-// status chip and, when there are findings to fix, an "N to fix" chip.
+/** One line that says what was answered, for the collapsed state. */
+function answerSummary(def: WizardQuestionDef, state: MappingState, snapshot: TenantSnapshot, knownGroups: GroupMembersCacheEntry[]): string {
+  const userName = (id: string) => snapshot.users.find((u) => u.id === id)?.displayName ?? id
+  const groupName = (id: string) => knownGroups.find((g) => g.groupId === id)?.displayName ?? id
+  switch (def.id) {
+    case 'breakGlass':
+      return state.breakGlassUserIds.length > 0 ? state.breakGlassUserIds.map(userName).join(', ') : C.doesNotExist
+    case 'globalExclusion': {
+      const r = state.records['__globalExclusion']
+      return r?.resolvedId ? (r.resolvedName ?? groupName(r.resolvedId)) : C.doesNotExist
+    }
+    case 'countries':
+      return state.allowedCountries.length > 0 ? state.allowedCountries.map(countryName).join(', ') : C.noneChosen
+    case 'highCare':
+      return state.highCareUserIds.length > 0 ? state.highCareUserIds.map(userName).join(', ') : C.nobody
+    case 'trustedLocations': {
+      const locs = (snapshot.config.namedLocations?.rows ?? []) as { id?: string; displayName?: string }[]
+      return state.trustedLocationIds.length > 0
+        ? state.trustedLocationIds.map((id) => locs.find((l) => String(l.id) === id)?.displayName ?? id).join(', ')
+        : C.doesNotExist
+    }
+    case 'serviceAccounts':
+      return state.serviceAccountUserIds.length > 0 ? state.serviceAccountUserIds.map(userName).join(', ') : C.notApplicableAnswer
+    case 'timeZone':
+      return state.displayTimeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+    case 'frameworks':
+      return state.frameworks.length > 0 ? state.frameworks.join(', ') : C.frameworkNone
+    case 'applicability': {
+      const on = Object.entries(detectFacets(snapshot, state.facetOverrides as never))
+        .filter(([, f]) => f.on)
+        .map(([k]) => C.workloadNames[k] ?? k)
+      return on.length > 0 ? on.join(', ') : C.noneChosen
+    }
+  }
+}
+
+// An answered question collapses to "Answered: <choice>" with an Edit link;
+// the header keeps the status chip and, when there are findings, "N to fix".
 function QuestionSection(props: QProps) {
-  const { def, state, index, openFindings } = props
+  const { def, state, index, openFindings, editing, snapshot, knownGroups, reopen } = props
   const done = state.wizardAnswered[def.id] === true
+  const collapsed = done && !editing
   return (
     <details className="card setup-question" id={`q-${index}`} open>
       <summary>
@@ -186,6 +255,7 @@ function QuestionSection(props: QProps) {
           <span>
             <span className="muted">{C.questionNumber(index)} · </span>
             <strong>{def.question}</strong>
+            <InfoTip title={C.explain} text={def.help} />
           </span>
           <span className="row">
             {openFindings > 0 && <Chip status="warning">{C.toFix(openFindings)}</Chip>}
@@ -193,10 +263,33 @@ function QuestionSection(props: QProps) {
           </span>
         </span>
       </summary>
-      <p className="reason">{def.help}</p>
-      <QuestionBody {...props} />
+      {collapsed ? (
+        <p className="setup-answered">
+          <span className="check">
+            <Icon name="check" size={16} />
+          </span>
+          <span>{C.answeredAs(answerSummary(def, state, snapshot, knownGroups))}</span>
+          <Button size="sm" variant="quiet" onClick={() => reopen(def.id)}>
+            {C.edit}
+          </Button>
+        </p>
+      ) : (
+        <>
+          <p className="setup-why">
+            <strong>{C.whyMatters}:</strong> {def.why}
+          </p>
+          <QuestionBody {...props} />
+        </>
+      )}
+      {collapsed && openFindings > 0 && <QuestionFindings {...props} />}
     </details>
   )
+}
+
+// Findings stay visible under a collapsed answer so "N to fix" is never hidden.
+function QuestionFindings(props: QProps) {
+  if (props.def.id === 'breakGlass') return <BreakGlassQuestion {...props} findingsOnly />
+  return null
 }
 
 function QuestionBody(props: QProps) {
@@ -205,14 +298,14 @@ function QuestionBody(props: QProps) {
       return <BreakGlassQuestion {...props} />
     case 'globalExclusion':
       return <GlobalExclusionQuestion {...props} />
+    case 'countries':
+      return <CountriesQuestion {...props} />
     case 'highCare':
       return <HighCareQuestion {...props} />
     case 'trustedLocations':
       return <TrustedLocationsQuestion {...props} />
     case 'serviceAccounts':
       return <ServiceAccountsQuestion {...props} />
-    case 'variants':
-      return <VariantsQuestion {...props} />
     case 'timeZone':
       return <TimeZoneQuestion {...props} />
     case 'frameworks':
@@ -383,7 +476,7 @@ function DoesNotExist({ onClick }: { onClick: () => void }) {
   )
 }
 
-function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings }: QProps) {
+function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings, findingsOnly = false }: QProps & { findingsOnly?: boolean }) {
   const [validations, setValidations] = useState<Record<string, ValidationResult>>({})
   useEffect(() => reportFindings('breakGlass', toFixCount(Object.values(validations))), [validations, reportFindings])
   const runValidation = (ids: string[]): void => {
@@ -397,7 +490,11 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
   useEffect(() => {
     if (state.breakGlassUserIds.length > 0) runValidation(state.breakGlassUserIds)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [knownGroups])
+  const findings = state.breakGlassUserIds.map((id) => (
+    <ValidationView key={id} name={snapshot.users.find((u) => u.id === id)?.displayName ?? id} v={validations[id] ?? null} />
+  ))
+  if (findingsOnly) return <div>{findings}</div>
   return (
     <div>
       <UserMultiPicker
@@ -412,9 +509,7 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
           if (ids.length > 0) answered('breakGlass')
         }}
       />
-      {state.breakGlassUserIds.map((id) => (
-        <ValidationView key={id} name={snapshot.users.find((u) => u.id === id)?.displayName ?? id} v={validations[id] ?? null} />
-      ))}
+      {findings}
       <DoesNotExist
         onClick={() => {
           update((s) => ({
@@ -498,6 +593,95 @@ function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, upd
   )
 }
 
+// Countries (§A4): pre-selected from sign-in records and usage locations; the
+// operator adds or removes, then confirms.
+function CountriesQuestion({ state, snapshot, update, answered }: QProps) {
+  const suggested = useMemo(() => suggestCountries(snapshot), [snapshot])
+  const [query, setQuery] = useState('')
+  // Pre-select once: the first time the question is seen with nothing chosen.
+  useEffect(() => {
+    if (state.allowedCountries.length === 0 && state.wizardAnswered.countries !== true && suggested.countries.length > 0) {
+      update((s) => ({ ...s, allowedCountries: suggested.countries.map((c) => c.code) }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggested])
+  const chosen = new Set(state.allowedCountries)
+  const toggle = (code: string) =>
+    update((s) => ({ ...s, allowedCountries: chosen.has(code) ? s.allowedCountries.filter((c) => c !== code) : [...s.allowedCountries, code] }))
+  const evidence = (c: { users: number; usageLocationUsers: number }): string =>
+    [c.users > 0 ? C.countriesSeen(c.users) : '', c.usageLocationUsers > 0 ? C.countriesUsage(c.usageLocationUsers) : ''].filter(Boolean).join(' · ')
+  const extra = state.allowedCountries.filter((code) => !suggested.countries.some((c) => c.code === code))
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (q.length < 2) return []
+    return ALL_COUNTRY_CODES.filter((code) => !chosen.has(code) && (code.toLowerCase() === q || countryName(code).toLowerCase().includes(q))).slice(0, 8)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, state.allowedCountries])
+  const existing = tenantCountryLocation(snapshot, state.allowedCountries)
+  return (
+    <div>
+      {suggested.countries.length === 0 ? (
+        <p className="reason">{C.countriesNone}</p>
+      ) : (
+        !suggested.hasSignInLocations && <p className="reason">{C.countriesNoSignIns}</p>
+      )}
+      <div className="country-chips">
+        {suggested.countries.map((c) => (
+          <Button key={c.code} size="sm" variant={chosen.has(c.code) ? 'primary' : 'secondary'} title={evidence(c)} onClick={() => toggle(c.code)}>
+            {countryName(c.code)} <span style={{ opacity: 0.75 }}>({c.code})</span>
+          </Button>
+        ))}
+        {extra.map((code) => (
+          <Button key={code} size="sm" variant="primary" onClick={() => toggle(code)}>
+            {countryName(code)} <span style={{ opacity: 0.75 }}>({code})</span>
+          </Button>
+        ))}
+      </div>
+      <ul className="sections">
+        {suggested.countries
+          .filter((c) => chosen.has(c.code))
+          .map((c) => (
+            <li key={c.code}>
+              {countryName(c.code)}: {evidence(c)}
+            </li>
+          ))}
+      </ul>
+      <input type="search" value={query} placeholder={C.addCountry} onChange={(e) => setQuery(e.currentTarget.value)} />
+      {matches.length > 0 && (
+        <div className="row" style={{ marginTop: '4px' }}>
+          {matches.map((code) => (
+            <Button
+              key={code}
+              size="sm"
+              onClick={() => {
+                toggle(code)
+                setQuery('')
+              }}
+            >
+              + {countryName(code)} ({code})
+            </Button>
+          ))}
+        </div>
+      )}
+      <p className="reason">
+        {C.countriesChosen(state.allowedCountries.length)}. {existing ? C.countriesExisting(existing.displayName) : state.allowedCountries.length > 0 ? C.countriesToCreate : ''}
+      </p>
+      <p>
+        <Button variant="primary" onClick={() => answered('countries')} disabled={state.allowedCountries.length === 0}>
+          {C.countriesLooksRight}
+        </Button>
+      </p>
+    </div>
+  )
+}
+
+const ALL_COUNTRY_CODES: string[] = (() => {
+  const codes: string[] = []
+  for (let a = 65; a <= 90; a += 1) for (let b = 65; b <= 90; b += 1) codes.push(String.fromCharCode(a) + String.fromCharCode(b))
+  // Keep only codes the runtime can name (real regions).
+  return codes.filter((c) => countryName(c) !== c)
+})()
+
 function HighCareQuestion({ state, snapshot, suggestCtx, update, answered }: QProps) {
   return (
     <div>
@@ -566,65 +750,71 @@ function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answere
   )
 }
 
-function ServiceAccountsQuestion({ state, knownGroups, suggestCtx, update, answered }: QProps) {
-  return (
-    <div>
-      <GroupPicker
-        questionId="serviceAccounts"
-        suggestCtx={suggestCtx}
-        selected={state.serviceAccountsGroupId}
-        selectedName={knownGroups.find((g) => g.groupId === state.serviceAccountsGroupId)?.displayName ?? state.serviceAccountsGroupId}
-        knownGroups={knownGroups}
-        onClear={() => update((s) => ({ ...s, serviceAccountsGroupId: null, wizardAnswered: { ...s.wizardAnswered, serviceAccounts: false } }))}
-        onPick={(id) => {
-          update((s) => ({ ...s, serviceAccountsGroupId: id }))
-          answered('serviceAccounts')
-        }}
-      />
-      <p>
+// Service accounts (§A5): detected candidates with evidence; Confirm / Not a
+// service account per row. Confirmed accounts map to a group that already
+// holds all of them, else the plan creates one in phase 0.
+function ServiceAccountsQuestion({ state, snapshot, knownGroups, update, answered }: QProps) {
+  const candidates = useMemo(
+    () => detectServiceAccounts(snapshot, [...state.breakGlassUserIds, ...state.serviceAccountRejectedIds]),
+    [snapshot, state.breakGlassUserIds, state.serviceAccountRejectedIds],
+  )
+  const confirmed = new Set(state.serviceAccountUserIds)
+  const pending = candidates.filter((c) => !confirmed.has(c.id))
+  const resolveGroup = (ids: string[]): string | null => {
+    if (ids.length === 0) return null
+    const g = knownGroups.find((x) => !x.sampled && x.membershipRule === null && ids.every((id) => x.memberIds.includes(id)))
+    return g?.groupId ?? null
+  }
+  const setConfirmed = (ids: string[]) => update((s) => ({ ...s, serviceAccountUserIds: ids, serviceAccountsGroupId: resolveGroup(ids) }))
+  const groupName = state.serviceAccountsGroupId ? (knownGroups.find((g) => g.groupId === state.serviceAccountsGroupId)?.displayName ?? state.serviceAccountsGroupId) : null
+  const row = (c: (typeof candidates)[number], isConfirmed: boolean): ReactNode => (
+    <div key={c.id} className="candidate-row">
+      <div className="grow">
+        <strong>{c.name}</strong> {c.upn && <span className="sub">{c.upn}</span>}
+        <ul className="sections">
+          {c.evidence.map((e, i) => (
+            <li key={i}>{e}</li>
+          ))}
+        </ul>
+      </div>
+      <span className="row">
+        {isConfirmed ? (
+          <Chip status="done">{C.confirmService}</Chip>
+        ) : (
+          <Button size="sm" variant="primary" onClick={() => setConfirmed([...state.serviceAccountUserIds, c.id])}>
+            {C.confirmService}
+          </Button>
+        )}
         <Button
           size="sm"
           variant="quiet"
-          onClick={() => {
-            update((s) => ({ ...s, serviceAccountsGroupId: null }))
-            answered('serviceAccounts')
-          }}
+          onClick={() =>
+            update((s) => {
+              const ids = s.serviceAccountUserIds.filter((id) => id !== c.id)
+              return { ...s, serviceAccountUserIds: ids, serviceAccountsGroupId: resolveGroup(ids), serviceAccountRejectedIds: [...s.serviceAccountRejectedIds, c.id] }
+            })
+          }
         >
-          {C.notApplicable}
+          {C.notService}
         </Button>
-      </p>
+      </span>
     </div>
   )
-}
-
-function VariantsQuestion({ state, baseline, update, answered }: QProps) {
-  const sets = baseline.pkg.variantSets.filter((v) => v.relation === 'variant')
-  const chosenAll = sets.every((v) => state.variantChoices[v.intentKey] !== undefined)
-  useEffect(() => {
-    if (sets.length > 0 && chosenAll && state.wizardAnswered.variants !== true) answered('variants')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chosenAll])
   return (
-    <div className="grid-cards">
-      {sets.map((v) => (
-        <Card key={v.intentKey}>
-          {v.policyNames.map((name) => {
-            const doc = docFor(baseline.pkg.docs, name)
-            return (
-              <label key={name} style={{ display: 'block', marginBottom: '8px' }}>
-                <input
-                  type="radio"
-                  name={`variant-${v.intentKey}`}
-                  checked={state.variantChoices[v.intentKey] === name}
-                  onChange={() => update((s) => ({ ...s, variantChoices: { ...s.variantChoices, [v.intentKey]: name } }))}
-                />{' '}
-                <strong>{name}</strong>
-                {doc?.intent && <div className="sub">{doc.intent.slice(0, 220)}</div>}
-              </label>
-            )
-          })}
-        </Card>
-      ))}
+    <div>
+      <p className="reason">{C.serviceCount(candidates.length)}</p>
+      {candidates.map((c) => row(c, confirmed.has(c.id)))}
+      {candidates.length === 0 && <p className="reason">{C.serviceNoneLeft}</p>}
+      {state.serviceAccountUserIds.length > 0 && (
+        <p className="reason">
+          {C.serviceConfirmed(state.serviceAccountUserIds.length)}. {groupName ? C.serviceGroupFound(groupName) : C.serviceGroupMissing}
+        </p>
+      )}
+      <p>
+        <Button variant="primary" onClick={() => answered('serviceAccounts')} title={pending.length > 0 ? C.serviceCount(pending.length) : undefined}>
+          {C.detectionsRight}
+        </Button>
+      </p>
     </div>
   )
 }
@@ -637,7 +827,8 @@ function TimeZoneQuestion({ state, update, answered }: QProps) {
       <select
         value={state.displayTimeZone ?? browser}
         onChange={(e) => {
-          update((s) => ({ ...s, displayTimeZone: e.currentTarget.value }))
+          const value = e.currentTarget.value
+          update((s) => ({ ...s, displayTimeZone: value }))
           answered('timeZone')
         }}
       >
@@ -696,38 +887,75 @@ const FACET_ICON: Record<string, IconName> = {
   azureManagement: 'shield',
 }
 
+// Workloads (§5): "Detected" with evidence, "Marked in use by you" when
+// toggled on without evidence; toggling off a detected workload asks why.
 function ApplicabilityQuestion({ state, snapshot, update, answered }: QProps) {
+  const auto = detectFacets(snapshot)
   const facets = detectFacets(snapshot, state.facetOverrides as Partial<Record<Facet, { on: boolean; reason: string }>>)
+  const [askingOff, setAskingOff] = useState<{ facet: Facet; reason: string } | null>(null)
   const R = C.workloadReason
-  const reasonText = (facet: string, f: { on: boolean; reason: string; source: string }): string => {
-    if (f.source === 'override') return `${f.reason} ${C.yourAnswer}`
+  const evidenceText = (facet: string, f: { on: boolean }): string => {
     if (facet === 'intune') return f.on ? R.licence('Intune') : R.noLicence('Intune')
     if (facet === 'workload') return f.on ? R.licence('Workload Identities Premium') : R.noLicence('Workload Identities Premium')
     return f.on ? R.seen : R.notSeen
   }
+  const label = (facet: Facet): { chip: string; status: 'done' | 'ready' | 'neutral'; text: string } => {
+    const f = facets[facet]
+    const detected = auto[facet].on
+    if (f.on && detected) return { chip: C.detected, status: 'done', text: evidenceText(facet, auto[facet]) }
+    if (f.on && !detected) return { chip: C.markedInUse, status: 'ready', text: evidenceText(facet, auto[facet]) }
+    if (!f.on && f.source === 'override') return { chip: C.markedOff, status: 'neutral', text: `${f.reason} ${C.yourAnswer}` }
+    return { chip: C.notUsed.replace(/ in Setup$/, ''), status: 'neutral', text: evidenceText(facet, auto[facet]) }
+  }
+  const setFacet = (facet: Facet, on: boolean, reason: string) => {
+    update((s) => ({ ...s, facetOverrides: { ...s.facetOverrides, [facet]: { on, reason } } }))
+    answered('applicability')
+  }
   return (
     <div>
       <div className="grid-cards">
-        {(Object.entries(facets) as [Facet, (typeof facets)[Facet]][]).map(([facet, f]) => (
-          <Card key={facet} className="workload-card">
-            <Icon name={FACET_ICON[facet] ?? 'policy'} size={24} />
-            <div className="grow">
-              <strong>{C.workloadNames[facet] ?? facet}</strong>
-              <div className="sub">{C.workloadEvidence(C.workloadNames[facet] ?? facet, reasonText(facet, f))}</div>
-            </div>
-            <Toggle
-              on={f.on}
-              label={C.workloadNames[facet] ?? facet}
-              onChange={(on) => {
-                update((s) => ({
-                  ...s,
-                  facetOverrides: { ...s.facetOverrides, [facet]: { on, reason: on ? C.confirmedByOperator : C.notUsed } },
-                }))
-                answered('applicability')
-              }}
-            />
-          </Card>
-        ))}
+        {(Object.keys(facets) as Facet[]).map((facet) => {
+          const l = label(facet)
+          return (
+            <Card key={facet} className="workload-card">
+              <Icon name={FACET_ICON[facet] ?? 'policy'} size={24} />
+              <div className="grow">
+                <strong>{C.workloadNames[facet] ?? facet}</strong> <Chip status={l.status}>{l.chip}</Chip>
+                <div className="sub">{l.text}</div>
+                {askingOff?.facet === facet && (
+                  <div style={{ marginTop: '6px' }}>
+                    <div className="sub">{C.offReasonPrompt}</div>
+                    <input type="text" value={askingOff.reason} placeholder={C.offReasonPlaceholder} onChange={(e) => setAskingOff({ facet, reason: e.currentTarget.value })} />
+                    <div className="row" style={{ marginTop: '4px' }}>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        disabled={askingOff.reason.trim().length === 0}
+                        onClick={() => {
+                          setFacet(facet, false, askingOff.reason.trim())
+                          setAskingOff(null)
+                        }}
+                      >
+                        {C.confirmOff}
+                      </Button>
+                      <Button size="sm" variant="quiet" onClick={() => setAskingOff(null)}>
+                        {C.cancel}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Toggle
+                on={facets[facet].on}
+                label={C.workloadNames[facet] ?? facet}
+                onChange={(on) => {
+                  if (!on && auto[facet].on) setAskingOff({ facet, reason: '' })
+                  else setFacet(facet, on, on ? C.confirmedByOperator : C.notUsed)
+                }}
+              />
+            </Card>
+          )
+        })}
       </div>
       <p>
         <Button variant="primary" onClick={() => answered('applicability')}>

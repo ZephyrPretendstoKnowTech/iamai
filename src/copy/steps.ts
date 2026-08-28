@@ -53,7 +53,6 @@ export const NAMING = {
 
 export const BLOCKER = {
   trustedLocation: 'needs the trusted named location first',
-  countriesChoice: 'needs the countries policy style chosen',
   deviceReadiness: (percent: number, threshold: number) => `device readiness is ${percent}%: the threshold is ${threshold}%`,
   evidence: 'report-only evidence is not clean yet',
 }
@@ -129,6 +128,27 @@ export const PREREQ = {
       'Then answer the Setup question.',
     ],
     exit: ['A trusted location exists and is picked in Setup.'],
+  },
+  allowedCountries: {
+    title: 'Create the allowed-countries named location',
+    why: 'The geo policy blocks sign-ins from everywhere except this list; the location has to exist before the policy can reference it.',
+    how: (names: string[]) => [
+      'Entra admin center → Protection → Conditional Access → Named locations → + Countries location.',
+      `Name it clearly, e.g. "CA - Allowed countries", and select: ${list(names)}.`,
+      'Leave "Mark as trusted location" off; then re-scan so the plan picks it up.',
+    ],
+    exit: ['A countries named location with exactly the allowed list exists in the tenant.'],
+  },
+  serviceAccountsGroup: {
+    title: 'Create the service accounts group',
+    why: 'Confirmed service accounts cannot complete MFA; a group carries their carve-outs from the policies that would break them.',
+    how: (names: string[]) => [
+      'Entra admin center → Groups → New group → Security, assigned membership (never dynamic).',
+      'Name it clearly, e.g. "CA - Service accounts".',
+      `Add: ${list(names)}.`,
+      'Then re-scan; the group is picked up as the service accounts carve-out.',
+    ],
+    exit: ['The group exists with exactly the confirmed accounts.'],
   },
   securityDefaults: {
     title: 'Turn off security defaults',
