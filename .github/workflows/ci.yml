@@ -1,0 +1,26 @@
+# Regression net for every prompt (prompt 20 §10): unit tests, the build, and
+# the headless first-run smoke test against the synthetic tenant.
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  test-build-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      # ubuntu-latest ships Google Chrome; the script finds it on its own.
+      - run: npm run smoke
+        env:
+          CHROME: /usr/bin/google-chrome
