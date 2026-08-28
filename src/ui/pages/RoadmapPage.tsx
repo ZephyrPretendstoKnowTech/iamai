@@ -24,12 +24,12 @@ import { saveDevResults } from '../../graph/spikes/spike1.ts'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { ROADMAP as C } from '../../copy/pages.ts'
 import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
-import { roadmapOverview } from '../../copy/statements.ts'
+import { roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
 import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import { planSummary } from '../../roadmap/summary.ts'
-import { DEFAULT_PACE, PACES } from '../../roadmap/constants.ts'
-import type { Pace } from '../../roadmap/constants.ts'
+import { BANDS } from '../../roadmap/constants.ts'
+import type { SizeBand } from '../../roadmap/constants.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
@@ -43,7 +43,7 @@ import type { ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }>
-type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; pace?: Pace }
+type PlanStore = { planId: string; steps: SavedSteps; checkpoints: Checkpoint[]; startDate?: string; band?: SizeBand | null }
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
   done: 'done',
@@ -71,6 +71,7 @@ export function RoadmapPage({
   const [extraNames, setExtraNames] = useState<Map<string, string>>(new Map())
   const [statusFilter, setStatusFilter] = useState<Set<StepStatus>>(new Set())
   const [stepSort, setStepSort] = useState<'schedule' | ScoreSort>('schedule')
+  const [showCompleted, setShowCompleted] = useState(false)
   const [skipDraft, setSkipDraft] = useState<{ id: string; reason: string } | null>(null)
   const [version, setVersion] = useState(0)
   const [copied, setCopied] = useState<string | null>(null)
@@ -133,7 +134,7 @@ export function RoadmapPage({
   }, [snapshot])
 
   const startDate = saved?.startDate ?? (snapshot ? nextMonday(new Date().toISOString()) : null)
-  const pace: Pace = saved?.pace ?? DEFAULT_PACE
+  const band: SizeBand | null = saved?.band && BANDS[saved.band] ? saved.band : null
 
   const computed = useMemo(() => {
     if (!snapshot || !baseline || !mapping || !groupsLoaded || !loadedStores || !startDate) return null
@@ -168,7 +169,7 @@ export function RoadmapPage({
       viability,
       strengths,
       startDate,
-      pace,
+      band,
       operatorUserId: operator?.userId ?? null,
       names,
     })
@@ -182,7 +183,7 @@ export function RoadmapPage({
       breakGlassUserIds: mapping.breakGlassUserIds,
     })
     return { steps, schedule, coverage, viability, names, dangers }
-  }, [snapshot, baseline, mapping, groupsLoaded, loadedStores, groups, saved, planId, version, startDate, pace, operator, extraNames])
+  }, [snapshot, baseline, mapping, groupsLoaded, loadedStores, groups, saved, planId, version, startDate, band, operator, extraNames])
 
   // The print document exists only once the plan is computed; until then the
   // screen layout prints as-is.
@@ -216,9 +217,9 @@ export function RoadmapPage({
       steps: stepsRecord,
       checkpoints: saved?.checkpoints ?? [],
       startDate,
-      pace,
+      band,
     })
-  }, [computed, snapshot, planId, saved, startDate, pace])
+  }, [computed, snapshot, planId, saved, startDate, band])
 
   useEffect(() => {
     if (!computed || !import.meta.env.DEV) return
@@ -289,8 +290,8 @@ export function RoadmapPage({
     setSaved((p) => (p ? { ...p, startDate: iso } : p))
     setVersion((v) => v + 1)
   }
-  const setPace = (next: Pace): void => {
-    setSaved((p) => (p ? { ...p, pace: next } : p))
+  const setBand = (next: SizeBand | null): void => {
+    setSaved((p) => (p ? { ...p, band: next } : p))
     setVersion((v) => v + 1)
   }
   const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
@@ -320,7 +321,7 @@ export function RoadmapPage({
       mapping,
       steps,
       checkpoints,
-      schedule: startDate ? { startDate, pace } : undefined,
+      schedule: startDate ? { startDate, band: band ?? undefined } : undefined,
     })
     downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json')
   }
@@ -336,8 +337,8 @@ export function RoadmapPage({
       plan.steps.map((s) => [s.id, { status: s.status, history: s.history, skipReason: s.skipReason }]),
     )
     const start = plan.schedule?.startDate ?? startDate ?? undefined
-    const loadedPace = (plan.schedule?.pace as Pace | undefined) && PACES[plan.schedule!.pace as Pace] ? (plan.schedule!.pace as Pace) : pace
-    const record: PlanStore = { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: start, pace: loadedPace }
+    const loadedBand = plan.schedule?.band && BANDS[plan.schedule.band as SizeBand] ? (plan.schedule.band as SizeBand) : band
+    const record: PlanStore = { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: start, band: loadedBand }
     await savePlanRecord(snapshot.tenantId, record)
     // Setup answers travel with the plan file (provenance intact); re-opening Setup shows them.
     if (plan.mappings && plan.mappings.tenantId === snapshot.tenantId) {
@@ -353,16 +354,28 @@ export function RoadmapPage({
     done: summary.done,
     total: summary.total,
     skipped: summary.byStatus.skipped,
-    pace: C.paceWord[schedule.pace] ?? schedule.pace,
+    pace: C.bandWord[schedule.band] ?? schedule.band,
     finishes: when(schedule.targetEnd),
     weeks: schedule.weeks,
   })
+  const rationale = scheduleRationale({
+    weeks: schedule.weeks,
+    campaigns: schedule.verification.days > 0 ? 1 : 0,
+    verificationDays: schedule.verification.days,
+    observationDays: schedule.observation.days,
+    waves: schedule.waves.filter((w) => w.wave > 0).length,
+    waitingOnSetup: schedule.waitingOnSetup,
+  })
+  const overrun =
+    !schedule.withinBand && work.length > 0
+      ? scheduleOverrun(C.bands[schedule.band].label.toLowerCase(), BANDS[schedule.band].weeks, schedule.weeks, schedule.extendedBy.map((id) => stepById.get(id)?.title ?? id))
+      : null
 
   const overview = () => (
     <div className="advisor">
       <p>
-        <strong>{overviewText}</strong>
-        {!schedule.withinTypicalTarget && work.length > 0 && ` ${C.longerThanUsual}`}
+        <strong>{overviewText}</strong> {work.length > 0 && rationale}
+        {overrun && ` ${overrun}`}
       </p>
       <Stats>
         <StatTile value={`${done.length}/${steps.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} />
@@ -396,12 +409,20 @@ export function RoadmapPage({
       </p>
       <div className="row no-print">
         <span className="muted">{C.paceLabel}</span>
-        {(Object.keys(PACES) as Pace[]).map((p) => (
-          <FilterChip key={p} selected={pace === p} title={C.paces[p].text} onToggle={() => setPace(p)}>
-            {C.paces[p].label}
+        {(Object.keys(BANDS) as SizeBand[]).map((b) => (
+          <FilterChip key={b} selected={schedule.band === b} title={C.bands[b].text} onToggle={() => setBand(b === schedule.band && band !== null ? null : b)}>
+            {C.bands[b].label}
           </FilterChip>
         ))}
-        <span className="muted">{C.paces[pace].text}</span>
+        <span className="muted">
+          {schedule.bandSource === 'auto' ? C.bandAuto(schedule.activeUsers, C.bands[schedule.band].label) : C.bandOverride(schedule.activeUsers, C.bands[schedule.band].label)} ·{' '}
+          {C.expected(BANDS[schedule.band].weeks)}
+        </span>
+        {schedule.bandSource === 'override' && (
+          <Button size="sm" variant="quiet" onClick={() => setBand(null)}>
+            {C.bandReset}
+          </Button>
+        )}
       </div>
       <p className="row no-print">
         <Button variant="primary" icon="download" onClick={savePlan}>
@@ -421,8 +442,11 @@ export function RoadmapPage({
     </div>
   )
 
+  // Timeline (prompt 18 §3): only waves with steps; completed steps hidden
+  // behind a toggle; every step a link; dates relative and absolute.
   const timeline = () => {
     const created = steps.filter((s) => s.kind === 'create' && s.status !== 'done' && s.status !== 'skipped').length
+    const completedCount = steps.filter((s) => s.status === 'done').length
     const stepLine = (s: Step) => (
       <li key={s.id}>
         <Chip status={STATUS_CHIP[s.status]} title={STEP_STATUS[s.status].text}>
@@ -431,35 +455,61 @@ export function RoadmapPage({
         <a href={stepHref(s.id)}>{s.title}</a>
       </li>
     )
+    const dates = (start: string, end: string, days: number) => (
+      <div className="timeline-dates">
+        <div>{days === 0 ? absoluteDate(start) : dateRange(start, end)}</div>
+        <div className="sub">{relative(start)}</div>
+      </div>
+    )
+    const window = (title: string, text: string, w: { start: string; end: string; days: number }) => (
+      <div className="timeline-row">
+        {dates(w.start, w.end, w.days)}
+        <div>
+          <strong>{title}</strong>
+          <p className="reason">{text}</p>
+        </div>
+      </div>
+    )
     return (
       <div>
+        <p className="reason">
+          {rationale}
+          {completedCount > 0 && (
+            <>
+              {' '}
+              {!showCompleted && C.completedHidden(completedCount)}{' '}
+              <Button size="sm" variant="quiet" onClick={() => setShowCompleted((v) => !v)}>
+                {showCompleted ? C.hideCompleted : C.showCompleted}
+              </Button>
+            </>
+          )}
+        </p>
         {schedule.waves.map((w) => {
-          const inWave = w.stepIds.map((id) => stepById.get(id)).filter((s): s is Step => s !== undefined)
-          const waveDone = inWave.filter((s) => s.status === 'done').length
+          const all = w.stepIds.map((id) => stepById.get(id)).filter((s): s is Step => s !== undefined)
+          const inWave = showCompleted ? all : all.filter((s) => s.status !== 'done')
+          const waveDone = all.filter((s) => s.status === 'done').length
           return (
             <div key={w.wave}>
-              <div className="timeline-row">
-                <div className="timeline-dates">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</div>
-                <div>
-                  <strong>{waveTitle(w)}</strong>{' '}
-                  <span className="reason">
-                    {C.phaseDone(waveDone, inWave.length)}
-                    <InfoTip title={TILE.phaseProgress.title} text={TILE.phaseProgress.text} />
-                    {w.note ? ` · ${w.note}` : ''}
-                  </span>
-                  {w.wave === 0 && created > 0 && <p className="reason">{C.day0Text(created)}</p>}
-                  <ul className="sections">{inWave.map(stepLine)}</ul>
-                </div>
-              </div>
-              {w.wave === 0 && schedule.observation.days > 0 && (
+              {inWave.length > 0 && (
                 <div className="timeline-row">
-                  <div className="timeline-dates">{dateRange(schedule.observation.start, schedule.observation.end)}</div>
+                  {dates(w.start, w.end, w.days)}
                   <div>
-                    <strong>{C.observation(schedule.observation.days)}</strong>
-                    <p className="reason">{C.observationText}</p>
+                    <strong>{waveTitle(w)}</strong>{' '}
+                    <span className="reason">
+                      {C.phaseDone(waveDone, all.length)}
+                      <InfoTip title={TILE.phaseProgress.title} text={TILE.phaseProgress.text} />
+                      {w.note ? ` · ${w.note}` : ''}
+                    </span>
+                    {w.wave === 0 && created > 0 && <p className="reason">{C.day0Text(created)}</p>}
+                    <ul className="sections">{inWave.map(stepLine)}</ul>
                   </div>
                 </div>
               )}
+              {w.wave === 0 && schedule.verification.days > 0 && window(C.verificationWindow(schedule.verification.days), C.verificationText, schedule.verification)}
+              {w.wave === 0 && schedule.verification.days === 0 && steps.some((s) => s.kind === 'verify') && work.length > 0 && (
+                <p className="reason">{C.verificationDone}</p>
+              )}
+              {w.wave === 0 && schedule.observation.days > 0 && window(C.observation(schedule.observation.days), C.observationText, schedule.observation)}
             </div>
           )
         })}

@@ -35,8 +35,7 @@ import { goalFamily, readinessFor } from './readiness.ts'
 import { buildSchedule, nextMonday } from './schedule.ts'
 import type { Schedule } from './schedule.ts'
 import type { Action, Blocker, Step, StepPopulation, StepStatus } from './types.ts'
-import type { Pace } from './constants.ts'
-import { DEFAULT_PACE } from './constants.ts'
+import type { SizeBand } from './constants.ts'
 import { ADJUST, BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
 import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
@@ -53,7 +52,8 @@ export type RoadmapInput = {
   viability: MfaViability[]
   strengths: StrengthLookup
   startDate?: string
-  pace?: Pace
+  /** Size-band override; null or absent = detected from active users. */
+  band?: SizeBand | null
   operatorUserId?: string | null
   names?: NameDirectory
 }
@@ -796,6 +796,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const departments = new Set(snapshot.users.map((u) => u.department).filter(Boolean))
     const careList = [...highCareIds].map(nameOf)
     const p = PREREQ.verifyMfa
+    // Verification complete on this scan → the campaign is done and the
+    // scheduler skips its window (prompt 18 §1).
+    const verifyReadiness = readinessFor('mfa-all-users', viability.map((v) => v.userId), viability, snapshot)
+    const verifyDone = verifyReadiness.percent !== null && verifyReadiness.percent >= READINESS_THRESHOLD_MFA_PERCENT
     steps.push({
       ...prereq(
         's-verify-mfa',
@@ -811,8 +815,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       phase: 2,
       kind: 'verify',
       goalId: 'mfa-all-users',
+      status: verifyDone ? 'done' : 'ready',
       population: population(viability.map((v) => v.userId), snapshot, viability),
-      readiness: readinessFor('mfa-all-users', viability.map((v) => v.userId), viability, snapshot),
+      readiness: verifyReadiness,
       comms: COMMS.verify(tenantName),
       impact: IMPACT.verifyCampaign(
         viability.filter((v) => v.activity === 'active' && v.mfa !== 'verified' && v.mfa !== 'likelyViable').length,
@@ -874,7 +879,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Schedule (waves) + comms dates ----
   const startIso = input.startDate ?? nextMonday(snapshot.asOf)
   const activeTotal = viability.filter((v) => v.activity === 'active').length
-  const schedule = buildSchedule(steps, startIso, activeTotal, input.pace ?? DEFAULT_PACE)
+  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null)
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
   for (const s of steps) {
     if (s.comms?.includes('{DATE}')) {

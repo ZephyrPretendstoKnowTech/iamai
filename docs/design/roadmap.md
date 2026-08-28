@@ -175,6 +175,27 @@ Still open: a live run of the redesigned plan against the tenant with Setup
 completed (the dev capture `roadmap-run` records it when opened with
 `?dev=1`).
 
+## 12. Pace by tenant size (prompt 18, 2026-08-28)
+
+- The pace presets are gone. `constants.ts` holds the size bands from
+  ux-review-03 §A3: small (≤30 active users, 4 weeks, 2-week verification
+  window), mid (31–300, 8 weeks, 4-week window), large (>300, 12 weeks,
+  6-week window). Observation is always 7 days. The band is detected from
+  active users and can be overridden on the Overview; the override travels
+  in the plan file as `schedule.band`.
+- Sequence: day 0 (foundation work, report-only creation) → registration and
+  verification window → observation → enforcement waves in phase order. The
+  waves share what the band leaves after the fixed windows (never under 2
+  days each), so the total lands on the band's expected length. A plan with
+  more waves than fit runs over honestly: `Schedule.extendedBy` names the
+  steps in the waves past the expected end and the Overview says so.
+- Evidence-driven: the verification step is `done` when MFA readiness meets
+  the threshold on a scan; its window then drops to 0 and every wave pulls
+  forward. The end date is recomputed on every scan.
+- Verified in `schedule.test.ts` with the shape of the live tenant (12
+  active users, one verification campaign, five phases): small band, 4
+  weeks, 14-day window, 7-day observation. No scheduler fix was needed.
+
 ## 11. Prompts 12–13 and the first audit (2026-08-27)
 
 - **Waves, not phases in series** (`schedule.ts`): day 0 holds foundation
