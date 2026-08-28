@@ -38,6 +38,8 @@ import type { Schedule } from './schedule.ts'
 import type { Action, Blocker, Step, StepPopulation, StepStatus } from './types.ts'
 import type { SizeBand } from './constants.ts'
 import { ADJUST, BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
+import { INVENTORY } from '../copy/inventory.ts'
+import { annotateStateReasons } from './stateReason.ts'
 import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
@@ -381,6 +383,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     rollback: ROLLBACK.prerequisite,
     history: [],
     skipReason: null,
+    deliveredBy: [],
+    stateReason: '',
     ...EXTRAS,
   })
 
@@ -428,7 +432,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(prereq(setupStepId, p.title(missingSetup.length), p.why, p.how(missingSetup.map((q) => q.title)), p.exit))
   }
 
-  const bgMissing = mapping.records['__breakGlassMissing']?.doesNotExist === true
+  // Setup's confirmed break-glass accounts feed generation (ux-review-04 §5):
+  // with accounts picked, nothing is created, whatever an older record says.
+  const bgMissing = mapping.records['__breakGlassMissing']?.doesNotExist === true && mapping.breakGlassUserIds.length === 0
   const bgStepId = 's-prereq-break-glass'
   if (bgMissing) {
     const p = PREREQ.breakGlass
@@ -787,6 +793,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       operatorSafe,
       operatorNote,
       operatorWhatIf: null,
+      deliveredBy: result.candidates
+        .filter((c) => c.contribution === 'strong')
+        .map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`),
+      stateReason: '',
       naming:
         kind === 'create' && status !== 'done'
           ? { proposed: proposedPolicyName(stepTitle(goal.name), naming), fromBaseline: source?.facts.name ?? null }
@@ -899,6 +909,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
   }
 
+  annotateStateReasons(steps)
   return { steps, schedule }
 }
 
