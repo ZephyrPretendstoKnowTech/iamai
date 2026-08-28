@@ -507,6 +507,7 @@ function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById
           {
             key: 'authenticator',
             header: D.columns.authenticator,
+            minWidth: '18rem',
             csv: (r) => registrations(r.displayName),
             render: (r) =>
               registrations(r.displayName) ? (

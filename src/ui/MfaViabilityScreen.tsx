@@ -467,7 +467,7 @@ export function MfaViabilityScreen({
             </Callout>
           )}
 
-          <div className="row no-print">
+          <div className="filter-bar no-print">
             <input type="search" placeholder={SCAN.search} aria-label={SCAN.searchLabel} value={search} onChange={(e) => setSearch(e.currentTarget.value)} />
             {(Object.keys(MFA_STATE) as MfaState[]).map((s) => (
               <FilterChip key={s} selected={mfaFilter.has(s)} title={MFA_STATE[s].text} onToggle={() => toggle(mfaFilter, s, setMfaFilter)}>
