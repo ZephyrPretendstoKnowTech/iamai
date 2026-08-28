@@ -33,7 +33,13 @@ export function Stepper({
       {steps.map((s, i) => {
         const chip = CHIP[s.status ?? 'notStarted']
         return (
-          <a key={s.route} href={`#/${s.route}`} className={`stepper-item ${active === s.route ? 'active' : ''}`} aria-current={active === s.route ? 'step' : undefined}>
+          <a
+            key={s.route}
+            href={`#/${s.route}`}
+            className={`stepper-item ${active === s.route ? 'active' : ''}`}
+            aria-current={active === s.route ? 'step' : undefined}
+            aria-label={`${i + 1}. ${s.label}${chip ? `, ${chip.text}` : ''}`}
+          >
             <span className="stepper-num">{i + 1}</span>
             <span>{s.label}</span>
             {chip && <Chip status={chip.status}>{chip.text}</Chip>}
@@ -42,7 +48,7 @@ export function Stepper({
       })}
       <div className="stepper-group-title">{T.reference}</div>
       {reference.map((s) => (
-        <a key={s.route} href={`#/${s.route}`} className={`stepper-item ${active === s.route ? 'active' : ''}`}>
+        <a key={s.route} href={`#/${s.route}`} className={`stepper-item ${active === s.route ? 'active' : ''}`} aria-label={s.label}>
           <span>{s.label}</span>
         </a>
       ))}

@@ -52,7 +52,8 @@ export const LIGHT: Palette = {
   accent: '#0B7F72',
   accentHover: '#095F55',
   accentInk: '#FFFFFF',
-  success: '#15803D',
+  // Darkened from #15803D so the done chip's ink reads AA on its soft background (ux-review-05 §43).
+  success: '#166534',
   warning: '#B45309',
   danger: '#C62828',
   info: '#1D4ED8',
