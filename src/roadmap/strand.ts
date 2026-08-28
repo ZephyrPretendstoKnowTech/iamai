@@ -14,10 +14,32 @@ const PHISHING_RESISTANT = new Set([
   'microsoftAuthenticatorPasswordless',
 ])
 
-/** Steps that can deny access when enforced; everything else cannot strand anyone. */
+/**
+ * Steps that can deny or interrupt access when enforced (roadmap-v2.md §1):
+ * grant requirements, device requirements, session controls, blocks. Read
+ * from the policy body the step creates or changes; the goal family decides
+ * when there is no body.
+ */
 export function canDenyAccess(step: Step): boolean {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring') return false
+  if (step.denies !== undefined) return step.denies
+  if (step.action.json) {
+    try {
+      const body = JSON.parse(step.action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }
+      const grant = body.grantControls
+      if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
+      if (body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined)) return true
+      return false
+    } catch {
+      // fall through to the family
+    }
+  }
   return step.readiness.family !== 'other'
+}
+
+/** Steps that prompt people (a grant they must satisfy) rather than silently block a protocol. */
+export function promptsPeople(step: Step): boolean {
+  return canDenyAccess(step) && step.readiness.family !== 'block' && step.readiness.family !== 'location'
 }
 
 export function wouldStrand(

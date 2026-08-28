@@ -1,17 +1,22 @@
-// Pacing model (prompt 12 §A, re-paced by tenant size in prompt 18): the
-// size band sets the expected length. Day 0 holds foundation work and creates
-// every "New policy" step in report-only; the registration-and-verification
-// window runs next (skipped once a re-scan shows verification complete); one
-// shared 7-day observation window follows; enforcement waves then follow the
-// phase order, spaced so the whole plan lands on the band. Done steps consume
-// no time. Blocked steps are scheduled after their blocker, never inside a
-// wave they cannot join. Pure.
-import { BANDS, MIN_WAVE_DAYS, OBSERVATION_DAYS, bandForActiveUsers } from './constants.ts'
+// Scheduling (roadmap-v2.md §2): every date derives from the dependency graph
+// plus the band's durations. Day 0 holds foundation work and creates every
+// "New policy" step in report-only; the registration-and-verification window
+// runs next (skipped once a re-scan shows verification complete); each
+// enforcement step observes in report-only, then rolls through its rings,
+// placed by hard dependencies, soft dependencies and the calendar rules (no
+// Friday or weekend starts, a weekly cap of enforcement events per band, an
+// optional change freeze). Waves are read back off the ring dates for the
+// Timeline. Done steps consume no time. Pure.
+import { BANDS, OBSERVATION_DAYS, bandForActiveUsers } from './constants.ts'
 import type { SizeBand } from './constants.ts'
+import { ringBandFor } from './rings.ts'
+import { promptsPeople } from './strand.ts'
+import { CRITICAL, DEPENDENCY } from '../copy/schedule.ts'
+import { absoluteDate } from '../copy/dates.ts'
 import type { Step } from './types.ts'
 
 export type WaveSchedule = {
-  wave: number // 1..7 = phase 1..7; 0 = day 0 (foundations + report-only creation)
+  wave: number // 1..n = enforcement waves in date order; 0 = day 0 (foundations + report-only creation)
   phase: number
   start: string
   end: string
@@ -19,6 +24,35 @@ export type WaveSchedule = {
   stepIds: string[]
   note: string | null
 }
+
+export type Dependency = {
+  stepId: string
+  kind: 'hard' | 'soft'
+  reason: string
+}
+
+export type ConstraintKind = 'none' | 'verification' | 'dependency' | 'rings' | 'cap' | 'freeze' | 'soft' | 'prerequisites'
+
+export type Derivation = {
+  /** The one sentence for the Overview (§2). */
+  criticalPath: string
+  constraint: ConstraintKind
+  /** Step ids on the critical path, first to last. */
+  chain: string[]
+  /** Soft rules the scheduler had to relax to land on the band, as sentences. */
+  relaxed: string[]
+}
+
+export type PolicyCount = {
+  existing: number
+  added: number
+  cap: number
+  statement: string
+  warning: string | null
+  consolidation: string[]
+}
+
+export type ChangeFreeze = { from: string; to: string }
 
 export type Schedule = {
   band: SizeBand
@@ -37,13 +71,32 @@ export type Schedule = {
   waves: WaveSchedule[]
   /** step id → the wave it enforces in (0 for day 0 / done). */
   waveOf: Record<string, number>
-  /** Steps whose wave ends after the band's expected length. */
+  /** Steps whose enforcement ends after the band's expected length. */
   extendedBy: string[]
   /** Steps blocked on a Setup question. */
   waitingOnSetup: number
   /** The question numbers those steps wait on (ux-review-05 §14). */
   waitingOnSetupQuestions: number[]
+  // ---- roadmap v2 ----
+  /** step id → what it waits for, hard and soft, with the reason. */
+  graph: Record<string, Dependency[]>
+  /** Report-only creation date per create step (the enforcement rings start later). */
+  reportOnlyAt: Record<string, string>
+  derivation: Derivation
+  enforcementCap: number
+  freeze: ChangeFreeze | null
+  /** Filled by the generator, which holds the tenant's policies. */
+  policyCount: PolicyCount | null
 }
+
+export type ScheduleOptions = {
+  freeze?: ChangeFreeze | null
+}
+
+/** Enforcement events per week by band (§2). */
+export const ENFORCEMENT_CAP: Record<SizeBand, number> = { small: 2, mid: 3, large: 5 }
+const HIGH_DISRUPTION = 4
+const OVERLAP_SHARE = 0.5
 
 export function addDays(iso: string, days: number): string {
   const d = new Date(iso)
@@ -59,6 +112,16 @@ export function toWeekday(iso: string): string {
   return iso
 }
 
+/** Enforcement starts Monday to Thursday, never a Friday or a weekend (§2). */
+export function toEnforcementDay(iso: string): string {
+  const d = new Date(iso)
+  const day = d.getUTCDay()
+  if (day === 5) return addDays(iso, 3)
+  if (day === 6) return addDays(iso, 2)
+  if (day === 0) return addDays(iso, 1)
+  return iso
+}
+
 export function nextMonday(fromIso: string): string {
   const d = new Date(fromIso)
   const day = d.getUTCDay()
@@ -68,93 +131,314 @@ export function nextMonday(fromIso: string): string {
 }
 
 const isWork = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped'
+const isEnforcement = (s: Step): boolean => isWork(s) && (s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce')
 
-/** Wave a step naturally enforces in: its phase (0 stays on day 0). */
-function naturalWave(s: Step): number {
-  if (!isWork(s)) return 0
-  if (s.kind === 'prerequisite' || s.kind === 'recurring' || s.kind === 'verify') return 0
-  return Math.min(7, Math.max(1, s.phase))
+/** ISO week key (Monday-based) for the weekly cap. */
+function weekKey(iso: string): string {
+  const d = new Date(iso)
+  const day = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - day)
+  return d.toISOString().slice(0, 10)
 }
 
-export function buildSchedule(steps: Step[], startIso: string, activeUsers: number, bandOverride: SizeBand | null = null): Schedule {
+// Populations are shared arrays per audience (all, members, admins, guests):
+// the same array is a full overlap, and a set is built once per array.
+const setCache = new WeakMap<string[], Set<string>>()
+function setOf(ids: string[]): Set<string> {
+  let s = setCache.get(ids)
+  if (!s) setCache.set(ids, (s = new Set(ids)))
+  return s
+}
+function overlapShare(a: string[], b: string[]): number {
+  if (a.length === 0 || b.length === 0) return 0
+  if (a === b) return 1
+  const [small, large] = a.length <= b.length ? [a, b] : [b, a]
+  const set = setOf(large)
+  let both = 0
+  for (const x of small) if (set.has(x)) both += 1
+  return both / small.length
+}
+
+const max = (...isos: string[]): string => isos.reduce((m, x) => (x > m ? x : m))
+
+/** Rule-based hard and soft dependencies (§2), on top of what the generator already named in blockedBy. */
+export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  const graph: Record<string, Dependency[]> = {}
+  const add = (s: Step, dep: Dependency): void => {
+    if (dep.stepId === s.id) return
+    const list = (graph[s.id] ??= [])
+    if (!list.some((d) => d.stepId === dep.stepId)) list.push(dep)
+  }
+  const exclusion = steps.find((s) => s.id === 's-prereq-exclusion-group' && isWork(s))
+  const breakGlass = steps.find((s) => s.id === 's-prereq-break-glass' && isWork(s))
+  const drill = steps.find((s) => s.id === 's-recurring-break-glass-drill' && isWork(s))
+  const verify = steps.find((s) => s.kind === 'verify' && isWork(s))
+  const location = steps.find((s) => s.id === 's-prereq-trusted-location' && isWork(s))
+  const countries = steps.find((s) => s.id === 's-prereq-allowed-countries' && isWork(s))
+  const work = steps.filter(isWork)
+  for (const s of work) {
+    for (const b of s.blockedBy) {
+      const blocker = byId.get(b)
+      if (blocker && isWork(blocker)) add(s, { stepId: b, kind: 'hard', reason: DEPENDENCY.blockedBy(blocker.title) })
+    }
+    if (!isEnforcement(s)) continue
+    const family = s.readiness.family
+    if (exclusion) add(s, { stepId: exclusion.id, kind: 'hard', reason: DEPENDENCY.exclusionGroup })
+    if (family === 'block' || family === 'location') {
+      if (breakGlass) add(s, { stepId: breakGlass.id, kind: 'hard', reason: DEPENDENCY.breakGlass })
+      if (drill) add(s, { stepId: drill.id, kind: 'hard', reason: DEPENDENCY.breakGlassDrill })
+    }
+    if ((family === 'mfa' || family === 'guest') && verify) add(s, { stepId: verify.id, kind: 'hard', reason: DEPENDENCY.registration })
+    if (family === 'location') {
+      if (location) add(s, { stepId: location.id, kind: 'hard', reason: DEPENDENCY.namedLocation })
+      if (countries) add(s, { stepId: countries.id, kind: 'hard', reason: DEPENDENCY.namedLocation })
+    }
+  }
+  // Soft: the same people prompted by two steps in the same week; two high-disruption steps for the same people.
+  const enforcement = work.filter(isEnforcement)
+  for (let i = 0; i < enforcement.length; i++) {
+    for (let j = 0; j < i; j++) {
+      const a = enforcement[i]
+      const b = enforcement[j]
+      if (overlapShare(a.population.ids, b.population.ids) <= OVERLAP_SHARE) continue
+      const bothHigh = (a.score?.disruption ?? 0) >= HIGH_DISRUPTION && (b.score?.disruption ?? 0) >= HIGH_DISRUPTION
+      if (bothHigh) add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.highDisruption(b.title) })
+      else if (promptsPeople(a) && promptsPeople(b)) add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.samePeople(b.title) })
+    }
+  }
+  return graph
+}
+
+/** Kahn's order over hard dependencies; the generator's risk order breaks ties. */
+function topological(steps: Step[], graph: Record<string, Dependency[]>): Step[] {
+  const ids = new Set(steps.map((s) => s.id))
+  const indeg = new Map<string, number>()
+  const out = new Map<string, string[]>()
+  for (const s of steps) indeg.set(s.id, 0)
+  for (const s of steps) {
+    for (const d of graph[s.id] ?? []) {
+      if (d.kind !== 'hard' || !ids.has(d.stepId)) continue
+      indeg.set(s.id, (indeg.get(s.id) ?? 0) + 1)
+      out.set(d.stepId, [...(out.get(d.stepId) ?? []), s.id])
+    }
+  }
+  const order: Step[] = []
+  const ready = steps.filter((s) => (indeg.get(s.id) ?? 0) === 0)
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  const position = new Map(steps.map((s, i) => [s.id, i]))
+  while (ready.length > 0) {
+    ready.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0))
+    const s = ready.shift() as Step
+    order.push(s)
+    for (const next of out.get(s.id) ?? []) {
+      indeg.set(next, (indeg.get(next) ?? 1) - 1)
+      if (indeg.get(next) === 0) ready.push(byId.get(next) as Step)
+    }
+  }
+  // A cycle (never expected) falls back to the generator's order for what is left.
+  for (const s of steps) if (!order.includes(s)) order.push(s)
+  return order
+}
+
+type Placed = {
+  start: string
+  end: string
+  reason: { kind: ConstraintKind; ref: string | null }
+}
+
+export function buildSchedule(
+  steps: Step[],
+  startIso: string,
+  activeUsers: number,
+  bandOverride: SizeBand | null = null,
+  options: ScheduleOptions = {},
+): Schedule {
   const band = bandOverride ?? bandForActiveUsers(activeUsers)
   const preset = BANDS[band]
+  const ringBand = ringBandFor(activeUsers)
   const expectedDays = preset.weeks * 7
   const day0 = toWeekday(startIso)
+  const cap = ENFORCEMENT_CAP[band]
+  const freeze = options.freeze && options.freeze.from < options.freeze.to ? options.freeze : null
   const byId = new Map(steps.map((s) => [s.id, s]))
+  const graph = dependencyGraph(steps)
 
-  // Wave assignment: natural wave, then pushed after blockers (iterate to a fixed point).
-  const waveOf: Record<string, number> = {}
-  for (const s of steps) waveOf[s.id] = naturalWave(s)
-  for (let pass = 0; pass < 8; pass += 1) {
-    let changed = false
-    for (const s of steps) {
-      if (!isWork(s)) continue
-      for (const b of s.blockedBy) {
-        const blocker = byId.get(b)
-        if (!blocker || !isWork(blocker)) continue
-        const need = Math.min(7, Math.max(waveOf[s.id], waveOf[b] + 1))
-        if (need !== waveOf[s.id]) {
-          waveOf[s.id] = need
-          changed = true
-        }
-      }
-    }
-    if (!changed) break
-  }
-
-  const needsObservation = steps.some((s) => isWork(s) && (s.kind === 'create' || s.kind === 'adjust'))
-  const verifyStep = steps.find((s) => s.kind === 'verify') ?? null
-  // The window is skipped once a re-scan shows verification complete: the
-  // remaining waves pull forward and the end date shortens.
-  const verificationComplete = verifyStep === null || !isWork(verifyStep)
-  const verificationDays = verifyStep !== null && !verificationComplete ? preset.verificationDays : 0
-  const obsDays = needsObservation ? OBSERVATION_DAYS : 0
-
-  const waves: WaveSchedule[] = []
-  // Wave 0: day 0 — foundations, report-only creation, anything already done.
-  // Human foundation work (accounts, groups, locations, Setup answers) takes
-  // real days before any policy can be created.
-  const day0Steps = steps.filter((s) => waveOf[s.id] === 0).map((s) => s.id)
-  const foundationWork = steps.filter((s) => waveOf[s.id] === 0 && isWork(s) && s.kind === 'prerequisite').length
+  // ---- Day 0: foundation work takes real days before any policy can be created ----
+  const foundationWork = steps.filter((s) => isWork(s) && s.kind === 'prerequisite').length
   const day0Days = foundationWork > 0 ? Math.min(5, 1 + foundationWork) : 0
   const day0End = addDays(day0, day0Days)
-  waves.push({ wave: 0, phase: 0, start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })
 
+  // ---- Verification window ----
+  const verifyStep = steps.find((s) => s.kind === 'verify') ?? null
+  const verificationComplete = verifyStep === null || !isWork(verifyStep)
+  const verificationDays = verifyStep !== null && !verificationComplete ? preset.verificationDays : 0
   const verification = {
     start: toWeekday(day0End),
     end: addDays(toWeekday(day0End), verificationDays),
     days: verificationDays,
     complete: verificationComplete,
   }
-  const observation = { start: toWeekday(verification.end), end: addDays(toWeekday(verification.end), obsDays), days: obsDays }
+  const needsObservation = steps.some((s) => isWork(s) && (s.kind === 'create' || s.kind === 'adjust'))
+  const obsDays = needsObservation ? OBSERVATION_DAYS : 0
+  // The shared observation window is the first one: every policy is created on day 0.
+  const observation = { start: toWeekday(day0End), end: addDays(toWeekday(day0End), obsDays), days: obsDays }
 
-  // Enforcement waves share what the band leaves after the fixed windows.
-  // The spacing is set by the band's full window, not the remaining one, so
-  // a verification campaign that finishes early shortens the plan instead
-  // of stretching the waves.
-  const enforcementWaves = [1, 2, 3, 4, 5, 6, 7].filter((w) => steps.some((s) => waveOf[s.id] === w))
-  const plannedVerification = verifyStep !== null ? preset.verificationDays : 0
-  const fixedDays = day0Days + verificationDays + obsDays
-  const perWave =
-    enforcementWaves.length > 0 ? Math.max(MIN_WAVE_DAYS, Math.floor((expectedDays - day0Days - plannedVerification - obsDays) / enforcementWaves.length)) : 0
-
-  let cursor = toWeekday(observation.end)
-  let totalDays = fixedDays
-  for (const w of enforcementWaves) {
-    const ids = steps.filter((s) => waveOf[s.id] === w).map((s) => s.id)
-    const start = cursor
-    const end = addDays(start, perWave)
-    waves.push({ wave: w, phase: w, start, end, days: perWave, stepIds: ids, note: null })
-    cursor = toWeekday(end)
-    totalDays += perWave
+  // ---- Placement ----
+  const attempt = (relaxSamePeople: boolean): { placed: Map<string, Placed>; reportOnlyAt: Record<string, string> } => {
+    const placed = new Map<string, Placed>()
+    const eventDays = new Map<string, Set<string>>()
+    const reportOnlyAt: Record<string, string> = {}
+    const ringWindows = new Map<string, { start: string; end: string }[]>()
+    // Prerequisites and the recurring check finish inside day 0; the campaign ends with its window.
+    for (const s of steps) {
+      if (!isWork(s)) continue
+      if (s.kind === 'prerequisite' || s.kind === 'recurring') placed.set(s.id, { start: day0, end: day0End, reason: { kind: 'prerequisites', ref: null } })
+      if (s.kind === 'verify') placed.set(s.id, { start: verification.start, end: verification.end, reason: { kind: 'verification', ref: null } })
+    }
+    const inFreeze = (iso: string): boolean => freeze !== null && iso >= freeze.from && iso <= freeze.to
+    // An enforcement event is a change day: every step that starts that day
+    // shares one change window. The cap limits change days per week.
+    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }): string => {
+      let cursor = toEnforcementDay(iso)
+      for (let guard = 0; guard < 400; guard++) {
+        if (inFreeze(cursor)) {
+          cursor = toEnforcementDay(addDays(freeze!.to, 1))
+          note.kind = 'freeze'
+          continue
+        }
+        const week = weekKey(cursor)
+        const days = eventDays.get(week) ?? new Set<string>()
+        if (days.has(cursor.slice(0, 10)) || days.size < cap) return cursor
+        const later = [...days].filter((d) => d > cursor.slice(0, 10)).sort()[0]
+        if (later) return later + cursor.slice(10)
+        cursor = toEnforcementDay(addDays(week + 'T12:00:00.000Z', 7))
+        note.kind = 'cap'
+      }
+      return cursor
+    }
+    for (const s of topological(steps.filter(isEnforcement), graph)) {
+      const deps = graph[s.id] ?? []
+      const creation = s.kind === 'create' ? toWeekday(day0End) : toWeekday(day0End)
+      if (s.kind === 'create') reportOnlyAt[s.id] = creation
+      let earliest = s.kind === 'create' ? observation.end : creation
+      const reason: { kind: ConstraintKind; ref: string | null } = { kind: s.kind === 'create' ? 'rings' : 'none', ref: null }
+      for (const d of deps) {
+        const p = placed.get(d.stepId)
+        if (!p) continue
+        const depStep = byId.get(d.stepId)
+        if (d.kind === 'hard') {
+          if (p.end > earliest) {
+            earliest = p.end
+            reason.kind = depStep?.kind === 'verify' ? 'verification' : 'dependency'
+            reason.ref = d.stepId
+          }
+        }
+      }
+      // Soft rules (§2): the same ring of two steps for the same people never
+      // overlaps, so steps pipeline one ring apart; a pilot is never prompted by
+      // two policies in the same window, and neither is anyone else.
+      const soft = deps.filter((d) => d.kind === 'soft' && !(relaxSamePeople && d.reason.startsWith('cannot prompt')))
+      const rings = s.rings.length > 0 ? s.rings : null
+      const soaks = rings ? rings.map((r) => r.soakDays) : [s.readiness.family === 'other' ? 1 : ringBand.soakDays]
+      const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
+        const windows: { start: string; end: string }[] = []
+        let cursor = shift(from, reason)
+        const start = cursor
+        for (const [i, soak] of soaks.entries()) {
+          if (i > 0) cursor = shift(cursor, reason)
+          const end = addDays(cursor, soak)
+          windows.push({ start: cursor, end })
+          cursor = end
+        }
+        return { start, windows }
+      }
+      const clashes = (c: { windows: { start: string; end: string }[] }, other: { start: string; end: string }[]): number =>
+        c.windows.findIndex((w, k) => other[k] !== undefined && w.start < other[k].end && other[k].start < w.end)
+      let candidate = layout(earliest)
+      for (let guard = 0; guard < 120; guard++) {
+        let moved = false
+        for (const d of soft) {
+          const other = ringWindows.get(d.stepId)
+          if (!other) continue
+          const i = clashes(candidate, other)
+          if (i < 0) continue
+          // Move the whole step so that its ring i starts when the other step's ring i ends.
+          const delta = Math.max(1, Math.round((Date.parse(other[i].end) - Date.parse(candidate.windows[i].start)) / 86_400_000))
+          reason.kind = 'soft'
+          reason.ref = d.stepId
+          candidate = layout(addDays(candidate.start, delta))
+          moved = true
+          break
+        }
+        if (!moved) break
+      }
+      for (const w of candidate.windows) {
+        const week = weekKey(w.start)
+        if (!eventDays.has(week)) eventDays.set(week, new Set())
+        eventDays.get(week)!.add(w.start.slice(0, 10))
+      }
+      if (rings) {
+        for (const [i, w] of candidate.windows.entries()) {
+          rings[i].plannedStart = w.start
+          rings[i].plannedEnd = w.end
+        }
+      }
+      ringWindows.set(s.id, candidate.windows)
+      placed.set(s.id, { start: candidate.start, end: candidate.windows[candidate.windows.length - 1]?.end ?? candidate.start, reason })
+    }
+    return { placed, reportOnlyAt }
   }
 
-  const targetEnd = waves.length > 1 ? waves[waves.length - 1].end : day0
+  // Land on the band (§1 table) by relaxing, in order: the longer soak of the
+  // biggest tenants, then the same-people rule; each relaxation is reported.
+  const relaxed: string[] = []
+  const limit = Date.parse(addDays(day0, expectedDays + 7))
+  const endOf = (r: { placed: Map<string, Placed> }): string => [...r.placed.values()].reduce((m, p) => (p.end > m ? p.end : m), day0End)
+  let result = attempt(false)
+  const longestSoak = Math.max(0, ...steps.flatMap((s) => s.rings.map((r) => r.soakDays)))
+  const shortSoak = ringBandFor(activeUsers, false).soakDays
+  if (Date.parse(endOf(result)) > limit && longestSoak > shortSoak) {
+    for (const s of steps) for (const r of s.rings) r.soakDays = Math.min(r.soakDays, shortSoak)
+    relaxed.push(CRITICAL.shorterSoak(longestSoak, shortSoak))
+    result = attempt(false)
+  }
+  if (Date.parse(endOf(result)) > limit) {
+    const strict = endOf(result)
+    const loose = attempt(true)
+    if (endOf(loose) < strict) {
+      const samePeople = steps.filter((s) => (graph[s.id] ?? []).some((d) => d.kind === 'soft' && d.reason.startsWith('cannot prompt'))).length
+      relaxed.push(CRITICAL.relaxed(samePeople))
+      result = loose
+    }
+  }
+  const { placed, reportOnlyAt } = result
+
+  // ---- Waves read back from the ring dates: one wave per enforcement start week ----
+  const waveOf: Record<string, number> = {}
+  const waves: WaveSchedule[] = []
+  const day0Steps = steps.filter((s) => !isEnforcement(s)).map((s) => s.id)
+  for (const id of day0Steps) waveOf[id] = 0
+  waves.push({ wave: 0, phase: 0, start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })
+  const enforcement = steps.filter(isEnforcement).filter((s) => placed.has(s.id))
+  const weeks = [...new Set(enforcement.map((s) => weekKey(placed.get(s.id)!.start)))].sort()
+  for (const [i, wk] of weeks.entries()) {
+    const ids = enforcement.filter((s) => weekKey(placed.get(s.id)!.start) === wk).map((s) => s.id)
+    const start = ids.map((id) => placed.get(id)!.start).reduce((m, x) => (x < m ? x : m))
+    const end = ids.map((id) => placed.get(id)!.end).reduce((m, x) => (x > m ? x : m))
+    const phase = Math.min(...ids.map((id) => byId.get(id)?.phase ?? 1))
+    for (const id of ids) waveOf[id] = i + 1
+    waves.push({ wave: i + 1, phase, start, end, days: Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000), stepIds: ids, note: null })
+  }
+
+  const targetEnd = max(day0End, verification.end, ...waves.map((w) => w.end))
+  const totalDays = Math.round((Date.parse(targetEnd) - Date.parse(day0)) / 86_400_000)
   const expectedEnd = addDays(day0, expectedDays + 7)
-  const extendedBy = waves.filter((w) => w.wave > 0 && Date.parse(w.end) > Date.parse(expectedEnd)).flatMap((w) => w.stepIds)
+  const extendedBy = enforcement.filter((s) => Date.parse(placed.get(s.id)!.end) > Date.parse(expectedEnd)).map((s) => s.id)
+  if (!verificationComplete && verifyStep && Date.parse(verification.end) > Date.parse(expectedEnd)) extendedBy.unshift(verifyStep.id)
   const waitingOnSetup = steps.filter((s) => isWork(s) && s.blockers.some((b) => b.kind === 'setup')).length
   const waitingOnSetupQuestions = [...new Set(steps.filter(isWork).flatMap((s) => s.blockers.filter((b) => b.kind === 'setup').map((b) => (b as { questionNumber: number }).questionNumber)))].sort((a, b) => a - b)
+
   return {
     band,
     bandSource: bandOverride ? 'override' : 'auto',
@@ -172,5 +456,79 @@ export function buildSchedule(steps: Step[], startIso: string, activeUsers: numb
     extendedBy,
     waitingOnSetup,
     waitingOnSetupQuestions,
+    graph,
+    reportOnlyAt,
+    derivation: derive(steps, placed, verification, observation, totalDays, relaxed, cap, freeze, verifyStep),
+    enforcementCap: cap,
+    freeze,
+    policyCount: null,
   }
+}
+
+/** The critical path: the last step to finish and why it starts when it does (§2). */
+function derive(
+  steps: Step[],
+  placed: Map<string, Placed>,
+  verification: Schedule['verification'],
+  observation: Schedule['observation'],
+  totalDays: number,
+  relaxed: string[],
+  cap: number,
+  freeze: ChangeFreeze | null,
+  verifyStep: Step | null,
+): Derivation {
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  const weeks = Math.max(1, Math.round(totalDays / 7))
+  const enforcement = steps.filter((s) => isEnforcement(s) && placed.has(s.id))
+  if (enforcement.length === 0) {
+    if (verifyStep && !verification.complete) {
+      return {
+        criticalPath: CRITICAL.sentence(weeks, CRITICAL.verificationOnly(verifyStep.population.total, Math.max(1, Math.round(verification.days / 7)))),
+        constraint: 'verification',
+        chain: [verifyStep.id],
+        relaxed,
+      }
+    }
+    const prereqs = steps.filter((s) => isWork(s) && s.kind === 'prerequisite').length
+    return prereqs > 0
+      ? { criticalPath: CRITICAL.sentence(weeks, CRITICAL.prerequisites(prereqs)), constraint: 'prerequisites', chain: [], relaxed }
+      : { criticalPath: CRITICAL.sentenceDone, constraint: 'none', chain: [], relaxed }
+  }
+  const last = enforcement.reduce((m, s) => (placed.get(s.id)!.end > placed.get(m.id)!.end ? s : m))
+  const p = placed.get(last.id)!
+  const rings = last.rings.length > 0 ? last.rings.length : 1
+  const soak = last.rings[0]?.soakDays ?? 1
+  const chain: string[] = [last.id]
+  let constraint: ConstraintKind = p.reason.kind
+  let reason: string
+  switch (p.reason.kind) {
+    case 'verification': {
+      const v = verifyStep ?? (p.reason.ref ? byId.get(p.reason.ref) ?? null : null)
+      if (v) chain.unshift(v.id)
+      reason = CRITICAL.verification(v?.population.total ?? 0, Math.max(1, Math.round(verification.days / 7)), last.title, rings, soak)
+      break
+    }
+    case 'dependency': {
+      const dep = p.reason.ref ? byId.get(p.reason.ref) : undefined
+      if (dep) chain.unshift(dep.id)
+      reason = CRITICAL.chain(last.title, dep?.title ?? '', rings, soak)
+      break
+    }
+    case 'soft': {
+      const other = p.reason.ref ? byId.get(p.reason.ref) : undefined
+      if (other) chain.unshift(other.id)
+      reason = CRITICAL.soft(last.title, other?.title ?? '')
+      break
+    }
+    case 'cap':
+      reason = CRITICAL.cap(cap, last.title)
+      break
+    case 'freeze':
+      reason = CRITICAL.freeze(freeze ? absoluteDate(freeze.to) : '', last.title)
+      break
+    default:
+      constraint = 'rings'
+      reason = CRITICAL.rings(last.title, rings, soak, last.kind === 'create' ? observation.days : 0)
+  }
+  return { criticalPath: CRITICAL.sentence(weeks, reason), constraint, chain, relaxed }
 }

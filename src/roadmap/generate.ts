@@ -9,9 +9,10 @@ import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
-import { proposeRings, placeRings, ringContextIndexes } from './rings.ts'
+import { proposeRings, ringContextIndexes } from './rings.ts'
 import { accountVerdict } from './strand.ts'
-import { toWeekday } from './schedule.ts'
+import { policyCountFor } from './policyCount.ts'
+import { NAMING } from '../copy/schedule.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingState } from '../mapping/types.ts'
 import { activeWizardQuestions } from '../mapping/wizard.ts'
@@ -40,7 +41,7 @@ import {
 import { evidenceFor } from './evidence.ts'
 import { goalFamily, readinessFor } from './readiness.ts'
 import { buildSchedule, nextMonday } from './schedule.ts'
-import type { Schedule } from './schedule.ts'
+import type { ChangeFreeze, Schedule } from './schedule.ts'
 import type { Action, Blocker, Step, StepPopulation, StepStatus } from './types.ts'
 import type { SizeBand } from './constants.ts'
 import { ADJUST, BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
@@ -67,6 +68,8 @@ export type RoadmapInput = {
   names?: NameDirectory
   /** Cached group memberships: the confirmed exclusion groups leave every step's population. */
   groupMembers?: GroupMembers
+  /** A date range in which nothing is enforced (roadmap-v2.md §2). */
+  changeFreeze?: ChangeFreeze | null
 }
 
 export type RoadmapResult = { steps: Step[]; schedule: Schedule }
@@ -460,6 +463,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     placeholders.set(q.key, { label, token: setupToken(n, q.group) })
   }
   const naming = input.coverage.organisation.naming
+  const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
+  const proposedTaken = new Set<string>()
+  /** The tenant-convention name, suffixed when a policy of that name already exists; the note explains. */
+  const uniqueName = (title: string): { name: string; note: string | null } => {
+    const base = proposedPolicyName(title, naming)
+    if (!existingNames.has(base.toLowerCase()) && !proposedTaken.has(base.toLowerCase())) {
+      proposedTaken.add(base.toLowerCase())
+      return { name: base, note: null }
+    }
+    let n = 2
+    while (existingNames.has(`${base} (${n})`.toLowerCase()) || proposedTaken.has(`${base} (${n})`.toLowerCase())) n += 1
+    const name = `${base} (${n})`
+    proposedTaken.add(name.toLowerCase())
+    return { name, note: NAMING.collision(name, base) }
+  }
 
   const setupStepId = 's-setup-questions'
   if (missingSetup.length > 0) {
@@ -605,6 +623,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     let action: Action
     let kind: Step['kind']
     let status: StepStatus = 'ready'
+    let namingNote: { name: string; note: string | null } | null = null
 
     if (result.status === 'enforced') {
       kind = 'create'
@@ -620,10 +639,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'create'
       if (source) {
         blockUnmapped(source.policy)
+        const proposed = uniqueName(stepTitle(goal.name))
         action = buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
           placeholders,
-          displayName: proposedPolicyName(stepTitle(goal.name), naming),
+          displayName: proposed.name,
         })
+        if (proposed.note) action.summary.push(proposed.note)
+        namingNote = proposed
         const personas = createdWithinStepKeys(source.policy, mapping).filter((c) => c.group === 'personaGroups')
         for (const p of personas) {
           // The baseline names the group by id; the plan names it in the tenant's convention (ux-review-06 §4).
@@ -856,9 +878,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         .filter((c) => c.contribution === 'strong')
         .map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`),
       stateReason: '',
+      denies: impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location',
       naming:
         kind === 'create' && status !== 'done'
-          ? { proposed: proposedPolicyName(stepTitle(goal.name), naming), fromBaseline: source?.facts.name ?? null }
+          ? { proposed: namingNote?.name ?? proposedPolicyName(stepTitle(goal.name), naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
           : null,
       score,
     })
@@ -971,13 +994,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   for (const s of steps) s.rings = proposeRings(s, ringCtx)
 
-  // ---- Schedule (waves) + comms dates ----
-  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null)
+  // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
+  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, { freeze: input.changeFreeze ?? null })
+  schedule.policyCount = policyCountFor(snapshot, steps, input.coverage.organisation)
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
-  for (const s of steps) {
-    if (s.rings.length === 0) continue
-    placeRings(s.rings, waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso, toWeekday)
-  }
   for (const s of steps) {
     if (s.comms?.includes('{DATE}')) {
       const date = waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso
