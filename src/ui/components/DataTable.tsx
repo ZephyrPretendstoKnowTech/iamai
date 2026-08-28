@@ -15,6 +15,8 @@ export type Column<T> = {
   csv?: (row: T) => string | number | null
   /** CSV-only column: exported but never rendered. */
   hidden?: boolean
+  /** Minimum column width so the header never breaks mid-word (ux-review-04 §3). */
+  minWidth?: string
 }
 
 const PAGE_SIZE = 50
@@ -83,6 +85,7 @@ export function DataTable<T>({
                 <th
                   key={c.key}
                   scope="col"
+                  style={c.minWidth ? { minWidth: c.minWidth } : undefined}
                   className={c.sortValue ? 'sortable' : ''}
                   aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}
                   tabIndex={c.sortValue ? 0 : undefined}

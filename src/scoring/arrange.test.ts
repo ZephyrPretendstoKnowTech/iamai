@@ -41,3 +41,27 @@ test('empty domains are left out rather than shown as empty headings', () => {
   const out = arrangeGoals(rows.filter((r) => r.domain === 'Devices'), (r) => r.score, (r) => r.domain, (r) => r.phase, 'domain', 'priority')
   assert.deepEqual(out.map((g) => g.domain), ['Devices'])
 })
+
+// Prompt 21 §C: group on, each remaining sort option.
+test('group on, sort by security value: highest value first inside every group', () => {
+  const valued = rows.map((r, i) => ({ ...r, score: score({ ...r.score, value: [2, 5, 3, 4][i] }) }))
+  const out = arrangeGoals(valued, (r) => r.score, (r) => r.domain, (r) => r.phase, 'domain', 'value')
+  assert.deepEqual(out.map((g) => g.domain), ['Identity', 'Devices'])
+  assert.deepEqual(ids(out[0]), ['b', 'c'], 'Identity: value 5 before 3')
+  assert.deepEqual(ids(out[1]), ['d', 'a'], 'Devices: value 4 before 2')
+})
+
+test('group on, sort by disruption: least disruptive first inside every group', () => {
+  const disrupt = rows.map((r, i) => ({ ...r, score: score({ ...r.score, disruption: [1, 5, 2, 4][i] }) }))
+  const out = arrangeGoals(disrupt, (r) => r.score, (r) => r.domain, (r) => r.phase, 'domain', 'disruption')
+  assert.deepEqual(ids(out[0]), ['c', 'b'], 'Identity: disruption 2 before 5')
+  assert.deepEqual(ids(out[1]), ['a', 'd'], 'Devices: disruption 1 before 4')
+})
+
+test('group off and on give the same multiset in every sort', () => {
+  for (const by of ['priority', 'value', 'effort', 'disruption'] as const) {
+    const flat = arrangeGoals(rows, (r) => r.score, (r) => r.domain, (r) => r.phase, 'none', by).flatMap(ids)
+    const grouped = arrangeGoals(rows, (r) => r.score, (r) => r.domain, (r) => r.phase, 'domain', by).flatMap(ids)
+    assert.deepEqual([...flat].sort(), [...grouped].sort(), by)
+  }
+})

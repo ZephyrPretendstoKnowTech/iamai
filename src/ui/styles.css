@@ -112,10 +112,13 @@ select {
 }
 
 main.page {
-  padding: var(--space-5) var(--space-6);
+  /* Centred in the viewport with 32px gutters; tables may use the full width (ux-review-04 §3). */
+  padding: var(--space-5) var(--gutter);
   max-width: var(--max-content);
   width: 100%;
   min-width: 0;
+  margin: 0 auto;
+  justify-self: center;
   overflow-wrap: anywhere;
 }
 main.page img, main.page svg, main.page table, main.page pre { max-width: 100%; }
@@ -312,10 +315,9 @@ nav.stepper {
 .infotip-btn { background: none; border: none; padding: 0; color: var(--muted); cursor: help; display: inline-flex; line-height: 0; }
 .infotip-btn:hover, .infotip-btn:focus-visible { color: var(--accent); }
 .infotip-pop {
-  position: absolute;
-  z-index: 5;
-  left: 0;
-  top: 22px;
+  /* Portalled to body and placed from the button's rectangle; flips at the viewport edge. */
+  position: fixed;
+  z-index: 1000;
   min-width: 16rem;
   max-width: 22rem;
   padding: var(--space-3);
@@ -507,7 +509,9 @@ details.card > summary::marker { color: var(--muted); }
 .datatable-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-card); max-height: 70vh; }
 table.datatable { border-collapse: collapse; width: 100%; background: var(--surface); }
 table.datatable th { position: sticky; top: 0; background: var(--raised); z-index: 1; font-size: var(--text-sm); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-table.datatable th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+table.datatable th { white-space: nowrap; }
+table.datatable th.sortable { cursor: pointer; user-select: none; }
+table.datatable td { overflow-wrap: anywhere; }
 table.datatable th, table.datatable td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); vertical-align: top; }
 table.datatable tbody tr:hover { background: var(--raised); }
 .datatable-footer { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; font-size: var(--text-sm); color: var(--muted); flex-wrap: wrap; }
@@ -523,6 +527,10 @@ table.datatable tbody tr:hover { background: var(--raised); }
 /* ================= layout helpers ================= */
 
 .row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+/* Filter bar (ux-review-04 §3): its own wrapping row, a search field that never clips, clearance to the table. */
+.filter-bar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0 var(--space-4); }
+.filter-bar input[type='search'] { flex: 1 1 280px; min-width: 280px; max-width: 32rem; }
+.filter-bar + .datatable-wrap, .filter-bar + div > .datatable-wrap { margin-top: var(--space-4); }
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-4); }
 .grid-cards .card { margin: 0; }
 /* Legend (prompt 19 §A3): a heading rule per group, one term per row. */
