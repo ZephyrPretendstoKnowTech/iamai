@@ -24,6 +24,8 @@ function step(over: Partial<Step>): Step {
     rollback: '',
     history: [],
     skipReason: null,
+    deliveredBy: [],
+    stateReason: '',
     impact: '',
     safeToday: false,
     highCare: { userIds: [], ready: true, notes: [] },

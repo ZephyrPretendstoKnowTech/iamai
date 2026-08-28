@@ -159,6 +159,7 @@ export function PrintPlan({
                   {C.step.kind}: {STEP_KIND_LABEL[s.kind]} · {C.step.status}: {STEP_STATUS_LABEL[s.status]}
                 </p>
                 <p>{s.impact}</p>
+                <p className="muted">{s.stateReason}</p>
                 {s.naming && (
                   <p>
                     <strong>{ROADMAP.proposedName}</strong> {s.naming.proposed}

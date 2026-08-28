@@ -1,6 +1,7 @@
 // Roadmap step copy: titles, kind labels, impact lines, exit criteria,
 // prerequisite instructions, announcements. Pure; used by the roadmap engine.
 import type { StepKind, StepStatus } from '../roadmap/types.ts'
+import { WINDOW } from './definitions.ts'
 import { count, list, plural } from './statements.ts'
 import { TERMS } from './terms.ts'
 
@@ -303,3 +304,21 @@ export function affectedLine(total: number, active: number, admins: number, gues
 }
 
 export { plural }
+
+// One-line state reasons (ux-review-04 §5).
+export const STATE_REASON = {
+  deliveredBy: (names: string[]) => `Delivered by ${list(names)}.`,
+  savedDone: (note: string, date: string) => `Done ${date}: ${note}.`,
+  verifyDone: `Every enabled user proved MFA in ${WINDOW}.`,
+  recurringDone: (line: string) => `${line}`,
+  skipped: (reason: string) => `Skipped: ${reason}.`,
+  blocked: (causes: string[]) => `Blocked by ${list(causes)}.`,
+  evidence: (line: string) => `${line}`,
+  noEvidenceYet: 'No sign-in evidence collected yet.',
+  checked: (checks: string[]) => `Checked: ${list(checks)}.`,
+  noBlockers: 'nothing blocks it',
+  readiness: (pct: number, threshold: number) => `readiness ${pct}% meets the ${threshold}% threshold`,
+  safeToday: `nobody used what it blocks in ${WINDOW}`,
+  prerequisite: 'a foundation the later steps need',
+  verifyPending: 'enabled users still need setting up',
+}

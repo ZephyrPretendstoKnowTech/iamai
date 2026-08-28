@@ -68,6 +68,10 @@ export type Step = {
   rollback: string
   history: StepHistoryEntry[]
   skipReason: string | null
+  /** Policies that already deliver the goal (name and state), the evidence a Done step cites (ux-review-04 §5). */
+  deliveredBy: string[]
+  /** One line: why the step is in its current state; filled by annotateStateReasons. */
+  stateReason: string
   // ---- 2026-08-27 redesign ----
   /** One sentence: what this changes for THIS tenant, in numbers. */
   impact: string

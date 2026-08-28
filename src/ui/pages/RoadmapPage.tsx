@@ -17,6 +17,7 @@ import { generateRoadmap } from '../../roadmap/generate.ts'
 import { findDangerAreas } from '../../roadmap/dangers.ts'
 import { nextMonday } from '../../roadmap/schedule.ts'
 import { applyProgress, mergePersisted, skipStep } from '../../roadmap/progress.ts'
+import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
 import type { Checkpoint } from '../../roadmap/plan.ts'
 import type { Step, StepStatus } from '../../roadmap/types.ts'
@@ -34,7 +35,7 @@ import type { Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
 import { ScanAge, StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
-import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
+import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, LinkButton, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 import { SCORE } from '../../copy/definitions.ts'
 import { FINDINGS } from '../../copy/pages.ts'
@@ -71,7 +72,8 @@ export function RoadmapPage({
   const [extraNames, setExtraNames] = useState<Map<string, string>>(new Map())
   const [statusFilter, setStatusFilter] = useState<Set<StepStatus>>(new Set())
   const [stepSort, setStepSort] = useState<'schedule' | ScoreSort>('schedule')
-  const [showCompleted, setShowCompleted] = useState(false)
+  // Hide completed defaults on once more than a third of the steps are done (ux-review-04 §5).
+  const [showCompletedChoice, setShowCompletedChoice] = useState<boolean | null>(null)
   const [skipDraft, setSkipDraft] = useState<{ id: string; reason: string } | null>(null)
   const [version, setVersion] = useState(0)
   const [copied, setCopied] = useState<string | null>(null)
@@ -174,6 +176,7 @@ export function RoadmapPage({
       names,
     })
     mergePersisted(steps, saved?.steps ?? null)
+    annotateStateReasons(steps)
     applyProgress(steps, snapshot, coverage, planId)
     const dangers = findDangerAreas({
       snapshot,
@@ -269,6 +272,8 @@ export function RoadmapPage({
   const nameOf = (id: string) => computed.names.label(id)
   // One derived summary feeds every tab (prompt 13 §11).
   const summary = planSummary(steps)
+  const showCompleted = showCompletedChoice ?? !(summary.done * 3 > summary.total)
+  const setShowCompleted = (next: boolean | ((v: boolean) => boolean)) => setShowCompletedChoice(typeof next === 'function' ? next(showCompleted) : next)
   const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
   const done = steps.filter((s) => s.status === 'done')
   const safe = steps.filter((s) => s.safeToday)
@@ -549,9 +554,18 @@ export function RoadmapPage({
   )
 
   const stepsView = () => {
-    const visible = steps.filter((s) => statusFilter.size === 0 || statusFilter.has(s.status))
+    const completedCount = steps.filter((s) => s.status === 'done').length
+    const visible = steps.filter((s) => (statusFilter.size === 0 ? showCompleted || s.status !== 'done' : statusFilter.has(s.status)))
     return (
       <div>
+        <p className="reason">
+          {!showCompleted && statusFilter.size === 0 && C.completedHidden(completedCount)}{' '}
+          {completedCount > 0 && (
+            <Button size="sm" variant="quiet" onClick={() => setShowCompleted((v) => !v)}>
+              {showCompleted ? C.hideCompleted : C.showCompleted}
+            </Button>
+          )}
+        </p>
         <div className="row no-print">
           {(Object.keys(STEP_STATUS_LABEL) as StepStatus[]).map((s) => (
             <FilterChip
@@ -624,7 +638,7 @@ export function RoadmapPage({
   }
 
   return (
-    <StepFrame title={C.title} does={C.does} needs={needs} next="scan" nextLabel={C.nextRescan}>
+    <StepFrame title={C.title} does={C.does} needs={needs}>
       {scan && <ScanAge at={scan.at} />}
       <Tabs
         active={activeTab}
@@ -637,6 +651,11 @@ export function RoadmapPage({
         ]}
       />
       <p className="reason">{C.lastStep}</p>
+      <p className="step-next">
+        <LinkButton href="#/scan" variant="secondary">
+          {C.rescanProgress}
+        </LinkButton>
+      </p>
       <PrintPlan
         tenantName={tenantName}
         baselineLabel={baseline?.source ?? ''}
@@ -726,6 +745,7 @@ function StepCard({
           {step.title}
           <ScoreBadges score={step.score ?? null} />
           <div className="sub">{step.impact}</div>
+          <div className="sub state-reason">{step.stateReason}</div>
         </>
       }
     >

@@ -369,7 +369,7 @@ export const ROADMAP = {
   dangersAfter: 'the Danger areas tab names the people and the exact settings.',
   dangersMedium: (n: number) => `${count(n, 'area')} to watch, none urgent: the Danger areas tab names the people.`,
   lastStep: 'This is the last step. Re-scan after each change to update progress.',
-  nextRescan: 'Scan',
+  rescanProgress: 'Re-scan to update progress',
   blockedSteps: (n: number) =>
     `${count(n, 'step is', 'steps are')} blocked right now; each one says exactly what unblocks it. Most clear once the verification campaign in phase 2 lands.`,
   startDate: 'Plan start date:',
