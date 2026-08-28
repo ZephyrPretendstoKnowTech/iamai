@@ -31,10 +31,12 @@ export function share(n: number, total: number, one: string, many = `${one}s`): 
 
 // ---- Findings statements ----
 
+// Statements stay within two sentences (prompt 17 §5): detail such as the
+// break-glass exclusions lives in the expandable.
 export function inPlaceStatement(goal: string, policies: string[], breakGlassExcluded: number): string {
-  const by = policies.length > 0 ? ` Delivered by ${list(policies.map(em))}.` : ' Delivered by existing policies.'
-  const bg = breakGlassExcluded > 0 ? ` ${count(breakGlassExcluded, 'account')} excluded as break-glass.` : ''
-  return `${strong(goal)}.${by}${bg}`
+  const by = policies.length > 0 ? `Delivered by ${list(policies.map(em))}` : 'Delivered by existing policies'
+  const bg = breakGlassExcluded > 0 ? `, with ${count(breakGlassExcluded, 'break-glass account')} excluded` : ''
+  return `${strong(goal)}. ${by}${bg}.`
 }
 
 export function partialControlStatement(goal: string, requires: string, floor: string, affected: number, total: number, noun: string): string {
@@ -61,8 +63,8 @@ export function partialSessionStatement(goal: string, current: string, floor: st
 }
 
 export function missingStatement(goal: string, baselinePolicy: string | null): string {
-  const ref = baselinePolicy ? ` The baseline's policy for it: ${em(baselinePolicy)}.` : ''
-  return `${strong(goal)}. No policy does this yet.${ref}`
+  const ref = baselinePolicy ? `; the baseline's policy for it is ${em(baselinePolicy)}` : ''
+  return `${strong(goal)}. No policy does this yet${ref}.`
 }
 
 export function reportOnlyStatement(goal: string, policy: string, days: number | null, failures: number | null): string {

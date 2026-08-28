@@ -34,8 +34,12 @@ import type { Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
 import { StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
-import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, StatTile, Stats, Tabs } from '../components/index.ts'
+import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
+import { SCORE } from '../../copy/definitions.ts'
+import { FINDINGS } from '../../copy/pages.ts'
+import { compareScores } from '../../scoring/priority.ts'
+import type { ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 type SavedSteps = Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null }>
@@ -66,6 +70,7 @@ export function RoadmapPage({
   const [loadedStores, setLoadedStores] = useState(false)
   const [extraNames, setExtraNames] = useState<Map<string, string>>(new Map())
   const [statusFilter, setStatusFilter] = useState<Set<StepStatus>>(new Set())
+  const [stepSort, setStepSort] = useState<'schedule' | ScoreSort>('schedule')
   const [skipDraft, setSkipDraft] = useState<{ id: string; reason: string } | null>(null)
   const [version, setVersion] = useState(0)
   const [copied, setCopied] = useState<string | null>(null)
@@ -516,8 +521,25 @@ export function RoadmapPage({
             </FilterChip>
           ))}
         </div>
+        <div className="control-bar no-print">
+          <label>
+            {C.sortBy}
+            <select value={stepSort} onChange={(e) => setStepSort(e.currentTarget.value as 'schedule' | ScoreSort)}>
+              <option value="schedule">{C.sortSchedule}</option>
+              {(['priority', 'value', 'effort', 'disruption'] as ScoreSort[]).map((k) => (
+                <option key={k} value={k}>
+                  {FINDINGS.sort[k]}
+                </option>
+              ))}
+            </select>
+            {stepSort !== 'schedule' && <InfoTip title={SCORE[stepSort].title} text={SCORE[stepSort].text} />}
+          </label>
+        </div>
         {schedule.waves.map((w) => {
-          const inWave = w.stepIds.map((id) => stepById.get(id)).filter((s): s is Step => s !== undefined && visible.includes(s))
+          const inWave = w.stepIds
+            .map((id) => stepById.get(id))
+            .filter((s): s is Step => s !== undefined && visible.includes(s))
+            .sort((a, b) => (stepSort === 'schedule' ? 0 : compareScores(a.score ?? null, b.score ?? null, stepSort)))
           if (inWave.length === 0) return null
           return (
             <div key={w.wave} className="phase-group">
@@ -656,6 +678,7 @@ function StepCard({
             </Chip>
           )}{' '}
           {step.title}
+          <ScoreBadges score={step.score ?? null} />
           <div className="sub">{step.impact}</div>
         </>
       }

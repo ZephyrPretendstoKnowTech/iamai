@@ -1,4 +1,5 @@
 // Roadmap types (roadmap.md §1, §3–§5). Pure types only.
+import type { GoalScore } from '../scoring/priority.ts'
 
 export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforce' | 'recurring'
 
@@ -86,4 +87,7 @@ export type Step = {
   operatorWhatIf?: string | null
   /** Proposed policy name in the tenant's convention, and the baseline's original. */
   naming?: { proposed: string; fromBaseline: string | null } | null
+  // ---- prompt 17 ----
+  /** Security value, effort, disruption, priority; null for prerequisite and recurring steps. */
+  score?: GoalScore | null
 }

@@ -24,6 +24,7 @@ import {
 import type { ChipStatus, Column, IconName, PickerOption } from '../components/index.ts'
 import { InventoryPage } from './InventoryPage.tsx'
 import { MappingPage } from './MappingPage.tsx'
+import { CoveragePage } from './CoveragePage.tsx'
 import { RoadmapPage } from './RoadmapPage.tsx'
 import type { BaselineResult } from './BaselinePage.tsx'
 import { fixtureSnapshot } from './fixtureSnapshot.ts'
@@ -233,6 +234,10 @@ export function ComponentsPage() {
 
       <Section id="setup" title="Setup (synthetic tenant)">
         <MappingPage scan={{ snapshot: FIXTURE, at: FIXTURE.asOf }} baseline={FIXTURE_BASELINE} onProgress={() => {}} />
+      </Section>
+
+      <Section id="findings" title="Findings (synthetic tenant)">
+        <CoveragePage scan={{ snapshot: FIXTURE, at: FIXTURE.asOf }} baseline={FIXTURE_BASELINE} />
       </Section>
 
       <Section id="roadmap" title="Roadmap (synthetic tenant)">

@@ -94,11 +94,17 @@ export type Implementation = {
   allowedExclusions: string[]
 }
 
+export type Domain = 'Identity' | 'Admins' | 'Devices' | 'Sessions' | 'Guests' | 'Locations' | 'Risk'
+
 export type Goal = {
   id: string
   name: string
   description: string
   phase: number
+  /** Scoring inputs (ux-review-03 §A7); ad-hoc goals may lack them. */
+  domain?: Domain
+  securityValue?: number
+  baseEffort?: number
   applicability: string | null
   implementations: Implementation[]
   free: unknown[]

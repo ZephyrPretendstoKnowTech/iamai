@@ -6,6 +6,9 @@
       "name": "Every user satisfies MFA on every app",
       "description": "All members and guests must complete multifactor authentication for every application.",
       "phase": 2,
+      "domain": "Identity",
+      "securityValue": 5,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -47,6 +50,9 @@
       "name": "Admins use phishing-resistant auth",
       "description": "Core admin roles must authenticate with phishing-resistant methods.",
       "phase": 3,
+      "domain": "Admins",
+      "securityValue": 5,
+      "baseEffort": 3,
       "applicability": null,
       "implementations": [
         {
@@ -83,6 +89,9 @@
       "name": "Admin portals need strong auth or are blocked for non-admins",
       "description": "Access to Microsoft admin portals requires strong authentication or is blocked outright.",
       "phase": 3,
+      "domain": "Admins",
+      "securityValue": 4,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -119,6 +128,9 @@
       "name": "Guests satisfy MFA",
       "description": "Every guest and external user type present in the tenant must complete MFA.",
       "phase": 4,
+      "domain": "Guests",
+      "securityValue": 4,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -155,6 +167,9 @@
       "name": "Security-info registration requires a trusted context",
       "description": "Registering security info requires MFA or happens only from trusted locations.",
       "phase": 0,
+      "domain": "Identity",
+      "securityValue": 3,
+      "baseEffort": 3,
       "applicability": null,
       "implementations": [
         {
@@ -191,6 +206,9 @@
       "name": "Legacy protocols blocked",
       "description": "Exchange ActiveSync and other legacy clients are blocked for everyone.",
       "phase": 1,
+      "domain": "Identity",
+      "securityValue": 5,
+      "baseEffort": 1,
       "applicability": null,
       "implementations": [
         {
@@ -230,6 +248,9 @@
       "name": "Device-code flow blocked",
       "description": "The device-code authentication flow is blocked.",
       "phase": 1,
+      "domain": "Identity",
+      "securityValue": 3,
+      "baseEffort": 1,
       "applicability": null,
       "implementations": [
         {
@@ -266,6 +287,9 @@
       "name": "Authentication transfer blocked",
       "description": "The authentication-transfer flow is blocked.",
       "phase": 1,
+      "domain": "Identity",
+      "securityValue": 3,
+      "baseEffort": 1,
       "applicability": null,
       "implementations": [
         {
@@ -302,6 +326,9 @@
       "name": "Sign-ins outside allowed countries blocked",
       "description": "Sign-ins from outside the allowed countries are blocked.",
       "phase": 4,
+      "domain": "Locations",
+      "securityValue": 3,
+      "baseEffort": 3,
       "applicability": null,
       "implementations": [
         {
@@ -341,6 +368,9 @@
       "name": "Admin sessions expire quickly and never persist",
       "description": "Core admin roles get a short sign-in frequency and no persistent browser sessions.",
       "phase": 3,
+      "domain": "Sessions",
+      "securityValue": 4,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -380,6 +410,9 @@
       "name": "Unmanaged-device browser sessions are limited",
       "description": "Browser sessions from unmanaged devices get app-enforced restrictions, no persistence, or a sign-in frequency.",
       "phase": 6,
+      "domain": "Sessions",
+      "securityValue": 3,
+      "baseEffort": 3,
       "applicability": null,
       "implementations": [
         {
@@ -421,6 +454,9 @@
       "name": "Office apps require a compliant or joined device",
       "description": "Office 365 access requires a compliant or domain-joined device.",
       "phase": 5,
+      "domain": "Devices",
+      "securityValue": 4,
+      "baseEffort": 4,
       "applicability": "intune",
       "implementations": [
         {
@@ -459,6 +495,9 @@
       "name": "Unknown platforms blocked",
       "description": "Platforms outside the supported set are blocked.",
       "phase": 5,
+      "domain": "Devices",
+      "securityValue": 2,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -493,6 +532,9 @@
       "name": "Mobile access requires approved or protected apps",
       "description": "iOS and Android access requires approved client apps or app protection policies.",
       "phase": 5,
+      "domain": "Devices",
+      "securityValue": 3,
+      "baseEffort": 3,
       "applicability": "intune",
       "implementations": [
         {
@@ -527,6 +569,9 @@
       "name": "Risky sign-ins get MFA or are blocked",
       "description": "High (and medium) sign-in risk requires MFA or blocks the sign-in.",
       "phase": 7,
+      "domain": "Risk",
+      "securityValue": 4,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -563,6 +608,9 @@
       "name": "High-risk users must change password",
       "description": "High user risk forces a secured password change or blocks access.",
       "phase": 7,
+      "domain": "Risk",
+      "securityValue": 4,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -599,6 +647,9 @@
       "name": "Azure management requires strong auth",
       "description": "The Azure management plane requires MFA.",
       "phase": 3,
+      "domain": "Admins",
+      "securityValue": 4,
+      "baseEffort": 2,
       "applicability": "azureManagement",
       "implementations": [
         {
@@ -638,6 +689,9 @@
       "name": "Registering or joining a device requires MFA",
       "description": "The register-or-join-device user action requires MFA.",
       "phase": 5,
+      "domain": "Devices",
+      "securityValue": 3,
+      "baseEffort": 1,
       "applicability": null,
       "implementations": [
         {
@@ -674,6 +728,9 @@
       "name": "Windows desktop sessions require token protection",
       "description": "Windows sessions require token protection (secure sign-in session).",
       "phase": 6,
+      "domain": "Sessions",
+      "securityValue": 3,
+      "baseEffort": 3,
       "applicability": null,
       "implementations": [
         {
@@ -711,6 +768,9 @@
       "name": "Service principals restricted",
       "description": "Workload identities are blocked or risk-restricted by policy.",
       "phase": 7,
+      "domain": "Identity",
+      "securityValue": 3,
+      "baseEffort": 3,
       "applicability": "workload",
       "implementations": [
         {
@@ -742,6 +802,9 @@
       "name": "Browser sessions never persist for anyone",
       "description": "All users get 'persistent browser session: never' so closing the browser ends the session.",
       "phase": 6,
+      "domain": "Sessions",
+      "securityValue": 2,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -749,26 +812,42 @@
           "kind": "ca",
           "signature": {
             "appsAll": true,
-            "sessionAnyOf": ["persistentBrowserNever"],
+            "sessionAnyOf": [
+              "persistentBrowserNever"
+            ],
             "noRisk": true,
             "noUserActions": true
           },
-          "expectedWho": { "kind": "all" },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "session": { "persistentBrowserNever": true } },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "session": {
+              "persistentBrowserNever": true
+            }
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
       "tldr": "No 'stay signed in' on shared or unmanaged browsers — sessions end when the browser closes.",
-      "cis": ["4.3"]
+      "cis": [
+        "4.3"
+      ]
     },
     {
       "id": "pim-activation-reauth",
       "name": "Activating a privileged role asks for MFA every time",
       "description": "PIM activation carries an authentication context that requires a fresh MFA every time.",
       "phase": 3,
+      "domain": "Admins",
+      "securityValue": 3,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
@@ -778,47 +857,79 @@
             "authContextPresent": true,
             "signInFrequencyEveryTime": true
           },
-          "expectedWho": { "kind": "coreAdmins" },
+          "expectedWho": {
+            "kind": "coreAdmins"
+          },
           "expectedApps": "specific",
-          "floor": { "grant": "mfa", "session": { "signInFrequencyEveryTime": true } },
-          "allowedExclusions": ["breakGlass"]
+          "floor": {
+            "grant": "mfa",
+            "session": {
+              "signInFrequencyEveryTime": true
+            }
+          },
+          "allowedExclusions": [
+            "breakGlass"
+          ]
         }
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings",
       "tldr": "Elevating to an admin role should always cost a fresh MFA, even mid-session.",
-      "cis": ["5.4", "6.5"]
+      "cis": [
+        "5.4",
+        "6.5"
+      ]
     },
     {
       "id": "intune-enrollment-reauth",
       "name": "Enrolling a device in Intune asks for MFA every time",
       "description": "The Intune enrollment app requires a fresh sign-in every time so a stolen session cannot enrol a device.",
       "phase": 5,
+      "domain": "Devices",
+      "securityValue": 2,
+      "baseEffort": 2,
       "applicability": "intune",
       "implementations": [
         {
           "tier": "intune",
           "kind": "ca",
           "signature": {
-            "appsIdsInclude": ["d4ebce55-015a-49b5-a083-c84d1797ae8c"],
+            "appsIdsInclude": [
+              "d4ebce55-015a-49b5-a083-c84d1797ae8c"
+            ],
             "signInFrequencyEveryTime": true
           },
-          "expectedWho": { "kind": "all" },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "specific",
-          "floor": { "grant": "mfa", "session": { "signInFrequencyEveryTime": true } },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "mfa",
+            "session": {
+              "signInFrequencyEveryTime": true
+            }
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/mem/intune/protect/conditional-access-intune-common-ways-use",
       "tldr": "Device enrollment is a trust boundary — make it a fresh, interactive sign-in.",
-      "cis": ["4.1"]
+      "cis": [
+        "4.1"
+      ]
     },
     {
       "id": "block-downloads-unmanaged",
       "name": "Unmanaged devices cannot download",
       "description": "Browser sessions from devices that are not compliant get app-enforced restrictions (limited, read-only access).",
       "phase": 6,
+      "domain": "Sessions",
+      "securityValue": 3,
+      "baseEffort": 4,
       "applicability": null,
       "implementations": [
         {
@@ -828,66 +939,106 @@
             "appEnforcedRestrictions": true,
             "deviceFilterPresent": true
           },
-          "expectedWho": { "kind": "all" },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "specific",
-          "floor": { "session": { "appEnforced": true } },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "session": {
+              "appEnforced": true
+            }
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-policy-app-enforced-restriction",
       "tldr": "Let unmanaged devices read but not download from SharePoint and Exchange.",
-      "cis": ["3.3"]
+      "cis": [
+        "3.3"
+      ]
     },
     {
       "id": "sign-in-risk-medium",
       "name": "Medium-risk sign-ins require MFA",
       "description": "Sign-ins Identity Protection rates medium (or higher) must satisfy MFA.",
       "phase": 7,
+      "domain": "Risk",
+      "securityValue": 3,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
           "tier": "p2",
           "kind": "ca",
           "signature": {
-            "signInRiskInclude": ["medium"],
+            "signInRiskInclude": [
+              "medium"
+            ],
             "grantHasAuthControl": true
           },
-          "expectedWho": { "kind": "all" },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "mfa" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "mfa"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-risk",
       "tldr": "Medium sign-in risk is common enough to matter; MFA clears most of it without blocking anyone.",
-      "cis": ["6.3"]
+      "cis": [
+        "6.3"
+      ]
     },
     {
       "id": "user-risk-medium",
       "name": "Medium-risk users must change their password",
       "description": "Users Identity Protection rates medium (or higher) must complete MFA and change their password.",
       "phase": 7,
+      "domain": "Risk",
+      "securityValue": 3,
+      "baseEffort": 2,
       "applicability": null,
       "implementations": [
         {
           "tier": "p2",
           "kind": "ca",
           "signature": {
-            "userRiskInclude": ["medium"],
+            "userRiskInclude": [
+              "medium"
+            ],
             "grantPasswordChange": true
           },
-          "expectedWho": { "kind": "all" },
+          "expectedWho": {
+            "kind": "all"
+          },
           "expectedApps": "all",
-          "floor": { "grant": "passwordChange" },
-          "allowedExclusions": ["breakGlass", "globalExclusion"]
+          "floor": {
+            "grant": "passwordChange"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ]
         }
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-risk-user",
       "tldr": "A medium-risk user is likely compromised: force a secure password change.",
-      "cis": ["5.2", "6.3"]
+      "cis": [
+        "5.2",
+        "6.3"
+      ]
     }
   ]
 }

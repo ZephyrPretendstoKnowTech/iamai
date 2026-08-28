@@ -37,7 +37,8 @@ import type { Schedule } from './schedule.ts'
 import type { Action, Blocker, Step, StepPopulation, StepStatus } from './types.ts'
 import type { Pace } from './constants.ts'
 import { DEFAULT_PACE } from './constants.ts'
-import { BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
+import { ADJUST, BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
+import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
 
@@ -273,6 +274,60 @@ export function buildCreateAction(
 export function proposedPolicyName(title: string, naming: { prefix: string | null; separator: string | null } | null): string {
   if (naming?.prefix && naming.separator) return `${naming.prefix}${naming.separator}${title}`
   return title
+}
+
+// A Change step shows the tenant's current include/exclude and carries only
+// the fields that change (prompt 17 §4): the JSON is a patch, the portal
+// steps open the existing policy and list the changed fields.
+const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], 'grantControls' | 'sessionControls' | 'users' | 'applications' | 'state'>> = {
+  'weaker-control': 'grantControls',
+  'session-weaker': 'sessionControls',
+  'not-targeted': 'users',
+  excluded: 'users',
+  'apps-narrower': 'applications',
+  'apps-excluded': 'applications',
+  'report-only': 'state',
+}
+
+function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | null, names?: NameDirectory): Action {
+  const summary = adjustSummary(result)
+  if (!full.json) return { ...full, kind: 'adjust', summary }
+  const body = JSON.parse(full.json) as RawPolicy
+  const sections = new Set(result.reasons.filter((r) => !r.expected).map((r) => CHANGED_SECTION[r.kind]).filter(Boolean))
+  if (result.floorRaised) sections.add('grantControls')
+  const patch: RawPolicy = { description: body.description }
+  const conditions = (body.conditions ?? {}) as RawPolicy
+  if (sections.has('grantControls')) patch.grantControls = body.grantControls
+  if (sections.has('sessionControls')) patch.sessionControls = body.sessionControls
+  if (sections.has('users') || sections.has('applications')) {
+    const c: RawPolicy = {}
+    if (sections.has('users')) c.users = conditions.users
+    if (sections.has('applications')) c.applications = conditions.applications
+    patch.conditions = c
+  }
+  if (sections.has('state')) patch.state = 'enabled'
+  const json = JSON.stringify(patch, null, 2)
+
+  const label = (v: unknown): string => (Array.isArray(v) && v.length > 0 ? [...new Set(v.map((x) => (names ? names.label(String(x)) : String(x))))].join(', ') : '')
+  const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
+  const currentInclude = cur ? [label(cur.includeUsers), label(cur.includeGroups), label(cur.includeRoles)].filter(Boolean).join('; ') : ''
+  const currentExclude = cur ? [label(cur.excludeUsers), label(cur.excludeGroups), label(cur.excludeRoles)].filter(Boolean).join('; ') : ''
+  const portal = [
+    full.portalSteps[0],
+    ...(currentInclude ? [ADJUST.currentInclude(currentInclude)] : []),
+    ...(currentExclude ? [ADJUST.currentExclude(currentExclude)] : []),
+    ...full.portalSteps.slice(1, -1).filter((line) => {
+      if (/^Users →/.test(line)) return sections.has('users')
+      if (/^Target resources →/.test(line)) return sections.has('applications')
+      if (/^Grant →|^Grant controls/.test(line)) return sections.has('grantControls')
+      if (/^Session/.test(line)) return sections.has('sessionControls')
+      if (/^Conditions →/.test(line)) return false
+      return true
+    }),
+    full.portalSteps[full.portalSteps.length - 1],
+  ].filter((s): s is string => typeof s === 'string')
+  const powershell = full.powershell ? full.powershell.replace(/-Method POST/, '-Method PATCH') : null
+  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell }
 }
 
 function adjustSummary(result: GoalResult): string[] {
@@ -535,16 +590,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // current state — never a second policy named after the baseline.
       const existing = result.candidates.find((c) => c.contribution !== 'disabled') ?? null
       if (source) blockUnmapped(source.policy)
+      const existingRaw = existing ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existing.policyId) as RawPolicy | undefined) ?? null : null
       action = source
-        ? {
-            ...buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
+        ? adjustAction(
+            buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
               placeholders,
               displayName: existing?.policyName ?? proposedPolicyName(stepTitle(goal.name), naming),
               adjust: existing ? { policyId: existing.policyId, state: existing.state } : undefined,
             }),
-            kind: 'adjust',
-            summary: adjustSummary(result),
-          }
+            result,
+            existingRaw,
+            input.names,
+          )
         : { kind: 'adjust', summary: adjustSummary(result), json: null, portalSteps: [], powershell: null }
     }
 
@@ -635,8 +692,29 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Announcements by goal family (prompt 13 §8); nobody affected → no template.
     const evidenceUsable = evidence.status === 'ok' || evidence.status === 'partial'
     const nobodyAffected = evidenceUsable && readiness.family === 'block' && evidence.affectedUserIds.length === 0
+    // The change itself decides the wording (prompt 17 §4): an adjust that
+    // only tightens sessions gets session wording; a strength raise gets
+    // passkey wording; a block names the affected users or needs none.
+    const floorGrant = impl.floor.grant ?? null
+    const adjustSections = new Set(result.reasons.filter((r) => !r.expected).map((r) => CHANGED_SECTION[r.kind]).filter(Boolean))
+    const sessionOnly = kind === 'adjust' ? adjustSections.size > 0 && [...adjustSections].every((s) => s === 'sessionControls') : floorGrant === null && impl.floor.session !== undefined
     const comms =
-      status === 'done' ? null : nobodyAffected ? NO_ANNOUNCEMENT : announcementFor(readiness.family, goal.id, tenantName, '{DATE}')
+      status === 'done'
+        ? null
+        : nobodyAffected
+          ? NO_ANNOUNCEMENT
+          : announcementFor(
+              {
+                goalId: goal.id,
+                family: readiness.family,
+                grant: sessionOnly ? null : floorGrant,
+                sessionOnly,
+                affected: evidenceUsable && readiness.family === 'block' ? evidence.affectedUserIds.length : null,
+                admins: impl.expectedWho.kind === 'coreAdmins',
+              },
+              tenantName,
+              '{DATE}',
+            )
 
     // Operator evidence sentence (prompt 13 §7) — never a promise. A count is
     // only claimed where the records actually measured this goal (block usage
@@ -647,17 +725,30 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ? OPERATOR.inScope(measured ? (evidence.affectedUserIds.includes(operatorId!) ? 'some' : 0) : null, opEvidence?.signInCount ?? null)
       : null
 
+    // "Done when" bullets only for criteria that apply to the step kind
+    // (prompt 17 §4): a create step observes in report-only, then enforces;
+    // an adjust step to an enforced policy just has to land cleanly.
+    const existingReportOnly = kind === 'adjust' && result.candidates.some((c) => c.contribution === 'reportOnly')
     const exitCriteria =
       status === 'done'
         ? [EXIT.staysEnforced]
-        : [
-            EXIT.reportOnlyDays(EXIT_MIN_DAYS_OBSERVED),
-            EXIT.signIns(EXIT_SIGNINS_PER_ACTIVE_USER, EXIT_MIN_SIGNINS_ABSOLUTE),
-            EXIT.zeroFailures,
-            ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []),
-            ...(includesOperator ? [EXIT.operatorStrong] : []),
-            EXIT.thenEnforce,
-          ]
+        : kind === 'adjust' && !existingReportOnly
+          ? [EXIT.adjustApplied, EXIT.adjustNoRegression, ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []), ...(includesOperator ? [EXIT.operatorStrong] : [])]
+          : [
+              EXIT.reportOnlyDays(EXIT_MIN_DAYS_OBSERVED),
+              EXIT.signIns(EXIT_SIGNINS_PER_ACTIVE_USER, EXIT_MIN_SIGNINS_ABSOLUTE),
+              EXIT.zeroFailures,
+              ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []),
+              ...(includesOperator ? [EXIT.operatorStrong] : []),
+              EXIT.thenEnforce,
+            ]
+
+    const score = scoreResult(result, snapshot, viability, {
+      prerequisites: blockedBy.length,
+      newObjects: source ? createdWithinStepKeys(source.policy, mapping).length : 0,
+      evidenceClean: zeroUsage || evidence.reportOnly?.meetsExitCriterion === true,
+      affectedByBlock: evidenceUsable && readiness.family === 'block' ? evidence.affectedUserIds.length : null,
+    })
 
     steps.push({
       id: stepId,
@@ -693,6 +784,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         kind === 'create' && status !== 'done'
           ? { proposed: proposedPolicyName(stepTitle(goal.name), naming), fromBaseline: source?.facts.name ?? null }
           : null,
+      score,
     })
   }
 

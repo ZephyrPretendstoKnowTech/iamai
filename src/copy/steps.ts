@@ -207,7 +207,7 @@ const READINESS_NAME: Record<string, string> = {
 
 export const UNBLOCK = {
   setup: 'finish the Setup questions first',
-  question: (n: number, title: string, ask: string) => `Blocked until Setup question ${n}. ${title}: ${ask}`,
+  question: (n: number, title: string, ask: string) => `Setup question ${n} (${title}): ${ask}`,
   createObject: 'create the missing object first (phase 0)',
   readiness: (percent: number, family: string, threshold: number) =>
     `${READINESS_NAME[family] ?? 'readiness'} is ${percent}%: the threshold is ${threshold}%; verify users first (phase 2)`,
@@ -242,6 +242,14 @@ export const EXIT = {
   careVerified: (n: number) => `Every handle-with-care user in scope is verified (${n} to check).`,
   operatorStrong: 'The signed-in account has a strong method registered. IAMAI checks this.',
   thenEnforce: 'Then enable the policy (Enforce).',
+  adjustApplied: 'The changed fields match the baseline on the next re-scan.',
+  adjustNoRegression: 'No new sign-in failures on the changed policy in the week after the change.',
+}
+
+export const ADJUST = {
+  currentInclude: (who: string) => `Today the policy includes: ${who}.`,
+  currentExclude: (who: string) => `Today the policy excludes: ${who}.`,
+  onlyFields: 'Only the fields listed above change; everything else stays as it is.',
 }
 
 export const ROLLBACK = {
