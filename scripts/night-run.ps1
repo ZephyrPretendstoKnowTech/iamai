@@ -18,7 +18,7 @@ $summary = Join-Path $logDir 'SUMMARY.md'
 "# Night run $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n" | Set-Content $summary
 
 function Test-LimitHit([string]$text) {
-  return $text -match 'usage limit|session limit|rate limit|quota|resets at|resets d|too many requests|429'
+  return $text -match 'usage limit|session limit|rate limit|quota|resets at|resets \d|too many requests|429'
 }
 
 function Invoke-Prompt([string]$file) {
