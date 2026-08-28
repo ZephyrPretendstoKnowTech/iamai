@@ -9,5 +9,13 @@ has a one-line reason; none is a shortcut accepted as good enough.
 | ~~D2~~ done 2026-08-28 (`src/copy/reasons.ts`) | audit-01 | Findings "Why not fully" reasons are engine strings ("never included by any candidate policy", "matching but disabled: …"). | The reasons are built inside `coverage.ts` with policy names interpolated; moving them to `src/copy` with the 0/1/all branches is a copy-model change across coverage and its tests. |
 | ~~D3~~ done 2026-08-28 | audit-01 | Roadmap "If it goes wrong" on a verification campaign says "objects created can be deleted", the generic fallback. | Rollback text is per step kind; a verify step needs its own sentence and a test for each kind. |
 | ~~D4~~ done 2026-08-28 | audit-01 | Inventory People "Type" column shows `member` / `guest` in lower case. | Comes from the raw `userType`; a shared user-type label belongs with the Chip work in Prompt 20. |
-| D5 | audit-01 | Live-only states (scan running, scan failed, licence- or permission-disabled sections) were reviewed in code, not on screen. | Needs a connected tenant; roadmap.md §10. |
-| D6 | prompt 20 §10 | The smoke test mocks at the snapshot boundary (`?dev=1&mock=1` loads the synthetic tenant and baseline) rather than answering raw Graph requests from a fixture. | Answering every collector endpoint with Graph-shaped JSON means a second fixture format that must be kept consistent with `fixtureSnapshot.ts`; the walk, the numbers and the console check are the same either way. Worth doing when the collectors change shape. |
+| ~~D5~~ done 2026-08-28 (`?dev=1&fail=1` forces a 403 and a 429) | audit-01 | Live-only states (scan running, scan failed, licence- or permission-disabled sections) were reviewed in code, not on screen. | Needs a connected tenant; roadmap.md §10. |
+| ~~D6~~ decided 2026-08-28 (recorded in SPEC.md) | prompt 20 §10 | The smoke test mocks at the snapshot boundary (`?dev=1&mock=1` loads the synthetic tenant and baseline) rather than answering raw Graph requests from a fixture. | Answering every collector endpoint with Graph-shaped JSON means a second fixture format that must be kept consistent with `fixtureSnapshot.ts`; the walk, the numbers and the console check are the same either way. Worth doing when the collectors change shape. |
+
+## Plan file round trip (ux-review-06 §33, 2026-08-28)
+
+Exercised once end to end in headless Chrome on the synthetic tenant: Save
+plan produced a file with 18 steps, 2 done, 2 checkpoints, schema 1; after a
+fresh page load, Load plan with that file showed "2 of 18 steps already in
+place", the Steps badge "2/18 steps done", and 18 cards with 2 Done. Every
+number matched. `src/roadmap/plan.test.ts` keeps the field-level guarantee.
