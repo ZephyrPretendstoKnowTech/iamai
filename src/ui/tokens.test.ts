@@ -2,7 +2,7 @@
 // large text / UI components such as chips and accent buttons.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BUTTON_STATES, BUTTON_VARIANTS, DARK, LIGHT, buttonColours, contrastRatio } from './tokens.ts'
+import { BUTTON_STATES, BUTTON_VARIANTS, DARK, LIGHT, blend, buttonColours, contrastRatio } from './tokens.ts'
 import type { Palette } from './tokens.ts'
 
 const AA_TEXT = 4.5
@@ -39,5 +39,17 @@ for (const [name, p] of [['dark', DARK], ['light', LIGHT]] as const) {
         assert.ok(contrastRatio(text, background) >= AA_TEXT, `${variant}/${state}: ${text} on ${background} = ${contrastRatio(text, background).toFixed(2)}`)
       }
     }
+  })
+}
+
+// ux-review-05 §43: the done chip's ink on its soft background, and the active
+// step's accent on its soft background, read at AA in both themes.
+for (const [name, p] of [['dark', DARK], ['light', LIGHT]] as const) {
+  test(`${name}: done chip and active step keep AA on their soft backgrounds`, () => {
+    const softSuccess = blend(p.success, p.softAlpha, p.surface)
+    assert.ok(contrastRatio(p.success, softSuccess) >= AA_TEXT, `done chip ${p.success} on ${softSuccess} = ${contrastRatio(p.success, softSuccess).toFixed(2)}`)
+    const softAccent = blend(p.accent, p.softAlpha, p.surface)
+    assert.ok(contrastRatio(p.text, softAccent) >= AA_TEXT, `active step text on ${softAccent}`)
+    assert.ok(contrastRatio(p.accent, softAccent) >= AA_LARGE, `active step accent on ${softAccent}`)
   })
 }

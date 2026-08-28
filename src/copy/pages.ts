@@ -9,6 +9,7 @@ export const SHELL = {
   lightTheme: 'Light theme',
   darkTheme: 'Dark theme',
   themeTooltip: 'Switch between dark and light themes',
+  themeState: (theme: string) => `Theme: ${theme}. Switch to ${theme === 'dark' ? 'light' : 'dark'}`,
   forget: 'Forget this tenant',
   // Error boundary (prompt 20 §2)
   errorTitle: 'This page hit an error',
@@ -346,6 +347,7 @@ export const ROADMAP = {
   rescan: 'Re-scan',
   tabs: { overview: 'Overview', timeline: 'Timeline', danger: 'Danger areas', steps: 'Steps' },
   weeksBadge: (w: number) => `${w}w`,
+  stepsBadge: (done: number, total: number) => `${done}/${total} steps done`,
   paceLabel: 'Pace:',
   // Size bands (§A3): the pace follows the tenant; the band can be overridden.
   bands: {

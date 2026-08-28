@@ -20,7 +20,7 @@ export function WhatIamaiReads() {
             columns={[
               { key: 'name', header: READS.columns.data, render: (s) => s.name },
               { key: 'endpoint', header: READS.columns.endpoint, render: (s) => <code>{s.endpoint}</code> },
-              { key: 'version', header: READS.columns.api, render: (s) => s.version },
+              { key: 'version', header: READS.columns.api, minWidth: '5rem', render: (s) => <span style={{ whiteSpace: 'nowrap' }}>{s.version}</span> },
               { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes.join(', ') },
               { key: 'gate', header: READS.columns.gate, render: (s) => s.gate },
               { key: 'purpose', header: READS.columns.why, render: (s) => s.purpose },

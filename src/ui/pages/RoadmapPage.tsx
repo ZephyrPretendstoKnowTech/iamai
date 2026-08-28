@@ -502,7 +502,18 @@ export function RoadmapPage({
           return (
             <div key={w.wave}>
               {inWave.length > 0 && (
-                <div className="timeline-row">
+                <div
+                  className="timeline-row timeline-link"
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => setActiveTab('steps')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setActiveTab('steps')
+                    }
+                  }}
+                >
                   {dates(w.start, w.end, w.days)}
                   <div>
                     <strong>{waveTitle(w)}</strong>{' '}
@@ -653,7 +664,7 @@ export function RoadmapPage({
           { id: 'overview', label: C.tabs.overview, render: overview },
           { id: 'timeline', label: C.tabs.timeline, badge: C.weeksBadge(schedule.weeks), render: timeline },
           { id: 'danger', label: C.tabs.danger, badge: dangers.length || '', render: dangerAreas },
-          { id: 'steps', label: C.tabs.steps, badge: `${summary.done}/${summary.total}`, render: stepsView },
+          { id: 'steps', label: C.tabs.steps, badge: C.stepsBadge(summary.done, summary.total), render: stepsView },
         ]}
       />
       <p className="reason">{C.lastStep}</p>

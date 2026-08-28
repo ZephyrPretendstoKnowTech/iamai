@@ -132,7 +132,7 @@ export function AppShell({
               {tenantName ?? account.username}
             </span>
           )}
-          <Button size="sm" onClick={toggleTheme} title={SHELL.themeTooltip}>
+          <Button size="sm" onClick={toggleTheme} title={SHELL.themeTooltip} aria-pressed={theme === 'dark'} aria-label={SHELL.themeState(theme)}>
             {theme === 'dark' ? SHELL.lightTheme : SHELL.darkTheme}
           </Button>
           {account && (

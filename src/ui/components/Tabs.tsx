@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
 
 export type TabDef = { id: string; label: string; badge?: string | number; render: () => ReactNode }
@@ -23,9 +23,16 @@ export function Tabs({
     onChange?.(id)
   }
   const base = useId()
+  const listRef = useRef<HTMLDivElement>(null)
+  // Switching tabs lands at the top of the panel, never mid-content (ux-review-05 §41).
+  const choose = (id: string): void => {
+    setActive(id)
+    const list = listRef.current
+    if (list && list.getBoundingClientRect().top < 0) list.scrollIntoView({ block: 'start' })
+  }
   return (
     <div>
-      <div className="tabs no-print" role="tablist">
+      <div className="tabs no-print" role="tablist" ref={listRef}>
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -35,7 +42,7 @@ export function Tabs({
             aria-selected={active === t.id}
             aria-controls={`${base}-panel-${t.id}`}
             className={`tab ${active === t.id ? 'active' : ''}`}
-            onClick={() => setActive(t.id)}
+            onClick={() => choose(t.id)}
           >
             {t.label}
             {t.badge !== undefined && t.badge !== '' && <span className="tab-badge">{t.badge}</span>}

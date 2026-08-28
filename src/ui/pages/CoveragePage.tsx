@@ -272,9 +272,10 @@ export function CoveragePage({
           </Chip>{' '}
           {renderStatement(nameify(r.statement))}
           <ScoreBadges score={scoreOf(r)} />
-          <InfoTip title={C.whyMatters} text={r.goal.tldr ?? r.goal.description} />
-          {r.status !== 'enforced' && r.status !== 'not-applicable' && r.status !== 'licence-limited' && (
-            <InfoTip title={C.howToFix} text={C.fixText(r.goal.name)} link={{ href: stepHref(stepIdForGoal(r.goal.id)), label: C.fixLink }} />
+          {r.status !== 'enforced' && r.status !== 'not-applicable' && r.status !== 'licence-limited' ? (
+            <InfoTip title={C.whyMatters} text={`${r.goal.tldr ?? r.goal.description} ${C.fixText(r.goal.name)}`} link={{ href: stepHref(stepIdForGoal(r.goal.id)), label: C.fixLink }} />
+          ) : (
+            <InfoTip title={C.whyMatters} text={r.goal.tldr ?? r.goal.description} />
           )}
         </>
       }
@@ -382,7 +383,6 @@ export function CoveragePage({
 
   const workingTab = () => (
     <div>
-      {controlBar}
       {enforced.length === 0 && <p className="advisor">{C.nothingInPlace}</p>}
       {grouped(enforced)}
     </div>
@@ -390,7 +390,6 @@ export function CoveragePage({
 
   const attentionTab = () => (
     <div>
-      {controlBar}
       {absent.length + partial.length + unknown.length === 0 && <p className="advisor">{C.allInPlace}</p>}
       {grouped([...partial, ...absent, ...unknown])}
     </div>
@@ -463,6 +462,7 @@ export function CoveragePage({
     <StepFrame title={C.title} does={C.does} needs={needs} next="roadmap" nextLabel={C.next}>
       <ScanAge at={scan.at} baseline={baseline?.source ?? null} />
       <p className="reason">{C.goalCounts(baselineGoals, scoredCount)}</p>
+      {controlBar}
       <Tabs
         tabs={[
           { id: 'summary', label: C.tabs.summary, render: summaryTab },

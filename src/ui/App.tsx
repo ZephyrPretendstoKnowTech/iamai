@@ -5,7 +5,7 @@ import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import { AppShell, useHashRoute } from './shell/AppShell.tsx'
-import { ErrorBoundary } from './components/index.ts'
+import { BackToTop, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
 import type { Route, StepStatus } from './shell/AppShell.tsx'
 import { StartPage } from './pages/StartPage.tsx'
@@ -204,6 +204,7 @@ export function App() {
           )}
         </ErrorBoundary>
       )}
+      <BackToTop />
     </AppShell>
   )
 }
