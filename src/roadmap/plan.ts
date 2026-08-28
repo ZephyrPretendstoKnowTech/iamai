@@ -3,6 +3,7 @@
 import type { CoverageReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
+import { emptyMappingState } from '../mapping/types.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
 
@@ -141,10 +142,27 @@ export function parsePlanFile(text: string): { plan: PlanFile | null; error: str
       return { plan: null, error: 'not a plan file (missing schemaVersion or steps)' }
     }
     if (parsed.schemaVersion > PLAN_SCHEMA_VERSION) {
-      return { plan: null, error: `plan file is newer (schema ${parsed.schemaVersion}) than this app understands — update the app` }
+      return { plan: null, error: `plan file is newer (schema ${parsed.schemaVersion}) than this app understands: update the app` }
     }
-    return { plan: parsed, error: null }
+    return { plan: upgradePlanFile(parsed), error: null }
   } catch (e) {
     return { plan: null, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/**
+ * Older plan files load with defaults for what they lack (prompt 20 §5):
+ * pre-1 files had no checkpoints and no travelling Setup answers.
+ */
+function upgradePlanFile(parsed: PlanFile): PlanFile {
+  if (parsed.schemaVersion >= PLAN_SCHEMA_VERSION) return parsed
+  const tenantId = parsed.tenant?.id ?? parsed.mappings?.tenantId ?? ''
+  return {
+    ...parsed,
+    schemaVersion: PLAN_SCHEMA_VERSION,
+    tenant: parsed.tenant ?? { id: tenantId, name: '', domains: [], operator: { userId: '', userPrincipalName: '' } },
+    baseline: parsed.baseline ?? { source: { kind: 'upload', fileName: 'unknown' }, variantChoices: [] },
+    mappings: parsed.mappings ?? emptyMappingState(tenantId),
+    checkpoints: Array.isArray(parsed.checkpoints) ? parsed.checkpoints : [],
   }
 }

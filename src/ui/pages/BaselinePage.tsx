@@ -104,7 +104,7 @@ export function BaselinePage({
         <span className="muted">
           {BASELINE.orUpload} (<a href="#/baseline/package">{BASELINE.howToPackage}</a>):
         </span>
-        <input type="file" accept=".json" multiple onChange={(e) => void loadUpload(e.currentTarget.files)} disabled={busy !== null} />
+        <input type="file" accept=".json" multiple aria-label={BASELINE.uploadLabel} onChange={(e) => void loadUpload(e.currentTarget.files)} disabled={busy !== null} />
       </p>
       {busy && <p className="muted">{busy}</p>}
       {error && <Callout kind="danger" title={BASELINE.loadFailed}>{error}</Callout>}

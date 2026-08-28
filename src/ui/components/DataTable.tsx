@@ -82,6 +82,7 @@ export function DataTable<T>({
               {shown.map((c) => (
                 <th
                   key={c.key}
+                  scope="col"
                   className={c.sortValue ? 'sortable' : ''}
                   aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}
                   tabIndex={c.sortValue ? 0 : undefined}

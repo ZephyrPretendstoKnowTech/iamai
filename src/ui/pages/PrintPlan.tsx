@@ -112,9 +112,9 @@ export function PrintPlan({
         <table className="datatable">
           <thead>
             <tr>
-              <th>{C.timelineColumns.wave}</th>
-              <th>{C.timelineColumns.dates}</th>
-              <th>{C.timelineColumns.steps}</th>
+              <th scope="col">{C.timelineColumns.wave}</th>
+              <th scope="col">{C.timelineColumns.dates}</th>
+              <th scope="col">{C.timelineColumns.steps}</th>
             </tr>
           </thead>
           <tbody>

@@ -140,6 +140,7 @@ export const BASELINE = {
   filesIn: (n: number) => `${count(n, 'file')} in this baseline`,
   targets: (tiers: string) => `targets ${tiers}`,
   loadedTitle: (source: string) => `Loaded: ${source}`,
+  uploadLabel: 'Upload baseline policy files',
   summaryLine: (policies: number, goals: number, questions: { total: number; required: number }) =>
     `${count(policies, 'policy', 'policies')} · ${count(goals, 'security goal')} · ${BASELINE_QUESTIONS(questions)}`,
   authorNote: 'For the baseline author: these lines describe the export, not this tenant.',
