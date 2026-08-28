@@ -268,8 +268,9 @@ test('7: regression after done → re-opened adjust with a note', () => {
 
 test('9: valid break-glass answers → no create-break-glass step; drill depends on their last sign-in', () => {
   const mapping = emptyMappingState('t')
+  // Every shown question is required now (prompt 26): answer them all so only the break-glass branch is under test.
+  for (const id of ['breakGlass', 'globalExclusion', 'countries', 'highCare', 'trustedLocations', 'serviceAccounts', 'timeZone', 'frameworks', 'applicability']) mapping.wizardAnswered[id] = true
   mapping.breakGlassUserIds = ['u1', 'u2']
-  mapping.wizardAnswered = { breakGlass: true, globalExclusion: true, countries: true }
   const snapshot = mkSnapshot()
   snapshot.users[1].lastSuccessfulSignIn = '2026-01-01T00:00:00Z' // u1 stale
   const { input } = build({ baselinePolicies: [mkPolicy({ displayName: 'Baseline MFA All' })], mapping, snapshot })
@@ -339,7 +340,6 @@ test('12: answered Countries with no matching tenant location → phase-0 step c
 test('13: confirmed service accounts with no group → phase-0 step creates the group', () => {
   const mapping = emptyMappingState('t')
   mapping.serviceAccountUserIds = ['u1']
-  mapping.wizardAnswered = { breakGlass: true, globalExclusion: true, countries: true }
   const { input } = build({ baselinePolicies: [mkPolicy({ displayName: 'Baseline MFA All' })], mapping })
   const steps = generateRoadmap(input).steps
   const create = steps.find((s) => s.id === 's-prereq-service-accounts-group')
