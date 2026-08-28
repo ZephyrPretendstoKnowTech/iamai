@@ -33,11 +33,12 @@ renders every component in every state. Screenshots below were taken from it at
 | `Tabs` | `tabs: TabDef[]` (`id`, `label`, `badge`, `render`); print renders all panels | Findings, Roadmap |
 | `StatTile` / `Stats` | `value`, `label`, `tone`, `tip`, `onClick`, `active` | Scan, Findings |
 | `ProgressBar` | `percent` (null = indeterminate), `caption` | Scan |
-| `Picker` | `selected`, `options`, `suggestions`, `onSearch`, `onChange`, `single` | Setup (users, groups) |
+| `Picker` | `selected`, `options`, `suggestions`, `onSearch`, `onChange`, `single`, `placeholder`, `loading` | Setup (users, groups, locations) |
+| `Toggle` | `on`, `onChange`, `label` — keyboard-operable switch | Setup workloads |
 | `DataTable` | `columns: Column<T>[]` (sortable, `csv`, `hidden` CSV-only), `expand`, 50/page, `csvName` | Scan, Licensing, What IAMAI reads |
 | `EmptyState` | `icon`, `text`, `action` | tables with no rows |
 | `Stepper` | `steps`, `reference`, `active` — status chips; horizontal under 900 px | app shell |
-| `Icon` | `name` (20 names), `size` — 20 px grid, 1.5 px stroke, no emoji | throughout |
+| `Icon` | `name` (19 names), `size` — 20 px grid, 1.5 px stroke, no emoji | throughout |
 
 ## Shell fixes shipped with v2
 

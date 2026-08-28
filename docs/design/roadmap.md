@@ -1,6 +1,6 @@
 # Design: roadmap v1
 
-**Status:** ready to implement after intents.md.
+**Status:** implemented (`src/roadmap/`); §11 records what changed after this design was written.
 **Inputs:** coverage results (intents.md), mapping answers, readiness table
 (§10 scoring), Lane A/B derived tables, licence capabilities, plan-file.md.
 **Output:** the Roadmap page and the plan file.
@@ -174,3 +174,25 @@ still pass, plus schedule tests):
 Still open: a live run of the redesigned plan against the tenant with Setup
 completed (the dev capture `roadmap-run` records it when opened with
 `?dev=1`).
+
+## 11. Prompts 12–13 and the first audit (2026-08-27)
+
+- **Waves, not phases in series** (`schedule.ts`): day 0 holds foundation
+  work and creates every new policy in report-only; one shared observation
+  window; enforcement waves follow phase order; done steps take no time;
+  blocked steps move after their blocker. Pace presets `PACES` (fast /
+  standard / cautious) live in `constants.ts`.
+- **Blockers are typed** (`Blocker` in `types.ts`): a step, a Setup question,
+  a readiness threshold, or evidence — rendered by name with a link. The
+  §6 "operator without a satisfied What-If check" gate was never built; the
+  operator gets an evidence sentence instead.
+- **Phase 8 removed**: ad-hoc goals take the phase their facts imply and a
+  generated plain title.
+- **Adjust steps edit the tenant's policy** (name, id, state; PATCH), never a
+  second policy named after the baseline.
+- **Naming**: new policies follow the tenant's prefix and separator.
+- Only the break-glass drill exists as a recurring step; there is no
+  re-scan-cadence step.
+- `Step` carries `whyAttribution, blockers, impact, safeToday, highCare,
+  comms, learn, includesOperator, operatorSafe, operatorNote, operatorWhatIf,
+  naming` beyond §1.

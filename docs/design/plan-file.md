@@ -1,5 +1,12 @@
 # Design: the plan file
 
+**Status (2026-08-27):** v1 ships as a JSON file (`iamai-plan-<tenant>.json`);
+the self-contained HTML wrapper is planned. The schema below is the design;
+`src/roadmap/plan.ts` (`PlanFile`, `Checkpoint`) is the source of truth and
+differs in places: `planId`, `mappings: MappingState`, `variantChoices[].chosenPolicyName`,
+`coverage[].goalId`, steps per roadmap.md §1, an optional `schedule { startDate, pace }`,
+no `sha256`/`compiledIntents`/`intentFingerprint`, and no forward migration (newer files are refused).
+
 The plan file is the single self-contained HTML artifact SPEC §2 promises: it
 renders as the roadmap and re-imports as state. Embedded JSON, one schema.
 All times are **ISO 8601 UTC**; a display time-zone preference is stored, but

@@ -43,6 +43,8 @@ export type PlanFile = {
   mappings: MappingState
   steps: Step[]
   checkpoints: Checkpoint[]
+  /** Pacing choices travel with the plan (prompt 13 audit). */
+  schedule?: { startDate: string; pace: string }
 }
 
 export function makeCheckpoint(args: {
@@ -101,6 +103,7 @@ export function buildPlanFile(args: {
   mapping: MappingState
   steps: Step[]
   checkpoints: Checkpoint[]
+  schedule?: { startDate: string; pace: string }
 }): PlanFile {
   const org = (args.snapshot.config.organization?.rows?.[0] ?? {}) as {
     displayName?: string
@@ -127,6 +130,7 @@ export function buildPlanFile(args: {
     mappings: args.mapping,
     steps: args.steps,
     checkpoints: trimCheckpoints(args.checkpoints),
+    ...(args.schedule ? { schedule: args.schedule } : {}),
   }
 }
 

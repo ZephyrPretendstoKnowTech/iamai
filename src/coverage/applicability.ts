@@ -16,12 +16,13 @@ export type Facet =
 export type FacetState = { on: boolean; reason: string; source: 'auto' | 'override' }
 export type FacetOverrides = Partial<Record<Facet, { on: boolean; reason: string }>>
 
-const FACET_APPS: Partial<Record<Facet, { ids: string[]; namePattern: RegExp }>> = {
-  avd: { ids: ['9cdead84-a844-4324-93f2-b2e6bb768d07'], namePattern: /virtual desktop|avd/i },
+// The single facet table: detection (usage) and ad-hoc inference (classify.ts).
+export const FACET_APPS: Partial<Record<Facet, { ids: string[]; namePattern: RegExp }>> = {
+  avd: { ids: ['9cdead84-a844-4324-93f2-b2e6bb768d07'], namePattern: /virtual desktop|\bavd\b/i },
   copilot: { ids: [], namePattern: /copilot/i },
   azureDevOps: { ids: ['499b84ac-1321-427f-aa17-267ca6975798'], namePattern: /devops/i },
   sharepoint: { ids: ['00000003-0000-0ff1-ce00-000000000000'], namePattern: /sharepoint/i },
-  agents: { ids: [], namePattern: /\bagent\b/i },
+  agents: { ids: [], namePattern: /\bagents?\b/i },
   azureManagement: { ids: ['797f4846-ba00-4fd7-ba43-dac1f8f63013'], namePattern: /azure (service management|portal)/i },
 }
 

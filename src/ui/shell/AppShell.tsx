@@ -44,7 +44,11 @@ const REFERENCE: { route: Route; label: string }[] = [
   { route: 'reads', label: SHELL.steps.reads },
 ]
 
-const VALID = new Set<string>([...STEPS, ...REFERENCE].map((n) => n.route).concat('components', 'baseline/package'))
+const VALID = new Set<string>([
+  ...[...STEPS, ...REFERENCE].map((n) => n.route as string),
+  'baseline/package',
+  ...(import.meta.env.DEV ? ['components'] : []),
+])
 
 export function useHashRoute(): Route {
   const read = (): Route => {

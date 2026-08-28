@@ -13,7 +13,7 @@ Run one by saying, in Claude Code:
 Run them in numeric order. Do not run the next one until the previous one has
 committed.
 
-History: 00–07 were executed 2026-08-26/27. That night's review reset the
+History: 00–13 were executed 2026-08-26/27 (08–13 in commits b067fd0…073bc8c), followed by the first audit (docs/design/audit-01.md). 00–07 were executed 2026-08-26/27. That night's review reset the
 product from "engine + checklist" to an advisor (see `docs/design/roadmap.md`
 §10 and the "Overnight" commits); later prompts should assume the Setup
 wizard, Findings narrative, and dated Roadmap as the baseline experience.

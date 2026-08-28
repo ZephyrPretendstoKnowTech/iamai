@@ -74,6 +74,12 @@ export const TILE = {
   stepsDone: { title: 'Steps done', text: 'Plan steps already delivered by existing policies or completed since the plan started.' },
   weeks: { title: 'Weeks', text: 'Calendar weeks from the start date to the last phase end, counting the report-only observation windows.' },
   seats: { title: 'Seats', text: 'Licences purchased, and how many are assigned to users.' },
+  seatShortfall: { title: 'Covers every user?', text: 'Whether purchased seats are enough for every user in the directory; the gap is users minus seats.' },
+  registration: {
+    title: 'Registration statistics',
+    text: 'From the registration report: users who can complete MFA (capable), who have registered a method, who can sign in without a password, and a count per registered method.',
+  },
+  phaseProgress: { title: 'Done in this wave', text: 'Steps in this wave already delivered by existing policies or completed since the plan started.' },
 } as const satisfies Record<string, Definition>
 
 export const CHIP = {

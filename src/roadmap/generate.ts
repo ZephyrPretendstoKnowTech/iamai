@@ -229,13 +229,14 @@ export function buildCreateAction(
   planId: string,
   stepId: string,
   names?: NameDirectory,
-  opts: { placeholders?: Placeholders; displayName?: string } = {},
+  opts: { placeholders?: Placeholders; displayName?: string; adjust?: { policyId: string; state: string } } = {},
 ): Action {
   const body = replaceReferences(baselinePolicy, mapping, opts.placeholders)
   delete body.id
   delete body.createdDateTime
   delete body.modifiedDateTime
-  body.state = 'enabledForReportingButNotEnforced'
+  // A new policy starts in report-only; an adjusted one keeps its current state.
+  body.state = opts.adjust ? opts.adjust.state : 'enabledForReportingButNotEnforced'
   if (opts.displayName) body.displayName = opts.displayName
   const tag = `[IAMAI:${planId}:${stepId}]`
   body.description = `${tag}${typeof baselinePolicy.description === 'string' && baselinePolicy.description ? ' ' + baselinePolicy.description : ''}`
@@ -243,13 +244,15 @@ export function buildCreateAction(
   const fileName = `${stepId}.json`
   const unresolved = [...(opts.placeholders?.values() ?? [])].filter((p) => json.includes(p.token))
   const comment = unresolved.length > 0 ? `# Replace the __IAMAI_SETUP_QUESTION_…__ tokens first: ${unresolved.map((p) => p.label).join('; ')}\n` : ''
-  return {
-    kind: 'create',
-    summary: [ACTION.createReportOnly],
-    json,
-    portalSteps: portalSteps(body, names, opts.placeholders),
-    powershell: `${comment}Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`,
+  const steps = portalSteps(body, names, opts.placeholders)
+  if (opts.adjust) {
+    steps[0] = `Entra admin center → Protection → Conditional Access → Policies → open "${String(body.displayName ?? '')}"`
+    steps[steps.length - 1] = 'Save (the policy keeps its current state)'
   }
+  const powershell = opts.adjust
+    ? `${comment}Invoke-MgGraphRequest -Method PATCH -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${opts.adjust.policyId}' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
+    : `${comment}Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
+  return { kind: opts.adjust ? 'adjust' : 'create', summary: [ACTION.createReportOnly], json, portalSteps: steps, powershell }
 }
 
 /** A tenant-convention name for a policy the plan creates — never the baseline's own name. */
@@ -422,11 +425,28 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       blockers.push({ kind: 'step', stepId: id, label })
       unblockNotes.push(label)
     }
+    // One blocker per Setup question (several can apply); the setup step is
+    // referenced only when it exists.
     const blockBySetup = (qid: WizardQuestionId): void => {
-      if (blockedBy.includes(setupStepId)) return
-      blockedBy.push(setupStepId)
-      blockers.push({ kind: 'setup', questionNumber: questionNumber(qid), label: questionNote(qid) })
+      const n = questionNumber(qid)
+      if (n === 0 || blockers.some((b) => b.kind === 'setup' && b.questionNumber === n)) return
+      if (steps.some((s) => s.id === setupStepId) && !blockedBy.includes(setupStepId)) blockedBy.push(setupStepId)
+      blockers.push({ kind: 'setup', questionNumber: n, label: questionNote(qid) })
       unblockNotes.push(questionNote(qid))
+    }
+    // Baseline references no answer resolves: block by the question that owns
+    // them (breakGlass/exclusions/locations); other groups auto-resolve.
+    const blockUnmapped = (policy: RawPolicy): void => {
+      for (const key of unmappedKeysUsedBy(policy, questions, mapping)) {
+        const group = questions.find((q) => q.key === key)?.group
+        const qid = group ? ROLE_QUESTION[group] : undefined
+        if (qid && activeQuestions.some((q) => q.id === qid)) blockBySetup(qid)
+      }
+      for (const created of createdWithinStepKeys(policy, mapping)) {
+        if (created.group === 'personaGroups') continue // created inside this step
+        const pid = created.group === 'breakGlass' ? bgStepId : created.group === 'namedLocations' ? locStepId : geStepId
+        if (steps.some((s) => s.id === pid)) blockByStep(pid, UNBLOCK.createObject)
+      }
     }
     let action: Action
     let kind: Step['kind']
@@ -445,25 +465,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     } else if (result.status === 'absent') {
       kind = 'create'
       if (source) {
-        for (const key of unmappedKeysUsedBy(source.policy, questions, mapping)) {
-          if (missingSetup.length > 0 && !blockedBy.includes(setupStepId)) {
-            const group = questions.find((q) => q.key === key)?.group
-            const qid: WizardQuestionId | null =
-              group === 'breakGlass' ? 'breakGlass' : group === 'globalExclusion' || group === 'exclusionGroups' ? 'globalExclusion' : null
-            if (qid && missingSetup.some((q) => q.id === qid)) blockBySetup(qid)
-            else blockBySetup(missingSetup[0].id)
-          }
-        }
+        blockUnmapped(source.policy)
         if (variantNames.has(source.facts.name)) blockBySetup('variants')
-        for (const created of createdWithinStepKeys(source.policy, mapping)) {
-          if (created.group === 'personaGroups') {
-            // Created as part of this step — no separate phase-0 noise.
-            continue
-          }
-          const pid =
-            created.group === 'breakGlass' ? bgStepId : created.group === 'namedLocations' ? locStepId : geStepId
-          if (steps.some((s) => s.id === pid)) blockByStep(pid, UNBLOCK.createObject)
-        }
         action = buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
           placeholders,
           displayName: proposedPolicyName(stepTitle(goal.name), naming),
@@ -483,11 +486,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       }
     } else {
       kind = 'adjust'
-      // An adjust step edits the tenant's own policy, so it keeps that policy's name — never the baseline's.
-      const existingName = result.candidates.find((c) => c.contribution !== 'disabled')?.policyName ?? proposedPolicyName(stepTitle(goal.name), naming)
+      // An adjust step edits the tenant's own policy: its name, its id, its
+      // current state — never a second policy named after the baseline.
+      const existing = result.candidates.find((c) => c.contribution !== 'disabled') ?? null
+      if (source) blockUnmapped(source.policy)
       action = source
         ? {
-            ...buildCreateAction(source.policy, mapping, planId, stepId, input.names, { placeholders, displayName: existingName }),
+            ...buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
+              placeholders,
+              displayName: existing?.policyName ?? proposedPolicyName(stepTitle(goal.name), naming),
+              adjust: existing ? { policyId: existing.policyId, state: existing.state } : undefined,
+            }),
             kind: 'adjust',
             summary: adjustSummary(result),
           }
@@ -583,13 +592,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const comms =
       status === 'done' ? null : nobodyAffected ? NO_ANNOUNCEMENT : announcementFor(readiness.family, goal.id, tenantName, '{DATE}')
 
-    // Operator evidence sentence (prompt 13 §7) — never a promise.
+    // Operator evidence sentence (prompt 13 §7) — never a promise. A count is
+    // only claimed where the records actually measured this goal (block usage
+    // or a tagged report-only policy); otherwise the note says so.
     const opEvidence = operatorId !== null ? snapshot.signInEvidence[operatorId] : undefined
+    const measured = evidenceUsable && (readiness.family === 'block' || evidence.reportOnly !== null)
     const operatorNote = includesOperator
-      ? OPERATOR.inScope(
-          evidenceUsable ? (evidence.affectedUserIds.includes(operatorId!) ? 'some' : 0) : null,
-          opEvidence?.signInCount ?? null,
-        )
+      ? OPERATOR.inScope(measured ? (evidence.affectedUserIds.includes(operatorId!) ? 'some' : 0) : null, opEvidence?.signInCount ?? null)
       : null
 
     const exitCriteria =
@@ -698,7 +707,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     })
   }
 
-  // ---- Ordering: phase, then safe-today first, then risk score ----
+  // Readiness-blocked MFA/guest steps wait for the verification campaign: the
+  // dependency is named so the scheduler places them after it.
+  const verifyStep = steps.find((s) => s.id === 's-verify-mfa')
+  if (verifyStep) {
+    for (const s of steps) {
+      if (s.status !== 'blocked' || !s.blockers.some((b) => b.kind === 'readiness')) continue
+      if (s.readiness.family !== 'mfa' && s.readiness.family !== 'guest') continue
+      if (!s.blockedBy.includes(verifyStep.id)) s.blockedBy.push(verifyStep.id)
+    }
+  }
+
+  // ---- Ordering: phase, then safe-today first, then risk score; steps that
+  // touch handle-with-care users go last within their phase ----
   const stepSeverity = (s: Step): number => {
     if (/^block/i.test(s.title)) return SEVERITY_BLOCK
     if (/phishing|device|protection/i.test(s.title)) return SEVERITY_STRENGTH_OR_DEVICE
@@ -707,7 +728,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const score = (s: Step): number => {
     if (s.safeToday) return -1000
     const sev = s.kind === 'prerequisite' || s.kind === 'recurring' ? 0 : stepSeverity(s)
-    return s.population.active * sev - (s.readiness.percent ?? 0)
+    const care = s.highCare.userIds.length > 0 ? 100_000 : 0
+    return care + s.population.active * sev - (s.readiness.percent ?? 0)
   }
   steps.sort((a, b) => a.phase - b.phase || score(a) - score(b) || a.id.localeCompare(b.id))
 

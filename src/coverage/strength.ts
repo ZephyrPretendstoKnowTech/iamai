@@ -118,12 +118,13 @@ export function grantSatisfiesFloor(grant: PolicyFacts['grant'], floor: string, 
 }
 
 export function sessionSatisfiesFloor(session: PolicyFacts['session'], floor: NonNullable<Floor['session']>): boolean {
-  const freqOk = session.signInFrequencyHours !== null
+  // "Every time" is the strictest possible sign-in frequency.
+  const freqOk = session.signInFrequencyHours !== null || session.signInFrequencyEveryTime
   const persistOk = session.persistentBrowser === 'never'
   const secureOk = session.secureSignInSession
   const appOk = session.appEnforced
   if (floor.anyOf) return appOk || persistOk || freqOk
-  if (floor.maxSignInFrequencyHours !== undefined) {
+  if (floor.maxSignInFrequencyHours !== undefined && !session.signInFrequencyEveryTime) {
     if (session.signInFrequencyHours === null || session.signInFrequencyHours > floor.maxSignInFrequencyHours) {
       return false
     }
@@ -145,8 +146,4 @@ export function satisfiesFloor(grant: PolicyFacts['grant'], session: PolicyFacts
 // Ordering helpers for floor raising (§5).
 export function grantFloorRank(floor: string): number {
   return FLOOR_RANK[floor] ?? 0
-}
-
-export function tierAsFloor(tier: StrengthTier): 'mfa' | 'passwordless' | 'phishingResistant' {
-  return tier
 }

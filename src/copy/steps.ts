@@ -149,7 +149,9 @@ export const PREREQ = {
     title: 'Run the MFA verification campaign',
     why: 'Before MFA is enforced, every active user should have a working, verified method — enforcement should change nothing for them.',
     how: (c: { none: number; unverified: number; notChallenged: number }, careNames: string[], departments: number) => [
-      `Work the Readiness table top-down: ${c.none} without a method (issue Temporary Access Passes), ${c.unverified} unverified, ${c.notChallenged} never challenged.`,
+      c.none + c.unverified + c.notChallenged === 0
+        ? 'Everyone active is already verified or likely viable — confirm the Readiness table and move on.'
+        : `Work the Readiness table top-down: ${count(c.none, 'user')} without a method (issue Temporary Access Passes), ${c.unverified} unverified, ${c.notChallenged} never challenged.`,
       ...(careNames.length > 0 ? [`Walk through setup personally with ${list(careNames)} — never an email blast for them.`] : []),
       departments > 1
         ? `Pilot suggestion: Verified and Likely-viable users across the ${departments} departments, one admin, never break-glass or handle-with-care.`
@@ -182,12 +184,19 @@ export const ACTION = {
   bringToFloor: 'Bring the covering policies up to the goal floor.',
 }
 
+const READINESS_NAME: Record<string, string> = {
+  mfa: 'MFA readiness',
+  guest: 'guest MFA readiness',
+  admin: 'admin phishing-resistant readiness',
+  device: 'device readiness',
+}
+
 export const UNBLOCK = {
   setup: 'finish the Setup questions first',
   question: (n: number, title: string, ask: string) => `Blocked until Setup question ${n} — ${title}: ${ask}`,
   createObject: 'create the missing object first (phase 0)',
   readiness: (percent: number, family: string, threshold: number) =>
-    `readiness is ${percent}% — the ${family} threshold is ${threshold}%; verify users first (phase 2)`,
+    `${READINESS_NAME[family] ?? 'readiness'} is ${percent}% — the threshold is ${threshold}%; verify users first (phase 2)`,
 }
 
 export const IMPACT = {
@@ -197,7 +206,7 @@ export const IMPACT = {
   adjust: (affected: number, admins: number) =>
     `${count(affected, 'user')} ${affected === 1 ? 'sees' : 'see'} a change${admins > 0 ? ` (${count(admins, 'admin')})` : ''}; nobody new is targeted.`,
   mfaNotReady: (notReady: number, active: number) =>
-    `${notReady} of ${count(active, 'active user')} ${notReady === 1 ? 'is' : 'are'} not verified yet — ${notReady === 1 ? 'they would be' : 'they would be'} interrupted at their next sign-in.`,
+    `${notReady} of ${count(active, 'active user')} ${notReady === 1 ? 'is' : 'are'} not verified yet — they would be interrupted at their next sign-in.`,
   mfaAllReady: (active: number) =>
     active === 0 ? 'No active users in scope — enforcement changes nothing today.' : `All ${count(active, 'active user')} ${active === 1 ? 'is' : 'are'} ready — enforcement changes nothing for them.`,
   inScope: (active: number) => `${count(active, 'active user')} in scope.`,
@@ -241,11 +250,13 @@ export const COMMS = {
 export const READINESS = {
   mfaCounts: (c: Record<'verified' | 'likelyViable' | 'notChallenged' | 'unverified' | 'none', number>) =>
     `${c.verified} verified, ${c.likelyViable} likely viable, ${c.notChallenged} not challenged, ${c.unverified} unverified, ${c.none} without a method`,
-  mfaReady: (percent: number, active: number) => `${percent}% of ${count(active, 'active user')} ready`,
+  mfaReady: (percent: number, active: number) => (active === 0 ? 'No active users in scope.' : `${percent}% of ${count(active, 'active user')} ready`),
   guests: (n: number) => `${count(n, 'active guest')} in the collected sign-in records`,
-  adminsPr: (withPr: number, total: number) => `${withPr} of ${count(total, 'admin')} hold a phishing-resistant method`,
+  adminsPr: (withPr: number, total: number) =>
+    total === 0 ? 'No active admins in scope.' : `${withPr} of ${count(total, 'admin')} hold a phishing-resistant method`,
   eligibleOnly: (n: number) => `${count(n, 'eligible-only admin')} out of scope until activation`,
-  devices: (withDevice: number, members: number) => `${withDevice} of ${count(members, 'active member')} own a compliant device`,
+  devices: (withDevice: number, members: number) =>
+    members === 0 ? 'No active members in scope.' : `${withDevice} of ${count(members, 'active member')} own a compliant device`,
   block: 'Readiness is measured by usage — see who used this below.',
   location: 'Compare the countries seen in the sign-in records with the allowed list.',
 }
@@ -259,15 +270,10 @@ export const EVIDENCE = {
     `Report-only results: ${count(signIns, 'sign-in')} over ${count(days, 'day')}, ${count(failures, 'failure or interruption', 'failures or interruptions')}.`,
   notSeenYet: 'The created policy has not appeared in sign-in results yet.',
   none: "No sign-ins in the last 30 days matched this policy's conditions.",
+  notMeasured: 'Sign-in records measure this once the policy exists in report-only; until then readiness is the guide.',
   legacyAuth: 'legacy authentication',
   deviceCode: 'the device-code flow',
   authTransfer: 'authentication transfer',
-}
-
-export const SCHEDULE_NOTE = {
-  complete: 'already complete',
-  observation: (days: number) => `includes the ${days}-day report-only observation window`,
-  largeTenant: 'extra time for a larger tenant',
 }
 
 export function affectedLine(total: number, active: number, admins: number, guests: number): string {

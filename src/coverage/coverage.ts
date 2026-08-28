@@ -2,7 +2,7 @@
 import goalsData from '../../data/goals.json' with { type: 'json' }
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
-import { adHocGoal, goalsMatching, matchesSignature, raiseFloor } from './classify.ts'
+import { adHocGoal, matchesSignature, raiseFloor } from './classify.ts'
 import { policyFacts } from './facts.ts'
 import type { StrengthLookup } from './strength.ts'
 import { satisfiesFloor } from './strength.ts'
@@ -30,6 +30,7 @@ import {
   partialScopeStatement,
   partialSessionStatement,
   reportOnlyStatement,
+  structuralPartialStatement,
   unknownStatement,
 } from '../copy/statements.ts'
 
@@ -69,6 +70,9 @@ export function assumedExclusions(tenantPolicies: unknown[]): AssumedExclusions 
       users.add(u)
     }
   }
+  // A break-glass set is two or three accounts. Many directly-excluded users
+  // are ordinary carve-outs and must stay visible as gaps, not be assumed away.
+  if (users.size > 3) users.clear()
   return { groups, users, confirmed: false }
 }
 
@@ -135,10 +139,18 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     scoredPercent: scored.length > 0 ? Math.round((enforcedCount / scored.length) * 100) : 0,
   }
 
+  // A tenant policy "maps to a goal" when any catalogue signature matches it,
+  // whatever that goal's status turned out to be.
+  const matchedTenantIds = new Set(
+    tenantFacts
+      .filter((f) => goals.some(({ goal }) => goal.implementations.some((impl) => matchesSignature(f, impl.signature))))
+      .map((f) => f.id),
+  )
+
   return {
     results,
     couldNotEvaluate,
-    organisation: organisationReport(tenantFacts, results, snapshot),
+    organisation: organisationReport(tenantFacts, results, snapshot, matchedTenantIds),
     assumed,
     summary,
   }
@@ -219,7 +231,7 @@ function evaluateGoal(
   // Candidates (§7.1).
   const candidates = tenantFacts.filter((f) => matchesSignature(f, impl.signature))
   if (impl.expectedWho.kind === 'workload') {
-    return evaluateStructural(goal, base, candidates, floor)
+    return evaluateStructural(goal, base, candidates, floor, baselineMatches)
   }
 
   const enforced = new Set<string>()
@@ -229,22 +241,29 @@ function evaluateGoal(
   const reasons: Reason[] = []
   let anyEstimated = false
   let anyUnresolved = false
-  const includedByEnabled = new Set<string>()
+  // Users some live (enabled or report-only) candidate includes — they are
+  // "targeted" even when the policy is too weak to count.
+  const targeted = new Set<string>()
   const exclusionHits: { id: string; kind: string; userIds: Set<string> }[] = []
 
   for (const c of candidates) {
     const caveats: string[] = []
     if (impl.expectedApps === 'all' && !c.apps.all) caveats.push('apps-narrower')
     if (c.apps.excludedIds.size > 0) caveats.push('apps-excluded')
+    const live = c.state === 'enabled' || c.state === 'enabledForReportingButNotEnforced'
 
     const who = resolveFactsWho(c, input.snapshot, input.groupMembers)
     anyEstimated ||= who.estimated
-    anyUnresolved ||= who.unresolvedGroups.length > 0
+    // A disabled candidate's unreadable group cannot make the goal unknown.
+    if (live) anyUnresolved ||= who.unresolvedGroups.length > 0
     const pop = new Set([...who.effective].filter((id) => E.has(id)))
-    const strongPop = satisfiesFloor(c.grant, c.session, floor) ? pop : new Set<string>()
+    const meetsFloor = satisfiesFloor(c.grant, c.session, floor)
+    const strongPop = meetsFloor ? pop : new Set<string>()
 
+    if (live) {
+      for (const id of who.included) if (E.has(id)) targeted.add(id)
+    }
     if (c.state === 'enabled') {
-      for (const id of who.included) if (E.has(id)) includedByEnabled.add(id)
       for (const ex of who.excludedBy) {
         exclusionHits.push({ id: ex.id, kind: ex.kind, userIds: new Set([...ex.userIds].filter((u) => E.has(u))) })
       }
@@ -256,7 +275,7 @@ function evaluateGoal(
     } else if (c.state === 'enabledForReportingButNotEnforced') {
       contribution = 'reportOnly'
       for (const id of strongPop) reportOnly.add(id)
-    } else if (strongPop.size > 0) {
+    } else if (meetsFloor) {
       contribution = 'strong'
       for (const id of strongPop) enforced.add(id)
       if (caveats.includes('apps-narrower')) {
@@ -319,19 +338,26 @@ function evaluateGoal(
       (isBreakGlassUser && impl.allowedExclusions.includes('breakGlass'))
     const groupLabel =
       ex.kind === 'group' ? (input.groupMembers.get(ex.id)?.displayName ?? ex.id) : ex.id
+    const assumedNote = assumed.confirmed ? '' : ' — assumed, confirm in Setup'
+    const detail =
+      ex.kind === 'group'
+        ? `excluded by the group ${groupLabel}${label ? ` (${label}${assumedNote})` : ''}`
+        : ex.kind === 'role'
+          ? `excluded by role (${ex.id.split(',').length === 1 ? 'one role' : `${ex.id.split(',').length} roles`})`
+          : ex.kind === 'guests'
+            ? 'guests are excluded'
+            : `excluded directly${isBreakGlassUser ? ` (break-glass${assumedNote})` : ''}`
     reasons.push({
       kind: 'excluded',
       userIds: stillMissing,
-      detail:
-        ex.kind === 'group'
-          ? `excluded by the group ${groupLabel}${label ? ` (${label}${assumed.confirmed ? '' : ' — assumed, confirm in Setup'})` : ''}`
-          : `excluded directly${isBreakGlassUser ? ` (break-glass${assumed.confirmed ? '' : ' — assumed, confirm in Setup'})` : ''}`,
+      detail,
       expected: isExpected,
+      role: label ?? (isBreakGlassUser ? 'breakGlass' : null),
     })
     if (isExpected) expectedExcluded.push(...stillMissing)
   }
   const accounted = new Set([...covered, ...reasons.flatMap((r) => (r.kind === 'excluded' ? r.userIds : []))])
-  const notTargeted = [...E].filter((id) => !accounted.has(id) && !includedByEnabled.has(id))
+  const notTargeted = [...E].filter((id) => !accounted.has(id) && !targeted.has(id))
   if (notTargeted.length > 0) {
     reasons.push({ kind: 'not-targeted', userIds: notTargeted, detail: 'never included by any candidate policy' })
   }
@@ -353,7 +379,12 @@ function evaluateGoal(
 
   // Status (§7.5) — expected exclusions count as covered for "enforced".
   const effectiveExpected = new Set([...E].filter((id) => !expectedExcluded.includes(id)))
-  const fullyEnforced = effectiveExpected.size > 0 && [...effectiveExpected].every((id) => enforced.has(id))
+  // Nobody to cover (no guests, no active admins…) + a strong enabled policy
+  // is "in place", not "missing": the policy exists and would apply.
+  const fullyEnforced =
+    effectiveExpected.size === 0
+      ? contributions.some((c) => c.contribution === 'strong')
+      : [...effectiveExpected].every((id) => enforced.has(id))
 
   let status: GoalResult['status']
   if (anyUnresolved) status = 'unknown'
@@ -371,6 +402,7 @@ function evaluateStructural(
   base: Omit<GoalResult, 'status' | 'statement'>,
   candidates: PolicyFacts[],
   floor: Parameters<typeof satisfiesFloor>[2],
+  baselineMatches: PolicyFacts[],
 ): GoalResult {
   const contributions: CandidateContribution[] = candidates.map((c) => ({
     policyId: c.id,
@@ -392,11 +424,21 @@ function evaluateStructural(
     : contributions.some((c) => c.contribution === 'weak' || c.contribution === 'reportOnly')
       ? 'partial'
       : 'absent'
-  const by = contributions.filter((c) => c.contribution !== 'disabled').map((c) => c.policyName)
+  const strong = contributions.filter((c) => c.contribution === 'strong').map((c) => c.policyName)
+  const partialBy = contributions.filter((c) => c.contribution === 'weak' || c.contribution === 'reportOnly')
   return {
     ...base,
     status,
-    statement: status === 'absent' ? missingStatement(goal.name, null) : inPlaceStatement(goal.name, by, 0),
+    statement:
+      status === 'absent'
+        ? missingStatement(goal.name, baselineMatches[0]?.name ?? null)
+        : status === 'enforced'
+          ? inPlaceStatement(goal.name, strong, 0)
+          : structuralPartialStatement(
+              goal.name,
+              partialBy.map((c) => c.policyName),
+              partialBy.every((c) => c.contribution === 'reportOnly'),
+            ),
   }
 }
 
@@ -438,20 +480,24 @@ function describeGrant(grant: PolicyFacts['grant']): string {
 
 function describeSession(session: PolicyFacts['session']): string {
   const bits: string[] = []
-  if (session.signInFrequencyHours !== null) bits.push(`expire every ${session.signInFrequencyHours} hours`)
+  if (session.signInFrequencyEveryTime) bits.push('ask for a fresh sign-in every time')
+  else if (session.signInFrequencyHours !== null) bits.push(`expire every ${session.signInFrequencyHours} hours`)
   if (session.persistentBrowser === 'always') bits.push('persist in the browser')
   if (session.persistentBrowser === 'never') bits.push('never persist')
   if (session.secureSignInSession) bits.push('use token protection')
+  if (session.appEnforced) bits.push('apply app-enforced restrictions')
   return bits.length > 0 ? bits.join(' and ') : 'have no limits'
 }
 
+// Days observed and would-be failures for a report-only policy; null when
+// the records do not cover it (never a fabricated zero).
 function reportOnlyObservation(policyId: string, snapshot: TenantSnapshot): { days: number | null; failures: number | null } {
   const src = snapshot.sources.signInEvidence
-  if (!src || (src.status !== 'ok' && src.status !== 'partial')) return { days: null, failures: null }
-  const days = src.coveredWindow ? Math.floor((Date.parse(src.coveredWindow.to) - Date.parse(src.coveredWindow.from)) / 86_400_000) : 0
+  if (!src || (src.status !== 'ok' && src.status !== 'partial') || !src.coveredWindow) return { days: null, failures: null }
+  const days = Math.floor((Date.parse(src.coveredWindow.to) - Date.parse(src.coveredWindow.from)) / 86_400_000)
   const pr = snapshot.evidencePolicyResults.find((p) => p.policyId === policyId)
-  const failures = pr ? pr.counts.reportOnlyFailure + pr.counts.reportOnlyInterrupted : 0
-  return { days, failures }
+  if (!pr) return { days, failures: null }
+  return { days, failures: pr.counts.reportOnlyFailure + pr.counts.reportOnlyInterrupted }
 }
 
 // Prompt 09 statement shapes — human sentences; the mechanics stay in reasons.
@@ -469,9 +515,14 @@ function buildStatement(
   const noun = who === 'coreAdmins' ? 'admin' : who === 'guests' ? 'guest' : who === 'members' ? 'member' : 'user'
   const strongNames = base.candidates.filter((c) => c.contribution === 'strong').map((c) => c.policyName)
   const est = estimated ? ' Counts are estimated — a group is over the membership cap.' : ''
-  const breakGlass = new Set(base.reasons.filter((r) => r.kind === 'excluded' && r.expected).flatMap((r) => r.userIds)).size
+  // Only break-glass exclusions are called break-glass; service-account and
+  // other allowed exclusions are expected but named differently in the detail.
+  const breakGlass = new Set(
+    base.reasons.filter((r) => r.kind === 'excluded' && r.expected && (r.role ?? '').includes('breakGlass')).flatMap((r) => r.userIds),
+  ).size
+  const narrower = base.reasons.some((r) => r.kind === 'apps-narrower') ? ' Covers fewer apps than the goal expects.' : ''
 
-  if (status === 'enforced') return inPlaceStatement(goal.name, strongNames, breakGlass) + est
+  if (status === 'enforced') return inPlaceStatement(goal.name, strongNames, breakGlass) + narrower + est
   if (status === 'absent') return missingStatement(goal.name, baselineMatches[0]?.name ?? null)
   if (status === 'unknown') return unknownStatement(goal.name) + est
   if (status === 'not-applicable' || status === 'licence-limited') return `**${goal.name}**.`
@@ -498,7 +549,6 @@ function buildStatement(
     if (r.kind === 'excluded' && !r.expected) notCovered.push({ reason: r.detail, count: r.userIds.length })
     if (r.kind === 'not-targeted') notCovered.push({ reason: 'never targeted by a policy', count: r.userIds.length })
     if (r.kind === 'report-only') notCovered.push({ reason: 'covered only in report-only', count: r.userIds.length })
-    if (r.kind === 'apps-narrower') notCovered.push({ reason: 'covered for fewer apps than the goal expects', count: r.userIds.length })
   }
-  return partialScopeStatement(goal.name, enforced.size, E.size, noun, notCovered) + est
+  return partialScopeStatement(goal.name, enforced.size, E.size, noun, notCovered) + narrower + est
 }

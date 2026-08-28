@@ -10,7 +10,7 @@ import { loadMappingState } from '../mapping/store.ts'
 import { SCAN } from '../copy/pages.ts'
 import { ACTIVITY_STATE, CHIP, LEGEND, METHOD_TIER, MFA_STATE, TILE } from '../copy/definitions.ts'
 import { StepFrame } from './shell/AppShell.tsx'
-import { Button, Callout, Card, Chip, DataTable, ExpandCard, FilterChip, LinkButton, ProgressBar, StatTile, Stats, Tabs } from './components/index.ts'
+import { Button, Callout, Card, Chip, DataTable, ExpandCard, FilterChip, ProgressBar, StatTile, Stats, Tabs } from './components/index.ts'
 import type { ChipStatus, Column } from './components/index.ts'
 import { InventoryPage } from './pages/InventoryPage.tsx'
 
@@ -69,6 +69,15 @@ export function MfaViabilityScreen({
   useEffect(() => {
     void loadMappingState(tenantId).then((m) => setHighCare(new Set(m.highCareUserIds)))
   }, [tenantId])
+
+  // The saved scan can arrive after mount (it loads from IndexedDB); adopt it
+  // unless a scan is running or already shown.
+  useEffect(() => {
+    if (initial && snapshot === null && scanState !== 'running') {
+      setSnapshot(initial.snapshot)
+      setScanState('done')
+    }
+  }, [initial, snapshot, scanState])
 
   useEffect(() => {
     if (scanState !== 'running') return
@@ -297,9 +306,6 @@ export function MfaViabilityScreen({
               evidence?.coveredWindow ? `${absoluteDate(evidence.coveredWindow.from)} – ${absoluteDate(evidence.coveredWindow.to)}` : null,
             )}
           </p>
-          <p>
-            <LinkButton href="#/mapping">{`Next: ${SCAN.next}`}</LinkButton>
-          </p>
         </Card>
       )}
 
@@ -312,7 +318,7 @@ export function MfaViabilityScreen({
                   ? `${SCAN.sections[s.source] ?? s.source}: ${SCAN.reading}`
                   : s.rows !== undefined
                     ? SCAN.found(SCAN.sections[s.source] ?? s.source, s.rows)
-                    : `${SCAN.sections[s.source] ?? s.source}: ${s.status}`}
+                    : `${SCAN.sections[s.source] ?? s.source}: ${SCAN.evidenceStatus[s.status] ?? s.status}`}
                 {s.reason && <span className="muted"> ({s.reason})</span>}
                 {DEV && s.ms !== undefined && <span className="muted"> · {s.ms} ms</span>}
               </li>
@@ -340,7 +346,7 @@ export function MfaViabilityScreen({
         <>
           <h3>{SCAN.readiness}</h3>
           <Callout kind={evidence.status === 'ok' ? 'success' : evidence.status === 'partial' ? 'info' : 'warning'}>
-            {SCAN.signInRecords} <strong>{evidence.status === 'ok' ? SCAN.complete : evidence.status}</strong>
+            {SCAN.signInRecords} <strong>{SCAN.evidenceStatus[evidence.status] ?? evidence.status}</strong>
             {evidence.coveredWindow && <> — {SCAN.covering(absoluteDate(evidence.coveredWindow.from), absoluteDate(evidence.coveredWindow.to))}</>}
             {evidence.reason && <> ({evidence.reason})</>}
             {evidence.status === 'pending' && <>. {SCAN.pending}</>}

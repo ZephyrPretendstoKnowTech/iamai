@@ -70,7 +70,15 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
             {
               key: 'covers',
               header: LICENSING.columns.covers,
-              render: (r) => (r.enabled ? (r.seats >= users ? LICENSING.covers : LICENSING.short(users - r.seats)) : '—'),
+              render: (r) =>
+                r.enabled ? (
+                  <>
+                    {r.seats >= users ? LICENSING.covers : LICENSING.short(users - r.seats)}
+                    <InfoTip title={TILE.seatShortfall.title} text={TILE.seatShortfall.text} />
+                  </>
+                ) : (
+                  '—'
+                ),
             },
           ]}
         />

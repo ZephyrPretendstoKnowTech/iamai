@@ -48,13 +48,20 @@ function jitter(ms: number): number {
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const t = setTimeout(resolve, ms)
-    signal?.addEventListener('abort', () => {
+    const onAbort = () => {
       clearTimeout(t)
       reject(new DOMException('aborted', 'AbortError'))
-    })
+    }
+    const t = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
   })
 }
+
+// Graph's Retry-After is honoured up to five minutes (collection.md §6).
+const RETRY_AFTER_MAX_S = 300
 
 export async function graphRequest(tokens: TokenSource, url: string, opts: GraphRequestOpts = {}): Promise<GraphBody> {
   const abortMs = opts.abortMs ?? LANE_A_ABORT_MS
@@ -96,7 +103,7 @@ export async function graphRequest(tokens: TokenSource, url: string, opts: Graph
     if (res && res.status === 429 && count429 < RETRY_MAX_429 - 1) {
       count429 += 1
       const retryAfter = Number(res.headers.get('Retry-After')) || 30
-      await sleep(jitter(Math.min(retryAfter, 60) * 1000), opts.signal)
+      await sleep(jitter(Math.min(retryAfter, RETRY_AFTER_MAX_S) * 1000), opts.signal)
       continue
     }
     if ((timedOut || (res && res.status >= 500)) && count5xx < RETRY_MAX_5XX - 1) {

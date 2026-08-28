@@ -55,18 +55,24 @@ const post = (m: WorkerOutMessage) => {
 
 let currentToken = ''
 let tokenWaiter: ((t: string) => void) | null = null
+// One in-flight refresh shared by every concurrent 401 — a second caller must
+// never overwrite the waiter and strand the first.
+let tokenRefresh: Promise<string> | null = null
 const laneAbort = new AbortController()
 
 const tokens = {
   get: () => currentToken,
   refresh: (): Promise<string> => {
+    if (tokenRefresh) return tokenRefresh
     post({ type: 'token-needed' })
-    return new Promise((resolve) => {
+    tokenRefresh = new Promise((resolve) => {
       tokenWaiter = (t) => {
         currentToken = t
+        tokenRefresh = null
         resolve(t)
       }
     })
+    return tokenRefresh
   },
 }
 
@@ -133,8 +139,16 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     const t0 = performance.now()
     try {
       const rows = apply(await work())
-      snapshot.sources[source] = sourceState('ok')
-      post({ type: 'section', source, status: 'ok', rows, ms: Math.round(performance.now() - t0) })
+      // apply() may have recorded 'partial' with a reason — keep it.
+      if (snapshot.sources[source].status === 'pending') snapshot.sources[source] = sourceState('ok')
+      post({
+        type: 'section',
+        source,
+        status: snapshot.sources[source].status,
+        rows,
+        reason: snapshot.sources[source].reason ?? undefined,
+        ms: Math.round(performance.now() - t0),
+      })
     } catch (e) {
       const disabled = e instanceof SectionDisabledError
       const reason = e instanceof Error ? e.message : String(e)
@@ -175,9 +189,13 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     ? simulatedCapabilities(licenceOverride)
     : deriveTenantCapabilities(config.subscribedSkus?.rows ?? [])
   snapshot.capabilities = caps
+  // If the licence read itself failed, the licence is unknown — never a
+  // verdict. Licence-gated sections are attempted; a real 403 disables them.
+  const licenceKnown = licenceOverride !== undefined || config.subscribedSkus?.status === 'ok'
 
   const CAP_LABEL: Record<string, string> = { entraP1: 'Entra ID P1', entraP2: 'Entra ID P2' }
   const missingCapability = (key: ConfigSectionKey): string | null => {
+    if (!licenceKnown) return null
     const rc = COLLECTOR_REGISTRY.find((s) => s.configKey === key)?.requiredCapability
     if (rc && !caps[rc].enabled) return CAP_LABEL[rc] ?? rc
     return null
@@ -338,7 +356,7 @@ ctx.onmessage = (e: MessageEvent<WorkerInMessage>) => {
   if (msg.type === 'start') {
     currentToken = msg.token
     void run(msg.tenantId, msg.licenceOverride).catch((err: unknown) =>
-      post({ type: 'fatal', message: err instanceof Error ? err.message : String(err) }),
+      post({ type: 'fatal', message: redactIdentifiers(err instanceof Error ? err.message : String(err)) }),
     )
   } else if (msg.type === 'token') {
     tokenWaiter?.(msg.token)

@@ -2,6 +2,7 @@
 import coreAdminRoles from '../../data/core-admin-roles.json' with { type: 'json' }
 import vendorApps from '../../data/vendor-apps.json' with { type: 'json' }
 import firstPartyApps from '../../data/first-party-apps.json' with { type: 'json' }
+import { FACET_APPS } from './applicability.ts'
 import { grantFloorRank, satisfiesFloor } from './strength.ts'
 import type { Floor, Goal, PolicyFacts, Signature } from './types.ts'
 
@@ -45,9 +46,11 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
       case 'appsOffice365OrAll':
         if (!f.apps.all && !f.apps.office365) return false
         break
-      case 'appsIdsInclude':
-        if (!(value as string[]).every((id) => f.apps.ids.has(id) || f.apps.all)) return false
+      case 'appsIdsInclude': {
+        const ids = new Set([...f.apps.ids].map((a) => a.toLowerCase()))
+        if (!(value as string[]).every((id) => ids.has(id.toLowerCase()) || f.apps.all)) return false
         break
+      }
       case 'userActionsInclude':
         if (!(value as string[]).every((a) => f.apps.userActions.has(a.toLowerCase()))) return false
         break
@@ -74,6 +77,11 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
         // A policy narrowed to specific client apps (e.g. a legacy-auth block)
         // cannot deliver an all-client-apps goal.
         if (f.clientApps.size > 0 && !f.clientApps.has('all')) return false
+        break
+      case 'clientAppsNarrowed':
+        // The mirror image: a legacy-auth block must be *narrowed* to legacy
+        // client apps — an all-client-apps block (geo, device code) is not one.
+        if (f.clientApps.size === 0 || f.clientApps.has('all')) return false
         break
       case 'byodDiscriminator':
         // A BYOD session policy must actually discriminate unmanaged devices:
@@ -134,7 +142,7 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
         const ok =
           (opts.includes('appEnforced') && f.session.appEnforced) ||
           (opts.includes('persistentBrowserNever') && f.session.persistentBrowser === 'never') ||
-          (opts.includes('signInFrequency') && f.session.signInFrequencyHours !== null)
+          (opts.includes('signInFrequency') && (f.session.signInFrequencyHours !== null || f.session.signInFrequencyEveryTime))
         if (!ok) return false
         break
       }
@@ -181,7 +189,8 @@ export function matchesSignature(f: PolicyFacts, sig: Signature): boolean {
         }
         if (f.grant === null) return false
         if ([...controls].sort().join(',') !== [...want.controls].map((c) => c.toLowerCase()).sort().join(',')) return false
-        if ((f.grant.strength ?? null) !== want.strengthTier) return false
+        // A plain "mfa" control and the built-in MFA strength are the same bar.
+        if ((f.grant.strength ?? 'mfa') !== (want.strengthTier ?? 'mfa')) return false
         if (want.controls.length > 1 && f.grant.operator !== want.operator) return false
         break
       }
@@ -235,12 +244,15 @@ export function raiseFloor(
   const impl = goal.implementations[0]
   const floor: Floor = { ...impl.floor }
   let raised: { from: string; to: string; by: string } | null = null
+  const AUTH_FLOORS = new Set(['mfa', 'passwordless', 'phishingResistant'])
   for (const b of baselineMatches) {
     if (!coversPopulation(b, impl.expectedWho.kind)) continue
     const tier = b.grant?.strength
+    // Only an authentication floor can be raised by a stronger authentication
+    // strength — never a device, app-protection, block or password-change floor.
     if (
       floor.grant !== undefined &&
-      floor.grant !== 'block' &&
+      AUTH_FLOORS.has(floor.grant) &&
       tier &&
       grantFloorRank(tier) > grantFloorRank(floor.grant)
     ) {
@@ -266,17 +278,12 @@ export function raiseFloor(
 // Facet inference for ad-hoc goals: a baseline policy scoped to a workload's
 // app inherits that workload's applicability facet, so ad-hoc goals go
 // not-applicable when the tenant doesn't use the workload (first run, §13).
-const FACET_BY_APP: { facet: string; ids: string[]; namePattern: RegExp }[] = [
-  { facet: 'avd', ids: ['9cdead84-a844-4324-93f2-b2e6bb768d07'], namePattern: /virtual desktop|\bavd\b/i },
-  { facet: 'azureDevOps', ids: ['499b84ac-1321-427f-aa17-267ca6975798'], namePattern: /devops/i },
-  { facet: 'copilot', ids: [], namePattern: /copilot/i },
-  { facet: 'agents', ids: [], namePattern: /\bagents?\b/i },
-]
-
+// One facet table for detection and inference (applicability.ts owns it).
 export function inferAdHocFacet(facts: PolicyFacts): string | null {
-  for (const { facet, ids, namePattern } of FACET_BY_APP) {
-    if ([...facts.apps.ids].some((id) => ids.includes(id.toLowerCase()))) return facet
-    if (namePattern.test(facts.name)) return facet
+  for (const [facet, spec] of Object.entries(FACET_APPS)) {
+    if (!spec) continue
+    if ([...facts.apps.ids].some((id) => spec.ids.includes(id.toLowerCase()))) return facet
+    if (spec.namePattern.test(facts.name)) return facet
   }
   return null
 }
@@ -325,12 +332,17 @@ export function adHocGoal(facts: PolicyFacts): Goal {
     floor.session = { ...floor.session, secureSignInSession: true }
   }
 
+  // Expected who = the policy's own who (intents §4): admin roles → core
+  // admins, guest tokens → guests, everything else → all users.
   const who = facts.who.all
     ? ({ kind: 'all' } as const)
-    : facts.who.guests !== null && facts.who.guests.length > 0
-      ? ({ kind: 'guests' } as const)
-      : ({ kind: 'all' } as const)
+    : [...facts.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))
+      ? ({ kind: 'coreAdmins' } as const)
+      : facts.who.guests !== null
+        ? ({ kind: 'guests' } as const)
+        : ({ kind: 'all' } as const)
 
+  const vendor = vendorOf(facts)
   return {
     id: `adhoc:${facts.name}`,
     name: adHocTitle(facts),
@@ -350,7 +362,7 @@ export function adHocGoal(facts: PolicyFacts): Goal {
     ],
     free: [],
     adHocSource: facts.name,
-    ...(vendorOf(facts) ? { vendor: vendorOf(facts)! } : {}),
+    ...(vendor ? { vendor } : {}),
   }
 }
 

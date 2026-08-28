@@ -27,11 +27,25 @@ export function StatTile({
       </div>
     </>
   )
+  // A clickable tile must not wrap the InfoTip button (nested interactive
+  // controls); it is a keyboard-operable div instead.
   if (onClick) {
     return (
-      <button type="button" className={cls} aria-pressed={active} onClick={onClick}>
+      <div
+        className={cls}
+        role="button"
+        tabIndex={0}
+        aria-pressed={active}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick()
+          }
+        }}
+      >
         {body}
-      </button>
+      </div>
     )
   }
   return <div className={cls}>{body}</div>

@@ -35,7 +35,8 @@ export function readinessFor(
   if (family === 'mfa' || family === 'guest') {
     const count = (s: MfaViability['mfa']) => rows.filter((v) => v.mfa === s).length
     const good = active.filter((v) => v.mfa === 'verified' || v.mfa === 'likelyViable').length
-    const percent = active.length > 0 ? Math.round((good / active.length) * 100) : 0
+    // Nobody in scope → nothing to be ready; null so the gate does not block.
+    const percent = active.length > 0 ? Math.round((good / active.length) * 100) : null
     const lines = [
       READINESS.mfaCounts({
         verified: count('verified'),
@@ -44,14 +45,14 @@ export function readinessFor(
         unverified: count('unverified'),
         none: count('none'),
       }),
-      READINESS.mfaReady(percent, active.length),
+      READINESS.mfaReady(percent ?? 0, active.length),
     ]
     if (family === 'guest') lines.push(READINESS.guests(active.length))
     return { family, percent, lines }
   }
   if (family === 'admin') {
     const withPr = rows.filter((v) => v.methodTiers.includes('phishingResistant')).length
-    const percent = rows.length > 0 ? Math.round((withPr / rows.length) * 100) : 0
+    const percent = rows.length > 0 ? Math.round((withPr / rows.length) * 100) : null
     const eligibleOnly = Object.entries(snapshot.roles.eligible).filter(
       ([id]) => !(id in snapshot.roles.active) && pop.has(id),
     ).length
@@ -61,9 +62,11 @@ export function readinessFor(
   }
   if (family === 'device') {
     const owners = new Set(snapshot.devices.filter((d) => d.isCompliant === true).flatMap((d) => d.ownerIds))
-    const members = active.filter((v) => pop.has(v.userId)).length
-    const withDevice = [...pop].filter((id) => owners.has(id)).length
-    const percent = members > 0 ? Math.round((withDevice / members) * 100) : 0
+    const activeIds = new Set(active.map((v) => v.userId))
+    const members = activeIds.size
+    // Same population on both sides of the ratio: active members only.
+    const withDevice = [...activeIds].filter((id) => owners.has(id)).length
+    const percent = members > 0 ? Math.round((withDevice / members) * 100) : null
     return { family, percent, lines: [READINESS.devices(withDevice, members)] }
   }
   if (family === 'block') {

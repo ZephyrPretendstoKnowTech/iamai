@@ -2,6 +2,7 @@
 import type { CoverageReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { findTaggedPolicy } from './generate.ts'
+import { absoluteDate } from '../copy/dates.ts'
 import type { Step, StepStatus } from './types.ts'
 
 const RANK: Record<StepStatus, number> = {
@@ -32,7 +33,9 @@ export function mergePersisted(
     step.history = s.history
     step.skipReason = s.skipReason
     if (s.status === 'skipped') step.status = 'skipped'
-    else if (RANK[s.status] > RANK[step.status]) step.status = s.status
+    // Recurring steps are re-evaluated every scan (a drill can become overdue
+    // again); a saved "done" must not pin them.
+    else if (step.kind !== 'recurring' && RANK[s.status] > RANK[step.status]) step.status = s.status
   }
   return steps
 }
@@ -50,13 +53,15 @@ export function applyProgress(
     if (step.kind !== 'create' && step.kind !== 'adjust') continue
     const goalStatus = statusByGoal.get(step.goalId)
 
-    // Drift (§7): a done step whose goal regressed re-opens as adjust.
-    if (step.status === 'done' && goalStatus !== undefined && goalStatus !== 'enforced') {
+    // Drift (§7): a done step whose goal regressed to partial/absent re-opens
+    // as adjust. Unknown (unreadable group) or not-applicable is not drift.
+    if (step.status === 'done' && (goalStatus === 'absent' || goalStatus === 'partial')) {
+      const since = step.history.at(-1)?.at
       step.history.push({
         at: new Date().toISOString(),
         from: 'done',
         to: 'ready',
-        note: `changed since ${step.history.at(-1)?.at.slice(0, 10) ?? 'the last scan'} — coverage regressed to ${goalStatus}`,
+        note: `changed since ${since ? absoluteDate(since) : 'the last scan'} — the goal is ${goalStatus === 'absent' ? 'missing' : 'partly in place'} again`,
       })
       step.status = 'ready'
       step.kind = 'adjust'

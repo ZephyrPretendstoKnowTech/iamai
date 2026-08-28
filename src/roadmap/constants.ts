@@ -13,12 +13,11 @@ export const BREAK_GLASS_DRILL_DAYS = 90
 // Pacing presets (prompt 12 §A): one shared observation window, then
 // enforcement waves in phase order. Standard is the default.
 export type Pace = 'fast' | 'standard' | 'cautious'
-export const PACES: Record<Pace, { observationDays: number; waveGapDays: number; verificationDays: number; targetWeeks: [number, number] }> = {
-  fast: { observationDays: 5, waveGapDays: 2, verificationDays: 5, targetWeeks: [2, 2] },
-  standard: { observationDays: 7, waveGapDays: 3.5, verificationDays: 10, targetWeeks: [3, 4] },
-  cautious: { observationDays: 14, waveGapDays: 7, verificationDays: 14, targetWeeks: [6, 8] },
+export const PACES: Record<Pace, { observationDays: number; waveGapDays: number; verificationDays: number }> = {
+  fast: { observationDays: 5, waveGapDays: 2, verificationDays: 5 },
+  standard: { observationDays: 7, waveGapDays: 4, verificationDays: 10 },
+  cautious: { observationDays: 14, waveGapDays: 7, verificationDays: 14 },
 }
-export const OBSERVATION_DAYS = PACES.standard.observationDays
 export const DEFAULT_PACE: Pace = 'standard'
 
 export const SEVERITY_BLOCK = 3

@@ -19,7 +19,8 @@ export const msal = new PublicClientApplication({
   auth: {
     clientId: '13f55900-8e9a-4aa3-82c1-e42a4448680f',
     authority: 'https://login.microsoftonline.com/organizations',
-    redirectUri: 'http://localhost:5173',
+    // The app registration lists both the dev and the published origin (SPEC §8).
+    redirectUri: window.location.origin,
   },
   cache: { cacheLocation: 'sessionStorage' },
 })
