@@ -25,7 +25,7 @@ import { saveDevResults } from '../../graph/spikes/spike1.ts'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { ROADMAP as C } from '../../copy/pages.ts'
 import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
-import { roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
+import { overrunList, roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
 import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import { planSummary } from '../../roadmap/summary.ts'
@@ -363,6 +363,7 @@ export function RoadmapPage({
     setVersion((v) => v + 1)
   }
 
+  const rollout = summarizeTenant(computed.viability).rollout
   const overviewText = roadmapOverview({
     tenant: tenantName,
     done: summary.done,
@@ -381,6 +382,7 @@ export function RoadmapPage({
     waitingOnSetup: schedule.waitingOnSetup,
     setupQuestions: schedule.waitingOnSetupQuestions,
   })
+  const overrunSteps = overrunList(schedule.extendedBy.filter((id) => id !== 's-verify-mfa').map((id) => stepById.get(id)?.title ?? id))
   const overrun =
     !schedule.withinBand && work.length > 0
       ? scheduleOverrun(
@@ -395,9 +397,15 @@ export function RoadmapPage({
   const overview = () => (
     <div className="advisor">
       <p>
-        <strong>{overviewText}</strong> {work.length > 0 && rationale}
-        {overrun && ` ${overrun}`}
+        <strong>{overviewText}</strong> {work.length > 0 && (overrun ?? rationale)}
       </p>
+      {overrun && overrunSteps.length > 0 && (
+        <ul className="sections">
+          {overrunSteps.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      )}
       <Stats>
         <StatTile value={`${done.length}/${steps.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} />
         <StatTile value={schedule.weeks} label={TILE.weeks.title} tip={TILE.weeks} />
@@ -537,7 +545,7 @@ export function RoadmapPage({
                   </div>
                 </div>
               )}
-              {w.wave === 0 && schedule.verification.days > 0 && window(C.verificationWindow(schedule.verification.days), C.verificationText, schedule.verification)}
+              {w.wave === 0 && schedule.verification.days > 0 && window(C.verificationWindow(schedule.verification.days), C.verificationText(rollout.toSetUp, rollout.enabled), schedule.verification)}
               {w.wave === 0 && schedule.verification.days === 0 && steps.some((s) => s.kind === 'verify') && work.length > 0 && (
                 <p className="reason">{C.verificationDone}</p>
               )}
@@ -690,6 +698,7 @@ export function RoadmapPage({
         operator={operator?.userPrincipalName ?? ''}
         steps={steps}
         schedule={schedule}
+        verificationNote={C.verificationText(rollout.toSetUp, rollout.enabled)}
         dangers={dangers}
         nameOf={nameOf}
       />
