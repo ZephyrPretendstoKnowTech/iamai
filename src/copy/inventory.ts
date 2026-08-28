@@ -221,3 +221,74 @@ export const PACKAGE = {
   copied: 'Copied ✓',
   next: 'Baseline',
 }
+
+// ---- Friendly names for Graph enumerations (prompt 19 §B: no raw ids where a human reads) ----
+const METHOD_NAMES: Record<string, string> = {
+  microsoftauthenticator: 'Microsoft Authenticator',
+  microsoftauthenticatorpush: 'Microsoft Authenticator (notification)',
+  microsoftauthenticatorpasswordless: 'Microsoft Authenticator (passwordless)',
+  fido2: 'Passkey or FIDO2 security key',
+  fido2securitykey: 'Passkey or FIDO2 security key',
+  passkeydevicebound: 'Passkey (device-bound)',
+  passkeydeviceboundauthenticator: 'Passkey in Microsoft Authenticator',
+  passkeydeviceboundwindowshello: 'Passkey in Windows Hello',
+  windowshelloforbusiness: 'Windows Hello for Business',
+  x509certificate: 'Certificate',
+  x509certificatemultifactor: 'Certificate (multifactor)',
+  x509certificatesinglefactor: 'Certificate (single factor)',
+  temporaryaccesspass: 'Temporary Access Pass',
+  softwareoath: 'Authenticator app code (software)',
+  softwareonetimepasscode: 'Authenticator app code (software)',
+  hardwareoath: 'Hardware token code',
+  hardwareonetimepasscode: 'Hardware token code',
+  sms: 'Text message',
+  voice: 'Phone call',
+  mobilephone: 'Text or call (mobile)',
+  alternatemobilephone: 'Text or call (alternate mobile)',
+  officephone: 'Phone call (office)',
+  email: 'Email (self-service password reset only)',
+  securityquestion: 'Security questions (self-service password reset only)',
+  federatedsinglefactor: 'Federated sign-in (single factor)',
+  federatedmultifactor: 'Federated sign-in (multifactor)',
+  password: 'Password',
+  deviceboundpasskey: 'Passkey (device-bound)',
+  qrcodepin: 'QR code and PIN',
+  externalauthenticationmethod: 'External authentication method',
+}
+export function methodName(id: string): string {
+  return METHOD_NAMES[id.toLowerCase()] ?? id
+}
+/** A comma-separated combination such as "fido2" or "microsoftAuthenticatorPush,federatedSingleFactor". */
+export function combinationName(combo: string): string {
+  return combo.split(',').map((part) => methodName(part.trim())).join(' + ')
+}
+const MIGRATION_NAMES: Record<string, string> = {
+  premigration: 'not started (legacy MFA and SSPR settings still apply)',
+  migrationinprogress: 'in progress (legacy settings still apply)',
+  migrationcomplete: 'complete (this policy is authoritative)',
+}
+export function migrationName(state: string): string {
+  return MIGRATION_NAMES[state.toLowerCase()] ?? state
+}
+const PROTOCOL_NAMES: Record<string, string> = {
+  none: 'Standard sign-in',
+  ropc: 'Username and password in the app (ROPC)',
+  devicecode: 'Device-code flow',
+  authenticationtransfer: 'Authentication transfer',
+  samlassertion: 'SAML assertion',
+  encryptedauthorize: 'Encrypted authorise',
+  jwtbearer: 'Token exchange (JWT bearer)',
+  refreshtoken: 'Refresh token',
+  unknownfuturevalue: 'Other',
+}
+export function protocolName(p: string): string {
+  return PROTOCOL_NAMES[p.toLowerCase()] ?? p
+}
+const TRUST_NAMES: Record<string, string> = {
+  azuread: 'Entra joined',
+  serverad: 'Hybrid joined',
+  workplace: 'Entra registered',
+}
+export function trustTypeName(t: string): string {
+  return TRUST_NAMES[t.toLowerCase()] ?? t
+}
