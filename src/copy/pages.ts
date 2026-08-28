@@ -1,5 +1,6 @@
 // Page copy. Voice: IAMAI is the subject, or the sentence is imperative. No
 // first person, no reassurance adjectives, no developer vocabulary.
+import { lowerFirst } from './statements.ts'
 import { count } from './statements.ts'
 
 export const SHELL = {
@@ -23,6 +24,7 @@ export const SHELL = {
   basedOn: (when: string) => `Based on the scan from ${when}.`,
   rescan: 'Re-scan',
   baselineLoaded: (source: string) => `Baseline: ${source}`,
+  evidenceAgeNote: 'Sign-in evidence covers the last 30 days; re-scan once the scan is more than 7 days old.',
   scanStale: (days: number) => `This scan is ${days} days old. Numbers, names and sign-in evidence may have moved on.`,
   scanStaleAction: 'Re-scan the tenant',
   forgetTooltip: 'Deletes everything IAMAI stored for this tenant on this device, then signs out',
@@ -372,6 +374,10 @@ export const ROADMAP = {
   observationText: 'Every new policy collects report-only evidence at the same time.',
   wave: (n: number, name: string) => `Wave ${n} · ${name}`,
   blockedBy: 'Blocked by',
+  dangerLead: (titles: string[]) =>
+    titles.length === 1
+      ? `One thing to look at before the plan starts: ${lowerFirst(titles[0])}.`
+      : `${titles.length} things to look at before the plan starts: ${titles.slice(0, 3).map(lowerFirst).join('; ')}${titles.length > 3 ? `; and ${titles.length - 3} more` : ''}.`,
   showRoles: (n: number) => `Show the ${count(n, 'role')}`,
   whyLink: 'Reference from the baseline author →',
   setupQuestionLink: (n: number) => `Setup question ${n}`,

@@ -69,16 +69,22 @@ export function partialSessionStatement(goal: string, current: string, floor: st
   return `${strong(goal)}: sessions currently ${current}; the baseline expects ${floor}. ${capital(share(affected, total, noun))} affected.`
 }
 
-export function missingStatement(goal: string, baselinePolicy: string | null): string {
-  const ref = baselinePolicy ? `; the baseline's policy for it is ${em(baselinePolicy)}` : ''
-  return `${strong(goal)}. No policy does this yet${ref}.`
+export function missingStatement(goal: string, proposed: string | null, baselinePolicy: string | null): string {
+  if (!proposed) return `${strong(goal)}. No policy does this yet.`
+  const source = baselinePolicy && baselinePolicy !== proposed ? ` (from the baseline's ${em(baselinePolicy)})` : ''
+  return `${strong(goal)}. No policy does this yet. Proposed: ${em(proposed)}${source}.`
 }
 
 export function reportOnlyStatement(goal: string, policy: string, days: number | null, failures: number | null): string {
   const obs =
     days === null
       ? 'no sign-in records collected yet'
-      : `${count(days, 'day')}, ${failures === null ? 'failures not measured' : `${failures === 0 ? 'no' : failures} would-be ${plural(failures ?? 0, 'failure')}`}`
+      : failures === null
+        ? null
+        : `${count(days, 'day')}, ${failures === 0 ? 'no' : failures} would-be ${plural(failures, 'failure')}`
+  if (obs === null) {
+    return `${strong(goal)} is in report-only via ${em(policy)} for ${count(days ?? 0, 'day')}, and its results are not in the collected sign-in records yet. Check the policy's report-only insights in the portal, or re-scan after a day of sign-ins.`
+  }
   return `${strong(goal)} is in report-only via ${em(policy)} (${obs}).`
 }
 

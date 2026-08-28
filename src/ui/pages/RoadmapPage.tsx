@@ -542,6 +542,7 @@ export function RoadmapPage({
   const dangerAreas = () => (
     <div>
       {dangers.length === 0 && <p className="advisor">{C.noDangers}</p>}
+      {dangers.length > 0 && <p className="advisor">{C.dangerLead(dangers.map((d) => d.title))}</p>}
       {dangers.map((d, i) => (
         <div key={i} className={`card danger-${d.severity}`}>
           <h4>{d.title}</h4>

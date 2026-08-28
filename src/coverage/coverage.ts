@@ -11,6 +11,7 @@ import type { GroupMembers } from './population.ts'
 import { detectFacets } from './applicability.ts'
 import type { FacetOverrides } from './applicability.ts'
 import { REASON } from '../copy/reasons.ts'
+import { proposedPolicyName, stepTitle } from './naming.ts'
 import { organisationReport } from './organisation.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type {
@@ -143,6 +144,23 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets),
   )
 
+  // A tenant policy "maps to a goal" when any catalogue signature matches it,
+  // whatever that goal's status turned out to be.
+  const matchedTenantIds = new Set(
+    tenantFacts
+      .filter((f) => goals.some(({ goal }) => goal.implementations.some((impl) => matchesSignature(f, impl.signature))))
+      .map((f) => f.id),
+  )
+
+  // The organisation report knows the tenant's naming convention; missing
+  // goals then name the policy the plan will propose, first (§46).
+  const organisation = organisationReport(tenantFacts, results, snapshot, matchedTenantIds)
+  for (const r of results) {
+    if (r.status !== 'absent') continue
+    const match = goals.find((g) => g.goal.id === r.goal.id)?.baselineMatches[0]?.name ?? null
+    r.statement = missingStatement(r.goal.name, proposedPolicyName(stepTitle(r.goal.name), organisation.naming), match)
+  }
+
   const couldNotEvaluate = input.baselineUnusable.map((w) => ({
     name: w.policyName,
     reason: w.warning,
@@ -161,18 +179,10 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     scoredPercent: scored.length > 0 ? Math.round((enforcedCount / scored.length) * 100) : 0,
   }
 
-  // A tenant policy "maps to a goal" when any catalogue signature matches it,
-  // whatever that goal's status turned out to be.
-  const matchedTenantIds = new Set(
-    tenantFacts
-      .filter((f) => goals.some(({ goal }) => goal.implementations.some((impl) => matchesSignature(f, impl.signature))))
-      .map((f) => f.id),
-  )
-
   return {
     results,
     couldNotEvaluate,
-    organisation: organisationReport(tenantFacts, results, snapshot, matchedTenantIds),
+    organisation,
     assumed,
     summary,
   }
@@ -455,7 +465,7 @@ function evaluateStructural(
     status,
     statement:
       status === 'absent'
-        ? missingStatement(goal.name, baselineMatches[0]?.name ?? null)
+        ? missingStatement(goal.name, null, baselineMatches[0]?.name ?? null)
         : status === 'enforced'
           ? inPlaceStatement(goal.name, strong, 0)
           : structuralPartialStatement(
@@ -547,7 +557,7 @@ function buildStatement(
   const narrower = base.reasons.some((r) => r.kind === 'apps-narrower') ? ' Covers fewer apps than the goal expects.' : ''
 
   if (status === 'enforced') return inPlaceStatement(goal.name, strongNames, breakGlass) + narrower + est
-  if (status === 'absent') return missingStatement(goal.name, baselineMatches[0]?.name ?? null)
+  if (status === 'absent') return missingStatement(goal.name, null, baselineMatches[0]?.name ?? null)
   if (status === 'unknown') return unknownStatement(goal.name) + est
   if (status === 'not-applicable' || status === 'licence-limited') return `**${goal.name}**.`
   if (status === 'below-baseline') {
