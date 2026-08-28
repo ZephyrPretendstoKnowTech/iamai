@@ -14,6 +14,7 @@ import { activeWizardQuestions } from '../mapping/wizard.ts'
 import type { WizardQuestionId } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
+import { coversAdminSet, roleLabel } from '../roles.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { ACTION, CARE, COMMS, EXIT, IMPACT, PREREQ, ROLLBACK, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import {
@@ -151,20 +152,25 @@ const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const TOKEN_RE = /^__IAMAI_SETUP_QUESTION_(\d+)_(.+)__$/
 
 export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholders: Placeholders = new Map()): string[] {
-  const one = (x: unknown): string => {
+  const one = (x: unknown, role = false): string => {
     if (typeof x !== 'string') return String(x)
     const p = placeholders.get(x)
     if (p) return p.label
     const t = TOKEN_RE.exec(x)
     if (t) return [...placeholders.values()].find((v) => v.token === x)?.label ?? `Setup question ${t[1]}`
+    if (role) return roleLabel(x)
     const name = names?.nameOf(x) ?? null
     if (name) return name
     if (GUID_RE.test(x)) return 'an object not in this tenant'
     return names ? names.label(x) : x
   }
-  const label = (v: unknown): string => {
+  const label = (v: unknown, role = false): string => {
     if (!Array.isArray(v) || v.length === 0) return ''
-    return v.map(one).join(', ')
+    return [...new Set(v.map((x) => one(x, role)))].join(', ')
+  }
+  const roles = (v: unknown): string => {
+    if (!Array.isArray(v) || v.length === 0) return ''
+    return coversAdminSet(v.map(String)) ? `All admin roles (${v.length})` : label(v, true)
   }
   const c = (policy.conditions ?? {}) as RawPolicy
   const users = (c.users ?? {}) as RawPolicy
@@ -178,7 +184,7 @@ export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholde
   ]
   const inc =
     label(users.includeUsers) ||
-    (label(users.includeRoles) && `Directory roles: ${label(users.includeRoles)}`) ||
+    (roles(users.includeRoles) && `Directory roles: ${roles(users.includeRoles)}`) ||
     (label(users.includeGroups) && `Groups: ${label(users.includeGroups)}`)
   lines.push(
     `Users → Include: ${inc || 'as exported'}${label(users.excludeGroups) ? `; Exclude groups: ${label(users.excludeGroups)}` : ''}${label(users.excludeUsers) ? `; Exclude users: ${label(users.excludeUsers)}` : ''}`,

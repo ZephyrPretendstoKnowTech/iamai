@@ -125,9 +125,12 @@ test('break-glass: SMS-only is a hard fail', () => {
 test('break-glass: shared Authenticator displayName flags the other user', () => {
   const snap = snapshot()
   snap.authMethods.bg1 = [{ kind: 'microsoftAuthenticator', displayName: 'Pixel 9' }]
+  snap.authMethods.bg2 = [{ kind: 'microsoftAuthenticator', displayName: 'Pixel 9' }]
   const r = validateBreakGlass('bg1', bgCtx({ snapshot: snap }))
   assert.equal(r.passed, false)
-  assert.ok(r.findings.some((f) => f.includes('Pixel 9') && f.includes('shared-device')))
+  // Every account with the same device name is listed, not just the first.
+  const f = r.findings.find((x) => x.includes('Pixel 9'))
+  assert.ok(f && f.includes('same device name') && f.includes('u1') && f.includes('bg2'))
 })
 
 test('break-glass: dynamic-group sweep is a hard fail', () => {
