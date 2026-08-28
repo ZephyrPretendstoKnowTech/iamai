@@ -17,7 +17,7 @@ import productNames from '../../../data/product-names.json' with { type: 'json' 
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
-import { INVENTORY as C } from '../../copy/inventory.ts'
+import { INVENTORY as C, combinationName, methodName, migrationName, protocolName, trustTypeName } from '../../copy/inventory.ts'
 import { LICENSING } from '../../copy/pages.ts'
 import { SETUP_PAGE } from '../../copy/setup.ts'
 import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE, TILE } from '../../copy/definitions.ts'
@@ -301,7 +301,7 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
     id: String(s.id ?? ''),
     name: String(s.displayName ?? s.id ?? ''),
     type: s.policyType === 'builtIn' ? A.builtIn : A.custom,
-    combos: (Array.isArray(s.allowedCombinations) ? s.allowedCombinations : []).map(String).join(', '),
+    combos: (Array.isArray(s.allowedCombinations) ? s.allowedCombinations : []).map((c) => combinationName(String(c))).join(', '),
   }))
 
   const reg = snapshot.registrationDetails
@@ -312,7 +312,7 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
     { measure: A.capable, users: reg.filter((r) => r.isMfaCapable).length },
     { measure: A.registered, users: reg.filter((r) => r.isMfaRegistered).length },
     { measure: A.passwordless, users: reg.filter((r) => r.isPasswordlessCapable).length },
-    ...[...byMethod.entries()].sort((a, b) => b[1] - a[1]).map(([m, n]) => ({ measure: A.byMethod(m), users: n })),
+    ...[...byMethod.entries()].sort((a, b) => b[1] - a[1]).map(([m, n]) => ({ measure: A.byMethod(methodName(m)), users: n })),
   ]
   const secDefaults = ((snapshot.config.securityDefaults?.rows ?? [])[0] ?? null) as Raw | null
 
@@ -326,14 +326,14 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
             rowKey={(r) => r.id}
             csvName="iamai-auth-methods.csv"
             columns={[
-              { key: 'method', header: A.methodColumns.method, sortValue: (r) => r.id, csv: (r) => r.id, render: (r) => r.id },
+              { key: 'method', header: A.methodColumns.method, sortValue: (r) => methodName(r.id), csv: (r) => methodName(r.id), render: (r) => methodName(r.id) },
               { key: 'state', header: A.methodColumns.state, sortValue: (r) => r.state, csv: (r) => r.state, render: (r) => <Chip status={r.state === 'enabled' ? 'done' : 'neutral'}>{r.state === 'enabled' ? A.enabled : A.disabled}</Chip> },
               { key: 'targets', header: A.methodColumns.targets, csv: (r) => r.targets, render: (r) => r.targets },
             ]}
           />
           <p className="reason">
             {campaign && A.campaignState(String(campaign.state ?? 'unknown'))}
-            {migration && ` · ${A.migration(migration)}`}
+            {migration && ` · ${A.migration(migrationName(migration))}`}
           </p>
         </>
       ) : (
@@ -499,7 +499,7 @@ function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById
         columns={[
           { key: 'name', header: D.columns.name, sortValue: (r) => (r.displayName ?? '').toLowerCase(), csv: (r) => r.displayName ?? '', render: (r) => r.displayName ?? '—' },
           { key: 'os', header: D.columns.os, sortValue: (r) => r.operatingSystem ?? '', csv: (r) => r.operatingSystem ?? '', render: (r) => r.operatingSystem ?? D.unknown },
-          { key: 'trust', header: D.columns.trust, sortValue: (r) => r.trustType ?? '', csv: (r) => r.trustType ?? '', render: (r) => r.trustType ?? D.unknown },
+          { key: 'trust', header: D.columns.trust, sortValue: (r) => r.trustType ?? '', csv: (r) => (r.trustType ? trustTypeName(r.trustType) : ''), render: (r) => (r.trustType ? trustTypeName(r.trustType) : D.unknown) },
           { key: 'compliant', header: D.columns.compliant, sortValue: (r) => (r.isCompliant ? 0 : 1), csv: (r) => yn(r.isCompliant), render: (r) => <Chip status={r.isCompliant ? 'done' : 'neutral'}>{yn(r.isCompliant)}</Chip> },
           { key: 'managed', header: D.columns.managed, sortValue: (r) => (r.isManaged ? 0 : 1), csv: (r) => yn(r.isManaged), render: (r) => yn(r.isManaged) },
           { key: 'last', header: D.columns.lastSignIn, sortValue: (r) => r.approximateLastSignIn ?? '', csv: (r) => (r.approximateLastSignIn ? absoluteDate(r.approximateLastSignIn) : ''), render: (r) => (r.approximateLastSignIn ? <span title={absoluteDate(r.approximateLastSignIn)}>{relative(r.approximateLastSignIn)}</span> : D.unknown) },
@@ -783,7 +783,7 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
             {S.window(absoluteDate(src.coveredWindow.from), absoluteDate(src.coveredWindow.to), agg.total)} · {S.distinctUsers(agg.distinctUsers)}
           </p>
           {table(S.byClientApp, agg.byClientApp, S.columns.count, 'iamai-signins-by-client-app.csv')}
-          {table(S.byProtocol, agg.byProtocol, S.columns.count, 'iamai-signins-by-protocol.csv')}
+          {table(S.byProtocol, Object.fromEntries(Object.entries(agg.byProtocol).map(([k, v]) => [protocolName(k), v])), S.columns.count, 'iamai-signins-by-protocol.csv')}
           {table(S.byCountry, agg.byCountry, S.columns.users, 'iamai-signins-by-country.csv')}
           {usage && (
             <ul className="sections">
