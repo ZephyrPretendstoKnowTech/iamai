@@ -29,10 +29,15 @@ export function wouldStrand(
   if (!canDenyAccess(step)) return { stranded: false, unknown: false, reason: 'the step cannot deny access' }
   if (!step.population.ids.includes(accountId)) return { stranded: false, unknown: false, reason: 'the account is out of scope' }
   if (opts.breakGlass) return { stranded: true, unknown: false, reason: 'a break-glass account is in scope of a step that can deny access' }
+  return accountVerdict(step.readiness.family, accountId, snapshot, opts.allowedCountries)
+}
+
+/** The account's own ability to satisfy a control family, from what the scan holds. */
+export function accountVerdict(family: Step['readiness']['family'], accountId: string, snapshot: TenantSnapshot, allowedCountries: string[]): StrandVerdict {
   const reg = snapshot.registrationDetails.find((r) => r.id === accountId) ?? null
   const methods = reg?.methodsRegistered ?? []
   const registrationKnown = snapshot.sources.registrationDetails.status === 'ok'
-  switch (step.readiness.family) {
+  switch (family) {
     case 'mfa':
     case 'guest':
       if (!registrationKnown) return { stranded: false, unknown: true, reason: 'registration data was not readable' }
@@ -63,7 +68,7 @@ export function wouldStrand(
     case 'location': {
       const u = snapshot.users.find((x) => x.id === accountId)
       if (!u?.usageLocation) return { stranded: false, unknown: true, reason: 'no usage location on the account' }
-      return opts.allowedCountries.includes(u.usageLocation)
+      return allowedCountries.includes(u.usageLocation)
         ? { stranded: false, unknown: false, reason: 'the account is in an allowed country' }
         : { stranded: true, unknown: false, reason: `the account is in a country (${u.usageLocation}) the step blocks` }
     }

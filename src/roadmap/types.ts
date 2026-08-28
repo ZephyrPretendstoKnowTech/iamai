@@ -49,6 +49,34 @@ export type Blocker =
 
 export type StepHistoryEntry ={ at: string; from: StepStatus; to: StepStatus; note: string | null }
 
+// ---- rings (roadmap-v2.md §1) ----
+export type RingTargeting = {
+  kind: 'group' | 'all'
+  /** Group to create, in the tenant's naming convention; null for the policy's own include. */
+  groupName: string | null
+  memberCount: number
+  /** Proposed members from readiness data; empty above the filter threshold. */
+  suggestedMemberIds: string[]
+  /** Dynamic membership rule in Entra's terms, when a list would be too long. */
+  filter: string | null
+  /** One sentence of targeting advice for this ring. */
+  advice: string
+}
+
+export type Ring = {
+  index: number
+  name: string
+  targeting: RingTargeting
+  entryCriteria: string[]
+  exitCriteria: string[]
+  soakDays: number
+  plannedStart: string
+  plannedEnd: string
+  /** Filled by re-scan evidence (roadmap-v2.md §5). */
+  actualStart: string | null
+  actualEnd: string | null
+}
+
 export type Step = {
   id: string
   goalId: string
@@ -98,4 +126,8 @@ export type Step = {
   // ---- prompt 17 ----
   /** Security value, effort, disruption, priority; null for prerequisite and recurring steps. */
   score?: GoalScore | null
+  // ---- roadmap v2 ----
+  /** Ordered rollout rings; one entry (or none) for steps that cannot deny access. */
+  rings: Ring[]
+  currentRing: number
 }

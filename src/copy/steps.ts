@@ -36,6 +36,7 @@ export const BLOCKED = {
   step: (title: string) => `${title} is not done yet`,
   readiness: (label: string) => `Blocked while ${label}`,
   evidence: 'report-only evidence is not clean yet',
+  operator: (reason: string) => `the signed-in account would be locked out: ${reason}`,
 }
 
 export const OPERATOR = {
@@ -62,6 +63,7 @@ export const BLOCKER = {
   trustedLocation: 'needs the trusted named location first',
   deviceReadiness: (percent: number, threshold: number) => `device readiness is ${percent}%: the threshold is ${threshold}%`,
   evidence: 'report-only evidence is not clean yet',
+  operator: (reason: string) => `the signed-in account would be locked out: ${reason}`,
 }
 
 export const PRINT = {
