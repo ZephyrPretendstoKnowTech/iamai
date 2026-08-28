@@ -216,6 +216,8 @@ export type ScheduleRationaleInput = {
   observationDays: number
   waves: number
   waitingOnSetup: number
+  /** Which Setup questions the waiting steps need (named, never just a count). */
+  setupQuestions?: number[]
 }
 
 /** "4 weeks: a 2-week verification campaign, 7-day observation window, 3 enforcement waves, 2 steps waiting on Setup." */
@@ -226,7 +228,11 @@ export function scheduleRationale(i: ScheduleRationaleInput): string {
   else parts.push(`${i.campaigns} verification campaigns`)
   parts.push(i.observationDays === 0 ? 'no observation window' : `${i.observationDays}-day observation window`)
   parts.push(count(i.waves, 'enforcement wave'))
-  if (i.waitingOnSetup > 0) parts.push(`${count(i.waitingOnSetup, 'step')} waiting on Setup`)
+  if (i.waitingOnSetup > 0) {
+    const q = i.setupQuestions ?? []
+    const which = q.length === 0 ? 'Setup' : q.length === 1 ? `Setup question ${q[0]}` : `Setup questions ${q.slice(0, -1).join(', ')} and ${q[q.length - 1]}`
+    parts.push(`${count(i.waitingOnSetup, 'step')} waiting on ${which}`)
+  }
   return `${count(i.weeks, 'week')}: ${parts.join(', ')}.`
 }
 
@@ -242,12 +248,14 @@ export function scheduleOverrun(band: string, expectedWeeks: number, weeks: numb
   const longer = `${capital(WEEK_WORDS[diff] ?? String(diff))} ${diff === 1 ? 'week' : 'weeks'} longer than a typical ${band} tenant`
   const steps = extendedBy.slice(0, 5)
   const more = extendedBy.length > 5 ? ` and ${extendedBy.length - 5} more` : ''
+  // With a tail, the named steps join on commas so "and" appears once.
+  const named = more ? steps.join(', ') : list(steps)
   if (campaignWeeks !== null && campaignWeeks > 0) {
     const because = `because the verification campaign needs ${WEEK_WORDS[campaignWeeks] ?? campaignWeeks} ${campaignWeeks === 1 ? 'week' : 'weeks'}`
-    return steps.length === 0 ? `${longer}, ${because}.` : `${longer}, ${because}. ${count(extendedBy.length, 'step')} also ${extendedBy.length === 1 ? 'extends' : 'extend'} it: ${list(steps)}${more}.`
+    return steps.length === 0 ? `${longer}, ${because}.` : `${longer}, ${because}. ${count(extendedBy.length, 'step')} also ${extendedBy.length === 1 ? 'extends' : 'extend'} it: ${named}${more}.`
   }
   if (steps.length === 0) return `${longer}.`
-  return `${longer}. ${count(extendedBy.length, 'step')} ${extendedBy.length === 1 ? 'extends' : 'extend'} it: ${list(steps)}${more}.`
+  return `${longer}. ${count(extendedBy.length, 'step')} ${extendedBy.length === 1 ? 'extends' : 'extend'} it: ${named}${more}.`
 }
 
 /** Lowercases a name for mid-sentence use without touching acronyms ("MFA", "CA"). */

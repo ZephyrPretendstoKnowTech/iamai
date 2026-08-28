@@ -370,6 +370,7 @@ export function RoadmapPage({
     observationDays: schedule.observation.days,
     waves: schedule.waves.filter((w) => w.wave > 0).length,
     waitingOnSetup: schedule.waitingOnSetup,
+    setupQuestions: schedule.waitingOnSetupQuestions,
   })
   const overrun =
     !schedule.withinBand && work.length > 0

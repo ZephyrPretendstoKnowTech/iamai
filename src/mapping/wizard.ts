@@ -158,6 +158,9 @@ export function applyAutoResolution(
         if (sa !== null) next.records[q.key] = auto(q.key, q.reference.kind, q.group, sa, null)
         else if (next.serviceAccountUserIds.length > 0) next.records[q.key] = auto(q.key, q.reference.kind, q.group, null, null, true)
         else if (g?.resolvedId) next.records[q.key] = auto(q.key, q.reference.kind, q.group, g.resolvedId, g.resolvedName)
+        // "Doesn't exist yet" in question 2 answers every exclusion-group reference:
+        // the plan creates the group, and steps wait on that step, not on the question (ux-review-05 §14).
+        else if (g?.doesNotExist) next.records[q.key] = auto(q.key, q.reference.kind, q.group, null, null, true)
         break
       }
       default:
