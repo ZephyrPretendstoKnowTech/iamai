@@ -252,7 +252,7 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   assert.equal(step.history.length, 3)
 })
 
-test('7: regression after done → re-opened adjust with a note', () => {
+test('7: regression after done → re-opened with a dated note (missing policy: a create step again)', () => {
   const baseline = mkPolicy({ displayName: 'Baseline MFA All' })
   const { input } = build({ baselinePolicies: [baseline] })
   const steps = generateRoadmap(input).steps
@@ -262,8 +262,8 @@ test('7: regression after done → re-opened adjust with a note', () => {
   // coverage for this run says absent (no tenant policy) → drift reopen.
   applyProgress(steps, mkSnapshot(), input.coverage, PLAN)
   assert.equal(step.status, 'ready')
-  assert.equal(step.kind, 'adjust')
-  assert.match(step.history.at(-1)?.note ?? '', /changed since/)
+  assert.equal(step.kind, 'create')
+  assert.match(step.history.at(-1)?.note ?? '', /changed since .*missing again/)
 })
 
 test('9: valid break-glass answers → no create-break-glass step; drill depends on their last sign-in', () => {

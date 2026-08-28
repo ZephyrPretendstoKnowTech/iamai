@@ -1,8 +1,7 @@
 // Progress on re-scan (roadmap.md §7) and the skip rule (§9 test 8). Pure.
 import type { CoverageReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { findTaggedPolicy } from './generate.ts'
-import { absoluteDate } from '../copy/dates.ts'
+import { trackExecution } from './tracking.ts'
 import type { Step, StepStatus } from './types.ts'
 
 const RANK: Record<StepStatus, number> = {
@@ -14,18 +13,33 @@ const RANK: Record<StepStatus, number> = {
   skipped: -1,
 }
 
-function advance(step: Step, to: StepStatus, note: string | null): void {
-  if (step.status === 'skipped') return
-  if (RANK[to] <= RANK[step.status]) return
-  step.history.push({ at: new Date().toISOString(), from: step.status, to, note })
-  step.status = to
+// Merge persisted status/history/skips into freshly generated steps by id.
+export type SavedStep = {
+  status: StepStatus
+  history: Step['history']
+  skipReason: string | null
+  owner?: string | null
+  scheduledDate?: string | null
+  /** Evidence and actual ring dates survive a re-plan (roadmap-v2.md §5). */
+  tracking?: Step['tracking']
+  ringActuals?: { actualStart: string | null; actualEnd: string | null }[]
+  currentRing?: number
 }
 
-// Merge persisted status/history/skips into freshly generated steps by id.
-export function mergePersisted(
-  steps: Step[],
-  saved: Record<string, { status: StepStatus; history: Step['history']; skipReason: string | null; owner?: string | null; scheduledDate?: string | null }> | null,
-): Step[] {
+export function savedStepOf(step: Step): SavedStep {
+  return {
+    status: step.status,
+    history: step.history,
+    skipReason: step.skipReason,
+    owner: step.owner,
+    scheduledDate: step.scheduledDate,
+    tracking: step.tracking,
+    ringActuals: step.rings.map((r) => ({ actualStart: r.actualStart, actualEnd: r.actualEnd })),
+    currentRing: step.currentRing,
+  }
+}
+
+export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> | null): Step[] {
   if (!saved) return steps
   for (const step of steps) {
     const s = saved[step.id]
@@ -34,6 +48,9 @@ export function mergePersisted(
     step.skipReason = s.skipReason
     step.owner = s.owner ?? null
     step.scheduledDate = s.scheduledDate ?? null
+    step.tracking = s.tracking ?? null
+    if (s.ringActuals) for (const [i, r] of step.rings.entries()) if (s.ringActuals[i]) Object.assign(r, s.ringActuals[i])
+    if (typeof s.currentRing === 'number') step.currentRing = Math.min(s.currentRing, Math.max(0, step.rings.length - 1))
     if (s.status === 'skipped') step.status = 'skipped'
     // Recurring steps are re-evaluated every scan (a drill can become overdue
     // again); a saved "done" must not pin them.
@@ -42,57 +59,10 @@ export function mergePersisted(
   return steps
 }
 
-// Match tenant policies by tag, then by the goal's coverage state; move
-// statuses forward; reopen drifted done steps as adjust.
-export function applyProgress(
-  steps: Step[],
-  snapshot: TenantSnapshot,
-  coverage: CoverageReport,
-  planId: string,
-): Step[] {
-  const statusByGoal = new Map(coverage.results.map((r) => [r.goal.id, r.status]))
-  for (const step of steps) {
-    if (step.kind !== 'create' && step.kind !== 'adjust') continue
-    const goalStatus = statusByGoal.get(step.goalId)
-
-    // Drift (§7): a done step whose goal regressed to partial/absent re-opens
-    // as adjust. Unknown (unreadable group) or not-applicable is not drift.
-    if (step.status === 'done' && (goalStatus === 'absent' || goalStatus === 'partial' || goalStatus === 'below-baseline')) {
-      const since = step.history.at(-1)?.at
-      step.history.push({
-        at: new Date().toISOString(),
-        from: 'done',
-        to: 'ready',
-        note: `changed since ${since ? absoluteDate(since) : 'the last scan'} — the goal is ${goalStatus === 'absent' ? 'missing' : 'partly in place'} again`,
-      })
-      step.status = 'ready'
-      step.kind = 'adjust'
-      continue
-    }
-
-    const taggedId = findTaggedPolicy(snapshot, planId, step.id)
-    if (taggedId !== null) {
-      const policy = (snapshot.config.caPolicies?.rows ?? []).find(
-        (p) => (p as { id?: string }).id === taggedId,
-      ) as { state?: string } | undefined
-      if (policy?.state === 'enabled') {
-        advance(step, 'done', 'policy enabled in the tenant')
-        continue
-      }
-      if (policy?.state === 'enabledForReportingButNotEnforced') {
-        advance(step, 'in-report-only', 'tagged policy found in report-only')
-        // Handle-with-care users gate enforcement: evidence alone is not enough.
-        if (step.evidence.reportOnly?.meetsExitCriterion && step.highCare.ready) {
-          advance(step, 'ready-to-enforce', 'report-only evidence meets the exit criterion')
-        }
-        continue
-      }
-    }
-    if (goalStatus === 'enforced') {
-      advance(step, 'done', 'coverage shows the goal enforced')
-    }
-  }
-  return steps
+// Detection on every scan (roadmap-v2.md §5) lives in tracking.ts; this
+// keeps the entry point the page and the tests call.
+export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string): Step[] {
+  return trackExecution(steps, snapshot, coverage, planId, now)
 }
 
 // Skipping needs a reason — and is never "risk accepted" (§1, §9 test 8).

@@ -82,7 +82,7 @@ export type RoadmapResult = { steps: Step[]; schedule: Schedule }
 const EXTRAS: Pick<
   Step,
   | 'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
-  | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate'
+  | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate' | 'tracking'
 > = {
   impact: '',
   safeToday: false,
@@ -104,6 +104,7 @@ const EXTRAS: Pick<
   rollbackBody: null,
   owner: null,
   scheduledDate: null,
+  tracking: null,
 }
 
 function idFor(prefix: string, key: string): string {

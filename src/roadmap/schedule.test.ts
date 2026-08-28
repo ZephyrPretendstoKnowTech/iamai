@@ -69,6 +69,7 @@ function step(over: Partial<Step> & { id: string }): Step {
     rollbackBody: null,
     owner: null,
     scheduledDate: null,
+    tracking: null,
     ...over,
   }
 }
