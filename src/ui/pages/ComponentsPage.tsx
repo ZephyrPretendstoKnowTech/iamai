@@ -28,8 +28,12 @@ import { MappingPage } from './MappingPage.tsx'
 import { CoveragePage } from './CoveragePage.tsx'
 import { RoadmapPage } from './RoadmapPage.tsx'
 import { fixtureBaseline, fixtureSnapshot } from './fixtureSnapshot.ts'
+import { bigFixtureSnapshot } from './bigFixture.ts'
 
-const FIXTURE = fixtureSnapshot()
+// ?big=1 swaps in the 5,000-user synthetic tenant for the performance guard (prompt 20 §7).
+// ?only=<section id> renders one section alone (print checks, prompt 20 §8).
+const ONLY = new URLSearchParams(window.location.search).get('only')
+const FIXTURE = new URLSearchParams(window.location.search).get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
 const FIXTURE_BASELINE = fixtureBaseline()
 
 const ICONS: IconName[] = [
@@ -56,6 +60,7 @@ const PEOPLE: PickerOption[] = [
 ]
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  if (ONLY && ONLY !== id) return null
   return (
     <section id={id} data-component={id} style={{ marginBottom: 'var(--space-6)' }}>
       <h2 style={{ fontSize: 'var(--text-lg)', margin: '0 0 var(--space-3)' }}>{title}</h2>

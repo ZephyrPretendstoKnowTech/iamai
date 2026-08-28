@@ -8,7 +8,7 @@ export function plural(n: number, one: string, many = `${one}s`): string {
 
 /** "3 users", "1 user", "no users". */
 export function count(n: number, one: string, many = `${one}s`): string {
-  return n === 0 ? `no ${many}` : `${n} ${plural(n, one, many)}`
+  return n === 0 ? `no ${many}` : `${n.toLocaleString('en')} ${plural(n, one, many)}`
 }
 
 /** Joins with commas and "and". */

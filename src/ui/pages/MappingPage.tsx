@@ -18,7 +18,7 @@ import { suggestForWizard } from '../../mapping/wizardSuggest.ts'
 import type { WizardSuggestContext } from '../../mapping/wizardSuggest.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { countryName, suggestCountries, tenantCountryLocation } from '../../mapping/countries.ts'
-import { COMMON_TIMEZONES, FRAMEWORK_OPTIONS, SETUP_PAGE as C } from '../../copy/setup.ts'
+import { COMMON_TIMEZONES, FRAMEWORK_OPTIONS, SETUP_PAGE as C, SETUP_QUESTIONS } from '../../copy/setup.ts'
 import { setDisplayTimeZone } from '../format.ts'
 import { Button, Callout, Card, Chip, Icon, InfoTip, Picker, Toast, Toggle, useToast } from '../components/index.ts'
 import type { IconName, PickerOption } from '../components/index.ts'
@@ -826,6 +826,7 @@ function TimeZoneQuestion({ state, update, answered }: QProps) {
   return (
     <p>
       <select
+        aria-label={SETUP_QUESTIONS.timeZone.title}
         value={state.displayTimeZone ?? browser}
         onChange={(e) => {
           const value = e.currentTarget.value
