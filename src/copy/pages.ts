@@ -353,6 +353,28 @@ export const ROADMAP = {
   rescan: 'Re-scan',
   tabs: { overview: 'Overview', timeline: 'Timeline', danger: 'Danger areas', steps: 'Steps' },
   weeksBadge: (w: number) => `${w}w`,
+  // Overview redesign (prompt 26 §6-§9)
+  headline: (done: number, total: number, finishes: string) => `${done} of ${total} steps in place · finishes ${finishes}`,
+  headlineDone: (total: number) => `All ${count(total, 'step')} in place`,
+  constraintCampaign: (weeks: number, people: number, campaignWeeks: number) =>
+    `${count(weeks, 'week')}, because MFA registration for ${count(people, 'person', 'people')} takes ${campaignWeeks === 1 ? 'one' : campaignWeeks === 2 ? 'two' : campaignWeeks} of them.`,
+  constraintWaves: (weeks: number, waves: number, observationDays: number) =>
+    `${count(weeks, 'week')}: ${count(waves, 'enforcement wave')}${observationDays > 0 ? ` with a ${observationDays}-day observation window` : ''}.`,
+  readyToday: 'Ready today',
+  attentionTitle: 'What needs attention before you start',
+  attentionDangers: (n: number) => (n === 0 ? 'No danger areas: nobody is blocked today.' : `${count(n, 'danger area')} to look at first.`),
+  attentionBlocked: (n: number) => (n === 0 ? 'Nothing is blocked.' : `${count(n, 'step')} blocked; each one names what unblocks it.`),
+  openDangers: 'Open Danger areas →',
+  openBlocked: 'See the blocked steps →',
+  settingsTitle: 'Plan settings',
+  owner: 'Owner',
+  ownerPlaceholder: 'Who runs this plan (name or team)',
+  overrunShow: (n: number) => `${count(n, 'step')} run past the campaign: show`,
+  phaseProgress: (done: number, total: number) => `${done} of ${total}`,
+  phaseAllDone: (n: number) => `${n} done`,
+  minimapToday: 'Today',
+  windowChip: 'Waiting period',
+  collapseStep: 'Collapse',
   stepsBadge: (done: number, total: number) => `${done}/${total} steps done`,
   paceLabel: 'Pace:',
   // Size bands (§A3): the pace follows the tenant; the band can be overridden.

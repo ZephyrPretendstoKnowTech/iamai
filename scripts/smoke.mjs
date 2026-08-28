@@ -130,7 +130,7 @@ try {
   await go('baseline')
   t = await text()
   check('Baseline: 1 policy loaded', /1 policy ·/.test(t))
-  check('Baseline: Setup will ask 8 questions (3 required)', /Setup will ask 8 questions \(3 required\)/.test(t), (t.match(/Setup will ask[^\n]*/) ?? [''])[0])
+  check('Baseline: Setup will ask 8 questions (all required)', /Setup will ask 8 questions \(all required\)/.test(t), (t.match(/Setup will ask[^\n]*/) ?? [''])[0])
 
   // Scan: the readiness table
   await go('scan')
@@ -146,8 +146,8 @@ try {
   await go('mapping')
   check('Setup: questions render', await waitFor(`/Question 1/.test(document.body.innerText)`))
   t = await text()
-  check('Setup: 3 required remaining', /3 required remaining/.test(t))
-  check('Setup: 5 optional questions under Advanced', /5 optional questions/.test(t))
+  check('Setup: every shown question is required, 8 to go', /0 of 8 answered · 8 to go/.test(t))
+  check('Setup: no optional split', !/optional question/.test(t))
 
   // Findings
   await go('coverage')
@@ -160,10 +160,10 @@ try {
 
   // Roadmap
   await go('roadmap')
-  check('Roadmap: overview renders', await waitFor(`/of 18 steps/.test(document.body.innerText)`))
+  check('Roadmap: overview renders', await waitFor(`/of 18 steps in place/.test(document.body.innerText)`))
   t = await text()
-  check('Roadmap: 2 of 18 steps already in place', /2 of 18 steps already in place/.test(t))
-  check('Roadmap: 2 safe today, 6 blocked', /2\s+Safe today/.test(t) && /6\s+Blocked/.test(t))
+  check('Roadmap: headline 2 of 18 steps in place, finishes', /2 of 18 steps in place · finishes /.test(t))
+  check('Roadmap: tiles Ready today and Blocked', /\d+\s+Ready today/.test(t) && /6\s+Blocked/.test(t))
   check('Roadmap: danger areas name the blocked user', /1 user is blocked today|Danger areas\s+1/.test(t))
   check('Roadmap: steps tab lists the verification campaign', (await clickText('/^Steps/')) && (await waitFor(`/Run the MFA verification campaign/.test(document.body.innerText)`)))
 

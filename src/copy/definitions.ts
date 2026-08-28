@@ -95,6 +95,7 @@ export const TILE = {
     title: 'To set up before enforcement',
     text: `No MFA method plus Registered but unproven, over all enabled users: the people the verification campaign has to work through before any MFA policy is enforced.`,
   },
+  readyToday: { title: 'Ready today', text: 'Steps nothing blocks: they can start on their scheduled date. Zero here is a state, not a failure: everything remaining waits on something the plan names.' },
   stepsDone: { title: 'Steps done', text: 'Plan steps already delivered by existing policies or completed since the plan started.' },
   weeks: { title: 'Weeks', text: 'Calendar weeks from the start date to the last phase end, counting the report-only observation windows.' },
   seats: { title: 'Seats', text: 'Licences purchased, and how many are assigned to users.' },

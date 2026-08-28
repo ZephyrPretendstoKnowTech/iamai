@@ -565,6 +565,37 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .danger-high { border-left: 3px solid var(--danger); }
 .danger-medium { border-left: 3px solid var(--warning); }
 .back-to-top { position: fixed; right: var(--gutter); bottom: var(--space-5); z-index: 50; box-shadow: var(--shadow-1); }
+/* Roadmap overview bands (prompt 26 §6-§9) */
+.overview-band { padding: var(--space-5) 0; border-bottom: 1px solid var(--border); }
+.overview-band:last-of-type { border-bottom: none; }
+.overview-headline { font-size: var(--text-xl); font-weight: 650; margin: 0 0 var(--space-2); letter-spacing: -0.01em; }
+.overview-constraint { font-size: var(--text-md); color: var(--muted); max-width: 62rem; margin: 0; }
+.overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); gap: var(--space-5); align-items: start; }
+.overview-grid > div > h4 { margin-top: 0; }
+.settings-card { margin: 0; }
+.settings-card label { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.actions-row { justify-content: flex-end; padding-top: var(--space-4); }
+@media (max-width: 900px) { .overview-grid { grid-template-columns: 1fr; } }
+/* Timeline mini-map and phase cards (prompt 26 §10-§14) */
+.minimap { position: relative; display: flex; gap: 2px; height: 28px; margin: var(--space-3) 0 var(--space-4); border-radius: var(--radius-input); overflow: hidden; }
+.minimap-seg { display: flex; align-items: center; justify-content: center; min-width: 3rem; background: var(--raised); border: 1px solid var(--border); color: var(--muted); font-size: var(--text-sm); text-decoration: none; overflow: hidden; }
+.minimap-seg.is-partial { background: var(--accent-soft); color: var(--text); }
+.minimap-seg.is-done { background: var(--success-soft); color: var(--success); }
+.minimap-seg:hover, .minimap-seg:focus-visible { border-color: var(--accent); outline: none; }
+.minimap-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 var(--space-2); }
+.minimap-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); }
+.phase-card { margin: var(--space-3) 0; }
+.phase-card > summary { cursor: pointer; font-size: var(--text-md); }
+.phase-title { margin: 0 0 var(--space-3); font-size: var(--text-md); }
+.window-card { margin: var(--space-3) 0; padding: var(--space-3) var(--space-4); background: var(--raised); border-style: dashed; }
+.step-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-3); margin-top: var(--space-3); }
+@media (min-width: 1000px) { .step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1400px) { .step-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.step-tile { display: block; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-input); background: var(--surface); color: var(--text); text-decoration: none; min-width: 0; }
+.step-tile:hover, .step-tile:focus-visible { border-color: var(--accent); outline: none; }
+.step-tile.lane-safe { border-left: 3px solid var(--success); }
+.step-tile-title { display: block; margin: var(--space-2) 0 var(--space-1); }
+.grid-span { grid-column: 1 / -1; }
 .timeline-link { cursor: pointer; }
 .timeline-link:hover { background: var(--raised); }
 .timeline-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
