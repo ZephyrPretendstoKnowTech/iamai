@@ -141,9 +141,9 @@ export function App() {
               />
             ) : (
               <section>
-                <h2>{SHELL.steps.scan}</h2>
+                <h2>{route === 'inventory' ? SHELL.steps.inventory : SHELL.steps.scan}</h2>
                 <p>
-                  {SHELL.scanNeedsConnect} <a href="#/connect">{SHELL.connectLink}</a>
+                  {route === 'inventory' ? SHELL.inventoryNeedsConnect : SHELL.scanNeedsConnect} <a href="#/connect">{SHELL.connectLink}</a>
                 </p>
               </section>
             ))}

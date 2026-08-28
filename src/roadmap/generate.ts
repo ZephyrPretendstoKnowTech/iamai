@@ -17,7 +17,7 @@ import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { ACTION, CARE, COMMS, EXIT, IMPACT, PREREQ, ROLLBACK, UNBLOCK, stepTitle } from '../copy/steps.ts'
+import { ACTION, CARE, COMMS, EVIDENCE, EXIT, IMPACT, PREREQ, ROLLBACK, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import {
   BREAK_GLASS_DRILL_DAYS,
   EXIT_MIN_DAYS_OBSERVED,
@@ -502,7 +502,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const pop = population(popIds, snapshot, viability)
     const readiness = readinessFor(goal.id, popIds, viability, snapshot)
     const matchedPolicyId = findTaggedPolicy(snapshot, planId, stepId)
-    const evidence = evidenceFor(goal.id, snapshot, pop.active, matchedPolicyId)
+    const measuredEvidence = evidenceFor(goal.id, snapshot, pop.active, matchedPolicyId)
+    // A goal an existing policy already enforces has nothing in report-only to
+    // measure; say that rather than promising a measurement (prompt 19 §B).
+    const evidence =
+      result.status === 'enforced' && matchedPolicyId === null && measuredEvidence.reportOnly === null
+        ? { ...measuredEvidence, lines: [EVIDENCE.alreadyEnforced] }
+        : measuredEvidence
 
     const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined
     const why = doc?.intent ?? goal.tldr ?? goal.description
@@ -721,7 +727,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // or a tagged report-only policy); otherwise the note says so.
     const opEvidence = operatorId !== null ? snapshot.signInEvidence[operatorId] : undefined
     const measured = evidenceUsable && (readiness.family === 'block' || evidence.reportOnly !== null)
-    const operatorNote = includesOperator
+    const operatorNote = includesOperator && result.status !== 'enforced'
       ? OPERATOR.inScope(measured ? (evidence.affectedUserIds.includes(operatorId!) ? 'some' : 0) : null, opEvidence?.signInCount ?? null)
       : null
 

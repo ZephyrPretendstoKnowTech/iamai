@@ -14,12 +14,12 @@ export function StartPage() {
       </div>
 
       <div className="band">
-        <h3>{START.howTitle}</h3>
+        <h2>{START.howTitle}</h2>
         <div className="grid-cards">
           {START.how.map((h) => (
             <Card key={h.title}>
               <Icon name={h.icon} size={28} />
-              <h4>{h.title}</h4>
+              <h3>{h.title}</h3>
               <p className="muted">{h.text}</p>
             </Card>
           ))}
@@ -27,7 +27,7 @@ export function StartPage() {
       </div>
 
       <div className="band">
-        <h3>{START.needTitle}</h3>
+        <h2>{START.needTitle}</h2>
         <ul>
           {START.need.map((n) => (
             <li key={n}>{n}</li>
@@ -36,7 +36,7 @@ export function StartPage() {
       </div>
 
       <div className="band">
-        <h3>{START.readsTitle}</h3>
+        <h2>{START.readsTitle}</h2>
         <ul>
           {START.reads.map((n) => (
             <li key={n}>{n}</li>
@@ -48,7 +48,7 @@ export function StartPage() {
       </div>
 
       <div className="band">
-        <h3>{START.neverTitle}</h3>
+        <h2>{START.neverTitle}</h2>
         <ul>
           {START.never.map((n) => (
             <li key={n}>{n}</li>

@@ -541,6 +541,8 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .band { padding: var(--space-6) 0; border-bottom: 1px solid var(--border); }
 .band:last-child { border-bottom: none; }
 .hero h1 { max-width: 40rem; }
+/* Start sections are h2 for document order (prompt 19 §B) but sized as section headings. */
+.band:not(.hero) > h2 { font-size: var(--text-lg); font-weight: 600; margin: var(--space-5) 0 var(--space-2); }
 .hero p { max-width: 40rem; color: var(--muted); font-size: var(--text-md); }
 .step-does { color: var(--muted); margin-top: calc(-1 * var(--space-2)); }
 .step-needs { font-size: var(--text-sm); margin: var(--space-2) 0 var(--space-4); }
