@@ -28,3 +28,13 @@ test('the Setup time zone drives every rendered date', () => {
   assert.match(nz, /Sep 10, 2026|10 Sept 2026|10 Sep 2026/)
   assert.match(la, /Sep 10, 2026|10 Sept 2026|10 Sep 2026/)
 })
+
+test('scan age: whole days, never negative, stale after 7', async () => {
+  const { STALE_SCAN_DAYS, scanAgeDays } = await import('./dates.ts')
+  const now = Date.parse('2026-08-28T12:00:00Z')
+  assert.equal(scanAgeDays('2026-08-28T11:00:00Z', now), 0)
+  assert.equal(scanAgeDays('2026-08-21T12:00:01Z', now), 6)
+  assert.equal(scanAgeDays('2026-08-21T11:59:59Z', now), 7)
+  assert.equal(scanAgeDays('2026-09-01T00:00:00Z', now), 0, 'a future stamp reads as fresh, not negative')
+  assert.equal(STALE_SCAN_DAYS, 7)
+})

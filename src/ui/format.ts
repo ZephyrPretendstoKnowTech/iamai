@@ -1,6 +1,6 @@
 // UI helpers: dates come from src/copy/dates.ts (shared with the engine);
 // CSV and download live here because they touch the DOM.
-export { absolute, absoluteDate, dateRange, relative, relativeDays, setDisplayTimeZone, when, whenAt } from '../copy/dates.ts'
+export { STALE_SCAN_DAYS, absolute, absoluteDate, dateRange, relative, relativeDays, scanAgeDays, setDisplayTimeZone, when, whenAt } from '../copy/dates.ts'
 
 export function toCsv(header: string[], rows: (string | number | null | undefined)[][]): string {
   const cell = (v: string | number | null | undefined): string => {

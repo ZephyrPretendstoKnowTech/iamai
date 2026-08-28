@@ -33,7 +33,7 @@ import type { SizeBand } from '../../roadmap/constants.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
-import { StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
+import { ScanAge, StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
 import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 import { SCORE } from '../../copy/definitions.ts'
@@ -625,11 +625,7 @@ export function RoadmapPage({
 
   return (
     <StepFrame title={C.title} does={C.does} needs={needs} next="scan" nextLabel={C.nextRescan}>
-      {scan && (
-        <p className="reason">
-          {C.basedOn(whenAt(scan.at))} <a href="#/scan">{C.rescan}</a>
-        </p>
-      )}
+      {scan && <ScanAge at={scan.at} />}
       <Tabs
         active={activeTab}
         onChange={setActiveTab}

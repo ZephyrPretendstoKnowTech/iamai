@@ -10,6 +10,19 @@ export const SHELL = {
   darkTheme: 'Dark theme',
   themeTooltip: 'Switch between dark and light themes',
   forget: 'Forget this tenant',
+  // Error boundary (prompt 20 §2)
+  errorTitle: 'This page hit an error',
+  errorCalloutTitle: 'Nothing in the tenant changed',
+  errorBody:
+    'The page could not finish drawing. The saved scan, Setup answers and plan on this device are intact. Download the diagnostics to report the problem, or start over from the Start step.',
+  errorDiagnostics: 'Download diagnostics (redacted)',
+  errorStartOver: 'Start over',
+  errorDetail: (message: string) => `Technical detail: ${message}`,
+  // Scan age (prompt 20 §9)
+  basedOn: (when: string) => `Based on the scan from ${when}.`,
+  rescan: 'Re-scan',
+  scanStale: (days: number) => `This scan is ${days} days old. Numbers, names and sign-in evidence may have moved on.`,
+  scanStaleAction: 'Re-scan the tenant',
   forgetTooltip: 'Deletes everything IAMAI stored for this tenant on this device, then signs out',
   printHeader: (tenant: string, date: string, by: string) => `IAMAI plan for ${tenant} · prepared ${date} by ${by}`,
   footerLeft: 'Read-only · nothing leaves your browser',

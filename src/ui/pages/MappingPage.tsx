@@ -22,7 +22,7 @@ import { COMMON_TIMEZONES, FRAMEWORK_OPTIONS, SETUP_PAGE as C } from '../../copy
 import { setDisplayTimeZone } from '../format.ts'
 import { Button, Callout, Card, Chip, Icon, InfoTip, Picker, Toast, Toggle, useToast } from '../components/index.ts'
 import type { IconName, PickerOption } from '../components/index.ts'
-import { StepFrame } from '../shell/AppShell.tsx'
+import { ScanAge, StepFrame } from '../shell/AppShell.tsx'
 import type { BaselineResult } from './BaselinePage.tsx'
 
 export function MappingPage({
@@ -168,6 +168,7 @@ export function MappingPage({
 
   return (
     <StepFrame title={C.title} does={C.does} needs={needs} next="coverage" nextLabel={C.next}>
+      {scan && <ScanAge at={scan.at} />}
       <Callout kind={progress.complete ? 'success' : 'info'} title={C.progress(progress.answered, questions.length, requiredLeft.length)}>
         {requiredLeft.length > 0 ? C.requiredOpen(requiredLeft.map((q) => q.title)) : C.allRequiredDone}
         {autoCount > 0 && <span className="reason"> {C.autoResolved(autoCount)}</span>}
