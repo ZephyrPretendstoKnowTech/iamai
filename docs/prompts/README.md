@@ -41,3 +41,4 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `18-pacing-by-size-and-timeline.md` | Pace preset by tenant size, schedule rationale, timeline auto-hide, verification on this tenant | 17 done |
 | `19-qa-sweep.md` | Button ink, question count, legend cards, findings controls; a full audit (docs/qa/audit-01.md) and its fixes; cross-page consistency test | 18 done |
 | `20-hardening-and-trust.md` | Hygiene scan, error boundary, session-expiry pause, retry and lane-isolation tests, plan round-trip, accessibility, performance guard, print check, scan age, CI smoke test | 19 done |
+| `21-honest-metrics-and-layout.md` | Four rollout tiles over enabled users, campaign gate, 1440 container, filter bar, portalled popovers, sorting within groups, step state reasons, hide completed, proposed names, sidebar cleanup | 20 done; docs/design/ux-review-04.md present |

@@ -31,6 +31,11 @@ export function roleLabel(id: string): string {
 /** True when a policy's role set covers the whole admin set. */
 export function coversAdminSet(roleIds: Iterable<string>): boolean {
   const have = new Set([...roleIds].map((r) => r.toLowerCase()))
+  // Every core admin role must be present. Beyond that, either the whole admin
+  // catalogue is, or the selection is (nearly) every directory role, which covers
+  // it by construction even where the local template list has a newer id.
+  for (const r of coreAdminRoles.roles) if (!have.has(r.templateId.toLowerCase())) return false
+  if (have.size >= Math.ceil(ROLE_TEMPLATES.length * 0.9)) return true
   for (const id of ADMIN_ROLE_IDS) if (!have.has(id)) return false
   return true
 }

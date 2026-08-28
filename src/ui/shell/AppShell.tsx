@@ -38,8 +38,8 @@ const STEPS: { route: Route; label: string }[] = [
   { route: 'roadmap', label: SHELL.steps.roadmap },
 ]
 
+// Inventory is a tab under Scan, not a second entry point (ux-review-04 §6).
 const REFERENCE: { route: Route; label: string }[] = [
-  { route: 'inventory', label: SHELL.steps.inventory },
   { route: 'licensing', label: SHELL.steps.licensing },
   { route: 'reads', label: SHELL.steps.reads },
 ]
@@ -47,6 +47,7 @@ const REFERENCE: { route: Route; label: string }[] = [
 const VALID = new Set<string>([
   ...[...STEPS, ...REFERENCE].map((n) => n.route as string),
   'baseline/package',
+  'inventory',
   ...(import.meta.env.DEV ? ['components'] : []),
 ])
 
