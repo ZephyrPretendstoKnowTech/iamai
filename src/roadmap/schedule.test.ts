@@ -58,6 +58,9 @@ function step(over: Partial<Step> & { id: string }): Step {
     rings: [ring(0, 3, ids.slice(0, 3)), ring(1, 3, ids.slice(3))],
     currentRing: 0,
     denies: true,
+    populationBasis: '',
+    populationNames: [],
+    populationView: null,
     ...over,
   }
 }

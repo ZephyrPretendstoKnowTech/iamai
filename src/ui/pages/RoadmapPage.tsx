@@ -27,6 +27,10 @@ import { ROADMAP as C } from '../../copy/pages.ts'
 import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
 import { overrunList, roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
 import { CALENDAR } from '../../copy/schedule.ts'
+import { POPULATION } from '../../copy/population.ts'
+import { POPULATION_CSV_HEADER, populationContext, populationRows } from '../../roadmap/population.ts'
+import { ringContextIndexes } from '../../roadmap/rings.ts'
+import { adminUserIds } from '../../roles.ts'
 import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import { planSummary } from '../../roadmap/summary.ts'
@@ -34,7 +38,7 @@ import { BANDS } from '../../roadmap/constants.ts'
 import type { SizeBand } from '../../roadmap/constants.ts'
 import type { ChangeFreeze, Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
-import { absolute, absoluteDate, dateRange, downloadFile, relative, when, whenAt } from '../format.ts'
+import { absolute, absoluteDate, dateRange, downloadFile, relative, toCsv, when, whenAt } from '../format.ts'
 import { ScanAge, StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
 import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, LinkButton, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
@@ -312,6 +316,17 @@ export function RoadmapPage({
     setVersion((v) => v + 1)
   }
   const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
+  // The population export is built in the browser from the scan (roadmap-v2.md §3): nothing leaves this machine.
+  const exportPopulation = (step: Step): void => {
+    const viabilityById = new Map(computed.viability.map((v) => [v.userId, v]))
+    const ctx = populationContext(snapshot, viabilityById, adminUserIds(snapshot.roles), new Set(mapping?.highCareUserIds ?? []), ringContextIndexes(snapshot).deviceReady, nameOf)
+    downloadFile(`${step.id}-people.csv`, toCsv(POPULATION_CSV_HEADER, populationRows(step, ctx)), 'text/csv')
+  }
+  /** At most ten names, then "and N more" (roadmap-v2.md §3: nothing renders unbounded). */
+  const boundedNames = (ids: string[]): string => {
+    const shown = ids.slice(0, 10).map(nameOf)
+    return ids.length > 10 ? `${shown.join(', ')} ${POPULATION.andMore(ids.length - 10)}` : shown.join(', ')
+  }
   const stepById = new Map(steps.map((s) => [s.id, s]))
 
   const savePlan = (): void => {
@@ -784,6 +799,8 @@ export function RoadmapPage({
                         onCopy={copy}
                         skipDraft={skipDraft}
                         setSkipDraft={setSkipDraft}
+                        onExportPopulation={exportPopulation}
+                        boundedNames={boundedNames}
                         onSkipped={(st) => {
                           // Persist the skip before regenerating, or mergePersisted forgets it.
                           setSaved((p) =>
@@ -862,12 +879,54 @@ function planMarkdown(
     lines.push(`## ${title} (${w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)})`)
     for (const s of inPhase) {
       lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** (${STEP_KIND_LABEL[s.kind]}). ${s.impact}`)
-      if (s.highCare.userIds.length > 0) lines.push(`  - ${C.markdown.care(s.highCare.userIds.map(nameOf).join(', '))}`)
+      if (s.highCare.userIds.length > 0) lines.push(`  - ${C.markdown.care(s.highCare.userIds.slice(0, 10).map(nameOf).join(', ') + (s.highCare.userIds.length > 10 ? ` ${POPULATION.andMore(s.highCare.userIds.length - 10)}` : ''))}`)
       if (s.status === 'blocked') lines.push(`  - ${C.markdown.blocked(s.unblockNotes.join('; '))}`)
     }
     lines.push('')
   }
   return lines.join('\n')
+}
+
+/** Populations at scale (roadmap-v2.md §3): names under 25, cohorts and the riskiest ten above, a CSV in every mode. */
+function PopulationBody({ view, total, onExport }: { view: NonNullable<Step['populationView']>; total: number; onExport: () => void }) {
+  return (
+    <div className="population">
+      {view.named.length > 0 && (
+        <p>
+          <strong>{view.namedIsSample ? POPULATION.riskiestTitle(view.named.length) : POPULATION.everyoneNamed(total)}</strong>{' '}
+          {view.named.map((n) => (n.reasons.length > 0 ? `${n.name} (${n.reasons.join(', ')})` : n.name)).join(', ')}
+        </p>
+      )}
+      {view.namedIsSample && <p className="reason">{POPULATION.riskiestNote}</p>}
+      {view.cohorts.length > 0 && (
+        <details>
+          <summary>{POPULATION.cohortsTitle}</summary>
+          <div className="cohorts">
+            {view.cohorts.map((c) => (
+              <table key={c.title} className="cohort-table">
+                <caption>{c.title}</caption>
+                <tbody>
+                  {c.rows.map((r) => (
+                    <tr key={r.label}>
+                      <td>{r.label}</td>
+                      <td className="num">{view.mode === 'percentages' ? `${r.percent}%` : `${r.count.toLocaleString('en-AU')} (${r.percent}%)`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ))}
+          </div>
+          {view.mode === 'percentages' && <p className="reason">{POPULATION.cohortsPercentOnly}</p>}
+        </details>
+      )}
+      <p className="row no-print">
+        <Button size="sm" icon="download" onClick={onExport}>
+          {POPULATION.exportCsv}
+        </Button>
+        <span className="reason">{POPULATION.exportNote}</span>
+      </p>
+    </div>
+  )
 }
 
 function StepCard({
@@ -880,6 +939,8 @@ function StepCard({
   skipDraft,
   setSkipDraft,
   onSkipped,
+  onExportPopulation,
+  boundedNames,
 }: {
   step: Step
   linked: boolean
@@ -890,6 +951,8 @@ function StepCard({
   skipDraft: { id: string; reason: string } | null
   setSkipDraft: (d: { id: string; reason: string } | null) => void
   onSkipped: (step: Step) => void
+  onExportPopulation: (step: Step) => void
+  boundedNames: (ids: string[]) => string
 }) {
   const [tab, setTab] = useState<'json' | 'portal' | 'ps'>('portal')
   return (
@@ -973,7 +1036,7 @@ function StepCard({
 
       {step.highCare.userIds.length > 0 && (
         <div className={`card ${step.highCare.ready ? '' : 'danger-high'}`}>
-          <h4>{C.careTitle(step.highCare.userIds.map(nameOf).join(', '))}</h4>
+          <h4>{C.careTitle(boundedNames(step.highCare.userIds))}</h4>
           <ul className="sections">
             {step.highCare.notes.map((n, i) => (
               <li key={i}>{n}</li>
@@ -1001,7 +1064,10 @@ function StepCard({
       {step.population.total > 0 && (
         <>
           <h4>{C.whoItTouches}</h4>
-          <p className="reason">{affectedLine(step.population.total, step.population.active, step.population.admins, step.population.guests)}</p>
+          <p className="reason">
+            {step.populationBasis} · {affectedLine(step.population.total, step.population.active, step.population.admins, step.population.guests)}
+          </p>
+          {step.populationView && <PopulationBody view={step.populationView} total={step.population.total} onExport={() => onExportPopulation(step)} />}
         </>
       )}
 
@@ -1023,7 +1089,7 @@ function StepCard({
             {step.evidence.lines.map((l, i) => (
               <li key={i}>{l}</li>
             ))}
-            {step.evidence.affectedUserIds.length > 0 && <li>{C.affected(step.evidence.affectedUserIds.map(nameOf).join(', '))}</li>}
+            {step.evidence.affectedUserIds.length > 0 && <li>{C.affected(boundedNames(step.evidence.affectedUserIds))}</li>}
           </ul>
         </>
       )}

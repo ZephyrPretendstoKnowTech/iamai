@@ -12,6 +12,7 @@ import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
 import { accountVerdict } from './strand.ts'
 import { policyCountFor } from './policyCount.ts'
+import { describePopulation, populationContext } from './population.ts'
 import { NAMING } from '../copy/schedule.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingState } from '../mapping/types.ts'
@@ -76,7 +77,7 @@ export type RoadmapResult = { steps: Step[]; schedule: Schedule }
 
 const EXTRAS: Pick<
   Step,
-  'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing'
+  'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
 > = {
   impact: '',
   safeToday: false,
@@ -87,6 +88,9 @@ const EXTRAS: Pick<
   operatorSafe: null,
   rings: [],
   currentRing: 0,
+  populationBasis: '',
+  populationNames: [],
+  populationView: null,
 }
 
 function idFor(prefix: string, key: string): string {
@@ -424,6 +428,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     deliveredBy: [],
     stateReason: '',
     ...EXTRAS,
+    impact: IMPACT.prerequisite,
   })
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
@@ -533,6 +538,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const p = PREREQ.securityDefaults
     steps.push(prereq('s-prereq-security-defaults', p.title, p.why, p.how, p.exit))
   }
+  // Per-user MFA still on (migration not complete): a conflict named up front (roadmap-v2.md §7, messy).
+  const methodsPolicy = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
+  if (methodsPolicy?.policyMigrationState && methodsPolicy.policyMigrationState !== 'migrationComplete') {
+    const p = PREREQ.perUserMfa
+    const mfaPolicies = input.coverage.results.filter((r) => goalFamily(r.goal.id) === 'mfa' && r.status !== 'not-applicable' && r.status !== 'licence-limited').length
+    steps.push(prereq('s-prereq-per-user-mfa', p.title, p.why, p.how(mfaPolicies), p.exit))
+  }
 
   // ---- Goal steps ----
   const baselineFactsList = input.baseline.policies.map((p) => ({
@@ -572,6 +584,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       result.status === 'enforced' && matchedPolicyId === null && measuredEvidence.reportOnly === null
         ? { ...measuredEvidence, lines: [EVIDENCE.alreadyEnforced] }
         : measuredEvidence
+    if (readiness.family === 'block' && evidence.affectedUserIds.length > 0) {
+      const svc = mapping.serviceAccountUserIds.filter((id) => evidence.affectedUserIds.includes(id))
+      if (svc.length > 0) evidence.lines.push(EVIDENCE.serviceAccounts(svc.map(nameOf)))
+    }
 
     const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined
     const rawWhy = doc?.intent ?? goal.tldr ?? goal.description
@@ -938,18 +954,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       )
     })
     const p = PREREQ.breakGlassDrill
+    const phoneOnly = bgIds.filter((id) => {
+      const m = snapshot.authMethods[id]
+      return Array.isArray(m) && m.length > 0 && m.every((x) => x.kind === 'phone' || x.kind === 'email' || x.kind === 'password')
+    })
     steps.push({
       ...prereq('s-recurring-break-glass-drill', p.title, p.why(BREAK_GLASS_DRILL_DAYS), p.how, p.exit(BREAK_GLASS_DRILL_DAYS)),
+      impact: phoneOnly.length > 0 ? p.weakMethod(phoneOnly.map(nameOf)) : IMPACT.prerequisite,
       kind: 'recurring',
       rollback: ROLLBACK.recurring,
       goalId: 'recurring:break-glass',
-      status: stale.length > 0 ? 'ready' : 'done',
       population: population(bgIds, popIndex),
       readiness: {
         family: 'other',
         percent: null,
-        lines: stale.length > 0 ? [p.overdue(stale.map(nameOf))] : [p.allDrilled],
+        lines: [...(stale.length > 0 ? [p.overdue(stale.map(nameOf))] : [p.allDrilled]), ...(phoneOnly.length > 0 ? [p.weakMethod(phoneOnly.map(nameOf))] : [])],
       },
+      status: stale.length > 0 || phoneOnly.length > 0 ? 'ready' : 'done',
     })
   }
 
@@ -972,12 +993,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     return SEVERITY_DEFAULT
   }
   const score = (s: Step): number => {
+    // Conflicts the tenant already has (security defaults, per-user MFA) come before everything (roadmap-v2.md §7, messy).
+    if (s.id === 's-prereq-security-defaults' || s.id === 's-prereq-per-user-mfa') return -2000
     if (s.safeToday) return -1000
     const sev = s.kind === 'prerequisite' || s.kind === 'recurring' ? 0 : stepSeverity(s)
     const care = s.highCare.userIds.length > 0 ? 100_000 : 0
     return care + s.population.active * sev - (s.readiness.percent ?? 0)
   }
   steps.sort((a, b) => a.phase - b.phase || score(a) - score(b) || a.id.localeCompare(b.id))
+
+  // ---- Populations at scale (roadmap-v2.md §3): basis, names or cohorts, the riskiest ----
+  const popCtx = populationContext(snapshot, viabilityById, popIndex.admins, highCareIds, ringContextIndexes(snapshot).deviceReady, nameOf)
+  for (const s of steps) {
+    const view = describePopulation(s, popCtx)
+    s.populationView = view
+    s.populationBasis = view.basis
+    s.populationNames = view.named.map((n) => n.name)
+  }
 
   // ---- Rings (roadmap-v2.md §1): proposed from readiness data, dated by the schedule ----
   const startIso = input.startDate ?? nextMonday(snapshot.asOf)
