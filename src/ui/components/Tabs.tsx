@@ -1,5 +1,6 @@
 import { useId, useState, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { usePrinting } from './usePrinting.ts'
 
 export type TabDef = { id: string; label: string; badge?: string | number; render: () => ReactNode }
 
@@ -28,17 +29,7 @@ export function Tabs({
   // attention lists are not laid out while another tab is open. Printing
   // needs every panel, so beforeprint mounts them all.
   const [visited, setVisited] = useState<Set<string>>(() => new Set([controlled ?? initial ?? tabs[0]?.id ?? '']))
-  const [printing, setPrinting] = useState(false)
-  useEffect(() => {
-    const on = () => setPrinting(true)
-    const off = () => setPrinting(false)
-    window.addEventListener('beforeprint', on)
-    window.addEventListener('afterprint', off)
-    return () => {
-      window.removeEventListener('beforeprint', on)
-      window.removeEventListener('afterprint', off)
-    }
-  }, [])
+  const printing = usePrinting()
   useEffect(() => {
     setVisited((v) => (v.has(active) ? v : new Set([...v, active])))
   }, [active])
