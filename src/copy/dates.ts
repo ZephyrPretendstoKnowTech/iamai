@@ -60,3 +60,10 @@ export function whenAt(iso: string, nowMs = Date.now()): string {
 export function dateRange(fromIso: string, toIso: string): string {
   return `${absoluteDate(fromIso)} → ${absoluteDate(toIso)}`
 }
+
+/** A scan older than this gets a warning on every page that depends on it (prompt 20 §9). */
+export const STALE_SCAN_DAYS = 7
+export function scanAgeDays(iso: string, nowMs = Date.now()): number {
+  const ms = nowMs - Date.parse(iso)
+  return Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 86_400_000) : 0
+}

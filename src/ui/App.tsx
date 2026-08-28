@@ -5,6 +5,7 @@ import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import { AppShell, useHashRoute } from './shell/AppShell.tsx'
+import { ErrorBoundary } from './components/index.ts'
 import type { Route, StepStatus } from './shell/AppShell.tsx'
 import { StartPage } from './pages/StartPage.tsx'
 import { ConnectPage } from './pages/ConnectPage.tsx'
@@ -100,7 +101,7 @@ export function App() {
       {!ready ? (
         SHELL.loading
       ) : (
-        <>
+        <ErrorBoundary key={route} route={route}>
           {authError && (
             <p className="error">
               {SHELL.signInError} {authError}
@@ -170,7 +171,7 @@ export function App() {
               <DevSpikes />
             </Suspense>
           )}
-        </>
+        </ErrorBoundary>
       )}
     </AppShell>
   )

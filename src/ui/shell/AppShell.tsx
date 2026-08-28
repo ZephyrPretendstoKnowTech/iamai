@@ -4,8 +4,8 @@ import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { signOut } from '../../graph/msal.ts'
 import { SHELL } from '../../copy/pages.ts'
-import { absoluteDate } from '../../copy/dates.ts'
-import { Button, LinkButton, Stepper } from '../components/index.ts'
+import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/dates.ts'
+import { Button, Callout, LinkButton, Stepper } from '../components/index.ts'
 import type { StepperStatus } from '../components/index.ts'
 
 export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
@@ -231,5 +231,25 @@ export function StepFrame({
         </p>
       )}
     </section>
+  )
+}
+
+/**
+ * The scan a page is based on, with a warning past STALE_SCAN_DAYS
+ * (prompt 20 §9). Every page that reads the scan shows this.
+ */
+export function ScanAge({ at }: { at: string }) {
+  const days = scanAgeDays(at)
+  return (
+    <>
+      <p className="reason">
+        {SHELL.basedOn(whenAt(at))} <a href="#/scan">{SHELL.rescan}</a>
+      </p>
+      {days >= STALE_SCAN_DAYS && (
+        <Callout kind="warning" title={SHELL.scanStale(days)}>
+          <a href="#/scan">{SHELL.scanStaleAction}</a>
+        </Callout>
+      )}
+    </>
   )
 }

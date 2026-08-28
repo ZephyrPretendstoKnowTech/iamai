@@ -22,7 +22,7 @@ import { INVENTORY } from '../../copy/inventory.ts'
 import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
 import { findingsSummary, lowerFirst } from '../../copy/statements.ts'
 import { absoluteDate, whenAt } from '../format.ts'
-import { StepFrame, stepHref } from '../shell/AppShell.tsx'
+import { ScanAge, StepFrame, stepHref } from '../shell/AppShell.tsx'
 import { stepIdForGoal } from '../../roadmap/generate.ts'
 import { Callout, Card, Chip, ExpandCard, InfoTip, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
@@ -454,9 +454,7 @@ export function CoveragePage({
 
   return (
     <StepFrame title={C.title} does={C.does} needs={needs} next="roadmap" nextLabel={C.next}>
-      <p className="reason">
-        {C.basedOn(whenAt(scan.at))} <a href="#/scan">{C.rescan}</a>
-      </p>
+      <ScanAge at={scan.at} />
       <Tabs
         tabs={[
           { id: 'summary', label: C.tabs.summary, render: summaryTab },

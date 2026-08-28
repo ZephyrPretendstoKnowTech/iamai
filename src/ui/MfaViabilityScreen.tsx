@@ -5,9 +5,9 @@ import type { SectionEvent, TenantSnapshot, UserRow, WorkerOutMessage } from '..
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scoring/mfaViability.ts'
-import { absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative, whenAt } from './format.ts'
+import { STALE_SCAN_DAYS, absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative, scanAgeDays, whenAt } from './format.ts'
 import { loadMappingState } from '../mapping/store.ts'
-import { SCAN } from '../copy/pages.ts'
+import { SCAN, SHELL } from '../copy/pages.ts'
 import { ACTIVITY_STATE, CHIP, LEGEND, METHOD_TIER, MFA_STATE, TILE } from '../copy/definitions.ts'
 import { StepFrame } from './shell/AppShell.tsx'
 import { Button, Callout, Card, Chip, DataTable, ExpandCard, FilterChip, ProgressBar, StatTile, Stats, Tabs } from './components/index.ts'
@@ -284,7 +284,16 @@ export function MfaViabilityScreen({
         )}
       </p>
       {error && <Callout kind="danger" title={SCAN.failed}>{error}</Callout>}
-      {scanState !== 'running' && initial && snapshot === initial.snapshot && <Callout kind="info">{SCAN.usingSaved(whenAt(initial.at))}</Callout>}
+      {scanState !== 'running' && initial && snapshot === initial.snapshot && (
+        <>
+          <Callout kind="info">{SCAN.usingSaved(whenAt(initial.at))}</Callout>
+          {scanAgeDays(initial.at) >= STALE_SCAN_DAYS && (
+            <Callout kind="warning" title={SHELL.scanStale(scanAgeDays(initial.at))}>
+              <a href="#/scan" onClick={(e) => { e.preventDefault(); void scan() }}>{SHELL.scanStaleAction}</a>
+            </Callout>
+          )}
+        </>
+      )}
       {scanState === 'running' && (
         <Card>
           <ProgressBar percent={sectionsPercent} caption={SCAN.sectionsBar(finishedSections, sectionTotal)} />

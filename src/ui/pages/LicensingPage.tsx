@@ -6,6 +6,7 @@ import ladder from '../../../data/free-tier-ladder.json' with { type: 'json' }
 import { LICENSING } from '../../copy/pages.ts'
 import { TILE } from '../../copy/definitions.ts'
 import { Card, Chip, DataTable, EmptyState, InfoTip, LinkButton } from '../components/index.ts'
+import { ScanAge } from '../shell/AppShell.tsx'
 
 const TIER_CAP: Record<string, string> = {
   p1: 'entraP1',
@@ -38,6 +39,7 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
   return (
     <section>
       <h2>{LICENSING.title}</h2>
+      <ScanAge at={scan!.at} />
       <p className="advisor">
         {LICENSING.intro}
         {!caps.entraP1.enabled && ` ${LICENSING.noP1}`}
