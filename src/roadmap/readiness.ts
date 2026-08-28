@@ -28,6 +28,15 @@ export function readinessFor(
   snapshot: TenantSnapshot,
 ): Readiness {
   const family = goalFamily(goalId)
+  // A source the scan could not read never masquerades as a number (roadmap-v2.md §7, hostile).
+  const registration = snapshot.sources?.registrationDetails
+  if ((family === 'mfa' || family === 'guest' || family === 'admin') && registration && registration.status !== 'ok' && registration.status !== 'partial') {
+    return { family, percent: null, lines: [READINESS.registrationUnreadable(registration.reason ?? registration.status)] }
+  }
+  const devicesSource = snapshot.sources?.devices
+  if (family === 'device' && devicesSource && devicesSource.status !== 'ok' && devicesSource.status !== 'partial') {
+    return { family, percent: null, lines: [READINESS.devicesUnreadable(devicesSource.reason ?? devicesSource.status)] }
+  }
   const pop = new Set(populationIds)
   const rows = viability.length === populationIds.length && viability.every((v, i) => v.userId === populationIds[i]) ? viability : viability.filter((v) => pop.has(v.userId))
   const active = rows.filter((v) => v.activity === 'active')

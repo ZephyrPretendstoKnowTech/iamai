@@ -57,7 +57,8 @@ function guid(seed: string, i: number): string {
   const r = rng(hash(`${seed}:${i}`))
   const hex = () => Math.floor(r() * 16).toString(16)
   const part = (n: number) => Array.from({ length: n }, hex).join('')
-  return `${part(8)}-${part(4)}-4${part(3)}-8${part(3)}-${part(12)}`
+  // The index lives in the first group so two ids from one seed never collide.
+  return `${i.toString(16).padStart(8, '0').slice(-8)}-${part(4)}-4${part(3)}-8${part(3)}-${part(12)}`
 }
 function hash(s: string): number {
   let h = 2166136261
@@ -108,8 +109,8 @@ export function buildFixture(spec: Spec): Fixture {
   const signInEvidence: TenantSnapshot['signInEvidence'] = {}
   const rolesActive: Record<string, string[]> = {}
   const ids: string[] = []
-  const bgIds = [guid(spec.name, 9001), guid(spec.name, 9002)]
-  const svcIds = Array.from({ length: spec.serviceAccounts ?? 0 }, (_, i) => guid(spec.name, 9100 + i))
+  const bgIds = [guid(spec.name, 1_000_001), guid(spec.name, 1_000_002)]
+  const svcIds = Array.from({ length: spec.serviceAccounts ?? 0 }, (_, i) => guid(spec.name, 1_000_100 + i))
   const total = spec.users
   for (let i = 0; i < total; i++) {
     const id = guid(spec.name, 1000 + i)
@@ -170,14 +171,14 @@ export function buildFixture(spec: Spec): Fixture {
     authMethods[id] = []
     signInEvidence[id] = { signInCount: 40, lastSignIn: daysAgo(1), lastMfaSuccess: null }
   }
-  const bgGroup = guid(spec.name, 9500)
-  const exclusionGroup = guid(spec.name, 9501)
+  const bgGroup = guid(spec.name, 1_000_500)
+  const exclusionGroup = guid(spec.name, 1_000_501)
 
   // ---- policies ----
   const policies: unknown[] = []
   const tag = (goalId: string) => (spec.midflight ? `[IAMAI:${planId}:${stepIdForGoal(goalId)}]` : '')
   const policy = (n: number, displayName: string, state: string, body: Record<string, unknown>, goalId?: string) => ({
-    id: guid(spec.name, 2000 + n),
+    id: guid(spec.name, 2_000_000 + n),
     displayName,
     state,
     description: goalId ? tag(goalId) : '',
@@ -222,7 +223,7 @@ export function buildFixture(spec: Spec): Fixture {
     },
     config: {
       caPolicies: section(policies),
-      namedLocations: section([{ '@odata.type': '#microsoft.graph.ipNamedLocation', id: guid(spec.name, 3001), displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] }]),
+      namedLocations: section([{ '@odata.type': '#microsoft.graph.ipNamedLocation', id: guid(spec.name, 4_000_001), displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] }]),
       authStrengths: section([{ id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] }]),
       authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Fido2', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
@@ -241,7 +242,7 @@ export function buildFixture(spec: Spec): Fixture {
     users,
     devices: hostile
       ? []
-      : ids.slice(0, Math.round(ids.length * (spec.intuneShare ?? 0.6))).map((owner, i) => ({ id: guid(spec.name, 4000 + i), displayName: `DEVICE-${i}`, isCompliant: i % 3 !== 0, isManaged: i % 4 !== 0, trustType: spec.hybrid && i % 2 === 0 ? 'ServerAd' : 'AzureAd', ownerIds: [owner], operatingSystem: i % 5 === 0 ? 'iOS' : 'Windows', approximateLastSignIn: daysAgo(i % 40) })),
+      : ids.slice(0, Math.round(ids.length * (spec.intuneShare ?? 0.6))).map((owner, i) => ({ id: guid(spec.name, 3_000_000 + i), displayName: `DEVICE-${i}`, isCompliant: i % 3 !== 0, isManaged: i % 4 !== 0, trustType: spec.hybrid && i % 2 === 0 ? 'ServerAd' : 'AzureAd', ownerIds: [owner], operatingSystem: i % 5 === 0 ? 'iOS' : 'Windows', approximateLastSignIn: daysAgo(i % 40) })),
     spActivity: [],
     authMethods: hostile ? Object.fromEntries(Object.keys(authMethods).map((k) => [k, 'unknown' as const])) : authMethods,
     appSignInSummary: [{ appId: '00000003-0000-0ff1-ce00-000000000000', appDisplayName: 'Office 365 SharePoint Online', signInCount: spec.users * 12 }],

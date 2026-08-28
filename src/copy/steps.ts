@@ -169,6 +169,15 @@ export const PREREQ = {
     ],
     exit: ['Security defaults report disabled on the next scan.'],
   },
+  perUserMfa: {
+    title: 'Retire per-user MFA',
+    why: 'Per-user MFA and Conditional Access both prompt, in different ways, and the legacy setting hides who is really covered; Conditional Access takes over before enforcement.',
+    how: (n: number) => [
+      `Entra admin center → Protection → Authentication methods → Policies → Manage migration → set it to Migration in progress, then Complete once the ${count(n, 'MFA policy', 'MFA policies')} in this plan are enforced.`,
+      'Leave every per-user state as it is until then: nobody loses a prompt during the switch.',
+    ],
+    exit: ['The migration state reads Complete on the next scan.'],
+  },
   verifyMfa: {
     title: 'Run the MFA verification campaign',
     why: 'Before MFA is enforced, every active user should have a working, verified method: enforcement should change nothing for them.',
@@ -190,6 +199,7 @@ export const PREREQ = {
     exit: (days: number) => [`Every break-glass account has a successful sign-in within ${days} days.`],
     overdue: (names: string[]) => `${count(names.length, 'account')} overdue: ${list(names)}`,
     allDrilled: 'All accounts recently drilled.',
+    weakMethod: (names: string[]) => `${list(names)} ${names.length === 1 ? 'holds' : 'hold'} only a phone method: register a FIDO2 key or passkey on each before the first block policy.`,
   },
 }
 
@@ -226,6 +236,7 @@ export const UNBLOCK = {
 
 export const IMPACT = {
   done: 'Already in force: no change for anyone.',
+  prerequisite: 'Changes nothing for anyone: an object or an answer the later steps need.',
   blockZero: 'No sign-in in the last 30 days would have been affected.',
   blockSome: (n: number) => `${count(n, 'user')} used this in the last 30 days and would be affected: contact them first.`,
   adjust: (affected: number, admins: number) =>
@@ -287,6 +298,8 @@ export const READINESS = {
   devices: (withDevice: number, members: number) =>
     members === 0 ? 'No active members in scope.' : `${withDevice} of ${count(members, 'active member')} own a compliant device`,
   block: 'Readiness is measured by usage: see who used this below.',
+  registrationUnreadable: (reason: string) => `Registration data could not be read (${reason}): readiness is unknown, so every ring starts with a personal check instead of a percentage.`,
+  devicesUnreadable: (reason: string) => `Device data could not be read (${reason}): device readiness is unknown, so every ring starts with a personal check instead of a percentage.`,
   location: 'Compare the countries seen in the sign-in records with the allowed list.',
 }
 
@@ -300,6 +313,7 @@ export const EVIDENCE = {
   notSeenYet: 'The created policy has not appeared in sign-in results yet.',
   none: "No sign-ins in the last 30 days matched this policy's conditions.",
   notMeasured: 'Sign-in records measure this once the policy exists in report-only; until then readiness is the guide.',
+  serviceAccounts: (names: string[]) => `${count(names.length, 'confirmed service account')} among them (${list(names)}): move ${names.length === 1 ? 'it' : 'them'} to the service-accounts group before this is enforced.`,
   alreadyEnforced: 'An existing policy already enforces this; its sign-in outcomes show in the Readiness table, not here.',
   legacyAuth: 'legacy authentication',
   deviceCode: 'the device-code flow',

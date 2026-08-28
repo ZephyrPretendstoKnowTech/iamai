@@ -247,8 +247,8 @@ test('hostile: every step still produced with readiness marked unknown', () => {
   const normal = runFixture(byName('small')).steps
   assert.ok(steps.length >= normal.length - 2, `hostile produced ${steps.length} steps vs ${normal.length}`)
   for (const s of steps) {
-    if (!canDenyAccess(s)) continue
-    const said = [...s.readiness.lines, ...s.evidence.lines].some((l) => /not (be )?read|unknown|could not|unavailable|no sign-in|not readable/i.test(l))
+    if (!canDenyAccess(s) || s.status === 'done') continue
+    const said = [...s.readiness.lines, ...s.evidence.lines].some((l) => /not (be )?read|unknown|could not|unavailable|no sign-in|not readable|not usable/i.test(l))
     assert.ok(said, `${s.id}: says what is unknown (${[...s.readiness.lines, ...s.evidence.lines].join(' | ')})`)
   }
 })

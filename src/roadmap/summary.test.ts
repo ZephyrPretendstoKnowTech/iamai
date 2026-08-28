@@ -36,6 +36,9 @@ function step(over: Partial<Step>): Step {
     operatorSafe: null,
     rings: [],
     currentRing: 0,
+    populationBasis: '',
+    populationNames: [],
+    populationView: null,
     ...over,
   }
 }

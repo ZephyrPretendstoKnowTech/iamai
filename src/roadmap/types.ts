@@ -49,6 +49,8 @@ export type Blocker =
 
 export type StepHistoryEntry ={ at: string; from: StepStatus; to: StepStatus; note: string | null }
 
+export type PopulationView = import('./population.ts').PopulationView
+
 // ---- rings (roadmap-v2.md §1) ----
 export type RingTargeting = {
   kind: 'group' | 'all'
@@ -134,4 +136,9 @@ export type Step = {
   currentRing: number
   /** Whether enforcing this step can deny or interrupt access (grant, block, session), from the goal's floor. */
   denies?: boolean
+  /** "N of M enabled users (P%), of whom K ..." (roadmap-v2.md §3). */
+  populationBasis: string
+  /** Everyone under 25 people; the ten riskiest above. */
+  populationNames: string[]
+  populationView: PopulationView | null
 }

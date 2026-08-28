@@ -649,3 +649,10 @@ table.datatable tbody tr:hover { background: var(--raised); }
   .print-plan .datatable th, .print-plan .datatable td { border: 1px solid #dce3ee; padding: 2mm; text-align: left; vertical-align: top; font-size: 10pt; }
   .print-plan .code-block { font-size: 8.5pt; border: 1px solid #dce3ee; background: #f6f8fb; }
 }
+
+/* Populations at scale (roadmap-v2.md §3) */
+.cohorts { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-3, 0.75rem); margin: var(--space-2, 0.5rem) 0; }
+.cohort-table { border-collapse: collapse; width: 100%; font-size: var(--text-sm); }
+.cohort-table caption { text-align: left; font-weight: 600; color: var(--muted); padding-bottom: 0.25rem; }
+.cohort-table td { padding: 0.15rem 0.25rem; border-top: 1px solid var(--border); }
+.cohort-table td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
