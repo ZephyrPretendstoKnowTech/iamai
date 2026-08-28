@@ -87,7 +87,7 @@ function viabilityRows(readyCount: number, total = 10): MfaViability[] {
     userId: `u${i}`,
     activity: 'active' as const,
     mfa: i < readyCount ? ('verified' as const) : ('unverified' as const),
-    mfaCapable: true,
+    enabled: true, mfaCapable: true,
     isAdmin: i === 0,
     strongestMethod: 'push' as const,
     methodTiers: ['push' as const],

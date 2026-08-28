@@ -25,28 +25,32 @@ const base: FindingsSummaryInput = {
   scored: 10,
   users: 40,
   active: 20,
-  readyPercent: 60,
-  noMethod: 2,
-  notChallenged: 3,
-  challengedRate: 0.4,
+  rollout: { enabled: 36, proven: 20, noMethod: 6, unproven: 10, toSetUp: 16 },
   working: ['require MFA for all users'],
   fixFirst: ['block legacy authentication'],
   licenceLimited: 0,
 }
 
-test('summary at 100% challenged never says "only"', () => {
-  const text = findingsSummary({ ...base, challengedRate: 1, readyPercent: 100 }).join(' ')
+test('summary: everyone proven never claims enforcement is tested, and names nobody to set up', () => {
+  const text = findingsSummary({ ...base, rollout: { enabled: 36, proven: 36, noMethod: 0, unproven: 0, toSetUp: 0 } }).join(' ')
+  assert.match(text, /Every one of the 36 enabled users proved MFA in the last 30 days: nobody needs setting up before enforcement/)
+  assert.doesNotMatch(text, /tested/i, 'enforcement is only called tested by report-only evidence')
   assert.doesNotMatch(text, /only/i)
-  assert.doesNotMatch(text, /untested/i)
-  assert.match(text, /All 20 active users could complete MFA today/)
-  assert.match(text, /well tested/)
 })
 
-test('summary at 0% challenged and 0% ready', () => {
-  const text = findingsSummary({ ...base, challengedRate: 0, readyPercent: 0 }).join(' ')
-  assert.match(text, /None of the 20 active users could complete MFA today/)
-  assert.match(text, /No user active .* completed MFA/)
+test('summary: nobody proven lists both gaps and the whole count to set up', () => {
+  const text = findingsSummary({ ...base, rollout: { enabled: 36, proven: 0, noMethod: 6, unproven: 30, toSetUp: 36 } }).join(' ')
+  assert.match(text, /None of the 36 enabled users proved MFA/)
+  assert.match(text, /6 users have no MFA method and 30 users are registered but unproven: all 36 need setting up/)
   assert.doesNotMatch(text, /0%/)
+})
+
+test('summary: the mixed case carries count, share and the gaps, over enabled users', () => {
+  const text = findingsSummary(base).join(' ')
+  assert.match(text, /20 of 36 enabled users \(56%\) proved MFA in the last 30 days/)
+  assert.match(text, /6 users have no MFA method and 10 users are registered but unproven: 16 users to set up before enforcement/)
+  assert.doesNotMatch(text, /active users could complete MFA/)
+  assert.doesNotMatch(text, /challenged/)
 })
 
 test('summary with n=1 everywhere reads grammatically', () => {
@@ -59,23 +63,20 @@ test('summary with n=1 everywhere reads grammatically', () => {
     scored: 1,
     users: 1,
     active: 1,
-    readyPercent: 100,
-    noMethod: 1,
-    notChallenged: 0,
-    challengedRate: null,
+    rollout: { enabled: 1, proven: 0, noMethod: 1, unproven: 0, toSetUp: 1 },
     licenceLimited: 1,
   }).join(' ')
   assert.match(text, /1 enabled Conditional Access policy with/)
   assert.match(text, /All 1 security goal is in place/)
   assert.match(text, /1 user in the directory/)
-  assert.match(text, /1 user has no MFA method/)
+  assert.match(text, /1 user has no MFA method: all 1 need setting up/)
   assert.match(text, /1 goal needs a licence/)
   assert.doesNotMatch(text, /1 users|1 goals|1 policies/)
 })
 
 test('summary with no active users does not divide by zero in prose', () => {
-  const text = findingsSummary({ ...base, active: 0, readyPercent: 0, challengedRate: null }).join(' ')
-  assert.match(text, /cannot be measured yet/)
+  const text = findingsSummary({ ...base, active: 0, rollout: { enabled: 0, proven: 0, noMethod: 0, unproven: 0, toSetUp: 0 } }).join(' ')
+  assert.match(text, /cannot be drawn/)
 })
 
 test('share branches: none, one, all', () => {
