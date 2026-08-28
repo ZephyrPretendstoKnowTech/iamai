@@ -39,10 +39,11 @@ main thread in the same way:
   callout text, each card is lighter; the largest task on the Steps tab of
   the synthetic tenant is 167 ms.
 
-## Not yet measured
+## Live tenant (GetIAMAI, 12 users, 10 policies, 32 steps)
 
-The same observer has not run against the live tenant from this session
-(sign-in pending). `?dev=1&mock=1&big=1` stands in; if the live Roadmap
-still shows a task over 500 ms, the next candidates are the step-card
-markdown/JSON rendering (defer `action.json` formatting until the card is
-opened) and the danger-area name resolution.
+The same `longtask` observer, buffered from page load, in the signed-in
+Chrome tab after Part 1: longest task 140 ms on the Roadmap overview,
+111 ms after opening the Steps tab, nothing new on Findings. Eleven tasks
+over 50 ms in total across the whole walk, none over 140 ms. The reviewer's
+timeouts are consistent with the 133-role paragraph on every affected step
+card, which no longer renders until its disclosure is opened.
