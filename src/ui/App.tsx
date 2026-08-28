@@ -118,6 +118,7 @@ export function App() {
           {route === 'baseline' && (
             <BaselinePage
               result={baseline}
+              scan={lastScan}
               onLoaded={(r) => {
                 setBaseline(r)
                 if (account) void saveBaselineRecord(account.tenantId, r.origin)

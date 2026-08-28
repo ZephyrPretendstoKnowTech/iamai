@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { fetchBaselineFiles, loadBaseline } from '../../baseline/index.ts'
 import type { BaselineFile, BaselineIndex, BaselinePackage } from '../../baseline/index.ts'
@@ -6,7 +6,10 @@ import { CATALOGUE } from '../../coverage/coverage.ts'
 import { matchesSignature } from '../../coverage/classify.ts'
 import { policyFacts } from '../../coverage/facts.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
-import { activeWizardQuestions } from '../../mapping/wizard.ts'
+import { wizardQuestionCounts } from '../../mapping/wizard.ts'
+import { loadMappingState } from '../../mapping/store.ts'
+import type { MappingState } from '../../mapping/types.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { BASELINE } from '../../copy/pages.ts'
 import { Button, Card, Callout, ExpandCard } from '../components/index.ts'
 import { absoluteDate } from '../format.ts'
@@ -54,9 +57,11 @@ export function goalsCoveredBy(pkg: BaselinePackage): number {
 export function BaselinePage({
   result,
   onLoaded,
+  scan = null,
 }: {
   result: BaselineResult | null
   onLoaded: (r: BaselineResult) => void
+  scan?: { snapshot: TenantSnapshot; at: string } | null
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -103,7 +108,7 @@ export function BaselinePage({
       </p>
       {busy && <p className="muted">{busy}</p>}
       {error && <Callout kind="danger" title={BASELINE.loadFailed}>{error}</Callout>}
-      {result && <LoadReportView result={result} />}
+      {result && <LoadReportView result={result} snapshot={scan?.snapshot ?? null} />}
     </StepFrame>
   )
 }
@@ -154,11 +159,24 @@ function AboutCard({ index }: { index: BaselineIndex }) {
 
 // The load report in plain English (ux-review-03 §B): one line for the
 // operator; everything author-facing under Technical details.
-function LoadReportView({ result }: { result: BaselineResult }) {
+function LoadReportView({ result, snapshot }: { result: BaselineResult; snapshot: TenantSnapshot | null }) {
   const { pkg, source, fetchFailures } = result
   const { report } = pkg
   const goals = useMemo(() => goalsCoveredBy(pkg), [pkg])
-  const questions = activeWizardQuestions(pkg).length
+  // The count Setup will actually render: conditional questions depend on the
+  // scan and on what is already confirmed (prompt 19 §A2).
+  const [mappingState, setMappingState] = useState<MappingState | null>(null)
+  useEffect(() => {
+    if (!snapshot) return
+    let cancelled = false
+    void loadMappingState(snapshot.tenantId).then((s) => {
+      if (!cancelled) setMappingState(s)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [snapshot])
+  const questions = wizardQuestionCounts(pkg, { snapshot, state: mappingState })
   const duplicateSets = pkg.variantSets.filter((v) => v.relation === 'duplicate')
   return (
     <Card title={BASELINE.loadedTitle(source)}>

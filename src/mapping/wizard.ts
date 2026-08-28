@@ -240,3 +240,13 @@ export function activeWizardQuestions(_pkg: BaselinePackage | null, ctx: WizardC
 
 export { buildQuestions }
 export type { MappingQuestion }
+
+/**
+ * The promise the Baseline page makes ("Setup will ask N questions") comes
+ * from the same list Setup renders (prompt 19 §A2), so the two never differ.
+ */
+export type WizardQuestionCounts = { total: number; required: number }
+export function wizardQuestionCounts(pkg: BaselinePackage | null, ctx: WizardContext = {}): WizardQuestionCounts {
+  const active = activeWizardQuestions(pkg, ctx)
+  return { total: active.length, required: active.filter((q) => q.required).length }
+}

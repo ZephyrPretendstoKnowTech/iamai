@@ -17,6 +17,8 @@ export type Palette = {
   danger: string
   info: string
   focus: string
+  /** Alpha of the *-soft overlays (tokens.css). */
+  softAlpha: number
 }
 
 export const DARK: Palette = {
@@ -34,6 +36,7 @@ export const DARK: Palette = {
   danger: '#F04E4E',
   info: '#60A5FA',
   focus: 'rgba(94, 234, 212, 0.6)',
+  softAlpha: 0.12,
 }
 
 // Light status colours are the dark ones darkened ~10% for contrast on white.
@@ -54,6 +57,7 @@ export const LIGHT: Palette = {
   danger: '#C62828',
   info: '#1D4ED8',
   focus: 'rgba(15, 159, 143, 0.6)',
+  softAlpha: 0.1,
 }
 
 export const TYPE = { xl: 30, lg: 22, md: 17, base: 15, sm: 13 } as const
@@ -81,4 +85,40 @@ export function contrastRatio(fg: string, bg: string): number {
   const l2 = luminance(bg)
   const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1]
   return (hi + 0.05) / (lo + 0.05)
+}
+
+// ---- Button states (prompt 19 §A1) ----
+// Every variant keeps its own ink in every state; styles.css mirrors this
+// table with explicit `color` on the hover/active/focus rules so the global
+// `a:hover` colour can never win on a LinkButton. The soft backgrounds are
+// the accent at softAlpha over the surface, composited here so the test sees
+// real colours.
+
+export type ButtonVariant = 'primary' | 'secondary' | 'quiet'
+export type ButtonState = 'default' | 'hover' | 'active' | 'focus' | 'disabled'
+export const BUTTON_VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'quiet']
+export const BUTTON_STATES: ButtonState[] = ['default', 'hover', 'active', 'focus', 'disabled']
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '')
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+}
+
+/** Composite `top` at `alpha` over `under`; both opaque hex. */
+export function blend(top: string, alpha: number, under: string): string {
+  const t = hexToRgb(top)
+  const u = hexToRgb(under)
+  const mix = t.map((c, i) => Math.round(c * alpha + u[i] * (1 - alpha)))
+  return '#' + mix.map((c) => c.toString(16).padStart(2, '0')).join('').toUpperCase()
+}
+
+export function buttonColours(p: Palette, variant: ButtonVariant, state: ButtonState): { text: string; background: string } {
+  const hovered = state === 'hover' || state === 'active'
+  if (variant === 'primary') return { text: p.accentInk, background: hovered ? p.accentHover : p.accent }
+  if (variant === 'quiet') {
+    // The soft overlay lightens the surface just enough that the plain accent
+    // drops under 4.5:1 in the light theme; hovered ink darkens to match.
+    return hovered ? { text: p.accentHover, background: blend(p.accent, p.softAlpha, p.surface) } : { text: p.accent, background: p.surface }
+  }
+  return { text: p.text, background: p.surface }
 }

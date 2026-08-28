@@ -266,12 +266,16 @@ nav.stepper {
   transition: background var(--motion), border-color var(--motion);
   line-height: 1.2;
 }
-.btn:hover:not(:disabled) { border-color: var(--accent); }
-.btn:disabled { opacity: 0.55; cursor: default; }
+/* Ink is restated on every state so the global a:hover rule never wins on a
+   LinkButton (prompt 19 §A1); the pairs mirror buttonColours() in tokens.ts. */
+.btn:hover:not(:disabled), .btn:active:not(:disabled), .btn:focus-visible { border-color: var(--accent); color: var(--text); }
+.btn:disabled { opacity: 0.55; cursor: default; color: var(--text); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-primary:hover:not(:disabled), .btn-primary:active:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-ink); }
+.btn-primary:focus-visible, .btn-primary:disabled { color: var(--accent-ink); }
 .btn-quiet { background: transparent; border-color: transparent; color: var(--accent); padding-left: var(--space-2); padding-right: var(--space-2); }
-.btn-quiet:hover:not(:disabled) { background: var(--accent-soft); border-color: transparent; }
+.btn-quiet:hover:not(:disabled), .btn-quiet:active:not(:disabled) { background: var(--accent-soft); border-color: transparent; color: var(--accent-hover); }
+.btn-quiet:focus-visible, .btn-quiet:disabled { color: var(--accent); }
 .btn-sm { padding: var(--space-1) var(--space-3); font-size: var(--text-sm); }
 .btn-loading .spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 700ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -521,6 +525,14 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-4); }
 .grid-cards .card { margin: 0; }
+/* Legend (prompt 19 §A3): a heading rule per group, one term per row. */
+.legend-grid { margin-top: var(--space-3); }
+.legend-card > h3:first-child { padding-bottom: var(--space-2); border-bottom: 1px solid var(--border); margin-bottom: var(--space-3); font-size: var(--text-base); }
+.legend { margin: 0; display: grid; gap: var(--space-3); }
+.legend-row { display: grid; grid-template-columns: minmax(7rem, max-content) 1fr; gap: var(--space-2) var(--space-3); align-items: start; }
+.legend-row dt { font-weight: 600; }
+.legend-row dd { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+@media (max-width: 480px) { .legend-row { grid-template-columns: 1fr; gap: var(--space-1); } }
 .muted, .reason, .sub { color: var(--muted); font-size: var(--text-sm); }
 .error { color: var(--danger); }
 .sections { font-size: var(--text-sm); padding-left: 1.2em; }
