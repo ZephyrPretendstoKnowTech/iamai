@@ -40,6 +40,8 @@ export type GraphRequestOpts = {
   method?: 'GET' | 'POST'
   jsonBody?: unknown
   headers?: Record<string, string>
+  /** Retry wait; injectable so tests run the policy without sleeping. */
+  wait?: (ms: number, signal?: AbortSignal) => Promise<void>
 }
 
 function jitter(ms: number): number {
@@ -65,6 +67,7 @@ const RETRY_AFTER_MAX_S = 300
 
 export async function graphRequest(tokens: TokenSource, url: string, opts: GraphRequestOpts = {}): Promise<GraphBody> {
   const abortMs = opts.abortMs ?? LANE_A_ABORT_MS
+  const wait = opts.wait ?? sleep
   let count429 = 0
   let count5xx = 0
   let count401 = 0
@@ -103,12 +106,12 @@ export async function graphRequest(tokens: TokenSource, url: string, opts: Graph
     if (res && res.status === 429 && count429 < RETRY_MAX_429 - 1) {
       count429 += 1
       const retryAfter = Number(res.headers.get('Retry-After')) || 30
-      await sleep(jitter(Math.min(retryAfter, RETRY_AFTER_MAX_S) * 1000), opts.signal)
+      await wait(jitter(Math.min(retryAfter, RETRY_AFTER_MAX_S) * 1000), opts.signal)
       continue
     }
     if ((timedOut || (res && res.status >= 500)) && count5xx < RETRY_MAX_5XX - 1) {
       count5xx += 1
-      await sleep(jitter(BACKOFF_BASE_MS * 2 ** (count5xx - 1)), opts.signal)
+      await wait(jitter(BACKOFF_BASE_MS * 2 ** (count5xx - 1)), opts.signal)
       continue
     }
     if (!res) throw new Error(`request failed after retries (timeout): ${url}`)

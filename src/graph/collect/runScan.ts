@@ -2,16 +2,22 @@
 // §5): spawns the worker, feeds it tokens from MSAL on demand, holds the
 // per-tenant navigator.locks lock, and relays progress events.
 import { getGraphToken } from '../msal.ts'
+import { createTokenGate } from './tokenGate.ts'
 import type { TenantSnapshot, WorkerOutMessage } from './types.ts'
 
 export type ScanHandle = {
   done: Promise<TenantSnapshot>
   cancel: () => void
+  /** After an 'auth-expired' event: sign in again in a popup and resume the paused scan. */
+  signInAgain: () => Promise<void>
 }
 
 export function startScan(tenantId: string, onEvent: (m: WorkerOutMessage) => void): ScanHandle {
   let worker: Worker | null = null
   let cancelled = false
+  // A refresh the session cannot do silently pauses the worker's request until
+  // the operator signs in again; nothing collected so far is lost (§3).
+  const gate = createTokenGate(() => getGraphToken('silent'), () => onEvent({ type: 'auth-expired' }))
 
   const done = new Promise<TenantSnapshot>((resolve, reject) => {
     const body = async (): Promise<TenantSnapshot> => {
@@ -22,7 +28,8 @@ export function startScan(tenantId: string, onEvent: (m: WorkerOutMessage) => vo
         worker.onmessage = (e: MessageEvent<WorkerOutMessage>) => {
           const msg = e.data
           if (msg.type === 'token-needed') {
-            getGraphToken()
+            gate
+              .refresh()
               .then((t) => worker?.postMessage({ type: 'token', token: t }))
               .catch((err: unknown) => rej(err instanceof Error ? err : new Error(String(err))))
             return
@@ -65,7 +72,13 @@ export function startScan(tenantId: string, onEvent: (m: WorkerOutMessage) => vo
     done,
     cancel: () => {
       cancelled = true
+      gate.fail(new Error('scan cancelled'))
       worker?.postMessage({ type: 'cancel' })
+    },
+    signInAgain: async () => {
+      const token = await getGraphToken('popup')
+      gate.resume(token)
+      onEvent({ type: 'auth-resumed' })
     },
   }
 }

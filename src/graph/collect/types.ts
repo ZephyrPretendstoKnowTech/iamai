@@ -204,3 +204,6 @@ export type WorkerOutMessage =
   | { type: 'state'; value: 'normal' | 'slow' | 'done' }
   | { type: 'snapshot'; snapshot: TenantSnapshot }
   | { type: 'fatal'; message: string }
+  // Raised by the main-thread controller, not the worker (prompt 20 §3).
+  | { type: 'auth-expired' }
+  | { type: 'auth-resumed' }

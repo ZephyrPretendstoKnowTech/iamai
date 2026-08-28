@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { hashTenantId, redactIdentifiers } from '../redact.ts'
 import { startScan } from '../graph/collect/runScan.ts'
+import type { ScanHandle } from '../graph/collect/runScan.ts'
 import type { SectionEvent, TenantSnapshot, UserRow, WorkerOutMessage } from '../graph/collect/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
@@ -57,7 +58,8 @@ export function MfaViabilityScreen({
   onComplete: (snapshot: TenantSnapshot, at: string) => void
   view?: 'readiness' | 'inventory'
 }) {
-  const [scanState, setScanState] = useState<'idle' | 'running' | 'done' | 'failed'>(initial ? 'done' : 'idle')
+  const [scanState, setScanState] = useState<'idle' | 'running' | 'paused' | 'done' | 'failed'>(initial ? 'done' : 'idle')
+  const handleRef = useRef<ScanHandle | null>(null)
   const [sections, setSections] = useState<Record<string, SectionRow>>({})
   const [snapshot, setSnapshot] = useState<TenantSnapshot | null>(initial?.snapshot ?? null)
   const [startedAt, setStartedAt] = useState<number | null>(null)
@@ -78,7 +80,7 @@ export function MfaViabilityScreen({
   // The saved scan can arrive after mount (it loads from IndexedDB); adopt it
   // unless a scan is running or already shown.
   useEffect(() => {
-    if (initial && snapshot === null && scanState !== 'running') {
+    if (initial && snapshot === null && scanState !== 'running' && scanState !== 'paused') {
       setSnapshot(initial.snapshot)
       setScanState('done')
     }
@@ -100,6 +102,14 @@ export function MfaViabilityScreen({
     setLaneB(null)
     setSlow(false)
     const handle = startScan(tenantId, (m: WorkerOutMessage) => {
+      if (m.type === 'auth-expired') {
+        setScanState('paused')
+        return
+      }
+      if (m.type === 'auth-resumed') {
+        setScanState('running')
+        return
+      }
       if (m.type === 'signin-page') {
         setLaneB({ pages: m.pages, rows: m.rows, oldest: m.oldest })
         return
@@ -113,6 +123,7 @@ export function MfaViabilityScreen({
       const s = m as SectionEvent
       setSections((prev) => ({ ...prev, [s.source]: { source: s.source, status: s.status, rows: s.rows, reason: s.reason, ms: s.ms } }))
     })
+    handleRef.current = handle
     try {
       const result = await handle.done
       setSnapshot(result)
@@ -274,7 +285,7 @@ export function MfaViabilityScreen({
       nextLabel={SCAN.next}
     >
       <p className="row">
-        <Button variant="primary" icon="refresh" onClick={() => void scan()} loading={scanState === 'running'}>
+        <Button variant="primary" icon="refresh" onClick={() => void scan()} loading={scanState === 'running' || scanState === 'paused'}>
           {snapshot ? SCAN.rescan : SCAN.scan}
         </Button>
         {(snapshot !== null || Object.keys(sections).length > 0) && (
@@ -284,6 +295,22 @@ export function MfaViabilityScreen({
         )}
       </p>
       {error && <Callout kind="danger" title={SCAN.failed}>{error}</Callout>}
+      {scanState === 'paused' && (
+        <Callout kind="warning" title={SCAN.sessionExpired}>
+          {SCAN.sessionExpiredBody}{' '}
+          <Button
+            variant="primary"
+            onClick={() => {
+              void handleRef.current?.signInAgain().catch((e: unknown) => {
+                setError(e instanceof Error ? e.message : String(e))
+                setScanState('failed')
+              })
+            }}
+          >
+            {SCAN.signInAgain}
+          </Button>
+        </Callout>
+      )}
       {scanState !== 'running' && initial && snapshot === initial.snapshot && (
         <>
           <Callout kind="info">{SCAN.usingSaved(whenAt(initial.at))}</Callout>
@@ -294,7 +321,7 @@ export function MfaViabilityScreen({
           )}
         </>
       )}
-      {scanState === 'running' && (
+      {(scanState === 'running' || scanState === 'paused') && (
         <Card>
           <ProgressBar percent={sectionsPercent} caption={SCAN.sectionsBar(finishedSections, sectionTotal)} />
           {signInSection && (
