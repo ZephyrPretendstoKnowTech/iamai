@@ -194,7 +194,7 @@ const CLASSES: PolicyResultClass[] = [
 
 // Per-policy applied results across the covered window.
 export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyAppliedResult[] {
-  const byPolicy = new Map<string, { displayName: string | null; sets: Record<PolicyResultClass, Set<string>>; counts: Record<PolicyResultClass, number> }>()
+  const byPolicy = new Map<string, { displayName: string | null; sets: Record<PolicyResultClass, Set<string>>; counts: Record<PolicyResultClass, number>; byDay: Map<string, { failures: number; users: Set<string> }> }>()
   for (const row of rows) {
     for (const applied of row.appliedConditionalAccessPolicies ?? []) {
       const cls = applied.result ? RESULT_CLASS[applied.result] : undefined
@@ -205,11 +205,19 @@ export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyApplied
           displayName: applied.displayName ?? null,
           sets: Object.fromEntries(CLASSES.map((c) => [c, new Set<string>()])) as Record<PolicyResultClass, Set<string>>,
           counts: Object.fromEntries(CLASSES.map((c) => [c, 0])) as Record<PolicyResultClass, number>,
+          byDay: new Map(),
         }
         byPolicy.set(applied.id, entry)
       }
       entry.counts[cls] += 1
       if (row.userId) entry.sets[cls].add(row.userId)
+      if (cls === 'enforcedFailure' || cls === 'reportOnlyFailure' || cls === 'reportOnlyInterrupted') {
+        const day = row.createdDateTime.slice(0, 10)
+        const d = entry.byDay.get(day) ?? { failures: 0, users: new Set<string>() }
+        d.failures += 1
+        if (row.userId) d.users.add(row.userId)
+        entry.byDay.set(day, d)
+      }
       if (!entry.displayName && applied.displayName) entry.displayName = applied.displayName
     }
   }
@@ -219,6 +227,7 @@ export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyApplied
       displayName: e.displayName,
       counts: e.counts,
       affectedUserIds: Object.fromEntries(CLASSES.map((c) => [c, [...e.sets[c]]])) as Record<PolicyResultClass, string[]>,
+      byDay: Object.fromEntries([...e.byDay.entries()].map(([day, d]) => [day, { failures: d.failures, userIds: [...d.users] }])),
     }))
     .sort((a, b) => {
       const total = (r: PolicyAppliedResult) => CLASSES.reduce((n, c) => n + r.counts[c], 0)

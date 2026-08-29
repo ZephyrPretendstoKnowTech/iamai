@@ -17,6 +17,7 @@ export function PrintPlan({
   operator,
   baselinePin = null,
   progress = null,
+  comms = [],
   steps,
   schedule,
   verificationNote,
@@ -29,6 +30,8 @@ export function PrintPlan({
   baselinePin?: string | null
   /** The Progress headline: state, projection, already covered (ux-review-07 §31). */
   progress?: { state: string; projection: string; already: string } | null
+  /** What will be sent and when (comms-and-bridges.md §1.3). */
+  comms?: { at: string; audience: string; channels: string; subject: string; steps: string[] }[]
   steps: Step[]
   /** Who the verification window is for, already worded (ux-review-06 §24). */
   verificationNote: string
@@ -131,6 +134,31 @@ export function PrintPlan({
                 </li>
               ))}
             </ul>
+          </>
+        )}
+        {comms.length > 0 && (
+          <>
+            <h3>{C.comms}</h3>
+            <table className="datatable">
+              <thead>
+                <tr>
+                  <th scope="col">{C.commsColumns.date}</th>
+                  <th scope="col">{C.commsColumns.audience}</th>
+                  <th scope="col">{C.commsColumns.subject}</th>
+                  <th scope="col">{C.commsColumns.steps}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comms.map((r, i) => (
+                  <tr key={i}>
+                    <td>{absoluteDate(r.at)}</td>
+                    <td>{r.audience}</td>
+                    <td>{r.subject}</td>
+                    <td>{r.steps.join('; ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </>
         )}
         <h3>{C.timeline}</h3>

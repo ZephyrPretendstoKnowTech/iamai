@@ -145,6 +145,8 @@ export type PolicyAppliedResult = {
   displayName: string | null
   counts: Record<PolicyResultClass, number>
   affectedUserIds: Record<PolicyResultClass, string[]>
+  /** Failures (enforced or report-only) per UTC day with the users behind them, for the post-enforcement watch. */
+  byDay?: Record<string, { failures: number; userIds: string[] }>
 }
 
 // Lane B derived table: users whose most recent sign-in in the window failed

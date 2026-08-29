@@ -22,7 +22,7 @@ function fold(line: string): string {
   return out.join('\r\n')
 }
 
-export function buildIcs(steps: Step[], tenantName: string, planId: string): string {
+export function buildIcs(steps: Step[], tenantName: string, planId: string, watchThresholdPercent = 5): string {
   const lines: string[] = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IAMAI//Conditional Access rollout plan//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${escape(`${tenantName} Conditional Access rollout`)}`]
   for (const s of steps) {
     if (s.status === 'done' || s.status === 'skipped') continue
@@ -36,7 +36,17 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string): str
     lines.push(`DTSTART;VALUE=DATE:${icsDate(start)}`)
     lines.push(`DTEND;VALUE=DATE:${icsDate(endExclusive)}`)
     lines.push(fold(`SUMMARY:${escape(s.title)}`))
-    const description = [s.whatChanges, ...s.rings.map((r) => `${r.name}: ${r.plannedStart.slice(0, 10)} to ${r.plannedEnd.slice(0, 10)}`)].filter(Boolean).join('\n')
+    // The calendar entry is the runbook: what, the portal path, done when, rollback, the watch threshold.
+    const description = [
+      s.whatChanges,
+      ...s.rings.map((r) => `${r.name}: ${r.plannedStart.slice(0, 10)} to ${r.plannedEnd.slice(0, 10)}`),
+      s.action.portalSteps.length > 0 ? `Portal: ${s.action.portalSteps.join(' | ')}` : '',
+      s.exitCriteria.length > 0 ? `Done when: ${s.exitCriteria.join(' | ')}` : '',
+      `Rollback: ${s.rollback}`,
+      `Watch: more than ${watchThresholdPercent}% of the affected people failing in 72 hours means back to report-only.`,
+    ]
+      .filter(Boolean)
+      .join('\n')
     lines.push(fold(`DESCRIPTION:${escape(description)}`))
     lines.push('END:VEVENT')
   }

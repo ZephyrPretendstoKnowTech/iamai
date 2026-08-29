@@ -175,6 +175,23 @@ work only, no new Graph reads.
 | Microsoft-managed auto-enable dates | Places Microsoft's announced auto-enable dates for Microsoft-managed policies on the roadmap timeline | `TenantSnapshot.microsoftManagedPolicyIds` + policy `state` |
 | Recurring break-glass drill step — **built** (`s-recurring-break-glass-drill`, 90-day interval) | Inserts a recurring "test break-glass sign-in" step when the accounts' last sign-in is older than the drill interval | `Checkpoint.breakGlass[].lastSignIn` |
 
+## 11b. Adjacent value (planned, comms-and-bridges.md §3)
+
+Built in prompt 29: the post-enforcement watch (§3.1), the calendar export with the runbook in
+the invite body (§3.3), and the effort and call-volume estimate (§3.4). Planned, in the
+order of value per unit of work:
+
+| Feature | One line |
+|---|---|
+| Client-facing report | A brandable HTML export written for the client: found, doing, when, what they must do, progress. No JSON, no portal paths. |
+| Break-glass drill procedure | A dated, printable procedure for the recurring drill: who tests, from where, what to verify, where the credential is sealed. |
+| Baseline update watch | On load, compare the pinned commit with the source's latest and show the diff; adopting an update is a deliberate act. |
+| Offline after scan | Verify and state that everything after the scan works with no network. |
+| Plain-language check on comms | A readability measure on every announcement, flagging sentences above about grade 9. |
+| Multi-language comms | The short, structured templates in the two or three languages a client base needs. |
+
+The approval sheet is not planned: see 11a.
+
 ## 11a. Enterprise tier (deferred)
 
 The user IAMAI is for is one person doing IAM with no change process and nobody to approve

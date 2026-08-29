@@ -40,6 +40,11 @@ import { LOG, NEXT } from '../../copy/next.ts'
 import { doThisNext } from '../../roadmap/next.ts'
 import { appendLog, emptyLog, entriesForScan, logCsvRows, logMarkdown, logView, rolledUpSentence } from '../../roadmap/activityLog.ts'
 import type { ActivityLog } from '../../roadmap/activityLog.ts'
+import { COMMS_PLAN, EFFORT, GROUNDING, PROMPTS, WATCH, BULLETIN } from '../../copy/comms.ts'
+import { bulletinsFor, commsPlanRows, monthlyWarnings, recipientRows } from '../../roadmap/comms.ts'
+import type { Bulletin, CommsContext } from '../../roadmap/comms.ts'
+import { groundingBundle, promptFor, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
+import { DEFAULT_REVERT_PERCENT, effortFor, planEffort, watchFor } from '../../roadmap/watch.ts'
 import type { NoticeSettings } from '../../roadmap/timing.ts'
 import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
@@ -89,6 +94,8 @@ type PlanStore = {
   holidays?: string[]
   /** The automatic activity log (prompt 30 §3). */
   log?: ActivityLog
+  /** The post-enforcement revert threshold, a share of the affected people (comms-and-bridges.md §3.1). */
+  watchThresholdPercent?: number
   /** The scan the log last recorded, so one scan is logged once. */
   loggedScanAt?: string
 }
@@ -131,10 +138,12 @@ export function RoadmapPage({
   // Statuses at the previous render: a step that moved gets one flash (ux-review-07 §F3).
   const prevStatusRef = useRef<Record<string, StepStatus>>({})
   const [logFilter, setLogFilter] = useState<'all' | 'mine'>('all')
+  const [bundleRedacted, setBundleRedacted] = useState(true)
   const [copied, setCopied] = useState<string | null>(null)
   // Deep link #/roadmap/step/<id>: open the Steps tab with that step expanded.
   const linkedStepId = useHashStepId()
-  const [activeTab, setActiveTab] = useState<string>(linkedStepId ? 'plan' : 'progress')
+  const promptsLink = typeof window !== 'undefined' && /^#\/roadmap\/prompts/.test(window.location.hash)
+  const [activeTab, setActiveTab] = useState<string>(linkedStepId ? 'plan' : promptsLink ? 'export' : 'progress')
   useEffect(() => {
     if (!linkedStepId) return
     setActiveTab('plan')
@@ -233,6 +242,7 @@ export function RoadmapPage({
       changeFreeze: saved?.freeze ?? null,
       notice: saved?.notice ?? NOTICE_DEFAULTS,
       holidays: saved?.holidays ?? [],
+      watchThresholdPercent: saved?.watchThresholdPercent ?? DEFAULT_REVERT_PERCENT,
       scheduled: Object.fromEntries(Object.entries(saved?.steps ?? {}).flatMap(([id, v]) => (v.scheduledDate ? [[id, v.scheduledDate]] : []))),
     })
     mergePersisted(steps, saved?.steps ?? null)
@@ -408,6 +418,12 @@ export function RoadmapPage({
   const setNotice = (next: NoticeSettings): void => {
     setSaved((p) => (p ? { ...p, notice: next } : p))
     void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), notice: next })
+    setVersion((v) => v + 1)
+  }
+  const setWatchThreshold = (n: number): void => {
+    const next = Math.max(1, Math.min(50, Math.round(n) || DEFAULT_REVERT_PERCENT))
+    setSaved((p) => (p ? { ...p, watchThresholdPercent: next } : p))
+    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), watchThresholdPercent: next })
     setVersion((v) => v + 1)
   }
   const setHolidays = (text: string): void => {
@@ -820,7 +836,7 @@ export function RoadmapPage({
   )
 
   // ---- Schedule (§8): the timeline with owners, editable dates, the critical path, ICS ----
-  const exportIcs = (): void => downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId), 'text/calendar')
+  const exportIcs = (): void => downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, watchThreshold), 'text/calendar')
   const weekView = () => {
     const weekKeyOf = (iso: string): string => {
       const d = new Date(iso)
@@ -889,6 +905,48 @@ export function RoadmapPage({
       <p className="reason">{WEEK_VIEW.hint}</p>
       {weekView()}
       {timeline()}
+      <h4>{COMMS_PLAN.title}</h4>
+      <p className="reason">{COMMS_PLAN.hint}</p>
+      {commsWarnings.map((w, i) => (
+        <Callout key={i} kind="warning">
+          {w}
+        </Callout>
+      ))}
+      {commsRows.length === 0 && <p className="reason">{COMMS_PLAN.empty}</p>}
+      {commsRows.length > 0 && (
+        <div className="table-scroll">
+          <table className="cohort-table progress-table comms-table">
+            <thead>
+              <tr>
+                <th>{COMMS_PLAN.columns.date}</th>
+                <th>{COMMS_PLAN.columns.time}</th>
+                <th>{COMMS_PLAN.columns.audience}</th>
+                <th>{COMMS_PLAN.columns.channel}</th>
+                <th>{COMMS_PLAN.columns.subject}</th>
+                <th>{COMMS_PLAN.columns.steps}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {commsRows.map((r, i) => (
+                <tr key={i}>
+                  <td>{absoluteDate(r.at)}</td>
+                  <td className="mono">{new Date(r.at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: commsCtx.timeZone })}</td>
+                  <td>{r.audience}</td>
+                  <td className="reason">{r.channels}</td>
+                  <td>
+                    <a href={`#bulletin-${r.bulletinId}`} onClick={(e) => { e.preventDefault(); document.getElementById(`bulletin-${r.bulletinId}`)?.scrollIntoView({ block: 'start' }) }}>{r.subject}</a>{' '}
+                    <span className="reason">({COMMS_PLAN.kind[r.kind]})</span>
+                  </td>
+                  <td className="reason">{r.steps.join('; ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {bulletins.map((b) => (
+        <BulletinCard key={b.id} b={b} ctx={commsCtx} copied={copied} onCopy={copy} onPrompt={(id, kind, context, draft) => void copyPrompt(id, kind, context, draft)} />
+      ))}
       <h4>{SCHEDULE_TAB.ownersTitle}</h4>
       <div className="table-scroll">
         <table className="cohort-table progress-table">
@@ -1007,6 +1065,13 @@ export function RoadmapPage({
             </label>
             <InfoTip title={NOTICE.holidays} text={NOTICE.holidaysHint} />
           </div>
+          <div className="row">
+            <label>
+              {WATCH.thresholdSetting}{' '}
+              <input type="number" min={1} max={50} value={saved?.watchThresholdPercent ?? DEFAULT_REVERT_PERCENT} aria-label={WATCH.thresholdSetting} style={{ minWidth: '4rem', width: '5rem' }} onChange={(e) => setWatchThreshold(Number(e.currentTarget.value))} />%
+            </label>
+            <InfoTip title={WATCH.thresholdSetting} text={WATCH.thresholdHint} />
+          </div>
           <p className="reason">
             {CALENDAR.noFriday} {CALENDAR.weeklyCap(schedule.enforcementCap)}
           </p>
@@ -1031,9 +1096,11 @@ export function RoadmapPage({
         row?.actualStart ? absoluteDate(row.actualStart) : PROGRESS.absent,
         evidence,
         st.rollback,
+        effortFor(st).sentence,
+        watchFor(st, snapshot, nameOf, watchThreshold)?.sentence ?? '',
       ]
     })
-  const CHANGE_HEADER = [SCHEDULE_TAB.colStep, C.kindLabel, C.goalLabel, C.whoItTouches, PROGRESS.colPlanned, PROGRESS.colActual, C.evidenceLabel, SECTION.rollback]
+  const CHANGE_HEADER = [SCHEDULE_TAB.colStep, C.kindLabel, C.goalLabel, C.whoItTouches, PROGRESS.colPlanned, PROGRESS.colActual, C.evidenceLabel, SECTION.rollback, EFFORT.title, WATCH.title]
   const changeRecordMarkdown = (): string => {
     const esc = (v: string | number) => String(v).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
     const lines = [`# Change record: ${tenantName}`, `Plan ${planId}, revision ${saved?.revision ?? 1}, ${absoluteDate(new Date().toISOString())}`, '', `| ${CHANGE_HEADER.join(' | ')} |`, `| ${CHANGE_HEADER.map(() => '---').join(' | ')} |`]
@@ -1056,6 +1123,12 @@ export function RoadmapPage({
         <Button icon="copy" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
           {copied === 'plan-md' ? C.copied : C.copyMarkdown}
         </Button>
+        <Button icon="copy" onClick={() => void copyPrompt('plan-md', 'wholePlan', schedule.derivation.criticalPath, planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
+          {copied === 'plan-md:prompt' ? C.copied : COMMS_PLAN.copyPrompt}
+        </Button>
+        <Button icon="copy" onClick={() => void copyPrompt('exec', 'executive', schedule.derivation.criticalPath, `${overviewText} ${licenceSentence} ${effortTotal.sentence}`)}>
+          {copied === 'exec:prompt' ? C.copied : `${COMMS_PLAN.copyPrompt}: ${PROMPTS.pack.summarise(tenantName).split(' for ')[0]}`}
+        </Button>
       </p>
       </Card>
       <Card title={EXPORT_TAB.changeRecord}>
@@ -1067,6 +1140,42 @@ export function RoadmapPage({
           <Button icon="download" onClick={() => downloadFile(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.csv`, changeRecordCsv(), 'text/csv')}>
             {EXPORT_TAB.downloadChangeRecordCsv}
           </Button>
+          <Button icon="copy" onClick={() => void copyPrompt('change-record', 'changeRecord', overviewText, changeRecordMarkdown())}>
+            {copied === 'change-record:prompt' ? C.copied : COMMS_PLAN.copyPrompt}
+          </Button>
+        </p>
+      </Card>
+      <Card title={PROMPTS.title} className="prompt-pack" id="prompt-pack">
+        <p className="reason">{PROMPTS.intro}</p>
+        <ul className="sections">
+          {promptPack({ tenant: tenantName, steps, schedule, changeRecord: changeRecordMarkdown(), planSummary: `${overviewText} ${schedule.derivation.criticalPath}`, announcement: bulletins[0]?.channels.email ?? steps.find((st) => st.comms && st.comms !== NO_ANNOUNCEMENT)?.comms ?? null }).map((it, i) => (
+            <li key={i} className="row" style={{ justifyContent: 'space-between' }}>
+              <span>{it.title}</span>
+              <Button size="sm" icon="copy" onClick={() => void copy(`pack-${i}`, it.prompt)}>
+                {copied === `pack-${i}` ? C.copied : PROMPTS.copy}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <p className="row no-print">
+          <Button icon="download" onClick={() => downloadFile(`iamai-prompts-${snapshot.tenantId.slice(0, 8)}.md`, promptPackMarkdown(promptPack({ tenant: tenantName, steps, schedule, changeRecord: changeRecordMarkdown(), planSummary: `${overviewText} ${schedule.derivation.criticalPath}`, announcement: bulletins[0]?.channels.email ?? null }), tenantName), 'text/markdown')}>
+            {PROMPTS.downloadAll}
+          </Button>
+        </p>
+      </Card>
+      <Card title={GROUNDING.title}>
+        <p className="reason">{GROUNDING.text}</p>
+        <p className="row no-print">
+          <label>
+            <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {GROUNDING.unredacted}
+          </label>
+        </p>
+        {!bundleRedacted && <Callout kind="warning">{GROUNDING.warning}</Callout>}
+        <p className="row no-print">
+          <Button icon="download" onClick={() => downloadFile(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ tenant: tenantName, snapshot, coverage: computed.coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json')}>
+            {GROUNDING.download}
+          </Button>
+          <span className="reason">{bundleRedacted ? GROUNDING.redacted : GROUNDING.unredacted}</span>
         </p>
       </Card>
       <Card title={EXPORT_TAB.pdf}>
@@ -1307,6 +1416,9 @@ export function RoadmapPage({
                         boundedNames={boundedNames}
                         dependencies={schedule.graph[step.id] ?? []}
                         onMeta={saveStepMeta}
+                        onPrompt={(id, kind, context, draft) => void copyPrompt(id, kind, context, draft)}
+                        watch={watchFor(step, snapshot, nameOf, watchThreshold)}
+                        effort={effortFor(step)}
                         onSkipped={(st) => {
                           // Persist the skip before regenerating, or mergePersisted forgets it.
                           setSaved((p) =>
@@ -1378,6 +1490,25 @@ export function RoadmapPage({
   const previousStatuses = saved?.steps ? Object.fromEntries(Object.entries(saved.steps).map(([id, v]) => [id, v.status])) : null
   const nextCard = doThisNext(steps, schedule, computed.viability, nameOf, previousStatuses, new Date().toISOString())
 
+  // ---- Communications as a plan (comms-and-bridges.md §1) ----
+  const userById = new Map(snapshot.users.map((u) => [u.id, u]))
+  const commsCtx: CommsContext = {
+    enabledUsers: snapshot.users.filter((u) => u.accountEnabled !== false).length,
+    adminIds: adminUserIds(snapshot.roles),
+    guestIds: new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)),
+    departmentOf: new Map(snapshot.users.filter((u) => u.department).map((u) => [u.id, u.department as string])),
+    nameOf,
+    upnOf: (id) => userById.get(id)?.userPrincipalName ?? null,
+    tenantName,
+    timeZone: mapping?.displayTimeZone ?? 'UTC',
+  }
+  const bulletins = bulletinsFor(steps, commsCtx)
+  const commsRows = commsPlanRows(bulletins)
+  const commsWarnings = monthlyWarnings(bulletins)
+  const effortTotal = planEffort(steps)
+  const watchThreshold = saved?.watchThresholdPercent ?? DEFAULT_REVERT_PERCENT
+  const copyPrompt = (id: string, kind: Parameters<typeof promptFor>[0], context: string, draft: string): Promise<void> => copy(`${id}:prompt`, promptFor(kind, tenantName, context, draft))
+
   // ---- Licence awareness (§3.4): what this tenant's licence makes available ----
   const caps = snapshot.capabilities
   const tier = caps.entraP2?.enabled ? LICENCE_HEADER.tier.p2 : caps.entraP1?.enabled ? LICENCE_HEADER.tier.p1 : LICENCE_HEADER.tier.free
@@ -1388,7 +1519,9 @@ export function RoadmapPage({
   return (
     <StepFrame title={C.title} does={C.does} needs={needs}>
       {scan && <ScanAge at={scan.at} baseline={baseline?.source ?? null} />}
-      <p className="reason">{licenceSentence}</p>
+      <p className="reason">
+        {licenceSentence} {effortTotal.sentence}
+      </p>
       <Card title={NEXT.title} className="do-next">
         {nextCard.completed.length > 0 && (
           <p className="completed-lead">
@@ -1433,6 +1566,7 @@ export function RoadmapPage({
         operator={operator?.userPrincipalName ?? ''}
         baselinePin={baselineIndex.commit ?? null}
         progress={{ state: headline.state, projection: headline.projection, already: headline.already }}
+        comms={commsRows.map((r) => ({ at: r.at, audience: r.audience, channels: r.channels, subject: r.subject, steps: r.steps }))}
         steps={steps}
         schedule={schedule}
         verificationNote={C.verificationText(rollout.toSetUp, rollout.enabled)}
@@ -1474,6 +1608,54 @@ function planMarkdown(
     lines.push('')
   }
   return lines.join('\n')
+}
+
+/** One message the plan will send (comms-and-bridges.md §1.3): channels, recipients, copy and copy-as-prompt. */
+function BulletinCard({ b, ctx, copied, onCopy, onPrompt }: { b: Bulletin; ctx: CommsContext; copied: string | null; onCopy: (id: string, text: string) => Promise<void>; onPrompt: (id: string, kind: 'announcement' | 'reminder', context: string, draft: string) => void }) {
+  const [channel, setChannel] = useState<'email' | 'teams' | 'helpdesk' | 'portal' | 'reminder'>('email')
+  const text = channel === 'reminder' ? b.reminder : b.channels[channel]
+  const context = `${b.audience.label}; ${b.steps.map((s) => `${s.plainTitle} on ${s.enforceDay} ${absoluteDate(s.enforceAt)} ${s.enforceTime}`).join('; ')}`
+  return (
+    <details className="card bulletin" id={`bulletin-${b.id}`}>
+      <summary>
+        <strong>{b.subject}</strong> <span className="reason">· {b.audience.label} · {absoluteDate(b.sendAt)}{b.kind === 'solo' ? ` · ${COMMS_PLAN.solo}` : ''}</span>
+      </summary>
+      <p className="row no-print">
+        {(['email', 'teams', 'helpdesk', 'portal'] as const).map((c) => (
+          <FilterChip key={c} selected={channel === c} onToggle={() => setChannel(c)}>
+            {BULLETIN.channels[c]}
+          </FilterChip>
+        ))}
+        {b.remindAt && (
+          <FilterChip selected={channel === 'reminder'} onToggle={() => setChannel('reminder')}>
+            {EVENT_LABEL.remind}
+          </FilterChip>
+        )}
+      </p>
+      <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>
+        {text}
+      </pre>
+      <p className="row no-print">
+        <Button size="sm" icon="copy" onClick={() => void onCopy(`${b.id}:${channel}`, text)}>
+          {copied === `${b.id}:${channel}` ? COMMS_PLAN.copied : COMMS_PLAN.copy}
+        </Button>
+        <Button size="sm" icon="copy" onClick={() => onPrompt(`${b.id}:${channel}`, channel === 'reminder' ? 'reminder' : 'announcement', context, text)}>
+          {copied === `${b.id}:${channel}:prompt` ? COMMS_PLAN.copied : COMMS_PLAN.copyPrompt}
+        </Button>
+        {(b.audience.kind === 'segment' || b.audience.kind === 'named') && b.recipients.length > 0 && (
+          <>
+            <Button size="sm" icon="copy" onClick={() => void onCopy(`${b.id}:recipients`, b.recipients.map((id) => ctx.upnOf(id) ?? ctx.nameOf(id)).join('; '))}>
+              {copied === `${b.id}:recipients` ? COMMS_PLAN.copied : COMMS_PLAN.copyRecipients}
+            </Button>
+            <Button size="sm" icon="download" onClick={() => downloadFile(`recipients-${b.id}.csv`, toCsv(['Name', 'Sign-in name', 'Department'], recipientRows(b, ctx)), 'text/csv')}>
+              {COMMS_PLAN.recipientsCsv}
+            </Button>
+            <span className="reason">{COMMS_PLAN.recipientsNote}</span>
+          </>
+        )}
+      </p>
+    </details>
+  )
 }
 
 /** Populations at scale (roadmap-v2.md §3): names under 25, cohorts and the riskiest ten above, a CSV in every mode. */
@@ -1533,6 +1715,9 @@ function StepCard({
   boundedNames,
   dependencies,
   onMeta,
+  onPrompt,
+  watch,
+  effort,
 }: {
   step: Step
   linked: boolean
@@ -1548,6 +1733,9 @@ function StepCard({
   boundedNames: (ids: string[]) => string
   dependencies: Dependency[]
   onMeta: (step: Step, meta: { scheduledDate?: string | null }) => void
+  onPrompt: (id: string, kind: 'announcement' | 'reminder' | 'helpDesk' | 'manager', context: string, draft: string) => void
+  watch: import('../../roadmap/watch.ts').WatchResult | null
+  effort: { minutes: number; contacts: number; sentence: string }
 }) {
   const [tab, setTab] = useState<'json' | 'portal' | 'ps'>('portal')
   return (
@@ -1593,6 +1781,13 @@ function StepCard({
             </div>
           ))}
         </div>
+      )}
+      {(step.kind === 'create' || step.kind === 'adjust') && step.status !== 'done' && <p className="reason">{effort.sentence}</p>}
+      {watch && (
+        <Callout kind={watch.breached ? 'danger' : watch.hasEvidence ? 'success' : 'info'}>
+          <strong>{WATCH.title}.</strong> {watch.sentence} {watch.hasEvidence && watch.baseline} {watch.threshold} {watch.verdict}
+          {watch.byUser.length > 0 && <div className="sub">{boundedNames(watch.byUser.map((u) => u.userId))}</div>}
+        </Callout>
       )}
       {/* 1. What changes (roadmap-v2.md §4) */}
       <h4>{SECTION.whatChanges}</h4>
@@ -1936,6 +2131,9 @@ function StepCard({
                 <Button size="sm" icon="copy" onClick={() => void onCopy(step.id, step.comms!)}>
                   {copied === step.id ? C.copied : C.copyAnnouncement}
                 </Button>
+                <Button size="sm" icon="copy" onClick={() => onPrompt(step.id, 'announcement', stepContext(step), step.comms!)}>
+                  {copied === `${step.id}:prompt` ? C.copied : COMMS_PLAN.copyPrompt}
+                </Button>
               </p>
             </>
           )}
@@ -1960,6 +2158,11 @@ function StepCard({
               <li key={i}>{l}</li>
             ))}
           </ul>
+          <p className="no-print">
+            <Button size="sm" icon="copy" onClick={() => onPrompt(`${step.id}:helpdesk`, 'helpDesk', stepContext(step), [...step.helpDesk!.callsAbout, ...step.helpDesk!.whatToSay].join('\n'))}>
+              {copied === `${step.id}:helpdesk:prompt` ? C.copied : COMMS_PLAN.copyPrompt}
+            </Button>
+          </p>
         </details>
       )}
 
@@ -1970,6 +2173,9 @@ function StepCard({
           <p className="no-print">
             <Button size="sm" icon="copy" onClick={() => void onCopy(`${step.id}:manager`, step.forManager)}>
               {copied === `${step.id}:manager` ? C.copied : MANAGER_UI.copy}
+            </Button>
+            <Button size="sm" icon="copy" onClick={() => onPrompt(`${step.id}:manager`, 'manager', stepContext(step), step.forManager)}>
+              {copied === `${step.id}:manager:prompt` ? C.copied : COMMS_PLAN.copyPrompt}
             </Button>
           </p>
         </>

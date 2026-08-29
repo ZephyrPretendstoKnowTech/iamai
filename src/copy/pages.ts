@@ -48,6 +48,7 @@ export const SHELL = {
     licensing: 'Licensing guide',
     reads: 'What IAMAI reads',
     inventory: 'Inventory',
+    prompts: 'Prompt pack',
   },
   loading: 'Loading…',
   signInError: 'Sign-in error:',

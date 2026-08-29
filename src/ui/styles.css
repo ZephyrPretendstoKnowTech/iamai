@@ -762,3 +762,10 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .completed-lead { font-weight: 600; color: var(--past); }
 .history-list li { padding: 0.15rem 0; }
 @media (max-width: 700px) { .next-item { flex-direction: column; align-items: flex-start; } }
+
+/* Communications plan and the prompt pack (prompt 29) */
+.bulletin { margin: var(--space-2) 0; }
+.bulletin > summary { cursor: pointer; }
+.comms-table td { vertical-align: top; }
+.prompt-pack li { padding: 0.2rem 0; border-top: 1px solid var(--border); }
+.prompt-pack li:first-child { border-top: 0; }
