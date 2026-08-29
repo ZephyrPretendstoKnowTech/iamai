@@ -164,7 +164,11 @@ export function trackExecution(
     }
     step.tracking = tracking
     // Evidence that predates the plan is not execution (ux-review-07 §1).
-    step.alreadyInPlace = state === 'enabled' && planCreatedAt !== null && tracking.enforcedAt !== null && Date.parse(tracking.enforcedAt) < Date.parse(planCreatedAt)
+    // A policy the plan did not create and cannot date was there before the plan noticed it.
+    step.alreadyInPlace =
+      state === 'enabled' &&
+      planCreatedAt !== null &&
+      (tracking.enforcedAt === null ? matchedBy === 'fingerprint' : Date.parse(tracking.enforcedAt) < Date.parse(planCreatedAt) || (matchedBy === 'fingerprint' && !policy.modifiedDateTime && !policy.createdDateTime))
 
     // ---- Rings: actual dates from what the policy shows ----
     if (state === 'enabled' && step.rings.length > 0) {
