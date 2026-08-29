@@ -12,6 +12,7 @@ import type { SizeBand } from './constants.ts'
 import { ringBandFor } from './rings.ts'
 import { promptsPeople } from './strand.ts'
 import { CRITICAL, DEPENDENCY } from '../copy/schedule.ts'
+import { PHASE_NAME } from '../copy/steps.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { Step } from './types.ts'
 
@@ -31,7 +32,7 @@ export type Dependency = {
   reason: string
 }
 
-export type ConstraintKind = 'none' | 'verification' | 'dependency' | 'rings' | 'cap' | 'freeze' | 'soft' | 'prerequisites' | 'scheduled'
+export type ConstraintKind = 'none' | 'verification' | 'dependency' | 'rings' | 'cap' | 'freeze' | 'soft' | 'prerequisites' | 'scheduled' | 'phase'
 
 export type Derivation = {
   /** The one sentence for the Overview (§2). */
@@ -292,6 +293,8 @@ export function buildSchedule(
     const eventDays = new Map<string, Set<string>>()
     const reportOnlyAt: Record<string, string> = {}
     const ringWindows = new Map<string, { start: string; end: string }[]>()
+    const latestStartByPhase = new Map<number, string>()
+    const latestStepByPhase = new Map<number, string>()
     // Prerequisites and the recurring check finish inside day 0; the campaign ends with its window.
     for (const s of steps) {
       if (!isWork(s)) continue
@@ -329,6 +332,14 @@ export function buildSchedule(
       if (pinned && pinned > earliest) {
         earliest = pinned
         reason.kind = 'scheduled'
+      }
+      // Phase order (ux-review-07 §3): phases begin in order, so a step starts no earlier than the first start of any lower phase.
+      for (const [phase, start] of latestStartByPhase) {
+        if (phase < s.phase && start > earliest) {
+          earliest = start
+          reason.kind = 'phase'
+          reason.ref = latestStepByPhase.get(phase) ?? null
+        }
       }
       for (const d of deps) {
         const p = placed.get(d.stepId)
@@ -392,6 +403,10 @@ export function buildSchedule(
         }
       }
       ringWindows.set(s.id, candidate.windows)
+      if (!latestStartByPhase.has(s.phase) || (latestStartByPhase.get(s.phase) ?? '') > candidate.start) {
+        latestStartByPhase.set(s.phase, candidate.start)
+        latestStepByPhase.set(s.phase, s.id)
+      }
       placed.set(s.id, { start: candidate.start, end: candidate.windows[candidate.windows.length - 1]?.end ?? candidate.start, reason })
     }
     return { placed, reportOnlyAt }
@@ -433,7 +448,10 @@ export function buildSchedule(
     const ids = enforcement.filter((s) => weekKey(placed.get(s.id)!.start) === wk).map((s) => s.id)
     const start = ids.map((id) => placed.get(id)!.start).reduce((m, x) => (x < m ? x : m))
     const end = ids.map((id) => placed.get(id)!.end).reduce((m, x) => (x > m ? x : m))
-    const phase = Math.min(...ids.map((id) => byId.get(id)?.phase ?? 1))
+    // The wave is named by its most common phase, never by a stray lower one.
+    const counts = new Map<number, number>()
+    for (const id of ids) counts.set(byId.get(id)?.phase ?? 1, (counts.get(byId.get(id)?.phase ?? 1) ?? 0) + 1)
+    const phase = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0]
     for (const id of ids) waveOf[id] = i + 1
     waves.push({ wave: i + 1, phase, start, end, days: Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000), stepIds: ids, note: null })
   }
@@ -536,6 +554,12 @@ function derive(
     case 'scheduled':
       reason = CRITICAL.scheduled(last.title, absoluteDate(p.start))
       break
+    case 'phase': {
+      const other = p.reason.ref ? byId.get(p.reason.ref) : undefined
+      if (other) chain.unshift(other.id)
+      reason = CRITICAL.phase(last.title, PHASE_NAME[other?.phase ?? 0] ?? '')
+      break
+    }
     default:
       constraint = 'rings'
       reason = CRITICAL.rings(last.title, rings, soak, last.kind === 'create' ? observation.days : 0)

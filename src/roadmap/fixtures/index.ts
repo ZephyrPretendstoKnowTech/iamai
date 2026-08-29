@@ -21,6 +21,8 @@ export type Fixture = {
   groups: GroupMembers
   /** The plan id the fixture's tagged policies belong to (midflight). */
   planId: string
+  /** When the plan was generated: evidence before this is "already in place", not execution. */
+  planCreatedAt: string
   /** Who runs the plan: an admin id in the fixture. */
   operatorId: string
   expect: FixtureExpectations
@@ -271,7 +273,9 @@ export function buildFixture(spec: Spec): Fixture {
   groups.set(bgGroup, { memberIds: bgIds, memberCount: bgIds.length, sampled: false, displayName: 'Core - Break glass' })
   const exclusionMembers = [...bgIds, ...ids.slice(spec.admins, spec.admins + (spec.exclusionGroupSize ?? 0))]
   groups.set(exclusionGroup, { memberIds: exclusionMembers, memberCount: exclusionMembers.length, sampled: false, displayName: 'Core - Exclusions' })
-  return { name: spec.name, snapshot, baseline: syntheticBaseline(spec.name), mapping, groups, planId, operatorId: ids[0], expect: spec.expect }
+  // midflight's tagged policies were applied by the plan, so the plan predates them; every other plan is generated now.
+  const planCreatedAt = spec.midflight ? daysAgo(60) : NOW
+  return { name: spec.name, snapshot, baseline: syntheticBaseline(spec.name), mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect }
 }
 
 /** A baseline with one policy per catalogue family, so every family produces steps. */

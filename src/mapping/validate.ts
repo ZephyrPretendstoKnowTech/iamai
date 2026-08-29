@@ -5,6 +5,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { GroupMembersCacheEntry } from '../graph/collect/cache.ts'
 import type { ValidationAction, ValidationResult } from './types.ts'
 import { absoluteDate } from '../copy/dates.ts'
+import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
 import { VALIDATION_ACTION as A } from '../copy/setup.ts'
 
 const GLOBAL_ADMIN = '62e90394-69f5-4237-9190-012177145e10'
@@ -27,18 +28,16 @@ export type BreakGlassContext = {
 }
 
 export function validateBreakGlass(userId: string, ctx: BreakGlassContext): ValidationResult {
-  const findings: string[] = []
-  const actions: (ValidationAction | null)[] = []
-  let hard = 0
+  // Fails are listed before notes, so the chip's count is the head of the list (ux-review-07 §5).
+  const fails: { msg: string; action: ValidationAction | null }[] = []
+  const notes: { msg: string; action: ValidationAction | null }[] = []
   const fail = (msg: string, action: ValidationAction | null = null): void => {
-    findings.push(msg)
-    actions.push(action)
-    hard += 1
+    fails.push({ msg, action })
   }
   const note = (msg: string, action: ValidationAction | null = null): void => {
-    findings.push(msg)
-    actions.push(action)
+    notes.push({ msg, action })
   }
+  const finish = (): ValidationResult => result([...fails, ...notes].map((x) => x.msg), fails.length, [...fails, ...notes].map((x) => x.action))
 
   const user = ctx.snapshot.users.find((u) => u.id === userId)
   if (!user) return result(['account not found in the tenant'], 1)
@@ -129,10 +128,13 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
     }
   }
 
+  // The drill verdict and this finding share one threshold (ux-review-07 §6).
   if (user.lastSuccessfulSignIn !== null) {
-    note(`last successful sign-in ${absoluteDate(user.lastSuccessfulSignIn)}`, A.drill)
+    const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(user.lastSuccessfulSignIn)) / 86_400_000)
+    if (days > BREAK_GLASS_DRILL_DAYS) fail(`last successful sign-in ${absoluteDate(user.lastSuccessfulSignIn)}, over ${BREAK_GLASS_DRILL_DAYS} days ago: a drill is due`, A.drill)
+    else note(`drilled within ${BREAK_GLASS_DRILL_DAYS} days (last sign-in ${absoluteDate(user.lastSuccessfulSignIn)})`, A.drill)
   } else {
-    note('never signed in — schedule a break-glass drill', A.drill)
+    fail('never signed in: schedule a break-glass drill', A.drill)
   }
 
   // Dynamic-group sweep: any known dynamic group whose members include it.
@@ -147,10 +149,10 @@ export function validateBreakGlass(userId: string, ctx: BreakGlassContext): Vali
   }
 
   if (ctx.confirmedBreakGlassIds.length < 2) {
-    fail('fewer than two break-glass accounts — at least two are required', A.pickAnother)
+    fail('fewer than two break-glass accounts: at least two are required', A.pickAnother)
   }
 
-  return result(findings, hard, actions)
+  return finish()
 }
 
 export function validateExclusionGroup(
@@ -158,18 +160,15 @@ export function validateExclusionGroup(
   ctx: { snapshot: TenantSnapshot; tenantPolicies: unknown[] },
 ): ValidationResult {
   if (!entry) return result(['group members could not be read'], 1)
-  const findings: string[] = []
-  const actions: (ValidationAction | null)[] = []
-  let hard = 0
+  const fails: { msg: string; action: ValidationAction | null }[] = []
+  const notes: { msg: string; action: ValidationAction | null }[] = []
   const push = (msg: string, action: ValidationAction | null, isFail = false): void => {
-    findings.push(msg)
-    actions.push(action)
-    if (isFail) hard += 1
+    ;(isFail ? fails : notes).push({ msg, action })
   }
   push(`${entry.memberCount} member${entry.memberCount === 1 ? '' : 's'}${entry.sampled ? ' (estimated)' : ''}`, A.group(entry.groupId))
   const adminIds = entry.memberIds.filter((id) => (ctx.snapshot.roles.active[id] ?? []).length > 0)
   if (adminIds.length > 0) {
-    push(`${adminIds.length} member(s) hold active admin roles — exclusion removes their protection`, A.group(entry.groupId))
+    push(`${adminIds.length} member${adminIds.length === 1 ? '' : 's'} hold${adminIds.length === 1 ? 's' : ''} active admin roles: exclusion removes their protection`, A.group(entry.groupId), true)
   }
   if (entry.membershipRule !== null) {
     push(`dynamic membership rule: ${entry.membershipRule} — membership can change without review`, A.group(entry.groupId), true)
@@ -183,9 +182,10 @@ export function validateExclusionGroup(
     if ((p.conditions?.users?.excludeGroups ?? []).includes(entry.groupId)) excludedFrom += 1
   }
   if (enabledCount > 0 && excludedFrom > 0 && excludedFrom < enabledCount) {
-    push(`excluded from ${excludedFrom} of ${enabledCount} enabled policies — inconsistent use`, A.roadmap)
+    push(`excluded from ${excludedFrom} of ${enabledCount} enabled policies: inconsistent use`, A.roadmap, true)
   }
-  return result(findings, hard, actions)
+  const all = [...fails, ...notes]
+  return result(all.map((x) => x.msg), fails.length, all.map((x) => x.action))
 }
 
 export function validateTrustedLocation(raw: unknown): ValidationResult {

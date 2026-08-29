@@ -73,10 +73,10 @@ export function MappingPage({
     () => (state ? wizardProgress(state, questions) : { answered: 0, total: 0, complete: false, requiredMissing: 0 }),
     [state, questions],
   )
-  const [openFindings, setOpenFindings] = useState<Record<string, number>>({})
+  const [openFindings, setOpenFindings] = useState<Record<string, { toFix: number; notes: number }>>({})
   // Stable callback: children report by question id, so effects do not re-run per render.
-  const reportFindings = useCallback((id: string, n: number) => {
-    setOpenFindings((prev) => (prev[id] === n ? prev : { ...prev, [id]: n }))
+  const reportFindings = useCallback((id: string, counts: { toFix: number; notes: number }) => {
+    setOpenFindings((prev) => (prev[id]?.toFix === counts.toFix && prev[id]?.notes === counts.notes ? prev : { ...prev, [id]: counts }))
   }, [])
   useEffect(() => onProgress(progress), [progress, onProgress])
   useEffect(() => {
@@ -163,7 +163,7 @@ export function MappingPage({
       answered={answered}
       reopen={reopen}
       editing={editing[q.id] === true}
-      openFindings={openFindings[q.id] ?? 0}
+      openFindings={openFindings[q.id] ?? { toFix: 0, notes: 0 }}
       reportFindings={reportFindings}
     />
   )
@@ -204,8 +204,8 @@ type QProps = {
   answered: (id: WizardQuestionId) => void
   reopen: (id: WizardQuestionId) => void
   editing: boolean
-  openFindings: number
-  reportFindings: (id: string, n: number) => void
+  openFindings: { toFix: number; notes: number }
+  reportFindings: (id: string, counts: { toFix: number; notes: number }) => void
 }
 
 /** One line that says what was answered, for the collapsed state. */
@@ -264,8 +264,9 @@ function QuestionSection(props: QProps) {
             <InfoTip title={C.explain} text={def.help} />
           </span>
           <span className="row">
-            {openFindings > 0 && <Chip status="warning">{C.toFix(openFindings)}</Chip>}
-            {openFindings === 0 && done && (def.id === 'breakGlass' || def.id === 'globalExclusion') && !state.notApplicable?.[def.id] && <Chip status="done">{C.findingsCount(0)}</Chip>}
+            {openFindings.toFix > 0 && <Chip status="warning">{C.toFix(openFindings.toFix)}</Chip>}
+            {openFindings.toFix === 0 && openFindings.notes > 0 && done && <Chip status="done">{C.notesCount(openFindings.notes)}</Chip>}
+            {openFindings.toFix === 0 && openFindings.notes === 0 && done && (def.id === 'breakGlass' || def.id === 'globalExclusion') && !state.notApplicable?.[def.id] && <Chip status="neutral">{C.nothingToCheck}</Chip>}
             <Chip status={done ? 'done' : 'warning'}>{done ? C.answered : C.required}</Chip>
           </span>
         </span>
@@ -289,7 +290,7 @@ function QuestionSection(props: QProps) {
           <NotApplicable questionId={def.id} update={props.update} answered={props.answered} />
         </>
       )}
-      {collapsed && !state.notApplicable?.[def.id] && (openFindings > 0 || def.id === 'globalExclusion' || def.id === 'breakGlass') && <QuestionFindings {...props} />}
+      {collapsed && !state.notApplicable?.[def.id] && (openFindings.toFix > 0 || def.id === 'globalExclusion' || def.id === 'breakGlass') && <QuestionFindings {...props} />}
     </details>
   )
 }
@@ -447,32 +448,52 @@ function GroupPicker({
 
 function ValidationView({ v, name }: { v: ValidationResult | null; name?: string }) {
   if (!v) return null
+  const toFix = v.toFix ?? (v.passed ? 0 : v.findings.length)
+  const items = v.findings.map((f, i) => ({ f, a: v.actions?.[i] ?? null, i }))
+  // Fails come first in the result; the chip counts exactly these (ux-review-07 §5).
+  const fails = items.slice(0, toFix)
+  const notes = items.slice(toFix)
+  const render = (list: typeof items) => (
+    <ul className="sections">
+      {list.map(({ f, a, i }) => (
+        <li key={i}>
+          {f}
+          {a && (
+            <>
+              {': '}
+              <a href={a.href} target={a.href.startsWith('#') ? undefined : '_blank'} rel="noreferrer">
+                {a.label}
+              </a>
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+  const title = `${name ? `${name}: ` : ''}${toFix > 0 ? C.needsAttention : v.findings.length > 0 ? C.checksPassed : C.nothingToCheck}`
   return (
-    <Callout kind={v.passed ? 'success' : 'warning'} title={`${name ? `${name}: ` : ''}${v.passed ? C.checksPassed : C.needsAttention}`}>
-      <ul className="sections">
-        {v.findings.map((f, i) => {
-          const a = v.actions?.[i] ?? null
-          return (
-            <li key={i}>
-              {f}
-              {a && (
-                <>
-                  {': '}
-                  <a href={a.href} target={a.href.startsWith('#') ? undefined : '_blank'} rel="noreferrer">
-                    {a.label}
-                  </a>
-                </>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+    <Callout kind={toFix > 0 ? 'warning' : 'success'} title={title}>
+      {fails.length > 0 && (
+        <>
+          <p className="reason">{C.toFixTitle}</p>
+          {render(fails)}
+        </>
+      )}
+      {notes.length > 0 && (
+        <>
+          {fails.length > 0 && <p className="reason">{C.notesTitle}</p>}
+          {render(notes)}
+        </>
+      )}
     </Callout>
   )
 }
 
-function toFixCount(results: (ValidationResult | null)[]): number {
-  return results.reduce((n, r) => n + (r?.toFix ?? 0), 0)
+/** What the chip counts is exactly what the list shows (ux-review-07 §5): fails to fix, and notes. */
+function findingCounts(results: (ValidationResult | null)[]): { toFix: number; notes: number } {
+  const toFix = results.reduce((n, r) => n + (r?.toFix ?? 0), 0)
+  const shown = results.reduce((n, r) => n + (r?.findings.length ?? 0), 0)
+  return { toFix, notes: Math.max(0, shown - toFix) }
 }
 
 /** The third answer every question allows (prompt 26 §2): not applicable to us, with a reason that goes in the plan. */
@@ -518,7 +539,7 @@ function DoesNotExist({ onClick }: { onClick: () => void }) {
 
 function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings, findingsOnly = false }: QProps & { findingsOnly?: boolean }) {
   const [validations, setValidations] = useState<Record<string, ValidationResult>>({})
-  useEffect(() => reportFindings('breakGlass', toFixCount(Object.values(validations))), [validations, reportFindings])
+  useEffect(() => reportFindings('breakGlass', findingCounts(Object.values(validations))), [validations, reportFindings])
   const runValidation = (ids: string[]): void => {
     const tenantPolicies = snapshot.config.caPolicies?.rows ?? []
     const out: Record<string, ValidationResult> = {}
@@ -577,7 +598,7 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
 
 function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, update, answered, reportFindings, findingsOnly = false }: QProps & { findingsOnly?: boolean }) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
-  useEffect(() => reportFindings('globalExclusion', toFixCount([validation])), [validation, reportFindings])
+  useEffect(() => reportFindings('globalExclusion', findingCounts([validation])), [validation, reportFindings])
   const rec = state.records['__globalExclusion']
   const validate = (id: string): void => {
     const entry = knownGroups.find((g) => g.groupId === id) ?? null
@@ -753,8 +774,9 @@ function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answere
     const loc = locations.find((l) => String(l.id) === id)
     return loc ? validateTrustedLocation(loc) : null
   })
-  const toFix = toFixCount(locValidations)
-  useEffect(() => reportFindings('trustedLocations', toFix), [toFix, reportFindings])
+  const counts = findingCounts(locValidations)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => reportFindings('trustedLocations', counts), [counts.toFix, counts.notes, reportFindings])
   const suggested = useMemo(() => suggestions('trustedLocations', suggestCtx), [suggestCtx])
   const whyById = new Map(suggested.map((s) => [s.id, s.why]))
   const options: PickerOption[] = locations.map((l) => ({

@@ -85,7 +85,19 @@ function soak(snapshot: TenantSnapshot, policyId: string, createdAt: string | nu
  * whose policy was disabled, deleted, weakened or narrowed reopens with a
  * dated note. `now` is injectable for tests.
  */
-export function trackExecution(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now: string = new Date().toISOString()): Step[] {
+/** Every step the plan tracks: everything not skipped. The one denominator (ux-review-07 §2). */
+export function trackable(steps: Step[]): Step[] {
+  return steps.filter((s) => s.status !== 'skipped')
+}
+
+export function trackExecution(
+  steps: Step[],
+  snapshot: TenantSnapshot,
+  coverage: CoverageReport,
+  planId: string,
+  now: string = new Date().toISOString(),
+  planCreatedAt: string | null = null,
+): Step[] {
   const resultByGoal = new Map(coverage.results.map((r) => [r.goal.id, r]))
   for (const step of steps) {
     if (step.kind !== 'create' && step.kind !== 'adjust') continue
@@ -118,12 +130,16 @@ export function trackExecution(steps: Step[], snapshot: TenantSnapshot, coverage
       }
       if (step.status !== 'done') {
         if (step.tracking) step.tracking = { ...step.tracking, state: prev?.state ?? 'deleted', regressedAt: now }
+        step.alreadyInPlace = false
         continue
       }
     }
 
     if (!match) {
-      if (goalStatus === 'enforced') advance(step, 'done', TRACK.enforcedByOther(result?.candidates.find((c) => c.contribution === 'strong')?.policyName ?? 'an existing policy'), now)
+      if (goalStatus === 'enforced') {
+        advance(step, 'done', TRACK.enforcedByOther(result?.candidates.find((c) => c.contribution === 'strong')?.policyName ?? 'an existing policy'), now)
+        step.alreadyInPlace = planCreatedAt !== null
+      }
       continue
     }
     const { policy, matchedBy } = match
@@ -143,9 +159,12 @@ export function trackExecution(steps: Step[], snapshot: TenantSnapshot, coverage
       reportOnlyAt: createdAt,
       enforcedAt: state === 'enabled' ? (modifiedAt ?? createdAt) : step.tracking?.enforcedAt ?? null,
       regressedAt: null,
+      noticedAt: step.tracking?.noticedAt ?? now,
       ...evidence,
     }
     step.tracking = tracking
+    // Evidence that predates the plan is not execution (ux-review-07 §1).
+    step.alreadyInPlace = state === 'enabled' && planCreatedAt !== null && tracking.enforcedAt !== null && Date.parse(tracking.enforcedAt) < Date.parse(planCreatedAt)
 
     // ---- Rings: actual dates from what the policy shows ----
     if (state === 'enabled' && step.rings.length > 0) {
@@ -182,10 +201,12 @@ export function trackExecution(steps: Step[], snapshot: TenantSnapshot, coverage
 
 // ---- Planned against actual (§5) ----
 
+export type Stage = 'planned' | 'reportOnly' | 'soaking' | 'readyToEnforce' | 'enforced' | 'verified' | 'alreadyInPlace'
+
 export type StepProgress = {
   stepId: string
   title: string
-  stage: 'planned' | 'reportOnly' | 'soaking' | 'readyToEnforce' | 'enforced' | 'verified'
+  stage: Stage
   plannedStart: string | null
   plannedEnd: string | null
   actualStart: string | null
@@ -195,8 +216,10 @@ export type StepProgress = {
   ring: number
 }
 
-export function stageOf(step: Step): StepProgress['stage'] {
-  if (step.status === 'done') return step.tracking?.evidenceQuality === 'enough' || (step.tracking === null && step.deliveredBy.length > 0) ? 'verified' : 'enforced'
+export function stageOf(step: Step): Stage {
+  if (step.status === 'done' && step.alreadyInPlace) return 'alreadyInPlace'
+  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring') return step.status === 'done' ? 'enforced' : 'planned'
+  if (step.status === 'done') return step.tracking?.evidenceQuality === 'enough' ? 'verified' : 'enforced'
   if (step.status === 'ready-to-enforce') return 'readyToEnforce'
   if (step.status === 'in-report-only') return (step.tracking?.daysInReportOnly ?? 0) > 0 && (step.tracking?.signIns ?? 0) > 0 ? 'soaking' : 'reportOnly'
   return 'planned'
@@ -213,15 +236,15 @@ function slipReason(step: Step, byId: Map<string, Step>): string | null {
 
 export function stepProgress(steps: Step[], schedule: Schedule, now: string = new Date().toISOString()): StepProgress[] {
   const byId = new Map(steps.map((s) => [s.id, s]))
-  return steps
-    .filter((s) => s.kind === 'create' || s.kind === 'adjust')
-    .map((s) => {
-      const plannedStart = s.rings[0]?.plannedStart ?? schedule.reportOnlyAt[s.id] ?? null
-      const plannedEnd = s.rings.at(-1)?.plannedEnd ?? plannedStart
+  const waveStart = new Map(schedule.waves.map((w) => [w.wave, w]))
+  return trackable(steps).map((s) => {
+      const wave = waveStart.get(schedule.waveOf[s.id] ?? 0)
+      const plannedStart = s.rings[0]?.plannedStart ?? schedule.reportOnlyAt[s.id] ?? (s.kind === 'verify' ? schedule.verification.start : wave?.start ?? null)
+      const plannedEnd = s.rings.at(-1)?.plannedEnd ?? (s.kind === 'verify' ? schedule.verification.end : plannedStart)
       const actualStart = s.tracking?.enforcedAt ?? (s.status === 'done' ? s.history.find((h) => h.to === 'done')?.at ?? null : null)
       const actualEnd = s.status === 'done' ? actualStart : null
       let slipDays: number | null = null
-      if (plannedStart) {
+      if (plannedStart && !s.alreadyInPlace) {
         if (actualStart) slipDays = Math.round((Date.parse(actualStart) - Date.parse(plannedStart)) / 86_400_000)
         else if (Date.parse(now) > Date.parse(plannedStart) && s.status !== 'done' && s.status !== 'skipped') slipDays = Math.round((Date.parse(now) - Date.parse(plannedStart)) / 86_400_000)
       }
@@ -246,35 +269,43 @@ export type ProgressHeadline = {
   total: number
   soaking: number
   slipped: number
+  alreadyInPlace: number
   projectedEnd: string | null
   plannedEnd: string
+  /** The state, the projection, and the already-covered note: three lines, never one paragraph (ux-review-07 §18). */
+  state: string
+  projection: string
+  already: string
   sentence: string
 }
 
 export function progressHeadline(steps: Step[], schedule: Schedule, now: string = new Date().toISOString()): ProgressHeadline {
   const rows = stepProgress(steps, schedule, now)
   const total = rows.length
+  const alreadyInPlace = rows.filter((r) => r.stage === 'alreadyInPlace').length
   const enforced = rows.filter((r) => r.stage === 'enforced' || r.stage === 'verified').length
   const soaking = rows.filter((r) => r.stage === 'soaking' || r.stage === 'reportOnly' || r.stage === 'readyToEnforce').length
   const slipped = rows.filter((r) => (r.slipDays ?? 0) > SLIP_WEEK_DAYS).length
-  const starts = rows.map((r) => r.actualStart).filter((x): x is string => x !== null).sort()
+  // The start is the first real execution, never a policy's birthday (ux-review-07 §1).
+  const starts = rows.filter((r) => r.stage !== 'alreadyInPlace').map((r) => r.actualStart).filter((x): x is string => x !== null).sort()
   const started = starts[0] ?? null
   const plannedEnd = schedule.targetEnd
   let projectedEnd: string | null = null
-  if (started && enforced > 0 && enforced < total) {
+  if (started && enforced > 0 && enforced + alreadyInPlace < total) {
     const elapsedDays = Math.max(1, (Date.parse(now) - Date.parse(started)) / 86_400_000)
     const pace = enforced / elapsedDays
-    projectedEnd = new Date(Date.parse(now) + ((total - enforced) / pace) * 86_400_000).toISOString()
+    projectedEnd = new Date(Date.parse(now) + ((total - enforced - alreadyInPlace) / pace) * 86_400_000).toISOString()
   }
-  const first = started ? PROGRESS.headline(absoluteDate(started), enforced, total, soaking, slipped) : PROGRESS.notStarted
-  const second = !started
+  const state = started ? PROGRESS.headline(absoluteDate(started), enforced, total, soaking, slipped) : PROGRESS.notStarted
+  const projection = !started
     ? ''
     : projectedEnd
       ? Date.parse(projectedEnd) <= Date.parse(plannedEnd) + SLIP_WEEK_DAYS * 86_400_000
         ? PROGRESS.projectionOnTrack(absoluteDate(plannedEnd))
         : PROGRESS.projection(absoluteDate(projectedEnd), absoluteDate(plannedEnd))
       : PROGRESS.projectionNoPace(absoluteDate(plannedEnd))
-  return { started, enforced, total, soaking, slipped, projectedEnd, plannedEnd, sentence: [first, second].filter(Boolean).join(' ') }
+  const already = PROGRESS.alreadyCovered(alreadyInPlace)
+  return { started, enforced, total, soaking, slipped, alreadyInPlace, projectedEnd, plannedEnd, state, projection, already, sentence: [state, projection, already].filter(Boolean).join(' ') }
 }
 
 // ---- What changed since the last scan (§5) ----

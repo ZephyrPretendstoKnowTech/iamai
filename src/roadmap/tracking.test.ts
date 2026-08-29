@@ -7,7 +7,7 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { generateRoadmap, stepIdForGoal } from './generate.ts'
 import { applyProgress, mergePersisted, savedStepOf } from './progress.ts'
-import { changesSince, groupGrowth, progressHeadline, stepProgress, trackExecution } from './tracking.ts'
+import { changesSince, groupGrowth, progressHeadline, stageOf, stepProgress, trackExecution, trackable } from './tracking.ts'
 import { PLAN_SCHEMA_VERSION, buildPlanFile, makeCheckpoint, parsePlanFile, upgradePlanFile } from './plan.ts'
 import type { PlanFile } from './plan.ts'
 import { buildIcs } from './ics.ts'
@@ -52,7 +52,7 @@ test('midflight: a policy created outside the plan is matched by what it does, w
     const step = again.steps.find((s) => s.id === stepIdForGoal('guests-mfa'))!
     assert.equal(step.status, 'done')
     assert.equal(step.tracking?.matchedBy, 'fingerprint')
-    assert.match(step.tracking?.note ?? '', /created outside the plan/)
+    assert.match(step.tracking?.note ?? '', /already existed and covers this step/)
   } finally {
     guests.description = saved
   }
@@ -229,4 +229,47 @@ test('ICS export: one all-day event per scheduled step, rings in the description
   assert.match(ics, /Pilot: \d{4}-\d{2}-\d{2} to/)
   assert.ok(!ics.includes(run.steps.find((s) => s.status === 'done')!.title.slice(0, 20)) || true)
   assert.doesNotMatch(ics, /[^\r]\n/, 'CRLF line endings throughout')
+})
+
+// ---- ux-review-07 §1, §2: already in place, and one denominator ----
+
+test('midflight: policies the plan applied count as executed; the start date is the first real execution', () => {
+  const run = runFixture(f)
+  const executed = run.steps.filter((s) => s.status === 'done' && s.tracking?.matchedBy === 'tag')
+  assert.ok(executed.length >= 3)
+  for (const s of executed) assert.equal(s.alreadyInPlace, false, `${s.id} was applied by the plan`)
+  const head = progressHeadline(run.steps, run.schedule, NOW)
+  assert.ok(head.started && Date.parse(head.started) >= Date.parse(f.planCreatedAt), 'the start is after the plan was created')
+  assert.equal(head.alreadyInPlace, 0)
+})
+
+test('a plan generated today over policies that predate it: those steps are already in place, never executed, never slipped', () => {
+  const g = fixture('small')
+  const run = runFixture(g)
+  const done = run.steps.filter((s) => s.status === 'done' && (s.kind === 'create' || s.kind === 'adjust'))
+  assert.ok(done.length >= 2)
+  for (const s of done) {
+    assert.equal(s.alreadyInPlace, true, `${s.id} predates the plan`)
+    assert.equal(stageOf(s), 'alreadyInPlace')
+    assert.match(s.stateReason, /Already in place before the plan began/)
+  }
+  const head = progressHeadline(run.steps, run.schedule, NOW)
+  assert.equal(head.started, null, 'a policy birthday never starts the plan')
+  assert.equal(head.enforced, 0)
+  assert.equal(head.alreadyInPlace, done.length)
+  assert.match(head.already, /already covered before the plan began/)
+  for (const r of stepProgress(run.steps, run.schedule, NOW)) if (r.stage === 'alreadyInPlace') assert.equal(r.slipDays, null)
+})
+
+test('one denominator: the badge, the headline and the journey agree', () => {
+  const run = runFixture(f)
+  const tracked = trackable(run.steps)
+  const head = progressHeadline(run.steps, run.schedule, NOW)
+  const rows = stepProgress(run.steps, run.schedule, NOW)
+  assert.equal(head.total, tracked.length)
+  assert.equal(rows.length, tracked.length)
+  const byStage = new Map<string, number>()
+  for (const r of rows) byStage.set(r.stage, (byStage.get(r.stage) ?? 0) + 1)
+  assert.equal([...byStage.values()].reduce((a, b) => a + b, 0), tracked.length)
+  assert.equal(head.enforced + head.alreadyInPlace, tracked.filter((s) => s.status === 'done' && (s.kind !== 'prerequisite' && s.kind !== 'verify' && s.kind !== 'recurring')).length + tracked.filter((s) => s.status === 'done' && (s.kind === 'prerequisite' || s.kind === 'verify' || s.kind === 'recurring')).length)
 })

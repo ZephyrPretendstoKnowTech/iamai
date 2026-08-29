@@ -61,8 +61,8 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
 
 // Detection on every scan (roadmap-v2.md §5) lives in tracking.ts; this
 // keeps the entry point the page and the tests call.
-export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string): Step[] {
-  return trackExecution(steps, snapshot, coverage, planId, now)
+export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string, planCreatedAt: string | null = null): Step[] {
+  return trackExecution(steps, snapshot, coverage, planId, now, planCreatedAt)
 }
 
 // Skipping needs a reason — and is never "risk accepted" (§1, §9 test 8).

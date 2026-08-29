@@ -82,7 +82,7 @@ export type RoadmapResult = { steps: Step[]; schedule: Schedule }
 const EXTRAS: Pick<
   Step,
   | 'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
-  | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate' | 'tracking'
+  | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate' | 'tracking' | 'alreadyInPlace'
 > = {
   impact: '',
   safeToday: false,
@@ -105,6 +105,7 @@ const EXTRAS: Pick<
   owner: null,
   scheduledDate: null,
   tracking: null,
+  alreadyInPlace: false,
 }
 
 function idFor(prefix: string, key: string): string {
@@ -897,7 +898,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push({
       id: stepId,
       goalId: goal.id,
-      phase: goal.phase,
+      phase: Math.max(1, goal.phase),
       kind,
       title: stepTitle(goal.name),
       why,
