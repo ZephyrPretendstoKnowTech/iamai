@@ -111,7 +111,7 @@ export async function getGroupMembers(
 
   const group = await graphRequest(
     tokens,
-    `${V1}/groups/${groupId}?$select=id,displayName,membershipRule`,
+    `${V1}/groups/${groupId}?$select=id,displayName,membershipRule,mailEnabled`,
   )
   const g = group as unknown as Record<string, unknown>
 
@@ -141,6 +141,7 @@ export async function getGroupMembers(
     groupId,
     displayName: typeof g.displayName === 'string' ? g.displayName : null,
     membershipRule: typeof g.membershipRule === 'string' ? g.membershipRule : null,
+    mailEnabled: g.mailEnabled === true,
     memberCount: sampled ? memberCount : memberIds.length,
     memberIds,
     sampled,

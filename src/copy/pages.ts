@@ -47,6 +47,7 @@ export const SHELL = {
     roadmap: 'Roadmap',
     licensing: 'Licensing guide',
     reads: 'What IAMAI reads',
+    checks: 'Every check IAMAI runs',
     inventory: 'Inventory',
     prompts: 'Prompt pack',
   },

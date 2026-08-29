@@ -12,7 +12,7 @@ export function fixtureSnapshot(): TenantSnapshot {
     ['u-1', 'Alex Morgan', 'alex@example.com', 'member', 2],
     ['u-2', 'Sam Lee', 'sam@example.com', 'member', 5],
     ['u-3', 'Priya Nair', 'priya@example.com', 'member', 40],
-    ['u-4', 'Break-glass 01', 'bg01@example.com', 'member', 120],
+    ['u-4', 'Break-glass 01', 'bg01@contoso.onmicrosoft.com', 'member', 120],
     ['u-5', 'Jordan Kim', 'jordan_partner.example.com#EXT#@example.com', 'guest', 9],
   ] as const
   const caps = emptyCapabilities()
@@ -104,8 +104,12 @@ export function fixtureSnapshot(): TenantSnapshot {
           { skuId: 'sku-2', skuPartNumber: 'O365_BUSINESS_ESSENTIALS', prepaidUnits: { enabled: 25 }, consumedUnits: 20, servicePlans: [] },
         ],
       },
-      organization: { status: 'ok', reason: null, rows: [{ displayName: 'Contoso Pty Ltd' }] },
-      me: { status: 'ok', reason: null, rows: [] },
+      organization: {
+        status: 'ok',
+        reason: null,
+        rows: [{ displayName: 'Contoso Pty Ltd', verifiedDomains: [{ name: 'example.com', isInitial: false }, { name: 'contoso.onmicrosoft.com', isInitial: true }] }],
+      },
+      me: { status: 'ok', reason: null, rows: [{ id: 'u-1', displayName: 'Alex Morgan', userPrincipalName: 'alex@example.com' }] },
       meMemberOf: { status: 'ok', reason: null, rows: [] },
     },
     registrationDetails: users.map(([id, , upn, type]) => ({

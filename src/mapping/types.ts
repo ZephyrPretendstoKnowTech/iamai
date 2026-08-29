@@ -37,8 +37,10 @@ export type ValidationResult = {
   findings: string[] // plain language; empty when passed with nothing to note
   /** Aligned with findings: the fix path for each (plan step or portal path). */
   actions?: (ValidationAction | null)[]
-  /** Findings that need fixing (hard fails) — the "N to fix" count. */
+  /** Must-fix findings, first in the list — the "N to fix" count. */
   toFix?: number
+  /** Recommended findings, after the must-fix block; the rest are notes. */
+  recommended?: number
 }
 
 export type MappingRecord = {
@@ -62,6 +64,10 @@ export type MappingState = {
   targetState: Record<string, { include: boolean; reason: string | null }>
   // ---- Setup wizard answers (the 5–9 questions a human actually sees) ----
   breakGlassUserIds: string[]
+  /** The two emergency-access facts Microsoft Graph exposes nowhere
+   *  (validation-rules.md §3): asked once alongside the accounts themselves,
+   *  recorded in the plan file, and a Phase 0 step when either is no. */
+  breakGlassAnswers?: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
   /** High-priority care targets: changes still apply; the plan takes extra
    *  caution (verify-before-enforce, white-glove callouts, sequenced last). */
   highCareUserIds: string[]
@@ -90,6 +96,7 @@ export function emptyMappingState(tenantId: string): MappingState {
     facetOverrides: {},
     targetState: {},
     breakGlassUserIds: [],
+    breakGlassAnswers: { credentialStorage: null, signInMonitoring: null },
     highCareUserIds: [],
     trustedLocationIds: [],
     serviceAccountsGroupId: null,

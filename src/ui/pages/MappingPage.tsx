@@ -10,7 +10,7 @@ import type { GroupMembersCacheEntry } from '../../graph/collect/cache.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import type { Facet } from '../../coverage/applicability.ts'
 import { loadMappingState, saveMappingState } from '../../mapping/store.ts'
-import { validateBreakGlass, validateExclusionGroup, validateTrustedLocation } from '../../mapping/validate.ts'
+import { breakGlassFindings, exclusionGroupFindings, trustedLocationFindings } from '../../validation/report.ts'
 import type { MappingState, ValidationResult } from '../../mapping/types.ts'
 import { activeWizardQuestions, applyAutoResolution, applyWizardAnswers, wizardProgress } from '../../mapping/wizard.ts'
 import type { WizardProgress, WizardQuestionDef, WizardQuestionId } from '../../mapping/wizard.ts'
@@ -73,10 +73,12 @@ export function MappingPage({
     () => (state ? wizardProgress(state, questions) : { answered: 0, total: 0, complete: false, requiredMissing: 0 }),
     [state, questions],
   )
-  const [openFindings, setOpenFindings] = useState<Record<string, { toFix: number; notes: number }>>({})
+  const [openFindings, setOpenFindings] = useState<Record<string, FindingCounts>>({})
   // Stable callback: children report by question id, so effects do not re-run per render.
-  const reportFindings = useCallback((id: string, counts: { toFix: number; notes: number }) => {
-    setOpenFindings((prev) => (prev[id]?.toFix === counts.toFix && prev[id]?.notes === counts.notes ? prev : { ...prev, [id]: counts }))
+  const reportFindings = useCallback((id: string, counts: FindingCounts) => {
+    setOpenFindings((prev) =>
+      prev[id]?.toFix === counts.toFix && prev[id]?.recommended === counts.recommended && prev[id]?.notes === counts.notes ? prev : { ...prev, [id]: counts },
+    )
   }, [])
   useEffect(() => onProgress(progress), [progress, onProgress])
   useEffect(() => {
@@ -163,7 +165,7 @@ export function MappingPage({
       answered={answered}
       reopen={reopen}
       editing={editing[q.id] === true}
-      openFindings={openFindings[q.id] ?? { toFix: 0, notes: 0 }}
+      openFindings={openFindings[q.id] ?? { toFix: 0, recommended: 0, notes: 0 }}
       reportFindings={reportFindings}
     />
   )
@@ -204,8 +206,8 @@ type QProps = {
   answered: (id: WizardQuestionId) => void
   reopen: (id: WizardQuestionId) => void
   editing: boolean
-  openFindings: { toFix: number; notes: number }
-  reportFindings: (id: string, counts: { toFix: number; notes: number }) => void
+  openFindings: FindingCounts
+  reportFindings: (id: string, counts: FindingCounts) => void
 }
 
 /** One line that says what was answered, for the collapsed state. */
@@ -264,9 +266,10 @@ function QuestionSection(props: QProps) {
             <InfoTip title={C.explain} text={def.help} />
           </span>
           <span className="row">
-            {openFindings.toFix > 0 && <Chip status="warning">{C.toFix(openFindings.toFix)}</Chip>}
-            {openFindings.toFix === 0 && openFindings.notes > 0 && done && <Chip status="done">{C.notesCount(openFindings.notes)}</Chip>}
-            {openFindings.toFix === 0 && openFindings.notes === 0 && done && (def.id === 'breakGlass' || def.id === 'globalExclusion') && !state.notApplicable?.[def.id] && <Chip status="neutral">{C.nothingToCheck}</Chip>}
+            {openFindings.toFix > 0 && <Chip status="blocked">{C.mustFix(openFindings.toFix)}</Chip>}
+            {openFindings.recommended > 0 && <Chip status="warning">{C.recommendedCount(openFindings.recommended)}</Chip>}
+            {openFindings.toFix === 0 && openFindings.recommended === 0 && openFindings.notes > 0 && done && <Chip status="done">{C.notesCount(openFindings.notes)}</Chip>}
+            {openFindings.toFix === 0 && openFindings.recommended === 0 && openFindings.notes === 0 && done && (def.id === 'breakGlass' || def.id === 'globalExclusion') && !state.notApplicable?.[def.id] && <Chip status="neutral">{C.nothingToCheck}</Chip>}
             <Chip status={done ? 'done' : 'warning'}>{done ? C.answered : C.required}</Chip>
           </span>
         </span>
@@ -290,7 +293,7 @@ function QuestionSection(props: QProps) {
           <NotApplicable questionId={def.id} update={props.update} answered={props.answered} />
         </>
       )}
-      {collapsed && !state.notApplicable?.[def.id] && (openFindings.toFix > 0 || def.id === 'globalExclusion' || def.id === 'breakGlass') && <QuestionFindings {...props} />}
+      {collapsed && !state.notApplicable?.[def.id] && (openFindings.toFix > 0 || openFindings.recommended > 0 || def.id === 'globalExclusion' || def.id === 'breakGlass') && <QuestionFindings {...props} />}
     </details>
   )
 }
@@ -449,10 +452,13 @@ function GroupPicker({
 function ValidationView({ v, name }: { v: ValidationResult | null; name?: string }) {
   if (!v) return null
   const toFix = v.toFix ?? (v.passed ? 0 : v.findings.length)
+  const recommended = v.recommended ?? 0
   const items = v.findings.map((f, i) => ({ f, a: v.actions?.[i] ?? null, i }))
-  // Fails come first in the result; the chip counts exactly these (ux-review-07 §5).
+  // The registry returns must-fix, then recommended, then notes; the chips
+  // count exactly these slices (validation-rules.md §5).
   const fails = items.slice(0, toFix)
-  const notes = items.slice(toFix)
+  const advised = items.slice(toFix, toFix + recommended)
+  const notes = items.slice(toFix + recommended)
   const render = (list: typeof items) => (
     <ul className="sections">
       {list.map(({ f, a, i }) => (
@@ -475,13 +481,19 @@ function ValidationView({ v, name }: { v: ValidationResult | null; name?: string
     <Callout kind={toFix > 0 ? 'warning' : 'success'} title={title}>
       {fails.length > 0 && (
         <>
-          <p className="reason">{C.toFixTitle}</p>
+          <p className="reason">{C.mustFixTitle}</p>
           {render(fails)}
+        </>
+      )}
+      {advised.length > 0 && (
+        <>
+          <p className="reason">{C.recommendedTitle}</p>
+          {render(advised)}
         </>
       )}
       {notes.length > 0 && (
         <>
-          {fails.length > 0 && <p className="reason">{C.notesTitle}</p>}
+          {(fails.length > 0 || advised.length > 0) && <p className="reason">{C.notesTitle}</p>}
           {render(notes)}
         </>
       )}
@@ -489,11 +501,14 @@ function ValidationView({ v, name }: { v: ValidationResult | null; name?: string
   )
 }
 
-/** What the chip counts is exactly what the list shows (ux-review-07 §5): fails to fix, and notes. */
-function findingCounts(results: (ValidationResult | null)[]): { toFix: number; notes: number } {
+export type FindingCounts = { toFix: number; recommended: number; notes: number }
+
+/** What the chips count is exactly what the list shows (validation-rules.md §5). */
+function findingCounts(results: (ValidationResult | null)[]): FindingCounts {
   const toFix = results.reduce((n, r) => n + (r?.toFix ?? 0), 0)
+  const recommended = results.reduce((n, r) => n + (r?.recommended ?? 0), 0)
   const shown = results.reduce((n, r) => n + (r?.findings.length ?? 0), 0)
-  return { toFix, notes: Math.max(0, shown - toFix) }
+  return { toFix, recommended, notes: Math.max(0, shown - toFix - recommended) }
 }
 
 /** The third answer every question allows (prompt 26 §2): not applicable to us, with a reason that goes in the plan. */
@@ -541,17 +556,31 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
   const [validations, setValidations] = useState<Record<string, ValidationResult>>({})
   useEffect(() => reportFindings('breakGlass', findingCounts(Object.values(validations))), [validations, reportFindings])
   const runValidation = (ids: string[]): void => {
-    const tenantPolicies = snapshot.config.caPolicies?.rows ?? []
-    const out: Record<string, ValidationResult> = {}
-    for (const id of ids) {
-      out[id] = validateBreakGlass(id, { snapshot, tenantPolicies, groupMembers: knownGroups, confirmedBreakGlassIds: ids })
-    }
-    setValidations(out)
+    // Every check comes from the registry (validation-rules.md §1); nothing is
+    // decided here.
+    setValidations(breakGlassFindings({ snapshot, state: { ...state, breakGlassUserIds: ids }, groupMembers: knownGroups }))
   }
   useEffect(() => {
     if (state.breakGlassUserIds.length > 0) runValidation(state.breakGlassUserIds)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [knownGroups])
+  }, [knownGroups, state.breakGlassAnswers?.credentialStorage, state.breakGlassAnswers?.signInMonitoring])
+  const answers = state.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
+  const setAnswer = (key: 'credentialStorage' | 'signInMonitoring', value: boolean): void => {
+    update((s) => ({ ...s, breakGlassAnswers: { ...(s.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }), [key]: value } }))
+  }
+  const ask = (key: 'credentialStorage' | 'signInMonitoring') => (
+    <li key={key}>
+      {C.breakGlassAsk[key]}
+      <div className="row" style={{ marginTop: '4px' }}>
+        <Button size="sm" variant={answers[key] === true ? 'primary' : 'quiet'} onClick={() => setAnswer(key, true)}>
+          {C.breakGlassAsk.yes}
+        </Button>
+        <Button size="sm" variant={answers[key] === false ? 'primary' : 'quiet'} onClick={() => setAnswer(key, false)}>
+          {C.breakGlassAsk.no}
+        </Button>
+      </div>
+    </li>
+  )
   const findings = state.breakGlassUserIds.map((id) => (
     <ValidationView key={id} name={snapshot.users.find((u) => u.id === id)?.displayName ?? id} v={validations[id] ?? null} />
   ))
@@ -571,6 +600,11 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
         }}
       />
       {findings}
+      {/* The only part of the emergency-access set a scan cannot answer (validation-rules.md §3). */}
+      <Card title={C.breakGlassAsk.title}>
+        <p className="reason">{C.breakGlassAsk.intro}</p>
+        <ul className="sections">{ask('credentialStorage')}{ask('signInMonitoring')}</ul>
+      </Card>
       <DoesNotExist
         onClick={() => {
           update((s) => ({
@@ -602,9 +636,9 @@ function GlobalExclusionQuestion({ state, snapshot, knownGroups, suggestCtx, upd
   const rec = state.records['__globalExclusion']
   const validate = (id: string): void => {
     const entry = knownGroups.find((g) => g.groupId === id) ?? null
-    const ctx = { snapshot, tenantPolicies: snapshot.config.caPolicies?.rows ?? [] }
-    if (entry) setValidation(validateExclusionGroup(entry, ctx))
-    else void getGroupMembers(snapshot.tenantId, id).then((g) => setValidation(validateExclusionGroup(g, ctx))).catch(() => setValidation(null))
+    const inputs = { snapshot, state, groupMembers: knownGroups }
+    if (entry) setValidation(exclusionGroupFindings(entry, inputs))
+    else void getGroupMembers(snapshot.tenantId, id).then((g) => setValidation(exclusionGroupFindings(g, { ...inputs, groupMembers: [...knownGroups, g] }))).catch(() => setValidation(null))
   }
   useEffect(() => {
     if (rec?.resolvedId) validate(rec.resolvedId)
@@ -772,7 +806,7 @@ function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answere
   const locations = (snapshot.config.namedLocations?.rows ?? []) as { id?: string; displayName?: string; isTrusted?: boolean }[]
   const locValidations = state.trustedLocationIds.map((id) => {
     const loc = locations.find((l) => String(l.id) === id)
-    return loc ? validateTrustedLocation(loc) : null
+    return loc ? trustedLocationFindings(loc, { snapshot, state }) : null
   })
   const counts = findingCounts(locValidations)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -801,7 +835,7 @@ function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answere
       />
       {state.trustedLocationIds.map((id) => {
         const loc = locations.find((l) => String(l.id) === id)
-        return <ValidationView key={id} name={loc?.displayName ?? id} v={loc ? validateTrustedLocation(loc) : null} />
+        return <ValidationView key={id} name={loc?.displayName ?? id} v={loc ? trustedLocationFindings(loc, { snapshot, state }) : null} />
       })}
       <DoesNotExist
         onClick={() => {

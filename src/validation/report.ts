@@ -1,0 +1,148 @@
+// Running the registry against a tenant, and shaping the results the two
+// surfaces need: Setup's findings (Must fix / Recommended / Notes) and the
+// plan's Phase 0 blocker steps.
+//
+// No check lives here. Everything this module does is build the context the
+// rules declare they need, call `evaluateSubject`, and group what comes back.
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { MfaViability } from '../scoring/mfaViability.ts'
+import type { MappingState, ValidationResult } from '../mapping/types.ts'
+import { evaluateSubject, isBlocking } from './rules.ts'
+import type { GroupFacts, RuleResult, RuleSubject, ValidationContext } from './rules.ts'
+
+export type ValidationInputs = {
+  snapshot: TenantSnapshot
+  state: MappingState
+  groupMembers?: GroupFacts[]
+  viability?: MfaViability[]
+}
+
+/** The signed-in operator, from the /me section the scan already reads. */
+export function operatorIdOf(snapshot: TenantSnapshot): string | null {
+  const me = (snapshot.config.me?.rows?.[0] ?? null) as { id?: string } | null
+  return typeof me?.id === 'string' ? me.id : null
+}
+
+export function buildContext(i: ValidationInputs): ValidationContext {
+  const answers = i.state.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
+  return {
+    snapshot: i.snapshot,
+    tenantPolicies: i.snapshot.config.caPolicies?.rows ?? [],
+    groupMembers: i.groupMembers ?? [],
+    breakGlassIds: i.state.breakGlassUserIds,
+    operatorUserId: operatorIdOf(i.snapshot),
+    allowedCountries: i.state.allowedCountries,
+    serviceAccountIds: i.state.serviceAccountUserIds,
+    approvedExclusionIds: [...i.state.breakGlassUserIds, ...i.state.serviceAccountUserIds],
+    viability: i.viability ?? [],
+    answers,
+  }
+}
+
+const BLOCKER_FIRST = { blocker: 0, warning: 1, note: 2 } as const
+
+/**
+ * The registry's results as the Setup surfaces consume them: must-fix first,
+ * then recommended, then notes, with the counts the chip shows.
+ */
+export function toValidationResult(results: RuleResult[], checkedAt = new Date().toISOString()): ValidationResult {
+  const shown = results
+    .filter((r) => r.finding !== null && r.finding !== undefined)
+    .filter((r) => r.outcome !== 'pass' || r.severity === 'note' || Boolean(r.finding))
+    .sort((a, b) => BLOCKER_FIRST[a.severity] - BLOCKER_FIRST[b.severity])
+  // A passing rule with a fact to report reads as a note, whatever its severity.
+  const rank = (r: RuleResult): number => (isBlocking(r) ? 0 : r.outcome === 'pass' ? 2 : r.severity === 'warning' ? 1 : 2)
+  shown.sort((a, b) => rank(a) - rank(b))
+  const toFix = shown.filter((r) => rank(r) === 0).length
+  const recommended = shown.filter((r) => rank(r) === 1).length
+  return {
+    checkedAt,
+    passed: toFix === 0,
+    findings: shown.map((r) => r.finding as string),
+    actions: shown.map((r) => r.fix ?? null),
+    toFix,
+    recommended,
+  }
+}
+
+/** Every subject the plan gates on, with the rule results behind it. */
+export type SubjectReport = {
+  subject: RuleSubject
+  /** One entry per target: a break-glass account, the group, the location. */
+  targets: { target: unknown; label: string; results: RuleResult[] }[]
+  blocking: RuleResult[]
+  warnings: RuleResult[]
+}
+
+function labelOf(snapshot: TenantSnapshot, target: unknown): string {
+  if (typeof target === 'string') {
+    const u = snapshot.users.find((x) => x.id === target)
+    return u?.displayName ?? u?.userPrincipalName ?? target
+  }
+  const g = target as { displayName?: string | null; groupId?: string; id?: string } | null
+  return g?.displayName ?? g?.groupId ?? g?.id ?? ''
+}
+
+export function reportFor(subject: RuleSubject, targets: unknown[], ctx: ValidationContext): SubjectReport {
+  const perTarget = targets.map((target) => ({ target, label: labelOf(ctx.snapshot, target), results: evaluateSubject(subject, target, ctx) }))
+  const all = perTarget.flatMap((t) => t.results)
+  return {
+    subject,
+    targets: perTarget,
+    blocking: all.filter(isBlocking),
+    warnings: all.filter((r) => r.severity === 'warning' && (r.outcome === 'fail' || r.outcome === 'unknown') && Boolean(r.finding)),
+  }
+}
+
+/**
+ * Break-glass is evaluated per account, and once for the whole set: with no
+ * account nominated at all, `bg.count` still has to fire. A set-level rule is
+ * reported against the first account only, so the count on screen matches the
+ * number of distinct things to fix.
+ */
+export function breakGlassReport(ctx: ValidationContext): SubjectReport {
+  const targets: unknown[] = ctx.breakGlassIds.length > 0 ? ctx.breakGlassIds : ['']
+  const report = reportFor('breakGlass', targets, ctx)
+  if (ctx.breakGlassIds.length === 0) {
+    // With nothing nominated, only the set-level rules have anything to say.
+    for (const t of report.targets) t.results = t.results.filter((r) => SET_LEVEL.has(r.id))
+  }
+  const seen = new Set<string>()
+  for (const t of report.targets) {
+    t.results = t.results.filter((r) => {
+      if (!SET_LEVEL.has(r.id)) return true
+      if (seen.has(r.id)) return false
+      seen.add(r.id)
+      return true
+    })
+  }
+  const all = report.targets.flatMap((t) => t.results)
+  report.blocking = all.filter(isBlocking)
+  report.warnings = all.filter((r) => r.severity === 'warning' && (r.outcome === 'fail' || r.outcome === 'unknown') && Boolean(r.finding))
+  return report
+}
+
+/** Rules about the set of accounts rather than one account. */
+export const SET_LEVEL = new Set(['bg.count', 'bg.methodDiversity', 'bg.credentialStorage', 'bg.signInMonitoring'])
+
+// ---- what Setup renders ----------------------------------------------------
+
+/** One result per nominated account, in the order they were nominated. */
+export function breakGlassFindings(i: ValidationInputs): Record<string, ValidationResult> {
+  const report = breakGlassReport(buildContext(i))
+  const out: Record<string, ValidationResult> = {}
+  for (const t of report.targets) out[String(t.target)] = toValidationResult(t.results)
+  return out
+}
+
+export function exclusionGroupFindings(entry: GroupFacts | null, i: ValidationInputs): ValidationResult {
+  return toValidationResult(evaluateSubject('exclusionGroup', entry, buildContext(i)))
+}
+
+export function trustedLocationFindings(location: unknown, i: ValidationInputs): ValidationResult {
+  return toValidationResult(evaluateSubject('trustedLocation', location, buildContext(i)))
+}
+
+export function pilotGroupFindings(entry: GroupFacts | null, i: ValidationInputs): ValidationResult {
+  return toValidationResult(evaluateSubject('pilotGroup', entry, buildContext(i)))
+}
