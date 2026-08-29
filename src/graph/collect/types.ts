@@ -118,6 +118,8 @@ export type EvidenceAggregates = {
   byProtocol: Record<string, number>
   /** country → distinct users seen from it */
   byCountry: Record<string, number>
+  /** Interactive sign-ins per UTC weekday and hour (Sunday first, 168 buckets), for the tenant's rhythm. */
+  byWeekdayHour?: number[]
 }
 
 // Lane B usage signals for block-goal evidence (roadmap.md §5): who was seen

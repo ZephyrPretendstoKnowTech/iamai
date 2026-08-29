@@ -49,6 +49,10 @@ function step(over: Partial<Step>): Step {
     scheduledDate: null,
     tracking: null,
     alreadyInPlace: false,
+    events: null,
+    safeVerdict: { safe: false, reason: '', sentence: '' },
+    plainTitle: '',
+    forManager: '',
     ...over,
   }
 }

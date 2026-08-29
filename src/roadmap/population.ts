@@ -169,6 +169,7 @@ function buildCohorts(ids: string[], ctx: PopulationContext): Cohort[] {
   return cohorts
 }
 
+const topCache = new WeakMap<string[], Map<string, { id: string; weight: number }[]>>()
 const countCache = new WeakMap<string[], Map<string, number>>()
 function countCached(ids: string[], key: string, compute: () => number): number {
   let m = countCache.get(ids)
@@ -207,7 +208,12 @@ export function describePopulation(step: Step, ctx: PopulationContext, options: 
       .map((r) => ({ id: r.id, name: ctx.nameOf(r.id), reasons: r.reasons }))
   } else {
     // Partial selection: the ten heaviest, without sorting 25,000 people.
-    const top: { id: string; weight: number }[] = []
+    // Steps that share a population and a family share the ten (block and location steps depend on their own evidence).
+    const family = step.readiness.family
+    const cacheable = family !== 'block' && family !== 'location'
+    const cachedTop = cacheable ? topCache.get(ids)?.get(family) : undefined
+    const top: { id: string; weight: number }[] = cachedTop ? [...cachedTop] : []
+    if (!cachedTop) {
     let floor = -1
     for (const id of ids) {
       const weight = riskWeight(id, step, ctx)
@@ -224,6 +230,12 @@ export function describePopulation(step: Step, ctx: PopulationContext, options: 
       }
     }
     if (top.length < RISKIEST) top.sort((a, b) => b.weight - a.weight)
+    if (cacheable) {
+      let m = topCache.get(ids)
+      if (!m) topCache.set(ids, (m = new Map()))
+      m.set(family, [...top])
+    }
+    }
     named = top.map((r) => ({ id: r.id, name: ctx.nameOf(r.id), reasons: riskReasons(r.id, step, ctx).reasons }))
   }
   return {

@@ -148,3 +148,35 @@ export const HEADLINE_METRICS: { tile: Definition; population: string; window: s
   { tile: TILE.toSetUp, population: POPULATION.enabled, window: null },
   { tile: TILE.scoredGoals, population: POPULATION.scored, window: null },
 ]
+
+/**
+ * Terms explained where they appear (scheduling-and-onboarding.md §3.2):
+ * one sentence each, shown by the Term component on hover or tap. No
+ * glossary page.
+ */
+export const TERM: Record<string, Definition> = {
+  conditionalAccess: { title: 'Conditional Access policy', text: 'An if-then rule Microsoft Entra checks at every sign-in: if these people use these apps in these conditions, then require this or block it.' },
+  reportOnly: { title: 'Report-only', text: 'A policy that records what it would have done at each sign-in without doing it, so the impact is known before anyone is affected.' },
+  breakGlass: { title: 'Break-glass account', text: 'An emergency admin account excluded from every policy, kept for the day a policy locks the admins out.' },
+  namedLocation: { title: 'Named location', text: 'A set of IP ranges or countries given a name so policies can refer to it.' },
+  trustedLocation: { title: 'Trusted location', text: 'A named location marked as trusted, usually the office network, where some policies relax.' },
+  phishingResistant: { title: 'Phishing-resistant', text: 'A sign-in method that cannot be tricked out of someone: a security key, a passkey or Windows Hello for Business, tied to the real site.' },
+  authenticationStrength: { title: 'Authentication strength', text: 'A named list of sign-in methods a policy accepts, such as phishing-resistant only.' },
+  temporaryAccessPass: { title: 'Temporary Access Pass', text: 'A short-lived code an admin issues so a person can set up their first method without a phone yet.' },
+  compliantDevice: { title: 'Compliant device', text: 'A device enrolled in Intune that meets the rules set there, such as encryption and a recent update.' },
+  hybridJoined: { title: 'Hybrid joined', text: 'A Windows device joined to the on-premises domain and registered with Entra as well.' },
+  deviceCodeFlow: { title: 'Device code flow', text: 'A sign-in where a code shown on one device is entered on another; useful for TVs and scripts, and a favourite of phishing kits.' },
+  authenticationTransfer: { title: 'Authentication transfer', text: 'A sign-in handed from one device to another, for example by scanning a QR code on a desktop with a phone.' },
+  sessionControl: { title: 'Session control', text: 'What a policy does after sign-in succeeds: how long the session lasts, whether the browser stays signed in, what can be downloaded.' },
+  signInFrequency: { title: 'Sign-in frequency', text: 'How often a person has to sign in again, whatever they are doing.' },
+  persistentBrowser: { title: 'Persistent browser', text: 'Whether closing the browser ends the session or the next visit is still signed in.' },
+  servicePrincipal: { title: 'Service principal', text: 'The identity an application or automation uses to sign in, with no person behind it.' },
+  dynamicGroup: { title: 'Dynamic group', text: 'A group whose members are chosen by a rule, such as department, so membership changes without anyone editing it.' },
+  soak: { title: 'Soak', text: 'The days a change runs for one ring before the next ring starts, so a problem shows up in a small group first.' },
+  ring: { title: 'Ring', text: 'A group of people a change reaches at one stage: a pilot first, then wider rings, then everyone.' },
+  verificationCampaign: { title: 'Verification campaign', text: 'A period where everyone is asked to set up and use MFA once, so enforcement changes nothing for them.' },
+  securityInfoRegistration: { title: 'Security-info registration', text: 'The page where a person adds or changes their sign-in methods; the first thing an attacker with a password does.' },
+  workloadIdentity: { title: 'Workload identity', text: 'An identity used by software rather than a person: an application, a service principal or a managed identity.' },
+  legacyAuthentication: { title: 'Legacy authentication', text: 'Older sign-in protocols such as IMAP, POP and SMTP basic auth that cannot do MFA at all.' },
+  intune: { title: 'Intune', text: "Microsoft's device management service: it enrols devices, applies rules and reports whether each device is compliant." },
+}

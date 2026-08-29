@@ -11,6 +11,8 @@ import { BANDS, OBSERVATION_DAYS, bandForActiveUsers } from './constants.ts'
 import type { SizeBand } from './constants.ts'
 import { ringBandFor } from './rings.ts'
 import { promptsPeople } from './strand.ts'
+import { toEnforcementDay as enforcementDay } from './timing.ts'
+import type { TenantRhythm } from './rhythm.ts'
 import { CRITICAL, DEPENDENCY } from '../copy/schedule.ts'
 import { PHASE_NAME } from '../copy/steps.ts'
 import { absoluteDate } from '../copy/dates.ts'
@@ -88,10 +90,15 @@ export type Schedule = {
   freeze: ChangeFreeze | null
   /** Filled by the generator, which holds the tenant's policies. */
   policyCount: PolicyCount | null
+  /** The tenant's working pattern (scheduling-and-onboarding.md §2.1); filled by the generator. */
+  rhythm?: TenantRhythm | null
 }
 
 export type ScheduleOptions = {
   freeze?: ChangeFreeze | null
+  /** YYYY-MM-DD dates nothing is enforced on (nor the working day before). */
+  holidays?: string[]
+  rhythm?: TenantRhythm | null
   /** step id → operator-set start date: the step starts no earlier (roadmap-v2.md §4.12). */
   scheduled?: Record<string, string> | null
 }
@@ -115,14 +122,13 @@ export function toWeekday(iso: string): string {
   return iso
 }
 
-/** Enforcement starts Monday to Thursday, never a Friday or a weekend (§2). */
-export function toEnforcementDay(iso: string): string {
-  const d = new Date(iso)
-  const day = d.getUTCDay()
-  if (day === 5) return addDays(iso, 3)
-  if (day === 6) return addDays(iso, 2)
-  if (day === 0) return addDays(iso, 1)
-  return iso
+/**
+ * Enforcement starts on a Tuesday or a Wednesday (Tuesday only for a
+ * high-disruption change), never a Friday, a weekend, a holiday or the last
+ * working day before one (scheduling-and-onboarding.md §2.2).
+ */
+export function toEnforcementDay(iso: string, opts: { highDisruption?: boolean; holidays?: string[]; rhythm?: TenantRhythm | null } = {}): string {
+  return enforcementDay(iso, { highDisruption: opts.highDisruption ?? false, holidays: opts.holidays ?? [], rhythm: opts.rhythm ?? null })
 }
 
 export function nextMonday(fromIso: string): string {
@@ -304,11 +310,12 @@ export function buildSchedule(
     const inFreeze = (iso: string): boolean => freeze !== null && iso >= freeze.from && iso <= freeze.to
     // An enforcement event is a change day: every step that starts that day
     // shares one change window. The cap limits change days per week.
-    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }): string => {
-      let cursor = toEnforcementDay(iso)
+    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, highDisruption = false): string => {
+      const dayOpts = { highDisruption, holidays: options.holidays ?? [], rhythm: options.rhythm ?? null }
+      let cursor = toEnforcementDay(iso, dayOpts)
       for (let guard = 0; guard < 400; guard++) {
         if (inFreeze(cursor)) {
-          cursor = toEnforcementDay(addDays(freeze!.to, 1))
+          cursor = toEnforcementDay(addDays(freeze!.to, 1), dayOpts)
           note.kind = 'freeze'
           continue
         }
@@ -317,7 +324,7 @@ export function buildSchedule(
         if (days.has(cursor.slice(0, 10)) || days.size < cap) return cursor
         const later = [...days].filter((d) => d > cursor.slice(0, 10)).sort()[0]
         if (later) return later + cursor.slice(10)
-        cursor = toEnforcementDay(addDays(week + 'T12:00:00.000Z', 7))
+        cursor = toEnforcementDay(addDays(week + 'T12:00:00.000Z', 7), dayOpts)
         note.kind = 'cap'
       }
       return cursor
@@ -361,10 +368,11 @@ export function buildSchedule(
       const soaks = rings ? rings.map((r) => r.soakDays) : [s.readiness.family === 'other' ? 1 : ringBand.soakDays]
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
         const windows: { start: string; end: string }[] = []
-        let cursor = shift(from, reason)
+        const high = (s.score?.disruption ?? 0) >= HIGH_DISRUPTION
+        let cursor = shift(from, reason, high)
         const start = cursor
         for (const [i, soak] of soaks.entries()) {
-          if (i > 0) cursor = shift(cursor, reason)
+          if (i > 0) cursor = shift(cursor, reason, high)
           const end = addDays(cursor, soak)
           windows.push({ start: cursor, end })
           cursor = end

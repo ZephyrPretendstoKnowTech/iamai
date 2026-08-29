@@ -5,6 +5,7 @@ import { count } from './statements.ts'
 // one-line "Why this matters" (why). Nothing above a picker runs past two
 // sentences.
 export const SETUP_QUESTIONS = {
+  stepTitle: 'the Setup questions',
   breakGlass: {
     title: 'Emergency access',
     question: 'Which accounts are the emergency access (break-glass) admins?',

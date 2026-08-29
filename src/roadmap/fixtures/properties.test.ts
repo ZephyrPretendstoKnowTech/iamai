@@ -123,7 +123,7 @@ for (const f of fixtures) {
     for (const s of steps) {
       for (const r of ringsOf(s)) {
         const day = new Date(r.plannedStart).getUTCDay()
-        assert.ok(day >= 1 && day <= 4, `${s.id} ring ${r.plannedStart} starts Monday to Thursday`)
+        assert.ok(day === 2 || day === 3, `${s.id} ring ${r.plannedStart} starts on a Tuesday or a Wednesday`)
         assert.ok(r.plannedEnd > r.plannedStart, `${s.id} ring has a real window`)
       }
       for (const d of graph[s.id] ?? []) {
