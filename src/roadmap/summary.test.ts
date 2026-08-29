@@ -48,6 +48,7 @@ function step(over: Partial<Step>): Step {
     owner: null,
     scheduledDate: null,
     tracking: null,
+    alreadyInPlace: false,
     ...over,
   }
 }

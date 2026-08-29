@@ -58,8 +58,9 @@ export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}): Fixtur
   }
   const t1 = performance.now()
   const result = generateRoadmap(input)
+  applyProgress(result.steps, snapshot, coverage, f.planId, undefined, f.planCreatedAt)
+  // State reasons read the tracking (the real enforcement date), so they come last.
   annotateStateReasons(result.steps)
-  applyProgress(result.steps, snapshot, coverage, f.planId)
   const end = performance.now()
   return { ...result, input, coverage, viability, ms: end - t0, roadmapMs: end - t1 }
 }

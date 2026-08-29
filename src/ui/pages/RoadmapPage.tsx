@@ -31,7 +31,7 @@ import { POPULATION } from '../../copy/population.ts'
 import { ROLLBACK_V2, SECTION } from '../../copy/stepContent.ts'
 import { RINGS } from '../../copy/rings.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
-import { changesSince, groupGrowth, progressHeadline, stepProgress } from '../../roadmap/tracking.ts'
+import { changesSince, groupGrowth, progressHeadline, stepProgress, trackable } from '../../roadmap/tracking.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { savedStepOf } from '../../roadmap/progress.ts'
 import type { Dependency } from '../../roadmap/schedule.ts'
@@ -69,6 +69,8 @@ type PlanStore = {
   revisions?: { revision: number; at: string; note: string }[]
   stepIds?: string[]
   baselinePin?: string | null
+  /** When this plan was first generated: evidence before it is "already in place" (ux-review-07 §1). */
+  planCreatedAt?: string
 }
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
@@ -207,8 +209,9 @@ export function RoadmapPage({
       scheduled: Object.fromEntries(Object.entries(saved?.steps ?? {}).flatMap(([id, v]) => (v.scheduledDate ? [[id, v.scheduledDate]] : []))),
     })
     mergePersisted(steps, saved?.steps ?? null)
+    applyProgress(steps, snapshot, coverage, planId, undefined, saved?.revisions?.[0]?.at ?? saved?.planCreatedAt ?? null)
+    // State reasons read the tracking (the real enforcement date), so they come last.
     annotateStateReasons(steps)
-    applyProgress(steps, snapshot, coverage, planId)
     const dangers = findDangerAreas({
       snapshot,
       viability,
@@ -273,6 +276,7 @@ export function RoadmapPage({
       revisions,
       stepIds: ids,
       baselinePin: pin,
+      planCreatedAt: saved?.planCreatedAt ?? revisions[0]?.at ?? new Date().toISOString(),
     })
   }, [computed, snapshot, planId, saved, startDate, band, baselineIndex.commit])
 
@@ -327,6 +331,9 @@ export function RoadmapPage({
   const showCompleted = showCompletedChoice ?? !(summary.done * 3 > summary.total)
   const setShowCompleted = (next: boolean | ((v: boolean) => boolean)) => setShowCompletedChoice(typeof next === 'function' ? next(showCompleted) : next)
   const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
+  // The one denominator (ux-review-07 §2): every step that is not skipped, used by the badge, the headline and the journey.
+  const tracked = trackable(steps)
+  const trackedDone = tracked.filter((s) => s.status === 'done').length
   const done = steps.filter((s) => s.status === 'done')
   const safe = steps.filter((s) => s.safeToday)
   const blocked = steps.filter((s) => s.status === 'blocked')
@@ -513,14 +520,14 @@ export function RoadmapPage({
     <div className="overview">
       {/* Band 1: the headline and the one constraint that sets the length (prompt 26 §6). */}
       <div className="overview-band">
-        <h3 className="overview-headline">{work.length === 0 ? C.headlineDone(steps.length) : C.headline(done.length, steps.length, absoluteDate(schedule.targetEnd))}</h3>
+        <h3 className="overview-headline">{work.length === 0 ? C.headlineDone(tracked.length) : C.headline(trackedDone, tracked.length, absoluteDate(schedule.targetEnd))}</h3>
         {constraint && <p className="overview-constraint">{constraint}</p>}
       </div>
 
       {/* Band 2: four tiles, each opening the Steps tab pre-filtered (§7). */}
       <div className="overview-band">
         <Stats>
-          <StatTile value={`${done.length}/${steps.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} onClick={() => openSteps('done')} />
+          <StatTile value={`${trackedDone}/${tracked.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} onClick={() => openSteps('done')} />
           <StatTile value={schedule.weeks} label={TILE.weeks.title} tip={TILE.weeks} onClick={() => setActiveTab('schedule')} />
           <StatTile value={readyToday.length} label={C.readyToday} tone={readyToday.length > 0 ? 'info' : 'neutral'} tip={TILE.readyToday} onClick={() => openSteps('ready')} />
           <StatTile value={blocked.length} label={STEP_STATUS.blocked.title} tone={blocked.length > 0 ? 'warning' : 'neutral'} tip={STEP_STATUS.blocked} onClick={() => openSteps('blocked')} />
@@ -593,6 +600,7 @@ export function RoadmapPage({
     { id: 'readyToEnforce', label: TRACK.stage.readyToEnforce },
     { id: 'enforced', label: TRACK.stage.enforced },
     { id: 'verified', label: TRACK.stage.verified },
+    { id: 'alreadyInPlace', label: TRACK.stage.alreadyInPlace },
   ]
   const weekKey = (iso: string): string => {
     const d = new Date(iso)
@@ -617,7 +625,9 @@ export function RoadmapPage({
     <div>
       {overview()}
       <div className="overview-band">
-        <h3 className="overview-headline">{headline.sentence}</h3>
+        <h3 className="overview-headline">{headline.state}</h3>
+        {headline.projection && <p className="overview-constraint">{headline.projection}</p>}
+        {headline.already && <p className="overview-constraint">{headline.already}</p>}
       </div>
       <h4>{PROGRESS.journeyTitle}</h4>
       <p className="reason">{PROGRESS.journeyHint}</p>
@@ -1115,7 +1125,7 @@ export function RoadmapPage({
         active={activeTab}
         onChange={setActiveTab}
         tabs={[
-          { id: 'progress', label: C.tabs.progress, badge: C.stepsBadge(summary.done, summary.total), render: progressTab },
+          { id: 'progress', label: C.tabs.progress, badge: C.stepsBadge(trackedDone, tracked.length), render: progressTab },
           { id: 'plan', label: C.tabs.plan, render: stepsView },
           { id: 'danger', label: C.tabs.danger, badge: dangers.length || '', render: dangerAreas },
           { id: 'schedule', label: C.tabs.schedule, badge: C.weeksBadge(schedule.weeks), render: scheduleTab },

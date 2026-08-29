@@ -22,6 +22,11 @@ function thresholdFor(family: Step['readiness']['family']): number | null {
 export function stateReasonFor(step: Step, stepById: Map<string, Step>): string {
   switch (step.status) {
     case 'done': {
+      if (step.tracking?.enforcedAt) {
+        return step.alreadyInPlace
+          ? STATE_REASON.inPlaceBefore(absoluteDate(step.tracking.enforcedAt))
+          : STATE_REASON.enforcedOn(absoluteDate(step.tracking.enforcedAt), absoluteDate(step.tracking.noticedAt ?? step.history.at(-1)?.at ?? step.tracking.enforcedAt))
+      }
       const last = step.history.at(-1)
       if (last && last.to === 'done' && last.note) return STATE_REASON.savedDone(last.note, absoluteDate(last.at))
       if (step.deliveredBy.length > 0) return STATE_REASON.deliveredBy(step.deliveredBy)

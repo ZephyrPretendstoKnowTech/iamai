@@ -333,6 +333,8 @@ export { plural }
 export const STATE_REASON = {
   deliveredBy: (names: string[]) => `Delivered by ${list(names)}.`,
   savedDone: (note: string, date: string) => `Done ${date}: ${note}.`,
+  enforcedOn: (real: string, noticed: string) => `Policy enforced on ${real} (noticed by IAMAI on ${noticed}).`,
+  inPlaceBefore: (real: string) => `Already in place before the plan began (enforced on ${real}).`,
   verifyDone: `Every enabled user proved MFA in ${WINDOW}.`,
   recurringDone: (line: string) => `${line}`,
   skipped: (reason: string) => `Skipped: ${reason}.`,

@@ -4,7 +4,7 @@ import { count } from './statements.ts'
 
 export const TRACK = {
   matchedByTag: 'matched by its plan tag',
-  matchedByFingerprint: 'created outside the plan, matched by what it does',
+  matchedByFingerprint: 'this policy already existed and covers this step',
   reportOnlyFound: (date: string) => `policy in report-only since ${date}`,
   enforced: (date: string) => `policy enforced on ${date}`,
   enforcedByOther: (name: string) => `${name} already enforces this`,
@@ -26,6 +26,7 @@ export const TRACK = {
     readyToEnforce: 'Ready to enforce',
     enforced: 'Enforced',
     verified: 'Verified',
+    alreadyInPlace: 'Already in place',
   },
   slip: {
     prerequisite: (title: string) => `waiting for ${title}`,
@@ -42,6 +43,8 @@ export const PROGRESS = {
   notStarted: 'Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.',
   headline: (started: string, enforced: number, total: number, soaking: number, slipped: number) =>
     `Started ${started}. ${enforced} of ${count(total, 'step')} enforced, ${soaking} soaking, ${slipped} slipped by more than a week.`,
+  alreadyCovered: (n: number) => (n === 0 ? '' : `${count(n, 'step')} ${n === 1 ? 'was' : 'were'} already covered before the plan began.`),
+  denominator: (total: number, trackable: number) => (total === trackable ? `${count(total, 'step')}` : `${count(total, 'step')}, of which ${trackable} are trackable`),
   projection: (projected: string, planned: string) => `At the current pace, finished by ${projected} (planned ${planned}).`,
   projectionOnTrack: (planned: string) => `On track for ${planned}.`,
   projectionNoPace: (planned: string) => `Planned finish ${planned}; the pace shows after the first enforcement.`,

@@ -158,6 +158,8 @@ export type Step = {
   scheduledDate: string | null
   /** What actually happened, from evidence (roadmap-v2.md §5); null until a policy matches. */
   tracking: StepTracking | null
+  /** Satisfied by a policy whose evidence predates the plan: not executed by the plan, never a slip (ux-review-07 §1). */
+  alreadyInPlace: boolean
 }
 
 export type StepTracking = {
@@ -171,6 +173,8 @@ export type StepTracking = {
   reportOnlyAt: string | null
   enforcedAt: string | null
   regressedAt: string | null
+  /** The scan that noticed the event; the event's own date is enforcedAt / reportOnlyAt. */
+  noticedAt: string | null
   daysInReportOnly: number
   signIns: number
   failures: number

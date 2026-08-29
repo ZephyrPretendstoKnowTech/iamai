@@ -212,6 +212,7 @@ function upgradeStep(s: Step): Step {
     owner: p.owner ?? null,
     scheduledDate: p.scheduledDate ?? null,
     tracking: p.tracking ?? null,
+    alreadyInPlace: p.alreadyInPlace ?? false,
     history: Array.isArray(s.history) ? s.history : [],
   }
 }

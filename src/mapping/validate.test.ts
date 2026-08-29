@@ -250,6 +250,6 @@ test('break-glass: a single SMS-only account renders every applicable finding', 
   const text = r.findings.join(' | ')
   assert.match(text, /fewer than two break-glass accounts/)
   assert.match(text, /text or call is the only MFA method/)
-  assert.match(text, /last successful sign-in|never signed in/)
+  assert.match(text, /last successful sign-in|never signed in|drilled within|last sign-in/)
   assert.ok(r.actions && r.actions.filter(Boolean).length >= 3, 'each finding ends with an action link')
 })

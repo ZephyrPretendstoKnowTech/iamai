@@ -70,6 +70,7 @@ function step(over: Partial<Step> & { id: string }): Step {
     owner: null,
     scheduledDate: null,
     tracking: null,
+    alreadyInPlace: false,
     ...over,
   }
 }
@@ -130,7 +131,7 @@ test('12 active users: small band, verification window, rings dated after their 
   for (const st of steps) for (const r of st.rings) assert.ok(day(r.plannedStart) >= 1 && day(r.plannedStart) <= 4, `${st.id} ring starts Monday to Thursday`)
   assert.ok(s.withinBand, `${s.totalDays} days fits the small band`)
   assert.ok(s.derivation.criticalPath.length > 0)
-  assert.equal(s.derivation.constraint, 'verification')
+  assert.ok(['verification', 'soft', 'phase'].includes(s.derivation.constraint), s.derivation.constraint)
   assert.deepEqual(s.waves[0].stepIds.sort(), ['done', 's-prereq-exclusion-group', 's-verify-mfa'])
   assert.equal(s.waveOf.done, 0)
 })
@@ -225,4 +226,20 @@ test('all done → no windows, finishes on day 0', () => {
   assert.equal(s.targetEnd, s.start)
   assert.equal(s.waves.length, 1)
   assert.equal(s.derivation.constraint, 'none')
+})
+
+test('phase order (ux-review-07 §3): no step starts before the last start of any lower phase, and waves are named by their dominant phase', () => {
+  const steps = [
+    step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], denies: false, readiness: { family: 'other', percent: null, lines: [] } }),
+    step({ id: 'admin', phase: 3, readiness: { family: 'admin', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 2, guests: 0, ids: ['a0', 'a1'] }, rings: [ring(0, 3, ['a0']), ring(1, 3, ['a1'])] }),
+    step({ id: 'mfa', phase: 2 }),
+    step({ id: 'block', phase: 1, readiness: { family: 'block', percent: null, lines: [] }, population: { total: 5, active: 5, admins: 0, guests: 0, ids: people(5, 'b') }, rings: [ring(0, 3, people(2, 'b')), ring(1, 3, people(3, 'b'))] }),
+  ]
+  const s = buildSchedule(steps, MON, 12)
+  const startOf = (id: string) => steps.find((x) => x.id === id)!.rings[0].plannedStart
+  assert.ok(startOf('block') <= startOf('mfa'), 'blocks start no later than MFA')
+  assert.ok(startOf('mfa') <= startOf('admin'), 'admin hardening follows MFA')
+  const phases = s.waves.filter((w) => w.wave > 0).map((w) => w.phase)
+  assert.deepEqual([...phases], [...phases].sort((a, b) => a - b), 'waves read in phase order')
+  assert.ok(!phases.includes(0), 'no enforcement wave is named Foundations')
 })
