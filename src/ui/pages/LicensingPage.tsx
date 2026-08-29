@@ -5,6 +5,7 @@ import { CATALOGUE } from '../../coverage/coverage.ts'
 import ladder from '../../../data/free-tier-ladder.json' with { type: 'json' }
 import { LICENSING } from '../../copy/pages.ts'
 import { stepIdForGoal } from '../../roadmap/generate.ts'
+import { ladderStepId } from '../../roadmap/ladder.ts'
 import { stepHref } from '../shell/AppShell.tsx'
 import { TILE } from '../../copy/definitions.ts'
 import { Card, Chip, DataTable, EmptyState, InfoTip, LinkButton } from '../components/index.ts'
@@ -30,6 +31,8 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
     )
   }
   const caps = snapshot.capabilities
+  // No Entra ID P1 means no Conditional Access, so the ladder is the plan (SPEC §12).
+  const onLadder = !caps.entraP1.enabled
   const users = snapshot.users.length
   const goalsByTier = new Map<string, { name: string; tldr: string | null }[]>()
   for (const g of CATALOGUE) {
@@ -112,20 +115,28 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
       </Card>
 
       <Card title={LICENSING.ladderTitle}>
-        <p className="muted">{LICENSING.ladderIntro}</p>
+        <p className="muted">
+          {LICENSING.ladderIntro}
+          {onLadder && ` ${LICENSING.ladderInPlan}`}
+        </p>
         <ol className="sections">
-          {ladder.items.map((i) => (
-            <li key={i.id}>
-              <strong>{i.name}</strong>
-              {i.description && <span className="reason">: {i.description}</span>}
-              {i.goalId && (
-                <>
-                  {' '}
-                  <a href={stepHref(stepIdForGoal(i.goalId))}>{LICENSING.openStep}</a>
-                </>
-              )}
-            </li>
-          ))}
+          {ladder.items.map((i) => {
+            // On a free licence every rung is a step of its own; with Conditional
+            // Access, only the rungs a catalogue goal covers have one.
+            const href = onLadder ? stepHref(ladderStepId(i.id)) : i.goalId ? stepHref(stepIdForGoal(i.goalId)) : null
+            return (
+              <li key={i.id}>
+                <strong>{i.name}</strong>
+                {i.description && <span className="reason">: {i.description}</span>}
+                {href && (
+                  <>
+                    {' '}
+                    <a href={href}>{LICENSING.openStep}</a>
+                  </>
+                )}
+              </li>
+            )
+          })}
         </ol>
       </Card>
       <p className="step-next">

@@ -50,8 +50,8 @@ panel that renders only with `?dev=1`; the copy lint over `src/copy` is clean.
 |---|---|---|
 | 15 | Clean-profile walk, Start to Roadmap, print, save and reload | On the mock tenant: Roadmap renders 99 ms after navigation, Findings 0 ms (already computed), DOMContentLoaded 89 ms; print produced `docs/screens/27/roadmap.pdf`; save and reload of the plan file is covered by `plan.test.ts` and `tracking.test.ts` (v1 → v2). A clean-profile walk against a real tenant is in the blockers file. |
 | 16 | `?dev=1&fail=1` | The worker forces one 403 and one 429; the disabled section carries "insufficient privileges" and the slow state shows; smoke asserts no page throws across the walk. |
-| 17 | Unlicensed tenant (`?licence=free`) | Smoke: Findings renders from configuration and directory data and says "21 goals need a licence tier this tenant does not have"; Scan says "Sign-in records: not available on this licence (needs Entra ID P1 or P2)… nothing can be Verified without usable records"; the Roadmap header says "With this tenant's Entra ID Free, 2 of 23 steps are available now"; nothing crashes. **Finding:** the free-tier ladder (`data/free-tier-ladder.json`) appears only on the Licensing guide, not as plan steps, so a free tenant's plan has two steps. Recorded as a blocker (a feature, not a fix). |
-| 18 | Non-admin or Global Reader sign-in | Not exercisable on the mock. By code: every collector treats a 403 as a section disable with the reason from Graph ("insufficient privileges"), never a crash; the Scan page shows each disabled section with its reason. **Gap:** the reason does not name the missing role or say what to ask for. Recorded as a blocker. |
+| 17 | Unlicensed tenant (`?licence=free`) | Smoke: Findings renders from configuration and directory data and says "21 goals need a licence tier this tenant does not have"; Scan says "Sign-in records: not available on this licence (needs Entra ID P1 or P2)… nothing can be Verified without usable records"; the Roadmap header says "With this tenant's Entra ID Free, 2 of 23 steps are available now"; nothing crashes. **Fixed since:** the free-tier ladder is now the plan for a tenant with no Entra ID P1 (`src/roadmap/ladder.ts`, SPEC §12): ten phase 0 steps in ladder order, each with a per-tenant impact, exact portal instructions, its own verification and rollback, and a status the tenant proves. The mock free plan goes from 2 steps to 12, and the Conditional Access prerequisites that nothing could use are no longer asked for. |
+| 18 | Non-admin or Global Reader sign-in | Not exercisable on the mock. By code: every collector treats a 403 as a section disable with the reason from Graph ("insufficient privileges"), never a crash; the Scan page shows each disabled section with its reason. **Fixed since:** `src/graph/collect/roles.ts` maps every registry scope to the roles that grant it; the Scan page names the role per refused section, says Global Reader grants everything IAMAI reads and writes nothing, and no longer labels a refused section "not available on this licence". Walked on the mock with `?dev=1&denied=1`; a live check with a Global Reader and a non-admin account stays in the blockers file. |
 | 19 | Zero Conditional Access policies (`?policies=0`) | Smoke: Findings renders; the Roadmap renders with Do this next; the policy count reads "no Conditional Access policies in the tenant today"; the plan lists every goal as a create step in phase order rather than a wall of "missing". |
 
 ## Part 5 — Accessibility and performance
@@ -69,6 +69,23 @@ panel that renders only with `?dev=1`; the copy lint over `src/copy` is clean.
 |---|---|---|
 | 24 | Subpath build | `BASE_PATH=/iamai/ vite build` rewrites the script, stylesheet and the self-hosted font to `/iamai/…`; routing is hash-based; the baseline index is bundled and policy files fetch from `raw.githubusercontent.com` by absolute URL; MSAL's redirect URI is now `origin + BASE_URL`. The Pages workflow (`.github/workflows/deploy-pages.yml`) builds from a clean checkout with `BASE_PATH=/<repo>/`. **Not yet exercised live:** see the blockers file. |
 | 25 | `docs/RELEASE-CHECKLIST.md` | Added: redirect URI, publisher domain, public repo, the scrub, Pages, first-run screenshots, baseline pin. |
+
+## What changed after the audit (blocker work)
+
+- **The free-tier ladder is the plan without Entra ID P1** (`src/roadmap/ladder.ts`,
+  `src/copy/ladder.ts`, `src/roadmap/stepDefaults.ts`, `src/roadmap/ladder.test.ts`,
+  SPEC §12). Rungs carry `ladder: true`, read "Hardening step", verify themselves in the
+  portal screen the instructions name, and roll back in that same screen. The
+  Conditional-Access-only prerequisites are gated off on a free tenant, including the
+  "turn security defaults off" step, which was the wrong advice when nothing can take
+  their place.
+- **A 403 names the role** (`src/graph/collect/roles.ts`, `src/copy/access.ts`,
+  `src/graph/collect/roles.test.ts`). Registry rows gained `sourceKey`; SPEC §4 and the
+  "What IAMAI reads" page gained a Least role column, generated from the same map;
+  `SECURITY.md` gained the role ask. A refused section is no longer described as a
+  licence limit.
+- Smoke gained the unlicensed-ladder walk and the `?denied=1` walk. Screenshots under
+  `docs/screens/blockers/`.
 
 ## What changed in this audit
 

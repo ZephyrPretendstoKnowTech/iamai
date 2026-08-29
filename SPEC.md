@@ -47,34 +47,39 @@ tenant's current state to a chosen baseline without lockouts.
 
 The table below is **generated from the collector registry**
 (`src/graph/collect/registry.ts`) by `node scripts/spec-scopes.ts` — edit the
-registry, then regenerate; do not hand-edit rows. Lanes are defined in
+registry, then regenerate; do not hand-edit rows. **Least role** is the
+lowest-privilege Entra role that grants the scope for a delegated read
+(`src/graph/collect/roles.ts`); a delegated call succeeds only where the
+consent and the signed-in account's role agree, so consent alone is never
+enough. Global Reader grants every row and writes nothing, which makes it the
+single ask; a 403 names the role rather than repeating Graph's wording. Lanes are defined in
 `docs/design/collection.md` §2 (0 = config on every load, A = aggregates,
 B = sign-in evidence, on-demand = after baseline selection).
 
-| Lane | Need | Endpoint | API | Scopes | Gate |
-|---|---|---|---|---|---|
-| 0 | The tenant policy set the diff and roadmap work from; Microsoft-managed policies are flagged. | `/identity/conditionalAccess/policies` | v1.0 | Policy.Read.All | none |
-| 0 | Trusted-location validation and location-based intents. | `/identity/conditionalAccess/namedLocations` | v1.0 | Policy.Read.All | none |
-| 0 | Resolve strength references in policies, incl. custom strengths. | `/policies/authenticationStrengthPolicies` | v1.0 | Policy.Read.All | none |
-| 0 | Method availability, registrationEnforcement, policyMigrationState. | `/policies/authenticationMethodsPolicy` | v1.0 | Policy.Read.All | none |
-| 0 | Whether security defaults are on (mutually exclusive with CA). | `/policies/identitySecurityDefaultsEnforcementPolicy` | v1.0 | Policy.Read.All | none |
-| 0 | Guest/B2B posture affecting external-user intents. | `/policies/crossTenantAccessPolicy` | v1.0 | Policy.Read.All | none |
-| 0 | Active admin roles per user for admin-targeting intents. | `/roleManagement/directory/roleAssignments` | v1.0 | RoleManagement.Read.Directory | none |
-| 0 | Eligible vs permanent roles; eligible is out of CA role scope until activated. | `/roleManagement/directory/roleEligibilitySchedules` | v1.0 | RoleManagement.Read.Directory | Entra ID P2 |
-| 0 | Tenant licence capabilities and seat coverage. | `/subscribedSkus` | v1.0 | Directory.Read.All | none |
-| 0 | Tenant name and verified domains for the plan-file header. | `/organization` | v1.0 | Directory.Read.All | none |
-| 0 | Operator identity recorded in the plan file. | `/me` | v1.0 | Directory.Read.All | none |
-| 0 | Warn when the operator sits inside groups a plan step targets. | `/me/memberOf` | v1.0 | Directory.Read.All | none |
-| A | Per-user registered method types (no phone numbers) for MFA viability. | `/reports/authenticationMethods/userRegistrationDetails` | v1.0 | AuditLog.Read.All | Entra ID P1/P2 |
-| A | User inventory with activity, licence plans, and org attributes. | `/users` | v1.0 | Directory.Read.All AuditLog.Read.All | signInActivity needs Entra ID P1/P2 (degrades to a plain user list) |
-| A | Compliance/trust state with registered owners for device intents. | `/devices` | v1.0 | Directory.Read.All | none |
-| A | Workload identity usage for later phases. | `/reports/servicePrincipalSignInActivities` | beta | Reports.Read.All | attempt and map the 403 (documented scope: Reports.Read.All) |
-| A | Registered method detail (values stripped; never phone numbers). | `/users/{id}/authentication/methods ($batch of 20)` | v1.0 | UserAuthenticationMethod.Read.All | inner 403 marks that user unknown |
-| A | Aggregated per-app usage for app-scoping decisions. | `/reports/applicationSignInDetailedSummary` | beta | Reports.Read.All | attempt and map the 403 |
-| B | Interactive sign-in evidence for the replay engine and MFA verification. | `/auditLogs/signIns` | beta | AuditLog.Read.All | Entra ID P1/P2; beta-only in practice (spike 1); no usable server-side filter — unfiltered newest-first with client-side cutoff |
-| on-demand | Affected-population counts and exclusion-group sanity checks. | `/groups/{id}/transitiveMembers (+ $count)` | v1.0 | Directory.Read.All | runs only for groups the chosen baseline references; count-and-sample above 20k |
-| on-demand | Find the tenant group a baseline reference maps to. | `/groups?$filter=startswith(displayName,…)` | v1.0 | Directory.Read.All | runs only while the operator types in a Setup picker |
-| on-demand | Show display names instead of GUIDs, everywhere. | `/directoryObjects/getByIds` | v1.0 | Directory.Read.All | runs only for ids the UI would otherwise show raw |
+| Lane | Need | Endpoint | API | Scopes | Least role | Gate |
+|---|---|---|---|---|---|---|
+| 0 | The tenant policy set the diff and roadmap work from; Microsoft-managed policies are flagged. | `/identity/conditionalAccess/policies` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Trusted-location validation and location-based intents. | `/identity/conditionalAccess/namedLocations` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Resolve strength references in policies, incl. custom strengths. | `/policies/authenticationStrengthPolicies` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Method availability, registrationEnforcement, policyMigrationState. | `/policies/authenticationMethodsPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Whether security defaults are on (mutually exclusive with CA). | `/policies/identitySecurityDefaultsEnforcementPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Guest/B2B posture affecting external-user intents. | `/policies/crossTenantAccessPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Active admin roles per user for admin-targeting intents; role names for display. | `/roleManagement/directory/roleAssignments?$expand=roleDefinition($select=id,displayName)` | v1.0 | RoleManagement.Read.Directory | Global Reader | none |
+| 0 | Eligible vs permanent roles; eligible is out of CA role scope until activated. | `/roleManagement/directory/roleEligibilitySchedules` | v1.0 | RoleManagement.Read.Directory | Global Reader | Entra ID P2 |
+| 0 | Tenant licence capabilities and seat coverage. | `/subscribedSkus` | v1.0 | Directory.Read.All | Directory Readers | none |
+| 0 | Tenant name and verified domains for the plan-file header. | `/organization` | v1.0 | Directory.Read.All | Directory Readers | none |
+| 0 | Operator identity recorded in the plan file. | `/me` | v1.0 | Directory.Read.All | Directory Readers | none |
+| 0 | Warn when the operator sits inside groups a plan step targets. | `/me/memberOf` | v1.0 | Directory.Read.All | Directory Readers | none |
+| A | Per-user registered method types (no phone numbers) for MFA viability. | `/reports/authenticationMethods/userRegistrationDetails` | v1.0 | AuditLog.Read.All | Reports Reader | Entra ID P1/P2 |
+| A | User inventory with activity, licence plans, and org attributes. | `/users` | v1.0 | Directory.Read.All AuditLog.Read.All | Directory Readers + Reports Reader | signInActivity needs Entra ID P1/P2 (degrades to a plain user list) |
+| A | Compliance/trust state with registered owners for device intents. | `/devices` | v1.0 | Directory.Read.All | Directory Readers | none |
+| A | Workload identity usage for later phases. | `/reports/servicePrincipalSignInActivities` | beta | Reports.Read.All | Reports Reader | attempt and map the 403 (documented scope: Reports.Read.All) |
+| A | Registered method detail (values stripped; never phone numbers). | `/users/{id}/authentication/methods ($batch of 20)` | v1.0 | UserAuthenticationMethod.Read.All | Global Reader | inner 403 marks that user unknown |
+| A | Aggregated per-app usage for app-scoping decisions. | `/reports/applicationSignInDetailedSummary` | beta | Reports.Read.All | Reports Reader | attempt and map the 403 |
+| B | Interactive sign-in evidence for the replay engine and MFA verification. | `/auditLogs/signIns` | beta | AuditLog.Read.All | Reports Reader | Entra ID P1/P2; only the preview endpoint returns the fields needed; read newest-first and cut off in the browser |
+| on-demand | Group name, dynamic rule, affected-population counts and exclusion-group sanity checks. | `/groups/{id} ($select=id,displayName,membershipRule) + /groups/{id}/transitiveMembers (+ $count)` | v1.0 | Directory.Read.All | Directory Readers | runs only for groups the chosen baseline references; count-and-sample above 20k |
+| on-demand | Find the tenant group a baseline reference maps to. | `/groups?$filter=startswith(displayName,â€¦)` | v1.0 | Directory.Read.All | Directory Readers | runs only while the operator types in a Setup picker |
+| on-demand | Show display names instead of raw identifiers, everywhere. | `/directoryObjects/getByIds` | v1.0 | Directory.Read.All | Directory Readers | runs only for ids the UI would otherwise show raw |
 
 Planned but not yet in the registry: CA templates (beta), What If
 (`/identity/conditionalAccess/evaluate`), `/servicePrincipals`
@@ -236,8 +241,24 @@ Mechanics:
 - `data/free-tier-ladder.json` holds the curated ~10 free-tier hardening items
   (security defaults, per-user MFA states, legacy-auth app passwords, etc.),
   the plan spine for tenants with no paid Entra at all.
+- Without `entraP1` the ladder **is the plan**: `src/roadmap/ladder.ts` turns
+  each item into a phase 0 step in ladder order, with copy in
+  `src/copy/ladder.ts`, a per-tenant impact from what a free licence can read
+  (security defaults, the authentication methods policy, role assignments,
+  guests, licence assignment), exact portal instructions, its own verification
+  and rollback, and `ladder: true` so it is never described as groundwork for a
+  policy. A rung reads Done only where the tenant proves it, and names that
+  evidence; where Graph does not expose the setting (app passwords, per-user
+  MFA state) the step says so rather than guessing. A phase 0 step that already
+  covers a rung (break-glass, per-user MFA) takes the rung's place and its
+  position.
+- The same gate removes what only a policy would use: without Conditional
+  Access, IAMAI never asks for an exclusion group, a trusted location or an
+  allowed-countries location, and never asks for security defaults to be turned
+  **off** (nothing could take their place).
 - Dev override: `?dev=1&licence=free|p1|p2` simulates a licence profile for UI
-  and gating tests.
+  and gating tests; `?dev=1&denied=1` simulates a sign-in whose role Graph
+  refuses, so the role advice on the Scan page can be walked.
 
 ## Testing decision: the smoke test mocks at the snapshot boundary
 

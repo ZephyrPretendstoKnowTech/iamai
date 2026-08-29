@@ -17,6 +17,17 @@ test (`src/network.test.ts`) fails the build if any source file addresses a netw
 other than `graph.microsoft.com`, `login.microsoftonline.com` and
 `raw.githubusercontent.com` (the pinned baseline files).
 
+## The role the signed-in account needs
+
+A delegated read succeeds only where the consent **and** the signed-in account's Entra
+role agree, so admin consent alone is not enough. **Global Reader** grants every section
+IAMAI reads and can change nothing in the tenant, which makes it the whole ask; the
+lower-privilege role per section (Security Reader, Directory Readers, Reports Reader) is
+listed on the "What IAMAI reads" page and in `SPEC.md` §4, from
+`src/graph/collect/roles.ts`. Where Graph refuses a section, IAMAI names the role to ask
+for instead of repeating "insufficient privileges", disables that section with the reason,
+and carries on with the rest of the scan.
+
 ## What it stores, and where
 
 Everything stays in your browser:

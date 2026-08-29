@@ -187,6 +187,20 @@ try {
   check('Unlicensed tenant: the plan still generates', await waitFor(`/steps in place/.test(document.body.innerText)`))
   t = await text()
   check('Unlicensed tenant: the licence header names the tier and what needs another', /With this tenant's Entra ID Free/.test(t))
+  // The free-tier ladder is the plan for a tenant that cannot hold a policy (SPEC 12).
+  check('Unlicensed tenant: the plan says it is the free hardening ladder', /free hardening ladder/.test(t))
+  check(
+    'Unlicensed tenant: the ladder is the plan, with this tenant own numbers',
+    (await clickText('/^Plan/')) && (await waitFor(`/Switch on the free protection|Keep two emergency accounts/.test(document.body.innerText)`)),
+  )
+  t = await text()
+  check('Unlicensed tenant: nothing asks for objects a policy would reference', !/Create a trusted named location|Create the exclusions group/.test(t))
+  check(
+    'Unlicensed tenant: a ladder step names what it changes here, and where to click',
+    (await clickText('/Switch on the free protection/')) &&
+      (await waitFor(`/enabled account/.test(document.body.innerText)`)) &&
+      (await waitFor(`/Manage security defaults/.test(document.body.innerText)`)),
+  )
   await send('Page.navigate', { url: `${BASE}&policies=0#/coverage` })
   await sleep(1500)
   check('Zero policies: Findings renders', await waitFor(`document.querySelectorAll('.stat').length >= 3`))
@@ -195,6 +209,15 @@ try {
   check('Zero policies: the plan renders with Do this next', await waitFor(`/Do this next/.test(document.body.innerText)`))
   t = await text()
   check('Zero policies: the policy count reads zero, not a wall of missing', /no Conditional Access policies in the tenant today/.test(t))
+  // A sign-in with too little access names the role to ask for (prompt 31 4.18).
+  await send('Page.navigate', { url: `${BASE}&denied=1#/scan` })
+  await sleep(1500)
+  check('Denied sections: the scan says a role is missing, never just insufficient privileges', await waitFor(`/Some sections need a higher role/.test(document.body.innerText)`))
+  t = await text()
+  check('Denied sections: the ask is Global Reader, and it is read-only', /Global Reader/.test(t) && /grants every section IAMAI reads and can change nothing/.test(t))
+  check('Denied sections: each refused section names its own least role', /Conditional Access policies|CA policies/.test(t) && /Security Reader/.test(t) && /Reports Reader/.test(t))
+  check('Denied sections: a licence gate is never reported as a missing role', !/not available on this licence[\s\S]{0,120}holds no role/.test(t))
+
   check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))
 
   // Forget this tenant clears every store for it (prompt 31 §2.8).
