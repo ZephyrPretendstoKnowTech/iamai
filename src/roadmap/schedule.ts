@@ -451,7 +451,8 @@ export function buildSchedule(
     // The wave is named by its most common phase, never by a stray lower one.
     const counts = new Map<number, number>()
     for (const id of ids) counts.set(byId.get(id)?.phase ?? 1, (counts.get(byId.get(id)?.phase ?? 1) ?? 0) + 1)
-    const phase = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0]
+    // Wave names read in phase order: a later wave never carries an earlier phase's name.
+    const phase = Math.max(waves.at(-1)?.phase ?? 0, [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0])
     for (const id of ids) waveOf[id] = i + 1
     waves.push({ wave: i + 1, phase, start, end, days: Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000), stepIds: ids, note: null })
   }

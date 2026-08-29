@@ -235,7 +235,9 @@ export function StepFrame({
       {children}
       {next && (
         <p className="step-next">
-          <LinkButton href={`#/${next}`}>{SHELL.next(nextLabel ?? next)}</LinkButton>
+          <span className="no-print">
+            <LinkButton href={`#/${next}`}>{SHELL.next(nextLabel ?? next)}</LinkButton>
+          </span>
         </p>
       )}
     </section>
@@ -251,7 +253,7 @@ export function ScanAge({ at, baseline }: { at: string; baseline?: string | null
   return (
     <>
       <p className="reason">
-        {SHELL.basedOn(whenAt(at))} <a href="#/scan">{SHELL.rescan}</a>
+        {SHELL.basedOn(whenAt(at))} <a className="no-print" href="#/scan">{SHELL.rescan}</a>
         {baseline && <> · {SHELL.baselineLoaded(baseline)}</>}
         <InfoTip title={SHELL.scanAgeTip} text={SHELL.evidenceAgeNote} />
       </p>
