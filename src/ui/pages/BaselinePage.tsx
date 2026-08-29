@@ -137,7 +137,7 @@ function AboutCard({ index, policies }: { index: BaselineIndex; policies: number
             {' '}
             {BASELINE.by}{' '}
             {index.authorUrl ? (
-              <a href={index.authorUrl} target="_blank" rel="noreferrer">
+              <a href={index.authorUrl} target="_blank" rel="noopener noreferrer">
                 {index.author}
               </a>
             ) : (
@@ -148,7 +148,7 @@ function AboutCard({ index, policies }: { index: BaselineIndex; policies: number
         {index.repoUrl && (
           <>
             {' · '}
-            <a href={index.repoUrl} target="_blank" rel="noreferrer">
+            <a href={index.repoUrl} target="_blank" rel="noopener noreferrer">
               {BASELINE.repository}
             </a>
           </>

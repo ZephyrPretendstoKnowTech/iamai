@@ -56,7 +56,7 @@ export function StartPage() {
         </ul>
         <p className="muted">
           {START.sourceBefore}
-          <a href={REPO_URL} target="_blank" rel="noreferrer">
+          <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
             {START.sourceLink}
           </a>
           {START.sourceAfter}

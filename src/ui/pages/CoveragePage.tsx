@@ -300,7 +300,7 @@ export function CoveragePage({
       )}
       {r.goal.learnUrl && (
         <p className="reason">
-          <a href={r.goal.learnUrl} target="_blank" rel="noreferrer">
+          <a href={r.goal.learnUrl} target="_blank" rel="noopener noreferrer">
             {C.learn}
           </a>{' '}
           {(r.goal.cis ?? []).map((c) => (
