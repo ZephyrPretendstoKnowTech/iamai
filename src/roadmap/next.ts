@@ -10,7 +10,7 @@ import type { Schedule } from './schedule.ts'
 import type { Step } from './types.ts'
 
 export type NextItem = {
-  kind: 'prerequisite' | 'safeToday' | 'readiness' | 'ready'
+  kind: 'blocker' | 'prerequisite' | 'safeToday' | 'readiness' | 'ready'
   stepId: string
   title: string
   why: string
@@ -60,9 +60,22 @@ export function doThisNext(
     return NEXT.touches.people(s.population.total)
   }
 
+  // (a0) validation blockers: while the way back in is unverified, nothing else
+  // is the right thing to start (validation-rules.md §2).
+  for (const s of work.filter((x) => x.validationBlocker && x.status === 'ready')) {
+    if (items.length >= 3) break
+    items.push({
+      kind: 'blocker',
+      stepId: s.id,
+      title: s.plainTitle || s.title,
+      why: NEXT.why.blocker(waitedOn.get(s.id) ?? 0),
+      touches: NEXT.touches.nobody,
+      minutes: effortMinutes(s),
+    })
+  }
   // (a) unblocked prerequisites that other steps wait on
   const prereqs = work
-    .filter((s) => s.kind === 'prerequisite' && s.status === 'ready')
+    .filter((s) => s.kind === 'prerequisite' && s.status === 'ready' && !s.validationBlocker)
     .sort((a, b) => (waitedOn.get(b.id) ?? 0) - (waitedOn.get(a.id) ?? 0))
   for (const s of prereqs) {
     if (items.length >= 3) break

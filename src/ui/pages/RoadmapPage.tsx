@@ -743,6 +743,8 @@ export function RoadmapPage({
     <div>
       {overview()}
       <div className="overview-band">
+        {/* Must-fix validation reads first (validation-rules.md §2). */}
+        {headline.blockers && <p className="overview-blockers">{headline.blockers}</p>}
         <h3 className="overview-headline">{headline.state}</h3>
         {headline.projection && <p className="overview-constraint">{headline.projection}</p>}
         {headline.already && <p className="overview-constraint">{headline.already}</p>}
@@ -2069,8 +2071,8 @@ function StepCard({
       <h4>{SECTION.rollback}</h4>
       <p className="reason">
         {step.rollback}
-        {/* The token-refresh note is about Conditional Access; a ladder rung creates no policy. */}
-        {!step.ladder && <> {ROLLBACK_V2.timing}</>}
+        {/* The token-refresh note is about Conditional Access; a ladder rung and a validation blocker create no policy. */}
+        {!step.ladder && !step.validationBlocker && <> {ROLLBACK_V2.timing}</>}
       </p>
       {step.rollbackBody && (
         <details>

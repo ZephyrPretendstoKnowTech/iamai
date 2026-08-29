@@ -232,8 +232,12 @@ test('mid: service accounts surface before the legacy-auth block', () => {
 
 test('messy: conflicts are detected and ordered first', () => {
   const { steps } = runFixture(byName('messy'))
-  const first = steps.filter((s) => s.status !== 'done').slice(0, 3)
-  assert.ok(first.some((s) => /security defaults/i.test(s.title)), 'security defaults conflict comes first')
+  // Validation blockers lead the whole plan (validation-rules.md §2); the
+  // tenant's own conflicts lead everything after them.
+  const open = steps.filter((s) => s.status !== 'done')
+  assert.ok(open.every((s, i) => !s.id.startsWith('s-blocker-') || open.slice(0, i).every((p) => p.id.startsWith('s-blocker-'))), 'blockers come first, together')
+  const first = open.filter((s) => !s.id.startsWith('s-blocker-')).slice(0, 3)
+  assert.ok(first.some((s) => /security defaults/i.test(s.title)), 'security defaults conflict comes first after the blockers')
   assert.ok(steps.some((s) => /per-user/i.test(s.title) || /per-user/i.test(s.impact)), 'per-user MFA is named')
   const sms = steps.find((s) => /break-glass/i.test(s.title) && /(phishing|method|SMS|text message)/i.test(s.title + s.impact + s.stateReason))
   assert.ok(sms, 'the SMS-only break-glass accounts are called out')

@@ -37,9 +37,13 @@ export function stateReasonFor(step: Step, stepById: Map<string, Step>): string 
     case 'skipped':
       return STATE_REASON.skipped(step.skipReason ?? '')
     case 'blocked': {
-      const causes = step.blockers.map((b) =>
-        b.kind === 'step' ? (stepById.get(b.stepId)?.title ?? b.stepId) : b.label,
-      )
+      const causes = step.blockers.map((b) => {
+        if (b.kind !== 'step') return b.label
+        // A validation blocker's own sentence names the subject and how many
+        // must-fix items are open (validation-rules.md §5).
+        const dep = stepById.get(b.stepId)
+        return dep?.validationBlocker ? b.label : (dep?.title ?? b.stepId)
+      })
       // A readiness blocker and the campaign it waits for are one cause: name the blocker, not both.
       const extra =
         causes.length > 0
