@@ -9,11 +9,14 @@ import { NAMING, PHASE_NAME, PRINT as C, STEP_KIND_LABEL, STEP_STATUS_LABEL, aff
 import { ROADMAP } from '../../copy/pages.ts'
 import { roadmapOverview, scheduleRationale } from '../../copy/statements.ts'
 import { absoluteDate, dateRange, when } from '../../copy/dates.ts'
+import { RingMark } from '../components/Ring.tsx'
 
 export function PrintPlan({
   tenantName,
   baselineLabel,
   operator,
+  baselinePin = null,
+  progress = null,
   steps,
   schedule,
   verificationNote,
@@ -23,6 +26,9 @@ export function PrintPlan({
   tenantName: string
   baselineLabel: string
   operator: string
+  baselinePin?: string | null
+  /** The Progress headline: state, projection, already covered (ux-review-07 §31). */
+  progress?: { state: string; projection: string; already: string } | null
   steps: Step[]
   /** Who the verification window is for, already worded (ux-review-06 §24). */
   verificationNote: string
@@ -60,10 +66,17 @@ export function PrintPlan({
       <div className="print-running">{C.runningHeader(tenantName, today)}</div>
 
       <section className="print-cover">
+        <RingMark size={56} />
         <h1>{C.title(tenantName)}</h1>
         <dl>
           <dt>{C.cover.baseline}</dt>
           <dd>{baselineLabel}</dd>
+          {baselinePin && (
+            <>
+              <dt>{C.cover.pin}</dt>
+              <dd>{baselinePin.slice(0, 12)}</dd>
+            </>
+          )}
           <dt>{C.cover.dates}</dt>
           <dd>{dateRange(schedule.start, schedule.targetEnd)}</dd>
           <dt>{C.cover.pace}</dt>
@@ -74,6 +87,7 @@ export function PrintPlan({
           <dd>{today}</dd>
         </dl>
         <p className="muted">{C.cover.prepared(operator)}</p>
+        <p className="print-statement">{C.cover.readOnly}</p>
       </section>
 
       <section className="print-page">
@@ -92,6 +106,14 @@ export function PrintPlan({
         <p>
           {overview} {rationale}
         </p>
+        {progress && (
+          <div className="print-progress">
+            <h3>{C.progress}</h3>
+            <p>{progress.state}</p>
+            {progress.projection && <p>{progress.projection}</p>}
+            {progress.already && <p>{progress.already}</p>}
+          </div>
+        )}
         {dangers.length > 0 && (
           <>
             <h3>{ROADMAP.tabs.danger}</h3>

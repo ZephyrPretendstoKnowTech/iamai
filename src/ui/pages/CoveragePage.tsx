@@ -23,6 +23,7 @@ import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
 import { findingsSummary, lowerFirst } from '../../copy/statements.ts'
 import { absoluteDate, whenAt } from '../format.ts'
 import { ScanAge, StepFrame, stepHref } from '../shell/AppShell.tsx'
+import { EmptyState } from '../components/EmptyState.tsx'
 import { proposedPolicyName, stepIdForGoal } from '../../roadmap/generate.ts'
 import { NAMING, stepTitle } from '../../copy/steps.ts'
 import { Callout, Card, Chip, ExpandCard, InfoTip, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
@@ -182,16 +183,22 @@ export function CoveragePage({
     return (
       <StepFrame title={C.title} does={C.does} needs={needs}>
         <Card>
-          <p>
-            {C.blocked} <a href="#/scan">{C.runScan}</a>
-            {baseline === null && (
+          <EmptyState
+            scene="noScan"
+            title={C.noScanTitle}
+            text={C.blocked}
+            action={
               <>
-                {' '}
-                {C.and} <a href="#/baseline">{C.loadBaseline}</a>
+                <a href="#/scan">{C.runScan}</a>
+                {baseline === null && (
+                  <>
+                    {' '}
+                    {C.and} <a href="#/baseline">{C.loadBaseline}</a>
+                  </>
+                )}
               </>
-            )}
-            .
-          </p>
+            }
+          />
         </Card>
       </StepFrame>
     )

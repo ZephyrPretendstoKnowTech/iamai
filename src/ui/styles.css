@@ -23,9 +23,11 @@ body {
   color: var(--text);
 }
 
-h1 { font-size: var(--text-xl); font-weight: 700; letter-spacing: -0.01em; margin: 0 0 var(--space-3); }
-h2 { font-size: var(--text-xl); font-weight: 650; letter-spacing: -0.01em; margin: 0 0 var(--space-2); }
-h3 { font-size: var(--text-lg); font-weight: 600; margin: var(--space-5) 0 var(--space-2); }
+h1 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; letter-spacing: -0.01em; margin: 0 0 var(--space-3); }
+h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 650; letter-spacing: -0.01em; margin: 0 0 var(--space-2); }
+h3 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; margin: var(--space-5) 0 var(--space-2); }
+/* Numbers are the product: tabular figures wherever they appear. */
+body, .stat-num, .tab-badge, td, .num, .minimap-label, .journey-head { font-variant-numeric: tabular-nums; }
 h4 { font-size: var(--text-md); font-weight: 600; margin: var(--space-4) 0 var(--space-1); }
 
 a { color: var(--accent); }
@@ -302,10 +304,11 @@ nav.stepper {
   vertical-align: middle;
 }
 .chip + .chip { margin-left: var(--space-1); }
-.chip-done { background: var(--success-soft); border-color: var(--success); color: var(--success); font-weight: 600; }
-.chip-ready { background: var(--accent-soft); border-color: var(--accent); }
-.chip-blocked { background: var(--danger-soft); border-color: var(--danger); }
-.chip-in-progress { background: var(--info-soft); border-color: var(--info); }
+.chip-done { background: var(--past-soft); border-color: var(--past); color: var(--past); font-weight: 600; }
+.chip-ready { background: var(--present-soft); border-color: var(--present); }
+/* Blocked by the schedule is the future, not a risk (ux-review-07 §F4). */
+.chip-blocked { background: var(--future-soft); border-color: var(--future); }
+.chip-in-progress { background: var(--present-soft); border-color: var(--present); }
 .chip-warning { background: var(--warning-soft); border-color: var(--warning); }
 .chip-neutral { }
 .chip-select { cursor: pointer; font: inherit; font-size: var(--text-sm); }
@@ -416,7 +419,7 @@ details.card > summary::marker { color: var(--muted); }
 .stat-clickable { cursor: pointer; transition: border-color var(--motion); }
 .stat-clickable:hover { border-color: var(--accent); }
 .stat-active { border-color: var(--accent); background: var(--accent-soft); }
-.stat-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--text-xl); font-weight: 600; line-height: 1.1; }
+.stat-num { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-size: var(--text-xl); font-weight: 600; line-height: 1.1; }
 .stat-label { font-size: var(--text-sm); color: var(--muted); letter-spacing: 0.02em; display: flex; align-items: center; margin-top: var(--space-1); }
 .stat-success .stat-num { color: var(--success); }
 .stat-warning .stat-num { color: var(--warning); }
@@ -579,8 +582,9 @@ table.datatable tbody tr:hover { background: var(--raised); }
 /* Timeline mini-map and phase cards (prompt 26 §10-§14) */
 .minimap { position: relative; display: flex; gap: 2px; height: 28px; margin: var(--space-3) 0 var(--space-4); border-radius: var(--radius-input); overflow: hidden; }
 .minimap-seg { display: flex; align-items: center; justify-content: center; min-width: 3rem; background: var(--raised); border: 1px solid var(--border); color: var(--muted); font-size: var(--text-sm); text-decoration: none; overflow: hidden; }
-.minimap-seg.is-partial { background: var(--accent-soft); color: var(--text); }
-.minimap-seg.is-done { background: var(--success-soft); color: var(--success); }
+.minimap-seg.is-partial { background: var(--present-soft); color: var(--text); }
+.minimap-seg.is-done { background: var(--past-soft); color: var(--past); }
+.minimap-seg.is-future { background: var(--future-soft); color: var(--muted); }
 .minimap-seg:hover, .minimap-seg:focus-visible { border-color: var(--accent); outline: none; }
 .minimap-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 var(--space-2); }
 .minimap-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); }
@@ -593,7 +597,9 @@ table.datatable tbody tr:hover { background: var(--raised); }
 @media (min-width: 1400px) { .step-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .step-tile { display: block; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-input); background: var(--surface); color: var(--text); text-decoration: none; min-width: 0; }
 .step-tile:hover, .step-tile:focus-visible { border-color: var(--accent); outline: none; }
-.step-tile.lane-safe { border-left: 3px solid var(--success); }
+.step-tile.lane-safe { border-left: 3px solid var(--present); }
+.step-tile .row { align-items: center; }
+.step-tile .ring-progress { margin-left: auto; flex: none; }
 .step-tile-title { display: block; margin: var(--space-2) 0 var(--space-1); }
 .grid-span { grid-column: 1 / -1; }
 .timeline-link { cursor: pointer; }
@@ -648,6 +654,11 @@ table.datatable tbody tr:hover { background: var(--raised); }
   .print-plan .datatable { width: 100%; border-collapse: collapse; }
   .print-plan .datatable th, .print-plan .datatable td { border: 1px solid #dce3ee; padding: 2mm; text-align: left; vertical-align: top; font-size: 10pt; }
   .print-plan .code-block { font-size: 8.5pt; border: 1px solid #dce3ee; background: #f6f8fb; }
+  .step-grid, .cohorts, .export-grid, .journey { grid-template-columns: 1fr !important; }
+  .print-cover .ring-mark { color: #0b7f72; margin-bottom: 8mm; }
+  .print-cover .print-statement { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid #dce3ee; color: #5b6b82; font-size: 10pt; }
+  .print-progress { border: 1px solid #dce3ee; padding: 3mm 4mm; margin: 4mm 0; }
+  .print-progress p { margin: 0 0 1mm; }
 }
 
 /* Populations at scale (roadmap-v2.md §3) */
@@ -672,19 +683,52 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .journey-head { font-size: var(--text-sm); font-weight: 600; color: var(--muted); margin-bottom: 0.25rem; }
 .journey-dot { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: var(--text-xs, 0.8rem); line-height: 1.25; padding: 0.2rem 0.45rem; margin: 0.2rem 0; border-radius: 8px; border: 1px solid var(--border); background: var(--raised); color: inherit; text-decoration: none; overflow: hidden; overflow-wrap: anywhere; border-left-width: 4px; transition: border-color var(--motion), background var(--motion); }
 .journey-dot:hover, .journey-dot:focus-visible { border-color: var(--accent); background: var(--accent-soft); color: inherit; }
-.journey-dot.ring-0 { border-left-color: var(--info, #4c8dff); }
-.journey-dot.ring-1 { border-left-color: var(--warning, #d9a400); }
-.journey-dot.ring-2 { border-left-color: var(--accent, #9b6cff); }
-.journey-dot.ring-3 { border-left-color: var(--success, #2fa36b); }
+.journey-dot.ring-0 { border-left-color: var(--future); }
+.journey-dot.ring-1 { border-left-color: var(--present); }
+.journey-dot.ring-2 { border-left-color: var(--present); }
+.journey-dot.ring-3 { border-left-color: var(--past); }
+.journey-col.stage-enforced, .journey-col.stage-verified, .journey-col.stage-alreadyInPlace { border-top-color: var(--past); }
+.journey-col.stage-reportOnly, .journey-col.stage-soaking, .journey-col.stage-readyToEnforce { border-top-color: var(--present); }
+.journey-col.stage-planned { border-top-color: var(--future); }
 .strip { display: flex; gap: 2px; align-items: flex-end; height: 5rem; margin: var(--space-2, 0.5rem) 0 var(--space-4, 1rem); overflow-x: auto; }
 .strip-week { flex: 1 0 2.5rem; display: flex; flex-direction: column; align-items: stretch; height: 100%; }
 .strip-bars { flex: 1; display: flex; gap: 2px; align-items: flex-end; }
 .strip-planned, .strip-actual { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0; }
-.strip-planned { background: var(--border); }
-.strip-actual { background: var(--success, #2fa36b); }
+.strip-planned { background: var(--future-soft); border: 1px solid var(--future); }
+.strip-actual { background: var(--past); }
 .strip-label { font-size: 0.65rem; color: var(--muted); white-space: nowrap; text-align: center; }
 .progress-table th, .progress-table td { padding: 0.25rem 0.4rem; vertical-align: top; }
 .progress-table input { width: 100%; min-width: 8rem; }
 .export-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--space-3, 0.75rem); }
 @media (max-width: 1200px) { .journey { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 800px) { .journey { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---- Visual identity (ux-review-07 §F) ---- */
+.wordmark { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-display); }
+.wordmark .ring-mark { color: var(--accent); }
+.overview-headline { font-family: var(--font-display); }
+.empty-title { font-family: var(--font-display); font-size: var(--text-md); font-weight: 600; margin: 0 0 var(--space-1); }
+.empty-state { display: flex; gap: var(--space-5); align-items: center; padding: var(--space-5) var(--space-4); }
+.empty-art { color: var(--accent); flex: none; }
+@media (max-width: 600px) { .empty-state { flex-direction: column; align-items: flex-start; } }
+
+/* The ring as the progress indicator on tiles (§F1) */
+.ring-progress { color: var(--future); display: block; }
+.ring-progress .ring-track { opacity: 0.22; }
+.ring-progress .ring-fill.is-filled { color: var(--past); opacity: 1; }
+.ring-progress .ring-fill.is-active { color: var(--present); }
+.ring-progress .ring-fill:not(.is-filled):not(.is-active) { opacity: 0; }
+.ring-progress.is-done { color: var(--past); }
+
+/* Motion, three places only, all off under prefers-reduced-motion (§F3) */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes flash { from { background-color: var(--present-soft); } to { background-color: transparent; } }
+  @keyframes ringfill { from { stroke-dasharray: 0 100; } to { stroke-dasharray: 100 0; } }
+  .tab-panel.active { animation: rise var(--motion-rise) ease-out both; }
+  main.page > * { animation: rise var(--motion-rise) ease-out both; }
+  .just-changed { animation: flash 900ms ease-out 1; }
+  .just-changed .ring-fill.is-filled { animation: ringfill 600ms ease-out both; }
+  [data-route='scan'] .card { animation: rise 200ms ease-out both; }
+  .progress-fill { transition: width 400ms ease; }
+}

@@ -123,3 +123,9 @@ export function buttonColours(p: Palette, variant: ButtonVariant, state: ButtonS
   }
   return { text: p.text, background: p.surface }
 }
+
+/** The plan's temperature (ux-review-07 §F4), mirrored in tokens.css: past settled, present at full strength, future cool. */
+export const TEMPERATURE = {
+  dark: { past: '#6FB59A', present: DARK.accent, future: '#8AA6D6' },
+  light: { past: '#2F6B57', present: LIGHT.accent, future: '#4A6FA5' },
+}
