@@ -39,6 +39,10 @@ export const TRACK = {
 }
 
 export const PROGRESS = {
+  blockersFirst: (n: number, held: number): string =>
+    held === 0
+      ? `${n === 1 ? 'One subject has' : `${n} subjects have`} must-fix checks outstanding; clear ${n === 1 ? 'it' : 'them'} before the rest of the plan runs.`
+      : `${n === 1 ? 'One subject has' : `${n} subjects have`} must-fix checks outstanding, holding ${held === 1 ? '1 step' : `${held} steps`} that can deny access.`,
   tab: 'Progress',
   notStarted: 'Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.',
   headline: (started: string, enforced: number, total: number, soaking: number, slipped: number) =>

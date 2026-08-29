@@ -280,6 +280,8 @@ export type ProgressHeadline = {
   state: string
   projection: string
   already: string
+  /** Must-fix validation, when any is outstanding; empty otherwise. */
+  blockers: string
   sentence: string
 }
 
@@ -309,7 +311,26 @@ export function progressHeadline(steps: Step[], schedule: Schedule, now: string 
         : PROGRESS.projection(absoluteDate(projectedEnd), absoluteDate(plannedEnd))
       : PROGRESS.projectionNoPace(absoluteDate(plannedEnd))
   const already = PROGRESS.alreadyCovered(alreadyInPlace)
-  return { started, enforced, total, soaking, slipped, alreadyInPlace, projectedEnd, plannedEnd, state, projection, already, sentence: [state, projection, already].filter(Boolean).join(' ') }
+  // Must-fix validation leads the summary: what is holding the plan is the
+  // first thing to read (validation-rules.md §2).
+  const blockerSteps = steps.filter((s) => s.validationBlocker && s.status !== 'done' && s.status !== 'skipped')
+  const held = steps.filter((s) => s.blockedBy.some((id) => blockerSteps.some((b) => b.id === id))).length
+  const blockers = blockerSteps.length > 0 ? PROGRESS.blockersFirst(blockerSteps.length, held) : ''
+  return {
+    started,
+    enforced,
+    total,
+    soaking,
+    slipped,
+    alreadyInPlace,
+    projectedEnd,
+    plannedEnd,
+    state,
+    projection,
+    already,
+    blockers,
+    sentence: [blockers, state, projection, already].filter(Boolean).join(' '),
+  }
 }
 
 // ---- What changed since the last scan (§5) ----

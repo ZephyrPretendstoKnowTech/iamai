@@ -60,6 +60,10 @@ import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
 import { ladderSteps } from './ladder.ts'
+import { GATING_SUBJECTS, attachWarnings, blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
+import { BLOCKER_STEP } from '../copy/validation.ts'
+import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
+import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 
 /** Evidence must cover at least this many days and hold this many sign-ins (or one per active person in scope) before a step is safe today (§2.4). */
@@ -588,6 +592,31 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     for (const [id, index] of ladder.order) ladderOrder.set(id, index)
   }
 
+  // ---- Validation blockers (validation-rules.md §2): the escape hatch first ----
+  // Every must-fix check that has not passed becomes a Phase 0 step, and the
+  // two subjects a recovery depends on hold every step that can deny access.
+  const groupFacts = [...(input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
+  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability })
+  const validationReports: SubjectReport[] = [breakGlassReport(validationCtx)]
+  const exclusionGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
+  if (exclusionGroupId !== null) {
+    validationReports.push(reportFor('exclusionGroup', [groupFacts.find((g) => g.groupId === exclusionGroupId) ?? null], validationCtx))
+  }
+  const trustedLocations = (snapshot.config.namedLocations?.rows ?? []).filter((l) => mapping.trustedLocationIds.includes(String((l as { id?: string }).id ?? '')))
+  if (trustedLocations.length > 0) validationReports.push(reportFor('trustedLocation', trustedLocations, validationCtx))
+  // Only when a country restriction is actually planned: the list is checked
+  // because a policy is about to use it, never as housekeeping.
+  const geoPlanned = input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'not-applicable' && r.status !== 'licence-limited')
+  if (geoPlanned && mapping.wizardAnswered.countries === true) {
+    validationReports.push(reportFor('allowedCountries', [tenantCountryLocation(snapshot, mapping.allowedCountries)], validationCtx))
+  }
+  if (mapping.serviceAccountUserIds.length > 0) validationReports.push(reportFor('serviceAccount', [''], validationCtx))
+  const gate = canUseConditionalAccess ? gateReason(validationReports) : null
+  // The step has to exist before the goal loop so a held step can name it; the
+  // count of what it holds is filled in once the goal steps are known.
+  const validationSteps = blockerSteps(validationReports, 0)
+  steps.push(...validationSteps)
+
   // ---- Goal steps ----
   const baselineFactsList = input.baseline.policies.map((p) => ({
     policy: p as unknown as RawPolicy,
@@ -776,6 +805,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         blockers.push({ kind: 'readiness', label })
         unblockNotes.push(label)
       }
+      // Nothing that can deny access is offered while the way back in is
+      // unverified (validation-rules.md §2).
+      const deniesAccess = impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location'
+      if (deniesAccess && gate !== null) blockByStep(gate.stepId, gate.label)
       if (blockedBy.length > 0) status = 'blocked'
     }
     // Precise blocked sentences (prompt 13 §9): one per cause group.
@@ -784,7 +817,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const qNumbers = [...new Set(blockers.filter((b) => b.kind === 'setup').map((b) => (b as { questionNumber: number }).questionNumber))].sort((a, b) => a - b)
       if (qNumbers.length > 0) sentences.push(BLOCKED.setup(qNumbers))
       for (const b of blockers) {
-        if (b.kind === 'step') sentences.push(BLOCKED.step(steps.find((s) => s.id === b.stepId)?.title ?? b.stepId))
+        if (b.kind === 'step') {
+          const dep = steps.find((s) => s.id === b.stepId)
+          sentences.push(dep?.validationBlocker ? BLOCKED.readiness(b.label) : BLOCKED.step(dep?.title ?? b.stepId))
+        }
         if (b.kind === 'readiness') sentences.push(BLOCKED.readiness(b.label))
         if (b.kind === 'evidence') sentences.push(BLOCKED.evidence)
       }
@@ -1070,6 +1106,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     return SEVERITY_DEFAULT
   }
   const score = (s: Step): number => {
+    // The escape hatch comes before everything: nothing else is safe to start
+    // while a recovery is unverified (validation-rules.md §2).
+    const blockerIndex = validationSteps.findIndex((v) => v.id === s.id)
+    if (blockerIndex >= 0) return -5000 + blockerIndex
     // The ladder is the plan for a tenant that cannot hold a policy: its own
     // order is the rollout order, ahead of everything else in the phase.
     const rung = ladderOrder.get(s.id)
@@ -1199,6 +1239,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // A step that brought its own verification keeps it (the free-tier ladder).
     if (s.verify === null) s.verify = verifyFor(s, contentCtx, s.rings[0]?.name ?? null)
     s.events = eventsFor(s, { rhythm, notice: input.notice ?? NOTICE_DEFAULTS, holidays, timeZone: mapping.displayTimeZone ?? 'UTC' })
+  }
+
+  // A subject with only recommendations attaches them to the step that already
+  // covers the same object, rather than adding one nobody has to act on.
+  const WARNING_HOST: Partial<Record<string, string>> = { breakGlass: DRILL_STEP_ID, exclusionGroup: EXCLUSION_GROUP_STEP_ID }
+  for (const report of validationReports) {
+    if (report.blocking.length > 0 || report.warnings.length === 0) continue
+    const host = steps.find((s) => s.id === WARNING_HOST[report.subject])
+    if (host) attachWarnings(report, host)
+  }
+
+  // What the escape hatch is actually holding, now that the goal steps exist.
+  if (gate !== null) {
+    const held = steps.filter((s) => s.blockedBy.includes(gate.stepId)).length
+    for (const report of validationReports) {
+      const step = steps.find((s) => s.id === blockerStepId(report.subject))
+      if (step) step.impact = BLOCKER_STEP.impact(report.blocking.length, GATING_SUBJECTS.includes(report.subject) ? held : 0)
+    }
   }
 
   annotateStateReasons(steps)

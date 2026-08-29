@@ -573,6 +573,8 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .overview-band:last-of-type { border-bottom: none; }
 .overview-headline { font-size: var(--text-xl); font-weight: 650; margin: 0 0 var(--space-2); letter-spacing: -0.01em; }
 .overview-constraint { font-size: var(--text-md); color: var(--muted); max-width: 62rem; margin: 0; }
+/* Must-fix validation, above the headline: the first thing to read. */
+.overview-blockers { font-size: var(--text-md); color: var(--ink); font-weight: 600; max-width: 62rem; margin: 0 0 var(--space-1); padding-left: var(--space-2); border-left: 3px solid var(--danger); }
 .overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); gap: var(--space-5); align-items: start; }
 .overview-grid > div > h4 { margin-top: 0; }
 .settings-card { margin: 0; }

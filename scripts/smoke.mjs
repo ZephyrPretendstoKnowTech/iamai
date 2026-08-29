@@ -160,9 +160,13 @@ try {
 
   // Roadmap
   await go('roadmap')
-  check('Roadmap: overview renders', await waitFor(`/of 18 steps in place/.test(document.body.innerText)`))
+  check('Roadmap: overview renders', await waitFor(`/steps in place/.test(document.body.innerText)`))
   t = await text()
-  check('Roadmap: headline 2 of 18 steps in place, finishes', /2 of 18 steps in place · finishes /.test(t))
+  check('Roadmap: headline counts the steps in place and says when it finishes', /\d+ of \d+ steps in place · finishes /.test(t))
+  // Setup is unanswered on the mock walk, so emergency access is not validated:
+  // the plan must lead with it and hold everything that can deny access (32).
+  check('Roadmap: Do this next leads with the emergency-access blocker', /Sort out emergency access before anything else/.test(t))
+  check('Roadmap: the blocker says what it is holding', /Must fix first: \d+ steps that can deny access are held until it passes/.test(t))
   check('Roadmap: tiles Safe today and Blocked', /\d+\s+Safe today/.test(t) && /\d+\s+Blocked/.test(t))
   check('Roadmap: This week card and the licence sentence', /This week/.test(t) && /With this tenant's Entra ID/.test(t))
   check('Roadmap: danger areas name the blocked user', /1 user is blocked today|Watch first\s+1/.test(t))
@@ -239,6 +243,13 @@ try {
   await go('licensing')
   t = await text()
   check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))
+
+  // The rule registry renders itself (validation-rules.md 5).
+  await go('checks')
+  t = await text()
+  check('Checks: the reference page lists the registry by subject', /Every check IAMAI runs/.test(t) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
+  check('Checks: severities and the unknown rule are stated', /Must fix/.test(t) && /Recommended/.test(t) && /holds the plan exactly as a failure does/.test(t))
+  check('Checks: a break-glass rule is on the page in plain language', /Global Administrator is assigned permanently and active/.test(t))
 
   check('No console errors or exceptions across the walk', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '))
 } catch (e) {

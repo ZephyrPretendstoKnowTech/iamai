@@ -200,9 +200,12 @@ test('3: unresolved reference → step blocked by the phase-0 prerequisite', () 
   const steps = generateRoadmap(input).steps
   const step = stepFor(steps, 'mfa-all-users')
   assert.equal(step.status, 'blocked')
-  assert.equal(step.blockedBy.length, 1)
-  const prereq = steps.find((s) => s.id === step.blockedBy[0])
-  assert.ok(prereq && prereq.phase === 0 && prereq.kind === 'prerequisite')
+  // Every blocker is a phase 0 prerequisite; the unresolved reference is one of
+  // them, and a step that can deny access is also held by the escape hatch
+  // until emergency access validates (validation-rules.md §2).
+  const prereqs = step.blockedBy.map((id) => steps.find((s) => s.id === id))
+  assert.ok(prereqs.length > 0 && prereqs.every((p) => p !== undefined && p.phase === 0 && p.kind === 'prerequisite'))
+  assert.ok(prereqs.some((p) => p !== undefined && !p.id.startsWith('s-blocker-')), 'the unresolved reference blocks it')
 })
 
 test('4: partial weaker-control → adjust step with the exact field change', () => {

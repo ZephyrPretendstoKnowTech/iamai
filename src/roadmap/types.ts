@@ -172,6 +172,8 @@ export type Step = {
   forManager: string
   /** A rung of the free-tier ladder (SPEC §12): the plan itself, never groundwork for a policy. */
   ladder?: boolean
+  /** A must-fix validation subject (validation-rules.md §2); leads every surface. */
+  validationBlocker?: boolean
 }
 
 export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; day: string; date: string; time: string; reason: string; outOfHours: boolean }

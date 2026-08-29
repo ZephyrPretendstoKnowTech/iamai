@@ -210,6 +210,40 @@ assign or maintain state waits for an enterprise tier:
 | Change-board framing of the change record | The record stays a plain log of what changed and when. |
 | Communications plan as a commitment table | Presented as "what will be sent and when, ready to copy", never as a client agreement. |
 
+## 11c. Validation rule set (built — `src/validation/`)
+
+Every object the plan depends on is checked in one registry
+(`src/validation/rules.ts`), never inline per question: the break-glass set was
+incomplete twice and regressed silently once, which is what the registry
+prevents. A rule has a stable id, a subject, a severity, the snapshot data it
+needs, and one test each for pass, fail and unknown.
+
+- `unknown` is first class. A rule whose data was not collected (no licence, a
+  403, a group over the member cap) says so instead of passing silently, and
+  **an unknown on a must-fix rule holds the plan exactly as a failure does**.
+- **Must fix** holds every step that can deny access, for the two subjects a
+  recovery depends on (emergency access, the exclusions group), and generates a
+  Phase 0 step ordered before everything else, holding each blocker as a
+  checklist with its portal path and what clears it. **Recommended** never
+  blocks; where a subject has recommendations and no blockers they attach to the
+  step that already covers the same object. **Notes** are informational.
+- Subjects: emergency access (10 must-fix, 8 recommended, 3 notes), the
+  exclusions group, trusted named location, allowed countries, pilot group,
+  service accounts, authentication strength.
+- `bg.credentialStorage` and `bg.signInMonitoring` are the only checks a scan
+  cannot answer; both are asked once alongside the emergency accounts in Setup
+  and recorded in the plan file.
+- `bg.notPersonal` reads department, job title, office and the signed-in
+  operator. Manager is deliberately not collected: it would need an `$expand`
+  on the `/users` page for every account in the tenant, which the other signals
+  already cover.
+- `loc.seenInSignIns` can only pass or report that it cannot tell: IAMAI keeps
+  no addresses from sign-in records, so a stale range cannot be proved.
+- The registry renders itself at `#/checks` ("Every check IAMAI runs"), which is
+  both the documentation and the proof; `src/validation/rules.test.ts` asserts
+  the full set of ids and severities by subject, so a refactor that drops or
+  downgrades a rule fails the build.
+
 ## 12. Licensing principle
 
 The tool **hardens what the tenant has**. Intents are security goals with

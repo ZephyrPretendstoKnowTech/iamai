@@ -7,6 +7,10 @@ export const NEXT = {
   open: 'Open the step',
   minutes: (n: number) => `about ${count(n, 'minute')}`,
   why: {
+    blocker: (held: number): string =>
+      held === 0
+        ? 'Must fix before the rest of the plan is safe to run.'
+        : `Must fix first: ${held === 1 ? '1 step that can deny access is' : `${held} steps that can deny access are`} held until it passes.`,
     prerequisite: (waiting: number) => `nothing blocks it, and ${count(waiting, 'later step')} wait${waiting === 1 ? 's' : ''} for it`,
     safeToday: (minutes: number) => `nothing blocks it, nobody is affected, about ${count(minutes, 'minute')}`,
     readiness: (people: number, unblocks: number) => `setting up ${count(people, 'person', 'people')} unblocks ${count(unblocks, 'step')}`,
