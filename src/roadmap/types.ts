@@ -170,6 +170,8 @@ export type Step = {
   plainTitle: string
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
   forManager: string
+  /** A rung of the free-tier ladder (SPEC §12): the plan itself, never groundwork for a policy. */
+  ladder?: boolean
 }
 
 export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; day: string; date: string; time: string; reason: string; outOfHours: boolean }

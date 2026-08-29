@@ -6,7 +6,7 @@ import { PROGRESS, SCHEDULE_TAB } from '../copy/progress.ts'
 import { ROADMAP } from '../copy/pages.ts'
 import { SECTION } from '../copy/stepContent.ts'
 import { EFFORT, WATCH } from '../copy/comms.ts'
-import { STEP_KIND_LABEL } from '../copy/steps.ts'
+import { STEP_KIND_LABEL, stepKindLabel } from '../copy/steps.ts'
 import { TRACK } from '../copy/progress.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Schedule } from './schedule.ts'
@@ -25,7 +25,7 @@ export function changeRecordRows(steps: Step[], schedule: Schedule, snapshot: Te
       : (st.history.at(-1)?.note ?? st.stateReason)
     return [
       st.plainTitle || st.title,
-      STEP_KIND_LABEL[st.kind],
+      stepKindLabel(st),
       st.goalId,
       st.populationBasis || PROGRESS.absent,
       row?.plannedStart ? absoluteDate(row.plannedStart) : PROGRESS.absent,

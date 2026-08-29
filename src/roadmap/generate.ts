@@ -59,6 +59,8 @@ import { annotateStateReasons } from './stateReason.ts'
 import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
+import { ladderSteps } from './ladder.ts'
+import { STEP_EXTRAS } from './stepDefaults.ts'
 
 /** Evidence must cover at least this many days and hold this many sign-ins (or one per active person in scope) before a step is safe today (§2.4). */
 export const SAFE_MIN_EVIDENCE_DAYS = 14
@@ -95,39 +97,7 @@ export type RoadmapInput = {
 
 export type RoadmapResult = { steps: Step[]; schedule: Schedule }
 
-const EXTRAS: Pick<
-  Step,
-  | 'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
-  | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate' | 'tracking' | 'alreadyInPlace'
-  | 'events' | 'safeVerdict' | 'plainTitle' | 'forManager'
-> = {
-  impact: '',
-  safeToday: false,
-  highCare: { userIds: [], ready: true, notes: [] },
-  comms: null,
-  learn: null,
-  includesOperator: false,
-  operatorSafe: null,
-  rings: [],
-  currentRing: 0,
-  populationBasis: '',
-  populationNames: [],
-  populationView: null,
-  whatChanges: '',
-  failureModes: [],
-  verify: null,
-  helpDesk: null,
-  ringComms: [],
-  rollbackBody: null,
-  owner: null,
-  scheduledDate: null,
-  tracking: null,
-  alreadyInPlace: false,
-  events: null,
-  safeVerdict: { safe: false, reason: '', sentence: '' },
-  plainTitle: '',
-  forManager: '',
-}
+const EXTRAS = STEP_EXTRAS
 
 function idFor(prefix: string, key: string): string {
   return `s-${prefix}-${key.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}`
@@ -536,6 +506,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     return { name, note: NAMING.collision(name, base) }
   }
 
+  // Without Entra ID P1 no Conditional Access policy can exist, so the objects
+  // the policies would reference (exclusion groups, trusted locations) have
+  // nothing to serve: the free-tier ladder is the plan instead (SPEC §12).
+  const canUseConditionalAccess = snapshot.capabilities.entraP1.enabled
+
   const setupStepId = 's-setup-questions'
   if (missingSetup.length > 0) {
     const p = PREREQ.setupQuestions
@@ -550,13 +525,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const p = PREREQ.breakGlass
     steps.push(prereq(bgStepId, p.title, p.why, p.how, p.exit))
   }
-  const geMissing = mapping.records['__globalExclusion']?.doesNotExist === true
+  const geMissing = canUseConditionalAccess && mapping.records['__globalExclusion']?.doesNotExist === true
   const geStepId = 's-prereq-exclusion-group'
   if (geMissing) {
     const p = PREREQ.globalExclusion
     steps.push(prereq(geStepId, p.title, p.why, p.how, p.exit))
   }
   const locMissing =
+    canUseConditionalAccess &&
     mapping.wizardAnswered.trustedLocations === true &&
     mapping.trustedLocationIds.length === 0 &&
     questions.some((q) => q.group === 'namedLocations')
@@ -570,6 +546,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // 0 unless the tenant already has one with exactly that list.
   const countriesStepId = 's-prereq-allowed-countries'
   const countriesMissing =
+    canUseConditionalAccess &&
     mapping.wizardAnswered.countries === true &&
     mapping.allowedCountries.length > 0 &&
     tenantCountryLocation(snapshot, mapping.allowedCountries) === null &&
@@ -580,13 +557,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   const saStepId = 's-prereq-service-accounts-group'
-  if (mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
+  if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
     const p = PREREQ.serviceAccountsGroup
     steps.push(prereq(saStepId, p.title, p.why, p.how(mapping.serviceAccountUserIds.map(nameOf)), p.exit))
   }
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
-  if (secDefaults?.isEnabled === true) {
+  // Nothing can take security defaults' place without Conditional Access, so
+  // turning them off is never the advice: the ladder asks for them instead.
+  if (secDefaults?.isEnabled === true && canUseConditionalAccess) {
     const p = PREREQ.securityDefaults
     steps.push(prereq('s-prereq-security-defaults', p.title, p.why, p.how, p.exit))
   }
@@ -596,6 +575,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const p = PREREQ.perUserMfa
     const mfaPolicies = input.coverage.results.filter((r) => goalFamily(r.goal.id) === 'mfa' && r.status !== 'not-applicable' && r.status !== 'licence-limited').length
     steps.push(prereq('s-prereq-per-user-mfa', p.title, p.why, p.how(mfaPolicies), p.exit))
+  }
+
+  // ---- The free-tier ladder (SPEC §12): the plan spine when no policy can exist ----
+  // Every catalogue goal is licence-limited without Entra ID P1, so the ladder
+  // is what this tenant can actually do; a phase 0 step that already covers a
+  // ladder item keeps the item's place rather than being duplicated.
+  const ladderOrder = new Map<string, number>()
+  if (!canUseConditionalAccess) {
+    const ladder = ladderSteps(snapshot, mapping, steps.map((s) => s.id))
+    steps.push(...ladder.steps)
+    for (const [id, index] of ladder.order) ladderOrder.set(id, index)
   }
 
   // ---- Goal steps ----
@@ -1080,6 +1070,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     return SEVERITY_DEFAULT
   }
   const score = (s: Step): number => {
+    // The ladder is the plan for a tenant that cannot hold a policy: its own
+    // order is the rollout order, ahead of everything else in the phase.
+    const rung = ladderOrder.get(s.id)
+    if (rung !== undefined) return -3000 + rung
     // Conflicts the tenant already has (security defaults, per-user MFA) come before everything (roadmap-v2.md §7, messy).
     if (s.id === 's-prereq-security-defaults' || s.id === 's-prereq-per-user-mfa') return -2000
     if (s.safeToday) return -1000
@@ -1202,7 +1196,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       s.ringComms = s.rings.map((r) => ({ ring: r.name, date: absoluteDate(r.plannedStart), text: template.replaceAll('{DATE}', absoluteDate(r.plannedStart)) }))
       s.comms = template.replaceAll('{DATE}', absoluteDate(firstDate))
     }
-    s.verify = verifyFor(s, contentCtx, s.rings[0]?.name ?? null)
+    // A step that brought its own verification keeps it (the free-tier ladder).
+    if (s.verify === null) s.verify = verifyFor(s, contentCtx, s.rings[0]?.name ?? null)
     s.events = eventsFor(s, { rhythm, notice: input.notice ?? NOTICE_DEFAULTS, holidays, timeZone: mapping.displayTimeZone ?? 'UTC' })
   }
 

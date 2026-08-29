@@ -7,7 +7,7 @@ const NAME_PATTERN = /\b(?:svc|service|printer|scanner|copier|smtp|relay|fax|kio
 
 // Exchange Online service plans: an account licensed for mail only is a
 // mailbox, not a person.
-const EXCHANGE_PLANS = new Set([
+export const EXCHANGE_PLANS = new Set([
   '9aaf7827-d63c-4b61-89c3-182f06f82e5c', // EXCHANGE_S_STANDARD
   'efb87545-963c-4e0d-99df-69c6916d9eb0', // EXCHANGE_S_ENTERPRISE
   '4a82b400-a79f-41a4-b4e2-e94f5787b113', // EXCHANGE_S_DESKLESS

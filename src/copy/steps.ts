@@ -7,6 +7,12 @@ import { TERMS } from './terms.ts'
 
 export const STEP_KIND_LABEL: Record<StepKind, string> = TERMS.stepKind
 
+/** A free-tier ladder rung is the plan, never groundwork for a policy (SPEC §12). */
+export const LADDER_KIND_LABEL = 'Hardening step'
+export function stepKindLabel(step: { kind: StepKind; ladder?: boolean }): string {
+  return step.ladder ? LADDER_KIND_LABEL : STEP_KIND_LABEL[step.kind]
+}
+
 export const STEP_STATUS_LABEL: Record<StepStatus, string> = {
   done: 'Done',
   ready: 'Ready',
@@ -352,6 +358,7 @@ export const STATE_REASON = {
   readiness: (pct: number, threshold: number) => `readiness ${pct}% meets the ${threshold}% threshold`,
   safeToday: `nobody used what it blocks in ${WINDOW}`,
   prerequisite: 'a foundation the later steps need',
+  ladderRung: 'a change this tenant can make with the licence it has',
   verifyPending: 'enabled users still need setting up',
 }
 

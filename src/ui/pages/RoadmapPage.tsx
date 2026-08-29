@@ -34,6 +34,7 @@ import { RingProgress } from '../components/Ring.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import { Term } from '../components/Term.tsx'
 import { EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
+import { LADDER } from '../../copy/ladder.ts'
 import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
 import { PLAIN_TITLES } from '../../copy/plain.ts'
 import { LOG, NEXT } from '../../copy/next.ts'
@@ -56,7 +57,7 @@ import type { Dependency } from '../../roadmap/schedule.ts'
 import { POPULATION_CSV_HEADER, cohortsFor, populationContext, populationRows } from '../../roadmap/population.ts'
 import { ringContextIndexes } from '../../roadmap/rings.ts'
 import { adminUserIds } from '../../roles.ts'
-import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
+import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import { planSummary } from '../../roadmap/summary.ts'
 import { BANDS } from '../../roadmap/constants.ts'
@@ -1179,7 +1180,7 @@ export function RoadmapPage({
           {STEP_STATUS_LABEL[st.status]}
         </Chip>
         <Chip status="neutral" title={STEP_KIND[st.kind].text}>
-          {STEP_KIND_LABEL[st.kind]}
+          {stepKindLabel(st)}
         </Chip>
         <RingProgress step={st} size={26} title={st.rings.length > 0 ? RINGS.summary(st.rings.length, st.rings[0].soakDays, Math.max(1, Math.round(st.rings.reduce((n, r) => n + r.soakDays, 0) / 7))) : STEP_STATUS_LABEL[st.status]} />
       </div>
@@ -1492,6 +1493,8 @@ export function RoadmapPage({
   const unavailable = computed.coverage.results.filter((r) => r.status === 'licence-limited')
   const neededTiers = [...new Set(unavailable.map((r) => r.goal.implementations[0]?.tier ?? ''))].filter(Boolean).map((t) => LICENCE_HEADER.tierName(t)).join(' or ')
   const licenceSentence = LICENCE_HEADER.sentence(tier, tracked.length, tracked.length + unavailable.length, unavailable.length, neededTiers)
+  // Without Entra ID P1 the plan is the free hardening ladder, so say what the plan is (SPEC §12).
+  const onLadder = steps.some((s) => s.id.startsWith('s-ladder-'))
 
   return (
     <StepFrame title={C.title} does={C.does} needs={needs}>
@@ -1499,6 +1502,7 @@ export function RoadmapPage({
       <p className="reason">
         {licenceSentence} {effortTotal.sentence}
       </p>
+      {onLadder && <p className="advisor">{LADDER.intro}</p>}
       <Card title={NEXT.title} className="do-next">
         {nextCard.completed.length > 0 && (
           <p className="completed-lead">
@@ -1578,7 +1582,7 @@ function planMarkdown(
     const title = w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? '')
     lines.push(`## ${title} (${w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)})`)
     for (const s of inPhase) {
-      lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** (${STEP_KIND_LABEL[s.kind]}). ${s.impact}`)
+      lines.push(`- [${s.status === 'done' ? 'x' : ' '}] **${s.title}** (${stepKindLabel(s)}). ${s.impact}`)
       if (s.highCare.userIds.length > 0) lines.push(`  - ${C.markdown.care(s.highCare.userIds.slice(0, 10).map(nameOf).join(', ') + (s.highCare.userIds.length > 10 ? ` ${POPULATION.andMore(s.highCare.userIds.length - 10)}` : ''))}`)
       if (s.status === 'blocked') lines.push(`  - ${C.markdown.blocked(s.unblockNotes.join('; '))}`)
     }
@@ -1726,7 +1730,7 @@ function StepCard({
             {STEP_STATUS_LABEL[step.status]}
           </Chip>{' '}
           <Chip status="neutral" title={STEP_KIND[step.kind].text}>
-            {STEP_KIND_LABEL[step.kind]}
+            {stepKindLabel(step)}
           </Chip>{' '}
           {step.safeToday && (
             <Chip status="done" title={CHIP.safeToday.text}>
@@ -2064,7 +2068,9 @@ function StepCard({
       {/* 10. Rollback, with the previous body */}
       <h4>{SECTION.rollback}</h4>
       <p className="reason">
-        {step.rollback} {ROLLBACK_V2.timing}
+        {step.rollback}
+        {/* The token-refresh note is about Conditional Access; a ladder rung creates no policy. */}
+        {!step.ladder && <> {ROLLBACK_V2.timing}</>}
       </p>
       {step.rollbackBody && (
         <details>

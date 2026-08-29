@@ -59,7 +59,7 @@ export function stateReasonFor(step: Step, stepById: Map<string, Step>): string 
       // A threshold is only cited when it was actually met; the campaign step is ready because people still need setting up, not because readiness passed.
       if (step.kind !== 'verify' && threshold !== null && step.readiness.percent !== null && step.readiness.percent >= threshold) checks.push(STATE_REASON.readiness(step.readiness.percent, threshold))
       if (step.safeToday) checks.push(STATE_REASON.safeToday)
-      if (step.kind === 'prerequisite') checks.push(STATE_REASON.prerequisite)
+      if (step.kind === 'prerequisite') checks.push(step.ladder ? STATE_REASON.ladderRung : STATE_REASON.prerequisite)
       if (step.kind === 'verify') checks.push(STATE_REASON.verifyPending)
       if (step.kind === 'recurring' && step.readiness.lines[0]) checks.push(step.readiness.lines[0])
       return STATE_REASON.checked(checks)

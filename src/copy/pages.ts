@@ -493,6 +493,7 @@ export const LICENSING = {
   ladderTitle: 'The free-tier ladder',
   openStep: 'Open the step →',
   ladderIntro: 'The spine of every plan, regardless of licence: curated from Microsoft guidance.',
+  ladderInPlan: "Every item below is a step in this tenant's plan, with this tenant's own numbers against it.",
   nextAfterScan: 'Next: Findings',
   caps: {
     entraP1: 'Entra ID P1',

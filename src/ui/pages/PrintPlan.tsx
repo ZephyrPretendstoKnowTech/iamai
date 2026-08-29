@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { DangerArea } from '../../roadmap/dangers.ts'
-import { NAMING, PHASE_NAME, PRINT as C, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine } from '../../copy/steps.ts'
+import { NAMING, PHASE_NAME, PRINT as C, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
 import { ROADMAP } from '../../copy/pages.ts'
 import { roadmapOverview, scheduleRationale } from '../../copy/statements.ts'
 import { absoluteDate, dateRange, when } from '../../copy/dates.ts'
@@ -209,7 +209,7 @@ export function PrintPlan({
               <article key={s.id} className="print-step">
                 <h3>{s.title}</h3>
                 <p className="muted">
-                  {C.step.kind}: {STEP_KIND_LABEL[s.kind]} · {C.step.status}: {STEP_STATUS_LABEL[s.status]}
+                  {C.step.kind}: {stepKindLabel(s)} · {C.step.status}: {STEP_STATUS_LABEL[s.status]}
                 </p>
                 <p>{s.impact}</p>
                 <p className="muted">{s.stateReason}</p>
