@@ -88,6 +88,17 @@ export function App() {
           snapshot.evidenceAggregates = null
           snapshot.config.subscribedSkus = { status: 'ok', reason: null, rows: [] }
         }
+        // ?denied=1: a sign-in with too little access (prompt 31 §4.18): Graph
+        // refuses the sections this account's role does not reach.
+        if (params.get('denied') === '1') {
+          const refused = 'Insufficient privileges to complete the operation.'
+          for (const key of ['roleAssignments', 'caPolicies', 'namedLocations'] as const) {
+            snapshot.config[key] = { status: 'disabled', reason: refused, rows: [] }
+          }
+          snapshot.sources.signInEvidence = { status: 'disabled', coveredWindow: null, reason: refused, asOf: snapshot.asOf }
+          snapshot.signInEvidence = {}
+          snapshot.evidenceAggregates = null
+        }
         // ?policies=0: a tenant with no Conditional Access policies at all (prompt 31 §4.19).
         if (params.get('policies') === '0') snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [] }
         setAccount({
