@@ -47,8 +47,8 @@ export const CRITICAL = {
   soft: (step: string, other: string) => `${step} cannot overlap ${other} for the same people`,
   prerequisites: (n: number) => `${count(n, 'prerequisite')} take the first days`,
   shorterSoak: (from: number, to: number) => `Each ring soaks ${count(to, 'day')} instead of ${from}; the longer soak would run past the size band.`,
-  relaxed: (n: number) =>
-    `${count(n, 'step')} prompt the same people in the same week as another step; keeping them apart would run past the size band.`,
+  relaxed: (n: number, weeks: number) =>
+    `${count(n, 'step')} would prompt the same people twice in one week. Spacing them out would push the plan past ${count(weeks, 'week')}, so they stay together.`,
 }
 
 export const POLICY_COUNT = {

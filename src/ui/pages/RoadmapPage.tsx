@@ -621,6 +621,7 @@ export function RoadmapPage({
     }
     return out
   }
+  const anySlipReason = progressRows.some((r) => r.slipReason)
   const progressTab = () => (
     <div>
       {overview()}
@@ -648,6 +649,7 @@ export function RoadmapPage({
         ))}
       </div>
       <h4>{PROGRESS.stripTitle}</h4>
+      <p className="reason">{PROGRESS.stripLegend}</p>
       <div className="strip" aria-label={PROGRESS.stripTitle}>
         {stripWeeks().map((w) => (
           <div key={w.week} className="strip-week" title={`${PROGRESS.stripWeek(absoluteDate(w.week + 'T12:00:00.000Z'))}: ${PROGRESS.stripPlanned(w.planned)}, ${PROGRESS.stripActual(w.actual)}`}>
@@ -668,7 +670,7 @@ export function RoadmapPage({
               <th>{PROGRESS.colPlanned}</th>
               <th>{PROGRESS.colActual}</th>
               <th>{PROGRESS.colSlip}</th>
-              <th>{PROGRESS.colWhy}</th>
+              {anySlipReason && <th>{PROGRESS.colWhy}</th>}
             </tr>
           </thead>
           <tbody>
@@ -677,10 +679,10 @@ export function RoadmapPage({
                 <td>
                   <a href={stepHref(r.stepId)} onClick={(e) => { e.preventDefault(); setActiveTab('plan'); setOpenStepId(r.stepId) }}>{r.title}</a>
                 </td>
-                <td>{r.plannedStart ? absoluteDate(r.plannedStart) : '—'}</td>
-                <td>{r.actualStart ? absoluteDate(r.actualStart) : PROGRESS.notStartedYet}</td>
-                <td>{r.slipDays === null ? '—' : PROGRESS.slipDays(r.slipDays)}</td>
-                <td className="reason">{r.slipReason ?? ''}</td>
+                <td>{r.plannedStart ? absoluteDate(r.plannedStart) : PROGRESS.absent}</td>
+                <td>{r.actualStart ? absoluteDate(r.actualStart) : PROGRESS.absent}</td>
+                <td>{r.slipDays === null ? PROGRESS.absent : PROGRESS.slipDays(r.slipDays)}</td>
+                {anySlipReason && <td className="reason">{r.slipReason ?? PROGRESS.absent}</td>}
               </tr>
             ))}
           </tbody>
@@ -827,19 +829,32 @@ export function RoadmapPage({
   )
 
   // ---- Export (§8): the plan file, the document, the change record, markdown ----
-  const changeRecord = (): string => {
-    const lines: string[] = [`# Change record: ${tenantName}`, `Plan ${planId}, revision ${saved?.revision ?? 1}`, '']
-    for (const st of steps) {
-      lines.push(`## ${st.title}`)
-      lines.push(`- ${SECTION.whatChanges}: ${st.whatChanges}`)
-      lines.push(`- Status: ${STEP_STATUS_LABEL[st.status]}${st.owner ? ` · ${SECTION.owner}: ${st.owner}` : ''}`)
-      if (st.tracking) lines.push(`- Policy: ${st.tracking.policyName} (${st.tracking.note})${st.tracking.enforcedAt ? `; ${TRACK.enforced(absoluteDate(st.tracking.enforcedAt))}` : ''}`)
-      for (const r of st.rings) lines.push(`- ${r.name}: ${absoluteDate(r.plannedStart)} to ${absoluteDate(r.plannedEnd)}${r.actualStart ? ` (started ${absoluteDate(r.actualStart)})` : ''}`)
-      for (const h of st.history) lines.push(`- ${absoluteDate(h.at)}: ${STEP_STATUS_LABEL[h.from]} → ${STEP_STATUS_LABEL[h.to]}${h.note ? ` — ${h.note}` : ''}`)
-      lines.push('')
-    }
+  // The change record (ux-review-07 §32): one row per step, as a Markdown table or a CSV.
+  const changeRecordRows = (): (string | number)[][] =>
+    trackable(steps).map((st) => {
+      const row = progressRows.find((r) => r.stepId === st.id)
+      const evidence = st.tracking
+        ? `${st.tracking.policyName} (${st.tracking.note})${st.tracking.enforcedAt ? `; ${TRACK.enforced(absoluteDate(st.tracking.enforcedAt))}` : ''}`
+        : (st.history.at(-1)?.note ?? st.stateReason)
+      return [
+        st.title,
+        STEP_KIND_LABEL[st.kind],
+        st.goalId,
+        st.populationBasis || PROGRESS.absent,
+        row?.plannedStart ? absoluteDate(row.plannedStart) : PROGRESS.absent,
+        row?.actualStart ? absoluteDate(row.actualStart) : PROGRESS.absent,
+        evidence,
+        st.rollback,
+      ]
+    })
+  const CHANGE_HEADER = [SCHEDULE_TAB.colStep, C.kindLabel, C.goalLabel, C.whoItTouches, PROGRESS.colPlanned, PROGRESS.colActual, C.evidenceLabel, SECTION.rollback]
+  const changeRecordMarkdown = (): string => {
+    const esc = (v: string | number) => String(v).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
+    const lines = [`# Change record: ${tenantName}`, `Plan ${planId}, revision ${saved?.revision ?? 1}, ${absoluteDate(new Date().toISOString())}`, '', `| ${CHANGE_HEADER.join(' | ')} |`, `| ${CHANGE_HEADER.map(() => '---').join(' | ')} |`]
+    for (const r of changeRecordRows()) lines.push(`| ${r.map(esc).join(' | ')} |`)
     return lines.join('\n')
   }
+  const changeRecordCsv = (): string => toCsv(CHANGE_HEADER, changeRecordRows())
   const exportTab = () => (
     <div className="export-grid">
       <Card title={EXPORT_TAB.planFile}>
@@ -855,21 +870,26 @@ export function RoadmapPage({
         <Button icon="copy" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
           {copied === 'plan-md' ? C.copied : C.copyMarkdown}
         </Button>
-        <Button icon="print" onClick={() => window.print()}>
-          {C.print}
-        </Button>
       </p>
       </Card>
       <Card title={EXPORT_TAB.changeRecord}>
         <p className="reason">{EXPORT_TAB.changeRecordText}</p>
         <p className="row no-print">
-          <Button icon="download" onClick={() => downloadFile(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.md`, changeRecord(), 'text/markdown')}>
+          <Button icon="download" onClick={() => downloadFile(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.md`, changeRecordMarkdown(), 'text/markdown')}>
             {EXPORT_TAB.downloadChangeRecord}
+          </Button>
+          <Button icon="download" onClick={() => downloadFile(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.csv`, changeRecordCsv(), 'text/csv')}>
+            {EXPORT_TAB.downloadChangeRecordCsv}
           </Button>
         </p>
       </Card>
       <Card title={EXPORT_TAB.pdf}>
         <p className="reason">{EXPORT_TAB.pdfText}</p>
+        <p className="row no-print">
+          <Button icon="print" onClick={() => window.print()}>
+            {EXPORT_TAB.print}
+          </Button>
+        </p>
       </Card>
     </div>
   )

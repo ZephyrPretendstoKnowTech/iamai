@@ -63,7 +63,7 @@ export const SETUP_QUESTIONS = {
 
 export const SETUP_PAGE = {
   title: 'Setup',
-  does: 'A handful of questions about the tenant. Everything else is worked out from the scan.',
+  does: 'A few questions, each required. The answers shape the plan and the checks.',
   needsBaseline: 'baseline loaded',
   needBaseline: 'Load a baseline in the Baseline step',
   needsScan: 'scan complete',
