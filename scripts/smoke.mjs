@@ -168,7 +168,8 @@ try {
   check('Roadmap: danger areas name the blocked user', /1 user is blocked today|Watch first\s+1/.test(t))
   check('Roadmap: Plan tab lists the verification campaign', (await clickText('/^Plan/')) && (await waitFor(`/Run the MFA verification campaign/.test(document.body.innerText)`)))
   check('Roadmap: Progress tab shows the journey', (await clickText('/^Progress/')) && (await waitFor(`/The journey/.test(document.body.innerText)`)))
-  check('Roadmap: Schedule tab carries owners and the calendar export', (await clickText('/^Schedule/')) && (await waitFor(`/Owners and dates/.test(document.body.innerText)`)))
+  check('Roadmap: Schedule tab carries the dates and the calendar export', (await clickText('/^Schedule/')) && (await waitFor(`/Export to calendar/.test(document.body.innerText)`)))
+  check('Roadmap: Do this next and History render', (await clickText('/^Progress/')) && (await waitFor(`/Do this next/.test(document.body.innerText) && /History/.test(document.body.innerText)`)))
 
   // Inventory and Licensing reachable
   await go('inventory')

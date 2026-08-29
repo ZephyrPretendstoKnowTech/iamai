@@ -753,3 +753,12 @@ table.datatable tbody tr:hover { background: var(--raised); }
 .week-event:hover { border-color: var(--accent); }
 .term-word { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 @media print { .this-week { break-inside: avoid; } .week-table td { min-width: 0; } }
+
+/* Do this next and History (prompt 30) */
+.do-next { margin: var(--space-3) 0; border-left: 4px solid var(--present); }
+.next-list { list-style: none; padding: 0; margin: 0; }
+.next-item { display: flex; justify-content: space-between; gap: var(--space-3); align-items: center; padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.next-item:first-child { border-top: 0; }
+.completed-lead { font-weight: 600; color: var(--past); }
+.history-list li { padding: 0.15rem 0; }
+@media (max-width: 700px) { .next-item { flex-direction: column; align-items: flex-start; } }

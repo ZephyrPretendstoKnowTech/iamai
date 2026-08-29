@@ -36,6 +36,10 @@ import { Term } from '../components/Term.tsx'
 import { EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
 import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
 import { PLAIN_TITLES } from '../../copy/plain.ts'
+import { LOG, NEXT } from '../../copy/next.ts'
+import { doThisNext } from '../../roadmap/next.ts'
+import { appendLog, emptyLog, entriesForScan, logCsvRows, logMarkdown, logView, rolledUpSentence } from '../../roadmap/activityLog.ts'
+import type { ActivityLog } from '../../roadmap/activityLog.ts'
 import type { NoticeSettings } from '../../roadmap/timing.ts'
 import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
@@ -83,6 +87,10 @@ type PlanStore = {
   notice?: NoticeSettings
   /** YYYY-MM-DD dates nothing is enforced on. */
   holidays?: string[]
+  /** The automatic activity log (prompt 30 §3). */
+  log?: ActivityLog
+  /** The scan the log last recorded, so one scan is logged once. */
+  loggedScanAt?: string
 }
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
@@ -122,6 +130,7 @@ export function RoadmapPage({
   const [version, setVersion] = useState(0)
   // Statuses at the previous render: a step that moved gets one flash (ux-review-07 §F3).
   const prevStatusRef = useRef<Record<string, StepStatus>>({})
+  const [logFilter, setLogFilter] = useState<'all' | 'mine'>('all')
   const [copied, setCopied] = useState<string | null>(null)
   // Deep link #/roadmap/step/<id>: open the Steps tab with that step expanded.
   const linkedStepId = useHashStepId()
@@ -283,6 +292,14 @@ export function RoadmapPage({
       revision += 1
       revisions.push({ revision, at: new Date().toISOString(), note: notes.join('; ') })
     }
+    // The automatic log (prompt 30 §3): each scan is recorded once, from what the scan itself noticed.
+    let log = saved?.log ?? emptyLog()
+    if (saved?.loggedScanAt !== snapshot.asOf) {
+      log = appendLog(
+        log,
+        entriesForScan({ snapshot, steps: computed.steps, previous: saved?.checkpoints.at(-1) ?? null, planId, baselinePin: pin, previousBaselinePin: saved?.baselinePin ?? null, scanAt: snapshot.asOf, since: saved?.loggedScanAt ?? null }),
+      )
+    }
     void savePlanRecord(snapshot.tenantId, {
       ...(saved ?? { planId, checkpoints: [] }),
       planId,
@@ -295,6 +312,8 @@ export function RoadmapPage({
       stepIds: ids,
       baselinePin: pin,
       planCreatedAt: saved?.planCreatedAt ?? revisions[0]?.at ?? new Date().toISOString(),
+      log,
+      loggedScanAt: snapshot.asOf,
     })
   }, [computed, snapshot, planId, saved, startDate, band, baselineIndex.commit])
 
@@ -405,7 +424,7 @@ export function RoadmapPage({
   }
   const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
   // Owner and scheduled date travel with the plan (roadmap-v2.md §4.12); a date re-plans in place.
-  const saveStepMeta = (st: Step, meta: { owner?: string | null; scheduledDate?: string | null }): void => {
+  const saveStepMeta = (st: Step, meta: { scheduledDate?: string | null }): void => {
     setSaved((p) => {
       const base = p ?? { planId, steps: {}, checkpoints: [] }
       const prev = base.steps[st.id] ?? { status: st.status, history: st.history, skipReason: st.skipReason }
@@ -461,9 +480,10 @@ export function RoadmapPage({
       mapping,
       steps,
       checkpoints,
-      schedule: { startDate: startDate ?? schedule.start, band: band ?? undefined, owner: owner || undefined, freeze: saved?.freeze ?? null },
+      schedule: { startDate: startDate ?? schedule.start, band: band ?? undefined, freeze: saved?.freeze ?? null },
       revision: saved?.revision,
       revisions: saved?.revisions,
+      log: saved?.log,
     })
     downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json')
   }
@@ -492,12 +512,12 @@ export function RoadmapPage({
       checkpoints: plan.checkpoints,
       startDate: start,
       band: loadedBand,
-      owner: plan.schedule?.owner,
       freeze: plan.schedule?.freeze ?? null,
       revision: plan.revision,
       revisions: plan.revisions,
       stepIds: plan.steps.map((s) => s.id),
       baselinePin: plan.baselinePin,
+      log: plan.log,
     }
     await savePlanRecord(snapshot.tenantId, record)
     // Setup answers travel with the plan file (provenance intact); re-opening Setup shows them.
@@ -540,11 +560,6 @@ export function RoadmapPage({
         )
       : null
 
-  const owner = saved?.owner ?? ''
-  const setOwner = (value: string): void => {
-    setSaved((p) => (p ? { ...p, owner: value } : p))
-    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), owner: value })
-  }
   const openSteps = (status: StepStatus | null): void => {
     setSafeOnly(false)
     setStatusFilter(status ? new Set([status]) : new Set())
@@ -667,6 +682,45 @@ export function RoadmapPage({
     return out
   }
   const anySlipReason = progressRows.some((r) => r.slipReason)
+  const log = saved?.log ?? emptyLog()
+  const logRows = logView(log, logFilter)
+  const historySection = () => (
+    <>
+      <h4>{LOG.title}</h4>
+      <p className="reason">{LOG.hint}</p>
+      <div className="row no-print">
+        <FilterChip selected={logFilter === 'all'} onToggle={() => setLogFilter('all')}>
+          {LOG.filterAll}
+        </FilterChip>
+        <FilterChip selected={logFilter === 'mine'} onToggle={() => setLogFilter('mine')}>
+          {LOG.filterMine}
+        </FilterChip>
+        <Button size="sm" icon="download" onClick={() => downloadFile(`iamai-history-${snapshot.tenantId.slice(0, 8)}.csv`, toCsv([LOG.columns.when, LOG.columns.what, LOG.columns.step, LOG.columns.detected, LOG.columns.planned], logCsvRows(logRows)), 'text/csv')}>
+          {LOG.exportCsv}
+        </Button>
+        <Button size="sm" icon="download" onClick={() => downloadFile(`iamai-history-${snapshot.tenantId.slice(0, 8)}.md`, logMarkdown(logRows, `${LOG.title}: ${tenantName}`), 'text/markdown')}>
+          {LOG.exportMd}
+        </Button>
+      </div>
+      {logRows.length === 0 && <p className="reason">{LOG.empty}</p>}
+      {logRows.length > 0 && (
+        <ul className="sections history-list">
+          {logRows.slice(0, 200).map((e, i) => (
+            <li key={i}>
+              <span className="reason">{absoluteDate(e.at)}</span> ·{' '}
+              {e.stepId && stepById.get(e.stepId) ? (
+                <a href={stepHref(e.stepId)} onClick={(ev) => { ev.preventDefault(); setActiveTab('plan'); setOpenStepId(e.stepId!) }}>{e.what}</a>
+              ) : (
+                e.what
+              )}{' '}
+              <Chip status={e.planned ? 'done' : 'warning'}>{e.planned ? LOG.planned : LOG.unplanned}</Chip> <span className="reason">{LOG.detected[e.detectedBy]}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {rolledUpSentence(log) && <p className="reason">{rolledUpSentence(log)}</p>}
+    </>
+  )
   const progressTab = () => (
     <div>
       {overview()}
@@ -749,6 +803,7 @@ export function RoadmapPage({
           </ul>
         </>
       )}
+      {historySection()}
       {(saved?.revisions ?? []).length > 0 && (
         <details>
           <summary>{PROGRESS.revision(saved?.revision ?? 1, absoluteDate((saved?.revisions ?? []).at(-1)?.at ?? new Date().toISOString()))}</summary>
@@ -840,7 +895,6 @@ export function RoadmapPage({
           <thead>
             <tr>
               <th>{SCHEDULE_TAB.colStep}</th>
-              <th>{SCHEDULE_TAB.colOwner}</th>
               <th>{SCHEDULE_TAB.colStart}</th>
               <th>{SCHEDULE_TAB.colEnd}</th>
               <th>{SCHEDULE_TAB.colRing}</th>
@@ -851,9 +905,6 @@ export function RoadmapPage({
               <tr key={st.id}>
                 <td>
                   <a href={stepHref(st.id)} onClick={(e) => { e.preventDefault(); setActiveTab('plan'); setOpenStepId(st.id) }}>{st.title}</a>
-                </td>
-                <td>
-                  <input type="text" value={st.owner ?? ''} placeholder={SECTION.ownerPlaceholder} aria-label={`${SECTION.owner}: ${st.title}`} onChange={(e) => saveStepMeta(st, { owner: e.currentTarget.value || null })} />
                 </td>
                 <td>
                   <input type="date" value={(st.scheduledDate ?? st.rings[0]?.plannedStart ?? '').slice(0, 10)} aria-label={`${SECTION.scheduledDate}: ${st.title}`} onChange={(e) => e.currentTarget.value && saveStepMeta(st, { scheduledDate: `${e.currentTarget.value}T12:00:00.000Z` })} />
@@ -895,12 +946,6 @@ export function RoadmapPage({
           <p className="reason">
             {schedule.bandSource === 'auto' ? C.bandAuto(schedule.activeUsers, C.bands[schedule.band].label) : C.bandOverride(schedule.activeUsers, C.bands[schedule.band].label)} ·{' '}
             {C.expected(BANDS[schedule.band].weeks)}
-          </p>
-          <p>
-            <label>
-              {C.owner}{' '}
-              <input type="text" value={owner} placeholder={C.ownerPlaceholder} aria-label={C.owner} onChange={(e) => setOwner(e.currentTarget.value)} style={{ minWidth: '16rem' }} />
-            </label>
           </p>
           <div className="row">
             <span className="muted">{CALENDAR.freezeLabel}</span>
@@ -1329,6 +1374,10 @@ export function RoadmapPage({
             : THIS_WEEK.nothing
       : null
 
+  // ---- Do this next (prompt 30 §2): the front door ----
+  const previousStatuses = saved?.steps ? Object.fromEntries(Object.entries(saved.steps).map(([id, v]) => [id, v.status])) : null
+  const nextCard = doThisNext(steps, schedule, computed.viability, nameOf, previousStatuses, new Date().toISOString())
+
   // ---- Licence awareness (§3.4): what this tenant's licence makes available ----
   const caps = snapshot.capabilities
   const tier = caps.entraP2?.enabled ? LICENCE_HEADER.tier.p2 : caps.entraP1?.enabled ? LICENCE_HEADER.tier.p1 : LICENCE_HEADER.tier.free
@@ -1340,8 +1389,32 @@ export function RoadmapPage({
     <StepFrame title={C.title} does={C.does} needs={needs}>
       {scan && <ScanAge at={scan.at} baseline={baseline?.source ?? null} />}
       <p className="reason">{licenceSentence}</p>
-      <Card title={THIS_WEEK.title} className="this-week">
-        {nothingUntil ? <p>{nothingUntil}</p> : <p>{THIS_WEEK.lead(thisWeekItems)}</p>}
+      <Card title={NEXT.title} className="do-next">
+        {nextCard.completed.length > 0 && (
+          <p className="completed-lead">
+            {nextCard.completed.length === 1 ? NEXT.completed(nextCard.completed[0]) : NEXT.completedMany(nextCard.completed.length)} {nextCard.items.length > 0 && NEXT.next}
+          </p>
+        )}
+        {nextCard.waiting && <p>{nextCard.waiting}</p>}
+        {nextCard.items.length > 0 && (
+          <ol className="next-list">
+            {nextCard.items.map((item) => (
+              <li key={item.stepId} className="next-item">
+                <div>
+                  <strong>{item.title}</strong>
+                  <div className="sub">{item.why} · {item.touches}</div>
+                </div>
+                <div className="row">
+                  <span className="reason">{NEXT.minutes(item.minutes)}</span>
+                  <Button size="sm" variant="primary" onClick={() => { setSafeOnly(false); setStatusFilter(new Set()); setActiveTab('plan'); setOpenStepId(item.stepId) }}>
+                    {NEXT.open}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+        {!nothingUntil && thisWeekItems.length > 0 && <p className="reason">{THIS_WEEK.lead(thisWeekItems)}</p>}
       </Card>
       <Tabs
         active={activeTab}
@@ -1474,10 +1547,9 @@ function StepCard({
   cohortsOf: (step: Step) => NonNullable<Step['populationView']>['cohorts']
   boundedNames: (ids: string[]) => string
   dependencies: Dependency[]
-  onMeta: (step: Step, meta: { owner?: string | null; scheduledDate?: string | null }) => void
+  onMeta: (step: Step, meta: { scheduledDate?: string | null }) => void
 }) {
   const [tab, setTab] = useState<'json' | 'portal' | 'ps'>('portal')
-  const [ownerDraft, setOwnerDraft] = useState<string | null>(null)
   return (
     <ExpandCard
       className={`step-card ${step.safeToday ? 'lane-safe' : ''}`}
@@ -1908,20 +1980,6 @@ function StepCard({
           <h4>{SECTION.ownerAndDate}</h4>
           <p className="row no-print">
             <label>
-              {SECTION.owner}{' '}
-              <input
-                type="text"
-                value={ownerDraft ?? step.owner ?? ''}
-                placeholder={SECTION.ownerPlaceholder}
-                aria-label={SECTION.owner}
-                onChange={(e) => setOwnerDraft(e.currentTarget.value)}
-                onBlur={() => {
-                  if (ownerDraft !== null && ownerDraft !== (step.owner ?? '')) onMeta(step, { owner: ownerDraft.trim() || null })
-                  setOwnerDraft(null)
-                }}
-              />
-            </label>
-            <label>
               {SECTION.scheduledDate}{' '}
               <input
                 type="date"
@@ -1938,7 +1996,7 @@ function StepCard({
             <InfoTip title={SECTION.scheduledDate} text={SECTION.scheduledHint} />
           </p>
           <p className="reason print-only">
-            {SECTION.owner}: {step.owner ?? '—'} · {SECTION.scheduledDate}: {step.scheduledDate ? absoluteDate(step.scheduledDate) : step.rings[0] ? absoluteDate(step.rings[0].plannedStart) : '—'}
+            {SECTION.scheduledDate}: {step.scheduledDate ? absoluteDate(step.scheduledDate) : step.rings[0] ? absoluteDate(step.rings[0].plannedStart) : '—'}
           </p>
         </>
       )}

@@ -92,14 +92,13 @@ export const PROGRESS = {
 
 export const SCHEDULE_TAB = {
   tab: 'Schedule',
-  ownersTitle: 'Owners and dates',
+  ownersTitle: 'Dates',
   colStep: 'Step',
-  colOwner: 'Owner',
   colStart: 'Starts',
   colEnd: 'Ends',
   colRing: 'Rings',
   exportIcs: 'Export to calendar (ICS)',
-  icsNote: 'One calendar entry per scheduled step, from its first ring to its last; owners travel as attendees when they are email addresses.',
+  icsNote: 'One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.',
   unscheduled: 'not scheduled',
 }
 
@@ -110,7 +109,7 @@ export const EXPORT_TAB = {
   pdf: 'The plan as a document',
   pdfText: 'The print layout: cover, waves, every step in full. Save as PDF from the print dialog.',
   changeRecord: 'Change record',
-  changeRecordText: 'One row per step: step, kind, goal, population, planned date, actual date, evidence, rollback. For the change board; opens in Excel as CSV or in a wiki as Markdown.',
+  changeRecordText: 'A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback. Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.',
   downloadChangeRecord: 'Download as Markdown (one file)',
   downloadChangeRecordCsv: 'Download as CSV (one file)',
   print: 'Print or save as PDF',

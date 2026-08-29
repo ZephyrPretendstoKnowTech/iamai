@@ -37,6 +37,9 @@ Vite + TypeScript + React, `@azure/msal-browser`, Web Worker for the replay engi
 - Generated sentences have explicit branches for 0, 1, all, and none. A contradiction is a failing test.
 - Use the shared components in src/ui/components; do not write bespoke CSS for something a component covers.
 - Before committing any UI change, list the pages touched in the commit message.
+- IAMAI never asks the user to maintain state it can detect. No manual status, no checkboxes, no "mark as done".
+- IAMAI never asks for information that only matters to an organisation with a formal process: owners, approvers, sign-off, change numbers, CAB dates. If a feature needs one of those, it is enterprise-tier and waits.
+- Any artifact for other people (client, manager, help desk) is generated on demand, never a field the user has to fill in first.
 
 ## Conventions
 - Pure logic (adapter, intents, engine) has no DOM or network imports so it runs in Node tests and in the worker.
