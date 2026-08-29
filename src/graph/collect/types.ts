@@ -89,6 +89,9 @@ export type UserEvidence = {
   signInCount: number
   lastSignIn: string | null
   lastMfaSuccess: { at: string; method: string } | null
+  /** Countries this account signed in from in the window; the allowed-countries
+   * and emergency-access checks need them per account, not only per tenant. */
+  countries?: string[]
 }
 
 // The raw sign-in subset Lane B keeps: lives only in the worker and the

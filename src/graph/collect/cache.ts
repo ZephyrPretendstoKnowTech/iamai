@@ -20,6 +20,8 @@ export type GroupMembersCacheEntry = {
   groupId: string
   displayName: string | null
   membershipRule: string | null
+  /** A mail-enabled exclusions group is a target that also delivers mail. */
+  mailEnabled?: boolean
   memberCount: number
   memberIds: string[]
   sampled: boolean

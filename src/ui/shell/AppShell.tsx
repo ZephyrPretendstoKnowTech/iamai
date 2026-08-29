@@ -23,6 +23,7 @@ export type Route =
   | 'roadmap'
   | 'licensing'
   | 'reads'
+  | 'checks'
   | 'inventory'
   | 'baseline/package'
   | 'roadmap/prompts'
@@ -44,11 +45,12 @@ const STEPS: { route: Route; label: string }[] = [
 const REFERENCE: { route: Route; label: string }[] = [
   { route: 'licensing', label: SHELL.steps.licensing },
   { route: 'reads', label: SHELL.steps.reads },
+  { route: 'checks', label: SHELL.steps.checks },
   { route: 'roadmap/prompts', label: SHELL.steps.prompts },
 ]
 
 // Pages whose main content is a table read better with the wider cap (ux-review-06 §28).
-const WIDE_ROUTES = new Set<string>(['scan', 'inventory', 'reads', 'licensing'])
+const WIDE_ROUTES = new Set<string>(['scan', 'inventory', 'reads', 'licensing', 'checks'])
 
 const VALID = new Set<string>([
   ...[...STEPS, ...REFERENCE].map((n) => n.route as string),

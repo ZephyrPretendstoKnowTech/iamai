@@ -188,12 +188,12 @@ export function buildFixture(spec: Spec): Fixture {
     if (isAdmin) rolesActive[id] = [GA]
     // Every active person (90 days) has sign-in evidence: the records cover the whole window.
     if (lastDays < 90 && !spec.hostile) {
-      signInEvidence[id] = { signInCount: 1 + Math.floor(rand() * 20), lastSignIn: daysAgo(lastDays), lastMfaSuccess: methods.length > 0 && rand() < 0.65 ? { at: daysAgo(lastDays), method: 'Mobile app notification' } : null }
+      signInEvidence[id] = { signInCount: 1 + Math.floor(rand() * 20), lastSignIn: daysAgo(lastDays), lastMfaSuccess: methods.length > 0 && rand() < 0.65 ? { at: daysAgo(lastDays), method: 'Mobile app notification' } : null, countries: rand() < 0.04 ? ['AU', 'NZ'] : ['AU'] }
     }
   }
   // Break-glass accounts: cloud-only GAs, excluded everywhere; SMS-only when messy.
   for (const [k, id] of bgIds.entries()) {
-    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${spec.name}.example.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: 'IT', jobTitle: null, officeLocation: null })
+    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${spec.name}.onmicrosoft.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
     registrationDetails.push({ id, userPrincipalName: `bg${k + 1}@${spec.name}.example.com`, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: !spec.breakGlassSmsOnly, methodsRegistered: spec.breakGlassSmsOnly ? ['mobilePhone'] : ['fido2SecurityKey'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: true, userType: 'member' })
     authMethods[id] = spec.breakGlassSmsOnly ? [{ kind: 'phone', phoneType: 'mobile' }] : [{ kind: 'fido2' }]
     rolesActive[id] = [GA]
@@ -268,8 +268,8 @@ export function buildFixture(spec: Spec): Fixture {
         ...(p1 ? [{ skuId: 'sku-p1', skuPartNumber: 'AAD_PREMIUM', prepaidUnits: { enabled: spec.users + 20 }, consumedUnits: spec.users, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM', provisioningStatus: 'Success' }] }] : []),
         ...(p2 ? [{ skuId: 'sku-p2', skuPartNumber: 'AAD_PREMIUM_P2', prepaidUnits: { enabled: Math.round(spec.users / 2) }, consumedUnits: Math.round(spec.users * 0.4), servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2', provisioningStatus: 'Success' }] }] : []),
       ]),
-      organization: section([{ displayName: `Fixture ${spec.name}`, verifiedDomains: [{ name: `${spec.name}.example.com` }] }]),
-      me: section([]),
+      me: section([{ id: ids[0], displayName: 'Operator', userPrincipalName: `user0@${spec.name}.example.com` }]),
+      organization: section([{ displayName: `Fixture ${spec.name}`, verifiedDomains: [{ name: `${spec.name}.example.com`, isInitial: false }, { name: `${spec.name}.onmicrosoft.com`, isInitial: true }] }]),
       meMemberOf: section([]),
     },
     registrationDetails: hostile ? [] : registrationDetails,
@@ -293,6 +293,7 @@ export function buildFixture(spec: Spec): Fixture {
   const mapping: MappingState = {
     ...emptyMappingState(tenantId),
     breakGlassUserIds: bgIds,
+    breakGlassAnswers: spec.hostile ? { credentialStorage: false, signInMonitoring: false } : { credentialStorage: true, signInMonitoring: true },
     serviceAccountUserIds: svcIds,
     allowedCountries: spec.multiGeo ? ['AU', 'NZ', 'GB', 'US'] : ['AU'],
     displayTimeZone: 'Australia/Sydney',

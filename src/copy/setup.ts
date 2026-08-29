@@ -123,6 +123,8 @@ export const SETUP_PAGE = {
   usedInPolicy: 'used in a policy',
   members: (n: number) => `${n} member${n === 1 ? '' : 's'}`,
   toFix: (n: number) => `${n} to fix`,
+  mustFix: (n: number) => `${n} must fix`,
+  recommendedCount: (n: number) => `${n} recommended`,
   checksPassed: 'Checks passed',
   needsAttention: 'Needs attention before this is safe',
   nobodyNeedsCare: 'Nobody needs special care',
@@ -160,7 +162,19 @@ export const SETUP_PAGE = {
   findingsCount: (n: number) => (n === 0 ? 'checks passed' : `${n} to fix`),
   notesCount: (n: number) => `checked · ${n === 1 ? '1 note' : `${n} notes`}`,
   nothingToCheck: 'nothing to check',
-  toFixTitle: 'To fix',
+  /** The two emergency-access facts Microsoft Graph exposes nowhere (validation-rules.md §3). */
+  breakGlassAsk: {
+    title: 'Two things no tenant can be asked',
+    intro: 'Microsoft Graph exposes neither of these, so they are the only part of the emergency-access check that needs an answer rather than a scan. Both are recorded in the plan.',
+    credentialStorage: 'The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.',
+    signInMonitoring: 'A sign-in by an emergency account raises an alert somebody sees.',
+    yes: 'Yes',
+    no: 'Not yet',
+    answeredYes: 'Yes',
+    answeredNo: 'Not yet: the plan carries a step for it',
+  },
+  mustFixTitle: 'Must fix',
+  recommendedTitle: 'Recommended',
   notesTitle: 'Notes',
   detected: 'Detected',
   markedInUse: 'Marked in use by you',
@@ -200,6 +214,8 @@ export const SETUP_PAGE = {
 /** Fix paths for validation findings: a plan step, or the exact portal path. */
 export const VALIDATION_ACTION = {
   roadmap: { label: 'See the exclusions group step in the Roadmap', href: '#/roadmap/step/s-prereq-exclusion-group' },
+  setup: { label: 'Answer it in Setup', href: '#/mapping' },
+  methods: { label: 'Entra admin center → Protection → Authentication methods → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/AuthenticationMethodsMenuBlade/~/AdminAuthMethods' },
   drill: { label: 'Break-glass drill step in the Roadmap', href: '#/roadmap/step/s-recurring-break-glass-drill' },
   pickAnother: { label: 'Pick a different account above', href: '#/mapping' },
   policies: { label: 'Entra admin center → Protection → Conditional Access → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/Policies' },

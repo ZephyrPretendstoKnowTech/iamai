@@ -164,8 +164,9 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
   const perUser: Record<string, UserEvidence> = {}
   for (const row of rows) {
     if (!row.userId) continue
-    const u = (perUser[row.userId] ??= { signInCount: 0, lastSignIn: null, lastMfaSuccess: null })
+    const u = (perUser[row.userId] ??= { signInCount: 0, lastSignIn: null, lastMfaSuccess: null, countries: [] })
     u.signInCount += 1
+    if (row.country && !u.countries?.includes(row.country)) (u.countries ??= []).push(row.country)
     const at = row.createdDateTime
     if (u.lastSignIn === null || at > u.lastSignIn) u.lastSignIn = at
     const method = mfaSuccessOf(row)

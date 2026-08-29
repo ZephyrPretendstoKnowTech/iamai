@@ -7,7 +7,15 @@ import type { PolicyFacts, PopulationSpec, ResolvedPopulation } from './types.ts
 
 export type GroupMembers = Map<
   string,
-  { memberIds: string[]; memberCount: number; sampled: boolean; displayName?: string | null }
+  {
+    memberIds: string[]
+    memberCount: number
+    sampled: boolean
+    displayName?: string | null
+    /** Carried from the group cache: the validation rules need both. */
+    membershipRule?: string | null
+    mailEnabled?: boolean
+  }
 >
 
 export function usersWithActiveRole(snapshot: TenantSnapshot, roleTemplateIds: Set<string>): Set<string> {
