@@ -38,6 +38,8 @@ function spikeCapture(): Plugin {
 }
 
 export default defineConfig({
+  // GitHub Pages serves the app from /<repo>/ (docs/RELEASE-CHECKLIST.md); the workflow sets BASE_PATH.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [react(), spikeCapture()],
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },
