@@ -32,6 +32,12 @@ import { ROLLBACK_V2, SECTION } from '../../copy/stepContent.ts'
 import { RINGS } from '../../copy/rings.ts'
 import { RingProgress } from '../components/Ring.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
+import { Term } from '../components/Term.tsx'
+import { EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
+import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
+import { PLAIN_TITLES } from '../../copy/plain.ts'
+import type { NoticeSettings } from '../../roadmap/timing.ts'
+import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
 import { changesSince, groupGrowth, progressHeadline, stepProgress, trackable } from '../../roadmap/tracking.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
@@ -73,6 +79,10 @@ type PlanStore = {
   baselinePin?: string | null
   /** When this plan was first generated: evidence before it is "already in place" (ux-review-07 §1). */
   planCreatedAt?: string
+  /** Suggested notice periods by disruption, in working days (scheduling-and-onboarding.md §2.3). */
+  notice?: NoticeSettings
+  /** YYYY-MM-DD dates nothing is enforced on. */
+  holidays?: string[]
 }
 
 const STATUS_CHIP: Record<StepStatus, ChipStatus> = {
@@ -100,6 +110,8 @@ export function RoadmapPage({
   const [loadedStores, setLoadedStores] = useState(false)
   const [extraNames, setExtraNames] = useState<Map<string, string>>(new Map())
   const [statusFilter, setStatusFilter] = useState<Set<StepStatus>>(new Set())
+  // The fast path (scheduling-and-onboarding.md §2.5): show only what is safe to enforce today.
+  const [safeOnly, setSafeOnly] = useState(false)
   const [stepSort, setStepSort] = useState<'schedule' | ScoreSort>('schedule')
   // Hide completed defaults on once more than a third of the steps are done (ux-review-04 §5).
   const [showCompletedChoice, setShowCompletedChoice] = useState<boolean | null>(null)
@@ -210,6 +222,8 @@ export function RoadmapPage({
       names,
       groupMembers: groups,
       changeFreeze: saved?.freeze ?? null,
+      notice: saved?.notice ?? NOTICE_DEFAULTS,
+      holidays: saved?.holidays ?? [],
       scheduled: Object.fromEntries(Object.entries(saved?.steps ?? {}).flatMap(([id, v]) => (v.scheduledDate ? [[id, v.scheduledDate]] : []))),
     })
     mergePersisted(steps, saved?.steps ?? null)
@@ -371,6 +385,18 @@ export function RoadmapPage({
     setSaved((p) => (p ? { ...p, band: next } : p))
     setVersion((v) => v + 1)
   }
+  // Notice periods and holidays travel with the plan (scheduling-and-onboarding.md §2.2, §2.3).
+  const setNotice = (next: NoticeSettings): void => {
+    setSaved((p) => (p ? { ...p, notice: next } : p))
+    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), notice: next })
+    setVersion((v) => v + 1)
+  }
+  const setHolidays = (text: string): void => {
+    const next = text.split(/[\n,;]+/).map((x) => x.trim()).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x))
+    setSaved((p) => (p ? { ...p, holidays: next } : p))
+    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), holidays: next })
+    setVersion((v) => v + 1)
+  }
   // The change freeze travels with the plan (roadmap-v2.md §2): the schedule moves around it.
   const setFreeze = (next: ChangeFreeze | null): void => {
     setSaved((p) => (p ? { ...p, freeze: next } : p))
@@ -520,6 +546,7 @@ export function RoadmapPage({
     void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), owner: value })
   }
   const openSteps = (status: StepStatus | null): void => {
+    setSafeOnly(false)
     setStatusFilter(status ? new Set([status]) : new Set())
     setActiveTab('plan')
   }
@@ -542,7 +569,7 @@ export function RoadmapPage({
         <Stats>
           <StatTile value={`${trackedDone}/${tracked.length}`} label={TILE.stepsDone.title} tone="success" tip={TILE.stepsDone} onClick={() => openSteps('done')} />
           <StatTile value={schedule.weeks} label={TILE.weeks.title} tip={TILE.weeks} onClick={() => setActiveTab('schedule')} />
-          <StatTile value={readyToday.length} label={C.readyToday} tone={readyToday.length > 0 ? 'info' : 'neutral'} tip={TILE.readyToday} onClick={() => openSteps('ready')} />
+          <StatTile value={safe.length} label={SAFE.tile} tone={safe.length > 0 ? 'success' : 'neutral'} tip={TILE.safeToday} onClick={() => { setSafeOnly(true); setStatusFilter(new Set()); setActiveTab('plan') }} />
           <StatTile value={blocked.length} label={STEP_STATUS.blocked.title} tone={blocked.length > 0 ? 'warning' : 'neutral'} tip={STEP_STATUS.blocked} onClick={() => openSteps('blocked')} />
         </Stats>
       </div>
@@ -739,9 +766,73 @@ export function RoadmapPage({
 
   // ---- Schedule (§8): the timeline with owners, editable dates, the critical path, ICS ----
   const exportIcs = (): void => downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId), 'text/calendar')
+  const weekView = () => {
+    const weekKeyOf = (iso: string): string => {
+      const d = new Date(iso)
+      d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
+      return d.toISOString().slice(0, 10)
+    }
+    const weeks = [...new Set(allEvents.map(({ e }) => weekKeyOf(e.at)))].sort()
+    if (weeks.length === 0) return <p className="reason">{WEEK_VIEW.nothing}</p>
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    return (
+      <div className="week-view">
+        {weeks.map((wk) => {
+          const inWeek = allEvents.filter(({ e }) => weekKeyOf(e.at) === wk)
+          const outOfHours = inWeek.filter(({ e }) => e.outOfHours).length
+          return (
+            <div key={wk} className="card week-card">
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <strong>{WEEK_VIEW.weekOf(absoluteDate(wk + 'T12:00:00.000Z'))}</strong>
+                {outOfHours > 0 && <Chip status="warning">{WEEK_VIEW.outOfHours(outOfHours)}</Chip>}
+              </div>
+              <div className="table-scroll">
+                <table className="cohort-table week-table">
+                  <thead>
+                    <tr>
+                      <th />
+                      {DAYS.map((d) => (
+                        <th key={d}>{d.slice(0, 3)}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(['announce', 'remind', 'enforce'] as const).map((kind) => (
+                      <tr key={kind}>
+                        <th>{WEEK_VIEW.rows[kind]}</th>
+                        {DAYS.map((d) => (
+                          <td key={d}>
+                            {inWeek
+                              .filter(({ e }) => e.kind === kind && e.day === d)
+                              .map(({ step: st, e }) => (
+                                <a key={`${st.id}-${e.kind}`} className={`week-event ${e.outOfHours ? 'is-out' : ''}`} href={stepHref(st.id)} title={e.reason} onClick={(ev) => { ev.preventDefault(); setActiveTab('plan'); setOpenStepId(st.id) }}>
+                                  <span className="mono">{e.time}</span> {st.plainTitle}
+                                </a>
+                              ))}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
   const scheduleTab = () => (
     <div>
       <p className="overview-constraint">{schedule.derivation.criticalPath}</p>
+      {schedule.rhythm && (
+        <p className="reason">
+          <strong>{RHYTHM.title}.</strong> {schedule.rhythm.sentence}
+        </p>
+      )}
+      <h4>{WEEK_VIEW.title}</h4>
+      <p className="reason">{WEEK_VIEW.hint}</p>
+      {weekView()}
       {timeline()}
       <h4>{SCHEDULE_TAB.ownersTitle}</h4>
       <div className="table-scroll">
@@ -839,6 +930,38 @@ export function RoadmapPage({
             <InfoTip title={CALENDAR.freezeLabel} text={CALENDAR.freezeHint} />
           </div>
           {schedule.freeze && <p className="reason">{CALENDAR.freeze(absoluteDate(schedule.freeze.from), absoluteDate(schedule.freeze.to))}</p>}
+          <div className="row">
+            <span className="muted">{NOTICE.title}</span>
+            {(['low', 'medium', 'high'] as const).map((k) => (
+              <label key={k}>
+                {NOTICE[k]}{' '}
+                <input
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={(saved?.notice ?? NOTICE_DEFAULTS)[k]}
+                  aria-label={`${NOTICE.title}: ${NOTICE[k]}`}
+                  style={{ minWidth: '4rem', width: '5rem' }}
+                  onChange={(e) => setNotice({ ...(saved?.notice ?? NOTICE_DEFAULTS), [k]: Math.max(0, Number(e.currentTarget.value) || 0) })}
+                />
+              </label>
+            ))}
+            <InfoTip title={NOTICE.title} text={NOTICE.hint} />
+          </div>
+          <div className="row">
+            <label>
+              {NOTICE.holidays}{' '}
+              <input
+                type="text"
+                defaultValue={(saved?.holidays ?? []).join(', ')}
+                placeholder={NOTICE.holidaysPlaceholder}
+                aria-label={NOTICE.holidays}
+                onBlur={(e) => setHolidays(e.currentTarget.value)}
+                style={{ minWidth: '18rem' }}
+              />
+            </label>
+            <InfoTip title={NOTICE.holidays} text={NOTICE.holidaysHint} />
+          </div>
           <p className="reason">
             {CALENDAR.noFriday} {CALENDAR.weeklyCap(schedule.enforcementCap)}
           </p>
@@ -929,7 +1052,8 @@ export function RoadmapPage({
         </Chip>
         <RingProgress step={st} size={26} title={st.rings.length > 0 ? RINGS.summary(st.rings.length, st.rings[0].soakDays, Math.max(1, Math.round(st.rings.reduce((n, r) => n + r.soakDays, 0) / 7))) : STEP_STATUS_LABEL[st.status]} />
       </div>
-      <strong className="step-tile-title">{st.title}</strong>
+      <strong className="step-tile-title">{st.plainTitle || st.title}</strong>
+      {st.plainTitle && st.plainTitle !== st.title && <div className="sub technical-name">{st.title}</div>}
       <div className="sub state-reason">{st.stateReason}</div>
     </a>
   )
@@ -1009,7 +1133,11 @@ export function RoadmapPage({
                       </span>
                     </span>
                   </summary>
-                  {w.wave === 0 && created > 0 && <p className="reason">{C.day0Text(created)}</p>}
+                  {w.wave === 0 && created > 0 && (
+                    <p className="reason">
+                      {C.day0Text(created)} <Term id="reportOnly">{TERM_WORDS.reportOnly}</Term>
+                    </p>
+                  )}
                   <div className="step-grid">{inWave.map((st) => stepTile(st, () => { setActiveTab('plan'); setOpenStepId(st.id) }))}</div>
                 </details>
               )}
@@ -1059,7 +1187,7 @@ export function RoadmapPage({
 
   const stepsView = () => {
     const completedCount = steps.filter((s) => s.status === 'done').length
-    const visible = steps.filter((s) => (statusFilter.size === 0 ? showCompleted || s.status !== 'done' : statusFilter.has(s.status)))
+    const visible = steps.filter((s) => (safeOnly ? s.safeToday : statusFilter.size === 0 ? showCompleted || s.status !== 'done' : statusFilter.has(s.status)))
     return (
       <div>
         <p className="reason">
@@ -1071,6 +1199,9 @@ export function RoadmapPage({
           )}
         </p>
         <div className="row no-print">
+          <FilterChip selected={safeOnly} title={SAFE.cardSentence} onToggle={() => setSafeOnly((v) => !v)}>
+            {C.filterCount(SAFE.filter, safe.length)}
+          </FilterChip>
           {(Object.keys(STEP_STATUS_LABEL) as StepStatus[]).map((s) => (
             <FilterChip
               key={s}
@@ -1153,13 +1284,65 @@ export function RoadmapPage({
             </div>
           )
         })}
+        {unavailable.length > 0 && !safeOnly && statusFilter.size === 0 && (
+          <div className="card phase-card">
+            <h3 className="phase-title">{LICENCE_HEADER.unavailableTitle}</h3>
+            <p className="reason">{LICENCE_HEADER.unavailableText}</p>
+            <ul className="sections">
+              {unavailable.map((r) => (
+                <li key={r.goal.id}>
+                  <strong>{PLAIN_TITLES[r.goal.id] ?? r.goal.name}</strong> <span className="reason">· {r.goal.name} · {LICENCE_HEADER.tierName(r.goal.implementations[0]?.tier ?? '')}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     )
   }
 
+  // ---- This week (scheduling-and-onboarding.md §3.5): at most three things, with dates and times ----
+  const nowMs = Date.now()
+  const weekEnd = nowMs + 7 * 86_400_000
+  const allEvents: { step: Step; e: StepEvent }[] = work.flatMap((st) => (st.events ? [st.events.announce, st.events.remind, st.events.remindMorning, st.events.enforce].filter((e): e is StepEvent => e !== null).map((e) => ({ step: st, e })) : []))
+  const thisWeekEvents = allEvents.filter(({ e }) => Date.parse(e.at) >= nowMs - 86_400_000 && Date.parse(e.at) <= weekEnd).sort((a, b) => a.e.at.localeCompare(b.e.at))
+  const thisWeekItems: string[] = []
+  const announces = thisWeekEvents.filter((x) => x.e.kind === 'announce')
+  const reminds = thisWeekEvents.filter((x) => x.e.kind === 'remind')
+  const enforces = thisWeekEvents.filter((x) => x.e.kind === 'enforce')
+  if (announces.length > 0) thisWeekItems.push(THIS_WEEK.announce(announces.length, announces[0].e.day))
+  for (const x of enforces.slice(0, 2)) thisWeekItems.push(THIS_WEEK.enforce(x.step.plainTitle, `${x.e.day} ${x.e.time}`))
+  if (reminds.length > 0 && thisWeekItems.length < 3) thisWeekItems.push(THIS_WEEK.remind(reminds.length, reminds[0].e.day))
+  const toSetUpNames = computed.viability.filter((v) => v.enabled && v.activity === 'active' && (v.mfa === 'none' || v.mfa === 'unverified')).slice(0, 3).map((v) => nameOf(v.userId))
+  if (toSetUpNames.length > 0 && thisWeekItems.length < 3 && steps.some((st) => st.kind === 'verify' && st.status !== 'done')) thisWeekItems.push(THIS_WEEK.setUp(toSetUpNames.join(', ')))
+  const readyPrereq = work.find((st) => st.kind === 'prerequisite' && st.status === 'ready')
+  if (readyPrereq && thisWeekItems.length < 3) thisWeekItems.push(THIS_WEEK.prerequisite(readyPrereq.plainTitle))
+  const nextEvent = allEvents.filter(({ e }) => Date.parse(e.at) > weekEnd).sort((a, b) => a.e.at.localeCompare(b.e.at))[0] ?? null
+  const nothingUntil =
+    thisWeekItems.length === 0
+      ? Date.parse(schedule.observation.end) > nowMs
+        ? THIS_WEEK.nothingUntil(absoluteDate(schedule.observation.end), THIS_WEEK.observationEnds)
+        : Date.parse(schedule.verification.end) > nowMs && schedule.verification.days > 0
+          ? THIS_WEEK.nothingUntil(absoluteDate(schedule.verification.end), THIS_WEEK.campaignEnds)
+          : nextEvent
+            ? THIS_WEEK.nothingUntil(absoluteDate(nextEvent.e.at), THIS_WEEK.noticeEnds)
+            : THIS_WEEK.nothing
+      : null
+
+  // ---- Licence awareness (§3.4): what this tenant's licence makes available ----
+  const caps = snapshot.capabilities
+  const tier = caps.entraP2?.enabled ? LICENCE_HEADER.tier.p2 : caps.entraP1?.enabled ? LICENCE_HEADER.tier.p1 : LICENCE_HEADER.tier.free
+  const unavailable = computed.coverage.results.filter((r) => r.status === 'licence-limited')
+  const neededTiers = [...new Set(unavailable.map((r) => r.goal.implementations[0]?.tier ?? ''))].filter(Boolean).map((t) => LICENCE_HEADER.tierName(t)).join(' or ')
+  const licenceSentence = LICENCE_HEADER.sentence(tier, tracked.length, tracked.length + unavailable.length, unavailable.length, neededTiers)
+
   return (
     <StepFrame title={C.title} does={C.does} needs={needs}>
       {scan && <ScanAge at={scan.at} baseline={baseline?.source ?? null} />}
+      <p className="reason">{licenceSentence}</p>
+      <Card title={THIS_WEEK.title} className="this-week">
+        {nothingUntil ? <p>{nothingUntil}</p> : <p>{THIS_WEEK.lead(thisWeekItems)}</p>}
+      </Card>
       <Tabs
         active={activeTab}
         onChange={setActiveTab}
@@ -1313,13 +1496,32 @@ function StepCard({
               {C.safeChip}
             </Chip>
           )}{' '}
-          {step.title}
+          {step.plainTitle || step.title}
           <ScoreBadges score={step.score ?? null} />
+          {step.plainTitle && step.plainTitle !== step.title && <div className="sub technical-name">{step.title}</div>}
+          {(step.kind === 'create' || step.kind === 'adjust') && step.status !== 'done' && step.status !== 'skipped' && (
+            <div className={`verdict ${step.safeVerdict.safe ? 'is-safe' : ''}`}>{step.safeVerdict.safe ? SAFE.verdictSafe : step.safeVerdict.sentence}</div>
+          )}
           <div className="sub">{step.impact}</div>
           <div className="sub state-reason">{step.stateReason}</div>
         </>
       }
     >
+      {step.safeVerdict.safe && <Callout kind="success">{step.safeVerdict.sentence}</Callout>}
+      {step.events && (
+        <div className="dates card">
+          {([step.events.announce, step.events.remind, step.events.remindMorning, step.events.enforce].filter((e): e is StepEvent => e !== null)).map((e, i) => (
+            <div key={i} className="date-row">
+              <span className="date-kind">{e.kind === 'announce' ? EVENT_LABEL.announce : e.kind === 'remind' ? EVENT_LABEL.remind : EVENT_LABEL.enforce}</span>
+              <span className="date-when">
+                {EVENT_LABEL.suggested}: {e.day} {e.date}, {e.time}
+                {e.outOfHours && <Chip status="warning">{EVENT_LABEL.outOfHours}</Chip>}
+              </span>
+              <span className="reason">{e.reason}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {/* 1. What changes (roadmap-v2.md §4) */}
       <h4>{SECTION.whatChanges}</h4>
       <p>{step.whatChanges}</p>
@@ -1546,7 +1748,9 @@ function StepCard({
       {/* 7. Ring plan */}
       {step.rings.length > 0 && (
         <>
-          <h4>{SECTION.ringPlan}</h4>
+          <h4>
+            <Term id="ring">{SECTION.ringPlan}</Term>
+          </h4>
           <ol className="sections rings">
             {step.rings.map((r) => (
               <li key={r.index}>
@@ -1687,6 +1891,17 @@ function StepCard({
         </details>
       )}
 
+      {step.forManager && (
+        <>
+          <h4>{MANAGER_UI.title}</h4>
+          <p>{step.forManager}</p>
+          <p className="no-print">
+            <Button size="sm" icon="copy" onClick={() => void onCopy(`${step.id}:manager`, step.forManager)}>
+              {copied === `${step.id}:manager` ? C.copied : MANAGER_UI.copy}
+            </Button>
+          </p>
+        </>
+      )}
       {/* 12. Owner and scheduled date */}
       {step.status !== 'done' && step.status !== 'skipped' && (
         <>
