@@ -782,11 +782,11 @@ export function RoadmapPage({
         <table className="cohort-table progress-table">
           <thead>
             <tr>
-              <th>{SCHEDULE_TAB.colStep}</th>
-              <th>{PROGRESS.colPlanned}</th>
-              <th>{PROGRESS.colActual}</th>
-              <th>{PROGRESS.colSlip}</th>
-              {anySlipReason && <th>{PROGRESS.colWhy}</th>}
+              <th scope="col">{SCHEDULE_TAB.colStep}</th>
+              <th scope="col">{PROGRESS.colPlanned}</th>
+              <th scope="col">{PROGRESS.colActual}</th>
+              <th scope="col">{PROGRESS.colSlip}</th>
+              {anySlipReason && <th scope="col">{PROGRESS.colWhy}</th>}
             </tr>
           </thead>
           <tbody>
@@ -862,16 +862,16 @@ export function RoadmapPage({
                 <table className="cohort-table week-table">
                   <thead>
                     <tr>
-                      <th />
+                      <th scope="col" />
                       {DAYS.map((d) => (
-                        <th key={d}>{d.slice(0, 3)}</th>
+                        <th key={d} scope="col">{d.slice(0, 3)}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {(['announce', 'remind', 'enforce'] as const).map((kind) => (
                       <tr key={kind}>
-                        <th>{WEEK_VIEW.rows[kind]}</th>
+                        <th scope="col">{WEEK_VIEW.rows[kind]}</th>
                         {DAYS.map((d) => (
                           <td key={d}>
                             {inWeek
@@ -919,12 +919,12 @@ export function RoadmapPage({
           <table className="cohort-table progress-table comms-table">
             <thead>
               <tr>
-                <th>{COMMS_PLAN.columns.date}</th>
-                <th>{COMMS_PLAN.columns.time}</th>
-                <th>{COMMS_PLAN.columns.audience}</th>
-                <th>{COMMS_PLAN.columns.channel}</th>
-                <th>{COMMS_PLAN.columns.subject}</th>
-                <th>{COMMS_PLAN.columns.steps}</th>
+                <th scope="col">{COMMS_PLAN.columns.date}</th>
+                <th scope="col">{COMMS_PLAN.columns.time}</th>
+                <th scope="col">{COMMS_PLAN.columns.audience}</th>
+                <th scope="col">{COMMS_PLAN.columns.channel}</th>
+                <th scope="col">{COMMS_PLAN.columns.subject}</th>
+                <th scope="col">{COMMS_PLAN.columns.steps}</th>
               </tr>
             </thead>
             <tbody>
@@ -953,10 +953,10 @@ export function RoadmapPage({
         <table className="cohort-table progress-table">
           <thead>
             <tr>
-              <th>{SCHEDULE_TAB.colStep}</th>
-              <th>{SCHEDULE_TAB.colStart}</th>
-              <th>{SCHEDULE_TAB.colEnd}</th>
-              <th>{SCHEDULE_TAB.colRing}</th>
+              <th scope="col">{SCHEDULE_TAB.colStep}</th>
+              <th scope="col">{SCHEDULE_TAB.colStart}</th>
+              <th scope="col">{SCHEDULE_TAB.colEnd}</th>
+              <th scope="col">{SCHEDULE_TAB.colRing}</th>
             </tr>
           </thead>
           <tbody>
@@ -1306,7 +1306,7 @@ export function RoadmapPage({
           )}
           {d.link && (
             <p className="reason">
-              <a href={d.link.url} target="_blank" rel="noreferrer">
+              <a href={d.link.url} target="_blank" rel="noopener noreferrer">
                 {d.link.label} →
               </a>
             </p>
@@ -1774,7 +1774,7 @@ function StepCard({
       <h4>{SECTION.whyItMatters}</h4>
       {step.whyLink && (
         <p className="reason">
-          <a href={step.whyLink} target="_blank" rel="noreferrer">
+          <a href={step.whyLink} target="_blank" rel="noopener noreferrer">
             {C.whyLink}
           </a>
         </p>
@@ -1785,7 +1785,7 @@ function StepCard({
           <span className="reason">
             {' '}
             {C.authorIntent}{' '}
-            <a href={step.whyAttribution.url} target="_blank" rel="noreferrer">
+            <a href={step.whyAttribution.url} target="_blank" rel="noopener noreferrer">
               {step.whyAttribution.author}
             </a>
             {C.authorIntentEnd}
@@ -1794,7 +1794,7 @@ function StepCard({
       </p>
       {step.learn && (
         <p className="reason">
-          <a href={step.learn.url} target="_blank" rel="noreferrer">
+          <a href={step.learn.url} target="_blank" rel="noopener noreferrer">
             {C.learn}
           </a>{' '}
           {step.learn.cis.map((c) => (
@@ -1928,9 +1928,9 @@ function StepCard({
         <table className="cohort-table change-table">
           <thead>
             <tr>
-              <th>{SECTION.changeField}</th>
-              <th>{SECTION.changeFrom}</th>
-              <th>{SECTION.changeTo}</th>
+              <th scope="col">{SECTION.changeField}</th>
+              <th scope="col">{SECTION.changeFrom}</th>
+              <th scope="col">{SECTION.changeTo}</th>
             </tr>
           </thead>
           <tbody>

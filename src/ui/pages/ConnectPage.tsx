@@ -56,7 +56,7 @@ export function ConnectPage({
             ))}
             <li>
               {CONNECT.sourceBefore}
-              <a href={REPO_URL} target="_blank" rel="noreferrer">
+              <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
                 {CONNECT.sourceLink}
               </a>
               {CONNECT.sourceAfter}

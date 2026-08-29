@@ -187,14 +187,14 @@ export function Footer() {
       <span className="footer-links">
         <span>
           {SHELL.footerFollow}{' '}
-          <a href={LINKEDIN_URL} target="_blank" rel="noreferrer">
+          <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">
             <strong>{SHELL.footerAuthor}</strong>
           </a>
         </span>
-        <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+        <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
           {SHELL.footerGithub}
         </a>
-        <a href={REPO_URL} target="_blank" rel="noreferrer">
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
           {SHELL.footerSource}
         </a>
       </span>

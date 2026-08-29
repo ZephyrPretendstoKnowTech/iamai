@@ -461,7 +461,7 @@ function ValidationView({ v, name }: { v: ValidationResult | null; name?: string
           {a && (
             <>
               {': '}
-              <a href={a.href} target={a.href.startsWith('#') ? undefined : '_blank'} rel="noreferrer">
+              <a href={a.href} target={a.href.startsWith('#') ? undefined : '_blank'} rel="noopener noreferrer">
                 {a.label}
               </a>
             </>
