@@ -1593,7 +1593,7 @@ function StepCard({
         </>
       )}
 
-      {step.includesOperator && (
+      {step.includesOperator && (step.operatorNote || step.operatorSafe === false) && (
         <Callout kind={step.operatorSafe ? 'info' : 'warning'}>
           {step.operatorNote}
           {!step.operatorSafe && ` ${C.operatorUnsafe}`}
