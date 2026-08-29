@@ -89,6 +89,8 @@ export type RoadmapInput = {
   notice?: NoticeSettings | null
   /** YYYY-MM-DD dates nothing is enforced on (nor the working day before). */
   holidays?: string[] | null
+  /** The share of affected people failing after enforcement that means back to report-only (comms-and-bridges.md §3.1). */
+  watchThresholdPercent?: number | null
 }
 
 export type RoadmapResult = { steps: Step[]; schedule: Schedule }
@@ -907,6 +909,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               EXIT.zeroFailures,
               ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []),
               ...(includesOperator ? [EXIT.operatorStrong] : []),
+              EXIT.watch(input.watchThresholdPercent ?? 5),
             ]
 
     const score = scoreResult(result, snapshot, viability, {

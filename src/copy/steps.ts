@@ -80,6 +80,8 @@ export const PRINT = {
   progress: 'Progress',
   contents: 'Contents',
   summary: 'Summary',
+  comms: 'What will be sent and when',
+  commsColumns: { date: 'Date', audience: 'Audience', subject: 'Subject', steps: 'Steps' },
   timeline: 'Timeline',
   timelineColumns: { wave: 'Wave', dates: 'Dates', steps: 'Steps' },
   appendix: 'Appendix: policy JSON',
@@ -269,6 +271,7 @@ export const EXIT = {
   thenEnforce: 'Once the evidence is clean, switch the policy from report-only to On.',
   adjustApplied: 'The changed fields match the baseline on the next re-scan.',
   adjustNoRegression: 'No new sign-in failures on the changed policy in the week after the change.',
+  watch: (percent: number) => `After enforcement, failures stay under ${percent}% of the affected people for 72 hours.`,
 }
 
 export const ADJUST = {

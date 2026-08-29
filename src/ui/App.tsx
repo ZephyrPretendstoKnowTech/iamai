@@ -188,7 +188,7 @@ export function App() {
             <MappingPage scan={lastScan} baseline={baseline} onProgress={setMapProgress} />
           )}
           {route === 'coverage' && <CoveragePage scan={lastScan} baseline={baseline} />}
-          {route === 'roadmap' && (
+          {(route === 'roadmap' || route === 'roadmap/prompts') && (
             <RoadmapPage
               scan={lastScan}
               baseline={baseline}

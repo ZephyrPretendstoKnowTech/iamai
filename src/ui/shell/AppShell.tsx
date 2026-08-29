@@ -25,6 +25,7 @@ export type Route =
   | 'reads'
   | 'inventory'
   | 'baseline/package'
+  | 'roadmap/prompts'
   | 'components'
 
 export type StepStatus = StepperStatus
@@ -43,6 +44,7 @@ const STEPS: { route: Route; label: string }[] = [
 const REFERENCE: { route: Route; label: string }[] = [
   { route: 'licensing', label: SHELL.steps.licensing },
   { route: 'reads', label: SHELL.steps.reads },
+  { route: 'roadmap/prompts', label: SHELL.steps.prompts },
 ]
 
 // Pages whose main content is a table read better with the wider cap (ux-review-06 §28).
@@ -162,7 +164,7 @@ export function AppShell({
         <Stepper
           steps={STEPS.map((s) => ({ ...s, status: stepStatus[s.route] ?? 'notStarted' }))}
           reference={REFERENCE}
-          active={route === 'baseline/package' ? 'baseline' : route}
+          active={route === 'baseline/package' ? 'baseline' : route === 'roadmap/prompts' ? 'roadmap' : route}
         />
         <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
           {account && (
