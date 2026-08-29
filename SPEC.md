@@ -169,11 +169,24 @@ work only, no new Graph reads.
 
 | Feature | What it does | Depends on |
 |---|---|---|
-| Change-record generator per step | Emits scope, hard-block cohort export, risk statement, rollback, verification criteria, and comms text for a plan step | `Step` + `Checkpoint.tenantPolicies[].laneB` result counts + Lane B per-policy affected user ids |
+| Change record (built: Export tab, Markdown and CSV) | A record of what changed and when, generated from the activity log: useful for a client update or the operator's own notes; never a change-board form | `Step` + `Checkpoint.tenantPolicies[].laneB` result counts + Lane B per-policy affected user ids |
 | Pilot cohort builder | Proposes a pilot group: active, MFA state Verified or Likely viable, spread across departments, exactly one admin, never a break-glass account; outputs UPNs | §10 per-user table (`activity`, `mfa`, `isAdmin`), `UserRow.department`, break-glass mapping ids |
 | Drift and exclusion-creep detection | Diffs consecutive checkpoints: policy state changes, exclusion-group member-count growth, coverage regressions | `Checkpoint.tenantPolicies`, `Checkpoint.exclusionGroups`, `Checkpoint.coverage` |
 | Microsoft-managed auto-enable dates | Places Microsoft's announced auto-enable dates for Microsoft-managed policies on the roadmap timeline | `TenantSnapshot.microsoftManagedPolicyIds` + policy `state` |
 | Recurring break-glass drill step — **built** (`s-recurring-break-glass-drill`, 90-day interval) | Inserts a recurring "test break-glass sign-in" step when the accounts' last sign-in is older than the drill interval | `Checkpoint.breakGlass[].lastSignIn` |
+
+## 11a. Enterprise tier (deferred)
+
+The user IAMAI is for is one person doing IAM with no change process and nobody to approve
+anything (docs/prompts/30-simplify-solo-operator.md). Anything that asks them to govern,
+assign or maintain state waits for an enterprise tier:
+
+| Feature | Rationale |
+|---|---|
+| Per-step owner and approver fields | Reserved in the plan schema (`Step.owner`, unused); a solo operator is the owner of everything, so the field is only friction. |
+| Approval sheet (printable sign-off page) | Needs a client or a board that signs; the solo operator has neither. |
+| Change-board framing of the change record | The record stays a plain log of what changed and when. |
+| Communications plan as a commitment table | Presented as "what will be sent and when, ready to copy", never as a client agreement. |
 
 ## 12. Licensing principle
 

@@ -153,6 +153,7 @@ export type Step = {
   ringComms: { ring: string; date: string; text: string }[]
   /** The previous policy body for a change step, to restore byte for byte. */
   rollbackBody: string | null
+  /** Reserved for an enterprise tier (SPEC §11a): never rendered or asked for. */
   owner: string | null
   /** An operator-set start date; the schedule moves the step and its dependants to it. */
   scheduledDate: string | null

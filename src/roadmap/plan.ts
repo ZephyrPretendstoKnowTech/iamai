@@ -7,6 +7,7 @@ import { emptyMappingState } from '../mapping/types.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
 import { PROGRESS } from '../copy/progress.ts'
+import type { ActivityLog } from './activityLog.ts'
 
 export const PLAN_SCHEMA_VERSION = 2
 
@@ -57,6 +58,8 @@ export type PlanFile = {
   revisions: { revision: number; at: string; note: string }[]
   /** The baseline commit the plan was generated from. */
   baselinePin: string | null
+  /** The automatic activity log (prompt 30 §3): derived from scans, append-only, capped. */
+  log?: ActivityLog
 }
 
 export function makeCheckpoint(args: {
@@ -119,6 +122,7 @@ export function buildPlanFile(args: {
   schedule?: { startDate: string; band?: string; pace?: string; owner?: string; freeze?: { from: string; to: string } | null }
   revision?: number
   revisions?: PlanFile['revisions']
+  log?: ActivityLog
 }): PlanFile {
   const org = (args.snapshot.config.organization?.rows?.[0] ?? {}) as {
     displayName?: string
@@ -129,7 +133,7 @@ export function buildPlanFile(args: {
     _readme: [
       `IAMAI plan file for ${org.displayName ?? args.snapshot.tenantId} (plan ${args.planId}), schema ${PLAN_SCHEMA_VERSION}, generated ${generated}.`,
       `Baseline: ${args.baselineSource.kind === 'github' ? `${args.baselineSource.owner}/${args.baselineSource.repo} at ${args.baselineSource.commit}` : args.baselineSource.fileName}.`,
-      'Format: steps (with rings, evidence, history, owner and dates), the Setup answers (mappings), checkpoints from each save, and the revision record. Load it back in IAMAI on any machine; nothing here is needed by the tenant.',
+      'Format: steps (with rings, evidence, history and dates), the Setup answers (mappings), checkpoints from each save, the activity log, and the revision record. Load it back in IAMAI on any machine; nothing here is needed by the tenant.',
       'IAMAI reads the tenant and never writes to it.',
     ],
     schemaVersion: PLAN_SCHEMA_VERSION,
@@ -156,6 +160,7 @@ export function buildPlanFile(args: {
     revision: args.revision ?? 1,
     revisions: args.revisions ?? [{ revision: 1, at: new Date().toISOString(), note: PROGRESS.revisionNote.created }],
     baselinePin: args.baselineSource.kind === 'github' ? args.baselineSource.commit : null,
+    log: args.log ?? { entries: [], rolledUp: null },
   }
 }
 
@@ -199,6 +204,7 @@ export function upgradePlanFile(parsed: PlanFile): PlanFile {
     revision: typeof parsed.revision === 'number' ? parsed.revision : 1,
     revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [{ revision: 1, at, note: PROGRESS.revisionNote.imported }],
     baselinePin: parsed.baselinePin ?? (base.baseline.source.kind === 'github' ? base.baseline.source.commit : null),
+    log: parsed.log ?? { entries: [], rolledUp: null },
   }
 }
 

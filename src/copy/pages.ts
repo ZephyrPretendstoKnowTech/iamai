@@ -369,8 +369,6 @@ export const ROADMAP = {
   openDangers: 'Open Watch first →',
   openBlocked: 'See the blocked steps →',
   settingsTitle: 'Plan settings',
-  owner: 'Owner',
-  ownerPlaceholder: 'Who runs this plan (name or team)',
   overrunShow: (n: number) => `${count(n, 'step')} run past the campaign: show`,
   phaseProgress: (done: number, total: number) => `${done} of ${count(total, 'step')} done`,
   phaseAllDone: (n: number) => `${n} done`,

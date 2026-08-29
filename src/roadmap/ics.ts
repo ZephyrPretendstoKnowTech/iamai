@@ -36,9 +36,8 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string): str
     lines.push(`DTSTART;VALUE=DATE:${icsDate(start)}`)
     lines.push(`DTEND;VALUE=DATE:${icsDate(endExclusive)}`)
     lines.push(fold(`SUMMARY:${escape(s.title)}`))
-    const description = [s.whatChanges, s.owner ? `Owner: ${s.owner}` : '', ...s.rings.map((r) => `${r.name}: ${r.plannedStart.slice(0, 10)} to ${r.plannedEnd.slice(0, 10)}`)].filter(Boolean).join('\n')
+    const description = [s.whatChanges, ...s.rings.map((r) => `${r.name}: ${r.plannedStart.slice(0, 10)} to ${r.plannedEnd.slice(0, 10)}`)].filter(Boolean).join('\n')
     lines.push(fold(`DESCRIPTION:${escape(description)}`))
-    if (s.owner && /^[^\s@]+@[^\s@]+$/.test(s.owner)) lines.push(`ATTENDEE;CN=${escape(s.owner)}:mailto:${s.owner}`)
     lines.push('END:VEVENT')
   }
   lines.push('END:VCALENDAR')
