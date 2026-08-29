@@ -107,7 +107,10 @@ export const LICENCE_HEADER = {
   unavailableTitle: 'Needs a licence this tenant does not have',
   unavailableText: 'Not counted against the plan. Each names the tier that would make it available.',
   tier: { p2: 'Entra ID P2', p1: 'Entra ID P1', free: 'Entra ID Free' },
+  tierName: (tier: string) => ({ p1: 'Entra ID P1', p2: 'Entra ID P2', intune: 'Intune', workloadId: 'Workload Identities Premium', gsa: 'Global Secure Access', mcas: 'Defender for Cloud Apps', free: 'Entra ID Free' })[tier] ?? tier,
 }
+
+export const TERM_WORDS = { reportOnly: 'What report-only means' }
 
 export const PLAIN = {
   technical: (name: string) => name,

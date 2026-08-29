@@ -69,6 +69,7 @@ export const STEP_KIND = {
 } as const satisfies Record<string, Definition>
 
 export const TILE = {
+  safeToday: { title: 'Safe today', text: 'Steps whose prerequisites are done, whose evidence shows nobody would have been affected in the last 30 days, and which the signed-in account can survive. Enforce them today, out of order, with no announcement.' },
   inPlace: { title: 'In place', text: 'Goals an enabled policy fully delivers today.' },
   partly: { title: 'Partly', text: 'Goals a policy delivers for some people, or with a weaker control than the baseline expects.' },
   missing: { title: 'Missing', text: 'Goals no enabled policy delivers yet.' },

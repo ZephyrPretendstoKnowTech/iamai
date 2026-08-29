@@ -732,3 +732,24 @@ table.datatable tbody tr:hover { background: var(--raised); }
   [data-route='scan'] .card { animation: rise 200ms ease-out both; }
   .progress-fill { transition: width 400ms ease; }
 }
+
+/* Prompt 28: verdicts, dates, the week view, This week, terms */
+.verdict { font-size: var(--text-sm); color: var(--future); margin-top: 0.15rem; }
+.verdict.is-safe { color: var(--past); font-weight: 600; }
+.technical-name { color: var(--muted); font-size: var(--text-sm); }
+.dates { padding: var(--space-3); margin: var(--space-2) 0; }
+.date-row { display: grid; grid-template-columns: 6rem 1fr; gap: 0 var(--space-3); padding: 0.2rem 0; border-top: 1px solid var(--border); }
+.date-row:first-child { border-top: 0; }
+.date-kind { font-weight: 600; color: var(--muted); }
+.date-when { font-variant-numeric: tabular-nums; }
+.date-when .chip { margin-left: var(--space-2); }
+.date-row .reason { grid-column: 2; }
+.this-week { margin: var(--space-3) 0; border-left: 4px solid var(--present); }
+.week-card { margin: var(--space-2) 0; }
+.week-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 0.2rem 0.3rem; white-space: nowrap; }
+.week-table td { vertical-align: top; min-width: 6rem; padding: 0.2rem 0.3rem; }
+.week-event { display: block; font-size: var(--text-xs, 0.8rem); text-decoration: none; color: inherit; padding: 0.1rem 0.3rem; border-radius: 6px; border: 1px solid var(--border); margin: 0.1rem 0; background: var(--raised); }
+.week-event.is-out { border-color: var(--warning); }
+.week-event:hover { border-color: var(--accent); }
+.term-word { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+@media print { .this-week { break-inside: avoid; } .week-table td { min-width: 0; } }
