@@ -30,6 +30,8 @@ export type Checkpoint = {
 }
 
 export type PlanFile = {
+  /** A header a person can read in a text editor (ux-review-07 §33); ignored on load. */
+  _readme?: string[]
   schemaVersion: number
   createdAt: string
   displayTimeZone: string
@@ -122,9 +124,16 @@ export function buildPlanFile(args: {
     displayName?: string
     verifiedDomains?: { name?: string }[]
   }
+  const generated = new Date().toISOString()
   return {
+    _readme: [
+      `IAMAI plan file for ${org.displayName ?? args.snapshot.tenantId} (plan ${args.planId}), schema ${PLAN_SCHEMA_VERSION}, generated ${generated}.`,
+      `Baseline: ${args.baselineSource.kind === 'github' ? `${args.baselineSource.owner}/${args.baselineSource.repo} at ${args.baselineSource.commit}` : args.baselineSource.fileName}.`,
+      'Format: steps (with rings, evidence, history, owner and dates), the Setup answers (mappings), checkpoints from each save, and the revision record. Load it back in IAMAI on any machine; nothing here is needed by the tenant.',
+      'IAMAI reads the tenant and never writes to it.',
+    ],
     schemaVersion: PLAN_SCHEMA_VERSION,
-    createdAt: new Date().toISOString(),
+    createdAt: generated,
     displayTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     planId: args.planId,
     tenant: {

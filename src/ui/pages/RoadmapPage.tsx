@@ -30,6 +30,8 @@ import { CALENDAR } from '../../copy/schedule.ts'
 import { POPULATION } from '../../copy/population.ts'
 import { ROLLBACK_V2, SECTION } from '../../copy/stepContent.ts'
 import { RINGS } from '../../copy/rings.ts'
+import { RingProgress } from '../components/Ring.tsx'
+import { EmptyState } from '../components/EmptyState.tsx'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
 import { changesSince, groupGrowth, progressHeadline, stepProgress, trackable } from '../../roadmap/tracking.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
@@ -106,6 +108,8 @@ export function RoadmapPage({
   // The step opened in place on the Steps tab (prompt 26 §15).
   const [openStepId, setOpenStepId] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
+  // Statuses at the previous render: a step that moved gets one flash (ux-review-07 §F3).
+  const prevStatusRef = useRef<Record<string, StepStatus>>({})
   const [copied, setCopied] = useState<string | null>(null)
   // Deep link #/roadmap/step/<id>: open the Steps tab with that step expanded.
   const linkedStepId = useHashStepId()
@@ -313,11 +317,18 @@ export function RoadmapPage({
           {scan && baseline ? (
             <p className="reason">{C.preparing}</p>
           ) : (
-            <p>
-              {C.blocked} {!scan && <a href="#/scan">{C.runScan}</a>}
-              {!scan && !baseline && ` ${C.and} `}
-              {!baseline && <a href="#/baseline">{C.loadBaseline}</a>}.
-            </p>
+            <EmptyState
+              scene="noPlan"
+              title={C.noPlanTitle}
+              text={C.blocked}
+              action={
+                <>
+                  {!scan && <a href="#/scan">{C.runScan}</a>}
+                  {!scan && !baseline && ` ${C.and} `}
+                  {!baseline && <a href="#/baseline">{C.loadBaseline}</a>}
+                </>
+              }
+            />
           )}
         </Card>
       </StepFrame>
@@ -325,6 +336,8 @@ export function RoadmapPage({
   }
 
   const { steps, schedule, dangers } = computed
+  const changedIds = new Set(steps.filter((s) => prevStatusRef.current[s.id] !== undefined && prevStatusRef.current[s.id] !== s.status).map((s) => s.id))
+  prevStatusRef.current = Object.fromEntries(steps.map((s) => [s.id, s.status]))
   const nameOf = (id: string) => computed.names.label(id)
   // One derived summary feeds every tab (prompt 13 §11).
   const summary = planSummary(steps)
@@ -538,6 +551,9 @@ export function RoadmapPage({
       <div className="overview-band">
         <div>
           <h4>{C.attentionTitle}</h4>
+          {dangers.length === 0 && blocked.length === 0 && <EmptyState scene="nothingToWatch" title={C.nothingToWatchTitle} text={C.nothingToWatchText} />}
+          {(dangers.length > 0 || blocked.length > 0) && (
+          <>
           <Callout kind={highDangers > 0 ? 'danger' : dangers.length > 0 ? 'warning' : 'success'}>
             {C.attentionDangers(dangers.length)}{' '}
             {dangers.length > 0 && (
@@ -554,6 +570,8 @@ export function RoadmapPage({
               </a>
             )}
           </Callout>
+          </>
+          )}
           {policyCount && (
             <Callout kind={policyCount.warning ? 'warning' : 'info'}>
               {policyCount.statement}
@@ -634,7 +652,7 @@ export function RoadmapPage({
       <p className="reason">{PROGRESS.journeyHint}</p>
       <div className="journey">
         {STAGES.map((st) => (
-          <div key={st.id} className="journey-col">
+          <div key={st.id} className={`journey-col stage-${st.id}`}>
             <div className="journey-head">
               {st.label} <span className="reason">{progressRows.filter((r) => r.stage === st.id).length}</span>
             </div>
@@ -898,7 +916,7 @@ export function RoadmapPage({
   const stepTile = (st: Step, onOpen?: () => void) => (
     <a
       key={st.id}
-      className={`step-tile ${st.safeToday ? 'lane-safe' : ''}`}
+      className={`step-tile ${st.safeToday ? 'lane-safe' : ''} ${changedIds.has(st.id) ? 'just-changed' : ''}`}
       href={stepHref(st.id)}
       onClick={onOpen ? (e) => { e.preventDefault(); onOpen() } : undefined}
     >
@@ -909,6 +927,7 @@ export function RoadmapPage({
         <Chip status="neutral" title={STEP_KIND[st.kind].text}>
           {STEP_KIND_LABEL[st.kind]}
         </Chip>
+        <RingProgress step={st} size={26} title={st.rings.length > 0 ? RINGS.summary(st.rings.length, st.rings[0].soakDays, Math.max(1, Math.round(st.rings.reduce((n, r) => n + r.soakDays, 0) / 7))) : STEP_STATUS_LABEL[st.status]} />
       </div>
       <strong className="step-tile-title">{st.title}</strong>
       <div className="sub state-reason">{st.stateReason}</div>
@@ -946,7 +965,7 @@ export function RoadmapPage({
               <a
                 key={w.wave}
                 href={`#phase-${w.wave}`}
-                className={`minimap-seg ${doneN === all.length ? 'is-done' : doneN > 0 ? 'is-partial' : ''}`}
+                className={`minimap-seg ${doneN === all.length ? 'is-done' : doneN > 0 ? 'is-partial' : Date.parse(w.start) > Date.now() ? 'is-future' : ''}`}
                 style={{ flexGrow: days }}
                 title={`${waveTitle(w)} · ${C.phaseProgress(doneN, all.length)}`}
                 onClick={(e) => { e.preventDefault(); document.getElementById(`phase-${w.wave}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }) }}
@@ -1008,7 +1027,7 @@ export function RoadmapPage({
 
   const dangerAreas = () => (
     <div>
-      {dangers.length === 0 && <p className="advisor">{C.noDangers}</p>}
+      {dangers.length === 0 && <EmptyState scene="noDangers" title={C.noDangersTitle} text={C.noDangers} />}
       {dangers.length > 0 && <p className="advisor">{C.dangerLead(dangers.map((d) => d.title))}</p>}
       {dangers.map((d, i) => (
         <div key={i} className={`card danger-${d.severity}`}>
@@ -1145,10 +1164,10 @@ export function RoadmapPage({
         active={activeTab}
         onChange={setActiveTab}
         tabs={[
-          { id: 'progress', label: C.tabs.progress, badge: C.stepsBadge(trackedDone, tracked.length), render: progressTab },
+          { id: 'progress', label: C.tabs.progress, badge: `${trackedDone}/${tracked.length}`, render: progressTab },
           { id: 'plan', label: C.tabs.plan, render: stepsView },
           { id: 'danger', label: C.tabs.danger, badge: dangers.length || '', render: dangerAreas },
-          { id: 'schedule', label: C.tabs.schedule, badge: C.weeksBadge(schedule.weeks), render: scheduleTab },
+          { id: 'schedule', label: C.tabs.schedule, render: scheduleTab },
           { id: 'export', label: C.tabs.export, render: exportTab },
         ]}
       />
@@ -1156,6 +1175,8 @@ export function RoadmapPage({
         tenantName={tenantName}
         baselineLabel={baseline?.source ?? ''}
         operator={operator?.userPrincipalName ?? ''}
+        baselinePin={baselineIndex.commit ?? null}
+        progress={{ state: headline.state, projection: headline.projection, already: headline.already }}
         steps={steps}
         schedule={schedule}
         verificationNote={C.verificationText(rollout.toSetUp, rollout.enabled)}

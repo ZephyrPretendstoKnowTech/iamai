@@ -1,8 +1,21 @@
 /* Design tokens v2 — mirrors src/ui/tokens.ts (the source of truth; the
    contrast test runs against that file). Dark by default, light via
    [data-theme='light'], print always light. */
+
+/* The display face (ux-review-07 §F2): Space Grotesk, OFL, self-hosted and
+   subset to Latin (public/fonts). Headings and large numerals only; body
+   text stays on the system sans. */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/SpaceGrotesk-Latin.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
 
   /* type: 30/22/17/15/13 */
@@ -52,9 +65,23 @@
   --warning-soft: rgba(245, 179, 1, 0.14);
   --danger-soft: rgba(240, 78, 78, 0.14);
   --info-soft: rgba(96, 165, 250, 0.14);
+
+  /* The plan's temperature (ux-review-07 §F4): past settled, present at full
+     strength, future cool. Danger and warning stay reserved for real risk. */
+  --past: #6fb59a;
+  --past-soft: rgba(111, 181, 154, 0.16);
+  --present: var(--accent);
+  --present-soft: var(--accent-soft);
+  --future: #8aa6d6;
+  --future-soft: rgba(138, 166, 214, 0.16);
+  --motion-rise: 150ms;
 }
 
 :root[data-theme='light'] {
+  --past: #2f6b57;
+  --past-soft: rgba(47, 107, 87, 0.12);
+  --future: #4a6fa5;
+  --future-soft: rgba(74, 111, 165, 0.12);
   --bg: #f6f8fb;
   --surface: #ffffff;
   --raised: #f1f5f9;
@@ -79,6 +106,10 @@
 
 @media print {
   :root {
+    --past: #2f6b57;
+    --past-soft: rgba(47, 107, 87, 0.12);
+    --future: #4a6fa5;
+    --future-soft: rgba(74, 111, 165, 0.12);
     --bg: #ffffff;
     --surface: #ffffff;
     --raised: #f6f8fb;

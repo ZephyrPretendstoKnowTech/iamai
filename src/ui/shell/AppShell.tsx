@@ -1,3 +1,4 @@
+import { RingMark } from '../components/Ring.tsx'
 import { useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
@@ -127,7 +128,10 @@ export function AppShell({
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="wordmark">{SHELL.wordmark}</span>
+        <span className="wordmark">
+          <RingMark size={22} />
+          {SHELL.wordmark}
+        </span>
         <span className="tagline">{SHELL.tagline}</span>
         <div className="topbar-right">
           {account && (
@@ -160,7 +164,7 @@ export function AppShell({
           reference={REFERENCE}
           active={route === 'baseline/package' ? 'baseline' : route}
         />
-        <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`}>
+        <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
           {account && (
             <div className="print-only muted">
               {SHELL.printHeader(tenantName ?? account.username, absoluteDate(new Date().toISOString()), account.username)}
