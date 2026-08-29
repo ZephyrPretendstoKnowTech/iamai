@@ -430,7 +430,7 @@ export function buildSchedule(
     const loose = attempt(true)
     if (endOf(loose) < strict) {
       const samePeople = steps.filter((s) => (graph[s.id] ?? []).some((d) => d.kind === 'soft' && d.reason.startsWith('cannot prompt'))).length
-      relaxed.push(CRITICAL.relaxed(samePeople))
+      relaxed.push(CRITICAL.relaxed(samePeople, expectedDays / 7))
       result = loose
     }
   }
