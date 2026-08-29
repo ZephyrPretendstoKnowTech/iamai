@@ -92,6 +92,37 @@ type Spec = {
 const NOW = '2026-08-28T09:00:00.000Z'
 const daysAgo = (d: number) => new Date(Date.parse(NOW) - d * 86_400_000).toISOString()
 
+/**
+ * Sign-ins per UTC weekday and hour. An office tenant in Australia/Sydney
+ * (UTC+10) signs in Monday to Friday 08:00 to 18:00 local, peaking Monday
+ * 09:00; a flat tenant is spread evenly around the clock.
+ */
+export function weekdayHourBuckets(total: number, shape: 'office' | 'flat', rand: () => number): number[] {
+  const out = Array.from({ length: 168 }, () => 0)
+  const offset = 10 // Sydney standard time
+  for (let i = 0; i < total; i++) {
+    let localDay: number
+    let localHour: number
+    if (shape === 'flat') {
+      localDay = Math.floor(rand() * 7)
+      localHour = Math.floor(rand() * 24)
+    } else {
+      localDay = 1 + Math.floor(rand() * 5) // Monday..Friday as Sunday-first index 1..5
+      const r = rand()
+      localHour = r < 0.35 ? 8 + Math.floor(rand() * 2) : 8 + Math.floor(rand() * 10)
+      if (localDay === 1 && rand() < 0.3) localHour = 9
+    }
+    let utcHour = localHour - offset
+    let utcDay = localDay
+    if (utcHour < 0) {
+      utcHour += 24
+      utcDay = (utcDay + 6) % 7
+    }
+    out[utcDay * 24 + utcHour] += 1
+  }
+  return out
+}
+
 export function buildFixture(spec: Spec): Fixture {
   const rand = rng(hash(spec.name))
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)]
@@ -155,13 +186,14 @@ export function buildFixture(spec: Spec): Fixture {
       m === 'mobilePhone' ? { kind: 'phone', phoneType: 'mobile' } : m === 'passKeyDeviceBound' ? { kind: 'passkey' } : { kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' },
     ) as TenantSnapshot['authMethods'][string]
     if (isAdmin) rolesActive[id] = [GA]
-    if (lastDays < 30 && !spec.hostile) {
+    // Every active person (90 days) has sign-in evidence: the records cover the whole window.
+    if (lastDays < 90 && !spec.hostile) {
       signInEvidence[id] = { signInCount: 1 + Math.floor(rand() * 20), lastSignIn: daysAgo(lastDays), lastMfaSuccess: methods.length > 0 && rand() < 0.65 ? { at: daysAgo(lastDays), method: 'Mobile app notification' } : null }
     }
   }
   // Break-glass accounts: cloud-only GAs, excluded everywhere; SMS-only when messy.
   for (const [k, id] of bgIds.entries()) {
-    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${spec.name}.example.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.midflight ? 10 : 120), accountEnabled: true, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: 'IT', jobTitle: null, officeLocation: null })
+    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${spec.name}.example.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: 'IT', jobTitle: null, officeLocation: null })
     registrationDetails.push({ id, userPrincipalName: `bg${k + 1}@${spec.name}.example.com`, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: !spec.breakGlassSmsOnly, methodsRegistered: spec.breakGlassSmsOnly ? ['mobilePhone'] : ['fido2SecurityKey'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: true, userType: 'member' })
     authMethods[id] = spec.breakGlassSmsOnly ? [{ kind: 'phone', phoneType: 'mobile' }] : [{ kind: 'fido2' }]
     rolesActive[id] = [GA]
@@ -252,7 +284,7 @@ export function buildFixture(spec: Spec): Fixture {
     evidencePolicyResults: [],
     blockedToday: [],
     evidenceUsage: hostile ? null : { legacyAuth: { count: svcIds.length * 40, userIds: svcIds, byDetail: { 'IMAP4': svcIds.length * 40 } }, deviceCode: { count: 0, userIds: [], byDetail: {} }, authTransfer: { count: 0, userIds: [], byDetail: {} } },
-    evidenceAggregates: hostile ? null : { total: spec.users * 8, distinctUsers: Object.keys(signInEvidence).length, byClientApp: { Browser: spec.users * 6, 'Mobile Apps and Desktop clients': spec.users * 2 }, byProtocol: { none: spec.users * 8 }, byCountry: { AU: spec.users } },
+    evidenceAggregates: hostile ? null : { total: spec.users * 8, distinctUsers: Object.keys(signInEvidence).length, byClientApp: { Browser: spec.users * 6, 'Mobile Apps and Desktop clients': spec.users * 2 }, byProtocol: { none: spec.users * 8 }, byCountry: { AU: spec.users }, byWeekdayHour: weekdayHourBuckets(spec.users * 8, spec.multiGeo ? 'flat' : 'office', rand) },
     capabilities: caps,
     microsoftManagedPolicyIds: [],
     roles: { active: rolesActive, eligible: {} },

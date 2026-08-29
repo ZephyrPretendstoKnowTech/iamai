@@ -160,7 +160,19 @@ export type Step = {
   tracking: StepTracking | null
   /** Satisfied by a policy whose evidence predates the plan: not executed by the plan, never a slip (ux-review-07 §1). */
   alreadyInPlace: boolean
+  // ---- prompt 28 ----
+  /** Announce, remind, enforce: local day, date, time and reason (scheduling-and-onboarding.md §2.2). */
+  events: StepEvents | null
+  /** One line at the top of the card: safe to enforce today, or the single reason it is not. */
+  safeVerdict: { safe: boolean; reason: string; sentence: string }
+  /** The plain-language title; `title` stays the technical name (§3.1). */
+  plainTitle: string
+  /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
+  forManager: string
 }
+
+export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; day: string; date: string; time: string; reason: string; outOfHours: boolean }
+export type StepEvents = { announce: StepEvent | null; remind: StepEvent | null; remindMorning: StepEvent | null; enforce: StepEvent; noticeDays: number }
 
 export type StepTracking = {
   policyId: string

@@ -222,6 +222,10 @@ function upgradeStep(s: Step): Step {
     scheduledDate: p.scheduledDate ?? null,
     tracking: p.tracking ?? null,
     alreadyInPlace: p.alreadyInPlace ?? false,
+    events: p.events ?? null,
+    safeVerdict: p.safeVerdict ?? { safe: false, reason: '', sentence: '' },
+    plainTitle: p.plainTitle ?? s.title,
+    forManager: p.forManager ?? '',
     history: Array.isArray(s.history) ? s.history : [],
   }
 }

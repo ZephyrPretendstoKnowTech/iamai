@@ -255,7 +255,8 @@ test('a plan generated today over policies that predate it: those steps are alre
   }
   const head = progressHeadline(run.steps, run.schedule, NOW)
   assert.equal(head.started, null, 'a policy birthday never starts the plan')
-  assert.equal(head.enforced, 0)
+  // Only non-policy steps (a drill already current) can count as done here; no policy step was executed.
+  assert.equal(head.enforced, run.steps.filter((s) => s.status === 'done' && s.kind !== 'create' && s.kind !== 'adjust').length)
   assert.equal(head.alreadyInPlace, done.length)
   assert.match(head.already, /already covered before the plan began/)
   for (const r of stepProgress(run.steps, run.schedule, NOW)) if (r.stage === 'alreadyInPlace') assert.equal(r.slipDays, null)

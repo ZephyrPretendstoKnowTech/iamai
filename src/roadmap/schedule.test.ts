@@ -71,6 +71,10 @@ function step(over: Partial<Step> & { id: string }): Step {
     scheduledDate: null,
     tracking: null,
     alreadyInPlace: false,
+    events: null,
+    safeVerdict: { safe: false, reason: '', sentence: '' },
+    plainTitle: '',
+    forManager: '',
     ...over,
   }
 }
@@ -101,11 +105,13 @@ test('bands follow §A3: small ≤30, mid 31–300, large >300', () => {
   assert.equal(bandForActiveUsers(301), 'large')
 })
 
-test('enforcement never starts on a Friday or a weekend', () => {
-  assert.equal(day(toEnforcementDay('2026-09-04T12:00:00.000Z')), 1) // Friday → Monday
-  assert.equal(day(toEnforcementDay('2026-09-05T12:00:00.000Z')), 1)
-  assert.equal(day(toEnforcementDay('2026-09-06T12:00:00.000Z')), 1)
-  assert.equal(toEnforcementDay('2026-09-03T12:00:00.000Z'), '2026-09-03T12:00:00.000Z') // Thursday stays
+test('enforcement starts on a Tuesday or a Wednesday, never a Friday or a weekend', () => {
+  assert.equal(day(toEnforcementDay('2026-09-04T12:00:00.000Z')), 2) // Friday → Tuesday
+  assert.equal(day(toEnforcementDay('2026-09-05T12:00:00.000Z')), 2)
+  assert.equal(day(toEnforcementDay('2026-09-06T12:00:00.000Z')), 2)
+  assert.equal(day(toEnforcementDay('2026-09-03T12:00:00.000Z')), 2) // Thursday → next Tuesday
+  assert.equal(toEnforcementDay('2026-09-02T12:00:00.000Z'), '2026-09-02T12:00:00.000Z') // Wednesday stays
+  assert.equal(day(toEnforcementDay('2026-09-02T12:00:00.000Z', { highDisruption: true })), 2) // high disruption: Tuesday only
 })
 
 test('the graph names the rule dependencies: exclusion group first, break-glass before a block, campaign before MFA', () => {

@@ -16,6 +16,12 @@ import { describePopulation, populationContext } from './population.ts'
 import { failureModesFor, helpDeskFor, verifyFor } from './content.ts'
 import { ROLLBACK_V2, WHAT_CHANGES } from '../copy/stepContent.ts'
 import { NAMING } from '../copy/schedule.ts'
+import { tenantRhythm } from './rhythm.ts'
+import { NOTICE_DEFAULTS, eventsFor } from './timing.ts'
+import type { NoticeSettings } from './timing.ts'
+import { SAFE } from '../copy/timing.ts'
+import { MANAGER, plainTitleFor } from '../copy/plain.ts'
+import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingState } from '../mapping/types.ts'
 import { activeWizardQuestions } from '../mapping/wizard.ts'
@@ -54,6 +60,10 @@ import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
 
+/** Evidence must cover at least this many days and hold this many sign-ins (or one per active person in scope) before a step is safe today (§2.4). */
+export const SAFE_MIN_EVIDENCE_DAYS = 14
+export const SAFE_MIN_SIGNINS = 500
+
 export type RoadmapInput = {
   planId: string
   coverage: CoverageReport
@@ -75,6 +85,10 @@ export type RoadmapInput = {
   changeFreeze?: ChangeFreeze | null
   /** Operator-set start dates per step (roadmap-v2.md §4.12). */
   scheduled?: Record<string, string> | null
+  /** Notice periods by disruption, in working days (scheduling-and-onboarding.md §2.3). */
+  notice?: NoticeSettings | null
+  /** YYYY-MM-DD dates nothing is enforced on (nor the working day before). */
+  holidays?: string[] | null
 }
 
 export type RoadmapResult = { steps: Step[]; schedule: Schedule }
@@ -83,6 +97,7 @@ const EXTRAS: Pick<
   Step,
   | 'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
   | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate' | 'tracking' | 'alreadyInPlace'
+  | 'events' | 'safeVerdict' | 'plainTitle' | 'forManager'
 > = {
   impact: '',
   safeToday: false,
@@ -106,6 +121,10 @@ const EXTRAS: Pick<
   scheduledDate: null,
   tracking: null,
   alreadyInPlace: false,
+  events: null,
+  safeVerdict: { safe: false, reason: '', sentence: '' },
+  plainTitle: '',
+  forManager: '',
 }
 
 function idFor(prefix: string, key: string): string {
@@ -419,6 +438,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'your organisation'
   const steps: Step[] = []
   const popIndex = populationIndex(snapshot, viability)
+  const contentIndexes = ringContextIndexes(snapshot)
   const rowsFor = (ids: string[]): MfaViability[] => ids.map((id) => viabilityById.get(id)).filter((v): v is MfaViability => v !== undefined)
   const expectedCache = new Map<string, string[]>()
   const populationCache = new Map<string, StepPopulation>()
@@ -457,6 +477,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     ...EXTRAS,
     impact: IMPACT.prerequisite,
     whatChanges: WHAT_CHANGES.prerequisite,
+    plainTitle: title,
+    forManager: MANAGER.prerequisite(),
   })
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
@@ -918,7 +940,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       skipReason: null,
       ...EXTRAS,
       impact,
-      safeToday: zeroUsage && status === 'ready',
+      safeToday: false, // decided once every step exists (prerequisites, break-glass, operator, evidence): see safeTodayFor
       highCare: { userIds: care, ready: careReady, notes: careNotes },
       comms,
       learn: goal.learnUrl ? { url: goal.learnUrl, tldr: goal.tldr ?? '', cis: goal.cis ?? [] } : null,
@@ -931,6 +953,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         .map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`),
       stateReason: '',
       denies: impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location',
+      plainTitle: plainTitleFor(goal.id, stepTitle(goal.name)),
+      forManager:
+        readiness.family === 'mfa' || readiness.family === 'guest'
+          ? readiness.family === 'guest'
+            ? MANAGER.guest(pop.active)
+            : MANAGER.mfa(pop.active, notReadyActive)
+          : readiness.family === 'admin'
+            ? MANAGER.admin(pop.total)
+            : readiness.family === 'block'
+              ? MANAGER.block(evidenceUsable ? evidence.affectedUserIds.length : 0)
+              : readiness.family === 'location'
+                ? MANAGER.location(mapping.allowedCountries.map(countryLabel).join(', '), evidence.affectedUserIds.length)
+                : readiness.family === 'device'
+                  ? MANAGER.device(pop.active, pop.active - popIds.filter((id) => contentIndexes.deviceReady.has(id) && popIndex.active.has(id)).length)
+                  : sessionOnly || /session/i.test(goal.name)
+                    ? MANAGER.session(pop.active)
+                    : MANAGER.other(),
       rollbackBody: kind === 'adjust' && existingRaw ? JSON.stringify(existingRaw, null, 2) : null,
       whatChanges:
         status === 'done' ? WHAT_CHANGES.done : kind === 'adjust' ? WHAT_CHANGES.adjust(existing?.policyName ?? stepTitle(goal.name), action.changes?.length ?? adjustSections.size) : WHAT_CHANGES.create(stepTitle(goal.name), pop.total),
@@ -980,6 +1019,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       comms: COMMS.verify(tenantName),
       impact: IMPACT.verifyCampaign(toSetUp),
       whatChanges: WHAT_CHANGES.verify(toSetUp),
+      plainTitle: p.title,
+      forManager: MANAGER.verify(toSetUp),
     })
   }
 
@@ -1002,6 +1043,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...prereq('s-recurring-break-glass-drill', p.title, p.why(BREAK_GLASS_DRILL_DAYS), p.how, p.exit(BREAK_GLASS_DRILL_DAYS)),
       impact: phoneOnly.length > 0 ? p.weakMethod(phoneOnly.map(nameOf)) : IMPACT.prerequisite,
       whatChanges: WHAT_CHANGES.recurring,
+      plainTitle: p.title,
+      forManager: MANAGER.prerequisite(),
       kind: 'recurring',
       rollback: ROLLBACK.recurring,
       goalId: 'recurring:break-glass',
@@ -1044,7 +1087,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   steps.sort((a, b) => a.phase - b.phase || score(a) - score(b) || a.id.localeCompare(b.id))
 
   // ---- Populations at scale (roadmap-v2.md §3): basis, names or cohorts, the riskiest ----
-  const indexes = ringContextIndexes(snapshot)
+  const indexes = contentIndexes
   const popCtx = populationContext(snapshot, viabilityById, popIndex.admins, highCareIds, indexes.deviceReady, nameOf)
   for (const s of steps) {
     const view = describePopulation(s, popCtx, { cohorts: false })
@@ -1071,6 +1114,61 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.helpDesk = helpDeskFor(s)
   }
 
+  // ---- Safe today (scheduling-and-onboarding.md §2.4): every condition, and the single reason when one fails ----
+  const evidenceSrc = snapshot.sources.signInEvidence
+  const evidenceOk = evidenceSrc?.status === 'ok' || evidenceSrc?.status === 'partial'
+  const coveredDays = evidenceSrc?.coveredWindow ? Math.floor((Date.parse(evidenceSrc.coveredWindow.to) - Date.parse(evidenceSrc.coveredWindow.from)) / 86_400_000) : 0
+  const totalSignIns = snapshot.evidenceAggregates?.total ?? 0
+  const byId = new Map(steps.map((x) => [x.id, x]))
+  const bgStepOpen = steps.some((x) => (x.id === bgStepId || x.id === DRILL_STEP_ID) && x.status !== 'done' && x.status !== 'skipped')
+  const outsideCountries = Object.entries(snapshot.evidenceAggregates?.byCountry ?? {}).filter(([c]) => c && !mapping.allowedCountries.includes(c)).reduce((n, [, u]) => n + u, 0)
+  const affectedCache = new WeakMap<string[], Map<string, number>>()
+  const memoAffected = (ids: string[], key: string, compute: () => number): number => {
+    let m = affectedCache.get(ids)
+    if (!m) affectedCache.set(ids, (m = new Map()))
+    if (!m.has(key)) m.set(key, compute())
+    return m.get(key) as number
+  }
+  for (const s of steps) {
+    const verdict = safeTodayFor(s)
+    s.safeToday = verdict.safe
+    s.safeVerdict = verdict
+  }
+  function safeTodayFor(s: Step): Step['safeVerdict'] {
+    const notYet = (reason: string) => ({ safe: false, reason, sentence: SAFE.verdictNotYet(reason) })
+    if (s.status === 'done') return notYet(SAFE.reasons.done)
+    if (s.kind !== 'create' && s.kind !== 'adjust') return notYet(SAFE.reasons.kind)
+    for (const b of s.blockedBy) {
+      const dep = byId.get(b)
+      if (dep && dep.status !== 'done' && dep.status !== 'skipped') return notYet(SAFE.reasons.prerequisites(dep.plainTitle || dep.title))
+    }
+    if (s.blockers.some((b) => b.kind === 'setup')) return notYet(SAFE.reasons.prerequisites(SETUP_QUESTIONS.stepTitle))
+    if (bgStepOpen) return notYet(SAFE.reasons.breakGlass)
+    if (s.includesOperator && s.operatorSafe === false) return notYet(SAFE.reasons.operator)
+    if (!evidenceOk) return notYet(SAFE.reasons.evidenceNone)
+    if (coveredDays < SAFE_MIN_EVIDENCE_DAYS) return notYet(SAFE.reasons.evidenceWindow(coveredDays, SAFE_MIN_EVIDENCE_DAYS))
+    if (totalSignIns < SAFE_MIN_SIGNINS) {
+      const scopeWithEvidence = s.population.ids.filter((id) => popIndex.active.has(id) && snapshot.signInEvidence[id] !== undefined).length
+      if (scopeWithEvidence < s.population.active) return notYet(SAFE.reasons.evidenceCoverage(totalSignIns, SAFE_MIN_SIGNINS))
+    }
+    const family = s.readiness.family
+    const threshold = family === 'mfa' || family === 'guest' ? READINESS_THRESHOLD_MFA_PERCENT : family === 'admin' ? READINESS_THRESHOLD_ADMINS_PERCENT : family === 'device' ? READINESS_THRESHOLD_DEVICES_PERCENT : null
+    if (threshold !== null && s.readiness.percent !== null && s.readiness.percent < threshold) return notYet(SAFE.reasons.readiness(s.readiness.percent, threshold))
+    let affected = 0
+    if (family === 'block') affected = s.evidence.affectedUserIds.length
+    else if (family === 'location') affected = outsideCountries
+    else if (family === 'mfa' || family === 'guest' || family === 'admin') {
+      affected = memoAffected(s.population.ids, family, () => s.population.ids.filter((id) => {
+        const v = viabilityById.get(id)
+        return v !== undefined && v.activity === 'active' && !(v.mfa === 'verified' || (family === 'admin' ? v.methodTiers.includes('phishingResistant') : v.mfa === 'likelyViable'))
+      }).length)
+      if (affected > 0) return notYet(SAFE.reasons.notReady(affected))
+    } else if (family === 'device') affected = s.population.ids.filter((id) => popIndex.active.has(id) && !contentIndexes.deviceReady.has(id)).length
+    else affected = s.population.active // a session control prompts everyone active
+    if (affected > 0) return notYet(SAFE.reasons.affected(affected))
+    return { safe: true, reason: '', sentence: SAFE.cardSentence }
+  }
+
   // ---- Rings (roadmap-v2.md §1): proposed from readiness data, dated by the schedule ----
   const startIso = input.startDate ?? nextMonday(snapshot.asOf)
   const activeTotal = viability.filter((v) => v.activity === 'active').length
@@ -1087,7 +1185,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   for (const s of steps) s.rings = proposeRings(s, ringCtx)
 
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
-  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, { freeze: input.changeFreeze ?? null, scheduled: input.scheduled ?? null })
+  const rhythm = tenantRhythm(snapshot, mapping.displayTimeZone)
+  const holidays = input.holidays ?? []
+  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, { freeze: input.changeFreeze ?? null, scheduled: input.scheduled ?? null, holidays, rhythm })
+  schedule.rhythm = rhythm
   schedule.policyCount = policyCountFor(snapshot, steps, input.coverage.organisation)
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
   for (const s of steps) {
@@ -1099,6 +1200,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       s.comms = template.replaceAll('{DATE}', absoluteDate(firstDate))
     }
     s.verify = verifyFor(s, contentCtx, s.rings[0]?.name ?? null)
+    s.events = eventsFor(s, { rhythm, notice: input.notice ?? NOTICE_DEFAULTS, holidays, timeZone: mapping.displayTimeZone ?? 'UTC' })
   }
 
   annotateStateReasons(steps)

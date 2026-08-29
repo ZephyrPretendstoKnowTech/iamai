@@ -5,7 +5,7 @@ import { count } from './statements.ts'
 
 export const SHELL = {
   wordmark: 'IAMAI',
-  tagline: 'Conditional Access rollout planner',
+  tagline: 'Conditional Access rollout planner for Microsoft Entra ID and Microsoft 365',
   tenantTooltip: (tenantId: string, username: string) => `Tenant ID ${tenantId} · signed in as ${username}`,
   lightTheme: 'Light theme',
   darkTheme: 'Dark theme',
@@ -58,9 +58,9 @@ export const SHELL = {
 }
 
 export const START = {
-  headline: 'Turn your Conditional Access baseline into a dated rollout plan that names who each step touches before anything is enforced.',
+  headline: 'Turn your Microsoft Entra Conditional Access baseline into a dated rollout plan that names who each step touches before anything is enforced.',
   subhead:
-    "IAMAI reads your tenant's policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.",
+    "IAMAI reads your Microsoft 365 tenant's Conditional Access policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.",
   caveat: 'Predicted impact, confirmed in report-only.',
   cta: 'Get started',
   howTitle: 'How it works',
@@ -72,7 +72,7 @@ export const START = {
   ] as const,
   needTitle: "What you'll need",
   need: [
-    'A Global Administrator or Global Reader account.',
+    'A Microsoft 365 tenant with Microsoft Entra ID (any licence). A Global Administrator or Global Reader account.',
     'Entra ID P1 for sign-in records. IAMAI works without it, with less evidence.',
     'About ten minutes for the first scan.',
   ],

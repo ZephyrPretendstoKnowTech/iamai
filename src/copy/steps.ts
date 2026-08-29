@@ -67,7 +67,7 @@ export const BLOCKER = {
 }
 
 export const PRINT = {
-  title: (tenant: string) => `Conditional Access rollout plan. ${tenant}`,
+  title: (tenant: string) => `Microsoft Entra Conditional Access rollout plan. ${tenant}`,
   cover: {
     baseline: 'Baseline',
     dates: 'Plan dates',
