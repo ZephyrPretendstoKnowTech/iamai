@@ -10,6 +10,8 @@ import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scori
 import { STALE_SCAN_DAYS, absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative, scanAgeDays, whenAt } from './format.ts'
 import { loadMappingState } from '../mapping/store.ts'
 import { SCAN, SHELL } from '../copy/pages.ts'
+import { ACCESS } from '../copy/access.ts'
+import { isPrivilegeDenial, rolesForSource } from '../graph/collect/roles.ts'
 import { ACTIVITY_STATE, CHIP, LEGEND, METHOD_TIER, MFA_STATE, TILE } from '../copy/definitions.ts'
 import { StepFrame } from './shell/AppShell.tsx'
 import { Button, Callout, Card, Chip, DataTable, ExpandCard, FilterChip, ProgressBar, StatTile, Stats, Tabs } from './components/index.ts'
@@ -196,6 +198,23 @@ export function MfaViabilityScreen({
   const inProgress = sectionList.filter((s) => s.status === 'started').map((s) => SCAN.sections[s.source] ?? s.source)
   const elapsed = startedAt !== null ? elapsedLabel(startedAt, nowTick) : null
   const signInSection = sections['signInEvidence']
+  // A 403 is a role that is missing, never a licence: name the role to ask for
+  // rather than repeating Graph's "insufficient privileges" (pre-share-blockers).
+  // Read from the live scan events and from the saved scan, so the advice is
+  // there on the walk back as well as while the scan runs.
+  const liveSections = Object.values(sections)
+  const settled = liveSections.filter((s) => s.status !== 'started')
+  const deniedBySource = new Map<string, string>()
+  for (const s of liveSections) if (isPrivilegeDenial(s.reason)) deniedBySource.set(s.source, s.reason as string)
+  for (const [key, v] of Object.entries(snapshot?.sources ?? {})) if (isPrivilegeDenial(v?.reason)) deniedBySource.set(key, v.reason as string)
+  for (const [key, v] of Object.entries(snapshot?.config ?? {})) if (isPrivilegeDenial(v?.reason)) deniedBySource.set(`config:${key}`, v?.reason as string)
+  const denied = [...deniedBySource.keys()]
+  /** Graph's "disabled" covers both a licence gate and a refused role; only one of them is a licence. */
+  const statusLabel = (status: string, reason?: string | null): string =>
+    isPrivilegeDenial(reason) ? ACCESS.refusedStatus : (SCAN.evidenceStatus[status] ?? status)
+  const knownSections =
+    settled.length > 0 ? settled.length : Object.keys(snapshot?.sources ?? {}).length + Object.keys(snapshot?.config ?? {}).length
+  const deniedAll = denied.length > 0 && knownSections > 0 && denied.length === knownSections
 
   const columns: Column<Row>[] = [
     {
@@ -361,6 +380,26 @@ export function MfaViabilityScreen({
         </Card>
       )}
 
+      {denied.length > 0 && (
+        <Callout kind="warning" title={ACCESS.deniedTitle}>
+          <p>{deniedAll ? ACCESS.deniedAll : ACCESS.denied(denied.length)}</p>
+          <p>{ACCESS.askFor}</p>
+          <ul className="sections">
+            {denied.map((source) => (
+              <li key={source}>
+                <em>{SCAN.sections[source] ?? source}</em>: {ACCESS.roleFor(rolesForSource(source).least)}
+              </li>
+            ))}
+          </ul>
+          <p>
+            {ACCESS.partial}{' '}
+            <a href={ACCESS.learnUrl} target="_blank" rel="noopener noreferrer">
+              {ACCESS.learnLabel}
+            </a>
+          </p>
+        </Callout>
+      )}
+
       {Object.keys(sections).length > 0 && (
         <ExpandCard summary={SCAN.details} open={false}>
           <ul className="sections">
@@ -370,8 +409,9 @@ export function MfaViabilityScreen({
                   ? `${SCAN.sections[s.source] ?? s.source}: ${SCAN.reading}`
                   : s.rows !== undefined
                     ? SCAN.found(SCAN.sections[s.source] ?? s.source, s.rows)
-                    : `${SCAN.sections[s.source] ?? s.source}: ${SCAN.evidenceStatus[s.status] ?? s.status}`}
+                    : `${SCAN.sections[s.source] ?? s.source}: ${statusLabel(s.status, s.reason)}`}
                 {s.reason && <span className="muted"> ({s.reason})</span>}
+                {isPrivilegeDenial(s.reason) && <div className="reason">{ACCESS.needsRole(rolesForSource(s.source).least)}</div>}
                 {DEV && s.ms !== undefined && <span className="muted"> · {s.ms} ms</span>}
               </li>
             ))}
@@ -398,9 +438,10 @@ export function MfaViabilityScreen({
         <>
           <h3>{SCAN.readiness}</h3>
           <Callout kind={evidence.status === 'ok' ? 'success' : evidence.status === 'partial' ? 'info' : 'warning'}>
-            {SCAN.signInRecords} <strong>{SCAN.evidenceStatus[evidence.status] ?? evidence.status}</strong>
+            {SCAN.signInRecords} <strong>{statusLabel(evidence.status, evidence.reason)}</strong>
             {evidence.coveredWindow && <>: {SCAN.covering(absoluteDate(evidence.coveredWindow.from), absoluteDate(evidence.coveredWindow.to))}</>}
             {evidence.reason && <> ({evidence.reason})</>}
+            {isPrivilegeDenial(evidence.reason) && <>. {ACCESS.needsRole(rolesForSource('signInEvidence').least)}</>}
             {evidence.status === 'pending' && <>. {SCAN.pending}</>}
             {(evidence.status === 'insufficient' || evidence.status === 'disabled' || evidence.status === 'error') && <>. {SCAN.unusable}</>}.
           </Callout>

@@ -3,7 +3,7 @@
 // "What IAMAI reads" page renders it, and SPEC.md §4 is generated from it
 // (scripts/spec-scopes.ts). Pure data — importable from Node, the worker,
 // and the UI.
-import type { ConfigSectionKey } from './types.ts'
+import type { ConfigSectionKey, SourceKey } from './types.ts'
 
 export type Capability =
   | 'entraP1'
@@ -18,6 +18,8 @@ export type CollectorSpec = {
   name: string
   lane: '0' | 'A' | 'B' | 'on-demand'
   configKey?: ConfigSectionKey
+  /** The scan-progress source this collector reports under (lanes A and B). */
+  sourceKey?: SourceKey
   endpoint: string
   version: 'v1.0' | 'beta'
   paged?: boolean
@@ -42,14 +44,14 @@ export const COLLECTOR_REGISTRY: CollectorSpec[] = [
   { name: 'Signed-in operator', lane: '0', configKey: 'me', endpoint: '/me', version: 'v1.0', scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Operator identity recorded in the plan file.' },
   { name: 'Operator groups', lane: '0', configKey: 'meMemberOf', endpoint: '/me/memberOf', version: 'v1.0', paged: true, scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Warn when the operator sits inside groups a plan step targets.' },
   // ---- Lane A: aggregates ----
-  { name: 'Registration details', lane: 'A', endpoint: '/reports/authenticationMethods/userRegistrationDetails', version: 'v1.0', paged: true, scopes: ['AuditLog.Read.All'], requiredCapability: 'entraP1', gate: 'Entra ID P1/P2', purpose: 'Per-user registered method types (no phone numbers) for MFA viability.' },
-  { name: 'Users', lane: 'A', endpoint: '/users', version: 'v1.0', paged: true, scopes: ['Directory.Read.All', 'AuditLog.Read.All'], requiredCapability: null, gate: 'signInActivity needs Entra ID P1/P2 (degrades to a plain user list)', purpose: 'User inventory with activity, licence plans, and org attributes.' },
-  { name: 'Devices', lane: 'A', endpoint: '/devices', version: 'v1.0', paged: true, scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Compliance/trust state with registered owners for device intents.' },
-  { name: 'SP sign-in activity', lane: 'A', endpoint: '/reports/servicePrincipalSignInActivities', version: 'beta', paged: true, scopes: ['Reports.Read.All'], requiredCapability: null, gate: 'attempt and map the 403 (documented scope: Reports.Read.All)', purpose: 'Workload identity usage for later phases.' },
-  { name: 'Auth methods', lane: 'A', endpoint: '/users/{id}/authentication/methods ($batch of 20)', version: 'v1.0', scopes: ['UserAuthenticationMethod.Read.All'], requiredCapability: null, gate: 'inner 403 marks that user unknown', purpose: 'Registered method detail (values stripped; never phone numbers).' },
-  { name: 'App sign-in summary', lane: 'A', endpoint: '/reports/applicationSignInDetailedSummary', version: 'beta', paged: true, scopes: ['Reports.Read.All'], requiredCapability: null, gate: 'attempt and map the 403', purpose: 'Aggregated per-app usage for app-scoping decisions.' },
+  { name: 'Registration details', lane: 'A', sourceKey: 'registrationDetails', endpoint: '/reports/authenticationMethods/userRegistrationDetails', version: 'v1.0', paged: true, scopes: ['AuditLog.Read.All'], requiredCapability: 'entraP1', gate: 'Entra ID P1/P2', purpose: 'Per-user registered method types (no phone numbers) for MFA viability.' },
+  { name: 'Users', lane: 'A', sourceKey: 'users', endpoint: '/users', version: 'v1.0', paged: true, scopes: ['Directory.Read.All', 'AuditLog.Read.All'], requiredCapability: null, gate: 'signInActivity needs Entra ID P1/P2 (degrades to a plain user list)', purpose: 'User inventory with activity, licence plans, and org attributes.' },
+  { name: 'Devices', lane: 'A', sourceKey: 'devices', endpoint: '/devices', version: 'v1.0', paged: true, scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Compliance/trust state with registered owners for device intents.' },
+  { name: 'SP sign-in activity', lane: 'A', sourceKey: 'spActivity', endpoint: '/reports/servicePrincipalSignInActivities', version: 'beta', paged: true, scopes: ['Reports.Read.All'], requiredCapability: null, gate: 'attempt and map the 403 (documented scope: Reports.Read.All)', purpose: 'Workload identity usage for later phases.' },
+  { name: 'Auth methods', lane: 'A', sourceKey: 'authMethods', endpoint: '/users/{id}/authentication/methods ($batch of 20)', version: 'v1.0', scopes: ['UserAuthenticationMethod.Read.All'], requiredCapability: null, gate: 'inner 403 marks that user unknown', purpose: 'Registered method detail (values stripped; never phone numbers).' },
+  { name: 'App sign-in summary', lane: 'A', sourceKey: 'appSignInSummary', endpoint: '/reports/applicationSignInDetailedSummary', version: 'beta', paged: true, scopes: ['Reports.Read.All'], requiredCapability: null, gate: 'attempt and map the 403', purpose: 'Aggregated per-app usage for app-scoping decisions.' },
   // ---- Lane B: sign-in evidence ----
-  { name: 'Sign-in logs', lane: 'B', endpoint: '/auditLogs/signIns', version: 'beta', paged: true, scopes: ['AuditLog.Read.All'], requiredCapability: 'entraP1', gate: 'Entra ID P1/P2; only the preview endpoint returns the fields needed; read newest-first and cut off in the browser', purpose: 'Interactive sign-in evidence for the replay engine and MFA verification.' },
+  { name: 'Sign-in logs', lane: 'B', sourceKey: 'signInEvidence', endpoint: '/auditLogs/signIns', version: 'beta', paged: true, scopes: ['AuditLog.Read.All'], requiredCapability: 'entraP1', gate: 'Entra ID P1/P2; only the preview endpoint returns the fields needed; read newest-first and cut off in the browser', purpose: 'Interactive sign-in evidence for the replay engine and MFA verification.' },
   // ---- On demand ----
   { name: 'Group transitive members', lane: 'on-demand', endpoint: '/groups/{id} ($select=id,displayName,membershipRule) + /groups/{id}/transitiveMembers (+ $count)', version: 'v1.0', paged: true, scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'runs only for groups the chosen baseline references; count-and-sample above 20k', purpose: 'Group name, dynamic rule, affected-population counts and exclusion-group sanity checks.' },
   { name: 'Group search', lane: 'on-demand', endpoint: "/groups?$filter=startswith(displayName,…)", version: 'v1.0', scopes: ['Directory.Read.All'], requiredCapability: null, gate: 'runs only while the operator types in a Setup picker', purpose: 'Find the tenant group a baseline reference maps to.' },

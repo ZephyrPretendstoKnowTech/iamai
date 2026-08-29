@@ -1,6 +1,8 @@
 import { COLLECTOR_REGISTRY } from '../graph/collect/registry.ts'
 import type { CollectorSpec } from '../graph/collect/registry.ts'
 import { READS } from '../copy/pages.ts'
+import { ACCESS } from '../copy/access.ts'
+import { ROLE_FOR_SCOPE } from '../graph/collect/roles.ts'
 import { DataTable, LinkButton } from './components/index.ts'
 
 // Generated view over the collector registry: the same source of truth that
@@ -11,6 +13,7 @@ export function WhatIamaiReads() {
     <section>
       <h2>{READS.title}</h2>
       <p>{READS.intro}</p>
+      <p>{ACCESS.readsNote}</p>
       {lanes.map((lane) => (
         <div key={lane}>
           <h3>{READS.lanes[lane]}</h3>
@@ -22,6 +25,11 @@ export function WhatIamaiReads() {
               { key: 'endpoint', header: READS.columns.endpoint, render: (s) => <code>{s.endpoint}</code> },
               { key: 'version', header: READS.columns.api, minWidth: '6rem', render: (s) => <span style={{ whiteSpace: 'nowrap' }}>{s.version}</span> },
               { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes.join(', ') },
+              {
+                key: 'role',
+                header: ACCESS.roleColumn,
+                render: (s) => ACCESS.roleFor([...new Set(s.scopes.map((sc) => ROLE_FOR_SCOPE[sc]?.least).filter((r): r is string => r !== undefined))]),
+              },
               { key: 'gate', header: READS.columns.gate, render: (s) => s.gate },
               { key: 'purpose', header: READS.columns.why, render: (s) => s.purpose },
             ]}
