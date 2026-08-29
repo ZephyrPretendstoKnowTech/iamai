@@ -74,7 +74,22 @@ export function App() {
   useEffect(() => {
     if (MOCK) {
       void Promise.all([import('./pages/fixtureSnapshot.ts'), import('./pages/bigFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }]) => {
-        const snapshot = new URLSearchParams(window.location.search).get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
+        const params = new URLSearchParams(window.location.search)
+        const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
+        // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
+        if (params.get('licence') === 'free') {
+          for (const k of Object.keys(snapshot.capabilities) as (keyof typeof snapshot.capabilities)[]) snapshot.capabilities[k] = { enabled: false, seats: 0, consumed: 0 }
+          snapshot.sources.signInEvidence = { status: 'disabled', coveredWindow: null, reason: 'needs Entra ID P1 or P2', asOf: snapshot.asOf }
+          snapshot.sources.registrationDetails = { status: 'disabled', coveredWindow: null, reason: 'needs Entra ID P1 or P2', asOf: snapshot.asOf }
+          snapshot.registrationDetails = []
+          snapshot.signInEvidence = {}
+          snapshot.evidencePolicyResults = []
+          snapshot.evidenceUsage = null
+          snapshot.evidenceAggregates = null
+          snapshot.config.subscribedSkus = { status: 'ok', reason: null, rows: [] }
+        }
+        // ?policies=0: a tenant with no Conditional Access policies at all (prompt 31 §4.19).
+        if (params.get('policies') === '0') snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [] }
         setAccount({
           homeAccountId: 'mock',
           environment: 'login.windows.net',

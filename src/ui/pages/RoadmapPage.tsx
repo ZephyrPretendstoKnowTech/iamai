@@ -45,6 +45,7 @@ import { bulletinsFor, commsPlanRows, monthlyWarnings, recipientRows } from '../
 import type { Bulletin, CommsContext } from '../../roadmap/comms.ts'
 import { groundingBundle, promptFor, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
 import { DEFAULT_REVERT_PERCENT, effortFor, planEffort, watchFor } from '../../roadmap/watch.ts'
+import { CHANGE_RECORD_HEADER, changeRecordMarkdown as changeRecordMarkdownPure, changeRecordRows } from '../../roadmap/changeRecord.ts'
 import type { NoticeSettings } from '../../roadmap/timing.ts'
 import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
@@ -1080,34 +1081,10 @@ export function RoadmapPage({
   )
 
   // ---- Export (§8): the plan file, the document, the change record, markdown ----
-  // The change record (ux-review-07 §32): one row per step, as a Markdown table or a CSV.
-  const changeRecordRows = (): (string | number)[][] =>
-    trackable(steps).map((st) => {
-      const row = progressRows.find((r) => r.stepId === st.id)
-      const evidence = st.tracking
-        ? `${st.tracking.policyName} (${st.tracking.note})${st.tracking.enforcedAt ? `; ${TRACK.enforced(absoluteDate(st.tracking.enforcedAt))}` : ''}`
-        : (st.history.at(-1)?.note ?? st.stateReason)
-      return [
-        st.title,
-        STEP_KIND_LABEL[st.kind],
-        st.goalId,
-        st.populationBasis || PROGRESS.absent,
-        row?.plannedStart ? absoluteDate(row.plannedStart) : PROGRESS.absent,
-        row?.actualStart ? absoluteDate(row.actualStart) : PROGRESS.absent,
-        evidence,
-        st.rollback,
-        effortFor(st).sentence,
-        watchFor(st, snapshot, nameOf, watchThreshold)?.sentence ?? '',
-      ]
-    })
-  const CHANGE_HEADER = [SCHEDULE_TAB.colStep, C.kindLabel, C.goalLabel, C.whoItTouches, PROGRESS.colPlanned, PROGRESS.colActual, C.evidenceLabel, SECTION.rollback, EFFORT.title, WATCH.title]
-  const changeRecordMarkdown = (): string => {
-    const esc = (v: string | number) => String(v).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
-    const lines = [`# Change record: ${tenantName}`, `Plan ${planId}, revision ${saved?.revision ?? 1}, ${absoluteDate(new Date().toISOString())}`, '', `| ${CHANGE_HEADER.join(' | ')} |`, `| ${CHANGE_HEADER.map(() => '---').join(' | ')} |`]
-    for (const r of changeRecordRows()) lines.push(`| ${r.map(esc).join(' | ')} |`)
-    return lines.join('\n')
-  }
-  const changeRecordCsv = (): string => toCsv(CHANGE_HEADER, changeRecordRows())
+  // The change record (ux-review-07 §32, prompt 30 §1): one row per step, as a Markdown table or a CSV; pure so the export is tested.
+  const recordRows = () => changeRecordRows(steps, schedule, snapshot, nameOf, watchThreshold)
+  const changeRecordMarkdown = (): string => changeRecordMarkdownPure(recordRows(), tenantName, planId, saved?.revision ?? 1)
+  const changeRecordCsv = (): string => toCsv(CHANGE_RECORD_HEADER, recordRows())
   const exportTab = () => (
     <div className="export-grid">
       <Card title={EXPORT_TAB.planFile}>

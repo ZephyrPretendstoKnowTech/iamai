@@ -171,6 +171,45 @@ try {
   check('Roadmap: Schedule tab carries the dates and the calendar export', (await clickText('/^Schedule/')) && (await waitFor(`/Export to calendar/.test(document.body.innerText)`)))
   check('Roadmap: Do this next and History render', (await clickText('/^Progress/')) && (await waitFor(`/Do this next/.test(document.body.innerText) && /History/.test(document.body.innerText)`)))
 
+  // Failure paths and first-visitor tenants (prompt 31 §4): every page reads clearly, nothing breaks.
+  await send('Page.navigate', { url: `${BASE}&licence=free#/coverage` })
+  await sleep(1500)
+  check('Unlicensed tenant: Findings renders from configuration and directory data', await waitFor(`document.querySelectorAll('.stat').length >= 3`))
+  t = await text()
+  check('Unlicensed tenant: Findings says which goals need another licence', /goals need a licence tier this tenant does not have/.test(t))
+  await send('Page.navigate', { url: `${BASE}&licence=free#/scan` })
+  await sleep(1500)
+  t = await text()
+  check('Unlicensed tenant: sign-in records degrade with a plain reason', /not available on this licence \(needs Entra ID P1 or P2\)/.test(t))
+  check('Unlicensed tenant: readiness says nothing can be Verified without records', /nothing can be Verified without usable records/.test(t))
+  await send('Page.navigate', { url: `${BASE}&licence=free#/roadmap` })
+  await sleep(1500)
+  check('Unlicensed tenant: the plan still generates', await waitFor(`/steps in place/.test(document.body.innerText)`))
+  t = await text()
+  check('Unlicensed tenant: the licence header names the tier and what needs another', /With this tenant's Entra ID Free/.test(t))
+  await send('Page.navigate', { url: `${BASE}&policies=0#/coverage` })
+  await sleep(1500)
+  check('Zero policies: Findings renders', await waitFor(`document.querySelectorAll('.stat').length >= 3`))
+  await send('Page.navigate', { url: `${BASE}&policies=0#/roadmap` })
+  await sleep(1500)
+  check('Zero policies: the plan renders with Do this next', await waitFor(`/Do this next/.test(document.body.innerText)`))
+  t = await text()
+  check('Zero policies: the policy count reads zero, not a wall of missing', /no Conditional Access policies in the tenant today/.test(t))
+  check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))
+
+  // Forget this tenant clears every store for it (prompt 31 §2.8).
+  await go('roadmap')
+  await waitFor(`/Do this next/.test(document.body.innerText)`)
+  const tenantId = await evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const tx = db.transaction('plan'); const all = await new Promise((r) => { const q = tx.objectStore('plan').getAllKeys(); q.onsuccess = () => r(q.result) }); db.close(); return all[0] ?? null })()`)
+  const countFor = (id) => evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); let n = 0; for (const name of [...db.objectStoreNames]) { const tx = db.transaction(name); const rows = await new Promise((r) => { const q = tx.objectStore(name).getAll(); q.onsuccess = () => r(q.result) }); n += rows.filter((x) => x && x.tenantId === ${JSON.stringify(id)}).length } db.close(); return n })()`)
+  const before = tenantId ? await countFor(tenantId) : 0
+  check('Forget: stores hold rows for the tenant before forgetting', before > 0, `rows=${before}`)
+  check('Forget: the button is there', await clickText('/^Forget this tenant/'))
+  await sleep(1500)
+  const after = tenantId ? await countFor(tenantId) : 0
+  check('Forget: every store is empty for the tenant afterwards', after === 0, `rows=${after}`)
+  check('Forget: no MSAL account remains in session storage', (await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\.windows|microsoftonline/.test(k)).length`)) === 0)
+
   // Inventory and Licensing reachable
   await go('inventory')
   check('Inventory: policies table renders', await waitFor(`document.querySelectorAll('table tbody tr').length >= 3`))

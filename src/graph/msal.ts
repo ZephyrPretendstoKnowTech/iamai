@@ -20,8 +20,8 @@ export const msal = new PublicClientApplication({
   auth: {
     clientId: '13f55900-8e9a-4aa3-82c1-e42a4448680f',
     authority: 'https://login.microsoftonline.com/organizations',
-    // The app registration lists both the dev and the published origin (SPEC §8).
-    redirectUri: window.location.origin,
+    // The app registration lists the dev origin and the published origin plus subpath (SPEC §8, docs/RELEASE-CHECKLIST.md).
+    redirectUri: window.location.origin + (import.meta.env.BASE_URL ?? '/'),
   },
   cache: { cacheLocation: 'sessionStorage' },
 })
@@ -48,7 +48,13 @@ export function signIn(): Promise<void> {
   return msal.loginRedirect({ scopes: GRAPH_SCOPES })
 }
 
-export function signOut(): Promise<void> {
+export async function signOut(): Promise<void> {
+  // Never signed in through MSAL (the dev mock): nothing to log out of; go back to the start.
+  if (!initialized) {
+    window.location.hash = '#/start'
+    return
+  }
+  await initialized
   return msal.logoutRedirect()
 }
 
