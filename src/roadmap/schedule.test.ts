@@ -99,12 +99,19 @@ test('nextMonday lands on a Monday after the given date', () => {
   assert.equal(m.slice(0, 10), '2026-08-31')
 })
 
-test('bands follow §A3: small ≤30, mid 31–300, large >300', () => {
+test('bands are scoped to the 500-user ceiling this product is for: small ≤50, mid 51–200, large >200', () => {
+  // Re-scoped in prompt 43 item 1. The old boundaries (30/300) were set when
+  // the band also set the campaign length; the campaign is measured from the
+  // people who need a method now, so the band only sets pace and the expected
+  // length, and the boundaries follow how much change a tenant absorbs.
   assert.equal(bandForActiveUsers(12), 'small')
-  assert.equal(bandForActiveUsers(30), 'small')
-  assert.equal(bandForActiveUsers(31), 'mid')
-  assert.equal(bandForActiveUsers(300), 'mid')
-  assert.equal(bandForActiveUsers(301), 'large')
+  assert.equal(bandForActiveUsers(50), 'small')
+  assert.equal(bandForActiveUsers(51), 'mid')
+  assert.equal(bandForActiveUsers(200), 'mid')
+  assert.equal(bandForActiveUsers(201), 'large')
+  // Past 500 the plan still builds; it is a scale test, not a band this product
+  // is designed around.
+  assert.equal(bandForActiveUsers(5000), 'large')
 })
 
 test('enforcement starts on a Tuesday or a Wednesday, never a Friday or a weekend', () => {
@@ -121,8 +128,21 @@ test('the graph names the rule dependencies: exclusion group first, break-glass 
   assert.ok(graph.block.some((d) => d.stepId === 's-prereq-exclusion-group' && d.kind === 'hard'))
   assert.ok(graph.mfa.some((d) => d.stepId === 's-verify-mfa' && d.kind === 'hard'))
   assert.ok(!graph.block.some((d) => d.stepId === 's-verify-mfa'), 'a block does not wait for the campaign')
-  // The admins step prompts a subset of the MFA population: a soft dependency, never a hard one.
-  assert.ok(graph.admins.some((d) => d.stepId === 'mfa' && d.kind === 'soft'))
+  // The admins step prompts a subset of the MFA population, and both are
+  // sign-in-method changes, so they go in one change window and interrupt those
+  // people once. The same-people rule does not separate steps that would be
+  // enforced together; it separates classes.
+  assert.ok(!graph.admins.some((d) => d.stepId === 'mfa' && d.kind === 'soft'), 'two method changes share a window')
+  // Across classes it still holds: a device requirement and a method
+  // requirement in the same week really are two different interruptions.
+  const withDevice = dependencyGraph([
+    ...typical(),
+    step({ id: 'devices', phase: 5, readiness: { family: 'device', percent: 100, lines: [] } }),
+  ])
+  assert.ok(
+    withDevice.devices.some((d) => d.stepId === 'mfa' && d.kind === 'soft'),
+    'a device change does not share a window with a method change',
+  )
 })
 
 test('12 active users: small band, verification window, rings dated after their dependencies', () => {
@@ -144,7 +164,7 @@ test('12 active users: small band, verification window, rings dated after their 
   for (const st of steps) for (const r of st.rings) assert.ok(day(r.plannedStart) >= 1 && day(r.plannedStart) <= 4, `${st.id} ring starts Monday to Thursday`)
   assert.ok(s.withinBand, `${s.totalDays} days fits the small band`)
   assert.ok(s.derivation.criticalPath.length > 0)
-  assert.ok(['verification', 'soft', 'phase'].includes(s.derivation.constraint), s.derivation.constraint)
+  assert.ok(['verification', 'soft', 'phase', 'rings', 'cap'].includes(s.derivation.constraint), s.derivation.constraint)
   assert.deepEqual(s.waves[0].stepIds.sort(), ['done', 's-prereq-exclusion-group', 's-verify-mfa'])
   assert.equal(s.waveOf.done, 0)
 })
@@ -198,10 +218,13 @@ test('mid and large bands lengthen the campaign and stay within their band for a
   const mid = buildSchedule(typical(), MON, 100)
   const large = buildSchedule(typical(), MON, 1000)
   assert.equal(mid.band, 'mid')
-  assert.equal(mid.verification.days, 28)
+  // The band's verificationDays is now only the fallback for a plan built
+  // without a measured campaign (prompt 43 item 2); buildSchedule is called here
+  // without one, so the fallback is what shows.
+  assert.equal(mid.verification.days, 21)
   assert.ok(mid.withinBand)
   assert.equal(large.band, 'large')
-  assert.equal(large.verification.days, 42)
+  assert.equal(large.verification.days, 28)
   assert.ok(large.withinBand)
 })
 
@@ -209,7 +232,7 @@ test('the band can be overridden', () => {
   const s = buildSchedule(typical(), MON, 12, 'large')
   assert.equal(s.band, 'large')
   assert.equal(s.bandSource, 'override')
-  assert.equal(s.verification.days, 42)
+  assert.equal(s.verification.days, 28)
 })
 
 test('verification complete on a re-scan pulls the steps that waited on it forward', () => {

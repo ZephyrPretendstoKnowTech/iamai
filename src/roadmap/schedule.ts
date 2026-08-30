@@ -120,6 +120,8 @@ export type ScheduleOptions = {
   scheduled?: Record<string, string> | null
   /** Change windows a week, overriding the band default (prompt 42, pace control). */
   enforcementCap?: number
+  /** Campaign length in days, measured from who needs a method (prompt 43 item 2). */
+  campaignDays?: number
 }
 
 /**
@@ -335,7 +337,20 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
       if (overlapShare(a.population.ids, b.population.ids) <= OVERLAP_SHARE) continue
       const bothHigh = (a.score?.disruption ?? 0) >= HIGH_DISRUPTION && (b.score?.disruption ?? 0) >= HIGH_DISRUPTION
       if (bothHigh) add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.highDisruption(b.title) })
-      else if (promptsPeople(a) && promptsPeople(b)) add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.samePeople(b.title) })
+      // Two changes enforced in the SAME change window prompt people once, not
+      // twice, so the same-people rule does not separate them. It protects
+      // people from repeated interruption; changes made together in one
+      // supervised window are one interruption.
+      //
+      // Without this the rule chained: in a tenant where every policy targets
+      // everyone, every step took a soft dependency on every earlier step, and
+      // the plan serialised into one step per soak period. Ten session and
+      // device controls became ten weeks. The protection is kept between
+      // classes, where a method prompt and a device prompt really are two
+      // different interruptions, and between two high-disruption changes
+      // whatever their class.
+      else if (promptsPeople(a) && promptsPeople(b) && batchClassOf(a) !== batchClassOf(b))
+        add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.samePeople(b.title) })
     }
   }
   return graph
@@ -409,7 +424,12 @@ export function buildSchedule(
   // ---- Verification window ----
   const verifyStep = steps.find((s) => s.kind === 'verify') ?? null
   const verificationComplete = verifyStep === null || !isWork(verifyStep)
-  const verificationDays = verifyStep !== null && !verificationComplete ? preset.verificationDays : 0
+  // The campaign is as long as the work in it, not as long as the tenant is
+  // big (prompt 43 item 2). The caller measures who still needs a method and
+  // how often those people sign in; the band constant remains only as the
+  // fallback for a plan built without that measurement.
+  const verificationDays =
+    verifyStep !== null && !verificationComplete ? (options.campaignDays ?? preset.verificationDays) : 0
   const verification = {
     start: toWeekday(day0End),
     end: addDays(toWeekday(day0End), verificationDays),
@@ -462,8 +482,8 @@ export function buildSchedule(
     const eventsOnDay = new Map<string, Set<string>>()
     const reportOnlyAt: Record<string, string> = {}
     const ringWindows = new Map<string, { start: string; end: string }[]>()
-    const latestStartByPhase = new Map<number, string>()
-    const latestStepByPhase = new Map<number, string>()
+    const firstStartByPhase = new Map<number, string>()
+    const firstStepByPhase = new Map<number, string>()
     // Prerequisites and the recurring check finish inside day 0; the campaign ends with its window.
     for (const s of steps) {
       if (!isWork(s)) continue
@@ -525,12 +545,20 @@ export function buildSchedule(
         earliest = pinned
         reason.kind = 'scheduled'
       }
-      // Phase order (ux-review-07 §3): phases begin in order, so a step starts no earlier than the first start of any lower phase.
-      for (const [phase, start] of latestStartByPhase) {
+      // Phase order (ux-review-07 §3): phases begin in order, so a step starts no
+      // earlier than the FIRST start of any lower phase. The map is named for
+      // what it holds; it was called latestStartByPhase and stores the minimum.
+      //
+      // This is not what makes independent work wait for the registration
+      // campaign. That is the same-people soft rule, chained: see
+      // dependencyGraph. Phase order was changed to exempt independent steps
+      // here and it moved nothing, so the exemption was removed rather than
+      // left in as untested weight.
+      for (const [phase, start] of firstStartByPhase) {
         if (phase < s.phase && start > earliest) {
           earliest = start
           reason.kind = 'phase'
-          reason.ref = latestStepByPhase.get(phase) ?? null
+          reason.ref = firstStepByPhase.get(phase) ?? null
         }
       }
       for (const d of deps) {
@@ -608,9 +636,9 @@ export function buildSchedule(
         }
       }
       ringWindows.set(s.id, candidate.windows)
-      if (!latestStartByPhase.has(s.phase) || (latestStartByPhase.get(s.phase) ?? '') > candidate.start) {
-        latestStartByPhase.set(s.phase, candidate.start)
-        latestStepByPhase.set(s.phase, s.id)
+      if (!firstStartByPhase.has(s.phase) || (firstStartByPhase.get(s.phase) ?? '') > candidate.start) {
+        firstStartByPhase.set(s.phase, candidate.start)
+        firstStepByPhase.set(s.phase, s.id)
       }
       placed.set(s.id, { start: candidate.start, end: candidate.windows[candidate.windows.length - 1]?.end ?? candidate.start, reason })
     }

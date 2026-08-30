@@ -30,7 +30,7 @@ import type { WizardQuestionId } from '../mapping/wizard.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds, learnRoleNames, roleListSummary } from '../roles.ts'
 import { proposedPolicyName } from '../coverage/naming.ts'
-import { summarizeTenant } from '../scoring/mfaViability.ts'
+import { rolloutBucket, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
@@ -60,6 +60,7 @@ import { annotateStateReasons } from './stateReason.ts'
 import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import { NAMED_BELOW } from './comms.ts'
+import { campaignDays } from './campaign.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
 import { ladderSteps } from './ladder.ts'
 import { GATING_SUBJECTS, attachWarnings, blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
@@ -1342,7 +1343,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
   const rhythm = tenantRhythm(snapshot, mapping.displayTimeZone)
   const holidays = input.holidays ?? []
-  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, { freeze: input.changeFreeze ?? null, scheduled: input.scheduled ?? null, holidays, rhythm, enforcementCap: input.enforcementCap ?? undefined })
+  // The campaign is measured from the people who still need a method and how
+  // often they sign in, not from the size of the tenant (prompt 43 item 2).
+  const toSetUpIds = viability.filter((v) => rolloutBucket(v) === 'noMethod' || rolloutBucket(v) === 'unproven').map((v) => v.userId)
+  const campaign = campaignDays(toSetUpIds, snapshot)
+  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
+    freeze: input.changeFreeze ?? null,
+    scheduled: input.scheduled ?? null,
+    holidays,
+    rhythm,
+    enforcementCap: input.enforcementCap ?? undefined,
+    campaignDays: campaign.days,
+  })
   schedule.rhythm = rhythm
   schedule.policyCount = policyCountFor(snapshot, steps, input.coverage.organisation)
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))

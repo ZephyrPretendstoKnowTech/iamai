@@ -16,6 +16,7 @@ import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.t
 import { generateRoadmap } from '../../roadmap/generate.ts'
 import { findDangerAreas } from '../../roadmap/dangers.ts'
 import { batchClassOf, nextMonday, paceAlternatives } from '../../roadmap/schedule.ts'
+import { LONG_PLAN_WEEKS, overrunFor } from '../../roadmap/overrun.ts'
 import { insightsUrl, preflightFor, verdictFor, whatIfUrl } from '../../roadmap/verdict.ts'
 import type { Preflight, Verdict } from '../../roadmap/verdict.ts'
 import { VERDICT } from '../../copy/verdict.ts'
@@ -30,7 +31,7 @@ import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies
 import { ROADMAP as C } from '../../copy/pages.ts'
 import { CHIP, EFFORT_DEF, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
 import { overrunList, roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
-import { CALENDAR } from '../../copy/schedule.ts'
+import { CALENDAR, OVERRUN } from '../../copy/schedule.ts'
 import { POPULATION } from '../../copy/population.ts'
 import { ROLLBACK_V2, SECTION } from '../../copy/stepContent.ts'
 import { RINGS } from '../../copy/rings.ts'
@@ -1046,6 +1047,28 @@ export function RoadmapPage({
   const scheduleTab = () => (
     <div>
       <p className="overview-constraint">{schedule.derivation.criticalPath}</p>
+      {/* Past the length this planner is for, say what would bring it in
+          (prompt 43 item 5). Named steps, never a category. */}
+      {longPlan.over && longPlan.remedies.length > 0 && (
+        <div className="card overrun">
+          <h4>{OVERRUN.title}</h4>
+          <p className="reason">{OVERRUN.lead(longPlan.weeks, LONG_PLAN_WEEKS)}</p>
+          <ul className="sections">
+            {longPlan.remedies.map((r, i) => (
+              <li key={i}>
+                {r.kind === 'pace'
+                  ? OVERRUN.pace(r.cap, r.weeks)
+                  : r.kind === 'defer'
+                    ? OVERRUN.defer(
+                        r.stepIds.map((id) => stepById.get(id)?.plainTitle || stepById.get(id)?.title || id),
+                        r.weeks,
+                      )
+                    : OVERRUN.readiness(r.people, r.weeks)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {schedule.rhythm && (
         <p className="reason">
           <strong>{RHYTHM.title}.</strong> {schedule.rhythm.sentence}
@@ -1698,6 +1721,15 @@ export function RoadmapPage({
   const commsRows = commsPlanRows(bulletins)
   const commsWarnings = monthlyWarnings(bulletins)
   const effortTotal = planEffort(steps, bulletins.length)
+  // Only runs when the plan is actually over the bound; it re-schedules copies.
+  const longPlan = overrunFor(
+    steps,
+    schedule.start,
+    schedule.activeUsers,
+    schedule.bandSource === 'override' ? schedule.band : null,
+    { freeze: schedule.freeze, holidays: saved?.holidays ?? [], rhythm: schedule.rhythm ?? null, enforcementCap: saved?.enforcementCap ?? schedule.enforcementCap },
+    schedule.weeks,
+  )
   const watchThreshold = saved?.watchThresholdPercent ?? DEFAULT_REVERT_PERCENT
   const copyPrompt = (id: string, kind: Parameters<typeof promptFor>[0], context: string, draft: string): Promise<void> => copy(`${id}:prompt`, promptFor(kind, tenantName, context, draft))
 

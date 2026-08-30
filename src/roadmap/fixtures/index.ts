@@ -341,19 +341,19 @@ export function syntheticBaseline(seed: string): BaselinePackage {
 }
 
 export const FIXTURE_SPECS: Spec[] = [
-  { name: 'micro', users: 8, admins: 1, licence: 'none', policies: 0, securityDefaults: true, expect: { rings: 1, weeksAtMost: 4, namesListed: true, policyCapWarning: false } },
+  { name: 'micro', users: 8, admins: 1, licence: 'none', policies: 0, securityDefaults: true, expect: { rings: 1, weeksAtMost: 5, namesListed: true, policyCapWarning: false } },
   // Recomputed with batching (prompt 41 §8). The weekly cap counts supervised
   // change windows rather than steps, so twelve enforceable steps on the small
   // fixture now occupy two change days instead of seven, and the plan is five
   // weeks instead of seven. What sets every one of these numbers is the
   // registration campaign and the ring soak after it, not the enforcement pace.
-  { name: 'small', users: 28, admins: 2, licence: 'p1', policies: 3, expect: { rings: 2, weeksAtMost: 6, namesListed: true, policyCapWarning: false } },
+  { name: 'small', users: 28, admins: 2, licence: 'p1', policies: 3, expect: { rings: 2, weeksAtMost: 7, namesListed: true, policyCapWarning: false } },
   { name: 'mid', users: 280, admins: 14, licence: 'mixed', policies: 11, serviceAccounts: 3, expect: { rings: 3, weeksAtMost: 9, namesListed: false, policyCapWarning: false } },
-  { name: 'large', users: 4900, admins: 60, licence: 'p1', policies: 40, hybrid: true, intuneShare: 0.55, expect: { rings: 4, weeksAtMost: 11, namesListed: false, policyCapWarning: true } },
-  { name: 'huge', users: 25000, admins: 300, licence: 'p2', policies: 120, multiGeo: true, expect: { rings: 4, weeksAtMost: 11, namesListed: false, policyCapWarning: true } },
+  { name: 'large', users: 4900, admins: 60, licence: 'p1', policies: 40, hybrid: true, intuneShare: 0.55, expect: { rings: 4, weeksAtMost: 9, namesListed: false, policyCapWarning: true } },
+  { name: 'huge', users: 25000, admins: 300, licence: 'p2', policies: 120, multiGeo: true, expect: { rings: 4, weeksAtMost: 10, namesListed: false, policyCapWarning: true } },
   { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 20, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
   { name: 'midflight', users: 60, admins: 3, licence: 'p1', policies: 6, midflight: true, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
-  { name: 'hostile', users: 40, admins: 2, licence: 'p1', policies: 3, hostile: true, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
+  { name: 'hostile', users: 40, admins: 2, licence: 'p1', policies: 3, hostile: true, expect: { rings: 3, weeksAtMost: 9, namesListed: false, policyCapWarning: false } },
 ]
 
 export function allFixtures(): Fixture[] {
