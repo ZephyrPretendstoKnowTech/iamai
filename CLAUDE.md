@@ -18,8 +18,38 @@ Vite + TypeScript + React, `@azure/msal-browser`, Web Worker for the replay engi
 
 ## Commands
 - `npm test` — Node's built-in runner over `src/**/*.test.ts`
+- `npm run inventory` — regenerate `docs/qa/ui-inventory.*` (required after any UI or copy change)
+- `npm run lint-mutations` — prove every UI lint rule still fails against an injected violation
+- `npm run layout-audit` — contrast in both themes, reflow at five widths
+- `npm run smoke` — headless walk of the whole app against the synthetic tenant
 - `npm run analyze -- <path-to-cloned-baseline-repo>` — run the adapter on real data
 - `npm run build-index -- <clone> <owner> <repo> "<label>" > baselines/<owner>-<repo>.index.json`
+
+## Done means green CI (hard rule)
+
+A prompt is not finished when the tests pass locally, and not when the commit is
+pushed. It is finished when the pushed commit's CI run has concluded **success**.
+
+Before reporting any prompt complete:
+
+```
+gh run watch $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --exit-status
+```
+
+or, equivalently, check `gh run list --limit 2` and confirm both `ci` and
+`deploy-pages` are `success` for the pushed SHA. A red run is reported to the
+user in the same message as the work, never left for them to find.
+
+Why this is a rule and not advice: prompts 36 to 39 shipped on seven
+consecutive red runs across both workflows, because "npm test passes here" was
+treated as done. The failure was a fingerprint that hashed raw file bytes and so
+disagreed with git about whether a CRLF file had changed — invisible locally,
+fatal on Linux, and exactly the class of bug that only CI can catch. Local
+verification cannot substitute for the run on the machine that actually
+publishes.
+
+`deploy-pages` runs `npm test` before it builds, so a failing test blocks the
+deploy as well as the build. Both must be green.
 
 ## Product rules (2026-08-27)
 - IAMAI speaks as an advisor, never as a checklist — in the third person or the imperative (the UX rules below override the earlier first-person voice).

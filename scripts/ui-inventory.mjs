@@ -13,31 +13,14 @@
 // Runs against the synthetic tenant (?dev=1&mock=1). The dev panel that flag
 // also enables is excluded by selector, as is anything print-only.
 import { spawn } from 'node:child_process'
-import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { sourceFingerprint } from '../src/fingerprint.ts'
 
 // A fingerprint of everything that can put a string on screen. The lint tests
 // refuse to run against an inventory whose fingerprint no longer matches the
 // source: a stale inventory would let the rules pass on copy nobody has seen,
 // which is worse than no rules at all.
-function sourceFingerprint() {
-  const files = []
-  const walk = (dir) => {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name)
-      if (statSync(p).isDirectory()) walk(p)
-      else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name)) files.push(p)
-    }
-  }
-  walk('src/copy')
-  walk('src/ui')
-  files.sort()
-  const h = createHash('sha256')
-  for (const f of files) h.update(f.replace(/\\/g, '/')).update(readFileSync(f))
-  return h.digest('hex').slice(0, 16)
-}
 
 const PORT = Number(process.env.INVENTORY_PORT ?? 5201)
 const CDP_PORT = Number(process.env.INVENTORY_CDP_PORT ?? 9446)

@@ -14,10 +14,9 @@
 // violation still exists, so the list cannot rot, and nothing new can be added
 // without a finding to point at. New violations of any rule fail the build.
 import { test } from 'node:test'
+import { sourceFingerprint } from '../fingerprint.ts'
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
 
 type Table = { label: string; paginated: boolean }
 type Surface = {
@@ -47,22 +46,6 @@ const raw = readFileSync(INVENTORY, 'utf8')
 const inventory = JSON.parse(raw) as { fingerprint: string; surfaces: Surface[] }
 const surfaces = inventory.surfaces
 
-function sourceFingerprint(): string {
-  const files: string[] = []
-  const walk = (dir: string): void => {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name)
-      if (statSync(p).isDirectory()) walk(p)
-      else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name)) files.push(p)
-    }
-  }
-  walk('src/copy')
-  walk('src/ui')
-  files.sort()
-  const h = createHash('sha256')
-  for (const f of files) h.update(f.replace(/\\/g, '/')).update(readFileSync(f))
-  return h.digest('hex').slice(0, 16)
-}
 
 test('the inventory matches the source it was generated from', () => {
   assert.equal(
