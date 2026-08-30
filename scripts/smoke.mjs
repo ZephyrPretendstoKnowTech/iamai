@@ -254,7 +254,10 @@ try {
     (await clickText('/What IAMAI will ask for/')) && (await waitFor(`/Policy.Read.All/.test(document.body.innerText)`)),
   )
   t = await text()
-  check('Connect: it says the permissions are read-only', /There is no write permission in the set/.test(t))
+  // The claim is made once, in the lead sentence; the disclosure carries the
+  // evidence for it (review-07 R20, prompt 40 §23). Both are checked, so a
+  // rewrite cannot quietly drop either half.
+  check('Connect: it says the permissions are read-only', /Signs in read-only/.test(t) && /No write permission is in the set/.test(t))
   check('Connect: it says what consent creates', /an enterprise application named IAMAI/.test(t))
   check('Connect: it gives the removal path', /Enterprise applications/.test(t) && /Properties . Delete|Properties → Delete/.test(t))
   // Item 11: an unused scope is now in its own group with the reason, rather than
