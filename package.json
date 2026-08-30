@@ -15,7 +15,8 @@
     "analyze": "node scripts/analyze-local.ts",
     "build-index": "node scripts/build-index.ts",
     "smoke": "node scripts/smoke.mjs",
-    "build:site": "vite build && node scripts/assemble-site.mjs"
+    "build:site": "vite build && node scripts/assemble-site.mjs",
+    "inventory": "node scripts/ui-inventory.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.19.0",
