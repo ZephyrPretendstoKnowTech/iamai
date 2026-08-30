@@ -1,5 +1,5 @@
 {
- "fingerprint": "5b8ae1820e71304c",
+ "fingerprint": "d50a2a638b11b04b",
  "surfaces": [
   {
    "name": "Start",
@@ -1476,6 +1476,7 @@
    "note": "panel only",
    "headings": [
     "Policies not in the baseline",
+    "How this tenant is organised",
     "Housekeeping"
    ],
    "tabs": [],
@@ -1508,6 +1509,14 @@
    ],
    "sentences": [
     "Every policy maps to a goal.",
+    "Not security findings, and not part of the score.",
+    "This is how the policies are arranged: names, duplicates, and the ones nobody has looked at in a while.",
+    "How IAMAI names things",
+    "A disabled policy is usually abandoned.",
+    "It does nothing, and the next person has to work out whether it was turned off on purpose.",
+    "Fold it into a live policy or delete it.",
+    "IAMAI never proposes deleting a policy on your behalf; this one is your call.",
+    "CA003 - Admins phishing-resistant",
     "Naming: 100% of the policies share the prefix \"CA\" How IAMAI names things"
    ],
    "nav": [],
@@ -1515,14 +1524,28 @@
    "tables": [],
    "occurrences": {
     "Every policy maps to a goal.": 1,
+    "Not security findings, and not part of the score.": 1,
+    "This is how the policies are arranged: names, duplicates, and the ones nobody has looked at in a while.": 1,
+    "A disabled policy is usually abandoned.": 1,
+    "It does nothing, and the next person has to work out whether it was turned off on purpose.": 1,
+    "Fold it into a live policy or delete it.": 1,
+    "IAMAI never proposes deleting a policy on your behalf; this one is your call.": 1,
+    "CA003 - Admins phishing-resistant": 1,
     "Naming: 100% of the policies share the prefix \"CA\" How IAMAI names things": 1
    },
    "occurrencesAll": {
     "Every policy maps to a goal.": 1,
+    "Not security findings, and not part of the score.": 1,
+    "This is how the policies are arranged: names, duplicates, and the ones nobody has looked at in a while.": 1,
+    "A disabled policy is usually abandoned.": 1,
+    "It does nothing, and the next person has to work out whether it was turned off on purpose.": 1,
+    "Fold it into a live policy or delete it.": 1,
+    "IAMAI never proposes deleting a policy on your behalf; this one is your call.": 1,
+    "CA003 - Admins phishing-resistant": 1,
     "Naming: 100% of the policies share the prefix \"CA\" How IAMAI names things": 1
    },
    "wordCounts": {
-    "headings": 6,
+    "headings": 11,
     "tabs": 0,
     "buttons": 0,
     "options": 0,
@@ -1533,8 +1556,8 @@
     "empty": 0,
     "summaries": 214,
     "tips": 4,
-    "sentences": 19,
-    "total": 253
+    "sentences": 102,
+    "total": 341
    },
    "unnamedControls": []
   },

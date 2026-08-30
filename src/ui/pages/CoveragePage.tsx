@@ -21,6 +21,7 @@ import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.t
 import type { TenantMfaSummary } from '../../scoring/mfaViability.ts'
 import { FINDINGS as C } from '../../copy/pages.ts'
 import { NAMING as NAMING_PAGE } from '../../copy/naming.ts'
+import { organisationItems } from '../../coverage/organisationItems.ts'
 import { INVENTORY } from '../../copy/inventory.ts'
 import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
 import { findingsSummary, lowerFirst } from '../../copy/statements.ts'
@@ -411,6 +412,8 @@ export function CoveragePage({
     </div>
   )
 
+  // Structured what / why / change items, computed once per report.
+  const orgItems = organisationItems(report.organisation, snapshot, Object.values(groups ?? {}).flatMap((g) => (g as { displayName?: string }).displayName ?? []))
   const detailsTab = () => (
     <div>
       {[...report.results.filter((r) => r.status === 'not-applicable' || r.status === 'licence-limited')].map(goalCard)}
@@ -450,6 +453,30 @@ export function CoveragePage({
           </ul>
         )}
       </Card>
+      {/* How this tenant is organised (prompt 43 Part 3). Never mixed with
+          security findings, and structurally incapable of moving the score:
+          the score is goalCounts() over report.results, and nothing here
+          produces a GoalResult. */}
+      <Card title={C.organisationTitle}>
+        <p className="reason">
+          {C.organisationLead} <a href="#/naming">{NAMING_PAGE.link}</a>
+        </p>
+        {orgItems.length === 0 ? (
+          <p className="reason">{C.organisationNone}</p>
+        ) : (
+          <ul className="sections organisation-items">
+            {orgItems.map((it) => (
+              <li key={it.id}>
+                <strong>{it.what}</strong>
+                <div className="sub">{it.why}</div>
+                <div className="sub">{it.change}</div>
+                {it.names.length > 0 && <div className="reason">{it.names.join(", ")}</div>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <Card title={C.housekeeping}>
         <ul className="sections">
           <li>
