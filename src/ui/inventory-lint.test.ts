@@ -168,7 +168,6 @@ const RULE8_WAIVED: Waiver[] = [
   { id: 'S1', match: 'Roadmap / Schedule tab:' },
   { id: 'C12', match: 'Roadmap / Plan / one step opened:' },
   { id: 'T7/T8', match: 'Roadmap / Plan tab:' },
-  { id: 'C1', match: 'Start:' },
   { id: 'C11', match: 'Findings / Summary tab:' },
   { id: 'C16', match: 'Every check IAMAI runs:' },
 ]
