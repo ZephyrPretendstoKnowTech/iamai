@@ -292,7 +292,36 @@ const LAYOUT = `(() => {
       }
       return x.el.tagName.toLowerCase() + cls + ' right=' + Math.round(x.r.right) + ' w=' + Math.round(x.r.width) + ' in ' + chain.join(' < ')
     })
+  // When nothing unclipped is wider than the viewport but the document still
+  // is, the cause is something querySelectorAll cannot see - a pseudo-element,
+  // a margin, a stray absolutely positioned box. Hiding one subtree at a time
+  // and re-measuring says which region owns it, which no amount of reading
+  // rectangles will.
+  const blame = []
+  if (de.scrollWidth > de.clientWidth + 1) {
+    for (const sel of ['header.topbar', 'nav.stepper', 'main.page', 'footer.footer', '.body-grid']) {
+      const el = document.querySelector(sel)
+      if (!el) continue
+      const prev = el.style.display
+      el.style.display = 'none'
+      const after = de.scrollWidth
+      el.style.display = prev
+      blame.push(sel + ' hidden -> doc ' + Math.round(after))
+    }
+    // And the same for every direct child of main.page, to narrow it further.
+    const main = document.querySelector('main.page')
+    for (const child of main ? [...main.children].slice(0, 8) : []) {
+      const prev = child.style.display
+      child.style.display = 'none'
+      const after = de.scrollWidth
+      child.style.display = prev
+      if (after < de.scrollWidth || after <= de.clientWidth + 1) {
+        blame.push('main > ' + child.tagName.toLowerCase() + '.' + (typeof child.className === 'string' ? child.className.trim().split(/\s+/).join('.') : '') + ' hidden -> doc ' + Math.round(after))
+      }
+    }
+  }
   return {
+    blame,
     docWidth: Math.round(de.scrollWidth),
     clientWidth: Math.round(de.clientWidth),
     offenders,
@@ -332,6 +361,7 @@ for (const width of WIDTHS) {
       add(`${width}px ${hash}`, `the page scrolls sideways by ${l.pageOverflow}px (doc ${l.docWidth} vs client ${l.clientWidth})`)
       if (l.offenders.length === 0) add(`${width}px ${hash}`, '  nothing unclipped exceeds the viewport: the extra width is the document itself, not an element')
       for (const o of l.offenders) add(`${width}px ${hash}`, `  past the edge: ${o}`)
+      for (const b of l.blame ?? []) add(`${width}px ${hash}`, `  bisect: ${b}`)
     }
     // Diagnostics at the narrowest width even when nothing overflows here: an
     // element sitting at the edge on one platform overflows on another, where
