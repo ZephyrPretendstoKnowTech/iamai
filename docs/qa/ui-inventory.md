@@ -9,7 +9,7 @@ actually appears on. Surfaces below page level (each Setup question, each
 Roadmap tab, an opened step) are walked separately for the same reason: a single
 string rendered seven times is seven rows here and one row in the source.
 
-**31 surfaces, 13622 words.**
+**31 surfaces, 13189 words.**
 
 ## Duplicate concepts
 
@@ -211,12 +211,12 @@ and, where it is legitimate at all, one home.
 | Surface | Words |
 |---|---|
 | Start | 268 |
-| Connect | 73 |
-| Connect / permissions disclosure | 301 |
+| Connect | 71 |
+| Connect / permissions disclosure | 299 |
 | Baseline | 151 |
-| Scan | 292 |
-| Scan / Inventory tab | 183 |
-| Setup | 80 |
+| Scan | 282 |
+| Scan / Inventory tab | 177 |
+| Setup | 78 |
 | Setup / Q1 — Which accounts are the emergency access (break-glass)  | 125 |
 | Setup / Q2 — Which group holds the policy exclusions? | 46 |
 | Setup / Q3 — Which countries do your people sign in from? | 85 |
@@ -225,22 +225,22 @@ and, where it is legitimate at all, one home.
 | Setup / Q6 — Which time zone should dates display in? | 44 |
 | Setup / Q7 — Which security frameworks is the tenant working toward | 49 |
 | Setup / Q8 — Are the detected workloads right? | 67 |
-| Findings | 478 |
-| Findings / working tab | 158 |
-| Findings / attention tab | 454 |
-| Findings / Details tab | 688 |
-| Roadmap | 768 |
-| Roadmap / Plan tab | 1363 |
-| Roadmap / Watch tab | 329 |
-| Roadmap / Schedule tab | 2072 |
-| Roadmap / Export tab | 692 |
-| Roadmap / Progress tab | 889 |
-| Roadmap / Plan / one step opened | 1792 |
-| Licensing guide | 874 |
+| Findings | 476 |
+| Findings / working tab | 156 |
+| Findings / attention tab | 452 |
+| Findings / Details tab | 686 |
+| Roadmap | 750 |
+| Roadmap / Plan tab | 1306 |
+| Roadmap / Watch tab | 325 |
+| Roadmap / Schedule tab | 1873 |
+| Roadmap / Export tab | 676 |
+| Roadmap / Progress tab | 859 |
+| Roadmap / Plan / one step opened | 1723 |
+| Licensing guide | 872 |
 | What IAMAI reads | 320 |
 | Every check IAMAI runs | 204 |
-| Prompt pack | 555 |
-| Inventory | 136 |
+| Prompt pack | 553 |
+| Inventory | 130 |
 
 ## Surfaces
 
@@ -293,7 +293,7 @@ Words: **268** — headings 48, prose 205, buttons 2, options 0, links 13, chips
 - Predicted impact, confirmed in report-only.
 
 ### Connect
-Words: **73** — headings 1, prose 56, buttons 4, options 0, links 2, chips 0, columns 0, tiles 0, tips 0.
+Words: **71** — headings 1, prose 54, buttons 4, options 0, links 2, chips 0, columns 0, tiles 0, tips 0.
 
 **Headings** (1)
 
@@ -319,12 +319,12 @@ Words: **73** — headings 1, prose 56, buttons 4, options 0, links 2, chips 0, 
 - Needs: ✓ a Global Administrator or Global Reader account
 - Signed in to Contoso Pty Ltd as alex@example.com
 - Tenant ID 00000000-0000-0000-0000-000000000000
-- A scan from this minute · Aug 29, 2026, 8:38 PM (5 users) is saved on this device: go straight to Findings or Roadmap.
+- A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.
 
 ### Connect / permissions disclosure
 _disclosure expanded_
 
-Words: **301** — headings 9, prose 263, buttons 4, options 0, links 7, chips 0, columns 8, tiles 0, tips 0.
+Words: **299** — headings 9, prose 261, buttons 4, options 0, links 7, chips 0, columns 8, tiles 0, tips 0.
 
 **Headings** (3)
 
@@ -359,7 +359,7 @@ Words: **301** — headings 9, prose 263, buttons 4, options 0, links 7, chips 0
 - Needs: ✓ a Global Administrator or Global Reader account
 - Signed in to Contoso Pty Ltd as alex@example.com
 - Tenant ID 00000000-0000-0000-0000-000000000000
-- A scan from this minute · Aug 29, 2026, 8:38 PM (5 users) is saved on this device: go straight to Findings or Roadmap.
+- A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.
 - Microsoft shows this list on its own consent screen.
 - It is repeated here in plain words, generated from the same list the code requests, so it can be read before the screen appears rather than during it.
 - Every one of these is a read permission.
@@ -417,7 +417,7 @@ Words: **151** — headings 7, prose 130, buttons 5, options 0, links 7, chips 0
 - 1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)
 
 ### Scan
-Words: **292** — headings 8, prose 105, buttons 62, options 0, links 0, chips 26, columns 8, tiles 34, tips 46.
+Words: **282** — headings 8, prose 95, buttons 62, options 0, links 0, chips 26, columns 8, tiles 34, tips 46.
 
 **Headings** (6)
 
@@ -531,10 +531,10 @@ Words: **292** — headings 8, prose 105, buttons 62, options 0, links 0, chips 
 - Nothing is written; nothing leaves the browser.
 - Needs: ✓ connected tenant
 - Re-scan tenantDownload diagnostics (redacted)
-- Scan completed this minute · Aug 29, 2026, 8:38 PM · saved on this device.
+- Scan completed this minute · <date and time> · saved on this device.
 - Re-scan any time for fresh numbers.
-- 5 users · 3 policies · sign-in records for Jul 30, 2026 to Aug 29, 2026
-- Sign-in records: complete: covering Jul 30, 2026 to Aug 29, 2026.
+- 5 users · 3 policies · sign-in records for <date> to <date>
+- Sign-in records: complete: covering <date> to <date>.
 - Blocked today: 1 user whose most recent sign-in failed Conditional Access.
 - CA001 - Require MFA for all users: 1 user: Priya Nair
 - alex@example.com
@@ -544,7 +544,7 @@ Words: **292** — headings 8, prose 105, buttons 62, options 0, links 0, chips 
 - jordan_partner.example.com#EXT#@example.com
 
 ### Scan / Inventory tab
-Words: **183** — headings 4, prose 80, buttons 24, options 0, links 0, chips 3, columns 7, tiles 0, tips 51.
+Words: **177** — headings 4, prose 74, buttons 24, options 0, links 0, chips 3, columns 7, tiles 0, tips 51.
 
 **Headings** (3)
 
@@ -628,16 +628,16 @@ Words: **183** — headings 4, prose 80, buttons 24, options 0, links 0, chips 3
 - Nothing is written; nothing leaves the browser.
 - Needs: ✓ connected tenant
 - Re-scan tenantDownload diagnostics (redacted)
-- Scan completed this minute · Aug 29, 2026, 8:38 PM · saved on this device.
+- Scan completed this minute · <date and time> · saved on this device.
 - Re-scan any time for fresh numbers.
-- 5 users · 3 policies · sign-in records for Jul 30, 2026 to Aug 29, 2026
+- 5 users · 3 policies · sign-in records for <date> to <date>
 - Everything the scan read, as found: no analysis.
 - Every table exports to CSV.
 
 ### Setup
 _page chrome only; each question is its own surface below_
 
-Words: **80** — headings 1, prose 73, buttons 2, options 0, links 1, chips 0, columns 0, tiles 0, tips 3.
+Words: **78** — headings 1, prose 71, buttons 2, options 0, links 1, chips 0, columns 0, tiles 0, tips 3.
 
 **Headings** (1)
 
@@ -660,7 +660,7 @@ Words: **80** — headings 1, prose 73, buttons 2, options 0, links 1, chips 0, 
 - A few questions, each required.
 - The answers shape the plan and the checks.
 - Needs: ✓ baseline loaded · ✓ scan complete
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan
 - 0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.
 - No service accounts detected, so nothing needs a carve-out; the plan records that.
@@ -908,7 +908,7 @@ Words: **67** — headings 0, prose 43, buttons 0, options 7, links 0, chips 6, 
 - no Workload Identities Premium licence
 
 ### Findings
-Words: **478** — headings 1, prose 402, buttons 11, options 0, links 2, chips 0, columns 0, tiles 26, tips 27.
+Words: **476** — headings 1, prose 400, buttons 11, options 0, links 2, chips 0, columns 0, tiles 26, tips 27.
 
 **Headings** (1)
 
@@ -957,7 +957,7 @@ Words: **478** — headings 1, prose 402, buttons 11, options 0, links 2, chips 
 
 - What the scan found in the tenant.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - 1 goal in this baseline, 16 apply to this tenant.
 - The rest are under Details with the reason each one does not apply.
@@ -978,7 +978,7 @@ Words: **478** — headings 1, prose 402, buttons 11, options 0, links 2, chips 
 - Confirm them in Setup to remove the hedging.
 
 ### Findings / working tab
-Words: **158** — headings 3, prose 56, buttons 11, options 0, links 1, chips 2, columns 0, tiles 0, tips 33.
+Words: **156** — headings 3, prose 54, buttons 11, options 0, links 1, chips 2, columns 0, tiles 0, tips 33.
 
 **Headings** (3)
 
@@ -1030,13 +1030,13 @@ Words: **158** — headings 3, prose 56, buttons 11, options 0, links 1, chips 2
 
 - What the scan found in the tenant.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - 1 goal in this baseline, 16 apply to this tenant.
 - The rest are under Details with the reason each one does not apply.
 
 ### Findings / attention tab
-Words: **454** — headings 6, prose 56, buttons 11, options 0, links 1, chips 4, columns 0, tiles 0, tips 33.
+Words: **452** — headings 6, prose 54, buttons 11, options 0, links 1, chips 4, columns 0, tiles 0, tips 33.
 
 **Headings** (6)
 
@@ -1106,13 +1106,13 @@ Words: **454** — headings 6, prose 56, buttons 11, options 0, links 1, chips 4
 
 - What the scan found in the tenant.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - 1 goal in this baseline, 16 apply to this tenant.
 - The rest are under Details with the reason each one does not apply.
 
 ### Findings / Details tab
-Words: **688** — headings 7, prose 73, buttons 11, options 0, links 1, chips 6, columns 0, tiles 0, tips 33.
+Words: **686** — headings 7, prose 71, buttons 11, options 0, links 1, chips 6, columns 0, tiles 0, tips 33.
 
 **Headings** (3)
 
@@ -1189,7 +1189,7 @@ Words: **688** — headings 7, prose 73, buttons 11, options 0, links 1, chips 6
 
 - What the scan found in the tenant.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - 1 goal in this baseline, 16 apply to this tenant.
 - The rest are under Details with the reason each one does not apply.
@@ -1199,13 +1199,13 @@ Words: **688** — headings 7, prose 73, buttons 11, options 0, links 1, chips 6
 ### Roadmap
 _default tab_
 
-Words: **768** — headings 65, prose 499, buttons 29, options 0, links 131, chips 9, columns 4, tiles 6, tips 13.
+Words: **750** — headings 63, prose 485, buttons 29, options 0, links 131, chips 9, columns 4, tiles 6, tips 13.
 
 **Headings** (10)
 
 - Roadmap
 - Do this next
-- 2 of 19 steps in place · finishes Oct 2, 2026
+- 2 of 19 steps in place · finishes <date>
 - What needs attention before you start
 - Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.
 - The journey
@@ -1241,7 +1241,7 @@ Words: **768** — headings 65, prose 499, buttons 29, options 0, links 131, chi
 
 **Collapsed section headers** (1)
 
-- Plan revision 1, Aug 29, 2026
+- Plan revision 1, <date>
 
 **Links** (25)
 
@@ -1303,7 +1303,7 @@ Words: **768** — headings 65, prose 499, buttons 29, options 0, links 131, chi
 
 - Your plan: what to change, in what order, and what to watch.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - With this tenant's Entra ID P1, 19 of 24 steps are available now.
 - 5 steps need Entra ID P2; the Licensing guide shows what they would add.
@@ -1335,26 +1335,26 @@ Words: **768** — headings 65, prose 499, buttons 29, options 0, links 131, chi
 - Save the plan once to record a checkpoint; changes since then show here on the next scan.
 - Everything the scans noticed, newest first.
 - Nothing here is typed in; nothing can be edited.
-- Aug 29, 2026 · Scan run: 5 users, 3 policies planned scan
-- Aug 29, 2026
+- <date> · Scan run: 5 users, 3 policies planned scan
+- <date>
 - scan
-- Aug 29, 2026 · Make guests prove who they are too: enforced planned matched by what it does
+- <date> · Make guests prove who they are too: enforced planned matched by what it does
 - matched by what it does
-- Aug 29, 2026 · Make sure everyone can prove who they are: enforced planned matched by what it does
-- Aug 29, 2026 · Turn off old sign-in methods that skip MFA: in report-only planned matched by what it does
-- Plan revision 1, Aug 29, 2026: plan created
+- <date> · Make sure everyone can prove who they are: enforced planned matched by what it does
+- <date> · Turn off old sign-in methods that skip MFA: in report-only planned matched by what it does
+- Plan revision 1, <date>: plan created
 
 ### Roadmap / Plan tab
-Words: **1363** — headings 55, prose 688, buttons 29, options 0, links 538, chips 28, columns 0, tiles 0, tips 13.
+Words: **1306** — headings 39, prose 657, buttons 29, options 0, links 530, chips 28, columns 0, tiles 0, tips 13.
 
 **Headings** (7)
 
 - Roadmap
 - Do this next
-- Day 0 Aug 31, 2026 → Sep 3, 2026
-- Wave 1 · Low-impact blocks Sep 8, 2026 → Sep 18, 2026
-- Wave 2 · Sessions Sep 15, 2026 → Sep 25, 2026
-- Wave 3 · Sessions Sep 22, 2026 → Oct 2, 2026
+- Day 0 <date> → <date>
+- Wave 1 · Low-impact blocks <date> → <date>
+- Wave 2 · Sessions <date> → <date>
+- Wave 3 · Sessions <date> → <date>
 - Needs a licence this tenant does not have
 
 **Tabs** (5)
@@ -1384,16 +1384,16 @@ Words: **1363** — headings 55, prose 688, buttons 29, options 0, links 538, ch
 
 **Collapsed section headers** (1)
 
-- Plan revision 1, Aug 29, 2026
+- Plan revision 1, <date>
 
 **Links** (20)
 
 - Re-scan
 - ReadyPrerequisiteSort out emergency access before anything elseEmergency access accountsChecked: nothing blocks it and a foundation the later steps need.
 - ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.
-- DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.
 - ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.
-- DoneNew policyMake guests prove who they are tooGuests satisfy MFADone Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.
 - In report-onlyChangeTurn off old sign-in methods that skip MFALegacy protocols blocked1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.
 - BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).
 - BlockedNew policyStop the device-code sign-in trickDevice-code flow blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).
@@ -1435,11 +1435,11 @@ Words: **1363** — headings 55, prose 688, buttons 29, options 0, links 538, ch
 - About Safe today
 - About Blocked
 
-**Body sentences** (58)
+**Body sentences** (55)
 
 - Your plan: what to change, in what order, and what to watch.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - With this tenant's Entra ID P1, 19 of 24 steps are available now.
 - 5 steps need Entra ID P2; the Licensing guide shows what they would add.
@@ -1453,17 +1453,15 @@ Words: **1363** — headings 55, prose 688, buttons 29, options 0, links 538, ch
 - setting up 1 person unblocks 3 steps · Priya Nair
 - about 5 minutes
 - This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
-- Aug 31, 2026 → Sep 3, 2026
+- <date> → <date>
 - Emergency access accounts
 - Checked: nothing blocks it and a foundation the later steps need.
 - Every user satisfies MFA on every app
-- Done Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- Done <date>: policy enforced on <date>; this policy already existed and covers this step.
 - Checked: nothing blocks it and enabled users still need setting up.
 - Guests satisfy MFA
-- Sep 8, 2026 → Sep 18, 2026
 - Legacy protocols blocked
 - 1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.
-- Sep 15, 2026 → Sep 25, 2026
 - Authentication transfer blocked
 - Blocked by emergency access accounts is not sorted yet (1 must-fix item).
 - Device-code flow blocked
@@ -1477,7 +1475,6 @@ Words: **1363** — headings 55, prose 688, buttons 29, options 0, links 538, ch
 - Unmanaged devices cannot download
 - Unmanaged-device browser sessions are limited
 - Windows desktop sessions require token protection
-- Sep 22, 2026 → Oct 2, 2026
 - Security-info registration requires a trusted context
 - Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.
 - Admin portals need strong auth or are blocked for non-admins
@@ -1497,7 +1494,7 @@ Words: **1363** — headings 55, prose 688, buttons 29, options 0, links 538, ch
 - · Medium-risk users must change their password · Entra ID P2
 
 ### Roadmap / Watch tab
-Words: **329** — headings 14, prose 273, buttons 9, options 0, links 8, chips 0, columns 0, tiles 0, tips 13.
+Words: **325** — headings 14, prose 271, buttons 9, options 0, links 8, chips 0, columns 0, tiles 0, tips 13.
 
 **Headings** (3)
 
@@ -1524,7 +1521,7 @@ Words: **329** — headings 14, prose 273, buttons 9, options 0, links 8, chips 
 
 **Collapsed section headers** (1)
 
-- Plan revision 1, Aug 29, 2026
+- Plan revision 1, <date>
 
 **Links** (2)
 
@@ -1543,7 +1540,7 @@ Words: **329** — headings 14, prose 273, buttons 9, options 0, links 8, chips 
 
 - Your plan: what to change, in what order, and what to watch.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - With this tenant's Entra ID P1, 19 of 24 steps are available now.
 - 5 steps need Entra ID P2; the Licensing guide shows what they would add.
@@ -1564,7 +1561,7 @@ Words: **329** — headings 14, prose 273, buttons 9, options 0, links 8, chips 
 - Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)
 
 ### Roadmap / Schedule tab
-Words: **2072** — headings 19, prose 889, buttons 41, options 0, links 932, chips 24, columns 21, tiles 0, tips 30.
+Words: **1873** — headings 19, prose 836, buttons 41, options 0, links 800, chips 24, columns 21, tiles 0, tips 30.
 
 **Headings** (6)
 
@@ -1608,55 +1605,40 @@ Words: **2072** — headings 19, prose 889, buttons 41, options 0, links 932, ch
 
 **Collapsed section headers** (7)
 
-- Plan revision 1, Aug 29, 2026
-- Day 0 Aug 31, 2026 → Sep 3, 20262 of 5 steps done
-- Wave 1 · Low-impact blocks Sep 8, 2026 → Sep 18, 20260 of 1 step done
-- Wave 2 · Sessions Sep 15, 2026 → Sep 25, 20260 of 10 steps done
-- Wave 3 · Sessions Sep 22, 2026 → Oct 2, 20260 of 3 steps done
-- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · Sep 1, 2026
-- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · Sep 16, 2026
+- Plan revision 1, <date>
+- Day 0 <date> → Sep 3, 20262 of 5 steps done
+- Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done
+- Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done
+- Wave 3 · Sessions <date> → Oct 2, 20260 of 3 steps done
+- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>
+- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>
 
-**Links** (74)
+**Links** (59)
 
 - Re-scan
-- 09:30 Stop sign-ins from countries you don't work in
-- 09:30 Turn off old sign-in methods that skip MFA
-- 09:30 Block devices Entra cannot identify
-- 09:30 Stop sign-ins being handed to another device
-- 09:30 Stop the device-code sign-in trick
-- 09:30 Keep admin sessions short
-- 09:30 Give admins a sign-in method that cannot be phished
-- 09:30 Sign everyone out when the browser closes
-- 09:30 Stop downloads to devices you do not manage
-- 09:30 Limit what personal devices can do in the browser
-- 09:30 Stop a stolen session token from being reused
-- 10:00 Turn off old sign-in methods that skip MFA
-- 09:30 Keep non-admins out of the admin portals
-- 09:30 Ask for MFA before a device can be registered
-- 09:30 Stop attackers adding their own MFA method
-- 08:00 Stop sign-ins from countries you don't work in
-- 10:00 Stop sign-ins being handed to another device
-- 10:00 Stop the device-code sign-in trick
-- 10:00 Keep admin sessions short
-- 10:00 Give admins a sign-in method that cannot be phished
-- 10:00 Stop sign-ins from countries you don't work in
-- 10:00 Block devices Entra cannot identify
-- 10:00 Sign everyone out when the browser closes
-- 10:00 Stop downloads to devices you do not manage
-- 10:00 Limit what personal devices can do in the browser
-- 10:00 Stop a stolen session token from being reused
-- 10:00 Stop attackers adding their own MFA method
-- 10:00 Keep non-admins out of the admin portals
-- 10:00 Ask for MFA before a device can be registered
+- <time> Stop sign-ins from countries you don't work in
+- <time> Turn off old sign-in methods that skip MFA
+- <time> Block devices Entra cannot identify
+- <time> Stop sign-ins being handed to another device
+- <time> Stop the device-code sign-in trick
+- <time> Keep admin sessions short
+- <time> Give admins a sign-in method that cannot be phished
+- <time> Sign everyone out when the browser closes
+- <time> Stop downloads to devices you do not manage
+- <time> Limit what personal devices can do in the browser
+- <time> Stop a stolen session token from being reused
+- <time> Keep non-admins out of the admin portals
+- <time> Ask for MFA before a device can be registered
+- <time> Stop attackers adding their own MFA method
 - Day 0
 - Wave 1 · Low-impact blocks
 - Wave 2 · Sessions
 - Wave 3 · Sessions
 - ReadyPrerequisiteSort out emergency access before anything elseEmergency access accountsChecked: nothing blocks it and a foundation the later steps need.
 - ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.
-- DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.
 - ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.
-- DoneNew policyMake guests prove who they are tooGuests satisfy MFADone Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.
 - In report-onlyChangeTurn off old sign-in methods that skip MFALegacy protocols blocked1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.
 - BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).
 - BlockedNew policyStop the device-code sign-in trickDevice-code flow blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).
@@ -1750,11 +1732,11 @@ Words: **2072** — headings 19, prose 889, buttons 41, options 0, links 932, ch
 - About Holidays
 - About Revert threshold
 
-**Body sentences** (69)
+**Body sentences** (64)
 
 - Your plan: what to change, in what order, and what to watch.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - With this tenant's Entra ID P1, 19 of 24 steps are available now.
 - 5 steps need Entra ID P2; the Licensing guide shows what they would add.
@@ -1775,28 +1757,23 @@ Words: **2072** — headings 19, prose 889, buttons 41, options 0, links 932, ch
 - Times are local.
 - 5 weeks: a 2-week verification campaign, 7-day observation window, 3 enforcement waves, 2 steps waiting on Setup questions 2 and 3.
 - Hide completed
-- Aug 31, 2026 → Sep 3, 2026
+- <date> → <date>
 - 2 of 5 steps done
 - The 13 new policies start in report-only, where they affect nobody.
 - What report-only means
 - Checked: nothing blocks it and a foundation the later steps need.
 - Every user satisfies MFA on every app
-- Done Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- Done <date>: policy enforced on <date>; this policy already existed and covers this step.
 - Checked: nothing blocks it and enabled users still need setting up.
 - Guests satisfy MFA
-- Sep 3, 2026 → Sep 17, 2026
 - 4 users still need setting up (5 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.
-- Sep 3, 2026 → Sep 10, 2026
 - Every new policy collects report-only evidence at the same time.
-- Sep 8, 2026 → Sep 18, 2026
 - 0 of 1 step done
 - 1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.
-- Sep 15, 2026 → Sep 25, 2026
 - 0 of 10 steps done
 - Blocked by emergency access accounts is not sorted yet (1 must-fix item).
 - Blocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).
 - Blocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).
-- Sep 22, 2026 → Oct 2, 2026
 - 0 of 3 steps done
 - Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.
 - Blocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).
@@ -1806,15 +1783,15 @@ Words: **2072** — headings 19, prose 889, buttons 41, options 0, links 932, ch
 - Turn off old sign-in methods that skip MFA; Stop sign-ins from countries you don't work in; Sign everyone out when the browser closes; Stop downloads to devices you do not manage; Limit what personal devices can do in the browser; Stop a stolen session token from being reused; Keep non-admins out of the admin portals; Ask for MFA before a device can be registered
 - (reminder)
 - Stop attackers adding their own MFA method
-- · 5 people, by name · Sep 1, 2026
+- · 5 people, by name · <date>
 - EmailTeams or SlackHelp-desk noteIntranet noticeRemind
 - CopyCopy as promptCopy the recipient listRecipients as CSV (for mail merge)Names and addresses stay in the browser until you copy or export them.
 - Names and addresses stay in the browser until you copy or export them.
-- · 4 people, by name · Sep 16, 2026
+- · 4 people, by name · <date>
 - Export to calendar (ICS)One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.
 - One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.
-- Plan start date: tomorrow · Aug 31, 2026
-- tomorrow · Aug 31, 2026
+- Plan start date: tomorrow · <date>
+- tomorrow · <date>
 - Pace:
 - 4 active users: Small band, detected · this pace usually takes 4 weeks
 - Change freeze
@@ -1823,7 +1800,7 @@ Words: **2072** — headings 19, prose 889, buttons 41, options 0, links 932, ch
 - At most 2 enforcement events a week for this size of tenant.
 
 ### Roadmap / Export tab
-Words: **692** — headings 17, prose 476, buttons 52, options 0, links 1, chips 0, columns 0, tiles 0, tips 30.
+Words: **676** — headings 17, prose 474, buttons 52, options 0, links 1, chips 0, columns 0, tiles 0, tips 30.
 
 **Headings** (7)
 
@@ -1865,13 +1842,13 @@ Words: **692** — headings 17, prose 476, buttons 52, options 0, links 1, chips
 
 **Collapsed section headers** (7)
 
-- Plan revision 1, Aug 29, 2026
-- Day 0 Aug 31, 2026 → Sep 3, 20262 of 5 steps done
-- Wave 1 · Low-impact blocks Sep 8, 2026 → Sep 18, 20260 of 1 step done
-- Wave 2 · Sessions Sep 15, 2026 → Sep 25, 20260 of 10 steps done
-- Wave 3 · Sessions Sep 22, 2026 → Oct 2, 20260 of 3 steps done
-- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · Sep 1, 2026
-- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · Sep 16, 2026
+- Plan revision 1, <date>
+- Day 0 <date> → Sep 3, 20262 of 5 steps done
+- Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done
+- Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done
+- Wave 3 · Sessions <date> → Oct 2, 20260 of 3 steps done
+- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>
+- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>
 
 **Links** (1)
 
@@ -1895,7 +1872,7 @@ Words: **692** — headings 17, prose 476, buttons 52, options 0, links 1, chips
 
 - Your plan: what to change, in what order, and what to watch.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - With this tenant's Entra ID P1, 19 of 24 steps are available now.
 - 5 steps need Entra ID P2; the Licensing guide shows what they would add.
@@ -1933,13 +1910,13 @@ Words: **692** — headings 17, prose 476, buttons 52, options 0, links 1, chips
 - Save as PDF from the print dialog.
 
 ### Roadmap / Progress tab
-Words: **889** — headings 65, prose 499, buttons 29, options 0, links 131, chips 9, columns 4, tiles 6, tips 30.
+Words: **859** — headings 63, prose 485, buttons 29, options 0, links 131, chips 9, columns 4, tiles 6, tips 30.
 
 **Headings** (10)
 
 - Roadmap
 - Do this next
-- 2 of 19 steps in place · finishes Oct 2, 2026
+- 2 of 19 steps in place · finishes <date>
 - What needs attention before you start
 - Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.
 - The journey
@@ -1975,13 +1952,13 @@ Words: **889** — headings 65, prose 499, buttons 29, options 0, links 131, chi
 
 **Collapsed section headers** (7)
 
-- Plan revision 1, Aug 29, 2026
-- Day 0 Aug 31, 2026 → Sep 3, 20262 of 5 steps done
-- Wave 1 · Low-impact blocks Sep 8, 2026 → Sep 18, 20260 of 1 step done
-- Wave 2 · Sessions Sep 15, 2026 → Sep 25, 20260 of 10 steps done
-- Wave 3 · Sessions Sep 22, 2026 → Oct 2, 20260 of 3 steps done
-- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · Sep 1, 2026
-- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · Sep 16, 2026
+- Plan revision 1, <date>
+- Day 0 <date> → Sep 3, 20262 of 5 steps done
+- Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done
+- Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done
+- Wave 3 · Sessions <date> → Oct 2, 20260 of 3 steps done
+- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>
+- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>
 
 **Links** (25)
 
@@ -2049,7 +2026,7 @@ Words: **889** — headings 65, prose 499, buttons 29, options 0, links 131, chi
 
 - Your plan: what to change, in what order, and what to watch.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - With this tenant's Entra ID P1, 19 of 24 steps are available now.
 - 5 steps need Entra ID P2; the Licensing guide shows what they would add.
@@ -2081,25 +2058,25 @@ Words: **889** — headings 65, prose 499, buttons 29, options 0, links 131, chi
 - Save the plan once to record a checkpoint; changes since then show here on the next scan.
 - Everything the scans noticed, newest first.
 - Nothing here is typed in; nothing can be edited.
-- Aug 29, 2026 · Scan run: 5 users, 3 policies planned scan
-- Aug 29, 2026
+- <date> · Scan run: 5 users, 3 policies planned scan
+- <date>
 - scan
-- Aug 29, 2026 · Make guests prove who they are too: enforced planned matched by what it does
+- <date> · Make guests prove who they are too: enforced planned matched by what it does
 - matched by what it does
-- Aug 29, 2026 · Make sure everyone can prove who they are: enforced planned matched by what it does
-- Aug 29, 2026 · Turn off old sign-in methods that skip MFA: in report-only planned matched by what it does
-- Plan revision 1, Aug 29, 2026: plan created
+- <date> · Make sure everyone can prove who they are: enforced planned matched by what it does
+- <date> · Turn off old sign-in methods that skip MFA: in report-only planned matched by what it does
+- Plan revision 1, <date>: plan created
 
 ### Roadmap / Plan / one step opened
 _first step expanded_
 
-Words: **1792** — headings 76, prose 945, buttons 40, options 0, links 519, chips 28, columns 0, tiles 0, tips 33.
+Words: **1723** — headings 60, prose 914, buttons 40, options 0, links 511, chips 28, columns 0, tiles 0, tips 33.
 
 **Headings** (16)
 
 - Roadmap
 - Do this next
-- Day 0 Aug 31, 2026 → Sep 3, 2026
+- Day 0 <date> → <date>
 - What changes
 - Why it matters
 - Prerequisites
@@ -2109,9 +2086,9 @@ Words: **1792** — headings 76, prose 945, buttons 40, options 0, links 519, ch
 - Rollback
 - What to tell your manager
 - Scheduled date
-- Wave 1 · Low-impact blocks Sep 8, 2026 → Sep 18, 2026
-- Wave 2 · Sessions Sep 15, 2026 → Sep 25, 2026
-- Wave 3 · Sessions Sep 22, 2026 → Oct 2, 2026
+- Wave 1 · Low-impact blocks <date> → <date>
+- Wave 2 · Sessions <date> → <date>
+- Wave 3 · Sessions <date> → <date>
 - Needs a licence this tenant does not have
 
 **Tabs** (5)
@@ -2145,22 +2122,22 @@ Words: **1792** — headings 76, prose 945, buttons 40, options 0, links 519, ch
 
 **Collapsed section headers** (8)
 
-- Plan revision 1, Aug 29, 2026
+- Plan revision 1, <date>
 - Ready Prerequisite Sort out emergency access before anything elseEmergency access accounts1 must-fix check to clear. 14 steps that can deny access are held until then.Checked: nothing blocks it and a foundation the later steps need.
-- Day 0 Aug 31, 2026 → Sep 3, 20262 of 5 steps done
-- Wave 1 · Low-impact blocks Sep 8, 2026 → Sep 18, 20260 of 1 step done
-- Wave 2 · Sessions Sep 15, 2026 → Sep 25, 20260 of 10 steps done
-- Wave 3 · Sessions Sep 22, 2026 → Oct 2, 20260 of 3 steps done
-- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · Sep 1, 2026
-- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · Sep 16, 2026
+- Day 0 <date> → Sep 3, 20262 of 5 steps done
+- Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done
+- Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done
+- Wave 3 · Sessions <date> → Oct 2, 20260 of 3 steps done
+- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>
+- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>
 
 **Links** (19)
 
 - Re-scan
 - ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.
-- DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.
 - ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.
-- DoneNew policyMake guests prove who they are tooGuests satisfy MFADone Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.
 - In report-onlyChangeTurn off old sign-in methods that skip MFALegacy protocols blocked1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.
 - BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).
 - BlockedNew policyStop the device-code sign-in trickDevice-code flow blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).
@@ -2209,11 +2186,11 @@ Words: **1792** — headings 76, prose 945, buttons 40, options 0, links 519, ch
 - About Holidays
 - About Revert threshold
 
-**Body sentences** (78)
+**Body sentences** (75)
 
 - Your plan: what to change, in what order, and what to watch.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - With this tenant's Entra ID P1, 19 of 24 steps are available now.
 - 5 steps need Entra ID P2; the Licensing guide shows what they would add.
@@ -2227,7 +2204,7 @@ Words: **1792** — headings 76, prose 945, buttons 40, options 0, links 519, ch
 - setting up 1 person unblocks 3 steps · Priya Nair
 - about 5 minutes
 - This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
-- Aug 31, 2026 → Sep 3, 2026
+- <date> → <date>
 - Emergency access accounts
 - 1 must-fix check to clear.
 - 14 steps that can deny access are held until then.
@@ -2251,13 +2228,11 @@ Words: **1792** — headings 76, prose 945, buttons 40, options 0, links 519, ch
 - Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.
 - Copy for your managerCopy as prompt
 - Every user satisfies MFA on every app
-- Done Aug 29, 2026: policy enforced on Aug 29, 2026; this policy already existed and covers this step.
+- Done <date>: policy enforced on <date>; this policy already existed and covers this step.
 - Checked: nothing blocks it and enabled users still need setting up.
 - Guests satisfy MFA
-- Sep 8, 2026 → Sep 18, 2026
 - Legacy protocols blocked
 - 1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.
-- Sep 15, 2026 → Sep 25, 2026
 - Authentication transfer blocked
 - Blocked by emergency access accounts is not sorted yet (1 must-fix item).
 - Device-code flow blocked
@@ -2271,7 +2246,6 @@ Words: **1792** — headings 76, prose 945, buttons 40, options 0, links 519, ch
 - Unmanaged devices cannot download
 - Unmanaged-device browser sessions are limited
 - Windows desktop sessions require token protection
-- Sep 22, 2026 → Oct 2, 2026
 - Security-info registration requires a trusted context
 - Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.
 - Admin portals need strong auth or are blocked for non-admins
@@ -2291,7 +2265,7 @@ Words: **1792** — headings 76, prose 945, buttons 40, options 0, links 519, ch
 - · Medium-risk users must change their password · Entra ID P2
 
 ### Licensing guide
-Words: **874** — headings 32, prose 814, buttons 2, options 0, links 5, chips 6, columns 6, tiles 0, tips 9.
+Words: **872** — headings 32, prose 812, buttons 2, options 0, links 5, chips 6, columns 6, tiles 0, tips 9.
 
 **Headings** (8)
 
@@ -2335,7 +2309,7 @@ Words: **874** — headings 32, prose 814, buttons 2, options 0, links 5, chips 
 
 **Body sentences** (61)
 
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan
 - IAMAI hardens what the tenant has.
 - Every goal is scored against the best implementation the licence allows.
@@ -2513,7 +2487,7 @@ Words: **204** — headings 21, prose 108, buttons 2, options 0, links 57, chips
 - Field practice
 
 ### Prompt pack
-Words: **555** — headings 17, prose 476, buttons 52, options 0, links 1, chips 0, columns 0, tiles 0, tips 3.
+Words: **553** — headings 17, prose 474, buttons 52, options 0, links 1, chips 0, columns 0, tiles 0, tips 3.
 
 **Headings** (7)
 
@@ -2565,7 +2539,7 @@ Words: **555** — headings 17, prose 476, buttons 52, options 0, links 1, chips
 
 - Your plan: what to change, in what order, and what to watch.
 - Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · Aug 29, 2026, 8:38 PM.
+- Based on the scan from this minute · <date and time>.
 - Re-scan · Baseline: synthetic baseline
 - With this tenant's Entra ID P1, 19 of 24 steps are available now.
 - 5 steps need Entra ID P2; the Licensing guide shows what they would add.
@@ -2603,7 +2577,7 @@ Words: **555** — headings 17, prose 476, buttons 52, options 0, links 1, chips
 - Save as PDF from the print dialog.
 
 ### Inventory
-Words: **136** — headings 4, prose 80, buttons 24, options 0, links 0, chips 3, columns 7, tiles 0, tips 5.
+Words: **130** — headings 4, prose 74, buttons 24, options 0, links 0, chips 3, columns 7, tiles 0, tips 5.
 
 **Headings** (3)
 
@@ -2671,9 +2645,9 @@ Words: **136** — headings 4, prose 80, buttons 24, options 0, links 0, chips 3
 - Nothing is written; nothing leaves the browser.
 - Needs: ✓ connected tenant
 - Re-scan tenantDownload diagnostics (redacted)
-- Scan completed this minute · Aug 29, 2026, 8:38 PM · saved on this device.
+- Scan completed this minute · <date and time> · saved on this device.
 - Re-scan any time for fresh numbers.
-- 5 users · 3 policies · sign-in records for Jul 30, 2026 to Aug 29, 2026
+- 5 users · 3 policies · sign-in records for <date> to <date>
 - Everything the scan read, as found: no analysis.
 - Every table exports to CSV.
 
