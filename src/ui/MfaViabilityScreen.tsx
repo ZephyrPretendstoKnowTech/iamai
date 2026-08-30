@@ -7,7 +7,8 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { rolloutBucket, scoreMfaViability, sortViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { RolloutBucket } from '../scoring/mfaViability.ts'
 import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scoring/mfaViability.ts'
-import { STALE_SCAN_DAYS, absolute, absoluteDate, downloadFile, elapsedLabel, friendlyMethod, relative, scanAgeDays, whenAt } from './format.ts'
+import { REDACTED, exportDownload } from './exportGuard.ts'
+import { STALE_SCAN_DAYS, absolute, absoluteDate, elapsedLabel, friendlyMethod, relative, scanAgeDays, whenAt } from './format.ts'
 import { loadMappingState } from '../mapping/store.ts'
 import { SCAN, SHELL } from '../copy/pages.ts'
 import { ACCESS } from '../copy/access.ts'
@@ -187,7 +188,7 @@ export function MfaViabilityScreen({
       sources: snapshot?.sources ?? null,
       sections: Object.values(sections),
     }
-    downloadFile(`iamai-diagnostics-${Date.now()}.json`, redactIdentifiers(JSON.stringify(bundle, null, 2)), 'application/json')
+    exportDownload(`iamai-diagnostics-${Date.now()}.json`, JSON.stringify(bundle, null, 2), 'application/json', REDACTED)
   }
 
   const evidence = snapshot?.sources.signInEvidence

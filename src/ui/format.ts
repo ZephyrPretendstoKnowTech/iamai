@@ -35,11 +35,7 @@ export function elapsedLabel(startedAtMs: number, nowMs: number): string {
   return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
 }
 
-export function downloadFile(name: string, content: string, type: string): void {
-  const url = URL.createObjectURL(new Blob([content], { type }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  a.click()
-  URL.revokeObjectURL(url)
-}
+// Downloads live in src/ui/exportGuard.ts, which applies redaction. This
+// function was the choke point every export passed through while applying
+// nothing (audit redact-06); it is deliberately not re-exported so nothing can
+// reach a download without stating a disposition.

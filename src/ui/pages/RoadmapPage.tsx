@@ -53,6 +53,7 @@ import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
 import { changesSince, groupGrowth, progressHeadline, stepProgress } from '../../roadmap/tracking.ts'
 import { peopleCounts, trackableSteps } from '../../derive/sets.ts'
+import { REDACTED, exportClipboard, exportDownload, exportPrint, unredactedFrom } from '../exportGuard.ts'
 import { NAME_WARNING } from '../../copy/comms.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { activeWizardQuestions } from '../../mapping/wizard.ts'
@@ -69,7 +70,7 @@ import { BANDS } from '../../roadmap/constants.ts'
 import type { SizeBand } from '../../roadmap/constants.ts'
 import type { ChangeFreeze, Schedule } from '../../roadmap/schedule.ts'
 import { PrintPlan } from './PrintPlan.tsx'
-import { absolute, absoluteDate, dateRange, downloadFile, relative, toCsv, when, whenAt } from '../format.ts'
+import { absolute, absoluteDate, dateRange, relative, toCsv, when, whenAt } from '../format.ts'
 import { ScanAge, StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
 import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, LinkButton, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
@@ -420,13 +421,9 @@ export function RoadmapPage({
   })()
 
   const copy = async (id: string, text: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(id)
-      setTimeout(() => setCopied(null), 1500)
-    } catch {
-      // clipboard unavailable: the text is visible on screen anyway
-    }
+    if (!(await exportClipboard(text, REDACTED))) return
+    setCopied(id)
+    setTimeout(() => setCopied(null), 1500)
   }
 
   const setStart = (iso: string): void => {
@@ -484,7 +481,7 @@ export function RoadmapPage({
     return populationCtxCache
   }
   const exportPopulation = (step: Step): void => {
-    downloadFile(`${step.id}-people.csv`, toCsv(POPULATION_CSV_HEADER, populationRows(step, populationCtx())), 'text/csv')
+    exportDownload(`${step.id}-people.csv`, toCsv(POPULATION_CSV_HEADER, populationRows(step, populationCtx())), 'text/csv', REDACTED)
   }
   // Cohorts are built when a step opens (25,000 users are not bucketed for every step of every plan).
   const cohortsOf = (step: Step) => (step.populationView && step.populationView.mode !== 'names' ? cohortsFor(step.population.ids, populationCtx()) : [])
@@ -524,7 +521,7 @@ export function RoadmapPage({
       revisions: saved?.revisions,
       log: saved?.log,
     })
-    downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json')
+    exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(plan, null, 2), 'application/json', REDACTED)
   }
 
   const loadPlan = async (files: FileList | null): Promise<void> => {
@@ -730,10 +727,10 @@ export function RoadmapPage({
         <FilterChip selected={logFilter === 'mine'} onToggle={() => setLogFilter('mine')}>
           {LOG.filterMine}
         </FilterChip>
-        <Button size="sm" icon="download" onClick={() => downloadFile(`iamai-history-${snapshot.tenantId.slice(0, 8)}.csv`, toCsv([LOG.columns.when, LOG.columns.what, LOG.columns.step, LOG.columns.detected, LOG.columns.planned], logCsvRows(logRows)), 'text/csv')}>
+        <Button size="sm" icon="download" onClick={() => exportDownload(`iamai-history-${snapshot.tenantId.slice(0, 8)}.csv`, toCsv([LOG.columns.when, LOG.columns.what, LOG.columns.step, LOG.columns.detected, LOG.columns.planned], logCsvRows(logRows)), 'text/csv', REDACTED)}>
           {LOG.exportCsv}
         </Button>
-        <Button size="sm" icon="download" onClick={() => downloadFile(`iamai-history-${snapshot.tenantId.slice(0, 8)}.md`, logMarkdown(logRows, `${LOG.title}: ${tenantName}`), 'text/markdown')}>
+        <Button size="sm" icon="download" onClick={() => exportDownload(`iamai-history-${snapshot.tenantId.slice(0, 8)}.md`, logMarkdown(logRows, `${LOG.title}: ${tenantName}`), 'text/markdown', REDACTED)}>
           {LOG.exportMd}
         </Button>
       </div>
@@ -857,7 +854,7 @@ export function RoadmapPage({
   )
 
   // ---- Schedule (§8): the timeline with owners, editable dates, the critical path, ICS ----
-  const exportIcs = (): void => downloadFile(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, watchThreshold), 'text/calendar')
+  const exportIcs = (): void => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, watchThreshold), 'text/calendar', REDACTED)
   const weekView = () => {
     const weekKeyOf = (iso: string): string => {
       const d = new Date(iso)
@@ -1170,10 +1167,10 @@ export function RoadmapPage({
       <Card title={EXPORT_TAB.changeRecord}>
         <p className="reason">{EXPORT_TAB.changeRecordText}</p>
         <p className="row no-print">
-          <Button icon="download" onClick={() => downloadFile(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.md`, changeRecordMarkdown(), 'text/markdown')}>
+          <Button icon="download" onClick={() => exportDownload(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.md`, changeRecordMarkdown(), 'text/markdown', REDACTED)}>
             {EXPORT_TAB.downloadChangeRecord}
           </Button>
-          <Button icon="download" onClick={() => downloadFile(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.csv`, changeRecordCsv(), 'text/csv')}>
+          <Button icon="download" onClick={() => exportDownload(`iamai-change-record-${snapshot.tenantId.slice(0, 8)}.csv`, changeRecordCsv(), 'text/csv', REDACTED)}>
             {EXPORT_TAB.downloadChangeRecordCsv}
           </Button>
           <Button icon="copy" onClick={() => void copyPrompt('change-record', 'changeRecord', overviewText, changeRecordMarkdown())}>
@@ -1194,7 +1191,7 @@ export function RoadmapPage({
           ))}
         </ul>
         <p className="row no-print">
-          <Button icon="download" onClick={() => downloadFile(`iamai-prompts-${snapshot.tenantId.slice(0, 8)}.md`, promptPackMarkdown(promptPack({ tenant: tenantName, steps, schedule, changeRecord: changeRecordMarkdown(), planSummary: `${overviewText} ${schedule.derivation.criticalPath}`, announcement: bulletins[0]?.channels.email ?? null }), tenantName), 'text/markdown')}>
+          <Button icon="download" onClick={() => exportDownload(`iamai-prompts-${snapshot.tenantId.slice(0, 8)}.md`, promptPackMarkdown(promptPack({ tenant: tenantName, steps, schedule, changeRecord: changeRecordMarkdown(), planSummary: `${overviewText} ${schedule.derivation.criticalPath}`, announcement: bulletins[0]?.channels.email ?? null }), tenantName), 'text/markdown', REDACTED)}>
             {PROMPTS.downloadAll}
           </Button>
         </p>
@@ -1210,7 +1207,7 @@ export function RoadmapPage({
           </label>
         </p>
         <p className="row no-print">
-          <Button icon="download" onClick={() => downloadFile(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ tenant: tenantName, snapshot, coverage: computed.coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json')}>
+          <Button icon="download" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ tenant: tenantName, snapshot, coverage: computed.coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
             {GROUNDING.download}
           </Button>
           <span className="reason">{bundleRedacted ? GROUNDING.redacted : GROUNDING.unredacted}</span>
@@ -1219,7 +1216,7 @@ export function RoadmapPage({
       <Card title={EXPORT_TAB.pdf}>
         <p className="reason">{EXPORT_TAB.pdfText}</p>
         <p className="row no-print">
-          <Button icon="print" onClick={() => window.print()}>
+          <Button icon="print" onClick={() => exportPrint(unredactedFrom('print-document'))}>
             {EXPORT_TAB.print}
           </Button>
         </p>
@@ -1709,7 +1706,7 @@ function BulletinCard({ b, ctx, copied, onCopy, onPrompt }: { b: Bulletin; ctx: 
             <Button size="sm" icon="copy" onClick={() => void onCopy(`${b.id}:recipients`, b.recipients.map((id) => ctx.upnOf(id) ?? ctx.nameOf(id)).join('; '))}>
               {copied === `${b.id}:recipients` ? COMMS_PLAN.copied : COMMS_PLAN.copyRecipients}
             </Button>
-            <Button size="sm" icon="download" onClick={() => downloadFile(`recipients-${b.id}.csv`, toCsv(['Name', 'Sign-in name', 'Department'], recipientRows(b, ctx)), 'text/csv')}>
+            <Button size="sm" icon="download" onClick={() => exportDownload(`recipients-${b.id}.csv`, toCsv(['Name', 'Sign-in name', 'Department'], recipientRows(b, ctx)), 'text/csv', REDACTED)}>
               {COMMS_PLAN.recipientsCsv}
             </Button>
             <span className="reason">{COMMS_PLAN.recipientsNote}</span>
@@ -2086,7 +2083,7 @@ function StepCard({
             <FilterChip selected={tab === 'ps'} onToggle={() => setTab('ps')}>
               {C.powershell}
             </FilterChip>
-            <Button size="sm" icon="download" onClick={() => downloadFile(`${step.id}.json`, step.action.json!, 'application/json')}>
+            <Button size="sm" icon="download" onClick={() => exportDownload(`${step.id}.json`, step.action.json!, 'application/json', REDACTED)}>
               {C.downloadJson}
             </Button>
           </p>
@@ -2213,7 +2210,7 @@ function StepCard({
           <p className="reason">{ROLLBACK_V2.storedBody}</p>
           <pre className="code-block">{step.rollbackBody}</pre>
           <p className="no-print">
-            <Button size="sm" icon="download" onClick={() => downloadFile(`${step.id}-previous.json`, step.rollbackBody!, 'application/json')}>
+            <Button size="sm" icon="download" onClick={() => exportDownload(`${step.id}-previous.json`, step.rollbackBody!, 'application/json', REDACTED)}>
               {C.downloadJson}
             </Button>
           </p>

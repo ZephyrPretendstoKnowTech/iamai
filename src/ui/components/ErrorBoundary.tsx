@@ -6,7 +6,7 @@ import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { SHELL } from '../../copy/pages.ts'
 import { redactIdentifiers } from '../../redact.ts'
-import { downloadFile } from '../format.ts'
+import { REDACTED, exportDownload } from '../exportGuard.ts'
 import { Button } from './Button.tsx'
 import { Callout } from './Callout.tsx'
 
@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
       componentStack,
       userAgent: navigator.userAgent,
     }
-    downloadFile(`iamai-error-${Date.now()}.json`, redactIdentifiers(JSON.stringify(bundle, null, 2)), 'application/json')
+    exportDownload(`iamai-error-${Date.now()}.json`, JSON.stringify(bundle, null, 2), 'application/json', REDACTED)
   }
 
   startOver = (): void => {
