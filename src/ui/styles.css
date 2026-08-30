@@ -244,6 +244,19 @@ nav.stepper.is-collapsed .stepper-collapse .icon { transform: rotate(-90deg); }
     display: flex;
     overflow-x: auto;
     gap: var(--space-1);
+    /* The base rule fills the viewport height for the side rail (L1). As a
+       horizontal strip it must be as tall as its contents, and it must not be
+       able to push the page sideways. */
+    height: auto;
+    max-width: 100%;
+    position: static;
+  }
+  /* Collapsing is for the side rail; the strip is already compact. */
+  nav.stepper.is-collapsed {
+    width: auto;
+  }
+  .stepper-collapse {
+    display: none;
   }
   .stepper-group-title {
     display: none;
