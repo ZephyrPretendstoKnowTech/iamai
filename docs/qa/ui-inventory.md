@@ -9,21 +9,29 @@ actually appears on. Surfaces below page level (each Setup question, each
 Roadmap tab, an opened step) are walked separately for the same reason: a single
 string rendered seven times is seven rows here and one row in the source.
 
-**31 surfaces, 13189 words.**
+**32 surfaces, 9927 words.**
 
-## Duplicate concepts
+## Candidate duplicate concepts
 
-Found by clustering, not by a list of known offenders: any row here is one idea
-wearing more than one name. Nothing in this section knows any specific label.
+Found by clustering, not by a list of known offenders: nothing in this section
+knows any specific label, so a new synonym lands in the right row without anyone
+adding it to a list.
+
+**Each row is a candidate, not a verdict.** Two labels can share an intent and
+still drive different state: on this build "Not applicable to us" opens a
+required reason box and suppresses the question's checks, while "Nobody needs
+special care" is a one-click answer that leaves the checks running. Clustering
+sees the shared intent and cannot see the difference. Read the source before
+merging anything here.
 
 ### By intent
 
 Labels grouped by what they do, using small lemma sets. More than one label in a
-row means the app says the same thing several ways.
+row is a prompt to go and check whether they are one concept.
 
 | Intent | Labels | Which |
 |---|---|---|
-| moves to the next step | **7** | Next: Setup (4) · Next: Roadmap (4) · Next: Baseline (2) · Next: Findings (2) · Get started (1) · Next: Scan (1) · Next: Connect (1) |
+| moves to the next step | **7** | Next: Baseline (2) · Next: Setup (2) · Next: Findings (2) · Get started (1) · Next: Scan (1) · Next: Roadmap (1) · Next: Connect (1) |
 | defers the answer | **5** | Doesn't exist yet: add it to the plan (3) · Skipped (0) (2) · Not yet (1) · Remind (1) · Skip this step… (1) |
 | confirms what is shown | **4** | Yes (1) · Looks right (1) · This is correct (1) · Detections look right (1) |
 | declines the question | **3** | Not applicable to us (8) · Nobody needs special care (1) · Not sure / none (1) |
@@ -64,7 +72,7 @@ Where the forward action sits. More than one row is more than one pattern.
 
 | Placement | Surfaces | Labels | Where |
 |---|---|---|---|
-| bottom, in the step footer slot | 14 | Get started · Next: Baseline · Next: Scan · Next: Setup · Next: Findings · Next: Roadmap · Next: Connect | Start; Connect / permissions disclosure; Baseline; Scan; Scan / Inventory tab; Setup; Findings; Findings / working tab; Findings / attention tab; Findings / Details tab; Licensing guide; What IAMAI reads; Every check IAMAI runs; Inventory |
+| bottom, in the step footer slot | 9 | Get started · Next: Baseline · Next: Scan · Next: Setup · Next: Findings · Next: Roadmap · Next: Connect | Start; Connect / permissions disclosure; Baseline; Scan; Setup; Findings; Licensing guide; What IAMAI reads; Every check IAMAI runs |
 | top, loose in the page | 1 | Get started | Start |
 | middle, in the step footer slot | 1 | Next: Baseline | Connect |
 
@@ -75,119 +83,119 @@ the same thing are a duplicate concept.
 
 | Label | Surfaces | Where |
 |---|---|---|
-| Export | 8 | Roadmap; Roadmap / Plan tab; Roadmap / Watch tab; Roadmap / Schedule tab; Roadmap / Export tab; Roadmap / Progress tab; Roadmap / Plan / one step opened; Prompt pack |
 | Not applicable to us | 8 | Setup / Q1 — Which accounts are the emergency access (break-glass) ; Setup / Q2 — Which group holds the policy exclusions?; Setup / Q3 — Which countries do your people sign in from?; Setup / Q4 — Who needs extra care?; Setup / Q5 — Which named locations count as trusted?; Setup / Q6 — Which time zone should dates display in?; Setup / Q7 — Which security frameworks is the tenant working toward; Setup / Q8 — Are the detected workloads right? |
-| Open the step | 8 | Roadmap; Roadmap / Plan tab; Roadmap / Watch tab; Roadmap / Schedule tab; Roadmap / Export tab; Roadmap / Progress tab; Roadmap / Plan / one step opened; Prompt pack |
-| Plan | 8 | Roadmap; Roadmap / Plan tab; Roadmap / Watch tab; Roadmap / Schedule tab; Roadmap / Export tab; Roadmap / Progress tab; Roadmap / Plan / one step opened; Prompt pack |
-| Progress | 8 | Roadmap; Roadmap / Plan tab; Roadmap / Watch tab; Roadmap / Schedule tab; Roadmap / Export tab; Roadmap / Progress tab; Roadmap / Plan / one step opened; Prompt pack |
-| Schedule | 8 | Roadmap; Roadmap / Plan tab; Roadmap / Watch tab; Roadmap / Schedule tab; Roadmap / Export tab; Roadmap / Progress tab; Roadmap / Plan / one step opened; Prompt pack |
-| Watch first | 8 | Roadmap; Roadmap / Plan tab; Roadmap / Watch tab; Roadmap / Schedule tab; Roadmap / Export tab; Roadmap / Progress tab; Roadmap / Plan / one step opened; Prompt pack |
 | Copy as prompt | 4 | Roadmap / Schedule tab; Roadmap / Export tab; Roadmap / Plan / one step opened; Prompt pack |
-| Details | 4 | Findings; Findings / working tab; Findings / attention tab; Findings / Details tab |
-| Here's what needs attention | 4 | Findings; Findings / working tab; Findings / attention tab; Findings / Details tab |
-| Here's what's working | 4 | Findings; Findings / working tab; Findings / attention tab; Findings / Details tab |
-| Next: Roadmap | 4 | Findings; Findings / working tab; Findings / attention tab; Findings / Details tab |
-| Next: Setup | 4 | Scan; Scan / Inventory tab; Every check IAMAI runs; Inventory |
-| Summary | 4 | Findings; Findings / working tab; Findings / attention tab; Findings / Details tab |
 | Doesn't exist yet: add it to the plan | 3 | Setup / Q1 — Which accounts are the emergency access (break-glass) ; Setup / Q2 — Which group holds the policy exclusions?; Setup / Q5 — Which named locations count as trusted? |
-| Download diagnostics (redacted) | 3 | Scan; Scan / Inventory tab; Inventory |
-| Export CSV | 3 | Scan; Scan / Inventory tab; Inventory |
 | Hide completed | 3 | Roadmap / Plan tab; Roadmap / Schedule tab; Roadmap / Plan / one step opened |
-| Inventory | 3 | Scan; Scan / Inventory tab; Inventory |
-| Re-scan tenant | 3 | Scan; Scan / Inventory tab; Inventory |
-| Readiness | 3 | Scan; Scan / Inventory tab; Inventory |
-| Apps | 2 | Scan / Inventory tab; Inventory |
-| Authentication | 2 | Scan / Inventory tab; Inventory |
-| Blocked | 2 | Roadmap; Roadmap / Progress tab |
 | Blocked (13) | 2 | Roadmap / Plan tab; Roadmap / Plan / one step opened |
-| Changes the plan made | 2 | Roadmap; Roadmap / Progress tab |
 | Copy as Markdown | 2 | Roadmap / Export tab; Prompt pack |
 | Copy as prompt: Summarise this plan | 2 | Roadmap / Export tab; Prompt pack |
 | Copy prompt | 2 | Roadmap / Export tab; Prompt pack |
-| Devices | 2 | Scan / Inventory tab; Inventory |
 | Done (2) | 2 | Roadmap / Plan tab; Roadmap / Plan / one step opened |
-| Download as CSV | 2 | Roadmap; Roadmap / Progress tab |
 | Download as CSV (one file) | 2 | Roadmap / Export tab; Prompt pack |
-| Download as Markdown | 2 | Roadmap; Roadmap / Progress tab |
 | Download as Markdown (one file) | 2 | Roadmap / Export tab; Prompt pack |
 | Download every prompt as one Markdown file | 2 | Roadmap / Export tab; Prompt pack |
 | Download the bundle | 2 | Roadmap / Export tab; Prompt pack |
-| Everything the scan noticed | 2 | Roadmap; Roadmap / Progress tab |
+| Export | 2 | Roadmap; Prompt pack |
+| Export CSV | 2 | Scan / Readiness tab; Scan / Inventory tab |
 | In report-only (1) | 2 | Roadmap / Plan tab; Roadmap / Plan / one step opened |
-| Licensing | 2 | Scan / Inventory tab; Inventory |
 | Load plan | 2 | Roadmap / Export tab; Prompt pack |
-| Named locations | 2 | Scan / Inventory tab; Inventory |
 | Next: Baseline | 2 | Connect; Connect / permissions disclosure |
 | Next: Findings | 2 | Setup; Licensing guide |
-| People | 2 | Scan / Inventory tab; Inventory |
-| Policies | 2 | Scan / Inventory tab; Inventory |
-| Policy | 2 | Scan / Inventory tab; Inventory |
+| Next: Setup | 2 | Scan; Every check IAMAI runs |
+| Open the step | 2 | Roadmap; Prompt pack |
+| Plan | 2 | Roadmap; Prompt pack |
 | Print or save as PDF | 2 | Roadmap / Export tab; Prompt pack |
+| Progress | 2 | Roadmap; Prompt pack |
 | Ready (3) | 2 | Roadmap / Plan tab; Roadmap / Plan / one step opened |
 | Ready to enforce (0) | 2 | Roadmap / Plan tab; Roadmap / Plan / one step opened |
-| Roles | 2 | Scan / Inventory tab; Inventory |
-| Safe today | 2 | Roadmap; Roadmap / Progress tab |
 | Safe today (0) | 2 | Roadmap / Plan tab; Roadmap / Plan / one step opened |
 | Save plan | 2 | Roadmap / Export tab; Prompt pack |
+| Schedule | 2 | Roadmap; Prompt pack |
 | Sign out | 2 | Connect; Connect / permissions disclosure |
-| Sign-in records | 2 | Scan / Inventory tab; Inventory |
 | Skipped (0) | 2 | Roadmap / Plan tab; Roadmap / Plan / one step opened |
-| State | 2 | Scan / Inventory tab; Inventory |
-| Steps done | 2 | Roadmap; Roadmap / Progress tab |
-| Weeks | 2 | Roadmap; Roadmap / Progress tab |
-| Active | 1 | Scan |
-| Activity | 1 | Scan |
-| Admin | 1 | Scan |
-| App notification | 1 | Scan |
+| Watch first | 2 | Roadmap; Prompt pack |
+| Active | 1 | Scan / Readiness tab |
+| Activity | 1 | Scan / Readiness tab |
+| Admin | 1 | Scan / Readiness tab |
+| App notification | 1 | Scan / Readiness tab |
+| Apps | 1 | Scan / Inventory tab |
 | Australia (AU) | 1 | Setup / Q3 — Which countries do your people sign in from? |
+| Authentication | 1 | Scan / Inventory tab |
+| Blocked | 1 | Roadmap / Progress tab |
+| Changes the plan made | 1 | Roadmap / Progress tab |
 | CIS Controls v8 | 1 | Setup / Q7 — Which security frameworks is the tenant working toward |
 | Collapse | 1 | Roadmap / Plan / one step opened |
 | Copy | 1 | Roadmap / Schedule tab |
 | Copy for your manager | 1 | Roadmap / Plan / one step opened |
 | Copy the recipient list | 1 | Roadmap / Schedule tab |
+| Details | 1 | Findings |
 | Detections look right | 1 | Setup / Q8 — Are the detected workloads right? |
+| Devices | 1 | Scan / Inventory tab |
+| Download as CSV | 1 | Roadmap / Progress tab |
+| Download as Markdown | 1 | Roadmap / Progress tab |
+| Download diagnostics (redacted) | 1 | Scan |
 | Email | 1 | Roadmap / Schedule tab |
 | Essential Eight (ACSC) | 1 | Setup / Q7 — Which security frameworks is the tenant working toward |
+| Everything the scan noticed | 1 | Roadmap / Progress tab |
 | Export to calendar (ICS) | 1 | Roadmap / Schedule tab |
 | Get started | 1 | Start |
 | Help-desk note | 1 | Roadmap / Schedule tab |
-| Inactive 90+ days | 1 | Scan |
+| Here's what needs attention | 1 | Findings |
+| Here's what's working | 1 | Findings |
+| Inactive 90+ days | 1 | Scan / Readiness tab |
 | Intranet notice | 1 | Roadmap / Schedule tab |
+| Inventory | 1 | Scan |
 | Large | 1 | Roadmap / Schedule tab |
+| Licensing | 1 | Scan / Inventory tab |
 | Load this baseline | 1 | Baseline |
-| Looks healthy | 1 | Scan |
+| Looks healthy | 1 | Scan / Readiness tab |
 | Looks right | 1 | Setup / Q3 — Which countries do your people sign in from? |
-| MFA proven in the last 30 days | 1 | Scan |
-| MFA state | 1 | Scan |
+| MFA proven in the last 30 days | 1 | Scan / Readiness tab |
+| MFA state | 1 | Scan / Readiness tab |
 | Mid | 1 | Roadmap / Schedule tab |
-| Never prompted | 1 | Scan |
-| Never signed in | 1 | Scan |
+| Named locations | 1 | Scan / Inventory tab |
+| Never prompted | 1 | Scan / Readiness tab |
+| Never signed in | 1 | Scan / Readiness tab |
 | New Zealand (NZ) | 1 | Setup / Q3 — Which countries do your people sign in from? |
 | Next: Connect | 1 | What IAMAI reads |
+| Next: Roadmap | 1 | Findings |
 | Next: Scan | 1 | Baseline |
 | NIST CSF | 1 | Setup / Q7 — Which security frameworks is the tenant working toward |
-| No method | 1 | Scan |
-| No MFA method | 1 | Scan |
+| No method | 1 | Scan / Readiness tab |
+| No MFA method | 1 | Scan / Readiness tab |
 | Nobody needs special care | 1 | Setup / Q4 — Who needs extra care? |
 | Not sure / none | 1 | Setup / Q7 — Which security frameworks is the tenant working toward |
 | Not yet | 1 | Setup / Q1 — Which accounts are the emergency access (break-glass)  |
-| One-time code | 1 | Scan |
-| Passwordless | 1 | Scan |
-| Phishing-resistant | 1 | Scan |
-| Possibly broken | 1 | Scan |
-| Reasons | 1 | Scan |
+| One-time code | 1 | Scan / Readiness tab |
+| Passwordless | 1 | Scan / Readiness tab |
+| People | 1 | Scan / Inventory tab |
+| Phishing-resistant | 1 | Scan / Readiness tab |
+| Policies | 1 | Scan / Inventory tab |
+| Policy | 1 | Scan / Inventory tab |
+| Possibly broken | 1 | Scan / Readiness tab |
+| Re-scan tenant | 1 | Scan |
+| Readiness | 1 | Scan |
+| Reasons | 1 | Scan / Readiness tab |
 | Recipients as CSV (for mail merge) | 1 | Roadmap / Schedule tab |
-| Registered but unproven | 1 | Scan |
+| Registered but unproven | 1 | Scan / Readiness tab |
 | Remind | 1 | Roadmap / Schedule tab |
+| Roles | 1 | Scan / Inventory tab |
+| Safe today | 1 | Roadmap / Progress tab |
+| Sign-in records | 1 | Scan / Inventory tab |
 | Skip this step… | 1 | Roadmap / Plan / one step opened |
 | Small | 1 | Roadmap / Schedule tab |
-| Strongest method | 1 | Scan |
+| State | 1 | Scan / Inventory tab |
+| Steps done | 1 | Roadmap / Progress tab |
+| Strongest method | 1 | Scan / Readiness tab |
+| Summary | 1 | Findings |
 | Teams or Slack | 1 | Roadmap / Schedule tab |
-| Text or call | 1 | Scan |
+| Text or call | 1 | Scan / Readiness tab |
 | This is correct | 1 | Setup / Q6 — Which time zone should dates display in? |
-| To set up before enforcement | 1 | Scan |
-| User | 1 | Scan |
-| Verified | 1 | Scan |
+| To set up before enforcement | 1 | Scan / Readiness tab |
+| User | 1 | Scan / Readiness tab |
+| Verified | 1 | Scan / Readiness tab |
+| Weeks | 1 | Roadmap / Progress tab |
 | Yes | 1 | Setup / Q1 — Which accounts are the emergency access (break-glass)  |
 
 ## Cross-surface: every negative or opt-out option
@@ -200,8 +208,8 @@ and, where it is legitimate at all, one home.
 | Not applicable to us | 8 | Setup / Q1 — Which accounts are the emergency access (break-glass) ; Setup / Q2 — Which group holds the policy exclusions?; Setup / Q3 — Which countries do your people sign in from?; Setup / Q4 — Who needs extra care?; Setup / Q5 — Which named locations count as trusted?; Setup / Q6 — Which time zone should dates display in?; Setup / Q7 — Which security frameworks is the tenant working toward; Setup / Q8 — Are the detected workloads right? |
 | Doesn't exist yet: add it to the plan | 3 | Setup / Q1 — Which accounts are the emergency access (break-glass) ; Setup / Q2 — Which group holds the policy exclusions?; Setup / Q5 — Which named locations count as trusted? |
 | Skipped (0) | 2 | Roadmap / Plan tab; Roadmap / Plan / one step opened |
-| No method | 1 | Scan |
-| No MFA method | 1 | Scan |
+| No method | 1 | Scan / Readiness tab |
+| No MFA method | 1 | Scan / Readiness tab |
 | Nobody needs special care | 1 | Setup / Q4 — Who needs extra care? |
 | Not sure / none | 1 | Setup / Q7 — Which security frameworks is the tenant working toward |
 | Skip this step… | 1 | Roadmap / Plan / one step opened |
@@ -214,8 +222,9 @@ and, where it is legitimate at all, one home.
 | Connect | 71 |
 | Connect / permissions disclosure | 299 |
 | Baseline | 151 |
-| Scan | 282 |
-| Scan / Inventory tab | 177 |
+| Scan | 75 |
+| Scan / Readiness tab | 207 |
+| Scan / Inventory tab | 55 |
 | Setup | 78 |
 | Setup / Q1 — Which accounts are the emergency access (break-glass)  | 125 |
 | Setup / Q2 — Which group holds the policy exclusions? | 46 |
@@ -225,22 +234,22 @@ and, where it is legitimate at all, one home.
 | Setup / Q6 — Which time zone should dates display in? | 44 |
 | Setup / Q7 — Which security frameworks is the tenant working toward | 49 |
 | Setup / Q8 — Are the detected workloads right? | 67 |
-| Findings | 476 |
-| Findings / working tab | 156 |
-| Findings / attention tab | 452 |
-| Findings / Details tab | 686 |
-| Roadmap | 750 |
-| Roadmap / Plan tab | 1306 |
-| Roadmap / Watch tab | 325 |
-| Roadmap / Schedule tab | 1873 |
-| Roadmap / Export tab | 676 |
-| Roadmap / Progress tab | 859 |
-| Roadmap / Plan / one step opened | 1723 |
+| Findings | 79 |
+| Findings / Summary tab | 397 |
+| Findings / working tab | 53 |
+| Findings / attention tab | 306 |
+| Findings / Details tab | 247 |
+| Roadmap | 235 |
+| Roadmap / Progress tab | 515 |
+| Roadmap / Plan tab | 1057 |
+| Roadmap / Watch tab | 76 |
+| Roadmap / Schedule tab | 1624 |
+| Roadmap / Export tab | 318 |
+| Roadmap / Plan / one step opened | 1365 |
 | Licensing guide | 872 |
 | What IAMAI reads | 320 |
 | Every check IAMAI runs | 204 |
 | Prompt pack | 553 |
-| Inventory | 130 |
 
 ## Surfaces
 
@@ -417,28 +426,52 @@ Words: **151** — headings 7, prose 130, buttons 5, options 0, links 7, chips 0
 - 1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)
 
 ### Scan
-Words: **282** — headings 8, prose 95, buttons 62, options 0, links 0, chips 26, columns 8, tiles 34, tips 46.
+_page chrome; tab panels are their own surfaces_
 
-**Headings** (6)
+Words: **75** — headings 3, prose 61, buttons 9, options 0, links 0, chips 0, columns 0, tiles 0, tips 0.
+
+**Headings** (2)
 
 - Scan
 - Scan complete
-- Readiness
-- MFA state
-- Activity
-- Rollout
 
 **Tabs** (2)
 
 - Readiness
 - Inventory
 
-**Buttons** (29)
+**Buttons** (5)
 
 - Re-scan tenant
 - Download diagnostics (redacted)
 - Readiness
 - Inventory
+- Next: Setup
+
+**Body sentences** (7)
+
+- Reads the tenant's configuration, inventory, and sign-in records into a local record on this device.
+- Nothing is written; nothing leaves the browser.
+- Needs: ✓ connected tenant
+- Re-scan tenantDownload diagnostics (redacted)
+- Scan completed this minute · <date and time> · saved on this device.
+- Re-scan any time for fresh numbers.
+- 5 users · 3 policies · sign-in records for <date> to <date>
+
+### Scan / Readiness tab
+_panel only_
+
+Words: **207** — headings 5, prose 34, buttons 53, options 0, links 0, chips 26, columns 8, tiles 34, tips 46.
+
+**Headings** (4)
+
+- Readiness
+- MFA state
+- Activity
+- Rollout
+
+**Buttons** (24)
+
 - Verified
 - Looks healthy
 - Never prompted
@@ -463,7 +496,6 @@ Words: **282** — headings 8, prose 95, buttons 62, options 0, links 0, chips 2
 - Strongest method
 - Reasons
 - Export CSV
-- Next: Setup
 
 **Collapsed section headers** (1)
 
@@ -525,15 +557,8 @@ Words: **282** — headings 8, prose 95, buttons 62, options 0, links 0, chips 2
 - About Registered but unproven
 - About To set up before enforcement
 
-**Body sentences** (15)
+**Body sentences** (8)
 
-- Reads the tenant's configuration, inventory, and sign-in records into a local record on this device.
-- Nothing is written; nothing leaves the browser.
-- Needs: ✓ connected tenant
-- Re-scan tenantDownload diagnostics (redacted)
-- Scan completed this minute · <date and time> · saved on this device.
-- Re-scan any time for fresh numbers.
-- 5 users · 3 policies · sign-in records for <date> to <date>
 - Sign-in records: complete: covering <date> to <date>.
 - Blocked today: 1 user whose most recent sign-in failed Conditional Access.
 - CA001 - Require MFA for all users: 1 user: Priya Nair
@@ -544,18 +569,16 @@ Words: **282** — headings 8, prose 95, buttons 62, options 0, links 0, chips 2
 - jordan_partner.example.com#EXT#@example.com
 
 ### Scan / Inventory tab
-Words: **177** — headings 4, prose 74, buttons 24, options 0, links 0, chips 3, columns 7, tiles 0, tips 51.
+_panel only_
 
-**Headings** (3)
+Words: **55** — headings 1, prose 13, buttons 15, options 0, links 0, chips 3, columns 7, tiles 0, tips 5.
 
-- Scan
-- Scan complete
+**Headings** (1)
+
 - Policies
 
-**Tabs** (11)
+**Tabs** (9)
 
-- Readiness
-- Inventory
 - Policies
 - Named locations
 - Authentication
@@ -566,12 +589,8 @@ Words: **177** — headings 4, prose 74, buttons 24, options 0, links 0, chips 3
 - Apps
 - Sign-in records
 
-**Buttons** (17)
+**Buttons** (12)
 
-- Re-scan tenant
-- Download diagnostics (redacted)
-- Readiness
-- Inventory
 - Policies
 - Named locations
 - Authentication
@@ -584,11 +603,6 @@ Words: **177** — headings 4, prose 74, buttons 24, options 0, links 0, chips 3
 - Policy
 - State
 - Export CSV
-- Next: Setup
-
-**Collapsed section headers** (1)
-
-- Legend
 
 **Chips** (3)
 
@@ -606,31 +620,12 @@ Words: **177** — headings 4, prose 74, buttons 24, options 0, links 0, chips 3
 - Grant
 - Session
 
-**Info tips** (13)
+**Info tips** (1)
 
-- About Verified
-- About Looks healthy
-- About Never prompted
-- About Possibly broken
-- About No method
-- About Active
-- About Inactive 90+ days
-- About Never signed in
-- About MFA proven in the last 30 days
-- About No MFA method
-- About Registered but unproven
-- About To set up before enforcement
 - About Where this comes from
 
-**Body sentences** (9)
+**Body sentences** (2)
 
-- Reads the tenant's configuration, inventory, and sign-in records into a local record on this device.
-- Nothing is written; nothing leaves the browser.
-- Needs: ✓ connected tenant
-- Re-scan tenantDownload diagnostics (redacted)
-- Scan completed this minute · <date and time> · saved on this device.
-- Re-scan any time for fresh numbers.
-- 5 users · 3 policies · sign-in records for <date> to <date>
 - Everything the scan read, as found: no analysis.
 - Every table exports to CSV.
 
@@ -908,7 +903,9 @@ Words: **67** — headings 0, prose 43, buttons 0, options 7, links 0, chips 6, 
 - no Workload Identities Premium licence
 
 ### Findings
-Words: **476** — headings 1, prose 400, buttons 11, options 0, links 2, chips 0, columns 0, tiles 26, tips 27.
+_page chrome; tab panels are their own surfaces_
+
+Words: **79** — headings 1, prose 54, buttons 11, options 0, links 1, chips 0, columns 0, tiles 0, tips 3.
 
 **Headings** (1)
 
@@ -929,9 +926,30 @@ Words: **476** — headings 1, prose 400, buttons 11, options 0, links 2, chips 
 - Details
 - Next: Roadmap
 
-**Links** (2)
+**Links** (1)
 
 - Re-scan
+
+**Info tips** (1)
+
+- About Scan age
+
+**Body sentences** (6)
+
+- What the scan found in the tenant.
+- Needs: ✓ scan complete · ✓ baseline loaded
+- Based on the scan from this minute · <date and time>.
+- Re-scan · Baseline: synthetic baseline
+- 1 goal in this baseline, 16 apply to this tenant.
+- The rest are under Details with the reason each one does not apply.
+
+### Findings / Summary tab
+_panel only_
+
+Words: **397** — headings 0, prose 346, buttons 0, options 0, links 1, chips 0, columns 0, tiles 26, tips 24.
+
+**Links** (1)
+
 - Setup
 
 **Stat tiles** (6)
@@ -943,9 +961,8 @@ Words: **476** — headings 1, prose 400, buttons 11, options 0, links 2, chips 
 - of enabled users proved MFA in the last 30 days
 - enabled users to set up before enforcement
 
-**Info tips** (7)
+**Info tips** (6)
 
-- About Scan age
 - About In place
 - About Partly
 - About Missing
@@ -953,14 +970,8 @@ Words: **476** — headings 1, prose 400, buttons 11, options 0, links 2, chips 
 - About MFA proven in the last 30 days
 - About To set up before enforcement
 
-**Body sentences** (21)
+**Body sentences** (15)
 
-- What the scan found in the tenant.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- 1 goal in this baseline, 16 apply to this tenant.
-- The rest are under Details with the reason each one does not apply.
 - IAMAI compared Contoso Pty Ltd's 1 enabled Conditional Access policy with synthetic baseline (1 policy), matching each policy on what it does.
 - 2 of 16 security goals are in place; 1 partly (a policy covers some of the people, or a weaker control than the goal needs), 13 missing.5 users in the directory, 4 active in the last 90 days.
 - 1 of 5 enabled users (20%) proved MFA in the last 30 days.
@@ -978,94 +989,44 @@ Words: **476** — headings 1, prose 400, buttons 11, options 0, links 2, chips 
 - Confirm them in Setup to remove the hedging.
 
 ### Findings / working tab
-Words: **156** — headings 3, prose 54, buttons 11, options 0, links 1, chips 2, columns 0, tiles 0, tips 33.
+_panel only_
 
-**Headings** (3)
+Words: **53** — headings 2, prose 0, buttons 0, options 0, links 0, chips 2, columns 0, tiles 0, tips 6.
 
-- Findings
+**Headings** (2)
+
 - Identity
 - Guests
-
-**Tabs** (4)
-
-- Summary
-- Here's what's working
-- Here's what needs attention
-- Details
-
-**Buttons** (5)
-
-- Summary
-- Here's what's working
-- Here's what needs attention
-- Details
-- Next: Roadmap
 
 **Collapsed section headers** (2)
 
 - In place Every user satisfies MFA on every app. Delivered by CA001 - Require MFA for all users, with 1 break-glass account excluded.Value 5Effort 1Disruption 1
 - In place Guests satisfy MFA. Delivered by CA001 - Require MFA for all users.Value 5Effort 1Disruption 1
 
-**Links** (1)
-
-- Re-scan
-
 **Chips** (1)
 
 - In place
 
-**Info tips** (9)
+**Info tips** (2)
 
-- About Scan age
-- About In place
-- About Partly
-- About Missing
-- About Scored goals
-- About MFA proven in the last 30 days
-- About To set up before enforcement
 - About Priority
 - About Why this matters
 
-**Body sentences** (6)
-
-- What the scan found in the tenant.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- 1 goal in this baseline, 16 apply to this tenant.
-- The rest are under Details with the reason each one does not apply.
-
 ### Findings / attention tab
-Words: **452** — headings 6, prose 54, buttons 11, options 0, links 1, chips 4, columns 0, tiles 0, tips 33.
+_panel only_
 
-**Headings** (6)
+Words: **306** — headings 5, prose 0, buttons 0, options 0, links 0, chips 4, columns 0, tiles 0, tips 6.
 
-- Findings
+**Headings** (5)
+
 - Identity
 - Admins
 - Devices
 - Sessions
 - Locations
 
-**Tabs** (4)
+**Collapsed section headers** (14)
 
-- Summary
-- Here's what's working
-- Here's what needs attention
-- Details
-
-**Buttons** (5)
-
-- Summary
-- Here's what's working
-- Here's what needs attention
-- Details
-- Next: Roadmap
-
-**Collapsed section headers** (16)
-
-- In place Every user satisfies MFA on every app. Delivered by CA001 - Require MFA for all users, with 1 break-glass account excluded.Value 5Effort 1Disruption 1
-- In place Guests satisfy MFA. Delivered by CA001 - Require MFA for all users.Value 5Effort 1Disruption 1
 - Missing Security-info registration requires a trusted context. No policy does this yet. Proposed: Security-info registration requires a trusted context.Value 3Effort 4Disruption 2
 - Partly in place Legacy protocols blocked is in report-only via CA002 - Block legacy authentication (30 days, 3 would-be failures).Value 5Effort 1Disruption 4
 - Missing Device-code flow blocked. No policy does this yet. Proposed: Device-code flow blocked.Value 3Effort 1Disruption 4
@@ -1080,79 +1041,29 @@ Words: **452** — headings 6, prose 54, buttons 11, options 0, links 1, chips 4
 - Missing Unmanaged devices cannot download. No policy does this yet. Proposed: Unmanaged devices cannot download.Value 3Effort 4Disruption 2
 - Missing Browser sessions never persist for anyone. No policy does this yet. Proposed: Browser sessions never persist for anyone.Value 2Effort 2Disruption 2
 - Missing Sign-ins outside allowed countries blocked. No policy does this yet. Proposed: Sign-ins outside allowed countries blocked.Value 3Effort 3Disruption 4
-
-**Links** (1)
-
-- Re-scan
 
 **Chips** (2)
 
 - Missing
 - Partly in place
 
-**Info tips** (9)
+**Info tips** (2)
 
-- About Scan age
-- About In place
-- About Partly
-- About Missing
-- About Scored goals
-- About MFA proven in the last 30 days
-- About To set up before enforcement
 - About Priority
 - About Why this matters
 
-**Body sentences** (6)
-
-- What the scan found in the tenant.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- 1 goal in this baseline, 16 apply to this tenant.
-- The rest are under Details with the reason each one does not apply.
-
 ### Findings / Details tab
-Words: **686** — headings 7, prose 71, buttons 11, options 0, links 1, chips 6, columns 0, tiles 0, tips 33.
+_panel only_
 
-**Headings** (3)
+Words: **247** — headings 6, prose 17, buttons 0, options 0, links 0, chips 6, columns 0, tiles 0, tips 4.
 
-- Findings
+**Headings** (2)
+
 - Policies not in the baseline
 - Housekeeping
 
-**Tabs** (4)
+**Collapsed section headers** (10)
 
-- Summary
-- Here's what's working
-- Here's what needs attention
-- Details
-
-**Buttons** (5)
-
-- Summary
-- Here's what's working
-- Here's what needs attention
-- Details
-- Next: Roadmap
-
-**Collapsed section headers** (26)
-
-- In place Every user satisfies MFA on every app. Delivered by CA001 - Require MFA for all users, with 1 break-glass account excluded.Value 5Effort 1Disruption 1
-- In place Guests satisfy MFA. Delivered by CA001 - Require MFA for all users.Value 5Effort 1Disruption 1
-- Missing Security-info registration requires a trusted context. No policy does this yet. Proposed: Security-info registration requires a trusted context.Value 3Effort 4Disruption 2
-- Partly in place Legacy protocols blocked is in report-only via CA002 - Block legacy authentication (30 days, 3 would-be failures).Value 5Effort 1Disruption 4
-- Missing Device-code flow blocked. No policy does this yet. Proposed: Device-code flow blocked.Value 3Effort 1Disruption 4
-- Missing Authentication transfer blocked. No policy does this yet. Proposed: Authentication transfer blocked.Value 3Effort 1Disruption 4
-- Missing Admins use phishing-resistant auth. No policy does this yet. Proposed: Admins use phishing-resistant auth.Value 5Effort 3Disruption 1
-- Missing Admin portals need strong auth or are blocked for non-admins. No policy does this yet. Proposed: Admin portals need strong auth or are blocked for non-admins.Value 4Effort 3Disruption 3
-- Missing Registering or joining a device requires MFA. No policy does this yet. Proposed: Registering or joining a device requires MFA.Value 3Effort 2Disruption 3
-- Missing Unknown platforms blocked. No policy does this yet. Proposed: Unknown platforms blocked.Value 2Effort 3Disruption 3
-- Missing Admin sessions expire quickly and never persist. No policy does this yet. Proposed: Admin sessions expire quickly and never persist.Value 4Effort 2Disruption 1
-- Missing Unmanaged-device browser sessions are limited. No policy does this yet. Proposed: Unmanaged-device browser sessions are limited.Value 3Effort 3Disruption 2
-- Missing Windows desktop sessions require token protection. No policy does this yet. Proposed: Windows desktop sessions require token protection.Value 3Effort 3Disruption 2
-- Missing Unmanaged devices cannot download. No policy does this yet. Proposed: Unmanaged devices cannot download.Value 3Effort 4Disruption 2
-- Missing Browser sessions never persist for anyone. No policy does this yet. Proposed: Browser sessions never persist for anyone.Value 2Effort 2Disruption 2
-- Missing Sign-ins outside allowed countries blocked. No policy does this yet. Proposed: Sign-ins outside allowed countries blocked.Value 3Effort 3Disruption 4
 - Does not apply Office apps require a compliant or joined device: does not apply (no Intune licence).
 - Does not apply Mobile access requires approved or protected apps: does not apply (no Intune licence).
 - Needs a licence Risky sign-ins get MFA or are blocked: needs a licence tier this tenant does not have (p2). Listed on the Licensing guide, not scored.
@@ -1164,55 +1075,29 @@ Words: **686** — headings 7, prose 71, buttons 11, options 0, links 1, chips 6
 - Needs a licence Medium-risk sign-ins require MFA: needs a licence tier this tenant does not have (p2). Listed on the Licensing guide, not scored.
 - Needs a licence Medium-risk users must change their password: needs a licence tier this tenant does not have (p2). Listed on the Licensing guide, not scored.
 
-**Links** (1)
-
-- Re-scan
-
 **Chips** (2)
 
 - Does not apply
 - Needs a licence
 
-**Info tips** (9)
+**Info tips** (1)
 
-- About Scan age
-- About In place
-- About Partly
-- About Missing
-- About Scored goals
-- About MFA proven in the last 30 days
-- About To set up before enforcement
-- About Priority
 - About Why this matters
 
-**Body sentences** (8)
+**Body sentences** (2)
 
-- What the scan found in the tenant.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- 1 goal in this baseline, 16 apply to this tenant.
-- The rest are under Details with the reason each one does not apply.
 - Every policy maps to a goal.
 - Naming: no dominant naming convention yet: the plan uses the baseline's
 
 ### Roadmap
-_default tab_
+_page chrome; tab panels are their own surfaces_
 
-Words: **750** — headings 63, prose 485, buttons 29, options 0, links 131, chips 9, columns 4, tiles 6, tips 13.
+Words: **235** — headings 4, prose 212, buttons 9, options 0, links 1, chips 0, columns 0, tiles 0, tips 3.
 
-**Headings** (10)
+**Headings** (2)
 
 - Roadmap
 - Do this next
-- 2 of 19 steps in place · finishes <date>
-- What needs attention before you start
-- Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.
-- The journey
-- Planned against actual, week by week
-- Every step, planned against actual
-- What changed since the last scan
-- History
 
 **Tabs** (5)
 
@@ -1222,7 +1107,7 @@ Words: **750** — headings 63, prose 485, buttons 29, options 0, links 131, chi
 - Schedule
 - Export
 
-**Buttons** (14)
+**Buttons** (6)
 
 - Open the step
 - Progress
@@ -1230,6 +1115,52 @@ Words: **750** — headings 63, prose 485, buttons 29, options 0, links 131, chi
 - Watch first
 - Schedule
 - Export
+
+**Links** (1)
+
+- Re-scan
+
+**Info tips** (1)
+
+- About Scan age
+
+**Body sentences** (16)
+
+- Your plan: what to change, in what order, and what to watch.
+- Needs: ✓ scan complete · ✓ baseline loaded
+- Based on the scan from this minute · <date and time>.
+- Re-scan · Baseline: synthetic baseline
+- With this tenant's Entra ID P1, 19 of 24 steps are available now.
+- 5 steps need Entra ID P2; the Licensing guide shows what they would add.
+- The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.
+- Sort out emergency access before anything elseMust fix first: 14 steps that can deny access are held until it passes. · nobodyabout 10 minutesOpen the step
+- Must fix first: 14 steps that can deny access are held until it passes. · nobody
+- about 10 minutes
+- Answer 8 setup questionsnothing blocks it, and 2 later steps wait for it · nobodyabout 10 minutesOpen the step
+- nothing blocks it, and 2 later steps wait for it · nobody
+- Run the MFA verification campaignsetting up 1 person unblocks 3 steps · Priya Nairabout 5 minutesOpen the step
+- setting up 1 person unblocks 3 steps · Priya Nair
+- about 5 minutes
+- This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
+
+### Roadmap / Progress tab
+_panel only_
+
+Words: **515** — headings 59, prose 273, buttons 20, options 0, links 130, chips 9, columns 4, tiles 6, tips 10.
+
+**Headings** (8)
+
+- 2 of 19 steps in place · finishes <date>
+- What needs attention before you start
+- Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.
+- The journey
+- Planned against actual, week by week
+- Every step, planned against actual
+- What changed since the last scan
+- History
+
+**Buttons** (8)
+
 - Steps done
 - Weeks
 - Safe today
@@ -1243,9 +1174,8 @@ Words: **750** — headings 63, prose 485, buttons 29, options 0, links 131, chi
 
 - Plan revision 1, <date>
 
-**Links** (25)
+**Links** (24)
 
-- Re-scan
 - Open Watch first →
 - See the blocked steps →
 - Emergency access accounts
@@ -1291,32 +1221,15 @@ Words: **750** — headings 63, prose 485, buttons 29, options 0, links 131, chi
 - Safe today
 - Blocked
 
-**Info tips** (5)
+**Info tips** (4)
 
-- About Scan age
 - About Steps done
 - About Weeks
 - About Safe today
 - About Blocked
 
-**Body sentences** (42)
+**Body sentences** (26)
 
-- Your plan: what to change, in what order, and what to watch.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- With this tenant's Entra ID P1, 19 of 24 steps are available now.
-- 5 steps need Entra ID P2; the Licensing guide shows what they would add.
-- The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.
-- Sort out emergency access before anything elseMust fix first: 14 steps that can deny access are held until it passes. · nobodyabout 10 minutesOpen the step
-- Must fix first: 14 steps that can deny access are held until it passes. · nobody
-- about 10 minutes
-- Answer 8 setup questionsnothing blocks it, and 2 later steps wait for it · nobodyabout 10 minutesOpen the step
-- nothing blocks it, and 2 later steps wait for it · nobody
-- Run the MFA verification campaignsetting up 1 person unblocks 3 steps · Priya Nairabout 5 minutesOpen the step
-- setting up 1 person unblocks 3 steps · Priya Nair
-- about 5 minutes
-- This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
 - The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.
 - 9 steps would prompt the same people twice in one week.
 - Spacing them out would push the plan past 4 weeks, so they stay together.
@@ -1345,34 +1258,20 @@ Words: **750** — headings 63, prose 485, buttons 29, options 0, links 131, chi
 - Plan revision 1, <date>: plan created
 
 ### Roadmap / Plan tab
-Words: **1306** — headings 39, prose 657, buttons 29, options 0, links 530, chips 28, columns 0, tiles 0, tips 13.
+_panel only_
 
-**Headings** (7)
+Words: **1057** — headings 35, prose 445, buttons 20, options 0, links 529, chips 28, columns 0, tiles 0, tips 0.
 
-- Roadmap
-- Do this next
+**Headings** (5)
+
 - Day 0 <date> → <date>
 - Wave 1 · Low-impact blocks <date> → <date>
 - Wave 2 · Sessions <date> → <date>
 - Wave 3 · Sessions <date> → <date>
 - Needs a licence this tenant does not have
 
-**Tabs** (5)
+**Buttons** (8)
 
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
-
-**Buttons** (14)
-
-- Open the step
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
 - Hide completed
 - Safe today (0)
 - Done (2)
@@ -1382,13 +1281,8 @@ Words: **1306** — headings 39, prose 657, buttons 29, options 0, links 530, ch
 - Ready to enforce (0)
 - Skipped (0)
 
-**Collapsed section headers** (1)
+**Links** (19)
 
-- Plan revision 1, <date>
-
-**Links** (20)
-
-- Re-scan
 - ReadyPrerequisiteSort out emergency access before anything elseEmergency access accountsChecked: nothing blocks it and a foundation the later steps need.
 - ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.
 - DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.
@@ -1427,32 +1321,8 @@ Words: **1306** — headings 39, prose 657, buttons 29, options 0, links 530, ch
 - Change
 - Blocked
 
-**Info tips** (5)
+**Body sentences** (39)
 
-- About Scan age
-- About Steps done
-- About Weeks
-- About Safe today
-- About Blocked
-
-**Body sentences** (55)
-
-- Your plan: what to change, in what order, and what to watch.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- With this tenant's Entra ID P1, 19 of 24 steps are available now.
-- 5 steps need Entra ID P2; the Licensing guide shows what they would add.
-- The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.
-- Sort out emergency access before anything elseMust fix first: 14 steps that can deny access are held until it passes. · nobodyabout 10 minutesOpen the step
-- Must fix first: 14 steps that can deny access are held until it passes. · nobody
-- about 10 minutes
-- Answer 8 setup questionsnothing blocks it, and 2 later steps wait for it · nobodyabout 10 minutesOpen the step
-- nothing blocks it, and 2 later steps wait for it · nobody
-- Run the MFA verification campaignsetting up 1 person unblocks 3 steps · Priya Nairabout 5 minutesOpen the step
-- setting up 1 person unblocks 3 steps · Priya Nair
-- about 5 minutes
-- This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
 - <date> → <date>
 - Emergency access accounts
 - Checked: nothing blocks it and a foundation the later steps need.
@@ -1494,66 +1364,20 @@ Words: **1306** — headings 39, prose 657, buttons 29, options 0, links 530, ch
 - · Medium-risk users must change their password · Entra ID P2
 
 ### Roadmap / Watch tab
-Words: **325** — headings 14, prose 271, buttons 9, options 0, links 8, chips 0, columns 0, tiles 0, tips 13.
+_panel only_
 
-**Headings** (3)
+Words: **76** — headings 10, prose 59, buttons 0, options 0, links 7, chips 0, columns 0, tiles 0, tips 0.
 
-- Roadmap
-- Do this next
+**Headings** (1)
+
 - 1 user is blocked today, before this plan changes anything
 
-**Tabs** (5)
+**Links** (1)
 
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
-
-**Buttons** (6)
-
-- Open the step
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
-
-**Collapsed section headers** (1)
-
-- Plan revision 1, <date>
-
-**Links** (2)
-
-- Re-scan
 - Troubleshoot sign-in problems with Conditional Access →
 
-**Info tips** (5)
+**Body sentences** (5)
 
-- About Scan age
-- About Steps done
-- About Weeks
-- About Safe today
-- About Blocked
-
-**Body sentences** (21)
-
-- Your plan: what to change, in what order, and what to watch.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- With this tenant's Entra ID P1, 19 of 24 steps are available now.
-- 5 steps need Entra ID P2; the Licensing guide shows what they would add.
-- The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.
-- Sort out emergency access before anything elseMust fix first: 14 steps that can deny access are held until it passes. · nobodyabout 10 minutesOpen the step
-- Must fix first: 14 steps that can deny access are held until it passes. · nobody
-- about 10 minutes
-- Answer 8 setup questionsnothing blocks it, and 2 later steps wait for it · nobodyabout 10 minutesOpen the step
-- nothing blocks it, and 2 later steps wait for it · nobody
-- Run the MFA verification campaignsetting up 1 person unblocks 3 steps · Priya Nairabout 5 minutesOpen the step
-- setting up 1 person unblocks 3 steps · Priya Nair
-- about 5 minutes
-- This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
 - One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.
 - Their most recent sign-in failed an existing Conditional Access policy.
 - Fix this first: otherwise the rollout gets the blame.
@@ -1561,33 +1385,19 @@ Words: **325** — headings 14, prose 271, buttons 9, options 0, links 8, chips 
 - Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)
 
 ### Roadmap / Schedule tab
-Words: **1873** — headings 19, prose 836, buttons 41, options 0, links 800, chips 24, columns 21, tiles 0, tips 30.
+_panel only_
 
-**Headings** (6)
+Words: **1624** — headings 15, prose 624, buttons 32, options 0, links 799, chips 24, columns 21, tiles 0, tips 17.
 
-- Roadmap
-- Do this next
+**Headings** (4)
+
 - Week by week
 - What will be sent and when, ready to copy
 - Dates
 - Plan settings
 
-**Tabs** (5)
+**Buttons** (14)
 
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
-
-**Buttons** (20)
-
-- Open the step
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
 - Hide completed
 - Email
 - Teams or Slack
@@ -1603,9 +1413,8 @@ Words: **1873** — headings 19, prose 836, buttons 41, options 0, links 800, ch
 - Mid
 - Large
 
-**Collapsed section headers** (7)
+**Collapsed section headers** (6)
 
-- Plan revision 1, <date>
 - Day 0 <date> → Sep 3, 20262 of 5 steps done
 - Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done
 - Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done
@@ -1613,9 +1422,8 @@ Words: **1873** — headings 19, prose 836, buttons 41, options 0, links 800, ch
 - Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>
 - Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>
 
-**Links** (59)
+**Links** (58)
 
-- Re-scan
 - <time> Stop sign-ins from countries you don't work in
 - <time> Turn off old sign-in methods that skip MFA
 - <time> Block devices Entra cannot identify
@@ -1718,13 +1526,8 @@ Words: **1873** — headings 19, prose 836, buttons 41, options 0, links 800, ch
 - Ends
 - Rings
 
-**Info tips** (11)
+**Info tips** (6)
 
-- About Scan age
-- About Steps done
-- About Weeks
-- About Safe today
-- About Blocked
 - About Done in this wave
 - About Report-only
 - About Change freeze
@@ -1732,24 +1535,8 @@ Words: **1873** — headings 19, prose 836, buttons 41, options 0, links 800, ch
 - About Holidays
 - About Revert threshold
 
-**Body sentences** (64)
+**Body sentences** (48)
 
-- Your plan: what to change, in what order, and what to watch.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- With this tenant's Entra ID P1, 19 of 24 steps are available now.
-- 5 steps need Entra ID P2; the Licensing guide shows what they would add.
-- The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.
-- Sort out emergency access before anything elseMust fix first: 14 steps that can deny access are held until it passes. · nobodyabout 10 minutesOpen the step
-- Must fix first: 14 steps that can deny access are held until it passes. · nobody
-- about 10 minutes
-- Answer 8 setup questionsnothing blocks it, and 2 later steps wait for it · nobodyabout 10 minutesOpen the step
-- nothing blocks it, and 2 later steps wait for it · nobody
-- Run the MFA verification campaignsetting up 1 person unblocks 3 steps · Priya Nairabout 5 minutesOpen the step
-- setting up 1 person unblocks 3 steps · Priya Nair
-- about 5 minutes
-- This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
 - The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.
 - When your people work.
 - Too few sign-in records to read a working pattern yet: the calendar defaults apply.
@@ -1800,34 +1587,20 @@ Words: **1873** — headings 19, prose 836, buttons 41, options 0, links 800, ch
 - At most 2 enforcement events a week for this size of tenant.
 
 ### Roadmap / Export tab
-Words: **676** — headings 17, prose 474, buttons 52, options 0, links 1, chips 0, columns 0, tiles 0, tips 30.
+_panel only_
 
-**Headings** (7)
+Words: **318** — headings 13, prose 262, buttons 43, options 0, links 0, chips 0, columns 0, tiles 0, tips 0.
 
-- Roadmap
-- Do this next
+**Headings** (5)
+
 - Plan file
 - Change record
 - Prompt pack
 - Grounding bundle
 - The plan as a document
 
-**Tabs** (5)
+**Buttons** (11)
 
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
-
-**Buttons** (17)
-
-- Open the step
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
 - Save plan
 - Load plan
 - Copy as Markdown
@@ -1840,52 +1613,8 @@ Words: **676** — headings 17, prose 474, buttons 52, options 0, links 1, chips
 - Download the bundle
 - Print or save as PDF
 
-**Collapsed section headers** (7)
+**Body sentences** (22)
 
-- Plan revision 1, <date>
-- Day 0 <date> → Sep 3, 20262 of 5 steps done
-- Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done
-- Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done
-- Wave 3 · Sessions <date> → Oct 2, 20260 of 3 steps done
-- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>
-- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>
-
-**Links** (1)
-
-- Re-scan
-
-**Info tips** (11)
-
-- About Scan age
-- About Steps done
-- About Weeks
-- About Safe today
-- About Blocked
-- About Done in this wave
-- About Report-only
-- About Change freeze
-- About Notice
-- About Holidays
-- About Revert threshold
-
-**Body sentences** (38)
-
-- Your plan: what to change, in what order, and what to watch.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- With this tenant's Entra ID P1, 19 of 24 steps are available now.
-- 5 steps need Entra ID P2; the Licensing guide shows what they would add.
-- The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.
-- Sort out emergency access before anything elseMust fix first: 14 steps that can deny access are held until it passes. · nobodyabout 10 minutesOpen the step
-- Must fix first: 14 steps that can deny access are held until it passes. · nobody
-- about 10 minutes
-- Answer 8 setup questionsnothing blocks it, and 2 later steps wait for it · nobodyabout 10 minutesOpen the step
-- nothing blocks it, and 2 later steps wait for it · nobody
-- Run the MFA verification campaignsetting up 1 person unblocks 3 steps · Priya Nairabout 5 minutesOpen the step
-- setting up 1 person unblocks 3 steps · Priya Nair
-- about 5 minutes
-- This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
 - Everything: steps, rings, evidence, history, Setup answers and checkpoints.
 - Load it back on any machine.
 - Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan
@@ -1909,173 +1638,13 @@ Words: **676** — headings 17, prose 474, buttons 52, options 0, links 1, chips
 - The print layout: cover, waves, every step in full.
 - Save as PDF from the print dialog.
 
-### Roadmap / Progress tab
-Words: **859** — headings 63, prose 485, buttons 29, options 0, links 131, chips 9, columns 4, tiles 6, tips 30.
-
-**Headings** (10)
-
-- Roadmap
-- Do this next
-- 2 of 19 steps in place · finishes <date>
-- What needs attention before you start
-- Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.
-- The journey
-- Planned against actual, week by week
-- Every step, planned against actual
-- What changed since the last scan
-- History
-
-**Tabs** (5)
-
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
-
-**Buttons** (14)
-
-- Open the step
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
-- Steps done
-- Weeks
-- Safe today
-- Blocked
-- Everything the scan noticed
-- Changes the plan made
-- Download as CSV
-- Download as Markdown
-
-**Collapsed section headers** (7)
-
-- Plan revision 1, <date>
-- Day 0 <date> → Sep 3, 20262 of 5 steps done
-- Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done
-- Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done
-- Wave 3 · Sessions <date> → Oct 2, 20260 of 3 steps done
-- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>
-- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>
-
-**Links** (25)
-
-- Re-scan
-- Open Watch first →
-- See the blocked steps →
-- Emergency access accounts
-- Answer 8 setup questions
-- Security-info registration requires a trusted context
-- Authentication transfer blocked
-- Device-code flow blocked
-- Run the MFA verification campaign
-- Admin sessions expire quickly and never persist
-- Admins use phishing-resistant auth
-- Admin portals need strong auth or are blocked for non-admins
-- Sign-ins outside allowed countries blocked
-- Unknown platforms blocked
-- Registering or joining a device requires MFA
-- Browser sessions never persist for anyone
-- Unmanaged devices cannot download
-- Unmanaged-device browser sessions are limited
-- Windows desktop sessions require token protection
-- Legacy protocols blocked
-- Every user satisfies MFA on every app
-- Guests satisfy MFA
-- Make guests prove who they are too: enforced
-- Make sure everyone can prove who they are: enforced
-- Turn off old sign-in methods that skip MFA: in report-only
-
-**Chips** (3)
-
-- Everything the scan noticed
-- Changes the plan made
-- planned
-
-**Table columns** (4)
-
-- Step
-- Planned
-- Actual
-- Slip
-
-**Stat tiles** (4)
-
-- Steps done
-- Weeks
-- Safe today
-- Blocked
-
-**Info tips** (11)
-
-- About Scan age
-- About Steps done
-- About Weeks
-- About Safe today
-- About Blocked
-- About Done in this wave
-- About Report-only
-- About Change freeze
-- About Notice
-- About Holidays
-- About Revert threshold
-
-**Body sentences** (42)
-
-- Your plan: what to change, in what order, and what to watch.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- With this tenant's Entra ID P1, 19 of 24 steps are available now.
-- 5 steps need Entra ID P2; the Licensing guide shows what they would add.
-- The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.
-- Sort out emergency access before anything elseMust fix first: 14 steps that can deny access are held until it passes. · nobodyabout 10 minutesOpen the step
-- Must fix first: 14 steps that can deny access are held until it passes. · nobody
-- about 10 minutes
-- Answer 8 setup questionsnothing blocks it, and 2 later steps wait for it · nobodyabout 10 minutesOpen the step
-- nothing blocks it, and 2 later steps wait for it · nobody
-- Run the MFA verification campaignsetting up 1 person unblocks 3 steps · Priya Nairabout 5 minutesOpen the step
-- setting up 1 person unblocks 3 steps · Priya Nair
-- about 5 minutes
-- This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
-- The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.
-- 9 steps would prompt the same people twice in one week.
-- Spacing them out would push the plan past 4 weeks, so they stay together.
-- 1 thing to watch before anything is enforced.
-- Open Watch first →
-- 13 steps blocked; each one names what unblocks it.
-- See the blocked steps →
-- 3 Conditional Access policies in the tenant today; this plan adds 0, for 3 of the 195 Entra allows.
-- One subject has must-fix checks outstanding, holding 14 steps that can deny access.
-- 2 steps were already covered before the plan began.
-- Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.
-- 16
-- Grey bars: steps planned to start that week.
-- Green bars: steps that actually started.
-- Hover a week for the counts.
-- Save the plan once to record a checkpoint; changes since then show here on the next scan.
-- Everything the scans noticed, newest first.
-- Nothing here is typed in; nothing can be edited.
-- <date> · Scan run: 5 users, 3 policies planned scan
-- <date>
-- scan
-- <date> · Make guests prove who they are too: enforced planned matched by what it does
-- matched by what it does
-- <date> · Make sure everyone can prove who they are: enforced planned matched by what it does
-- <date> · Turn off old sign-in methods that skip MFA: in report-only planned matched by what it does
-- Plan revision 1, <date>: plan created
-
 ### Roadmap / Plan / one step opened
-_first step expanded_
+_panel only, first step expanded_
 
-Words: **1723** — headings 60, prose 914, buttons 40, options 0, links 511, chips 28, columns 0, tiles 0, tips 33.
+Words: **1365** — headings 56, prose 702, buttons 31, options 0, links 510, chips 28, columns 0, tiles 0, tips 3.
 
-**Headings** (16)
+**Headings** (14)
 
-- Roadmap
-- Do this next
 - Day 0 <date> → <date>
 - What changes
 - Why it matters
@@ -2091,22 +1660,8 @@ Words: **1723** — headings 60, prose 914, buttons 40, options 0, links 511, ch
 - Wave 3 · Sessions <date> → <date>
 - Needs a licence this tenant does not have
 
-**Tabs** (5)
+**Buttons** (12)
 
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
-
-**Buttons** (18)
-
-- Open the step
-- Progress
-- Plan
-- Watch first
-- Schedule
-- Export
 - Hide completed
 - Safe today (0)
 - Done (2)
@@ -2120,20 +1675,12 @@ Words: **1723** — headings 60, prose 914, buttons 40, options 0, links 511, ch
 - Skip this step…
 - Collapse
 
-**Collapsed section headers** (8)
+**Collapsed section headers** (1)
 
-- Plan revision 1, <date>
 - Ready Prerequisite Sort out emergency access before anything elseEmergency access accounts1 must-fix check to clear. 14 steps that can deny access are held until then.Checked: nothing blocks it and a foundation the later steps need.
-- Day 0 <date> → Sep 3, 20262 of 5 steps done
-- Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done
-- Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done
-- Wave 3 · Sessions <date> → Oct 2, 20260 of 3 steps done
-- Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>
-- Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>
 
-**Links** (19)
+**Links** (18)
 
-- Re-scan
 - ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.
 - DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.
 - ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.
@@ -2171,39 +1718,12 @@ Words: **1723** — headings 60, prose 914, buttons 40, options 0, links 511, ch
 - Change
 - Blocked
 
-**Info tips** (12)
+**Info tips** (1)
 
-- About Scan age
-- About Steps done
-- About Weeks
-- About Safe today
-- About Blocked
 - About Scheduled date
-- About Done in this wave
-- About Report-only
-- About Change freeze
-- About Notice
-- About Holidays
-- About Revert threshold
 
-**Body sentences** (75)
+**Body sentences** (59)
 
-- Your plan: what to change, in what order, and what to watch.
-- Needs: ✓ scan complete · ✓ baseline loaded
-- Based on the scan from this minute · <date and time>.
-- Re-scan · Baseline: synthetic baseline
-- With this tenant's Entra ID P1, 19 of 24 steps are available now.
-- 5 steps need Entra ID P2; the Licensing guide shows what they would add.
-- The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.
-- Sort out emergency access before anything elseMust fix first: 14 steps that can deny access are held until it passes. · nobodyabout 10 minutesOpen the step
-- Must fix first: 14 steps that can deny access are held until it passes. · nobody
-- about 10 minutes
-- Answer 8 setup questionsnothing blocks it, and 2 later steps wait for it · nobodyabout 10 minutesOpen the step
-- nothing blocks it, and 2 later steps wait for it · nobody
-- Run the MFA verification campaignsetting up 1 person unblocks 3 steps · Priya Nairabout 5 minutesOpen the step
-- setting up 1 person unblocks 3 steps · Priya Nair
-- about 5 minutes
-- This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.
 - <date> → <date>
 - Emergency access accounts
 - 1 must-fix check to clear.
@@ -2575,79 +2095,4 @@ Words: **553** — headings 17, prose 474, buttons 52, options 0, links 1, chips
 - Redacted (no names, no sign-in names, no tenant id; counts and roles instead)
 - The print layout: cover, waves, every step in full.
 - Save as PDF from the print dialog.
-
-### Inventory
-Words: **130** — headings 4, prose 74, buttons 24, options 0, links 0, chips 3, columns 7, tiles 0, tips 5.
-
-**Headings** (3)
-
-- Scan
-- Scan complete
-- Policies
-
-**Tabs** (11)
-
-- Readiness
-- Inventory
-- Policies
-- Named locations
-- Authentication
-- People
-- Devices
-- Roles
-- Licensing
-- Apps
-- Sign-in records
-
-**Buttons** (17)
-
-- Re-scan tenant
-- Download diagnostics (redacted)
-- Readiness
-- Inventory
-- Policies
-- Named locations
-- Authentication
-- People
-- Devices
-- Roles
-- Licensing
-- Apps
-- Sign-in records
-- Policy
-- State
-- Export CSV
-- Next: Setup
-
-**Chips** (3)
-
-- On
-- Report-only
-- Off
-
-**Table columns** (7)
-
-- Policy
-- State
-- Users
-- Apps
-- Conditions
-- Grant
-- Session
-
-**Info tips** (1)
-
-- About Where this comes from
-
-**Body sentences** (9)
-
-- Reads the tenant's configuration, inventory, and sign-in records into a local record on this device.
-- Nothing is written; nothing leaves the browser.
-- Needs: ✓ connected tenant
-- Re-scan tenantDownload diagnostics (redacted)
-- Scan completed this minute · <date and time> · saved on this device.
-- Re-scan any time for fresh numbers.
-- 5 users · 3 policies · sign-in records for <date> to <date>
-- Everything the scan read, as found: no analysis.
-- Every table exports to CSV.
 
