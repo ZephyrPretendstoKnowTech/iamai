@@ -26,7 +26,7 @@ const CDP_PORT = Number(process.env.AUDIT_CDP_PORT ?? 9447)
 const BASE = `http://localhost:${PORT}/rollout/?dev=1&mock=1`
 
 /** Every page a user can reach, by hash. */
-const PAGES = ['/start', '/connect', '/baseline', '/scan', '/mapping', '/coverage', '/roadmap', '/reads', '/checks', '/licensing']
+const PAGES = ['/start', '/connect', '/baseline', '/scan', '/mapping', '/coverage', '/roadmap', '/reads', '/checks', '/licensing', '/naming']
 const WIDTHS = [360, 700, 1024, 1440, 1920]
 /** Below this the sidebar must stop taking a column of its own (§8). */
 const COLLAPSE_BELOW = 1024

@@ -210,6 +210,17 @@ export type OrganisationReport = {
     /** The dominant prefix as written ("Core") and its separator (" - "). */
     prefix: string | null
     separator: string | null
+    /**
+     * The full convention: separator, segment count, casing, and whether the
+     * prefix is a series (prompt 43 Part 2). Null where there is nothing to
+     * read; below the agreement floor it is present but not usable, which is
+     * what lets the report say how close the tenant came.
+     */
+    convention: import('../roadmap/convention.ts').Convention | null
+    /** Names carrying no prefix at all, which is what makes a long list unreadable. */
+    unprefixed: string[]
+    /** Every tenant-owned policy name the convention was read from. */
+    names: string[]
   }
   microsoftManaged: { id: string; name: string; state: string }[]
 }

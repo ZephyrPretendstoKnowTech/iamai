@@ -2,11 +2,7 @@
 // into coverage scoring. Pure.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { GoalResult, OrganisationReport, PolicyFacts } from './types.ts'
-
-function prefixToken(name: string): string {
-  const m = /^([A-Za-z0-9]+)\s*[-–—:]/.exec(name.trim())
-  return m ? m[1].toLowerCase() : ''
-}
+import { detectConvention, usable as usableConvention } from '../roadmap/convention.ts'
 
 export function organisationReport(
   tenantFacts: PolicyFacts[],
@@ -49,36 +45,47 @@ export function organisationReport(
 
   // Naming convention over the tenant's own policies — Microsoft-managed ones
   // are named by Microsoft and never count as outliers.
+  //
+  // This read the leading token and the separator, and nothing else, so a
+  // proposal came out as "<prefix><sep><goal title>" whatever shape the tenant
+  // actually used. detectConvention reads the segment count and the casing too,
+  // and recognises a numbered series (CA001, CA002) as a series rather than
+  // failing to find any shared prefix at all (prompt 43 Part 2).
   const own = tenantFacts.filter((f) => !managedIds.has(f.id))
-  const tokens = new Map<string, number>()
-  for (const f of own) {
-    const t = prefixToken(f.name)
-    if (t) tokens.set(t, (tokens.get(t) ?? 0) + 1)
-  }
-  let pattern: string | null = null
-  let share = 0
-  for (const [t, n] of tokens) {
-    if (n / Math.max(1, own.length) >= 0.6 && n > (pattern ? tokens.get(pattern)! : 0)) {
-      pattern = t
-      share = n / own.length
-    }
-  }
-  const outliers = pattern ? own.filter((f) => prefixToken(f.name) !== pattern).map((f) => f.name) : []
-  // Prefix as written and its separator, from the first policy that carries the pattern.
-  let prefix: string | null = null
-  let separator: string | null = null
-  if (pattern) {
-    const sample = own.find((f) => prefixToken(f.name) === pattern)
-    const m = sample ? /^([A-Za-z0-9]+)(\s*[-–—:]\s*)/.exec(sample.name.trim()) : null
-    if (m) {
-      prefix = m[1]
-      separator = m[2]
-    }
-  }
+  const names = own.map((f) => f.name)
+  const convention = detectConvention(names)
+  const strong = usableConvention(convention)
+  const pattern = strong ? (convention.prefix ?? convention.separator.trim()) : null
+  const share = convention?.agreement ?? 0
+  // An outlier is a name that does not carry the convention's separator, or
+  // whose prefix is not the convention's. Below the floor there is no
+  // convention, so nothing can be an outlier of it.
+  const outliers = strong
+    ? own
+        .filter((f) => {
+          const parts = f.name.split(convention.separator)
+          if (parts.length < 2) return true
+          const first = parts[0].trim()
+          return convention.numbered
+            ? first.replace(/\d+\s*$/, '').trim() !== convention.prefix
+            : convention.prefix !== null && first !== convention.prefix
+        })
+        .map((f) => f.name)
+    : []
+  const prefix = strong ? convention.prefix : null
+  const separator = strong ? convention.separator : null
+  // Policies with no prefix at all, which is what makes a list of forty
+  // unreadable (design doc §3). Reported whether or not a convention exists.
+  const unprefixed = own.filter((f) => !/^[^\s]+\s*[-–—:|]/.test(f.name.trim())).map((f) => f.name)
 
   const microsoftManaged = tenantFacts
     .filter((f) => managedIds.has(f.id))
     .map((f) => ({ id: f.id, name: f.name, state: f.state }))
 
-  return { notInBaseline, consolidation, naming: { pattern, share, outliers, prefix, separator }, microsoftManaged }
+  return {
+    notInBaseline,
+    consolidation,
+    naming: { pattern, share, outliers, prefix, separator, convention, unprefixed, names },
+    microsoftManaged,
+  }
 }
