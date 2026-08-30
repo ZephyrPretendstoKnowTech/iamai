@@ -5,7 +5,9 @@ import { count } from './statements.ts'
 export const NEXT = {
   title: 'Do this next',
   open: 'Open the step',
-  minutes: (n: number) => `about ${count(n, 'minute')}`,
+  // Above an hour and a half, minutes stop being a unit anyone can picture:
+  // "about 447 minutes" is a number, not an estimate.
+  minutes: (n: number) => (n < 90 ? `about ${count(n, 'minute')}` : `about ${count(Math.round(n / 30) / 2, 'hour')}`),
   why: {
     blocker: (held: number): string =>
       held === 0

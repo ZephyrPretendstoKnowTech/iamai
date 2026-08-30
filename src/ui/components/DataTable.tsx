@@ -143,10 +143,10 @@ export function DataTable<T>({
         </table>
       </div>
       <div className="datatable-footer no-print">
-        <span>
-          {T.rows(sorted.length)}
-          {pages > 1 && ` · ${T.page(current + 1, pages)}`}
-        </span>
+        {/* R6: a row count on a table you can see all of tells you nothing you
+            could not get by looking. It stays where it earns its place — on a
+            table that pages, where the rest of the rows are off screen. */}
+        <span>{pages > 1 ? `${T.rows(sorted.length)} · ${T.page(current + 1, pages)}` : ''}</span>
         {pages > 1 && (
           <>
             <Button size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={current === 0}>

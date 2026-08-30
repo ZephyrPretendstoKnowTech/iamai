@@ -39,7 +39,14 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
     const tier = g.implementations[0]?.tier ?? 'p1'
     goalsByTier.set(tier, [...(goalsByTier.get(tier) ?? []), { name: g.name, tldr: g.tldr ?? null }])
   }
-  const capRows = Object.entries(caps).map(([key, c]) => ({ key, ...c }))
+  // R19: only the capabilities a goal in the catalogue actually needs. Rows for
+  // Purview Insider Risk and Defender for Cloud Apps described licences that
+  // nothing in the plan would ever use, which reads as advice to buy them.
+  const TIER_TO_CAP: Record<string, string> = { p1: 'entraP1', p2: 'entraP2', intune: 'intune', workloadId: 'workloadIdPremium' }
+  const used = new Set(CATALOGUE.flatMap((g) => g.implementations.map((i) => TIER_TO_CAP[i.tier] ?? '')).filter(Boolean))
+  const capRows = Object.entries(caps)
+    .filter(([key]) => used.has(key))
+    .map(([key, c]) => ({ key, ...c }))
 
   return (
     <section>
@@ -62,24 +69,13 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
               render: (r) => <Chip status={r.enabled ? 'done' : 'neutral'}>{r.enabled ? LICENSING.enabled : LICENSING.notLicensed}</Chip>,
             },
             {
-              key: 'seats',
-              header: LICENSING.columns.seats,
-              render: (r) =>
-                r.enabled ? (
-                  <>
-                    {LICENSING.seats(r.seats, r.consumed)}
-                    <InfoTip title={TILE.seats.title} text={TILE.seats.text} />
-                  </>
-                ) : (
-                  '—'
-                ),
-            },
-            {
               key: 'covers',
               header: LICENSING.columns.covers,
               render: (r) =>
                 r.enabled ? (
                   <>
+                    {/* R19: seat count alone changed nothing. A shortfall does:
+                        it says who would be left out and what to do about it. */}
                     {r.seats >= users ? LICENSING.covers : LICENSING.short(users - r.seats)}
                     <InfoTip title={TILE.seatShortfall.title} text={TILE.seatShortfall.text} />
                   </>

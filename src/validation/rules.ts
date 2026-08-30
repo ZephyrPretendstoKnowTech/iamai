@@ -526,9 +526,16 @@ const bgLastSignIn: ValidationRule = {
   subject: 'breakGlass',
   severity: 'note',
   needs: ['users'],
+  // R10: a break-glass account that has never signed in is the expected case,
+  // and printing that as a note is bookkeeping. A break-glass account that HAS
+  // signed in is worth a line, because somebody used the escape hatch.
+  //
+  // It also removes the contradiction the review caught: this rule reads the
+  // directory's all-time last sign-in while the two below read the evidence
+  // window, so "last signed in in June" sat beside "never seen".
   evaluate: (id, ctx) => {
     const at = userOf(ctx, id)?.lastSuccessfulSignIn ?? null
-    return at === null ? pass(F.bgNeverSignedIn) : pass(F.bgLastSignIn(absoluteDate(at)))
+    return at === null ? pass() : pass(F.bgLastSignIn(absoluteDate(at)))
   },
 }
 
@@ -538,10 +545,10 @@ const bgSignInCountries: ValidationRule = {
   severity: 'note',
   needs: ['signInEvidence'],
   evaluate: (id, ctx) => {
-    const ev = ctx.snapshot.signInEvidence[id]
-    if (!ev) return pass(F.bgNeverSeen)
-    const countries = ev.countries ?? []
-    return countries.length > 0 ? pass(F.bgCountries(countries)) : pass(F.bgNeverSeen)
+    // Only where there is something to say: a country list is a finding, the
+    // absence of one in a 30-day window is not (R10).
+    const countries = ctx.snapshot.signInEvidence[id]?.countries ?? []
+    return countries.length > 0 ? pass(F.bgCountries(countries)) : pass()
   },
 }
 
@@ -550,7 +557,12 @@ const bgMfaSeen: ValidationRule = {
   subject: 'breakGlass',
   severity: 'note',
   needs: ['signInEvidence'],
-  evaluate: (id, ctx) => (ctx.snapshot.signInEvidence[id]?.lastMfaSuccess ? pass(F.bgMfaSeen) : pass(F.bgMfaNotSeen)),
+  // Only worth saying when the account signed in and did not do MFA (R10).
+  evaluate: (id, ctx) => {
+    const ev = ctx.snapshot.signInEvidence[id]
+    if (!ev || ev.signInCount === 0) return pass()
+    return ev.lastMfaSuccess ? pass(F.bgMfaSeen) : pass(F.bgMfaNotSeen)
+  },
 }
 
 // ---- exclusions group ------------------------------------------------------

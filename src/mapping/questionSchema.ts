@@ -25,15 +25,16 @@ import type { WizardQuestionId } from './wizard.ts'
 export type QuestionType = 'pick-objects' | 'confirm-default' | 'multi-select-confirm' | 'toggle-grid'
 
 /**
- * The one way out of a question, or none.
+ * The one alternative to answering a question, or none.
  *
- * `doesNotExistYet` is the only permitted opt-out, and it is an answer rather
- * than a refusal: it tells IAMAI to put the thing in the plan. A question that
- * would need "not applicable to us" is a question that should not have been
- * asked of this tenant, which is what the applicability detection is for.
+ * "Not applicable to us" is gone (R1 to R5): it let any question be waved away
+ * with a sentence nobody reads, and a question that a tenant can wave away is a
+ * question that should not have been asked, which is what the applicability
+ * detection is for. What remains is `doesNotExistYet`, and that is an answer
+ * rather than a refusal — it tells IAMAI to put the thing in the plan.
  *
  * Declaring this as one field rather than a set of booleans is the point: a
- * second opt-out is unrepresentable, not merely discouraged.
+ * second way out is unrepresentable, not merely discouraged.
  */
 export type OptOut = 'none' | 'doesNotExistYet'
 
@@ -71,16 +72,18 @@ const COPY: QuestionCopyKeys = { title: 'question', why: 'why', help: 'help' }
 export const CONFIRM_LABEL_KEY = 'confirmLooksRight'
 
 export const QUESTION_SCHEMA: QuestionSchema[] = [
-  // Q1 and Q2 have no opt-out at all: a tenant either has break-glass accounts
-  // and an exclusion group or needs them, and both cases are answers.
-  { id: 'breakGlass', type: 'pick-objects', optOut: 'none', min: 2, max: null, validationSubject: 'breakGlass', copy: COPY },
-  { id: 'globalExclusion', type: 'pick-objects', optOut: 'none', min: 1, max: 1, validationSubject: 'exclusionGroup', copy: COPY },
-  { id: 'countries', type: 'multi-select-confirm', optOut: 'doesNotExistYet', min: 0, max: null, validationSubject: 'allowedCountries', copy: COPY },
-  { id: 'highCare', type: 'pick-objects', optOut: 'doesNotExistYet', min: 0, max: null, validationSubject: null, copy: COPY },
+  // Q1, Q2 and Q5 offer "Doesn't exist yet" because a tenant genuinely may not
+  // have the thing, and saying so is an answer that adds a step to create it.
+  // Nothing else offers a way out: every other question can be answered from
+  // what the tenant already has, including by choosing nothing and confirming.
+  { id: 'breakGlass', type: 'pick-objects', optOut: 'doesNotExistYet', min: 2, max: null, validationSubject: 'breakGlass', copy: COPY },
+  { id: 'globalExclusion', type: 'pick-objects', optOut: 'doesNotExistYet', min: 1, max: 1, validationSubject: 'exclusionGroup', copy: COPY },
+  { id: 'countries', type: 'multi-select-confirm', optOut: 'none', min: 0, max: null, validationSubject: 'allowedCountries', copy: COPY },
+  { id: 'highCare', type: 'pick-objects', optOut: 'none', min: 0, max: null, validationSubject: null, copy: COPY },
   { id: 'trustedLocations', type: 'multi-select-confirm', optOut: 'doesNotExistYet', min: 0, max: null, validationSubject: 'trustedLocation', copy: COPY },
-  { id: 'serviceAccounts', type: 'pick-objects', optOut: 'doesNotExistYet', min: 0, max: null, validationSubject: 'serviceAccount', copy: COPY },
+  { id: 'serviceAccounts', type: 'pick-objects', optOut: 'none', min: 0, max: null, validationSubject: 'serviceAccount', copy: COPY },
   { id: 'timeZone', type: 'confirm-default', optOut: 'none', min: 1, max: 1, validationSubject: null, copy: COPY },
-  { id: 'frameworks', type: 'multi-select-confirm', optOut: 'doesNotExistYet', min: 0, max: null, validationSubject: null, copy: COPY },
+  { id: 'frameworks', type: 'multi-select-confirm', optOut: 'none', min: 0, max: null, validationSubject: null, copy: COPY },
   { id: 'applicability', type: 'toggle-grid', optOut: 'none', min: 0, max: null, validationSubject: null, copy: COPY },
 ]
 

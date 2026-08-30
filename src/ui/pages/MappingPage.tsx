@@ -115,9 +115,7 @@ export function MappingPage({
   }
   const reopen = (id: WizardQuestionId): void => {
     update((s) => {
-      const notApplicable = { ...(s.notApplicable ?? {}) }
-      delete notApplicable[id]
-      return { ...s, notApplicable, wizardAnswered: { ...s.wizardAnswered, [id]: false } }
+      return { ...s, wizardAnswered: { ...s.wizardAnswered, [id]: false } }
     })
     setEditing((e) => ({ ...e, [id]: true }))
   }
@@ -213,8 +211,6 @@ type QProps = {
 
 /** One line that says what was answered, for the collapsed state. */
 function answerSummary(def: WizardQuestionDef, state: MappingState, snapshot: TenantSnapshot, knownGroups: GroupMembersCacheEntry[]): string {
-  const na = state.notApplicable?.[def.id]
-  if (na) return C.notApplicableAnswered(na)
   const userName = (id: string) => snapshot.users.find((u) => u.id === id)?.displayName ?? id
   const groupName = (id: string) => knownGroups.find((g) => g.groupId === id)?.displayName ?? id
   switch (def.id) {
@@ -237,11 +233,11 @@ function answerSummary(def: WizardQuestionDef, state: MappingState, snapshot: Te
         : C.doesNotExist
     }
     case 'serviceAccounts':
-      return state.serviceAccountUserIds.length > 0 ? state.serviceAccountUserIds.map(userName).join(', ') : C.notApplicableAnswer
+      return state.serviceAccountUserIds.length > 0 ? state.serviceAccountUserIds.map(userName).join(', ') : C.noneChosen
     case 'timeZone':
       return state.displayTimeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
     case 'frameworks':
-      return state.frameworks.length > 0 ? state.frameworks.join(', ') : C.frameworkNone
+      return state.frameworks.length > 0 ? state.frameworks.join(', ') : C.noneChosen
     case 'applicability': {
       const on = Object.entries(detectFacets(snapshot, state.facetOverrides as never))
         .filter(([, f]) => f.on)
@@ -270,7 +266,7 @@ function QuestionSection(props: QProps) {
             {openFindings.toFix > 0 && <Chip status="blocked">{C.mustFix(openFindings.toFix)}</Chip>}
             {openFindings.recommended > 0 && <Chip status="warning">{C.recommendedCount(openFindings.recommended)}</Chip>}
             {openFindings.toFix === 0 && openFindings.recommended === 0 && openFindings.notes > 0 && done && <Chip status="done">{C.notesCount(openFindings.notes)}</Chip>}
-            {openFindings.toFix === 0 && openFindings.recommended === 0 && openFindings.notes === 0 && done && (def.id === 'breakGlass' || def.id === 'globalExclusion') && !state.notApplicable?.[def.id] && <Chip status="neutral">{C.nothingToCheck}</Chip>}
+            {openFindings.toFix === 0 && openFindings.recommended === 0 && openFindings.notes === 0 && done && (def.id === 'breakGlass' || def.id === 'globalExclusion') && <Chip status="neutral">{C.nothingToCheck}</Chip>}
             <Chip status={done ? 'done' : 'warning'}>{done ? C.answered : C.required}</Chip>
           </span>
         </span>
@@ -291,11 +287,9 @@ function QuestionSection(props: QProps) {
             <strong>{C.whyMatters}:</strong> {def.why}
           </p>
           <QuestionBody {...props} />
-          {/* The question does not decide whether it has a way out; its schema does. */}
-          {schemaFor(def.id).optOut !== 'none' && <NotApplicable questionId={def.id} update={props.update} answered={props.answered} />}
         </>
       )}
-      {collapsed && !state.notApplicable?.[def.id] && (openFindings.toFix > 0 || openFindings.recommended > 0 || def.id === 'globalExclusion' || def.id === 'breakGlass') && <QuestionFindings {...props} />}
+      {collapsed && (openFindings.toFix > 0 || openFindings.recommended > 0 || def.id === 'globalExclusion' || def.id === 'breakGlass') && <QuestionFindings {...props} />}
     </details>
   )
 }
@@ -514,36 +508,6 @@ function findingCounts(results: (ValidationResult | null)[]): FindingCounts {
 }
 
 /** The third answer every question allows (prompt 26 §2): not applicable to us, with a reason that goes in the plan. */
-function NotApplicable({ questionId, update, answered }: { questionId: WizardQuestionId; update: QProps['update']; answered: QProps['answered'] }) {
-  const [open, setOpen] = useState(false)
-  const [reason, setReason] = useState('')
-  if (!open) {
-    return (
-      <p>
-        <Button size="sm" variant="quiet" onClick={() => setOpen(true)}>
-          {C.notApplicableToUs}
-        </Button>
-      </p>
-    )
-  }
-  return (
-    <p className="row">
-      <input type="text" value={reason} placeholder={C.notApplicableReason} aria-label={C.notApplicableReason} onChange={(e) => setReason(e.currentTarget.value)} style={{ minWidth: '20rem' }} />
-      <Button
-        size="sm"
-        variant="primary"
-        disabled={reason.trim().length === 0}
-        onClick={() => {
-          update((st) => ({ ...st, notApplicable: { ...(st.notApplicable ?? {}), [questionId]: reason.trim() } }))
-          answered(questionId)
-        }}
-      >
-        {C.confirmService}
-      </Button>
-    </p>
-  )
-}
-
 function DoesNotExist({ onClick }: { onClick: () => void }) {
   return (
     <p>
@@ -611,11 +575,9 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
         }}
       />
       {findings}
-      {/* The only part of the emergency-access set a scan cannot answer (validation-rules.md §3). */}
-      <Card title={C.breakGlassAsk.title}>
-        <p className="reason">{C.breakGlassAsk.intro}</p>
-        <ul className="sections">{ask('credentialStorage')}{ask('signInMonitoring')}</ul>
-      </Card>
+      {/* R21: the panel explained why these two are asked before asking them.
+          The questions are self-explanatory; ask them. */}
+      <ul className="sections">{ask('credentialStorage')}{ask('signInMonitoring')}</ul>
       <DoesNotExist
         onClick={() => {
           update((s) => ({
@@ -800,11 +762,9 @@ function HighCareQuestion({ state, snapshot, suggestCtx, update, answered }: QPr
         }}
       />
       {state.highCareUserIds.length > 0 && <p className="reason">{C.careExplained(state.highCareUserIds.length)}</p>}
-      <p>
-        <Button size="sm" variant="quiet" onClick={() => answered('highCare')}>
-          {C.nobodyNeedsCare}
-        </Button>
-      </p>
+      {/* Choosing nobody and confirming is the same answer the second button
+          used to give (R2). One affordance, one label. */}
+      <Confirm onConfirm={() => answered('highCare')} />
     </div>
   )
 }
@@ -951,7 +911,6 @@ function TimeZoneQuestion({ state, update, answered }: QProps) {
 }
 
 function FrameworksQuestion({ state, update, answered }: QProps) {
-  const noneChosen = state.wizardAnswered.frameworks === true && state.frameworks.length === 0
   return (
     <div className="row">
       {FRAMEWORK_OPTIONS.map((f) => {
@@ -970,16 +929,8 @@ function FrameworksQuestion({ state, update, answered }: QProps) {
           </Button>
         )
       })}
-      <Button
-        size="sm"
-        variant={noneChosen ? 'primary' : 'secondary'}
-        onClick={() => {
-          update((s) => ({ ...s, frameworks: [] }))
-          answered('frameworks')
-        }}
-      >
-        {C.frameworkNone}
-      </Button>
+      {/* Selecting none and confirming says "none" (R3). */}
+      <Confirm onConfirm={() => answered('frameworks')} />
     </div>
   )
 }

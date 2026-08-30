@@ -168,12 +168,14 @@ try {
   check('Roadmap: Do this next leads with the emergency-access blocker', /Sort out emergency access before anything else/.test(t))
   check('Roadmap: the blocker says what it is holding', /Must fix first: \d+ steps that can deny access are held until it passes/.test(t))
   check('Roadmap: tiles Safe today and Blocked', /\d+\s+Safe today/.test(t) && /\d+\s+Blocked/.test(t))
-  check('Roadmap: This week card and the licence sentence', /This week/.test(t) && /With this tenant's Entra ID/.test(t))
+  // R11 removed the "This week" line: it repeated card one of Do this next verbatim.
+  check('Roadmap: the licence sentence', /With this tenant's Entra ID/.test(t))
   check('Roadmap: danger areas name the blocked user', /1 user is blocked today|Watch first\s+1/.test(t))
   check('Roadmap: Plan tab lists the verification campaign', (await clickText('/^Plan/')) && (await waitFor(`/Run the MFA verification campaign/.test(document.body.innerText)`)))
-  check('Roadmap: Progress tab shows the journey', (await clickText('/^Progress/')) && (await waitFor(`/The journey/.test(document.body.innerText)`)))
+  // R13: Progress is the Plan tab's header now, not a tab of its own.
+  check('Roadmap: the Plan tab carries the journey', (await clickText('/^Plan/')) && (await waitFor(`/The journey/.test(document.body.innerText)`)))
   check('Roadmap: Schedule tab carries the dates and the calendar export', (await clickText('/^Schedule/')) && (await waitFor(`/Export to calendar/.test(document.body.innerText)`)))
-  check('Roadmap: Do this next and History render', (await clickText('/^Progress/')) && (await waitFor(`/Do this next/.test(document.body.innerText) && /History/.test(document.body.innerText)`)))
+  check('Roadmap: Do this next and History render', (await clickText('/^Plan/')) && (await waitFor(`/Do this next/.test(document.body.innerText) && /History/.test(document.body.innerText)`)))
 
   // Failure paths and first-visitor tenants (prompt 31 §4): every page reads clearly, nothing breaks.
   await send('Page.navigate', { url: `${BASE}&licence=free#/coverage` })

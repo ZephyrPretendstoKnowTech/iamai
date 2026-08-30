@@ -176,12 +176,11 @@ export const BASELINE = {
 
 export const SCAN = {
   title: 'Scan',
-  does: "Reads the tenant's configuration, inventory, and sign-in records into a local record on this device. Nothing is written; nothing leaves the browser.",
+  does: "Reads the tenant's configuration, inventory, and sign-in records into a local record on this device.",
   needs: 'connected tenant',
   next: 'Setup',
   scan: 'Scan tenant',
   rescan: 'Re-scan tenant',
-  diagnostics: 'Download diagnostics (redacted)',
   failed: 'Scan failed.',
   sessionExpired: 'Your Microsoft session expired. Sign in again to continue.',
   sessionExpiredBody: 'The scan is paused where it got to; nothing collected so far is lost.',
@@ -196,7 +195,6 @@ export const SCAN = {
   waitingFirstBatch: 'Sign-in records · waiting for the first batch from Microsoft (about a minute)',
   nowReading: (labels: string[]) => (labels.length > 0 ? `Now reading: ${labels.join(', ')}…` : 'Finishing up…'),
   elapsed: (t: string) => `${t} elapsed`,
-  completeTitle: 'Scan complete',
   completeLine: (users: number, policies: number, window: string | null) =>
     `${count(users, 'user')} · ${count(policies, 'policy', 'policies')} · ${window ? `sign-in records for ${window}` : 'no sign-in records'}`,
   tabs: { readiness: 'Readiness', inventory: 'Inventory' },
@@ -287,10 +285,6 @@ export const FINDINGS = {
   rescan: 'Re-scan',
   tabs: { summary: 'Summary', working: "Here's what's working", attention: "Here's what needs attention", details: 'Details' },
   sinceCheckpoint: (when: string) => `Since the last checkpoint (${when}):`,
-  assumed: (groups: number, users: number) =>
-    `IAMAI inferred ${count(groups, 'exclusion group')} and ${count(users, 'likely break-glass account')} from how the policies use them. Confirm them in`,
-  assumedLink: 'Setup',
-  assumedAfter: 'to remove the hedging.',
   tiles: { inPlace: 'In place', partly: 'Partly', missing: 'Missing', scored: 'of scored goals in place', proven: 'of enabled users proved MFA in the last 30 days', toSetUp: 'enabled users to set up before enforcement' },
   nothingInPlace: 'Nothing is fully in place yet: that is what the plan is for.',
   allInPlace: 'Everything the baseline asks for is in place. Re-scan periodically; drift is flagged.',
@@ -522,7 +516,7 @@ export const LICENSING = {
 export const READS = {
   title: 'What IAMAI reads',
   intro:
-    'Everything IAMAI requests from Microsoft Graph, generated from the same list the code runs from. All access is read-only; nothing in the tenant is created, changed, or deleted.',
+    'Everything IAMAI requests from Microsoft Graph, generated from the same list the code runs from.',
   lanes: {
     '0': 'On every load: configuration',
     A: 'On every scan: inventory',

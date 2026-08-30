@@ -109,7 +109,10 @@ const SYNONYMS: { concept: string; labels: string[] }[] = [
 // C2 is closed: prompt 36 item 13 made "Looks right" the one confirm label, so
 // the group above now has a single member and the rule passes on it unwaived.
 // The retired labels stay in the group as a tripwire against their return.
-const RULE5_WAIVED: Waiver[] = [{ id: 'R1/R2/R3', match: 'decline the question' }]
+// R1 to R3 are closed: "Not applicable to us", "Nobody needs special care"
+// and "Not sure / none" are gone, leaving one way to say a thing does not
+// exist yet.
+const RULE5_WAIVED: Waiver[] = []
 
 test('rule 5: no concept is expressed by more than one option label', () => {
   const options = allOptions()
@@ -126,8 +129,8 @@ const RULE6_WAIVED: Waiver[] = [
   { id: 'L4', match: 'Start: 2 primary' },
   { id: 'L4', match: 'Baseline: 2 primary' },
   { id: 'L4', match: 'Scan: 2 primary' },
-  { id: 'C18', match: 'Prompt pack: 4 primary' },
   { id: 'R11', match: 'Roadmap: 3 primary' },
+  { id: 'C18', match: 'Prompt pack: 4 primary' },
   { id: 'R21', match: 'Q3 — Which countries do your people sign in from?: 3 primary' },
 ]
 
@@ -143,14 +146,8 @@ test('rule 6: a surface offers one primary action', () => {
 // Scoped to the surfaces that have them today. Waiving on the word "entries"
 // alone would waive every future violation too, which is how a waiver quietly
 // turns a rule off.
-const RULE7_WAIVED: Waiver[] = [
-  { id: 'R6', match: 'Every check IAMAI runs:' },
-  { id: 'R6', match: 'What IAMAI reads:' },
-  { id: 'R6', match: 'Connect / permissions disclosure:' },
-  { id: 'R6', match: 'Scan / Readiness tab:' },
-  { id: 'R6', match: 'Scan / Inventory tab:' },
-  { id: 'R6', match: 'Licensing guide:' },
-]
+// R6 is closed: a row count now renders only on a table that pages.
+const RULE7_WAIVED: Waiver[] = []
 
 test('rule 7: a row-count label appears only on a table that paginates', () => {
   const found = surfaces.flatMap((s) =>
@@ -170,12 +167,9 @@ const MAX_WORDS = 25
 const RULE8_WAIVED: Waiver[] = [
   { id: 'S1', match: 'Roadmap / Schedule tab:' },
   { id: 'C12', match: 'Roadmap / Plan / one step opened:' },
-  { id: 'P1', match: 'Connect / permissions disclosure:' },
   { id: 'T7/T8', match: 'Roadmap / Plan tab:' },
-  { id: 'P1', match: 'What IAMAI reads:' },
   { id: 'C1', match: 'Start:' },
   { id: 'C11', match: 'Findings / Summary tab:' },
-  { id: 'T3', match: 'Roadmap / Progress tab:' },
   { id: 'C16', match: 'Every check IAMAI runs:' },
 ]
 test(`rule 8: no user-facing sentence runs past ${MAX_WORDS} words`, () => {
@@ -220,15 +214,13 @@ const FILLER: { phrase: RegExp; why: string }[] = [
 // "before anything else" is the blocker step's own plain title, added in
 // prompt 32 and caught here by the review's own seed list. 38 rewrites it.
 // Scoped to the surfaces that hold them today, for the reason given on rule 7:
-// a waiver on the phrase alone waives every future occurrence too.
+// a waiver on the phrase alone waives every future occurrence too. The Scan
+// subtitle and the two Roadmap tab-level surfaces closed with R8, R12 and R13.
 const RULE10_WAIVED: Waiver[] = [
   { id: 'R8', match: 'Start: [nothing leaves the browser' },
-  { id: 'R8', match: 'Scan: [nothing leaves the browser' },
-  { id: 'R-new', match: 'Roadmap: [Before anything else]' },
   { id: 'R-new', match: 'Roadmap / Plan tab: [Before anything else]' },
   { id: 'R-new', match: 'Roadmap / Plan / one step opened: [Before anything else]' },
   { id: 'R-new', match: 'Roadmap / Schedule tab: [Before anything else]' },
-  { id: 'R-new', match: 'Prompt pack: [Before anything else]' },
 ]
 
 test('rule 10: no filler phrases', () => {

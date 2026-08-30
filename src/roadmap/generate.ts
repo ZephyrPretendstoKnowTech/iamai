@@ -790,7 +790,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         : { kind: 'adjust', summary: adjustSummary(result), json: null, portalSteps: [], powershell: null }
     }
 
-    if (kind === 'create' && status !== 'done') action.summary.push(ACTION.thenEnforce)
 
     // Named dependencies (prompt 12 §B).
     if (status !== 'done') {

@@ -27,5 +27,5 @@ export const ACCESS = {
   /** Column on the "What IAMAI reads" page. */
   roleColumn: 'Least role',
   roleFor: (least: string[]): string => (least.length === 0 ? READ_EVERYTHING_ROLE : list(least)),
-  readsNote: `Delegated reads succeed only where the consent and the signed-in account's role agree, so the role below is needed as well as the permission. The ${READ_EVERYTHING_ROLE} role covers every row, and writes nothing.`,
+  readsNote: `A delegated read succeeds only where the consent and the signed-in account's role agree. The ${READ_EVERYTHING_ROLE} role covers every row here.`,
 }

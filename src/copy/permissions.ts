@@ -10,9 +10,9 @@
 export const PERMISSIONS = {
   title: 'What IAMAI will ask for, and how to remove it',
   intro:
-    'Microsoft shows this list on its own consent screen. It is repeated here in plain words, generated from the same list the code requests, so it can be read before the screen appears rather than during it.',
+    'Microsoft shows this list on its own consent screen. It is here in plain words so it can be read first.',
   readOnly:
-    'Every one of these is a read permission. There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI, whatever it is asked to do.',
+    'There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI.',
   consentCreates:
     'Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted. Nothing else is created, and no data is copied anywhere.',
   removalTitle: 'Removing it',

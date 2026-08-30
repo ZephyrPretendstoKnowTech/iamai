@@ -262,11 +262,6 @@ export function CoveragePage({
           <strong>{C.sinceCheckpoint(delta.when)}</strong> {delta.text}
         </p>
       )}
-      {!report.assumed.confirmed && (report.assumed.groups.size > 0 || report.assumed.users.size > 0) && (
-        <Callout kind="info">
-          {C.assumed(report.assumed.groups.size, report.assumed.users.size)} <a href="#/mapping">{C.assumedLink}</a> {C.assumedAfter}
-        </Callout>
-      )}
       <Stats>
         <StatTile value={enforced.length} label={C.tiles.inPlace} tone="success" tip={TILE.inPlace} />
         <StatTile value={partial.length} label={C.tiles.partly} tone="warning" tip={TILE.partly} />
