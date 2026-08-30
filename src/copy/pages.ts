@@ -452,6 +452,15 @@ export const ROADMAP = {
   load: 'Load plan',
   print: 'Print the plan',
   couldNotRead: 'could not read the plan file',
+  // A plan carries one tenant's policy ids, group ids and operator notes, and
+  // the filename is only eight characters of a tenant id. Loading it into
+  // another tenant put one client's identifiers into another client's change
+  // record (audit token-01). Both are named so the operator can see which file
+  // they picked; the id itself is never shown.
+  planFromAnotherTenant: (planTenant: string, current: string) =>
+    `This plan was made for ${planTenant || 'another tenant'}, and you are connected to ${current || 'a different tenant'}. Nothing was loaded. Open it while connected to ${planTenant || 'the tenant it was made for'}.`,
+  planTenantUnknown: (current: string) =>
+    `This plan file does not say which tenant it was made for, so it cannot be loaded into ${current || 'this tenant'} safely. Nothing was loaded.`,
   phase: (n: number, name: string) => `Phase ${n}: ${name}`,
   phaseDone: (done: number, total: number) => `${done} of ${total} done`,
   complete: 'complete',
