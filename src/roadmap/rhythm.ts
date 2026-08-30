@@ -13,6 +13,10 @@ export type TenantRhythm = {
   /** 7 × 24 counts, local time, Monday first (0 = Monday). */
   byWeekdayHour: number[][]
   total: number
+  /** How many people the sample covers; a pattern from three users is not a pattern. */
+  people: number
+  /** True when the sample is thin enough that the sentence carries a caveat. */
+  provisional: boolean
   /** Local weekdays with meaningful activity, Monday first. */
   workingDays: number[]
   /** The local hour band that holds most of the working-day sign-ins. */
@@ -24,6 +28,14 @@ export type TenantRhythm = {
 }
 
 export const MIN_SIGNINS_FOR_RHYTHM = 100
+/**
+ * Above the floor but still thin: the pattern is reported with a caveat naming
+ * the sample (prompt 37 §18). The review saw Saturday called a working day from
+ * thirteen users, stated flatly (S5); a reader who knows the sample is small
+ * can weigh it, and a reader who is not told cannot.
+ */
+export const CONFIDENT_SIGNINS = 1000
+export const CONFIDENT_USERS = 25
 export const MIN_DAYS_FOR_RHYTHM = 7
 const WORKING_BAND = { start: 9, end: 17 }
 /** A weekday counts as working when it carries at least this share of the busiest day. */
@@ -83,6 +95,8 @@ export function tenantRhythm(snapshot: TenantSnapshot, timeZone: string | null):
     timeZone: tz,
     byWeekdayHour: Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0)),
     total: 0,
+    people: 0,
+    provisional: true,
     workingDays: [0, 1, 2, 3, 4],
     workingHours: WORKING_BAND,
     peak: null,
@@ -142,8 +156,11 @@ export function tenantRhythm(snapshot: TenantSnapshot, timeZone: string | null):
     }
   }
   const dayRange = describeDays(workingDays)
-  const sentence = RHYTHM.sentence(dayRange, hourLabel(workingHours.start), hourLabel(workingHours.end), tz, peak ? `${WEEKDAY_NAMES[peak.weekday]} ${hourLabel(peak.hour)}` : '', quiet ? `${WEEKDAY_NAMES[quiet.weekday]} ${hourLabel(quiet.hour)}` : '')
-  return { status: 'ok', timeZone: tz, byWeekdayHour: local, total, workingDays, workingHours, peak, quietWorking: quiet, weekendActive, sentence }
+  const people = Object.keys(snapshot.signInEvidence ?? {}).length
+  const provisional = total < CONFIDENT_SIGNINS || people < CONFIDENT_USERS
+  const base = RHYTHM.sentence(dayRange, hourLabel(workingHours.start), hourLabel(workingHours.end), tz, peak ? `${WEEKDAY_NAMES[peak.weekday]} ${hourLabel(peak.hour)}` : '', quiet ? `${WEEKDAY_NAMES[quiet.weekday]} ${hourLabel(quiet.hour)}` : '')
+  const sentence = provisional ? `${base} ${RHYTHM.provisional(total, people)}` : base
+  return { status: 'ok', timeZone: tz, byWeekdayHour: local, total, people, provisional, workingDays, workingHours, peak, quietWorking: quiet, weekendActive, sentence }
 }
 
 export function hourLabel(hour: number): string {

@@ -143,3 +143,43 @@ test('the watch reads per-day failures after enforcement against the threshold; 
   assert.match(ics, /Watch: more than 5% of the affected people/)
   assert.doesNotMatch(ics, /Owner:/)
 })
+
+const FIXTURE_NAMES = ['small', 'mid', 'large'] as const
+
+test('one bulletin per audience per week, and one reminder per bulletin', () => {
+  // The bundling rules existed and were correct; the calendar simply did not
+  // read them (prompt 37 §14, §15). These assert the properties the calendar
+  // now depends on, so a regression in either shows up here rather than as
+  // fifteen announcements in one Wednesday cell (S1, S2).
+  for (const name of FIXTURE_NAMES) {
+    const { ctx, steps } = ctxFor(name)
+    const bulletins = bulletinsFor(steps, ctx)
+    const seen = new Map<string, number>()
+    for (const b of bulletins) {
+      if (b.kind !== 'bulletin') continue
+      const key = `${b.audience.kind}|${b.audience.label}|${b.weekKey}`
+      seen.set(key, (seen.get(key) ?? 0) + 1)
+    }
+    for (const [key, n] of seen) assert.equal(n, 1, `${name}: ${n} bulletins for ${key}; the rule is one per audience per week`)
+
+    for (const b of bulletins) {
+      assert.ok(b.steps.length > 0, `${name}: ${b.id} covers no steps`)
+      // One reminder, or none. Never one per step.
+      assert.ok(b.remindAt === null || typeof b.remindAt === 'string', `${name}: ${b.id} has more than one reminder`)
+      if (b.remindAt) assert.ok(b.remindAt > b.sendAt, `${name}: ${b.id} reminds before it announces`)
+    }
+
+    // A bulletin repeats across weeks only if its steps do.
+    const bySubject = new Map<string, Set<string>>()
+    for (const b of bulletins) {
+      const set = bySubject.get(b.subject) ?? new Set<string>()
+      set.add(b.weekKey)
+      bySubject.set(b.subject, set)
+    }
+    for (const [subject, weeks] of bySubject) {
+      if (weeks.size <= 1) continue
+      const stepSets = bulletins.filter((b) => b.subject === subject).map((b) => b.steps.map((s) => s.stepId).sort().join(','))
+      assert.equal(new Set(stepSets).size, stepSets.length, `${name}: "${subject}" repeats across ${weeks.size} weeks with the same steps`)
+    }
+  }
+})

@@ -857,14 +857,56 @@ export function RoadmapPage({
       d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
       return d.toISOString().slice(0, 10)
     }
-    const weeks = [...new Set(allEvents.map(({ e }) => weekKeyOf(e.at)))].sort()
+    // The calendar shows one bulletin per audience per week, not one row per
+    // step (prompt 37 §14, comms-and-bridges.md §1.2). The bundling rules were
+    // already implemented and already used by the plan table below; the grid
+    // simply read the per-step events instead, which is how fifteen changes
+    // became fifteen announcements in one Wednesday cell (S1) and how the same
+    // fifteen reappeared twice more as reminders (S2). Enforcement stays
+    // per-step, because each change really does take effect on its own day.
+    type Cell = { key: string; time: string; label: string; reason: string; out: boolean; stepId: string }
+    const cellsOf = (kind: 'announce' | 'remind' | 'enforce'): Cell[] => {
+      if (kind === 'enforce') {
+        return allEvents
+          .filter(({ e }) => e.kind === 'enforce')
+          .map(({ step: st, e }) => ({ key: `${st.id}-enforce`, time: e.time, label: st.plainTitle, reason: e.reason, out: e.outOfHours, stepId: st.id }))
+      }
+      // One reminder per bulletin, never one per step (§15).
+      return bulletins
+        .map((b) => ({ b, at: kind === 'announce' ? b.sendAt : b.remindAt }))
+        .filter((x): x is { b: Bulletin; at: string } => x.at !== null)
+        .map(({ b, at }) => ({
+          key: `${b.id}-${kind}`,
+          time: at.slice(11, 16),
+          label: WEEK_VIEW.bulletin(b.audience.label, b.steps.length),
+          reason: b.subject,
+          out: false,
+          stepId: b.steps[0]?.stepId ?? '',
+          at,
+        }))
+        .map(({ at, ...c }) => ({ ...c, at })) as Cell[]
+    }
+    const atOf = (c: Cell & { at?: string }, kind: string): string =>
+      c.at ?? allEvents.find(({ step: st, e }) => `${st.id}-${kind}` === c.key && e.kind === kind)?.e.at ?? ''
+    const rowsData = (['announce', 'remind', 'enforce'] as const).map((kind) => ({
+      kind,
+      cells: cellsOf(kind).map((c) => ({ ...c, at: atOf(c as Cell & { at?: string }, kind) })),
+    }))
+    const weeks = [...new Set(rowsData.flatMap((r) => r.cells.map((c) => weekKeyOf(c.at))))].filter(Boolean).sort()
     if (weeks.length === 0) return <p className="reason">{WEEK_VIEW.nothing}</p>
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     return (
       <div className="week-view">
         {weeks.map((wk) => {
-          const inWeek = allEvents.filter(({ e }) => weekKeyOf(e.at) === wk)
-          const outOfHours = inWeek.filter(({ e }) => e.outOfHours).length
+          const dayOf = (at: string): string => DAYS[(new Date(at).getUTCDay() + 6) % 7]
+          const weekRows = rowsData
+            .map((r) => ({ ...r, cells: r.cells.filter((c) => weekKeyOf(c.at) === wk) }))
+            // A row with nothing in it this week is not drawn (prompt 37 §16).
+            // The empty Enforce row on the first week was the review's S3: a
+            // blank row reads as a missing event rather than as a quiet week.
+            .filter((r) => r.cells.length > 0)
+          if (weekRows.length === 0) return null
+          const outOfHours = weekRows.flatMap((r) => r.cells).filter((c) => c.out).length
           return (
             <div key={wk} className="card week-card">
               <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -882,16 +924,16 @@ export function RoadmapPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {(['announce', 'remind', 'enforce'] as const).map((kind) => (
-                      <tr key={kind}>
-                        <th scope="col">{WEEK_VIEW.rows[kind]}</th>
+                    {weekRows.map((r) => (
+                      <tr key={r.kind}>
+                        <th scope="col">{WEEK_VIEW.rows[r.kind]}</th>
                         {DAYS.map((d) => (
                           <td key={d}>
-                            {inWeek
-                              .filter(({ e }) => e.kind === kind && e.day === d)
-                              .map(({ step: st, e }) => (
-                                <a key={`${st.id}-${e.kind}`} className={`week-event ${e.outOfHours ? 'is-out' : ''}`} href={stepHref(st.id)} title={e.reason} onClick={(ev) => { ev.preventDefault(); setActiveTab('plan'); setOpenStepId(st.id) }}>
-                                  <span className="mono">{e.time}</span> {st.plainTitle}
+                            {r.cells
+                              .filter((c) => dayOf(c.at) === d)
+                              .map((c) => (
+                                <a key={c.key} className={`week-event ${c.out ? 'is-out' : ''}`} href={stepHref(c.stepId)} title={c.reason} onClick={(ev) => { ev.preventDefault(); setActiveTab('plan'); setOpenStepId(c.stepId) }}>
+                                  <span className="mono">{c.time}</span> {c.label}
                                 </a>
                               ))}
                           </td>

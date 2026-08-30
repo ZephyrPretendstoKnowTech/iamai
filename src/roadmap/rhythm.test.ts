@@ -72,3 +72,29 @@ test('enforcement lands on a Tuesday or Wednesday, Tuesday only when high-disrup
   const back = workingDaysBefore('2026-09-15T12:00:00.000Z', 5, { holidays, rhythm: { workingDays: [0, 1, 2, 3, 4] } as never })
   assert.equal(back.slice(0, 10), '2026-09-07')
 })
+
+test('a thin sample reports the pattern as provisional and names the sample', () => {
+  // S5: Saturday was reported as a working day from a thirteen-user sample with
+  // no caveat. Above the floor the pattern is still reported — it is the best
+  // available — but a reader who is not told the sample is small cannot weigh
+  // it (prompt 37 §18).
+  const f = fixture('small')
+  const r = tenantRhythm(f.snapshot, 'Australia/Sydney')
+  if (r.status !== 'ok') return
+  assert.equal(r.provisional, true, 'a small tenant should not report its pattern flatly')
+  assert.match(r.sentence, /provisional/i, 'the sentence does not say the pattern is provisional')
+  assert.match(r.sentence, new RegExp(String(r.total)), 'the caveat does not name the number of sign-in records')
+  assert.ok(r.people > 0, 'the caveat needs the number of people the sample covers')
+})
+
+test('a large tenant reports its pattern without a caveat', () => {
+  // The caveat has to be absent somewhere, or it is decoration rather than a
+  // signal. 'huge' reads as flat and never reaches this path, so this uses
+  // 'mid' (2,240 records from 249 people) where the pattern is genuinely
+  // readable.
+  const f = fixture('mid')
+  const r = tenantRhythm(f.snapshot, 'Australia/Sydney')
+  assert.equal(r.status, 'ok', 'this test needs a readable pattern to be meaningful')
+  assert.equal(r.provisional, false, `huge tenant still provisional: ${r.total} records from ${r.people} people`)
+  assert.doesNotMatch(r.sentence, /provisional/i)
+})

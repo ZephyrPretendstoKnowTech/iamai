@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { stepIdForGoal } from './generate.ts'
+import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
 import { NOTICE_DEFAULTS, noticeDaysFor } from './timing.ts'
 import { PLAIN_TITLES } from '../copy/plain.ts'
 
@@ -47,8 +48,22 @@ test('every policy step carries announce, remind and enforce with a day, a local
     if (!s.safeToday) {
       assert.ok(e.announce && e.remind, `${s.id} has an announcement and a reminder`)
       assert.ok(e.announce!.at < e.remind!.at && e.remind!.at < e.enforce.at, `${s.id}: announce, then remind, then enforce`)
-      assert.ok(['Tuesday', 'Wednesday'].includes(e.announce!.day), 'announcements go out on a Tuesday or Wednesday')
-      assert.equal(e.announce!.time, '09:30')
+      // Announcements follow the tenant's rhythm now (prompt 37 §17): a
+      // preferred midweek day the tenant actually works, at its quietest
+      // working hour. 09:30 is the fallback when the rhythm is unreadable, not
+      // the answer. Asserting the old constant would have pinned the very
+      // behaviour S4 reported.
+      const rhythm = run.schedule.rhythm
+      const usable = rhythm != null && rhythm.status === 'ok' && rhythm.workingDays.length > 0
+      const announceDay = WEEKDAY_NAMES.indexOf(e.announce!.day)
+      if (usable) {
+        assert.ok(rhythm!.workingDays.includes(announceDay), `${s.id} announces on ${e.announce!.day}, which is not a working day here`)
+        assert.equal(e.announce!.time, hourLabel(rhythm!.quietWorking?.hour ?? 9), `${s.id} announces away from the quietest working hour`)
+      } else {
+        assert.ok(['Tuesday', 'Wednesday'].includes(e.announce!.day), 'announcements go out on a Tuesday or Wednesday')
+        assert.equal(e.announce!.time, '09:30')
+      }
+      assert.ok(e.announce!.reason.length > 0, 'the announcement says which day was chosen and why')
       assert.equal(e.noticeDays, noticeDaysFor(s, NOTICE_DEFAULTS))
       if ((s.score?.disruption ?? 0) >= 4) {
         assert.equal(e.enforce.day, 'Tuesday', 'a high-disruption change enforces on a Tuesday')
