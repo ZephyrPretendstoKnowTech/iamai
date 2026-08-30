@@ -1,11 +1,11 @@
 {
- "fingerprint": "d7d4f19a34b1844a",
+ "fingerprint": "8a62b74857c80cbe",
  "surfaces": [
   {
    "name": "Start",
    "note": "",
    "headings": [
-    "Turn your Microsoft Entra Conditional Access baseline into a dated rollout plan that names who each step touches before anything is enforced.",
+    "Know what a Conditional Access change will do before you make it.",
     "How it works",
     "Connect",
     "Choose a baseline",
@@ -31,9 +31,8 @@
    "summaries": [],
    "tips": [],
    "sentences": [
-    "IAMAI reads your Microsoft 365 tenant's Conditional Access policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.",
-    "A read-only sign-in.",
-    "IAMAI cannot change anything in the tenant.",
+    "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.",
+    "One sign-in, one consent screen, on the tenant you already administer.",
     "Start from a maintained policy set, or upload a package.",
     "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.",
     "Dated phases, the changes that are safe today, and what to watch first.",
@@ -49,8 +48,7 @@
     "Nothing leaves the browser.",
     "There is no server.",
     "No account required with anyone.",
-    "IAMAI runs entirely in the browser and only reads.",
-    "The source is public, so anyone can verify that.",
+    "The source is public, so every claim above can be checked.",
     "Predicted impact, confirmed in report-only."
    ],
    "nav": [
@@ -71,8 +69,8 @@
    ],
    "tables": [],
    "occurrences": {
-    "IAMAI reads your Microsoft 365 tenant's Conditional Access policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.": 1,
-    "IAMAI cannot change anything in the tenant.": 1,
+    "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.": 1,
+    "One sign-in, one consent screen, on the tenant you already administer.": 1,
     "Start from a maintained policy set, or upload a package.": 1,
     "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.": 1,
     "Dated phases, the changes that are safe today, and what to watch first.": 1,
@@ -88,13 +86,12 @@
     "No changes to the tenant: the app holds read-only permissions only.": 1,
     "Nothing leaves the browser.": 1,
     "No account required with anyone.": 1,
-    "IAMAI runs entirely in the browser and only reads.": 1,
-    "The source is public, so anyone can verify that.": 1,
+    "The source is public, so every claim above can be checked.": 1,
     "Predicted impact, confirmed in report-only.": 1
    },
    "occurrencesAll": {
-    "IAMAI reads your Microsoft 365 tenant's Conditional Access policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.": 1,
-    "IAMAI cannot change anything in the tenant.": 1,
+    "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.": 1,
+    "One sign-in, one consent screen, on the tenant you already administer.": 1,
     "Start from a maintained policy set, or upload a package.": 1,
     "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.": 1,
     "Dated phases, the changes that are safe today, and what to watch first.": 1,
@@ -110,12 +107,11 @@
     "No changes to the tenant: the app holds read-only permissions only.": 1,
     "Nothing leaves the browser.": 1,
     "No account required with anyone.": 1,
-    "IAMAI runs entirely in the browser and only reads.": 1,
-    "The source is public, so anyone can verify that.": 1,
+    "The source is public, so every claim above can be checked.": 1,
     "Predicted impact, confirmed in report-only.": 1
    },
    "wordCounts": {
-    "headings": 48,
+    "headings": 38,
     "tabs": 0,
     "buttons": 2,
     "options": 0,
@@ -126,8 +122,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 205,
-    "total": 268
+    "sentences": 186,
+    "total": 239
    }
   },
   {
