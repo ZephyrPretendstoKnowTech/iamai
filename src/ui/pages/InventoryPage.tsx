@@ -91,10 +91,11 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
           { id: 'locations', label: C.tabs.locations, render: () => <LocationsTab snapshot={snapshot} facts={facts} /> },
           { id: 'authentication', label: C.tabs.authentication, render: () => <AuthenticationTab snapshot={snapshot} names={names} /> },
           { id: 'people', label: C.tabs.people, badge: snapshot.users.length, render: () => <PeopleTab snapshot={snapshot} viabilityById={viabilityById} names={names} referenced={referencedGroups} groups={groups} /> },
+          { id: 'groups', label: C.tabs.groups, badge: referencedGroups.size, render: () => <PeopleTab snapshot={snapshot} viabilityById={viabilityById} names={names} referenced={referencedGroups} groups={groups} showGroups /> },
           { id: 'devices', label: C.tabs.devices, badge: snapshot.devices.length, render: () => <DevicesTab snapshot={snapshot} userById={userById} /> },
           { id: 'roles', label: C.tabs.roles, render: () => <RolesTab snapshot={snapshot} names={names} /> },
-          { id: 'licensing', label: C.tabs.licensing, render: () => <LicensingTab snapshot={snapshot} /> },
           { id: 'apps', label: C.tabs.apps, render: () => <AppsTab snapshot={snapshot} names={names} /> },
+          { id: 'licensing', label: C.tabs.licensing, render: () => <LicensingTab snapshot={snapshot} /> },
           { id: 'signins', label: C.tabs.signIns, render: () => <SignInsTab snapshot={snapshot} names={names} /> },
         ]}
       />
@@ -389,12 +390,15 @@ function PeopleTab({
   names,
   referenced,
   groups,
+  showGroups = false,
 }: {
   snapshot: TenantSnapshot
   viabilityById: Map<string, MfaViability>
   names: ReturnType<typeof buildNameDirectory>
   referenced: Map<string, { include: string[]; exclude: string[] }>
   groups: GroupMembersCacheEntry[] | null
+  /** L3: true when rendering as the Groups tab rather than the People tab. */
+  showGroups?: boolean
 }) {
   const P = C.people
   const G = C.groups
@@ -454,14 +458,9 @@ function PeopleTab({
       />
     </div>
   )
-  return (
-    <Tabs
-      tabs={[
-        { id: 'users', label: C.tabs.people, badge: rows.length, render: usersTable },
-        { id: 'groups', label: C.tabs.groups, badge: groupRows.length, render: groupsTable },
-      ]}
-    />
-  )
+  // L3: Groups used to be a sub-tab here, a tab strip inside a tab strip. It is
+  // its own tab now; `showGroups` picks which half of this component renders.
+  return showGroups ? groupsTable() : usersTable()
 }
 
 // ---------- Devices ----------

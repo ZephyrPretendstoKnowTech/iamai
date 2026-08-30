@@ -14,7 +14,7 @@ export const COMPONENTS = {
     results: (n: number) => count(n, 'result'),
     done: 'Done',
   },
-  stepper: { nav: 'Steps', steps: 'Steps', reference: 'Reference', inProgress: 'in progress', done: 'done', attention: 'needs attention', provisional: 'provisional', currentStep: 'current step' },
+  stepper: { nav: 'Steps', steps: 'Steps', reference: 'Reference', inProgress: 'in progress', done: 'done', attention: 'needs attention', provisional: 'provisional', currentStep: 'current step', collapse: 'Collapse the steps list', expand: 'Expand the steps list' },
   table: {
     empty: 'Nothing to show yet.',
     rows: (n: number) => count(n, 'entry', 'entries'),

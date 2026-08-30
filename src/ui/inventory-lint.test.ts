@@ -125,10 +125,9 @@ test('rule 5: no concept is expressed by more than one option label', () => {
 })
 
 // ---- 6. one primary button per surface ----
+// L4 is closed: one continue, at the bottom, and the page's own action is
+// secondary wherever there is something to continue to.
 const RULE6_WAIVED: Waiver[] = [
-  { id: 'L4', match: 'Start: 2 primary' },
-  { id: 'L4', match: 'Baseline: 2 primary' },
-  { id: 'L4', match: 'Scan: 2 primary' },
   { id: 'R11', match: 'Roadmap: 3 primary' },
   { id: 'C18', match: 'Prompt pack: 4 primary' },
   { id: 'R21', match: 'Q3 — Which countries do your people sign in from?: 3 primary' },

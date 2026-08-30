@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react'
+import { Button } from './Button.tsx'
 import { Chip } from './Chip.tsx'
 import type { ChipStatus } from './Chip.tsx'
 import { COMPONENTS } from '../../copy/components.ts'
 
 const T = COMPONENTS.stepper
+const COLLAPSE_KEY = 'iamai.nav.collapsed'
 
 export type StepperStatus = 'notStarted' | 'inProgress' | 'done' | 'attention' | 'provisional'
 
@@ -27,8 +30,35 @@ export function Stepper({
   reference: StepperItem[]
   active: string
 }) {
+  // L1: the collapse survives a reload, because a nav that reopens every visit
+  // is a nav nobody bothers collapsing. Storage can throw (private windows,
+  // blocked site data), so a failure just means the default.
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(COLLAPSE_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0')
+    } catch {
+      // A preference that cannot be saved is still a preference for this visit.
+    }
+  }, [collapsed])
+
   return (
-    <nav className="stepper" aria-label={T.nav}>
+    <nav className={`stepper ${collapsed ? 'is-collapsed' : ''}`} aria-label={T.nav}>
+      <Button
+        size="sm"
+        variant="quiet"
+        className="stepper-collapse"
+        icon="chevron"
+        aria-label={collapsed ? T.expand : T.collapse}
+        title={collapsed ? T.expand : T.collapse}
+        onClick={() => setCollapsed((c) => !c)}
+      />
       <div className="stepper-group-title">{T.steps}</div>
       {steps.map((s, i) => {
         const chip = CHIP[s.status ?? 'notStarted']
@@ -41,15 +71,15 @@ export function Stepper({
             aria-label={`${i + 1}. ${s.label}${chip ? `, ${chip.text}` : ''}${active === s.route ? `, ${T.currentStep}` : ''}`}
           >
             <span className="stepper-num">{i + 1}</span>
-            <span>{s.label}</span>
-            {chip && <Chip status={chip.status}>{chip.text}</Chip>}
+            <span className="stepper-label">{s.label}</span>
+            {chip && !collapsed && <Chip status={chip.status}>{chip.text}</Chip>}
           </a>
         )
       })}
       <div className="stepper-group-title">{T.reference}</div>
       {reference.map((s) => (
         <a key={s.route} href={`#/${s.route}`} className={`stepper-item ${active === s.route ? 'active' : ''}`} aria-label={s.label}>
-          <span>{s.label}</span>
+          <span className="stepper-label">{s.label}</span>
         </a>
       ))}
     </nav>

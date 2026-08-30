@@ -1,5 +1,5 @@
 {
- "fingerprint": "3158541bddb014e7",
+ "fingerprint": "391e9bd6a00ee40e",
  "surfaces": [
   {
    "name": "Start",
@@ -54,17 +54,11 @@
    "nav": [
     {
      "label": "Get started",
-     "at": "top",
-     "inFooterSlot": false
-    },
-    {
-     "label": "Get started",
      "at": "bottom",
      "inFooterSlot": true
     }
    ],
    "primary": [
-    "Get started",
     "Get started"
    ],
    "tables": [],
@@ -387,7 +381,6 @@
     }
    ],
    "primary": [
-    "Load this baseline",
     "Next: Scan"
    ],
    "tables": [],
@@ -468,7 +461,6 @@
     }
    ],
    "primary": [
-    "Re-scan tenant",
     "Next: Setup"
    ],
    "tables": [],
@@ -648,10 +640,11 @@
     "Named locations",
     "Authentication",
     "People",
+    "Groups",
     "Devices",
     "Roles",
-    "Licensing",
     "Apps",
+    "Licensing",
     "Sign-in records"
    ],
    "buttons": [
@@ -659,10 +652,11 @@
     "Named locations",
     "Authentication",
     "People",
+    "Groups",
     "Devices",
     "Roles",
-    "Licensing",
     "Apps",
+    "Licensing",
     "Sign-in records",
     "Policy",
     "State",
@@ -712,8 +706,8 @@
    },
    "wordCounts": {
     "headings": 1,
-    "tabs": 11,
-    "buttons": 15,
+    "tabs": 12,
+    "buttons": 16,
     "options": 0,
     "links": 0,
     "chips": 3,
@@ -723,7 +717,7 @@
     "summaries": 0,
     "tips": 5,
     "sentences": 13,
-    "total": 55
+    "total": 57
    }
   },
   {

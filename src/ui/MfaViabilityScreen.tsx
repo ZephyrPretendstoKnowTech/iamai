@@ -311,7 +311,8 @@ export function MfaViabilityScreen({
       nextLabel={SCAN.next}
     >
       <p className="row">
-        <Button variant="primary" icon="refresh" onClick={() => void scan()} loading={scanState === 'running' || scanState === 'paused'}>
+        {/* L4: primary only when there is nothing to continue to yet. */}
+        <Button variant={snapshot ? 'secondary' : 'primary'} icon="refresh" onClick={() => void scan()} loading={scanState === 'running' || scanState === 'paused'}>
           {snapshot ? SCAN.rescan : SCAN.scan}
         </Button>
       </p>
