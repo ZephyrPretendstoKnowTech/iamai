@@ -289,6 +289,14 @@ nav.stepper.is-collapsed .stepper-collapse .icon { transform: rotate(-90deg); }
      sideways. Given its own line it is sized by the line, not by its content. */
   .topbar-right {
     flex: 1 0 100%;
+    /* A hard cap as well as the basis. On the runner the box still measured its
+       max-content width (357px in a 336px content box) with the basis alone,
+       and I could not reproduce that here to find out why. max-width resolves
+       against the containing block in every engine, so the box cannot exceed
+       its line whatever the flex sizing does. Nothing is hidden: the buttons
+       wrap inside it. */
+    max-width: 100%;
+    min-width: 0;
     margin-left: 0;
     flex-wrap: wrap;
     justify-content: flex-start;

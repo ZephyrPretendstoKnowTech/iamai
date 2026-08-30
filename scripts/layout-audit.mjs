@@ -111,6 +111,9 @@ const evaluate = async (expr) => {
 }
 await send('Page.enable')
 await send('Runtime.enable')
+// Printed because a layout difference between this machine and CI is usually a
+// browser or font difference, and the version is the first thing worth knowing.
+console.log('layout-audit: ' + (await (await fetch(`http://localhost:${CDP_PORT}/json/version`)).json()).Browser)
 
 const resize = (width) =>
   send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 700 })
