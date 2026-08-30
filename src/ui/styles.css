@@ -150,13 +150,33 @@ nav.stepper {
   border-right: 1px solid var(--border);
   padding: var(--space-4) 0;
   background: var(--surface);
-  /* Stays in view while the page scrolls; scrolls itself when taller than the window. */
+  /* L1: fills the viewport rather than stopping where its content does, so the
+     background does not end partway down a long page. Sticky, and scrolls
+     itself when its own content is taller than the window. */
   position: sticky;
   top: 0;
   align-self: start;
-  max-height: 100vh;
+  height: 100vh;
   overflow-y: auto;
+  transition: width 0.15s ease;
 }
+
+/* L1: collapsed to icons and numbers; the choice persists across visits. */
+nav.stepper.is-collapsed {
+  width: 3.25rem;
+  overflow-x: hidden;
+}
+nav.stepper.is-collapsed .stepper-label,
+nav.stepper.is-collapsed .stepper-group-title {
+  display: none;
+}
+.stepper-collapse {
+  display: block;
+  margin: 0 var(--space-3) var(--space-3);
+}
+/* The chevron points the way the click goes. */
+nav.stepper:not(.is-collapsed) .stepper-collapse .icon { transform: rotate(90deg); }
+nav.stepper.is-collapsed .stepper-collapse .icon { transform: rotate(-90deg); }
 
 .stepper-group-title {
   padding: 0 var(--space-5);

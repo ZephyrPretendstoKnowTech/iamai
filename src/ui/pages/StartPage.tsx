@@ -8,9 +8,6 @@ export function StartPage() {
       <div className="band hero">
         <h1>{START.headline}</h1>
         <p>{START.subhead}</p>
-        <p>
-          <LinkButton href="#/connect">{START.cta}</LinkButton>
-        </p>
       </div>
 
       <div className="band">

@@ -117,7 +117,9 @@ export function BaselinePage({
       ))}
       <AboutCard index={index} policies={result?.pkg.policies.length ?? null} />
       <p className="row">
-        <Button variant="primary" onClick={() => void loadPinned()} loading={busy !== null}>
+        {/* L4: the continue at the bottom is the page's primary action; the
+            page's own action is secondary, so one page offers one next move. */}
+        <Button onClick={() => void loadPinned()} loading={busy !== null}>
           {BASELINE.load}
         </Button>
         <span className="muted">
