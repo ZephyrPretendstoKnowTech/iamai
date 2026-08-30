@@ -157,6 +157,7 @@ export const SETUP_PAGE = {
   noServiceAccounts: 'No service accounts detected, so nothing needs a carve-out; the plan records that.',
   noTrustedLocations: 'No named locations exist yet: the plan creates them as its first steps.',
   findingsCount: (n: number) => (n === 0 ? 'checks passed' : `${n} to fix`),
+  unknownCount: (n: number) => `${n} could not be checked`,
   notesCount: (n: number) => `checked · ${n === 1 ? '1 note' : `${n} notes`}`,
   nothingToCheck: 'nothing to check',
   /** The two emergency-access facts Microsoft Graph exposes nowhere (validation-rules.md §3). */
@@ -213,6 +214,9 @@ export const VALIDATION_ACTION = {
   methods: { label: 'Entra admin center → Protection → Authentication methods → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/AuthenticationMethodsMenuBlade/~/AdminAuthMethods' },
   drill: { label: 'Break-glass drill step in the Roadmap', href: '#/roadmap/step/s-recurring-break-glass-drill' },
   pickAnother: { label: 'Pick a different account above', href: '#/mapping' },
+  // Two accounts are needed, so when only one is nominated the action is to add
+  // the second, not to replace the first (review-08 E1, prompt 40 §14).
+  addAnother: { label: 'Add a second account above', href: '#/mapping' },
   policies: { label: 'Entra admin center → Protection → Conditional Access → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/Policies' },
   roles: { label: 'Entra admin center → Roles & admins → Global Administrator', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles' },
   namedLocations: { label: 'Entra admin center → Protection → Conditional Access → Named locations', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/NamedLocations' },

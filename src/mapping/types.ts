@@ -41,6 +41,8 @@ export type ValidationResult = {
   toFix?: number
   /** Recommended findings, after the must-fix block; the rest are notes. */
   recommended?: number
+  /** Checks that could not be run: their own category, never recommendations. */
+  unknown?: number
 }
 
 export type MappingRecord = {
