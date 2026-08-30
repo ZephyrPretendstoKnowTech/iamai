@@ -200,6 +200,12 @@ export type StepTracking = {
   evidenceQuality: 'enough' | 'thin' | 'none'
 }
 
-export type FailureMode = { title: string; applies: 'yes' | 'no' | 'unknown'; evidence: string }
+/** Where the warning comes from: a Microsoft page, or an explicit field-practice label (audit-program §6). */
+export type FailureMode = {
+  title: string
+  applies: 'yes' | 'no' | 'unknown'
+  evidence: string
+  citation?: import('../copy/validation.ts').Citation
+}
 export type Verify = { where: string[]; filter: string | null; good: string }
 export type HelpDesk = { callsAbout: string[]; whatToSay: string[] }

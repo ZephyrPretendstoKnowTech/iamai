@@ -444,7 +444,7 @@
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-app-enforced-restrictions",
-      "tldr": "On unmanaged devices, let people read but limit downloads and session lifetime.",
+      "tldr": "Limit what an unmanaged browser can do. This and the download block are the same mechanism, app-enforced restrictions, so they are configured once in SharePoint and Exchange and referenced by one Conditional Access policy.",
       "cis": [
         "4.3"
       ]
@@ -522,7 +522,7 @@
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-unknown-unsupported",
-      "tldr": "If you only support Windows/iOS/Android/macOS, block everything else.",
+      "tldr": "Block platforms Entra cannot identify. Microsoft positions this as the companion to the app protection policy, which covers iOS and Android and leaves everything else open; on its own it also stops Linux and any browser the tenant has not accounted for.",
       "cis": [
         "4.1"
       ]
@@ -727,7 +727,7 @@
       "id": "token-protection",
       "name": "Windows desktop sessions require token protection",
       "description": "Windows sessions require token protection (secure sign-in session).",
-      "phase": 6,
+      "phase": 7,
       "domain": "Sessions",
       "securityValue": 3,
       "baseEffort": 3,
@@ -758,7 +758,7 @@
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-token-protection",
-      "tldr": "Bind Windows sign-in tokens to the device so stolen tokens are useless elsewhere.",
+      "tldr": "Bind the session token to the device so a stolen token is useless elsewhere. Generally available for native apps on Windows, iOS and macOS and in preview for browsers; clients that cannot do it are blocked rather than downgraded, so PowerShell against SharePoint, perpetual Office and meeting-room devices stop working.",
       "cis": [
         "4.3"
       ]
@@ -956,7 +956,7 @@
       ],
       "free": [],
       "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-app-enforced-restrictions",
-      "tldr": "Let unmanaged devices read but not download from SharePoint and Exchange.",
+      "tldr": "Stop downloads to devices the organisation does not manage. This and the browser session limit are the same mechanism, app-enforced restrictions: browsing still works, and Anyone links, older clients and file previews are not covered by it.",
       "cis": [
         "3.3"
       ]

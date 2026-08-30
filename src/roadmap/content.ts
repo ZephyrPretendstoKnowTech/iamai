@@ -4,6 +4,8 @@
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { FAILURE, HELP_DESK, VERIFY } from '../copy/stepContent.ts'
+import { FIELD_PRACTICE } from '../copy/validation.ts'
+import type { Citation } from '../copy/validation.ts'
 import { countryName } from '../mapping/countries.ts'
 import { READINESS_THRESHOLD_MFA_PERCENT } from './constants.ts'
 import type { FailureMode, HelpDesk, Step, Verify } from './types.ts'
@@ -25,6 +27,23 @@ export type ContentContext = {
   trustedLocations: number
 }
 
+/** The Microsoft page behind each family's warnings (audit-program §6). */
+const FAMILY_CITATION: Record<string, Citation> = {
+  registration: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-security-info-registration', label: 'Microsoft: control security info registration' },
+  block: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication', label: 'Microsoft: block legacy authentication' },
+  deviceCode: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-authentication-flows', label: 'Microsoft: authentication flows' },
+  device: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-compliance', label: 'Microsoft: require a compliant device' },
+  location: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network', label: 'Microsoft: network assignment and named locations' },
+  mfa: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-grant', label: 'Microsoft: Conditional Access grant controls' },
+  guest: { url: 'https://learn.microsoft.com/entra/external-id/authentication-conditional-access', label: 'Microsoft: Conditional Access for external users' },
+  admin: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa', label: 'Microsoft: phishing-resistant MFA for admins' },
+  session: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-session-lifetime', label: 'Microsoft: Conditional Access session lifetime' },
+  generic: { url: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-report-only', label: 'Microsoft: report-only mode' },
+}
+
+/** Warnings that are real and that Microsoft does not document. */
+const PRACTICE_TITLES = /seen in the field/i
+
 const evidenceUsable = (snapshot: TenantSnapshot): boolean => {
   const st = snapshot.sources.signInEvidence?.status
   return st === 'ok' || st === 'partial'
@@ -43,8 +62,10 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
   const family = step.readiness.family
   const active = activeIn(step, ctx)
   const modes: FailureMode[] = []
-  const mode = (title: string, applies: FailureMode['applies'], evidence: string): void => {
-    modes.push({ title, applies, evidence })
+  const citationOf = (title: string, key: string): Citation =>
+    PRACTICE_TITLES.test(title) ? FIELD_PRACTICE : (FAMILY_CITATION[key] ?? FAMILY_CITATION.generic)
+  const mode = (title: string, applies: FailureMode['applies'], evidence: string, key: string = family): void => {
+    modes.push({ title, applies, evidence, citation: citationOf(title, key) })
   }
 
   // Security-info registration is its own shape: the policy that asks for MFA
@@ -54,16 +75,17 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
     const regKnown = snapshot.sources.registrationDetails?.status === 'ok'
     const noMethod = active.filter((id) => ctx.viability.get(id)?.mfa === 'none').length
     const remoteEv = !regKnown ? F.evidence.unknown : noMethod > 0 ? F.evidence.noMethod(noMethod) : F.evidence.allSet
-    mode(F.remote, !regKnown ? 'unknown' : noMethod > 0 ? 'yes' : 'no', remoteEv)
+    mode(F.remote, !regKnown ? 'unknown' : noMethod > 0 ? 'yes' : 'no', remoteEv, 'registration')
     mode(
       F.noTap,
       ctx.tapEnabled === null ? 'unknown' : ctx.tapEnabled ? 'no' : 'yes',
       ctx.tapEnabled === null ? F.evidence.tapUnknown : ctx.tapEnabled ? F.evidence.tapOn : F.evidence.tapOff,
+      'registration',
     )
     const guests = ctx.guestIds.size
-    mode(F.guests, guests > 0 ? 'yes' : 'no', guests > 0 ? F.evidence.guests(guests) : F.evidence.guestsNone)
-    mode(F.passwordless, 'yes', F.evidence.passwordless)
-    mode(F.servicePrincipals, 'unknown', F.evidence.servicePrincipals)
+    mode(F.guests, guests > 0 ? 'yes' : 'no', guests > 0 ? F.evidence.guests(guests) : F.evidence.guestsNone, 'registration')
+    mode(F.passwordless, 'yes', F.evidence.passwordless, 'registration')
+    mode(F.servicePrincipals, 'unknown', F.evidence.servicePrincipals, 'registration')
     if (ctx.trustedLocations === 0) mode(FAILURE.geo.residential, 'yes', F.evidence.noTrustedLocation)
     mode(FAILURE.generic.misconfig, 'unknown', FAILURE.generic.evidence)
     return modes

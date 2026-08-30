@@ -35,6 +35,7 @@ import { EmptyState } from '../components/EmptyState.tsx'
 import { Term } from '../components/Term.tsx'
 import { EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
 import { LADDER } from '../../copy/ladder.ts'
+import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
 import { PLAIN_TITLES } from '../../copy/plain.ts'
 import { LOG, NEXT } from '../../copy/next.ts'
@@ -1873,6 +1874,19 @@ function StepCard({
               <li key={i} className={`applies-${m.applies}`}>
                 <strong>{m.title}</strong> <Chip status={m.applies === 'yes' ? 'warning' : m.applies === 'no' ? 'done' : 'neutral'}>{SECTION.applies[m.applies]}</Chip>
                 <div className="sub">{m.evidence}</div>
+                {/* Where the warning comes from, or that nobody documents it (audit-program §6). */}
+                {m.citation === FIELD_PRACTICE ? (
+                  <div className="reason">{CITATION.fieldPractice}</div>
+                ) : (
+                  m.citation && (
+                    <div className="reason">
+                      {CITATION.source}:{' '}
+                      <a href={m.citation.url} target="_blank" rel="noopener noreferrer">
+                        {m.citation.label}
+                      </a>
+                    </div>
+                  )
+                )}
               </li>
             ))}
           </ul>

@@ -2,9 +2,9 @@
 // (validation-rules.md §5). Documentation and proof in one page: a rule that
 // is not in the registry is not on this page, and a rule that is cannot be
 // dropped without the regression test failing.
-import { REGISTRY, ruleText } from '../../validation/rules.ts'
+import { REGISTRY, citationFor, ruleText } from '../../validation/rules.ts'
 import type { RuleSeverity, RuleSubject } from '../../validation/rules.ts'
-import { CHECKS_PAGE, NEED_LABEL, SEVERITY, SEVERITY_WHY, SUBJECT } from '../../copy/validation.ts'
+import { CHECKS_PAGE, CITATION, FIELD_PRACTICE, NEED_LABEL, SEVERITY, SEVERITY_WHY, SUBJECT } from '../../copy/validation.ts'
 import { Card, Chip, DataTable, LinkButton } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 
@@ -23,6 +23,7 @@ export function ChecksPage() {
       <p>{CHECKS_PAGE.intro}</p>
       <p className="reason">{CHECKS_PAGE.counts(counts.blocker, counts.warning, counts.note)}</p>
       <p className="reason">{CHECKS_PAGE.unknownRule}</p>
+      <p className="reason">{CHECKS_PAGE.sources}</p>
       {subjects.map((subject) => {
         const rows = REGISTRY.filter((r) => r.subject === subject)
         return (
@@ -48,6 +49,22 @@ export function ChecksPage() {
                   key: 'needs',
                   header: CHECKS_PAGE.columns.needs,
                   render: (r) => (r.needs.length === 0 ? CHECKS_PAGE.needsNone : r.needs.map((n) => NEED_LABEL[n] ?? n).join(', ')),
+                },
+                {
+                  // A check with no source is a check nobody has verified
+                  // (audit-program §6); field practice says so in as many words.
+                  key: 'source',
+                  header: CITATION.source,
+                  render: (r) => {
+                    const c = citationFor(r.id)
+                    if (c === undefined) return null
+                    if (c === FIELD_PRACTICE) return <span className="reason">{CITATION.fieldPracticeShort}</span>
+                    return (
+                      <a href={c.url} target="_blank" rel="noopener noreferrer">
+                        {c.label}
+                      </a>
+                    )
+                  },
                 },
               ]}
             />

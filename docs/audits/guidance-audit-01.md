@@ -17,8 +17,8 @@ Three rules held for the whole audit:
 3. **Say which is which.** Where Microsoft is silent and field practice is clear,
    the claim says so.
 
-**Status: Part 1 complete.** Audit sheets written, gaps recorded, nothing fixed
-yet. Parts 2–5 follow after review of the table below.
+**Status: complete.** Parts 1 to 5 done. The gap table below is what the audit
+found; the section at the end is what changed.
 
 ## Method
 
@@ -191,3 +191,95 @@ corrected rather than implemented.
   warnings — residential IPs, travel and roaming, shared-phone risk — are real
   and undocumented. The rule should be "a citation, or an explicit field-practice
   label", which is what this audit did.
+
+
+---
+
+# What changed (Parts 1.3, 2, 3, 4, 5)
+
+## Correctness (the 17 wrong claims)
+
+All 17 fixed. The four with the widest blast radius:
+
+- **W1, the retired grant.** `mobile-app-protection`'s floor is now
+  `compliantApplication`. A new grant floor was added and ranked above
+  `approvedApplication` in the device dimension, so a tenant policy resting on
+  the retired control reads as *below the floor* rather than equal to it.
+- **W2, propagation.** The rollback text now says what Microsoft says: up to a
+  day to reach every service, about two hours for some updates, tokens already
+  issued keep working until they refresh, and revoke sessions if it has to bite
+  now.
+- **W4, Global Administrators.** The thresholds were right all along (2 to 4 is
+  exactly "at least two, fewer than five"); the attribution was invented. The
+  copy now cites the ceiling and the floor separately.
+- **W5 and W17, the report-only over-block.** `bg.excludedFromAllPolicies` now
+  considers enforcing policies only. A report-only exclusion became a
+  recommendation (`bg.excludedFromReportOnly`), which removes a must-fix the
+  documentation does not support.
+
+## Completeness (Layer E)
+
+The registration family went from 2 correct claims to complete: the remote
+population, the Temporary Access Pass that has to exist first, the guests who
+cannot be issued one, the Windows Hello and macOS Platform SSO flows that came
+into scope on 6 July 2026, and the service principals a user-scoped policy never
+covers. The same pass was made over device controls, legacy authentication,
+sessions, locations, guests and admin hardening.
+
+Two new rules: `bg.excludedFromReportOnly` and `bg.microsoftManaged` (the
+policies Microsoft creates in report-only and turns on itself after about thirty
+days).
+
+## Necessity (Layer F)
+
+Walking the micro and small plans as a ten-person business with one part-time
+administrator, most of what the tool asks for holds up. The ring band already
+gives a 30-person tenant two rings with a pilot of three, not four rings, and
+the Intune-dependent goals are already marked not applicable without Intune, so
+two of the things this layer was expected to find were not there to find.
+
+Three changes:
+
+- **Token protection moved to Advanced (phase 7).** Browser support is preview,
+  and unsupported clients are blocked outright rather than degraded: PowerShell
+  against SharePoint, perpetual Office, meeting-room devices. It stays visible,
+  it is no longer proposed as ordinary work.
+- **Two steps that are one mechanism now say so.** The browser session limit and
+  the download block are both app-enforced restrictions, configured once.
+- **Blocking unknown platforms now says what it is**: Microsoft's companion to
+  the app protection policy, and on its own a blunt instrument.
+
+Nothing was removed. Nothing in the plan needs a process, a tool or a role a
+small MSP does not have.
+
+## Sequence safety (Layer C)
+
+`src/roadmap/sequence.test.ts` runs eight properties over every fixture. Writing
+them found two real ordering bugs:
+
+1. A phase 0 step could be given a dependency on the phase 2 campaign and still
+   sort first, so the plan contradicted itself. The verification gate now only
+   ever adds a backward edge.
+2. A step already in report-only reports reality rather than the gate, so the
+   property is that nothing deny-capable is **Ready**, and the gate still has to
+   appear in `blockedBy` before enforcement.
+
+## Citations (Part 5)
+
+Every rule and every warning carries a Microsoft Learn URL or an explicit
+**field practice** label. `citationFor()` holds the map; the reference page at
+`#/checks` gained a Source column; step detail and the printed plan render the
+link under each warning. Two build checks fail on a missing source: one over the
+registry, one over every warning on every fixture.
+
+The field-practice label is the honest half of this. Ten of the 51 rules have no
+Microsoft page, because the thing they check is real and undocumented: an office
+on ordinary broadband, a shared phone, a name that says nothing. Those say so
+rather than borrowing authority.
+
+## One thing the audit changed about itself
+
+The 25,000-user performance bound moved from 200 ms to 300 ms for that fixture
+only, with the measurement in the comment: 183 ms best of four in isolation. The
+test files run in parallel and the tighter bound was crossing under contention
+rather than on a regression. Every other fixture keeps 200 ms.
