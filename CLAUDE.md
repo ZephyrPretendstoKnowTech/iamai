@@ -51,6 +51,12 @@ publishes.
 `deploy-pages` runs `npm test` before it builds, so a failing test blocks the
 deploy as well as the build. Both must be green.
 
+`npm test` is not the whole suite. CI also runs `npm run smoke`, which drives the
+built app in a browser, and it is the only check that sees rendered output. A
+copy rewrite that npm test accepts can still fail there, because smoke matches
+on what the page says. Run `npm test && npm run smoke` before pushing, not
+`npm test` alone.
+
 ## Product rules (2026-08-27)
 - IAMAI speaks as an advisor, never as a checklist — in the third person or the imperative (the UX rules below override the earlier first-person voice).
 - Names, never IDs, anywhere a human reads (`src/names.ts`); an id in parentheses only when it matters.
