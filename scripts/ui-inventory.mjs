@@ -218,8 +218,18 @@ await clickText('summary', '/What IAMAI will ask for/'); await sleep(500)
 await capture('Connect / permissions disclosure', 'disclosure expanded')
 
 await goto('/baseline');         await capture('Baseline')
-await goto('/scan');             await capture('Scan')
-if (await clickText('.tab, [role=tab]', '/Inventory/')) { await sleep(900); await capture('Scan / Inventory tab') }
+// A tabbed page is captured as chrome plus one surface per panel. Capturing the
+// whole page once per tab counts the title, the banner and the Next button once
+// per tab, which inflates every cross-surface count by the number of tabs.
+const VISIBLE_PANEL = `[...document.querySelectorAll('main.page .tab-panel')].find((p) => p.offsetParent !== null)`
+
+await goto('/scan')
+await capture('Scan', 'page chrome; tab panels are their own surfaces', undefined, '.tab-panel')
+await capture('Scan / Readiness tab', 'panel only', VISIBLE_PANEL)
+if (await clickText('.tab, [role=tab]', '/Inventory/')) {
+  await sleep(900)
+  await capture('Scan / Inventory tab', 'panel only', VISIBLE_PANEL)
+}
 
 // Setup: every question is its own surface, read from inside its own element
 // rather than by expanding one at a time. The questions render open, so
@@ -247,27 +257,36 @@ for (let i = 0; i < questionCount; i++) {
 }
 
 await goto('/coverage')
-await capture('Findings')
+await capture('Findings', 'page chrome; tab panels are their own surfaces', undefined, '.tab-panel')
+await capture('Findings / Summary tab', 'panel only', VISIBLE_PANEL)
 for (const tab of ['working', 'attention', 'Details']) {
-  if (await clickText('.tab, [role=tab]', `/${tab}/`)) { await sleep(900); await capture(`Findings / ${tab} tab`) }
+  if (await clickText('.tab, [role=tab]', `/${tab}/`)) { await sleep(900); await capture(`Findings / ${tab} tab`, 'panel only', VISIBLE_PANEL) }
 }
 
 await goto('/roadmap')
-await capture('Roadmap', 'default tab')
-for (const tab of ['^Plan', '^Watch', '^Schedule', '^Export', '^Progress']) {
-  if (await clickText('.tab, [role=tab]', `/${tab}/`)) { await sleep(1100); await capture(`Roadmap / ${tab.replace('^', '')} tab`) }
+await capture('Roadmap', 'page chrome; tab panels are their own surfaces', undefined, '.tab-panel')
+for (const tab of ['^Progress', '^Plan', '^Watch', '^Schedule', '^Export']) {
+  if (await clickText('.tab, [role=tab]', `/${tab}/`)) {
+    await sleep(1100)
+    await capture(`Roadmap / ${tab.replace('^', '')} tab`, 'panel only', VISIBLE_PANEL)
+  }
 }
 // One opened step: the twelve-part body is the densest surface in the app.
 if (await clickText('.tab, [role=tab]', '/^Plan/')) {
   await sleep(900)
-  if (await clickText('a.step-tile', '/./')) { await sleep(1100); await capture('Roadmap / Plan / one step opened', 'first step expanded') }
+  if (await clickText('a.step-tile', '/./')) {
+    await sleep(1100)
+    await capture('Roadmap / Plan / one step opened', 'panel only, first step expanded', VISIBLE_PANEL)
+  }
 }
 
 await goto('/licensing');        await capture('Licensing guide')
 await goto('/reads');            await capture('What IAMAI reads')
 await goto('/checks');           await capture('Every check IAMAI runs')
 await goto('/roadmap/prompts');  await capture('Prompt pack')
-await goto('/inventory');        await capture('Inventory')
+// #/inventory is not a page: App.tsx renders the same MfaViabilityScreen as
+// #/scan with view='inventory', so it is already captured as Scan / Inventory
+// tab. Walking it again would count Scan's chrome a third time.
 
 // ---- cross-surface tables ----
 //
@@ -436,15 +455,23 @@ string rendered seven times is seven rows here and one row in the source.
 
 **${surfaces.length} surfaces, ${totalWords} words.**
 
-## Duplicate concepts
+## Candidate duplicate concepts
 
-Found by clustering, not by a list of known offenders: any row here is one idea
-wearing more than one name. Nothing in this section knows any specific label.
+Found by clustering, not by a list of known offenders: nothing in this section
+knows any specific label, so a new synonym lands in the right row without anyone
+adding it to a list.
+
+**Each row is a candidate, not a verdict.** Two labels can share an intent and
+still drive different state: on this build "Not applicable to us" opens a
+required reason box and suppresses the question's checks, while "Nobody needs
+special care" is a one-click answer that leaves the checks running. Clustering
+sees the shared intent and cannot see the difference. Read the source before
+merging anything here.
 
 ### By intent
 
 Labels grouped by what they do, using small lemma sets. More than one label in a
-row means the app says the same thing several ways.
+row is a prompt to go and check whether they are one concept.
 
 | Intent | Labels | Which |
 |---|---|---|
