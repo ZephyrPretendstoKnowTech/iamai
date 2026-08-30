@@ -49,7 +49,13 @@
   --bg: #0a1220;
   --surface: #0f182b;
   --raised: #152038;
-  --border: #22304a;
+  /* L5: was #22304a, 1.34:1 against the surface — visible only if you were
+     looking for it. Raised so a card edge reads as an edge in both themes. */
+  --border: #425887;
+  /* L5: a control's edge is what identifies it as a control, so WCAG 1.4.11
+     asks 3:1 of it — more than a grouping container needs. Clears 3:1 on all
+     three dark surfaces (bg, surface, raised). */
+  --border-control: #5872a8;
   --text: #e6edf7;
   --muted: #8fa3bf;
   --accent: #2dd4bf;
@@ -85,7 +91,11 @@
   --bg: #f6f8fb;
   --surface: #ffffff;
   --raised: #f1f5f9;
-  --border: #dce3ee;
+  /* L5: was #dce3ee, 1.21:1 against the page. The light palette was added after
+     the dark one and its borders never got the same pass. */
+  --border: #a9b8d0;
+  /* Clears 3:1 on white, the page and the raised surface. */
+  --border-control: #70819e;
   --text: #0f172a;
   --muted: #5b6b82;
   --accent: #0b7f72;
@@ -113,7 +123,11 @@
     --bg: #ffffff;
     --surface: #ffffff;
     --raised: #f6f8fb;
-    --border: #dce3ee;
+    /* L5: was #dce3ee, 1.21:1 against the page. The light palette was added after
+     the dark one and its borders never got the same pass. */
+  --border: #a9b8d0;
+  /* Clears 3:1 on white, the page and the raised surface. */
+  --border-control: #70819e;
     --text: #0f172a;
     --muted: #5b6b82;
     --accent: #0b7f72;

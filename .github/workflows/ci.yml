@@ -24,7 +24,11 @@ jobs:
       # commit. See scripts/lint-mutations.mjs.
       - run: npm run lint-mutations
       - run: npm run build
-      # ubuntu-latest ships Google Chrome; the script finds it on its own.
+      # ubuntu-latest ships Google Chrome; the scripts find it on their own.
       - run: npm run smoke
+        env:
+          CHROME: /usr/bin/google-chrome
+      # Contrast in both themes and reflow at five widths (prompt 39 §7, §8).
+      - run: npm run layout-audit
         env:
           CHROME: /usr/bin/google-chrome
