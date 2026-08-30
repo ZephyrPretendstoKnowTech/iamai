@@ -40,7 +40,9 @@ type Surface = {
   occurrencesAll: Record<string, number>
 }
 
-const INVENTORY = 'docs/qa/ui-inventory.json'
+// scripts/lint-mutations.mjs points this at a deliberately corrupted copy to
+// prove each rule below still fails against a violation. Nothing else sets it.
+const INVENTORY = process.env.INVENTORY_JSON ?? 'docs/qa/ui-inventory.json'
 const raw = readFileSync(INVENTORY, 'utf8')
 const inventory = JSON.parse(raw) as { fingerprint: string; surfaces: Surface[] }
 const surfaces = inventory.surfaces
@@ -217,9 +219,16 @@ const FILLER: { phrase: RegExp; why: string }[] = [
 ]
 // "before anything else" is the blocker step's own plain title, added in
 // prompt 32 and caught here by the review's own seed list. 38 rewrites it.
+// Scoped to the surfaces that hold them today, for the reason given on rule 7:
+// a waiver on the phrase alone waives every future occurrence too.
 const RULE10_WAIVED: Waiver[] = [
-  { id: 'R8', match: '[nothing leaves the browser, outside the footer]' },
-  { id: 'R-new', match: '[Before anything else]' },
+  { id: 'R8', match: 'Start: [nothing leaves the browser' },
+  { id: 'R8', match: 'Scan: [nothing leaves the browser' },
+  { id: 'R-new', match: 'Roadmap: [Before anything else]' },
+  { id: 'R-new', match: 'Roadmap / Plan tab: [Before anything else]' },
+  { id: 'R-new', match: 'Roadmap / Plan / one step opened: [Before anything else]' },
+  { id: 'R-new', match: 'Roadmap / Schedule tab: [Before anything else]' },
+  { id: 'R-new', match: 'Prompt pack: [Before anything else]' },
 ]
 
 test('rule 10: no filler phrases', () => {
