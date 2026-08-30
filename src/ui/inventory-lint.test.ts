@@ -197,7 +197,6 @@ const FILLER: { phrase: RegExp; why: string }[] = [
 // a waiver on the phrase alone waives every future occurrence too. The Scan
 // subtitle and the two Roadmap tab-level surfaces closed with R8, R12 and R13.
 const RULE10_WAIVED: Waiver[] = [
-  { id: 'R8', match: 'Start: [nothing leaves the browser' },
   { id: 'R-new', match: 'Roadmap / Plan tab: [Before anything else]' },
   { id: 'R-new', match: 'Roadmap / Plan / one step opened: [Before anything else]' },
   { id: 'R-new', match: 'Roadmap / Schedule tab: [Before anything else]' },

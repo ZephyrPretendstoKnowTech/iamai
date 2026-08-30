@@ -70,8 +70,20 @@ Everything stays in your browser:
 - **localStorage**: one flag that you have seen the Start page, and the theme.
 
 "Forget this tenant" (top right) deletes every IndexedDB store for that tenant and signs
-you out, which clears the token cache. Nothing is sent to any server: the app has no
-backend, no analytics, no error reporting, no fonts or scripts from a CDN.
+you out, which clears the token cache.
+
+No tenant data is sent anywhere on its own. The app has no backend, no analytics, no error
+reporting, and no fonts or scripts from a CDN; the only hosts it contacts are
+`graph.microsoft.com` (the tenant's own data), `login.microsoftonline.com` (sign-in) and
+`raw.githubusercontent.com` (the pinned baseline files, which carry no tenant data).
+
+Data moves when you choose to move it, and only then: saving a plan file, a change record
+or a CSV; downloading the grounding bundle; copying a prompt to the clipboard; printing;
+and the feedback panel, which opens your mail client with a pre-filled message you send
+yourself. Everything on that list is redacted before it leaves, except the two surfaces
+that say otherwise on screen: the grounding bundle when you clear its redaction checkbox,
+and the printed document. See `src/ui/exportGuard.ts` — every export in the app routes
+through it, and `src/ui/exportGuard.test.ts` fails the build if one does not.
 
 ## What it never does
 
