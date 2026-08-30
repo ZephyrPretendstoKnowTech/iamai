@@ -10,6 +10,7 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from './generate.ts'
 import { mergePersisted, skipStep } from './progress.ts'
+import { isEmergencyAccess } from './blockerSteps.ts'
 import { PLAN_SCHEMA_VERSION, buildPlanFile, makeCheckpoint, parsePlanFile } from './plan.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { buildQuestions } from '../mapping/questions.ts'
@@ -44,7 +45,10 @@ test('round trip: steps, Setup answers and checkpoints survive save, forget, loa
   // Answers made in Setup travel with the plan.
   const mapping = { ...emptyMappingState(snapshot.tenantId), breakGlassUserIds: ['u-4'], highCareUserIds: ['u-3'], allowedCountries: ['AU'] }
   const steps = generate(mapping)
-  const skippable = steps.find((s) => s.status !== 'done' && s.kind !== 'recurring')
+  // Emergency access is refused, and everything else is not (prompt 44 item 6).
+  const emergency = steps.find((s) => isEmergencyAccess(s) && s.status !== 'done')
+  if (emergency) assert.equal(skipStep(emergency, 'Not this quarter').ok, false, 'emergency access cannot be skipped')
+  const skippable = steps.find((s) => s.status !== 'done' && s.kind !== 'recurring' && !isEmergencyAccess(s))
   assert.ok(skippable)
   assert.equal(skipStep(skippable, 'Not this quarter').ok, true)
   const checkpoint = makeCheckpoint({ snapshot, coverage, summary: summarizeTenant(viability), exclusionGroups: [], breakGlassIds: ['u-4'] })

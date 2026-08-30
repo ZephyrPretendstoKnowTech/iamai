@@ -10,6 +10,7 @@ import { buildStrengthLookup } from '../coverage/strength.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from './generate.ts'
+import { isEmergencyAccess } from './blockerSteps.ts'
 import { applyProgress, mergePersisted, skipStep } from './progress.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { emptyMappingState } from '../mapping/types.ts'
@@ -78,7 +79,9 @@ test('a step marked done from a saved plan or a re-scan cites the note and the d
   const { steps, coverage, snapshot } = plan(fixtureSnapshot(), emptyMappingState('t'))
   // A prerequisite: applyProgress leaves those alone, so the saved status stands
   // (a create step whose goal is still missing would rightly re-open as drift).
-  const target = steps.find((s) => s.status !== 'done' && s.kind === 'prerequisite')
+  // Not an emergency-access prerequisite: those cannot be skipped, and the last
+  // assertion here is about the skipped state reason (prompt 44 item 6).
+  const target = steps.find((s) => s.status !== 'done' && s.kind === 'prerequisite' && !isEmergencyAccess(s))
   assert.ok(target)
   const saved = { [target.id]: { status: 'done' as const, history: [{ at: '2026-08-20T09:00:00Z', from: 'ready' as const, to: 'done' as const, note: 'policy enabled in the tenant' }], skipReason: null } }
   mergePersisted(steps, saved)
