@@ -51,3 +51,4 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `37-truth-and-consistency.md` | One source per number, blocked reasons, rings, schedule bundling and tenant rhythm | 36 done |
 | `38-remove-and-rewrite.md` | 22 removals, Start page rewrite, 20 copy fixes | 37 done |
 | `39-layout-platform-permissions.md` | Sidebar, Scan order, tabs, light theme, responsive, Application.Read.All decision | 38 done |
+| `40-truth-engine-and-schedule.md` | Why 37 did not hold: one derivation for every count, blocked reasons that are true, the ring model reaching the calendar, build stamp and cache | 39 done; the security fixes committed; docs/qa/review-08-findings.md present |

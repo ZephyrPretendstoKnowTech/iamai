@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadPlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { applicableGoals, goalCounts } from '../../derive/sets.ts'
+import { applicableGoals, goalCounts, peopleCounts } from '../../derive/sets.ts'
 import { activeWizardQuestions } from '../../mapping/wizard.ts'
 import { computeCoverage } from '../../coverage/coverage.ts'
 import type { CoverageReport, GoalResult, GoalStatus } from '../../coverage/types.ts'
@@ -222,6 +222,8 @@ export function CoveragePage({
   // goalsCoveredBy() — which counts matched goals in the unfiltered baseline
   // package, a different set over different data. That is how the header came
   // to read "1 goal in this baseline, 16 apply to this tenant" (T3).
+  // One set of people for every number on this page (prompt 40 §4, §5).
+  const people = peopleCounts(snapshot, snapshot.asOf, new Set(mapping?.serviceAccountUserIds ?? []))
   const goals = goalCounts(report)
   const applicable = applicableGoals(report)
   const enforced = applicable.filter((r) => r.status === 'enforced')
@@ -244,7 +246,7 @@ export function CoveragePage({
     partly: partial.length,
     missing: absent.length,
     scored: scoredCount,
-    users: snapshot.users.length,
+    users: people.directory,
     active,
     rollout: summary.rollout,
     working: enforced.map((r) => lowerFirst(r.goal.name)),
@@ -266,7 +268,7 @@ export function CoveragePage({
         <StatTile value={enforced.length} label={C.tiles.inPlace} tone="success" tip={TILE.inPlace} />
         <StatTile value={partial.length} label={C.tiles.partly} tone="warning" tip={TILE.partly} />
         <StatTile value={absent.length} label={C.tiles.missing} tone="danger" tip={TILE.missing} />
-        <StatTile value={`${report.summary.scoredPercent}%`} label={C.tiles.scored} tip={TILE.scoredGoals} />
+        <StatTile value={`${goals.applicable === 0 ? 0 : Math.round((goals.inPlace / goals.applicable) * 100)}%`} label={C.tiles.scored} tip={TILE.scoredGoals} />
         <StatTile value={`${summary.rollout.enabled === 0 ? 0 : Math.round((summary.rollout.proven / summary.rollout.enabled) * 100)}%`} label={C.tiles.proven} tone="success" tip={TILE.mfaProven} />
         <StatTile value={summary.rollout.toSetUp} label={C.tiles.toSetUp} tone={summary.rollout.toSetUp === 0 ? 'neutral' : 'warning'} tip={TILE.toSetUp} />
       </Stats>

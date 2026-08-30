@@ -10,7 +10,7 @@ import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
-import { isNonPerson } from '../derive/sets.ts'
+import { heldBy, isNonPerson } from '../derive/sets.ts'
 import { accountVerdict } from './strand.ts'
 import { policyCountFor } from './policyCount.ts'
 import { describePopulation, populationContext } from './population.ts'
@@ -1341,7 +1341,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // What the escape hatch is actually holding, now that the goal steps exist.
   if (gate !== null) {
-    const held = steps.filter((s) => s.blockedBy.includes(gate.stepId)).length
+    // The blocked steps this gate is holding — a named subset of the one
+    // blocked set, not a fourth count of its own (prompt 40 §9).
+    const held = heldBy(steps, gate.stepId).length
     for (const report of validationReports) {
       const step = steps.find((s) => s.id === blockerStepId(report.subject))
       if (step) step.impact = BLOCKER_STEP.impact(report.blocking.length, GATING_SUBJECTS.includes(report.subject) ? held : 0)

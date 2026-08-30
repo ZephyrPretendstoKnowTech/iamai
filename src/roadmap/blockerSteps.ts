@@ -9,6 +9,7 @@
 //
 // Pure: no DOM, no network.
 import { BLOCKER_STEP, SEVERITY, SUBJECT, SUBJECT_PLAIN, SUBJECT_WHERE } from '../copy/validation.ts'
+import { heldBy } from '../derive/sets.ts'
 import { ruleText } from '../validation/rules.ts'
 import type { RuleResult, RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
@@ -120,3 +121,22 @@ export function gateReason(reports: SubjectReport[]): { stepId: string; label: s
 }
 
 export const SEVERITY_LABEL = SEVERITY
+
+/**
+ * Recompute what each validation-blocker step is holding, once statuses are
+ * final.
+ *
+ * The count is baked into `impact` when the step is built, which is before
+ * `mergePersisted` and `applyProgress` have moved anything. On the live site
+ * that gap showed as "14 steps that can deny access are held" beside a tile
+ * reading "13 steps blocked" (review-08 A9). Both now count the same set, at
+ * the same moment.
+ */
+export function refreshBlockerImpact(steps: Step[]): void {
+  for (const step of steps) {
+    if (!step.validationBlocker) continue
+    const held = GATING_SUBJECTS.some((s) => blockerStepId(s) === step.id) ? heldBy(steps, step.id).length : 0
+    const open = step.exitCriteria.length > 0 ? step.exitCriteria.length - 1 : 0
+    step.impact = BLOCKER_STEP.impact(open, held)
+  }
+}

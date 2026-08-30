@@ -171,3 +171,34 @@ export function goalCounts(report: CoverageReport): GoalCounts {
     unknown: is('unknown'),
   }
 }
+
+/**
+ * Steps nothing can start yet. The one blocked set (prompt 40 §9).
+ *
+ * Five places counted this independently and printed three different numbers on
+ * one screen: "20 steps that can deny access are held", "15 blocked", and "18
+ * steps waiting on Setup question 2" (review-08 A9). They were not disagreeing
+ * about arithmetic — they were three different subsets, each described as
+ * though it were the whole. So the set is defined once, and anything narrower
+ * is expressed as a subset of it rather than as its own count.
+ */
+export function blockedSteps(steps: Step[]): Step[] {
+  return trackableSteps(steps).filter((s) => s.status === 'blocked')
+}
+
+/** The blocked steps a particular step is holding up. A subset, and named as one. */
+export function heldBy(steps: Step[], blockerStepId: string): Step[] {
+  return blockedSteps(steps).filter((s) => s.blockedBy.includes(blockerStepId))
+}
+
+/** The blocked steps waiting on a Setup answer, by question number. */
+export function waitingOnSetup(steps: Step[]): Map<number, Step[]> {
+  const out = new Map<number, Step[]>()
+  for (const s of blockedSteps(steps)) {
+    for (const b of s.blockers) {
+      if (b.kind !== 'setup') continue
+      out.set(b.questionNumber, [...(out.get(b.questionNumber) ?? []), s])
+    }
+  }
+  return out
+}

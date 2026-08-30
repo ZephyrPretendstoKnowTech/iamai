@@ -7,6 +7,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { PROGRESS, TRACK } from '../copy/progress.ts'
+import { heldBy, trackableSteps } from '../derive/sets.ts'
 import { findTaggedPolicy } from './generate.ts'
 import type { Checkpoint } from './plan.ts'
 import type { Schedule } from './schedule.ts'
@@ -15,6 +16,13 @@ import type { Step, StepStatus, StepTracking } from './types.ts'
 type PolicyRow = { id?: string; displayName?: string; state?: string; createdDateTime?: string; modifiedDateTime?: string; conditions?: { users?: { includeUsers?: string[]; includeGroups?: string[] } } }
 
 const RANK: Record<StepStatus, number> = { blocked: 0, ready: 0, 'in-report-only': 1, 'ready-to-enforce': 2, done: 3, skipped: -1 }
+/**
+ * Executed steps needed before a completion date is projected. Below this the
+ * page says the projection needs more data rather than extrapolating from one
+ * point (prompt 40 §8).
+ */
+export const MIN_STEPS_FOR_PACE = 3
+
 const SLIP_WEEK_DAYS = 7
 const MIN_SIGNINS_TO_JUDGE = 20
 
@@ -285,19 +293,36 @@ export type ProgressHeadline = {
   sentence: string
 }
 
-export function progressHeadline(steps: Step[], schedule: Schedule, now: string = new Date().toISOString()): ProgressHeadline {
+export function progressHeadline(steps: Step[], schedule: Schedule, now: string = new Date().toISOString(), planCreatedAt: string | null = null): ProgressHeadline {
   const rows = stepProgress(steps, schedule, now)
   const total = rows.length
   const alreadyInPlace = rows.filter((r) => r.stage === 'alreadyInPlace').length
   const enforced = rows.filter((r) => r.stage === 'enforced' || r.stage === 'verified').length
   const soaking = rows.filter((r) => r.stage === 'soaking' || r.stage === 'reportOnly' || r.stage === 'readyToEnforce').length
   const slipped = rows.filter((r) => (r.slipDays ?? 0) > SLIP_WEEK_DAYS).length
-  // The start is the first real execution, never a policy's birthday (ux-review-07 §1).
-  const starts = rows.filter((r) => r.stage !== 'alreadyInPlace').map((r) => r.actualStart).filter((x): x is string => x !== null).sort()
+  // The start is the plan's own start date, never a policy's creation date
+  // (prompt 40 §7). Excluding alreadyInPlace rows was not enough: a step
+  // satisfied by a policy that predates the plan still carries that policy's
+  // date in actualStart once tracking matches it, so the headline read
+  // "Started Jul 24, 2026" for a plan made in September (review-08 A6, C1).
+  // Anything before the plan began is by definition not this plan starting.
+  // When the plan came into existence, not when its first wave was scheduled:
+  // execution can begin before Day 0, and a scheduled date is not evidence of
+  // anything having happened.
+  const planStart = planCreatedAt
+  const startedAfterPlan = (iso: string): boolean => planStart === null || Date.parse(iso) >= Date.parse(planStart)
+  const starts = rows
+    .filter((r) => r.stage !== 'alreadyInPlace')
+    .map((r) => r.actualStart)
+    .filter((x): x is string => x !== null && startedAfterPlan(x))
+    .sort()
   const started = starts[0] ?? null
   const plannedEnd = schedule.targetEnd
   let projectedEnd: string | null = null
-  if (started && enforced > 0 && enforced + alreadyInPlace < total) {
+  // A pace from one or two steps is arithmetic, not a forecast: the live site
+  // projected "finished by Feb 1, 2029" from a single enforced step
+  // (review-08 A7, prompt 40 §8).
+  if (started && enforced >= MIN_STEPS_FOR_PACE && enforced + alreadyInPlace < total) {
     const elapsedDays = Math.max(1, (Date.parse(now) - Date.parse(started)) / 86_400_000)
     const pace = enforced / elapsedDays
     projectedEnd = new Date(Date.parse(now) + ((total - enforced - alreadyInPlace) / pace) * 86_400_000).toISOString()
@@ -313,8 +338,12 @@ export function progressHeadline(steps: Step[], schedule: Schedule, now: string 
   const already = PROGRESS.alreadyCovered(alreadyInPlace)
   // Must-fix validation leads the summary: what is holding the plan is the
   // first thing to read (validation-rules.md §2).
-  const blockerSteps = steps.filter((s) => s.validationBlocker && s.status !== 'done' && s.status !== 'skipped')
-  const held = steps.filter((s) => s.blockedBy.some((id) => blockerSteps.some((b) => b.id === id))).length
+  const blockerSteps = trackableSteps(steps).filter((s) => s.validationBlocker && s.status !== 'done')
+  // The union of what those blockers hold, over the one blocked set. This
+  // counted a superset before and printed a different number from the tile
+  // beside it (review-08 A9, prompt 40 §9).
+  const heldIds = new Set(blockerSteps.flatMap((b) => heldBy(steps, b.id).map((x) => x.id)))
+  const held = heldIds.size
   const blockers = blockerSteps.length > 0 ? PROGRESS.blockersFirst(blockerSteps.length, held) : ''
   return {
     started,

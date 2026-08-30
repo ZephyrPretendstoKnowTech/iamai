@@ -297,7 +297,9 @@ test('10: missing required answer → dependent step blocked with the question n
   ]
   const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
   assert.equal(step.status, 'blocked')
-  assert.match(step.unblockNotes[0], /Setup question 2 is still unanswered/)
+  // Causes are conditions now, so they complete the "Blocked until …" frame
+  // both places print them in (prompt 40 §11).
+  assert.match(step.unblockNotes[0], /Setup question 2 is answered/)
   assert.equal(step.blockers[0].kind, 'setup')
 })
 

@@ -430,7 +430,7 @@ export const ROADMAP = {
   observation: (days: number) => `Observation window · ${days} days`,
   observationText: 'Every new policy collects report-only evidence at the same time.',
   wave: (n: number, name: string) => `Wave ${n} · ${name}`,
-  blockedBy: 'Blocked by',
+  blockedBy: 'Blocked until',
   dangerLead: (titles: string[]) =>
     titles.length === 1
       ? `One thing to look at before the plan starts: ${lowerFirst(titles[0])}.`
