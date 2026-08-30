@@ -5,6 +5,8 @@ import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { signOut } from '../../graph/msal.ts'
 import { SHELL } from '../../copy/pages.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { FeedbackPanel } from '../FeedbackPanel.tsx'
 import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/dates.ts'
 import { Button, Callout, InfoTip, LinkButton, Stepper } from '../components/index.ts'
 import type { StepperStatus } from '../components/index.ts'
@@ -120,12 +122,15 @@ export function AppShell({
   tenantName,
   route,
   stepStatus,
+  snapshot = null,
   children,
 }: {
   account: AccountInfo | null
   tenantName: string | null
   route: Route
   stepStatus: Partial<Record<Route, StepStatus>>
+  /** Only for the feedback summary, which is counts and never names. */
+  snapshot?: TenantSnapshot | null
   children: ReactNode
 }) {
   const [theme, toggleTheme] = useTheme()
@@ -177,16 +182,18 @@ export function AppShell({
           {children}
         </main>
       </div>
-      <Footer />
+      <Footer snapshot={snapshot ?? null} />
     </div>
   )
 }
 
-export function Footer() {
+export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null } = {}) {
   return (
     <footer className="footer">
       <span>{SHELL.footerLeft}</span>
       <span className="footer-links">
+        {/* Quiet, on every page (prompt 34 §2). */}
+        <FeedbackPanel snapshot={snapshot} />
         <span>
           {SHELL.footerFollow}{' '}
           <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">

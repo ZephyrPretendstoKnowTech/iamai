@@ -93,6 +93,8 @@ export function PrintPlan({
         </dl>
         <p className="muted">{C.cover.prepared(operator)}</p>
         <p className="print-statement">{C.cover.readOnly}</p>
+        {/* Whoever reads this on paper can still say it is wrong (prompt 34 §5). */}
+        <p className="muted">{C.cover.feedback}</p>
       </section>
 
       <section className="print-page">

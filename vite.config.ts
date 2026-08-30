@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
@@ -37,7 +37,11 @@ function spikeCapture(): Plugin {
   }
 }
 
+// The tool version a person can quote in a feedback email (prompt 34 §2).
+const APP_VERSION = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')).version
+
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
   // Where the app is served from. The custom domain (getiamai.com) serves the
   // site at the root, so `/` is the default; the github.io fallback serves it
   // at /<repo>/, which is what VITE_BASE is for. BASE_PATH stays accepted as

@@ -4,6 +4,7 @@ import { READS } from '../copy/pages.ts'
 import { ACCESS } from '../copy/access.ts'
 import { ROLE_FOR_SCOPE } from '../graph/collect/roles.ts'
 import { DataTable, LinkButton } from './components/index.ts'
+import { PermissionsDisclosure } from './PermissionsDisclosure.tsx'
 
 // Generated view over the collector registry: the same source of truth that
 // drives the collectors and SPEC §4.
@@ -14,6 +15,8 @@ export function WhatIamaiReads() {
       <h2>{READS.title}</h2>
       <p>{READS.intro}</p>
       <p>{ACCESS.readsNote}</p>
+      {/* The same disclosure as Connect, condensed (prompt 34 §2). */}
+      <PermissionsDisclosure compact />
       {lanes.map((lane) => (
         <div key={lane}>
           <h3>{READS.lanes[lane]}</h3>
