@@ -12,7 +12,9 @@ export const PERMISSIONS = {
   intro:
     'Microsoft shows this list on its own consent screen. It is here in plain words so it can be read first.',
   readOnly:
-    'There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI.',
+    // The evidence for the read-only claim made once on Connect, not a fourth
+    // restatement of it (review-07 R20, prompt 40 §23).
+    'No write permission is in the set below.',
   consentCreates:
     'Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted. Nothing else is created, and no data is copied anywhere.',
   removalTitle: 'Removing it',

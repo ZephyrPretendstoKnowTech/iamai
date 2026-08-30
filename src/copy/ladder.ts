@@ -208,7 +208,7 @@ export const LADDER_IMPACT = {
       : `${count(found, 'break-glass account')} is confirmed. Two accounts mean one can be lost without losing the way back in.`,
   legacyAuth: 'Entra ID Free keeps no sign-in records, so IAMAI cannot count what still signs in with the old protocols. The Exchange admin center reports and the devices in the room are where that list comes from.',
   appPasswords: 'App passwords live in the legacy per-user MFA service settings, which IAMAI does not read, so it cannot count them. The service settings screen named below shows them.',
-  perUserMfaMigrated: 'The authentication methods migration reports complete, so the methods policy is the single place methods are decided. That is a separate setting from per-user MFA enforcement, which IAMAI does not read: check it on the per-user MFA screen below.',
+  perUserMfaMigrated: 'The authentication methods migration reports complete, so the methods policy is the single place methods are decided. That is a separate setting from per-user MFA enforcement, which IAMAI does not read. Check it on the per-user MFA screen below.',
   perUserMfaOpen: (state: string): string =>
     `The authentication methods migration reads ${state}, so the legacy per-user settings can still decide which methods are offered. Whether per-user MFA is also enforcing prompts is a separate setting IAMAI does not read.`,
   perUserMfaUnknown: 'The authentication methods policy could not be read on this scan, so this step cannot say whether the migration is finished.',
@@ -231,7 +231,7 @@ export const LADDER_IMPACT = {
       : `${count(guests, 'guest account')} can reach shared files and sites, ${pending} of them from an invitation nobody accepted: ${list(names)}.`,
   staleUnlicensed: (n: number, total: number): string =>
     n === total
-      ? `Entra ID Free does not record when an account last signed in, so IAMAI cannot name the dormant ones. No licence is assigned to any of the ${count(total, 'enabled account')}, so the licence signal says nothing here: start from the person each account belongs to.`
+      ? `Entra ID Free does not record when an account last signed in, so IAMAI cannot name the dormant ones. No licence is assigned to any of the ${count(total, 'enabled account')}, so the licence signal says nothing here. Start from the person each account belongs to.`
       : `Entra ID Free does not record when an account last signed in, so IAMAI cannot name the dormant ones. ${n} of the ${count(total, 'enabled account')} hold no licence, which is where the review starts.`,
   staleNone: 'Entra ID Free does not record when an account last signed in, so IAMAI cannot name the dormant ones. Every enabled account holds a licence, so start from the people each one belongs to.',
   methodsWeakOff: 'Text message and voice call are already off in the authentication methods policy, so nobody can fall back to the weakest methods.',

@@ -37,6 +37,8 @@ type Surface = {
   tables: Table[]
   occurrences: Record<string, number>
   occurrencesAll: Record<string, number>
+  /** Controls a screen reader would announce as nameless (prompt 40 §23). */
+  unnamedControls: string[]
 }
 
 // scripts/lint-mutations.mjs points this at a deliberately corrupted copy to
@@ -234,4 +236,13 @@ test('rule 11: no surface states the same claim twice', () => {
   )
   assert.deepEqual(stale(found, RULE11_WAIVED), [], 'waivers that no longer match anything')
   assert.deepEqual(unwaived(found, RULE11_WAIVED), [], 'claims printed more than once on one surface')
+})
+
+test('rule 12: every control on every surface has an accessible name (prompt 40 §23)', () => {
+  // Read from the rendered DOM, not the source. The sidebar chevron was carried
+  // forward through two reviews as unlabelled; it is labelled, and what was
+  // actually nameless was a country search input with only a placeholder. Only
+  // the DOM can tell those two apart.
+  const bad = surfaces.flatMap((s) => (s.unnamedControls ?? []).map((html) => `${s.name}: ${html}`))
+  assert.deepEqual(bad, [], `${bad.length} control(s) a screen reader would announce as nameless:\n${bad.join('\n')}`)
 })

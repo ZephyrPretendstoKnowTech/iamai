@@ -190,7 +190,7 @@ export const PACKAGE = {
   what: [
     'One or more Conditional Access policies as Microsoft Graph JSON (the conditionalAccessPolicy shape).',
     'One policy per file, or an array of policies in one file. Property casing does not matter.',
-    'Optional extras: named locations and authentication strengths: see below.',
+    'Optional extras, listed below: named locations and authentication strengths.',
   ],
   waysTitle: 'Three ways to make one',
   way1Title: '1. Entra admin center',

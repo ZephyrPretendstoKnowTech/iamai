@@ -118,7 +118,13 @@ export function helpDeskContacts(step: Step): number {
   if (step.safeToday) return 0
   const family = step.readiness.family
   const affected = family === 'block' || family === 'location' ? step.evidence.affectedUserIds.length : step.population.active
-  return Math.round(affected * (CALL_RATE[family] ?? CALL_RATE.other))
+  if (affected === 0) return 0
+  // People who are not ready when the change lands are near-certain callers, so
+  // they set the floor. Below that, any affected population rounds up rather
+  // than down: a change that touches somebody is not a change nobody asks about
+  // (review-08 F, prompt 40 §23).
+  const notReady = step.readiness.percent === null ? 0 : Math.round(affected * (1 - step.readiness.percent / 100))
+  return Math.max(notReady, 1, Math.round(affected * (CALL_RATE[family] ?? CALL_RATE.other)))
 }
 
 export function effortFor(step: Step): { minutes: number; contacts: number; sentence: string } {

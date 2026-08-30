@@ -857,10 +857,16 @@ export function RoadmapPage({
           </tbody>
         </table>
       </div>
-      <h4>{PROGRESS.changesTitle}</h4>
-      {!lastCheckpoint && <p className="reason">{PROGRESS.changesNoCheckpoint}</p>}
+      {/*
+        The whole section waits for a checkpoint (prompt 40 §22). It used to
+        render its heading and then a line explaining that it cannot work yet,
+        which is a section whose only content is its own unavailability
+        (review-08 C3). There is nothing to compare against until a scan has
+        been saved, so there is nothing to show.
+      */}
+      {lastCheckpoint && <h4>{PROGRESS.changesTitle}</h4>}
       {lastCheckpoint && changes.length === 0 && <p className="reason">{PROGRESS.changesNone}</p>}
-      {changes.length > 0 && (
+      {lastCheckpoint && changes.length > 0 && (
         <>
           <p className="reason">{PROGRESS.driftNote(changes.filter((c) => !c.planned).length)}</p>
           <ul className="sections">

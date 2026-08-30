@@ -70,7 +70,7 @@ export const FAILURE = {
           ? '1 active person has no method registered. Away from a trusted location they cannot register one either: registering asks for MFA, and they have none to answer with.'
           : `${count(n, 'active person', 'active people')} have no method registered. Away from a trusted location they cannot register one either: registering asks for MFA, and they have none to answer with.`,
       allSet: 'everyone active already has a method, so nobody has to register from scratch under this policy.',
-      unknown: 'registration data could not be read: assume some people still have no method and issue passes before enforcing.',
+      unknown: 'registration data could not be read, so assume some people still have no method and issue passes before enforcing.',
       tapOn: 'Temporary Access Pass is enabled in the authentication methods policy, so an administrator can issue a way in.',
       tapOff: 'Temporary Access Pass is not enabled in the authentication methods policy, so there is no way to rescue somebody who cannot register.',
       tapUnknown: 'the authentication methods policy could not be read, so whether a Temporary Access Pass can be issued is unknown.',
@@ -93,7 +93,7 @@ export const FAILURE = {
     evidence: {
       seen: (users: number, protocols: string) => `${count(users, 'account')} signed in with legacy protocols in 30 days (${protocols}): they will break.`,
       none: 'no legacy-protocol sign-ins in 30 days: low risk.',
-      unknown: 'no sign-in records to check against: treat every printer and script as suspect until one week of report-only says otherwise.',
+      unknown: 'no sign-in records to check against, so treat every printer and script as suspect until one week of report-only says otherwise.',
       serviceAccounts: (n: number) => `${count(n, 'confirmed service account')} among the affected: carve them out first.`,
     },
   },
@@ -103,7 +103,7 @@ export const FAILURE = {
     evidence: {
       seen: (users: number) => `${count(users, 'account')} used device-code sign-in in 30 days: they will break.`,
       none: 'no device-code sign-ins in 30 days: low risk.',
-      unknown: 'no sign-in records to check against: ask whoever runs automation before enforcing.',
+      unknown: 'no sign-in records to check against, so ask whoever runs automation before enforcing.',
     },
   },
   authTransfer: {
@@ -133,8 +133,8 @@ export const FAILURE = {
     evidence: {
       noDevice: (n: number, total: number) => `${n} of ${count(total, 'active member')} own no compliant device: they will be stopped.`,
       allCovered: 'every active member owns a compliant or hybrid-joined device: low risk.',
-      unknown: 'device data could not be read: assume the worst until it can.',
-      guests: (n: number) => `${count(n, 'guest')} sign in on devices the tenant will never manage: exclude guests or expect calls.`,
+      unknown: 'device data could not be read, so assume the worst until it can.',
+      guests: (n: number) => `${count(n, 'guest')} sign in on devices the tenant will never manage, so exclude guests or expect calls.`,
       platforms: (summary: string) => `devices seen: ${summary}.`,
     },
   },
@@ -147,7 +147,7 @@ export const FAILURE = {
     evidence: {
       seen: (countries: string, users: number) => `sign-ins seen from ${countries} (${count(users, 'person', 'people')}) in 30 days: these will be blocked.`,
       none: 'every sign-in in 30 days came from an allowed country: low risk.',
-      unknown: 'no sign-in records to check against: ask who travels before enforcing.',
+      unknown: 'no sign-in records to check against, so ask who travels before enforcing.',
       // C13: this risk always applies, because it is a property of token
       // lifetime rather than of the tenant, so it needs evidence of its own
       // instead of borrowing the country-sign-in evidence beside it.
@@ -164,7 +164,7 @@ export const FAILURE = {
       allSet: 'everyone active has a method: low risk.',
       smsOnly: (n: number) => `${count(n, 'person', 'people')} rely on SMS or voice only.`,
       dormant: (n: number) => `${count(n, 'dormant account')} would meet the prompt on return.`,
-      unknown: 'registration data could not be read: run the campaign and verify by hand.',
+      unknown: 'registration data could not be read, so run the campaign and verify by hand.',
     },
   },
   admin: {
@@ -178,8 +178,8 @@ export const FAILURE = {
       all: 'every admin holds a phishing-resistant method: low risk.',
       eligible: (n: number) => `${count(n, 'eligible-only admin')} would meet it on activation.`,
       breakGlassOut: 'the break-glass accounts sit in the exclusion group: safe.',
-      breakGlassIn: 'a break-glass account is in scope: stop and fix the exclusion first.',
-      unknown: 'registration data could not be read: verify each admin by hand.',
+      breakGlassIn: 'a break-glass account is in scope, so stop and fix the exclusion first.',
+      unknown: 'registration data could not be read, so verify each admin by hand.',
     },
   },
   guest: {
@@ -252,7 +252,7 @@ export const HELP_DESK = {
   },
   block: {
     calls: ['The scanner stopped emailing.', 'An old app cannot sign in.', 'A script broke overnight.'],
-    say: ['Legacy protocols are blocked: move the device to SMTP AUTH with OAuth, or to the service-accounts carve-out with a ticket.', 'Ask which app and which account; most need a modern-authentication update.', 'Scripts on device-code sign-in need a workload identity or a managed identity.'],
+    say: ['Legacy protocols are blocked. Move the device to SMTP AUTH with OAuth, or to the service-accounts carve-out with a ticket.', 'Ask which app and which account; most need a modern-authentication update.', 'Scripts on device-code sign-in need a workload identity or a managed identity.'],
   },
   location: {
     calls: ['Travelling and cannot sign in.', 'The VPN makes the sign-in look like it comes from abroad.'],

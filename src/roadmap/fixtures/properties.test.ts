@@ -136,6 +136,20 @@ for (const f of fixtures) {
     }
     assert.ok(schedule.totalDays <= f.expect.weeksAtMost * 7 + 7, `${schedule.weeks} weeks (${schedule.totalDays} days) fits the band (${f.expect.weeksAtMost} weeks plus the week of slack)`)
 
+    // The day a phase closes belongs to that phase (prompt 40 §21). Two steps
+    // were planned for Sep 3, the day Day 0 closed (review-08 C2). The date at
+    // fault is the report-only creation date, not a ring start: enforcement is
+    // Tuesday-or-Wednesday only, so it rarely lands on a closing day by
+    // accident, while creation was pinned to the closing day by construction.
+    const day0Close = schedule.waves[0].end.slice(0, 10)
+    for (const [id, at] of Object.entries(schedule.reportOnlyAt)) {
+      assert.notEqual(at.slice(0, 10), day0Close, `${id} is not created on the day Day 0 closes (${day0Close})`)
+    }
+    for (const st of steps) {
+      for (const g of st.rings) {
+        assert.notEqual(g.plannedStart.slice(0, 10), day0Close, `${st.id} does not start on the day Day 0 closes (${day0Close})`)
+      }
+    }
     // The observation window stays open until the wave it informs (prompt 40
     // §18). It used to close twelve days early, so the page said the evidence
     // stopped being gathered long before anyone acted on it (review-08 B4).
