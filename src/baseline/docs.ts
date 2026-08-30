@@ -10,6 +10,29 @@ import { nameKey } from "./discover.ts";
  *   ## <next heading>
  * We take the H1 as the policy name and the Intent section verbatim.
  */
+/**
+ * What a baseline README's Intent section is allowed to become.
+ *
+ * This is free prose fetched at runtime from a third-party GitHub repo, and it
+ * ends up in the step body, in generated prompts and in the grounding bundle.
+ * The regex above captures everything up to the next heading: arbitrary length,
+ * arbitrary line breaks, arbitrary content. Admitting that unbounded is what
+ * made the prompt path injectable (audit prompt-02).
+ *
+ * One paragraph, one line, no code fences, capped — and the cap is stated to
+ * the reader rather than silently swallowing the rest.
+ */
+export const INTENT_MAX = 600;
+export const INTENT_TRUNCATED = " […truncated by IAMAI]";
+
+export function cleanIntent(raw: string): string {
+  const oneLine = raw
+    .replace(/`+/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+  return oneLine.length > INTENT_MAX ? oneLine.slice(0, INTENT_MAX).trimEnd() + INTENT_TRUNCATED : oneLine;
+}
+
 export function extractPolicyDocs(files: BaselineFile[]): PolicyDoc[] {
   const docs: PolicyDoc[] = [];
   for (const f of files) {
@@ -19,7 +42,7 @@ export function extractPolicyDocs(files: BaselineFile[]): PolicyDoc[] {
     const intent = f.text.match(/^##\s+Intent\s*$([\s\S]*?)(?=^##\s|\s*$(?![\s\S]))/m);
     docs.push({
       policyName: h1[1].trim(),
-      intent: intent ? intent[1].trim() : undefined,
+      intent: intent ? cleanIntent(intent[1]) : undefined,
       sourcePath: f.path,
     });
   }

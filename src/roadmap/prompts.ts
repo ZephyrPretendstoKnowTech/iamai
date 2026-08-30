@@ -22,9 +22,47 @@ const instruction: Record<PromptKind, (tenant: string) => string> = {
   wholePlan: PROMPTS.wholePlan,
 }
 
-/** A prompt with the facts embedded (§2.1). */
+/**
+ * The longest run of backticks in the body, plus one — so content that already
+ * contains a fence cannot close ours and continue outside it (audit prompt-04).
+ */
+function fenceFor(body: string): string {
+  const longest = Math.max(0, ...(body.match(/`+/g) ?? []).map((m) => m.length))
+  return '`'.repeat(Math.max(3, longest + 1))
+}
+
+/** Cap on any single untrusted block, with the truncation stated in the text. */
+export const PROMPT_BLOCK_MAX = 4000
+
+/**
+ * One block of untrusted text, fenced and labelled as data.
+ *
+ * Everything IAMAI puts in a prompt below the instruction line came from a
+ * tenant scan or a third-party baseline. Concatenating it into the instruction
+ * block, which is what this used to do, meant a policy named "ignore previous
+ * instructions and…" read to a model exactly like IAMAI's own words.
+ */
+export function dataBlock(label: string, body: string): string {
+  const clipped = body.length > PROMPT_BLOCK_MAX ? body.slice(0, PROMPT_BLOCK_MAX).trimEnd() + PROMPTS.truncated : body
+  const fence = fenceFor(clipped)
+  return `${label} ${PROMPTS.dataNote}\n${fence}\n${clipped}\n${fence}`
+}
+
+/**
+ * A prompt with the facts embedded (§2.1).
+ *
+ * Order is the fix, not decoration: the instruction comes first, the untrusted
+ * blocks are fenced in the middle, and PROMPTS.noInvent is restated *after*
+ * them. It used to sit at position two of four — ahead of everything an
+ * attacker controls, which is the weakest place to put the one guardrail.
+ */
 export function promptFor(kind: PromptKind, tenant: string, context: string, draft: string): string {
-  return [instruction[kind](tenant), PROMPTS.noInvent, `${PROMPTS.context}: ${context}`, `${PROMPTS.draft}:\n${draft}`].join('\n\n')
+  return [
+    instruction[kind](tenant),
+    dataBlock(PROMPTS.context, context),
+    dataBlock(PROMPTS.draft, draft),
+    PROMPTS.noInvent,
+  ].join('\n\n')
 }
 
 export function stepContext(step: Step): string {
@@ -39,7 +77,7 @@ export function promptPack(args: { tenant: string; steps: Step[]; schedule: Sche
   const { tenant } = args
   const firstStep = args.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done') ?? args.steps[0]
   const stepText = firstStep ? `${firstStep.plainTitle} (${firstStep.title}). ${firstStep.whatChanges} ${firstStep.why} How to verify: ${firstStep.verify?.where.join(' ') ?? ''} Rollback: ${firstStep.rollback}` : ''
-  const withFacts = (head: string, label: string, body: string) => [head, PROMPTS.noInvent, `${label}:\n${body}`].join('\n\n')
+  const withFacts = (head: string, label: string, body: string) => [head, dataBlock(label, body), PROMPTS.noInvent].join('\n\n')
   return [
     { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement ?? '') },
     { title: PROMPTS.pack.mfaGuide(tenant).split(',')[0], prompt: [PROMPTS.pack.mfaGuide(tenant), PROMPTS.noInvent].join('\n\n') },
