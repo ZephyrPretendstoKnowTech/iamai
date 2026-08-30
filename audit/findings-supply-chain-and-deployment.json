@@ -1,0 +1,293 @@
+{
+  "lane": "supply-chain-and-deployment",
+  "findings": [
+    {
+      "id": "supply-01",
+      "title": "A `../` segment in one baselines/*.index.json path escapes the pinned commit entirely and repoints the fetch at any repo or branch",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": "src/baseline/github.ts",
+          "lines": "32-35",
+          "code": "export function rawUrl(index: BaselineIndex, path: string): string {\n  const encoded = path.split(\"/\").map(encodeURIComponent).join(\"/\");\n  return `https://raw.githubusercontent.com/${index.owner}/${index.repo}/${index.commit}/${encoded}`;\n}"
+        },
+        {
+          "file": "src/baseline/github.ts",
+          "lines": "58-63",
+          "code": "const path = index.files[next++];\ntry {\n  const res = await f(rawUrl(index, path));"
+        },
+        {
+          "file": "baselines/jhope188-conditionalaccesspolicies.index.json",
+          "lines": "2-4",
+          "code": "\"owner\": \"Jhope188\",\n  \"repo\": \"ConditionalAccessPolicies\",\n  \"commit\": \"ceccdc2a6dc2e4a3e1f960fc2d91f05c8963265b\","
+        },
+        {
+          "file": "src/ui/pages/BaselinePage.tsx",
+          "lines": "2-2",
+          "code": "import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }"
+        }
+      ],
+      "why_it_matters": "The whole integrity story of the default baseline is \"pinned commit, content-addressed\". That holds only while every `files` entry stays inside the pinned tree. `encodeURIComponent` does not encode `.`, so a `..` segment survives encoding intact, and the WHATWG URL parser then normalises the dot-segments away before the request is sent. I verified this: the path `../../../attacker/evilrepo/main/evil.json` produces `https://raw.githubusercontent.com/attacker/evilrepo/main/evil.json` — a different owner, a different repo, and a mutable branch ref instead of the SHA. Nothing catches it: `src/network.test.ts` only checks the host, which is still raw.githubusercontent.com; no test reads `baselines/*.index.json` at all (grep for `jhope188` across `src/` hits only the two page imports); and the file a reviewer sees is a 155-line list of policy filenames, which is exactly the kind of diff that gets skimmed. The fetched text becomes CA policy JSON that drives every step, danger and predicted-impact number in the plan.",
+      "attack_path": "1. Attacker gets one commit into the repo that touches only `baselines/jhope188-conditionalaccesspolicies.index.json` — a poisoned PR presented as \"add three policy files the index missed\", or a maintainer-account compromise. 2. Among the added paths is `../../../attacker/ca-baseline/main/Policies/mfa-all-users.json`. 3. CI passes: `npm test` never opens the file, the host is unchanged, `npm run build` bundles the JSON as-is. 4. deploy-pages publishes. 5. Every user who clicks Load baseline fetches attacker-controlled policy JSON from a branch the attacker can rewrite at will, and the tool builds their rollout plan from it.",
+      "fix": "Validate the index at the point it becomes a URL, in `rawUrl`, so upload/restore/future custom-repo paths all inherit it:\n\n```ts\nconst SHA = /^[0-9a-f]{40}$/;\nconst SEG = /^[A-Za-z0-9._~ ()'!*+,;=@$&-]+$/; // no '/', and rejected below if '..'\n\nexport function rawUrl(index: BaselineIndex, path: string): string {\n  if (!SHA.test(index.commit)) throw new Error('baseline index: commit is not a full 40-character SHA');\n  const segs = path.split('/');\n  if (segs.some((s) => s === '' || s === '.' || s === '..' || !SEG.test(s))) {\n    throw new Error(`baseline index: unsafe path segment in ${path}`);\n  }\n  const url = new URL(`https://raw.githubusercontent.com/${index.owner}/${index.repo}/${index.commit}/${segs.map(encodeURIComponent).join('/')}`);\n  const prefix = `/${index.owner}/${index.repo}/${index.commit}/`;\n  if (!url.pathname.startsWith(prefix)) throw new Error(`baseline index: path escapes the pin: ${path}`);\n  return url.href;\n}\n```\n\nThe `url.pathname.startsWith(prefix)` re-check after construction is the part that actually closes it, because it is evaluated *after* the parser normalises. Add a test over the real `baselines/*.index.json` asserting `commit` matches `/^[0-9a-f]{40}$/` and that every entry in `files` round-trips through `rawUrl` back under the pin prefix — that file currently has zero test coverage."
+    },
+    {
+      "id": "supply-02",
+      "title": "Fetched baseline content is trusted wholesale: no hash, no count check, and a partial fetch silently yields a smaller baseline",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "compromised-baseline",
+      "evidence": [
+        {
+          "file": "src/baseline/github.ts",
+          "lines": "57-74",
+          "code": "const worker = async () => {\n    while (next < index.files.length) {\n      const path = index.files[next++];\n      try {\n        const res = await f(rawUrl(index, path));\n        if (!res.ok) throw new Error(`HTTP ${res.status}`);\n        files.push({ path, text: await res.text() });\n      } catch (e) {\n        failures.push({ path, error: (e as Error).message });\n      } finally {\n        done++;\n        opts.onProgress?.(done, index.files.length);\n      }\n    }\n  };\n  await Promise.all(Array.from({ length: concurrency }, worker));"
+        },
+        {
+          "file": "src/ui/pages/BaselinePage.tsx",
+          "lines": "30-38",
+          "code": "export async function loadPinnedBaseline(onProgress?: (done: number, total: number) => void): Promise<BaselineResult> {\n  const { files, failures } = await fetchBaselineFiles(index, { onProgress })\n  return {\n    source: index.label,\n    pkg: loadBaseline(files),\n    fetchFailures: failures.length,\n    origin: { kind: 'github', owner: index.owner, repo: index.repo, commit: index.commit, files },\n  }\n}"
+        },
+        {
+          "file": "src/ui/pages/BaselinePage.tsx",
+          "lines": "208-221",
+          "code": "<strong>{BASELINE.summaryLine(pkg.policies.length, goals, questions)}</strong>\n      </p>\n      <ExpandCard summary={BASELINE.technical}>\n        ...\n          {fetchFailures > 0 && <li>{BASELINE.fetchFailures(fetchFailures)}</li>}"
+        },
+        {
+          "file": "baselines/jhope188-conditionalaccesspolicies.index.json",
+          "lines": "4-4",
+          "code": "\"commit\": \"ceccdc2a6dc2e4a3e1f960fc2d91f05c8963265b\","
+        }
+      ],
+      "why_it_matters": "The pin is content-addressed — a 40-hex SHA on raw.githubusercontent.com cannot be made to return *different* bytes by a force-push or a moved tag, so substitution is off the table. What is on the table is *subtraction*, and the code has no defence against it. `fetchBaselineFiles` returns whatever arrived, `loadPinnedBaseline` hands that straight to `loadBaseline`, and the only signal that 40 of 155 files never arrived is `BASELINE.fetchFailures(n)` rendered inside a collapsed `ExpandCard` labelled \"Technical details\". The headline the operator reads is `summaryLine(policies, goals, questions)` — a smaller, entirely plausible number. SPEC §12 records the pinned commit as 155 files to 46 usable policies; there is no assertion anywhere that ties the loaded package back to those figures. A baseline missing its device-compliance and admin-MFA policies produces a plan that omits those steps, and the tool's output is the operator's evidence that their tenant is covered.",
+      "attack_path": "Not a content attack — a denial-shaped one. (a) The upstream repo is renamed, deleted, or made private, or the commit is GC'd after a force-push: every fetch 404s and the operator gets an all-but-empty baseline plus one line in a collapsed panel. (b) A captive portal, corporate TLS-terminating proxy, or raw.githubusercontent.com rate-limiting (429) drops a subset of the 155 parallel requests at concurrency 6; the operator, on a network someone else controls, gets a truncated baseline and a plan that under-reports their gaps. TLS prevents anyone substituting content, so the ceiling here is silent omission, not silent poisoning.",
+      "fix": "Two cheap checks, neither of which needs a network round trip:\n\n1. Fail closed on partial fetch. In `loadPinnedBaseline`, treat `failures.length > 0` for the *pinned* source as a load error rather than a footnote — the index states exactly how many files must arrive, so `if (failures.length) throw new Error(BASELINE.incomplete(files.length, index.files.length))`. Uploads keep their current tolerant behaviour. At minimum, promote the count out of the `ExpandCard` into a `Callout kind=\"warning\"` next to the summary line, because the number in `summaryLine` is otherwise indistinguishable from a healthy load.\n\n2. Pin the shape, not just the commit. Add `expected: { files: 155, policies: 46 }` to the index (build-index.ts already knows the file count; the policy count comes from one `loadBaseline` run) and assert both after load. That turns any future silent drift in the adapter or the source into a visible failure, and it is the closest thing to an integrity check available without shipping per-file hashes.\n\nIf you want real content integrity, `scripts/build-index.ts` can emit a SHA-256 per path (it already has the clone in hand) and `fetchBaselineFiles` can verify with `crypto.subtle.digest` before pushing to `files`. That also closes supply-01 as a side effect."
+    },
+    {
+      "id": "supply-03",
+      "title": "`src/network.test.ts` — the test SECURITY.md cites as the enforcement of \"nothing leaves the browser\" — never scans `data/` or `baselines/`, both of which are bundled, nor the built artifact",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": "src/network.test.ts",
+          "lines": "28-29",
+          "code": "const files = [...walk('src'), ...walk('home'), 'index.html']\nconst HOST = /https?:\\/\\/([a-z0-9.-]+)/gi"
+        },
+        {
+          "file": "src/network.test.ts",
+          "lines": "19-26",
+          "code": "function walk(dir: string, out: string[] = []): string[] {\n  for (const name of readdirSync(dir)) {\n    const p = join(dir, name)\n    if (statSync(p).isDirectory()) walk(p, out)\n    else if (/\\.(ts|tsx|css|html)$/.test(name) && !/\\.test\\.tsx?$/.test(name)) out.push(p)\n  }\n  return out\n}"
+        },
+        {
+          "file": "SECURITY.md",
+          "lines": "16-18",
+          "code": "a\ntest (`src/network.test.ts`) fails the build if any source file addresses a network host\nother than `graph.microsoft.com`, `login.microsoftonline.com` and\n`raw.githubusercontent.com` (the pinned baseline files)."
+        },
+        {
+          "file": "data/product-names.json",
+          "lines": "3-3",
+          "code": "\"source\": \"https://download.microsoft.com/download/e/3/e/e3e9faf2-f28b-490a-9ada-c6089a1fc5b0/Product%20names%20and%20service%20plan%20identifiers%20for%20licensing.csv\","
+        },
+        {
+          "file": "src/ui/pages/InventoryPage.tsx",
+          "lines": "16-16",
+          "code": "import productNames from '../../../data/product-names.json' with { type: 'json' }"
+        }
+      ],
+      "why_it_matters": "The walk covers `src/`, `home/` and `index.html`, and only files ending `.ts|.tsx|.css|.html`. Two directories that are compiled into the shipped bundle by JSON import are outside it: `data/` (nine files, imported at `src/ui/pages/InventoryPage.tsx:16`, `src/names.ts:5-6`, `src/roles.ts:3-4`, `src/licensing/capabilities.ts:5`) and `baselines/` (imported at `BaselinePage.tsx:2` and `RoadmapPage.tsx:25`). This is not theoretical: I grepped the built bundle in `dist/rollout/assets/index-*.js` and it contains `https://download.microsoft.com/...`, which reached production from `data/product-names.json` without the test ever seeing it. That particular string is inert — a `source:` citation, not a fetch — but it proves the guard has a hole exactly where the two untrusted-adjacent data directories live, and `baselines/*.index.json` is the file supply-01 turns into a live fetch. The test also never opens the artifact that is actually deployed, so hosts arriving through a dependency (the bundle carries `login.chinacloudapi.cn`, `login.microsoftonline.de`, `login.microsoftonline.us`, `login.windows-ppe.net` from `@azure/msal-common`'s cloud-instance table) are invisible to it in both directions.",
+      "attack_path": "A commit — poisoned PR or maintainer compromise — adds a host to `data/*.json` or `baselines/*.index.json`. `npm test` passes because neither directory is walked; `npm run build` inlines the JSON; `deploy-pages.yml` publishes. For `baselines/*.index.json` the string is not merely inert data, it is fed to `fetch` via `rawUrl` (supply-01). The reviewer's stated safety net — \"a test fails the build if any source file addresses a network host other than the three\" — did not run over the file that changed.",
+      "fix": "Extend the walk to the directories that are bundled, and to the extension that carries them:\n\n```ts\nconst files = [...walk('src'), ...walk('home'), ...walk('data'), ...walk('baselines'), 'index.html']\n// and in walk(): /\\.(ts|tsx|css|html|json)$/\n```\n\nThat one change makes `download.microsoft.com` an explicit decision (add it to `LINK_HOSTS` with the comment that it is a citation, never fetched) instead of an oversight, and it puts `baselines/*.index.json` under the same host rule as everything else.\n\nSeparately, add an artifact-level check to the deploy path so the claim is made about what ships rather than about what was written. After `npm run build:site`, grep `dist/**/*.js` and `dist/**/*.css` for `https?://[a-z0-9.-]+` and require every hostname to be in `REQUEST_HOSTS ∪ LINK_HOSTS ∪ MSAL_SOVEREIGN_CLOUDS`. That is the only version of this test that would catch a new outbound host arriving through a dependency update, which is the realistic way one arrives."
+    },
+    {
+      "id": "supply-04",
+      "title": "ci.yml declares no `permissions:` block, so a push-triggered run executes repo code beside a GITHUB_TOKEN whose scope is set by an invisible repo setting — and a push to main is what publishes production",
+      "severity": "medium",
+      "confidence": "possible",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": ".github/workflows/ci.yml",
+          "lines": "5-20",
+          "code": "on:\n  push:\n    branches: ['**']\n  pull_request:\n\njobs:\n  test-build-smoke:\n    runs-on: ubuntu-latest\n    timeout-minutes: 15\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 24\n          cache: npm\n      - run: npm ci"
+        },
+        {
+          "file": ".github/workflows/deploy-pages.yml",
+          "lines": "14-21",
+          "code": "on:\n  push:\n    branches: [main]\n  workflow_dispatch:\n\npermissions:\n  contents: read\n  pages: write\n  id-token: write"
+        },
+        {
+          "file": "package.json",
+          "lines": "14-22",
+          "code": "\"test\": \"node --test src/**/*.test.ts\",\n    \"smoke\": \"node scripts/smoke.mjs\",\n    \"lint-mutations\": \"node scripts/lint-mutations.mjs\",\n    \"layout-audit\": \"node scripts/layout-audit.mjs\","
+        }
+      ],
+      "why_it_matters": "`deploy-pages.yml` gets this right — an explicit three-line grant, nothing more than `actions/deploy-pages` needs (`pages: write` to publish, `id-token: write` for the OIDC handshake it uses). `ci.yml` declares nothing, so its `GITHUB_TOKEN` takes whatever the repository's *Workflow permissions* setting says, which lives in GitHub settings and cannot be read from the repo. If that setting is the legacy \"Read and write permissions\" default, then everything `ci.yml` executes — `npm ci` lifecycle scripts, `npm test`, `vite build` (which evaluates `vite.config.ts`), `npm run smoke` and `npm run layout-audit` (both of which drive headless Chrome) — runs alongside a token that can push to `main`. `actions/checkout@v4` defaults to `persist-credentials: true`, which writes that token into `.git/config` as an `http.https://github.com/.extraheader` basic-auth header, readable by any process sharing the workspace. And a push to `main` is precisely the trigger for `deploy-pages.yml`, so a write-capable token in a CI run is a direct path to replacing the bundle at getiamai.com/rollout/ — the artifact the entire \"review the code, then connect\" trust story rests on.\n\nThe fork-PR half of this is fine and I want to be exact about it: `pull_request` (not `pull_request_target`) runs fork code with a token GitHub forces read-only and with no secrets, regardless of the repo default. So a drive-by fork PR gets arbitrary code execution in CI but a token that can do nothing. The exposure is specifically the `push: branches: ['**']` path with a compromised dependency or a compromised maintainer branch.",
+      "attack_path": "1. A dependency in the 74-entry lock ships a malicious version (or a maintainer's machine pushes a branch). 2. Someone pushes any branch; `ci.yml` fires on `'**'`. 3. During `npm ci`/`npm test`/`vite build`, attacker code reads `.git/config` and recovers the `x-access-token` from the checkout extraheader. 4. If the repo default is read-write, that token pushes a commit to `main`. 5. `deploy-pages.yml` fires on push to main, builds, and publishes to getiamai.com/rollout/ under the maintainer's own domain and TLS. The user who \"reviewed the code, then connected\" is running something else.",
+      "fix": "One line, and the question stops depending on a setting nobody can see in the repo:\n\n```yaml\n# .github/workflows/ci.yml, after `name: ci`\npermissions:\n  contents: read\n```\n\nCI reads the repo and writes nothing — no comments, no statuses, no releases — so `contents: read` is the whole requirement. Also set `persist-credentials: false` on the checkout in `ci.yml`, since nothing in the job runs git afterwards; that removes the token from the workspace filesystem entirely and makes step 3 above impossible even if the default is wrong.\n\nWorth doing at the same time: turn on branch protection for `main` requiring a PR and the `ci` check, so that a stolen token cannot push straight to the branch that deploys. I could not verify from the repo whether that is already on (see coverage gaps).\n\nOn action pinning: `actions/checkout@v4`, `setup-node@v4`, `upload-pages-artifact@v3` and `deploy-pages@v4` are mutable tags, but all four are in GitHub's own `actions/` org, and `deploy-pages` in particular has to be trusted to hold `pages: write` at all. SHA-pinning these buys close to nothing here and costs a solo maintainer a recurring chore — I would not do it. Pin third-party actions if any are ever added."
+    },
+    {
+      "id": "supply-05",
+      "title": "Both workflows run `npm ci` with lifecycle scripts enabled, and today exactly one package has one — a darwin-only optional dep that never installs on the runner",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": ".github/workflows/ci.yml",
+          "lines": "20-20",
+          "code": "      - run: npm ci"
+        },
+        {
+          "file": ".github/workflows/deploy-pages.yml",
+          "lines": "36-36",
+          "code": "      - run: npm ci"
+        },
+        {
+          "file": "package-lock.json",
+          "lines": "3-3",
+          "code": "\"lockfileVersion\": 3,"
+        }
+      ],
+      "why_it_matters": "I enumerated all 74 lock entries programmatically. Every one resolves to `https://registry.npmjs.org/` with a `sha512-` integrity hash — no git URLs, no http URLs, no tarball paths, no `link:` entries. Root `dependencies` and `devDependencies` match `package.json` byte-for-byte, so `npm ci` will not silently reconcile a drifted manifest. Every name is a real, well-known package (`@azure/msal-browser`, `idb`, `react`, `react-dom`, `scheduler`, plus vite/rolldown/lightningcss/typescript platform binaries) — nothing typosquat-adjacent, no `reakt`, no `idb-js`, no scoped lookalike. Only six packages reach the browser bundle at all. That is a genuinely clean dependency set and it deserves saying.\n\nThe one residual: `npm ci` executes install scripts by default, and the runner's workspace holds the checkout-persisted GITHUB_TOKEN (see supply-04). Exactly one package declares `hasInstallScript` — `node_modules/fsevents`, an optional darwin-only dep that is never installed on `ubuntu-latest`. So `--ignore-scripts` costs literally nothing today: rolldown, lightningcss and typescript all ship prebuilt platform binaries as optional deps rather than compiling on install, which is why none of them has a script. The value is that it stays free tomorrow, when a transitive dep adds one.",
+      "attack_path": "A future transitive dependency (or a compromised version of a current one) adds a `postinstall`. `npm ci` runs it as the runner user with the workspace and its `.git/config` credential in reach, on every push to every branch and on every deploy to production. There is no equivalent of a lockfile hash for the *behaviour* of an install script — the integrity hash only proves you got the same tarball the attacker published.",
+      "fix": "`- run: npm ci --ignore-scripts` in both workflows. Verify locally first with `npm ci --ignore-scripts && npm run build` — I expect it to pass unchanged given `fsevents` is the only script and it is darwin-optional, but confirm rather than take my word.\n\nAlso consider a `.npmrc` with `ignore-scripts=true` so local installs on the maintainer's machine inherit it; the maintainer's laptop is the other place a postinstall would land, and it is the machine that holds the GitHub credentials.\n\nThere is no dependabot config and no CodeQL workflow in `.github/` — SPEC.md:134 lists \"CodeQL, pinned deps, versioned releases\" as the CI plan and only the pinned-deps half exists. For a 74-package tree this is a defensible place to be; if you add one thing, make it `.github/dependabot.yml` for `npm` and `github-actions`, since the lock is the artifact that most needs a human to notice when it moves."
+    },
+    {
+      "id": "supply-06",
+      "title": "SECURITY.md cites a test that does not exist, and its browser-storage inventory omits two keys",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "SECURITY.md",
+          "lines": "90-92",
+          "code": "There is no secret, certificate or token in the repository or the\nbuild, and a test asserts the only Entra identifier in the source is this id."
+        },
+        {
+          "file": "SECURITY.md",
+          "lines": "68-70",
+          "code": "- **sessionStorage**: the Microsoft sign-in session (MSAL token cache); cleared when the\n  tab closes.\n- **localStorage**: one flag that you have seen the Start page, and the theme."
+        },
+        {
+          "file": "src/ui/components/Stepper.tsx",
+          "lines": "38-45",
+          "code": "return localStorage.getItem(COLLAPSE_KEY) === '1'\n...\n      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0')"
+        },
+        {
+          "file": "src/ui/pages/CoveragePage.tsx",
+          "lines": "68-83",
+          "code": "const CONTROL_KEY = 'iamai.findings.controls'\n...\n    window.sessionStorage.setItem(CONTROL_KEY, JSON.stringify({ ...saved, [name]: value }))"
+        },
+        {
+          "file": "src/graph/scopes.ts",
+          "lines": "10-21",
+          "code": "export const GRAPH_SCOPES = [\n  'Policy.Read.All',\n  'Directory.Read.All',\n  'Application.Read.All',\n  'AuditLog.Read.All',\n  'RoleManagement.Read.Directory',\n  'UserAuthenticationMethod.Read.All',\n  'Reports.Read.All',\n  'openid',\n  'profile',\n  'offline_access',\n]"
+        }
+      ],
+      "why_it_matters": "I checked every factual claim in SECURITY.md that my lane covers. Most hold: the scope table at SECURITY.md:28-35 matches `src/graph/scopes.ts:10-21` exactly, all eight are read scopes plus the three OIDC ones, and there is no write scope anywhere; the client id `13f55900-…` is genuinely the only Entra GUID in the source (I grepped: one hit, `src/graph/msal.ts:13`); the issues URL matches `git remote -v`; and `npm test` does run before `build:site` on the deploy path, so \"fails the build\" is fair for the path that publishes.\n\nTwo claims do not hold. First, \"a test asserts the only Entra identifier in the source is this id\" — there is no such test. I grepped all 46 test files for `13f55900`, `clientSecret`, and secret-shaped patterns; nothing asserts it. The statement reads as a verified control and is an unverified assertion. Second, the storage inventory is short by two keys: `iamai.nav.collapsed` in localStorage (`Stepper.tsx:38,45`) and `iamai.findings.controls` in sessionStorage (`CoveragePage.tsx:68-83`). I read both — the nav flag is `'0'|'1'`, and the findings key holds only sort/filter choices validated against an `allowed` allowlist at `CoveragePage.tsx:75`, so neither holds tenant data and the privacy substance of the section is intact. But SECURITY.md is the document a cautious admin reads *instead of* the code, and \"one flag and the theme\" being three flags and a theme is the kind of small inaccuracy that costs the whole page its credibility with the reader it is written for.",
+      "attack_path": "No attack. This is the document that substitutes for code review for the people who will not read the code, and its accuracy is the control. A reader who verifies one claim, finds the cited test absent, and stops trusting the rest is the realistic failure.",
+      "fix": "Either write the test or drop the sentence. Writing it is four lines and worth having, because it also catches a real mistake — a tenant GUID pasted into a fixture:\n\n```ts\n// src/network.test.ts, alongside the host rules\ntest('the only Entra identifier in the source is the app registration client id', () => {\n  const GUID = /\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\b/gi\n  const ALLOWED = new Set(['13f55900-8e9a-4aa3-82c1-e42a4448680f'])\n  // built-in role template ids, auth-strength ids and first-party app ids live in data/;\n  // add that directory's known-good ids to ALLOWED or exclude data/ explicitly and say why.\n  const hits = files.flatMap((f) => [...readFileSync(f, 'utf8').matchAll(GUID)].map((m) => `${f}: ${m[0]}`))\n    .filter((h) => !ALLOWED.has(h.split(': ')[1].toLowerCase()))\n  assert.deepEqual(hits, [])\n})\n```\n\nNote that this needs care about `data/role-templates.json`, `data/first-party-apps.json` and `data/builtin-strengths.json`, which are full of legitimate Microsoft GUIDs — decide deliberately whether those are in scope and write the reason into the test, since supply-03 argues `data/` should be walked.\n\nFor the storage list, replace \"one flag that you have seen the Start page, and the theme\" with the four actual keys and one clause each on what they hold, and add `iamai.findings.controls` to the sessionStorage bullet noting it is sort and filter choices, not data. Since the point of the section is that the reader can verify it, listing the key names lets them check in devtools in ten seconds."
+    },
+    {
+      "id": "supply-07",
+      "title": "A CSP meta tag would stop nothing in this app today — the only directive worth adding is connect-src, as a regression backstop for the nothing-leaves-the-browser claim",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "dist/rollout/index.html",
+          "lines": "12-13",
+          "code": "<script type=\"module\" crossorigin src=\"/rollout/assets/index-CPCaIzKI.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/rollout/assets/index-Dg96UHKA.css\">"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "242-243",
+          "code": "baselineAuthor:\n        baselineIndex.author !== undefined ? { author: baselineIndex.author, url: baselineIndex.authorUrl ?? '#' } : null,"
+        },
+        {
+          "file": "src/roadmap/generate.ts",
+          "lines": "987-987",
+          "code": "learn: goal.learnUrl ? { url: goal.learnUrl, tldr: goal.tldr ?? '', cis: goal.cis ?? [] } : null,"
+        },
+        {
+          "file": "src/roadmap/dangers.ts",
+          "lines": "15-15",
+          "code": "link: { label: string; url: string } | null"
+        },
+        {
+          "file": "index.html",
+          "lines": "3-15",
+          "code": "<head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />"
+        }
+      ],
+      "why_it_matters": "The brief asks what a CSP meta tag would actually stop here, so: nothing, and I want to show the working rather than assert it.\n\nNo HTML sink exists. I grepped `src/`, `home/` and `index.html` for `dangerouslySetInnerHTML`, `innerHTML`, `insertAdjacentHTML`, `document.write`, `eval(` and `new Function` — zero hits. There is no markdown renderer and no sanitiser in the dependency tree, so baseline README \"Intent\" prose extracted at `src/baseline/docs.ts:13-27` reaches the DOM as a React text child and is escaped. So `script-src` has no XSS to block.\n\nNo `javascript:` href is reachable. I traced all six href sinks recon listed. `step.learn.url` comes from `goal.learnUrl` in the hardcoded `CATALOGUE` (`generate.ts:987`); `d.link.url` comes from `src/copy/dangers.ts:13,32,48`; `m.citation.url` is asserted to match `^https://learn\\.microsoft\\.com/` by `src/roadmap/fixtures/properties.test.ts:179`; and `index.authorUrl`/`repoUrl`/`step.whyAttribution.url` all come from the bundled `baselines/*.index.json` via a module-scope import, never from an upload — `loadUploadedBaseline` (`BaselinePage.tsx:49-51`) takes only `BaselineFile[]` and the `AboutCard` always renders the bundled `index`. So none of the three untrusted sources reaches an href, and `script-src` blocking `javascript:` URIs would block nothing that can occur.\n\nNo external subresource exists. The deployed `dist/rollout/index.html` loads one same-origin script and one same-origin stylesheet; fonts are self-hosted from `public/fonts` and `src/network.test.ts:79-83` already enforces no remote `url()` or `@import` in the CSS. SRI is therefore not merely absent, it is inapplicable — there is nothing third-party to hash.\n\nA referrer-policy meta is likewise inert. Routing is hash-based, and fragments are never sent in `Referer`; modern browsers default to `strict-origin-when-cross-origin`, so the three cross-origin request destinations already see only `https://getiamai.com/`. No tenant identifier can leak that way.\n\nThe one real GitHub Pages constraint worth recording: `frame-ancestors` is ignored in a meta CSP and Pages cannot send `X-Frame-Options`, so framing cannot be prevented at all. The exposure is small — Entra refuses to render sign-in in a frame, and the only destructive control is \"Forget this tenant\", which destroys local data only — but it is genuinely unfixable on this host rather than merely unfixed.",
+      "attack_path": "None. This entry exists to record that the absence recon found is not a gap, so it is not re-raised each audit.",
+      "fix": "Do not add a CSP for XSS; there is nothing for it to catch and it would be cargo. There is one directive with real value, and it is about the product claim rather than about attack surface:\n\n```html\n<meta http-equiv=\"Content-Security-Policy\"\n      content=\"default-src 'self'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://raw.githubusercontent.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; form-action 'none'; base-uri 'none'\">\n```\n\nWhat that buys, specifically: `connect-src` turns \"nothing leaves the browser\" from a claim enforced by a grep over first-party source (which supply-03 shows has holes, and which cannot see a host arriving through a dependency update) into something the browser enforces at the point of the request. If a future `@azure/msal-browser` or a new dep ever fetched a fourth host, the request would fail visibly instead of succeeding silently. That is the difference between a promise and a control, and it is the strongest single thing available on a host that can set no response headers.\n\nTwo cautions before shipping it. Verify MSAL's redirect flow against the policy in a real sign-in — MSAL uses top-level navigation to `login.microsoftonline.com` (governed by `navigate-to`/nothing, not `connect-src`) but also issues XHR to it during silent token acquisition, which `connect-src` must allow, and it is listed above. And `style-src 'unsafe-inline'` is required because React sets inline styles; dropping it will break the UI. Ship it behind one manual smoke of the full sign-in and scan, not on the strength of the page loading."
+    },
+    {
+      "id": "supply-08",
+      "title": "The spike Graph-probe module ships in the production bundle, contradicting its own comment — no live path, but the comment should not be relied on",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/spikes/spike1.ts",
+          "lines": "188-196",
+          "code": "// Dev-only: hands result JSON to the local Vite dev server (see vite.config.ts),\n// which writes it to docs/spikes/raw/ (gitignored). UPNs and GUIDs are redacted\n// before leaving the page. Nothing like this ships in the bundle.\nexport async function saveDevResults(name: string, data: unknown): Promise<void> {\n  if (!import.meta.env.DEV) return\n  try {\n    await fetch(`/__spike/save?name=${encodeURIComponent(name)}`, {"
+        },
+        {
+          "file": "src/ui/pages/CoveragePage.tsx",
+          "lines": "13-13",
+          "code": "import { saveDevResults } from '../../graph/spikes/spike1.ts'"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "24-24",
+          "code": "import { saveDevResults } from '../../graph/spikes/spike1.ts'"
+        },
+        {
+          "file": "src/ui/App.tsx",
+          "lines": "34-35",
+          "code": "const DEV_PANEL =\n  import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'"
+        }
+      ],
+      "why_it_matters": "I inspected the built artifact rather than reasoning from source. In `dist/rollout/assets/index-CPCaIzKI.js` the `/__spike/save` fetch is correctly gone — `saveDevResults` is minified to `async function TE(e,t){}`, an empty body, which also confirms the build ran with `import.meta.env.DEV` false. So the dev-server exfiltration path genuinely does not ship, and the redaction claim around it is moot in production.\n\nWhat does ship is the rest of `spike1.ts`. Two production pages import `saveDevResults` from that module (`CoveragePage.tsx:13`, `RoadmapPage.tsx:24`), which pulls the module into the main chunk, and rolldown did not tree-shake its siblings: the bundle contains the full `runSpike1` body with its Graph fetches, `window.__spike1=n`, `window.__spike1Retest=n`, and `console.log` of raw probe results. A second chunk `dist/rollout/assets/DevSpikes-CgPHAYix.js` is emitted and publicly fetchable at `getiamai.com/rollout/assets/DevSpikes-CgPHAYix.js`.\n\nI could find no live path to any of it. `DEV_PANEL` is `import.meta.env.DEV && …`, which is `false && …` in production, so the `<DevSpikes />` render at `App.tsx:235` is dead and the lazy chunk is never imported. The spike functions are module-scoped and never attached to `window` unless called. So this is dead weight and a stale comment, not an exposure — reaching it would require script execution the app does not offer (see supply-07).",
+      "attack_path": "No path found. Recording it because the comment at spike1.ts:190 asserts the opposite of what the artifact contains, and a future reader auditing by comment rather than by bundle would conclude the module is absent. Whether `runSpike1` being present in the same chunk matters at all is a reachability question for the network/exfiltration lane, which is looking at the Graph call surface; my evidence is that it is compiled in, not that it can run.",
+      "fix": "Move `saveDevResults` out of `spike1.ts` into its own tiny module — it already only depends on `redactIdentifiers` — and have `CoveragePage` and `RoadmapPage` import it from there. That severs the edge that drags the whole spike module into the production graph, and the `DevSpikes` chunk stops being emitted at all.\n\nThen correct the comment to say what is true: the `/__spike/save` call is eliminated at build time because `import.meta.env.DEV` is statically false, and after the split the surrounding probe code is no longer in the entry graph either.\n\nA cheap way to keep it true: assert it in the deploy path. After `npm run build:site`, fail if `dist/**/*.js` contains `__spike` or `runSpike1`. That is one grep, and it is the kind of claim that silently rots the moment someone adds an import."
+    }
+  ],
+  "coverage_gaps": [
+    "The repository's Actions **Workflow permissions** setting (\"Read and write\" vs \"Read repository contents\") is stored in GitHub settings, not in the repo, and the ground rules forbid network calls — so I could not determine what token `ci.yml` actually receives on a push. supply-04 is filed at `possible` for exactly this reason. Confirm at Settings → Actions → General → Workflow permissions; if it already reads \"Read repository contents and packages permissions\", supply-04 drops to informational and the one-line fix just makes it explicit.",
+    "Branch protection on `main` is likewise a GitHub setting I could not read. It is the control that would break the last step of supply-04's chain (stolen token → push to main → deploy). Worth confirming that `main` requires a PR and the `ci` check.",
+    "GitHub Pages custom-domain verification for `getiamai.com`. `public/CNAME` pins the apex and `scripts/assemble-site.mjs:78` rewrites `dist/CNAME` on every deploy, but whether the domain is *verified* against the GitHub account (Settings → Pages → verified domains) and whether Enforce HTTPS is on are both outside the repo. This matters more here than usual: the entire trust story is \"read the source at github.com/ZephyrPretendstoKnowTech/iamai, then connect at getiamai.com/rollout/\", and the binding between those two identities is DNS plus domain verification, neither of which a code reviewer can check. Unverified apex domains pointed at GitHub's Pages IPs are the classic takeover setup. I did not file this as a finding because I have no evidence either way — but it is the single highest-value thing on this list to confirm out-of-band.",
+    "Whether `npm ci --ignore-scripts` still produces a working build. I did not run it (read-only lane, no installs). The lock says only `fsevents` declares an install script and it is darwin-only optional, so I expect it to pass on the runner, but supply-05's fix needs one local confirmation before it goes in.",
+    "Reachability of the spike Graph-probe code that supply-08 shows is compiled into `dist/rollout/assets/index-CPCaIzKI.js`. I established it is present and that the UI entry point (`DEV_PANEL`, `App.tsx:34-35`) is statically dead in production. Judging whether the Graph calls inside it constitute exposure belongs to the network/exfiltration lane, which is reading the Graph surface; handing over the artifact evidence rather than duplicating the judgement.",
+    "The `dist/` I inspected is a local build dated 2026-08-30 08:35, not the artifact CI actually published. It is a genuine production build — `saveDevResults` is minified to an empty body, which only happens with `import.meta.env.DEV` false — and the working tree is clean, so it should match. But I could not diff it against what is live at getiamai.com/rollout/ without a network call. Every dist-based claim in supply-03 and supply-08 carries that caveat.",
+    "I did not audit the redaction of the grounding bundle, prompt-pack, diagnostics or CSV exports (the \"redacted by default\" claim and the copy-into-a-third-party-LLM attacker). That is another lane's; my only datum on it is that `saveDevResults`, the sole dev-time upload path, redacts via `redactIdentifiers` before sending and is eliminated from the production bundle entirely.",
+    "Only the `Jhope188/ConditionalAccessPolicies` index exists today, so supply-01 and supply-02 are single-instance findings. SPEC.md:32 plans \"any public GitHub repo URL\" as a later source, at which point `owner`, `repo`, `commit` and every `files` entry become user input rather than bundled data, and both findings escalate from maintainer-compromise to anyone-who-can-hand-the-user-a-URL. The validation in supply-01's fix should land before that feature, not after."
+  ],
+  "claims_evidence": [
+    {
+      "claim": "read-only",
+      "supported": "yes",
+      "note": "Within this lane's reach, the claim holds. `src/graph/scopes.ts:10-21` defines exactly seven Graph read scopes plus `openid`/`profile`/`offline_access`, and that list is the single source for every MSAL call (`msal.ts:40,62,66,67` all pass `GRAPH_SCOPES`) — there is no second scope array and no write scope anywhere. The set matches the SECURITY.md:28-35 disclosure table one-for-one, so the document and the code cannot drift on this point. Deployment adds nothing that could mutate a tenant: `deploy-pages.yml` holds `contents: read`, `pages: write`, `id-token: write` and touches only GitHub Pages. I did not verify HTTP verbs at each Graph call site — that is the network lane's — so this is scope-level assurance, not call-level."
+    },
+    {
+      "claim": "nothing-leaves-the-browser",
+      "supported": "partly",
+      "note": "The deployed artifact is clean: `dist/rollout/index.html:12-13` loads one same-origin script and one same-origin stylesheet, fonts are self-hosted, there is no CDN, no analytics and no third-party subresource of any kind (which is also why SRI is inapplicable rather than missing). The Pages artifact is built from a fresh checkout and `scripts/assemble-site.mjs` copies only `home/` and `public/CNAME`, so no local or tenant-derived file can reach it. What is partial is the *enforcement*. SECURITY.md:16-18 presents `src/network.test.ts` as the control, but its file walk (`network.test.ts:28`) covers only `src/`, `home/` and `index.html`, and only `.ts|.tsx|.css|.html`. Two bundled directories are outside it — `data/` and `baselines/` — and I found proof the hole is live: `https://download.microsoft.com/...` reached the production bundle from `data/product-names.json:3` without the test seeing it (inert, a citation string, but unseen). The test also never opens the built artifact, so hosts arriving through a dependency are invisible to it in both directions — the bundle carries four sovereign-cloud login hosts from `@azure/msal-common` that the test has no opinion about. The claim is true of what ships today; the mechanism that is supposed to keep it true has gaps in exactly the two places a future change would land. supply-03 has the fix, and supply-07 argues a `connect-src` meta CSP is the one thing that would move this from a promise to a browser-enforced control on a host that can set no headers."
+    },
+    {
+      "claim": "redacted-by-default",
+      "supported": "not-assessed",
+      "note": "Outside this lane — the export, grounding-bundle and diagnostics redaction paths belong to the data lane. One supporting datum in passing: the only code path in the repo that ever POSTs tenant-derived JSON anywhere, `saveDevResults` at `src/graph/spikes/spike1.ts:191-201`, passes its body through `redactIdentifiers` before sending, and is eliminated from the production bundle entirely (minified to an empty function body in `dist/rollout/assets/index-CPCaIzKI.js`, which also confirms the build ran with DEV false). So the dev-time capture path both redacts and does not ship."
+    }
+  ]
+}
