@@ -77,3 +77,18 @@ test('un-skipping something that is not skipped does nothing', () => {
   assert.equal(s.status, 'ready')
   assert.equal(s.history.length, 0)
 })
+
+test('a skip appears in the change record, with its reason (item 2)', async () => {
+  const { changeRecordRows } = await import('./changeRecord.ts')
+  const f = allFixtures().find((x) => x.name === 'small')!
+  const r = runFixture(f)
+  const target = r.steps.find((s) => s.status !== 'done' && !isEmergencyAccess(s) && s.kind === 'create')!
+  assert.equal(skipStep(target, 'No licence for it').ok, true)
+  const rows = changeRecordRows(r.steps, r.schedule, r.input.snapshot, (id) => id, 5)
+  const row = rows.find((x) => x[0] === (target.plainTitle || target.title))
+  assert.ok(row, 'the skipped step is in the record')
+  assert.ok(
+    row.some((cell) => String(cell).includes('No licence for it')),
+    'and the record carries the reason it was skipped',
+  )
+})

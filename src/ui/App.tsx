@@ -35,10 +35,11 @@ const ComponentsPage = import.meta.env.DEV
   ? lazy(() => import('./pages/ComponentsPage.tsx').then((m) => ({ default: m.ComponentsPage })))
   : () => null
 import { SHELL } from '../copy/pages.ts'
+import { isDemo } from './demo.ts'
 import { computeStepStatus } from './stepStatus.ts'
 import { activeWizardQuestions, wizardProgress } from '../mapping/wizard.ts'
 import type { WizardProgress } from '../mapping/wizard.ts'
-import { loadMappingState } from '../mapping/store.ts'
+import { loadMappingState, saveMappingState } from '../mapping/store.ts'
 import { probeStorage } from '../graph/collect/cache.ts'
 
 const DEV_PANEL =
@@ -48,6 +49,11 @@ const DEV_PANEL =
 // headless with no sign-in. Dev builds only; the fixture is loaded lazily so
 // it never ships.
 const MOCK = DEV_PANEL && new URLSearchParams(window.location.search).get('mock') === '1'
+// Demo mode ships (prompt 45 Part 1). Unlike MOCK it is not gated on a dev
+// build: the whole point is that a stranger can see the tool work before being
+// asked to connect a production tenant. The fixture is synthetic, so shipping it
+// exposes nothing; it is imported lazily so it costs nothing until asked for.
+const DEMO = isDemo()
 
 export function App() {
   const [account, setAccount] = useState<AccountInfo | null>(null)
@@ -83,6 +89,29 @@ export function App() {
   }, [route, visitedStart])
 
   useEffect(() => {
+    if (DEMO) {
+      void import('./demo.ts').then(async ({ demoTenant, DEMO_TENANT_ID }) => {
+        const d = demoTenant()
+        // Seed the Setup answers, or the Roadmap has nothing to compute from and
+        // renders empty: the demo would show a stranger a blank page, which is
+        // worse than not offering it. Written under the demo tenant id, so it
+        // cannot land on a real tenant's keys.
+        await saveMappingState(d.mapping)
+        setAccount({
+          homeAccountId: 'demo',
+          environment: 'login.windows.net',
+          tenantId: DEMO_TENANT_ID,
+          username: 'sample.admin@sample-tenant.example',
+          localAccountId: d.operatorId,
+          name: 'Sample Admin',
+        } as AccountInfo)
+        setTenantName('Sample Tenant (demo)')
+        setLastScan({ snapshot: d.snapshot, at: d.snapshot.asOf })
+        setBaseline({ source: 'sample baseline', pkg: d.baseline } as BaselineResult)
+        setReady(true)
+      })
+      return
+    }
     if (MOCK) {
       void Promise.all([import('./pages/fixtureSnapshot.ts'), import('./pages/bigFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }]) => {
         const params = new URLSearchParams(window.location.search)

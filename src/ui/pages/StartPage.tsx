@@ -1,4 +1,5 @@
 import { START } from '../../copy/pages.ts'
+import { demoUrl } from '../demo.ts'
 import { Card, Icon, LinkButton } from '../components/index.ts'
 import { REPO_URL } from '../shell/AppShell.tsx'
 
@@ -61,7 +62,12 @@ export function StartPage() {
         <p className="muted">{START.caveat}</p>
       </div>
       <p className="step-next">
-        <LinkButton href="#/connect">{START.cta}</LinkButton>
+        <LinkButton href="#/connect">{START.cta}</LinkButton>{' '}
+        {/* Beside Get started, not instead of it (prompt 45 item 1): a stranger
+            should be able to see the tool work before connecting a tenant. */}
+        <a className="demo-link" href={demoUrl()}>
+          {START.demoCta}
+        </a>
       </p>
     </div>
   )

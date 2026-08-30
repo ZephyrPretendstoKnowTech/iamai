@@ -22,6 +22,34 @@ export const STEP_STATUS_LABEL: Record<StepStatus, string> = {
   skipped: 'Skipped',
 }
 
+/**
+ * Why this step sits where it does (prompt 45 Part 3).
+ *
+ * The plan gives every step a date and, until now, no answer to the obvious
+ * question about that date. Each branch names the one fact that put it there,
+ * so the order is checkable rather than merely asserted.
+ */
+export const WHY_NOW = {
+  title: 'Why now',
+  waitsFor: (titles: string[]) =>
+    titles.length === 1
+      ? `It waits for ${titles[0]} to finish.`
+      : `It waits for ${titles.slice(0, -1).join(', ')} and ${titles[titles.length - 1]} to finish.`,
+  campaign: 'It waits for the registration campaign: the people it applies to need a sign-in method first.',
+  observation: (days: number) => `It waits out ${days} days of report-only evidence, so its impact is measured before it is enforced.`,
+  cap: 'The change windows before it are taken. This is the first one free.',
+  samePeople: 'It prompts people another change is already prompting this week, so it waits a week rather than interrupting them twice.',
+  phase: 'Earlier phases start first, and this belongs to a later one.',
+  safeToday: 'Nothing waits for it: the evidence shows nobody affected, so it can be enforced as soon as you want to.',
+  done: 'It is already in place.',
+  skipped: 'It was skipped, so it has no place in the order.',
+  // The dependency view (item 12): two lists, no diagram.
+  waitsOnTitle: 'This waits on',
+  waitedOnByTitle: 'Waiting on this',
+  nothingWaits: 'Nothing waits on this step.',
+  waitsOnNothing: 'It waits on nothing: it can start as soon as its window allows.',
+} as const
+
 export const PHASE_NAME: Record<number, string> = {
   0: 'Foundations',
   1: 'Low-impact blocks',
