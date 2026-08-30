@@ -143,6 +143,13 @@ footer.footer {
 .footer-links {
   display: flex;
   gap: var(--space-4);
+  /* A flex row that cannot wrap sits at its max-content width whatever the
+     container is. Combined with the column layout below, that is what pushed
+     every page 21px sideways at 360px on a machine with wider fonts. */
+  flex-wrap: wrap;
+  row-gap: var(--space-1);
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* ================= stepper (left nav) ================= */
@@ -308,7 +315,11 @@ nav.stepper.is-collapsed .stepper-collapse .icon { transform: rotate(-90deg); }
   main.page { padding: var(--space-3); }
   .grid-cards { grid-template-columns: 1fr; }
   .timeline-row { grid-template-columns: 1fr; }
-  footer.footer { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  /* `align-items: flex-start` in a column gives every child its max-content
+     width, so a line of links became as wide as it wanted to be and took the
+     document with it. Stretch keeps them inside the footer, where they wrap. */
+  footer.footer { flex-direction: column; align-items: stretch; gap: var(--space-1); }
+  footer.footer > * { max-width: 100%; min-width: 0; }
   .hero h1 { font-size: var(--text-lg); }
 }
 
