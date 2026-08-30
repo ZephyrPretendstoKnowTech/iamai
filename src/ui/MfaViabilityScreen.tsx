@@ -363,19 +363,6 @@ export function MfaViabilityScreen({
         </Card>
       )}
       {scanState === 'running' && slow && <Callout kind="warning">{SCAN.slow}</Callout>}
-      {/* R9 removed the "Scan complete" card. What it said about the banner
-          above it was true of the heading, not of these counts — they were the
-          only place the tenant's size appeared, so the line stays, without the
-          card and the title that repeated the banner. */}
-      {scanState === 'done' && snapshot && (
-        <p className="reason">
-          {SCAN.completeLine(
-            snapshot.users.length,
-            snapshot.config.caPolicies?.rows.length ?? 0,
-            evidence?.coveredWindow ? `${absoluteDate(evidence.coveredWindow.from)} to ${absoluteDate(evidence.coveredWindow.to)}` : null,
-          )}
-        </p>
-      )}
 
 
       {denied.length > 0 && (
@@ -398,6 +385,33 @@ export function MfaViabilityScreen({
         </Callout>
       )}
 
+
+      {/* L2: the tabs come first. The useful content used to start below a
+          title, a subtitle, a needs line, two buttons, a banner, a summary and
+          a Details collapse. The summary and the section detail are notes about
+          the scan that just ran, so they sit under what they describe. */}
+      {scored && snapshot && evidence && (
+        <Tabs
+          initial={view}
+          tabs={[
+            { id: 'readiness', label: SCAN.tabs.readiness, render: () => readinessView() },
+            { id: 'inventory', label: SCAN.tabs.inventory, render: () => <InventoryPage snapshot={snapshot} /> },
+          ]}
+        />
+      )}
+      {/* R9 removed the "Scan complete" card. What it said about the banner
+          above it was true of the heading, not of these counts — they were the
+          only place the tenant's size appeared, so the line stays, without the
+          card and the title that repeated the banner. */}
+      {scanState === 'done' && snapshot && (
+        <p className="reason">
+          {SCAN.completeLine(
+            snapshot.users.length,
+            snapshot.config.caPolicies?.rows.length ?? 0,
+            evidence?.coveredWindow ? `${absoluteDate(evidence.coveredWindow.from)} to ${absoluteDate(evidence.coveredWindow.to)}` : null,
+          )}
+        </p>
+      )}
       {Object.keys(sections).length > 0 && (
         <ExpandCard summary={SCAN.details} open={false}>
           <ul className="sections">
@@ -415,16 +429,6 @@ export function MfaViabilityScreen({
             ))}
           </ul>
         </ExpandCard>
-      )}
-
-      {scored && snapshot && evidence && (
-        <Tabs
-          initial={view}
-          tabs={[
-            { id: 'readiness', label: SCAN.tabs.readiness, render: () => readinessView() },
-            { id: 'inventory', label: SCAN.tabs.inventory, render: () => <InventoryPage snapshot={snapshot} /> },
-          ]}
-        />
       )}
     </StepFrame>
   )
