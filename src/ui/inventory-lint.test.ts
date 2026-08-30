@@ -104,10 +104,10 @@ const SYNONYMS: { concept: string; labels: string[] }[] = [
   { concept: 'confirm what IAMAI already detected', labels: ['looks right', 'this is correct', 'detections look right'] },
   { concept: 'decline the question', labels: ['not applicable to us', 'nobody needs special care', 'not sure / none'] },
 ]
-const RULE5_WAIVED: Waiver[] = [
-  { id: 'C2', match: 'confirm what IAMAI already detected' },
-  { id: 'R1/R2/R3', match: 'decline the question' },
-]
+// C2 is closed: prompt 36 item 13 made "Looks right" the one confirm label, so
+// the group above now has a single member and the rule passes on it unwaived.
+// The retired labels stay in the group as a tripwire against their return.
+const RULE5_WAIVED: Waiver[] = [{ id: 'R1/R2/R3', match: 'decline the question' }]
 
 test('rule 5: no concept is expressed by more than one option label', () => {
   const options = allOptions()

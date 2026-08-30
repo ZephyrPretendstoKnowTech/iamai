@@ -14,13 +14,14 @@ import { breakGlassFindings, exclusionGroupFindings, trustedLocationFindings } f
 import type { MappingState, ValidationResult } from '../../mapping/types.ts'
 import { activeWizardQuestions, applyAutoResolution, applyWizardAnswers, wizardProgress } from '../../mapping/wizard.ts'
 import type { WizardProgress, WizardQuestionDef, WizardQuestionId } from '../../mapping/wizard.ts'
+import { schemaFor } from '../../mapping/questionSchema.ts'
 import { suggestForWizard } from '../../mapping/wizardSuggest.ts'
 import type { WizardSuggestContext } from '../../mapping/wizardSuggest.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { countryName, suggestCountries, tenantCountryLocation } from '../../mapping/countries.ts'
 import { COMMON_TIMEZONES, FRAMEWORK_OPTIONS, SETUP_PAGE as C, SETUP_QUESTIONS } from '../../copy/setup.ts'
 import { setDisplayTimeZone } from '../format.ts'
-import { Button, Callout, Card, Chip, Icon, InfoTip, Picker, Toast, Toggle, useToast } from '../components/index.ts'
+import { Button, Callout, Card, Chip, Confirm, Icon, InfoTip, Picker, Toast, Toggle, useToast } from '../components/index.ts'
 import type { IconName, PickerOption } from '../components/index.ts'
 import { ScanAge, StepFrame } from '../shell/AppShell.tsx'
 import type { BaselineResult } from './BaselinePage.tsx'
@@ -290,7 +291,8 @@ function QuestionSection(props: QProps) {
             <strong>{C.whyMatters}:</strong> {def.why}
           </p>
           <QuestionBody {...props} />
-          <NotApplicable questionId={def.id} update={props.update} answered={props.answered} />
+          {/* The question does not decide whether it has a way out; its schema does. */}
+          {schemaFor(def.id).optOut !== 'none' && <NotApplicable questionId={def.id} update={props.update} answered={props.answered} />}
         </>
       )}
       {collapsed && !state.notApplicable?.[def.id] && (openFindings.toFix > 0 || openFindings.recommended > 0 || def.id === 'globalExclusion' || def.id === 'breakGlass') && <QuestionFindings {...props} />}
@@ -762,11 +764,7 @@ function CountriesQuestion({ state, snapshot, update, answered }: QProps) {
       <p className="reason">
         {C.countriesChosen(state.allowedCountries.length)}. {existing ? C.countriesExisting(existing.displayName) : state.allowedCountries.length > 0 ? C.countriesToCreate : ''}
       </p>
-      <p>
-        <Button variant="primary" onClick={() => answered('countries')} disabled={state.allowedCountries.length === 0}>
-          {C.countriesLooksRight}
-        </Button>
-      </p>
+      <Confirm onConfirm={() => answered('countries')} />
     </div>
   )
 }
@@ -907,11 +905,7 @@ function ServiceAccountsQuestion({ state, snapshot, knownGroups, update, answere
           {C.serviceConfirmed(state.serviceAccountUserIds.length)}. {groupName ? C.serviceGroupFound(groupName) : C.serviceGroupMissing}
         </p>
       )}
-      <p>
-        <Button variant="primary" onClick={() => answered('serviceAccounts')} title={pending.length > 0 ? C.serviceCount(pending.length) : undefined}>
-          {C.detectionsRight}
-        </Button>
-      </p>
+      <Confirm onConfirm={() => answered('serviceAccounts')} title={pending.length > 0 ? C.serviceCount(pending.length) : undefined} />
     </div>
   )
 }
@@ -920,7 +914,7 @@ function TimeZoneQuestion({ state, update, answered }: QProps) {
   const browser = Intl.DateTimeFormat().resolvedOptions().timeZone
   const zones = [browser, ...COMMON_TIMEZONES.filter((z) => z !== browser)]
   return (
-    <p className="row">
+    <div className="row">
       <select
         aria-label={SETUP_QUESTIONS.timeZone.title}
         value={state.displayTimeZone ?? browser}
@@ -937,17 +931,13 @@ function TimeZoneQuestion({ state, update, answered }: QProps) {
         ))}
       </select>
       {/* A pre-filled default always has a one-click confirm (prompt 26 §4, §5). */}
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={() => {
+      <Confirm
+        onConfirm={() => {
           update((s) => ({ ...s, displayTimeZone: s.displayTimeZone ?? browser }))
           answered('timeZone')
         }}
-      >
-        {C.timeZoneCorrect}
-      </Button>
-    </p>
+      />
+    </div>
   )
 }
 
@@ -1066,11 +1056,7 @@ function ApplicabilityQuestion({ state, snapshot, update, answered }: QProps) {
           )
         })}
       </div>
-      <p>
-        <Button variant="primary" onClick={() => answered('applicability')}>
-          {C.detectionsRight}
-        </Button>
-      </p>
+      <Confirm onConfirm={() => answered('applicability')} />
     </div>
   )
 }

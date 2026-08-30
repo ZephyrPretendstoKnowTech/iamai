@@ -139,7 +139,9 @@ export const SETUP_PAGE = {
   confirmedByOperator: 'confirmed in Setup',
   notUsed: 'marked as not used in Setup',
   yourAnswer: '(your answer)',
-  detectionsRight: 'Detections look right',
+  // The one confirm label in the app (prompt 36 item 13). Every confirm
+  // affordance says this, whatever it is confirming.
+  confirmLooksRight: 'Looks right',
   // ---- prompt 16 layout and feedback ----
   advanced: 'Advanced options',
   advancedHint: (n: number) => `${count(n, 'optional question')}: each one sharpens the plan.`,
@@ -158,7 +160,6 @@ export const SETUP_PAGE = {
   notApplicableAnswered: (reason: string) => `Not applicable to us: ${reason}`,
   noServiceAccounts: 'No service accounts detected, so nothing needs a carve-out; the plan records that.',
   noTrustedLocations: 'No named locations exist yet: the plan creates them as its first steps.',
-  timeZoneCorrect: 'This is correct',
   findingsCount: (n: number) => (n === 0 ? 'checks passed' : `${n} to fix`),
   notesCount: (n: number) => `checked · ${n === 1 ? '1 note' : `${n} notes`}`,
   nothingToCheck: 'nothing to check',
@@ -204,7 +205,7 @@ export const SETUP_PAGE = {
   countriesUsage: (n: number) => `usage location of ${count(n, 'user')}`,
   countriesNoSignIns: 'No sign-in record carried a location: the list below comes from usage locations only.',
   countriesNone: 'No location data at all: add the countries by hand.',
-  countriesLooksRight: 'Looks right',
+
   addCountry: 'Add a country (two-letter code or name)…',
   countriesChosen: (n: number) => count(n, 'country', 'countries'),
   countriesExisting: (name: string) => `Matches the existing named location "${name}".`,
