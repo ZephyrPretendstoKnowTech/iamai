@@ -401,6 +401,9 @@ export const ROADMAP = {
   phaseProgress: (done: number, total: number) => `${done} of ${count(total, 'step')} done`,
   phaseAllDone: (n: number) => `${n} done`,
   minimapToday: 'Today',
+  /** Short labels for the mini-map, where the full window title will not fit (prompt 40 §19). */
+  minimapRegistration: 'Registration',
+  minimapObservation: 'Observation',
   windowChip: 'Waiting period',
   collapseStep: 'Collapse',
   stepsBadge: (done: number, total: number) => `${done}/${total} steps done`,
@@ -430,6 +433,21 @@ export const ROADMAP = {
   observation: (days: number) => `Observation window · ${days} days`,
   observationText: 'Every new policy collects report-only evidence at the same time.',
   wave: (n: number, name: string) => `Wave ${n} · ${name}`,
+  /**
+   * A wave is named by the goals it holds, in phase order, never by one
+   * dominant phase. "Wave 1 · Devices" held admin portals, guest MFA, geo
+   * blocking, privileged-role activation and session controls (review-08 B6,
+   * prompt 40 §20). Four branches, because a wave can hold any number of areas:
+   * none (it is empty and is not drawn), one, two, or more than two.
+   */
+  waveAreas: (names: string[]): string =>
+    names.length === 0
+      ? 'No goals'
+      : names.length === 1
+        ? names[0]
+        : names.length === 2
+          ? `${names[0]} and ${names[1]}`
+          : `${names[0]}, ${names[1]} and ${names.length - 2} more`,
   blockedBy: 'Blocked until',
   dangerLead: (titles: string[]) =>
     titles.length === 1

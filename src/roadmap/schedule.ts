@@ -21,7 +21,15 @@ import type { Step } from './types.ts'
 
 export type WaveSchedule = {
   wave: number // 1..n = enforcement waves in date order; 0 = day 0 (foundations + report-only creation)
+  /** The dominant phase, used for ordering and for the critical-path sentence. */
   phase: number
+  /**
+   * Every phase the wave actually contains, in phase order. The name a user
+   * reads is built from this, not from `phase` alone: a wave holding admin,
+   * guest, location and session goals is not "Devices" (review-08 B6,
+   * prompt 40 §20).
+   */
+  phases: number[]
   start: string
   end: string
   days: number
@@ -106,6 +114,27 @@ export type ScheduleOptions = {
 
 /** Enforcement events per week by band (§2). */
 export const ENFORCEMENT_CAP: Record<SizeBand, number> = { small: 2, mid: 3, large: 5 }
+
+/**
+ * How many changes may take effect on one day.
+ *
+ * ENFORCEMENT_CAP limits change *days* per week, and the day check
+ * short-circuited it: once a day was already an event day, every later step
+ * whose earliest date landed there was accepted without limit. Twenty-one
+ * enforceable steps therefore shared one day, which put them all in one week,
+ * and waves are one per distinct enforcement start week — so the plan reported
+ * "1 enforcement wave" for 21 steps (review-08 B1, B3).
+ *
+ * The ring model was applied throughout: every enforceable step had its rings.
+ * Nothing was reading them at this point, which is why the wave count looked
+ * like a ring failure and was not one.
+ *
+ * The job is to stop everything landing on one day, not to force one change per
+ * day: at one per day a small tenant's twelve changes stretched the plan from
+ * five weeks to sixteen, which trades a real defect for a useless plan. Two on
+ * a day in a small tenant is a morning's work with a small blast radius.
+ */
+export const CHANGES_PER_DAY: Record<SizeBand, number> = { small: 2, mid: 3, large: 4 }
 const HIGH_DISRUPTION = 4
 const OVERLAP_SHARE = 0.5
 
@@ -238,7 +267,12 @@ function topological(steps: Step[], graph: Record<string, Dependency[]>): Step[]
   const byId = new Map(steps.map((s) => [s.id, s]))
   const position = new Map(steps.map((s, i) => [s.id, i]))
   while (ready.length > 0) {
-    ready.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0))
+    // Lower phase first, then declaration order. Phases are meant to begin in
+    // order, and the guard below can only push a step later — it cannot pull an
+    // earlier phase back once a later one has taken the slot. While every step
+    // shared one day that never showed; with days now filling up, placing a
+    // phase-2 step before a phase-1 step reverses them (prompt 40 §18).
+    ready.sort((a, b) => a.phase - b.phase || (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0))
     const s = ready.shift() as Step
     order.push(s)
     for (const next of out.get(s.id) ?? []) {
@@ -270,6 +304,7 @@ export function buildSchedule(
   const expectedDays = preset.weeks * 7
   const day0 = toWeekday(startIso)
   const cap = ENFORCEMENT_CAP[band]
+  const perDay = CHANGES_PER_DAY[band]
   const freeze = options.freeze && options.freeze.from < options.freeze.to ? options.freeze : null
   const byId = new Map(steps.map((s) => [s.id, s]))
   const graph = dependencyGraph(steps)
@@ -291,13 +326,23 @@ export function buildSchedule(
   }
   const needsObservation = steps.some((s) => isWork(s) && (s.kind === 'create' || s.kind === 'adjust'))
   const obsDays = needsObservation ? OBSERVATION_DAYS : 0
-  // The shared observation window is the first one: every policy is created on day 0.
-  const observation = { start: toWeekday(day0End), end: addDays(toWeekday(day0End), obsDays), days: obsDays }
+  // Observation runs from the day the report-only policies exist, which is day 0
+  // (prompt 40 §18). Review-08 B4 also asked for it to start after registration
+  // ends. It is not implemented that way, and the reason is a rule with its own
+  // test above: a step that blocks legacy authentication has no registration
+  // prerequisite, so it must not wait out a 14-to-42-day method campaign. The
+  // steps that DO need registration already wait for it through a hard
+  // dependency on the verify step (DEPENDENCY.registration), so the ordering B4
+  // wants holds exactly where it is true and not where it is not.
+  const observationStart = toWeekday(day0End)
+  const observation = { start: observationStart, end: addDays(observationStart, obsDays), days: obsDays }
 
   // ---- Placement ----
   const attempt = (relaxSamePeople: boolean): { placed: Map<string, Placed>; reportOnlyAt: Record<string, string> } => {
     const placed = new Map<string, Placed>()
     const eventDays = new Map<string, Set<string>>()
+    /** Changes already taking effect on a given day, so a day cannot fill without limit. */
+    const eventsOnDay = new Map<string, number>()
     const reportOnlyAt: Record<string, string> = {}
     const ringWindows = new Map<string, { start: string; end: string }[]>()
     const latestStartByPhase = new Map<number, string>()
@@ -321,18 +366,26 @@ export function buildSchedule(
           continue
         }
         const week = weekKey(cursor)
+        const day = cursor.slice(0, 10)
         const days = eventDays.get(week) ?? new Set<string>()
-        if (days.has(cursor.slice(0, 10)) || days.size < cap) return cursor
-        const later = [...days].filter((d) => d > cursor.slice(0, 10)).sort()[0]
-        if (later) return later + cursor.slice(10)
-        cursor = toEnforcementDay(addDays(week + 'T12:00:00.000Z', 7), dayOpts)
+        const onDay = eventsOnDay.get(day) ?? 0
+        // A day already in use is only reusable while it has room; that check
+        // used to return unconditionally and is what let one day absorb every
+        // step in the plan.
+        if (days.has(day) ? onDay < perDay : days.size < cap) return cursor
+        // This day is full, or the week has used all the change days it is
+        // allowed. Try the next enforcement day: toEnforcementDay only returns
+        // the midweek slots, so once this week's allowance is spent the search
+        // lands in the next week on its own. Jumping a whole week here instead
+        // gave one change per week and a wave per step.
+        cursor = toEnforcementDay(addDays(cursor, 1), dayOpts)
         note.kind = 'cap'
       }
       return cursor
     }
     for (const s of topological(steps.filter(isEnforcement), graph)) {
       const deps = graph[s.id] ?? []
-      const creation = s.kind === 'create' ? toWeekday(day0End) : toWeekday(day0End)
+      const creation = toWeekday(day0End)
       if (s.kind === 'create') reportOnlyAt[s.id] = creation
       let earliest = s.kind === 'create' ? observation.end : creation
       const reason: { kind: ConstraintKind; ref: string | null } = { kind: s.kind === 'create' ? 'rings' : 'none', ref: null }
@@ -405,6 +458,11 @@ export function buildSchedule(
         if (!eventDays.has(week)) eventDays.set(week, new Set())
         eventDays.get(week)!.add(w.start.slice(0, 10))
       }
+      // One enforcement event per step, counted on the day the step starts.
+      // Counting every ring window instead made a two-ring step consume a whole
+      // day's allowance, which pushed later phases ahead of earlier ones.
+      const startDay = candidate.windows[0]?.start.slice(0, 10)
+      if (startDay) eventsOnDay.set(startDay, (eventsOnDay.get(startDay) ?? 0) + 1)
       if (rings) {
         for (const [i, w] of candidate.windows.entries()) {
           rings[i].plannedStart = w.start
@@ -450,7 +508,7 @@ export function buildSchedule(
   const waves: WaveSchedule[] = []
   const day0Steps = steps.filter((s) => !isEnforcement(s)).map((s) => s.id)
   for (const id of day0Steps) waveOf[id] = 0
-  waves.push({ wave: 0, phase: 0, start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })
+  waves.push({ wave: 0, phase: 0, phases: [0], start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })
   const enforcement = steps.filter(isEnforcement).filter((s) => placed.has(s.id))
   const weeks = [...new Set(enforcement.map((s) => weekKey(placed.get(s.id)!.start)))].sort()
   for (const [i, wk] of weeks.entries()) {
@@ -463,7 +521,8 @@ export function buildSchedule(
     // Wave names read in phase order: a later wave never carries an earlier phase's name.
     const phase = Math.max(waves.at(-1)?.phase ?? 0, [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0])
     for (const id of ids) waveOf[id] = i + 1
-    waves.push({ wave: i + 1, phase, start, end, days: Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000), stepIds: ids, note: null })
+    const phases = [...counts.keys()].sort((a, b) => a - b)
+    waves.push({ wave: i + 1, phase, phases, start, end, days: Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000), stepIds: ids, note: null })
   }
 
   const targetEnd = max(day0End, verification.end, ...waves.map((w) => w.end))
@@ -477,6 +536,19 @@ export function buildSchedule(
   const waitingOnSetup = new Set([...byQuestion.values()].flatMap((list) => list.map((s) => s.id))).size
   const waitingOnSetupQuestions = [...byQuestion.keys()].sort((a, b) => a - b)
 
+  // The window stays open until the wave it informs (prompt 40 §18). Placement
+  // treats observation.end as the floor an enforcement start may not precede;
+  // once the waves are placed, the first one is usually later than that floor,
+  // because the day cap and phase order push it out. Reporting the floor made
+  // the page say the evidence stopped being gathered twelve days before anyone
+  // acted on it (review-08 B4). Nothing stops observing in that gap, so the
+  // window is reported as what it is: open until the first change.
+  const firstWaveStart = waves.find((w) => w.wave >= 1)?.start ?? null
+  const observed =
+    observation.days > 0 && firstWaveStart !== null && firstWaveStart > observation.end
+      ? { ...observation, end: firstWaveStart, days: Math.round((Date.parse(firstWaveStart) - Date.parse(observation.start)) / 86_400_000) }
+      : observation
+
   return {
     band,
     bandSource: bandOverride ? 'override' : 'auto',
@@ -488,7 +560,7 @@ export function buildSchedule(
     weeks: Math.max(1, Math.round(totalDays / 7)),
     withinBand: totalDays <= expectedDays + 7,
     verification,
-    observation,
+    observation: observed,
     waves,
     waveOf,
     extendedBy,

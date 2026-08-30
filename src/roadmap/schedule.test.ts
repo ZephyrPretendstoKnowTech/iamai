@@ -5,6 +5,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildSchedule, dependencyGraph, nextMonday, toEnforcementDay } from './schedule.ts'
 import { bandForActiveUsers } from './constants.ts'
+import { PHASE_NAME } from '../copy/steps.ts'
+import { ROADMAP as C } from '../copy/pages.ts'
 import type { Ring, Step } from './types.ts'
 
 const people = (n: number, prefix = 'u'): string[] => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
@@ -232,6 +234,30 @@ test('all done → no windows, finishes on day 0', () => {
   assert.equal(s.targetEnd, s.start)
   assert.equal(s.waves.length, 1)
   assert.equal(s.derivation.constraint, 'none')
+})
+
+test('a wave is named by every goal area it holds, not by one dominant phase (prompt 40 §20)', () => {
+  const steps = [
+    step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], denies: false, readiness: { family: 'other', percent: null, lines: [] } }),
+    step({ id: 'admin', phase: 3, readiness: { family: 'admin', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 2, guests: 0, ids: ['a0', 'a1'] }, rings: [ring(0, 3, ['a0'])] }),
+    step({ id: 'devices', phase: 5, readiness: { family: 'device', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 0, guests: 0, ids: ['d0', 'd1'] }, rings: [ring(0, 3, ['d0'])] }),
+  ]
+  const s = buildSchedule(steps, MON, 12)
+  const withBoth = s.waves.filter((w) => w.wave >= 1).find((w) => w.stepIds.includes('admin') && w.stepIds.includes('devices'))
+  if (withBoth) {
+    assert.deepEqual(withBoth.phases, [3, 5], 'the wave records both areas it holds')
+    const name = C.waveAreas(withBoth.phases.map((p) => PHASE_NAME[p]))
+    assert.ok(name.includes(PHASE_NAME[3]) && name.includes(PHASE_NAME[5]), `"${name}" names both areas`)
+  }
+  // Every wave records at least the phase it is ordered by, whatever it holds.
+  for (const w of s.waves) assert.ok(w.phases.length > 0 && w.phases.includes(w.phase), `wave ${w.wave} records its own phase`)
+})
+
+test('waveAreas has a branch for none, one, two and more than two (prompt 40 §20)', () => {
+  assert.equal(C.waveAreas([]), 'No goals')
+  assert.equal(C.waveAreas(['Devices']), 'Devices')
+  assert.equal(C.waveAreas(['Devices', 'Sessions']), 'Devices and Sessions')
+  assert.equal(C.waveAreas(['Devices', 'Sessions', 'Advanced', 'Admin hardening']), 'Devices, Sessions and 2 more')
 })
 
 test('phase order (ux-review-07 §3): no step starts before the last start of any lower phase, and waves are named by their dominant phase', () => {

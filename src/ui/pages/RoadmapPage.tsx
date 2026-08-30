@@ -44,7 +44,7 @@ import { doThisNext } from '../../roadmap/next.ts'
 import { appendLog, emptyLog, entriesForScan, logCsvRows, logMarkdown, logView, rolledUpSentence } from '../../roadmap/activityLog.ts'
 import type { ActivityLog } from '../../roadmap/activityLog.ts'
 import { COMMS_PLAN, EFFORT, GROUNDING, PROMPTS, WATCH, BULLETIN } from '../../copy/comms.ts'
-import { bulletinsFor, commsPlanRows, monthlyWarnings, recipientRows } from '../../roadmap/comms.ts'
+import { audiencesFor, bulletinsFor, commsPlanRows, monthlyWarnings, recipientRows } from '../../roadmap/comms.ts'
 import type { Bulletin, CommsContext } from '../../roadmap/comms.ts'
 import { groundingBundle, promptFor, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
 import { DEFAULT_REVERT_PERCENT, effortFor, planEffort, watchFor } from '../../roadmap/watch.ts'
@@ -467,7 +467,8 @@ export function RoadmapPage({
     void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), freeze: next })
     setVersion((v) => v + 1)
   }
-  const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? C.day0 : C.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
+  const waveTitle = (w: Schedule['waves'][number]) =>
+    w.wave === 0 ? C.day0 : C.wave(w.wave, C.waveAreas(w.phases.map((p) => PHASE_NAME[p]).filter((n): n is string => Boolean(n))))
   // Owner and scheduled date travel with the plan (roadmap-v2.md §4.12); a date re-plans in place.
   const saveStepMeta = (st: Step, meta: { scheduledDate?: string | null }): void => {
     setSaved((p) => {
@@ -906,9 +907,35 @@ export function RoadmapPage({
     type Cell = { key: string; time: string; label: string; reason: string; out: boolean; stepId: string }
     const cellsOf = (kind: 'announce' | 'remind' | 'enforce'): Cell[] => {
       if (kind === 'enforce') {
-        return allEvents
-          .filter(({ e }) => e.kind === 'enforce')
-          .map(({ step: st, e }) => ({ key: `${st.id}-enforce`, time: e.time, label: st.plainTitle, reason: e.reason, out: e.outOfHours, stepId: st.id }))
+        // Bundled by day and audience, not one cell entry per step (prompt 40
+        // §16). Prompt 37 bundled the announce and remind rows and left this
+        // one per-step on the reasoning that "each change really does take
+        // effect on its own day" — which is true of the change and false of the
+        // cell, because the scheduler puts many changes on one day at one
+        // rhythm-derived hour. The live site showed twenty-one entries stacked
+        // in a single 12:00 cell (review-08 B1).
+        const groups = new Map<string, { at: string; time: string; audience: string; steps: Step[]; out: boolean }>()
+        for (const { step: st, e } of allEvents) {
+          if (e.kind !== 'enforce') continue
+          const audience = audiencesFor(st, commsCtx).find((a) => a.kind !== 'none')?.label ?? WEEK_VIEW.everyone
+          const key = `${e.at.slice(0, 10)}|${audience}`
+          const g = groups.get(key)
+          if (g) {
+            g.steps.push(st)
+            g.out = g.out || e.outOfHours
+          } else {
+            groups.set(key, { at: e.at, time: e.time, audience, steps: [st], out: e.outOfHours })
+          }
+        }
+        return [...groups.entries()].map(([key, g]) => ({
+          key: `enforce-${key}`,
+          time: g.time,
+          label: g.steps.length === 1 ? g.steps[0].plainTitle : WEEK_VIEW.enforceBundle(g.audience, g.steps.length),
+          reason: g.steps.map((st) => st.plainTitle).join('; '),
+          out: g.out,
+          stepId: g.steps[0].id,
+          at: g.at,
+        })) as Cell[]
       }
       // One reminder per bulletin, never one per step (§15).
       return bulletins
@@ -1290,6 +1317,53 @@ export function RoadmapPage({
     const waves = schedule.waves.filter((w) => phaseSteps(w).length > 0)
     const totalDays = Math.max(1, Math.round((Date.parse(schedule.targetEnd) - Date.parse(schedule.start)) / 86_400_000))
     const todayPct = Math.min(100, Math.max(0, ((Date.now() - Date.parse(schedule.start)) / 86_400_000 / totalDays) * 100))
+    /**
+     * One segment per phase and per window, in date order, sized by duration.
+     * A window has no steps, so its tone comes from the calendar rather than
+     * from progress: past, running now, or still ahead.
+     */
+    type Segment = { key: string; anchor: string; label: string; title: string; days: number; tone: string }
+    const windowTone = (w: { start: string; end: string }): string =>
+      Date.parse(w.end) <= Date.now() ? 'is-done' : Date.parse(w.start) <= Date.now() ? 'is-partial' : 'is-future'
+    const segments: Segment[] = [
+      ...waves.map((w) => {
+        const all = phaseSteps(w)
+        const doneN = all.filter((st) => st.status === 'done').length
+        return {
+          key: `wave-${w.wave}`,
+          anchor: `phase-${w.wave}`,
+          label: waveTitle(w),
+          title: `${waveTitle(w)} · ${C.phaseProgress(doneN, all.length)}`,
+          days: Math.max(1, w.days),
+          start: w.start,
+          tone: doneN === all.length ? 'is-done' : doneN > 0 ? 'is-partial' : Date.parse(w.start) > Date.now() ? 'is-future' : '',
+        }
+      }),
+      ...(schedule.verification.days > 0
+        ? [{
+            key: 'window-verification',
+            anchor: 'window-verification',
+            label: C.minimapRegistration,
+            title: C.verificationWindow(schedule.verification.days),
+            days: Math.max(1, schedule.verification.days),
+            start: schedule.verification.start,
+            tone: windowTone(schedule.verification),
+          }]
+        : []),
+      ...(schedule.observation.days > 0
+        ? [{
+            key: 'window-observation',
+            anchor: 'window-observation',
+            label: C.minimapObservation,
+            title: C.observation(schedule.observation.days),
+            days: Math.max(1, schedule.observation.days),
+            start: schedule.observation.start,
+            tone: windowTone(schedule.observation),
+          }]
+        : []),
+    ]
+      .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))
+      .map(({ start: _start, ...seg }) => seg)
     const windowCard = (id: string, title: string, text: string, w: { start: string; end: string; days: number }) => (
       <div key={id} className="card window-card" id={id}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -1303,25 +1377,27 @@ export function RoadmapPage({
     )
     return (
       <div>
-        {/* Mini-map: the whole plan in one bar, segmented by phase, today marked (§10). */}
+        {/*
+          Mini-map: every phase AND every window in the plan, each sized by its
+          own duration, today marked (§10, prompt 40 §19). It used to iterate
+          waves alone, so a plan whose first five weeks are the registration and
+          observation windows drew two segments and left those five weeks off
+          the bar entirely (review-08 B2). The windows are real elapsed time
+          with their own cards, so they are segments like any other.
+        */}
         <div className="minimap no-print" aria-label={C.tabs.schedule}>
-          {waves.map((w) => {
-            const all = phaseSteps(w)
-            const doneN = all.filter((st) => st.status === 'done').length
-            const days = Math.max(1, w.days)
-            return (
-              <a
-                key={w.wave}
-                href={`#phase-${w.wave}`}
-                className={`minimap-seg ${doneN === all.length ? 'is-done' : doneN > 0 ? 'is-partial' : Date.parse(w.start) > Date.now() ? 'is-future' : ''}`}
-                style={{ flexGrow: days }}
-                title={`${waveTitle(w)} · ${C.phaseProgress(doneN, all.length)}`}
-                onClick={(e) => { e.preventDefault(); document.getElementById(`phase-${w.wave}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }) }}
-              >
-                <span className="minimap-label">{waveTitle(w)}</span>
-              </a>
-            )
-          })}
+          {segments.map((seg) => (
+            <a
+              key={seg.key}
+              href={`#${seg.anchor}`}
+              className={`minimap-seg ${seg.tone}`}
+              style={{ flexGrow: seg.days }}
+              title={seg.title}
+              onClick={(e) => { e.preventDefault(); document.getElementById(seg.anchor)?.scrollIntoView({ block: 'start', behavior: 'smooth' }) }}
+            >
+              <span className="minimap-label">{seg.label}</span>
+            </a>
+          ))}
           <span className="minimap-today" style={{ left: `${todayPct}%` }} title={C.minimapToday} />
         </div>
         <p className="reason">
