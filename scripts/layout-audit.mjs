@@ -248,7 +248,47 @@ const LAYOUT = `(() => {
       return true
     })
     .map((t) => (t.className || 'table') + ' ' + Math.round(t.scrollWidth) + 'px')
+  // What is actually too wide, not just that something is. "The page scrolls
+  // sideways by 21px" is not diagnosable from a CI log; the element that does
+  // it is. Reported whenever anything reaches within 8px of the viewport, so a
+  // machine that is merely close still names the candidate.
+  const scrolledBy = (el) => {
+    for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+      const ox = getComputedStyle(n).overflowX
+      if (ox === 'auto' || ox === 'scroll' || ox === 'hidden') return true
+    }
+    return false
+  }
+  const widest = [...document.querySelectorAll('body *')]
+    .filter((el) => !el.closest('.devtools, .print-only'))
+    .filter((el) => !scrolledBy(el))
+    .map((el) => ({ el, r: el.getBoundingClientRect() }))
+    .filter((x) => x.r.width > 0 && Math.round(x.r.right) > de.clientWidth - 8)
+    .map(function (x) {
+      var cls = x.el.className && typeof x.el.className === 'string' ? '.' + x.el.className.trim().split(/\s+/).join('.') : ''
+      return x.el.tagName.toLowerCase() + cls + ' right=' + Math.round(x.r.right) + ' w=' + Math.round(x.r.width)
+    })
+  // When the page really does overflow, name the offenders without any of the
+  // filtering above: the ancestor heuristics are what could be hiding the
+  // culprit, and on the platform that fails we want the raw answer.
+  const offenders = [...document.querySelectorAll('body *')]
+    .filter((el) => !el.closest('.devtools, .print-only'))
+    .map((el) => ({ el, r: el.getBoundingClientRect() }))
+    .filter((x) => Math.round(x.r.right) > de.clientWidth + 1)
+    .sort((a, b) => b.r.right - a.r.right)
+    .slice(0, 8)
+    .map(function (x) {
+      var cls = x.el.className && typeof x.el.className === 'string' ? '.' + x.el.className.trim().split(/\s+/).join('.') : ''
+      var chain = []
+      for (var n = x.el.parentElement; n && n !== document.body && chain.length < 3; n = n.parentElement) {
+        var c = n.className && typeof n.className === 'string' ? n.className.trim().split(/\s+/)[0] : n.tagName.toLowerCase()
+        chain.push(c + '[' + getComputedStyle(n).overflowX + ']')
+      }
+      return x.el.tagName.toLowerCase() + cls + ' right=' + Math.round(x.r.right) + ' w=' + Math.round(x.r.width) + ' in ' + chain.join(' < ')
+    })
   return {
+    offenders,
+    widest: [...new Set(widest)].slice(0, 6),
     pageOverflow: Math.max(0, Math.round(de.scrollWidth - de.clientWidth)),
     navWidth: navRect ? Math.round(navRect.width) : 0,
     navBeside,
@@ -257,6 +297,7 @@ const LAYOUT = `(() => {
 })()`
 
 const findings = []
+const log = []
 const add = (where, what) => findings.push({ where, what })
 
 // ---- L5: contrast, both themes, every page ----
@@ -279,7 +320,17 @@ for (const width of WIDTHS) {
     await goto(hash)
     const l = await evaluate(LAYOUT)
     if (!l) continue
-    if (l.pageOverflow > 2) add(`${width}px ${hash}`, `the page scrolls sideways by ${l.pageOverflow}px`)
+    if (l.pageOverflow > 2) {
+      add(`${width}px ${hash}`, `the page scrolls sideways by ${l.pageOverflow}px`)
+      for (const o of l.offenders) add(`${width}px ${hash}`, `  past the edge: ${o}`)
+    }
+    // Diagnostics at the narrowest width even when nothing overflows here: an
+    // element sitting at the edge on one platform overflows on another, where
+    // the fonts are wider. This is how a Linux-only failure gets found from a
+    // Windows machine.
+    if (width === WIDTHS[0] && l.pageOverflow <= 2 && l.widest.length > 0) {
+      log.push(`${width}px ${hash}: within 8px of the edge — ${l.widest.join(' | ')}`)
+    }
     for (const t of l.tables) add(`${width}px ${hash}`, `a table overflows the page rather than its own container: ${t}`)
     // Below the breakpoint the sidebar must not hold a column of its own.
     if (width < COLLAPSE_BELOW && l.navBeside) add(`${width}px ${hash}`, `the sidebar still takes a column beside the content (${l.navWidth}px of ${width}px)`)
@@ -307,6 +358,7 @@ for (const [where, what] of byWhere) {
 }
 writeFileSync('docs/qa/layout-audit.md', lines.join('\n'))
 console.log(`layout-audit: ${findings.length} findings (${unwaived.length} unwaived) -> docs/qa/layout-audit.md`)
+for (const l of log) console.log(`  note: ${l}`)
 for (const f of unwaived.slice(0, 40)) console.log(`  ${f.where}: ${f.what}`)
 
 const stale = WAIVED.filter((w) => !findings.some((f) => `${f.where} ${f.what}`.includes(w.match)))
