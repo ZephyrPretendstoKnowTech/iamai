@@ -3,7 +3,7 @@
 // path is stated. Authored steps only.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildSchedule, dependencyGraph, nextMonday, toEnforcementDay } from './schedule.ts'
+import { batchClassOf, buildSchedule, dependencyGraph, nextMonday, toEnforcementDay } from './schedule.ts'
 import { bandForActiveUsers } from './constants.ts'
 import { PHASE_NAME } from '../copy/steps.ts'
 import { ROADMAP as C } from '../copy/pages.ts'
@@ -234,6 +234,67 @@ test('all done → no windows, finishes on day 0', () => {
   assert.equal(s.targetEnd, s.start)
   assert.equal(s.waves.length, 1)
   assert.equal(s.derivation.constraint, 'none')
+})
+
+test('the weekly cap counts change windows, not steps (prompt 41 §5)', () => {
+  // Eight steps of one class, all eligible at once. Before batching the cap was
+  // applied per step, so eight steps meant eight slots and a plan that ran for
+  // weeks; they share a supervised window and should land together.
+  const steps = Array.from({ length: 8 }, (_, i) =>
+    step({
+      id: `mfa-${i}`,
+      phase: 2,
+      readiness: { family: 'mfa', percent: 100, lines: [] },
+      population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
+      rings: [ring(0, 3, people(20))],
+    }),
+  )
+  const s = buildSchedule(steps, MON, 12)
+  const days = new Set(steps.map((x) => x.rings[0].plannedStart.slice(0, 10)))
+  assert.equal(days.size, 1, `eight changes of one class share one change window, not ${days.size}`)
+  // And the plan says so: each step names the others it goes with.
+  for (const x of steps) assert.equal(s.batchWith[x.id]?.length, 7, `${x.id} names the other seven`)
+})
+
+test('a batch never mixes a zero-affected change with one that has a blast radius (prompt 41 §6)', () => {
+  // Same phase, same day available, deliberately different disruption classes.
+  // Phase order does not separate these, so only the batch class can.
+  const zero = step({
+    id: 'block-legacy',
+    phase: 1,
+    readiness: { family: 'block', percent: null, lines: [] },
+    evidence: { status: 'ok', lines: [], affectedUserIds: [], reportOnly: null },
+    population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
+    rings: [ring(0, 3, people(20))],
+  })
+  const loud = step({
+    id: 'require-mfa',
+    phase: 1,
+    readiness: { family: 'mfa', percent: 100, lines: [] },
+    evidence: { status: 'ok', lines: [], affectedUserIds: people(9, 'a'), reportOnly: null },
+    population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
+    rings: [ring(0, 3, people(20))],
+  })
+  assert.equal(batchClassOf(zero), 'zero')
+  assert.equal(batchClassOf(loud), 'mfa')
+  const s = buildSchedule([zero, loud], MON, 12)
+  // They may share a DAY - a small tenant is allowed two change windows in one
+  // day - but never a WINDOW. Each is supervised on its own terms: the block is
+  // watched for a surprise, the MFA enforcement for a queue at the help desk.
+  assert.deepEqual(s.batchWith['block-legacy'], [], 'the zero-affected change is its own window')
+  assert.deepEqual(s.batchWith['require-mfa'], [], 'the MFA change is its own window')
+  assert.ok(
+    !(s.batchWith['block-legacy'] as string[]).includes('require-mfa'),
+    'a change nobody notices is never bundled with one that interrupts nine people',
+  )
+})
+
+test('a safe-today step consumes no change window (prompt 41 §7)', () => {
+  const safe = step({ id: 'safe', phase: 1, safeToday: true, rings: [ring(0, 3, people(20))] })
+  const normal = step({ id: 'normal', phase: 1, rings: [ring(0, 3, people(20))] })
+  const s = buildSchedule([safe, normal], MON, 12)
+  assert.ok(!('safe' in s.batchWith), 'a safe-today step takes no supervised window')
+  assert.ok('normal' in s.batchWith, 'an ordinary step still takes one')
 })
 
 test('a wave is named by every goal area it holds, not by one dominant phase (prompt 40 §20)', () => {
