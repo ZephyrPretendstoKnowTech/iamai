@@ -155,7 +155,7 @@ try {
   t = await text()
   check('Findings: 2 in place, 1 partly, 13 missing', /2\s+In place[\s\S]*1\s+Partly[\s\S]*13\s+Missing/.test(t))
   check('Findings: MFA proven share and to-set-up count over enabled users', /%\s+of enabled users proved MFA in the last 30 days/.test(t) && /\d+\s+enabled users to set up before enforcement/.test(t))
-  check('Findings: grouped by domain by default', (await clickText('/needs attention/')) && (await waitFor(`[...document.querySelectorAll('select')].some(s => s.value === 'domain') && /Identity.*Admins/s.test(document.body.innerText)`)))
+  check('Findings: grouped by domain by default', (await clickText('/[Nn]eeds attention/')) && (await waitFor(`[...document.querySelectorAll('select')].some(s => s.value === 'domain') && /Identity.*Admins/s.test(document.body.innerText)`)))
   check('Findings: scan age shown', /Based on the scan from/.test(t))
 
   // Roadmap

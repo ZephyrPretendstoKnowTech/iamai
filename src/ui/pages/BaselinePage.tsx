@@ -109,6 +109,12 @@ export function BaselinePage({
 
   return (
     <StepFrame title={BASELINE.title} does={BASELINE.does} next={result ? 'scan' : undefined} nextLabel={BASELINE.next}>
+      {/* C7: what a baseline is, before the page asks anyone to choose one. */}
+      {BASELINE.whatIsIt.map((line, i) => (
+        <p key={i} className={i === 0 ? 'advisor' : 'reason'}>
+          {line}
+        </p>
+      ))}
       <AboutCard index={index} policies={result?.pkg.policies.length ?? null} />
       <p className="row">
         <Button variant="primary" onClick={() => void loadPinned()} loading={busy !== null}>
@@ -143,6 +149,8 @@ function AboutCard({ index, policies }: { index: BaselineIndex; policies: number
             ) : (
               index.author
             )}
+            {', '}
+            {BASELINE.credential}
           </>
         )}
         {index.repoUrl && (
@@ -155,7 +163,8 @@ function AboutCard({ index, policies }: { index: BaselineIndex; policies: number
         )}
       </p>
       <p>
-        {BASELINE.capturedOn(absoluteDate(index.generatedAt))}
+        {/* C7: the pinned date was shown without saying whether it is stale. */}
+        {BASELINE.freshness(absoluteDate(index.generatedAt))}
         <br />
         <span className="mono muted" title={index.commit}>
           {BASELINE.commit(index.commit)}

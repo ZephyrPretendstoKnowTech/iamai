@@ -41,6 +41,16 @@ export const BULLETIN = {
   channels: { email: 'Email', teams: 'Teams or Slack', helpdesk: 'Help-desk note', portal: 'Intranet notice' },
 }
 
+/**
+ * C15: the announcement addresses staff by the organisation's display name, and
+ * on plenty of tenants that name is the tenant identifier rather than anything
+ * a person would recognise ("GetIAMAI"). IAMAI cannot know the trading name, so
+ * it says what it used and why that might be wrong, rather than putting a name
+ * nobody uses into a message going to the whole company.
+ */
+export const NAME_WARNING = (name: string): string =>
+  `The announcement addresses people as "${name}", which is the organisation name in Entra and matches the tenant's own domain. If people would not recognise it, change it before sending.`
+
 export const COMMS_PLAN = {
   title: 'What will be sent and when, ready to copy',
   hint: 'One message per audience per week, at most. Nothing is sent by IAMAI: copy each one into your own channel.',

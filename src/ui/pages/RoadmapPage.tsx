@@ -53,6 +53,8 @@ import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
 import { changesSince, groupGrowth, progressHeadline, stepProgress } from '../../roadmap/tracking.ts'
 import { peopleCounts, trackableSteps } from '../../derive/sets.ts'
+import { NAME_WARNING } from '../../copy/comms.ts'
+import { initialDomain } from '../../validation/rules.ts'
 import { activeWizardQuestions } from '../../mapping/wizard.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { savedStepOf } from '../../roadmap/progress.ts'
@@ -60,7 +62,7 @@ import type { Dependency } from '../../roadmap/schedule.ts'
 import { POPULATION_CSV_HEADER, cohortsFor, populationContext, populationRows } from '../../roadmap/population.ts'
 import { ringContextIndexes } from '../../roadmap/rings.ts'
 import { adminUserIds } from '../../roles.ts'
-import { EVIDENCE as EVIDENCE_COPY, NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
+import { EVIDENCE as EVIDENCE_COPY, NAMING, WHY, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import { planSummary } from '../../roadmap/summary.ts'
 import { BANDS } from '../../roadmap/constants.ts'
@@ -407,6 +409,15 @@ export function RoadmapPage({
   const blocked = steps.filter((s) => s.status === 'blocked')
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'This tenant'
+  // C15: the organisation display name is often the tenant identifier. It looks
+  // like one when it matches the initial onmicrosoft prefix, ignoring case,
+  // spaces and punctuation.
+  const tenantNameLooksLikeId = (() => {
+    const initial = initialDomain(snapshot)?.split('.')[0] ?? null
+    if (!initial) return false
+    const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, '')
+    return flat(tenantName) === flat(initial)
+  })()
 
   const copy = async (id: string, text: string): Promise<void> => {
     try {
@@ -1154,9 +1165,6 @@ export function RoadmapPage({
         <Button icon="copy" onClick={() => void copyPrompt('plan-md', 'wholePlan', schedule.derivation.criticalPath, planMarkdown(tenantName, steps, schedule, dangers, nameOf))}>
           {copied === 'plan-md:prompt' ? C.copied : COMMS_PLAN.copyPrompt}
         </Button>
-        <Button icon="copy" onClick={() => void copyPrompt('exec', 'executive', schedule.derivation.criticalPath, `${overviewText} ${licenceSentence} ${effortTotal.sentence}`)}>
-          {copied === 'exec:prompt' ? C.copied : `${COMMS_PLAN.copyPrompt}: ${PROMPTS.pack.summarise(tenantName).split(' for ')[0]}`}
-        </Button>
       </p>
       </Card>
       <Card title={EXPORT_TAB.changeRecord}>
@@ -1193,12 +1201,14 @@ export function RoadmapPage({
       </Card>
       <Card title={GROUNDING.title}>
         <p className="reason">{GROUNDING.text}</p>
+        {/* C19: the warning sits above the checkbox that enables it, so it is
+            read before the choice rather than after it. */}
+        <Callout kind="warning">{GROUNDING.warning}</Callout>
         <p className="row no-print">
           <label>
             <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {GROUNDING.unredacted}
           </label>
         </p>
-        {!bundleRedacted && <Callout kind="warning">{GROUNDING.warning}</Callout>}
         <p className="row no-print">
           <Button icon="download" onClick={() => downloadFile(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ tenant: tenantName, snapshot, coverage: computed.coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json')}>
             {GROUNDING.download}
@@ -1431,6 +1441,7 @@ export function RoadmapPage({
                   openStepId === step.id || step.id === linkedStepId ? (
                     <div key={step.id} className="grid-span">
                       <StepCard
+                        audienceName={tenantNameLooksLikeId ? tenantName : null}
                         step={step}
                         linked
                         stepById={stepById}
@@ -1569,7 +1580,13 @@ export function RoadmapPage({
               <li key={item.stepId} className="next-item">
                 <div>
                   <strong>{item.title}</strong>
-                  <div className="sub">{item.why} · {item.touches}</div>
+                  {/* C5: "nobody" is not a quantity of people. When a step
+                      touches no one the "why" already says so, and appending
+                      "· nobody" reads as a value in a list of counts. */}
+                  <div className="sub">
+                    {item.why}
+                    {item.touches !== NEXT.touches.nobody && ` · ${item.touches}`}
+                  </div>
                 </div>
                 <div className="row">
                   <span className="reason">{NEXT.minutes(item.minutes)}</span>
@@ -1763,6 +1780,7 @@ function StepCard({
   onPrompt,
   watch,
   effort,
+  audienceName,
 }: {
   step: Step
   linked: boolean
@@ -1770,6 +1788,8 @@ function StepCard({
   nameOf: (id: string) => string
   copied: string | null
   onCopy: (id: string, text: string) => Promise<void>
+  /** C15: the name the announcement addresses people by, when it looks like a tenant id. */
+  audienceName: string | null
   skipDraft: { id: string; reason: string } | null
   setSkipDraft: (d: { id: string; reason: string } | null) => void
   onSkipped: (step: Step) => void
@@ -1841,8 +1861,9 @@ function StepCard({
       <h4>{SECTION.whatChanges}</h4>
       <p>{step.whatChanges}</p>
 
-      {/* 2. Why it matters */}
+      {/* 2. Why it matters — for this tenant first (C12) */}
       <h4>{SECTION.whyItMatters}</h4>
+      <p className="advisor">{WHY.forTenant(step.plainTitle || step.title, step.population.total, step.population.active)}</p>
       {step.whyLink && (
         <p className="reason">
           <a href={step.whyLink} target="_blank" rel="noopener noreferrer">
@@ -1850,7 +1871,8 @@ function StepCard({
           </a>
         </p>
       )}
-      <p>
+      <p className="reason">
+        {step.whyAttribution ? WHY.source : WHY.sourceCatalogue}{' '}
         {step.why}
         {step.whyAttribution && (
           <span className="reason">
@@ -2202,6 +2224,9 @@ function StepCard({
       {step.comms && (
         <>
           <h4>{SECTION.comms}</h4>
+          {/* C15: say plainly when the name in the message is the tenant
+              identifier rather than something people would recognise. */}
+          {audienceName && <p className="reason">{NAME_WARNING(audienceName)}</p>}
           {step.comms === NO_ANNOUNCEMENT ? (
             <p className="reason">{step.comms}</p>
           ) : step.ringComms.length > 1 ? (

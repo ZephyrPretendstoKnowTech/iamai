@@ -453,11 +453,15 @@ export function adHocTitle(facts: PolicyFacts, tenantAppNames: Map<string, strin
             ? 'Office 365'
             : appNames.length > 0 && appNames.every((n) => n !== null)
               ? listNames(appNames as string[])
-              : appNames.length === 1
-                ? 'one app'
-                : appNames.length > 0
-                  ? `${appNames.length} apps`
-                  : 'the targeted apps'
+              // C8: "Block access to 2 apps" is a count where a name belongs.
+              // Name the ones the scan knows and count only the remainder, so a
+              // goal is identified by what it protects rather than by how many.
+              : appNames.some((n) => n !== null)
+                ? listNames([
+                    ...(appNames.filter((n): n is string => n !== null)),
+                    ...(appNames.filter((n) => n === null).length > 0 ? [`${appNames.filter((n) => n === null).length} more`] : []),
+                  ])
+                : 'the targeted apps'
   const audience = [...facts.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))
     ? ' for admins'
     : facts.who.guests !== null && !facts.who.all

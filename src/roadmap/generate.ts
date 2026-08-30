@@ -254,14 +254,14 @@ export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholde
   const locations = (c.locations ?? null) as RawPolicy | null
   if (locations)
     lines.push(
-      `Conditions → Locations → Include: ${label(locations.includeLocations)}${label(locations.excludeLocations) ? `; Exclude: ${label(locations.excludeLocations)}` : ''}`,
+      `Conditions → Locations → Include: ${PORTAL_WORDS.locations(locations.includeLocations, label)}${PORTAL_WORDS.locations(locations.excludeLocations, label) ? `; Exclude: ${PORTAL_WORDS.locations(locations.excludeLocations, label)}` : ''}`,
     )
   if (label(c.signInRiskLevels)) lines.push(`Conditions → Sign-in risk: ${label(c.signInRiskLevels)}`)
   if (label(c.userRiskLevels)) lines.push(`Conditions → User risk: ${label(c.userRiskLevels)}`)
   const flows = (c.authenticationFlows ?? null) as RawPolicy | null
   if (flows?.transferMethods) lines.push(`Conditions → Authentication flows: ${String(flows.transferMethods)}`)
   if (g) {
-    const controls = label(g.builtInControls)
+    const controls = PORTAL_WORDS.grant(g.builtInControls)
     const strength = (g.authenticationStrength ?? null) as RawPolicy | null
     const grantBits = [
       controls.toLowerCase().includes('block') ? 'Block access' : null,
