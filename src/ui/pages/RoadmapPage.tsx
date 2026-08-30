@@ -539,6 +539,20 @@ export function RoadmapPage({
       window.alert?.(error ?? C.couldNotRead)
       return
     }
+    // Before anything is written. The only tenant check used to be on
+    // plan.mappings, and it ran after savePlanRecord had already put the other
+    // tenant's steps, checkpoints and log under this tenant's key (audit
+    // token-01) — from where changesSince diffed this tenant's live policies
+    // against the other one's checkpoint and reported them as deleted.
+    const planTenantId = plan.tenant?.id || plan.mappings?.tenantId || ''
+    if (!planTenantId) {
+      window.alert?.(C.planTenantUnknown(tenantName))
+      return
+    }
+    if (planTenantId !== snapshot.tenantId) {
+      window.alert?.(C.planFromAnotherTenant(plan.tenant?.name ?? '', tenantName))
+      return
+    }
     const stepsRecord: SavedSteps = Object.fromEntries(plan.steps.map((s) => [s.id, savedStepOf(s)]))
     const start = plan.schedule?.startDate ?? startDate ?? undefined
     const loadedBand = plan.schedule?.band && BANDS[plan.schedule.band as SizeBand] ? (plan.schedule.band as SizeBand) : band

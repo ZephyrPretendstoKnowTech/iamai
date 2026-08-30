@@ -2,10 +2,26 @@
 // CSV and download live here because they touch the DOM.
 export { STALE_SCAN_DAYS, absolute, absoluteDate, dateRange, relative, relativeDays, scanAgeDays, setDisplayTimeZone, when, whenAt } from '../copy/dates.ts'
 
+/**
+ * The characters a spreadsheet treats as the start of a formula rather than
+ * text. A cell beginning with one of these is evaluated on open — =HYPERLINK to
+ * exfiltrate the row, =WEBSERVICE to fetch, or a DDE payload.
+ *
+ * Every value in these files is a tenant display name, sign-in address or
+ * department, and in a default Entra tenant any member can create a group and
+ * any guest sets their own display name (audit redact-01). The audience for
+ * these exports is an admin opening the recipient list in Excel to work a mail
+ * merge, which is the exact circumstance the attack needs.
+ */
+const FORMULA_LEAD = /^[=+\-@\t\r]/
+
 export function toCsv(header: string[], rows: (string | number | null | undefined)[][]): string {
   const cell = (v: string | number | null | undefined): string => {
-    const s = v === null || v === undefined ? '' : String(v)
-    return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s
+    let s = v === null || v === undefined ? '' : String(v)
+    // An apostrophe is what every spreadsheet reads as "this is text"; it is
+    // not rendered in the cell.
+    if (FORMULA_LEAD.test(s)) s = `'${s}`
+    return /[",\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s
   }
   return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')
 }
