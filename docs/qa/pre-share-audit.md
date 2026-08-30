@@ -67,7 +67,7 @@ panel that renders only with `?dev=1`; the copy lint over `src/copy` is clean.
 
 | # | Check | Result |
 |---|---|---|
-| 24 | Subpath build | `BASE_PATH=/iamai/ vite build` rewrites the script, stylesheet and the self-hosted font to `/iamai/…`; routing is hash-based; the baseline index is bundled and policy files fetch from `raw.githubusercontent.com` by absolute URL; MSAL's redirect URI is now `origin + BASE_URL`. The Pages workflow (`.github/workflows/deploy-pages.yml`) builds from a clean checkout with `BASE_PATH=/<repo>/`. **Not yet exercised live:** see the blockers file. |
+| 24 | Subpath build | `VITE_BASE=/iamai/ vite build` rewrites the script, stylesheet and the self-hosted font to `/iamai/…`; routing is hash-based; the baseline index is bundled and policy files fetch from `raw.githubusercontent.com` by absolute URL; MSAL's redirect URI is now `origin + BASE_URL`. The Pages workflow (`.github/workflows/deploy-pages.yml`) builds from a clean checkout with `VITE_BASE` (default `/`, the custom domain). **Not yet exercised live:** see the blockers file. |
 | 25 | `docs/RELEASE-CHECKLIST.md` | Added: redirect URI, publisher domain, public repo, the scrub, Pages, first-run screenshots, baseline pin. |
 
 ## What changed after the audit (blocker work)
@@ -92,5 +92,5 @@ panel that renders only with `?dev=1`; the copy lint over `src/copy` is clean.
 - `src/network.test.ts`, `src/exports.test.ts` (new), `src/roadmap/changeRecord.ts` (the change record as a pure module), agreement and evidence tests in `src/ui/consistency.test.ts`.
 - Smoke: unlicensed, zero-policy and forget-this-tenant walks.
 - `signOut` no longer throws in the dev mock; `rel="noopener noreferrer"` on external links; `scope` on table headers.
-- `SECURITY.md`, `docs/RELEASE-CHECKLIST.md`, `.github/workflows/deploy-pages.yml`; Vite `base` and MSAL redirect follow `BASE_PATH`.
+- `SECURITY.md`, `docs/RELEASE-CHECKLIST.md`, `.github/workflows/deploy-pages.yml`; Vite `base` and MSAL redirect follow `VITE_BASE`.
 - Dev switches for the audit walks: `?licence=free`, `?policies=0` on the mock tenant.

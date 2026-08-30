@@ -1,7 +1,11 @@
 # Publishes the static bundle to GitHub Pages from a clean checkout (prompt 31 §6).
-# The app runs from the repository subpath: Vite's base and MSAL's redirect
-# URI both derive from BASE_PATH, and routing is hash-based, so no rewrite
-# rules are needed.
+# The site is served from the custom domain getiamai.com at the root, so the
+# build base is "/". public/CNAME keeps the domain across deploys. Vite's base
+# and MSAL's redirect URI both derive from VITE_BASE, and routing is hash-based,
+# so no rewrite rules are needed.
+#
+# To publish on the github.io fallback instead, set VITE_BASE to /<repo>/ and
+# remove public/CNAME.
 name: deploy-pages
 
 on:
@@ -31,7 +35,7 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_BASE: ${{ vars.VITE_BASE || '/' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
