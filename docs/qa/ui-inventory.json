@@ -1,5 +1,5 @@
 {
- "fingerprint": "3fdc8b5dc097eebe",
+ "fingerprint": "a1f69b57e08cb05b",
  "surfaces": [
   {
    "name": "Start",
@@ -802,8 +802,7 @@
    "options": [
     "Yes",
     "Not yet",
-    "Doesn't exist yet: add it to the plan",
-    "Not applicable to us"
+    "Doesn't exist yet: add it to the plan"
    ],
    "links": [],
    "chips": [
@@ -842,7 +841,7 @@
     "headings": 7,
     "tabs": 0,
     "buttons": 0,
-    "options": 15,
+    "options": 11,
     "links": 0,
     "chips": 1,
     "columns": 0,
@@ -851,7 +850,7 @@
     "summaries": 11,
     "tips": 3,
     "sentences": 88,
-    "total": 125
+    "total": 121
    }
   },
   {
@@ -861,8 +860,7 @@
    "tabs": [],
    "buttons": [],
    "options": [
-    "Doesn't exist yet: add it to the plan",
-    "Not applicable to us"
+    "Doesn't exist yet: add it to the plan"
    ],
    "links": [],
    "chips": [
@@ -893,7 +891,7 @@
     "headings": 0,
     "tabs": 0,
     "buttons": 0,
-    "options": 12,
+    "options": 8,
     "links": 0,
     "chips": 1,
     "columns": 0,
@@ -902,7 +900,7 @@
     "summaries": 9,
     "tips": 3,
     "sentences": 21,
-    "total": 46
+    "total": 42
    }
   },
   {
@@ -1076,8 +1074,7 @@
    "tabs": [],
    "buttons": [],
    "options": [
-    "This is correct",
-    "Not applicable to us"
+    "Looks right"
    ],
    "links": [],
    "chips": [
@@ -1094,24 +1091,22 @@
    ],
    "sentences": [
     "Question 6 ·",
-    "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout.",
-    "America/Denver (this browser)Australia/SydneyAustralia/BrisbaneAustralia/PerthPacific/AucklandEurope/LondonEurope/BerlinAmerica/New_YorkAmerica/ChicagoAmerica/Los_AngelesAsia/SingaporeUTCThis is correct"
+    "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout."
    ],
    "nav": [],
    "primary": [
-    "This is correct"
+    "Looks right"
    ],
    "tables": [],
    "occurrences": {},
    "occurrencesAll": {
-    "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout.": 1,
-    "America/Denver (this browser)Australia/SydneyAustralia/BrisbaneAustralia/PerthPacific/AucklandEurope/LondonEurope/BerlinAmerica/New_YorkAmerica/ChicagoAmerica/Los_AngelesAsia/SingaporeUTCThis is correct": 1
+    "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout.": 1
    },
    "wordCounts": {
     "headings": 0,
     "tabs": 0,
     "buttons": 0,
-    "options": 7,
+    "options": 2,
     "links": 0,
     "chips": 1,
     "columns": 0,
@@ -1119,8 +1114,8 @@
     "empty": 0,
     "summaries": 10,
     "tips": 3,
-    "sentences": 23,
-    "total": 44
+    "sentences": 18,
+    "total": 34
    }
   },
   {
@@ -1183,8 +1178,7 @@
    "tabs": [],
    "buttons": [],
    "options": [
-    "Detections look right",
-    "Not applicable to us"
+    "Looks right"
    ],
    "links": [],
    "chips": [
@@ -1211,7 +1205,7 @@
    ],
    "nav": [],
    "primary": [
-    "Detections look right"
+    "Looks right"
    ],
    "tables": [],
    "occurrences": {},
@@ -1225,7 +1219,7 @@
     "headings": 0,
     "tabs": 0,
     "buttons": 0,
-    "options": 7,
+    "options": 2,
     "links": 0,
     "chips": 6,
     "columns": 0,
@@ -1234,7 +1228,7 @@
     "summaries": 8,
     "tips": 3,
     "sentences": 43,
-    "total": 67
+    "total": 62
    }
   },
   {
