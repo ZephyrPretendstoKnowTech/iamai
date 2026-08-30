@@ -102,7 +102,9 @@ test('prompts carry the facts and the no-invent rule; the grounding bundle is re
   const step = steps.find((s) => s.events?.enforce)!
   const p = promptFor('announcement', ctx.tenantName, stepContext(step), 'Hi everyone, ...')
   assert.match(p, /Do not invent facts/)
-  assert.match(p, /Context: .*Takes effect: /)
+  // The context is fenced now rather than inline after the label (audit
+  // prompt-01), so the assertion is on the block rather than on one line.
+  assert.match(p, /Context[^\n]*\n`{3}\n[\s\S]*Takes effect: /)
   const pack = promptPack({ tenant: ctx.tenantName, steps, schedule: run.schedule, changeRecord: 'record', planSummary: 'summary', announcement: 'draft' })
   assert.equal(pack.length, 8)
   for (const it of pack) assert.match(it.prompt, /Do not invent facts/)
