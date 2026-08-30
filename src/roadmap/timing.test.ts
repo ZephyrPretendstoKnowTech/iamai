@@ -58,7 +58,16 @@ test('every policy step carries announce, remind and enforce with a day, a local
       const announceDay = WEEKDAY_NAMES.indexOf(e.announce!.day)
       if (usable) {
         assert.ok(rhythm!.workingDays.includes(announceDay), `${s.id} announces on ${e.announce!.day}, which is not a working day here`)
-        assert.equal(e.announce!.time, hourLabel(rhythm!.quietWorking?.hour ?? 9), `${s.id} announces away from the quietest working hour`)
+        // Early in the working day, and never in its last two hours. It used
+        // to be the QUIETEST working hour, which is when fewest people are
+        // signed in and so the worst time to send something you want read; on
+        // a tenant whose quiet hour sits late it produced 18:00 announcements
+        // (review-09 finding 11, prompt 42 §12).
+        const announceHour = Number(e.announce!.time.slice(0, 2))
+        assert.ok(
+          announceHour >= rhythm!.workingHours.start && announceHour <= Math.max(rhythm!.workingHours.start, rhythm!.workingHours.end - 2),
+          `${s.id} announces at ${e.announce!.time}, outside the readable part of a ${rhythm!.workingHours.start} to ${rhythm!.workingHours.end} day`,
+        )
       } else {
         assert.ok(['Tuesday', 'Wednesday'].includes(e.announce!.day), 'announcements go out on a Tuesday or Wednesday')
         assert.equal(e.announce!.time, '09:30')
@@ -71,10 +80,16 @@ test('every policy step carries announce, remind and enforce with a day, a local
       }
     }
   }
-  // The enforcement hour follows the tenant's peak: one hour after Monday 09:00.
+  // The enforcement hour is anchored on the tenant's peak and then spread, so
+  // every change does not land at the same minute for eleven weeks (review-09
+  // finding 10, prompt 42 §12). What is asserted is the window and the spread,
+  // not one hour: pinning the hour would pin the defect.
   const withPeak = dated.find((s) => !s.safeToday)!
-  assert.equal(withPeak.events!.enforce.time, '10:00')
-  assert.match(withPeak.events!.enforce.reason, /One hour after the busiest hour \(Monday 09:00\)/)
+  const hour = Number(withPeak.events!.enforce.time.slice(0, 2))
+  assert.ok(hour >= 9 && hour <= 15, `enforcement lands inside the working day, got ${withPeak.events!.enforce.time}`)
+  assert.match(withPeak.events!.enforce.reason, /One hour after the busiest hour/)
+  const hours = new Set(dated.filter((s) => !s.safeToday).map((s) => s.events!.enforce.time))
+  assert.ok(hours.size > 1, `enforcement times vary across the plan: ${[...hours].join(', ')}`)
 })
 
 test('a handle-with-care user in scope forces at least five working days of notice', () => {

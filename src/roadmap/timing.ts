@@ -14,6 +14,8 @@ const HIGH_DISRUPTION = 4
 const MEDIUM_DISRUPTION = 3
 const ANNOUNCE_HOUR = 9.5
 const DEFAULT_ENFORCE_HOUR = 10
+/** No change lands before this hour, whatever the tenant's rhythm says. */
+const ENFORCE_EARLIEST = 9
 
 export type TimingContext = {
   rhythm: TenantRhythm
@@ -140,6 +142,36 @@ function event(at: string, reason: string, ctx: TimingContext, kind: StepEvent['
   return { kind, at, day: l.day, date: l.date, time: l.time, reason, outOfHours }
 }
 
+/**
+ * An hour inside the enforcement window, varied per step but stable for it.
+ *
+ * Kept inside the working day: the spread is over the hours a change may
+ * legitimately land in, not over the clock. A change at 03:00 is not variety.
+ */
+function spreadHour(base: number, stepId: string, ctx: TimingContext): number {
+  const hours = ctx.rhythm.status === 'ok' ? ctx.rhythm.workingHours : { start: 9, end: 17 }
+  const first = Math.max(hours.start, ENFORCE_EARLIEST)
+  // Leave the last hour clear: nobody wants a change landing as they leave.
+  const last = Math.max(first, hours.end - 2)
+  if (last <= first) return first
+  let h = 0
+  for (let i = 0; i < stepId.length; i++) h = (h * 31 + stepId.charCodeAt(i)) >>> 0
+  const span = last - first + 1
+  // Anchored on the base hour when it is inside the window, so the tenant's own
+  // rhythm still leads and the spread moves around it.
+  const anchor = base >= first && base <= last ? base : first
+  return first + ((anchor - first + (h % span)) % span)
+}
+
+/**
+ * An hour an announcement will actually be read: early in the working day, and
+ * never in its last two hours.
+ */
+function readableHour(hours: { start: number; end: number }): number {
+  const early = hours.start + 1
+  return Math.min(early, Math.max(hours.start, hours.end - 2))
+}
+
 export function noticeDaysFor(step: Step, notice: NoticeSettings): number {
   const disruption = step.score?.disruption ?? 1
   const base = disruption >= HIGH_DISRUPTION ? notice.high : disruption >= MEDIUM_DISRUPTION ? notice.medium : notice.low
@@ -153,7 +185,16 @@ export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
   const enforceDay = step.scheduledDate ?? step.rings[0]?.plannedStart ?? null
   if (!enforceDay) return null
   const high = (step.score?.disruption ?? 1) >= HIGH_DISRUPTION
-  const peakHour = ctx.rhythm.status === 'ok' && ctx.rhythm.peak ? (ctx.rhythm.peak.hour + 1) % 24 : DEFAULT_ENFORCE_HOUR
+  // The slot varies within the hours the change may land in (prompt 42 §12).
+  // Every enforcement in every week was Tuesday or Wednesday at 12:00 for
+  // eleven weeks (review-09 finding 10): one hour after the peak, and the peak
+  // does not move. A fixed hour means every change lands while the same people
+  // are doing the same thing, so one bad slot is repeated for the life of the
+  // plan; spreading them means a problem in one window does not recur in all of
+  // them. The offset is derived from the step id, so it is stable across scans
+  // rather than random: the same step keeps its time.
+  const baseHour = ctx.rhythm.status === 'ok' && ctx.rhythm.peak ? (ctx.rhythm.peak.hour + 1) % 24 : DEFAULT_ENFORCE_HOUR
+  const peakHour = spreadHour(baseHour, step.id, ctx)
   const enforceAt = atLocalHour(enforceDay, peakHour, ctx.timeZone)
   const enforceReason = step.safeToday
     ? EVENT.reason.enforceSafeToday
@@ -162,14 +203,21 @@ export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
   if (step.safeToday) return { announce: null, remind: null, remindMorning: null, enforce, noticeDays: 0 }
 
   const noticeDays = noticeDaysFor(step, ctx.notice)
-  // Announce on a day the tenant actually works, at its quietest working hour
-  // (prompt 37 §17). Tuesday and Wednesday remain the preference — a Monday
-  // inbox is full and a Friday note is read on Monday — but a tenant whose
-  // people do not work midweek is not told to announce into an empty office.
-  // When the rhythm is unreadable the defaults apply and the reason says so.
+  // Announce on a day the tenant actually works (prompt 37 §17). Tuesday and
+  // Wednesday remain the preference: a Monday inbox is full and a Friday note is
+  // read on Monday. A tenant whose people do not work midweek is not told to
+  // announce into an empty office, and when the rhythm is unreadable the
+  // defaults apply and the reason says so.
+  //
+  // The HOUR is no longer the quietest working hour. That was backwards: the
+  // quietest hour is when fewest people are signed in, which is the worst time
+  // to send something you want read, and on a tenant whose quiet hour sits late
+  // it put announcements at the end of the working day (review-09 finding 11,
+  // prompt 42 §12). An announcement goes out early enough to be read and acted
+  // on the same day, and never in the last two hours.
   const usable = ctx.rhythm.status === 'ok' && ctx.rhythm.workingDays.length > 0
   const worksOn = (d: number): boolean => !usable || ctx.rhythm.workingDays.includes(d)
-  const announceHour = usable && ctx.rhythm.quietWorking ? ctx.rhythm.quietWorking.hour : ANNOUNCE_HOUR
+  const announceHour = usable ? readableHour(ctx.rhythm.workingHours) : ANNOUNCE_HOUR
   let announceDay = workingDaysBefore(enforceDay, noticeDays, ctx)
   for (let guard = 0; guard < 14; guard++) {
     const d = weekdayOf(announceDay)

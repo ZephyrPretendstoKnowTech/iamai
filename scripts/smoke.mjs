@@ -112,6 +112,7 @@ const text = () => evaluate('document.body.innerText')
 const clickText = (re) => evaluate(`(() => { const b = [...document.querySelectorAll('a, button, summary')].find(x => ${re}.test(x.textContent.trim())); if (b) b.click(); return !!b })()`)
 
 await send('Page.enable')
+await send('Accessibility.enable')
 await send('Runtime.enable')
 
 try {
@@ -285,6 +286,27 @@ try {
   // Every check names its source, and the ones nobody documents say so (audit-program 6).
   check('Checks: every rule names a source', /Source/.test(t) && /Microsoft: manage emergency access accounts/.test(t))
   check('Checks: field practice is labelled rather than dressed up as Microsoft', /Field practice/.test(t))
+
+  // Accessible names, from Chrome's own accessibility tree rather than from our
+  // own name computation (prompt 42 §17, review-09 finding 16).
+  //
+  // The sidebar chevron was reported unlabelled after review 08 and again after
+  // review 09. Both times our answer came from a rule we wrote about what counts
+  // as a name. Whether a screen reader announces something is not our judgement
+  // to make, so this asks the browser, in both themes, and reports what it says.
+  for (const theme of ['light', 'dark']) {
+    await send('Page.navigate', { url: `${BASE}#/roadmap` })
+    await sleep(2500)
+    await evaluate(`document.documentElement.setAttribute('data-theme', ${JSON.stringify(theme)})`)
+    await sleep(400)
+    const tree = await send('Accessibility.getFullAXTree', {})
+    const nodes = tree.result?.nodes ?? []
+    const INTERACTIVE = ['button', 'link', 'checkbox', 'textbox', 'combobox', 'switch', 'tab']
+    const unnamed = nodes.filter((n) => INTERACTIVE.includes(n.role?.value) && !n.ignored && !(n.name?.value ?? '').trim())
+    check(`Accessibility (${theme}): every control has a name a screen reader can announce`, unnamed.length === 0, unnamed.map((n) => n.role?.value).slice(0, 4).join(', '))
+    const chevron = nodes.find((n) => /the steps list/.test(n.name?.value ?? ''))
+    check(`Accessibility (${theme}): the sidebar collapse control is named`, Boolean(chevron), chevron ? '' : 'no node carries that name')
+  }
 
   check('No console errors or exceptions across the walk', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '))
 } catch (e) {

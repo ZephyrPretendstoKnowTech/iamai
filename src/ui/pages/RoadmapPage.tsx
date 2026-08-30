@@ -15,9 +15,9 @@ import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.ts'
 import { generateRoadmap } from '../../roadmap/generate.ts'
 import { findDangerAreas } from '../../roadmap/dangers.ts'
-import { nextMonday, paceAlternatives } from '../../roadmap/schedule.ts'
-import { insightsUrl, verdictFor, whatIfUrl } from '../../roadmap/verdict.ts'
-import type { Verdict } from '../../roadmap/verdict.ts'
+import { batchClassOf, nextMonday, paceAlternatives } from '../../roadmap/schedule.ts'
+import { insightsUrl, preflightFor, verdictFor, whatIfUrl } from '../../roadmap/verdict.ts'
+import type { Preflight, Verdict } from '../../roadmap/verdict.ts'
 import { VERDICT } from '../../copy/verdict.ts'
 import { applyProgress, mergePersisted, skipStep } from '../../roadmap/progress.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
@@ -931,23 +931,26 @@ export function RoadmapPage({
         // cell, because the scheduler puts many changes on one day at one
         // rhythm-derived hour. The live site showed twenty-one entries stacked
         // in a single 12:00 cell (review-08 B1).
-        const groups = new Map<string, { at: string; time: string; audience: string; steps: Step[]; out: boolean }>()
+        const groups = new Map<string, { at: string; time: string; audience: string; kind: string; steps: Step[]; out: boolean }>()
         for (const { step: st, e } of allEvents) {
           if (e.kind !== 'enforce') continue
           const audience = audiencesFor(st, commsCtx).find((a) => a.kind !== 'none')?.label ?? WEEK_VIEW.everyone
-          const key = `${e.at.slice(0, 10)}|${audience}`
+          // The class is part of the key: two windows for one audience on one day
+          // are two windows, and the label says which (prompt 42 §14).
+          const kind = batchClassOf(st)
+          const key = `${e.at.slice(0, 10)}|${audience}|${kind}`
           const g = groups.get(key)
           if (g) {
             g.steps.push(st)
             g.out = g.out || e.outOfHours
           } else {
-            groups.set(key, { at: e.at, time: e.time, audience, steps: [st], out: e.outOfHours })
+            groups.set(key, { at: e.at, time: e.time, audience, kind, steps: [st], out: e.outOfHours })
           }
         }
         return [...groups.entries()].map(([key, g]) => ({
           key: `enforce-${key}`,
           time: g.time,
-          label: g.steps.length === 1 ? g.steps[0].plainTitle : WEEK_VIEW.enforceBundle(g.audience, g.steps.length),
+          label: g.steps.length === 1 ? g.steps[0].plainTitle : WEEK_VIEW.enforceBundle(g.audience, g.steps.length, WEEK_VIEW.batchKind[g.kind] ?? null),
           reason: g.steps.map((st) => st.plainTitle).join('; '),
           out: g.out,
           stepId: g.steps[0].id,
@@ -982,13 +985,16 @@ export function RoadmapPage({
       <div className="week-view">
         {weeks.map((wk) => {
           const dayOf = (at: string): string => DAYS[(new Date(at).getUTCDay() + 6) % 7]
-          const weekRows = rowsData
-            .map((r) => ({ ...r, cells: r.cells.filter((c) => weekKeyOf(c.at) === wk) }))
-            // A row with nothing in it this week is not drawn (prompt 37 §16).
-            // The empty Enforce row on the first week was the review's S3: a
-            // blank row reads as a missing event rather than as a quiet week.
-            .filter((r) => r.cells.length > 0)
-          if (weekRows.length === 0) return null
+          // All three rows, every week, with the empty ones saying so
+          // (prompt 42 §13, review-09 finding 12).
+          //
+          // Prompt 37 §16 dropped empty rows because a blank row read as a
+          // missing event. It does, but so does an absent one: a week showing
+          // Announce and Enforce and no Remind row reads as an oversight rather
+          // than as "nothing needed reminding about this week". The fix for a
+          // blank cell is words in it, not a missing row.
+          const weekRows = rowsData.map((r) => ({ ...r, cells: r.cells.filter((c) => weekKeyOf(c.at) === wk) }))
+          if (weekRows.every((r) => r.cells.length === 0)) return null
           const outOfHours = weekRows.flatMap((r) => r.cells).filter((c) => c.out).length
           return (
             <div key={wk} className="card week-card">
@@ -1008,9 +1014,14 @@ export function RoadmapPage({
                   </thead>
                   <tbody>
                     {weekRows.map((r) => (
-                      <tr key={r.kind}>
+                      <tr key={r.kind} className={r.cells.length === 0 ? 'is-quiet' : ''}>
                         <th scope="col">{WEEK_VIEW.rows[r.kind]}</th>
-                        {DAYS.map((d) => (
+                        {r.cells.length === 0 && (
+                          <td colSpan={DAYS.length} className="reason">
+                            {WEEK_VIEW.noneNeeded[r.kind]}
+                          </td>
+                        )}
+                        {r.cells.length > 0 && DAYS.map((d) => (
                           <td key={d}>
                             {r.cells
                               .filter((c) => dayOf(c.at) === d)
@@ -1593,6 +1604,12 @@ export function RoadmapPage({
                         now={nowMs}
                         batchWith={schedule.batchWith[step.id] ?? []}
                         verdict={verdictFor(step, snapshot, new Date(nowMs).toISOString(), operator?.userId ?? null)}
+                        preflight={preflightFor(
+                          [step, ...(schedule.batchWith[step.id] ?? []).map((id) => stepById.get(id)).filter((x): x is Step => x !== undefined)],
+                          operator?.userId ?? null,
+                          snapshot,
+                          mapping?.allowedCountries ?? [],
+                        )}
                         tenantId={snapshot.tenantId}
                         onSkipped={(st) => {
                           // Persist the skip before regenerating, or mergePersisted forgets it.
@@ -1680,7 +1697,7 @@ export function RoadmapPage({
   const bulletins = bulletinsFor(steps, commsCtx)
   const commsRows = commsPlanRows(bulletins)
   const commsWarnings = monthlyWarnings(bulletins)
-  const effortTotal = planEffort(steps)
+  const effortTotal = planEffort(steps, bulletins.length)
   const watchThreshold = saved?.watchThresholdPercent ?? DEFAULT_REVERT_PERCENT
   const copyPrompt = (id: string, kind: Parameters<typeof promptFor>[0], context: string, draft: string): Promise<void> => copy(`${id}:prompt`, promptFor(kind, tenantName, context, draft))
 
@@ -2098,6 +2115,7 @@ function StepCard({
   now,
   batchWith,
   verdict,
+  preflight,
   tenantId,
 }: {
   step: Step
@@ -2114,6 +2132,8 @@ function StepCard({
   batchWith: string[]
   /** Can this be enforced yet (prompt 42 Part 2); null off report-only. */
   verdict: Verdict | null
+  /** Can the operator still sign in after this change window (prompt 42 Part 3). */
+  preflight: Preflight | null
   tenantId: string
   skipDraft: { id: string; reason: string } | null
   setSkipDraft: (d: { id: string; reason: string } | null) => void
@@ -2550,6 +2570,22 @@ function StepCard({
           </p>
         </details>
       )}
+
+      {/* Before the change window: can the operator still sign in (prompt 42 Part 3). */}
+      {preflight && !preflight.go && (
+        <div className="card preflight-nogo">
+          <p className="row">
+            <Chip status="warning">{VERDICT.preflightTitle}</Chip> <strong>{VERDICT.preflightNoGo}</strong>
+          </p>
+          <h5>{VERDICT.preflightBlocked}</h5>
+          <ul className="sections">
+            {preflight.reasons.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {preflight && preflight.go && preflight.unknown && <p className="reason">{VERDICT.preflightUnknown}</p>}
 
       {/* The change window this step shares (prompt 41 §9). */}
       {batchLine(step, batchWith) && <p className="reason batch-line">{batchLine(step, batchWith)}</p>}

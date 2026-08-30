@@ -145,9 +145,9 @@ export function effortFor(step: Step): { minutes: number; contacts: number; sent
  * several each. The arithmetic was right and the noun was doing the lying, so
  * the sentence now carries the step count and the unit says what it counts.
  */
-export function planEffort(steps: Step[]): { minutes: number; contacts: number; steps: number; sentence: string } {
+export function planEffort(steps: Step[], announcements = 0): { minutes: number; contacts: number; steps: number; announcements: number; sentence: string } {
   const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
   const minutes = work.reduce((n, s) => n + adminMinutes(s), 0)
   const contacts = work.reduce((n, s) => n + helpDeskContacts(s), 0)
-  return { minutes, contacts, steps: work.length, sentence: EFFORT.total(minutes, contacts, work.length) }
+  return { minutes, contacts, steps: work.length, announcements, sentence: EFFORT.total(minutes, contacts, work.length, announcements) }
 }

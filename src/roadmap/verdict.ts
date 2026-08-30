@@ -5,6 +5,7 @@
 //
 // Pure: no DOM, no network, so it runs in Node tests and in the worker.
 import { OBSERVATION_DAYS, OBSERVATION_DAYS_ZERO } from './constants.ts'
+import { wouldStrand } from './strand.ts'
 import type { Step } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 
@@ -147,4 +148,48 @@ export function insightsUrl(tenantId: string, policyId: string): string {
 export function whatIfUrl(tenantId: string, policyId: string, userId: string): string {
   const q = new URLSearchParams({ policyId, userId })
   return `https://entra.microsoft.com/${encodeURIComponent(tenantId)}/#view/Microsoft_AAD_ConditionalAccess/WhatIfBlade/~/${encodeURIComponent(q.toString())}`
+}
+
+// ---- Operator pre-flight (observation-and-readiness.md §3, prompt 42 Part 3) ----
+
+export type Preflight = {
+  go: boolean
+  /** The steps in this change window that would stop the operator, by id. */
+  blockedBy: string[]
+  /** Why, per blocking step, in the operator's own terms. */
+  reasons: string[]
+  /** True when the answer rests on missing evidence rather than on a clean read. */
+  unknown: boolean
+}
+
+/**
+ * Can the person doing this change still sign in afterwards.
+ *
+ * Run against the whole change window, not the single step: the operator is
+ * about to enforce several policies in one supervised hour, and any of them can
+ * lock them out. An operator who locks themselves out cannot fix what they just
+ * broke, so a no-go blocks the event rather than warning about it.
+ *
+ * Computed from the scan every time rather than cached in the plan. A cached
+ * go is a promise about a tenant that has since changed; the plan file would
+ * carry it forward and it would be believed.
+ */
+export function preflightFor(
+  batch: Step[],
+  operatorId: string | null,
+  snapshot: TenantSnapshot,
+  allowedCountries: string[],
+): Preflight {
+  if (operatorId === null) return { go: true, blockedBy: [], reasons: [], unknown: true }
+  const blockedBy: string[] = []
+  const reasons: string[] = []
+  let unknown = false
+  for (const step of batch) {
+    const v = wouldStrand(step, operatorId, snapshot, { breakGlass: false, allowedCountries })
+    if (v.unknown) unknown = true
+    if (!v.stranded) continue
+    blockedBy.push(step.id)
+    reasons.push(`${step.plainTitle || step.title}: ${v.reason}`)
+  }
+  return { go: blockedBy.length === 0, blockedBy, reasons, unknown }
 }

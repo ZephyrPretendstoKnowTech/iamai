@@ -166,6 +166,27 @@ for (const f of fixtures) {
       }
     }
 
+    // Enforcement slots vary, and announcements are readable (prompt 42 §12).
+    // Every enforcement in every week landed at 12:00 for eleven weeks, and
+    // announcements went out at 18:00, the last minute of the working day
+    // (review-09 findings 10 and 11).
+    {
+      const enforceHours = new Set<string>()
+      for (const st of steps) {
+        const e = st.events
+        if (!e) continue
+        enforceHours.add(e.enforce.time)
+        for (const m of [e.announce, e.remind]) {
+          if (!m) continue
+          const hour = Number(m.time.slice(0, 2))
+          assert.ok(hour >= 8 && hour <= 12, `a message at ${m.time} is early enough in the day to be read`)
+        }
+      }
+      if (steps.filter((st) => st.events).length >= 6) {
+        assert.ok(enforceHours.size > 1, `enforcement does not always land at the same time: ${[...enforceHours].join(", ")}`)
+      }
+    }
+
     // Announcement, then reminder, then enforcement (prompt 41 §2). Order is
     // asserted on the instant, not the day, because the defect review 09 found
     // was an enforcement at 12:00 and a message at 18:00 on the SAME date: a

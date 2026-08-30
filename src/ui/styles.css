@@ -877,3 +877,10 @@ table.datatable tbody tr:hover { background: var(--raised); }
 /* The readiness verdict card (prompt 42 Part 2). */
 .verdict-card { border-left: 3px solid var(--accent); }
 .verdict-card h5 { margin: var(--space-3) 0 var(--space-1); font-size: var(--text-sm); color: var(--muted); }
+
+/* A quiet week row (prompt 42 §13): present, and plainly empty. */
+.week-table tr.is-quiet td { color: var(--muted); font-style: normal; }
+
+/* Operator pre-flight, when the answer is no-go (prompt 42 Part 3). */
+.preflight-nogo { border-left: 3px solid var(--danger); }
+.preflight-nogo h5 { margin: var(--space-2) 0 var(--space-1); font-size: var(--text-sm); color: var(--muted); }
