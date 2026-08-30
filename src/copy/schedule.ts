@@ -56,6 +56,22 @@ export const CRITICAL = {
     `${count(n, 'step')} would prompt the same people twice in one week. Spacing them out would push the plan past ${count(weeks, 'week')}, so they stay together.`,
 }
 
+/**
+ * When a plan runs past the length this product is for, what would bring it in
+ * (prompt 43 item 5). Every sentence names steps or a number, never a category:
+ * "defer some session controls" is not advice a person can act on.
+ */
+export const OVERRUN = {
+  title: 'This plan is longer than most',
+  lead: (weeks: number, bound: number) =>
+    `At ${count(weeks, 'week')} this runs past the ${bound} weeks this planner is built for. Any one of these brings it back inside.`,
+  pace: (cap: number, weeks: number) => `Raise the pace to ${count(cap, 'change window')} a week: ${count(weeks, 'week')}.`,
+  defer: (names: string[], weeks: number) =>
+    `Defer ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`}: ${count(weeks, 'week')}.`,
+  readiness: (people: number, weeks: number) =>
+    `Get the ${count(people, 'person', 'people')} who still need a sign-in method set up first: ${count(weeks, 'week')}.`,
+}
+
 export const POLICY_COUNT = {
   statement: (existing: number, added: number, after: number, cap: number) =>
     `${count(existing, 'Conditional Access policy', 'Conditional Access policies')} in the tenant today; this plan adds ${added}, for ${after} of the ${cap} Entra allows.`,

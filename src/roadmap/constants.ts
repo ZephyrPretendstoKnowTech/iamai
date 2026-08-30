@@ -38,9 +38,9 @@ export type SizeBand = 'small' | 'mid' | 'large'
 // typical case. The plan does not rely on the band to explain itself: it names
 // the constraint that set its own length, in the sentence it already writes.
 export const BANDS: Record<SizeBand, { maxActive: number; weeks: number; verificationDays: number }> = {
-  small: { maxActive: 30, weeks: 6, verificationDays: 14 },
-  mid: { maxActive: 300, weeks: 9, verificationDays: 28 },
-  large: { maxActive: Number.POSITIVE_INFINITY, weeks: 11, verificationDays: 42 },
+  small: { maxActive: 50, weeks: 7, verificationDays: 14 },
+  mid: { maxActive: 200, weeks: 8, verificationDays: 21 },
+  large: { maxActive: Number.POSITIVE_INFINITY, weeks: 10, verificationDays: 28 },
 }
 /**
  * How long a policy sits in report-only before anyone can call it safe

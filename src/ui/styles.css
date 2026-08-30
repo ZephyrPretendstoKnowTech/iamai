@@ -884,3 +884,6 @@ table.datatable tbody tr:hover { background: var(--raised); }
 /* Operator pre-flight, when the answer is no-go (prompt 42 Part 3). */
 .preflight-nogo { border-left: 3px solid var(--danger); }
 .preflight-nogo h5 { margin: var(--space-2) 0 var(--space-1); font-size: var(--text-sm); color: var(--muted); }
+
+/* The upper-bound guard (prompt 43 item 5). */
+.overrun { border-left: 3px solid var(--warning, var(--accent)); }
