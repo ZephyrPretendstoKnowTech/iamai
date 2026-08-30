@@ -148,9 +148,14 @@ export const EFFORT = {
    * (prompt 41 §11). Three branches on time, because under an hour "about 0
    * hours" is worse than no figure at all.
    */
-  total: (minutes: number, calls: number, steps: number) => {
+  total: (minutes: number, calls: number, steps: number, announcements = 0) => {
     const time = minutes < 60 ? `about ${count(minutes, 'minute')}` : `about ${count(Math.round(minutes / 60), 'hour')}`
-    return `Across the ${count(steps, 'step')} still to do: ${time} of admin time, and about ${count(calls, 'help-desk contact')}.`
+    // The messages and the contacts are two readings of one model: the people a
+    // change reaches are the people who may ask about it. Printing them apart,
+    // on different surfaces, made them look like unrelated figures for related
+    // things (review-09 finding 15, prompt 42 §16).
+    const reach = announcements > 0 ? ` The plan sends ${count(announcements, 'message')} to those same people.` : ''
+    return `Across the ${count(steps, 'step')} still to do: ${time} of admin time, and about ${count(calls, 'help-desk contact')}.${reach}`
   },
   fits: (minutes: number) => (minutes <= 15 ? 'fits in a coffee break' : minutes <= 60 ? 'fits in an hour' : 'needs a clear afternoon'),
 }

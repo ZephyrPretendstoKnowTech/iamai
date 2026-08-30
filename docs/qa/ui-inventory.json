@@ -1,5 +1,5 @@
 {
- "fingerprint": "80a149869f586925",
+ "fingerprint": "62156679e1ed0f17",
  "surfaces": [
   {
    "name": "Start",
@@ -1578,6 +1578,7 @@
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.",
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.",
     "Across the 17 steps still to do: about 6 hours of admin time, and about 18 help-desk contacts.",
+    "The plan sends 2 messages to those same people.",
     "Must fix first: 13 steps that can deny access are held until it passes.",
     "about 16 minutes",
     "nothing blocks it, and 1 later step waits for it",
@@ -1605,6 +1606,7 @@
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
     "Across the 17 steps still to do: about 6 hours of admin time, and about 18 help-desk contacts.": 1,
+    "The plan sends 2 messages to those same people.": 1,
     "Must fix first: 13 steps that can deny access are held until it passes.": 1,
     "nothing blocks it, and 1 later step waits for it": 1,
     "setting up 1 person unblocks 3 steps · Priya Nair": 1,
@@ -1623,6 +1625,7 @@
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
     "Across the 17 steps still to do: about 6 hours of admin time, and about 18 help-desk contacts.": 1,
+    "The plan sends 2 messages to those same people.": 1,
     "Must fix first: 13 steps that can deny access are held until it passes.": 1,
     "nothing blocks it, and 1 later step waits for it": 1,
     "setting up 1 person unblocks 3 steps · Priya Nair": 1,
@@ -1645,8 +1648,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 9,
-    "sentences": 183,
-    "total": 223
+    "sentences": 192,
+    "total": 232
    },
    "unnamedControls": []
   },
@@ -1775,7 +1778,7 @@
     "About Blocked"
    ],
    "sentences": [
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.",
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.",
     "9 steps would prompt the same people twice in one week.",
     "Spacing them out would push the plan past 6 weeks, so they stay together.",
     "1 thing to watch before anything is enforced.",
@@ -1817,7 +1820,7 @@
    "primary": [],
    "tables": [],
    "occurrences": {
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.": 1,
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.": 1,
     "9 steps would prompt the same people twice in one week.": 1,
     "Spacing them out would push the plan past 6 weeks, so they stay together.": 1,
     "1 thing to watch before anything is enforced.": 1,
@@ -1841,7 +1844,7 @@
     "· Medium-risk users must change their password · Entra ID P2": 1
    },
    "occurrencesAll": {
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.": 1,
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.": 1,
     "9 steps would prompt the same people twice in one week.": 1,
     "Spacing them out would push the plan past 6 weeks, so they stay together.": 1,
     "1 thing to watch before anything is enforced.": 1,
@@ -1897,8 +1900,8 @@
     "empty": 0,
     "summaries": 4,
     "tips": 10,
-    "sentences": 451,
-    "total": 1304
+    "sentences": 455,
+    "total": 1308
    },
    "unnamedControls": []
   },
@@ -1931,13 +1934,15 @@
    "options": [],
    "links": [
     "<time> 5 people, by name: 8 changes",
-    "<time> Everyone: 2 changes take effect",
+    "<time> Everyone, nobody affected: 2 changes take effect",
     "<time> Turn off old sign-in methods that skip MFA",
     "<time> 4 people, by name: 1 change",
+    "<time> Everyone, sign-in methods: 2 changes take effect",
     "<time> Stop attackers adding their own MFA method",
-    "<time> 5 people, by name: 3 changes take effect",
+    "<time> 5 people, by name, sign-in methods: 2 changes take effect",
+    "<time> Stop sign-ins from countries you don't work in",
     "<time> Block devices Entra cannot identify",
-    "<time> 5 people, by name: 4 changes take effect",
+    "<time> 5 people, by name, other changes: 4 changes take effect",
     "Day 0",
     "Registration",
     "Observation",
@@ -2048,12 +2053,16 @@
     "About Revert threshold"
    ],
    "sentences": [
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.",
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.",
     "When your people work.",
     "Too few sign-in records to read a working pattern yet: the calendar defaults apply.",
     "Days across, the three kinds of event down: what to announce, remind about, and enforce on each day.",
     "Times are local.",
     "One message per audience per week, however many changes it covers.",
+    "Changes are grouped per day rather than per week, because a change takes effect on the day it takes effect; two on one audience in a week means two supervised windows, which the labels name.",
+    "Nothing needs a reminder this week.",
+    "No changes take effect this week.",
+    "Nothing to announce this week.",
     "7 weeks: a 2-week verification campaign, 4-day observation window, 4 enforcement waves, 2 steps waiting on Setup questions 2 and 3.",
     "Hide completed",
     "<date> → <date>",
@@ -2080,7 +2089,7 @@
     "One message per audience per week, at most.",
     "Nothing is sent by IAMAI, so copy each one into your own channel.",
     "(individual note)",
-    "Turn off old sign-in methods that skip MFA; Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Sign everyone out when the browser closes; Stop downloads to devices you do not manage; Limit what personal devices can do in the browser; Stop a stolen session token from being reused",
+    "Turn off old sign-in methods that skip MFA; Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Limit what personal devices can do in the browser; Sign everyone out when the browser closes; Stop a stolen session token from being reused; Stop downloads to devices you do not manage",
     "(reminder)",
     "Stop attackers adding their own MFA method",
     "· 5 people, by name · <date>",
@@ -2101,10 +2110,11 @@
    "primary": [],
    "tables": [],
    "occurrences": {
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.": 1,
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.": 1,
     "Too few sign-in records to read a working pattern yet: the calendar defaults apply.": 1,
     "Days across, the three kinds of event down: what to announce, remind about, and enforce on each day.": 1,
     "One message per audience per week, however many changes it covers.": 1,
+    "Changes are grouped per day rather than per week, because a change takes effect on the day it takes effect; two on one audience in a week means two supervised windows, which the labels name.": 1,
     "7 weeks: a 2-week verification campaign, 4-day observation window, 4 enforcement waves, 2 steps waiting on Setup questions 2 and 3.": 1,
     "The 13 new policies start in report-only, where they affect nobody.": 1,
     "4 users still need setting up (5 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.": 1,
@@ -2117,10 +2127,14 @@
     "At most 3 enforcement events a week for this size of tenant.": 1
    },
    "occurrencesAll": {
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.": 1,
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.": 1,
     "Too few sign-in records to read a working pattern yet: the calendar defaults apply.": 1,
     "Days across, the three kinds of event down: what to announce, remind about, and enforce on each day.": 1,
     "One message per audience per week, however many changes it covers.": 1,
+    "Changes are grouped per day rather than per week, because a change takes effect on the day it takes effect; two on one audience in a week means two supervised windows, which the labels name.": 1,
+    "Nothing needs a reminder this week.": 3,
+    "No changes take effect this week.": 1,
+    "Nothing to announce this week.": 3,
     "7 weeks: a 2-week verification campaign, 4-day observation window, 4 enforcement waves, 2 steps waiting on Setup questions 2 and 3.": 1,
     "The 13 new policies start in report-only, where they affect nobody.": 1,
     "Checked: nothing blocks it and a foundation the later steps need.": 2,
@@ -2148,7 +2162,7 @@
     "Windows desktop sessions require token protection": 1,
     "One message per audience per week, at most.": 1,
     "Nothing is sent by IAMAI, so copy each one into your own channel.": 1,
-    "Turn off old sign-in methods that skip MFA; Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Sign everyone out when the browser closes; Stop downloads to devices you do not manage; Limit what personal devices can do in the browser; Stop a stolen session token from being reused": 2,
+    "Turn off old sign-in methods that skip MFA; Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Limit what personal devices can do in the browser; Sign everyone out when the browser closes; Stop a stolen session token from being reused; Stop downloads to devices you do not manage": 2,
     "Stop attackers adding their own MFA method": 2,
     "· 5 people, by name · <date>": 1,
     "EmailTeams or SlackHelp-desk noteIntranet noticeRemind": 2,
@@ -2164,15 +2178,15 @@
     "tabs": 0,
     "buttons": 32,
     "options": 0,
-    "links": 753,
+    "links": 776,
     "chips": 24,
     "columns": 21,
     "tiles": 0,
     "empty": 0,
     "summaries": 114,
     "tips": 22,
-    "sentences": 578,
-    "total": 1559
+    "sentences": 634,
+    "total": 1638
    },
    "unnamedControls": []
   },
@@ -2445,7 +2459,7 @@
     "About Scheduled date"
    ],
    "sentences": [
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.",
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.",
     "9 steps would prompt the same people twice in one week.",
     "Spacing them out would push the plan past 6 weeks, so they stay together.",
     "1 thing to watch before anything is enforced.",
@@ -2509,7 +2523,7 @@
    "primary": [],
    "tables": [],
    "occurrences": {
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.": 1,
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.": 1,
     "9 steps would prompt the same people twice in one week.": 1,
     "Spacing them out would push the plan past 6 weeks, so they stay together.": 1,
     "1 thing to watch before anything is enforced.": 1,
@@ -2556,7 +2570,7 @@
     "· Medium-risk users must change their password · Entra ID P2": 1
    },
    "occurrencesAll": {
-    "The plan is 7 weeks because only 3 enforcement events a week fit this size of tenant, which places Browser sessions never persist for anyone last; everything else fits inside it.": 1,
+    "The plan is 7 weeks because only 3 change windows a week fit this size of tenant, and the last of them goes to Browser sessions never persist for anyone; everything else fits inside it.": 1,
     "9 steps would prompt the same people twice in one week.": 1,
     "Spacing them out would push the plan past 6 weeks, so they stay together.": 1,
     "1 thing to watch before anything is enforced.": 1,
@@ -2634,8 +2648,8 @@
     "empty": 0,
     "summaries": 39,
     "tips": 15,
-    "sentences": 756,
-    "total": 1664
+    "sentences": 760,
+    "total": 1668
    },
    "unnamedControls": []
   },
@@ -3197,6 +3211,7 @@
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.",
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.",
     "Across the 17 steps still to do: about 6 hours of admin time, and about 18 help-desk contacts.",
+    "The plan sends 2 messages to those same people.",
     "Must fix first: 13 steps that can deny access are held until it passes.",
     "about 16 minutes",
     "nothing blocks it, and 1 later step waits for it",
@@ -3248,6 +3263,7 @@
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
     "Across the 17 steps still to do: about 6 hours of admin time, and about 18 help-desk contacts.": 1,
+    "The plan sends 2 messages to those same people.": 1,
     "Must fix first: 13 steps that can deny access are held until it passes.": 1,
     "nothing blocks it, and 1 later step waits for it": 1,
     "setting up 1 person unblocks 3 steps · Priya Nair": 1,
@@ -3289,6 +3305,7 @@
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
     "Across the 17 steps still to do: about 6 hours of admin time, and about 18 help-desk contacts.": 1,
+    "The plan sends 2 messages to those same people.": 1,
     "Must fix first: 13 steps that can deny access are held until it passes.": 1,
     "nothing blocks it, and 1 later step waits for it": 1,
     "setting up 1 person unblocks 3 steps · Priya Nair": 1,
@@ -3334,8 +3351,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 9,
-    "sentences": 416,
-    "total": 502
+    "sentences": 425,
+    "total": 511
    },
    "unnamedControls": []
   }

@@ -40,11 +40,16 @@ export const CRITICAL = {
     observation > 0
       ? `${step} observes in report-only for ${count(observation, 'day')} and then rolls through ${count(rings, 'ring')} of ${count(soak, 'day')} each`
       : `${step} rolls through ${count(rings, 'ring')} of ${count(soak, 'day')} each`,
-  cap: (n: number, step: string) => `only ${count(n, 'enforcement event')} a week fit this size of tenant, which places ${step} last`,
+  // Step titles are themselves clauses ("Browser sessions never persist for
+  // anyone"), so embedding one in a relative clause produced a fragment:
+  // "which places Browser sessions never persist for anyone last" (review-09
+  // finding 14, prompt 42 §15). The reason leads now, and the step is named in
+  // its own clause where its shape cannot break the sentence.
+  cap: (n: number, step: string) => `only ${count(n, 'change window')} a week fit this size of tenant, and the last of them goes to ${step}`,
   freeze: (to: string, step: string) => `the change freeze ends on ${to} and ${step} starts after it`,
   scheduled: (step: string, date: string) => `${step} is scheduled by hand for ${date}`,
   phase: (step: string, phase: string) => `${step} follows the ${phase} steps, which start first`,
-  soft: (step: string, other: string) => `${step} cannot overlap ${other} for the same people`,
+  soft: (step: string, other: string) => `two changes prompt the same people, so ${step} cannot run in the same window as ${other}`,
   prerequisites: (n: number) => `${count(n, 'prerequisite')} take the first days`,
   shorterSoak: (from: number, to: number) => `Each ring soaks ${count(to, 'day')} instead of ${from}; the longer soak would run past the size band.`,
   relaxed: (n: number, weeks: number) =>

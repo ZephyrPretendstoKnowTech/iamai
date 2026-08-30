@@ -43,5 +43,10 @@ export const VERDICT = {
 
   insights: 'Report-only impact for this policy',
   whatIf: 'What If, for the first person affected',
+  preflightTitle: 'Before this change window',
+  preflightGo: 'The signed-in account can still sign in after these changes.',
+  preflightNoGo: 'The signed-in account would be locked out by this change window. Fix this before enforcing anything in it.',
+  preflightUnknown: 'IAMAI cannot tell whether the signed-in account survives these changes, because the evidence for it is missing. Check with What If before enforcing.',
+  preflightBlocked: 'What would stop it',
   showWork: 'IAMAI is reading Microsoft’s own data. Check it:',
 } as const

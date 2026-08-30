@@ -137,14 +137,40 @@ export const SAFE = {
 
 export const WEEK_VIEW = {
   title: 'Week by week',
-  hint: 'Days across, the three kinds of event down: what to announce, remind about, and enforce on each day. Times are local. One message per audience per week, however many changes it covers.',
+  // Two rules, not one, because they govern different things. Saying only the
+  // first made two enforcement cells for one audience in a week look like a
+  // contradiction of the rule printed above them (review-09 finding 13,
+  // prompt 42 §14).
+  hint: 'Days across, the three kinds of event down: what to announce, remind about, and enforce on each day. Times are local. One message per audience per week, however many changes it covers. Changes are grouped per day rather than per week, because a change takes effect on the day it takes effect; two on one audience in a week means two supervised windows, which the labels name.',
   weekOf: (date: string) => `Week of ${date}`,
   rows: { announce: 'Announce', remind: 'Remind', enforce: 'Enforce' },
   nothing: 'Nothing this week.',
   outOfHours: (n: number) => `${count(n, 'event')} outside working hours`,
   everyone: 'Everyone',
-  /** One cell per audience per day on the Enforce row (prompt 40 §16). */
-  enforceBundle: (audience: string, steps: number) => `${audience}: ${steps} changes take effect`,
+  /**
+   * A quiet row says so rather than vanishing (prompt 42 §13). One per row,
+   * because "none needed" means something different in each: nothing to
+   * announce, nothing to remind about, nothing taking effect.
+   */
+  noneNeeded: {
+    announce: 'Nothing to announce this week.',
+    remind: 'Nothing needs a reminder this week.',
+    enforce: 'No changes take effect this week.',
+  } as Record<string, string>,
+  /**
+   * One cell per audience per day on the Enforce row (prompt 40 §16), named by
+   * what kind of change it is, so two cells for one audience in a week read as
+   * two different windows rather than a duplicate (prompt 42 §14).
+   */
+  enforceBundle: (audience: string, steps: number, kind: string | null) =>
+    kind ? `${audience}, ${kind}: ${steps} changes take effect` : `${audience}: ${steps} changes take effect`,
+  /** Plain names for the disruption classes a change window can hold. */
+  batchKind: {
+    zero: 'nobody affected',
+    mfa: 'sign-in methods',
+    deviceSession: 'devices and sessions',
+    other: 'other changes',
+  } as Record<string, string>,
   /** One cell per bulletin, naming what it covers (prompt 37 §14). */
   bulletin: (audience: string, steps: number) => `${audience}: ${count(steps, 'change')}`,
 }
