@@ -25,12 +25,15 @@ test('a scope no collector uses says so rather than implying it is spent', () =>
   const used = new Set(COLLECTOR_REGISTRY.flatMap((s) => s.scopes))
   for (const scope of GRAPH_SCOPES) {
     if (used.has(scope) || SIGN_IN_SCOPES.includes(scope)) continue
-    // Application.Read.All is consented for a planned collector (SPEC §4). The
-    // disclosure has to say that rather than describe it as in use.
+    // An unused scope says plainly that nothing calls it, and the disclosure
+    // puts it in its own group rather than inside the table of permissions the
+    // tool relies on (prompt 39 item 11). The old copy said "planned", which was
+    // a promise; the investigation found the planned collector does not need
+    // this scope at all (docs/design/application-read-decision.md).
     assert.match(
       SCOPE_COPY[scope].without,
-      /Nothing today|not yet|planned/i,
-      `${scope}: requested, unused, and the copy does not say so`,
+      /^Nothing\./i,
+      `${scope}: requested, unused, and the copy does not say so plainly`,
     )
   }
 })

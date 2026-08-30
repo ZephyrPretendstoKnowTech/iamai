@@ -25,6 +25,14 @@ export const PERMISSIONS = {
     'That removes every permission immediately and leaves nothing behind. Anything IAMAI held was in the browser, and Forget this tenant clears that separately.',
   columns: { permission: 'Permission', reads: 'What it lets IAMAI read', without: 'Without it' },
   usedFor: (names: string[]): string => `Used for: ${names.join(', ')}.`,
+  unusedGroup: 'Requested, not yet used',
+  unusedNote: [
+    'This permission is on the consent screen and nothing in IAMAI calls it.',
+    'It was consented for a service-principal inventory that has not been built.',
+    'That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.',
+    'The recommendation is to remove it.',
+  ],
+  unusedLink: 'The full reasoning',
   notUsedYet: 'Not used by anything IAMAI runs today.',
   fullList: 'Every endpoint, in full →',
   signInGroup: 'Sign in, and stay signed in',
@@ -60,8 +68,7 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
   },
   'Application.Read.All': {
     reads: 'Application and service principal registrations.',
-    without:
-      'Nothing today. It is consented for a planned service-principal inventory (SPEC §4) that has not been built, so it appears on the consent screen and is not yet exercised by any call.',
+    without: 'Nothing. No part of IAMAI calls anything that needs it.',
   },
   openid: { reads: 'That the sign-in happened, and who signed in.', without: 'Signing in at all.' },
   profile: { reads: 'The signed-in name and sign-in address, to show whose session it is.', without: 'The header could not say who is signed in.' },
