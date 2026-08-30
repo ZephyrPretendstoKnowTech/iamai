@@ -240,7 +240,7 @@ const bgCount: ValidationRule = {
   severity: 'blocker',
   needs: [],
   evaluate: (_id, ctx) =>
-    ctx.breakGlassIds.length >= 2 ? pass(F.bgCountOk(ctx.breakGlassIds.length)) : fail(F.bgCount(ctx.breakGlassIds.length), A.pickAnother),
+    ctx.breakGlassIds.length >= 2 ? pass(F.bgCountOk(ctx.breakGlassIds.length)) : fail(F.bgCount(ctx.breakGlassIds.length), A.addAnother),
 }
 
 const bgPermanentGa: ValidationRule = {

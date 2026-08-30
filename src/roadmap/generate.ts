@@ -687,6 +687,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // One blocker per Setup question (several can apply); the setup step is
     // referenced only when it exists.
     const blockBySetup = (qid: WizardQuestionId): void => {
+      // A question answered by any means is answered, including "Doesn't exist
+      // yet" (prompt 40 §10). That answer leaves the reference unresolved by
+      // design, and the unresolved reference was being read back as an
+      // unanswered question — so eleven step cards said "waiting on Setup
+      // question 2" while Setup showed it answered (review-08 B5). Where the
+      // answer creates something, createdWithinStepKeys below blocks on the
+      // prerequisite step that creates it, named.
+      if (mapping.wizardAnswered[qid] === true) return
       const n = questionNumber(qid)
       if (n === 0 || blockers.some((b) => b.kind === 'setup' && b.questionNumber === n)) return
       if (steps.some((s) => s.id === setupStepId) && !blockedBy.includes(setupStepId)) blockedBy.push(setupStepId)

@@ -50,17 +50,24 @@ export function toValidationResult(results: RuleResult[], checkedAt = new Date()
     .filter((r) => r.finding !== null && r.finding !== undefined)
     .filter((r) => r.outcome !== 'pass' || r.severity === 'note' || Boolean(r.finding))
     .sort((a, b) => BLOCKER_FIRST[a.severity] - BLOCKER_FIRST[b.severity])
-  // A passing rule with a fact to report reads as a note, whatever its severity.
-  const rank = (r: RuleResult): number => (isBlocking(r) ? 0 : r.outcome === 'pass' ? 2 : r.severity === 'warning' ? 1 : 2)
+  // Four ranks, not three. A check that could not be run is its own outcome:
+  // it is not a recommendation, and counting it as one made Q1 read "3 must fix
+  // / 5 recommended" when three of those five were "could not be checked"
+  // (review-08 E2, prompt 40 §15). An unknown says nothing about whether the
+  // tenant is well configured — only that IAMAI could not tell.
+  const rank = (r: RuleResult): number =>
+    isBlocking(r) ? 0 : r.outcome === 'unknown' ? 1 : r.outcome === 'pass' ? 3 : r.severity === 'warning' ? 2 : 3
   shown.sort((a, b) => rank(a) - rank(b))
   const toFix = shown.filter((r) => rank(r) === 0).length
-  const recommended = shown.filter((r) => rank(r) === 1).length
+  const unknown = shown.filter((r) => rank(r) === 1).length
+  const recommended = shown.filter((r) => rank(r) === 2).length
   return {
     checkedAt,
     passed: toFix === 0,
     findings: shown.map((r) => r.finding as string),
     actions: shown.map((r) => r.fix ?? null),
     toFix,
+    unknown,
     recommended,
   }
 }

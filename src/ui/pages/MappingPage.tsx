@@ -78,7 +78,9 @@ export function MappingPage({
   // Stable callback: children report by question id, so effects do not re-run per render.
   const reportFindings = useCallback((id: string, counts: FindingCounts) => {
     setOpenFindings((prev) =>
-      prev[id]?.toFix === counts.toFix && prev[id]?.recommended === counts.recommended && prev[id]?.notes === counts.notes ? prev : { ...prev, [id]: counts },
+      prev[id]?.toFix === counts.toFix && prev[id]?.recommended === counts.recommended && prev[id]?.unknown === counts.unknown && prev[id]?.notes === counts.notes
+        ? prev
+        : { ...prev, [id]: counts },
     )
   }, [])
   useEffect(() => onProgress(progress), [progress, onProgress])
@@ -164,7 +166,7 @@ export function MappingPage({
       answered={answered}
       reopen={reopen}
       editing={editing[q.id] === true}
-      openFindings={openFindings[q.id] ?? { toFix: 0, recommended: 0, notes: 0 }}
+      openFindings={openFindings[q.id] ?? { toFix: 0, recommended: 0, unknown: 0, notes: 0 }}
       reportFindings={reportFindings}
     />
   )
@@ -271,6 +273,7 @@ function QuestionSection(props: QProps) {
           <span className="row">
             {openFindings.toFix > 0 && <Chip status="blocked">{C.mustFix(openFindings.toFix)}</Chip>}
             {openFindings.recommended > 0 && <Chip status="warning">{C.recommendedCount(openFindings.recommended)}</Chip>}
+            {openFindings.unknown > 0 && <Chip status="neutral">{C.unknownCount(openFindings.unknown)}</Chip>}
             {openFindings.toFix === 0 && openFindings.recommended === 0 && openFindings.notes > 0 && done && <Chip status="done">{C.notesCount(openFindings.notes)}</Chip>}
             {openFindings.toFix === 0 && openFindings.recommended === 0 && openFindings.notes === 0 && done && (def.id === 'breakGlass' || def.id === 'globalExclusion') && <Chip status="neutral">{C.nothingToCheck}</Chip>}
             <Chip status={done ? 'done' : 'warning'}>{done ? C.answered : C.required}</Chip>
@@ -503,14 +506,15 @@ function ValidationView({ v, name }: { v: ValidationResult | null; name?: string
   )
 }
 
-export type FindingCounts = { toFix: number; recommended: number; notes: number }
+export type FindingCounts = { toFix: number; recommended: number; unknown: number; notes: number }
 
 /** What the chips count is exactly what the list shows (validation-rules.md §5). */
 function findingCounts(results: (ValidationResult | null)[]): FindingCounts {
   const toFix = results.reduce((n, r) => n + (r?.toFix ?? 0), 0)
   const recommended = results.reduce((n, r) => n + (r?.recommended ?? 0), 0)
+  const unknown = results.reduce((n, r) => n + (r?.unknown ?? 0), 0)
   const shown = results.reduce((n, r) => n + (r?.findings.length ?? 0), 0)
-  return { toFix, recommended, notes: Math.max(0, shown - toFix - recommended) }
+  return { toFix, recommended, unknown, notes: Math.max(0, shown - toFix - recommended - unknown) }
 }
 
 /** The third answer every question allows (prompt 26 §2): not applicable to us, with a reason that goes in the plan. */

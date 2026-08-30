@@ -496,8 +496,20 @@ export function RoadmapPage({
   const cohortsOf = (step: Step) => (step.populationView && step.populationView.mode !== 'names' ? cohortsFor(step.population.ids, populationCtx()) : [])
   /** At most ten names, then "and N more" (roadmap-v2.md §3: nothing renders unbounded). */
   const boundedNames = (ids: string[]): string => {
-    const shown = ids.slice(0, 10).map(nameOf)
-    return ids.length > 10 ? `${shown.join(', ')} ${POPULATION.andMore(ids.length - 10)}` : shown.join(', ')
+    // A name list holds names. An id the directory cannot resolve is counted at
+    // the end rather than rendered as a phrase between two people (prompt 40
+    // §12, review-08 A8).
+    const named: string[] = []
+    let unnamed = 0
+    for (const id of ids.slice(0, 10)) {
+      const name = computed.names.nameOf(id)
+      if (name) named.push(name)
+      else unnamed += 1
+    }
+    const parts = [...named]
+    if (unnamed > 0) parts.push(POPULATION.andUnnamed(unnamed))
+    if (ids.length > 10) parts.push(POPULATION.andMore(ids.length - 10))
+    return parts.join(', ')
   }
   const stepById = new Map(steps.map((s) => [s.id, s]))
 
