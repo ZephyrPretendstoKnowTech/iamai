@@ -16,7 +16,8 @@
     "build-index": "node scripts/build-index.ts",
     "smoke": "node scripts/smoke.mjs",
     "build:site": "vite build && node scripts/assemble-site.mjs",
-    "inventory": "node scripts/ui-inventory.mjs"
+    "inventory": "node scripts/ui-inventory.mjs",
+    "lint-mutations": "node scripts/lint-mutations.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.19.0",

@@ -19,6 +19,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      # Every lint rule must still fail against an injected violation. A rule
+      # verified once by hand is a rule that rots; this runs the check on every
+      # commit. See scripts/lint-mutations.mjs.
+      - run: npm run lint-mutations
       - run: npm run build
       # ubuntu-latest ships Google Chrome; the script finds it on its own.
       - run: npm run smoke
