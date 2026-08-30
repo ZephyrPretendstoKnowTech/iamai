@@ -23,7 +23,8 @@ import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import type { AuthMethodSummary, MfaViability } from '../scoring/mfaViability.ts'
 import type { ValidationAction } from '../mapping/types.ts'
 import { VALIDATION_ACTION as A } from '../copy/setup.ts'
-import { FINDING as F, NEED_LABEL, RULE_TEXT, UNKNOWN } from '../copy/validation.ts'
+import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../copy/validation.ts'
+import type { Citation } from '../copy/validation.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
 
@@ -107,6 +108,15 @@ export type ValidationRule<S = string> = {
 
 export function ruleText(id: string): { what: string; why: string } {
   return RULE_TEXT[id] ?? { what: id, why: '' }
+}
+
+/**
+ * Where the check comes from. A rule with no source is a rule nobody has
+ * verified (audit-program §6); `FIELD_PRACTICE` is the honest answer for the
+ * checks that are real and that Microsoft does not document.
+ */
+export function citationFor(id: string): Citation | undefined {
+  return RULE_CITATION[id]
 }
 
 // ---- what counts as collected ---------------------------------------------

@@ -57,7 +57,9 @@ export const FAILURE = {
     servicePrincipals: 'Applications and service principals, which a policy scoped to users never covers',
     evidence: {
       noMethod: (n: number) =>
-        `${count(n, 'active person', 'active people')} have no method registered. Away from a trusted location they cannot register one either: registering asks for MFA, and they have none to answer with.`,
+        n === 1
+          ? '1 active person has no method registered. Away from a trusted location they cannot register one either: registering asks for MFA, and they have none to answer with.'
+          : `${count(n, 'active person', 'active people')} have no method registered. Away from a trusted location they cannot register one either: registering asks for MFA, and they have none to answer with.`,
       allSet: 'everyone active already has a method, so nobody has to register from scratch under this policy.',
       unknown: 'registration data could not be read: assume some people still have no method and issue passes before enforcing.',
       tapOn: 'Temporary Access Pass is enabled in the authentication methods policy, so an administrator can issue a way in.',

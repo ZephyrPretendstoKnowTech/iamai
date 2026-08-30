@@ -70,6 +70,90 @@ export const UNKNOWN = {
   blocked: 'A check that cannot be run is treated as failed while it gates access.',
 }
 
+/**
+ * Where each check comes from. A rule without a source is a rule nobody has
+ * verified (audit-program §6), so `src/validation/rules.test.ts` fails the build
+ * when one is missing. `FIELD_PRACTICE` is the honest alternative for the
+ * checks that are real and that Microsoft does not document.
+ */
+export const FIELD_PRACTICE = 'field-practice' as const
+export type Citation = { url: string; label: string } | typeof FIELD_PRACTICE
+
+const EMERGENCY_ACCESS = { url: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access', label: 'Microsoft: manage emergency access accounts' }
+const GRANT_CONTROLS = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-grant', label: 'Microsoft: Conditional Access grant controls' }
+const NETWORK = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network', label: 'Microsoft: network assignment and named locations' }
+const REPORT_ONLY = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-report-only', label: 'Microsoft: report-only mode' }
+const MANAGED = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/managed-policies', label: 'Microsoft: Microsoft-managed policies' }
+const METHODS = { url: 'https://learn.microsoft.com/entra/identity/authentication/concept-authentication-methods', label: 'Microsoft: authentication methods' }
+const METHODS_MANAGE = { url: 'https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage', label: 'Microsoft: manage authentication methods' }
+const PER_USER_MFA = { url: 'https://learn.microsoft.com/entra/identity/authentication/howto-mfa-userstates', label: 'Microsoft: per-user MFA states' }
+const BEST_PRACTICES = { url: 'https://learn.microsoft.com/entra/identity/role-based-access-control/best-practices', label: 'Microsoft: best practices for roles' }
+const PLAN_CA = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access', label: 'Microsoft: plan a Conditional Access deployment' }
+const TAP = { url: 'https://learn.microsoft.com/entra/identity/authentication/howto-authentication-temporary-access-pass', label: 'Microsoft: Temporary Access Pass' }
+const STRENGTHS = { url: 'https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths', label: 'Microsoft: authentication strengths' }
+const WORKLOAD = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/workload-identity', label: 'Microsoft: Conditional Access for workload identities' }
+const COUNTRY_BLOCK = { url: 'https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location', label: 'Microsoft: block access by location' }
+
+export const RULE_CITATION: Record<string, Citation> = {
+  'bg.count': EMERGENCY_ACCESS,
+  'bg.role.permanentGa': EMERGENCY_ACCESS,
+  'bg.cloudOnly': EMERGENCY_ACCESS,
+  'bg.initialDomain': EMERGENCY_ACCESS,
+  'bg.enabled': EMERGENCY_ACCESS,
+  'bg.excludedFromAllPolicies': EMERGENCY_ACCESS,
+  'bg.excludedFromReportOnly': REPORT_ONLY,
+  'bg.microsoftManaged': MANAGED,
+  'bg.notInDynamicScope': EMERGENCY_ACCESS,
+  'bg.hasMfaMethod': EMERGENCY_ACCESS,
+  'bg.separateDevices': EMERGENCY_ACCESS,
+  'bg.notPersonal': EMERGENCY_ACCESS,
+  'bg.phishingResistant': EMERGENCY_ACCESS,
+  'bg.methodDiversity': EMERGENCY_ACCESS,
+  'bg.perUserMfaOff': PER_USER_MFA,
+  'bg.noLicenceNeeded': EMERGENCY_ACCESS,
+  'bg.drilled': EMERGENCY_ACCESS,
+  'bg.credentialStorage': EMERGENCY_ACCESS,
+  'bg.signInMonitoring': EMERGENCY_ACCESS,
+  'bg.nameIdentifiesPurpose': FIELD_PRACTICE,
+  'bg.lastSignIn': EMERGENCY_ACCESS,
+  'bg.signInCountries': FIELD_PRACTICE,
+  'bg.mfaSeen': EMERGENCY_ACCESS,
+  'xg.membersApproved': PLAN_CA,
+  'xg.noExtraAdmins': PLAN_CA,
+  'xg.notDynamic': FIELD_PRACTICE,
+  'xg.usedConsistently': PLAN_CA,
+  'xg.sizeReasonable': FIELD_PRACTICE,
+  'xg.notMailEnabled': FIELD_PRACTICE,
+  'loc.notWholeInternet': NETWORK,
+  'loc.notTooWide': NETWORK,
+  'loc.isTrusted': NETWORK,
+  'loc.redundancy': FIELD_PRACTICE,
+  'loc.seenInSignIns': NETWORK,
+  'cty.atLeastOne': COUNTRY_BLOCK,
+  'cty.includesOperator': COUNTRY_BLOCK,
+  'cty.unknownCountries': NETWORK,
+  'cty.seenCountriesIncluded': NETWORK,
+  'pilot.hasMembers': FIELD_PRACTICE,
+  'pilot.noBreakGlass': EMERGENCY_ACCESS,
+  'pilot.spread': FIELD_PRACTICE,
+  'pilot.hasAdmin': FIELD_PRACTICE,
+  'pilot.membersReady': FIELD_PRACTICE,
+  'pilot.passkeyEnabled': METHODS,
+  'pilot.tapEnabled': TAP,
+  'svc.noInteractive': WORKLOAD,
+  'svc.noAdminRole': BEST_PRACTICES,
+  'svc.excludedFromBlocks': WORKLOAD,
+  'str.exists': STRENGTHS,
+  'str.achievable': STRENGTHS,
+  'str.matchesBaseline': METHODS_MANAGE,
+}
+
+export const CITATION = {
+  fieldPractice: 'Seen in the field; Microsoft does not document this one.',
+  fieldPracticeShort: 'Field practice',
+  source: 'Source',
+}
+
 /** One line per rule for the reference page and the plan's checklist. */
 export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   // ---- break-glass, blockers ----
@@ -311,6 +395,8 @@ export const CHECKS_PAGE = {
   columns: { id: 'Check', what: 'What it looks for', severity: 'If it fails', why: 'Why it matters', needs: 'Needs' },
   needsNone: 'the answer given in Setup',
   unknownRule: 'A check whose data is missing reports that it could not be run. On a must-fix check, that holds the plan exactly as a failure does.',
+  sources:
+    'Every check names its source. Most point at the Microsoft page they came from; the ones marked Field practice are real and are not something Microsoft documents, so they say so rather than borrowing authority they do not have.',
   next: 'Next: Setup',
   empty: 'The registry is empty.',
 }

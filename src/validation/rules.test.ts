@@ -5,13 +5,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { REGISTRY, evaluateSubject, ruleText } from './rules.ts'
+import { REGISTRY, citationFor, evaluateSubject, ruleText } from './rules.ts'
 import type { GroupFacts, NeedKey, RuleResult, RuleSubject, ValidationContext } from './rules.ts'
 import { buildContext, breakGlassReport } from './report.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { RULE_TEXT } from '../copy/validation.ts'
+import { FIELD_PRACTICE, RULE_TEXT } from '../copy/validation.ts'
 
 // ---- the regression test (design §6) ---------------------------------------
 
@@ -79,6 +79,21 @@ test('severity is fixed: a blocker cannot be quietly downgraded', () => {
     if (BLOCKERS.has(rule.id)) assert.equal(rule.severity, expected, `${rule.id} must stay a blocker`)
     else assert.notEqual(rule.severity, 'blocker', `${rule.id} became a blocker without the design saying so`)
   }
+})
+
+test('every rule carries a source, or says plainly that it is field practice', () => {
+  // audit-program §6, adjusted by guidance-audit-01: a citation, or an explicit
+  // field-practice label. A rule with neither is a rule nobody has verified.
+  const missing: string[] = []
+  for (const rule of REGISTRY) {
+    const c = citationFor(rule.id)
+    if (c === undefined) missing.push(rule.id)
+    else if (c !== FIELD_PRACTICE) {
+      assert.match(c.url, /^https:\/\/learn\.microsoft\.com\//, `${rule.id}: the source is a Microsoft Learn page`)
+      assert.ok(c.label.length > 8, `${rule.id}: the link has a name a person can read`)
+    }
+  }
+  assert.deepEqual(missing, [], 'rules with no source')
 })
 
 test('every rule says what it checks and why it matters, for the reference page', () => {

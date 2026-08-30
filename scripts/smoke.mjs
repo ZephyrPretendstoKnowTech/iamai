@@ -250,6 +250,9 @@ try {
   check('Checks: the reference page lists the registry by subject', /Every check IAMAI runs/.test(t) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
   check('Checks: severities and the unknown rule are stated', /Must fix/.test(t) && /Recommended/.test(t) && /holds the plan exactly as a failure does/.test(t))
   check('Checks: a break-glass rule is on the page in plain language', /Global Administrator is assigned permanently and active/.test(t))
+  // Every check names its source, and the ones nobody documents say so (audit-program 6).
+  check('Checks: every rule names a source', /Source/.test(t) && /Microsoft: manage emergency access accounts/.test(t))
+  check('Checks: field practice is labelled rather than dressed up as Microsoft', /Field practice/.test(t))
 
   check('No console errors or exceptions across the walk', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '))
 } catch (e) {

@@ -168,6 +168,20 @@ for (const f of fixtures) {
     }
   })
 
+  test(`${f.name}: every warning names its source, or says it is field practice`, () => {
+    // audit-program §6, as adjusted by guidance-audit-01: a citation or an
+    // explicit field-practice label. A warning with neither borrows authority
+    // it does not have.
+    for (const s of steps) {
+      for (const m of s.failureModes) {
+        assert.ok(m.citation !== undefined, `${s.id}: "${m.title}" has no source`)
+        if (m.citation !== undefined && m.citation !== 'field-practice') {
+          assert.match(m.citation.url, /^https:\/\/learn\.microsoft\.com\//, `${s.id}: "${m.title}" cites a Microsoft page`)
+        }
+      }
+    }
+  })
+
   test(`${f.name}: name lists are bounded`, () => {
     for (const s of steps) {
       const listed = (s as unknown as { populationNames?: string[] }).populationNames ?? []

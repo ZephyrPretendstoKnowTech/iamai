@@ -7,6 +7,8 @@ import type { Schedule } from '../../roadmap/schedule.ts'
 import type { DangerArea } from '../../roadmap/dangers.ts'
 import { NAMING, PHASE_NAME, PRINT as C, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
 import { ROADMAP } from '../../copy/pages.ts'
+import { SECTION } from '../../copy/stepContent.ts'
+import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { roadmapOverview, scheduleRationale } from '../../copy/statements.ts'
 import { absoluteDate, dateRange, when } from '../../copy/dates.ts'
 import { RingMark } from '../components/Ring.tsx'
@@ -222,6 +224,23 @@ export function PrintPlan({
                 <h4>{C.step.why}</h4>
                 <p>{s.why}</p>
                 {s.whyLink && <p className="muted">{ROADMAP.whyLink} {s.whyLink}</p>}
+                {/* Every warning on paper says where it came from (audit-program §6). */}
+                {s.failureModes.length > 0 && (
+                  <>
+                    <h4>{SECTION.couldGoWrong}</h4>
+                    <ul>
+                      {s.failureModes.map((m, i) => (
+                        <li key={i}>
+                          {m.title}: {m.evidence}
+                          {m.citation === FIELD_PRACTICE && <span className="muted"> {CITATION.fieldPractice}</span>}
+                          {m.citation !== undefined && m.citation !== FIELD_PRACTICE && (
+                            <span className="muted"> {CITATION.source}: {m.citation.url}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
                 {s.learn && (
                   <p className="muted">
                     {C.step.learn} {s.learn.url}
