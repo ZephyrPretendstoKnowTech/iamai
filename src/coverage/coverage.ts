@@ -162,10 +162,16 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   // The organisation report knows the tenant's naming convention; missing
   // goals then name the policy the plan will propose, first (§46).
   const organisation = organisationReport(tenantFacts, results, snapshot, matchedTenantIds)
+  // Threaded through the names already proposed, so a numbered series advances.
+  // Without this every missing goal proposed CA004, because each call saw only
+  // the tenant's existing names and none of the plan's own (prompt 43 Part 2).
+  const naming = { ...organisation.naming, names: [...organisation.naming.names] }
   for (const r of results) {
     if (r.status !== 'absent') continue
     const match = goals.find((g) => g.goal.id === r.goal.id)?.baselineMatches[0]?.name ?? null
-    r.statement = missingStatement(r.goal.name, proposedPolicyName(stepTitle(r.goal.name), organisation.naming), match)
+    const proposed = proposedPolicyName(stepTitle(r.goal.name), naming)
+    naming.names.push(proposed)
+    r.statement = missingStatement(r.goal.name, proposed, match)
   }
 
   const couldNotEvaluate = input.baselineUnusable.map((w) => ({

@@ -61,6 +61,7 @@ export const SHELL = {
     licensing: 'Licensing guide',
     reads: 'What IAMAI reads',
     checks: 'Every check IAMAI runs',
+  naming: 'Naming policies and groups',
     inventory: 'Inventory',
     prompts: 'Prompt pack',
   },
@@ -365,6 +366,9 @@ export const FINDINGS = {
   housekeeping: 'Housekeeping',
   naming: (share: number, pattern: string, outliers: string) =>
     `Naming: ${share}% of the policies share the prefix "${pattern}"${outliers ? `; outliers: ${outliers}` : ''}`,
+  /** Policies with no prefix at all, which is what makes a list of forty unreadable. */
+  unprefixed: (n: number, names: string) =>
+    `${n === 1 ? 'One policy carries' : `${n} policies carry`} no prefix at all, which is what makes a long list hard to read: ${names}.`,
   noNaming: "Naming: no dominant naming convention yet: the plan uses the baseline's",
   consolidate: (goal: string, n: number) => `${goal} is delivered by ${count(n, 'policy', 'policies')}: consider consolidating`,
   microsoftManaged: (list: string) => `Microsoft-managed policies: ${list}`,

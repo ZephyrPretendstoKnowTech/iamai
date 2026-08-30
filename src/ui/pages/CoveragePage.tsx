@@ -20,6 +20,7 @@ import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.ts'
 import type { TenantMfaSummary } from '../../scoring/mfaViability.ts'
 import { FINDINGS as C } from '../../copy/pages.ts'
+import { NAMING as NAMING_PAGE } from '../../copy/naming.ts'
 import { INVENTORY } from '../../copy/inventory.ts'
 import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
 import { findingsSummary, lowerFirst } from '../../copy/statements.ts'
@@ -454,8 +455,11 @@ export function CoveragePage({
           <li>
             {report.organisation.naming.pattern
               ? C.naming(Math.round(report.organisation.naming.share * 100), report.organisation.naming.prefix ?? report.organisation.naming.pattern, report.organisation.naming.outliers.join(', '))
-              : C.noNaming}
+              : C.noNaming}{' '}
+            {/* Every proposed name links to the explainer (prompt 43 item 2). */}
+            <a href="#/naming">{NAMING_PAGE.link}</a>
           </li>
+          {report.organisation.naming.unprefixed.length > 0 && <li>{C.unprefixed(report.organisation.naming.unprefixed.length, report.organisation.naming.unprefixed.join(', '))}</li>}
           {report.organisation.consolidation.map((c) => (
             <li key={c.goalId}>{C.consolidate(c.goalName, c.policyNames.length)}</li>
           ))}
