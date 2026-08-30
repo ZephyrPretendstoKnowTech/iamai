@@ -274,7 +274,10 @@ const LAYOUT = `(() => {
   const offenders = [...document.querySelectorAll('body *')]
     .filter((el) => !el.closest('.devtools, .print-only'))
     .map((el) => ({ el, r: el.getBoundingClientRect() }))
-    .filter((x) => Math.round(x.r.right) > de.clientWidth + 1)
+    // Only elements nothing clips. Sorting the whole document by right edge
+    // put the nav strip's own items (which its overflow-x scrolls, harmlessly)
+    // at the top and buried the one element that actually widens the page.
+    .filter((x) => Math.round(x.r.right) > de.clientWidth + 1 && !scrolledBy(x.el))
     .sort((a, b) => b.r.right - a.r.right)
     .slice(0, 8)
     .map(function (x) {
@@ -287,6 +290,8 @@ const LAYOUT = `(() => {
       return x.el.tagName.toLowerCase() + cls + ' right=' + Math.round(x.r.right) + ' w=' + Math.round(x.r.width) + ' in ' + chain.join(' < ')
     })
   return {
+    docWidth: Math.round(de.scrollWidth),
+    clientWidth: Math.round(de.clientWidth),
     offenders,
     widest: [...new Set(widest)].slice(0, 6),
     pageOverflow: Math.max(0, Math.round(de.scrollWidth - de.clientWidth)),
@@ -321,7 +326,8 @@ for (const width of WIDTHS) {
     const l = await evaluate(LAYOUT)
     if (!l) continue
     if (l.pageOverflow > 2) {
-      add(`${width}px ${hash}`, `the page scrolls sideways by ${l.pageOverflow}px`)
+      add(`${width}px ${hash}`, `the page scrolls sideways by ${l.pageOverflow}px (doc ${l.docWidth} vs client ${l.clientWidth})`)
+      if (l.offenders.length === 0) add(`${width}px ${hash}`, '  nothing unclipped exceeds the viewport: the extra width is the document itself, not an element')
       for (const o of l.offenders) add(`${width}px ${hash}`, `  past the edge: ${o}`)
     }
     // Diagnostics at the narrowest width even when nothing overflows here: an
