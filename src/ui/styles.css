@@ -54,7 +54,8 @@ input[type='date'],
 select {
   font: inherit;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
+  /* L5: a control edge identifies the control, so it takes the 3:1 token. */
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-input);
   background: var(--surface);
   color: var(--text);
@@ -283,7 +284,7 @@ nav.stepper.is-collapsed .stepper-collapse .icon { transform: rotate(-90deg); }
   font-weight: 600;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-input);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
@@ -315,7 +316,8 @@ nav.stepper.is-collapsed .stepper-collapse .icon { transform: rotate(-90deg); }
   height: 24px;
   padding: 0 var(--space-3);
   border-radius: var(--radius-chip);
-  border: 1px solid var(--border);
+  /* L5: a filter chip is a control; it takes the 3:1 edge. */
+  border: 1px solid var(--border-control);
   background: var(--raised);
   color: var(--text);
   font-size: var(--text-sm);
@@ -456,7 +458,7 @@ details.card > summary::marker { color: var(--muted); }
 
 /* Picker */
 .toggle {
-  width: 40px; height: 22px; border-radius: 999px; border: 1px solid var(--border);
+  width: 40px; height: 22px; border-radius: 999px; border: 1px solid var(--border-control);
   background: var(--raised); position: relative; cursor: pointer; padding: 0; flex: none;
   transition: background 150ms;
 }
