@@ -7,6 +7,7 @@ import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import type { Step } from './types.ts'
+import { redactDeep as redactDeepShared, redactText as redactTextShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
 
 export type PromptKind = 'announcement' | 'reminder' | 'helpDesk' | 'manager' | 'changeRecord' | 'executive' | 'wholePlan'
@@ -59,35 +60,15 @@ export function promptPackMarkdown(items: PackItem[], tenant: string): string {
 
 // ---- Grounding bundle (§2.3) ----
 
-const GUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
-const UPN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
-
-function redactText(text: string, names: string[]): string {
-  let out = text.replace(GUID, '[id]').replace(UPN, '[sign-in name]')
-  for (const n of names) if (n.length > 2) out = out.split(n).join('[a person]')
-  return out
-}
-
-function redactDeep<T>(value: T, names: string[]): T {
-  if (typeof value === 'string') return redactText(value, names) as T
-  if (Array.isArray(value)) return value.map((v) => redactDeep(v, names)) as T
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (k === 'ids' || k === 'suggestedMemberIds' || k === 'userIds' || k === 'affectedUserIds' || k === 'populationNames' || k === 'failuresByUser') {
-        out[k] = Array.isArray(v) ? { count: v.length } : v
-        continue
-      }
-      out[k] = redactDeep(v, names)
-    }
-    return out as T
-  }
-  return value
-}
+// Redaction lives in src/redactSnapshot.ts. This file used to carry its own
+// pair of regexes and a substitution list built only from `snapshot.users`,
+// which is why the "redacted" bundle still carried policy names, group names,
+// departments and named-location CIDRs (audit redact-02, redact-03, redact-07).
 
 export function groundingBundle(args: { tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string }): Record<string, unknown> {
   const { snapshot } = args
-  const names = args.redacted ? snapshot.users.flatMap((u) => [u.displayName, u.userPrincipalName].filter((x): x is string => !!x)) : []
+  // Every name the tenant contains, not just its users.
+  const vocabulary = args.redacted ? tenantVocabulary(snapshot) : new Map<string, string>()
   const profile = {
     users: snapshot.users.length,
     enabled: snapshot.users.filter((u) => u.accountEnabled !== false).length,
@@ -127,5 +108,5 @@ export function groundingBundle(args: { tenant: string; snapshot: TenantSnapshot
     plan: { start: args.schedule.start, targetEnd: args.schedule.targetEnd, weeks: args.schedule.weeks, criticalPath: args.schedule.derivation.criticalPath, steps },
     findings,
   }
-  return args.redacted ? redactDeep(bundle, names) : bundle
+  return args.redacted ? redactDeepShared(bundle, vocabulary) : bundle
 }
