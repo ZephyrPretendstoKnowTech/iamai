@@ -1,6 +1,7 @@
 // Package instructions (#/baseline/package): what a package is, three ways to
 // make one, and what happens to the upload.
 import { useState } from 'react'
+import { REDACTED, exportClipboard } from '../exportGuard.ts'
 import { PACKAGE as C } from '../../copy/inventory.ts'
 import { Button, Card } from '../components/index.ts'
 import { StepFrame } from '../shell/AppShell.tsx'
@@ -21,13 +22,11 @@ function CopyBlock({ text, id, copied, onCopy }: { text: string; id: string; cop
 export function PackagePage() {
   const [copied, setCopied] = useState<string | null>(null)
   const onCopy = (id: string, text: string): void => {
-    void navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopied(id)
-        setTimeout(() => setCopied(null), 1500)
-      })
-      .catch(() => {})
+    void exportClipboard(text, REDACTED).then((ok) => {
+      if (!ok) return
+      setCopied(id)
+      setTimeout(() => setCopied(null), 1500)
+    })
   }
   return (
     <StepFrame title={C.title} does={C.does} next="baseline" nextLabel={C.next}>

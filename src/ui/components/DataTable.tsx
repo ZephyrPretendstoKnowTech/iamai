@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from './Button.tsx'
 import { EmptyState } from './EmptyState.tsx'
-import { downloadFile, toCsv } from '../format.ts'
+import { toCsv } from '../format.ts'
+import { REDACTED, exportDownload } from '../exportGuard.ts'
 import { COMPONENTS } from '../../copy/components.ts'
 
 const T = COMPONENTS.table
@@ -63,13 +64,14 @@ export function DataTable<T>({
 
   const exportCsv = (): void => {
     const cols = columns.filter((c) => c.csv)
-    downloadFile(
+    exportDownload(
       csvName ?? 'export.csv',
       toCsv(
         cols.map((c) => c.header),
         sorted.map((r) => cols.map((c) => c.csv!(r))),
       ),
       'text/csv',
+      REDACTED,
     )
   }
 
