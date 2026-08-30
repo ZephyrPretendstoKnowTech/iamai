@@ -114,6 +114,14 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'A person leaves, is compromised, or is on a plane. The emergency account has to belong to the organisation rather than to somebody.',
   },
   // ---- break-glass, warnings ----
+  'bg.excludedFromReportOnly': {
+    what: 'The account is also excluded from the report-only policies.',
+    why: 'A report-only policy denies nothing today, so Microsoft does not require the exclusion. It becomes required the moment somebody turns the policy on, which is usually the moment nobody is thinking about it.',
+  },
+  'bg.microsoftManaged': {
+    what: 'The account is excluded from the policies Microsoft manages.',
+    why: 'Microsoft creates these in report-only and turns them on itself, no less than thirty days later and sometimes sooner. A policy nobody in the organisation created can catch the emergency account.',
+  },
   'bg.phishingResistant': {
     what: 'At least one phishing-resistant method (a security key, a passkey or Windows Hello for Business) is registered.',
     why: 'Text and call codes are taken by a swapped SIM or a convincing phone call, which is a poor last line of defence.',
@@ -123,8 +131,8 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'One failing method type then takes out every emergency account at once.',
   },
   'bg.perUserMfaOff': {
-    what: 'Legacy per-user MFA is not enforced on the account.',
-    why: 'The legacy setting prompts on its own terms and can block the recovery sign-in that Conditional Access would have allowed.',
+    what: 'The tenant has finished migrating to the authentication methods policy.',
+    why: 'Microsoft says not to enable or enforce per-user MFA when Conditional Access is in use: the legacy setting prompts on its own terms and can block the recovery sign-in Conditional Access would have allowed. Per-user MFA state itself is readable only on a beta Graph endpoint IAMAI does not call, so this check reads the migration state instead.',
   },
   'bg.noLicenceNeeded': {
     what: 'No licence is assigned unless something needs one, and no mailbox is in daily use.',
@@ -226,6 +234,11 @@ export const FINDING = {
   bgDisabled: 'the account is disabled',
   bgNotExcluded: (policies: string[]): string => `not excluded from ${list(policies)}`,
   bgExclusionUnverified: (policies: string[]): string => `exclusion could not be verified for ${list(policies)}: the excluded groups were not read`,
+  bgNotExcludedReportOnly: (policies: string[]): string =>
+    `not excluded from ${list(policies)}, which run in report-only today and deny nothing until somebody turns them on`,
+  bgManagedMissing: (policies: string[]): string =>
+    `not excluded from ${list(policies)}, which Microsoft manages and will turn on itself`,
+  bgManagedExcluded: (n: number): string => `excluded from the ${count(n, 'policy', 'policies')} Microsoft manages in this tenant`,
   bgNoMfaMethod: 'no method that can satisfy MFA is registered',
   bgSharedDevice: (device: string, who: string[]): string =>
     `the Authenticator device "${device}" is also registered by ${list(who)}: the same device name usually means the same phone`,
@@ -235,7 +248,7 @@ export const FINDING = {
   bgSmsOnly: 'a code by text or call is the only method registered',
   bgNoPhishingResistant: 'no phishing-resistant method registered: a security key or passkey is the stronger choice',
   bgSameMethodType: (kind: string): string => `every emergency account relies on ${kind} alone`,
-  bgPerUserMfa: 'legacy per-user MFA is enforced on this account',
+  bgPerUserMfa: 'the tenant has not finished migrating to the authentication methods policy, so the legacy per-user settings still decide which methods are offered',
   bgLicensed: (plans: number): string => `${count(plans, 'licence plan')} assigned, including a mailbox`,
   bgDrillDue: (date: string, days: number): string => `last signed in ${date}, over ${days} days ago: a drill is due`,
   bgNeverSignedIn: 'has never signed in: nobody knows whether the credential works',

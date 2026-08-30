@@ -12,7 +12,7 @@ export type AnnouncementChange = {
   goalId: string
   family: Readiness['family']
   /** The grant floor the change lands on, when it is a grant change. */
-  grant: 'mfa' | 'passwordless' | 'phishingResistant' | 'block' | 'compliantDevice' | 'approvedApplication' | 'passwordChange' | null
+  grant: 'mfa' | 'passwordless' | 'phishingResistant' | 'block' | 'compliantDevice' | 'compliantApplication' | 'approvedApplication' | 'passwordChange' | null
   /** True when the change is only to session controls. */
   sessionOnly: boolean
   /** Users seen using what a block would block; null when not measured. */
@@ -45,7 +45,7 @@ export function announcementFor(c: AnnouncementChange, tenant: string, date: str
       ? `Admins,\n\nFrom ${date}, administrative sign-ins at ${tenant} require a passkey or security key. Register one now at ${SETUP_LINK} (Security info, Add method, Passkey).\n\n${SIGN_OFF}`
       : `Hi everyone,\n\nFrom ${date}, signing in to ${tenant} uses a passkey instead of a password prompt. Set one up now at ${SETUP_LINK} (Security info, Add method, Passkey).\n\n${SIGN_OFF}`
   }
-  if (c.grant === 'compliantDevice' || c.grant === 'approvedApplication') {
+  if (c.grant === 'compliantDevice' || c.grant === 'approvedApplication' || c.grant === 'compliantApplication') {
     return `Hi everyone,\n\nFrom ${date}, access to ${tenant} data will require a company-managed device or the approved apps. Sign in to your work device with your work account to make sure it is registered.\n\n${SIGN_OFF}`
   }
   if (c.grant === 'passwordChange') {

@@ -136,9 +136,9 @@ export const LADDER_STEPS: Record<string, LadderCopy> = {
       'Entra admin center → Identity → Roles & admins → Global Administrator, and list who holds it.',
       'For each person, find the role that covers what they actually do: User Administrator, Exchange Administrator, Helpdesk Administrator, Security Reader.',
       'Assign the smaller role, confirm the person can still work, then remove Global Administrator.',
-      'Keep the two break-glass accounts in the count, and check the total is between two and four.',
+      'Keep the two emergency accounts in the count: Microsoft asks for at least two of those and fewer than five Global Administrators in total.',
     ],
-    exit: ['Between two and four accounts hold Global Administrator, the break-glass accounts among them.'],
+    exit: ['At least two and fewer than five accounts hold Global Administrator, the emergency accounts among them.'],
     whatChanges: 'Some administrators see fewer screens in the portal. What they do day to day still works.',
     forManager:
       'The number of accounts whose compromise costs the whole tenant drops to the smallest workable number. Some administrators lose access to screens they did not use. Without it, every extra Global Administrator is a full-tenant key in circulation.',
@@ -207,19 +207,19 @@ export const LADDER_IMPACT = {
       ? 'No break-glass account is confirmed. Every step below can lock an administrator out, and nothing here is a way back in.'
       : `${count(found, 'break-glass account')} is confirmed. Two accounts mean one can be lost without losing the way back in.`,
   legacyAuth: 'Entra ID Free keeps no sign-in records, so IAMAI cannot count what still signs in with the old protocols. The Exchange admin center reports and the devices in the room are where that list comes from.',
-  appPasswords: 'App passwords live in the legacy per-user MFA settings, which Microsoft Graph does not expose, so IAMAI cannot count them. The service settings screen named below shows them.',
-  perUserMfaMigrated: 'The authentication methods migration reports complete, so the methods policy is the single place methods are decided.',
+  appPasswords: 'App passwords live in the legacy per-user MFA service settings, which IAMAI does not read, so it cannot count them. The service settings screen named below shows them.',
+  perUserMfaMigrated: 'The authentication methods migration reports complete, so the methods policy is the single place methods are decided. That is a separate setting from per-user MFA enforcement, which IAMAI does not read: check it on the per-user MFA screen below.',
   perUserMfaOpen: (state: string): string =>
-    `The authentication methods migration reads ${state}, so the legacy per-user settings can still prompt on their own terms.`,
+    `The authentication methods migration reads ${state}, so the legacy per-user settings can still decide which methods are offered. Whether per-user MFA is also enforcing prompts is a separate setting IAMAI does not read.`,
   perUserMfaUnknown: 'The authentication methods policy could not be read on this scan, so this step cannot say whether the migration is finished.',
   adminsSeparate: (admins: number): string =>
     `Every one of the ${count(admins, 'account')} holding a directory role is unlicensed, so none of them carries a mailbox an attacker can reach.`,
   adminsMixed: (mixed: number, admins: number, names: string[]): string =>
     `${mixed} of the ${count(admins, 'account')} holding a directory role also hold a mailbox licence: ${list(names)}. A phishing message to any of them lands on an account that can change the tenant.`,
   adminsNone: 'No directory role assignment was readable on this scan, so this step cannot name who administers the tenant.',
-  globalAdminsOk: (n: number, names: string[]): string => `${count(n, 'account')} hold Global Administrator: ${list(names)}. That is inside the two to four Microsoft recommends.`,
+  globalAdminsOk: (n: number, names: string[]): string => `${count(n, 'account')} hold Global Administrator: ${list(names)}. That is at least the two emergency accounts Microsoft asks for and fewer than the five it sets as the ceiling.`,
   globalAdminsMany: (n: number, names: string[]): string =>
-    `${count(n, 'account')} hold Global Administrator: ${list(names)}. Microsoft recommends two to four, so ${n - 4} of them want a smaller role.`,
+    `${count(n, 'account')} hold Global Administrator: ${list(names)}. Microsoft says to keep the number under five, so ${n - 4} of them want a smaller role.`,
   globalAdminsFew: (n: number): string =>
     n === 0
       ? 'No permanent Global Administrator was found in the scan. One account locked out would leave nobody able to fix it.'

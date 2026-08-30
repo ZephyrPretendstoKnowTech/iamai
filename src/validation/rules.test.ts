@@ -31,6 +31,8 @@ const EXPECTED: Record<RuleSubject, string[]> = {
     'bg.hasMfaMethod',
     'bg.separateDevices',
     'bg.notPersonal',
+    'bg.excludedFromReportOnly',
+    'bg.microsoftManaged',
     'bg.phishingResistant',
     'bg.methodDiversity',
     'bg.perUserMfaOff',
@@ -187,6 +189,29 @@ const CASES: Record<string, Case> = {
     },
   },
   'bg.notPersonal': { target: bgId, fail: (b) => { userAt(b, bgId(b)).department = 'Finance' } },
+  'bg.excludedFromReportOnly': {
+    target: bgId,
+    fail: (b) => {
+      b.snapshot.config.caPolicies.rows.push({
+        id: 'p-ro',
+        displayName: 'Staged MFA',
+        state: 'enabledForReportingButNotEnforced',
+        conditions: { users: { includeUsers: ['All'] } },
+      })
+    },
+  },
+  'bg.microsoftManaged': {
+    target: bgId,
+    fail: (b) => {
+      b.snapshot.config.caPolicies.rows.push({
+        id: 'p-msm',
+        displayName: 'Microsoft-managed: Multifactor authentication for admins',
+        state: 'enabledForReportingButNotEnforced',
+        conditions: { users: { includeUsers: ['All'] } },
+      })
+      b.snapshot.microsoftManagedPolicyIds = ['p-msm']
+    },
+  },
   'bg.phishingResistant': { target: bgId, fail: (b) => { b.snapshot.authMethods[bgId(b)] = [{ kind: 'phone', phoneType: 'mobile' }] } },
   'bg.methodDiversity': {
     target: bgId,

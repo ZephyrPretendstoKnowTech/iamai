@@ -52,7 +52,7 @@ export function controlSeverity(goal: Goal): number {
   const impl = goal.implementations[0]
   const grant = impl?.floor.grant
   if (grant === 'block' || grant === 'phishingResistant' || grant === 'compliantDevice' || grant === 'passwordChange') return 3
-  if (grant === 'mfa' || grant === 'passwordless' || grant === 'approvedApplication') return 2
+  if (grant === 'mfa' || grant === 'passwordless' || grant === 'approvedApplication' || grant === 'compliantApplication') return 2
   return 1 // session floors
 }
 

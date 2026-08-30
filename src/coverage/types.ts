@@ -66,6 +66,7 @@ export type GrantFloor =
   | 'phishingResistant'
   | 'block'
   | 'compliantDevice'
+  | 'compliantApplication'
   | 'approvedApplication'
   | 'passwordChange'
 

@@ -199,6 +199,29 @@ function livePolicies(ctx: ValidationContext): PolicyShape[] {
   return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state !== 'disabled')
 }
 
+/** Policies that actually deny: Microsoft says report-only ones need no exclusion. */
+function enforcingPolicies(ctx: ValidationContext): PolicyShape[] {
+  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabled')
+}
+
+function reportOnlyPolicies(ctx: ValidationContext): PolicyShape[] {
+  return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabledForReportingButNotEnforced')
+}
+
+/** Policies Microsoft created and will enable on its own after about 30 days. */
+function microsoftManaged(ctx: ValidationContext): PolicyShape[] {
+  const managed = new Set(ctx.snapshot.microsoftManagedPolicyIds ?? [])
+  return (ctx.tenantPolicies as (PolicyShape & { id?: string })[]).filter(
+    (p) => (p.id !== undefined && managed.has(p.id)) || /^Microsoft-managed/i.test(p.displayName ?? ''),
+  )
+}
+
+/** Whether this account is excluded from a policy, directly or through a group. */
+function excludedFrom(p: PolicyShape, id: string, memberOf: Set<string>): boolean {
+  if ((p.conditions?.users?.excludeUsers ?? []).includes(id)) return true
+  return (p.conditions?.users?.excludeGroups ?? []).some((g) => memberOf.has(g))
+}
+
 // ---- break-glass: blockers -------------------------------------------------
 
 const bgCount: ValidationRule = {
@@ -264,10 +287,12 @@ const bgExcluded: ValidationRule = {
     const memberOf = new Set(ctx.groupMembers.filter((g) => g.memberIds.includes(id)).map((g) => g.groupId))
     const missing: string[] = []
     const unverifiable: string[] = []
-    for (const p of livePolicies(ctx)) {
+    // Enforcing policies only. Microsoft's emergency-access page says
+    // "Report-only policies don't require an exclusion", so holding the whole
+    // plan on one would be a blocker the documentation does not support.
+    for (const p of enforcingPolicies(ctx)) {
       const groups = p.conditions?.users?.excludeGroups ?? []
-      if ((p.conditions?.users?.excludeUsers ?? []).includes(id)) continue
-      if (groups.some((g) => memberOf.has(g))) continue
+      if (excludedFrom(p, id, memberOf)) continue
       if (groups.some((g) => !known.has(g))) unverifiable.push(p.displayName ?? '(unnamed)')
       else missing.push(p.displayName ?? '(unnamed)')
     }
@@ -276,6 +301,34 @@ const bgExcluded: ValidationRule = {
     // that holds the plan exactly as a failure does (design §1).
     if (unverifiable.length > 0) return unknown(F.bgExclusionUnverified(unverifiable), A.policies)
     return PASS
+  },
+}
+
+const bgExcludedFromReportOnly: ValidationRule = {
+  id: 'bg.excludedFromReportOnly',
+  subject: 'breakGlass',
+  severity: 'warning',
+  needs: ['caPolicies'],
+  evaluate: (id, ctx) => {
+    const memberOf = new Set(ctx.groupMembers.filter((g) => g.memberIds.includes(id)).map((g) => g.groupId))
+    const missing = reportOnlyPolicies(ctx)
+      .filter((p) => !excludedFrom(p, id, memberOf))
+      .map((p) => p.displayName ?? '(unnamed)')
+    return missing.length === 0 ? PASS : fail(F.bgNotExcludedReportOnly(missing), A.policies)
+  },
+}
+
+const bgMicrosoftManaged: ValidationRule = {
+  id: 'bg.microsoftManaged',
+  subject: 'breakGlass',
+  severity: 'warning',
+  needs: ['caPolicies'],
+  evaluate: (id, ctx) => {
+    const managed = microsoftManaged(ctx)
+    if (managed.length === 0) return PASS
+    const memberOf = new Set(ctx.groupMembers.filter((g) => g.memberIds.includes(id)).map((g) => g.groupId))
+    const missing = managed.filter((p) => !excludedFrom(p, id, memberOf)).map((p) => p.displayName ?? '(unnamed)')
+    return missing.length === 0 ? pass(F.bgManagedExcluded(managed.length)) : fail(F.bgManagedMissing(missing), A.policies)
   },
 }
 
@@ -898,6 +951,8 @@ export const REGISTRY: ValidationRule<any>[] = [
   bgHasMfaMethod,
   bgSeparateDevices,
   bgNotPersonal,
+  bgExcludedFromReportOnly,
+  bgMicrosoftManaged,
   bgPhishingResistant,
   bgMethodDiversity,
   bgPerUserMfaOff,

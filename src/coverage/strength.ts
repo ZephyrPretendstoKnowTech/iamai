@@ -55,13 +55,16 @@ const AUTH_RANK: Record<string, number> = {
   mfa: 1,
 }
 
-// Device dimension: compliantDevice ≥ domainJoinedDevice > approvedApplication ≈ compliantApplication.
+// Device dimension: compliantDevice ≥ domainJoinedDevice > compliantApplication >
+// approvedApplication. The approved client app grant retired in early March 2026
+// (concept-conditional-access-grant), so a policy resting on it alone is below
+// the floor, not equal to app protection.
 const DEVICE_RANK: Record<string, number> = {
   block: 4,
   compliantdevice: 3,
   domainjoineddevice: 3,
+  compliantapplication: 2,
   approvedapplication: 1,
-  compliantapplication: 1,
 }
 
 const FLOOR_DIMENSION: Record<string, 'auth' | 'device'> = {
@@ -71,6 +74,7 @@ const FLOOR_DIMENSION: Record<string, 'auth' | 'device'> = {
   block: 'auth',
   passwordChange: 'auth',
   compliantDevice: 'device',
+  compliantApplication: 'device',
   approvedApplication: 'device',
 }
 
@@ -80,6 +84,7 @@ const FLOOR_RANK: Record<string, number> = {
   phishingResistant: 3,
   block: 4,
   compliantDevice: 3,
+  compliantApplication: 2,
   approvedApplication: 1,
 }
 

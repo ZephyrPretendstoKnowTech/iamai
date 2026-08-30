@@ -319,7 +319,8 @@ export function adHocGoal(facts: PolicyFacts, appNames: Map<string, string> = ne
     if (controls.has('block')) floor.grant = 'block'
     else if (facts.grant.strength) floor.grant = facts.grant.strength
     else if ([...controls].some((c) => DEVICE_CONTROLS.has(c))) floor.grant = 'compliantDevice'
-    else if ([...controls].some((c) => APP_PROTECTION_CONTROLS.has(c))) floor.grant = 'approvedApplication'
+    else if (controls.has('compliantapplication')) floor.grant = 'compliantApplication'
+    else if (controls.has('approvedapplication')) floor.grant = 'approvedApplication'
     else if (controls.has('mfa')) floor.grant = 'mfa'
   }
   // Session intent survives into the ad-hoc floor (first run, §13): a

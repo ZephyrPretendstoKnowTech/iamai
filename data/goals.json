@@ -78,7 +78,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phish-resistant-mfa",
       "tldr": "Admins are the crown jewels: require passkeys/FIDO2 or certificate auth, not just push approvals.",
       "cis": [
         "6.5"
@@ -195,7 +195,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-registration",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-security-info-registration",
       "tldr": "Stop attackers registering their own MFA method on a compromised account.",
       "cis": [
         "6.3"
@@ -237,7 +237,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-authentication",
       "tldr": "Legacy protocols skip MFA entirely; blocking them closes the biggest password-spray door.",
       "cis": [
         "4.8"
@@ -357,7 +357,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-location",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location",
       "tldr": "Block sign-ins from countries you never operate in.",
       "cis": [
         "6.3"
@@ -443,7 +443,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-policy-app-enforced-restriction",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-app-enforced-restrictions",
       "tldr": "On unmanaged devices, let people read but limit downloads and session lifetime.",
       "cis": [
         "4.3"
@@ -484,7 +484,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-compliant-device",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-compliance",
       "tldr": "Office data only on devices you manage (compliant or domain-joined).",
       "cis": [
         "4.1"
@@ -521,7 +521,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-unknown-unsupported",
       "tldr": "If you only support Windows/iOS/Android/macOS, block everything else.",
       "cis": [
         "4.1"
@@ -549,7 +549,7 @@
           },
           "expectedApps": "all",
           "floor": {
-            "grant": "approvedApplication"
+            "grant": "compliantApplication"
           },
           "allowedExclusions": [
             "breakGlass",
@@ -558,8 +558,8 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-policy-approved-app-or-app-protection",
-      "tldr": "On phones, require approved apps with app-protection policies so company data stays contained.",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-approved-app-or-app-protection",
+      "tldr": "Mobile access requires an Intune app protection policy. The older \"approved client app\" grant retired in March 2026; a policy resting on it alone is below the floor.",
       "cis": [
         "4.1"
       ]
@@ -717,7 +717,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-registration",
       "tldr": "Joining or registering a device should itself require MFA.",
       "cis": [
         "6.3"
@@ -834,7 +834,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-persistent-browser",
       "tldr": "No 'stay signed in' on shared or unmanaged browsers — sessions end when the browser closes.",
       "cis": [
         "4.3"
@@ -955,7 +955,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-policy-app-enforced-restriction",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-app-enforced-restrictions",
       "tldr": "Let unmanaged devices read but not download from SharePoint and Exchange.",
       "cis": [
         "3.3"
@@ -994,7 +994,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-risk",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in",
       "tldr": "Medium sign-in risk is common enough to matter; MFA clears most of it without blocking anyone.",
       "cis": [
         "6.3"
@@ -1033,7 +1033,7 @@
         }
       ],
       "free": [],
-      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-risk-user",
+      "learnUrl": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user",
       "tldr": "A medium-risk user is likely compromised: force a secure password change.",
       "cis": [
         "5.2",

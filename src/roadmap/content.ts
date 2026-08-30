@@ -19,6 +19,10 @@ export type ContentContext = {
   policyName: (step: Step) => string
   /** Guests, indexed once: 25,000 users are never rescanned per step. */
   guestIds: Set<string>
+  /** Temporary Access Pass enabled in the authentication methods policy; null when it could not be read. */
+  tapEnabled: boolean | null
+  /** Confirmed trusted named locations; zero means "exclude trusted locations" excludes nobody. */
+  trustedLocations: number
 }
 
 const evidenceUsable = (snapshot: TenantSnapshot): boolean => {
@@ -41,6 +45,28 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
   const modes: FailureMode[] = []
   const mode = (title: string, applies: FailureMode['applies'], evidence: string): void => {
     modes.push({ title, applies, evidence })
+  }
+
+  // Security-info registration is its own shape: the policy that asks for MFA
+  // in order to register a method can strand anyone who has none yet.
+  if (step.goalId === 'register-info-protected') {
+    const F = FAILURE.registration
+    const regKnown = snapshot.sources.registrationDetails?.status === 'ok'
+    const noMethod = active.filter((id) => ctx.viability.get(id)?.mfa === 'none').length
+    const remoteEv = !regKnown ? F.evidence.unknown : noMethod > 0 ? F.evidence.noMethod(noMethod) : F.evidence.allSet
+    mode(F.remote, !regKnown ? 'unknown' : noMethod > 0 ? 'yes' : 'no', remoteEv)
+    mode(
+      F.noTap,
+      ctx.tapEnabled === null ? 'unknown' : ctx.tapEnabled ? 'no' : 'yes',
+      ctx.tapEnabled === null ? F.evidence.tapUnknown : ctx.tapEnabled ? F.evidence.tapOn : F.evidence.tapOff,
+    )
+    const guests = ctx.guestIds.size
+    mode(F.guests, guests > 0 ? 'yes' : 'no', guests > 0 ? F.evidence.guests(guests) : F.evidence.guestsNone)
+    mode(F.passwordless, 'yes', F.evidence.passwordless)
+    mode(F.servicePrincipals, 'unknown', F.evidence.servicePrincipals)
+    if (ctx.trustedLocations === 0) mode(FAILURE.geo.residential, 'yes', F.evidence.noTrustedLocation)
+    mode(FAILURE.generic.misconfig, 'unknown', FAILURE.generic.evidence)
+    return modes
   }
 
   if (family === 'block') {
@@ -68,6 +94,8 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
       const applies = !usable || !usage ? 'unknown' : seenIds.length > 0 ? 'yes' : 'no'
       mode(F.devices, applies, ev)
       mode(F.lob, applies, ev)
+      mode(F.certificate, 'unknown', F.alreadyGone)
+      mode(F.relay, applies === 'no' ? 'no' : 'yes', F.evidence.unknown === ev ? F.evidence.unknown : ev)
       const svc = seenIds.filter((id) => ctx.serviceAccountIds.has(id)).length
       mode(F.mailboxes, svc > 0 ? 'yes' : applies === 'unknown' ? 'unknown' : 'no', svc > 0 ? F.evidence.serviceAccounts(svc) : ev)
     }
@@ -78,6 +106,9 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
     const noDevice = members.filter((id) => !ctx.deviceReady.has(id)).length
     const ev = !known ? F.evidence.unknown : noDevice > 0 ? F.evidence.noDevice(noDevice, members.length) : F.evidence.allCovered
     const applies = !known ? 'unknown' : noDevice > 0 ? 'yes' : 'no'
+    mode(F.noPolicy, 'unknown', F.enrolment)
+    mode(F.graceWindow, 'yes', F.errorState)
+    mode(F.staleReport, 'unknown', F.reportOnlyPrompt)
     mode(F.personal, applies, ev)
     mode(F.kiosks, applies === 'no' ? 'no' : 'unknown', ev)
     const guests = step.population.ids.filter((id) => ctx.guestIds.has(id)).length
@@ -99,6 +130,8 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
     mode(F.travel, applies, ev)
     mode(F.vpn, applies === 'no' ? 'no' : 'unknown', ev)
     mode(F.roaming, applies === 'no' ? 'no' : 'unknown', ev)
+    mode(F.notInstant, 'yes', ev)
+    if (ctx.trustedLocations > 0) mode(F.residential, 'unknown', ev)
   } else if (family === 'mfa' || family === 'guest') {
     const F = FAILURE.mfa
     const regKnown = snapshot.sources.registrationDetails?.status === 'ok'
@@ -117,6 +150,8 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
         return row.inboundTrust?.isMfaAccepted === true
       })
       mode(G.home, guests === 0 ? 'no' : trust ? 'no' : 'yes', guests === 0 ? G.evidence.none : trust ? G.evidence.trusted(guests) : G.evidence.guests(guests))
+      mode(G.noTap, guests > 0 ? 'yes' : 'no', guests === 0 ? G.evidence.none : G.evidence.guests(guests))
+      mode(G.partner, 'unknown', G.evidence.guests(guests))
     }
   } else if (family === 'admin') {
     const F = FAILURE.admin
@@ -128,10 +163,18 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
     mode(F.eligible, eligible > 0 ? 'yes' : 'no', eligible > 0 ? F.evidence.eligible(eligible) : F.evidence.all)
     const bgIn = admins.some((id) => ctx.breakGlassIds.has(id))
     mode(F.breakGlass, bgIn ? 'yes' : 'no', bgIn ? F.evidence.breakGlassIn : F.evidence.breakGlassOut)
+    mode(F.customRoles, 'unknown', F.portalFloor)
   } else {
     // Session controls and anything else that only changes the prompt cadence.
-    mode(FAILURE.session.unsaved, active.length > 0 ? 'yes' : 'no', FAILURE.session.evidence(active.length))
-    mode(FAILURE.session.kiosks, 'unknown', FAILURE.session.evidence(active.length))
+    const S = FAILURE.session
+    mode(S.unsaved, active.length > 0 ? 'yes' : 'no', S.evidence(active.length))
+    mode(S.kiosks, 'unknown', S.evidence(active.length))
+    mode(S.sharedDevices, 'unknown', S.evidence(active.length))
+    mode(S.rememberMfa, 'unknown', S.evidence(active.length))
+    if (step.goalId === 'all-users-no-persistence') mode(S.persistScope, 'yes', S.evidence(active.length))
+    if (step.goalId === 'byod-session-controls' || step.goalId === 'block-downloads-unmanaged') {
+      mode(S.downloadLeaks, 'yes', S.evidence(active.length))
+    }
   }
   mode(FAILURE.generic.misconfig, 'unknown', FAILURE.generic.evidence)
   return modes
