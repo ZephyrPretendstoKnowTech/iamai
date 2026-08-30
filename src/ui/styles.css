@@ -866,3 +866,7 @@ table.datatable tbody tr:hover { background: var(--raised); }
 }
 .button-like:hover { border-color: var(--accent); }
 @media print { .feedback-panel, .link-quiet { display: none !important; } }
+
+/* The build stamp (prompt 40 §24): present on every page, never competing with
+   the links beside it. */
+.footer-build { color: var(--muted); font-variant-numeric: tabular-nums; }

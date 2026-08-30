@@ -38,6 +38,14 @@ export const SHELL = {
   footerFollow: 'Follow me here:',
   footerAuthor: 'Lachlan Robinette',
   footerHome: 'All IAMAI tools',
+  /**
+   * The build stamp (prompt 40 §24). Two branches: a real commit links to it,
+   * and a local build says so rather than linking to a commit that does not
+   * exist on the remote. The date is spelled out because a raw ISO date is
+   * developer vocabulary everywhere else in the product.
+   */
+  footerBuild: (commit: string, date: string) => (commit === 'dev' ? `Local build, ${date}` : `Build ${commit}, ${date}`),
+  footerBuildTitle: 'The commit this page was built from',
   footerGithub: 'GitHub',
   footerSource: 'Source',
   needs: 'Needs:',
