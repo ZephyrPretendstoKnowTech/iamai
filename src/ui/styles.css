@@ -887,3 +887,7 @@ table.datatable tbody tr:hover { background: var(--raised); }
 
 /* The upper-bound guard (prompt 43 item 5). */
 .overrun { border-left: 3px solid var(--warning, var(--accent)); }
+
+/* The skip panel (prompt 44 Part 1). */
+.skip-panel { border-left: 3px solid var(--warning, var(--accent)); margin-top: var(--space-3); }
+.skip-error { color: var(--danger); }

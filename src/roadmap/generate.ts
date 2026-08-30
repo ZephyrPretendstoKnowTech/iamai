@@ -118,6 +118,8 @@ export function stepIdForGoal(goalId: string): string {
 }
 export const DRILL_STEP_ID = 's-recurring-break-glass-drill'
 export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
+/** Nominating the emergency access accounts. Exported so the skip guard can name it. */
+export const BREAK_GLASS_STEP_ID = 's-prereq-break-glass'
 
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
 function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
@@ -549,7 +551,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Setup's confirmed break-glass accounts feed generation (ux-review-04 §5):
   // with accounts picked, nothing is created, whatever an older record says.
   const bgMissing = mapping.records['__breakGlassMissing']?.doesNotExist === true && mapping.breakGlassUserIds.length === 0
-  const bgStepId = 's-prereq-break-glass'
+  const bgStepId = BREAK_GLASS_STEP_ID
   if (bgMissing) {
     const p = PREREQ.breakGlass
     steps.push(prereq(bgStepId, p.title, p.why, p.how, p.exit))

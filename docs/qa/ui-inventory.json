@@ -1,5 +1,5 @@
 {
- "fingerprint": "e89efb79e9d2d7b4",
+ "fingerprint": "6e771a6ea6815e4f",
  "surfaces": [
   {
    "name": "Start",
@@ -2390,7 +2390,6 @@
     "Skipped (0)",
     "Copy for your manager",
     "Copy as prompt",
-    "Skip this step…",
     "Collapse"
    ],
    "options": [],
@@ -2525,6 +2524,7 @@
     "The cost is an hour of admin time and no disruption to anyone.",
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.",
     "Copy for your managerCopy as prompt",
+    "This one cannot be skipped: emergency access is what makes every other change reversible.",
     "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "Checked: nothing blocks it and enabled users still need setting up.",
     "Blocked until emergency access accounts is not sorted yet (1 must-fix item).",
@@ -2581,6 +2581,7 @@
     "The cost is an hour of admin time and no disruption to anyone.": 1,
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1,
     "Copy for your managerCopy as prompt": 1,
+    "This one cannot be skipped: emergency access is what makes every other change reversible.": 1,
     "Not counted against the plan.": 1,
     "Each names the tier that would make it available.": 1,
     "· Risky sign-ins get MFA or are blocked · Entra ID P2": 1,
@@ -2626,6 +2627,7 @@
     "The cost is an hour of admin time and no disruption to anyone.": 1,
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1,
     "Copy for your managerCopy as prompt": 1,
+    "This one cannot be skipped: emergency access is what makes every other change reversible.": 1,
     "Every user satisfies MFA on every app": 1,
     "Done <date>: policy enforced on <date>; this policy already existed and covers this step.": 2,
     "Checked: nothing blocks it and enabled users still need setting up.": 1,
@@ -2657,7 +2659,7 @@
    "wordCounts": {
     "headings": 135,
     "tabs": 0,
-    "buttons": 51,
+    "buttons": 48,
     "options": 0,
     "links": 629,
     "chips": 37,
@@ -2666,8 +2668,8 @@
     "empty": 0,
     "summaries": 39,
     "tips": 15,
-    "sentences": 735,
-    "total": 1651
+    "sentences": 749,
+    "total": 1662
    },
    "unnamedControls": []
   },

@@ -23,6 +23,32 @@ export function blockerStepId(subject: RuleSubject): string {
   return `s-blocker-${subject.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`
 }
 
+/**
+ * Steps that establish or repair emergency access, which can never be skipped
+ * (prompt 44 item 6).
+ *
+ * There is no single flag for these, and there could not easily be one: they
+ * come from four different builders with four id conventions. validationBlocker
+ * is not it - that is true for trusted locations and service accounts too.
+ *
+ * Skipping one of these is not untidy, it is unsafe. skipped is treated as
+ * satisfied in three places (safeTodayFor, isWork, mergePersisted), so skipping
+ * the break-glass blocker today would flip every held deny-capable step to
+ * "safe today" and drop the hard scheduling edges that keep the exclusion group
+ * ahead of the policies that reference it.
+ */
+export function isEmergencyAccess(step: { id: string; goalId?: string }): boolean {
+  return EMERGENCY_ACCESS_STEP_IDS.has(step.id)
+}
+
+export const EMERGENCY_ACCESS_STEP_IDS: ReadonlySet<string> = new Set([
+  's-prereq-break-glass',
+  's-prereq-exclusion-group',
+  's-recurring-break-glass-drill',
+  's-ladder-break-glass-accounts',
+  ...GATING_SUBJECTS.map(blockerStepId),
+])
+
 /** One checklist line: the fact found, then what clears it. */
 function checklistLine(r: RuleResult, label: string | null): string {
   const what = ruleText(r.id).what

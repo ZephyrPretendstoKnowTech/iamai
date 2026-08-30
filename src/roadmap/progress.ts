@@ -2,6 +2,8 @@
 import type { CoverageReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { trackExecution } from './tracking.ts'
+import { isEmergencyAccess } from './blockerSteps.ts'
+import { SKIP } from '../copy/skip.ts'
 import type { Step, StepStatus } from './types.ts'
 
 const RANK: Record<StepStatus, number> = {
@@ -66,7 +68,16 @@ export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage:
 }
 
 // Skipping needs a reason — and is never "risk accepted" (§1, §9 test 8).
+//
+// The plan is advice, not a contract, so almost anything can be skipped. The
+// exception is emergency access, and it is an exception because skipped is
+// treated as SATISFIED in three places: safeTodayFor, isWork, and mergePersisted.
+// Skipping the break-glass blocker would therefore flip every held deny-capable
+// step to "safe today" and drop the scheduling edges that keep the exclusion
+// group ahead of the policies referencing it. That is not an untidy plan, it is
+// a tenant nobody can get back into (prompt 44 item 6).
 export function skipStep(step: Step, reason: string): { ok: boolean; error?: string } {
+  if (isEmergencyAccess(step)) return { ok: false, error: SKIP.cannotSkip }
   const r = reason.trim()
   if (r.length === 0) return { ok: false, error: 'a reason is required to skip a step' }
   if (/risk\s*accept/i.test(r)) {
@@ -75,5 +86,21 @@ export function skipStep(step: Step, reason: string): { ok: boolean; error?: str
   step.history.push({ at: new Date().toISOString(), from: step.status, to: 'skipped', note: r })
   step.status = 'skipped'
   step.skipReason = r
+  return { ok: true }
+}
+
+/**
+ * Put a skipped step back (item 8).
+ *
+ * The status is cleared rather than restored from history: what the step should
+ * be now is a question for the generator, which recomputes it from the evidence
+ * on the next pass. Restoring the status it held before the skip would reinstate
+ * a judgement made against a tenant that has since moved.
+ */
+export function unskipStep(step: Step): { ok: boolean; error?: string } {
+  if (step.status !== 'skipped') return { ok: false, error: 'that step is not skipped' }
+  step.history.push({ at: new Date().toISOString(), from: 'skipped', to: 'blocked', note: SKIP.unskip })
+  step.status = 'blocked'
+  step.skipReason = null
   return { ok: true }
 }

@@ -20,7 +20,7 @@ import { LONG_PLAN_WEEKS, overrunFor } from '../../roadmap/overrun.ts'
 import { insightsUrl, preflightFor, verdictFor, whatIfUrl } from '../../roadmap/verdict.ts'
 import type { Preflight, Verdict } from '../../roadmap/verdict.ts'
 import { VERDICT } from '../../copy/verdict.ts'
-import { applyProgress, mergePersisted, skipStep } from '../../roadmap/progress.ts'
+import { applyProgress, mergePersisted, skipStep, unskipStep } from '../../roadmap/progress.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
@@ -43,6 +43,9 @@ import { LADDER } from '../../copy/ladder.ts'
 import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
 import { PLAIN_TITLES } from '../../copy/plain.ts'
+import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
+import { SKIP, SKIP_REASONS } from '../../copy/skip.ts'
+import type { SkipReasonId } from '../../copy/skip.ts'
 import { LOG, NEXT } from '../../copy/next.ts'
 import { doThisNext } from '../../roadmap/next.ts'
 import { appendLog, emptyLog, entriesForScan, logCsvRows, logMarkdown, logView, rolledUpSentence } from '../../roadmap/activityLog.ts'
@@ -145,7 +148,7 @@ export function RoadmapPage({
   const [stepSort, setStepSort] = useState<'schedule' | ScoreSort>('schedule')
   // Hide completed defaults on once more than a third of the steps are done (ux-review-04 §5).
   const [showCompletedChoice, setShowCompletedChoice] = useState<boolean | null>(null)
-  const [skipDraft, setSkipDraft] = useState<{ id: string; reason: string } | null>(null)
+  const [skipDraft, setSkipDraft] = useState<SkipDraft | null>(null)
   const [planLoading, setPlanLoading] = useState(false)
   // The step opened in place on the Steps tab (prompt 26 §15).
   const [openStepId, setOpenStepId] = useState<string | null>(null)
@@ -1615,6 +1618,9 @@ export function RoadmapPage({
                         copied={copied}
                         onCopy={copy}
                         skipDraft={skipDraft}
+                        dependents={steps.filter(
+                          (x) => (schedule.graph[x.id] ?? []).some((d) => d.kind === 'hard' && d.stepId === step.id) && x.status !== 'done' && x.status !== 'skipped',
+                        )}
                         setSkipDraft={setSkipDraft}
                         onExportPopulation={exportPopulation}
                         cohortsOf={cohortsOf}
@@ -2125,6 +2131,117 @@ function PaceControl({
   )
 }
 
+/** The draft a skip is composed in, before anything is written. */
+export type SkipDraft = { id: string; reason: string; reasonId: SkipReasonId; detail: string; typed: string; alsoSkip: boolean }
+
+/** A goal worth asking about twice (item 7). */
+const HIGH_VALUE = 4
+
+/**
+ * The skip panel: the reason, what it leaves exposed, what else it blocks, and
+ * for a high-value goal a typed confirmation.
+ *
+ * The exposure paragraph is the point of the whole panel. It is drawn from the
+ * goal's own risk text and the population still affected, and it is the last
+ * thing the reader sees before confirming — not to change their mind, which is
+ * theirs to make, but so the decision is made with the fact in view.
+ */
+function SkipPanel({
+  step,
+  draft,
+  dependents,
+  onChange,
+  onCancel,
+  onConfirm,
+}: {
+  step: Step
+  draft: SkipDraft
+  dependents: Step[]
+  onChange: (d: SkipDraft) => void
+  onCancel: () => void
+  onConfirm: (reason: string, alsoSkip: Step[]) => string | null
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const highValue = (step.score?.value ?? 0) >= HIGH_VALUE
+  const shortName = step.plainTitle || step.title
+  const needsDetail = draft.reasonId === 'other'
+  const label = SKIP_REASONS.find((r) => r.id === draft.reasonId)?.label ?? ''
+  const reason = [label, draft.detail.trim()].filter(Boolean).join(': ')
+  const typedOk = !highValue || draft.typed.trim().toLowerCase() === shortName.trim().toLowerCase()
+
+  return (
+    <div className="card skip-panel">
+      <h4>{SKIP.panelTitle}</h4>
+
+      {/* What the tenant is left exposed to. One paragraph, no persuasion. */}
+      <p>{step.why ? SKIP.exposure(step.why, step.population.active) : SKIP.exposureUnknown(step.impact)}</p>
+
+      {dependents.length > 0 && (
+        <>
+          <p className="reason">{SKIP.dependents(dependents.map((d) => d.plainTitle || d.title))}</p>
+          <p className="row">
+            <label>
+              <input type="radio" name={`also-${step.id}`} checked={draft.alsoSkip} onChange={() => onChange({ ...draft, alsoSkip: true })} /> {SKIP.dependentsAlso}
+            </label>
+            <label>
+              <input type="radio" name={`also-${step.id}`} checked={!draft.alsoSkip} onChange={() => onChange({ ...draft, alsoSkip: false })} /> {SKIP.dependentsKeep}
+            </label>
+          </p>
+        </>
+      )}
+
+      <p className="row">
+        <label>
+          {SKIP.reasonLabel}{' '}
+          <select value={draft.reasonId} aria-label={SKIP.reasonLabel} onChange={(e) => onChange({ ...draft, reasonId: e.currentTarget.value as SkipReasonId })}>
+            {SKIP_REASONS.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </p>
+      <p>
+        <label>
+          {SKIP.detailLabel}{' '}
+          <input type="text" value={draft.detail} placeholder={SKIP.detailPlaceholder} aria-label={SKIP.detailLabel} style={{ minWidth: '20rem' }} onChange={(e) => onChange({ ...draft, detail: e.currentTarget.value })} />
+        </label>
+      </p>
+
+      {highValue && (
+        <>
+          <p className="reason">{SKIP.highRiskWhy}</p>
+          <p>
+            <label>
+              {SKIP.highRiskLabel(shortName)}{' '}
+              <input type="text" value={draft.typed} aria-label={SKIP.highRiskLabel(shortName)} style={{ minWidth: '20rem' }} onChange={(e) => onChange({ ...draft, typed: e.currentTarget.value })} />
+            </label>
+          </p>
+        </>
+      )}
+
+      {error && <p className="reason skip-error">{error}</p>}
+
+      <p className="row">
+        <Button
+          size="sm"
+          onClick={() => {
+            if (needsDetail && draft.detail.trim() === '') return setError(SKIP.detailRequired)
+            if (!typedOk) return setError(SKIP.highRiskMismatch)
+            setError(onConfirm(reason, draft.alsoSkip ? dependents : []))
+          }}
+        >
+          {SKIP.confirm}
+        </Button>
+        <Button size="sm" variant="quiet" onClick={onCancel}>
+          {SKIP.cancel}
+        </Button>
+      </p>
+    </div>
+  )
+}
+
 function StepCard({
   step,
   linked,
@@ -2146,6 +2263,7 @@ function StepCard({
   audienceName,
   now,
   batchWith,
+  dependents,
   verdict,
   preflight,
   tenantId,
@@ -2167,8 +2285,10 @@ function StepCard({
   /** Can the operator still sign in after this change window (prompt 42 Part 3). */
   preflight: Preflight | null
   tenantId: string
-  skipDraft: { id: string; reason: string } | null
-  setSkipDraft: (d: { id: string; reason: string } | null) => void
+  skipDraft: SkipDraft | null
+  setSkipDraft: (d: SkipDraft | null) => void
+  /** Steps that wait on this one, so a skip can name them (item 5). */
+  dependents: Step[]
   onSkipped: (step: Step) => void
   onExportPopulation: (step: Step) => void
   cohortsOf: (step: Step) => NonNullable<Step['populationView']>['cohorts']
@@ -2746,35 +2866,45 @@ function StepCard({
         </>
       )}
 
-      {step.status !== 'done' && step.status !== 'skipped' && (
-        <p className="no-print">
+      {/* Skipped: the decision stays visible, and comes back in one click (items 4, 8). */}
+      {step.status === 'skipped' && (
+        <p className="no-print row">
+          <Chip status="neutral">{SKIP.skippedChip}</Chip>
+          <span className="reason">{step.skipReason}</span>
+          <Button size="sm" variant="quiet" onClick={() => { unskipStep(step); onSkipped(step) }}>
+            {SKIP.unskip}
+          </Button>
+        </p>
+      )}
+
+      {/* Emergency access is absent from this control, with the reason said once
+          rather than a disabled button nobody can explain (item 6). */}
+      {step.status !== 'done' && step.status !== 'skipped' && isEmergencyAccess(step) && <p className="reason no-print">{SKIP.cannotSkip}</p>}
+
+      {step.status !== 'done' && step.status !== 'skipped' && !isEmergencyAccess(step) && (
+        <div className="no-print">
           {skipDraft?.id === step.id ? (
-            <>
-              <input
-                type="text"
-                placeholder={C.skipPlaceholder}
-                value={skipDraft.reason}
-                onChange={(e) => setSkipDraft({ id: step.id, reason: e.currentTarget.value })}
-              />{' '}
-              <Button
-                size="sm"
-                onClick={() => {
-                  const r = skipStep(step, skipDraft.reason)
-                  if (r.ok) {
-                    setSkipDraft(null)
-                    onSkipped(step)
-                  } else window.alert?.(r.error)
-                }}
-              >
-                {C.confirmSkip}
-              </Button>
-            </>
+            <SkipPanel
+              step={step}
+              draft={skipDraft}
+              dependents={dependents}
+              onChange={setSkipDraft}
+              onCancel={() => setSkipDraft(null)}
+              onConfirm={(reason, alsoSkip) => {
+                const r = skipStep(step, reason)
+                if (!r.ok) return r.error ?? ''
+                for (const d of alsoSkip) skipStep(d, reason)
+                setSkipDraft(null)
+                onSkipped(step)
+                return null
+              }}
+            />
           ) : (
-            <Button size="sm" variant="quiet" onClick={() => setSkipDraft({ id: step.id, reason: '' })}>
-              {C.skip}
+            <Button size="sm" variant="quiet" onClick={() => setSkipDraft({ id: step.id, reason: '', reasonId: 'notApplicable', detail: '', typed: '', alsoSkip: true })}>
+              {SKIP.action}
             </Button>
           )}
-        </p>
+        </div>
       )}
     </ExpandCard>
   )
