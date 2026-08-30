@@ -15,7 +15,7 @@ import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.ts'
 import { generateRoadmap } from '../../roadmap/generate.ts'
 import { findDangerAreas } from '../../roadmap/dangers.ts'
-import { nextMonday } from '../../roadmap/schedule.ts'
+import { nextMonday, paceAlternatives } from '../../roadmap/schedule.ts'
 import { applyProgress, mergePersisted, skipStep } from '../../roadmap/progress.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
@@ -34,7 +34,7 @@ import { RINGS } from '../../copy/rings.ts'
 import { RingProgress } from '../components/Ring.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import { Term } from '../components/Term.tsx'
-import { BATCH, EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, NOTICE_LINE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
+import { BATCH, EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, NOTICE_LINE, PACE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
 import { LADDER } from '../../copy/ladder.ts'
 import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
@@ -99,6 +99,8 @@ type PlanStore = {
   planCreatedAt?: string
   /** Suggested notice periods by disruption, in working days (scheduling-and-onboarding.md §2.3). */
   notice?: NoticeSettings
+  /** Supervised change windows a week, overriding the band default (prompt 42). */
+  enforcementCap?: number
   /** YYYY-MM-DD dates nothing is enforced on. */
   holidays?: string[]
   /** The automatic activity log (prompt 30 §3). */
@@ -444,6 +446,12 @@ export function RoadmapPage({
     setVersion((v) => v + 1)
   }
   // Notice periods and holidays travel with the plan (scheduling-and-onboarding.md §2.2, §2.3).
+  const setEnforcementCap = (n: number): void => {
+    const next = Math.max(1, Math.min(10, Math.round(n) || 1))
+    setSaved((p) => (p ? { ...p, enforcementCap: next } : p))
+    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), enforcementCap: next })
+    setVersion((v) => v + 1)
+  }
   const setNotice = (next: NoticeSettings): void => {
     setSaved((p) => (p ? { ...p, notice: next } : p))
     void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), notice: next })
@@ -1179,6 +1187,13 @@ export function RoadmapPage({
             ))}
             <InfoTip title={NOTICE.title} text={NOTICE.hint} />
           </div>
+          <PaceControl
+            steps={steps}
+            schedule={schedule}
+            holidays={saved?.holidays ?? []}
+            cap={saved?.enforcementCap ?? schedule.enforcementCap}
+            onChange={setEnforcementCap}
+          />
           <div className="row">
             <label>
               {NOTICE.holidays}{' '}
@@ -1912,6 +1927,58 @@ function batchLine(step: Step, batchWith: string[]): string | null {
   if (!at || step.status === 'done' || step.status === 'skipped') return null
   if (step.safeToday) return BATCH.safeToday
   return batchWith.length > 0 ? BATCH.withOthers(batchWith.length, absoluteDate(at)) : BATCH.alone(absoluteDate(at))
+}
+
+/**
+ * The pace control, and what a slower or faster pace would cost.
+ *
+ * Its own component because the numbers beside it come from re-running the
+ * scheduler, which is worth memoising, and the page above has an early return
+ * for the not-yet-computed state — so a useMemo in the page body would be
+ * called on some renders and not others (prompt 42, pace control).
+ */
+function PaceControl({
+  steps,
+  schedule,
+  holidays,
+  cap,
+  onChange,
+}: {
+  steps: Step[]
+  schedule: Schedule
+  holidays: string[]
+  cap: number
+  onChange: (n: number) => void
+}) {
+  const pace = useMemo(
+    () =>
+      paceAlternatives(steps, schedule.start, schedule.activeUsers, schedule.bandSource === 'override' ? schedule.band : null, {
+        freeze: schedule.freeze,
+        holidays,
+        rhythm: schedule.rhythm ?? null,
+        enforcementCap: cap,
+      }),
+    [steps, schedule, holidays, cap],
+  )
+  return (
+    <div className="row">
+      <label>
+        {PACE.title}{' '}
+        <input
+          type="number"
+          min={1}
+          max={10}
+          value={cap}
+          aria-label={PACE.title}
+          style={{ minWidth: '4rem', width: '5rem' }}
+          onChange={(e) => onChange(Math.max(1, Number(e.currentTarget.value) || 1))}
+        />
+      </label>
+      <InfoTip title={PACE.title} text={PACE.hint} />
+      {/* Computed, never quoted. */}
+      <span className="reason">{PACE.compare(pace.slower, pace.faster, pace.weeks)}</span>
+    </div>
+  )
 }
 
 function StepCard({

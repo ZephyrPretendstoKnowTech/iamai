@@ -7,7 +7,7 @@
 // Friday or weekend starts, a weekly cap of enforcement events per band, an
 // optional change freeze). Waves are read back off the ring dates for the
 // Timeline. Done steps consume no time. Pure.
-import { BANDS, OBSERVATION_DAYS, bandForActiveUsers } from './constants.ts'
+import { BANDS, OBSERVATION_DAYS, OBSERVATION_DAYS_ZERO, bandForActiveUsers } from './constants.ts'
 import type { SizeBand } from './constants.ts'
 import { ringBandFor } from './rings.ts'
 import { waitingOnSetup as waitingOnSetupQ } from '../derive/sets.ts'
@@ -118,10 +118,25 @@ export type ScheduleOptions = {
   rhythm?: TenantRhythm | null
   /** step id → operator-set start date: the step starts no earlier (roadmap-v2.md §4.12). */
   scheduled?: Record<string, string> | null
+  /** Change windows a week, overriding the band default (prompt 42, pace control). */
+  enforcementCap?: number
 }
 
-/** Enforcement events per week by band (§2). */
-export const ENFORCEMENT_CAP: Record<SizeBand, number> = { small: 2, mid: 3, large: 5 }
+/**
+ * Supervised change windows a week, by band. Overridable in Plan settings.
+ *
+ * small was 2, which is a change-control number, and a thirteen-user tenant has
+ * no change control. Three is defensible because every batch has already sat in
+ * report-only for its window with zero would-be failures before it is enforced:
+ * the supervision is watching a change that the evidence says will do nothing,
+ * not discovering whether it will.
+ *
+ * On the small fixture this is the binding constraint until 4: 13 weeks at 1,
+ * 7 at 2, 6 at 3, and 5 at 4 and above, where the registration campaign takes
+ * over. The Plan settings control computes those numbers rather than quoting
+ * them, so the copy cannot drift from the scheduler.
+ */
+export const ENFORCEMENT_CAP: Record<SizeBand, number> = { small: 3, mid: 3, large: 5 }
 
 /**
  * How many changes may take effect on one day.
@@ -158,10 +173,56 @@ export const EVENTS_PER_DAY: Record<SizeBand, number> = { small: 2, mid: 3, larg
  */
 export type BatchClass = 'zero' | 'mfa' | 'deviceSession' | 'other'
 
+/**
+ * The report-only window this step needs, in days (prompt 42 §1).
+ *
+ * Three days only where the evidence already says nobody is affected, which is
+ * the same bar the 'zero' batch class uses: evidence.status 'ok' with an empty
+ * affected set, never merely absent evidence. Everything else gets seven.
+ */
+export function observationDaysFor(step: Step): number {
+  return batchClassOf(step) === 'zero' ? OBSERVATION_DAYS_ZERO : OBSERVATION_DAYS
+}
+
+/**
+ * What the plan would run to at one window a week fewer, and one more
+ * (prompt 42, pace control).
+ *
+ * Computed by re-running the scheduler, never written by hand: the Plan
+ * settings sentence quotes these numbers, and a hand-written "two would take
+ * seven weeks" is wrong the moment anything upstream of it changes. The steps
+ * are deep-copied because buildSchedule writes planned dates back into their
+ * rings.
+ */
+export function paceAlternatives(
+  steps: Step[],
+  day0: string,
+  activeUsers: number,
+  bandOverride: SizeBand | null,
+  options: ScheduleOptions,
+): { cap: number; weeks: number; slower: { cap: number; weeks: number } | null; faster: { cap: number; weeks: number } | null } {
+  const cap = options.enforcementCap ?? ENFORCEMENT_CAP[bandOverride ?? bandForActiveUsers(activeUsers)]
+  const weeksAt = (n: number): number => {
+    const copy = steps.map((st) => ({ ...st, rings: st.rings.map((r) => ({ ...r })) })) as Step[]
+    return buildSchedule(copy, day0, activeUsers, bandOverride, { ...options, enforcementCap: n }).weeks
+  }
+  return {
+    cap,
+    weeks: weeksAt(cap),
+    slower: cap > 1 ? { cap: cap - 1, weeks: weeksAt(cap - 1) } : null,
+    faster: { cap: cap + 1, weeks: weeksAt(cap + 1) },
+  }
+}
+
 export function batchClassOf(step: Step): BatchClass {
-  // Evidence-backed zero, not merely absent evidence: the same bar safeToday uses.
-  if (step.evidence.status === 'ok' && step.evidence.affectedUserIds.length === 0) return 'zero'
   const family = step.readiness.family
+  // Evidence-backed zero, not merely absent evidence, and not an unmeasured
+  // field read as zero. affectedUserIds is only populated for the families
+  // where usage is actually measured; for the rest the affected set is the
+  // population, so treating an empty array as 'nobody' put almost every step in
+  // the zero class and handed it a 3-day window it had not earned.
+  const affected = family === 'block' || family === 'location' ? step.evidence.affectedUserIds.length : step.population.active
+  if (step.evidence.status === 'ok' && affected === 0) return 'zero'
   if (family === 'mfa' || family === 'admin' || family === 'guest') return 'mfa'
   if (family === 'device' || family === 'location') return 'deviceSession'
   return 'other'
@@ -334,7 +395,7 @@ export function buildSchedule(
   const ringBand = ringBandFor(activeUsers)
   const expectedDays = preset.weeks * 7
   const day0 = toWeekday(startIso)
-  const cap = ENFORCEMENT_CAP[band]
+  const cap = options.enforcementCap ?? ENFORCEMENT_CAP[band]
   const perDay = EVENTS_PER_DAY[band]
   const freeze = options.freeze && options.freeze.from < options.freeze.to ? options.freeze : null
   const byId = new Map(steps.map((s) => [s.id, s]))
@@ -365,7 +426,24 @@ export function buildSchedule(
   // steps that DO need registration already wait for it through a hard
   // dependency on the verify step (DEPENDENCY.registration), so the ordering B4
   // wants holds exactly where it is true and not where it is not.
-  const observationStart = toWeekday(day0End)
+  /**
+   * Every policy in the plan is created in report-only on one day, together,
+   * and observation starts there.
+   *
+   * Creating a report-only policy affects nobody, so it consumes no enforcement
+   * window and is not subject to the weekly cap: the cap limits supervised
+   * change, and this is not change. Because every policy exists from that day,
+   * every observation window runs CONCURRENTLY. The enforcement tail does not
+   * pay for observation N times over; by the time the first wave lands, every
+   * step already has its evidence.
+   *
+   * This used to start a day before creation (day0End, while creation was
+   * day0End + 1 after prompt 40 §21 moved enforcement off the day Day 0 closes),
+   * so every window was credited with a day in which its policy did not yet
+   * exist.
+   */
+  const creationDay = toWeekday(addDays(day0End, 1))
+  const observationStart = creationDay
   const observation = { start: observationStart, end: addDays(observationStart, obsDays), days: obsDays }
 
   // ---- Placement ----
@@ -395,7 +473,7 @@ export function buildSchedule(
     const inFreeze = (iso: string): boolean => freeze !== null && iso >= freeze.from && iso <= freeze.to
     // An enforcement event is a change day: every step that starts that day
     // shares one change window. The cap limits change days per week.
-    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, highDisruption = false, batch: BatchClass = 'other'): string => {
+    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, highDisruption = false, batch: BatchClass = 'other', exempt = false): string => {
       const dayOpts = { highDisruption, holidays: options.holidays ?? [], rhythm: options.rhythm ?? null }
       let cursor = toEnforcementDay(iso, dayOpts)
       for (let guard = 0; guard < 400; guard++) {
@@ -406,6 +484,12 @@ export function buildSchedule(
         }
         const week = weekKey(cursor)
         const day = cursor.slice(0, 10)
+        // A safe-today step is not a supervised change: its evidence already
+        // shows nobody affected, it needs no announcement, and it is enforced
+        // as soon as that evidence holds. It consumed no slot already; it must
+        // not be DELAYED by one either, which is what being subject to the cap
+        // amounted to (prompt 42, cap item 3).
+        if (exempt) return cursor
         const key = `${day}|${batch}`
         const inWeek = eventsInWeek.get(week) ?? new Set<string>()
         const onDay = eventsOnDay.get(day) ?? new Set<string>()
@@ -428,9 +512,13 @@ export function buildSchedule(
       // The day a phase closes belongs to that phase. Enforcement starts the day
       // after Day 0 ends, never on it: two steps were planned for Sep 3, the day
       // Day 0 closed (review-08 C2, prompt 40 §21).
-      const creation = toWeekday(addDays(day0End, 1))
+      // The shared creation day above: one batch, no enforcement window.
+      const creation = creationDay
       if (s.kind === 'create') reportOnlyAt[s.id] = creation
-      let earliest = s.kind === 'create' ? observation.end : creation
+      // The step's own window, not the plan's longest (prompt 42 §1): a block
+      // on a flow nobody uses waits three days, not seven.
+      const ownObservationEnd = addDays(observationStart, observationDaysFor(s))
+      let earliest = s.kind === 'create' ? ownObservationEnd : creation
       const reason: { kind: ConstraintKind; ref: string | null } = { kind: s.kind === 'create' ? 'rings' : 'none', ref: null }
       const pinned = options.scheduled?.[s.id]
       if (pinned && pinned > earliest) {
@@ -467,10 +555,10 @@ export function buildSchedule(
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
         const windows: { start: string; end: string }[] = []
         const high = (s.score?.disruption ?? 0) >= HIGH_DISRUPTION
-        let cursor = shift(from, reason, high, batch)
+        let cursor = shift(from, reason, high, batch, s.safeToday)
         const start = cursor
         for (const [i, soak] of soaks.entries()) {
-          if (i > 0) cursor = shift(cursor, reason, high, batch)
+          if (i > 0) cursor = shift(cursor, reason, high, batch, s.safeToday)
           const end = addDays(cursor, soak)
           windows.push({ start: cursor, end })
           cursor = end
@@ -609,10 +697,15 @@ export function buildSchedule(
   // the page say the evidence stopped being gathered twelve days before anyone
   // acted on it (review-08 B4). Nothing stops observing in that gap, so the
   // window is reported as what it is: open until the first change.
+  // Since prompt 42 §1 each step carries its own window, 3 days or 7, so the
+  // first wave can now fall EARLIER than a 7-day plan-level window as well as
+  // later: a block on a flow nobody uses enforces on day 3. The reported window
+  // therefore tracks the first change in both directions rather than only
+  // stretching to meet it.
   const firstWaveStart = waves.find((w) => w.wave >= 1)?.start ?? null
   const observed =
-    observation.days > 0 && firstWaveStart !== null && firstWaveStart > observation.end
-      ? { ...observation, end: firstWaveStart, days: Math.round((Date.parse(firstWaveStart) - Date.parse(observation.start)) / 86_400_000) }
+    observation.days > 0 && firstWaveStart !== null
+      ? { ...observation, end: firstWaveStart, days: Math.max(0, Math.round((Date.parse(firstWaveStart) - Date.parse(observation.start)) / 86_400_000)) }
       : observation
 
   return {

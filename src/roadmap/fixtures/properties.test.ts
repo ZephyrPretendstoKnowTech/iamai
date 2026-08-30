@@ -141,20 +141,16 @@ for (const f of fixtures) {
     // predicted blast radius (prompt 41 §6). The two need different
     // supervision, and grouping them hides the second behind the first.
     {
-      const byEvent = new Map<string, Step[]>()
-      for (const st of steps) {
-        const at = st.rings[0]?.plannedStart
-        if (!at || st.safeToday) continue
-        if (!(st.id in schedule.batchWith)) continue
-        const key = at.slice(0, 10)
-        byEvent.set(key, [...(byEvent.get(key) ?? []), st])
-      }
-      for (const [day, group] of byEvent) {
+      // Grouped by the batch, not by the day. Two batches may share a day — a
+      // small tenant is allowed two change windows in one day — but no single
+      // batch may hold two disruption classes.
+      const byId = new Map(steps.map((st) => [st.id, st]))
+      for (const [id, others] of Object.entries(schedule.batchWith)) {
+        const self = byId.get(id)
+        if (!self) continue
+        const group = [self, ...others.map((o) => byId.get(o)).filter((x): x is Step => x !== undefined)]
         const classes = new Set(group.map(batchClassOf))
-        assert.ok(
-          !(classes.has('zero') && classes.size > 1),
-          `${day}: a zero-affected change shares a window with ${[...classes].filter((c) => c !== 'zero').join(', ')}`,
-        )
+        assert.equal(classes.size, 1, `${id} shares a change window with another class: ${[...classes].join(', ')}`)
       }
       // A safe-today step consumes no change window at all (§7).
       for (const st of steps) {

@@ -92,6 +92,27 @@ export const BATCH = {
   safeToday: 'Enforced as soon as the evidence holds. It takes no change window and needs no announcement.',
 } as const
 
+/**
+ * The pace control: how many supervised change windows a week (prompt 42).
+ *
+ * The comparison numbers are computed by re-running the scheduler, never
+ * written here, so the sentence cannot drift from what the plan would do.
+ * Three branches, because a slower pace is not offered below one a week and a
+ * pace that changes nothing should say so rather than dangle a choice.
+ */
+export const PACE = {
+  title: 'Change windows a week',
+  hint: 'How many supervised change windows the plan schedules in a week. Every batch has already sat in report-only for its window with no would-be failures before it is enforced, so a window is watching a change the evidence says will do nothing, not finding out whether it will.',
+  weeks: (n: number) => `${count(n, 'week')}`,
+  compare: (slower: { cap: number; weeks: number } | null, faster: { cap: number; weeks: number } | null, weeks: number): string => {
+    const parts: string[] = []
+    if (slower && slower.weeks !== weeks) parts.push(`${slower.cap} would take ${count(slower.weeks, 'week')}`)
+    if (faster && faster.weeks !== weeks) parts.push(`${faster.cap} would take ${count(faster.weeks, 'week')}`)
+    if (parts.length === 0) return 'Changing the pace would not change the length: something else sets it.'
+    return `${parts.join('; ')}.`
+  },
+} as const
+
 export const SAFE = {
   verdictSafe: 'Safe to enforce today',
   verdictNotYet: (reason: string) => `Not yet: ${reason}`,
