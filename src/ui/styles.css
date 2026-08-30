@@ -873,3 +873,7 @@ table.datatable tbody tr:hover { background: var(--raised); }
 
 /* The notice line above a step's draft message (prompt 41 §3). */
 .notice-line { color: var(--text); background: var(--raised); border-left: 3px solid var(--accent); padding: var(--space-2) var(--space-3); border-radius: var(--radius-input); margin: 0 0 var(--space-3); }
+
+/* The readiness verdict card (prompt 42 Part 2). */
+.verdict-card { border-left: 3px solid var(--accent); }
+.verdict-card h5 { margin: var(--space-3) 0 var(--space-1); font-size: var(--text-sm); color: var(--muted); }

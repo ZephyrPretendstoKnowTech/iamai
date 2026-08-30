@@ -132,3 +132,19 @@ export const VERDICT_REASON = {
   readyWithUnseen: (n: number) =>
     `The window has run and nothing would have been stopped. The records cannot speak for ${n === 1 ? 'one person' : `${n} people`}, named below.`,
 } as const
+
+/**
+ * The two links every verdict carries (§2, "show your work").
+ *
+ * IAMAI is reading Microsoft's own data, so a user who wants to check it should
+ * be one click away rather than asked to trust a summary. Ids are encoded
+ * because a policy id reaches these from tenant data.
+ */
+export function insightsUrl(tenantId: string, policyId: string): string {
+  return `https://entra.microsoft.com/${encodeURIComponent(tenantId)}/#view/Microsoft_AAD_ConditionalAccess/PolicyBlade/policyId/${encodeURIComponent(policyId)}/insights~/true`
+}
+
+export function whatIfUrl(tenantId: string, policyId: string, userId: string): string {
+  const q = new URLSearchParams({ policyId, userId })
+  return `https://entra.microsoft.com/${encodeURIComponent(tenantId)}/#view/Microsoft_AAD_ConditionalAccess/WhatIfBlade/~/${encodeURIComponent(q.toString())}`
+}
