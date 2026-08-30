@@ -21,9 +21,17 @@ import { ChecksPage } from './pages/ChecksPage.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { PackagePage } from './pages/PackagePage.tsx'
 
-// Dev-only modules are loaded on demand so they never enter the production bundle.
-const DevSpikes = lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m.DevSpikes })))
-const ComponentsPage = lazy(() => import('./pages/ComponentsPage.tsx').then((m) => ({ default: m.ComponentsPage })))
+// Dev-only modules. The lazy import is itself inside an import.meta.env.DEV
+// branch, so in a production build the condition folds to false, the dynamic
+// import is unreachable, and Rollup emits no chunk for it at all. Lazy alone was
+// not enough: it still emitted DevSpikes-*.js as a publicly fetchable file
+// carrying the Graph probe harness (audit egress-04, supply-08).
+const DevSpikes = import.meta.env.DEV
+  ? lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m.DevSpikes })))
+  : () => null
+const ComponentsPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/ComponentsPage.tsx').then((m) => ({ default: m.ComponentsPage })))
+  : () => null
 import { SHELL } from '../copy/pages.ts'
 import { computeStepStatus } from './stepStatus.ts'
 import { activeWizardQuestions, wizardProgress } from '../mapping/wizard.ts'

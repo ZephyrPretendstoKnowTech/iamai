@@ -185,21 +185,11 @@ export async function runSpike1(): Promise<Spike1Results> {
 import { redactIdentifiers } from '../../redact.ts'
 export { redactIdentifiers }
 
-// Dev-only: hands result JSON to the local Vite dev server (see vite.config.ts),
-// which writes it to docs/spikes/raw/ (gitignored). UPNs and GUIDs are redacted
-// before leaving the page. Nothing like this ships in the bundle.
-export async function saveDevResults(name: string, data: unknown): Promise<void> {
-  if (!import.meta.env.DEV) return
-  try {
-    await fetch(`/__spike/save?name=${encodeURIComponent(name)}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: redactIdentifiers(JSON.stringify(data, null, 2)),
-    })
-  } catch {
-    // Middleware absent — the console output still has the data.
-  }
-}
+// saveDevResults moved to src/devSave.ts. Importing it from here was the
+// single static edge that pulled this whole file into the production bundle
+// (audit egress-04); re-exported so the other spike modules keep their import.
+import { saveDevResults } from '../../devSave.ts'
+export { saveDevResults }
 
 type PageStat = { ms: number; itemCount: number; status: number; retryAfter?: string }
 
