@@ -11,6 +11,15 @@ export const SECTION = {
   prerequisites: 'Prerequisites',
   theChange: 'The change',
   ringPlan: 'Ring plan',
+  // Said instead of showing nothing, so an absent ring plan reads as a decision
+  // rather than a gap (prompt 37 §11).
+  noRings: {
+    prerequisite: 'No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.',
+    verify: 'No ring plan: this step contacts people rather than changing a policy.',
+    recurring: 'No ring plan: this is a recurring check, not a rollout.',
+    done: 'No ring plan: this step is already delivered, so there is no rollout left to stage.',
+    other: 'No ring plan: this step cannot deny anyone access, so it does not need staging.',
+  },
   howToVerify: 'How to verify',
   exitCriteria: 'Exit criteria',
   rollback: 'Rollback',

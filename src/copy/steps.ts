@@ -40,7 +40,9 @@ export const BLOCKED = {
       ? `Setup question ${numbers[0]} is still unanswered`
       : `Setup questions ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are still unanswered`,
   step: (title: string) => `${title} is not done yet`,
-  readiness: (label: string) => `Blocked while ${label}`,
+  // No prefix: whatever prints this supplies one. Carrying "Blocked while"
+  // inside the cause is what produced the double prefix (T8).
+  readiness: (label: string) => label,
   evidence: 'report-only evidence is not clean yet',
   operator: (reason: string) => `the signed-in account would be locked out: ${reason}`,
 }
@@ -361,7 +363,10 @@ export const STATE_REASON = {
   verifyDone: `Every enabled user proved MFA in ${WINDOW}.`,
   recurringDone: (line: string) => `${line}`,
   skipped: (reason: string) => `Skipped: ${reason}.`,
-  blocked: (causes: string[]) => `Blocked by ${list(causes)}.`,
+  // One voice for every blocked step (prompt 37 §6). The causes are bare
+  // clauses; the prefix is supplied here and nowhere else, so nothing reads
+  // "Blocked by: ... Blocked while ...".
+  blocked: (causes: string[]) => `Blocked until ${list(causes)}.`,
   evidence: (line: string) => `${line}`,
   noEvidenceYet: 'No sign-in evidence collected yet.',
   checked: (checks: string[]) => `Checked: ${list(checks)}.`,

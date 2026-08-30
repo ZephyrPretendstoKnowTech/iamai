@@ -59,7 +59,8 @@ export function controlSeverity(goal: Goal): number {
 const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, n))
 
 export function scoreGoal(i: ScoreInput): GoalScore {
-  const domain = i.goal.domain ?? 'Identity'
+  // An unclassified goal is not an identity goal (prompt 37 §12, T16).
+  const domain = i.goal.domain ?? 'Other'
   const value = clamp((i.goal.securityValue ?? 3) + (i.exposure ? 1 : 0), 1, 5)
 
   const readinessGap = i.readinessPercent !== null && i.readinessPercent < 80 ? 1 : 0
@@ -92,4 +93,4 @@ export function compareScores(a: GoalScore | null, b: GoalScore | null, by: Scor
   return a.disruption - b.disruption || b.priority - a.priority
 }
 
-export const DOMAINS: Domain[] = ['Identity', 'Admins', 'Devices', 'Sessions', 'Guests', 'Locations', 'Risk']
+export const DOMAINS: Domain[] = ['Identity', 'Admins', 'Devices', 'Sessions', 'Legacy access', 'Risk', 'Other']

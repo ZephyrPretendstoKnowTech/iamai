@@ -63,7 +63,7 @@ test('Done names the evidence that satisfied it; Blocked names the blocker; Read
   const blocked = steps.filter((s) => s.status === 'blocked')
   assert.ok(blocked.length > 0)
   for (const s of blocked) {
-    assert.match(s.stateReason, /^Blocked by /, `${s.id}: ${s.stateReason}`)
+    assert.match(s.stateReason, /^Blocked until /, `${s.id}: ${s.stateReason}`)
     // The named blocker is a real step title or a readiness sentence, never an id.
     assert.doesNotMatch(s.stateReason, /s-[a-z-]+/)
   }

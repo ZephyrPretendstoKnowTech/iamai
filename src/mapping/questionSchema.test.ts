@@ -12,7 +12,14 @@ import test from 'node:test'
 import { SETUP_PAGE, SETUP_QUESTIONS } from '../copy/setup.ts'
 import { rulesFor } from '../validation/rules.ts'
 import { CONFIRM_LABEL_KEY, QUESTION_SCHEMA, copyFor, schemaFor } from './questionSchema.ts'
-import { WIZARD_QUESTIONS } from './wizard.ts'
+import { WIZARD_QUESTIONS, activeWizardQuestions, wizardProgress } from './wizard.ts'
+import { emptyMappingState } from './types.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+
+/** The two questions that render only when the tenant has something to ask about. */
+const CONDITIONAL = new Set(['serviceAccounts', 'trustedLocations'])
+/** No named locations, no users, so neither conditional question is asked. */
+const EMPTY_TENANT = { users: [], authMethods: {}, signInEvidence: {}, sources: {}, config: { namedLocations: { rows: [] } } } as unknown as TenantSnapshot
 
 const TYPES = new Set(['pick-objects', 'confirm-default', 'multi-select-confirm', 'toggle-grid'])
 const OPT_OUTS = new Set(['none', 'doesNotExistYet'])
@@ -102,4 +109,28 @@ test('no question draws its own confirm affordance or its own way out', () => {
     const used = MAPPING_PAGE.split('<Confirm').slice(1).some((after) => after.slice(0, 240).includes(call))
     assert.ok(used, id + ' is a confirm-default question that does not use the shared confirm affordance')
   }
+})
+
+test('a tenant that is never asked a question can still finish Setup', () => {
+  // The question count is one number with one source (prompt 37 §1, T3): the
+  // questions this tenant is actually asked. Measuring completeness against all
+  // nine meant a tenant with no named locations and no detected service
+  // accounts could never finish — Setup read "attention" forever, the stepper
+  // called Findings and Roadmap provisional, and coverage never treated the
+  // exclusions as confirmed. Three surfaces, one wrong default.
+  const bare = {
+    ...emptyMappingState('t'),
+    // Answer every question this tenant is asked, and none of the others.
+    wizardAnswered: Object.fromEntries(WIZARD_QUESTIONS.filter((q) => !CONDITIONAL.has(q.id)).map((q) => [q.id, true])),
+  }
+  const asked = activeWizardQuestions(null, { snapshot: EMPTY_TENANT, state: bare })
+  assert.deepEqual(
+    asked.map((q) => q.id).filter((id) => CONDITIONAL.has(id)),
+    [],
+    'a tenant with no named locations and no service-account candidates should not be asked those questions',
+  )
+  const progress = wizardProgress(bare, asked)
+  assert.equal(progress.requiredMissing, 0, 'answering every question asked did not finish Setup')
+  assert.equal(progress.complete, true)
+  assert.equal(progress.total, asked.length, 'progress counts a different set from the one Setup renders')
 })

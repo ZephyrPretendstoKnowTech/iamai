@@ -216,7 +216,8 @@ export function PrintPlan({
                   {C.step.kind}: {stepKindLabel(s)} · {C.step.status}: {STEP_STATUS_LABEL[s.status]}
                 </p>
                 <p>{s.impact}</p>
-                <p className="muted">{s.stateReason}</p>
+                {/* Blocked steps print their causes once, below (prompt 37 §6). */}
+                {s.status !== 'blocked' && <p className="muted">{s.stateReason}</p>}
                 {s.naming && (
                   <p>
                     <strong>{ROADMAP.proposedName}</strong> {s.naming.proposed}

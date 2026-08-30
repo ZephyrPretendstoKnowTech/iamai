@@ -24,11 +24,18 @@ export function ChecksPage() {
       <p className="reason">{CHECKS_PAGE.counts(counts.blocker, counts.warning, counts.note)}</p>
       <p className="reason">{CHECKS_PAGE.unknownRule}</p>
       <p className="reason">{CHECKS_PAGE.sources}</p>
+      <p className="reason">{CHECKS_PAGE.bySubject(subjects.length)}</p>
       {subjects.map((subject) => {
         const rows = REGISTRY.filter((r) => r.subject === subject)
+        const mix = CHECKS_PAGE.sectionCount(
+          rows.filter((r) => r.severity === 'blocker').length,
+          rows.filter((r) => r.severity === 'warning').length,
+          rows.filter((r) => r.severity === 'note').length,
+        )
         return (
           <div key={subject}>
             <h3>{SUBJECT[subject] ?? subject}</h3>
+            <p className="reason">{mix}</p>
             <DataTable
               rows={rows}
               rowKey={(r) => r.id}

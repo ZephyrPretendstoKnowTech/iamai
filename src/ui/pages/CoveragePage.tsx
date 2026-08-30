@@ -5,6 +5,7 @@ import { loadPlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { applicableGoals, goalCounts } from '../../derive/sets.ts'
+import { activeWizardQuestions } from '../../mapping/wizard.ts'
 import { computeCoverage } from '../../coverage/coverage.ts'
 import type { CoverageReport, GoalResult, GoalStatus } from '../../coverage/types.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
@@ -155,7 +156,7 @@ export function CoveragePage({
       baselineUnusable: baseline?.pkg.report.warnings ?? [],
       strengths: buildStrengthLookup(snapshot.config.authStrengths?.rows ?? []),
       groupMembers: groups,
-      mapping: mapping && baseline ? toCoverageMapping(mapping, questions) : undefined,
+      mapping: mapping && baseline ? toCoverageMapping(mapping, questions, activeWizardQuestions(baseline?.pkg ?? null, { snapshot, state: mapping })) : undefined,
       facetOverrides: mapping?.facetOverrides,
     })
     const viability = buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability)
@@ -385,7 +386,7 @@ export function CoveragePage({
   )
 
   const grouped = (rows: GoalResult[]) =>
-    arrangeGoals(rows, scoreOf, (r) => scoreOf(r)?.domain ?? r.goal.domain ?? 'Identity', (r) => r.goal.phase, groupBy, sortBy).map((g) =>
+    arrangeGoals(rows, scoreOf, (r) => scoreOf(r)?.domain ?? r.goal.domain ?? 'Other', (r) => r.goal.phase, groupBy, sortBy).map((g) =>
       g.domain === null ? (
         g.rows.map(goalCard)
       ) : (

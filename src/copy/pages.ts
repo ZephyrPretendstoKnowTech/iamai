@@ -309,6 +309,14 @@ export const FINDINGS = {
   groupNone: 'None',
   groupDomain: 'Domain',
   sort: { priority: 'Priority', value: 'Security value', effort: 'Effort', disruption: 'Disruption' } as Record<string, string>,
+  /**
+   * Where a goal that came from the baseline rather than the catalogue is
+   * filed (prompt 37 §12). It used to fall back to Identity, which is how a
+   * download-restriction session control came to sit under Identity (T16).
+   * A goal IAMAI cannot classify is better shown as unclassified than filed
+   * under a heading that is wrong.
+   */
+  otherDomain: 'Other goals from your baseline',
   whyMatters: 'Why this matters',
   proposedName: 'Proposed name:',
   // Both numbers are over the goals IAMAI evaluated, so "the rest" is exactly

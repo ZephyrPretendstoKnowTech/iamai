@@ -7,6 +7,9 @@ import builtinStrengths from '../data/builtin-strengths.json' with { type: 'json
 import type { TenantSnapshot } from './graph/collect/types.ts'
 import type { GroupMembers } from './coverage/population.ts'
 
+/** Shown where a name is genuinely unknown. Never an id (CLAUDE.md: names, never IDs). */
+export const UNNAMED = 'an account IAMAI could not name'
+
 const SPECIAL: Record<string, string> = {
   all: 'All users',
   none: 'None',
@@ -75,7 +78,12 @@ export function buildNameDirectory(
   }
   return {
     nameOf,
-    label: (id: string): string => nameOf(id) ?? (GUID.test(id) ? `${id.slice(0, 8)}…` : id),
+    // Never a truncated id. The fallback used to be the first eight characters
+    // of the GUID, which put "6744cba6…" in the middle of a list of people
+    // (prompt 37 §9, T9). An id a person cannot use is worse than saying
+    // plainly that the name is missing, and the directory resolves most of
+    // these a moment later anyway.
+    label: (id: string): string => nameOf(id) ?? (GUID.test(id) ? UNNAMED : id),
     unknown: (ids: Iterable<string>): string[] =>
       [...ids].filter((id) => GUID.test(id) && nameOf(id) === null),
   }

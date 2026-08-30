@@ -95,7 +95,16 @@ export type Implementation = {
   allowedExclusions: string[]
 }
 
-export type Domain = 'Identity' | 'Admins' | 'Devices' | 'Sessions' | 'Guests' | 'Locations' | 'Risk'
+/**
+ * How the catalogue groups goals (prompt 37 §12). Rebalanced so no group holds
+ * one item while another holds six: Guests and Locations each held a single
+ * goal, and Identity held six by absorbing every protocol block. The blocks are
+ * now "Legacy access", guest MFA and the country restriction are identity
+ * conditions, and the admin session control sits with the other admin goals.
+ * "Other" is for a goal that came from a baseline and matched no catalogue
+ * entry; it is never guessed into a real group.
+ */
+export type Domain = 'Identity' | 'Admins' | 'Devices' | 'Sessions' | 'Legacy access' | 'Risk' | 'Other'
 
 export type Goal = {
   id: string

@@ -42,7 +42,18 @@ export function ringBandFor(activeUsers: number, longSoak = true): RingBand {
   return longSoak && activeUsers > LONG_SOAK_ACTIVE ? { ...band, soakDays: LONG_SOAK_DAYS } : band
 }
 
-/** Steps that can deny access get rings; prerequisites, report-only creation and verification have one. */
+/**
+ * Steps that can deny access get rings. Prerequisites, verification and
+ * recurring steps get none, and neither does a step already done or skipped:
+ * a ring plan is a proposal for a rollout that has not happened yet, and
+ * inventing one for work already delivered would describe a rollout nobody ran.
+ *
+ * Review 07 read the absence as rings never being generated (T15). They are —
+ * roughly two thirds of the steps in a mid-size plan carry them. The step the
+ * review opened was one of the kinds that legitimately has none, and the step
+ * body said nothing at all rather than saying why, so the section simply was
+ * not there. It now says why.
+ */
 export function ringable(step: Step): boolean {
   if (step.status === 'done' || step.status === 'skipped') return false
   return canDenyAccess(step)

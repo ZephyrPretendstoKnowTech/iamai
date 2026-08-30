@@ -218,7 +218,17 @@ export function applyWizardAnswers(state: MappingState, pkg: BaselinePackage, sn
 
 export type WizardProgress = { answered: number; total: number; complete: boolean; requiredMissing: number }
 
-export function wizardProgress(state: MappingState, active: WizardQuestionDef[] = WIZARD_QUESTIONS): WizardProgress {
+/**
+ * Progress over the questions this tenant is actually asked (prompt 37 §7).
+ *
+ * `active` used to default to all nine. A tenant with no named locations and no
+ * detected service accounts is asked seven, so the other two could never be
+ * answered and requiredMissing never reached zero: Setup read "attention"
+ * forever, the stepper called Findings and Roadmap provisional, and coverage
+ * never took the exclusions as confirmed. The default is gone rather than
+ * corrected, because a wrong default here fails silently in three places.
+ */
+export function wizardProgress(state: MappingState, active: WizardQuestionDef[]): WizardProgress {
   const required = active.filter((q) => q.required)
   const answered = active.filter((q) => state.wizardAnswered[q.id] === true)
   const requiredMissing = required.filter((q) => state.wizardAnswered[q.id] !== true).length
