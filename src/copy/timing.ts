@@ -90,6 +90,9 @@ export const WEEK_VIEW = {
   rows: { announce: 'Announce', remind: 'Remind', enforce: 'Enforce' },
   nothing: 'Nothing this week.',
   outOfHours: (n: number) => `${count(n, 'event')} outside working hours`,
+  everyone: 'Everyone',
+  /** One cell per audience per day on the Enforce row (prompt 40 §16). */
+  enforceBundle: (audience: string, steps: number) => `${audience}: ${steps} changes take effect`,
   /** One cell per bulletin, naming what it covers (prompt 37 §14). */
   bulletin: (audience: string, steps: number) => `${audience}: ${count(steps, 'change')}`,
 }

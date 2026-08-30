@@ -135,6 +135,22 @@ for (const f of fixtures) {
       }
     }
     assert.ok(schedule.totalDays <= f.expect.weeksAtMost * 7 + 7, `${schedule.weeks} weeks (${schedule.totalDays} days) fits the band (${f.expect.weeksAtMost} weeks plus the week of slack)`)
+
+    // The observation window stays open until the wave it informs (prompt 40
+    // §18). It used to close twelve days early, so the page said the evidence
+    // stopped being gathered long before anyone acted on it (review-08 B4).
+    const firstWave = schedule.waves.find((w) => w.wave >= 1)
+    assert.ok(
+      schedule.observation.start >= schedule.start,
+      `observation opens once the report-only policies exist (${schedule.observation.start})`,
+    )
+    if (firstWave && schedule.observation.days > 0) {
+      assert.equal(
+        schedule.observation.end,
+        firstWave.start,
+        'the observation window stays open until the wave it informs, with no gap',
+      )
+    }
   })
 
   test(`${f.name}: rings match the band table`, () => {

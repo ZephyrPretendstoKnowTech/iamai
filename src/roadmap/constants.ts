@@ -15,10 +15,16 @@ export const BREAK_GLASS_DRILL_DAYS = 90
 // spacing that makes the total land on the band. Observation is always 7
 // days. The band is auto-detected from active users and overridable.
 export type SizeBand = 'small' | 'mid' | 'large'
+//
+// `weeks` grew (4/8/12) when one enforcement day stopped absorbing every step
+// (prompt 40 §17). The old numbers were only reachable while twenty-one changes
+// could share a single day; at ENFORCEMENT_CAP change days a week and
+// CHANGES_PER_DAY changes each, a real plan takes longer, and the band has to
+// state the length the plan actually has rather than one it cannot reach.
 export const BANDS: Record<SizeBand, { maxActive: number; weeks: number; verificationDays: number }> = {
-  small: { maxActive: 30, weeks: 4, verificationDays: 14 },
-  mid: { maxActive: 300, weeks: 8, verificationDays: 28 },
-  large: { maxActive: Number.POSITIVE_INFINITY, weeks: 12, verificationDays: 42 },
+  small: { maxActive: 30, weeks: 7, verificationDays: 14 },
+  mid: { maxActive: 300, weeks: 11, verificationDays: 28 },
+  large: { maxActive: Number.POSITIVE_INFINITY, weeks: 17, verificationDays: 42 },
 }
 export const OBSERVATION_DAYS = 7
 /** An enforcement wave never runs shorter than this, whatever the band. */
