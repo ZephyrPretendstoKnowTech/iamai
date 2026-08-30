@@ -16,6 +16,9 @@ import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.t
 import { generateRoadmap } from '../../roadmap/generate.ts'
 import { findDangerAreas } from '../../roadmap/dangers.ts'
 import { nextMonday, paceAlternatives } from '../../roadmap/schedule.ts'
+import { insightsUrl, verdictFor, whatIfUrl } from '../../roadmap/verdict.ts'
+import type { Verdict } from '../../roadmap/verdict.ts'
+import { VERDICT } from '../../copy/verdict.ts'
 import { applyProgress, mergePersisted, skipStep } from '../../roadmap/progress.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
@@ -1589,6 +1592,8 @@ export function RoadmapPage({
                         effort={effortFor(step)}
                         now={nowMs}
                         batchWith={schedule.batchWith[step.id] ?? []}
+                        verdict={verdictFor(step, snapshot, new Date(nowMs).toISOString(), operator?.userId ?? null)}
+                        tenantId={snapshot.tenantId}
                         onSkipped={(st) => {
                           // Persist the skip before regenerating, or mergePersisted forgets it.
                           setSaved((p) =>
@@ -1937,6 +1942,96 @@ function batchLine(step: Step, batchWith: string[]): string | null {
  * for the not-yet-computed state — so a useMemo in the page body would be
  * called on some renders and not others (prompt 42, pace control).
  */
+/**
+ * Can this step be enforced yet, with the evidence under it.
+ *
+ * Grouped by STEP, not by policy (§2): a goal delivered by three policies shows
+ * one verdict with the three listed under it, because whether a change can be
+ * enforced is a question about the change, not about each object behind it.
+ */
+function VerdictCard({
+  v,
+  step,
+  nameOf,
+  tenantId,
+}: {
+  v: Verdict
+  step: Step
+  nameOf: (id: string) => string
+  tenantId: string
+}) {
+  const status = v.kind === 'ready' ? 'done' : v.kind === 'notYet' ? 'warning' : 'neutral'
+  const label = v.kind === 'ready' ? VERDICT.ready : v.kind === 'notYet' ? VERDICT.notYet : VERDICT.notEnough
+  const policyId = step.tracking?.policyId ?? null
+  const firstAffected = v.failures[0] ?? step.population.ids[0] ?? null
+  const times = new Map((step.tracking?.failuresByUser ?? []).map((f) => [f.userId, f.count]))
+  return (
+    <div className="card verdict-card" id={`verdict-${step.id}`}>
+      <h4>{VERDICT.title}</h4>
+      <p className="row">
+        <Chip status={status}>{label}</Chip> <span>{v.reason}</span>
+      </p>
+      <ul className="sections">
+        <li>{VERDICT.days(v.days.observed, v.days.required)}</li>
+        <li>{VERDICT.signIns(v.signIns)}</li>
+        <li>{VERDICT.covered(v.covered.seen, v.covered.expected)}</li>
+      </ul>
+
+      {v.failures.length > 0 && (
+        <>
+          <h5>{VERDICT.failuresTitle}</h5>
+          <ul className="sections">
+            {v.failures.map((id) => (
+              <li key={id}>{VERDICT.failure(nameOf(id), times.get(id) ?? 1)}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {/* Named, never waited for (§1). */}
+      {v.unseen.length > 0 && (
+        <>
+          <h5>{VERDICT.unseenTitle}</h5>
+          <p className="reason">{VERDICT.unseenNote}</p>
+          <ul className="sections">
+            {v.unseen.map((u) => (
+              <li key={u.userId}>{VERDICT.unseenPerson(nameOf(u.userId), u.lastSignIn ? absoluteDate(u.lastSignIn) : null)}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {step.exitCriteria.length > 0 && (
+        <>
+          <h5>{VERDICT.exitTitle}</h5>
+          <ul className="sections exit-criteria">
+            {step.exitCriteria.map((c, i) => (
+              <li key={i}>
+                <Chip status={v.kind === 'ready' ? 'done' : 'neutral'}>{v.kind === 'ready' ? SECTION.applies.no : SECTION.applies.unknown}</Chip> {c}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {/* Show your work (§2): Microsoft's own data, one click away. */}
+      {policyId && (
+        <p className="row no-print">
+          <span className="reason">{VERDICT.showWork}</span>
+          <a href={insightsUrl(tenantId, policyId)} target="_blank" rel="noopener noreferrer">
+            {VERDICT.insights}
+          </a>
+          {firstAffected && (
+            <a href={whatIfUrl(tenantId, policyId, firstAffected)} target="_blank" rel="noopener noreferrer">
+              {VERDICT.whatIf}
+            </a>
+          )}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function PaceControl({
   steps,
   schedule,
@@ -2002,6 +2097,8 @@ function StepCard({
   audienceName,
   now,
   batchWith,
+  verdict,
+  tenantId,
 }: {
   step: Step
   linked: boolean
@@ -2015,6 +2112,9 @@ function StepCard({
   now: number
   /** The other steps enforced in the same change window (prompt 41 §9). */
   batchWith: string[]
+  /** Can this be enforced yet (prompt 42 Part 2); null off report-only. */
+  verdict: Verdict | null
+  tenantId: string
   skipDraft: { id: string; reason: string } | null
   setSkipDraft: (d: { id: string; reason: string } | null) => void
   onSkipped: (step: Step) => void
@@ -2385,6 +2485,9 @@ function StepCard({
           </ol>
         </>
       )}
+
+      {/* The readiness verdict (prompt 42 Part 2). One per step, never per policy. */}
+      {verdict && <VerdictCard v={verdict} step={step} nameOf={nameOf} tenantId={tenantId} />}
 
       {/* 8. How to verify */}
       {step.verify && (
