@@ -29,6 +29,7 @@ export type Route =
   | 'reads'
   | 'checks'
   | 'naming'
+  | 'recovery'
   | 'inventory'
   | 'baseline/package'
   | 'roadmap/prompts'
@@ -54,6 +55,7 @@ const REFERENCE: { route: Route; label: string }[] = [
   { route: 'reads', label: SHELL.steps.reads },
   { route: 'checks', label: SHELL.steps.checks },
   { route: 'naming', label: SHELL.steps.naming },
+  { route: 'recovery', label: SHELL.steps.recovery },
 ]
 
 // Pages whose main content is a table read better with the wider cap (ux-review-06 §28).

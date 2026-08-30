@@ -1,5 +1,5 @@
 {
- "fingerprint": "6e771a6ea6815e4f",
+ "fingerprint": "8e579b7e95024328",
  "surfaces": [
   {
    "name": "Start",
@@ -1583,6 +1583,7 @@
    "options": [],
    "links": [
     "Re-scan",
+    "Recovery card",
     "Troubleshoot sign-in problems with Conditional Access →"
    ],
    "chips": [],
@@ -1666,7 +1667,7 @@
     "tabs": 3,
     "buttons": 6,
     "options": 0,
-    "links": 8,
+    "links": 10,
     "chips": 0,
     "columns": 0,
     "tiles": 0,
@@ -1674,7 +1675,7 @@
     "summaries": 0,
     "tips": 9,
     "sentences": 192,
-    "total": 232
+    "total": 234
    },
    "unnamedControls": []
   },
@@ -2217,6 +2218,7 @@
    "name": "Roadmap / Export tab",
    "note": "panel only",
    "headings": [
+    "Recovery card",
     "Plan file",
     "Change record",
     "Prompt pack",
@@ -2237,7 +2239,9 @@
     "Print or save as PDF"
    ],
    "options": [],
-   "links": [],
+   "links": [
+    "Recovery card"
+   ],
    "chips": [],
    "columns": [],
    "tiles": [],
@@ -2245,6 +2249,8 @@
    "summaries": [],
    "tips": [],
    "sentences": [
+    "One page to print and keep.",
+    "What to do if a change locks somebody out, including you.",
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.",
     "Load it back on any machine.",
     "Save planLoad planCopy as MarkdownCopy as prompt",
@@ -2275,6 +2281,8 @@
    ],
    "tables": [],
    "occurrences": {
+    "One page to print and keep.": 1,
+    "What to do if a change locks somebody out, including you.": 1,
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
     "Load it back on any machine.": 1,
     "Save planLoad planCopy as MarkdownCopy as prompt": 1,
@@ -2300,6 +2308,8 @@
     "Save as PDF from the print dialog.": 1
    },
    "occurrencesAll": {
+    "One page to print and keep.": 1,
+    "What to do if a change locks somebody out, including you.": 1,
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
     "Load it back on any machine.": 1,
     "Save planLoad planCopy as MarkdownCopy as prompt": 1,
@@ -2325,19 +2335,19 @@
     "Save as PDF from the print dialog.": 1
    },
    "wordCounts": {
-    "headings": 13,
+    "headings": 15,
     "tabs": 0,
     "buttons": 33,
     "options": 0,
-    "links": 0,
+    "links": 2,
     "chips": 0,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 233,
-    "total": 279
+    "sentences": 250,
+    "total": 300
    },
    "unnamedControls": []
   },
@@ -3307,12 +3317,130 @@
    "unnamedControls": []
   },
   {
+   "name": "Recovery card",
+   "note": "",
+   "headings": [
+    "Recovery card",
+    "Emergency access accounts",
+    "Turn a Conditional Access policy off",
+    "Put a policy back to report-only",
+    "If the portal itself blocks you",
+    "This tenant"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Print this card"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "One page to print and keep.",
+    "What to do if a change locks somebody out, including you.",
+    "Generated <date>.",
+    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.",
+    "Names in full, on purpose A redacted card is useless at the moment you need it.",
+    "Keep the printout where only the right people can reach it.",
+    "No emergency access accounts are nominated in this plan.",
+    "That is the first thing to fix: without one, a policy that locks everybody out has no way back in.",
+    "The plan has a step for it.",
+    "Go to entra.microsoft.com and sign in.",
+    "Protection → Conditional Access → Policies.",
+    "Open the policy by name.",
+    "Set Enable policy to Off.",
+    "Save.",
+    "It applies within a few minutes.",
+    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.",
+    "Open the policy as above.",
+    "Set Enable policy to Report-only instead of Off.",
+    "The policy keeps recording what it would have done, and stops doing it.",
+    "Use an emergency access account above, in a private browser window.",
+    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.",
+    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.",
+    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.",
+    "Tenant ID: 00000000-0000-0000-0000-000000000000",
+    "Domain: example.com, contoso.onmicrosoft.com",
+    "Microsoft support will ask for the tenant id."
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "One page to print and keep.": 1,
+    "What to do if a change locks somebody out, including you.": 1,
+    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.": 1,
+    "Names in full, on purpose A redacted card is useless at the moment you need it.": 1,
+    "Keep the printout where only the right people can reach it.": 1,
+    "No emergency access accounts are nominated in this plan.": 1,
+    "That is the first thing to fix: without one, a policy that locks everybody out has no way back in.": 1,
+    "The plan has a step for it.": 1,
+    "Go to entra.microsoft.com and sign in.": 1,
+    "Protection → Conditional Access → Policies.": 1,
+    "It applies within a few minutes.": 1,
+    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.": 1,
+    "Set Enable policy to Report-only instead of Off.": 1,
+    "The policy keeps recording what it would have done, and stops doing it.": 1,
+    "Use an emergency access account above, in a private browser window.": 1,
+    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.": 1,
+    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.": 1,
+    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.": 1,
+    "Tenant ID: 00000000-0000-0000-0000-000000000000": 1,
+    "Domain: example.com, contoso.onmicrosoft.com": 1,
+    "Microsoft support will ask for the tenant id.": 1
+   },
+   "occurrencesAll": {
+    "One page to print and keep.": 1,
+    "What to do if a change locks somebody out, including you.": 1,
+    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.": 1,
+    "Names in full, on purpose A redacted card is useless at the moment you need it.": 1,
+    "Keep the printout where only the right people can reach it.": 1,
+    "No emergency access accounts are nominated in this plan.": 1,
+    "That is the first thing to fix: without one, a policy that locks everybody out has no way back in.": 1,
+    "The plan has a step for it.": 1,
+    "Go to entra.microsoft.com and sign in.": 1,
+    "Protection → Conditional Access → Policies.": 1,
+    "It applies within a few minutes.": 1,
+    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.": 1,
+    "Set Enable policy to Report-only instead of Off.": 1,
+    "The policy keeps recording what it would have done, and stops doing it.": 1,
+    "Use an emergency access account above, in a private browser window.": 1,
+    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.": 1,
+    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.": 1,
+    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.": 1,
+    "Tenant ID: 00000000-0000-0000-0000-000000000000": 1,
+    "Domain: example.com, contoso.onmicrosoft.com": 1,
+    "Microsoft support will ask for the tenant id.": 1
+   },
+   "wordCounts": {
+    "headings": 25,
+    "tabs": 0,
+    "buttons": 3,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 263,
+    "total": 291
+   },
+   "unnamedControls": []
+  },
+  {
    "name": "Prompt pack",
    "note": "",
    "headings": [
     "Roadmap",
     "Do this next",
     "1 user is blocked today, before this plan changes anything",
+    "Recovery card",
     "Plan file",
     "Change record",
     "Prompt pack",
@@ -3343,6 +3471,7 @@
    "options": [],
    "links": [
     "Re-scan",
+    "Recovery card",
     "Troubleshoot sign-in problems with Conditional Access →"
    ],
    "chips": [],
@@ -3375,6 +3504,8 @@
     "Fix this first: otherwise the rollout gets the blame.",
     "Priya Nair: investigate the failing sign-in",
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)",
+    "One page to print and keep.",
+    "What to do if a change locks somebody out, including you.",
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.",
     "Load it back on any machine.",
     "Save planLoad planCopy as MarkdownCopy as prompt",
@@ -3425,6 +3556,8 @@
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
     "Troubleshoot sign-in problems with Conditional Access →": 1,
+    "One page to print and keep.": 1,
+    "What to do if a change locks somebody out, including you.": 1,
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
     "Load it back on any machine.": 1,
     "Save planLoad planCopy as MarkdownCopy as prompt": 1,
@@ -3467,6 +3600,8 @@
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
     "Troubleshoot sign-in problems with Conditional Access →": 1,
+    "One page to print and keep.": 1,
+    "What to do if a change locks somebody out, including you.": 1,
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
     "Load it back on any machine.": 1,
     "Save planLoad planCopy as MarkdownCopy as prompt": 1,
@@ -3492,19 +3627,19 @@
     "Save as PDF from the print dialog.": 1
    },
    "wordCounts": {
-    "headings": 27,
+    "headings": 29,
     "tabs": 3,
     "buttons": 39,
     "options": 0,
-    "links": 8,
+    "links": 10,
     "chips": 0,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 0,
     "tips": 9,
-    "sentences": 425,
-    "total": 511
+    "sentences": 442,
+    "total": 532
    },
    "unnamedControls": []
   }

@@ -350,6 +350,7 @@ await goto('/licensing');        await capture('Licensing guide')
 await goto('/reads');            await capture('What IAMAI reads')
 await goto('/checks');           await capture('Every check IAMAI runs')
 await goto('/naming');           await capture('Naming policies and groups')
+await goto('/recovery');         await capture('Recovery card')
 await goto('/roadmap/prompts');  await capture('Prompt pack')
 // #/inventory is not a page: App.tsx renders the same MfaViabilityScreen as
 // #/scan with view='inventory', so it is already captured as Scan / Inventory

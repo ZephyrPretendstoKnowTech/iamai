@@ -44,6 +44,9 @@ import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
 import { PLAIN_TITLES } from '../../copy/plain.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
+import { RECOVERY } from '../../copy/recovery.ts'
+import { DRIFT } from '../../copy/drift.ts'
+import { exclusionDrift } from '../../roadmap/drift.ts'
 import { SKIP, SKIP_REASONS } from '../../copy/skip.ts'
 import type { SkipReasonId } from '../../copy/skip.ts'
 import { LOG, NEXT } from '../../copy/next.ts'
@@ -532,7 +535,9 @@ export function RoadmapPage({
   const savePlan = (): void => {
     if (!mapping || !operator) return
     const summary = summarizeTenant(computed.viability)
-    const exclusionGroups = [...groups.entries()].map(([groupId, g]) => ({ groupId, memberCount: g.memberCount }))
+    // Ids as well as the count: without them a later scan can say how many
+    // arrived but never who (prompt 44 item 14).
+    const exclusionGroups = [...groups.entries()].map(([groupId, g]) => ({ groupId, memberCount: g.memberCount, memberIds: g.memberIds ?? [] }))
     const checkpoint = makeCheckpoint({
       snapshot,
       coverage: computed.coverage,
@@ -879,6 +884,23 @@ export function RoadmapPage({
         (review-08 C3). There is nothing to compare against until a scan has
         been saved, so there is nothing to show.
       */}
+      {/* Exclusion drift (prompt 44 Part 3). A group that quietly grows is the
+          one change nothing else in the tenant reports. */}
+      {driftItems.length > 0 && (
+        <>
+          <h4>{DRIFT.title}</h4>
+          <ul className="sections">
+            {driftItems.map((d) => (
+              <li key={d.kind + d.id}>
+                <Chip status={d.finding ? 'warning' : 'neutral'}>{d.finding ? SECTION.applies.yes : SECTION.applies.unknown}</Chip> {d.sentence}
+                {d.detail && <div className="sub">{d.detail}</div>}
+                {d.finding && <div className="sub">{DRIFT.change}</div>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
       {lastCheckpoint && <h4>{PROGRESS.changesTitle}</h4>}
       {lastCheckpoint && changes.length === 0 && <p className="reason">{PROGRESS.changesNone}</p>}
       {lastCheckpoint && changes.length > 0 && (
@@ -1269,6 +1291,12 @@ export function RoadmapPage({
   const changeRecordCsv = (): string => toCsv(CHANGE_RECORD_HEADER, recordRows())
   const exportTab = () => (
     <div className="export-grid">
+      <Card title={RECOVERY.title}>
+        <p className="reason">{RECOVERY.does}</p>
+        <p>
+          <a href="#/recovery">{RECOVERY.action}</a>
+        </p>
+      </Card>
       <Card title={EXPORT_TAB.planFile}>
         <p className="reason">{EXPORT_TAB.planFileText}</p>
       <p className="row no-print">
@@ -1726,6 +1754,19 @@ export function RoadmapPage({
   const bulletins = bulletinsFor(steps, commsCtx)
   const commsRows = commsPlanRows(bulletins)
   const commsWarnings = monthlyWarnings(bulletins)
+  // Groups any policy actually excludes. A normal group growing is not a
+  // security event; one that undoes a policy is.
+  const excludedGroupIds = new Set(
+    ((snapshot.config.caPolicies?.rows ?? []) as { conditions?: { users?: { excludeGroups?: string[] } } }[]).flatMap((p) => p.conditions?.users?.excludeGroups ?? []),
+  )
+  // What changed in the exclusion groups since the last checkpoint.
+  const driftItems = exclusionDrift({
+    previous: lastCheckpoint ?? null,
+    current: [...groups.entries()].map(([groupId, g]) => ({ groupId, name: g.displayName ?? groupId, memberCount: g.memberCount, memberIds: g.memberIds })),
+    usedAsExclusion: excludedGroupIds,
+    nominated: mapping?.breakGlassUserIds.length ?? 0,
+    nameOf,
+  })
   const effortTotal = planEffort(steps, bulletins.length)
   // Only runs when the plan is actually over the bound; it re-schedules copies.
   const longPlan = overrunFor(
@@ -1755,6 +1796,11 @@ export function RoadmapPage({
         {licenceSentence} {effortTotal.sentence}{' '}
         <InfoTip title={EFFORT_DEF.adminTime.title} text={EFFORT_DEF.adminTime.text} />{' '}
         <InfoTip title={EFFORT_DEF.contacts.title} text={EFFORT_DEF.contacts.text} />
+      </p>
+      {/* Reachable from the header as well as the Export tab (prompt 44 item 10):
+          the moment somebody needs it, they are not browsing tabs. */}
+      <p className="row no-print">
+        <a href="#/recovery">{RECOVERY.action}</a>
       </p>
       {onLadder && <p className="advisor">{LADDER.intro}</p>}
       <Card title={NEXT.title} className="do-next">

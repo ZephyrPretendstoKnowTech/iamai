@@ -22,7 +22,8 @@ export type Checkpoint = {
   }[]
   mfaStateCounts: TenantMfaSummary['counts']
   activityCounts: TenantMfaSummary['activityCounts']
-  exclusionGroups: { groupId: string; memberCount: number }[]
+  /** Member ids as well as the count, so a later scan can name who arrived (prompt 44 item 14). */
+  exclusionGroups: { groupId: string; memberCount: number; memberIds?: string[] }[]
   breakGlass: { userId: string; lastSignIn: string | null }[]
   /** Active admins at the checkpoint, so "admins added" is knowable (v2). */
   adminIds?: string[]
@@ -66,7 +67,7 @@ export function makeCheckpoint(args: {
   snapshot: TenantSnapshot
   coverage: CoverageReport
   summary: TenantMfaSummary
-  exclusionGroups: { groupId: string; memberCount: number }[]
+  exclusionGroups: { groupId: string; memberCount: number; memberIds?: string[] }[]
   breakGlassIds: string[]
 }): Checkpoint {
   const { snapshot, coverage } = args
