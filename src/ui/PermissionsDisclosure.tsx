@@ -25,7 +25,12 @@ export function scopeRows(): ScopeRow[] {
 
 export function PermissionsDisclosure({ compact = false }: { compact?: boolean }) {
   const rows = scopeRows()
-  const tenantScopes = rows.filter((r) => !SIGN_IN_SCOPES.includes(r.scope))
+  // Item 11 (P1): a permission nothing calls is not part of the working set, and
+  // listing it there presents an unused scope as one the tool relies on. It sits
+  // in its own group, with the reason and the recommendation, until the app
+  // registration drops it.
+  const tenantScopes = rows.filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length > 0)
+  const unused = rows.filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length === 0)
   const signIn = rows.filter((r) => SIGN_IN_SCOPES.includes(r.scope))
 
   const body = (
@@ -43,14 +48,32 @@ export function PermissionsDisclosure({ compact = false }: { compact?: boolean }
             render: (r) => (
               <>
                 {r.reads}
-                {r.usedBy.length > 0 && <div className="reason">{C.usedFor(r.usedBy)}</div>}
-                {r.usedBy.length === 0 && <div className="reason">{C.notUsedYet}</div>}
+                <div className="reason">{C.usedFor(r.usedBy)}</div>
               </>
             ),
           },
           { key: 'without', header: C.columns.without, render: (r) => r.without },
         ]}
       />
+      {unused.length > 0 && (
+        <>
+          <h4>{C.unusedGroup}</h4>
+          {C.unusedNote.map((line) => (
+            <p key={line} className="reason">
+              {line}
+            </p>
+          ))}
+          <DataTable
+            rows={unused}
+            rowKey={(r) => r.scope}
+            columns={[
+              { key: 'permission', header: C.columns.permission, render: (r) => <code>{r.scope}</code> },
+              { key: 'reads', header: C.columns.reads, render: (r) => r.reads },
+              { key: 'without', header: C.columns.without, render: (r) => r.without },
+            ]}
+          />
+        </>
+      )}
       <h4>{C.signInGroup}</h4>
       <DataTable
         rows={signIn}
