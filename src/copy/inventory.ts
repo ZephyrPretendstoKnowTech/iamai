@@ -217,7 +217,7 @@ export const PACKAGE = {
   missing: 'References that are not included are not a problem: Setup asks about the ones that need a human and resolves the rest from the scan.',
   doesTitle: 'What IAMAI does with the upload',
   doesList: [
-    'Reads the files in the browser. Nothing is uploaded anywhere; there is no server.',
+    'Reads the files in the browser. There is no server, and nothing is uploaded: the files are parsed here and stay on this device unless you export them.',
     'Normalises each policy to the shape the tenant returns, so one comparison serves both.',
     'Treats every baseline policy as intended-enforced, whatever state it was exported in.',
     'Keeps nothing after the tab closes unless a plan is saved on this device.',

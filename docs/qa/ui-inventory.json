@@ -1,5 +1,5 @@
 {
- "fingerprint": "770a00330b5ca1bb",
+ "fingerprint": "fd7336e20ab21aee",
  "surfaces": [
   {
    "name": "Start",
@@ -45,8 +45,9 @@
     "User, device, and licence inventory: to size every step's impact.",
     "Recent interactive sign-in records: to check that MFA works before anything is enforced.",
     "No changes to the tenant: the app holds read-only permissions only.",
-    "Nothing leaves the browser.",
-    "There is no server.",
+    "No tenant data is sent anywhere on its own.",
+    "There is no server, no analytics and no telemetry.",
+    "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.",
     "No account required with anyone.",
     "The source is public, so every claim above can be checked.",
     "Predicted impact, confirmed in report-only."
@@ -78,7 +79,9 @@
     "Recent interactive sign-in records: to check that MFA works before anything is enforced.": 1,
     "The full list, with every endpoint and permission →": 1,
     "No changes to the tenant: the app holds read-only permissions only.": 1,
-    "Nothing leaves the browser.": 1,
+    "No tenant data is sent anywhere on its own.": 1,
+    "There is no server, no analytics and no telemetry.": 1,
+    "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.": 1,
     "No account required with anyone.": 1,
     "The source is public, so every claim above can be checked.": 1,
     "Predicted impact, confirmed in report-only.": 1
@@ -99,7 +102,9 @@
     "Recent interactive sign-in records: to check that MFA works before anything is enforced.": 1,
     "The full list, with every endpoint and permission →": 1,
     "No changes to the tenant: the app holds read-only permissions only.": 1,
-    "Nothing leaves the browser.": 1,
+    "No tenant data is sent anywhere on its own.": 1,
+    "There is no server, no analytics and no telemetry.": 1,
+    "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.": 1,
     "No account required with anyone.": 1,
     "The source is public, so every claim above can be checked.": 1,
     "Predicted impact, confirmed in report-only.": 1
@@ -116,8 +121,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 186,
-    "total": 239
+    "sentences": 217,
+    "total": 270
    }
   },
   {

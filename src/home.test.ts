@@ -53,7 +53,10 @@ test('the planner is the first card, and points at the tool folder', () => {
 
 test('the home page says the three things every tool promises', () => {
   assert.match(html, /Read-only/)
-  assert.match(html, /Nothing leaves the browser/i)
+  // The claim used to be absolute and is not any more (audit egress-05): the
+  // tools' own export features move data when the user asks. What the page
+  // promises now is that nothing moves on its own.
+  assert.match(html, /Nothing is sent automatically/i)
   assert.match(html, /source is public/i)
 })
 

@@ -30,7 +30,11 @@ export const SHELL = {
   scanStaleAction: 'Re-scan the tenant',
   forgetTooltip: 'Deletes everything IAMAI stored for this tenant on this device, then signs out',
   printHeader: (tenant: string, date: string, by: string) => `IAMAI plan for ${tenant} · prepared ${date} by ${by}`,
-  footerLeft: 'Read-only · nothing leaves your browser',
+  // "Nothing leaves your browser" was absolute, and the product's own
+  // headline features exist to move data out when the user asks (audit
+  // egress-05). What is true without qualification is that nothing goes
+  // anywhere on its own.
+  footerLeft: 'Read-only · nothing is sent automatically',
   footerFollow: 'Follow me here:',
   footerAuthor: 'Lachlan Robinette',
   footerHome: 'All IAMAI tools',
@@ -93,7 +97,8 @@ export const START = {
   neverTitle: 'What IAMAI never does',
   never: [
     'No changes to the tenant: the app holds read-only permissions only.',
-    'Nothing leaves the browser. There is no server.',
+    'No tenant data is sent anywhere on its own. There is no server, no analytics and no telemetry.',
+    'What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.',
     'No account required with anyone.',
   ],
   sourceBefore: '',
