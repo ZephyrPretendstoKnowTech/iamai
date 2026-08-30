@@ -14,6 +14,8 @@ import type { StepperStatus } from '../components/index.ts'
 export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
 export const GITHUB_URL = 'https://github.com/ZephyrPretendstoKnowTech'
 export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
+/** The home page this tool sits under (prompt 35 §3). */
+export const HOME_URL = 'https://getiamai.com/'
 
 export type Route =
   | 'start'
@@ -194,6 +196,7 @@ export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null }
       <span className="footer-links">
         {/* Quiet, on every page (prompt 34 §2). */}
         <FeedbackPanel snapshot={snapshot} />
+        <a href={HOME_URL}>{SHELL.footerHome}</a>
         <span>
           {SHELL.footerFollow}{' '}
           <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">

@@ -6,11 +6,20 @@ export redaction test) run in CI on every push; this list is the rest.
 
 ## App registration (Entra)
 
+> **Before the /rollout/ move goes live.** The planner now sends
+> `https://getiamai.com/rollout/` as its redirect URI, derived from the origin
+> plus the build base. Until that exact value is registered, sign-in fails with
+> `AADSTS50011` and the tool is unusable on the live site. Add it first.
+
+
 - [ ] Add the published redirect URI to the IAMAI app registration under Authentication →
       Single-page application. The app sends `window.location.origin + BASE_URL`, so the
       value follows the base the bundle was built with, and the trailing slash matters:
-      - custom domain (the default): `https://getiamai.com/`
+      - custom domain (the default): `https://getiamai.com/rollout/` and
+        `https://www.getiamai.com/rollout/`
       - github.io fallback (`VITE_BASE=/iamai/`): `https://<owner>.github.io/iamai/`
+      The bare apex and www URIs from before the move can be removed once
+      `/rollout/` is confirmed working.
       Keep `http://localhost:5173` for development. Adding both published URIs is fine;
       a redirect URI that is registered and unused costs nothing.
 - [ ] Set the publisher domain on the registration so the consent screen shows a verified
@@ -49,8 +58,9 @@ export redaction test) run in CI on every push; this list is the rest.
 - [ ] Tick **Enforce HTTPS** once the certificate is issued (it can take up to 24 hours to
       become available). Confirm with `gh api repos/<owner>/<repo>/pages` showing
       `"https_enforced": true`.
-- [ ] Confirm the base matches the domain. The workflow builds with `VITE_BASE`, defaulting
-      to `/` for the custom domain. If the site is ever served from `<owner>.github.io/<repo>/`
+- [ ] Confirm the base matches the layout. The workflow builds with `TOOL_PATH`, defaulting
+      to `rollout`: the home page lands at `dist/index.html` and the planner at
+      `dist/<TOOL_PATH>/`, with the Vite base matching. If the site is ever served from `<owner>.github.io/<repo>/`
       instead, set the `VITE_BASE` repository variable to `/<repo>/` and update the redirect
       URI to match. A mismatch is silent: the page returns 200 with its title and the app
       never renders, because `/<repo>/assets/…` is not there.
@@ -58,7 +68,8 @@ export redaction test) run in CI on every push; this list is the rest.
       this file is ignored when publishing from a custom Actions workflow, and the domain
       lives in repository settings instead; the file is kept so the intent is visible in the
       repository and so a switch back to branch publishing does not silently drop the domain.
-- [ ] After the first deploy, open `https://getiamai.com/#/start`, sign in to a
+- [ ] After the first deploy, open `https://getiamai.com/` for the home page and
+      `https://getiamai.com/rollout/#/start` for the planner, sign in to a
       test tenant, and walk Start → Connect → Baseline → Scan → Setup → Findings → Roadmap.
       Print the Roadmap. Save the plan, forget the tenant, reload the plan.
 - [ ] Take the first-run screenshots (Start, Findings, Roadmap Progress, Roadmap Plan) at

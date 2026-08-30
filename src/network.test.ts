@@ -11,7 +11,10 @@ import { join } from 'node:path'
 
 const REQUEST_HOSTS = new Set(['graph.microsoft.com', 'login.microsoftonline.com', 'raw.githubusercontent.com'])
 /** Hosts that appear only as places a person may navigate to; never fetched. */
-const LINK_HOSTS = new Set(['learn.microsoft.com', 'entra.microsoft.com', 'aka.ms', 'github.com', 'www.linkedin.com', 'example.test', 'react.dev', 'www.w3.org', 'localhost'])
+// getiamai.com is the site's own origin: the home page links to itself and
+// declares its OpenGraph URL and image there. A social scraper fetches the
+// image; the page never does.
+const LINK_HOSTS = new Set(['learn.microsoft.com', 'entra.microsoft.com', 'aka.ms', 'github.com', 'www.linkedin.com', 'example.test', 'react.dev', 'www.w3.org', 'localhost', 'getiamai.com', 'www.getiamai.com'])
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -22,7 +25,7 @@ function walk(dir: string, out: string[] = []): string[] {
   return out
 }
 
-const files = [...walk('src'), 'index.html']
+const files = [...walk('src'), ...walk('home'), 'index.html']
 const HOST = /https?:\/\/([a-z0-9.-]+)/gi
 
 test('every host in the source is either a request destination on the list or a link a person clicks', () => {

@@ -14,7 +14,8 @@
     "test": "node --test src/**/*.test.ts",
     "analyze": "node scripts/analyze-local.ts",
     "build-index": "node scripts/build-index.ts",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "build:site": "vite build && node scripts/assemble-site.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.19.0",

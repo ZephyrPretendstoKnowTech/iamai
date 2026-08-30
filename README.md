@@ -1,5 +1,7 @@
 # IAMAI
 
+**Home:** https://getiamai.com · **The planner:** https://getiamai.com/rollout/
+
 **A read-only, browser-only rollout planner for Microsoft Entra Conditional Access.**
 
 Point it at a tenant and it reads the real policies, people, devices, licences, and recent
