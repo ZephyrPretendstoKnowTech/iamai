@@ -38,8 +38,13 @@ function spikeCapture(): Plugin {
 }
 
 export default defineConfig({
-  // GitHub Pages serves the app from /<repo>/ (docs/RELEASE-CHECKLIST.md); the workflow sets BASE_PATH.
-  base: process.env.BASE_PATH ?? '/',
+  // Where the app is served from. The custom domain (getiamai.com) serves the
+  // site at the root, so `/` is the default; the github.io fallback serves it
+  // at /<repo>/, which is what VITE_BASE is for. BASE_PATH stays accepted as
+  // the older name so an existing command keeps working.
+  // Routing is hash-based and the baseline index fetches by absolute URL, so
+  // nothing else has to change between the two.
+  base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? '/',
   plugins: [react(), spikeCapture()],
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },
