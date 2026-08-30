@@ -100,7 +100,9 @@ export function reportOnlyStatement(goal: string, policy: string, days: number |
         ? null
         : `${count(days, 'day')}, ${failures === 0 ? 'no' : failures} would-be ${plural(failures, 'failure')}`
   if (obs === null) {
-    return `${strong(goal)} is in report-only via ${em(policy)} for ${count(days ?? 0, 'day')}, and its results are not in the collected sign-in records yet. Check the policy's report-only insights in the portal, or re-scan after a day of sign-ins.`
+    // C11: Findings state; steps instruct. The two instructions that used to
+    // end this sentence belong on the step, not on the finding.
+    return `${strong(goal)} is in report-only via ${em(policy)} for ${count(days ?? 0, 'day')}, and its results are not in the collected sign-in records yet.`
   }
   return `${strong(goal)} is in report-only via ${em(policy)} (${obs}).`
 }

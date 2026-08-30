@@ -169,7 +169,6 @@ const RULE8_WAIVED: Waiver[] = [
   { id: 'C12', match: 'Roadmap / Plan / one step opened:' },
   { id: 'T7/T8', match: 'Roadmap / Plan tab:' },
   { id: 'C11', match: 'Findings / Summary tab:' },
-  { id: 'C16', match: 'Every check IAMAI runs:' },
 ]
 test(`rule 8: no user-facing sentence runs past ${MAX_WORDS} words`, () => {
   const found = surfaces.flatMap((s) =>

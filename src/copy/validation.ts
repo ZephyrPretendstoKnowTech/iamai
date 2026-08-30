@@ -216,7 +216,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   },
   'bg.perUserMfaOff': {
     what: 'The tenant has finished migrating to the authentication methods policy.',
-    why: 'Microsoft says not to enable or enforce per-user MFA when Conditional Access is in use: the legacy setting prompts on its own terms and can block the recovery sign-in Conditional Access would have allowed. Per-user MFA state itself is readable only on a beta Graph endpoint IAMAI does not call, so this check reads the migration state instead.',
+    why: 'Microsoft says not to enable or enforce per-user MFA when Conditional Access is in use: the legacy setting prompts on its own terms and can block the recovery sign-in Conditional Access would have allowed.',
   },
   'bg.noLicenceNeeded': {
     what: 'No licence is assigned unless something needs one, and no mailbox is in daily use.',
@@ -388,8 +388,7 @@ export const FINDING = {
 /** The checks reference page. */
 export const CHECKS_PAGE = {
   title: 'Every check IAMAI runs',
-  intro:
-    'Generated from the rule registry the code runs from. Each check names the object it looks at, what it looks for, and what happens when it fails. Nothing here changes the tenant.',
+  intro: 'Every check IAMAI runs, generated from the rules the code runs from.',
   // The total comes first (prompt 37 §13). The headline used to give the
   // severity split and the sections below gave the subject split, with nothing
   // saying they were two cuts of one set — so the numbers looked like they
@@ -406,8 +405,9 @@ export const CHECKS_PAGE = {
   columns: { id: 'Check', what: 'What it looks for', severity: 'If it fails', why: 'Why it matters', needs: 'Needs' },
   needsNone: 'the answer given in Setup',
   unknownRule: 'A check whose data is missing reports that it could not be run. On a must-fix check, that holds the plan exactly as a failure does.',
-  sources:
-    'Every check names its source. Most point at the Microsoft page they came from; the ones marked Field practice are real and are not something Microsoft documents, so they say so rather than borrowing authority they do not have.',
+  // C17: this defined "Field practice" before the label had appeared. It is
+  // defined on the label itself now, where a reader meets it.
+  sources: 'Every check names its source.',
   next: 'Next: Setup',
   empty: 'The registry is empty.',
 }

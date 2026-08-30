@@ -150,8 +150,18 @@ export const BASELINE = {
   orUpload: 'or upload a package',
   howToPackage: 'how to make one',
   loadFailed: 'Load failed.',
+  // C7: the page never said what a baseline is. Two sentences, before anything
+  // else, because everything below assumes the reader already knows.
+  whatIsIt: [
+    'A baseline is a set of Conditional Access policies somebody has already worked out and maintains: what to require, of whom, and in what order.',
+    'IAMAI compares this tenant against one and builds the plan from the difference, so the target is a published policy set rather than an opinion.',
+  ],
   aboutTitle: 'About this baseline',
   by: 'by',
+  /** C7: who maintains it, and why that is worth knowing. */
+  credential: 'Microsoft MVP in identity and access',
+  /** C7: a pinned copy ages; say when it was taken and what to do about it. */
+  freshness: (date: string) => `This copy was captured ${date}. Reloading it every month or so picks up changes to the source.`,
   repository: 'repository',
   capturedOn: (date: string) => `Captured ${date}`,
   commit: (c: string) => `version ${c.slice(0, 7)}`,
@@ -287,7 +297,8 @@ export const FINDINGS = {
   resolving: 'Reading group memberships…',
   basedOn: (when: string) => `Based on the scan from ${when}.`,
   rescan: 'Re-scan',
-  tabs: { summary: 'Summary', working: "Here's what's working", attention: "Here's what needs attention", details: 'Details' },
+  // C4: every other tab strip in the app is nouns; these two were sentences.
+  tabs: { summary: 'Summary', working: 'In place', attention: 'Needs attention', details: 'Details' },
   sinceCheckpoint: (when: string) => `Since the last checkpoint (${when}):`,
   tiles: { inPlace: 'In place', partly: 'Partly', missing: 'Missing', scored: 'of scored goals in place', proven: 'of enabled users proved MFA in the last 30 days', toSetUp: 'enabled users to set up before enforcement' },
   nothingInPlace: 'Nothing is fully in place yet: that is what the plan is for.',
@@ -502,6 +513,8 @@ export const LICENSING = {
   scored: 'scored',
   reference: 'reference only',
   ladderTitle: 'The free-tier ladder',
+  /** C20: a rung with no step says why, rather than being dead text. */
+  ladderNoStep: 'Rungs without a link are done outside Conditional Access, in the settings each one names.',
   openStep: 'Open the step →',
   ladderIntro: 'The spine of every plan, regardless of licence: curated from Microsoft guidance.',
   ladderInPlan: "Every item below is a step in this tenant's plan, with this tenant's own numbers against it.",

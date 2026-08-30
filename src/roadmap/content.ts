@@ -152,7 +152,7 @@ export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] 
     mode(F.travel, applies, ev)
     mode(F.vpn, applies === 'no' ? 'no' : 'unknown', ev)
     mode(F.roaming, applies === 'no' ? 'no' : 'unknown', ev)
-    mode(F.notInstant, 'yes', ev)
+    mode(F.notInstant, 'yes', F.evidence.tokenLifetime(active.length))
     if (ctx.trustedLocations > 0) mode(F.residential, 'unknown', ev)
   } else if (family === 'mfa' || family === 'guest') {
     const F = FAILURE.mfa

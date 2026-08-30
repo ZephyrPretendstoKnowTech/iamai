@@ -172,18 +172,24 @@ export function MappingPage({
   return (
     <StepFrame title={C.title} does={C.does} needs={needs} next="coverage" nextLabel={C.next}>
       {scan && <ScanAge at={scan.at} />}
+      {/* C6: the banner said four things at once — what is left, two questions
+          that were not asked, and what was resolved without asking. It says the
+          first, which is the one the reader is here for; the rest are notes
+          under it, where a note belongs. */}
       <Callout kind={progress.complete ? 'success' : 'info'} title={C.progress(progress.answered, questions.length, requiredLeft.length)}>
         {requiredLeft.length > 0 ? C.requiredOpen(requiredLeft.map((q) => q.title)) : C.allRequiredDone}
-        {!questions.some((q) => q.id === 'serviceAccounts') && <span className="reason"> {C.noServiceAccounts}</span>}
-        {!questions.some((q) => q.id === 'trustedLocations') && <span className="reason"> {C.noTrustedLocations}</span>}
+      </Callout>
+      <p className="reason">
+        {!questions.some((q) => q.id === 'serviceAccounts') && <span> {C.noServiceAccounts}</span>}
+        {!questions.some((q) => q.id === 'trustedLocations') && <span> {C.noTrustedLocations}</span>}
         {autoCount > 0 && (
-          <span className="reason">
+          <span>
             {' '}
             {C.autoResolved(autoCount)}
             <InfoTip title={C.referenceTip.title} text={C.referenceTip.text} />
           </span>
         )}
-      </Callout>
+      </p>
 
       {questions.map(section)}
       <Toast message={toast} />

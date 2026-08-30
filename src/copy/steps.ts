@@ -395,7 +395,59 @@ const PLATFORM_WORDS: Record<string, string> = {
   linux: 'Linux',
   unknownfuturevalue: 'Other',
 }
+/**
+ * C14: the portal's own labels for grant controls. The API names them in camel
+ * case and the step printed them raw, so "Require: compliantDevice,
+ * domainJoinedDevice" told a technician to look for something the portal does
+ * not call that.
+ */
+const GRANT_WORDS: Record<string, string> = {
+  mfa: 'Require multifactor authentication',
+  compliantdevice: 'Require device to be marked as compliant',
+  domainjoineddevice: 'Require Microsoft Entra hybrid joined device',
+  approvedapplication: 'Require approved client app',
+  compliantapplication: 'Require app protection policy',
+  passwordchange: 'Require password change',
+  block: 'Block access',
+}
+
+/**
+ * C14: location conditions have their own vocabulary. "All" in a location list
+ * is every location, and printing the generic label for it produced
+ * "Conditions → Locations → Include: All users".
+ */
+const LOCATION_WORDS: Record<string, string> = {
+  all: 'All locations',
+  alltrusted: 'All trusted locations',
+}
+
+/**
+ * C12: the Why section carried the baseline author's or Microsoft's product
+ * prose, which says why the control exists in general and nothing about the
+ * tenant in front of you. The Why is generated here: what the goal closes, and
+ * how many people here it touches. The source prose stays underneath, credited,
+ * because it is worth reading — it is just not a Why.
+ */
+export const WHY = {
+  // Deliberately not the step's impact line: that is printed under What
+  // changes, and repeating it here put the same sentence on the page twice.
+  forTenant: (goal: string, people: number, active: number): string =>
+    people === 0
+      ? `In this tenant, ${goal.toLowerCase()} covers nobody today, so the change closes the gap without touching anyone.`
+      : `In this tenant, ${goal.toLowerCase()} covers ${count(people, 'person', 'people')}, ${active} of whom have signed in recently.`,
+  source: 'Why the control exists, from the baseline:',
+  sourceCatalogue: "Why the control exists, from IAMAI's own catalogue:",
+}
+
 export const PORTAL_WORDS = {
+  grant: (values: unknown): string =>
+    Array.isArray(values) && values.length > 0
+      ? values.map((v) => GRANT_WORDS[String(v).toLowerCase()] ?? String(v)).join(', ')
+      : '',
+  locations: (values: unknown, fallback: (v: unknown) => string): string =>
+    Array.isArray(values) && values.length > 0
+      ? values.map((v) => LOCATION_WORDS[String(v).toLowerCase()] ?? fallback([v])).join(', ')
+      : '',
   clientApps: (values: unknown): string =>
     Array.isArray(values) && values.length > 0 ? values.map((v) => CLIENT_APP_WORDS[String(v).toLowerCase()] ?? String(v)).join(', ') : '',
   platforms: (values: unknown): string =>

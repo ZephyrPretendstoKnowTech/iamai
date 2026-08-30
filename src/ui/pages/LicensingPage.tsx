@@ -114,6 +114,8 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
         <p className="muted">
           {LICENSING.ladderIntro}
           {onLadder && ` ${LICENSING.ladderInPlan}`}
+          {/* C20: why some rungs have no step, said once rather than per rung. */}
+          {ladder.items.some((i) => !(onLadder ? true : i.goalId)) && ` ${LICENSING.ladderNoStep}`}
         </p>
         <ol className="sections">
           {ladder.items.map((i) => {
@@ -124,12 +126,14 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
               <li key={i.id}>
                 <strong>{i.name}</strong>
                 {i.description && <span className="reason">: {i.description}</span>}
-                {href && (
+                {/* C20: every rung either links to its step or says why it
+                    cannot. Seven of ten used to be dead text. */}
+                {href ? (
                   <>
                     {' '}
                     <a href={href}>{LICENSING.openStep}</a>
                   </>
-                )}
+                ) : null}
               </li>
             )
           })}

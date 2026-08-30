@@ -129,7 +129,7 @@ export const FAILURE = {
     personal: 'Personal or unmanaged machines, including home PCs used for work',
     kiosks: 'Kiosks, shared workstations and lab machines nobody enrolled',
     contractors: 'Contractors and partners on devices the tenant does not manage',
-    platforms: 'Anything outside Windows 10 and later, iOS, Android, macOS and Ubuntu Linux enrolled in Intune: Windows Home editions, other Linux, and Edge in InPrivate all read as non-compliant',
+    platforms: 'Devices Intune cannot mark compliant, such as Windows Home editions, other Linux builds, and Edge in InPrivate',
     evidence: {
       noDevice: (n: number, total: number) => `${n} of ${count(total, 'active member')} own no compliant device: they will be stopped.`,
       allCovered: 'every active member owns a compliant or hybrid-joined device: low risk.',
@@ -140,7 +140,7 @@ export const FAILURE = {
   },
   geo: {
     travel: 'People travelling for work (seen in the field; Microsoft documents the proxy case rather than this one)',
-    vpn: 'A VPN or proxy whose exit is in another country. Microsoft notes the address it reads is the proxy address, and that keeping a list of provider addresses current is close to impossible.',
+    vpn: 'A VPN or proxy whose exit is in another country, because the address the policy reads is the proxy address',
     roaming: 'Mobile networks that route through a neighbouring country (seen in the field; not something Microsoft documents)',
     notInstant: 'A country rule does not bite until the token refreshes, so an existing session carries on and a traveller is not unblocked the moment the list changes.',
     residential: 'An office on ordinary broadband whose address changes, so the trusted location stops matching (seen in the field; not something Microsoft documents)',
@@ -148,6 +148,10 @@ export const FAILURE = {
       seen: (countries: string, users: number) => `sign-ins seen from ${countries} (${count(users, 'person', 'people')}) in 30 days: these will be blocked.`,
       none: 'every sign-in in 30 days came from an allowed country: low risk.',
       unknown: 'no sign-in records to check against: ask who travels before enforcing.',
+      // C13: this risk always applies, because it is a property of token
+      // lifetime rather than of the tenant, so it needs evidence of its own
+      // instead of borrowing the country-sign-in evidence beside it.
+      tokenLifetime: (people: number) => `${count(people, 'active person', 'active people')} hold a session that carries on until its token refreshes, up to an hour.`,
     },
   },
   mfa: {
@@ -189,10 +193,10 @@ export const FAILURE = {
     },
   },
   session: {
-    persistScope: 'A never-persistent browser rule has to target every resource. Microsoft requires it, because all tabs in a browser share one session token.',
+    persistScope: 'A never-persistent rule that does not target every resource, which Microsoft requires because all tabs in a browser share one session token',
     everyTimeLoop: 'Asking for sign-in every time without also requiring MFA in the same policy can put people in a sign-in loop.',
     sharedDevices: 'Teams Rooms, panels and desk phones do not support sign-in frequency or browser persistence, and a frequency policy signs them out on a cycle.',
-    rememberMfa: 'Turn off Remember MFA on trusted devices first: the two settings together prompt people at times nobody expects.',
+    rememberMfa: 'Remember MFA on trusted devices left on, which prompts people at times nobody expects once sessions stop persisting',
     downloadLeaks:
       'App-enforced restrictions stop downloads in the browser, and leave Anyone links, older clients and file previews working. It can take a day to take effect and does not touch sessions already signed in.',
     unsaved: 'People losing unsaved work to a re-authentication prompt',

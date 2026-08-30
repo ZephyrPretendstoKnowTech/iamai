@@ -1,5 +1,5 @@
 {
- "fingerprint": "8a62b74857c80cbe",
+ "fingerprint": "9e952422ece6c42d",
  "surfaces": [
   {
    "name": "Start",
@@ -354,7 +354,9 @@
    "tips": [],
    "sentences": [
     "Picks the target policy set the rollout plan aims for.",
-    "Jon Hope — Defense in Depth CA baseline by Jon Hope · repository",
+    "A baseline is a set of Conditional Access policies somebody has already worked out and maintains: what to require, of whom, and in what order.",
+    "IAMAI compares this tenant against one and builds the plan from the difference, so the target is a published policy set rather than an opinion.",
+    "Jon Hope — Defense in Depth CA baseline by Jon Hope, Microsoft MVP in identity and access · repository",
     "version ceccdc2",
     "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.",
     "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.",
@@ -376,7 +378,9 @@
    "tables": [],
    "occurrences": {
     "Picks the target policy set the rollout plan aims for.": 1,
-    "Jon Hope — Defense in Depth CA baseline by Jon Hope · repository": 1,
+    "A baseline is a set of Conditional Access policies somebody has already worked out and maintains: what to require, of whom, and in what order.": 1,
+    "IAMAI compares this tenant against one and builds the plan from the difference, so the target is a published policy set rather than an opinion.": 1,
+    "Jon Hope — Defense in Depth CA baseline by Jon Hope, Microsoft MVP in identity and access · repository": 1,
     "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.": 1,
     "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.": 1,
     "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2": 1,
@@ -385,7 +389,9 @@
    },
    "occurrencesAll": {
     "Picks the target policy set the rollout plan aims for.": 1,
-    "Jon Hope — Defense in Depth CA baseline by Jon Hope · repository": 1,
+    "A baseline is a set of Conditional Access policies somebody has already worked out and maintains: what to require, of whom, and in what order.": 1,
+    "IAMAI compares this tenant against one and builds the plan from the difference, so the target is a published policy set rather than an opinion.": 1,
+    "Jon Hope — Defense in Depth CA baseline by Jon Hope, Microsoft MVP in identity and access · repository": 1,
     "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.": 1,
     "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.": 1,
     "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2": 1,
@@ -404,8 +410,8 @@
     "empty": 0,
     "summaries": 2,
     "tips": 0,
-    "sentences": 115,
-    "total": 136
+    "sentences": 171,
+    "total": 192
    }
   },
   {
@@ -733,6 +739,7 @@
     "Needs: ✓ baseline loaded · ✓ scan complete",
     "Based on the scan from this minute · <date and time>.",
     "Re-scan",
+    "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.",
     "No service accounts detected, so nothing needs a carve-out; the plan records that."
    ],
    "nav": [
@@ -751,6 +758,7 @@
     "The answers shape the plan and the checks.": 1,
     "Needs: ✓ baseline loaded · ✓ scan complete": 1,
     "Based on the scan from this minute · <date and time>.": 1,
+    "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.": 1,
     "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1
    },
    "occurrencesAll": {
@@ -758,6 +766,7 @@
     "The answers shape the plan and the checks.": 1,
     "Needs: ✓ baseline loaded · ✓ scan complete": 1,
     "Based on the scan from this minute · <date and time>.": 1,
+    "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.": 1,
     "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1
    },
    "wordCounts": {
@@ -772,8 +781,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 3,
-    "sentences": 46,
-    "total": 53
+    "sentences": 71,
+    "total": 78
    }
   },
   {
@@ -1215,14 +1224,14 @@
    ],
    "tabs": [
     "Summary",
-    "Here's what's working",
-    "Here's what needs attention",
+    "In place",
+    "Needs attention",
     "Details"
    ],
    "buttons": [
     "Summary",
-    "Here's what's working",
-    "Here's what needs attention",
+    "In place",
+    "Needs attention",
     "Details",
     "Next: Roadmap"
    ],
@@ -1275,8 +1284,8 @@
    },
    "wordCounts": {
     "headings": 1,
-    "tabs": 9,
-    "buttons": 11,
+    "tabs": 6,
+    "buttons": 8,
     "options": 0,
     "links": 1,
     "chips": 0,
@@ -1286,7 +1295,7 @@
     "summaries": 0,
     "tips": 3,
     "sentences": 52,
-    "total": 77
+    "total": 71
    }
   },
   {
@@ -1367,52 +1376,6 @@
     "tips": 24,
     "sentences": 159,
     "total": 209
-   }
-  },
-  {
-   "name": "Findings / working tab",
-   "note": "panel only",
-   "headings": [
-    "Identity"
-   ],
-   "tabs": [],
-   "buttons": [],
-   "options": [],
-   "links": [],
-   "chips": [
-    "In place"
-   ],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [
-    "In place Every user satisfies MFA on every app. Delivered by CA001 - Require MFA for all users, with 1 break-glass account excluded.Value 5Effort 1Disruption 1",
-    "In place Guests satisfy MFA. Delivered by CA001 - Require MFA for all users, with 0 of 1 break-glass account excluded; u-4 is not.Value 5Effort 1Disruption 1"
-   ],
-   "tips": [
-    "About Priority",
-    "About Why this matters"
-   ],
-   "sentences": [],
-   "nav": [],
-   "primary": [],
-   "tables": [],
-   "occurrences": {},
-   "occurrencesAll": {},
-   "wordCounts": {
-    "headings": 1,
-    "tabs": 0,
-    "buttons": 0,
-    "options": 0,
-    "links": 0,
-    "chips": 2,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 53,
-    "tips": 6,
-    "sentences": 0,
-    "total": 62
    }
   },
   {
@@ -1587,9 +1550,9 @@
     "Fix this first: otherwise the rollout gets the blame.",
     "Priya Nair: investigate the failing sign-in",
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)",
-    "Must fix first: 14 steps that can deny access are held until it passes. · nobody",
+    "Must fix first: 14 steps that can deny access are held until it passes.",
     "about 16 minutes",
-    "nothing blocks it, and 2 later steps wait for it · nobody",
+    "nothing blocks it, and 2 later steps wait for it",
     "about 10 minutes",
     "setting up 1 person unblocks 3 steps · Priya Nair",
     "about 5 minutes"
@@ -1615,8 +1578,8 @@
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
     "Troubleshoot sign-in problems with Conditional Access →": 1,
-    "Must fix first: 14 steps that can deny access are held until it passes. · nobody": 1,
-    "nothing blocks it, and 2 later steps wait for it · nobody": 1,
+    "Must fix first: 14 steps that can deny access are held until it passes.": 1,
+    "nothing blocks it, and 2 later steps wait for it": 1,
     "setting up 1 person unblocks 3 steps · Priya Nair": 1
    },
    "occurrencesAll": {
@@ -1633,8 +1596,8 @@
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
     "Troubleshoot sign-in problems with Conditional Access →": 1,
-    "Must fix first: 14 steps that can deny access are held until it passes. · nobody": 1,
-    "nothing blocks it, and 2 later steps wait for it · nobody": 1,
+    "Must fix first: 14 steps that can deny access are held until it passes.": 1,
+    "nothing blocks it, and 2 later steps wait for it": 1,
     "setting up 1 person unblocks 3 steps · Priya Nair": 1
    },
    "wordCounts": {
@@ -1649,8 +1612,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 3,
-    "sentences": 192,
-    "total": 226
+    "sentences": 188,
+    "total": 222
    }
   },
   {
@@ -2197,9 +2160,8 @@
     "Load plan",
     "Copy as Markdown",
     "Copy as prompt",
-    "Copy as prompt: Summarise this plan",
-    "Download as Markdown (one file)",
-    "Download as CSV (one file)",
+    "Download as Markdown",
+    "Download as CSV",
     "Copy prompt",
     "Download every prompt as one Markdown file",
     "Download the bundle",
@@ -2216,10 +2178,9 @@
    "sentences": [
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.",
     "Load it back on any machine.",
-    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan",
-    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.",
-    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.",
-    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt",
+    "Save planLoad planCopy as MarkdownCopy as prompt",
+    "One row per step: what changed, when, who it touched, and how to undo it.",
+    "Download as MarkdownDownload as CSVCopy as prompt",
     "IAMAI runs no models and sends nothing anywhere.",
     "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.",
     "Rewrite this announcement in our voiceCopy prompt",
@@ -2231,6 +2192,8 @@
     "Translate this announcement into the language you needCopy prompt",
     "Summarise this planCopy prompt",
     "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.",
+    "The unredacted file contains people's names and sign-in names.",
+    "Once you upload it to another tool it has left this browser.",
     "Unredacted",
     "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)",
     "The print layout: cover, waves, every step in full.",
@@ -2244,10 +2207,9 @@
    "occurrences": {
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
     "Load it back on any machine.": 1,
-    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan": 1,
-    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.": 1,
-    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.": 1,
-    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt": 1,
+    "Save planLoad planCopy as MarkdownCopy as prompt": 1,
+    "One row per step: what changed, when, who it touched, and how to undo it.": 1,
+    "Download as MarkdownDownload as CSVCopy as prompt": 1,
     "IAMAI runs no models and sends nothing anywhere.": 1,
     "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
     "Rewrite this announcement in our voiceCopy prompt": 1,
@@ -2260,6 +2222,8 @@
     "Summarise this planCopy prompt": 1,
     "Download every prompt as one Markdown file": 1,
     "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.": 1,
+    "The unredacted file contains people's names and sign-in names.": 1,
+    "Once you upload it to another tool it has left this browser.": 1,
     "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)": 1,
     "The print layout: cover, waves, every step in full.": 1,
     "Save as PDF from the print dialog.": 1
@@ -2267,10 +2231,9 @@
    "occurrencesAll": {
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
     "Load it back on any machine.": 1,
-    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan": 1,
-    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.": 1,
-    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.": 1,
-    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt": 1,
+    "Save planLoad planCopy as MarkdownCopy as prompt": 1,
+    "One row per step: what changed, when, who it touched, and how to undo it.": 1,
+    "Download as MarkdownDownload as CSVCopy as prompt": 1,
     "IAMAI runs no models and sends nothing anywhere.": 1,
     "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
     "Rewrite this announcement in our voiceCopy prompt": 1,
@@ -2283,6 +2246,8 @@
     "Summarise this planCopy prompt": 1,
     "Download every prompt as one Markdown file": 1,
     "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.": 1,
+    "The unredacted file contains people's names and sign-in names.": 1,
+    "Once you upload it to another tool it has left this browser.": 1,
     "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)": 1,
     "The print layout: cover, waves, every step in full.": 1,
     "Save as PDF from the print dialog.": 1
@@ -2290,7 +2255,7 @@
    "wordCounts": {
     "headings": 13,
     "tabs": 0,
-    "buttons": 43,
+    "buttons": 33,
     "options": 0,
     "links": 0,
     "chips": 0,
@@ -2299,8 +2264,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 247,
-    "total": 303
+    "sentences": 232,
+    "total": 278
    }
   },
   {
@@ -2471,7 +2436,8 @@
     "Checked: nothing blocks it and a foundation the later steps need.",
     "Nothing changes for anyone.",
     "This is groundwork so a mistake later can be undone.",
-    "Emergency access accounts has 1 must-fix check outstanding.",
+    "In this tenant, sort out emergency access before anything else covers nobody today, so the change closes the gap without touching anyone.",
+    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 1 must-fix check outstanding.",
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.",
     "Nothing has to exist first.",
     "Each of these has to pass:",
@@ -2529,7 +2495,8 @@
     "Checked: nothing blocks it and a foundation the later steps need.": 1,
     "Nothing changes for anyone.": 2,
     "This is groundwork so a mistake later can be undone.": 2,
-    "Emergency access accounts has 1 must-fix check outstanding.": 1,
+    "In this tenant, sort out emergency access before anything else covers nobody today, so the change closes the gap without touching anyone.": 1,
+    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 1 must-fix check outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
     "Nothing has to exist first.": 1,
     "Each of these has to pass:": 1,
@@ -2576,7 +2543,8 @@
     "Checked: nothing blocks it and a foundation the later steps need.": 2,
     "Nothing changes for anyone.": 2,
     "This is groundwork so a mistake later can be undone.": 2,
-    "Emergency access accounts has 1 must-fix check outstanding.": 1,
+    "In this tenant, sort out emergency access before anything else covers nobody today, so the change closes the gap without touching anyone.": 1,
+    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 1 must-fix check outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
     "Nothing has to exist first.": 1,
     "Each of these has to pass:": 1,
@@ -2633,8 +2601,8 @@
     "empty": 0,
     "summaries": 39,
     "tips": 15,
-    "sentences": 747,
-    "total": 1646
+    "sentences": 777,
+    "total": 1676
    }
   },
   {
@@ -2710,6 +2678,7 @@
     ": Service principals can be scoped and risk-gated too (Workload ID Premium).",
     ": Device enrollment is a trust boundary — make it a fresh, interactive sign-in.",
     "The spine of every plan, regardless of licence: curated from Microsoft guidance.",
+    "Rungs without a link are done outside Conditional Access, in the settings each one names.",
     ": Microsoft's free baseline: MFA for admins, MFA registration for everyone, legacy authentication blocked.",
     "The starting point when there is no Conditional Access.",
     ": Two cloud-only emergency accounts, excluded from every policy and signed in on a schedule, so a mistaken policy still leaves a way back in.",
@@ -2766,6 +2735,7 @@
     ": Service principals can be scoped and risk-gated too (Workload ID Premium).": 1,
     ": Device enrollment is a trust boundary — make it a fresh, interactive sign-in.": 1,
     "The spine of every plan, regardless of licence: curated from Microsoft guidance.": 1,
+    "Rungs without a link are done outside Conditional Access, in the settings each one names.": 1,
     ": Microsoft's free baseline: MFA for admins, MFA registration for everyone, legacy authentication blocked.": 1,
     "The starting point when there is no Conditional Access.": 1,
     ": Two cloud-only emergency accounts, excluded from every policy and signed in on a schedule, so a mistaken policy still leaves a way back in.": 1,
@@ -2806,6 +2776,7 @@
     ": Service principals can be scoped and risk-gated too (Workload ID Premium).": 1,
     ": Device enrollment is a trust boundary — make it a fresh, interactive sign-in.": 1,
     "The spine of every plan, regardless of licence: curated from Microsoft guidance.": 1,
+    "Rungs without a link are done outside Conditional Access, in the settings each one names.": 1,
     ": Microsoft's free baseline: MFA for admins, MFA registration for everyone, legacy authentication blocked.": 1,
     "The starting point when there is no Conditional Access.": 1,
     ": Two cloud-only emergency accounts, excluded from every policy and signed in on a schedule, so a mistaken policy still leaves a way back in.": 1,
@@ -2830,8 +2801,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 7,
-    "sentences": 451,
-    "total": 508
+    "sentences": 466,
+    "total": 523
    }
   },
   {
@@ -3025,14 +2996,11 @@
    "summaries": [],
    "tips": [],
    "sentences": [
-    "Generated from the rule registry the code runs from.",
-    "Each check names the object it looks at, what it looks for, and what happens when it fails.",
-    "Nothing here changes the tenant.",
+    "Every check IAMAI runs, generated from the rules the code runs from.",
     "51 checks in all: 23 must-fix checks, 25 recommended checks and 3 notes.",
+    "Every check names its source.",
     "A check whose data is missing reports that it could not be run.",
     "On a must-fix check, that holds the plan exactly as a failure does.",
-    "Every check names its source.",
-    "Most point at the Microsoft page they came from; the ones marked Field practice are real and are not something Microsoft documents, so they say so rather than borrowing authority they do not have.",
     "The same checks again, grouped by what they look at (7 groups).",
     "Every check appears in exactly one group.",
     "10 must-fix, 10 recommended, 3 notes",
@@ -3085,27 +3053,21 @@
     }
    ],
    "occurrences": {
-    "Generated from the rule registry the code runs from.": 1,
-    "Each check names the object it looks at, what it looks for, and what happens when it fails.": 1,
-    "Nothing here changes the tenant.": 1,
+    "Every check IAMAI runs, generated from the rules the code runs from.": 1,
     "51 checks in all: 23 must-fix checks, 25 recommended checks and 3 notes.": 1,
+    "Every check names its source.": 1,
     "A check whose data is missing reports that it could not be run.": 1,
     "On a must-fix check, that holds the plan exactly as a failure does.": 1,
-    "Every check names its source.": 1,
-    "Most point at the Microsoft page they came from; the ones marked Field practice are real and are not something Microsoft documents, so they say so rather than borrowing authority they do not have.": 1,
     "The same checks again, grouped by what they look at (7 groups).": 1,
     "Every check appears in exactly one group.": 1,
     "10 must-fix, 10 recommended, 3 notes": 1
    },
    "occurrencesAll": {
-    "Generated from the rule registry the code runs from.": 1,
-    "Each check names the object it looks at, what it looks for, and what happens when it fails.": 1,
-    "Nothing here changes the tenant.": 1,
+    "Every check IAMAI runs, generated from the rules the code runs from.": 1,
     "51 checks in all: 23 must-fix checks, 25 recommended checks and 3 notes.": 1,
+    "Every check names its source.": 1,
     "A check whose data is missing reports that it could not be run.": 1,
     "On a must-fix check, that holds the plan exactly as a failure does.": 1,
-    "Every check names its source.": 1,
-    "Most point at the Microsoft page they came from; the ones marked Field practice are real and are not something Microsoft documents, so they say so rather than borrowing authority they do not have.": 1,
     "The same checks again, grouped by what they look at (7 groups).": 1,
     "Every check appears in exactly one group.": 1,
     "10 must-fix, 10 recommended, 3 notes": 1
@@ -3122,8 +3084,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 159,
-    "total": 255
+    "sentences": 105,
+    "total": 201
    }
   },
   {
@@ -3153,9 +3115,8 @@
     "Load plan",
     "Copy as Markdown",
     "Copy as prompt",
-    "Copy as prompt: Summarise this plan",
-    "Download as Markdown (one file)",
-    "Download as CSV (one file)",
+    "Download as Markdown",
+    "Download as CSV",
     "Copy prompt",
     "Download every prompt as one Markdown file",
     "Download the bundle",
@@ -3187,18 +3148,17 @@
     "Fix this first: otherwise the rollout gets the blame.",
     "Priya Nair: investigate the failing sign-in",
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)",
-    "Must fix first: 14 steps that can deny access are held until it passes. · nobody",
+    "Must fix first: 14 steps that can deny access are held until it passes.",
     "about 16 minutes",
-    "nothing blocks it, and 2 later steps wait for it · nobody",
+    "nothing blocks it, and 2 later steps wait for it",
     "about 10 minutes",
     "setting up 1 person unblocks 3 steps · Priya Nair",
     "about 5 minutes",
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.",
     "Load it back on any machine.",
-    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan",
-    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.",
-    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.",
-    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt",
+    "Save planLoad planCopy as MarkdownCopy as prompt",
+    "One row per step: what changed, when, who it touched, and how to undo it.",
+    "Download as MarkdownDownload as CSVCopy as prompt",
     "IAMAI runs no models and sends nothing anywhere.",
     "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.",
     "Rewrite this announcement in our voiceCopy prompt",
@@ -3210,6 +3170,8 @@
     "Translate this announcement into the language you needCopy prompt",
     "Summarise this planCopy prompt",
     "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.",
+    "The unredacted file contains people's names and sign-in names.",
+    "Once you upload it to another tool it has left this browser.",
     "Unredacted",
     "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)",
     "The print layout: cover, waves, every step in full.",
@@ -3237,15 +3199,14 @@
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
     "Troubleshoot sign-in problems with Conditional Access →": 1,
-    "Must fix first: 14 steps that can deny access are held until it passes. · nobody": 1,
-    "nothing blocks it, and 2 later steps wait for it · nobody": 1,
+    "Must fix first: 14 steps that can deny access are held until it passes.": 1,
+    "nothing blocks it, and 2 later steps wait for it": 1,
     "setting up 1 person unblocks 3 steps · Priya Nair": 1,
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
     "Load it back on any machine.": 1,
-    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan": 1,
-    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.": 1,
-    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.": 1,
-    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt": 1,
+    "Save planLoad planCopy as MarkdownCopy as prompt": 1,
+    "One row per step: what changed, when, who it touched, and how to undo it.": 1,
+    "Download as MarkdownDownload as CSVCopy as prompt": 1,
     "IAMAI runs no models and sends nothing anywhere.": 1,
     "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
     "Rewrite this announcement in our voiceCopy prompt": 1,
@@ -3258,6 +3219,8 @@
     "Summarise this planCopy prompt": 1,
     "Download every prompt as one Markdown file": 1,
     "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.": 1,
+    "The unredacted file contains people's names and sign-in names.": 1,
+    "Once you upload it to another tool it has left this browser.": 1,
     "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)": 1,
     "The print layout: cover, waves, every step in full.": 1,
     "Save as PDF from the print dialog.": 1
@@ -3276,15 +3239,14 @@
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
     "Troubleshoot sign-in problems with Conditional Access →": 1,
-    "Must fix first: 14 steps that can deny access are held until it passes. · nobody": 1,
-    "nothing blocks it, and 2 later steps wait for it · nobody": 1,
+    "Must fix first: 14 steps that can deny access are held until it passes.": 1,
+    "nothing blocks it, and 2 later steps wait for it": 1,
     "setting up 1 person unblocks 3 steps · Priya Nair": 1,
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
     "Load it back on any machine.": 1,
-    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan": 1,
-    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.": 1,
-    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.": 1,
-    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt": 1,
+    "Save planLoad planCopy as MarkdownCopy as prompt": 1,
+    "One row per step: what changed, when, who it touched, and how to undo it.": 1,
+    "Download as MarkdownDownload as CSVCopy as prompt": 1,
     "IAMAI runs no models and sends nothing anywhere.": 1,
     "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
     "Rewrite this announcement in our voiceCopy prompt": 1,
@@ -3297,6 +3259,8 @@
     "Summarise this planCopy prompt": 1,
     "Download every prompt as one Markdown file": 1,
     "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.": 1,
+    "The unredacted file contains people's names and sign-in names.": 1,
+    "Once you upload it to another tool it has left this browser.": 1,
     "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)": 1,
     "The print layout: cover, waves, every step in full.": 1,
     "Save as PDF from the print dialog.": 1
@@ -3304,7 +3268,7 @@
    "wordCounts": {
     "headings": 27,
     "tabs": 3,
-    "buttons": 49,
+    "buttons": 39,
     "options": 0,
     "links": 8,
     "chips": 0,
@@ -3313,8 +3277,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 3,
-    "sentences": 439,
-    "total": 529
+    "sentences": 420,
+    "total": 500
    }
   }
  ]

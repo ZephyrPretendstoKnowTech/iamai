@@ -22,8 +22,10 @@ export function ChecksPage() {
       <h2>{CHECKS_PAGE.title}</h2>
       <p>{CHECKS_PAGE.intro}</p>
       <p className="reason">{CHECKS_PAGE.counts(counts.blocker, counts.warning, counts.note)}</p>
-      <p className="reason">{CHECKS_PAGE.unknownRule}</p>
-      <p className="reason">{CHECKS_PAGE.sources}</p>
+      {/* C17: one opening line, not three stacked meta-paragraphs. */}
+      <p className="reason">
+        {CHECKS_PAGE.sources} {CHECKS_PAGE.unknownRule}
+      </p>
       <p className="reason">{CHECKS_PAGE.bySubject(subjects.length)}</p>
       {subjects.map((subject) => {
         const rows = REGISTRY.filter((r) => r.subject === subject)
