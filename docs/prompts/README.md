@@ -52,3 +52,8 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `38-remove-and-rewrite.md` | 22 removals, Start page rewrite, 20 copy fixes | 37 done |
 | `39-layout-platform-permissions.md` | Sidebar, Scan order, tabs, light theme, responsive, Application.Read.All decision | 38 done |
 | `40-truth-engine-and-schedule.md` | Why 37 did not hold: one derivation for every count, blocked reasons that are true, the ring model reaching the calendar, build stamp and cache | 39 done; the security fixes committed; docs/qa/review-08-findings.md present |
+| `41-notice-periods-and-batching.md` | Notice periods by disruption, enforcement batching into change windows, band recomputation | 40 done; build stamp live; docs/qa/review-09-findings.md present |
+| `42-windows-readiness-preflight.md` | Per-class observation windows, report-only readiness verdict, operator pre-flight | 41 done; docs/design/observation-and-readiness.md present |
+| `43-naming-consolidation-serviceprincipals.md` | Naming explainer and detection, organisation report, safe consolidation, missing service principals | 42 done; docs/design/naming-and-consolidation.md present |
+| `44-skips-recovery-drift.md` | Skipping with reasons, unskippable emergency access, printable recovery card, exclusion drift | 43 done |
+| `45-demo-mode-and-remaining.md` | Sample-data demo mode, remaining review items, why-this-order | 44 done |
