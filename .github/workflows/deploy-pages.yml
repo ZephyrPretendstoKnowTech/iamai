@@ -1,11 +1,13 @@
-# Publishes the static bundle to GitHub Pages from a clean checkout (prompt 31 §6).
-# The site is served from the custom domain getiamai.com at the root, so the
-# build base is "/". public/CNAME keeps the domain across deploys. Vite's base
-# and MSAL's redirect URI both derive from VITE_BASE, and routing is hash-based,
-# so no rewrite rules are needed.
+# Publishes the site to GitHub Pages from a clean checkout (prompt 35 §1).
 #
-# To publish on the github.io fallback instead, set VITE_BASE to /<repo>/ and
-# remove public/CNAME.
+#   getiamai.com/           the home page (hand-written, home/)
+#   getiamai.com/rollout/   the planner (the Vite bundle)
+#
+# One repository, one workflow, one domain. TOOL_PATH names the folder and is
+# the single constant: vite.config.ts derives its base and outDir from it, and
+# scripts/assemble-site.mjs reads the same value when it lays out dist/.
+# Routing is hash-based and the baseline index fetches by absolute URL, so
+# nothing else changes with the path.
 name: deploy-pages
 
 on:
@@ -33,9 +35,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run build
+      - run: npm run build:site
         env:
-          VITE_BASE: ${{ vars.VITE_BASE || '/' }}
+          TOOL_PATH: ${{ vars.TOOL_PATH || 'rollout' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

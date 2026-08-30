@@ -40,15 +40,21 @@ function spikeCapture(): Plugin {
 // The tool version a person can quote in a feedback email (prompt 34 §2).
 const APP_VERSION = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')).version
 
+// Where this tool lives under the domain (prompt 35 §1). getiamai.com/ is the
+// home page for IAMAI as a whole; the planner sits in a folder beside any
+// future tool. One constant: if the tool is ever renamed, this changes and
+// nothing else does. scripts/assemble-site.mjs reads the same value.
+export const TOOL_PATH = process.env.TOOL_PATH ?? 'rollout'
+
 export default defineConfig({
-  define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
-  // Where the app is served from. The custom domain (getiamai.com) serves the
-  // site at the root, so `/` is the default; the github.io fallback serves it
-  // at /<repo>/, which is what VITE_BASE is for. BASE_PATH stays accepted as
-  // the older name so an existing command keeps working.
-  // Routing is hash-based and the baseline index fetches by absolute URL, so
-  // nothing else has to change between the two.
-  base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? '/',
+  define: { __APP_VERSION__: JSON.stringify(APP_VERSION), __TOOL_PATH__: JSON.stringify(TOOL_PATH) },
+  // Derived from TOOL_PATH so the base and the output folder cannot disagree.
+  // VITE_BASE still overrides it for hosting that is not the custom domain
+  // (the github.io fallback serves from /<repo>/); BASE_PATH stays accepted as
+  // the older name. Routing is hash-based and the baseline index fetches by
+  // absolute URL, so nothing else has to change between them.
+  base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? `/${TOOL_PATH}/`,
+  build: { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
   plugins: [react(), spikeCapture()],
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },

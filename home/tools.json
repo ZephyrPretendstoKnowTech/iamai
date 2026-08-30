@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Conditional Access rollout planner",
+    "description": "Turn a Conditional Access baseline into a dated rollout plan that names who each step touches before anything is enforced. Read-only, runs in your browser.",
+    "status": "testing",
+    "path": ""
+  }
+]

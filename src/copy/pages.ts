@@ -33,6 +33,7 @@ export const SHELL = {
   footerLeft: 'Read-only · nothing leaves your browser',
   footerFollow: 'Follow me here:',
   footerAuthor: 'Lachlan Robinette',
+  footerHome: 'All IAMAI tools',
   footerGithub: 'GitHub',
   footerSource: 'Source',
   needs: 'Needs:',
