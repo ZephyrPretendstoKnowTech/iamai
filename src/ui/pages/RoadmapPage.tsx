@@ -21,7 +21,7 @@ import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
 import type { Checkpoint } from '../../roadmap/plan.ts'
 import type { Step, StepStatus } from '../../roadmap/types.ts'
-import { saveDevResults } from '../../graph/spikes/spike1.ts'
+import { saveDevResults } from '../../devSave.ts'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { ROADMAP as C } from '../../copy/pages.ts'
 import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'

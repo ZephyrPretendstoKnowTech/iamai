@@ -81,3 +81,85 @@ test('the styles self-host every font and import nothing remote', () => {
   for (const m of css.matchAll(/url\(([^)]+)\)/g)) assert.ok(!/^["']?https?:/i.test(m[1].trim()), `remote url in css: ${m[1]}`)
   assert.doesNotMatch(css, /@import\s+(?:url\()?["']?https?:/i)
 })
+
+// ---- the built artifact, not just the source ----
+//
+// The two tests above read source. That is a lint, and the audit was right that
+// SECURITY.md oversold it: it cannot see what a dependency does, what a bundled
+// JSON carries, or what the build actually emitted (egress-02, supply-03). It
+// also could not see that the dev-only Graph spike harness was shipping to every
+// visitor while two source comments said it did not (egress-04, supply-08).
+//
+// So these check dist/ when it exists. Skipped rather than failed when it does
+// not, because `npm test` runs before `npm run build` in CI and a developer
+// running tests alone should not be told to build first — CI reaches both.
+/**
+ * Hosts that appear as inert strings in the built artifact and are never
+ * requested. Each is named with where it comes from, so a NEW host still fails
+ * — which is the whole point of checking the artifact rather than the source.
+ *
+ * The audit predicted this list would be non-empty (egress-02: "a bundled JSON
+ * already smuggles a fourth host past it"), and it was right: five of these six
+ * are invisible to the source lint above.
+ */
+const ARTIFACT_ONLY = new Map([
+  // MSAL ships a known-authority table for every sovereign cloud. IAMAI's
+  // authority is login.microsoftonline.com (src/graph/msal.ts:14); the rest are
+  // constants MSAL compares against and never contacts on our configuration.
+  ['login.microsoftonline.us', '@azure/msal-browser sovereign-cloud authority table'],
+  ['login.microsoftonline.de', '@azure/msal-browser sovereign-cloud authority table'],
+  ['login.chinacloudapi.cn', '@azure/msal-browser sovereign-cloud authority table'],
+  ['login.windows-ppe.net', '@azure/msal-browser test authority constant'],
+  // The Azure instance-metadata address, in MSAL's managed-identity path. That
+  // path is unreachable from a browser SPA and is not configured here.
+  ['169.254.169.254', '@azure/msal-browser managed-identity IMDS constant'],
+  // Provenance in data/product-names.json: the "source" field recording where
+  // the licence table was generated from. Read by scripts/refresh-product-names.ts
+  // at development time, never by the app.
+  ['download.microsoft.com', 'data/product-names.json provenance field'],
+])
+
+const DIST = 'dist/rollout/assets'
+const built = (): string[] => {
+  try {
+    return readdirSync(DIST)
+      .filter((f) => /\.(js|css)$/.test(f))
+      .map((f) => join(DIST, f))
+  } catch {
+    return []
+  }
+}
+
+test('the built bundle addresses no host outside the list', () => {
+  const files = built()
+  if (files.length === 0) return // no build to check; CI always has one
+  const offenders: string[] = []
+  for (const f of files) {
+    for (const m of readFileSync(f, 'utf8').matchAll(HOST)) {
+      const host = m[1].toLowerCase()
+      if (REQUEST_HOSTS.has(host) || LINK_HOSTS.has(host) || ARTIFACT_ONLY.has(host)) continue
+      offenders.push(`${f}: ${host}`)
+    }
+  }
+  assert.deepEqual([...new Set(offenders)], [], 'the built bundle names a host that is on no list')
+
+  // A documented exception that stops being present is an exception to delete.
+  const text = files.map((f) => readFileSync(f, 'utf8')).join('')
+  const stale = [...ARTIFACT_ONLY.keys()].filter((h) => !text.includes(h))
+  assert.deepEqual(stale, [], 'these hosts are no longer in the bundle; remove them from ARTIFACT_ONLY')
+})
+
+test('the dev spike harness is absent from the built bundle', () => {
+  const files = built()
+  if (files.length === 0) return
+  // Markers unique to the harness. Deliberately not 'authentication/methods' or
+  // 'applicationSignInDetailedSummary': those are real collector endpoints and
+  // matching on them would fail on correct code.
+  const SPIKE_ONLY = ['__spike', '__spike1', '[spike1]', 'runSpike1', 'not%20startswith']
+  const found: string[] = []
+  for (const f of files) {
+    const text = readFileSync(f, 'utf8')
+    for (const marker of SPIKE_ONLY) if (text.includes(marker)) found.push(`${f}: ${marker}`)
+  }
+  assert.deepEqual(found, [], 'the dev-only Graph probe harness ships in the production bundle')
+})
