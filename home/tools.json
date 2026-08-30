@@ -1,7 +1,7 @@
 [
   {
     "name": "Conditional Access rollout planner",
-    "description": "Turn a Conditional Access baseline into a dated rollout plan that names who each step touches before anything is enforced. Read-only, runs in your browser.",
+    "description": "Know what a Conditional Access change will do before you make it: who it locks out, what order to make changes in, and what to watch afterwards. Read-only, runs in your browser.",
     "status": "testing",
     "path": ""
   }

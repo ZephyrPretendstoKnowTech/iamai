@@ -61,14 +61,18 @@ export const SHELL = {
 }
 
 export const START = {
-  headline: 'Turn your Microsoft Entra Conditional Access baseline into a dated rollout plan that names who each step touches before anything is enforced.',
+  // C1: the visitor has a tenant and a fear, not a baseline. The old headline
+  // opened on a word they have no reason to know and asked them to turn one
+  // thing they do not have into another. It says what they get now, and
+  // "baseline" waits until the page has explained it.
+  headline: 'Know what a Conditional Access change will do before you make it.',
   subhead:
-    "IAMAI reads your Microsoft 365 tenant's Conditional Access policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.",
+    "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.",
   caveat: 'Predicted impact, confirmed in report-only.',
   cta: 'Get started',
   howTitle: 'How it works',
   how: [
-    { icon: 'shield', title: 'Connect', text: 'A read-only sign-in. IAMAI cannot change anything in the tenant.' },
+    { icon: 'shield', title: 'Connect', text: 'One sign-in, one consent screen, on the tenant you already administer.' },
     { icon: 'policy', title: 'Choose a baseline', text: 'Start from a maintained policy set, or upload a package.' },
     { icon: 'chart', title: 'Scan and see readiness', text: 'Who could pass MFA today, who needs a hand, and who is blocked right now: by name.' },
     { icon: 'check', title: 'Follow the roadmap', text: 'Dated phases, the changes that are safe today, and what to watch first.' },
@@ -92,9 +96,9 @@ export const START = {
     'Nothing leaves the browser. There is no server.',
     'No account required with anyone.',
   ],
-  sourceBefore: 'IAMAI runs entirely in the browser and only reads. ',
+  sourceBefore: '',
   sourceLink: 'The source is public',
-  sourceAfter: ', so anyone can verify that.',
+  sourceAfter: ', so every claim above can be checked.',
 }
 
 export const CONNECT = {
@@ -115,9 +119,9 @@ export const CONNECT = {
     'IAMAI is read-only. It never creates, edits, or deletes anything in the tenant.',
     'Admin consent creates an enterprise app named IAMAI in the tenant. To remove all access later, delete that enterprise app: nothing else is left behind.',
   ],
-  sourceBefore: 'IAMAI runs entirely in the browser and only reads. ',
+  sourceBefore: '',
   sourceLink: 'The source is public',
-  sourceAfter: ', so anyone can verify that.',
+  sourceAfter: ', so every claim above can be checked.',
   signIn: 'Sign in with Microsoft',
   signInOpening: 'Opening the Microsoft sign-in…',
   readOnlyTip: {
