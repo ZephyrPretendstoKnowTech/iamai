@@ -13,8 +13,31 @@
 // Runs against the synthetic tenant (?dev=1&mock=1). The dev panel that flag
 // also enables is excluded by selector, as is anything print-only.
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
+
+// A fingerprint of everything that can put a string on screen. The lint tests
+// refuse to run against an inventory whose fingerprint no longer matches the
+// source: a stale inventory would let the rules pass on copy nobody has seen,
+// which is worse than no rules at all.
+function sourceFingerprint() {
+  const files = []
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name)
+      if (statSync(p).isDirectory()) walk(p)
+      else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name)) files.push(p)
+    }
+  }
+  walk('src/copy')
+  walk('src/ui')
+  files.sort()
+  const h = createHash('sha256')
+  for (const f of files) h.update(f.replace(/\\/g, '/')).update(readFileSync(f))
+  return h.digest('hex').slice(0, 16)
+}
 
 const PORT = Number(process.env.INVENTORY_PORT ?? 5201)
 const CDP_PORT = Number(process.env.INVENTORY_CDP_PORT ?? 9446)
@@ -170,10 +193,14 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   )
   // Body prose: paragraphs and list items, minus anything already classified.
   const claimed = new Set([...headings, ...buttons, ...options, ...links, ...chips, ...columns, ...tiles, ...tabs, ...summaries])
-  const blocks = [...root.querySelectorAll('p, li, .sub, .reason, .advisor, .muted, .callout')]
-    .filter(vis)
-    .map(txt)
-    .filter((t) => t.length > 0 && !claimed.has(t))
+  // Leaf blocks only. A callout that contains paragraphs would otherwise be
+  // read as well as its children: the same prose counted twice, and the
+  // children's text concatenated without a separator, which glues two sentences
+  // into one ("…the exact change.5 goals need…") and reports it as one long
+  // sentence that nobody wrote.
+  const BLOCK = 'p, li, .sub, .reason, .advisor, .muted, .callout'
+  const blockEls = [...root.querySelectorAll(BLOCK)].filter(vis).filter((e) => e.querySelector(BLOCK) === null)
+  const blocks = blockEls.map(txt).filter((t) => t.length > 0 && !claimed.has(t))
   const sentences = uniq(
     blocks.flatMap((t) => t.split(/(?<=[.!?])\\s+(?=[A-Z0-9"'])/)).map((s) => s.trim()).filter((s) => s.length > 1),
   )
@@ -190,12 +217,42 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
       return { label: txt(e), at: rel < 0.34 ? 'top' : rel > 0.66 ? 'bottom' : 'middle', inFooterSlot: e.closest('.step-next') !== null }
     })
 
+  // Lint inputs (prompt 36 §2). Rules 6, 7 and 11 need facts about how a thing
+  // is rendered, which no list of strings carries.
+  const primary = [...root.querySelectorAll('.btn-primary')].filter(vis).map(txt).filter(Boolean)
+  const tables = [...root.querySelectorAll('.datatable-footer')].filter(vis).map((f) => {
+    const label = (f.querySelector('span')?.textContent || '').replace(/\\s+/g, ' ').trim()
+    // The page indicator renders only when there is more than one page. A
+    // button in the footer proves nothing: the CSV export lives there too.
+    return { label, paginated: /page \\d+ of \\d+/i.test(label) }
+  })
+  // Sentence occurrences before de-duplication: rule 11 asks whether a claim is
+  // printed twice on one surface, which a unique list can never answer.
+  //
+  // Counted twice over, because the naive count is mostly noise. A list of
+  // eight steps that each state their own blocked reason repeats that sentence
+  // eight times and is not a defect; a page that states one claim about the
+  // tenant twice is. Anything inside a repeating container is an item, not a
+  // claim, so only page-level prose is eligible.
+  const REPEATER = '.step-tile, tr, .workload-card, .setup-question, .week-event, .bulletin, .journey-col, .tool-card'
+  const sentencesOf = (el) =>
+    (txt(el) || '').split(/(?<=[.!?])\\s+(?=[A-Z0-9"'])/).map((s) => s.trim()).filter((s) => s.length > 25)
+  const occurrencesAll = {}
+  const occurrences = {}
+  for (const el of blockEls) {
+    const isItem = el.closest(REPEATER) !== null
+    for (const s of sentencesOf(el)) {
+      occurrencesAll[s] = (occurrencesAll[s] || 0) + 1
+      if (!isItem) occurrences[s] = (occurrences[s] || 0) + 1
+    }
+  }
+
   const words = (list) => list.join(' ').split(/\\s+/).filter(Boolean).length
   const sections = { headings, tabs, buttons, options, links, chips, columns, tiles, empty, summaries, tips, sentences }
   const wordCounts = {}
   for (const [k, v] of Object.entries(sections)) wordCounts[k] = words(v)
   wordCounts.total = Object.values(wordCounts).reduce((a, b) => a + b, 0)
-  return { ...sections, nav, wordCounts }
+  return { ...sections, nav, primary, tables, occurrences, occurrencesAll, wordCounts }
 })()`
 
 const surfaces = []
@@ -522,8 +579,13 @@ ${surfaces.map((s) => `| ${s.name} | ${s.wordCounts.total} |`).join('\n')}
 ${body}
 `
 
+const fingerprint = sourceFingerprint()
 mkdirSync('docs/qa', { recursive: true })
-writeFileSync(OUT, doc)
+writeFileSync(OUT, `<!-- source-fingerprint: ${fingerprint} -->\n${doc}`)
+// The machine copy. The lint rules read this rather than parsing the markdown:
+// the markdown is for a person, and a rule that depends on a heading level is a
+// rule that breaks when the document is reformatted.
+writeFileSync(OUT.replace(/\.md$/, '.json'), JSON.stringify({ fingerprint, surfaces }, null, 1))
 console.log(`inventory: ${surfaces.length} surfaces, ${totalWords} words -> ${OUT}`)
 console.log(`inventory: ${actions.size} distinct action labels, ${negatives.size} distinct negative options`)
 
