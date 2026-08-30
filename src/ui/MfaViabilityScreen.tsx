@@ -144,7 +144,7 @@ export function MfaViabilityScreen({
 
   const scored = useMemo(() => {
     if (!snapshot) return null
-    const rows = sortViability(buildViabilityInputs(snapshot, new Date().toISOString()).map(scoreMfaViability))
+    const rows = sortViability(buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability))
     return { rows, summary: summarizeTenant(rows) }
   }, [snapshot])
 

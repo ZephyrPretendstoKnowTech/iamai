@@ -1,5 +1,5 @@
 {
- "fingerprint": "a1f69b57e08cb05b",
+ "fingerprint": "f9f458d140574059",
  "surfaces": [
   {
    "name": "Start",
@@ -1267,7 +1267,7 @@
     "Needs: ✓ scan complete · ✓ baseline loaded",
     "Based on the scan from this minute · <date and time>.",
     "Re-scan · Baseline: synthetic baseline",
-    "1 goal in this baseline, 16 apply to this tenant.",
+    "26 goals considered, 16 apply to this tenant.",
     "The rest are under Details with the reason each one does not apply."
    ],
    "nav": [
@@ -1286,7 +1286,7 @@
     "Needs: ✓ scan complete · ✓ baseline loaded": 1,
     "Based on the scan from this minute · <date and time>.": 1,
     "Re-scan · Baseline: synthetic baseline": 1,
-    "1 goal in this baseline, 16 apply to this tenant.": 1,
+    "26 goals considered, 16 apply to this tenant.": 1,
     "The rest are under Details with the reason each one does not apply.": 1
    },
    "occurrencesAll": {
@@ -1294,7 +1294,7 @@
     "Needs: ✓ scan complete · ✓ baseline loaded": 1,
     "Based on the scan from this minute · <date and time>.": 1,
     "Re-scan · Baseline: synthetic baseline": 1,
-    "1 goal in this baseline, 16 apply to this tenant.": 1,
+    "26 goals considered, 16 apply to this tenant.": 1,
     "The rest are under Details with the reason each one does not apply.": 1
    },
    "wordCounts": {
@@ -1309,8 +1309,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 3,
-    "sentences": 54,
-    "total": 79
+    "sentences": 52,
+    "total": 77
    }
   },
   {
@@ -1420,7 +1420,7 @@
    "empty": [],
    "summaries": [
     "In place Every user satisfies MFA on every app. Delivered by CA001 - Require MFA for all users, with 1 break-glass account excluded.Value 5Effort 1Disruption 1",
-    "In place Guests satisfy MFA. Delivered by CA001 - Require MFA for all users.Value 5Effort 1Disruption 1"
+    "In place Guests satisfy MFA. Delivered by CA001 - Require MFA for all users, with 0 of 1 break-glass account excluded; u-4 is not.Value 5Effort 1Disruption 1"
    ],
    "tips": [
     "About Priority",
@@ -1442,10 +1442,10 @@
     "columns": 0,
     "tiles": 0,
     "empty": 0,
-    "summaries": 43,
+    "summaries": 53,
     "tips": 6,
     "sentences": 0,
-    "total": 53
+    "total": 63
    }
   },
   {

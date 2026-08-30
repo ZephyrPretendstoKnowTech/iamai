@@ -51,7 +51,8 @@ import { CHANGE_RECORD_HEADER, changeRecordMarkdown as changeRecordMarkdownPure,
 import type { NoticeSettings } from '../../roadmap/timing.ts'
 import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
-import { changesSince, groupGrowth, progressHeadline, stepProgress, trackable } from '../../roadmap/tracking.ts'
+import { changesSince, groupGrowth, progressHeadline, stepProgress } from '../../roadmap/tracking.ts'
+import { peopleCounts, trackableSteps } from '../../derive/sets.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { savedStepOf } from '../../roadmap/progress.ts'
 import type { Dependency } from '../../roadmap/schedule.ts'
@@ -224,7 +225,11 @@ export function RoadmapPage({
       mapping: toCoverageMapping(mapping, questions),
       facetOverrides: mapping.facetOverrides,
     })
-    const viability = buildViabilityInputs(snapshot, new Date().toISOString()).map(scoreMfaViability)
+    // Activity is measured against the scan, not the clock (prompt 37 §3).
+    // Four surfaces asking `new Date()` at four moments is why a step header
+    // could say "2 active" while the summary said 4 (T11), and why a count
+    // could move on a tab switch with no re-scan (T4, T5).
+    const viability = buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability)
     const names = buildNameDirectory(snapshot, groups, extraNames)
     const { steps, schedule } = generateRoadmap({
       planId,
@@ -391,8 +396,11 @@ export function RoadmapPage({
   const setShowCompleted = (next: boolean | ((v: boolean) => boolean)) => setShowCompletedChoice(typeof next === 'function' ? next(showCompleted) : next)
   const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
   // The one denominator (ux-review-07 §2): every step that is not skipped, used by the badge, the headline and the journey.
-  const tracked = trackable(steps)
-  const trackedDone = tracked.filter((s) => s.status === 'done').length
+  // One summary, one set (prompt 37 §1): the Progress badge, the Steps done
+  // tile, the Overview headline and the Plan chips all read `summary` now, so
+  // they cannot disagree about what the denominator is.
+  const tracked = trackableSteps(steps)
+  const trackedDone = summary.done
   const done = steps.filter((s) => s.status === 'done')
   const safe = steps.filter((s) => s.safeToday)
   const blocked = steps.filter((s) => s.status === 'blocked')

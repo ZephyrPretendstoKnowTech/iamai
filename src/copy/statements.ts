@@ -33,9 +33,26 @@ export function share(n: number, total: number, one: string, many = `${one}s`): 
 
 // Statements stay within two sentences (prompt 17 §5): detail such as the
 // break-glass exclusions lives in the expandable.
-export function inPlaceStatement(goal: string, policies: string[], breakGlassExcluded: number): string {
+/**
+ * The break-glass clause names accounts rather than only counting them
+ * (prompt 37 §5). The count is per-goal — it counts the accounts the policies
+ * delivering *this* goal exclude — so it legitimately differs between goals,
+ * and reporting a bare 1 here and a bare 2 there with no explanation is what
+ * made the difference look like a bug (T14). When a goal excludes fewer than
+ * every confirmed break-glass account, the ones left in are named, because an
+ * account that is not excluded from an enforced policy is the account that
+ * gets locked out.
+ *
+ * `missing` carries user ids; nameifyText resolves them where the page renders.
+ */
+export function inPlaceStatement(goal: string, policies: string[], breakGlassExcluded: number, totalBreakGlass = breakGlassExcluded, missing: string[] = []): string {
   const by = policies.length > 0 ? `Delivered by ${list(policies.map(em))}` : 'Delivered by existing policies'
-  const bg = breakGlassExcluded > 0 ? `, with ${count(breakGlassExcluded, 'break-glass account')} excluded` : ''
+  const short = totalBreakGlass > breakGlassExcluded && missing.length > 0
+  const bg = short
+    ? `, with ${breakGlassExcluded} of ${count(totalBreakGlass, 'break-glass account')} excluded; ${list(missing)} ${missing.length === 1 ? 'is' : 'are'} not`
+    : breakGlassExcluded > 0
+      ? `, with ${count(breakGlassExcluded, 'break-glass account')} excluded`
+      : ''
   return `${strong(goal)}. ${by}${bg}.`
 }
 

@@ -10,6 +10,7 @@ import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
+import { isNonPerson } from '../derive/sets.ts'
 import { accountVerdict } from './strand.ts'
 import { policyCountFor } from './policyCount.ts'
 import { describePopulation, populationContext } from './population.ts'
@@ -424,6 +425,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // break-glass accounts, confirmed service accounts, and the members of the
   // confirmed exclusion groups (roadmap-v2.md §7: a step never touches them).
   const excluded = new Set<string>([...mapping.breakGlassUserIds, ...mapping.serviceAccountUserIds])
+  // Accounts that are not people are out of every readiness population too
+  // (prompt 37 §4): a shared mailbox has no MFA method and never will, so
+  // leaving it in makes the tenant look less ready than it is (T12, a
+  // "Feedback Mailbox" counted as a person with no method). The operator does
+  // not have to have confirmed it first — the licence says what it is.
+  for (const u of snapshot.users) if (isNonPerson(u, new Set(mapping.serviceAccountUserIds))) excluded.add(u.id)
   const exclusionGroupIds = [mapping.records['__globalExclusion']?.resolvedId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
   for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
@@ -1043,7 +1050,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       rollback: ROLLBACK.verify,
       goalId: 'mfa-all-users',
       status: verifyDone ? 'done' : 'ready',
-      population: population(viability.map((v) => v.userId), popIndex),
+      population: population(viability.map((v) => v.userId).filter((id) => !excluded.has(id)), popIndex),
       readiness: verifyReadiness,
       comms: COMMS.verify(tenantName),
       impact: IMPACT.verifyCampaign(toSetUp),
