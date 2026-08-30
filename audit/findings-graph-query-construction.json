@@ -1,0 +1,309 @@
+{
+  "lane": "graph-query-construction",
+  "findings": [
+    {
+      "id": "gqc-01",
+      "title": "rawUrl does not enforce the pinned repo/commit: `..` segments in baselines/*.index.json survive encoding and are normalised away by fetch",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": "src/baseline/github.ts",
+          "lines": "32-35",
+          "code": "export function rawUrl(index: BaselineIndex, path: string): string {\n  const encoded = path.split(\"/\").map(encodeURIComponent).join(\"/\");\n  return `https://raw.githubusercontent.com/${index.owner}/${index.repo}/${index.commit}/${encoded}`;\n}"
+        },
+        {
+          "file": "src/baseline/github.ts",
+          "lines": "58-61",
+          "code": "while (next < index.files.length) {\n      const path = index.files[next++];\n      try {\n        const res = await f(rawUrl(index, path));"
+        },
+        {
+          "file": "src/network.test.ts",
+          "lines": "28",
+          "code": "const files = [...walk('src'), ...walk('home'), 'index.html']"
+        },
+        {
+          "file": "src/ui/pages/BaselinePage.tsx",
+          "lines": "2-27",
+          "code": "import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }\n...\nconst index = baselineIndex as BaselineIndex"
+        }
+      ],
+      "why_it_matters": "The pinned commit is the ONLY control standing between this app and arbitrary third-party content. CLAUDE.md's non-negotiable is \"ship path indexes and fetch raw files at a pinned commit\", and the About card renders index.owner/repo/commit as the provenance the operator is asked to trust. Baseline content is not decoration: the fetched JSON becomes the policy set the whole plan is diffed against, and the README \"Intent\" prose becomes advisor text and Learn links. If the commit pin can be sidestepped by a change to the index file alone, the UI keeps displaying the pinned SHA while serving content from somewhere else — the trust story (\"review the code, then connect\") is defeated without touching a single file under src/.",
+      "attack_path": "1. Attacker lands a change to `baselines/jhope188-conditionalaccesspolicies.index.json` — a maintainer compromise, or a PR that only touches a 155-entry JSON path list nobody diffs line by line. 2. They add one entry: `\"../../attacker/evilrepo/main/policy.json\"`. 3. `rawUrl` splits on `/` and encodeURIComponent's each segment; `encodeURIComponent('..') === '..'`, so the dot segments survive verbatim. 4. `fetch()` parses the resulting URL and removes dot-segments, yielding `https://raw.githubusercontent.com/attacker/evilrepo/main/policy.json`. Same host, different repo, no commit pin. 5. `fetchBaselineFiles` returns the file, `loadBaseline` parses it as a baseline policy, and it drives the plan. The AboutCard still shows owner `Jhope188`, repo `ConditionalAccessPolicies`, commit `ceccdc2…`. 6. CI does not catch it: `src/network.test.ts` walks only `src`, `home` and `index.html` — `baselines/` is never scanned, and the host is unchanged anyway, so both host tests pass. Separately, `index.owner`, `index.repo` and `index.commit` are interpolated with no encoding and no validation at all, so a `?` or `#` in any of them would also escape the pinned path. The scheme and host cannot be changed — they are a literal prefix with no interpolation before them — so this is provenance escape within raw.githubusercontent.com, not exfiltration to a new origin.",
+      "fix": "Validate the index at the point of use, and make CI enforce it. In `rawUrl`: reject any path segment that is not a plain filename, and constrain the pinned fields:\n\n```ts\nconst SEG = /^[A-Za-z0-9._ ()+-]+$/;   // no empty, no '.', no '..'\nconst OWNER = /^[A-Za-z0-9-]{1,39}$/;\nconst REPO  = /^[A-Za-z0-9._-]{1,100}$/;\nconst SHA   = /^[0-9a-f]{40}$/;\n\nexport function rawUrl(index: BaselineIndex, path: string): string {\n  if (!OWNER.test(index.owner) || !REPO.test(index.repo) || !SHA.test(index.commit))\n    throw new Error('baseline index is not pinned to a repo and full commit sha');\n  const segs = path.split('/');\n  if (!segs.every((s) => s !== '.' && s !== '..' && SEG.test(s)))\n    throw new Error(`baseline index path is not a plain repo path: ${path}`);\n  return `https://raw.githubusercontent.com/${index.owner}/${index.repo}/${index.commit}/${segs.map(encodeURIComponent).join('/')}`;\n}\n```\n\nRequiring a full 40-hex SHA also stops a branch name (`main`) being substituted for the pin. Then add a test that reads every `baselines/*.index.json` and asserts `rawUrl(index, p)` for each `p` yields a URL whose pathname still starts with `/${owner}/${repo}/${commit}/` — that is the assertion `src/network.test.ts` is missing, because it only checks hostnames appearing literally in source."
+    },
+    {
+      "id": "gqc-02",
+      "title": "groupId reaches four Graph URL path segments with no GUID validation and no encoding",
+      "severity": "low",
+      "confidence": "possible",
+      "exploitability": "shared-machine",
+      "evidence": [
+        {
+          "file": "src/graph/collect/onDemand.ts",
+          "lines": "112-118",
+          "code": "  const group = await graphRequest(\n    tokens,\n    `${V1}/groups/${groupId}?$select=id,displayName,membershipRule,mailEnabled`,\n  )\n  const g = group as unknown as Record<string, unknown>\n\n  const countBody = await graphRequest(tokens, `${V1}/groups/${groupId}/transitiveMembers/$count`, {"
+        },
+        {
+          "file": "src/graph/collect/onDemand.ts",
+          "lines": "126-135",
+          "code": "    const firstPage = await graphRequest(\n      tokens,\n      `${V1}/groups/${groupId}/transitiveMembers?$select=id&$top=999`,\n    )\n...\n    const rows = await graphPaged(tokens, `${V1}/groups/${groupId}/transitiveMembers?$select=id&$top=999`)"
+        },
+        {
+          "file": "src/ui/pages/MappingPage.tsx",
+          "lines": "51-60",
+          "code": "for (const raw of snapshot.config.caPolicies?.rows ?? []) {\n      const users = (raw as { conditions?: { users?: { includeGroups?: string[]; excludeGroups?: string[] } } }).conditions?.users\n      for (const g of users?.includeGroups ?? []) ids.add(g)\n      for (const g of users?.excludeGroups ?? []) ids.add(g)\n    }\n...\n          out.push(await getGroupMembers(snapshot.tenantId, id))"
+        },
+        {
+          "file": "src/ui/pages/CoveragePage.tsx",
+          "lines": "121-123",
+          "code": "      for (const id of referencedGroupIds(tenantPolicies)) {\n        try {\n          const g = await getGroupMembers(snapshot.tenantId, id)"
+        },
+        {
+          "file": "src/roadmap/generate.ts",
+          "lines": "197",
+          "code": "const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i"
+        }
+      ],
+      "why_it_matters": "This is the one place in the production app where a tenant-derived string becomes a Graph URL *path*, not a percent-encoded query value. A `?` in the value truncates the intended `$select` and lets the rest of the URL be chosen freely; `..` segments are normalised by fetch and move the request to a different Graph endpoint entirely. The request still carries the operator's Bearer token and still goes to graph.microsoft.com, so the ceiling is \"read more of the tenant than this page's declared scope\" — which is precisely what the \"What IAMAI reads\" page and SPEC §4 promise cannot happen, because that page is generated from `registry.ts` and would keep claiming the endpoint is `/groups/{id}`. The app already owns a GUID regex (`generate.ts:197`); it is simply not applied here.",
+      "attack_path": "Two routes, both weaker than the headline suggests — stated honestly.\n\n(a) Shared machine. The four callers read group ids out of `snapshot.config.caPolicies.rows[].conditions.users.includeGroups`, and the snapshot lives in the IndexedDB `snapshot` store keyed by tenant id. Someone at the operator's unlocked browser opens devtools, edits one `includeGroups` entry to `x?$expand=members($select=id,displayName,userPrincipalName)&junk=`, and reloads Coverage or Roadmap. `getGroupMembers` builds `…/groups/x?$expand=members(…)&junk=?$select=id,displayName,membershipRule,mailEnabled` — the attacker's parameters now lead. The same trick with `..` (`x/../../users?$select=userPrincipalName&$top=999&z=`) retargets the endpoint. Caveat: that attacker can already read the token out of sessionStorage, so this buys them little.\n\n(b) An attacker who already holds Conditional Access Administrator or Global Administrator can write a non-GUID string into a CA policy's `includeGroups` and wait for the operator to scan. But Entra validates those references on write, and that role already outranks anything this read-only app can do.\n\nWhat is NOT a route: the Setup picker. `onPick(o.id, o.name)` at MappingPage.tsx:447 only ever passes an `id` the app received from Graph (a `searchGroups` result or a cached `groupId`); the operator cannot type a group id. And an attacker who merely controls a *display name* cannot reach this sink at all — display names never enter a URL anywhere in the app.",
+      "fix": "Guard once, at the boundary, and let the callers keep passing whatever they find. In `src/graph/collect/onDemand.ts`, at the top of `getGroupMembers` (before the cache read, so a poisoned cache key is rejected too):\n\n```ts\nconst GROUP_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i\n...\nif (!GROUP_ID.test(groupId)) throw new Error('not a group id')\n```\n\nAll four callers already wrap the call in `try/catch` and degrade to \"unresolved\", so a rejected id costs nothing (MappingPage.tsx:61, CoveragePage.tsx:125, InventoryPage.tsx:69, RoadmapPage.tsx:195). Lift `GUID_RE` out of `src/roadmap/generate.ts:197` into a shared module rather than declaring a third copy. Add a test — `src/graph/collect/` currently has no test for `onDemand.ts` at all."
+    },
+    {
+      "id": "gqc-03",
+      "title": "graphPaged follows @odata.nextLink to any host with the Bearer token attached; the host allowlist exists only as a source-text test",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/collect/http.ts",
+          "lines": "144-150",
+          "code": "  while (next) {\n    const body: GraphBody = await graphRequest(tokens, next, opts)\n    const rows = Array.isArray(body.value) ? body.value : []\n    all.push(...rows)\n    if (opts.onPage) await opts.onPage(rows)\n    next = body['@odata.nextLink'] ?? null\n  }"
+        },
+        {
+          "file": "src/graph/collect/http.ts",
+          "lines": "83-87",
+          "code": "      res = await fetch(url, {\n        method: opts.method ?? 'GET',\n        headers: {\n          Authorization: `Bearer ${tokens.get()}`,"
+        },
+        {
+          "file": "src/graph/collect/laneBCore.ts",
+          "lines": "373",
+          "code": "      next = body['@odata.nextLink'] ?? null"
+        },
+        {
+          "file": "src/network.test.ts",
+          "lines": "44-63",
+          "code": "test('requests, imports, scripts, styles, fonts, images, beacons and sockets never reach a host off the list', () => {\n...\n    /fetch\\(\\s*[`'\"](https?:\\/\\/[^`'\"]+)/gi,\n...\n        const host = new URL(m[1]).hostname.toLowerCase()\n        if (!REQUEST_HOSTS.has(host)) offenders.push(...)"
+        }
+      ],
+      "why_it_matters": "SECURITY.md says \"a test (src/network.test.ts) fails the build if any source file addresses a network host other than…\". That test greps string literals in source. It cannot see a URL that arrives in a response body at runtime, and `graphPaged` and `runLaneB` both feed exactly such a URL straight back into `fetch` with `Authorization: Bearer` still attached. The \"nothing leaves the browser\" claim therefore rests on Microsoft Graph never emitting an off-host nextLink, not on anything the app enforces. Stating this precisely matters because the product's whole pitch is that the guarantee is checkable by reading the code — and here the check is one line the code does not contain.",
+      "attack_path": "None of the five named attackers can reach this. A malicious tenant object cannot influence Graph's pagination links; a compromised baseline repo is a different fetch path entirely; the shared-machine attacker has the token already. It requires Graph itself, or a TLS interception of graph.microsoft.com, either of which is game over independently. Reported as an honest gap between the claim and its enforcement, not as an exploitable bug — mark it 'won't fix' with a comment if you prefer, but the sentence in SECURITY.md should then be narrowed to say the test constrains the source, not the running app.",
+      "fix": "One line, turning the source-scanning test into a runtime invariant:\n\n```ts\n// http.ts, top of graphRequest\nif (new URL(url).origin !== 'https://graph.microsoft.com') throw new Error('off-host request blocked')\n```\n\nBoth `V1` and `BETA` already share that origin, and `laneBCore`'s `fetchPage` is bound to `graphRequest` at `laneB.ts:28`, so both nextLink loops are covered by the single check. Then `src/network.test.ts` can assert the guard exists, and SECURITY.md's sentence becomes true of the running app rather than of the repository."
+    },
+    {
+      "id": "gqc-04",
+      "title": "Application.Read.All is consented at sign-in but no collector uses it",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/scopes.ts",
+          "lines": "10-14",
+          "code": "export const GRAPH_SCOPES = [\n  'Policy.Read.All',\n  'Directory.Read.All',\n  'Application.Read.All',\n  'AuditLog.Read.All',"
+        },
+        {
+          "file": "SECURITY.md",
+          "lines": "34",
+          "code": "| `Application.Read.All` | Application and service principal registrations | Nothing today: consented for a planned service-principal inventory (SPEC §4) that has not been built |"
+        },
+        {
+          "file": "src/graph/collect/registry.ts",
+          "lines": "50-51",
+          "code": "{ name: 'SP sign-in activity', lane: 'A', sourceKey: 'spActivity', endpoint: '/reports/servicePrincipalSignInActivities', version: 'beta', paged: true, scopes: ['Reports.Read.All'], requiredCapability: null, ... }\n  { name: 'Auth methods', lane: 'A', sourceKey: 'authMethods', endpoint: '/users/{id}/authentication/methods ($batch of 20)', version: 'v1.0', scopes: ['UserAuthenticationMethod.Read.All'], ... }"
+        }
+      ],
+      "why_it_matters": "The lane question is whether any request carries more scope than the page needs. Every $select and $filter in the app is tight (see gqc-06), but the *consent* is not: `Application.Read.All` grants read of every app registration and service principal in the tenant, and no entry in COLLECTOR_REGISTRY names it. CLAUDE.md mandates one consent screen with the full read set — that is a UX rule, not a licence to pre-consent capability the code does not exercise. An admin evaluating IAMAI on the strength of \"review the code, then connect\" will grep for the scope's consumer and find none.",
+      "attack_path": "Not an attack in itself. It raises the value of the consented enterprise application: any future compromise of the app registration, or a token lifted from sessionStorage on a shared machine, carries read access to all application and service-principal registrations that no feature of the product needs. The mitigation is scope hygiene, not a fix to a reachable flaw.",
+      "fix": "Drop `'Application.Read.All'` from `src/graph/scopes.ts:13` until the service-principal inventory in SPEC §4 actually lands, and add it back in the same commit that adds its collector to `COLLECTOR_REGISTRY`. To keep it from drifting again, add a test asserting every scope in `GRAPH_SCOPES` (excluding the three OIDC scopes) appears in at least one `CollectorSpec.scopes` — the registry is already the generated source for both SPEC §4 and the \"What IAMAI reads\" page, so this makes consent provably a function of what the code collects."
+    },
+    {
+      "id": "gqc-05",
+      "title": "VERDICT (clean): searchGroups OData escaping is correct and complete — injection is not possible",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/collect/onDemand.ts",
+          "lines": "85-92",
+          "code": "export async function searchGroups(query: string): Promise<{ id: string; displayName: string }[]> {\n  const q = query.trim().replace(/'/g, \"''\")\n  if (q.length < 2) return []\n  const tokens = await msalTokens()\n  const body = await graphRequest(\n    tokens,\n    `${V1}/groups?$filter=${encodeURIComponent(`startswith(displayName,'${q}')`)}&$select=id,displayName&$top=20`,\n  )"
+        },
+        {
+          "file": "src/ui/pages/MappingPage.tsx",
+          "lines": "412-419",
+          "code": "    debounce.current = setTimeout(() => {\n      void searchGroups(query)\n        .then((r) => {\n          if (!stale) setRemote(r)\n        })\n        .catch(() => {\n          if (!stale) setRemote([])\n        })"
+        }
+      ],
+      "why_it_matters": "This is the app's only user-typed string that reaches a Graph query, so a clean verdict here is load-bearing for the read-only claim. Recording it explicitly so a future reviewer does not re-flag it, and so nobody 'simplifies' either half of the defence away.",
+      "attack_path": "No path exists. Taken character by character, against OData v4 literal rules and the ECMAScript definition of encodeURIComponent:\n\n• Single quote — the only string-literal delimiter in OData. Doubling (`''`) is the correct and only escape, and it is applied to the whole input before interpolation. `a'` becomes `a''`, producing `startswith(displayName,'a''')`: opening quote, `a`, an escaped `''`, closing quote. The literal cannot be closed early, so nothing after it is ever parsed as an operator, a function call, or a second clause. encodeURIComponent does not encode `'` (it is in the unreserved-mark set), but it does not have to — the doubling has already made it inert.\n• `&`, `?`, `#` — encodeURIComponent renders these `%26`, `%3F`, `%23`, so no second query parameter (`&$expand=…`) and no fragment can be appended. This is the second, independent barrier: even a flawed quote escape could not add a parameter, and even a flawed encode could not break the literal.\n• `%` — encoded to `%25`. Critically, this closes the double-decode bypass: a user typing the literal text `%27` gets `%2527` on the wire, which Graph decodes once to the four characters `%27`, never to a quote. Escaping happens *before* encoding and the decoder is the exact inverse, so there is no ordering gap.\n• Backslash — OData v4 has no backslash escape inside string literals; `\\` is an ordinary character, and encodeURIComponent sends it as `%5C` regardless. There is no `\\'` trick here.\n• Parentheses — encodeURIComponent leaves `(` and `)` alone, but they sit inside an unbreakable string literal and OData treats them as data there. They cannot close `startswith(` or open a lambda.\n• Path and host are literal template text with no interpolation, so neither can be moved.\n\nThe furthest an attacker at the picker gets is making the app issue exactly `GET https://graph.microsoft.com/v1.0/groups?$filter=startswith(displayName,'<their text>')&$select=id,displayName&$top=20` — the same request the feature exists to make, with their text as the search term. That is not injection.\n\nOne non-security note: a lone UTF-16 surrogate typed into the box makes `encodeURIComponent` throw `URIError`, which surfaces as a rejected promise and is swallowed by the `.catch(() => setRemote([]))` at MappingPage.tsx:417 — the picker just shows no results.",
+      "fix": "No change required. If you want it to stay that way, add the missing test — `src/graph/collect/` has tests for laneBCore, resilience and roles but none for `onDemand.ts`. Assert on the constructed URL for inputs `a'b`, `a''b`, `a%27b`, `a&$expand=members`, `a) or true or startswith(displayName,'` and `a\\b`, so a future refactor that drops either the doubling or the encodeURIComponent fails loudly rather than silently."
+    },
+    {
+      "id": "gqc-06",
+      "title": "VERDICT (clean): every $select and $expand is a compile-time constant; none is derived from tenant or user data",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/collect/collectors.ts",
+          "lines": "146-148",
+          "code": "  const baseSelect =\n    'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation'\n  const select = `${baseSelect},signInActivity`"
+        },
+        {
+          "file": "src/graph/collect/collectors.ts",
+          "lines": "150-160",
+          "code": "    const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${baseSelect}&$top=999`, {\n...\n    const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${select}&$top=999`, {"
+        },
+        {
+          "file": "src/graph/collect/collectors.ts",
+          "lines": "177",
+          "code": "  const url = `${V1}/devices?$select=id,displayName,isCompliant,isManaged,trustType,operatingSystem,approximateLastSignInDateTime&$expand=${encodeURIComponent('registeredOwners($select=id)')}&$top=999`"
+        },
+        {
+          "file": "src/graph/collect/collectors.ts",
+          "lines": "26-31",
+          "code": "const CONFIG_ENDPOINTS = Object.fromEntries(\n  COLLECTOR_REGISTRY.filter((s) => s.lane === '0' && s.configKey).map((s) => [\n    s.configKey,\n    { url: `${s.version === 'beta' ? BETA : V1}${s.endpoint}`, paged: s.paged },\n  ]),\n) as Record<ConfigSectionKey, { url: string; paged?: boolean }>"
+        }
+      ],
+      "why_it_matters": "Recon listed these as '$select/$expand built from variables', which reads like a taint sink. They are not: `baseSelect` and `select` are string literals declared two lines above their use, the `$expand` argument is a literal passed through encodeURIComponent, and the Lane 0 URLs are assembled from `COLLECTOR_REGISTRY` — pure data with no runtime input, which is also what generates SPEC §4 and the 'What IAMAI reads' page. Recording the verdict so the registry-driven design keeps its credit rather than being re-flagged each audit.",
+      "attack_path": "None. There is no assignment anywhere that puts tenant data, baseline content or user input into a $select or $expand. The `select` variable at :148 differs from `baseSelect` only by a hardcoded `,signInActivity`, chosen by the boolean `opts.includeSignInActivity` (:149) which comes from licence detection, not from a string. The `registry.ts` `endpoint` fields are literals in a checked-in array, and `src/network.test.ts:70-77` separately asserts every host in that file is graph.microsoft.com.",
+      "fix": "No change required. On the over-broad question specifically: the wide `/users` $select is justified, not excessive — `department` and `jobTitle` drive service-account detection (src/mapping/serviceAccounts.ts:51) and ring composition (src/roadmap/rings.ts:80,161), `officeLocation` feeds the same profile heuristic (src/copy/validation.ts:197), and `usageLocation`/`assignedPlans` feed licence capability. The absence of a `$filter` on `/users` and `/devices` is also correct: the product's counted sets are the whole population by design (src/derive/sets.ts). The genuinely narrow read worth crediting is the deliberate omission of method values in the auth-methods path — see the redacted-by-default claim note."
+    },
+    {
+      "id": "gqc-07",
+      "title": "VERDICT (clean): the laneB $filter lambda is a hardcoded constant, not tenant- or user-derived",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/collect/laneB.ts",
+          "lines": "22-24",
+          "code": "  const lambda = encodeURIComponent(\"signInEventTypes/any(t: t eq 'interactiveUser')\")\n  return runLaneB({\n    startUrl: `${BETA}/auditLogs/signIns?$filter=${lambda}&$top=200`,"
+        },
+        {
+          "file": "src/graph/collect/laneBCore.ts",
+          "lines": "25",
+          "code": "// No $select on the Lane B pull: mfaDetail and authenticationDetails are not"
+        }
+      ],
+      "why_it_matters": "Recon flagged `$filter=${lambda}` as a template-literal sink. `lambda` is declared on the immediately preceding line from a string literal with no parameters and no closure over anything — the only reason it is a variable is line length. No taint, no finding.",
+      "attack_path": "None. `collectSignInEvidence` takes `opts.windowDays` (a number) and `opts.tenantId`, and neither is interpolated into `startUrl`; the date-window cut-off is applied in the browser rather than in the filter (laneBCore.ts:361-371), so no user-supplied date enters the query either. Subsequent page URLs come from `@odata.nextLink` — that is gqc-03's concern, not an injection one.",
+      "fix": "No change required. If you want the sink to read as obviously safe at a glance, hoist it to a module-level `const INTERACTIVE_ONLY = encodeURIComponent(...)` so it is visibly a constant."
+    },
+    {
+      "id": "gqc-08",
+      "title": "VERDICT (clean): $batch bodies are built from Graph-issued object ids, and no attacker-controlled value reaches an inner request url",
+      "severity": "info",
+      "confidence": "probable",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/collect/collectors.ts",
+          "lines": "252-262",
+          "code": "    const body = await graphRequest(ctx.tokens, `${V1}/$batch`, {\n      signal: ctx.signal,\n      method: 'POST',\n      jsonBody: {\n        requests: chunk.map((id, n) => ({\n          id: String(n),\n          method: 'GET',\n          url: `/users/${id}/authentication/methods`,\n        })),\n      },\n    })"
+        },
+        {
+          "file": "src/graph/collect/worker.ts",
+          "lines": "249",
+          "code": "Object.assign(methods, await collectMethodsForUsers(runCtx, page.map((u) => u.id)))"
+        },
+        {
+          "file": "src/graph/collect/collectors.ts",
+          "lines": "115",
+          "code": "    id: String(u.id ?? ''),"
+        },
+        {
+          "file": "src/graph/spikes/platformCheck.ts",
+          "lines": "90-97",
+          "code": "    for (let i = 0; i < ids.length; i += 20) {\n      const chunk = ids.slice(i, i + 20)\n      const res = await fetch(`${V1}/$batch`, {\n        method: 'POST',\n        headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },\n        body: JSON.stringify({\n          requests: chunk.map((id, n) => ({ id: String(n + 1), method: 'GET', url: `/users/${id}/authentication/methods` })),\n        }),\n      })"
+        },
+        {
+          "file": "src/ui/App.tsx",
+          "lines": "34-35",
+          "code": "const DEV_PANEL =\n  import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'"
+        }
+      ],
+      "why_it_matters": "A $batch inner `url` is a path, not a percent-encoded value — the same class of sink as gqc-02, and it runs 20 requests per call across every user in the tenant. Worth an explicit verdict rather than silence.",
+      "attack_path": "No reachable path. In production (`collectors.ts:248`) the array is `page.map((u) => u.id)` where each `u` came out of `mapUser` (`collectors.ts:115`, `String(u.id ?? '')`) on a `/users` response. A user's directory object id is assigned by Entra and is not settable by the object itself, so the malicious-tenant-object attacker — who can control `displayName`, `userPrincipalName`, `department`, a group name or a `membershipRule` — controls none of the values that reach this array. None of those attacker-controlled fields is interpolated into the batch. The degenerate case (`u.id` absent ⇒ `''` ⇒ `/users//authentication/methods`) yields an inner error, which line :267 already maps to `'unknown'` without failing the section.\n\n`platformCheck.ts:92` is identical in shape and additionally unreachable in production: it renders only under `DEV_PANEL` (App.tsx:34, `import.meta.env.DEV && ?dev=1`), which Vite constant-folds to `false` in the shipped bundle, and `window.__runPlatformCheck` is likewise assigned only under `import.meta.env.DEV` (platformCheck.ts:136). Its ids come from the same `/users?$select=id` read.\n\nMarked 'probable' rather than 'certain' only because the guarantee rests on Entra never returning a non-GUID `id` for a user, which I could not observe without issuing a request.",
+      "fix": "No change required for exploitability. If you fix gqc-02 by lifting `GUID_RE` into a shared module, applying the same one-line filter here (`chunk.filter((id) => GUID_RE.test(id))`) costs nothing and removes the reliance on Graph's well-formedness. Note that `resolveNames`/`resolveObjects` (onDemand.ts:32-35, 59-62) send their ids as a JSON body to `/directoryObjects/getByIds` rather than in a URL, which is the safer shape and needs no change at all."
+    },
+    {
+      "id": "gqc-09",
+      "title": "VERDICT (clean): an attacker who controls a display name in the tenant cannot change any request the app makes",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/graph/collect/collectors.ts",
+          "lines": "114-120",
+          "code": "  return {\n    id: String(u.id ?? ''),\n    displayName: typeof u.displayName === 'string' ? u.displayName : null,\n    userPrincipalName: typeof u.userPrincipalName === 'string' ? u.userPrincipalName : null,"
+        },
+        {
+          "file": "src/graph/collect/onDemand.ts",
+          "lines": "142-143",
+          "code": "    displayName: typeof g.displayName === 'string' ? g.displayName : null,\n    membershipRule: typeof g.membershipRule === 'string' ? g.membershipRule : null,"
+        },
+        {
+          "file": "src/graph/collect/onDemand.ts",
+          "lines": "93-96",
+          "code": "  return (body.value ?? [])\n    .map((g) => g as Record<string, unknown>)\n    .filter((g) => typeof g.id === 'string')\n    .map((g) => ({ id: String(g.id), displayName: typeof g.displayName === 'string' ? g.displayName : String(g.id) }))"
+        },
+        {
+          "file": "src/ui/pages/MappingPage.tsx",
+          "lines": "444-448",
+          "code": "      onChange={(next) => {\n        const o = next[next.length - 1]\n        if (!o) onClear()\n        else onPick(o.id, o.name)\n      }}"
+        },
+        {
+          "file": "src/roadmap/rings.ts",
+          "lines": "158-161",
+          "code": "const rule = (departments: string[]): string =>\n  departments.length === 0\n    ? '(user.accountEnabled -eq true)'\n    : `(user.accountEnabled -eq true) and (${departments.map((d) => `user.department -eq \"${d.replace(/\"/g, '')}\"`).join(' or ')})`"
+        }
+      ],
+      "why_it_matters": "This is the lane's headline question, and the answer is a clean no — worth stating as plainly as a finding would be, because it is the single claim a reviewer of a read-only tenant scanner most wants settled before connecting.",
+      "attack_path": "Direct answer to 'what can an attacker who controls a display name make the app request': nothing new. Tracing every tenant-controlled string to every request sink:\n\n• `displayName` (user, group, device, policy, named location, app), `userPrincipalName`, `department`, `jobTitle`, `officeLocation`, `membershipRule` and role names are all read into typed fields (`mapUser` at collectors.ts:106-136, `mapMethod` at :219-244, the group cache entry at onDemand.ts:139-149) and from there flow only to the UI, the exports and IndexedDB. A grep for `$filter`/`$select`/`$expand`/`$batch` across `src/` returns no site where any of them is interpolated. They never enter a URL.\n• The picker cannot smuggle one either: `onChange` passes `o.id`, and every option's `id` originated from Graph — either a `searchGroups` result (onDemand.ts:96, `String(g.id)`) or a cached `groupId`. The operator's typed text reaches only the `$filter` covered by gqc-05.\n• The one tenant string that does become a URL is the CA-policy group id in gqc-02, and writing that requires Conditional Access Administrator — not the ability to name a group.\n\nAdjacent and also clean: `rings.ts:161` builds an Entra dynamic-membership rule from tenant `department` values using `d.replace(/\"/g, '')`. Deleting the delimiter outright is a complete defence for that grammar (Entra rule literals are double-quoted with no escape sequence), so a department named `A\" -or (user.accountEnabled -eq true) -and \"B` collapses to inert text inside a single literal. It is also not a request — the app never sends it; it is copy for the operator to paste into the portal.",
+      "fix": "No change required."
+    }
+  ],
+  "coverage_gaps": [
+    "Read-only audit as instructed: no Graph request was issued, the app was never run, and no build was produced. The OData verdict in gqc-05 is derived from the ECMAScript definition of encodeURIComponent and the OData v4 string-literal grammar, not from observing Graph's parser reject a crafted input.",
+    "I could not observe how Graph handles a malformed path segment — specifically whether `/groups/x%2F..%2Fusers` or `/groups/x?foo=` is rejected server-side before URL normalisation. gqc-02's impact ceiling ('reads more of the tenant than the page declares') is reasoned from URL semantics, not measured. Its severity would drop if Graph 400s first.",
+    "There is no test anywhere for `src/graph/collect/onDemand.ts` — `src/graph/collect/` contains only laneBCore.test.ts, resilience.test.ts and roles.test.ts. So gqc-05's clean verdict is a property of today's two lines with nothing in CI holding it; a refactor dropping either the quote-doubling or the encodeURIComponent would ship silently.",
+    "I did not build `dist/` to confirm whether the spike chunks (platformCheck.ts, spike1.ts, spike1Extended.ts) are emitted into the production bundle. `DevSpikes` is a top-level `lazy(() => import(...))` at App.tsx:25, so Rollup likely emits the chunk even though `DEV_PANEL` folds to false and it is never loaded. Reachability in gqc-08 is judged from the DEV_PANEL guard, not from the artifact. Whether dead spike code ships at all is a lane-2 question.",
+    "Markup and href sinks fed by tenant or baseline data (step.learn.url, whyAttribution.url, citation.url, index.authorUrl/repoUrl) are outside this lane and were not assessed — they bear on what the app navigates to, not on what it requests.",
+    "I verified the current `baselines/jhope188-conditionalaccesspolicies.index.json` is clean (155 paths, zero `..` segments, no `?`/`#`/`%`/backslash in any path, owner `Jhope188`, repo `ConditionalAccessPolicies`, a full 40-hex commit `ceccdc2a…`). gqc-01 is about the absence of a guard, not about the file as it stands today. I did not verify the pinned commit still exists upstream or that its contents match what the maintainer reviewed.",
+    "MSAL token handling (sessionStorage cache, the plain-string postMessage to the worker at runScan.ts:54) is lane-4/lane-5 territory; I touched it only where it bears on which host receives the Bearer header (gqc-03)."
+  ],
+  "claims_evidence": [
+    {
+      "claim": "read-only",
+      "supported": "yes",
+      "note": "Holds for everything this lane covers. Every Graph URL constructed in src/graph/collect/ is a GET; the two POSTs are read operations by design — `/$batch` (collectors.ts:252) whose inner requests are all `method: 'GET'` (:258), and `/directoryObjects/getByIds` (onDemand.ts:32-35, 59-62) which posts an id list in order to read names. No PATCH, PUT, create-POST or DELETE appears in any collector, and GRAPH_SCOPES (src/graph/scopes.ts:10-20) contains no write scope. The one caveat is gqc-04: `Application.Read.All` is consented with no collector using it — still read-only, but wider than the code exercises. gqc-02 does not break the claim either: an injected path segment could only redirect a GET, since `graphRequest` defaults to `method: 'GET'` (http.ts:84) and neither `getGroupMembers` call site passes a method."
+    },
+    {
+      "claim": "nothing-leaves-the-browser",
+      "supported": "partly",
+      "note": "Two gaps, both narrow. (1) `graphPaged` (http.ts:144-150) and `runLaneB` (laneBCore.ts:373) feed `@odata.nextLink` straight back into `fetch` with `Authorization: Bearer` attached, and there is no runtime host check anywhere — `src/network.test.ts` greps source string literals, which by construction cannot see a URL that arrives in a response body. SECURITY.md:16-18 states the test 'fails the build if any source file addresses a network host other than' the three; that is true of the repository and not of the running app. Only Graph itself or a TLS MITM can exercise it, so practical risk is nil, but the claim is enforced by convention rather than by code. (2) gqc-01: `rawUrl` cannot change scheme or host (both are literal prefix text with no interpolation before them), so no data can be sent to a new origin — but `..` segments in the index escape the pinned repo and commit within raw.githubusercontent.com, which is a provenance failure rather than an exfiltration one. Nothing else in this lane sends tenant data anywhere: the picker query is the only user-typed string on the wire and it goes to Graph, and no tenant field is ever interpolated into a URL (gqc-09)."
+    },
+    {
+      "claim": "redacted-by-default",
+      "supported": "yes",
+      "note": "Narrow but genuine support from this lane: minimisation begins at query construction, not after collection. `collectMethodsForUsers` reads `/users/{id}/authentication/methods` and `mapMethod` (collectors.ts:217-244) copies only `kind`, `createdDateTime` and a few device hints out of each result — phone numbers and email addresses are dropped at the fetch layer, before anything reaches the snapshot or IndexedDB, exactly as the comment at :217 and SECURITY.md:32 claim. `/reports/authenticationMethods/userRegistrationDetails` (collectors.ts:83) returns method *types* only by design. The `/users` $select (:147) does pull `userPrincipalName`, `displayName`, `department`, `jobTitle` and `officeLocation`, but each has a named consumer (serviceAccounts.ts:51, rings.ts:80,161, population.ts:161-164), so this is minimisation with a purpose rather than a blanket pull. Whether the exports and grounding bundle then redact those fields is lane 3's question, not mine."
+    }
+  ]
+}

