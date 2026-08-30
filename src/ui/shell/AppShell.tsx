@@ -193,7 +193,19 @@ export function AppShell({
   )
 }
 
+/**
+ * The commit and day this bundle was built (prompt 40 §24).
+ *
+ * Seven consecutive red CI runs went unnoticed across prompts 36 to 39, and a
+ * reviewer looking at the live site had no way to tell whether they were seeing
+ * the deploy they expected. A stale bundle and a fresh one look identical
+ * without this.
+ */
+const BUILD_COMMIT = typeof __BUILD_COMMIT__ === 'string' ? __BUILD_COMMIT__ : 'dev'
+const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
+
 export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null } = {}) {
+  const buildLabel = SHELL.footerBuild(BUILD_COMMIT, absoluteDate(`${BUILD_DATE}T12:00:00.000Z`))
   return (
     <footer className="footer">
       <span>{SHELL.footerLeft}</span>
@@ -213,6 +225,19 @@ export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null }
         <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
           {SHELL.footerSource}
         </a>
+        {BUILD_COMMIT === 'dev' ? (
+          <span className="footer-build">{buildLabel}</span>
+        ) : (
+          <a
+            className="footer-build"
+            href={`${REPO_URL}/commit/${BUILD_COMMIT}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={SHELL.footerBuildTitle}
+          >
+            {buildLabel}
+          </a>
+        )}
       </span>
     </footer>
   )

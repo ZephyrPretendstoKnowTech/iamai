@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
@@ -40,6 +41,24 @@ function spikeCapture(): Plugin {
 // The tool version a person can quote in a feedback email (prompt 34 §2).
 const APP_VERSION = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')).version
 
+// The commit this bundle was built from, and when (prompt 40 §24). Seven
+// consecutive red CI runs went unnoticed across prompts 36 to 39 partly because
+// nothing on the page said which commit was being looked at: a stale bundle and
+// a fresh one are indistinguishable without it. GITHUB_SHA is set by Actions;
+// git is the fallback locally, and 'dev' when neither answers.
+function commitSha() {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7)
+  try {
+    return execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+  } catch {
+    return 'dev'
+  }
+}
+const BUILD_COMMIT = commitSha()
+// Whole days only. A build time to the minute is a number nobody reads and a
+// diff on every rebuild.
+const BUILD_DATE = new Date().toISOString().slice(0, 10)
+
 // Where this tool lives under the domain (prompt 35 §1). getiamai.com/ is the
 // home page for IAMAI as a whole; the planner sits in a folder beside any
 // future tool. One constant: if the tool is ever renamed, this changes and
@@ -47,7 +66,12 @@ const APP_VERSION = JSON.parse(readFileSync(resolve(import.meta.dirname, 'packag
 export const TOOL_PATH = process.env.TOOL_PATH ?? 'rollout'
 
 export default defineConfig({
-  define: { __APP_VERSION__: JSON.stringify(APP_VERSION), __TOOL_PATH__: JSON.stringify(TOOL_PATH) },
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __TOOL_PATH__: JSON.stringify(TOOL_PATH),
+    __BUILD_COMMIT__: JSON.stringify(BUILD_COMMIT),
+    __BUILD_DATE__: JSON.stringify(BUILD_DATE),
+  },
   // Derived from TOOL_PATH so the base and the output folder cannot disagree.
   // VITE_BASE still overrides it for hosting that is not the custom domain
   // (the github.io fallback serves from /<repo>/); BASE_PATH stays accepted as
