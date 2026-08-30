@@ -46,7 +46,10 @@ import { PLAIN_TITLES } from '../../copy/plain.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import { RECOVERY } from '../../copy/recovery.ts'
 import { DRIFT } from '../../copy/drift.ts'
-import { exclusionDrift } from '../../roadmap/drift.ts'
+import { directExclusionDrift, exclusionDrift } from '../../roadmap/drift.ts'
+import firstPartyApps from '../../../data/first-party-apps.json' with { type: 'json' }
+import { ASSERTION_CHOICES, ASSERTION_EFFECT, unansweredFor, unknownsFor } from '../../roadmap/unknowns.ts'
+import { checkServicePrincipals, createCommands, SP_TEXT } from '../../roadmap/servicePrincipals.ts'
 import { SKIP, SKIP_REASONS } from '../../copy/skip.ts'
 import type { SkipReasonId } from '../../copy/skip.ts'
 import { LOG, NEXT } from '../../copy/next.ts'
@@ -113,6 +116,13 @@ type PlanStore = {
   enforcementCap?: number
   /** YYYY-MM-DD dates nothing is enforced on. */
   holidays?: string[]
+  /**
+   * Answers to the questions a short observation window cannot answer
+   * (prompt 42 item 4), keyed by step id then unknown id. Stored with the date
+   * they were given, because an assertion about a tenant is only as good as the
+   * day it was made.
+   */
+  assertions?: Record<string, Record<string, { answer: 'yes' | 'no'; at: string; effect: 'carveOut' | 'laterWave' | 'accepted' }>>
   /** The automatic activity log (prompt 30 §3). */
   log?: ActivityLog
   /** The post-enforcement revert threshold, a share of the affected people (comms-and-bridges.md §3.1). */
@@ -456,6 +466,16 @@ export function RoadmapPage({
     setVersion((v) => v + 1)
   }
   // Notice periods and holidays travel with the plan (scheduling-and-onboarding.md §2.2, §2.3).
+  const setAssertion = (stepId: string, unknownId: string, answer: 'yes' | 'no', effect: 'carveOut' | 'laterWave' | 'accepted'): void => {
+    const entry = { answer, at: new Date().toISOString(), effect }
+    setSaved((prev) => {
+      const base = prev ?? { planId, steps: {}, checkpoints: [] }
+      const next = { ...base, assertions: { ...(base.assertions ?? {}), [stepId]: { ...(base.assertions?.[stepId] ?? {}), [unknownId]: entry } } }
+      void savePlanRecord(snapshot.tenantId, next)
+      return next
+    })
+    setVersion((v) => v + 1)
+  }
   const setEnforcementCap = (n: number): void => {
     const next = Math.max(1, Math.min(10, Math.round(n) || 1))
     setSaved((p) => (p ? { ...p, enforcementCap: next } : p))
@@ -886,11 +906,11 @@ export function RoadmapPage({
       */}
       {/* Exclusion drift (prompt 44 Part 3). A group that quietly grows is the
           one change nothing else in the tenant reports. */}
-      {driftItems.length > 0 && (
+      {[...driftItems, ...directDrift].length > 0 && (
         <>
           <h4>{DRIFT.title}</h4>
           <ul className="sections">
-            {driftItems.map((d) => (
+            {[...driftItems, ...directDrift].map((d) => (
               <li key={d.kind + d.id}>
                 <Chip status={d.finding ? 'warning' : 'neutral'}>{d.finding ? SECTION.applies.yes : SECTION.applies.unknown}</Chip> {d.sentence}
                 {d.detail && <div className="sub">{d.detail}</div>}
@@ -1663,6 +1683,9 @@ export function RoadmapPage({
                         onPrompt={(id, kind, context, draft) => void copyPrompt(id, kind, context, draft)}
                         watch={watchFor(step, snapshot, nameOf, watchThreshold)}
                         effort={effortFor(step)}
+                        snapshotForApps={snapshot}
+                        assertions={saved?.assertions?.[step.id] ?? {}}
+                        onAssert={setAssertion}
                         now={nowMs}
                         batchWith={schedule.batchWith[step.id] ?? []}
                         verdict={verdictFor(step, snapshot, new Date(nowMs).toISOString(), operator?.userId ?? null)}
@@ -1786,6 +1809,17 @@ export function RoadmapPage({
     usedAsExclusion: excludedGroupIds,
     nominated: mapping?.breakGlassUserIds.length ?? 0,
     nameOf,
+  })
+  // A policy that names accounts directly is worse than a group, not better:
+  // one never appears in a group review (prompt 44 item 15).
+  const directDrift = directExclusionDrift({
+    previous: lastCheckpoint ? new Map(lastCheckpoint.tenantPolicies.map((t) => [t.id, 0])) : null,
+    current: ((snapshot.config.caPolicies?.rows ?? []) as { id?: string; displayName?: string; conditions?: { users?: { excludeUsers?: string[] } } }[]).map((p) => ({
+      policyId: String(p.id ?? ''),
+      policyName: String(p.displayName ?? ''),
+      excludedCount: (p.conditions?.users?.excludeUsers ?? []).length,
+    })),
+    since: lastCheckpoint?.at ?? schedule.start,
   })
   const effortTotal = planEffort(steps, bulletins.length)
   // Only runs when the plan is actually over the bound; it re-schedules copies.
@@ -2075,17 +2109,21 @@ function VerdictCard({
   step,
   nameOf,
   tenantId,
+  answered,
 }: {
   v: Verdict
   step: Step
   nameOf: (id: string) => string
   tenantId: string
+  /** Assertions already given, so the verdict lists only what is still open. */
+  answered: import('../../roadmap/unknowns.ts').Assertion[]
 }) {
   const status = v.kind === 'ready' ? 'done' : v.kind === 'notYet' ? 'warning' : 'neutral'
   const label = v.kind === 'ready' ? VERDICT.ready : v.kind === 'notYet' ? VERDICT.notYet : VERDICT.notEnough
   const policyId = step.tracking?.policyId ?? null
   const firstAffected = v.failures[0] ?? step.population.ids[0] ?? null
   const times = new Map((step.tracking?.failuresByUser ?? []).map((f) => [f.userId, f.count]))
+  const openUnknowns = unansweredFor(step, answered)
   return (
     <div className="card verdict-card" id={`verdict-${step.id}`}>
       <h4>{VERDICT.title}</h4>
@@ -2124,6 +2162,20 @@ function VerdictCard({
 
       {step.exitCriteria.length > 0 && (
         <>
+          {/* Unknowns still open appear in the verdict as well as on the step
+              (prompt 42 item 5). They never gate it; they are named so nobody
+              mistakes silence for safety. */}
+          {openUnknowns.length > 0 && (
+            <>
+              <h5>{VERDICT.unknownsTitle}</h5>
+              <p className="reason">{VERDICT.unanswered}</p>
+              <ul className="sections">
+                {openUnknowns.map((u) => (
+                  <li key={u.id}>{u.question ?? u.cannotSee}</li>
+                ))}
+              </ul>
+            </>
+          )}
           <h5>{VERDICT.exitTitle}</h5>
           <ul className="sections exit-criteria">
             {step.exitCriteria.map((c, i) => (
@@ -2315,6 +2367,26 @@ function SkipPanel({
  * window, which outranks the change-window cap. The first true fact is the
  * answer, because the others would not have moved it anyway.
  */
+/**
+ * First-party applications a step's policy targets, checked against the
+ * activity this tenant actually shows (prompt 43 item 11).
+ */
+const FIRST_PARTY_APPS: { appId: string; displayName: string }[] = firstPartyApps.apps
+
+function appsTargetedBy(step: Step): { appId: string; displayName: string }[] {
+  if (!step.action.json) return []
+  const ids = [...step.action.json.matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi)].map((m) => m[0].toLowerCase())
+  const seen = new Set<string>()
+  const out: { appId: string; displayName: string }[] = []
+  for (const id of ids) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    const name = FIRST_PARTY_APPS.find((a) => a.appId.toLowerCase() === id)
+    if (name) out.push({ appId: id, displayName: name.displayName })
+  }
+  return out
+}
+
 function whyNow(step: Step, waitsOn: Step[], schedule: Schedule): string {
   if (step.status === 'done') return WHY_NOW.done
   if (step.status === 'skipped') return WHY_NOW.skipped
@@ -2348,6 +2420,9 @@ function StepCard({
   onPrompt,
   watch,
   effort,
+  snapshotForApps,
+  assertions,
+  onAssert,
   audienceName,
   now,
   batchWith,
@@ -2391,8 +2466,18 @@ function StepCard({
   onPrompt: (id: string, kind: 'announcement' | 'reminder' | 'helpDesk' | 'manager', context: string, draft: string) => void
   watch: import('../../roadmap/watch.ts').WatchResult | null
   effort: { minutes: number; contacts: number; sentence: string }
+  /** For the service-principal activity check (prompt 43 item 11). */
+  snapshotForApps: TenantSnapshot
+  /** Answers already given for this step's unknowns (prompt 42 item 4). */
+  assertions: Record<string, { answer: 'yes' | 'no'; at: string; effect: 'carveOut' | 'laterWave' | 'accepted' }>
+  onAssert: (stepId: string, unknownId: string, answer: 'yes' | 'no', effect: 'carveOut' | 'laterWave' | 'accepted') => void
 }) {
   const [tab, setTab] = useState<'json' | 'portal' | 'ps'>('portal')
+  // What this window cannot see, and which applications it targets (prompts 42
+  // items 3-5 and 43 items 11-13).
+  const [openAssert, setOpenAssert] = useState<string | null>(null)
+  const stepUnknowns = unknownsFor(step)
+  const spChecks = checkServicePrincipals(appsTargetedBy(step), snapshotForApps, () => step.plainTitle || step.title)
   return (
     <ExpandCard
       className={`step-card ${step.safeToday ? 'lane-safe' : ''}`}
@@ -2752,7 +2837,7 @@ function StepCard({
       )}
 
       {/* The readiness verdict (prompt 42 Part 2). One per step, never per policy. */}
-      {verdict && <VerdictCard v={verdict} step={step} nameOf={nameOf} tenantId={tenantId} />}
+      {verdict && <VerdictCard v={verdict} step={step} nameOf={nameOf} tenantId={tenantId} answered={Object.entries(assertions).map(([id, a]) => ({ id: id as never, answer: a.answer, at: a.at, effect: a.effect }))} />}
 
       {/* 8. How to verify */}
       {step.verify && (
@@ -2770,6 +2855,79 @@ function StepCard({
             <li>
               {SECTION.goodLooksLike} {step.verify.good}
             </li>
+          </ul>
+        </>
+      )}
+
+      {/* What this step's window cannot see (prompt 42 items 3-5). Stated, never
+          waited out, and never a blocker: an unanswered one renders as something
+          the records cannot confirm, so nobody mistakes silence for safety. */}
+      {stepUnknowns.length > 0 && (
+        <>
+          <h4>{VERDICT.unknownsTitle}</h4>
+          <p className="reason">
+            {VERDICT.unknownsNote} {VERDICT.unanswered}
+          </p>
+          <ul className="sections">
+            {stepUnknowns.map((u) => {
+              const answered = assertions[u.id]
+              return (
+                <li key={u.id}>
+                  {u.cannotSee}
+                  {u.question ? <div className="sub">{u.question}</div> : null}
+                  {answered ? (
+                    <div className="reason">
+                      {VERDICT.answeredOn(absoluteDate(answered.at))}: {ASSERTION_EFFECT[answered.effect]}
+                    </div>
+                  ) : (
+                    u.question && (
+                      <p className="row no-print">
+                        {/* One unknown at a time: three buttons beside every
+                            question put the same three choices on screen four
+                            times over, which reads as noise rather than as a
+                            decision. */}
+                        {openAssert === u.id ? (
+                          ASSERTION_CHOICES.map((c) => (
+                            <Button key={c.effect} size="sm" variant="quiet" onClick={() => { onAssert(step.id, u.id, 'yes', c.effect); setOpenAssert(null) }}>
+                              {c.label}
+                            </Button>
+                          ))
+                        ) : (
+                          <Button size="sm" variant="quiet" onClick={() => setOpenAssert(u.id)}>
+                            {VERDICT.answer}
+                          </Button>
+                        )}
+                      </p>
+                    )
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+
+      {/* 43 items 11-13: applications this policy targets, and whether this
+          tenant has a service principal for them. */}
+      {spChecks.length > 0 && (
+        <>
+          <h4>{SP_TEXT.title}</h4>
+          <ul className="sections">
+            {spChecks.map((c) => (
+              <li key={c.app.appId}>
+                {c.state === 'present' ? SP_TEXT.present(c.app.displayName) : SP_TEXT.unconfirmed(c.app.displayName)}
+                {c.state === 'unconfirmed' && (
+                  <>
+                    <div className="sub">{SP_TEXT.portal}</div>
+                    <pre className="code-block">{createCommands(c.app).connect}</pre>
+                    <div className="reason">{SP_TEXT.connectExplains}</div>
+                    <pre className="code-block">{createCommands(c.app).create}</pre>
+                    <div className="reason">{SP_TEXT.createExplains}</div>
+                    <div className="reason">{SP_TEXT.youRunIt}</div>
+                  </>
+                )}
+              </li>
+            ))}
           </ul>
         </>
       )}

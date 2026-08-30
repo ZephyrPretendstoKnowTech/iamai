@@ -39,6 +39,7 @@ export const VERDICT = {
   unknownsTitle: 'What this window cannot see',
   unknownsNote: 'Answer any of these and IAMAI acts on it. Leaving one unanswered does not hold the change up; it is stated here so nothing is mistaken for safety.',
   unanswered: 'The records cannot confirm this.',
+  answer: 'Answer this',
   answeredOn: (at: string) => `Answered ${at}`,
 
   insights: 'Report-only impact for this policy',

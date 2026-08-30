@@ -105,6 +105,9 @@ export const OPERATOR = {
 }
 
 export const NAMING = {
+  /** The name IAMAI would give an object it asks you to create (prompt 43 item 4). */
+  proposed: (name: string, matchesTenant: boolean) =>
+    matchesTenant ? `Name it ${name}, which follows the convention this tenant already uses.` : `Name it ${name}. IAMAI could not read a convention from this tenant, so that is a proposal.`,
   fromBaseline: (name: string) => `from baseline: ${name}`,
 }
 
