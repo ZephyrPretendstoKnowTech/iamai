@@ -489,6 +489,7 @@ const GRANT_WORDS: Record<string, string> = {
   phishingResistant: 'phishing-resistant MFA',
   block: 'blocking access',
   compliantDevice: 'a compliant device',
+  compliantApplication: 'an app protection policy',
   approvedApplication: 'an approved app',
   passwordChange: 'a password change',
 }
@@ -512,6 +513,7 @@ function describeGrant(grant: PolicyFacts['grant']): string {
   else if (grant.controls.has('mfa')) bits.push('MFA')
   if (grant.controls.has('compliantDevice')) bits.push('a compliant device')
   if (grant.controls.has('domainJoinedDevice')) bits.push('a hybrid-joined device')
+  if (grant.controls.has('compliantApplication')) bits.push('an app protection policy')
   if (grant.controls.has('approvedApplication')) bits.push('an approved app')
   if (grant.controls.has('compliantApplication')) bits.push('an app protection policy')
   if (grant.controls.has('passwordChange')) bits.push('a password change')

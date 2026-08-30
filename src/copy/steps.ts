@@ -67,6 +67,16 @@ export const NAMING = {
 
 export const BLOCKER = {
   trustedLocation: 'needs the trusted named location first',
+  // Sequence safety (guidance-audit-01, Layer C).
+  registrationNoTap:
+    'Temporary Access Pass is not enabled, so anybody who still has no method could not register once this applies',
+  registrationCoverage: (n: number) =>
+    `${n === 1 ? '1 active person has' : `${n} active people have`} no method yet, and this policy is what would stop them registering one`,
+  registrationNoTrustedLocation:
+    'no trusted location is confirmed, so this policy would apply everywhere including to people with no method',
+  countriesUnsafe: 'the allowed-countries list is not settled yet',
+  securityDefaultsFirst: 'security defaults are still on, so no Conditional Access policy can be turned on',
+  sessionLoop: 'asking for sign-in every time without also requiring MFA can put people in a sign-in loop',
   deviceReadiness: (percent: number, threshold: number) => `device readiness is ${percent}%: the threshold is ${threshold}%`,
   evidence: 'report-only evidence is not clean yet',
   operator: (reason: string) => `the signed-in account would be locked out: ${reason}`,

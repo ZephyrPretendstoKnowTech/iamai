@@ -1094,7 +1094,82 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     for (const s of steps) {
       if (s.status !== 'blocked' || !s.blockers.some((b) => b.kind === 'readiness')) continue
       if (s.readiness.family !== 'mfa' && s.readiness.family !== 'guest') continue
+      // Only ever a backward edge. A phase 0 step (security-info registration)
+      // that waits on the phase 2 campaign would order the plan against itself;
+      // it keeps the readiness reason without the dependency.
+      if (s.phase < verifyStep.phase) continue
       if (!s.blockedBy.includes(verifyStep.id)) s.blockedBy.push(verifyStep.id)
+    }
+  }
+
+  // Temporary Access Pass is Microsoft's documented rescue for somebody who has
+  // no method and has to register one; without it the registration step has no
+  // way out (guidance-audit-01, steps/security-info-registration.md).
+  const methodsPolicyRow = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as
+    | { authenticationMethodConfigurations?: { id?: string; state?: string }[] }
+    | null
+  const tapEnabled =
+    snapshot.config.authMethodsPolicy?.status !== 'ok' || methodsPolicyRow === null
+      ? null
+      : (methodsPolicyRow.authenticationMethodConfigurations ?? []).some(
+          (c) => c.id?.toLowerCase() === 'temporaryaccesspass' && c.state === 'enabled',
+        )
+  const trustedLocationCount = mapping.trustedLocationIds.length
+
+  // ---- Sequence safety (audit-program Layer C, guidance-audit-01) ----
+  // Ordering rules that hold for any tenant, each one a way somebody gets
+  // stranded if the plan runs in the wrong order.
+  const blockLate = (s: Step, label: string, dependsOn?: string): void => {
+    if (s.status === 'done' || s.status === 'skipped') return
+    if (dependsOn && !s.blockedBy.includes(dependsOn)) s.blockedBy.push(dependsOn)
+    if (!s.blockers.some((b) => b.kind === 'readiness' && b.label === label)) {
+      s.blockers.push({ kind: 'readiness', label })
+      s.unblockNotes.push(BLOCKED.readiness(label))
+    }
+    s.status = 'blocked'
+  }
+
+  // 1. Security-info registration is the policy that asks for MFA in order to
+  // register MFA. It waits for a way out to exist (Temporary Access Pass), for
+  // a trusted location to mean something, and for the people with no method to
+  // have one (steps/security-info-registration.md).
+  const registrationStep = steps.find((s) => s.goalId === 'register-info-protected')
+  if (registrationStep) {
+    if (tapEnabled === false) blockLate(registrationStep, BLOCKER.registrationNoTap)
+    const withoutMethod = viability.filter((v) => v.activity === 'active' && v.mfa === 'none').length
+    // A reason, not a dependency edge: the campaign sits in a later phase, and
+    // pointing a phase 0 step at it would order the plan against itself.
+    if (withoutMethod > 0) blockLate(registrationStep, BLOCKER.registrationCoverage(withoutMethod))
+    if (trustedLocationCount === 0) blockLate(registrationStep, BLOCKER.registrationNoTrustedLocation)
+  }
+
+  // 2. No country block before the operator's own recent countries are in the
+  // allow list, and before the list itself passes its checks.
+  const countriesReport = validationReports.find((r) => r.subject === 'allowedCountries')
+  if (countriesReport && countriesReport.blocking.length > 0) {
+    for (const s of steps) {
+      if (s.readiness.family === 'location') blockLate(s, BLOCKER.countriesUnsafe, blockerStepId('allowedCountries'))
+    }
+  }
+
+  // 3. Security defaults come off before any Conditional Access policy: with
+  // them on, a policy can be created and cannot be turned on.
+  const secDefaultsStep = steps.find((s) => s.id === 's-prereq-security-defaults')
+  if (secDefaultsStep) {
+    for (const s of steps) {
+      if (s.kind !== 'create' && s.kind !== 'adjust') continue
+      blockLate(s, BLOCKER.securityDefaultsFirst, secDefaultsStep.id)
+    }
+  }
+
+  // 4. No session control that can put the person applying it in a loop:
+  // sign-in every time without MFA in the same policy is Microsoft's own
+  // documented hazard (steps/session-controls.md).
+  for (const s of steps) {
+    const impl = input.coverage.results.find((r) => r.goal.id === s.goalId)?.goal.implementations[0]
+    const floor = impl?.floor
+    if (floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined) {
+      blockLate(s, BLOCKER.sessionLoop)
     }
   }
 
@@ -1145,6 +1220,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     allowedCountries: mapping.allowedCountries,
     policyName: policyNameOf,
     guestIds: popIndex.guests,
+    tapEnabled,
+    trustedLocations: trustedLocationCount,
   }
   for (const s of steps) {
     s.failureModes = failureModesFor(s, contentCtx)

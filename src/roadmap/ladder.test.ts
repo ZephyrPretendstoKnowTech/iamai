@@ -67,7 +67,7 @@ test('Global Administrator count: Microsoft\'s two to four is the verdict, and t
   assert.equal(at(3)?.status, 'done')
   assert.equal(at(1)?.status, 'ready')
   assert.equal(at(9)?.status, 'ready')
-  assert.match(at(9)?.impact ?? '', /Microsoft recommends two to four/)
+  assert.match(at(9)?.impact ?? '', /keep the number under five/)
   // Names, never ids (CLAUDE.md).
   assert.doesNotMatch(at(3)?.impact ?? '', /[0-9a-f]{8}-[0-9a-f]{4}/i)
   assert.match(at(3)?.impact ?? '', new RegExp(base.users[0].displayName ?? ''))
@@ -86,7 +86,7 @@ test('guests: none is done, some are named', () => {
 test('what Graph does not expose is said plainly, never guessed', () => {
   const { steps } = ladderSteps(freeSnapshot(), mapping(), [])
   const appPasswords = steps.find((s) => s.id === ladderStepId('app-passwords'))
-  assert.match(appPasswords?.impact ?? '', /does not expose/)
+  assert.match(appPasswords?.impact ?? '', /IAMAI does not read/)
   assert.equal(appPasswords?.status, 'ready')
   const legacy = steps.find((s) => s.id === ladderStepId('legacy-auth-inventory'))
   assert.match(legacy?.impact ?? '', /no sign-in records/)

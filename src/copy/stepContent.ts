@@ -46,10 +46,39 @@ export const WHAT_CHANGES = {
 }
 
 export const FAILURE = {
+  // Security-info registration (guidance-audit-01, steps/security-info-registration.md).
+  // Microsoft's own pattern excludes trusted locations and leans on a Temporary
+  // Access Pass; without one, a person with no method cannot register at all.
+  registration: {
+    remote: 'People working away from a trusted location who have no method registered yet',
+    noTap: 'Anyone who needs a Temporary Access Pass issued before they can register at all',
+    guests: 'Guests and external users, who cannot be issued a Temporary Access Pass',
+    passwordless: 'Windows Hello for Business and macOS Platform SSO enrolment, which this policy has applied to since 6 July 2026',
+    servicePrincipals: 'Applications and service principals, which a policy scoped to users never covers',
+    evidence: {
+      noMethod: (n: number) =>
+        `${count(n, 'active person', 'active people')} have no method registered. Away from a trusted location they cannot register one either: registering asks for MFA, and they have none to answer with.`,
+      allSet: 'everyone active already has a method, so nobody has to register from scratch under this policy.',
+      unknown: 'registration data could not be read: assume some people still have no method and issue passes before enforcing.',
+      tapOn: 'Temporary Access Pass is enabled in the authentication methods policy, so an administrator can issue a way in.',
+      tapOff: 'Temporary Access Pass is not enabled in the authentication methods policy, so there is no way to rescue somebody who cannot register.',
+      tapUnknown: 'the authentication methods policy could not be read, so whether a Temporary Access Pass can be issued is unknown.',
+      noTrustedLocation: 'no trusted location is confirmed, so excluding trusted locations excludes nobody and the policy applies everywhere.',
+      guests: (n: number) => `${count(n, 'guest')} in the directory. Microsoft says to exclude guests from this policy, because a pass cannot be issued to them.`,
+      guestsNone: 'no guests in the directory.',
+      passwordless: 'since 6 July 2026 this policy also applies while somebody sets up Windows Hello for Business or macOS Platform SSO; a policy written before then behaves differently now.',
+      servicePrincipals: 'a policy scoped to users never blocks an application signing in as itself; Conditional Access for workload identities is the separate control for that.',
+    },
+  },
   legacy: {
-    devices: 'Printers, scanners and appliances that send mail over SMTP, IMAP or POP',
+    devices: 'Printers, scanners and appliances that send mail over SMTP',
     lob: 'Line-of-business applications that sign in with basic authentication',
     mailboxes: 'Shared mailboxes and service accounts polled by scripts',
+    certificate: 'Certificate-based authentication on mobile, which counts as legacy and is blocked with the rest',
+    alreadyGone:
+      'Microsoft disabled basic authentication for Exchange ActiveSync, POP, IMAP, EWS, Remote PowerShell, offline address book and Autodiscover in every tenant, and it cannot be turned back on. For those protocols this block closes a door that is already shut. SMTP submission is the exception that is still live.',
+    relay:
+      'A device that can only send mail with a password moves to an SMTP relay connector, Direct Send, High Volume Email or Azure Communication Services. Excluding its mailbox from the policy instead leaves that account open to password spray.',
     evidence: {
       seen: (users: number, protocols: string) => `${count(users, 'account')} signed in with legacy protocols in 30 days (${protocols}): they will break.`,
       none: 'no legacy-protocol sign-ins in 30 days: low risk.',
@@ -75,10 +104,21 @@ export const FAILURE = {
     },
   },
   device: {
+    noPolicy:
+      'Devices with no compliance policy assigned. Intune treats those as compliant until the tenant-wide setting is changed to Not compliant, so the control can look enforced while it grants everything. Changing that setting marks every unpoliced device non-compliant at once.',
+    graceWindow:
+      'Set a grace period on the Mark device non-compliant action before enforcing. It ships at zero days, which marks a device non-compliant the moment it fails.',
+    staleReport:
+      'A device that stops reporting is treated as non-compliant once the compliance status validity period runs out, thirty days by default. Laptops back from a month away are blocked with nothing having changed.',
+    errorState: 'A device stuck in the Error state keeps its old status for seven days and then turns non-compliant, so a tenant can look healthy for a week and then block people in a batch.',
+    enrolment:
+      'Requiring a compliant device does not block Intune enrolment, so no exclusion is needed for it. The one exclusion Microsoft documents is the Windows Store for Business app, for Subscription Activation.',
+    reportOnlyPrompt:
+      'Even in report-only, this policy makes macOS, iOS and Android users pick a device certificate, and the prompt repeats until the device is compliant.',
     personal: 'Personal or unmanaged machines, including home PCs used for work',
     kiosks: 'Kiosks, shared workstations and lab machines nobody enrolled',
     contractors: 'Contractors and partners on devices the tenant does not manage',
-    platforms: 'Macs, Linux and mobile devices that Intune does not cover here',
+    platforms: 'Anything outside Windows 10 and later, iOS, Android, macOS and Ubuntu Linux enrolled in Intune: Windows Home editions, other Linux, and Edge in InPrivate all read as non-compliant',
     evidence: {
       noDevice: (n: number, total: number) => `${n} of ${count(total, 'active member')} own no compliant device: they will be stopped.`,
       allCovered: 'every active member owns a compliant or hybrid-joined device: low risk.',
@@ -88,9 +128,11 @@ export const FAILURE = {
     },
   },
   geo: {
-    travel: 'People travelling for work',
-    vpn: 'A VPN or proxy whose exit is in another country',
-    roaming: 'Mobile networks that route through a neighbouring country',
+    travel: 'People travelling for work (seen in the field; Microsoft documents the proxy case rather than this one)',
+    vpn: 'A VPN or proxy whose exit is in another country. Microsoft notes the address it reads is the proxy address, and that keeping a list of provider addresses current is close to impossible.',
+    roaming: 'Mobile networks that route through a neighbouring country (seen in the field; not something Microsoft documents)',
+    notInstant: 'A country rule does not bite until the token refreshes, so an existing session carries on and a traveller is not unblocked the moment the list changes.',
+    residential: 'An office on ordinary broadband whose address changes, so the trusted location stops matching (seen in the field; not something Microsoft documents)',
     evidence: {
       seen: (countries: string, users: number) => `sign-ins seen from ${countries} (${count(users, 'person', 'people')}) in 30 days: these will be blocked.`,
       none: 'every sign-in in 30 days came from an allowed country: low risk.',
@@ -111,6 +153,8 @@ export const FAILURE = {
     },
   },
   admin: {
+    customRoles: 'People holding a custom role or an administrative-unit-scoped role, which a policy targeting directory roles does not reach at all',
+    portalFloor: 'Microsoft already requires MFA on the admin portals for every account, exclusions included. This step is the strength above that floor, not the floor itself.',
     noKey: 'Admins without a FIDO2 key, passkey or Windows Hello for Business',
     eligible: 'PIM-eligible admins who activate a role and meet the requirement mid-task',
     breakGlass: 'A break-glass account caught by the policy',
@@ -124,6 +168,8 @@ export const FAILURE = {
     },
   },
   guest: {
+    noTap: 'Guests who get stuck: a Temporary Access Pass cannot be issued to an external guest, so the usual rescue does not exist',
+    partner: 'An IT partner administering this tenant through delegated access, which a policy aimed at external users can sever. Scope it with the Service provider user type rather than by naming people.',
     home: 'Guests whose home tenant MFA is not trusted here, prompted to register again',
     evidence: {
       guests: (n: number) => `${count(n, 'active guest')} in scope; MFA trust for their home tenants is not configured, so each registers here once.`,
@@ -132,6 +178,12 @@ export const FAILURE = {
     },
   },
   session: {
+    persistScope: 'A never-persistent browser rule has to target every resource. Microsoft requires it, because all tabs in a browser share one session token.',
+    everyTimeLoop: 'Asking for sign-in every time without also requiring MFA in the same policy can put people in a sign-in loop.',
+    sharedDevices: 'Teams Rooms, panels and desk phones do not support sign-in frequency or browser persistence, and a frequency policy signs them out on a cycle.',
+    rememberMfa: 'Turn off Remember MFA on trusted devices first: the two settings together prompt people at times nobody expects.',
+    downloadLeaks:
+      'App-enforced restrictions stop downloads in the browser, and leave Anyone links, older clients and file previews working. It can take a day to take effect and does not touch sessions already signed in.',
     unsaved: 'People losing unsaved work to a re-authentication prompt',
     kiosks: 'Shared and kiosk sessions that time out mid-task',
     evidence: (n: number) => `${count(n, 'active person', 'active people')} will see the new prompt cadence; nobody is blocked.`,
@@ -166,7 +218,7 @@ export const VERIFY = {
 export const ROLLBACK_V2 = {
   create: 'Set the policy back to Report-only (or delete it). Nothing else in the tenant changes.',
   adjust: 'Restore the fields listed above from the previous body below; leave every other field alone.',
-  timing: 'Conditional Access changes generally apply within a few minutes; tokens already issued keep working until they are refreshed.',
+  timing: 'Microsoft documents Conditional Access changes as taking up to a day to reach every service, and about two hours for some updates. Tokens already issued keep working until they refresh, so revoke sessions if the change has to bite now.',
   storedBody: 'The previous body is stored in the plan file so it can be restored byte for byte.',
 }
 
