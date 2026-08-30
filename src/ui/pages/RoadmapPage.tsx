@@ -74,7 +74,7 @@ import type { Dependency } from '../../roadmap/schedule.ts'
 import { POPULATION_CSV_HEADER, cohortsFor, populationContext, populationRows } from '../../roadmap/population.ts'
 import { ringContextIndexes } from '../../roadmap/rings.ts'
 import { adminUserIds } from '../../roles.ts'
-import { EVIDENCE as EVIDENCE_COPY, NAMING, WHY, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
+import { EVIDENCE as EVIDENCE_COPY, NAMING, WHY, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, WHY_NOW, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import { planSummary } from '../../roadmap/summary.ts'
 import { BANDS } from '../../roadmap/constants.ts'
@@ -1646,6 +1646,11 @@ export function RoadmapPage({
                         copied={copied}
                         onCopy={copy}
                         skipDraft={skipDraft}
+                        schedule={schedule}
+                        waitsOn={(schedule.graph[step.id] ?? [])
+                          .filter((d) => d.kind === 'hard')
+                          .map((d) => stepById.get(d.stepId))
+                          .filter((x): x is Step => x !== undefined && x.status !== 'done' && x.status !== 'skipped')}
                         dependents={steps.filter(
                           (x) => (schedule.graph[x.id] ?? []).some((d) => d.kind === 'hard' && d.stepId === step.id) && x.status !== 'done' && x.status !== 'skipped',
                         )}
@@ -1670,8 +1675,23 @@ export function RoadmapPage({
                         tenantId={snapshot.tenantId}
                         onSkipped={(st) => {
                           // Persist the skip before regenerating, or mergePersisted forgets it.
+                          //
+                          // The previous record is spread first. Replacing it
+                          // outright dropped scheduledDate, tracking, ringActuals
+                          // and currentRing, so skipping a step and putting it
+                          // back lost a hand-set date and the execution history
+                          // that went with it. saveStepMeta beside this has
+                          // always spread; this one did not.
                           setSaved((p) =>
-                            p ? { ...p, steps: { ...p.steps, [st.id]: { status: st.status, history: st.history, skipReason: st.skipReason } } } : p,
+                            p
+                              ? {
+                                  ...p,
+                                  steps: {
+                                    ...p.steps,
+                                    [st.id]: { ...(p.steps[st.id] ?? {}), status: st.status, history: st.history, skipReason: st.skipReason },
+                                  },
+                                }
+                              : p,
                           )
                           setVersion((v) => v + 1)
                         }}
@@ -2288,6 +2308,28 @@ function SkipPanel({
   )
 }
 
+/**
+ * Why this step sits where it does, in one line (prompt 45 item 11).
+ *
+ * Read in the order the scheduler itself applies: a hard dependency outranks a
+ * window, which outranks the change-window cap. The first true fact is the
+ * answer, because the others would not have moved it anyway.
+ */
+function whyNow(step: Step, waitsOn: Step[], schedule: Schedule): string {
+  if (step.status === 'done') return WHY_NOW.done
+  if (step.status === 'skipped') return WHY_NOW.skipped
+  if (step.safeToday) return WHY_NOW.safeToday
+  const campaign = waitsOn.find((d) => d.kind === 'verify')
+  if (campaign) return WHY_NOW.campaign
+  if (waitsOn.length > 0) return WHY_NOW.waitsFor(waitsOn.map((d) => d.plainTitle || d.title))
+  const start = step.rings[0]?.plannedStart
+  if (start && start <= schedule.observation.end) return WHY_NOW.observation(schedule.observation.days)
+  const soft = (schedule.graph[step.id] ?? []).some((d) => d.kind === 'soft')
+  if (soft) return WHY_NOW.samePeople
+  if (schedule.derivation.constraint === 'cap') return WHY_NOW.cap
+  return WHY_NOW.phase
+}
+
 function StepCard({
   step,
   linked,
@@ -2310,6 +2352,8 @@ function StepCard({
   now,
   batchWith,
   dependents,
+  waitsOn,
+  schedule,
   verdict,
   preflight,
   tenantId,
@@ -2335,6 +2379,9 @@ function StepCard({
   setSkipDraft: (d: SkipDraft | null) => void
   /** Steps that wait on this one, so a skip can name them (item 5). */
   dependents: Step[]
+  /** Steps this one waits on, for the dependency view (prompt 45 item 12). */
+  waitsOn: Step[]
+  schedule: Schedule
   onSkipped: (step: Step) => void
   onExportPopulation: (step: Step) => void
   cohortsOf: (step: Step) => NonNullable<Step['populationView']>['cohorts']
@@ -2726,6 +2773,40 @@ function StepCard({
           </ul>
         </>
       )}
+
+      {/* Why it sits here, and what that order rests on (prompt 45 Part 3). */}
+      <h4>{WHY_NOW.title}</h4>
+      <p>{whyNow(step, waitsOn, schedule)}</p>
+      <div className="dependency-view">
+        <div>
+          <strong>{WHY_NOW.waitsOnTitle}</strong>
+          {waitsOn.length === 0 ? (
+            <p className="reason">{WHY_NOW.waitsOnNothing}</p>
+          ) : (
+            <ul className="sections">
+              {waitsOn.map((d) => (
+                <li key={d.id}>
+                  <a href={stepHref(d.id)}>{d.plainTitle || d.title}</a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <strong>{WHY_NOW.waitedOnByTitle}</strong>
+          {dependents.length === 0 ? (
+            <p className="reason">{WHY_NOW.nothingWaits}</p>
+          ) : (
+            <ul className="sections">
+              {dependents.map((d) => (
+                <li key={d.id}>
+                  <a href={stepHref(d.id)}>{d.plainTitle || d.title}</a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
 
       {/* 9. Exit criteria, per ring and for the step */}
       <h4>{SECTION.exitCriteria}</h4>

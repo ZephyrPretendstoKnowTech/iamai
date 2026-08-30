@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { signOut } from '../../graph/msal.ts'
 import { SHELL } from '../../copy/pages.ts'
+import { exitDemoUrl, isDemo } from '../demo.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { FeedbackPanel } from '../FeedbackPanel.tsx'
 import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/dates.ts'
@@ -177,13 +178,21 @@ export function AppShell({
           )}
         </div>
       </header>
+      {/* Outside body-grid: that grid is two columns, so a banner placed inside
+          it takes a cell and pushes main into the sidebar column (prompt 45
+          Part 1). It renders full width above the whole layout instead. */}
+      {isDemo() && (
+        <p className="demo-banner" role="status">
+          {SHELL.demoBanner} <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
+        </p>
+      )}
       <div className="body-grid">
         <Stepper
           steps={STEPS.map((s) => ({ ...s, status: stepStatus[s.route] ?? 'notStarted' }))}
           reference={REFERENCE}
           active={route === 'baseline/package' ? 'baseline' : route === 'roadmap/prompts' ? 'roadmap' : route}
         />
-        <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
+      <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
           {account && (
             <div className="print-only muted">
               {SHELL.printHeader(tenantName ?? account.username, absoluteDate(new Date().toISOString()), account.username)}

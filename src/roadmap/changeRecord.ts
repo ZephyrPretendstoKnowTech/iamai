@@ -13,12 +13,33 @@ import type { Schedule } from './schedule.ts'
 import { stepProgress, trackable } from './tracking.ts'
 import type { Step } from './types.ts'
 import { effortFor, watchFor } from './watch.ts'
+import { SKIP } from '../copy/skip.ts'
 
 export const CHANGE_RECORD_HEADER = [SCHEDULE_TAB.colStep, ROADMAP.kindLabel, ROADMAP.goalLabel, ROADMAP.whoItTouches, PROGRESS.colPlanned, PROGRESS.colActual, ROADMAP.evidenceLabel, SECTION.rollback, EFFORT.title, WATCH.title]
 
 export function changeRecordRows(steps: Step[], schedule: Schedule, snapshot: TenantSnapshot, nameOf: (id: string) => string, watchThreshold: number): (string | number)[][] {
   const progress = stepProgress(steps, schedule)
-  return trackable(steps).map((st) => {
+  // Skipped steps are in the record, with their reason.
+  //
+  // They used to be filtered out with everything else trackable() drops, so a
+  // decision somebody made deliberately left no trace in the one artifact meant
+  // to be an audit of what was done and why (prompt 44 item 2). A change record
+  // that silently omits the changes nobody made is not a record.
+  const skipped: (string | number)[][] = steps
+    .filter((st) => st.status === 'skipped')
+    .map((st) => [
+      st.plainTitle || st.title,
+      stepKindLabel(st),
+      st.goalId,
+      st.populationBasis || PROGRESS.absent,
+      PROGRESS.absent,
+      SKIP.skippedChip,
+      st.skipReason ?? SKIP.skippedChip,
+      st.rollback,
+      '',
+      '',
+    ])
+  const rows: (string | number)[][] = trackable(steps).map((st) => {
     const row = progress.find((r) => r.stepId === st.id)
     const evidence = st.tracking
       ? `${st.tracking.policyName} (${st.tracking.note})${st.tracking.enforcedAt ? `; ${TRACK.enforced(absoluteDate(st.tracking.enforcedAt))}` : ''}`
@@ -36,6 +57,7 @@ export function changeRecordRows(steps: Step[], schedule: Schedule, snapshot: Te
       watchFor(st, snapshot, nameOf, watchThreshold)?.sentence ?? '',
     ]
   })
+  return [...rows, ...skipped]
 }
 
 export function changeRecordMarkdown(rows: (string | number)[][], tenantName: string, planId: string, revision: number): string {

@@ -891,3 +891,11 @@ table.datatable tbody tr:hover { background: var(--raised); }
 /* The skip panel (prompt 44 Part 1). */
 .skip-panel { border-left: 3px solid var(--warning, var(--accent)); margin-top: var(--space-3); }
 .skip-error { color: var(--danger); }
+
+/* Demo mode (prompt 45 Part 1): a banner that stays, and a way out of it. */
+.demo-banner { margin: 0; padding: var(--space-2) var(--space-4); background: var(--present-soft); color: var(--text); border-bottom: 1px solid var(--border); text-align: center; }
+.demo-banner a { margin-left: var(--space-2); }
+.demo-link { margin-left: var(--space-3); }
+
+/* The dependency view (prompt 45 item 12): two lists, no diagram. */
+.dependency-view { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-4); margin-bottom: var(--space-3); }
