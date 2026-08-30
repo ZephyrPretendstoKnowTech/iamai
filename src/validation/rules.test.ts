@@ -256,9 +256,20 @@ const CASES: Record<string, Case> = {
   'bg.signInMonitoring': { target: bgId, unknown: 'answers', fail: (b) => { b.state.breakGlassAnswers = { credentialStorage: true, signInMonitoring: false } } },
   'bg.nameIdentifiesPurpose': { target: bgId, fail: (b) => { userAt(b, bgId(b)).displayName = 'Alex Garcia' } },
   // Notes report a fact either way; "fail" for them is the absence of the fact.
-  'bg.lastSignIn': { target: bgId, fail: (b) => { userAt(b, bgId(b)).lastSuccessfulSignIn = null } },
-  'bg.signInCountries': { target: bgId, fail: (b) => { delete b.snapshot.signInEvidence[bgId(b)] } },
-  'bg.mfaSeen': { target: bgId, fail: (b) => { delete b.snapshot.signInEvidence[bgId(b)] } },
+  // R10 inverted what these three report. The quiet state — never signed in, no
+  // evidence in the window — is the expected one for a break-glass account, and
+  // printing it was the date bookkeeping the review removed. The state worth a
+  // line is the account having actually been used, so that is what the
+  // "says something" case sets up.
+  'bg.lastSignIn': { target: bgId, fail: (b) => { userAt(b, bgId(b)).lastSuccessfulSignIn = '2026-06-03T02:00:00.000Z' } },
+  'bg.signInCountries': {
+    target: bgId,
+    fail: (b) => { b.snapshot.signInEvidence[bgId(b)] = { ...(b.snapshot.signInEvidence[bgId(b)] ?? {}), signInCount: 2, countries: ['AU'] } as never },
+  },
+  'bg.mfaSeen': {
+    target: bgId,
+    fail: (b) => { b.snapshot.signInEvidence[bgId(b)] = { ...(b.snapshot.signInEvidence[bgId(b)] ?? {}), signInCount: 2, lastMfaSuccess: null } as never },
+  },
   // ---- exclusions group ----
   'xg.membersApproved': {
     target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2 }),

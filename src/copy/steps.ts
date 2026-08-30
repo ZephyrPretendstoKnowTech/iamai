@@ -228,7 +228,6 @@ export const PREREQ = {
 }
 
 export const ACTION = {
-  thenEnforce: 'When every Done-when line holds, switch the policy from report-only to On.',
   alreadyDelivered: 'Already delivered by existing policies: nothing to do.',
   createReportOnly: 'Create this policy in report-only mode; the description tag lets re-scans track it.',
   createsGroup: (name: string) => `This step also creates a new pilot group it targets, for example "${name}": create it empty first; pilot users go in later.`,

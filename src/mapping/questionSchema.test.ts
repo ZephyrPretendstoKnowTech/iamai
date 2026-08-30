@@ -53,9 +53,18 @@ test('every question declares a known type and at most one opt-out', () => {
   }
 })
 
-test('questions 1 and 2 have no opt-out', () => {
-  assert.equal(schemaFor('breakGlass').optOut, 'none')
-  assert.equal(schemaFor('globalExclusion').optOut, 'none')
+test('the only way out of a question is the does-not-exist-yet answer', () => {
+  // R1 to R5 removed "Not applicable to us" and its reason box. The type system
+  // already made a second way out unrepresentable; this asserts the first one
+  // is the right one wherever it survives.
+  for (const q of QUESTION_SCHEMA) {
+    assert.ok(q.optOut === 'none' || q.optOut === 'doesNotExistYet', `${q.id} declares ${q.optOut}`)
+  }
+  // The three where the tenant genuinely may not have the thing yet.
+  assert.deepEqual(
+    QUESTION_SCHEMA.filter((q) => q.optOut !== 'none').map((q) => q.id),
+    ['breakGlass', 'globalExclusion', 'trustedLocations'],
+  )
 })
 
 test('selection bounds are coherent', () => {
@@ -97,10 +106,11 @@ test('there is exactly one confirm label, and only the shared component says it'
 })
 
 test('no question draws its own confirm affordance or its own way out', () => {
-  // One opt-out call site in the whole renderer, and it asks the schema first.
-  const optOutSites = MAPPING_PAGE.match(/<NotApplicable\b/g) ?? []
-  assert.equal(optOutSites.length, 1, 'a question renders its own opt-out')
-  assert.ok(MAPPING_PAGE.includes("schemaFor(def.id).optOut !== 'none' && <NotApplicable"), 'the opt-out is drawn without asking the schema')
+  // "Not applicable to us" is gone from the renderer and from the copy (R1, R5).
+  assert.equal((MAPPING_PAGE.match(/<NotApplicable/g) ?? []).length, 0, 'the removed opt-out is back')
+  for (const retired of ['notApplicableToUs', 'notApplicableReason', 'nobodyNeedsCare', 'frameworkNone']) {
+    assert.ok(!MAPPING_PAGE.includes(retired), retired + ' is back in the renderer')
+  }
   // Confirming is done by the shared component, never by a hand-rolled button.
   for (const id of QUESTION_SCHEMA.filter((q) => q.type === 'confirm-default').map((q) => q.id)) {
     // Some ids are also answered from a picker's onChange, so look forward from

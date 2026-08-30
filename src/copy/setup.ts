@@ -88,7 +88,9 @@ export const SETUP_PAGE = {
     cloudOnlyGa: 'cloud-only Global Administrator',
     trusted: 'marked trusted in the tenant',
   },
-  doesNotExist: "Doesn't exist yet: add it to the plan",
+  // C3: the plan is what the tool produces; saying so again in the label adds
+  // nothing the user does not already know.
+  doesNotExist: "Doesn't exist yet",
   workloadEvidence: (name: string, reason: string) => `${name}. ${reason}`,
   workloadNames: {
     avd: 'Azure Virtual Desktop',
@@ -127,7 +129,6 @@ export const SETUP_PAGE = {
   recommendedCount: (n: number) => `${n} recommended`,
   checksPassed: 'Checks passed',
   needsAttention: 'Needs attention before this is safe',
-  nobodyNeedsCare: 'Nobody needs special care',
   careExplained: (n: number) =>
     `${n === 1 ? 'This user gets' : `These ${n} users get`} white-glove treatment: named on every step that touches them, verified before anything is enforced, and sequenced after the approach is proven.`,
   noNamedLocations: 'The tenant has no named locations yet.',
@@ -135,7 +136,6 @@ export const SETUP_PAGE = {
   notMarkedTrusted: 'not marked trusted',
   notApplicable: 'Not applicable',
   browserZone: (zone: string) => `${zone} (this browser)`,
-  frameworkNone: 'Not sure / none',
   confirmedByOperator: 'confirmed in Setup',
   notUsed: 'marked as not used in Setup',
   yourAnswer: '(your answer)',
@@ -154,10 +154,6 @@ export const SETUP_PAGE = {
   toast: (title: string) => `${title} saved`,
   nobody: 'nobody',
   noneChosen: 'none',
-  notApplicableAnswer: 'not applicable',
-  notApplicableToUs: 'Not applicable to us',
-  notApplicableReason: 'Why does this not apply? A short reason goes in the plan.',
-  notApplicableAnswered: (reason: string) => `Not applicable to us: ${reason}`,
   noServiceAccounts: 'No service accounts detected, so nothing needs a carve-out; the plan records that.',
   noTrustedLocations: 'No named locations exist yet: the plan creates them as its first steps.',
   findingsCount: (n: number) => (n === 0 ? 'checks passed' : `${n} to fix`),
@@ -165,8 +161,6 @@ export const SETUP_PAGE = {
   nothingToCheck: 'nothing to check',
   /** The two emergency-access facts Microsoft Graph exposes nowhere (validation-rules.md §3). */
   breakGlassAsk: {
-    title: 'Two things no tenant can be asked',
-    intro: 'Microsoft Graph exposes neither of these, so they are the only part of the emergency-access check that needs an answer rather than a scan. Both are recorded in the plan.',
     credentialStorage: 'The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.',
     signInMonitoring: 'A sign-in by an emergency account raises an alert somebody sees.',
     yes: 'Yes',

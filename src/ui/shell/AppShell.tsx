@@ -46,11 +46,12 @@ const STEPS: { route: Route; label: string }[] = [
 ]
 
 // Inventory is a tab under Scan, not a second entry point (ux-review-04 §6).
+// The Prompt pack is likewise a card on the Export tab, not a sidebar entry
+// (R14); #/roadmap/prompts still resolves and opens that tab (L7).
 const REFERENCE: { route: Route; label: string }[] = [
   { route: 'licensing', label: SHELL.steps.licensing },
   { route: 'reads', label: SHELL.steps.reads },
   { route: 'checks', label: SHELL.steps.checks },
-  { route: 'roadmap/prompts', label: SHELL.steps.prompts },
 ]
 
 // Pages whose main content is a table read better with the wider cap (ux-review-06 §28).
@@ -60,6 +61,9 @@ const VALID = new Set<string>([
   ...[...STEPS, ...REFERENCE].map((n) => n.route as string),
   'baseline/package',
   'inventory',
+  // Reachable without a sidebar entry, like the two above: the Prompt pack is a
+  // card on the Export tab now (R14), and this route opens that tab (L7).
+  'roadmap/prompts',
   ...(import.meta.env.DEV ? ['components'] : []),
 ])
 

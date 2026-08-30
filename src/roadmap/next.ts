@@ -26,17 +26,29 @@ export type NextCard = {
   completed: string[]
 }
 
-/** Minutes of admin work to carry out a step (the basis: portal clicks per kind, plus a minute per person to set up). */
+/**
+ * Minutes of admin work to carry out a step: portal clicks for the kind, plus
+ * the work the step's own contents imply.
+ *
+ * R22 read the estimate as a default because every prerequisite returned a flat
+ * ten minutes, and Do this next is mostly prerequisites — so every card said
+ * "about 10 minutes" whether it was one toggle or reviewing forty accounts.
+ * The kind sets the floor; the people and the checks the step carries move it.
+ */
 export function effortMinutes(step: Step): number {
   switch (step.kind) {
     case 'prerequisite':
-      return 10
+      // Two minutes per portal action the step actually lists, plus a minute
+      // for each person whose account has to be looked at. A step that creates
+      // one named location and a step that reviews forty accounts no longer
+      // carry the same number.
+      return 6 + step.action.summary.length * 2 + Math.min(60, step.population.total)
     case 'verify':
       return 30 + Math.max(0, step.population.total - step.population.active) * 0 + Math.round((step.impact.match(/\d+/)?.[0] ? Number(step.impact.match(/\d+/)![0]) : 0) * 3)
     case 'recurring':
       return 15
     case 'adjust':
-      return 10
+      return 10 + Math.min(20, step.rings.length * 5)
     default:
       return 15 + Math.min(30, step.rings.length * 5)
   }

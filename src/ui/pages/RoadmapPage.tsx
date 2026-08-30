@@ -60,7 +60,7 @@ import type { Dependency } from '../../roadmap/schedule.ts'
 import { POPULATION_CSV_HEADER, cohortsFor, populationContext, populationRows } from '../../roadmap/population.ts'
 import { ringContextIndexes } from '../../roadmap/rings.ts'
 import { adminUserIds } from '../../roles.ts'
-import { NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
+import { EVIDENCE as EVIDENCE_COPY, NAMING, OPERATOR, PHASE_NAME, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import { planSummary } from '../../roadmap/summary.ts'
 import { BANDS } from '../../roadmap/constants.ts'
@@ -148,7 +148,7 @@ export function RoadmapPage({
   // Deep link #/roadmap/step/<id>: open the Steps tab with that step expanded.
   const linkedStepId = useHashStepId()
   const promptsLink = typeof window !== 'undefined' && /^#\/roadmap\/prompts/.test(window.location.hash)
-  const [activeTab, setActiveTab] = useState<string>(linkedStepId ? 'plan' : promptsLink ? 'export' : 'progress')
+  const [activeTab, setActiveTab] = useState<string>(promptsLink ? 'export' : 'plan')
   useEffect(() => {
     if (!linkedStepId) return
     setActiveTab('plan')
@@ -626,11 +626,7 @@ export function RoadmapPage({
           <>
           <Callout kind={highDangers > 0 ? 'danger' : dangers.length > 0 ? 'warning' : 'success'}>
             {C.attentionDangers(dangers.length)}{' '}
-            {dangers.length > 0 && (
-              <a href="#/roadmap" onClick={(e) => { e.preventDefault(); setActiveTab('danger') }}>
-                {C.openDangers}
-              </a>
-            )}
+
           </Callout>
           <Callout kind={blocked.length > 0 ? 'warning' : 'success'}>
             {C.attentionBlocked(blocked.length)}{' '}
@@ -1558,6 +1554,9 @@ export function RoadmapPage({
       </p>
       {onLadder && <p className="advisor">{LADDER.intro}</p>}
       <Card title={NEXT.title} className="do-next">
+        {/* R12: "Watch first" was a tab holding a single item. It belongs at the
+            top of the list the reader is already looking at. */}
+        {dangers.length > 0 && dangerAreas()}
         {nextCard.completed.length > 0 && (
           <p className="completed-lead">
             {nextCard.completed.length === 1 ? NEXT.completed(nextCard.completed[0]) : NEXT.completedMany(nextCard.completed.length)} {nextCard.items.length > 0 && NEXT.next}
@@ -1582,15 +1581,26 @@ export function RoadmapPage({
             ))}
           </ol>
         )}
-        {!nothingUntil && thisWeekItems.length > 0 && <p className="reason">{THIS_WEEK.lead(thisWeekItems)}</p>}
       </Card>
       <Tabs
         active={activeTab}
         onChange={setActiveTab}
+        // Plan, Schedule, Export (R12, R13). Progress was a tab that restated
+        // the Plan tab's own header; it is that header line now. Watch first
+        // held a single item, which belongs at the top of Do this next, where
+        // the reader already is.
         tabs={[
-          { id: 'progress', label: C.tabs.progress, badge: `${trackedDone}/${tracked.length}`, render: progressTab },
-          { id: 'plan', label: C.tabs.plan, render: stepsView },
-          { id: 'danger', label: C.tabs.danger, badge: dangers.length || '', render: dangerAreas },
+          {
+            id: 'plan',
+            label: C.tabs.plan,
+            badge: `${trackedDone}/${tracked.length}`,
+            render: () => (
+              <>
+                {progressTab()}
+                {stepsView()}
+              </>
+            ),
+          },
           { id: 'schedule', label: C.tabs.schedule, render: scheduleTab },
           { id: 'export', label: C.tabs.export, render: exportTab },
         ]}
@@ -1923,27 +1933,40 @@ function StepCard({
       {step.failureModes.length > 0 && (
         <>
           <h4>{SECTION.couldGoWrong}</h4>
-          <ul className="sections failure-modes">
-            {step.failureModes.map((m, i) => (
-              <li key={i} className={`applies-${m.applies}`}>
-                <strong>{m.title}</strong> <Chip status={m.applies === 'yes' ? 'warning' : m.applies === 'no' ? 'done' : 'neutral'}>{SECTION.applies[m.applies]}</Chip>
-                <div className="sub">{m.evidence}</div>
-                {/* Where the warning comes from, or that nobody documents it (audit-program §6). */}
-                {m.citation === FIELD_PRACTICE ? (
-                  <div className="reason">{CITATION.fieldPractice}</div>
-                ) : (
-                  m.citation && (
-                    <div className="reason">
-                      {CITATION.source}:{' '}
-                      <a href={m.citation.url} target="_blank" rel="noopener noreferrer">
-                        {m.citation.label}
-                      </a>
-                    </div>
-                  )
-                )}
-              </li>
-            ))}
-          </ul>
+          {(() => {
+            // R15: every entry carries its own source, and when they all cite
+            // the same Microsoft Learn page that page was printed once per
+            // entry — eight times in one step body. Each entry keeps its
+            // source in the data (C13); the page prints each distinct one once.
+            const cites = step.failureModes.map((m) => m.citation).filter(Boolean)
+            const distinct = [...new Map(cites.map((c) => [c === FIELD_PRACTICE ? 'field' : c!.url, c])).values()]
+            const shared = distinct.length === 1 && cites.length === step.failureModes.length
+            const cite = (c: (typeof cites)[number], key: string) =>
+              c === FIELD_PRACTICE ? (
+                <div key={key} className="reason">{CITATION.fieldPractice}</div>
+              ) : (
+                <div key={key} className="reason">
+                  {CITATION.source}:{' '}
+                  <a href={c!.url} target="_blank" rel="noopener noreferrer">
+                    {c!.label}
+                  </a>
+                </div>
+              )
+            return (
+              <>
+                <ul className="sections failure-modes">
+                  {step.failureModes.map((m, i) => (
+                    <li key={i} className={`applies-${m.applies}`}>
+                      <strong>{m.title}</strong> <Chip status={m.applies === 'yes' ? 'warning' : m.applies === 'no' ? 'done' : 'neutral'}>{SECTION.applies[m.applies]}</Chip>
+                      <div className="sub">{m.evidence}</div>
+                      {!shared && m.citation && cite(m.citation, `c${i}`)}
+                    </li>
+                  ))}
+                </ul>
+                {shared && cite(distinct[0], 'shared')}
+              </>
+            )
+          })()}
         </>
       )}
 
@@ -1976,7 +1999,9 @@ function StepCard({
         </>
       )}
 
-      {step.evidence.lines.length > 0 && (
+      {/* R18: a heading over a single line saying there is nothing to report
+          is worse than silence — it promises a section and delivers none. */}
+      {step.evidence.lines.filter((l) => l !== EVIDENCE_COPY.notSeenYet && l !== EVIDENCE_COPY.unusable).length > 0 && (
         <>
           <h4>{C.last30}</h4>
           <ul className="sections">

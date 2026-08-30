@@ -314,11 +314,6 @@ export function MfaViabilityScreen({
         <Button variant="primary" icon="refresh" onClick={() => void scan()} loading={scanState === 'running' || scanState === 'paused'}>
           {snapshot ? SCAN.rescan : SCAN.scan}
         </Button>
-        {(snapshot !== null || Object.keys(sections).length > 0) && (
-          <Button icon="download" onClick={() => void downloadDiagnostics()}>
-            {SCAN.diagnostics}
-          </Button>
-        )}
       </p>
       {error && <Callout kind="danger" title={SCAN.failed}>{error}</Callout>}
       {scanState === 'paused' && (
@@ -367,18 +362,20 @@ export function MfaViabilityScreen({
         </Card>
       )}
       {scanState === 'running' && slow && <Callout kind="warning">{SCAN.slow}</Callout>}
-
+      {/* R9 removed the "Scan complete" card. What it said about the banner
+          above it was true of the heading, not of these counts — they were the
+          only place the tenant's size appeared, so the line stays, without the
+          card and the title that repeated the banner. */}
       {scanState === 'done' && snapshot && (
-        <Card title={SCAN.completeTitle}>
-          <p>
-            {SCAN.completeLine(
-              snapshot.users.length,
-              snapshot.config.caPolicies?.rows.length ?? 0,
-              evidence?.coveredWindow ? `${absoluteDate(evidence.coveredWindow.from)} to ${absoluteDate(evidence.coveredWindow.to)}` : null,
-            )}
-          </p>
-        </Card>
+        <p className="reason">
+          {SCAN.completeLine(
+            snapshot.users.length,
+            snapshot.config.caPolicies?.rows.length ?? 0,
+            evidence?.coveredWindow ? `${absoluteDate(evidence.coveredWindow.from)} to ${absoluteDate(evidence.coveredWindow.to)}` : null,
+          )}
+        </p>
       )}
+
 
       {denied.length > 0 && (
         <Callout kind="warning" title={ACCESS.deniedTitle}>
