@@ -725,7 +725,7 @@ function CountriesQuestion({ state, snapshot, update, answered }: QProps) {
             </li>
           ))}
       </ul>
-      <input type="search" value={query} placeholder={C.addCountry} onChange={(e) => setQuery(e.currentTarget.value)} />
+      <input type="search" value={query} placeholder={C.addCountry} aria-label={C.addCountry} onChange={(e) => setQuery(e.currentTarget.value)} />
       {matches.length > 0 && (
         <div className="row" style={{ marginTop: '4px' }}>
           {matches.map((code) => (

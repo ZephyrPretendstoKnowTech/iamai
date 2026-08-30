@@ -53,7 +53,7 @@ export const NAME_WARNING = (name: string): string =>
 
 export const COMMS_PLAN = {
   title: 'What will be sent and when, ready to copy',
-  hint: 'One message per audience per week, at most. Nothing is sent by IAMAI: copy each one into your own channel.',
+  hint: 'One message per audience per week, at most. Nothing is sent by IAMAI, so copy each one into your own channel.',
   columns: { date: 'Date', time: 'Time', audience: 'Audience', channel: 'Channels', subject: 'Subject', steps: 'Steps covered' },
   kind: { announce: 'announcement', remind: 'reminder', individual: 'individual note' },
   warning: (n: number, audience: string, month: string, move: string) =>
@@ -73,7 +73,7 @@ export const COMMS_PLAN = {
 
 export const PROMPTS = {
   title: 'Prompt pack',
-  intro: 'IAMAI runs no models and sends nothing anywhere. These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.',
+  intro: 'IAMAI runs no models and sends nothing anywhere. These are prompts for your own assistant, each pre-filled with facts from this plan. Copy one and paste it into whatever you already use.',
   copy: 'Copy prompt',
   downloadAll: 'Download every prompt as one Markdown file',
   /** Said on every fenced block, so the model is told what the fence means. */
@@ -139,7 +139,9 @@ export const WATCH = {
 export const EFFORT = {
   title: 'Effort',
   minutes: (n: number) => `about ${count(n, 'minute')} of admin time`,
-  calls: (n: number) => (n === 0 ? 'no help-desk contacts expected' : `about ${count(n, 'help-desk contact')}`),
+  // Four branches. Zero is only reachable when the step touches nobody, so it
+  // says that rather than predicting silence (review-08 F, prompt 40 §23).
+  calls: (n: number) => (n === 0 ? 'nobody to contact about it' : `about ${count(n, 'help-desk contact')}`),
   basis: 'Basis: minutes from the portal steps per kind of change; contacts from the affected people times a rate per control (MFA 3%, device 8%, admin strength 5%, geo 2%, block 1% of affected accounts, session 1%).',
   total: (minutes: number, calls: number) => `The whole plan: about ${count(Math.round(minutes / 60), 'hour')} of admin time and ${count(calls, 'help-desk contact')}, so you know what fits in the time you have.`,
   fits: (minutes: number) => (minutes <= 15 ? 'fits in a coffee break' : minutes <= 60 ? 'fits in an hour' : 'needs a clear afternoon'),

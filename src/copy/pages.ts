@@ -79,7 +79,7 @@ export const START = {
     { icon: 'shield', title: 'Connect', text: 'One sign-in, one consent screen, on the tenant you already administer.' },
     { icon: 'policy', title: 'Choose a baseline', text: 'Start from a maintained policy set, or upload a package.' },
     { icon: 'chart', title: 'Scan and see readiness', text: 'Who could pass MFA today, who needs a hand, and who is blocked right now: by name.' },
-    { icon: 'check', title: 'Follow the roadmap', text: 'Dated phases, the changes that are safe today, and what to watch first.' },
+    { icon: 'check', title: 'Follow the roadmap', text: 'Waves with dates, the changes that are safe today, and what to watch first.' },
   ] as const,
   needTitle: "What you'll need",
   need: [
@@ -121,7 +121,10 @@ export const CONNECT = {
   roadmap: 'Roadmap',
   signOut: 'Sign out',
   bullets: [
-    'IAMAI is read-only. It never creates, edits, or deletes anything in the tenant.',
+    // "IAMAI is read-only. It never creates, edits, or deletes anything in the
+    // tenant." was here and said the same thing as the lead sentence above it
+    // (review-07 R20, prompt 40 §23). The claim is made once, in the lead, and
+    // the permissions disclosure carries the evidence for it.
     'Admin consent creates an enterprise app named IAMAI in the tenant. To remove all access later, delete that enterprise app: nothing else is left behind.',
   ],
   sourceBefore: '',

@@ -58,7 +58,7 @@ export const POLICY_COUNT = {
   high: (after: number) => `${after} policies after this plan: hard to reason about at that size, and the plan names what to consolidate.`,
   candidates: (n: number) => `${count(n, 'consolidation candidate')}:`,
   disabledPolicy: (name: string) => `${name} is disabled: delete it or fold it into a live policy.`,
-  reportOnlyStale: (name: string, days: number) => `${name} has sat in report-only for ${count(days, 'day')}: enforce it or remove it.`,
+  reportOnlyStale: (name: string, days: number) => `${name} has sat in report-only for ${count(days, 'day')}. Enforce it or remove it.`,
   duplicate: (goal: string, names: string[]) => `${names.join(' and ')} target the same people with the same controls for ${goal}: merge them.`,
 }
 

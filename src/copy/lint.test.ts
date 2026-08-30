@@ -22,7 +22,7 @@ function walk(dir: string, out: string[] = []): string[] {
 // String literals only (single, double, template) — never comments or code.
 const LITERAL = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g
 
-export type Violation = { file: string; line: number; rule: string; text: string }
+export type Violation = { file: string; line: number; rule: string; text: string; hint?: string }
 
 /** Strings that are the author speaking, not the product (ux-review-05 §30). */
 const AUTHOR_VOICE = new Set([
@@ -33,7 +33,27 @@ const AUTHOR_VOICE = new Set([
   'Nothing is sent from here. Your mail app opens with the text above, and you decide whether to send it.',
 ])
 
-const RULES: { rule: string; test: (s: string) => boolean }[] = [
+/**
+ * Verbs that begin an instruction. A colon in front of one of these is an em
+ * dash wearing a disguise (review-07 C13, review-08 F, prompt 40 §23): the
+ * dash lint pushed authors to a colon, and a colon between a fact and an
+ * instruction splices two unrelated things. A colon that introduces an
+ * explanation, a list or a label is correct English and stays allowed, which is
+ * why the rule tests what follows the colon rather than banning the character.
+ */
+const IMPERATIVE =
+  /^(ask|assume|stop|run|verify|check|move|exclude|create|enforce|register|upgrade|issue|walk|leave|keep|start|add|treat|fix|confirm|use|give|send|tell|make|set|put|see|read|open|copy|paste|pick|choose|remove|delete|disable|enable|follow|review|contact|call|email|apply|expect|plan|note|do not|don't)\b/i
+
+function colonSplice(s: string): boolean {
+  for (const c of s.matchAll(/: /g)) {
+    const left = s.slice(0, c.index)
+    const right = s.slice(c.index + 2)
+    if (left.trim().split(/\s+/).filter(Boolean).length >= 4 && IMPERATIVE.test(right)) return true
+  }
+  return false
+}
+
+const RULES: { rule: string; test: (s: string) => boolean; hint?: string }[] = [
   // An en dash between digits is a range (2–4 weeks), not punctuation.
   { rule: 'dash', test: (s) => /—/.test(s) || /(?<!\d)–|–(?!\d)/.test(s) },
   // The footer is the author's own voice by agreement (ux-review-05 §30), not IAMAI's.
@@ -46,6 +66,11 @@ const RULES: { rule: string; test: (s: string) => boolean }[] = [
   { rule: 'iso-date', test: (s) => /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) },
   // CLAUDE.md: never promise no lockouts; the promise is predicted impact, confirmed in report-only.
   { rule: 'lockout-promise', test: (s) => /(won'?t|never|cannot|can'?t|no) (lock|lockout)/i.test(s) },
+  {
+    rule: 'colon-splice',
+    test: colonSplice,
+    hint: 'a colon between a fact and an instruction is an em dash in disguise. Write two sentences, or join them with "so".',
+  },
 ]
 
 function isUserFacing(s: string): boolean {
@@ -66,7 +91,7 @@ export function lintCopy(): Violation[] {
       if (!isUserFacing(text)) continue
       const line = src.slice(0, m.index).split('\n').length
       for (const r of RULES) {
-        if (r.test(text)) out.push({ file: relative(ROOT, file), line, rule: r.rule, text: text.slice(0, 80) })
+        if (r.test(text)) out.push({ file: relative(ROOT, file), line, rule: r.rule, text: text.slice(0, 80), hint: r.hint })
       }
     }
   }

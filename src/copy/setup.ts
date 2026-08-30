@@ -64,7 +64,7 @@ export const SETUP_QUESTIONS = {
 
 export const SETUP_PAGE = {
   title: 'Setup',
-  does: 'A few questions, each required. The answers shape the plan and the checks.',
+  does: 'Each answer shapes the plan and the checks that run against it.',
   needsBaseline: 'baseline loaded',
   needBaseline: 'Load a baseline in the Baseline step',
   needsScan: 'scan complete',
@@ -199,7 +199,7 @@ export const SETUP_PAGE = {
   countriesSeen: (n: number) => `${count(n, 'distinct user')} signed in from here`,
   countriesUsage: (n: number) => `usage location of ${count(n, 'user')}`,
   countriesNoSignIns: 'No sign-in record carried a location: the list below comes from usage locations only.',
-  countriesNone: 'No location data at all: add the countries by hand.',
+  countriesNone: 'No location data at all, so add the countries by hand.',
 
   addCountry: 'Add a country (two-letter code or name)…',
   countriesChosen: (n: number) => count(n, 'country', 'countries'),

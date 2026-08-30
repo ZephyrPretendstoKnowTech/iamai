@@ -1,5 +1,5 @@
 {
- "fingerprint": "276738c294c60f62",
+ "fingerprint": "0718da8ef6f11944",
  "surfaces": [
   {
    "name": "Start",
@@ -35,7 +35,7 @@
     "One sign-in, one consent screen, on the tenant you already administer.",
     "Start from a maintained policy set, or upload a package.",
     "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.",
-    "Dated phases, the changes that are safe today, and what to watch first.",
+    "Waves with dates, the changes that are safe today, and what to watch first.",
     "A Microsoft 365 tenant with Microsoft Entra ID (any licence).",
     "A Global Administrator or Global Reader account.",
     "Entra ID P1 for sign-in records.",
@@ -68,7 +68,7 @@
     "One sign-in, one consent screen, on the tenant you already administer.": 1,
     "Start from a maintained policy set, or upload a package.": 1,
     "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.": 1,
-    "Dated phases, the changes that are safe today, and what to watch first.": 1,
+    "Waves with dates, the changes that are safe today, and what to watch first.": 1,
     "A Microsoft 365 tenant with Microsoft Entra ID (any licence).": 1,
     "A Global Administrator or Global Reader account.": 1,
     "Entra ID P1 for sign-in records.": 1,
@@ -91,7 +91,7 @@
     "One sign-in, one consent screen, on the tenant you already administer.": 1,
     "Start from a maintained policy set, or upload a package.": 1,
     "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.": 1,
-    "Dated phases, the changes that are safe today, and what to watch first.": 1,
+    "Waves with dates, the changes that are safe today, and what to watch first.": 1,
     "A Microsoft 365 tenant with Microsoft Entra ID (any licence).": 1,
     "A Global Administrator or Global Reader account.": 1,
     "Entra ID P1 for sign-in records.": 1,
@@ -121,9 +121,10 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 217,
-    "total": 270
-   }
+    "sentences": 218,
+    "total": 271
+   },
+   "unnamedControls": []
   },
   {
    "name": "Connect",
@@ -195,7 +196,8 @@
     "tips": 0,
     "sentences": 54,
     "total": 71
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Connect / permissions disclosure",
@@ -237,7 +239,7 @@
     "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.",
     "Microsoft shows this list on its own consent screen.",
     "It is here in plain words so it can be read first.",
-    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI.",
+    "No write permission is in the set below.",
     "Used for: CA policies, Named locations, Authentication strengths, Auth methods policy, Security defaults, Cross-tenant access.",
     "Used for: Subscribed SKUs, Organization, Signed-in operator, Operator groups, Users, Devices, Group transitive members, Group search, Name resolution.",
     "Used for: Registration details, Users, Sign-in logs.",
@@ -288,7 +290,7 @@
     "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.": 1,
     "Microsoft shows this list on its own consent screen.": 1,
     "It is here in plain words so it can be read first.": 1,
-    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI.": 1,
+    "No write permission is in the set below.": 1,
     "This permission is on the consent screen and nothing in IAMAI calls it.": 1,
     "It was consented for a service-principal inventory that has not been built.": 1,
     "That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.": 1,
@@ -307,7 +309,7 @@
     "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.": 1,
     "Microsoft shows this list on its own consent screen.": 1,
     "It is here in plain words so it can be read first.": 1,
-    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI.": 1,
+    "No write permission is in the set below.": 1,
     "Used for: CA policies, Named locations, Authentication strengths, Auth methods policy, Security defaults, Cross-tenant access.": 1,
     "Used for: Subscribed SKUs, Organization, Signed-in operator, Operator groups, Users, Devices, Group transitive members, Group search, Name resolution.": 1,
     "Used for: Registration details, Users, Sign-in logs.": 1,
@@ -335,9 +337,10 @@
     "empty": 0,
     "summaries": 10,
     "tips": 0,
-    "sentences": 272,
-    "total": 314
-   }
+    "sentences": 259,
+    "total": 301
+   },
+   "unnamedControls": []
   },
   {
    "name": "Baseline",
@@ -425,7 +428,8 @@
     "tips": 0,
     "sentences": 171,
     "total": 192
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Scan",
@@ -495,7 +499,8 @@
     "tips": 0,
     "sentences": 50,
     "total": 59
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Scan / Readiness tab",
@@ -632,7 +637,8 @@
     "tips": 46,
     "sentences": 23,
     "total": 196
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Scan / Inventory tab",
@@ -723,7 +729,8 @@
     "tips": 5,
     "sentences": 13,
     "total": 57
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup",
@@ -748,8 +755,7 @@
     "About Scan age"
    ],
    "sentences": [
-    "A few questions, each required.",
-    "The answers shape the plan and the checks.",
+    "Each answer shapes the plan and the checks that run against it.",
     "Needs: ✓ baseline loaded · ✓ scan complete",
     "Based on the scan from this minute · <date and time>.",
     "Re-scan",
@@ -768,16 +774,14 @@
    ],
    "tables": [],
    "occurrences": {
-    "A few questions, each required.": 1,
-    "The answers shape the plan and the checks.": 1,
+    "Each answer shapes the plan and the checks that run against it.": 1,
     "Needs: ✓ baseline loaded · ✓ scan complete": 1,
     "Based on the scan from this minute · <date and time>.": 1,
     "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.": 1,
     "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1
    },
    "occurrencesAll": {
-    "A few questions, each required.": 1,
-    "The answers shape the plan and the checks.": 1,
+    "Each answer shapes the plan and the checks that run against it.": 1,
     "Needs: ✓ baseline loaded · ✓ scan complete": 1,
     "Based on the scan from this minute · <date and time>.": 1,
     "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.": 1,
@@ -795,9 +799,10 @@
     "empty": 0,
     "summaries": 0,
     "tips": 3,
-    "sentences": 71,
-    "total": 78
-   }
+    "sentences": 70,
+    "total": 77
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup / Q1 — Which accounts are the emergency access (break-glass) ",
@@ -852,7 +857,8 @@
     "tips": 3,
     "sentences": 58,
     "total": 79
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup / Q2 — Which group holds the policy exclusions?",
@@ -901,7 +907,8 @@
     "tips": 3,
     "sentences": 21,
     "total": 37
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup / Q3 — Which countries do your people sign in from?",
@@ -963,7 +970,8 @@
     "tips": 3,
     "sentences": 59,
     "total": 81
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup / Q4 — Who needs extra care?",
@@ -1014,7 +1022,8 @@
     "tips": 3,
     "sentences": 21,
     "total": 34
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup / Q5 — Which named locations count as trusted?",
@@ -1063,7 +1072,8 @@
     "tips": 3,
     "sentences": 21,
     "total": 37
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup / Q6 — Which time zone should dates display in?",
@@ -1114,7 +1124,8 @@
     "tips": 3,
     "sentences": 18,
     "total": 34
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup / Q7 — Which security frameworks is the tenant working toward",
@@ -1168,7 +1179,8 @@
     "tips": 3,
     "sentences": 18,
     "total": 43
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Setup / Q8 — Are the detected workloads right?",
@@ -1228,7 +1240,8 @@
     "tips": 3,
     "sentences": 43,
     "total": 62
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Findings",
@@ -1310,7 +1323,8 @@
     "tips": 3,
     "sentences": 52,
     "total": 71
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Findings / Summary tab",
@@ -1390,7 +1404,8 @@
     "tips": 24,
     "sentences": 159,
     "total": 209
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Findings / attention tab",
@@ -1453,7 +1468,8 @@
     "tips": 6,
     "sentences": 0,
     "total": 307
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Findings / Details tab",
@@ -1517,7 +1533,8 @@
     "tips": 4,
     "sentences": 17,
     "total": 247
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Roadmap",
@@ -1558,7 +1575,7 @@
     "Re-scan · Baseline: synthetic baseline",
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.",
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.",
-    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.",
+    "The whole plan: about 6 hours of admin time and 18 help-desk contacts, so you know what fits in the time you have.",
     "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.",
     "Their most recent sign-in failed an existing Conditional Access policy.",
     "Fix this first: otherwise the rollout gets the blame.",
@@ -1585,7 +1602,7 @@
     "Re-scan · Baseline: synthetic baseline": 1,
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
-    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.": 1,
+    "The whole plan: about 6 hours of admin time and 18 help-desk contacts, so you know what fits in the time you have.": 1,
     "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
     "Their most recent sign-in failed an existing Conditional Access policy.": 1,
     "Fix this first: otherwise the rollout gets the blame.": 1,
@@ -1603,7 +1620,7 @@
     "Re-scan · Baseline: synthetic baseline": 1,
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
-    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.": 1,
+    "The whole plan: about 6 hours of admin time and 18 help-desk contacts, so you know what fits in the time you have.": 1,
     "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
     "Their most recent sign-in failed an existing Conditional Access policy.": 1,
     "Fix this first: otherwise the rollout gets the blame.": 1,
@@ -1628,7 +1645,8 @@
     "tips": 3,
     "sentences": 188,
     "total": 222
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Roadmap / Plan tab",
@@ -1640,7 +1658,6 @@
     "The journey",
     "Planned against actual, week by week",
     "Every step, planned against actual",
-    "What changed since the last scan",
     "History",
     "Day 0 <date> → <date>",
     "Wave 1 · Low-impact blocks <date> → <date>",
@@ -1771,7 +1788,6 @@
     "Grey bars: steps planned to start that week.",
     "Green bars: steps that actually started.",
     "Hover a week for the counts.",
-    "Save the plan once to record a checkpoint; changes since then show here on the next scan.",
     "Everything the scans noticed, newest first.",
     "Nothing here is typed in; nothing can be edited.",
     "<date>",
@@ -1812,7 +1828,6 @@
     "Grey bars: steps planned to start that week.": 1,
     "Green bars: steps that actually started.": 1,
     "Hover a week for the counts.": 1,
-    "Save the plan once to record a checkpoint; changes since then show here on the next scan.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
     "Plan revision 1, <date>: plan created": 1,
@@ -1837,7 +1852,6 @@
     "Grey bars: steps planned to start that week.": 1,
     "Green bars: steps that actually started.": 1,
     "Hover a week for the counts.": 1,
-    "Save the plan once to record a checkpoint; changes since then show here on the next scan.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
     "Plan revision 1, <date>: plan created": 1,
@@ -1871,7 +1885,7 @@
     "· Medium-risk users must change their password · Entra ID P2": 1
    },
    "wordCounts": {
-    "headings": 124,
+    "headings": 118,
     "tabs": 0,
     "buttons": 40,
     "options": 0,
@@ -1882,9 +1896,10 @@
     "empty": 0,
     "summaries": 4,
     "tips": 10,
-    "sentences": 466,
-    "total": 1339
-   }
+    "sentences": 449,
+    "total": 1316
+   },
+   "unnamedControls": []
   },
   {
    "name": "Roadmap / Schedule tab",
@@ -2065,7 +2080,7 @@
     "Blocked until device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).",
     "0 of 3 steps done",
     "One message per audience per week, at most.",
-    "Nothing is sent by IAMAI: copy each one into your own channel.",
+    "Nothing is sent by IAMAI, so copy each one into your own channel.",
     "(individual note)",
     "Turn off old sign-in methods that skip MFA; Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Sign everyone out when the browser closes; Stop downloads to devices you do not manage; Limit what personal devices can do in the browser; Stop a stolen session token from being reused",
     "(reminder)",
@@ -2096,7 +2111,7 @@
     "4 users still need setting up (5 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.": 1,
     "Every new policy collects report-only evidence at the same time.": 1,
     "One message per audience per week, at most.": 1,
-    "Nothing is sent by IAMAI: copy each one into your own channel.": 1,
+    "Nothing is sent by IAMAI, so copy each one into your own channel.": 1,
     "One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.": 1,
     "4 active users: Small band, detected · this pace usually takes 7 weeks": 1,
     "Enforcement never starts on a Friday or a weekend.": 1,
@@ -2133,7 +2148,7 @@
     "Unmanaged-device browser sessions are limited": 1,
     "Windows desktop sessions require token protection": 1,
     "One message per audience per week, at most.": 1,
-    "Nothing is sent by IAMAI: copy each one into your own channel.": 1,
+    "Nothing is sent by IAMAI, so copy each one into your own channel.": 1,
     "Turn off old sign-in methods that skip MFA; Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Sign everyone out when the browser closes; Stop downloads to devices you do not manage; Limit what personal devices can do in the browser; Stop a stolen session token from being reused": 2,
     "Stop attackers adding their own MFA method": 2,
     "· 5 people, by name · <date>": 1,
@@ -2157,9 +2172,10 @@
     "empty": 0,
     "summaries": 134,
     "tips": 17,
-    "sentences": 570,
-    "total": 1594
-   }
+    "sentences": 571,
+    "total": 1595
+   },
+   "unnamedControls": []
   },
   {
    "name": "Roadmap / Export tab",
@@ -2199,7 +2215,8 @@
     "One row per step: what changed, when, who it touched, and how to undo it.",
     "Download as MarkdownDownload as CSVCopy as prompt",
     "IAMAI runs no models and sends nothing anywhere.",
-    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.",
+    "These are prompts for your own assistant, each pre-filled with facts from this plan.",
+    "Copy one and paste it into whatever you already use.",
     "Rewrite this announcement in our voiceCopy prompt",
     "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt",
     "Turn the step below into a help-desk knowledge base articleCopy prompt",
@@ -2228,7 +2245,8 @@
     "One row per step: what changed, when, who it touched, and how to undo it.": 1,
     "Download as MarkdownDownload as CSVCopy as prompt": 1,
     "IAMAI runs no models and sends nothing anywhere.": 1,
-    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
+    "These are prompts for your own assistant, each pre-filled with facts from this plan.": 1,
+    "Copy one and paste it into whatever you already use.": 1,
     "Rewrite this announcement in our voiceCopy prompt": 1,
     "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt": 1,
     "Turn the step below into a help-desk knowledge base articleCopy prompt": 1,
@@ -2252,7 +2270,8 @@
     "One row per step: what changed, when, who it touched, and how to undo it.": 1,
     "Download as MarkdownDownload as CSVCopy as prompt": 1,
     "IAMAI runs no models and sends nothing anywhere.": 1,
-    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
+    "These are prompts for your own assistant, each pre-filled with facts from this plan.": 1,
+    "Copy one and paste it into whatever you already use.": 1,
     "Rewrite this announcement in our voiceCopy prompt": 1,
     "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt": 1,
     "Turn the step below into a help-desk knowledge base articleCopy prompt": 1,
@@ -2281,9 +2300,10 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 232,
-    "total": 278
-   }
+    "sentences": 233,
+    "total": 279
+   },
+   "unnamedControls": []
   },
   {
    "name": "Roadmap / Plan / one step opened",
@@ -2295,7 +2315,6 @@
     "The journey",
     "Planned against actual, week by week",
     "Every step, planned against actual",
-    "What changed since the last scan",
     "History",
     "Day 0 <date> → <date>",
     "What changes",
@@ -2442,7 +2461,6 @@
     "Grey bars: steps planned to start that week.",
     "Green bars: steps that actually started.",
     "Hover a week for the counts.",
-    "Save the plan once to record a checkpoint; changes since then show here on the next scan.",
     "Everything the scans noticed, newest first.",
     "Nothing here is typed in; nothing can be edited.",
     "<date>",
@@ -2505,7 +2523,6 @@
     "Grey bars: steps planned to start that week.": 1,
     "Green bars: steps that actually started.": 1,
     "Hover a week for the counts.": 1,
-    "Save the plan once to record a checkpoint; changes since then show here on the next scan.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
     "Plan revision 1, <date>: plan created": 1,
@@ -2553,7 +2570,6 @@
     "Grey bars: steps planned to start that week.": 1,
     "Green bars: steps that actually started.": 1,
     "Hover a week for the counts.": 1,
-    "Save the plan once to record a checkpoint; changes since then show here on the next scan.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
     "Plan revision 1, <date>: plan created": 1,
@@ -2609,7 +2625,7 @@
     "· Medium-risk users must change their password · Entra ID P2": 1
    },
    "wordCounts": {
-    "headings": 147,
+    "headings": 141,
     "tabs": 0,
     "buttons": 51,
     "options": 0,
@@ -2620,9 +2636,10 @@
     "empty": 0,
     "summaries": 39,
     "tips": 15,
-    "sentences": 771,
-    "total": 1699
-   }
+    "sentences": 754,
+    "total": 1676
+   },
+   "unnamedControls": []
   },
   {
    "name": "Licensing guide",
@@ -2822,7 +2839,8 @@
     "tips": 7,
     "sentences": 466,
     "total": 523
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "What IAMAI reads",
@@ -2866,7 +2884,7 @@
     "The Global Reader role covers every row here.",
     "Microsoft shows this list on its own consent screen.",
     "It is here in plain words so it can be read first.",
-    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI.",
+    "No write permission is in the set below.",
     "Used for: CA policies, Named locations, Authentication strengths, Auth methods policy, Security defaults, Cross-tenant access.",
     "Used for: Subscribed SKUs, Organization, Signed-in operator, Operator groups, Users, Devices, Group transitive members, Group search, Name resolution.",
     "Used for: Registration details, Users, Sign-in logs.",
@@ -2931,7 +2949,7 @@
     "The Global Reader role covers every row here.": 1,
     "Microsoft shows this list on its own consent screen.": 1,
     "It is here in plain words so it can be read first.": 1,
-    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI.": 1,
+    "No write permission is in the set below.": 1,
     "This permission is on the consent screen and nothing in IAMAI calls it.": 1,
     "It was consented for a service-principal inventory that has not been built.": 1,
     "That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.": 1,
@@ -2948,7 +2966,7 @@
     "The Global Reader role covers every row here.": 1,
     "Microsoft shows this list on its own consent screen.": 1,
     "It is here in plain words so it can be read first.": 1,
-    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI.": 1,
+    "No write permission is in the set below.": 1,
     "Used for: CA policies, Named locations, Authentication strengths, Auth methods policy, Security defaults, Cross-tenant access.": 1,
     "Used for: Subscribed SKUs, Organization, Signed-in operator, Operator groups, Users, Devices, Group transitive members, Group search, Name resolution.": 1,
     "Used for: Registration details, Users, Sign-in logs.": 1,
@@ -2976,9 +2994,10 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 255,
-    "total": 310
-   }
+    "sentences": 242,
+    "total": 297
+   },
+   "unnamedControls": []
   },
   {
    "name": "Every check IAMAI runs",
@@ -3120,7 +3139,8 @@
     "tips": 0,
     "sentences": 105,
     "total": 201
-   }
+   },
+   "unnamedControls": []
   },
   {
    "name": "Prompt pack",
@@ -3176,7 +3196,7 @@
     "Re-scan · Baseline: synthetic baseline",
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.",
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.",
-    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.",
+    "The whole plan: about 6 hours of admin time and 18 help-desk contacts, so you know what fits in the time you have.",
     "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.",
     "Their most recent sign-in failed an existing Conditional Access policy.",
     "Fix this first: otherwise the rollout gets the blame.",
@@ -3194,7 +3214,8 @@
     "One row per step: what changed, when, who it touched, and how to undo it.",
     "Download as MarkdownDownload as CSVCopy as prompt",
     "IAMAI runs no models and sends nothing anywhere.",
-    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.",
+    "These are prompts for your own assistant, each pre-filled with facts from this plan.",
+    "Copy one and paste it into whatever you already use.",
     "Rewrite this announcement in our voiceCopy prompt",
     "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt",
     "Turn the step below into a help-desk knowledge base articleCopy prompt",
@@ -3226,7 +3247,7 @@
     "Re-scan · Baseline: synthetic baseline": 1,
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
-    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.": 1,
+    "The whole plan: about 6 hours of admin time and 18 help-desk contacts, so you know what fits in the time you have.": 1,
     "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
     "Their most recent sign-in failed an existing Conditional Access policy.": 1,
     "Fix this first: otherwise the rollout gets the blame.": 1,
@@ -3242,7 +3263,8 @@
     "One row per step: what changed, when, who it touched, and how to undo it.": 1,
     "Download as MarkdownDownload as CSVCopy as prompt": 1,
     "IAMAI runs no models and sends nothing anywhere.": 1,
-    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
+    "These are prompts for your own assistant, each pre-filled with facts from this plan.": 1,
+    "Copy one and paste it into whatever you already use.": 1,
     "Rewrite this announcement in our voiceCopy prompt": 1,
     "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt": 1,
     "Turn the step below into a help-desk knowledge base articleCopy prompt": 1,
@@ -3266,7 +3288,7 @@
     "Re-scan · Baseline: synthetic baseline": 1,
     "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
-    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.": 1,
+    "The whole plan: about 6 hours of admin time and 18 help-desk contacts, so you know what fits in the time you have.": 1,
     "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
     "Their most recent sign-in failed an existing Conditional Access policy.": 1,
     "Fix this first: otherwise the rollout gets the blame.": 1,
@@ -3282,7 +3304,8 @@
     "One row per step: what changed, when, who it touched, and how to undo it.": 1,
     "Download as MarkdownDownload as CSVCopy as prompt": 1,
     "IAMAI runs no models and sends nothing anywhere.": 1,
-    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
+    "These are prompts for your own assistant, each pre-filled with facts from this plan.": 1,
+    "Copy one and paste it into whatever you already use.": 1,
     "Rewrite this announcement in our voiceCopy prompt": 1,
     "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt": 1,
     "Turn the step below into a help-desk knowledge base articleCopy prompt": 1,
@@ -3311,9 +3334,10 @@
     "empty": 0,
     "summaries": 0,
     "tips": 3,
-    "sentences": 420,
-    "total": 500
-   }
+    "sentences": 421,
+    "total": 501
+   },
+   "unnamedControls": []
   }
  ]
 }

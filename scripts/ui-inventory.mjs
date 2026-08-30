@@ -231,11 +231,37 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   }
 
   const words = (list) => list.join(' ').split(/\\s+/).filter(Boolean).length
+  // Controls a screen reader would announce as nameless (prompt 40 §23). The
+  // sidebar chevron was reported unlabelled; it is not, and capturing the check
+  // here is what makes that answer hold rather than be re-argued each review.
+  const accName = (el) => {
+    const aria = el.getAttribute('aria-label')
+    if (aria && aria.trim()) return aria.trim()
+    const by = el.getAttribute('aria-labelledby')
+    if (by) { const t = by.split(/\\s+/).map((i) => document.getElementById(i)?.textContent ?? '').join(' ').trim(); if (t) return t }
+    const text = (el.textContent ?? '').trim()
+    if (text) return text
+    // A form control is named by its label, whether the label wraps it or points
+    // at it by id. Missing that reported three labelled inputs as nameless.
+    const forId = el.id ? document.querySelector('label[for=' + JSON.stringify(el.id) + ']') : null
+    const wrap = el.closest('label')
+    const lab = ((forId?.textContent ?? '') + ' ' + (wrap?.textContent ?? '')).trim()
+    if (lab) return lab
+    const title = el.getAttribute('title')
+    if (title && title.trim()) return title.trim()
+    const svgTitle = el.querySelector('svg > title')
+    return svgTitle && svgTitle.textContent.trim() ? svgTitle.textContent.trim() : ''
+  }
+  const unnamedControls = [...root.querySelectorAll('button, a[href], [role="button"], summary, input, select')]
+    .filter((el) => !el.closest('.dev-panel, [hidden], .print-only'))
+    .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 || r.height > 0 })
+    .filter((el) => !accName(el))
+    .map((el) => el.outerHTML.slice(0, 120).replace(/\\s+/g, ' '))
   const sections = { headings, tabs, buttons, options, links, chips, columns, tiles, empty, summaries, tips, sentences }
   const wordCounts = {}
   for (const [k, v] of Object.entries(sections)) wordCounts[k] = words(v)
   wordCounts.total = Object.values(wordCounts).reduce((a, b) => a + b, 0)
-  return { ...sections, nav, primary, tables, occurrences, occurrencesAll, wordCounts }
+  return { ...sections, nav, primary, tables, occurrences, occurrencesAll, wordCounts, unnamedControls }
 })()`
 
 const surfaces = []

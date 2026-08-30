@@ -220,7 +220,7 @@ export const PREREQ = {
     why: 'Before MFA is enforced, every active user should have a working, verified method: enforcement should change nothing for them.',
     how: (c: { none: number; unverified: number; notChallenged: number }, careNames: string[], departments: number) => [
       c.none + c.unverified + c.notChallenged === 0
-        ? 'Everyone active is already verified or likely viable: confirm the Readiness table and move on.'
+        ? 'Everyone active is already verified or likely viable. Confirm the Readiness table and move on.'
         : `Work the Readiness table top-down: ${count(c.none, 'user')} without a method (issue Temporary Access Passes), ${c.unverified} unverified, ${c.notChallenged} never challenged.`,
       ...(careNames.length > 0 ? [`Walk through setup personally with ${list(careNames)}: never an email blast for them.`] : []),
       departments > 1
@@ -236,21 +236,21 @@ export const PREREQ = {
     exit: (days: number) => [`Every break-glass account has a successful sign-in within ${days} days.`],
     overdue: (names: string[]) => `${count(names.length, 'account')} overdue: ${list(names)}`,
     allDrilled: 'All accounts recently drilled.',
-    weakMethod: (names: string[]) => `${list(names)} ${names.length === 1 ? 'holds' : 'hold'} only a phone method: register a FIDO2 key or passkey on each before the first block policy.`,
+    weakMethod: (names: string[]) => `${list(names)} ${names.length === 1 ? 'holds' : 'hold'} only a phone method. Register a FIDO2 key or passkey on each before the first block policy.`,
   },
 }
 
 export const ACTION = {
   alreadyDelivered: 'Already delivered by existing policies: nothing to do.',
   createReportOnly: 'Create this policy in report-only mode; the description tag lets re-scans track it.',
-  createsGroup: (name: string) => `This step also creates a new pilot group it targets, for example "${name}": create it empty first; pilot users go in later.`,
-  noBaselineMatch: 'No baseline policy matches this goal directly: create a policy that meets the goal floor.',
+  createsGroup: (name: string) => `This step also creates a new pilot group it targets, for example "${name}". Create it empty first; pilot users go in later.`,
+  noBaselineMatch: 'No baseline policy matches this goal directly. Create a policy that meets the goal floor.',
   raiseGrant: (detail: string) => `Raise the grant control: ${detail}.`,
   tightenSession: (detail: string) => `Tighten the session controls: ${detail}.`,
-  reviewExclusion: (detail: string) => `Review the exclusion (${detail}): remove it or confirm it in Setup.`,
+  reviewExclusion: (detail: string) => `Review the exclusion (${detail}). Remove it or confirm it in Setup.`,
   extendScope: (n: number) => `Extend the include scope: ${count(n, 'expected user')} ${n === 1 ? 'is' : 'are'} never targeted.`,
   broadenApps: 'Broaden the target resources to all apps (currently narrower than the goal).',
-  moveToEnforced: 'The covering policy is report-only: enforce it once the evidence is clean.',
+  moveToEnforced: 'The covering policy is report-only. Enforce it once the evidence is clean.',
   floorRaised: (to: string, by: string) => `The baseline raises the bar to ${to} (via ${by}).`,
   bringToFloor: 'Bring the covering policies up to the goal floor.',
 }
@@ -274,7 +274,7 @@ export const IMPACT = {
   done: 'Already in force: no change for anyone.',
   prerequisite: 'Changes nothing for anyone: an object or an answer the later steps need.',
   blockZero: 'No sign-in in the last 30 days would have been affected.',
-  blockSome: (n: number) => `${count(n, 'user')} used this in the last 30 days and would be affected: contact them first.`,
+  blockSome: (n: number) => `${count(n, 'user')} used this in the last 30 days and would be affected. Contact them first.`,
   adjust: (affected: number, admins: number) =>
     `${count(affected, 'user')} ${affected === 1 ? 'sees' : 'see'} a change${admins > 0 ? ` (${count(admins, 'admin')})` : ''}; nobody new is targeted.`,
   mfaNotReady: (notReady: number, active: number) =>
@@ -287,7 +287,7 @@ export const IMPACT = {
 
 export const CARE = {
   order: (n: number) => `Rollout order for this step: pilot → everyone else → ${n === 1 ? 'this user' : `these ${n} users`} last, after the approach is proven.`,
-  noMethod: (name: string) => `${name}: no MFA method yet: issue a Temporary Access Pass and set up Authenticator together.`,
+  noMethod: (name: string) => `${name} has no MFA method yet. Issue a Temporary Access Pass and set up Authenticator together.`,
   unverified: (name: string) => `${name}: not verified yet: have them complete one MFA sign-in before this is enforced.`,
   allVerified: 'All verified: this step can be enforced for them when the evidence is clean.',
 }
@@ -334,7 +334,7 @@ export const READINESS = {
   eligibleOnly: (n: number) => `${count(n, 'eligible-only admin')} out of scope until activation`,
   devices: (withDevice: number, members: number) =>
     members === 0 ? 'No active members in scope.' : `${withDevice} of ${count(members, 'active member')} own a compliant device`,
-  block: 'Readiness is measured by usage: see who used this below.',
+  block: 'Readiness is measured by usage. See who used this below.',
   registrationUnreadable: (reason: string) => `Registration data could not be read (${reason}): readiness is unknown, so every ring starts with a personal check instead of a percentage.`,
   devicesUnreadable: (reason: string) => `Device data could not be read (${reason}): device readiness is unknown, so every ring starts with a personal check instead of a percentage.`,
   location: 'Compare the countries seen in the sign-in records with the allowed list.',
@@ -342,7 +342,7 @@ export const READINESS = {
 
 export const EVIDENCE = {
   unusable: 'Sign-in records are not usable for this scan: readiness alone is shown; nothing is hidden.',
-  noUsage: (label: string) => `Nobody used ${label} in the collected sign-in records: expect zero impact.`,
+  noUsage: (label: string) => `Nobody used ${label} in the collected sign-in records, so expect zero impact.`,
   usage: (users: number, label: string, signIns: number, detail: string) =>
     `${count(users, 'user')} used ${label} (${count(signIns, 'sign-in')}; ${detail}): these are the people the change touches.`,
   reportOnly: (signIns: number, days: number, failures: number) =>
@@ -350,7 +350,7 @@ export const EVIDENCE = {
   notSeenYet: 'The created policy has not appeared in sign-in results yet.',
   none: "No sign-ins in the last 30 days matched this policy's conditions.",
   notMeasured: 'Sign-in records measure this once the policy exists in report-only; until then readiness is the guide.',
-  serviceAccounts: (names: string[]) => `${count(names.length, 'confirmed service account')} among them (${list(names)}): move ${names.length === 1 ? 'it' : 'them'} to the service-accounts group before this is enforced.`,
+  serviceAccounts: (names: string[]) => `${count(names.length, 'confirmed service account')} among them (${list(names)}). Move ${names.length === 1 ? 'it' : 'them'} to the service-accounts group before this is enforced.`,
   alreadyEnforced: 'An existing policy already enforces this; its sign-in outcomes show in the Readiness table, not here.',
   legacyAuth: 'legacy authentication',
   deviceCode: 'the device-code flow',

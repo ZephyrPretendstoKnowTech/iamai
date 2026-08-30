@@ -69,7 +69,6 @@ export const PROGRESS = {
   notStartedYet: 'not started',
   changesTitle: 'What changed since the last scan',
   changesNone: 'Nothing changed in the tenant since the last saved checkpoint.',
-  changesNoCheckpoint: 'Save the plan once to record a checkpoint; changes since then show here on the next scan.',
   planned: 'planned',
   unplanned: 'unplanned',
   change: {

@@ -385,7 +385,10 @@ export function buildSchedule(
     }
     for (const s of topological(steps.filter(isEnforcement), graph)) {
       const deps = graph[s.id] ?? []
-      const creation = toWeekday(day0End)
+      // The day a phase closes belongs to that phase. Enforcement starts the day
+      // after Day 0 ends, never on it: two steps were planned for Sep 3, the day
+      // Day 0 closed (review-08 C2, prompt 40 §21).
+      const creation = toWeekday(addDays(day0End, 1))
       if (s.kind === 'create') reportOnlyAt[s.id] = creation
       let earliest = s.kind === 'create' ? observation.end : creation
       const reason: { kind: ConstraintKind; ref: string | null } = { kind: s.kind === 'create' ? 'rings' : 'none', ref: null }
