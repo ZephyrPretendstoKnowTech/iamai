@@ -33,18 +33,31 @@ export const PHASE_NAME: Record<number, string> = {
   7: 'Advanced',
 }
 
-/** One precise sentence per blocker group (prompt 13 §9). */
+/**
+ * One blocker cause, phrased as the CONDITION that clears it.
+ *
+ * Both places that print these use the frame "Blocked until …", so a cause has
+ * to complete that sentence. They used to describe the current state instead —
+ * "Setup question 2 is still unanswered" — which produced "Blocked until Setup
+ * question 2 is still unanswered": two constructions spliced, and ungrammatical
+ * (review-08 B5, prompt 40 §11). The same defect applied to step causes
+ * ("Blocked until X is not done yet").
+ *
+ * Written as conditions, both frames read: "Blocked until Setup question 2 is
+ * answered." in the state line, and the same phrase as a list item under the
+ * heading that names the frame.
+ */
 export const BLOCKED = {
   setup: (numbers: number[]) =>
     numbers.length === 1
-      ? `Setup question ${numbers[0]} is still unanswered`
-      : `Setup questions ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are still unanswered`,
-  step: (title: string) => `${title} is not done yet`,
+      ? `Setup question ${numbers[0]} is answered`
+      : `Setup questions ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are answered`,
+  step: (title: string) => `${title} is done`,
   // No prefix: whatever prints this supplies one. Carrying "Blocked while"
   // inside the cause is what produced the double prefix (T8).
   readiness: (label: string) => label,
-  evidence: 'report-only evidence is not clean yet',
-  operator: (reason: string) => `the signed-in account would be locked out: ${reason}`,
+  evidence: 'the report-only evidence is clean',
+  operator: (reason: string) => `the signed-in account is no longer at risk of lockout: ${reason}`,
 }
 
 export const OPERATOR = {

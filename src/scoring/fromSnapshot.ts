@@ -4,8 +4,25 @@
 import { computeAuthenticatorBaseline } from './platform.ts'
 import type { EvidenceStatus, MfaViabilityInput } from './mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { personAccounts } from '../derive/sets.ts'
 
-export function buildViabilityInputs(snapshot: TenantSnapshot, now: string): MfaViabilityInput[] {
+/**
+ * One row per person. Accounts that are not people — shared mailboxes, room and
+ * equipment resources, confirmed service accounts — are dropped here rather
+ * than at each caller, because every headline number in the app is derived from
+ * this array: enabled users, active users, "to set up before enforcement", the
+ * size band and the ring band. Filtering downstream is how the live site came
+ * to say "13 users in the directory" and "3 of 12 enabled users" in one
+ * paragraph, with a mailbox making up the difference (review-08 A3, A4).
+ *
+ * `confirmedServiceAccountIds` comes from Setup when the operator has confirmed
+ * any; without it the licence-shape signal alone still catches mailboxes.
+ */
+export function buildViabilityInputs(
+  snapshot: TenantSnapshot,
+  now: string,
+  confirmedServiceAccountIds: ReadonlySet<string> = new Set(),
+): MfaViabilityInput[] {
   const allMethods = Object.values(snapshot.authMethods).flatMap((m) => (m === 'unknown' ? [] : m))
   const newestAuthenticatorVersionByPlatform = computeAuthenticatorBaseline(allMethods)
   const registrationById = new Map(snapshot.registrationDetails.map((r) => [r.id, r]))
@@ -15,7 +32,7 @@ export function buildViabilityInputs(snapshot: TenantSnapshot, now: string): Mfa
   const evidenceStatus: EvidenceStatus =
     evidenceSource.status === 'error' ? 'disabled' : evidenceSource.status
 
-  return snapshot.users.map((u) => {
+  return personAccounts(snapshot, confirmedServiceAccountIds).map((u) => {
     const reg = registrationById.get(u.id) ?? null
     const userEvidence = snapshot.signInEvidence[u.id]
     const evidence: MfaViabilityInput['evidence'] = {

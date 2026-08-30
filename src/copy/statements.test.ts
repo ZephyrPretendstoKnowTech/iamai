@@ -143,3 +143,40 @@ test('roadmap overview branches', () => {
   assert.match(roadmapOverview({ tenant: 'C', done: 5, total: 5, pace: 'standard', finishes: 'x', weeks: 1 }), /all 5 steps are already in place\. Nothing remains\.$/)
   assert.match(roadmapOverview({ tenant: 'C', done: 0, total: 1, pace: 'standard', finishes: 'x', weeks: 1 }), /none of the 1 step is in place yet\. 1 remains\./)
 })
+
+test('"and N more" counts what it summarises', () => {
+  // review-08 D1 reported this as off by one with 6 in place and 4 named.
+  // 4 named + "and 2 more" is 6, so the arithmetic was already right; this
+  // pins it so a future edit to the slice length cannot quietly break it
+  // (prompt 40 §6).
+  const named = (n: number): string => {
+    const working = Array.from({ length: n }, (_, i) => `goal ${i + 1}`)
+    const [line] = findingsSummary({
+      tenant: 'T',
+      enabledPolicies: 1,
+      baselineLabel: 'b',
+      baselinePolicies: 1,
+      inPlace: n,
+      partly: 0,
+      missing: 0,
+      scored: n,
+      users: 5,
+      active: 5,
+      rollout: { enabled: 5, proven: 5, toSetUp: 0, noMethod: 0, unproven: 0 },
+      working,
+      fixFirst: [],
+      licenceLimited: 0,
+    }).filter((p) => p.startsWith('Already in place'))
+    return line ?? ''
+  }
+
+  const six = named(6)
+  assert.match(six, /and 2 more/, six)
+  // The named ones plus the remainder equal the total, which is the property
+  // that actually matters.
+  assert.equal((six.match(/goal \d+/g) ?? []).length + 2, 6, six)
+
+  assert.equal((named(4).match(/goal \d+/g) ?? []).length, 4, 'four items should all be named')
+  assert.doesNotMatch(named(4), /more/, 'four items need no remainder')
+  assert.match(named(5), /and 1 more/)
+})

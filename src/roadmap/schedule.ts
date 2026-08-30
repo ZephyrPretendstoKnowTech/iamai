@@ -10,6 +10,7 @@
 import { BANDS, OBSERVATION_DAYS, bandForActiveUsers } from './constants.ts'
 import type { SizeBand } from './constants.ts'
 import { ringBandFor } from './rings.ts'
+import { waitingOnSetup as waitingOnSetupQ } from '../derive/sets.ts'
 import { promptsPeople } from './strand.ts'
 import { toEnforcementDay as enforcementDay } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
@@ -470,8 +471,11 @@ export function buildSchedule(
   const expectedEnd = addDays(day0, expectedDays + 7)
   const extendedBy = enforcement.filter((s) => Date.parse(placed.get(s.id)!.end) > Date.parse(expectedEnd)).map((s) => s.id)
   if (!verificationComplete && verifyStep && Date.parse(verification.end) > Date.parse(expectedEnd)) extendedBy.unshift(verifyStep.id)
-  const waitingOnSetup = steps.filter((s) => isWork(s) && s.blockers.some((b) => b.kind === 'setup')).length
-  const waitingOnSetupQuestions = [...new Set(steps.filter(isWork).flatMap((s) => s.blockers.filter((b) => b.kind === 'setup').map((b) => (b as { questionNumber: number }).questionNumber)))].sort((a, b) => a - b)
+  // Both from the one blocked set, so the count and the question list cannot
+  // describe different populations (prompt 40 §9).
+  const byQuestion = waitingOnSetupQ(steps)
+  const waitingOnSetup = new Set([...byQuestion.values()].flatMap((list) => list.map((s) => s.id))).size
+  const waitingOnSetupQuestions = [...byQuestion.keys()].sort((a, b) => a - b)
 
   return {
     band,

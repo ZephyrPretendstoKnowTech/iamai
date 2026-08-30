@@ -18,6 +18,7 @@ import { findDangerAreas } from '../../roadmap/dangers.ts'
 import { nextMonday } from '../../roadmap/schedule.ts'
 import { applyProgress, mergePersisted, skipStep } from '../../roadmap/progress.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
+import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
 import type { Checkpoint } from '../../roadmap/plan.ts'
 import type { Step, StepStatus } from '../../roadmap/types.ts'
@@ -52,7 +53,7 @@ import type { NoticeSettings } from '../../roadmap/timing.ts'
 import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
 import { changesSince, groupGrowth, progressHeadline, stepProgress } from '../../roadmap/tracking.ts'
-import { peopleCounts, trackableSteps } from '../../derive/sets.ts'
+import { blockedSteps, trackableSteps } from '../../derive/sets.ts'
 import { REDACTED, exportClipboard, exportDownload, exportPrint, unredactedFrom } from '../exportGuard.ts'
 import { NAME_WARNING } from '../../copy/comms.ts'
 import { initialDomain } from '../../validation/rules.ts'
@@ -261,6 +262,12 @@ export function RoadmapPage({
     applyProgress(steps, snapshot, coverage, planId, undefined, saved?.revisions?.[0]?.at ?? saved?.planCreatedAt ?? null)
     // State reasons read the tracking (the real enforcement date), so they come last.
     annotateStateReasons(steps)
+    // And the blocker step's "N steps are held" is recomputed here, because
+    // this is the first point where statuses are final. Generating it inside
+    // generateRoadmap froze a count that mergePersisted and applyProgress then
+    // moved, so the sentence said 14 while the tile beside it said 13
+    // (review-08 A9, prompt 40 §9).
+    refreshBlockerImpact(steps)
     const dangers = findDangerAreas({
       snapshot,
       viability,
@@ -407,7 +414,9 @@ export function RoadmapPage({
   const trackedDone = summary.done
   const done = steps.filter((s) => s.status === 'done')
   const safe = steps.filter((s) => s.safeToday)
-  const blocked = steps.filter((s) => s.status === 'blocked')
+  // The one blocked set (prompt 40 §9) — the tile, the attention callout and
+  // the blocker step's "N held" all count over this.
+  const blocked = blockedSteps(steps)
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'This tenant'
   // C15: the organisation display name is often the tenant identifier. It looks
@@ -696,7 +705,7 @@ export function RoadmapPage({
 
   // ---- Progress (roadmap-v2.md §5, §8): the overview plus the journey ----
   const progressRows = stepProgress(steps, schedule)
-  const headline = progressHeadline(steps, schedule)
+  const headline = progressHeadline(steps, schedule, undefined, saved?.planCreatedAt ?? saved?.revisions?.[0]?.at ?? null)
   const lastCheckpoint = saved?.checkpoints.at(-1) ?? null
   const changes = [...changesSince(snapshot, lastCheckpoint, steps, planId), ...groupGrowth(lastCheckpoint, groups)]
   const STAGES: { id: (typeof progressRows)[number]['stage']; label: string }[] = [

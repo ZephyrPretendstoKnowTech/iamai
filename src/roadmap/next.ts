@@ -4,6 +4,7 @@
 // steps, then the best value-to-disruption step that is ready. Never a
 // blocked step. Pure.
 import { NEXT } from '../copy/next.ts'
+import { blockedSteps, outstandingSteps } from '../derive/sets.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { Schedule } from './schedule.ts'
@@ -62,9 +63,13 @@ export function doThisNext(
   previousStatus: Record<string, string> | null,
   now: string = new Date().toISOString(),
 ): NextCard {
-  const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
+  const work = outstandingSteps(steps)
+  // Counted over the blocked set, not over everything outstanding. Counting
+  // outstanding steps made this say "14 steps that can deny access are held"
+  // beside a tile reading "13 steps blocked" (review-08 A9, prompt 40 §9): a
+  // step that is merely waiting its turn is not being held by anything.
   const waitedOn = new Map<string, number>()
-  for (const s of work) for (const b of s.blockedBy) waitedOn.set(b, (waitedOn.get(b) ?? 0) + 1)
+  for (const s of blockedSteps(steps)) for (const b of s.blockedBy) waitedOn.set(b, (waitedOn.get(b) ?? 0) + 1)
   const items: NextItem[] = []
   const touches = (s: Step): string => {
     if (s.population.total === 0) return NEXT.touches.nobody
