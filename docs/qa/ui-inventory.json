@@ -1,0 +1,3346 @@
+{
+ "fingerprint": "3fdc8b5dc097eebe",
+ "surfaces": [
+  {
+   "name": "Start",
+   "note": "",
+   "headings": [
+    "Turn your Microsoft Entra Conditional Access baseline into a dated rollout plan that names who each step touches before anything is enforced.",
+    "How it works",
+    "Connect",
+    "Choose a baseline",
+    "Scan and see readiness",
+    "Follow the roadmap",
+    "What you'll need",
+    "What IAMAI reads, and why",
+    "What IAMAI never does"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Get started"
+   ],
+   "options": [],
+   "links": [
+    "The full list, with every endpoint and permission →",
+    "The source is public"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "IAMAI reads your Microsoft 365 tenant's Conditional Access policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.",
+    "A read-only sign-in.",
+    "IAMAI cannot change anything in the tenant.",
+    "Start from a maintained policy set, or upload a package.",
+    "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.",
+    "Dated phases, the changes that are safe today, and what to watch first.",
+    "A Microsoft 365 tenant with Microsoft Entra ID (any licence).",
+    "A Global Administrator or Global Reader account.",
+    "Entra ID P1 for sign-in records.",
+    "IAMAI works without it, with less evidence.",
+    "About ten minutes for the first scan.",
+    "The Conditional Access configuration: to compare it with the baseline.",
+    "User, device, and licence inventory: to size every step's impact.",
+    "Recent interactive sign-in records: to check that MFA works before anything is enforced.",
+    "No changes to the tenant: the app holds read-only permissions only.",
+    "Nothing leaves the browser.",
+    "There is no server.",
+    "No account required with anyone.",
+    "IAMAI runs entirely in the browser and only reads.",
+    "The source is public, so anyone can verify that.",
+    "Predicted impact, confirmed in report-only."
+   ],
+   "nav": [
+    {
+     "label": "Get started",
+     "at": "top",
+     "inFooterSlot": false
+    },
+    {
+     "label": "Get started",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Get started",
+    "Get started"
+   ],
+   "tables": [],
+   "occurrences": {
+    "IAMAI reads your Microsoft 365 tenant's Conditional Access policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.": 1,
+    "IAMAI cannot change anything in the tenant.": 1,
+    "Start from a maintained policy set, or upload a package.": 1,
+    "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.": 1,
+    "Dated phases, the changes that are safe today, and what to watch first.": 1,
+    "A Microsoft 365 tenant with Microsoft Entra ID (any licence).": 1,
+    "A Global Administrator or Global Reader account.": 1,
+    "Entra ID P1 for sign-in records.": 1,
+    "IAMAI works without it, with less evidence.": 1,
+    "About ten minutes for the first scan.": 1,
+    "The Conditional Access configuration: to compare it with the baseline.": 1,
+    "User, device, and licence inventory: to size every step's impact.": 1,
+    "Recent interactive sign-in records: to check that MFA works before anything is enforced.": 1,
+    "The full list, with every endpoint and permission →": 1,
+    "No changes to the tenant: the app holds read-only permissions only.": 1,
+    "Nothing leaves the browser.": 1,
+    "No account required with anyone.": 1,
+    "IAMAI runs entirely in the browser and only reads.": 1,
+    "The source is public, so anyone can verify that.": 1,
+    "Predicted impact, confirmed in report-only.": 1
+   },
+   "occurrencesAll": {
+    "IAMAI reads your Microsoft 365 tenant's Conditional Access policies, people, and sign-in records, compares them with a proven baseline, and produces a dated plan: who each step touches, what could go wrong, and the exact change to make.": 1,
+    "IAMAI cannot change anything in the tenant.": 1,
+    "Start from a maintained policy set, or upload a package.": 1,
+    "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.": 1,
+    "Dated phases, the changes that are safe today, and what to watch first.": 1,
+    "A Microsoft 365 tenant with Microsoft Entra ID (any licence).": 1,
+    "A Global Administrator or Global Reader account.": 1,
+    "Entra ID P1 for sign-in records.": 1,
+    "IAMAI works without it, with less evidence.": 1,
+    "About ten minutes for the first scan.": 1,
+    "The Conditional Access configuration: to compare it with the baseline.": 1,
+    "User, device, and licence inventory: to size every step's impact.": 1,
+    "Recent interactive sign-in records: to check that MFA works before anything is enforced.": 1,
+    "The full list, with every endpoint and permission →": 1,
+    "No changes to the tenant: the app holds read-only permissions only.": 1,
+    "Nothing leaves the browser.": 1,
+    "No account required with anyone.": 1,
+    "IAMAI runs entirely in the browser and only reads.": 1,
+    "The source is public, so anyone can verify that.": 1,
+    "Predicted impact, confirmed in report-only.": 1
+   },
+   "wordCounts": {
+    "headings": 48,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 13,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 205,
+    "total": 268
+   }
+  },
+  {
+   "name": "Connect",
+   "note": "",
+   "headings": [
+    "Connect"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Sign out",
+    "Next: Baseline"
+   ],
+   "options": [],
+   "links": [
+    "Findings",
+    "Roadmap"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "What IAMAI will ask for, and how to remove it"
+   ],
+   "tips": [],
+   "sentences": [
+    "Signs in read-only so IAMAI can read the tenant's configuration and inventory.",
+    "Needs: ✓ a Global Administrator or Global Reader account",
+    "Signed in to Contoso Pty Ltd as alex@example.com",
+    "Tenant ID 00000000-0000-0000-0000-000000000000",
+    "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap."
+   ],
+   "nav": [
+    {
+     "label": "Next: Baseline",
+     "at": "middle",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Next: Baseline"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Signs in read-only so IAMAI can read the tenant's configuration and inventory.": 1,
+    "Needs: ✓ a Global Administrator or Global Reader account": 1,
+    "Signed in to Contoso Pty Ltd as alex@example.com": 1,
+    "Tenant ID 00000000-0000-0000-0000-000000000000": 1,
+    "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.": 1
+   },
+   "occurrencesAll": {
+    "Signs in read-only so IAMAI can read the tenant's configuration and inventory.": 1,
+    "Needs: ✓ a Global Administrator or Global Reader account": 1,
+    "Signed in to Contoso Pty Ltd as alex@example.com": 1,
+    "Tenant ID 00000000-0000-0000-0000-000000000000": 1,
+    "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 4,
+    "options": 0,
+    "links": 2,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 10,
+    "tips": 0,
+    "sentences": 54,
+    "total": 71
+   }
+  },
+  {
+   "name": "Connect / permissions disclosure",
+   "note": "disclosure expanded",
+   "headings": [
+    "Connect",
+    "Sign in, and stay signed in",
+    "Removing it"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Sign out",
+    "Next: Baseline"
+   ],
+   "options": [],
+   "links": [
+    "Findings",
+    "Roadmap",
+    "Every endpoint, in full →"
+   ],
+   "chips": [],
+   "columns": [
+    "Permission",
+    "What it lets IAMAI read",
+    "Without it"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "What IAMAI will ask for, and how to remove it"
+   ],
+   "tips": [],
+   "sentences": [
+    "Signs in read-only so IAMAI can read the tenant's configuration and inventory.",
+    "Needs: ✓ a Global Administrator or Global Reader account",
+    "Signed in to Contoso Pty Ltd as alex@example.com",
+    "Tenant ID 00000000-0000-0000-0000-000000000000",
+    "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.",
+    "Microsoft shows this list on its own consent screen.",
+    "It is repeated here in plain words, generated from the same list the code requests, so it can be read before the screen appears rather than during it.",
+    "Every one of these is a read permission.",
+    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI, whatever it is asked to do.",
+    "Used for: CA policies, Named locations, Authentication strengths, Auth methods policy, Security defaults, Cross-tenant access.",
+    "Used for: Subscribed SKUs, Organization, Signed-in operator, Operator groups, Users, Devices, Group transitive members, Group search, Name resolution.",
+    "Not used by anything IAMAI runs today.",
+    "Used for: Registration details, Users, Sign-in logs.",
+    "Used for: Role assignments, PIM eligibility.",
+    "Used for: Auth methods.",
+    "Used for: SP sign-in activity, App sign-in summary.",
+    "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.",
+    "Nothing else is created, and no data is copied anywhere.",
+    "Entra admin center → Entra ID → Enterprise applications.",
+    "Find IAMAI in the list.",
+    "Properties → Delete.",
+    "That removes every permission immediately and leaves nothing behind.",
+    "Anything IAMAI held was in the browser, and Forget this tenant clears that separately."
+   ],
+   "nav": [
+    {
+     "label": "Next: Baseline",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Next: Baseline"
+   ],
+   "tables": [
+    {
+     "label": "7 entries",
+     "paginated": false
+    },
+    {
+     "label": "3 entries",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "Signs in read-only so IAMAI can read the tenant's configuration and inventory.": 1,
+    "Needs: ✓ a Global Administrator or Global Reader account": 1,
+    "Signed in to Contoso Pty Ltd as alex@example.com": 1,
+    "Tenant ID 00000000-0000-0000-0000-000000000000": 1,
+    "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.": 1,
+    "Microsoft shows this list on its own consent screen.": 1,
+    "It is repeated here in plain words, generated from the same list the code requests, so it can be read before the screen appears rather than during it.": 1,
+    "Every one of these is a read permission.": 1,
+    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI, whatever it is asked to do.": 1,
+    "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.": 1,
+    "Nothing else is created, and no data is copied anywhere.": 1,
+    "Entra admin center → Entra ID → Enterprise applications.": 1,
+    "That removes every permission immediately and leaves nothing behind.": 1,
+    "Anything IAMAI held was in the browser, and Forget this tenant clears that separately.": 1
+   },
+   "occurrencesAll": {
+    "Signs in read-only so IAMAI can read the tenant's configuration and inventory.": 1,
+    "Needs: ✓ a Global Administrator or Global Reader account": 1,
+    "Signed in to Contoso Pty Ltd as alex@example.com": 1,
+    "Tenant ID 00000000-0000-0000-0000-000000000000": 1,
+    "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap.": 1,
+    "Microsoft shows this list on its own consent screen.": 1,
+    "It is repeated here in plain words, generated from the same list the code requests, so it can be read before the screen appears rather than during it.": 1,
+    "Every one of these is a read permission.": 1,
+    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI, whatever it is asked to do.": 1,
+    "Used for: CA policies, Named locations, Authentication strengths, Auth methods policy, Security defaults, Cross-tenant access.": 1,
+    "Used for: Subscribed SKUs, Organization, Signed-in operator, Operator groups, Users, Devices, Group transitive members, Group search, Name resolution.": 1,
+    "Not used by anything IAMAI runs today.": 1,
+    "Used for: Registration details, Users, Sign-in logs.": 1,
+    "Used for: Role assignments, PIM eligibility.": 1,
+    "Used for: SP sign-in activity, App sign-in summary.": 1,
+    "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.": 1,
+    "Nothing else is created, and no data is copied anywhere.": 1,
+    "Entra admin center → Entra ID → Enterprise applications.": 1,
+    "That removes every permission immediately and leaves nothing behind.": 1,
+    "Anything IAMAI held was in the browser, and Forget this tenant clears that separately.": 1
+   },
+   "wordCounts": {
+    "headings": 9,
+    "tabs": 0,
+    "buttons": 4,
+    "options": 0,
+    "links": 7,
+    "chips": 0,
+    "columns": 8,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 10,
+    "tips": 0,
+    "sentences": 261,
+    "total": 299
+   }
+  },
+  {
+   "name": "Baseline",
+   "note": "",
+   "headings": [
+    "Baseline",
+    "About this baseline",
+    "Loaded: synthetic baseline"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Load this baseline",
+    "Next: Scan"
+   ],
+   "options": [],
+   "links": [
+    "Jon Hope",
+    "repository",
+    "how to make one"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Technical details"
+   ],
+   "tips": [],
+   "sentences": [
+    "Picks the target policy set the rollout plan aims for.",
+    "Jon Hope — Defense in Depth CA baseline by Jon Hope · repository",
+    "version ceccdc2",
+    "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.",
+    "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.",
+    "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2",
+    "or upload a package (how to make one):",
+    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)"
+   ],
+   "nav": [
+    {
+     "label": "Next: Scan",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Load this baseline",
+    "Next: Scan"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Picks the target policy set the rollout plan aims for.": 1,
+    "Jon Hope — Defense in Depth CA baseline by Jon Hope · repository": 1,
+    "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.": 1,
+    "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.": 1,
+    "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2": 1,
+    "or upload a package (how to make one):": 1,
+    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)": 1
+   },
+   "occurrencesAll": {
+    "Picks the target policy set the rollout plan aims for.": 1,
+    "Jon Hope — Defense in Depth CA baseline by Jon Hope · repository": 1,
+    "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.": 1,
+    "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.": 1,
+    "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2": 1,
+    "or upload a package (how to make one):": 1,
+    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)": 1
+   },
+   "wordCounts": {
+    "headings": 7,
+    "tabs": 0,
+    "buttons": 5,
+    "options": 0,
+    "links": 7,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 2,
+    "tips": 0,
+    "sentences": 115,
+    "total": 136
+   }
+  },
+  {
+   "name": "Scan",
+   "note": "page chrome; tab panels are their own surfaces",
+   "headings": [
+    "Scan",
+    "Scan complete"
+   ],
+   "tabs": [
+    "Readiness",
+    "Inventory"
+   ],
+   "buttons": [
+    "Re-scan tenant",
+    "Download diagnostics (redacted)",
+    "Readiness",
+    "Inventory",
+    "Next: Setup"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "Reads the tenant's configuration, inventory, and sign-in records into a local record on this device.",
+    "Nothing is written; nothing leaves the browser.",
+    "Needs: ✓ connected tenant",
+    "Re-scan tenantDownload diagnostics (redacted)",
+    "Scan completed this minute · <date and time> · saved on this device.",
+    "Re-scan any time for fresh numbers.",
+    "5 users · 3 policies · sign-in records for <date> to <date>"
+   ],
+   "nav": [
+    {
+     "label": "Next: Setup",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Re-scan tenant",
+    "Next: Setup"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Reads the tenant's configuration, inventory, and sign-in records into a local record on this device.": 1,
+    "Nothing is written; nothing leaves the browser.": 1,
+    "Re-scan tenantDownload diagnostics (redacted)": 1,
+    "Scan completed this minute · <date and time> · saved on this device.": 1,
+    "Re-scan any time for fresh numbers.": 1,
+    "5 users · 3 policies · sign-in records for <date> to <date>": 1
+   },
+   "occurrencesAll": {
+    "Reads the tenant's configuration, inventory, and sign-in records into a local record on this device.": 1,
+    "Nothing is written; nothing leaves the browser.": 1,
+    "Re-scan tenantDownload diagnostics (redacted)": 1,
+    "Scan completed this minute · <date and time> · saved on this device.": 1,
+    "Re-scan any time for fresh numbers.": 1,
+    "5 users · 3 policies · sign-in records for <date> to <date>": 1
+   },
+   "wordCounts": {
+    "headings": 3,
+    "tabs": 2,
+    "buttons": 9,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 61,
+    "total": 75
+   }
+  },
+  {
+   "name": "Scan / Readiness tab",
+   "note": "panel only",
+   "headings": [
+    "Readiness",
+    "MFA state",
+    "Activity",
+    "Rollout"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Verified",
+    "Looks healthy",
+    "Never prompted",
+    "Possibly broken",
+    "No method",
+    "Active",
+    "Inactive 90+ days",
+    "Never signed in",
+    "MFA proven in the last 30 days",
+    "No MFA method",
+    "Registered but unproven",
+    "To set up before enforcement",
+    "Phishing-resistant",
+    "Passwordless",
+    "App notification",
+    "One-time code",
+    "Text or call",
+    "User",
+    "Admin",
+    "Activity",
+    "MFA state",
+    "Strongest method",
+    "Reasons",
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "Verified",
+    "Looks healthy",
+    "Never prompted",
+    "Possibly broken",
+    "No method",
+    "Active",
+    "Inactive 90+ days",
+    "Never signed in",
+    "Phishing-resistant",
+    "Passwordless",
+    "App notification",
+    "One-time code",
+    "Text or call",
+    "Guest"
+   ],
+   "columns": [
+    "User",
+    "Admin",
+    "Activity",
+    "MFA state",
+    "Strongest method",
+    "Reasons"
+   ],
+   "tiles": [
+    "Verified",
+    "Looks healthy",
+    "Never prompted",
+    "Possibly broken",
+    "No method",
+    "Active",
+    "Inactive 90+ days",
+    "Never signed in",
+    "MFA proven in the last 30 days",
+    "No MFA method",
+    "Registered but unproven",
+    "To set up before enforcement"
+   ],
+   "empty": [],
+   "summaries": [
+    "Legend"
+   ],
+   "tips": [
+    "About Verified",
+    "About Looks healthy",
+    "About Never prompted",
+    "About Possibly broken",
+    "About No method",
+    "About Active",
+    "About Inactive 90+ days",
+    "About Never signed in",
+    "About MFA proven in the last 30 days",
+    "About No MFA method",
+    "About Registered but unproven",
+    "About To set up before enforcement"
+   ],
+   "sentences": [
+    "Sign-in records: complete: covering <date> to <date>.",
+    "CA001 - Require MFA for all users: 1 user: Priya Nair",
+    "alex@example.com",
+    "priya@example.com",
+    "bg01@contoso.onmicrosoft.com",
+    "sam@example.com",
+    "jordan_partner.example.com#EXT#@example.com"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "5 entries",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "Sign-in records: complete: covering <date> to <date>.": 1,
+    "CA001 - Require MFA for all users: 1 user: Priya Nair": 1
+   },
+   "occurrencesAll": {
+    "Sign-in records: complete: covering <date> to <date>.": 1,
+    "CA001 - Require MFA for all users: 1 user: Priya Nair": 1,
+    "bg01@contoso.onmicrosoft.com": 1,
+    "jordan_partner.example.com#EXT#@example.com": 1
+   },
+   "wordCounts": {
+    "headings": 5,
+    "tabs": 0,
+    "buttons": 53,
+    "options": 0,
+    "links": 0,
+    "chips": 26,
+    "columns": 8,
+    "tiles": 34,
+    "empty": 0,
+    "summaries": 1,
+    "tips": 46,
+    "sentences": 23,
+    "total": 196
+   }
+  },
+  {
+   "name": "Scan / Inventory tab",
+   "note": "panel only",
+   "headings": [
+    "Policies"
+   ],
+   "tabs": [
+    "Policies",
+    "Named locations",
+    "Authentication",
+    "People",
+    "Devices",
+    "Roles",
+    "Licensing",
+    "Apps",
+    "Sign-in records"
+   ],
+   "buttons": [
+    "Policies",
+    "Named locations",
+    "Authentication",
+    "People",
+    "Devices",
+    "Roles",
+    "Licensing",
+    "Apps",
+    "Sign-in records",
+    "Policy",
+    "State",
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "On",
+    "Report-only",
+    "Off"
+   ],
+   "columns": [
+    "Policy",
+    "State",
+    "Users",
+    "Apps",
+    "Conditions",
+    "Grant",
+    "Session"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [
+    "Everything the scan read, as found: no analysis.",
+    "Every table exports to CSV."
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "3 entries",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "Everything the scan read, as found: no analysis.": 1,
+    "Every table exports to CSV.": 1
+   },
+   "occurrencesAll": {
+    "Everything the scan read, as found: no analysis.": 1,
+    "Every table exports to CSV.": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 11,
+    "buttons": 15,
+    "options": 0,
+    "links": 0,
+    "chips": 3,
+    "columns": 7,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 13,
+    "total": 55
+   }
+  },
+  {
+   "name": "Setup",
+   "note": "page chrome only; each question is its own surface below",
+   "headings": [
+    "Setup"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Next: Findings"
+   ],
+   "options": [],
+   "links": [
+    "Re-scan"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Scan age"
+   ],
+   "sentences": [
+    "A few questions, each required.",
+    "The answers shape the plan and the checks.",
+    "Needs: ✓ baseline loaded · ✓ scan complete",
+    "Based on the scan from this minute · <date and time>.",
+    "Re-scan",
+    "No service accounts detected, so nothing needs a carve-out; the plan records that."
+   ],
+   "nav": [
+    {
+     "label": "Next: Findings",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Next: Findings"
+   ],
+   "tables": [],
+   "occurrences": {
+    "A few questions, each required.": 1,
+    "The answers shape the plan and the checks.": 1,
+    "Needs: ✓ baseline loaded · ✓ scan complete": 1,
+    "Based on the scan from this minute · <date and time>.": 1,
+    "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1
+   },
+   "occurrencesAll": {
+    "A few questions, each required.": 1,
+    "The answers shape the plan and the checks.": 1,
+    "Needs: ✓ baseline loaded · ✓ scan complete": 1,
+    "Based on the scan from this minute · <date and time>.": 1,
+    "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 1,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 3,
+    "sentences": 46,
+    "total": 53
+   }
+  },
+  {
+   "name": "Setup / Q1 — Which accounts are the emergency access (break-glass) ",
+   "note": "one question",
+   "headings": [
+    "Two things no tenant can be asked"
+   ],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "Yes",
+    "Not yet",
+    "Doesn't exist yet: add it to the plan",
+    "Not applicable to us"
+   ],
+   "links": [],
+   "chips": [
+    "Required"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 1 · Which accounts are the emergency access (break-glass) admins?Required"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 1 ·",
+    "Why this matters: Every policy in the plan excludes these accounts, so a mistaken policy still leaves a way back in.",
+    "Microsoft Graph exposes neither of these, so they are the only part of the emergency-access check that needs an answer rather than a scan.",
+    "Both are recorded in the plan.",
+    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.YesNot yet",
+    "A sign-in by an emergency account raises an alert somebody sees.YesNot yet"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {
+    "Why this matters: Every policy in the plan excludes these accounts, so a mistaken policy still leaves a way back in.": 1,
+    "Microsoft Graph exposes neither of these, so they are the only part of the emergency-access check that needs an answer rather than a scan.": 1,
+    "Both are recorded in the plan.": 1,
+    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.YesNot yet": 1,
+    "A sign-in by an emergency account raises an alert somebody sees.YesNot yet": 1,
+    "Doesn't exist yet: add it to the plan": 1
+   },
+   "wordCounts": {
+    "headings": 7,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 15,
+    "links": 0,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 11,
+    "tips": 3,
+    "sentences": 88,
+    "total": 125
+   }
+  },
+  {
+   "name": "Setup / Q2 — Which group holds the policy exclusions?",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "Doesn't exist yet: add it to the plan",
+    "Not applicable to us"
+   ],
+   "links": [],
+   "chips": [
+    "Required"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 2 · Which group holds the policy exclusions?Required"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 2 ·",
+    "Why this matters: One auditable group excluded from every policy keeps the escape hatch in a single place."
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {
+    "Why this matters: One auditable group excluded from every policy keeps the escape hatch in a single place.": 1,
+    "Doesn't exist yet: add it to the plan": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 12,
+    "links": 0,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 9,
+    "tips": 3,
+    "sentences": 21,
+    "total": 46
+   }
+  },
+  {
+   "name": "Setup / Q3 — Which countries do your people sign in from?",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "Australia (AU)",
+    "New Zealand (NZ)",
+    "Looks right",
+    "Not applicable to us"
+   ],
+   "links": [],
+   "chips": [
+    "Required"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 3 · Which countries do your people sign in from?Required"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 3 ·",
+    "Why this matters: The allowed list becomes a named location and the block-everywhere-else policy; a missing country is a lockout for whoever is there.",
+    "Australia: 4 distinct users signed in from here · usage location of 4 users",
+    "New Zealand: 1 distinct user signed in from here",
+    "2 countries.",
+    "Matches the existing named location \"Allowed countries\"."
+   ],
+   "nav": [],
+   "primary": [
+    "Australia (AU)",
+    "New Zealand (NZ)",
+    "Looks right"
+   ],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {
+    "Why this matters: The allowed list becomes a named location and the block-everywhere-else policy; a missing country is a lockout for whoever is there.": 1,
+    "Australia: 4 distinct users signed in from here · usage location of 4 users": 1,
+    "New Zealand: 1 distinct user signed in from here": 1,
+    "Matches the existing named location \"Allowed countries\".": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 11,
+    "links": 0,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 11,
+    "tips": 3,
+    "sentences": 59,
+    "total": 85
+   }
+  },
+  {
+   "name": "Setup / Q4 — Who needs extra care?",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "Nobody needs special care",
+    "Not applicable to us"
+   ],
+   "links": [],
+   "chips": [
+    "Required"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 4 · Who needs extra care?Required"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 4 ·",
+    "Why this matters: These people are verified before anything is enforced and sequenced after the approach is proven."
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {
+    "Why this matters: These people are verified before anything is enforced and sequenced after the approach is proven.": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 8,
+    "links": 0,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 7,
+    "tips": 3,
+    "sentences": 21,
+    "total": 40
+   }
+  },
+  {
+   "name": "Setup / Q5 — Which named locations count as trusted?",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "Doesn't exist yet: add it to the plan",
+    "Not applicable to us"
+   ],
+   "links": [],
+   "chips": [
+    "Required"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 5 · Which named locations count as trusted?Required"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 5 ·",
+    "Why this matters: A trusted location lets registration and other sensitive actions happen only from the office network."
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {
+    "Why this matters: A trusted location lets registration and other sensitive actions happen only from the office network.": 1,
+    "Doesn't exist yet: add it to the plan": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 12,
+    "links": 0,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 9,
+    "tips": 3,
+    "sentences": 21,
+    "total": 46
+   }
+  },
+  {
+   "name": "Setup / Q6 — Which time zone should dates display in?",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "This is correct",
+    "Not applicable to us"
+   ],
+   "links": [],
+   "chips": [
+    "Required"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 6 · Which time zone should dates display in?Required"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 6 ·",
+    "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout.",
+    "America/Denver (this browser)Australia/SydneyAustralia/BrisbaneAustralia/PerthPacific/AucklandEurope/LondonEurope/BerlinAmerica/New_YorkAmerica/ChicagoAmerica/Los_AngelesAsia/SingaporeUTCThis is correct"
+   ],
+   "nav": [],
+   "primary": [
+    "This is correct"
+   ],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {
+    "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout.": 1,
+    "America/Denver (this browser)Australia/SydneyAustralia/BrisbaneAustralia/PerthPacific/AucklandEurope/LondonEurope/BerlinAmerica/New_YorkAmerica/ChicagoAmerica/Los_AngelesAsia/SingaporeUTCThis is correct": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 7,
+    "links": 0,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 10,
+    "tips": 3,
+    "sentences": 23,
+    "total": 44
+   }
+  },
+  {
+   "name": "Setup / Q7 — Which security frameworks is the tenant working toward",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "CIS Controls v8",
+    "Essential Eight (ACSC)",
+    "NIST CSF",
+    "Not sure / none",
+    "Not applicable to us"
+   ],
+   "links": [],
+   "chips": [
+    "Required"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 7 · Which security frameworks is the tenant working toward?Required"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 7 ·",
+    "Why this matters: Tagged steps let the plan stand in as evidence for an audit."
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {
+    "Why this matters: Tagged steps let the plan stand in as evidence for an audit.": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 16,
+    "links": 0,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 11,
+    "tips": 3,
+    "sentences": 18,
+    "total": 49
+   }
+  },
+  {
+   "name": "Setup / Q8 — Are the detected workloads right?",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "Detections look right",
+    "Not applicable to us"
+   ],
+   "links": [],
+   "chips": [
+    "Required",
+    "marked as not used",
+    "Detected"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 8 · Are the detected workloads right?Required"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 8 ·",
+    "Why this matters: A workload marked off removes its goals from the plan; one marked on adds them.",
+    "no sign-ins in the last 30 days",
+    "sign-ins seen in the last 30 days",
+    "no Intune licence",
+    "no Workload Identities Premium licence"
+   ],
+   "nav": [],
+   "primary": [
+    "Detections look right"
+   ],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {
+    "Why this matters: A workload marked off removes its goals from the plan; one marked on adds them.": 1,
+    "no sign-ins in the last 30 days": 5,
+    "sign-ins seen in the last 30 days": 1,
+    "no Workload Identities Premium licence": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 7,
+    "links": 0,
+    "chips": 6,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 8,
+    "tips": 3,
+    "sentences": 43,
+    "total": 67
+   }
+  },
+  {
+   "name": "Findings",
+   "note": "page chrome; tab panels are their own surfaces",
+   "headings": [
+    "Findings"
+   ],
+   "tabs": [
+    "Summary",
+    "Here's what's working",
+    "Here's what needs attention",
+    "Details"
+   ],
+   "buttons": [
+    "Summary",
+    "Here's what's working",
+    "Here's what needs attention",
+    "Details",
+    "Next: Roadmap"
+   ],
+   "options": [],
+   "links": [
+    "Re-scan"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Scan age"
+   ],
+   "sentences": [
+    "What the scan found in the tenant.",
+    "Needs: ✓ scan complete · ✓ baseline loaded",
+    "Based on the scan from this minute · <date and time>.",
+    "Re-scan · Baseline: synthetic baseline",
+    "1 goal in this baseline, 16 apply to this tenant.",
+    "The rest are under Details with the reason each one does not apply."
+   ],
+   "nav": [
+    {
+     "label": "Next: Roadmap",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Next: Roadmap"
+   ],
+   "tables": [],
+   "occurrences": {
+    "What the scan found in the tenant.": 1,
+    "Needs: ✓ scan complete · ✓ baseline loaded": 1,
+    "Based on the scan from this minute · <date and time>.": 1,
+    "Re-scan · Baseline: synthetic baseline": 1,
+    "1 goal in this baseline, 16 apply to this tenant.": 1,
+    "The rest are under Details with the reason each one does not apply.": 1
+   },
+   "occurrencesAll": {
+    "What the scan found in the tenant.": 1,
+    "Needs: ✓ scan complete · ✓ baseline loaded": 1,
+    "Based on the scan from this minute · <date and time>.": 1,
+    "Re-scan · Baseline: synthetic baseline": 1,
+    "1 goal in this baseline, 16 apply to this tenant.": 1,
+    "The rest are under Details with the reason each one does not apply.": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 9,
+    "buttons": 11,
+    "options": 0,
+    "links": 1,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 3,
+    "sentences": 54,
+    "total": 79
+   }
+  },
+  {
+   "name": "Findings / Summary tab",
+   "note": "panel only",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [
+    "Setup"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [
+    "In place",
+    "Partly",
+    "Missing",
+    "of scored goals in place",
+    "of enabled users proved MFA in the last 30 days",
+    "enabled users to set up before enforcement"
+   ],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About In place",
+    "About Partly",
+    "About Missing",
+    "About Scored goals",
+    "About MFA proven in the last 30 days",
+    "About To set up before enforcement"
+   ],
+   "sentences": [
+    "IAMAI compared Contoso Pty Ltd's 1 enabled Conditional Access policy with synthetic baseline (1 policy), matching each policy on what it does.",
+    "2 of 16 security goals are in place; 1 partly (a policy covers some of the people, or a weaker control than the goal needs), 13 missing.",
+    "5 users in the directory, 4 active in the last 90 days.",
+    "1 of 5 enabled users (20%) proved MFA in the last 30 days.",
+    "1 user has no MFA method and 3 users are registered but unproven: 4 users to set up before enforcement.",
+    "Already in place: every user satisfies MFA on every app, guests satisfy MFA.",
+    "Fix first: security-info registration requires a trusted context; device-code flow blocked; authentication transfer blocked.",
+    "The Roadmap dates each one, names who it touches, and gives the exact change.",
+    "5 goals need a licence tier this tenant does not have; they are listed on the Licensing guide and left out of the score.",
+    "IAMAI inferred no exclusion groups and 1 likely break-glass account from how the policies use them.",
+    "Confirm them in Setup to remove the hedging."
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "IAMAI compared Contoso Pty Ltd's 1 enabled Conditional Access policy with synthetic baseline (1 policy), matching each policy on what it does.": 1,
+    "2 of 16 security goals are in place; 1 partly (a policy covers some of the people, or a weaker control than the goal needs), 13 missing.": 1,
+    "5 users in the directory, 4 active in the last 90 days.": 1,
+    "1 of 5 enabled users (20%) proved MFA in the last 30 days.": 1,
+    "1 user has no MFA method and 3 users are registered but unproven: 4 users to set up before enforcement.": 1,
+    "Already in place: every user satisfies MFA on every app, guests satisfy MFA.": 1,
+    "Fix first: security-info registration requires a trusted context; device-code flow blocked; authentication transfer blocked.": 1,
+    "The Roadmap dates each one, names who it touches, and gives the exact change.": 1,
+    "5 goals need a licence tier this tenant does not have; they are listed on the Licensing guide and left out of the score.": 1,
+    "IAMAI inferred no exclusion groups and 1 likely break-glass account from how the policies use them.": 1,
+    "Confirm them in Setup to remove the hedging.": 1
+   },
+   "occurrencesAll": {
+    "IAMAI compared Contoso Pty Ltd's 1 enabled Conditional Access policy with synthetic baseline (1 policy), matching each policy on what it does.": 1,
+    "2 of 16 security goals are in place; 1 partly (a policy covers some of the people, or a weaker control than the goal needs), 13 missing.": 1,
+    "5 users in the directory, 4 active in the last 90 days.": 1,
+    "1 of 5 enabled users (20%) proved MFA in the last 30 days.": 1,
+    "1 user has no MFA method and 3 users are registered but unproven: 4 users to set up before enforcement.": 1,
+    "Already in place: every user satisfies MFA on every app, guests satisfy MFA.": 1,
+    "Fix first: security-info registration requires a trusted context; device-code flow blocked; authentication transfer blocked.": 1,
+    "The Roadmap dates each one, names who it touches, and gives the exact change.": 1,
+    "5 goals need a licence tier this tenant does not have; they are listed on the Licensing guide and left out of the score.": 1,
+    "IAMAI inferred no exclusion groups and 1 likely break-glass account from how the policies use them.": 1,
+    "Confirm them in Setup to remove the hedging.": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 1,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 26,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 24,
+    "sentences": 183,
+    "total": 234
+   }
+  },
+  {
+   "name": "Findings / working tab",
+   "note": "panel only",
+   "headings": [
+    "Identity",
+    "Guests"
+   ],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [],
+   "chips": [
+    "In place"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "In place Every user satisfies MFA on every app. Delivered by CA001 - Require MFA for all users, with 1 break-glass account excluded.Value 5Effort 1Disruption 1",
+    "In place Guests satisfy MFA. Delivered by CA001 - Require MFA for all users.Value 5Effort 1Disruption 1"
+   ],
+   "tips": [
+    "About Priority",
+    "About Why this matters"
+   ],
+   "sentences": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 2,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 0,
+    "chips": 2,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 43,
+    "tips": 6,
+    "sentences": 0,
+    "total": 53
+   }
+  },
+  {
+   "name": "Findings / attention tab",
+   "note": "panel only",
+   "headings": [
+    "Identity",
+    "Admins",
+    "Devices",
+    "Sessions",
+    "Locations"
+   ],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [],
+   "chips": [
+    "Missing",
+    "Partly in place"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Missing Security-info registration requires a trusted context. No policy does this yet. Proposed: Security-info registration requires a trusted context.Value 3Effort 4Disruption 2",
+    "Partly in place Legacy protocols blocked is in report-only via CA002 - Block legacy authentication (30 days, 3 would-be failures).Value 5Effort 1Disruption 4",
+    "Missing Device-code flow blocked. No policy does this yet. Proposed: Device-code flow blocked.Value 3Effort 1Disruption 4",
+    "Missing Authentication transfer blocked. No policy does this yet. Proposed: Authentication transfer blocked.Value 3Effort 1Disruption 4",
+    "Missing Admins use phishing-resistant auth. No policy does this yet. Proposed: Admins use phishing-resistant auth.Value 5Effort 3Disruption 1",
+    "Missing Admin portals need strong auth or are blocked for non-admins. No policy does this yet. Proposed: Admin portals need strong auth or are blocked for non-admins.Value 4Effort 3Disruption 3",
+    "Missing Registering or joining a device requires MFA. No policy does this yet. Proposed: Registering or joining a device requires MFA.Value 3Effort 2Disruption 3",
+    "Missing Unknown platforms blocked. No policy does this yet. Proposed: Unknown platforms blocked.Value 2Effort 3Disruption 3",
+    "Missing Admin sessions expire quickly and never persist. No policy does this yet. Proposed: Admin sessions expire quickly and never persist.Value 4Effort 2Disruption 1",
+    "Missing Unmanaged-device browser sessions are limited. No policy does this yet. Proposed: Unmanaged-device browser sessions are limited.Value 3Effort 3Disruption 2",
+    "Missing Windows desktop sessions require token protection. No policy does this yet. Proposed: Windows desktop sessions require token protection.Value 3Effort 3Disruption 2",
+    "Missing Unmanaged devices cannot download. No policy does this yet. Proposed: Unmanaged devices cannot download.Value 3Effort 4Disruption 2",
+    "Missing Browser sessions never persist for anyone. No policy does this yet. Proposed: Browser sessions never persist for anyone.Value 2Effort 2Disruption 2",
+    "Missing Sign-ins outside allowed countries blocked. No policy does this yet. Proposed: Sign-ins outside allowed countries blocked.Value 3Effort 3Disruption 4"
+   ],
+   "tips": [
+    "About Priority",
+    "About Why this matters"
+   ],
+   "sentences": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 5,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 0,
+    "chips": 4,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 291,
+    "tips": 6,
+    "sentences": 0,
+    "total": 306
+   }
+  },
+  {
+   "name": "Findings / Details tab",
+   "note": "panel only",
+   "headings": [
+    "Policies not in the baseline",
+    "Housekeeping"
+   ],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [],
+   "chips": [
+    "Does not apply",
+    "Needs a licence"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Does not apply Office apps require a compliant or joined device: does not apply (no Intune licence).",
+    "Does not apply Mobile access requires approved or protected apps: does not apply (no Intune licence).",
+    "Needs a licence Risky sign-ins get MFA or are blocked: needs a licence tier this tenant does not have (p2). Listed on the Licensing guide, not scored.",
+    "Needs a licence High-risk users must change password: needs a licence tier this tenant does not have (p2). Listed on the Licensing guide, not scored.",
+    "Does not apply Azure management requires strong auth: does not apply (no sign-in activity for Azure management).",
+    "Does not apply Service principals restricted: does not apply (no Workload Identities Premium licence).",
+    "Needs a licence Activating a privileged role asks for MFA every time: needs a licence tier this tenant does not have (p2). Listed on the Licensing guide, not scored.",
+    "Does not apply Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).",
+    "Needs a licence Medium-risk sign-ins require MFA: needs a licence tier this tenant does not have (p2). Listed on the Licensing guide, not scored.",
+    "Needs a licence Medium-risk users must change their password: needs a licence tier this tenant does not have (p2). Listed on the Licensing guide, not scored."
+   ],
+   "tips": [
+    "About Why this matters"
+   ],
+   "sentences": [
+    "Every policy maps to a goal.",
+    "Naming: no dominant naming convention yet: the plan uses the baseline's"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "Every policy maps to a goal.": 1,
+    "Naming: no dominant naming convention yet: the plan uses the baseline's": 1
+   },
+   "occurrencesAll": {
+    "Every policy maps to a goal.": 1,
+    "Naming: no dominant naming convention yet: the plan uses the baseline's": 1
+   },
+   "wordCounts": {
+    "headings": 6,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 0,
+    "chips": 6,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 214,
+    "tips": 4,
+    "sentences": 17,
+    "total": 247
+   }
+  },
+  {
+   "name": "Roadmap",
+   "note": "page chrome; tab panels are their own surfaces",
+   "headings": [
+    "Roadmap",
+    "Do this next"
+   ],
+   "tabs": [
+    "Progress",
+    "Plan",
+    "Watch first",
+    "Schedule",
+    "Export"
+   ],
+   "buttons": [
+    "Open the step",
+    "Progress",
+    "Plan",
+    "Watch first",
+    "Schedule",
+    "Export"
+   ],
+   "options": [],
+   "links": [
+    "Re-scan"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Scan age"
+   ],
+   "sentences": [
+    "Your plan: what to change, in what order, and what to watch.",
+    "Needs: ✓ scan complete · ✓ baseline loaded",
+    "Based on the scan from this minute · <date and time>.",
+    "Re-scan · Baseline: synthetic baseline",
+    "With this tenant's Entra ID P1, 19 of 24 steps are available now.",
+    "5 steps need Entra ID P2; the Licensing guide shows what they would add.",
+    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.",
+    "Must fix first: 14 steps that can deny access are held until it passes. · nobody",
+    "about 10 minutes",
+    "nothing blocks it, and 2 later steps wait for it · nobody",
+    "setting up 1 person unblocks 3 steps · Priya Nair",
+    "about 5 minutes",
+    "This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else."
+   ],
+   "nav": [],
+   "primary": [
+    "Open the step",
+    "Open the step",
+    "Open the step"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Your plan: what to change, in what order, and what to watch.": 1,
+    "Needs: ✓ scan complete · ✓ baseline loaded": 1,
+    "Based on the scan from this minute · <date and time>.": 1,
+    "Re-scan · Baseline: synthetic baseline": 1,
+    "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
+    "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
+    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.": 1,
+    "Must fix first: 14 steps that can deny access are held until it passes. · nobody": 1,
+    "nothing blocks it, and 2 later steps wait for it · nobody": 1,
+    "setting up 1 person unblocks 3 steps · Priya Nair": 1,
+    "This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.": 1
+   },
+   "occurrencesAll": {
+    "Your plan: what to change, in what order, and what to watch.": 1,
+    "Needs: ✓ scan complete · ✓ baseline loaded": 1,
+    "Based on the scan from this minute · <date and time>.": 1,
+    "Re-scan · Baseline: synthetic baseline": 1,
+    "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
+    "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
+    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.": 1,
+    "Must fix first: 14 steps that can deny access are held until it passes. · nobody": 1,
+    "nothing blocks it, and 2 later steps wait for it · nobody": 1,
+    "setting up 1 person unblocks 3 steps · Priya Nair": 1,
+    "This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.": 1
+   },
+   "wordCounts": {
+    "headings": 4,
+    "tabs": 6,
+    "buttons": 9,
+    "options": 0,
+    "links": 1,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 3,
+    "sentences": 149,
+    "total": 172
+   }
+  },
+  {
+   "name": "Roadmap / Progress tab",
+   "note": "panel only",
+   "headings": [
+    "2 of 19 steps in place · finishes <date>",
+    "What needs attention before you start",
+    "Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.",
+    "The journey",
+    "Planned against actual, week by week",
+    "Every step, planned against actual",
+    "What changed since the last scan",
+    "History"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Steps done",
+    "Weeks",
+    "Safe today",
+    "Blocked",
+    "Everything the scan noticed",
+    "Changes the plan made",
+    "Download as CSV",
+    "Download as Markdown"
+   ],
+   "options": [],
+   "links": [
+    "Open Watch first →",
+    "See the blocked steps →",
+    "Emergency access accounts",
+    "Answer 8 setup questions",
+    "Security-info registration requires a trusted context",
+    "Authentication transfer blocked",
+    "Device-code flow blocked",
+    "Run the MFA verification campaign",
+    "Admin sessions expire quickly and never persist",
+    "Admins use phishing-resistant auth",
+    "Admin portals need strong auth or are blocked for non-admins",
+    "Sign-ins outside allowed countries blocked",
+    "Unknown platforms blocked",
+    "Registering or joining a device requires MFA",
+    "Browser sessions never persist for anyone",
+    "Unmanaged devices cannot download",
+    "Unmanaged-device browser sessions are limited",
+    "Windows desktop sessions require token protection",
+    "Legacy protocols blocked",
+    "Every user satisfies MFA on every app",
+    "Guests satisfy MFA",
+    "Make guests prove who they are too: enforced",
+    "Make sure everyone can prove who they are: enforced",
+    "Turn off old sign-in methods that skip MFA: in report-only"
+   ],
+   "chips": [
+    "Everything the scan noticed",
+    "Changes the plan made",
+    "planned"
+   ],
+   "columns": [
+    "Step",
+    "Planned",
+    "Actual",
+    "Slip"
+   ],
+   "tiles": [
+    "Steps done",
+    "Weeks",
+    "Safe today",
+    "Blocked"
+   ],
+   "empty": [],
+   "summaries": [
+    "Plan revision 1, <date>"
+   ],
+   "tips": [
+    "About Steps done",
+    "About Weeks",
+    "About Safe today",
+    "About Blocked"
+   ],
+   "sentences": [
+    "The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.",
+    "9 steps would prompt the same people twice in one week.",
+    "Spacing them out would push the plan past 4 weeks, so they stay together.",
+    "1 thing to watch before anything is enforced.",
+    "Open Watch first →",
+    "13 steps blocked; each one names what unblocks it.",
+    "See the blocked steps →",
+    "3 Conditional Access policies in the tenant today; this plan adds 0, for 3 of the 195 Entra allows.",
+    "One subject has must-fix checks outstanding, holding 14 steps that can deny access.",
+    "2 steps were already covered before the plan began.",
+    "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.",
+    "16",
+    "Grey bars: steps planned to start that week.",
+    "Green bars: steps that actually started.",
+    "Hover a week for the counts.",
+    "Save the plan once to record a checkpoint; changes since then show here on the next scan.",
+    "Everything the scans noticed, newest first.",
+    "Nothing here is typed in; nothing can be edited.",
+    "<date>",
+    "scan",
+    "matched by what it does",
+    "Plan revision 1, <date>: plan created"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.": 1,
+    "9 steps would prompt the same people twice in one week.": 1,
+    "Spacing them out would push the plan past 4 weeks, so they stay together.": 1,
+    "1 thing to watch before anything is enforced.": 1,
+    "13 steps blocked; each one names what unblocks it.": 1,
+    "3 Conditional Access policies in the tenant today; this plan adds 0, for 3 of the 195 Entra allows.": 1,
+    "One subject has must-fix checks outstanding, holding 14 steps that can deny access.": 1,
+    "2 steps were already covered before the plan began.": 1,
+    "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.": 1,
+    "Grey bars: steps planned to start that week.": 1,
+    "Green bars: steps that actually started.": 1,
+    "Hover a week for the counts.": 1,
+    "Save the plan once to record a checkpoint; changes since then show here on the next scan.": 1,
+    "Everything the scans noticed, newest first.": 1,
+    "Nothing here is typed in; nothing can be edited.": 1,
+    "Plan revision 1, <date>: plan created": 1
+   },
+   "occurrencesAll": {
+    "The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.": 1,
+    "9 steps would prompt the same people twice in one week.": 1,
+    "Spacing them out would push the plan past 4 weeks, so they stay together.": 1,
+    "1 thing to watch before anything is enforced.": 1,
+    "13 steps blocked; each one names what unblocks it.": 1,
+    "3 Conditional Access policies in the tenant today; this plan adds 0, for 3 of the 195 Entra allows.": 1,
+    "One subject has must-fix checks outstanding, holding 14 steps that can deny access.": 1,
+    "2 steps were already covered before the plan began.": 1,
+    "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.": 1,
+    "Grey bars: steps planned to start that week.": 1,
+    "Green bars: steps that actually started.": 1,
+    "Hover a week for the counts.": 1,
+    "Save the plan once to record a checkpoint; changes since then show here on the next scan.": 1,
+    "Everything the scans noticed, newest first.": 1,
+    "Nothing here is typed in; nothing can be edited.": 1,
+    "Plan revision 1, <date>: plan created": 1
+   },
+   "wordCounts": {
+    "headings": 59,
+    "tabs": 0,
+    "buttons": 20,
+    "options": 0,
+    "links": 130,
+    "chips": 9,
+    "columns": 4,
+    "tiles": 6,
+    "empty": 0,
+    "summaries": 4,
+    "tips": 10,
+    "sentences": 212,
+    "total": 454
+   }
+  },
+  {
+   "name": "Roadmap / Plan tab",
+   "note": "panel only",
+   "headings": [
+    "Day 0 <date> → <date>",
+    "Wave 1 · Low-impact blocks <date> → <date>",
+    "Wave 2 · Sessions <date> → <date>",
+    "Wave 3 · Sessions <date> → <date>",
+    "Needs a licence this tenant does not have"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Hide completed",
+    "Safe today (0)",
+    "Done (2)",
+    "Ready (3)",
+    "Blocked (13)",
+    "In report-only (1)",
+    "Ready to enforce (0)",
+    "Skipped (0)"
+   ],
+   "options": [],
+   "links": [
+    "ReadyPrerequisiteSort out emergency access before anything elseEmergency access accountsChecked: nothing blocks it and a foundation the later steps need.",
+    "ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.",
+    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.",
+    "DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "In report-onlyChangeTurn off old sign-in methods that skip MFALegacy protocols blocked1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.",
+    "BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop the device-code sign-in trickDevice-code flow blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyKeep admin sessions shortAdmin sessions expire quickly and never persistBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyGive admins a sign-in method that cannot be phishedAdmins use phishing-resistant authBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop sign-ins from countries you don't work inSign-ins outside allowed countries blockedBlocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyBlock devices Entra cannot identifyUnknown platforms blockedBlocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policySign everyone out when the browser closesBrowser sessions never persist for anyoneBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop downloads to devices you do not manageUnmanaged devices cannot downloadBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyLimit what personal devices can do in the browserUnmanaged-device browser sessions are limitedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop a stolen session token from being reusedWindows desktop sessions require token protectionBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop attackers adding their own MFA methodSecurity-info registration requires a trusted contextBlocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.",
+    "BlockedNew policyKeep non-admins out of the admin portalsAdmin portals need strong auth or are blocked for non-adminsBlocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyAsk for MFA before a device can be registeredRegistering or joining a device requires MFABlocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item)."
+   ],
+   "chips": [
+    "Safe today (0)",
+    "Done (2)",
+    "Ready (3)",
+    "Blocked (13)",
+    "In report-only (1)",
+    "Ready to enforce (0)",
+    "Skipped (0)",
+    "Ready",
+    "Prerequisite",
+    "Done",
+    "New policy",
+    "Verify",
+    "In report-only",
+    "Change",
+    "Blocked"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "<date> → <date>",
+    "Emergency access accounts",
+    "Checked: nothing blocks it and a foundation the later steps need.",
+    "Every user satisfies MFA on every app",
+    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "Checked: nothing blocks it and enabled users still need setting up.",
+    "Guests satisfy MFA",
+    "Legacy protocols blocked",
+    "1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.",
+    "Authentication transfer blocked",
+    "Blocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "Device-code flow blocked",
+    "Admin sessions expire quickly and never persist",
+    "Admins use phishing-resistant auth",
+    "Sign-ins outside allowed countries blocked",
+    "Blocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).",
+    "Unknown platforms blocked",
+    "Blocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).",
+    "Browser sessions never persist for anyone",
+    "Unmanaged devices cannot download",
+    "Unmanaged-device browser sessions are limited",
+    "Windows desktop sessions require token protection",
+    "Security-info registration requires a trusted context",
+    "Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.",
+    "Admin portals need strong auth or are blocked for non-admins",
+    "Blocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).",
+    "Registering or joining a device requires MFA",
+    "Not counted against the plan.",
+    "Each names the tier that would make it available.",
+    "· Risky sign-ins get MFA or are blocked · Entra ID P2",
+    "· High-risk users must change password · Entra ID P2",
+    "· Activating a privileged role asks for MFA every time · Entra ID P2",
+    "· Medium-risk sign-ins require MFA · Entra ID P2",
+    "· Medium-risk users must change their password · Entra ID P2"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "Not counted against the plan.": 1,
+    "Each names the tier that would make it available.": 1,
+    "· Risky sign-ins get MFA or are blocked · Entra ID P2": 1,
+    "· High-risk users must change password · Entra ID P2": 1,
+    "· Activating a privileged role asks for MFA every time · Entra ID P2": 1,
+    "· Medium-risk sign-ins require MFA · Entra ID P2": 1,
+    "· Medium-risk users must change their password · Entra ID P2": 1
+   },
+   "occurrencesAll": {
+    "Checked: nothing blocks it and a foundation the later steps need.": 2,
+    "Every user satisfies MFA on every app": 1,
+    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.": 2,
+    "Checked: nothing blocks it and enabled users still need setting up.": 1,
+    "1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.": 1,
+    "Authentication transfer blocked": 1,
+    "Blocked by emergency access accounts is not sorted yet (1 must-fix item).": 8,
+    "Admin sessions expire quickly and never persist": 1,
+    "Admins use phishing-resistant auth": 1,
+    "Sign-ins outside allowed countries blocked": 1,
+    "Blocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).": 1,
+    "Blocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).": 1,
+    "Browser sessions never persist for anyone": 1,
+    "Unmanaged devices cannot download": 1,
+    "Unmanaged-device browser sessions are limited": 1,
+    "Windows desktop sessions require token protection": 1,
+    "Security-info registration requires a trusted context": 1,
+    "Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.": 1,
+    "Admin portals need strong auth or are blocked for non-admins": 1,
+    "Blocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).": 2,
+    "Registering or joining a device requires MFA": 1,
+    "Not counted against the plan.": 1,
+    "Each names the tier that would make it available.": 1,
+    "· Risky sign-ins get MFA or are blocked · Entra ID P2": 1,
+    "· High-risk users must change password · Entra ID P2": 1,
+    "· Activating a privileged role asks for MFA every time · Entra ID P2": 1,
+    "· Medium-risk sign-ins require MFA · Entra ID P2": 1,
+    "· Medium-risk users must change their password · Entra ID P2": 1
+   },
+   "wordCounts": {
+    "headings": 35,
+    "tabs": 0,
+    "buttons": 20,
+    "options": 0,
+    "links": 529,
+    "chips": 28,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 355,
+    "total": 967
+   }
+  },
+  {
+   "name": "Roadmap / Watch tab",
+   "note": "panel only",
+   "headings": [
+    "1 user is blocked today, before this plan changes anything"
+   ],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [
+    "Troubleshoot sign-in problems with Conditional Access →"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.",
+    "Their most recent sign-in failed an existing Conditional Access policy.",
+    "Fix this first: otherwise the rollout gets the blame.",
+    "Priya Nair: investigate the failing sign-in",
+    "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
+    "Their most recent sign-in failed an existing Conditional Access policy.": 1,
+    "Fix this first: otherwise the rollout gets the blame.": 1,
+    "Priya Nair: investigate the failing sign-in": 1,
+    "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
+    "Troubleshoot sign-in problems with Conditional Access →": 1
+   },
+   "occurrencesAll": {
+    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
+    "Their most recent sign-in failed an existing Conditional Access policy.": 1,
+    "Fix this first: otherwise the rollout gets the blame.": 1,
+    "Priya Nair: investigate the failing sign-in": 1,
+    "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
+    "Troubleshoot sign-in problems with Conditional Access →": 1
+   },
+   "wordCounts": {
+    "headings": 10,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 7,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 59,
+    "total": 76
+   }
+  },
+  {
+   "name": "Roadmap / Schedule tab",
+   "note": "panel only",
+   "headings": [
+    "Week by week",
+    "What will be sent and when, ready to copy",
+    "Dates",
+    "Plan settings"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Hide completed",
+    "Email",
+    "Teams or Slack",
+    "Help-desk note",
+    "Intranet notice",
+    "Remind",
+    "Copy",
+    "Copy as prompt",
+    "Copy the recipient list",
+    "Recipients as CSV (for mail merge)",
+    "Export to calendar (ICS)",
+    "Small",
+    "Mid",
+    "Large"
+   ],
+   "options": [],
+   "links": [
+    "<time> Stop sign-ins from countries you don't work in",
+    "<time> Turn off old sign-in methods that skip MFA",
+    "<time> Block devices Entra cannot identify",
+    "<time> Stop sign-ins being handed to another device",
+    "<time> Stop the device-code sign-in trick",
+    "<time> Keep admin sessions short",
+    "<time> Give admins a sign-in method that cannot be phished",
+    "<time> Sign everyone out when the browser closes",
+    "<time> Stop downloads to devices you do not manage",
+    "<time> Limit what personal devices can do in the browser",
+    "<time> Stop a stolen session token from being reused",
+    "<time> Keep non-admins out of the admin portals",
+    "<time> Ask for MFA before a device can be registered",
+    "<time> Stop attackers adding their own MFA method",
+    "Day 0",
+    "Wave 1 · Low-impact blocks",
+    "Wave 2 · Sessions",
+    "Wave 3 · Sessions",
+    "ReadyPrerequisiteSort out emergency access before anything elseEmergency access accountsChecked: nothing blocks it and a foundation the later steps need.",
+    "ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.",
+    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.",
+    "DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "In report-onlyChangeTurn off old sign-in methods that skip MFALegacy protocols blocked1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.",
+    "BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop the device-code sign-in trickDevice-code flow blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyKeep admin sessions shortAdmin sessions expire quickly and never persistBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyGive admins a sign-in method that cannot be phishedAdmins use phishing-resistant authBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop sign-ins from countries you don't work inSign-ins outside allowed countries blockedBlocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyBlock devices Entra cannot identifyUnknown platforms blockedBlocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policySign everyone out when the browser closesBrowser sessions never persist for anyoneBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop downloads to devices you do not manageUnmanaged devices cannot downloadBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyLimit what personal devices can do in the browserUnmanaged-device browser sessions are limitedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop a stolen session token from being reusedWindows desktop sessions require token protectionBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop attackers adding their own MFA methodSecurity-info registration requires a trusted contextBlocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.",
+    "BlockedNew policyKeep non-admins out of the admin portalsAdmin portals need strong auth or are blocked for non-adminsBlocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyAsk for MFA before a device can be registeredRegistering or joining a device requires MFABlocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).",
+    "Before Turn off old sign-in methods that skip MFA: a quick check with you",
+    "Reminder: Before Turn off old sign-in methods that skip MFA: a quick check with you",
+    "Before Stop attackers adding their own MFA method: a quick check with you",
+    "Reminder: Before Stop attackers adding their own MFA method: a quick check with you",
+    "Emergency access accounts",
+    "Answer 8 setup questions",
+    "Security-info registration requires a trusted context",
+    "Authentication transfer blocked",
+    "Legacy protocols blocked",
+    "Device-code flow blocked",
+    "Run the MFA verification campaign",
+    "Admin sessions expire quickly and never persist",
+    "Admins use phishing-resistant auth",
+    "Admin portals need strong auth or are blocked for non-admins",
+    "Sign-ins outside allowed countries blocked",
+    "Unknown platforms blocked",
+    "Registering or joining a device requires MFA",
+    "Browser sessions never persist for anyone",
+    "Unmanaged devices cannot download",
+    "Unmanaged-device browser sessions are limited",
+    "Windows desktop sessions require token protection"
+   ],
+   "chips": [
+    "Ready",
+    "Prerequisite",
+    "Done",
+    "New policy",
+    "Verify",
+    "Waiting period",
+    "In report-only",
+    "Change",
+    "Blocked",
+    "Email",
+    "Teams or Slack",
+    "Help-desk note",
+    "Intranet notice",
+    "Remind",
+    "Small",
+    "Mid",
+    "Large"
+   ],
+   "columns": [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun",
+    "Announce",
+    "Remind",
+    "Enforce",
+    "Date",
+    "Time",
+    "Audience",
+    "Channels",
+    "Subject",
+    "Steps covered",
+    "Step",
+    "Starts",
+    "Ends",
+    "Rings"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Day 0 <date> → Sep 3, 20262 of 5 steps done",
+    "Wave 1 · Low-impact blocks <date> → Sep 18, 20260 of 1 step done",
+    "Wave 2 · Sessions <date> → Sep 25, 20260 of 10 steps done",
+    "Wave 3 · Sessions <date> → Oct 2, 20260 of 3 steps done",
+    "Before Turn off old sign-in methods that skip MFA: a quick check with you · 5 people, by name · <date>",
+    "Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>"
+   ],
+   "tips": [
+    "About Done in this wave",
+    "About Report-only",
+    "About Change freeze",
+    "About Notice",
+    "About Holidays",
+    "About Revert threshold"
+   ],
+   "sentences": [
+    "The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.",
+    "When your people work.",
+    "Too few sign-in records to read a working pattern yet: the calendar defaults apply.",
+    "Days across, the three kinds of event down: what to announce, remind about, and enforce on each day.",
+    "Times are local.",
+    "5 weeks: a 2-week verification campaign, 7-day observation window, 3 enforcement waves, 2 steps waiting on Setup questions 2 and 3.",
+    "Hide completed",
+    "<date> → <date>",
+    "2 of 5 steps done",
+    "The 13 new policies start in report-only, where they affect nobody.",
+    "What report-only means",
+    "Checked: nothing blocks it and a foundation the later steps need.",
+    "Every user satisfies MFA on every app",
+    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "Checked: nothing blocks it and enabled users still need setting up.",
+    "Guests satisfy MFA",
+    "4 users still need setting up (5 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.",
+    "Every new policy collects report-only evidence at the same time.",
+    "0 of 1 step done",
+    "1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.",
+    "0 of 10 steps done",
+    "Blocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "Blocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).",
+    "Blocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).",
+    "0 of 3 steps done",
+    "Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.",
+    "Blocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).",
+    "One message per audience per week, at most.",
+    "Nothing is sent by IAMAI: copy each one into your own channel.",
+    "(individual note)",
+    "Turn off old sign-in methods that skip MFA; Stop sign-ins from countries you don't work in; Sign everyone out when the browser closes; Stop downloads to devices you do not manage; Limit what personal devices can do in the browser; Stop a stolen session token from being reused; Keep non-admins out of the admin portals; Ask for MFA before a device can be registered",
+    "(reminder)",
+    "Stop attackers adding their own MFA method",
+    "· 5 people, by name · <date>",
+    "EmailTeams or SlackHelp-desk noteIntranet noticeRemind",
+    "Names and addresses stay in the browser until you copy or export them.",
+    "· 4 people, by name · <date>",
+    "One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.",
+    "tomorrow · <date>",
+    "Pace:",
+    "4 active users: Small band, detected · this pace usually takes 4 weeks",
+    "Change freeze",
+    "Notice",
+    "Enforcement never starts on a Friday or a weekend.",
+    "At most 2 enforcement events a week for this size of tenant."
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.": 1,
+    "Too few sign-in records to read a working pattern yet: the calendar defaults apply.": 1,
+    "Days across, the three kinds of event down: what to announce, remind about, and enforce on each day.": 1,
+    "5 weeks: a 2-week verification campaign, 7-day observation window, 3 enforcement waves, 2 steps waiting on Setup questions 2 and 3.": 1,
+    "The 13 new policies start in report-only, where they affect nobody.": 1,
+    "4 users still need setting up (5 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.": 1,
+    "Every new policy collects report-only evidence at the same time.": 1,
+    "One message per audience per week, at most.": 1,
+    "Nothing is sent by IAMAI: copy each one into your own channel.": 1,
+    "One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.": 1,
+    "4 active users: Small band, detected · this pace usually takes 4 weeks": 1,
+    "Enforcement never starts on a Friday or a weekend.": 1,
+    "At most 2 enforcement events a week for this size of tenant.": 1
+   },
+   "occurrencesAll": {
+    "The plan is 5 weeks because MFA registration for 5 people takes 2 weeks, then Security-info registration requires a trusted context rolls through 2 rings of 3 days each; everything else fits inside it.": 1,
+    "Too few sign-in records to read a working pattern yet: the calendar defaults apply.": 1,
+    "Days across, the three kinds of event down: what to announce, remind about, and enforce on each day.": 1,
+    "5 weeks: a 2-week verification campaign, 7-day observation window, 3 enforcement waves, 2 steps waiting on Setup questions 2 and 3.": 1,
+    "The 13 new policies start in report-only, where they affect nobody.": 1,
+    "Checked: nothing blocks it and a foundation the later steps need.": 2,
+    "Every user satisfies MFA on every app": 1,
+    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.": 2,
+    "Checked: nothing blocks it and enabled users still need setting up.": 1,
+    "4 users still need setting up (5 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.": 1,
+    "Every new policy collects report-only evidence at the same time.": 1,
+    "1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.": 1,
+    "Authentication transfer blocked": 1,
+    "Blocked by emergency access accounts is not sorted yet (1 must-fix item).": 8,
+    "Admin sessions expire quickly and never persist": 1,
+    "Admins use phishing-resistant auth": 1,
+    "Sign-ins outside allowed countries blocked": 1,
+    "Blocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).": 1,
+    "Blocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).": 1,
+    "Browser sessions never persist for anyone": 1,
+    "Unmanaged devices cannot download": 1,
+    "Unmanaged-device browser sessions are limited": 1,
+    "Windows desktop sessions require token protection": 1,
+    "Security-info registration requires a trusted context": 1,
+    "Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.": 1,
+    "Admin portals need strong auth or are blocked for non-admins": 1,
+    "Blocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).": 2,
+    "Registering or joining a device requires MFA": 1,
+    "One message per audience per week, at most.": 1,
+    "Nothing is sent by IAMAI: copy each one into your own channel.": 1,
+    "Turn off old sign-in methods that skip MFA; Stop sign-ins from countries you don't work in; Sign everyone out when the browser closes; Stop downloads to devices you do not manage; Limit what personal devices can do in the browser; Stop a stolen session token from being reused; Keep non-admins out of the admin portals; Ask for MFA before a device can be registered": 2,
+    "Stop attackers adding their own MFA method": 2,
+    "· 5 people, by name · <date>": 1,
+    "EmailTeams or SlackHelp-desk noteIntranet noticeRemind": 2,
+    "Names and addresses stay in the browser until you copy or export them.": 2,
+    "· 4 people, by name · <date>": 1,
+    "One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.": 1,
+    "4 active users: Small band, detected · this pace usually takes 4 weeks": 1,
+    "Enforcement never starts on a Friday or a weekend.": 1,
+    "At most 2 enforcement events a week for this size of tenant.": 1
+   },
+   "wordCounts": {
+    "headings": 15,
+    "tabs": 0,
+    "buttons": 32,
+    "options": 0,
+    "links": 799,
+    "chips": 24,
+    "columns": 21,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 92,
+    "tips": 17,
+    "sentences": 566,
+    "total": 1566
+   }
+  },
+  {
+   "name": "Roadmap / Export tab",
+   "note": "panel only",
+   "headings": [
+    "Plan file",
+    "Change record",
+    "Prompt pack",
+    "Grounding bundle",
+    "The plan as a document"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Save plan",
+    "Load plan",
+    "Copy as Markdown",
+    "Copy as prompt",
+    "Copy as prompt: Summarise this plan",
+    "Download as Markdown (one file)",
+    "Download as CSV (one file)",
+    "Copy prompt",
+    "Download every prompt as one Markdown file",
+    "Download the bundle",
+    "Print or save as PDF"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "Everything: steps, rings, evidence, history, Setup answers and checkpoints.",
+    "Load it back on any machine.",
+    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan",
+    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.",
+    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.",
+    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt",
+    "IAMAI runs no models and sends nothing anywhere.",
+    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.",
+    "Rewrite this announcement in our voiceCopy prompt",
+    "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt",
+    "Turn the step below into a help-desk knowledge base articleCopy prompt",
+    "Write a change request from the record belowCopy prompt",
+    "Explain this step to someone new to Conditional Access, then quiz them on it with five questions.Copy prompt",
+    "A stakeholder at Contoso Pty Ltd says no to the change belowCopy prompt",
+    "Translate this announcement into the language you needCopy prompt",
+    "Summarise this planCopy prompt",
+    "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.",
+    "Unredacted",
+    "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)",
+    "The print layout: cover, waves, every step in full.",
+    "Save as PDF from the print dialog."
+   ],
+   "nav": [],
+   "primary": [
+    "Save plan"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
+    "Load it back on any machine.": 1,
+    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan": 1,
+    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.": 1,
+    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.": 1,
+    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt": 1,
+    "IAMAI runs no models and sends nothing anywhere.": 1,
+    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
+    "Rewrite this announcement in our voiceCopy prompt": 1,
+    "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt": 1,
+    "Turn the step below into a help-desk knowledge base articleCopy prompt": 1,
+    "Write a change request from the record belowCopy prompt": 1,
+    "Explain this step to someone new to Conditional Access, then quiz them on it with five questions.Copy prompt": 1,
+    "A stakeholder at Contoso Pty Ltd says no to the change belowCopy prompt": 1,
+    "Translate this announcement into the language you needCopy prompt": 1,
+    "Summarise this planCopy prompt": 1,
+    "Download every prompt as one Markdown file": 1,
+    "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.": 1,
+    "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)": 1,
+    "The print layout: cover, waves, every step in full.": 1,
+    "Save as PDF from the print dialog.": 1
+   },
+   "occurrencesAll": {
+    "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
+    "Load it back on any machine.": 1,
+    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan": 1,
+    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.": 1,
+    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.": 1,
+    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt": 1,
+    "IAMAI runs no models and sends nothing anywhere.": 1,
+    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
+    "Rewrite this announcement in our voiceCopy prompt": 1,
+    "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt": 1,
+    "Turn the step below into a help-desk knowledge base articleCopy prompt": 1,
+    "Write a change request from the record belowCopy prompt": 1,
+    "Explain this step to someone new to Conditional Access, then quiz them on it with five questions.Copy prompt": 1,
+    "A stakeholder at Contoso Pty Ltd says no to the change belowCopy prompt": 1,
+    "Translate this announcement into the language you needCopy prompt": 1,
+    "Summarise this planCopy prompt": 1,
+    "Download every prompt as one Markdown file": 1,
+    "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.": 1,
+    "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)": 1,
+    "The print layout: cover, waves, every step in full.": 1,
+    "Save as PDF from the print dialog.": 1
+   },
+   "wordCounts": {
+    "headings": 13,
+    "tabs": 0,
+    "buttons": 43,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 247,
+    "total": 303
+   }
+  },
+  {
+   "name": "Roadmap / Plan / one step opened",
+   "note": "panel only, first step expanded",
+   "headings": [
+    "Day 0 <date> → <date>",
+    "What changes",
+    "Why it matters",
+    "Prerequisites",
+    "The change",
+    "How to verify",
+    "Exit criteria",
+    "Rollback",
+    "What to tell your manager",
+    "Scheduled date",
+    "Wave 1 · Low-impact blocks <date> → <date>",
+    "Wave 2 · Sessions <date> → <date>",
+    "Wave 3 · Sessions <date> → <date>",
+    "Needs a licence this tenant does not have"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Hide completed",
+    "Safe today (0)",
+    "Done (2)",
+    "Ready (3)",
+    "Blocked (13)",
+    "In report-only (1)",
+    "Ready to enforce (0)",
+    "Skipped (0)",
+    "Copy for your manager",
+    "Copy as prompt",
+    "Skip this step…",
+    "Collapse"
+   ],
+   "options": [],
+   "links": [
+    "ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.",
+    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.",
+    "DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "In report-onlyChangeTurn off old sign-in methods that skip MFALegacy protocols blocked1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.",
+    "BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop the device-code sign-in trickDevice-code flow blockedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyKeep admin sessions shortAdmin sessions expire quickly and never persistBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyGive admins a sign-in method that cannot be phishedAdmins use phishing-resistant authBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop sign-ins from countries you don't work inSign-ins outside allowed countries blockedBlocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyBlock devices Entra cannot identifyUnknown platforms blockedBlocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policySign everyone out when the browser closesBrowser sessions never persist for anyoneBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop downloads to devices you do not manageUnmanaged devices cannot downloadBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyLimit what personal devices can do in the browserUnmanaged-device browser sessions are limitedBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop a stolen session token from being reusedWindows desktop sessions require token protectionBlocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyStop attackers adding their own MFA methodSecurity-info registration requires a trusted contextBlocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.",
+    "BlockedNew policyKeep non-admins out of the admin portalsAdmin portals need strong auth or are blocked for non-adminsBlocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).",
+    "BlockedNew policyAsk for MFA before a device can be registeredRegistering or joining a device requires MFABlocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item)."
+   ],
+   "chips": [
+    "Safe today (0)",
+    "Done (2)",
+    "Ready (3)",
+    "Blocked (13)",
+    "In report-only (1)",
+    "Ready to enforce (0)",
+    "Skipped (0)",
+    "Ready",
+    "Prerequisite",
+    "Done",
+    "New policy",
+    "Verify",
+    "In report-only",
+    "Change",
+    "Blocked"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Ready Prerequisite Sort out emergency access before anything elseEmergency access accounts1 must-fix check to clear. 14 steps that can deny access are held until then.Checked: nothing blocks it and a foundation the later steps need."
+   ],
+   "tips": [
+    "About Scheduled date"
+   ],
+   "sentences": [
+    "<date> → <date>",
+    "Emergency access accounts",
+    "1 must-fix check to clear.",
+    "14 steps that can deny access are held until then.",
+    "Checked: nothing blocks it and a foundation the later steps need.",
+    "Nothing changes for anyone.",
+    "This is groundwork so a mistake later can be undone.",
+    "Emergency access accounts has 1 must-fix check outstanding.",
+    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.",
+    "Nothing has to exist first.",
+    "Each of these has to pass:",
+    "no emergency access account is nominated → At least two emergency access accounts are nominated. (Pick a different account above)",
+    "Worth fixing too, though nothing waits on them:",
+    "could not be checked: an answer given in Setup could not be read on this scan → Where the credential is kept, and who can reach it, is recorded in the plan. (Answer it in Setup)",
+    "could not be checked: an answer given in Setup could not be read on this scan → A sign-in by an emergency account raises an alert. (Answer it in Setup)",
+    "Pick a different account above",
+    "Good looks like: The must-fix check passes on the next scan.",
+    "The must-fix check passes on the next scan.",
+    "At least two emergency access accounts are nominated.",
+    "Emergency access accounts is the way back in when a security change goes wrong.",
+    "The cost is an hour of admin time and no disruption to anyone.",
+    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.",
+    "Copy for your managerCopy as prompt",
+    "Every user satisfies MFA on every app",
+    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "Checked: nothing blocks it and enabled users still need setting up.",
+    "Guests satisfy MFA",
+    "Legacy protocols blocked",
+    "1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.",
+    "Authentication transfer blocked",
+    "Blocked by emergency access accounts is not sorted yet (1 must-fix item).",
+    "Device-code flow blocked",
+    "Admin sessions expire quickly and never persist",
+    "Admins use phishing-resistant auth",
+    "Sign-ins outside allowed countries blocked",
+    "Blocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).",
+    "Unknown platforms blocked",
+    "Blocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).",
+    "Browser sessions never persist for anyone",
+    "Unmanaged devices cannot download",
+    "Unmanaged-device browser sessions are limited",
+    "Windows desktop sessions require token protection",
+    "Security-info registration requires a trusted context",
+    "Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.",
+    "Admin portals need strong auth or are blocked for non-admins",
+    "Blocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).",
+    "Registering or joining a device requires MFA",
+    "Not counted against the plan.",
+    "Each names the tier that would make it available.",
+    "· Risky sign-ins get MFA or are blocked · Entra ID P2",
+    "· High-risk users must change password · Entra ID P2",
+    "· Activating a privileged role asks for MFA every time · Entra ID P2",
+    "· Medium-risk sign-ins require MFA · Entra ID P2",
+    "· Medium-risk users must change their password · Entra ID P2"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "1 must-fix check to clear.": 1,
+    "14 steps that can deny access are held until then.": 1,
+    "Checked: nothing blocks it and a foundation the later steps need.": 1,
+    "Nothing changes for anyone.": 2,
+    "This is groundwork so a mistake later can be undone.": 2,
+    "Emergency access accounts has 1 must-fix check outstanding.": 1,
+    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
+    "Nothing has to exist first.": 1,
+    "Each of these has to pass:": 1,
+    "no emergency access account is nominated → At least two emergency access accounts are nominated. (Pick a different account above)": 1,
+    "Worth fixing too, though nothing waits on them:": 1,
+    "could not be checked: an answer given in Setup could not be read on this scan → Where the credential is kept, and who can reach it, is recorded in the plan. (Answer it in Setup)": 1,
+    "could not be checked: an answer given in Setup could not be read on this scan → A sign-in by an emergency account raises an alert. (Answer it in Setup)": 1,
+    "Pick a different account above": 1,
+    "Good looks like: The must-fix check passes on the next scan.": 1,
+    "The must-fix check passes on the next scan.": 1,
+    "At least two emergency access accounts are nominated.": 1,
+    "Emergency access accounts is the way back in when a security change goes wrong.": 1,
+    "The cost is an hour of admin time and no disruption to anyone.": 1,
+    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1,
+    "Copy for your managerCopy as prompt": 1,
+    "Not counted against the plan.": 1,
+    "Each names the tier that would make it available.": 1,
+    "· Risky sign-ins get MFA or are blocked · Entra ID P2": 1,
+    "· High-risk users must change password · Entra ID P2": 1,
+    "· Activating a privileged role asks for MFA every time · Entra ID P2": 1,
+    "· Medium-risk sign-ins require MFA · Entra ID P2": 1,
+    "· Medium-risk users must change their password · Entra ID P2": 1
+   },
+   "occurrencesAll": {
+    "1 must-fix check to clear.": 1,
+    "14 steps that can deny access are held until then.": 1,
+    "Checked: nothing blocks it and a foundation the later steps need.": 2,
+    "Nothing changes for anyone.": 2,
+    "This is groundwork so a mistake later can be undone.": 2,
+    "Emergency access accounts has 1 must-fix check outstanding.": 1,
+    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
+    "Nothing has to exist first.": 1,
+    "Each of these has to pass:": 1,
+    "no emergency access account is nominated → At least two emergency access accounts are nominated. (Pick a different account above)": 1,
+    "Worth fixing too, though nothing waits on them:": 1,
+    "could not be checked: an answer given in Setup could not be read on this scan → Where the credential is kept, and who can reach it, is recorded in the plan. (Answer it in Setup)": 1,
+    "could not be checked: an answer given in Setup could not be read on this scan → A sign-in by an emergency account raises an alert. (Answer it in Setup)": 1,
+    "Pick a different account above": 1,
+    "Good looks like: The must-fix check passes on the next scan.": 1,
+    "The must-fix check passes on the next scan.": 1,
+    "At least two emergency access accounts are nominated.": 1,
+    "Emergency access accounts is the way back in when a security change goes wrong.": 1,
+    "The cost is an hour of admin time and no disruption to anyone.": 1,
+    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1,
+    "Copy for your managerCopy as prompt": 1,
+    "Every user satisfies MFA on every app": 1,
+    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.": 2,
+    "Checked: nothing blocks it and enabled users still need setting up.": 1,
+    "1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.": 1,
+    "Authentication transfer blocked": 1,
+    "Blocked by emergency access accounts is not sorted yet (1 must-fix item).": 8,
+    "Admin sessions expire quickly and never persist": 1,
+    "Admins use phishing-resistant auth": 1,
+    "Sign-ins outside allowed countries blocked": 1,
+    "Blocked by Setup question 3 (Countries): which countries do your people sign in from and emergency access accounts is not sorted yet (1 must-fix item).": 1,
+    "Blocked by device readiness is 25%: the threshold is 80% and emergency access accounts is not sorted yet (1 must-fix item).": 1,
+    "Browser sessions never persist for anyone": 1,
+    "Unmanaged devices cannot download": 1,
+    "Unmanaged-device browser sessions are limited": 1,
+    "Windows desktop sessions require token protection": 1,
+    "Security-info registration requires a trusted context": 1,
+    "Blocked by MFA readiness is 33%: the threshold is 90%; verify users first (phase 2), emergency access accounts is not sorted yet (1 must-fix item), 1 active person has no method yet, and this policy is what would stop them registering one and no trusted location is confirmed, so this policy would apply everywhere including to people with no method.": 1,
+    "Admin portals need strong auth or are blocked for non-admins": 1,
+    "Blocked by MFA readiness is 25%: the threshold is 90%; verify users first (phase 2) and emergency access accounts is not sorted yet (1 must-fix item).": 2,
+    "Registering or joining a device requires MFA": 1,
+    "Not counted against the plan.": 1,
+    "Each names the tier that would make it available.": 1,
+    "· Risky sign-ins get MFA or are blocked · Entra ID P2": 1,
+    "· High-risk users must change password · Entra ID P2": 1,
+    "· Activating a privileged role asks for MFA every time · Entra ID P2": 1,
+    "· Medium-risk sign-ins require MFA · Entra ID P2": 1,
+    "· Medium-risk users must change their password · Entra ID P2": 1
+   },
+   "wordCounts": {
+    "headings": 56,
+    "tabs": 0,
+    "buttons": 31,
+    "options": 0,
+    "links": 510,
+    "chips": 28,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 35,
+    "tips": 3,
+    "sentences": 612,
+    "total": 1275
+   }
+  },
+  {
+   "name": "Licensing guide",
+   "note": "",
+   "headings": [
+    "Licensing guide",
+    "What the tenant has",
+    "Goals by the licence they need",
+    "Entra ID P1 scored",
+    "Entra ID P2 reference only",
+    "Workload Identities Premium reference only",
+    "Intune reference only",
+    "The free-tier ladder"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Next: Findings"
+   ],
+   "options": [],
+   "links": [
+    "Re-scan",
+    "Open the step →"
+   ],
+   "chips": [
+    "enabled",
+    "not licensed",
+    "scored",
+    "reference only"
+   ],
+   "columns": [
+    "Capability",
+    "Status",
+    "Seats",
+    "Covers every user?"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Scan age",
+    "About Seats",
+    "About Covers every user?"
+   ],
+   "sentences": [
+    "Based on the scan from this minute · <date and time>.",
+    "Re-scan",
+    "IAMAI hardens what the tenant has.",
+    "Every goal is scored against the best implementation the licence allows.",
+    "Goals that need a missing tier are listed for reference, never as an accepted gap.",
+    "Every user satisfies MFA on every app",
+    "Admins use phishing-resistant auth",
+    "Admin portals need strong auth or are blocked for non-admins",
+    "Guests satisfy MFA",
+    "Security-info registration requires a trusted context",
+    "Legacy protocols blocked",
+    "Device-code flow blocked",
+    "Authentication transfer blocked",
+    "Sign-ins outside allowed countries blocked",
+    "Admin sessions expire quickly and never persist",
+    "Unmanaged-device browser sessions are limited",
+    "Office apps require a compliant or joined device",
+    "Unknown platforms blocked",
+    "Mobile access requires approved or protected apps",
+    "Azure management requires strong auth",
+    "Registering or joining a device requires MFA",
+    "Windows desktop sessions require token protection",
+    "Browser sessions never persist for anyone",
+    "Unmanaged devices cannot download",
+    ": When Microsoft says a sign-in looks risky, demand MFA or block it automatically.",
+    ": A likely-compromised account must change its password through a secured flow.",
+    ": Elevating to an admin role should always cost a fresh MFA, even mid-session.",
+    ": Medium sign-in risk is common enough to matter; MFA clears most of it without blocking anyone.",
+    ": A medium-risk user is likely compromised: force a secure password change.",
+    ": Service principals can be scoped and risk-gated too (Workload ID Premium).",
+    ": Device enrollment is a trust boundary — make it a fresh, interactive sign-in.",
+    "The spine of every plan, regardless of licence: curated from Microsoft guidance.",
+    ": Microsoft's free baseline: MFA for admins, MFA registration for everyone, legacy authentication blocked.",
+    "The starting point when there is no Conditional Access.",
+    ": Two cloud-only emergency accounts, excluded from every policy and signed in on a schedule, so a mistaken policy still leaves a way back in.",
+    ": Find every sign-in that still uses basic authentication (POP, IMAP, SMTP, ActiveSync) before it can be blocked.",
+    ": App passwords bypass MFA; move the apps that use them to modern authentication and turn the feature off.",
+    ": Legacy per-user MFA fights with Conditional Access and security defaults; set every user to disabled there before policies take over.",
+    ": Admin roles on a mailbox-holding account make every phishing email a tenant-wide risk; give admins a second, role-only account.",
+    ": Two to four Global Administrators is Microsoft's guidance; everyone else gets the least role that does their job.",
+    ": Remove guests nobody sponsors and invitations never accepted; what remains is what guest policies protect.",
+    ": An account nobody uses is an account nobody notices being used; disable after 90 days of silence.",
+    ": Text and call codes are the weakest tier; the verification campaign moves people to Microsoft Authenticator or passkeys."
+   ],
+   "nav": [
+    {
+     "label": "Next: Findings",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Next: Findings"
+   ],
+   "tables": [
+    {
+     "label": "7 entries",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "Based on the scan from this minute · <date and time>.": 1,
+    "IAMAI hardens what the tenant has.": 1,
+    "Every goal is scored against the best implementation the licence allows.": 1,
+    "Goals that need a missing tier are listed for reference, never as an accepted gap.": 1,
+    "Every user satisfies MFA on every app": 1,
+    "Admins use phishing-resistant auth": 1,
+    "Admin portals need strong auth or are blocked for non-admins": 1,
+    "Security-info registration requires a trusted context": 1,
+    "Authentication transfer blocked": 1,
+    "Sign-ins outside allowed countries blocked": 1,
+    "Admin sessions expire quickly and never persist": 1,
+    "Unmanaged-device browser sessions are limited": 1,
+    "Office apps require a compliant or joined device": 1,
+    "Mobile access requires approved or protected apps": 1,
+    "Azure management requires strong auth": 1,
+    "Registering or joining a device requires MFA": 1,
+    "Windows desktop sessions require token protection": 1,
+    "Browser sessions never persist for anyone": 1,
+    "Unmanaged devices cannot download": 1,
+    ": When Microsoft says a sign-in looks risky, demand MFA or block it automatically.": 1,
+    ": A likely-compromised account must change its password through a secured flow.": 1,
+    ": Elevating to an admin role should always cost a fresh MFA, even mid-session.": 1,
+    ": Medium sign-in risk is common enough to matter; MFA clears most of it without blocking anyone.": 1,
+    ": A medium-risk user is likely compromised: force a secure password change.": 1,
+    ": Service principals can be scoped and risk-gated too (Workload ID Premium).": 1,
+    ": Device enrollment is a trust boundary — make it a fresh, interactive sign-in.": 1,
+    "The spine of every plan, regardless of licence: curated from Microsoft guidance.": 1,
+    ": Microsoft's free baseline: MFA for admins, MFA registration for everyone, legacy authentication blocked.": 1,
+    "The starting point when there is no Conditional Access.": 1,
+    ": Two cloud-only emergency accounts, excluded from every policy and signed in on a schedule, so a mistaken policy still leaves a way back in.": 1,
+    ": Find every sign-in that still uses basic authentication (POP, IMAP, SMTP, ActiveSync) before it can be blocked.": 1,
+    ": App passwords bypass MFA; move the apps that use them to modern authentication and turn the feature off.": 1,
+    ": Legacy per-user MFA fights with Conditional Access and security defaults; set every user to disabled there before policies take over.": 1,
+    ": Admin roles on a mailbox-holding account make every phishing email a tenant-wide risk; give admins a second, role-only account.": 1,
+    ": Two to four Global Administrators is Microsoft's guidance; everyone else gets the least role that does their job.": 1,
+    ": Remove guests nobody sponsors and invitations never accepted; what remains is what guest policies protect.": 1,
+    ": An account nobody uses is an account nobody notices being used; disable after 90 days of silence.": 1,
+    ": Text and call codes are the weakest tier; the verification campaign moves people to Microsoft Authenticator or passkeys.": 1
+   },
+   "occurrencesAll": {
+    "Based on the scan from this minute · <date and time>.": 1,
+    "IAMAI hardens what the tenant has.": 1,
+    "Every goal is scored against the best implementation the licence allows.": 1,
+    "Goals that need a missing tier are listed for reference, never as an accepted gap.": 1,
+    "Every user satisfies MFA on every app": 1,
+    "Admins use phishing-resistant auth": 1,
+    "Admin portals need strong auth or are blocked for non-admins": 1,
+    "Security-info registration requires a trusted context": 1,
+    "Authentication transfer blocked": 1,
+    "Sign-ins outside allowed countries blocked": 1,
+    "Admin sessions expire quickly and never persist": 1,
+    "Unmanaged-device browser sessions are limited": 1,
+    "Office apps require a compliant or joined device": 1,
+    "Mobile access requires approved or protected apps": 1,
+    "Azure management requires strong auth": 1,
+    "Registering or joining a device requires MFA": 1,
+    "Windows desktop sessions require token protection": 1,
+    "Browser sessions never persist for anyone": 1,
+    "Unmanaged devices cannot download": 1,
+    ": When Microsoft says a sign-in looks risky, demand MFA or block it automatically.": 1,
+    ": A likely-compromised account must change its password through a secured flow.": 1,
+    ": Elevating to an admin role should always cost a fresh MFA, even mid-session.": 1,
+    ": Medium sign-in risk is common enough to matter; MFA clears most of it without blocking anyone.": 1,
+    ": A medium-risk user is likely compromised: force a secure password change.": 1,
+    ": Service principals can be scoped and risk-gated too (Workload ID Premium).": 1,
+    ": Device enrollment is a trust boundary — make it a fresh, interactive sign-in.": 1,
+    "The spine of every plan, regardless of licence: curated from Microsoft guidance.": 1,
+    ": Microsoft's free baseline: MFA for admins, MFA registration for everyone, legacy authentication blocked.": 1,
+    "The starting point when there is no Conditional Access.": 1,
+    ": Two cloud-only emergency accounts, excluded from every policy and signed in on a schedule, so a mistaken policy still leaves a way back in.": 1,
+    ": Find every sign-in that still uses basic authentication (POP, IMAP, SMTP, ActiveSync) before it can be blocked.": 1,
+    ": App passwords bypass MFA; move the apps that use them to modern authentication and turn the feature off.": 1,
+    ": Legacy per-user MFA fights with Conditional Access and security defaults; set every user to disabled there before policies take over.": 1,
+    ": Admin roles on a mailbox-holding account make every phishing email a tenant-wide risk; give admins a second, role-only account.": 1,
+    ": Two to four Global Administrators is Microsoft's guidance; everyone else gets the least role that does their job.": 1,
+    ": Remove guests nobody sponsors and invitations never accepted; what remains is what guest policies protect.": 1,
+    ": An account nobody uses is an account nobody notices being used; disable after 90 days of silence.": 1,
+    ": Text and call codes are the weakest tier; the verification campaign moves people to Microsoft Authenticator or passkeys.": 1
+   },
+   "wordCounts": {
+    "headings": 32,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 5,
+    "chips": 6,
+    "columns": 6,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 9,
+    "sentences": 451,
+    "total": 511
+   }
+  },
+  {
+   "name": "What IAMAI reads",
+   "note": "",
+   "headings": [
+    "What IAMAI reads",
+    "Sign in, and stay signed in",
+    "Removing it",
+    "On every load: configuration",
+    "On every scan: inventory",
+    "On every scan: sign-in records",
+    "Only after a baseline is picked"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Next: Connect"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [
+    "Permission",
+    "What it lets IAMAI read",
+    "Without it",
+    "Data",
+    "Endpoint",
+    "API",
+    "Permissions",
+    "Least role",
+    "When it can fail",
+    "Why"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "Everything IAMAI requests from Microsoft Graph, generated from the same list the code runs from.",
+    "All access is read-only; nothing in the tenant is created, changed, or deleted.",
+    "Delegated reads succeed only where the consent and the signed-in account's role agree, so the role below is needed as well as the permission.",
+    "The Global Reader role covers every row, and writes nothing.",
+    "Microsoft shows this list on its own consent screen.",
+    "It is repeated here in plain words, generated from the same list the code requests, so it can be read before the screen appears rather than during it.",
+    "Every one of these is a read permission.",
+    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI, whatever it is asked to do.",
+    "Used for: CA policies, Named locations, Authentication strengths, Auth methods policy, Security defaults, Cross-tenant access.",
+    "Used for: Subscribed SKUs, Organization, Signed-in operator, Operator groups, Users, Devices, Group transitive members, Group search, Name resolution.",
+    "Not used by anything IAMAI runs today.",
+    "Used for: Registration details, Users, Sign-in logs.",
+    "Used for: Role assignments, PIM eligibility.",
+    "Used for: Auth methods.",
+    "Used for: SP sign-in activity, App sign-in summary.",
+    "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.",
+    "Nothing else is created, and no data is copied anywhere.",
+    "Entra admin center → Entra ID → Enterprise applications.",
+    "Find IAMAI in the list.",
+    "Properties → Delete.",
+    "That removes every permission immediately and leaves nothing behind.",
+    "Anything IAMAI held was in the browser, and Forget this tenant clears that separately."
+   ],
+   "nav": [
+    {
+     "label": "Next: Connect",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Next: Connect"
+   ],
+   "tables": [
+    {
+     "label": "7 entries",
+     "paginated": false
+    },
+    {
+     "label": "3 entries",
+     "paginated": false
+    },
+    {
+     "label": "12 entries",
+     "paginated": false
+    },
+    {
+     "label": "6 entries",
+     "paginated": false
+    },
+    {
+     "label": "1 entry",
+     "paginated": false
+    },
+    {
+     "label": "3 entries",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "Everything IAMAI requests from Microsoft Graph, generated from the same list the code runs from.": 1,
+    "All access is read-only; nothing in the tenant is created, changed, or deleted.": 1,
+    "Delegated reads succeed only where the consent and the signed-in account's role agree, so the role below is needed as well as the permission.": 1,
+    "The Global Reader role covers every row, and writes nothing.": 1,
+    "Microsoft shows this list on its own consent screen.": 1,
+    "It is repeated here in plain words, generated from the same list the code requests, so it can be read before the screen appears rather than during it.": 1,
+    "Every one of these is a read permission.": 1,
+    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI, whatever it is asked to do.": 1,
+    "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.": 1,
+    "Nothing else is created, and no data is copied anywhere.": 1,
+    "Entra admin center → Entra ID → Enterprise applications.": 1,
+    "That removes every permission immediately and leaves nothing behind.": 1,
+    "Anything IAMAI held was in the browser, and Forget this tenant clears that separately.": 1
+   },
+   "occurrencesAll": {
+    "Everything IAMAI requests from Microsoft Graph, generated from the same list the code runs from.": 1,
+    "All access is read-only; nothing in the tenant is created, changed, or deleted.": 1,
+    "Delegated reads succeed only where the consent and the signed-in account's role agree, so the role below is needed as well as the permission.": 1,
+    "The Global Reader role covers every row, and writes nothing.": 1,
+    "Microsoft shows this list on its own consent screen.": 1,
+    "It is repeated here in plain words, generated from the same list the code requests, so it can be read before the screen appears rather than during it.": 1,
+    "Every one of these is a read permission.": 1,
+    "There is no write permission in the set, so nothing in the tenant can be created, changed or deleted through IAMAI, whatever it is asked to do.": 1,
+    "Used for: CA policies, Named locations, Authentication strengths, Auth methods policy, Security defaults, Cross-tenant access.": 1,
+    "Used for: Subscribed SKUs, Organization, Signed-in operator, Operator groups, Users, Devices, Group transitive members, Group search, Name resolution.": 1,
+    "Not used by anything IAMAI runs today.": 1,
+    "Used for: Registration details, Users, Sign-in logs.": 1,
+    "Used for: Role assignments, PIM eligibility.": 1,
+    "Used for: SP sign-in activity, App sign-in summary.": 1,
+    "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.": 1,
+    "Nothing else is created, and no data is copied anywhere.": 1,
+    "Entra admin center → Entra ID → Enterprise applications.": 1,
+    "That removes every permission immediately and leaves nothing behind.": 1,
+    "Anything IAMAI held was in the browser, and Forget this tenant clears that separately.": 1
+   },
+   "wordCounts": {
+    "headings": 30,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 19,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 269,
+    "total": 320
+   }
+  },
+  {
+   "name": "Every check IAMAI runs",
+   "note": "",
+   "headings": [
+    "Every check IAMAI runs",
+    "Emergency access accounts",
+    "The exclusions group",
+    "Trusted named location",
+    "Allowed countries",
+    "Pilot group",
+    "Service accounts",
+    "Authentication strength"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Next: Setup"
+   ],
+   "options": [],
+   "links": [
+    "Microsoft: manage emergency access accounts",
+    "Microsoft: report-only mode",
+    "Microsoft: Microsoft-managed policies",
+    "Microsoft: per-user MFA states",
+    "Microsoft: plan a Conditional Access deployment",
+    "Microsoft: network assignment and named locations",
+    "Microsoft: block access by location",
+    "Microsoft: authentication methods",
+    "Microsoft: Temporary Access Pass",
+    "Microsoft: Conditional Access for workload identities",
+    "Microsoft: best practices for roles",
+    "Microsoft: authentication strengths",
+    "Microsoft: manage authentication methods"
+   ],
+   "chips": [
+    "Must fix",
+    "Recommended",
+    "Note"
+   ],
+   "columns": [
+    "What it looks for",
+    "If it fails",
+    "Why it matters",
+    "Needs",
+    "Source"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "Generated from the rule registry the code runs from.",
+    "Each check names the object it looks at, what it looks for, and what happens when it fails.",
+    "Nothing here changes the tenant.",
+    "23 must-fix checks, 25 recommended checks and 3 notes.",
+    "A check whose data is missing reports that it could not be run.",
+    "On a must-fix check, that holds the plan exactly as a failure does.",
+    "Every check names its source.",
+    "Most point at the Microsoft page they came from; the ones marked Field practice are real and are not something Microsoft documents, so they say so rather than borrowing authority they do not have.",
+    "Field practice"
+   ],
+   "nav": [
+    {
+     "label": "Next: Setup",
+     "at": "bottom",
+     "inFooterSlot": true
+    }
+   ],
+   "primary": [
+    "Next: Setup"
+   ],
+   "tables": [
+    {
+     "label": "23 entries",
+     "paginated": false
+    },
+    {
+     "label": "6 entries",
+     "paginated": false
+    },
+    {
+     "label": "5 entries",
+     "paginated": false
+    },
+    {
+     "label": "4 entries",
+     "paginated": false
+    },
+    {
+     "label": "7 entries",
+     "paginated": false
+    },
+    {
+     "label": "3 entries",
+     "paginated": false
+    },
+    {
+     "label": "3 entries",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "Generated from the rule registry the code runs from.": 1,
+    "Each check names the object it looks at, what it looks for, and what happens when it fails.": 1,
+    "Nothing here changes the tenant.": 1,
+    "23 must-fix checks, 25 recommended checks and 3 notes.": 1,
+    "A check whose data is missing reports that it could not be run.": 1,
+    "On a must-fix check, that holds the plan exactly as a failure does.": 1,
+    "Every check names its source.": 1,
+    "Most point at the Microsoft page they came from; the ones marked Field practice are real and are not something Microsoft documents, so they say so rather than borrowing authority they do not have.": 1
+   },
+   "occurrencesAll": {
+    "Generated from the rule registry the code runs from.": 1,
+    "Each check names the object it looks at, what it looks for, and what happens when it fails.": 1,
+    "Nothing here changes the tenant.": 1,
+    "23 must-fix checks, 25 recommended checks and 3 notes.": 1,
+    "A check whose data is missing reports that it could not be run.": 1,
+    "On a must-fix check, that holds the plan exactly as a failure does.": 1,
+    "Every check names its source.": 1,
+    "Most point at the Microsoft page they came from; the ones marked Field practice are real and are not something Microsoft documents, so they say so rather than borrowing authority they do not have.": 1
+   },
+   "wordCounts": {
+    "headings": 21,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 57,
+    "chips": 4,
+    "columns": 12,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 108,
+    "total": 204
+   }
+  },
+  {
+   "name": "Prompt pack",
+   "note": "",
+   "headings": [
+    "Roadmap",
+    "Do this next",
+    "Plan file",
+    "Change record",
+    "Prompt pack",
+    "Grounding bundle",
+    "The plan as a document"
+   ],
+   "tabs": [
+    "Progress",
+    "Plan",
+    "Watch first",
+    "Schedule",
+    "Export"
+   ],
+   "buttons": [
+    "Open the step",
+    "Progress",
+    "Plan",
+    "Watch first",
+    "Schedule",
+    "Export",
+    "Save plan",
+    "Load plan",
+    "Copy as Markdown",
+    "Copy as prompt",
+    "Copy as prompt: Summarise this plan",
+    "Download as Markdown (one file)",
+    "Download as CSV (one file)",
+    "Copy prompt",
+    "Download every prompt as one Markdown file",
+    "Download the bundle",
+    "Print or save as PDF"
+   ],
+   "options": [],
+   "links": [
+    "Re-scan"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Scan age"
+   ],
+   "sentences": [
+    "Your plan: what to change, in what order, and what to watch.",
+    "Needs: ✓ scan complete · ✓ baseline loaded",
+    "Based on the scan from this minute · <date and time>.",
+    "Re-scan · Baseline: synthetic baseline",
+    "With this tenant's Entra ID P1, 19 of 24 steps are available now.",
+    "5 steps need Entra ID P2; the Licensing guide shows what they would add.",
+    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.",
+    "Must fix first: 14 steps that can deny access are held until it passes. · nobody",
+    "about 10 minutes",
+    "nothing blocks it, and 2 later steps wait for it · nobody",
+    "setting up 1 person unblocks 3 steps · Priya Nair",
+    "about 5 minutes",
+    "This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.",
+    "Everything: steps, rings, evidence, history, Setup answers and checkpoints.",
+    "Load it back on any machine.",
+    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan",
+    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.",
+    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.",
+    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt",
+    "IAMAI runs no models and sends nothing anywhere.",
+    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.",
+    "Rewrite this announcement in our voiceCopy prompt",
+    "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt",
+    "Turn the step below into a help-desk knowledge base articleCopy prompt",
+    "Write a change request from the record belowCopy prompt",
+    "Explain this step to someone new to Conditional Access, then quiz them on it with five questions.Copy prompt",
+    "A stakeholder at Contoso Pty Ltd says no to the change belowCopy prompt",
+    "Translate this announcement into the language you needCopy prompt",
+    "Summarise this planCopy prompt",
+    "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.",
+    "Unredacted",
+    "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)",
+    "The print layout: cover, waves, every step in full.",
+    "Save as PDF from the print dialog."
+   ],
+   "nav": [],
+   "primary": [
+    "Open the step",
+    "Open the step",
+    "Open the step",
+    "Save plan"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Your plan: what to change, in what order, and what to watch.": 1,
+    "Needs: ✓ scan complete · ✓ baseline loaded": 1,
+    "Based on the scan from this minute · <date and time>.": 1,
+    "Re-scan · Baseline: synthetic baseline": 1,
+    "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
+    "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
+    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.": 1,
+    "Must fix first: 14 steps that can deny access are held until it passes. · nobody": 1,
+    "nothing blocks it, and 2 later steps wait for it · nobody": 1,
+    "setting up 1 person unblocks 3 steps · Priya Nair": 1,
+    "This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.": 1,
+    "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
+    "Load it back on any machine.": 1,
+    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan": 1,
+    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.": 1,
+    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.": 1,
+    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt": 1,
+    "IAMAI runs no models and sends nothing anywhere.": 1,
+    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
+    "Rewrite this announcement in our voiceCopy prompt": 1,
+    "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt": 1,
+    "Turn the step below into a help-desk knowledge base articleCopy prompt": 1,
+    "Write a change request from the record belowCopy prompt": 1,
+    "Explain this step to someone new to Conditional Access, then quiz them on it with five questions.Copy prompt": 1,
+    "A stakeholder at Contoso Pty Ltd says no to the change belowCopy prompt": 1,
+    "Translate this announcement into the language you needCopy prompt": 1,
+    "Summarise this planCopy prompt": 1,
+    "Download every prompt as one Markdown file": 1,
+    "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.": 1,
+    "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)": 1,
+    "The print layout: cover, waves, every step in full.": 1,
+    "Save as PDF from the print dialog.": 1
+   },
+   "occurrencesAll": {
+    "Your plan: what to change, in what order, and what to watch.": 1,
+    "Needs: ✓ scan complete · ✓ baseline loaded": 1,
+    "Based on the scan from this minute · <date and time>.": 1,
+    "Re-scan · Baseline: synthetic baseline": 1,
+    "With this tenant's Entra ID P1, 19 of 24 steps are available now.": 1,
+    "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
+    "The whole plan: about 6 hours of admin time and no help-desk contacts, so you know what fits in the time you have.": 1,
+    "Must fix first: 14 steps that can deny access are held until it passes. · nobody": 1,
+    "nothing blocks it, and 2 later steps wait for it · nobody": 1,
+    "setting up 1 person unblocks 3 steps · Priya Nair": 1,
+    "This week: send 2 announcements (Tuesday), set up MFA for Priya Nair, Sort out emergency access before anything else.": 1,
+    "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
+    "Load it back on any machine.": 1,
+    "Save planLoad planCopy as MarkdownCopy as promptCopy as prompt: Summarise this plan": 1,
+    "A record of what changed and when: one row per step with kind, goal, population, planned and actual dates, evidence and rollback.": 1,
+    "Useful for a client update or your own notes; opens in Excel as CSV or in a wiki as Markdown.": 1,
+    "Download as Markdown (one file)Download as CSV (one file)Copy as prompt": 1,
+    "IAMAI runs no models and sends nothing anywhere.": 1,
+    "These are prompts for your own assistant, each pre-filled with facts from this plan: copy one, paste it into whatever you already use.": 1,
+    "Rewrite this announcement in our voiceCopy prompt": 1,
+    "Write MFA setup instructions for Contoso Pty Ltd usersCopy prompt": 1,
+    "Turn the step below into a help-desk knowledge base articleCopy prompt": 1,
+    "Write a change request from the record belowCopy prompt": 1,
+    "Explain this step to someone new to Conditional Access, then quiz them on it with five questions.Copy prompt": 1,
+    "A stakeholder at Contoso Pty Ltd says no to the change belowCopy prompt": 1,
+    "Translate this announcement into the language you needCopy prompt": 1,
+    "Summarise this planCopy prompt": 1,
+    "Download every prompt as one Markdown file": 1,
+    "The plan, the findings and the tenant profile as one JSON file, to paste into your own assistant and ask questions across the whole plan.": 1,
+    "Redacted (no names, no sign-in names, no tenant id; counts and roles instead)": 1,
+    "The print layout: cover, waves, every step in full.": 1,
+    "Save as PDF from the print dialog.": 1
+   },
+   "wordCounts": {
+    "headings": 17,
+    "tabs": 6,
+    "buttons": 52,
+    "options": 0,
+    "links": 1,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 3,
+    "sentences": 396,
+    "total": 475
+   }
+  }
+ ]
+}
