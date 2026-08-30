@@ -97,6 +97,8 @@ export type RoadmapInput = {
   notice?: NoticeSettings | null
   /** YYYY-MM-DD dates nothing is enforced on (nor the working day before). */
   holidays?: string[] | null
+  /** Supervised change windows a week, overriding the band default (prompt 42). */
+  enforcementCap?: number | null
   /** The share of affected people failing after enforcement that means back to report-only (comms-and-bridges.md §3.1). */
   watchThresholdPercent?: number | null
 }
@@ -1340,7 +1342,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
   const rhythm = tenantRhythm(snapshot, mapping.displayTimeZone)
   const holidays = input.holidays ?? []
-  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, { freeze: input.changeFreeze ?? null, scheduled: input.scheduled ?? null, holidays, rhythm })
+  const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, { freeze: input.changeFreeze ?? null, scheduled: input.scheduled ?? null, holidays, rhythm, enforcementCap: input.enforcementCap ?? undefined })
   schedule.rhythm = rhythm
   schedule.policyCount = policyCountFor(snapshot, steps, input.coverage.organisation)
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))

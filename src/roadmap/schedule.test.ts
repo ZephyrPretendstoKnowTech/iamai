@@ -3,7 +3,7 @@
 // path is stated. Authored steps only.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { batchClassOf, buildSchedule, dependencyGraph, nextMonday, toEnforcementDay } from './schedule.ts'
+import { batchClassOf, buildSchedule, dependencyGraph, nextMonday, observationDaysFor, toEnforcementDay } from './schedule.ts'
 import { bandForActiveUsers } from './constants.ts'
 import { PHASE_NAME } from '../copy/steps.ts'
 import { ROADMAP as C } from '../copy/pages.ts'
@@ -130,7 +130,12 @@ test('12 active users: small band, verification window, rings dated after their 
   const s = buildSchedule(steps, MON, 12)
   assert.equal(s.band, 'small')
   assert.equal(s.verification.days, 14)
-  assert.equal(s.observation.days, 7)
+  // The REPORTED window runs from creation to the first change, so it is as
+  // long as the wait actually is (prompt 40 §18). The window a step must serve
+  // before it may enforce is separate, and is 7 days here (prompt 42 §1).
+  assert.equal(observationDaysFor(steps.find((x) => x.id === 'mfa')!), 7)
+  assert.ok(s.observation.days >= 7, `the reported window is at least the 7 days a step must serve, got ${s.observation.days}`)
+  assert.equal(s.observation.end, s.waves.find((w) => w.wave >= 1)?.start, 'the window runs to the first change')
   const mfa = steps.find((x) => x.id === 'mfa')!
   const block = steps.find((x) => x.id === 'block')!
   assert.ok(mfa.rings[0].plannedStart >= s.verification.end, 'MFA enforcement starts after the campaign')
@@ -207,16 +212,25 @@ test('the band can be overridden', () => {
   assert.equal(s.verification.days, 42)
 })
 
-test('verification complete on a re-scan pulls enforcement forward and shortens the end date', () => {
-  const before = buildSchedule(typical(), MON, 12)
-  const after = buildSchedule(
-    typical().map((s) => (s.id === 's-verify-mfa' ? { ...s, status: 'done' as const } : s)),
-    MON,
-    12,
-  )
+test('verification complete on a re-scan pulls the steps that waited on it forward', () => {
+  const beforeSteps = typical()
+  const before = buildSchedule(beforeSteps, MON, 12)
+  const afterSteps = typical().map((s) => (s.id === 's-verify-mfa' ? { ...s, status: 'done' as const } : s))
+  const after = buildSchedule(afterSteps, MON, 12)
   assert.equal(after.verification.days, 0)
   assert.equal(after.verification.complete, true)
-  assert.ok(Date.parse(after.targetEnd) < Date.parse(before.targetEnd))
+  // The step that waits on registration is the one that moves. The first wave
+  // does not: it is a block that never depended on the campaign, and its date
+  // comes from the observation window. Asserting on the whole plan's end hid
+  // that distinction and stopped being true once the change-window cap, rather
+  // than the campaign, set the tail.
+  const startOf = (steps: Step[], id: string): string => steps.find((x) => x.id === id)!.rings[0].plannedStart
+  assert.ok(
+    Date.parse(startOf(afterSteps, 'mfa')) < Date.parse(startOf(beforeSteps, 'mfa')),
+    `MFA enforcement moves forward: ${startOf(afterSteps, 'mfa')} before ${startOf(beforeSteps, 'mfa')}`,
+  )
+  // And the plan is never LONGER for having less to wait for.
+  assert.ok(Date.parse(after.targetEnd) <= Date.parse(before.targetEnd), `the plan is no longer: ${after.targetEnd} vs ${before.targetEnd}`)
 })
 
 test('a blocked step enforces after its blocker, whatever its phase', () => {

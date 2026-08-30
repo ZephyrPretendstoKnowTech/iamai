@@ -22,14 +22,30 @@ break is stated as an unknown the user can close in one click, rather than waite
 
 No window exceeds 7 days. No window is shorter than 3.
 
-### The evidence bar still applies
+### The evidence bar, which is not a gate
 
-The window ends when the days have passed **and** at least one sign-in has arrived for every
-active affected user, or 500 sign-ins in the population, whichever is smaller. Below 10
-affected users, require a sign-in from each of them. Days alone are never a verdict.
+The bar is: the days have passed, **and** a sign-in has arrived for every affected user *who
+signed in at all in the last 30 days*.
 
-Where the bar is not met when the days are up, the step says so and offers the choice: wait
-for more evidence, or proceed knowing which people the records could not speak for, by name.
+Nobody else is waited for. A person who has not signed in for a month will not sign in inside
+a three-day window either, so requiring one of them makes the short window unreachable by
+construction and the user waits anyway — which is the abandonment the short window exists to
+prevent. The earlier version of this section required a sign-in from every *active* affected
+user and so contradicted the window lengths above it.
+
+People the records cannot speak for are **named on the verdict**, not waited for:
+
+> Ready to enforce, and the records cannot speak for Priya Haddad and Sam Lee, who have not
+> signed in since 12 August.
+
+The user then decides, and the verdict offers the three choices the assertions below already
+support: carve those people out, defer them to a later wave, or proceed and accept it. Days
+alone are still never a verdict, and an absence of evidence is still never read as evidence of
+safety — but an absence that names its people is information, where a blocked step is not.
+
+**"Not enough evidence yet" is reserved for the case where the records are thin for the people
+who *are* signing in**: no sign-ins at all in the window, or a policy whose report-only results
+did not arrive. That verdict never reads as ready.
 
 ### Stated unknowns, in place of longer windows
 
@@ -75,9 +91,14 @@ state of those people; the window from §1.
   they are the ones a verdict cannot speak for.
 - The exit criteria, each ticked or not.
 
-**Verdict rules.** Ready requires: window elapsed, evidence bar met, zero would-be failures,
-and the operator not in the failure set. Any failure at all means Not yet, with the people
-named. Insufficient evidence is its own verdict and never reads as ready.
+**Verdict rules.** Ready requires: window elapsed, evidence bar met (as defined in §1, over
+the people who signed in during the last 30 days), zero would-be failures, and the operator
+not in the failure set. Any failure at all means Not yet, with the people named. Insufficient
+evidence is its own verdict and never reads as ready.
+
+People the records cannot speak for do not block a Ready verdict; they are named in it. An
+unanswered unknown never gates either. Both appear in the verdict so nobody mistakes silence
+for safety.
 
 **Show your work.** Every verdict carries two links: the report-only insights workbook
 filtered to that policy, and What If pre-filled for the first affected user. The tool is
