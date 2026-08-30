@@ -162,17 +162,35 @@ export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
   if (step.safeToday) return { announce: null, remind: null, remindMorning: null, enforce, noticeDays: 0 }
 
   const noticeDays = noticeDaysFor(step, ctx.notice)
-  // Announce on a Tuesday or Wednesday at or before the notice deadline.
+  // Announce on a day the tenant actually works, at its quietest working hour
+  // (prompt 37 §17). Tuesday and Wednesday remain the preference — a Monday
+  // inbox is full and a Friday note is read on Monday — but a tenant whose
+  // people do not work midweek is not told to announce into an empty office.
+  // When the rhythm is unreadable the defaults apply and the reason says so.
+  const usable = ctx.rhythm.status === 'ok' && ctx.rhythm.workingDays.length > 0
+  const worksOn = (d: number): boolean => !usable || ctx.rhythm.workingDays.includes(d)
+  const announceHour = usable && ctx.rhythm.quietWorking ? ctx.rhythm.quietWorking.hour : ANNOUNCE_HOUR
   let announceDay = workingDaysBefore(enforceDay, noticeDays, ctx)
   for (let guard = 0; guard < 14; guard++) {
     const d = weekdayOf(announceDay)
-    if (d === 1 || d === 2) break
+    if ((d === 1 || d === 2) && worksOn(d)) break
     announceDay = addDays(announceDay, -1)
   }
-  const announceReason = [EVENT.reason.announceTueWed, step.highCare.userIds.length > 0 ? EVENT.reason.announceCare : EVENT.reason.announceNotice(noticeDays)].join(' ')
-  const announce = event(atLocalHour(announceDay, ANNOUNCE_HOUR, ctx.timeZone), announceReason, ctx, 'announce')
+  // Neither preferred day is a working day here: take the latest working day
+  // that still clears the notice period.
+  if (!worksOn(weekdayOf(announceDay))) {
+    announceDay = workingDaysBefore(enforceDay, noticeDays, ctx)
+    for (let guard = 0; guard < 14 && !worksOn(weekdayOf(announceDay)); guard++) announceDay = addDays(announceDay, -1)
+  }
+  const announceTime = hourLabel(Math.floor(announceHour))
+  const chosenDay = WEEKDAY_NAMES[weekdayOf(announceDay)]
+  const announceReason = [
+    usable ? EVENT.reason.announceOn(chosenDay, announceTime) : `${EVENT.reason.announceDefaultDay(chosenDay, announceTime)} ${EVENT.reason.announceNoRhythm}`,
+    step.highCare.userIds.length > 0 ? EVENT.reason.announceCare : EVENT.reason.announceNotice(noticeDays),
+  ].join(' ')
+  const announce = event(atLocalHour(announceDay, announceHour, ctx.timeZone), announceReason, ctx, 'announce')
   const remindDay = workingDaysBefore(enforceDay, 1, ctx)
-  const remind = event(atLocalHour(remindDay, ANNOUNCE_HOUR, ctx.timeZone), EVENT.reason.remindDayBefore, ctx, 'remind')
+  const remind = event(atLocalHour(remindDay, announceHour, ctx.timeZone), EVENT.reason.remindDayBefore, ctx, 'remind')
   const remindMorning = high ? event(atLocalHour(enforceDay, Math.max(7, peakHour - 2), ctx.timeZone), EVENT.reason.remindMorningOf, ctx, 'remind') : null
   return { announce, remind, remindMorning, enforce, noticeDays }
 }
