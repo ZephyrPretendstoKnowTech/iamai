@@ -342,15 +342,15 @@ export function syntheticBaseline(seed: string): BaselinePackage {
 
 export const FIXTURE_SPECS: Spec[] = [
   { name: 'micro', users: 8, admins: 1, licence: 'none', policies: 0, securityDefaults: true, expect: { rings: 1, weeksAtMost: 4, namesListed: true, policyCapWarning: false } },
-  // Every weeksAtMost grew when one enforcement day stopped absorbing every
-  // step (prompt 40 §17). The old numbers were only reachable while a plan's
-  // whole enforcement load shared a single day; at two change days a week and
-  // two changes a day, a 30-user tenant making twelve conditional access
-  // changes takes seven weeks, not four.
-  { name: 'small', users: 28, admins: 2, licence: 'p1', policies: 3, expect: { rings: 2, weeksAtMost: 7, namesListed: true, policyCapWarning: false } },
-  { name: 'mid', users: 280, admins: 14, licence: 'mixed', policies: 11, serviceAccounts: 3, expect: { rings: 3, weeksAtMost: 9, namesListed: false, policyCapWarning: false } },
-  { name: 'large', users: 4900, admins: 60, licence: 'p1', policies: 40, hybrid: true, intuneShare: 0.55, expect: { rings: 4, weeksAtMost: 16, namesListed: false, policyCapWarning: true } },
-  { name: 'huge', users: 25000, admins: 300, licence: 'p2', policies: 120, multiGeo: true, expect: { rings: 4, weeksAtMost: 12, namesListed: false, policyCapWarning: true } },
+  // Recomputed with batching (prompt 41 §8). The weekly cap counts supervised
+  // change windows rather than steps, so twelve enforceable steps on the small
+  // fixture now occupy two change days instead of seven, and the plan is five
+  // weeks instead of seven. What sets every one of these numbers is the
+  // registration campaign and the ring soak after it, not the enforcement pace.
+  { name: 'small', users: 28, admins: 2, licence: 'p1', policies: 3, expect: { rings: 2, weeksAtMost: 5, namesListed: true, policyCapWarning: false } },
+  { name: 'mid', users: 280, admins: 14, licence: 'mixed', policies: 11, serviceAccounts: 3, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
+  { name: 'large', users: 4900, admins: 60, licence: 'p1', policies: 40, hybrid: true, intuneShare: 0.55, expect: { rings: 4, weeksAtMost: 11, namesListed: false, policyCapWarning: true } },
+  { name: 'huge', users: 25000, admins: 300, licence: 'p2', policies: 120, multiGeo: true, expect: { rings: 4, weeksAtMost: 11, namesListed: false, policyCapWarning: true } },
   { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 20, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
   { name: 'midflight', users: 60, admins: 3, licence: 'p1', policies: 6, midflight: true, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
   { name: 'hostile', users: 40, admins: 2, licence: 'p1', policies: 3, hostile: true, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },

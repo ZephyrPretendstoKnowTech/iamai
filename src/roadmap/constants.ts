@@ -16,15 +16,21 @@ export const BREAK_GLASS_DRILL_DAYS = 90
 // days. The band is auto-detected from active users and overridable.
 export type SizeBand = 'small' | 'mid' | 'large'
 //
-// `weeks` grew (4/8/12) when one enforcement day stopped absorbing every step
-// (prompt 40 §17). The old numbers were only reachable while twenty-one changes
-// could share a single day; at ENFORCEMENT_CAP change days a week and
-// CHANGES_PER_DAY changes each, a real plan takes longer, and the band has to
-// state the length the plan actually has rather than one it cannot reach.
+// `weeks` was recomputed with enforcement batching in place (prompt 41 §8). The
+// weekly cap counts supervised change windows, not steps, so several policies
+// observed in the same window are enforced together and the enforcement tail
+// shrinks: the small fixture fell from 7 weeks to 5, and its change days from 7
+// to 2.
+//
+// What remains is not enforcement pace at all. In every fixture the binding
+// constraint is the registration campaign plus the ring soak that follows it,
+// which is why these numbers track verificationDays rather than the caps.
+// Batching cannot shorten a campaign, and the band does not pretend otherwise:
+// a plan that runs past its band names the constraint that set it.
 export const BANDS: Record<SizeBand, { maxActive: number; weeks: number; verificationDays: number }> = {
-  small: { maxActive: 30, weeks: 7, verificationDays: 14 },
-  mid: { maxActive: 300, weeks: 11, verificationDays: 28 },
-  large: { maxActive: Number.POSITIVE_INFINITY, weeks: 17, verificationDays: 42 },
+  small: { maxActive: 30, weeks: 5, verificationDays: 14 },
+  mid: { maxActive: 300, weeks: 8, verificationDays: 28 },
+  large: { maxActive: Number.POSITIVE_INFINITY, weeks: 12, verificationDays: 42 },
 }
 export const OBSERVATION_DAYS = 7
 /** An enforcement wave never runs shorter than this, whatever the band. */

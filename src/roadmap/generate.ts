@@ -59,6 +59,7 @@ import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
+import { NAMED_BELOW } from './comms.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
 import { ladderSteps } from './ladder.ts'
 import { GATING_SUBJECTS, attachWarnings, blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
@@ -124,6 +125,20 @@ function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): P
   }
 }
 /** Counts for a step's population; the index is built once per plan so 25,000 users are not rescanned per step. */
+/**
+ * The audience a step announcement is written for (prompt 41 §4).
+ *
+ * Mirrors audiencesFor in comms.ts deliberately: NAMED_BELOW is the same
+ * threshold, so the greeting on the step and the audience label on the comms
+ * plan cannot disagree about whether these are named people or a crowd.
+ */
+function announcementAudience(pop: StepPopulation, admins: boolean, nameOf: (id: string) => string): { kind: string; names?: string[] } {
+  if (pop.total === 0) return { kind: 'none' }
+  if (admins) return { kind: 'admins' }
+  if (pop.ids.length < NAMED_BELOW) return { kind: 'named', names: pop.ids.map(nameOf) }
+  return { kind: 'everyone' }
+}
+
 function population(ids: string[], index: PopulationIndex): StepPopulation {
   let active = 0
   let admins = 0
@@ -926,6 +941,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                 sessionOnly,
                 affected: evidenceUsable && readiness.family === 'block' ? evidence.affectedUserIds.length : null,
                 admins: impl.expectedWho.kind === 'coreAdmins',
+                // Named below the threshold the audience model already uses, so
+                // the greeting and the audience label cannot disagree
+                // (prompt 41 §4).
+                audience: announcementAudience(pop, impl.expectedWho.kind === 'coreAdmins' || readiness.family === 'admin', nameOf),
               },
               tenantName,
               '{DATE}',

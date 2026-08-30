@@ -61,6 +61,37 @@ export const NOTICE = {
   holidaysPlaceholder: '2026-12-25',
 }
 
+/**
+ * When to send a step's message, said above the draft (prompt 41 §3).
+ *
+ * The plan dated every event and then left the person to work out which date
+ * governed the thing in front of them. Four branches, because the answer is
+ * genuinely different in four cases: nobody is affected so no notice is owed,
+ * a handle-with-care user sets the floor, the message is already overdue, and
+ * the ordinary case.
+ */
+export const NOTICE_LINE = {
+  none: 'Nobody is affected by this change, so no notice is needed. The draft below is there if the tenant announces changes as a matter of course.',
+  care: (send: string, days: number) =>
+    `Send this on ${send}, ${days} working days before the change. A handle-with-care user is in scope, so the notice is never shorter than that, and each of them is told individually first.`,
+  overdue: (send: string) => `This was due to go out on ${send}. Send it now, and move the change if the notice no longer fits.`,
+  standard: (send: string, days: number) => `Send this on ${send}, ${days} working ${days === 1 ? 'day' : 'days'} before the change.`,
+} as const
+
+/**
+ * The change window a step shares (prompt 41 §9).
+ *
+ * Three branches: enforced with others, enforced alone, and safe today, which
+ * needs no supervised window at all. Said on the step so a person schedules one
+ * hour for four changes rather than four hours for four changes.
+ */
+export const BATCH = {
+  withOthers: (others: number, date: string) =>
+    `Enforced together with ${others} other ${others === 1 ? 'change' : 'changes'} on ${date}, in one change window.`,
+  alone: (date: string) => `Enforced on its own on ${date}.`,
+  safeToday: 'Enforced as soon as the evidence holds. It takes no change window and needs no announcement.',
+} as const
+
 export const SAFE = {
   verdictSafe: 'Safe to enforce today',
   verdictNotYet: (reason: string) => `Not yet: ${reason}`,

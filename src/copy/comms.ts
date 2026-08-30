@@ -142,7 +142,15 @@ export const EFFORT = {
   // Four branches. Zero is only reachable when the step touches nobody, so it
   // says that rather than predicting silence (review-08 F, prompt 40 §23).
   calls: (n: number) => (n === 0 ? 'nobody to contact about it' : `about ${count(n, 'help-desk contact')}`),
-  basis: 'Basis: minutes from the portal steps per kind of change; contacts from the affected people times a rate per control (MFA 3%, device 8%, admin strength 5%, geo 2%, block 1% of affected accounts, session 1%).',
-  total: (minutes: number, calls: number) => `The whole plan: about ${count(Math.round(minutes / 60), 'hour')} of admin time and ${count(calls, 'help-desk contact')}, so you know what fits in the time you have.`,
+  basis: 'Basis: minutes from the portal steps per kind of change; contacts from the affected people times a rate per control (MFA 3%, device 8%, admin strength 5%, geo 2%, block 1% of affected accounts, session 1%). A contact is one person asking about one change, so one person may account for several.',
+  /**
+   * Names the steps it adds up, so the total can be checked against the cards
+   * (prompt 41 §11). Three branches on time, because under an hour "about 0
+   * hours" is worse than no figure at all.
+   */
+  total: (minutes: number, calls: number, steps: number) => {
+    const time = minutes < 60 ? `about ${count(minutes, 'minute')}` : `about ${count(Math.round(minutes / 60), 'hour')}`
+    return `Across the ${count(steps, 'step')} still to do: ${time} of admin time, and about ${count(calls, 'help-desk contact')}.`
+  },
   fits: (minutes: number) => (minutes <= 15 ? 'fits in a coffee break' : minutes <= 60 ? 'fits in an hour' : 'needs a clear afternoon'),
 }

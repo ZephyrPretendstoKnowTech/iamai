@@ -4,6 +4,7 @@
 // steps, then the best value-to-disruption step that is ready. Never a
 // blocked step. Pure.
 import { NEXT } from '../copy/next.ts'
+import { stageOf } from './tracking.ts'
 import { blockedSteps, outstandingSteps } from '../derive/sets.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
@@ -140,6 +141,20 @@ export function doThisNext(
     waiting = candidates[0] ? NEXT.nothingUntil(absoluteDate(candidates[0].at), candidates[0].why) : NEXT.nothing
   }
 
-  const completed = previousStatus ? steps.filter((s) => s.status === 'done' && previousStatus[s.id] !== undefined && previousStatus[s.id] !== 'done').map((s) => s.plainTitle || s.title) : []
+  // "Enforced" means what the journey band means by it (prompt 41 §10,
+  // review-09 finding 5). This counted every step that reached 'done' since the
+  // last scan, which on a first comparison includes the ones the tenant already
+  // had in place before the plan existed: the card read "4 steps are now
+  // enforced" while the band beside it read "Enforced 1, Already in place 10"
+  // and the page below read "Nothing has started yet". Three surfaces, three
+  // numbers, one of them describing a different set. stageOf is the band's own
+  // derivation, so reading it here makes disagreement impossible rather than
+  // unlikely.
+  const completed = previousStatus
+    ? steps
+        .filter((s) => s.status === 'done' && previousStatus[s.id] !== undefined && previousStatus[s.id] !== 'done')
+        .filter((s) => stageOf(s) !== 'alreadyInPlace')
+        .map((s) => s.plainTitle || s.title)
+    : []
   return { items, waiting, completed }
 }

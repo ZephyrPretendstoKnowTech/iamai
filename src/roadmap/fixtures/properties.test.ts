@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
+import { batchClassOf } from '../schedule.ts'
 import { canDenyAccess, wouldStrand } from '../strand.ts'
 import { buildPlanFile } from '../plan.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
@@ -135,6 +136,62 @@ for (const f of fixtures) {
       }
     }
     assert.ok(schedule.totalDays <= f.expect.weeksAtMost * 7 + 7, `${schedule.weeks} weeks (${schedule.totalDays} days) fits the band (${f.expect.weeksAtMost} weeks plus the week of slack)`)
+
+    // A batch never mixes a change nobody will notice with one that has a
+    // predicted blast radius (prompt 41 §6). The two need different
+    // supervision, and grouping them hides the second behind the first.
+    {
+      const byEvent = new Map<string, Step[]>()
+      for (const st of steps) {
+        const at = st.rings[0]?.plannedStart
+        if (!at || st.safeToday) continue
+        if (!(st.id in schedule.batchWith)) continue
+        const key = at.slice(0, 10)
+        byEvent.set(key, [...(byEvent.get(key) ?? []), st])
+      }
+      for (const [day, group] of byEvent) {
+        const classes = new Set(group.map(batchClassOf))
+        assert.ok(
+          !(classes.has('zero') && classes.size > 1),
+          `${day}: a zero-affected change shares a window with ${[...classes].filter((c) => c !== 'zero').join(', ')}`,
+        )
+      }
+      // A safe-today step consumes no change window at all (§7).
+      for (const st of steps) {
+        if (st.safeToday) assert.ok(!(st.id in schedule.batchWith), `${st.id} is safe today and takes no change window`)
+      }
+      // Every step sharing a window shares its day, and the relationship is
+      // symmetric: a one-sided batch would print two different sentences about
+      // the same change window.
+      for (const [id, others] of Object.entries(schedule.batchWith)) {
+        for (const o of others) {
+          assert.ok(schedule.batchWith[o]?.includes(id), `${id} and ${o} disagree about sharing a window`)
+        }
+      }
+    }
+
+    // Announcement, then reminder, then enforcement (prompt 41 §2). Order is
+    // asserted on the instant, not the day, because the defect review 09 found
+    // was an enforcement at 12:00 and a message at 18:00 on the SAME date: a
+    // day-granularity check would have called that correct. A message that
+    // arrives after the change it announces is worse than no message, because
+    // the person has already been interrupted and now learns it was planned.
+    for (const st of steps) {
+      const e = st.events
+      if (!e) continue
+      for (const m of [e.announce, e.remind, e.remindMorning]) {
+        if (!m) continue
+        assert.ok(
+          m.at < e.enforce.at,
+          `${st.id}: the ${m.kind} at ${m.at} must precede its own enforcement at ${e.enforce.at}`,
+        )
+      }
+      if (e.announce && e.remind) {
+        assert.ok(e.announce.at <= e.remind.at, `${st.id}: the announcement must not follow its own reminder`)
+      }
+      // A step with a reminder and no announcement is a reminder about nothing.
+      if (e.remind) assert.ok(e.announce !== null, `${st.id}: a reminder needs an announcement before it`)
+    }
 
     // The day a phase closes belongs to that phase (prompt 40 §21). Two steps
     // were planned for Sep 3, the day Day 0 closed (review-08 C2). The date at

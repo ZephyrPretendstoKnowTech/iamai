@@ -25,7 +25,7 @@ import type { Step, StepStatus } from '../../roadmap/types.ts'
 import { saveDevResults } from '../../devSave.ts'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { ROADMAP as C } from '../../copy/pages.ts'
-import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
+import { CHIP, EFFORT_DEF, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
 import { overrunList, roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
 import { CALENDAR } from '../../copy/schedule.ts'
 import { POPULATION } from '../../copy/population.ts'
@@ -34,7 +34,7 @@ import { RINGS } from '../../copy/rings.ts'
 import { RingProgress } from '../components/Ring.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import { Term } from '../components/Term.tsx'
-import { EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
+import { BATCH, EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, NOTICE_LINE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
 import { LADDER } from '../../copy/ladder.ts'
 import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
@@ -1572,6 +1572,8 @@ export function RoadmapPage({
                         onPrompt={(id, kind, context, draft) => void copyPrompt(id, kind, context, draft)}
                         watch={watchFor(step, snapshot, nameOf, watchThreshold)}
                         effort={effortFor(step)}
+                        now={nowMs}
+                        batchWith={schedule.batchWith[step.id] ?? []}
                         onSkipped={(st) => {
                           // Persist the skip before regenerating, or mergePersisted forgets it.
                           setSaved((p) =>
@@ -1675,13 +1677,17 @@ export function RoadmapPage({
     <StepFrame title={C.title} does={C.does} needs={needs}>
       {scan && <ScanAge at={scan.at} baseline={baseline?.source ?? null} />}
       <p className="reason">
-        {licenceSentence} {effortTotal.sentence}
+        {licenceSentence} {effortTotal.sentence}{' '}
+        <InfoTip title={EFFORT_DEF.adminTime.title} text={EFFORT_DEF.adminTime.text} />{' '}
+        <InfoTip title={EFFORT_DEF.contacts.title} text={EFFORT_DEF.contacts.text} />
       </p>
       {onLadder && <p className="advisor">{LADDER.intro}</p>}
       <Card title={NEXT.title} className="do-next">
-        {/* R12: "Watch first" was a tab holding a single item. It belongs at the
-            top of the list the reader is already looking at. */}
-        {dangers.length > 0 && dangerAreas()}
+        {/* R12 moved "Watch first" out of a tab of its own and onto this card.
+            It then led the card, pushing the three actions the card exists for
+            below the fold (review-09 finding 9, prompt 41 §14). A card called
+            "Do this next" opens with what to do; the danger areas follow it,
+            still on the same screen and still before the reader leaves. */}
         {nextCard.completed.length > 0 && (
           <p className="completed-lead">
             {nextCard.completed.length === 1 ? NEXT.completed(nextCard.completed[0]) : NEXT.completedMany(nextCard.completed.length)} {nextCard.items.length > 0 && NEXT.next}
@@ -1712,6 +1718,7 @@ export function RoadmapPage({
             ))}
           </ol>
         )}
+        {dangers.length > 0 && dangerAreas()}
       </Card>
       <Tabs
         active={activeTab}
@@ -1876,6 +1883,37 @@ function PopulationBody({ view, total, onExport }: { view: NonNullable<Step['pop
   )
 }
 
+/**
+ * When to send this step's message, in one sentence above the draft
+ * (prompt 41 §3).
+ *
+ * Reads the step's own events rather than recomputing a notice period, so the
+ * sentence and the calendar cannot disagree. `noticeDays` is 0 exactly when the
+ * step needs no announcement, which is what the "none" branch reports.
+ */
+function noticeLine(step: Step, nowMs: number): string {
+  const e = step.events
+  if (!e || !e.announce || e.noticeDays === 0) return NOTICE_LINE.none
+  const send = `${e.announce.day} ${e.announce.date}`
+  if (Date.parse(e.announce.at) < nowMs) return NOTICE_LINE.overdue(send)
+  if (step.highCare.userIds.length > 0) return NOTICE_LINE.care(send, e.noticeDays)
+  return NOTICE_LINE.standard(send, e.noticeDays)
+}
+
+/**
+ * The change window this step shares (prompt 41 §9).
+ *
+ * Three branches. A safe-today step takes no window at all, so saying "enforced
+ * on its own" about it would be wrong in the way that matters: it implies a
+ * supervised hour it does not need.
+ */
+function batchLine(step: Step, batchWith: string[]): string | null {
+  const at = step.rings[0]?.plannedStart
+  if (!at || step.status === 'done' || step.status === 'skipped') return null
+  if (step.safeToday) return BATCH.safeToday
+  return batchWith.length > 0 ? BATCH.withOthers(batchWith.length, absoluteDate(at)) : BATCH.alone(absoluteDate(at))
+}
+
 function StepCard({
   step,
   linked,
@@ -1895,6 +1933,8 @@ function StepCard({
   watch,
   effort,
   audienceName,
+  now,
+  batchWith,
 }: {
   step: Step
   linked: boolean
@@ -1904,6 +1944,10 @@ function StepCard({
   onCopy: (id: string, text: string) => Promise<void>
   /** C15: the name the announcement addresses people by, when it looks like a tenant id. */
   audienceName: string | null
+  /** Clock for the notice line (prompt 41 §3). */
+  now: number
+  /** The other steps enforced in the same change window (prompt 41 §9). */
+  batchWith: string[]
   skipDraft: { id: string; reason: string } | null
   setSkipDraft: (d: { id: string; reason: string } | null) => void
   onSkipped: (step: Step) => void
@@ -2070,13 +2114,17 @@ function StepCard({
         <>
           <h4>{SECTION.couldGoWrong}</h4>
           {(() => {
-            // R15: every entry carries its own source, and when they all cite
-            // the same Microsoft Learn page that page was printed once per
-            // entry — eight times in one step body. Each entry keeps its
-            // source in the data (C13); the page prints each distinct one once.
+            // R15, then prompt 41 §13. Every entry carries its own source in the
+            // data (C13); the page prints each DISTINCT source once, at the
+            // bottom of the list.
+            //
+            // The first attempt collapsed them only when every entry cited the
+            // same page and every entry had one. Nine entries where eight share
+            // a URL and one differs failed both halves of that test, so the
+            // shared page printed eight times in full (review-09 finding 7).
+            // Distinctness is the only thing that decides it now.
             const cites = step.failureModes.map((m) => m.citation).filter(Boolean)
             const distinct = [...new Map(cites.map((c) => [c === FIELD_PRACTICE ? 'field' : c!.url, c])).values()]
-            const shared = distinct.length === 1 && cites.length === step.failureModes.length
             const cite = (c: (typeof cites)[number], key: string) =>
               c === FIELD_PRACTICE ? (
                 <div key={key} className="reason">{CITATION.fieldPractice}</div>
@@ -2095,11 +2143,10 @@ function StepCard({
                     <li key={i} className={`applies-${m.applies}`}>
                       <strong>{m.title}</strong> <Chip status={m.applies === 'yes' ? 'warning' : m.applies === 'no' ? 'done' : 'neutral'}>{SECTION.applies[m.applies]}</Chip>
                       <div className="sub">{m.evidence}</div>
-                      {!shared && m.citation && cite(m.citation, `c${i}`)}
                     </li>
                   ))}
                 </ul>
-                {shared && cite(distinct[0], 'shared')}
+                {distinct.map((c, i) => cite(c, `src${i}`))}
               </>
             )
           })()}
@@ -2334,6 +2381,9 @@ function StepCard({
         </details>
       )}
 
+      {/* The change window this step shares (prompt 41 §9). */}
+      {batchLine(step, batchWith) && <p className="reason batch-line">{batchLine(step, batchWith)}</p>}
+
       {/* 11. Comms: per ring, dated, and the help-desk version */}
       {step.comms && (
         <>
@@ -2341,6 +2391,8 @@ function StepCard({
           {/* C15: say plainly when the name in the message is the tenant
               identifier rather than something people would recognise. */}
           {audienceName && <p className="reason">{NAME_WARNING(audienceName)}</p>}
+          {/* When to send it, above the thing being sent (prompt 41 §3). */}
+          <p className="notice-line">{noticeLine(step, now)}</p>
           {step.comms === NO_ANNOUNCEMENT ? (
             <p className="reason">{step.comms}</p>
           ) : step.ringComms.length > 1 ? (

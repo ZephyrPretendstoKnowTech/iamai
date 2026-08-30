@@ -42,10 +42,23 @@ test('do this next: when everything waits, it says the date and why; after a re-
   assert.match(card.waiting ?? '', /^Nothing to do until .*, when the (observation window ends|registration campaign ends|notice period ends)\.$/)
   // A step that was ready at the previous scan and is done now leads the card.
   const previous: Record<string, string> = Object.fromEntries(run.steps.map((s) => [s.id, s.status]))
-  const doneId = run.steps.find((s) => s.status === 'done' && (s.kind === 'create' || s.kind === 'adjust'))!.id
-  previous[doneId] = 'ready'
-  const after = doThisNext(run.steps, run.schedule, run.viability, nameOf, previous, NOW)
-  assert.equal(after.completed.length, 1)
+  // Every done create/adjust step in this fixture is one the tenant already
+  // had, which is exactly the shape review 09 hit, so the executed step is made
+  // explicitly rather than found.
+  const target = run.steps.find((s) => s.kind === 'create' || s.kind === 'adjust')!
+  const executed = run.steps.map((s) => (s.id === target.id ? { ...s, status: 'done' as const, alreadyInPlace: false } : s))
+  previous[target.id] = 'ready'
+  const after = doThisNext(executed, run.schedule, run.viability, nameOf, previous, NOW)
+  assert.equal(after.completed.length, 1, 'a step this plan executed is reported as completed')
+  // A step the tenant already had in place is not something that just completed
+  // (prompt 41 §10, review-09 finding 5). Counting those is what made the card
+  // read '4 steps are now enforced' beside a band reading 'Enforced 1'.
+  const inPlaceId = run.steps.find((s) => s.status === 'done' && s.alreadyInPlace)?.id
+  if (inPlaceId) {
+    const withInPlace: Record<string, string> = { ...previous, [inPlaceId]: 'ready' }
+    const after2 = doThisNext(executed, run.schedule, run.viability, nameOf, withInPlace, NOW)
+    assert.equal(after2.completed.length, 1, 'an already-in-place step is not reported as newly enforced')
+  }
 })
 
 test('activity log: two scans over the midflight fixture produce the expected entries in order; an unplanned change is marked; the log round-trips', () => {

@@ -133,9 +133,21 @@ export function effortFor(step: Step): { minutes: number; contacts: number; sent
   return { minutes, contacts, sentence: `${EFFORT.minutes(minutes)} (${EFFORT.fits(minutes)}); ${EFFORT.calls(contacts)}.` }
 }
 
-export function planEffort(steps: Step[]): { minutes: number; contacts: number; sentence: string } {
+/**
+ * The plan's total effort, reconcilable with the step cards (prompt 41 §11).
+ *
+ * Two things were wrong. The total summed every outstanding step while only
+ * some kinds print an estimate on their card, so "about 8 hours" could not be
+ * checked against the twenty numbers on screen that add to six (review-09
+ * finding 4). And "20 help-desk contacts" on a tenant with four active people
+ * reads as twenty people (finding 3). It is twenty contacts: one person asking
+ * about one change, and four people spread over many changes account for
+ * several each. The arithmetic was right and the noun was doing the lying, so
+ * the sentence now carries the step count and the unit says what it counts.
+ */
+export function planEffort(steps: Step[]): { minutes: number; contacts: number; steps: number; sentence: string } {
   const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
   const minutes = work.reduce((n, s) => n + adminMinutes(s), 0)
   const contacts = work.reduce((n, s) => n + helpDeskContacts(s), 0)
-  return { minutes, contacts, sentence: EFFORT.total(minutes, contacts) }
+  return { minutes, contacts, steps: work.length, sentence: EFFORT.total(minutes, contacts, work.length) }
 }

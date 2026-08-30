@@ -83,6 +83,14 @@ export type Schedule = {
   waves: WaveSchedule[]
   /** step id → the wave it enforces in (0 for day 0 / done). */
   waveOf: Record<string, number>
+  /**
+   * step id → the other steps enforced in the same change window (prompt 41 §9).
+   *
+   * Empty for a step enforced on its own, and for a safe-today step, which
+   * consumes no window at all. The step card reads this so a person can see
+   * that four changes land together and plan one supervised hour, not four.
+   */
+  batchWith: Record<string, string[]>
   /** Steps whose enforcement ends after the band's expected length. */
   extendedBy: string[]
   /** Steps blocked on a Setup question. */
@@ -134,7 +142,30 @@ export const ENFORCEMENT_CAP: Record<SizeBand, number> = { small: 2, mid: 3, lar
  * five weeks to sixteen, which trades a real defect for a useless plan. Two on
  * a day in a small tenant is a morning's work with a small blast radius.
  */
-export const CHANGES_PER_DAY: Record<SizeBand, number> = { small: 2, mid: 3, large: 4 }
+export const EVENTS_PER_DAY: Record<SizeBand, number> = { small: 2, mid: 3, large: 4 }
+
+/**
+ * The disruption class a step is batched by (prompt 41 §6).
+ *
+ * A batch never mixes a change nobody will notice with one that has a predicted
+ * blast radius, because the supervision each needs is different: a zero-affected
+ * block is watched for a surprise, an MFA enforcement is watched for a queue at
+ * the help desk. Grouping them would hide the second behind the first.
+ *
+ * Ordering matters and is deliberate: zero-affected first, then MFA, then device
+ * and session controls. It is the order the design doc gives and the order the
+ * risk runs in.
+ */
+export type BatchClass = 'zero' | 'mfa' | 'deviceSession' | 'other'
+
+export function batchClassOf(step: Step): BatchClass {
+  // Evidence-backed zero, not merely absent evidence: the same bar safeToday uses.
+  if (step.evidence.status === 'ok' && step.evidence.affectedUserIds.length === 0) return 'zero'
+  const family = step.readiness.family
+  if (family === 'mfa' || family === 'admin' || family === 'guest') return 'mfa'
+  if (family === 'device' || family === 'location') return 'deviceSession'
+  return 'other'
+}
 const HIGH_DISRUPTION = 4
 const OVERLAP_SHARE = 0.5
 
@@ -304,7 +335,7 @@ export function buildSchedule(
   const expectedDays = preset.weeks * 7
   const day0 = toWeekday(startIso)
   const cap = ENFORCEMENT_CAP[band]
-  const perDay = CHANGES_PER_DAY[band]
+  const perDay = EVENTS_PER_DAY[band]
   const freeze = options.freeze && options.freeze.from < options.freeze.to ? options.freeze : null
   const byId = new Map(steps.map((s) => [s.id, s]))
   const graph = dependencyGraph(steps)
@@ -340,9 +371,17 @@ export function buildSchedule(
   // ---- Placement ----
   const attempt = (relaxSamePeople: boolean): { placed: Map<string, Placed>; reportOnlyAt: Record<string, string> } => {
     const placed = new Map<string, Placed>()
-    const eventDays = new Map<string, Set<string>>()
-    /** Changes already taking effect on a given day, so a day cannot fill without limit. */
-    const eventsOnDay = new Map<string, number>()
+    /**
+     * Enforcement events already scheduled, as "day|class" keys.
+     *
+     * The cap used to count steps, so twenty-one steps meant twenty-one slots
+     * and a ten-week plan on a thirteen-user tenant (review-09, prompt 41 §5).
+     * The cap exists to limit supervised change windows, and several policies
+     * observed in the same window are one window. A step joining a batch that
+     * is already open costs nothing.
+     */
+    const eventsInWeek = new Map<string, Set<string>>()
+    const eventsOnDay = new Map<string, Set<string>>()
     const reportOnlyAt: Record<string, string> = {}
     const ringWindows = new Map<string, { start: string; end: string }[]>()
     const latestStartByPhase = new Map<number, string>()
@@ -356,7 +395,7 @@ export function buildSchedule(
     const inFreeze = (iso: string): boolean => freeze !== null && iso >= freeze.from && iso <= freeze.to
     // An enforcement event is a change day: every step that starts that day
     // shares one change window. The cap limits change days per week.
-    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, highDisruption = false): string => {
+    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, highDisruption = false, batch: BatchClass = 'other'): string => {
       const dayOpts = { highDisruption, holidays: options.holidays ?? [], rhythm: options.rhythm ?? null }
       let cursor = toEnforcementDay(iso, dayOpts)
       for (let guard = 0; guard < 400; guard++) {
@@ -367,17 +406,18 @@ export function buildSchedule(
         }
         const week = weekKey(cursor)
         const day = cursor.slice(0, 10)
-        const days = eventDays.get(week) ?? new Set<string>()
-        const onDay = eventsOnDay.get(day) ?? 0
-        // A day already in use is only reusable while it has room; that check
-        // used to return unconditionally and is what let one day absorb every
-        // step in the plan.
-        if (days.has(day) ? onDay < perDay : days.size < cap) return cursor
-        // This day is full, or the week has used all the change days it is
+        const key = `${day}|${batch}`
+        const inWeek = eventsInWeek.get(week) ?? new Set<string>()
+        const onDay = eventsOnDay.get(day) ?? new Set<string>()
+        // Joining a batch that is already open on this day costs nothing: it is
+        // the same supervised change window, and the cap counts windows. Opening
+        // a new one has to fit both the day and the week (prompt 41 §5).
+        if (inWeek.has(key)) return cursor
+        if (onDay.size < perDay && inWeek.size < cap) return cursor
+        // The day is full, or the week has used all the change windows it is
         // allowed. Try the next enforcement day: toEnforcementDay only returns
         // the midweek slots, so once this week's allowance is spent the search
-        // lands in the next week on its own. Jumping a whole week here instead
-        // gave one change per week and a wave per step.
+        // lands in the next week on its own.
         cursor = toEnforcementDay(addDays(cursor, 1), dayOpts)
         note.kind = 'cap'
       }
@@ -423,13 +463,14 @@ export function buildSchedule(
       const soft = deps.filter((d) => d.kind === 'soft' && !(relaxSamePeople && d.reason.startsWith('cannot prompt')))
       const rings = s.rings.length > 0 ? s.rings : null
       const soaks = rings ? rings.map((r) => r.soakDays) : [s.readiness.family === 'other' ? 1 : ringBand.soakDays]
+      const batch = batchClassOf(s)
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
         const windows: { start: string; end: string }[] = []
         const high = (s.score?.disruption ?? 0) >= HIGH_DISRUPTION
-        let cursor = shift(from, reason, high)
+        let cursor = shift(from, reason, high, batch)
         const start = cursor
         for (const [i, soak] of soaks.entries()) {
-          if (i > 0) cursor = shift(cursor, reason, high)
+          if (i > 0) cursor = shift(cursor, reason, high, batch)
           const end = addDays(cursor, soak)
           windows.push({ start: cursor, end })
           cursor = end
@@ -456,16 +497,22 @@ export function buildSchedule(
         }
         if (!moved) break
       }
-      for (const w of candidate.windows) {
-        const week = weekKey(w.start)
-        if (!eventDays.has(week)) eventDays.set(week, new Set())
-        eventDays.get(week)!.add(w.start.slice(0, 10))
+      // Every ring start opens (or joins) an event of this step's class. A
+      // step whose class is already running that day adds nothing to the count,
+      // which is what "the cap counts events, not steps" means (prompt 41 §5).
+      // A safe-today step consumes no slot at all (§7): it is enforced as soon
+      // as its evidence holds and needs no supervised window.
+      if (!s.safeToday) {
+        for (const w of candidate.windows) {
+          const week = weekKey(w.start)
+          const day = w.start.slice(0, 10)
+          const key = `${day}|${batch}`
+          if (!eventsInWeek.has(week)) eventsInWeek.set(week, new Set())
+          eventsInWeek.get(week)!.add(key)
+          if (!eventsOnDay.has(day)) eventsOnDay.set(day, new Set())
+          eventsOnDay.get(day)!.add(key)
+        }
       }
-      // One enforcement event per step, counted on the day the step starts.
-      // Counting every ring window instead made a two-ring step consume a whole
-      // day's allowance, which pushed later phases ahead of earlier ones.
-      const startDay = candidate.windows[0]?.start.slice(0, 10)
-      if (startDay) eventsOnDay.set(startDay, (eventsOnDay.get(startDay) ?? 0) + 1)
       if (rings) {
         for (const [i, w] of candidate.windows.entries()) {
           rings[i].plannedStart = w.start
@@ -505,6 +552,22 @@ export function buildSchedule(
     }
   }
   const { placed, reportOnlyAt } = result
+
+  // ---- Batches read back from the placed dates: one per day and class ----
+  const batchWith: Record<string, string[]> = {}
+  {
+    const byEvent = new Map<string, string[]>()
+    for (const s of steps) {
+      if (!isEnforcement(s) || s.safeToday) continue
+      const at = placed.get(s.id)?.start
+      if (!at) continue
+      const key = `${at.slice(0, 10)}|${batchClassOf(s)}`
+      byEvent.set(key, [...(byEvent.get(key) ?? []), s.id])
+    }
+    for (const ids of byEvent.values()) {
+      for (const id of ids) batchWith[id] = ids.filter((x) => x !== id)
+    }
+  }
 
   // ---- Waves read back from the ring dates: one wave per enforcement start week ----
   const waveOf: Record<string, number> = {}
@@ -566,6 +629,7 @@ export function buildSchedule(
     observation: observed,
     waves,
     waveOf,
+    batchWith,
     extendedBy,
     waitingOnSetup,
     waitingOnSetupQuestions,
