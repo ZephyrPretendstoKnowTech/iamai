@@ -26,7 +26,7 @@ const DevSpikes = lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m
 const ComponentsPage = lazy(() => import('./pages/ComponentsPage.tsx').then((m) => ({ default: m.ComponentsPage })))
 import { SHELL } from '../copy/pages.ts'
 import { computeStepStatus } from './stepStatus.ts'
-import { wizardProgress } from '../mapping/wizard.ts'
+import { activeWizardQuestions, wizardProgress } from '../mapping/wizard.ts'
 import type { WizardProgress } from '../mapping/wizard.ts'
 import { loadMappingState } from '../mapping/store.ts'
 import { probeStorage } from '../graph/collect/cache.ts'
@@ -113,7 +113,7 @@ export function App() {
         setTenantName('Contoso Pty Ltd')
         setLastScan({ snapshot, at: snapshot.asOf })
         setBaseline(fixtureBaseline())
-        void loadMappingState(snapshot.tenantId).then((m) => setMapProgress(wizardProgress(m)))
+        void loadMappingState(snapshot.tenantId).then((m) => setMapProgress(wizardProgress(m, activeWizardQuestions(null, { snapshot, state: m }))))
         setReady(true)
       })
       return
@@ -126,11 +126,12 @@ export function App() {
           // Restore the last scan so nobody re-scans just to look around.
           void loadSnapshotRecord<{ snapshot: TenantSnapshot; at: string }>(a.tenantId).then((stored) => {
             if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
+            // The stepper measures completeness against the questions this
+            // tenant is asked, which needs the snapshot (prompt 37 §7).
+            void loadMappingState(a.tenantId).then((m) => setMapProgress(wizardProgress(m, activeWizardQuestions(null, { snapshot: stored?.snapshot ?? null, state: m }))))
           })
           // A blocked store shows as a plain sentence, never as a silently empty app.
           void probeStorage().catch((e: unknown) => setStorageWarning(e instanceof Error ? e.message : String(e)))
-          // Saved Setup answers drive the stepper before Setup is opened.
-          void loadMappingState(a.tenantId).then((m) => setMapProgress(wizardProgress(m)))
           // The loaded baseline comes back too (prompt 14 §6): pinned index by
           // commit, or the uploaded files themselves.
           void loadBaselineRecord<BaselineResult['origin']>(a.tenantId).then(async (origin) => {

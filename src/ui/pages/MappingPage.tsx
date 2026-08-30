@@ -567,8 +567,17 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [knownGroups, state.breakGlassAnswers?.credentialStorage, state.breakGlassAnswers?.signInMonitoring])
   const answers = state.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
+  // Q1 is answered when the accounts are picked AND both attestations are
+  // given, not when the picker changes (prompt 37 §8). Answering on the picker
+  // collapsed the question and unmounted the two questions below it before they
+  // could be reached, so they stayed null and two validation rules returned
+  // unknown, printed as "an answer given in Setup could not be read on this
+  // scan" (T10). No answer had been given, and nothing failed to be read.
+  const attested = (a: typeof answers): boolean => a.credentialStorage !== null && a.signInMonitoring !== null
   const setAnswer = (key: 'credentialStorage' | 'signInMonitoring', value: boolean): void => {
-    update((s) => ({ ...s, breakGlassAnswers: { ...(s.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }), [key]: value } }))
+    const next = { ...(state.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }), [key]: value }
+    update((s) => ({ ...s, breakGlassAnswers: next }))
+    if (state.breakGlassUserIds.length > 0 && attested(next)) answered('breakGlass')
   }
   const ask = (key: 'credentialStorage' | 'signInMonitoring') => (
     <li key={key}>
@@ -598,7 +607,7 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
         onChange={(ids) => {
           update((s) => ({ ...s, breakGlassUserIds: ids }))
           runValidation(ids)
-          if (ids.length > 0) answered('breakGlass')
+          if (ids.length > 0 && attested(answers)) answered('breakGlass')
         }}
       />
       {findings}

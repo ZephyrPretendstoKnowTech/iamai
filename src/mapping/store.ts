@@ -5,6 +5,7 @@ import type { CoverageInput } from '../coverage/coverage.ts'
 import type { MappingQuestion, MappingState } from './types.ts'
 import { emptyMappingState } from './types.ts'
 import { wizardProgress } from './wizard.ts'
+import type { WizardQuestionDef } from './wizard.ts'
 
 export async function loadMappingState(tenantId: string): Promise<MappingState> {
   const stored = await loadMappingRecord<Partial<MappingState>>(tenantId)
@@ -21,6 +22,7 @@ export async function saveMappingState(state: MappingState): Promise<void> {
 export function toCoverageMapping(
   state: MappingState,
   questions: MappingQuestion[],
+  active: WizardQuestionDef[],
 ): NonNullable<CoverageInput['mapping']> {
   const breakGlassUsers = [...state.breakGlassUserIds]
   const exclusionGroups: Record<string, string> = {}
@@ -36,6 +38,6 @@ export function toCoverageMapping(
   return {
     breakGlassUsers,
     exclusionGroups,
-    confirmed: wizardProgress(state).complete,
+    confirmed: wizardProgress(state, active).complete,
   }
 }

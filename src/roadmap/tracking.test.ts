@@ -16,6 +16,7 @@ import { syntheticBaseline } from './fixtures/index.ts'
 import { computeCoverage } from '../coverage/coverage.ts'
 import { buildStrengthLookup } from '../coverage/strength.ts'
 import { buildQuestions } from '../mapping/questions.ts'
+import { activeWizardQuestions } from '../mapping/wizard.ts'
 import { toCoverageMapping } from '../mapping/store.ts'
 
 const NOW = '2026-08-28T10:00:00.000Z'
@@ -124,7 +125,7 @@ test('midflight: a re-plan after a baseline update keeps every done step, its ev
     baselineUnusable: [],
     strengths,
     groupMembers: f.groups,
-    mapping: toCoverageMapping(f.mapping, questions),
+    mapping: toCoverageMapping(f.mapping, questions, activeWizardQuestions(f.baseline, { snapshot: f.snapshot, state: f.mapping })),
   })
   const second = generateRoadmap({ ...first.input, coverage, baseline: updated, questions })
   mergePersisted(second.steps, persisted)

@@ -690,7 +690,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const n = questionNumber(qid)
       if (n === 0 || blockers.some((b) => b.kind === 'setup' && b.questionNumber === n)) return
       if (steps.some((s) => s.id === setupStepId) && !blockedBy.includes(setupStepId)) blockedBy.push(setupStepId)
-      blockers.push({ kind: 'setup', questionNumber: n, label: questionNote(qid) })
+      // The label is a clause in a comma-separated list of causes, so it has to
+      // survive being read mid-sentence. questionNote() is a whole sentence with
+      // its own colon ("Setup question 2 (Exclusion group): which group holds
+      // the policy exclusions"), and joining it produced the run-on the review
+      // caught (T7). The full form stays in unblockNotes, where it is printed
+      // on its own and reads correctly.
+      blockers.push({ kind: 'setup', questionNumber: n, label: BLOCKED.setup([n]) })
       unblockNotes.push(questionNote(qid))
     }
     // Baseline references no answer resolves: block by the question that owns

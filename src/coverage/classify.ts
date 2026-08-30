@@ -406,14 +406,18 @@ export function adHocScoring(facts: PolicyFacts, who: 'all' | 'members' | 'guest
   const session = facts.session.signInFrequencyHours !== null || facts.session.signInFrequencyEveryTime || facts.session.persistentBrowser !== null || facts.session.secureSignInSession || facts.session.appEnforced
   // Controls decide the domain; a location or app condition never does (ux-review-06 §10).
   const blockByLocation = controls.has('block') && facts.locations !== null && facts.locations.include.size > 0
+  // Controls decide the domain, and where they say nothing recognisable the
+  // goal is filed as Other rather than guessed into Identity (prompt 37 §12).
+  // Identity was the fallback, which is how a session control ended up there
+  // (T16); a heading that is merely plausible is worse than an honest one.
+  const identity = controls.has('mfa') || facts.grant?.strength !== undefined || who === 'guests' || blockByLocation
   const domain: Domain =
     who === 'coreAdmins' ? 'Admins'
-    : who === 'guests' ? 'Guests'
     : facts.signInRisk.size > 0 || facts.userRisk.size > 0 ? 'Risk'
     : device ? 'Devices'
     : session && !controls.has('mfa') && !controls.has('block') ? 'Sessions'
-    : blockByLocation ? 'Locations'
-    : 'Identity'
+    : identity ? 'Identity'
+    : 'Other'
   const securityValue =
     facts.grant?.strength === 'phishingResistant' ? 5
     : controls.has('block') ? 4

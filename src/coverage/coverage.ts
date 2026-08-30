@@ -425,10 +425,17 @@ function evaluateGoal(
       ? contributions.some((c) => c.contribution === 'strong')
       : [...effectiveExpected].every((id) => enforced.has(id))
 
+  // A goal the policy delivers for fewer apps than the goal expects is not in
+  // place; it is partly in place (prompt 37 §10). Saying "In place ... Covers
+  // fewer apps than the goal expects" in one breath is the contradiction the
+  // review caught (T13): the caveat is the finding, so it decides the status
+  // rather than trailing after it.
+  const appsNarrower = reasons.some((r) => r.kind === 'apps-narrower')
+
   let status: GoalResult['status']
   if (anyUnresolved) status = 'unknown'
   else if (contributions.length === 0 || disabledOnly) status = 'absent'
-  else if (fullyEnforced) status = 'enforced'
+  else if (fullyEnforced) status = appsNarrower ? 'partial' : 'enforced'
   else if (enforced.size === 0 && reportOnly.size === 0 && weak.size > 0 && reasons.some((r) => r.belowBaseline) && reasons.every((r) => r.belowBaseline || (r.kind === 'excluded' && r.expected)))
     status = 'below-baseline'
   else if (enforced.size > 0 || reportOnly.size > 0 || weak.size > 0) status = 'partial'
@@ -570,7 +577,7 @@ function buildStatement(
   const breakGlassMissing = [...allBreakGlass].filter((id) => !breakGlassIds.has(id))
   const narrower = base.reasons.some((r) => r.kind === 'apps-narrower') ? ' Covers fewer apps than the goal expects.' : ''
 
-  if (status === 'enforced') return inPlaceStatement(goal.name, strongNames, breakGlass, allBreakGlass.size, breakGlassMissing) + narrower + est
+  if (status === 'enforced') return inPlaceStatement(goal.name, strongNames, breakGlass, allBreakGlass.size, breakGlassMissing) + est
   if (status === 'absent') return missingStatement(goal.name, null, baselineMatches[0]?.name ?? null)
   if (status === 'unknown') return unknownStatement(goal.name) + est
   if (status === 'not-applicable' || status === 'licence-limited') return `**${goal.name}**.`

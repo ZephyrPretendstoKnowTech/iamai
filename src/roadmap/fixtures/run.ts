@@ -3,6 +3,7 @@
 import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { buildQuestions } from '../../mapping/questions.ts'
+import { activeWizardQuestions } from '../../mapping/wizard.ts'
 import { toCoverageMapping } from '../../mapping/store.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
@@ -35,7 +36,7 @@ export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}): Fixtur
     baselineUnusable: f.baseline.report.warnings,
     strengths,
     groupMembers: f.groups,
-    mapping: toCoverageMapping(f.mapping, questions),
+    mapping: toCoverageMapping(f.mapping, questions, activeWizardQuestions(f.baseline, { snapshot, state: f.mapping })),
     facetOverrides: f.mapping.facetOverrides,
   })
   const viability = buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability)

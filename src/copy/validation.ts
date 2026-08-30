@@ -390,8 +390,19 @@ export const CHECKS_PAGE = {
   title: 'Every check IAMAI runs',
   intro:
     'Generated from the rule registry the code runs from. Each check names the object it looks at, what it looks for, and what happens when it fails. Nothing here changes the tenant.',
+  // The total comes first (prompt 37 §13). The headline used to give the
+  // severity split and the sections below gave the subject split, with nothing
+  // saying they were two cuts of one set — so the numbers looked like they
+  // failed to reconcile when they always added up (T17). Made worse by the
+  // first section happening to hold exactly as many checks as there are
+  // must-fix ones, which invites the reader to match them up.
   counts: (blockers: number, warnings: number, notes: number): string =>
-    `${count(blockers, 'must-fix check')}, ${count(warnings, 'recommended check')} and ${count(notes, 'note')}.`,
+    `${count(blockers + warnings + notes, 'check')} in all: ${count(blockers, 'must-fix check')}, ${count(warnings, 'recommended check')} and ${count(notes, 'note')}.`,
+  /** Said above the tables, so the second breakdown is not read as an expansion of the first. */
+  bySubject: (subjects: number): string =>
+    `The same checks again, grouped by what they look at (${subjects} groups). Every check appears in exactly one group.`,
+  sectionCount: (blockers: number, warnings: number, notes: number): string =>
+    [blockers > 0 ? `${blockers} must-fix` : null, warnings > 0 ? `${warnings} recommended` : null, notes > 0 ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : null].filter(Boolean).join(', '),
   columns: { id: 'Check', what: 'What it looks for', severity: 'If it fails', why: 'Why it matters', needs: 'Needs' },
   needsNone: 'the answer given in Setup',
   unknownRule: 'A check whose data is missing reports that it could not be run. On a must-fix check, that holds the plan exactly as a failure does.',

@@ -53,6 +53,7 @@ import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
 import { changesSince, groupGrowth, progressHeadline, stepProgress } from '../../roadmap/tracking.ts'
 import { peopleCounts, trackableSteps } from '../../derive/sets.ts'
+import { activeWizardQuestions } from '../../mapping/wizard.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { savedStepOf } from '../../roadmap/progress.ts'
 import type { Dependency } from '../../roadmap/schedule.ts'
@@ -222,7 +223,7 @@ export function RoadmapPage({
       baselineUnusable: baseline.pkg.report.warnings,
       strengths,
       groupMembers: groups,
-      mapping: toCoverageMapping(mapping, questions),
+      mapping: toCoverageMapping(mapping, questions, activeWizardQuestions(baseline.pkg, { snapshot, state: mapping })),
       facetOverrides: mapping.facetOverrides,
     })
     // Activity is measured against the scan, not the clock (prompt 37 §3).
@@ -1755,7 +1756,10 @@ function StepCard({
             <div className={`verdict ${step.safeVerdict.safe ? 'is-safe' : ''}`}>{step.safeVerdict.safe ? SAFE.verdictSafe : step.safeVerdict.sentence}</div>
           )}
           <div className="sub">{step.impact}</div>
-          <div className="sub state-reason">{step.stateReason}</div>
+          {/* One blocked-reason list per step (prompt 37 §6). A blocked step's
+              causes are printed below, as links; repeating them here as prose
+              was the duplicate the review caught (T8). */}
+          {step.status !== 'blocked' && <div className="sub state-reason">{step.stateReason}</div>}
         </>
       }
     >
@@ -2017,7 +2021,25 @@ function StepCard({
         </div>
       )}
 
-      {/* 7. Ring plan */}
+      {/* 7. Ring plan, or why there is not one (prompt 37 §11) */}
+      {step.rings.length === 0 && (
+        <>
+          <h4>
+            <Term id="ring">{SECTION.ringPlan}</Term>
+          </h4>
+          <p className="reason">
+            {step.status === 'done' || step.status === 'skipped'
+              ? SECTION.noRings.done
+              : step.kind === 'prerequisite'
+                ? SECTION.noRings.prerequisite
+                : step.kind === 'verify'
+                  ? SECTION.noRings.verify
+                  : step.kind === 'recurring'
+                    ? SECTION.noRings.recurring
+                    : SECTION.noRings.other}
+          </p>
+        </>
+      )}
       {step.rings.length > 0 && (
         <>
           <h4>
