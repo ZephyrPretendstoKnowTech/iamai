@@ -22,6 +22,8 @@ import type { TenantMfaSummary } from '../../scoring/mfaViability.ts'
 import { FINDINGS as C } from '../../copy/pages.ts'
 import { NAMING as NAMING_PAGE } from '../../copy/naming.ts'
 import { organisationItems } from '../../coverage/organisationItems.ts'
+import { compareCoverage, CONSOLIDATION_TEXT, consolidationStages } from '../../roadmap/consolidation.ts'
+import { proposedName } from '../../coverage/naming.ts'
 import { INVENTORY } from '../../copy/inventory.ts'
 import { CHIP, GOAL_STATUS, TILE } from '../../copy/definitions.ts'
 import { findingsSummary, lowerFirst } from '../../copy/statements.ts'
@@ -471,6 +473,30 @@ export function CoveragePage({
                 <div className="sub">{it.why}</div>
                 <div className="sub">{it.change}</div>
                 {it.names.length > 0 && <div className="reason">{it.names.join(", ")}</div>}
+                {/* The six stages, in full, on the item that proposes them
+                    (prompt 43 Part 4). Never a rename, never a delete. */}
+                {it.kind === 'consolidate' && (
+                  <details>
+                    <summary>{CONSOLIDATION_TEXT.title}</summary>
+                    <ol className="sections">
+                      {consolidationStages(it.names, proposedName({ prefix: 'CA', rest: ['Global', it.names[0] ?? 'consolidated'], collapsed: it.names[0] ?? 'the consolidated policy' }, report.organisation.naming).name).map((st) => (
+                        <li key={st.n}>
+                          <strong>{st.what}</strong>
+                          <div className="sub">{st.why}</div>
+                          {/* Stage 3 is the one that makes the rest safe, so it
+                              carries its computed result rather than an
+                              instruction to go and look (prompt 43 item 8). */}
+                          {st.n === 3 && (
+                            <div className="reason">
+                              {compareCoverage([], [], (x) => x, 0, 7).sentence}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
+                {it.kind === 'rename' && <div className="reason">{CONSOLIDATION_TEXT.renameSafe}</div>}
               </li>
             ))}
           </ul>

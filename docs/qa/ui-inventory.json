@@ -1,5 +1,5 @@
 {
- "fingerprint": "07cf6c732009da98",
+ "fingerprint": "0ca1763b8384ce30",
  "surfaces": [
   {
    "name": "Start",
@@ -2373,6 +2373,7 @@
     "The change",
     "Ring plan",
     "How to verify",
+    "What this window cannot see",
     "Why now",
     "Exit criteria",
     "Rollback",
@@ -2403,6 +2404,7 @@
     "In report-only (1)",
     "Ready to enforce (0)",
     "Skipped (0)",
+    "Answer this",
     "Copy for your manager",
     "Copy as prompt",
     "Collapse"
@@ -2547,6 +2549,11 @@
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.",
     "Add a second account above",
     "Good looks like: The must-fix check passes on the next scan.",
+    "Answer any of these and IAMAI acts on it.",
+    "Leaving one unanswered does not hold the change up; it is stated here so nothing is mistaken for safety.",
+    "The records cannot confirm this.",
+    "Does anyone sign in less than monthly?",
+    "Are there shared or kiosk accounts?",
     "The change windows before it are taken.",
     "This is the first one free.",
     "It waits on nothing: it can start as soon as its window allows.",
@@ -2607,6 +2614,11 @@
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.": 1,
     "Add a second account above": 1,
     "Good looks like: The must-fix check passes on the next scan.": 1,
+    "Answer any of these and IAMAI acts on it.": 1,
+    "Leaving one unanswered does not hold the change up; it is stated here so nothing is mistaken for safety.": 1,
+    "The records cannot confirm this.": 1,
+    "Does anyone sign in less than monthly?": 1,
+    "Are there shared or kiosk accounts?": 1,
     "The change windows before it are taken.": 1,
     "This is the first one free.": 1,
     "It waits on nothing: it can start as soon as its window allows.": 1,
@@ -2669,6 +2681,11 @@
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.": 1,
     "Add a second account above": 1,
     "Good looks like: The must-fix check passes on the next scan.": 1,
+    "Answer any of these and IAMAI acts on it.": 1,
+    "Leaving one unanswered does not hold the change up; it is stated here so nothing is mistaken for safety.": 1,
+    "The records cannot confirm this.": 1,
+    "Does anyone sign in less than monthly?": 1,
+    "Are there shared or kiosk accounts?": 1,
     "The change windows before it are taken.": 1,
     "This is the first one free.": 1,
     "It waits on nothing: it can start as soon as its window allows.": 1,
@@ -2721,9 +2738,9 @@
     "· Medium-risk users must change their password · Entra ID P2": 1
    },
    "wordCounts": {
-    "headings": 137,
+    "headings": 142,
     "tabs": 0,
-    "buttons": 48,
+    "buttons": 50,
     "options": 0,
     "links": 730,
     "chips": 37,
@@ -2732,8 +2749,8 @@
     "empty": 0,
     "summaries": 39,
     "tips": 15,
-    "sentences": 775,
-    "total": 1791
+    "sentences": 821,
+    "total": 1844
    },
    "unnamedControls": []
   },

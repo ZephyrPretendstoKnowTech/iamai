@@ -59,6 +59,8 @@ import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
+import { proposedGroupName, proposedLocationName, proposedStrengthName } from '../coverage/naming.ts'
+import { NAMING as STEP_NAMING } from '../copy/steps.ts'
 import { NAMED_BELOW } from './comms.ts'
 import { campaignDays } from './campaign.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
@@ -560,7 +562,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const geStepId = 's-prereq-exclusion-group'
   if (geMissing) {
     const p = PREREQ.globalExclusion
-    steps.push(prereq(geStepId, p.title, p.why, p.how, p.exit))
+    // Every object the plan asks for carries a proposed name, in the tenant's own
+    // convention (prompt 43 item 4). The copy's example name stays as the shape;
+    // this adds the one IAMAI would actually use here.
+    const proposed = proposedGroupName('Exclusion', 'Break-glass', naming)
+    steps.push(prereq(geStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
   }
   const locMissing =
     canUseConditionalAccess &&
@@ -570,7 +576,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const locStepId = 's-prereq-trusted-location'
   if (locMissing) {
     const p = PREREQ.trustedLocation
-    steps.push(prereq(locStepId, p.title, p.why, p.how, p.exit))
+    const proposed = proposedLocationName('Trusted', 'Head office', naming)
+    steps.push(prereq(locStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
   }
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
@@ -584,13 +591,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'enforced' && r.status !== 'not-applicable')
   if (countriesMissing) {
     const p = PREREQ.allowedCountries
-    steps.push(prereq(countriesStepId, p.title, p.why, p.how(mapping.allowedCountries.map(countryName)), p.exit))
+    const proposed = proposedLocationName('Allowed', 'Countries', naming)
+    steps.push(prereq(countriesStepId, p.title, p.why, [...p.how(mapping.allowedCountries.map(countryName)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   const saStepId = 's-prereq-service-accounts-group'
   if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
     const p = PREREQ.serviceAccountsGroup
-    steps.push(prereq(saStepId, p.title, p.why, p.how(mapping.serviceAccountUserIds.map(nameOf)), p.exit))
+    const proposed = proposedGroupName('Exception', 'Service accounts', naming)
+    steps.push(prereq(saStepId, p.title, p.why, [...p.how(mapping.serviceAccountUserIds.map(nameOf)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
   }
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
