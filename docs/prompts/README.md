@@ -47,3 +47,7 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `33-mvp-guidance-audit.md` | Guidance audit as an identity architect: per-step-family audit sheets (Layer B), omission audit against Microsoft Learn (Layer E), necessity audit for a ten-person business (Layer F), sequence-safety property tests (Layer C), and a Learn citation on every rule and warning | 32 done; docs/design/audit-program.md present |
 | `34-trust-surfaces-and-feedback.md` | Permissions disclosure on Connect generated from the collector registry, a feedback channel in the footer, and the GitHub Pages deploy with a custom domain | 33 done |
 | `35-home-page-and-tool-path.md` | getiamai.com becomes a home page for IAMAI as a whole and the planner moves to /rollout/; TOOL_PATH as the single build constant, a static hand-written home page with tool cards from a data file, and the redirect URIs the move needs | 34 done; the site live at getiamai.com |
+| `36-foundations-inventory-lint-schema.md` | UI inventory generator, build-failing lint rules, Setup question schema | 35 done; docs/design/review-method.md and docs/qa/review-07-findings.md present |
+| `37-truth-and-consistency.md` | One source per number, blocked reasons, rings, schedule bundling and tenant rhythm | 36 done |
+| `38-remove-and-rewrite.md` | 22 removals, Start page rewrite, 20 copy fixes | 37 done |
+| `39-layout-platform-permissions.md` | Sidebar, Scan order, tabs, light theme, responsive, Application.Read.All decision | 38 done |
