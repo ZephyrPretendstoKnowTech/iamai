@@ -9,7 +9,7 @@ const OUT = `docs/screens/${LABEL}`
 const PORT = Number(process.env.SHOTS_PORT ?? 5203)
 const CDP_PORT = Number(process.env.SHOTS_CDP_PORT ?? 9448)
 const BASE = `http://localhost:${PORT}/rollout/?dev=1&mock=1`
-const PAGES = ['/start', '/connect', '/baseline', '/scan', '/mapping', '/coverage', '/roadmap', '/reads', '/checks', '/licensing', '/naming']
+const PAGES = ['/start', '/connect', '/baseline', '/scan', '/mapping', '/coverage', '/roadmap', '/reads', '/checks', '/licensing', '/naming', '/recovery']
 const WIDTHS = [700, 1440]
 
 const CHROME = [

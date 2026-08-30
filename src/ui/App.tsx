@@ -19,6 +19,7 @@ import { RoadmapPage } from './pages/RoadmapPage.tsx'
 import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
 import { ChecksPage } from './pages/ChecksPage.tsx'
 import { NamingPage } from './pages/NamingPage.tsx'
+import { RecoveryCard } from './pages/RecoveryCard.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { PackagePage } from './pages/PackagePage.tsx'
 
@@ -237,6 +238,7 @@ export function App() {
           {route === 'reads' && <WhatIamaiReads />}
           {route === 'checks' && <ChecksPage />}
       {route === 'naming' && <NamingPage scan={lastScan} />}
+      {route === 'recovery' && <RecoveryCard scan={lastScan} />}
           {route === 'components' && import.meta.env.DEV && (
             <Suspense fallback={null}>
               <ComponentsPage />

@@ -63,7 +63,7 @@ test('an unredacted export is only reachable from a surface that warns', () => {
   const declared = [...guard.matchAll(/'([a-z-]+)'/g)]
     .map((m) => m[1])
     .filter((v) => guard.includes(`UnredactedSurface = `) && guard.slice(guard.indexOf('UnredactedSurface ='), guard.indexOf('\n', guard.indexOf('UnredactedSurface ='))).includes(`'${v}'`))
-  assert.deepEqual(declared.sort(), ['grounding-bundle', 'print-document'], 'the set of unredacted surfaces changed')
+  assert.deepEqual(declared.sort(), ['grounding-bundle', 'print-document', 'recovery-card'], 'the set of unredacted surfaces changed')
 
   // Each surface may be claimed from exactly one place, and that place is the
   // component that renders the warning.

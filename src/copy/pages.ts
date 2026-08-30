@@ -62,6 +62,7 @@ export const SHELL = {
     reads: 'What IAMAI reads',
     checks: 'Every check IAMAI runs',
     naming: 'Naming policies and groups',
+    recovery: 'Recovery card',
     inventory: 'Inventory',
     prompts: 'Prompt pack',
   },
