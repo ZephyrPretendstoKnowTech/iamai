@@ -109,7 +109,7 @@ const waitFor = async (expr, ms = 15000) => {
   return false
 }
 const text = () => evaluate('document.body.innerText')
-const clickText = (re) => evaluate(`(() => { const b = [...document.querySelectorAll('a, button')].find(x => ${re}.test(x.textContent.trim())); if (b) b.click(); return !!b })()`)
+const clickText = (re) => evaluate(`(() => { const b = [...document.querySelectorAll('a, button, summary')].find(x => ${re}.test(x.textContent.trim())); if (b) b.click(); return !!b })()`)
 
 await send('Page.enable')
 await send('Runtime.enable')
@@ -243,6 +243,31 @@ try {
   await go('licensing')
   t = await text()
   check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))
+
+  // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1).
+  await go('connect')
+  await sleep(700)
+  check(
+    'Connect: the permissions disclosure opens and lists the scopes',
+    (await clickText('/What IAMAI will ask for/')) && (await waitFor(`/Policy.Read.All/.test(document.body.innerText)`)),
+  )
+  t = await text()
+  check('Connect: it says the permissions are read-only', /There is no write permission in the set/.test(t))
+  check('Connect: it says what consent creates', /an enterprise application named IAMAI/.test(t))
+  check('Connect: it gives the removal path', /Enterprise applications/.test(t) && /Properties . Delete|Properties → Delete/.test(t))
+  check('Connect: a scope nothing uses says so rather than implying it is spent', /Not used by anything IAMAI runs today/.test(t))
+
+  // The feedback channel shows the message before anything opens (prompt 34 part 2).
+  await go('roadmap')
+  await sleep(1200)
+  check(
+    'Feedback: the footer link opens the panel',
+    (await clickText('/Something wrong or unclear/')) && (await waitFor(`/What the email will contain/.test(document.body.innerText)`)),
+  )
+  t = await text()
+  check('Feedback: the message shows the page, version and browser', /Page: #\/roadmap/.test(t) && /Version:/.test(t) && /Browser:/.test(t))
+  check('Feedback: nothing is sent automatically', /Nothing is sent from here/.test(t))
+  check('Feedback: the scan summary is opt-in and not attached by default', !/Users in the directory/.test(t))
 
   // The rule registry renders itself (validation-rules.md 5).
   await go('checks')

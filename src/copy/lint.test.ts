@@ -24,11 +24,22 @@ const LITERAL = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`
 
 export type Violation = { file: string; line: number; rule: string; text: string }
 
+/** Strings that are the author speaking, not the product (ux-review-05 §30). */
+const AUTHOR_VOICE = new Set([
+  'Follow me here:',
+  'Something wrong or unclear? Tell me.',
+  'Tell me what is wrong',
+  'This tool is only useful if it is accurate. If something looks wrong, I want to know.',
+  'Nothing is sent from here. Your mail app opens with the text above, and you decide whether to send it.',
+])
+
 const RULES: { rule: string; test: (s: string) => boolean }[] = [
   // An en dash between digits is a range (2–4 weeks), not punctuation.
   { rule: 'dash', test: (s) => /—/.test(s) || /(?<!\d)–|–(?!\d)/.test(s) },
   // The footer is the author's own voice by agreement (ux-review-05 §30), not IAMAI's.
-  { rule: 'first-person', test: (s) => /(^|[^\w'])(I|I'd|I'll|I'm|I've|me|myself|my|let's)(?=[^\w']|$)/.test(s) && !/^config:me$/.test(s) && s !== 'Follow me here:' },
+  // The footer and the feedback panel are the author's own voice by agreement
+  // (ux-review-05 §30), not IAMAI's. Everything else stays third person.
+  { rule: 'first-person', test: (s) => /(^|[^\w'])(I|I'd|I'll|I'm|I've|me|myself|my|let's)(?=[^\w']|$)/.test(s) && !/^config:me$/.test(s) && !AUTHOR_VOICE.has(s) },
   { rule: 'not-x-but-y', test: (s) => /\bnot\b[^.!?]{0,60},\s*but\b/i.test(s) || /\bit'?s not\b[^.!?]{0,80}\bit'?s\b/i.test(s) },
   { rule: 'banned-phrase', test: (s) => /credit where due|\bsimply\b|\bseamless|\brobust\b/i.test(s) },
   // Raw ISO 8601 must never be rendered (prompt 14 §4).

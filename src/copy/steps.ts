@@ -91,6 +91,7 @@ export const PRINT = {
     pace: 'Pace',
     pin: 'Baseline version',
     prepared: (by: string) => `Prepared with IAMAI by ${by}`,
+    feedback: 'Something in this plan look wrong? feedback@getiamai.com',
     readOnly: 'IAMAI reads the tenant and never writes to it. Every change in this document is carried out by a person, in the portal, in the order given; every impact stated here is predicted from the scan and confirmed in report-only before enforcement.',
   },
   progress: 'Progress',

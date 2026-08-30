@@ -52,3 +52,11 @@ collector registry.
 The default baseline is [Jon Hope's ConditionalAccessPolicies](https://github.com/Jhope188/ConditionalAccessPolicies).
 IAMAI never bundles his policy content; it fetches raw files at a pinned commit and quotes
 his Intent text with attribution.
+
+## Something wrong or unclear?
+
+This tool is only useful if it is accurate. If something looks wrong, tell me:
+**feedback@getiamai.com**, or open an issue on this repository. There is a
+"Something wrong or unclear?" link in the footer of every page that prefills the
+message with the page, the version and the browser, and, only if you tick the
+box, a summary of the scan in counts with no names and no tenant id.

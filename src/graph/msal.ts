@@ -2,19 +2,11 @@ import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/ms
 import type { AccountInfo } from '@azure/msal-browser'
 import { SessionExpiredError } from './collect/tokenGate.ts'
 
-// SPEC.md §4 — the full read scope set, requested once at sign-in (no staged consent).
-export const GRAPH_SCOPES = [
-  'Policy.Read.All',
-  'Directory.Read.All',
-  'Application.Read.All',
-  'AuditLog.Read.All',
-  'RoleManagement.Read.Directory',
-  'UserAuthenticationMethod.Read.All',
-  'Reports.Read.All',
-  'openid',
-  'profile',
-  'offline_access',
-]
+// SPEC.md §4 — the full read scope set, requested once at sign-in (no staged
+// consent). The list itself lives in scopes.ts so it can be read without a
+// browser; re-exported here because this is where callers expect it.
+export { GRAPH_SCOPES } from './scopes.ts'
+import { GRAPH_SCOPES } from './scopes.ts'
 
 export const msal = new PublicClientApplication({
   auth: {

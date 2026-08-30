@@ -4,6 +4,7 @@ import { signIn, signOut } from '../../graph/msal.ts'
 import { CONNECT } from '../../copy/pages.ts'
 import { whenAt } from '../../copy/dates.ts'
 import { Button, Card, InfoTip } from '../components/index.ts'
+import { PermissionsDisclosure } from '../PermissionsDisclosure.tsx'
 import { REPO_URL, StepFrame } from '../shell/AppShell.tsx'
 
 export function ConnectPage({
@@ -74,6 +75,8 @@ export function ConnectPage({
           </Button>
         </Card>
       )}
+      {/* What the consent screen will ask for, before it appears (prompt 34 §1). */}
+      <PermissionsDisclosure />
     </StepFrame>
   )
 }

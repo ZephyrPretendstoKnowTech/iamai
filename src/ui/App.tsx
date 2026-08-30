@@ -158,7 +158,8 @@ export function App() {
   })
 
   return (
-    <AppShell account={account} tenantName={tenantName} route={route} stepStatus={stepStatus}>
+    <AppShell account={account} tenantName={tenantName} route={route} stepStatus={stepStatus}
+          snapshot={lastScan?.snapshot ?? null}>
       {!ready ? (
         SHELL.loading
       ) : (
