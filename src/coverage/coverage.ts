@@ -434,7 +434,7 @@ function evaluateGoal(
   else if (enforced.size > 0 || reportOnly.size > 0 || weak.size > 0) status = 'partial'
   else status = 'absent'
 
-  const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot)
+  const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot, assumed.users)
   return { ...base, status, statement }
 }
 
@@ -554,18 +554,23 @@ function buildStatement(
   estimated: boolean,
   baselineMatches: PolicyFacts[],
   snapshot: TenantSnapshot,
+  allBreakGlass: ReadonlySet<string>,
 ): string {
   const noun = who === 'coreAdmins' ? 'admin' : who === 'guests' ? 'guest' : who === 'members' ? 'member' : 'user'
   const strongNames = base.candidates.filter((c) => c.contribution === 'strong').map((c) => c.policyName)
   const est = estimated ? ' Counts are estimated — a group is over the membership cap.' : ''
   // Only break-glass exclusions are called break-glass; service-account and
   // other allowed exclusions are expected but named differently in the detail.
-  const breakGlass = new Set(
+  const breakGlassIds = new Set(
     base.reasons.filter((r) => r.kind === 'excluded' && r.expected && (r.role ?? '').includes('breakGlass')).flatMap((r) => r.userIds),
-  ).size
+  )
+  const breakGlass = breakGlassIds.size
+  // Which accounts, not just how many, when this goal excludes fewer than the
+  // tenant's full break-glass set (prompt 37 §5, T14).
+  const breakGlassMissing = [...allBreakGlass].filter((id) => !breakGlassIds.has(id))
   const narrower = base.reasons.some((r) => r.kind === 'apps-narrower') ? ' Covers fewer apps than the goal expects.' : ''
 
-  if (status === 'enforced') return inPlaceStatement(goal.name, strongNames, breakGlass) + narrower + est
+  if (status === 'enforced') return inPlaceStatement(goal.name, strongNames, breakGlass, allBreakGlass.size, breakGlassMissing) + narrower + est
   if (status === 'absent') return missingStatement(goal.name, null, baselineMatches[0]?.name ?? null)
   if (status === 'unknown') return unknownStatement(goal.name) + est
   if (status === 'not-applicable' || status === 'licence-limited') return `**${goal.name}**.`

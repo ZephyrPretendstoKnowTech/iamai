@@ -7,6 +7,13 @@ import { EVIDENCE_WINDOW_DAYS } from '../graph/collect/constants.ts'
 /** Every headline percentage names its population and, where one applies, its window (ux-review-04 §1). */
 export const POPULATION = { enabled: 'enabled users', active: 'active users', scored: 'scored goals' } as const
 export const WINDOW = `the last ${EVIDENCE_WINDOW_DAYS} days`
+/**
+ * Said once, appended to every tile that counts people (prompt 37 §4). A shared
+ * mailbox has no MFA method and never will, so counting it makes a tenant look
+ * less ready than it is; the tiles have to say it is left out, or the number
+ * looks wrong to anyone who counts the directory by hand.
+ */
+export const NOT_PEOPLE = 'Shared mailboxes and other accounts that are not people are left out.'
 
 export type Definition = { title: string; text: string }
 
@@ -82,19 +89,19 @@ export const TILE = {
   // users, names that population, and names the sign-in window.
   mfaProven: {
     title: `MFA proven in ${WINDOW}`,
-    text: `Enabled users with a successful MFA sign-in in the collected sign-in records (${WINDOW}), as a share of all enabled users. Proven means seen in a record, never assumed from a registered method; this is the share the old challenged rate described.`,
+    text: `Enabled users with a successful MFA sign-in in the collected sign-in records (${WINDOW}), as a share of all enabled users. Proven means seen in a record, never assumed from a registered method; this is the share the old challenged rate described. ${NOT_PEOPLE}`,
   },
   noMethod: {
     title: 'No MFA method',
-    text: 'Enabled users with no MFA-capable method registered, as a share of all enabled users. Email and security questions do not count.',
+    text: 'Enabled users with no MFA-capable method registered, as a share of all enabled users. Email and security questions do not count. ' + NOT_PEOPLE,
   },
   registeredUnproven: {
     title: 'Registered but unproven',
-    text: `Enabled users with a method but no successful MFA sign-in in ${WINDOW}: never prompted, or possibly broken. As a share of all enabled users.`,
+    text: `Enabled users with a method but no successful MFA sign-in in ${WINDOW}: never prompted, or possibly broken. As a share of all enabled users. ${NOT_PEOPLE}`,
   },
   toSetUp: {
     title: 'To set up before enforcement',
-    text: `No MFA method plus Registered but unproven, over all enabled users: the people the verification campaign has to work through before any MFA policy is enforced.`,
+    text: `No MFA method plus Registered but unproven, over all enabled users: the people the verification campaign has to work through before any MFA policy is enforced. ${NOT_PEOPLE}`,
   },
   readyToday: { title: 'Ready today', text: 'Steps nothing blocks: they can start on their scheduled date. Zero here is a state, not a failure: everything remaining waits on something the plan names.' },
   stepsDone: { title: 'Steps done', text: 'Plan steps already delivered by existing policies or completed since the plan started.' },

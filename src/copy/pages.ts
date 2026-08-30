@@ -311,10 +311,13 @@ export const FINDINGS = {
   sort: { priority: 'Priority', value: 'Security value', effort: 'Effort', disruption: 'Disruption' } as Record<string, string>,
   whyMatters: 'Why this matters',
   proposedName: 'Proposed name:',
-  goalCounts: (inBaseline: number, apply: number) =>
-    inBaseline === apply
-      ? `${count(inBaseline, 'goal')} in this baseline; every one applies to this tenant.`
-      : `${count(inBaseline, 'goal')} in this baseline, ${apply} apply to this tenant. The rest are under Details with the reason each one does not apply.`,
+  // Both numbers are over the goals IAMAI evaluated, so "the rest" is exactly
+  // what Details holds. The first used to count matched goals in the baseline
+  // package instead, a different set, which let the second exceed it (T3).
+  goalCounts: (considered: number, apply: number) =>
+    considered === apply
+      ? `${count(considered, 'goal')} considered; every one applies to this tenant.`
+      : `${count(considered, 'goal')} considered, ${apply} apply to this tenant. The rest are under Details with the reason each one does not apply.`,
   howToFix: 'How to fix this',
   fixText: (goal: string) => `The Roadmap has a dated step for "${goal}" with the exact change, who it touches, and what to check before enforcing.`,
   fixLink: 'Open the step',

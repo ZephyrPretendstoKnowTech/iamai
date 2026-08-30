@@ -78,7 +78,7 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
   }, [referencedGroups, snapshot.tenantId])
 
   const names = useMemo(() => buildNameDirectory(snapshot, groups ?? []), [snapshot, groups])
-  const viability = useMemo(() => buildViabilityInputs(snapshot, new Date().toISOString()).map(scoreMfaViability), [snapshot])
+  const viability = useMemo(() => buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability), [snapshot])
   const viabilityById = useMemo(() => new Map(viability.map((v) => [v.userId, v])), [viability])
   const userById = useMemo(() => new Map(snapshot.users.map((u) => [u.id, u])), [snapshot])
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadPlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { applicableGoals, goalCounts } from '../../derive/sets.ts'
 import { computeCoverage } from '../../coverage/coverage.ts'
 import type { CoverageReport, GoalResult, GoalStatus } from '../../coverage/types.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
@@ -34,7 +35,6 @@ import { arrangeGoals } from '../../scoring/arrange.ts'
 import type { GroupBy } from '../../scoring/arrange.ts'
 import type { GoalScore, ScoreSort } from '../../scoring/priority.ts'
 import type { BaselineResult } from './BaselinePage.tsx'
-import { goalsCoveredBy } from './BaselinePage.tsx'
 
 const STATUS_CHIP: Record<GoalStatus, ChipStatus> = {
   'below-baseline': 'warning',
@@ -158,7 +158,7 @@ export function CoveragePage({
       mapping: mapping && baseline ? toCoverageMapping(mapping, questions) : undefined,
       facetOverrides: mapping?.facetOverrides,
     })
-    const viability = buildViabilityInputs(snapshot, new Date().toISOString()).map(scoreMfaViability)
+    const viability = buildViabilityInputs(snapshot, snapshot.asOf).map(scoreMfaViability)
     const summary = summarizeTenant(viability)
     const names = buildNameDirectory(snapshot, groups)
     const scores = new Map<string, GoalScore | null>(report.results.map((r) => [r.goal.id, scoreResult(r, snapshot, viability)]))
@@ -216,14 +216,19 @@ export function CoveragePage({
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'this tenant'
   const enabledPolicies = tenantPolicies.filter((p) => (p as { state?: string }).state === 'enabled').length
-  const enforced = report.results.filter((r) => r.status === 'enforced')
-  const partial = report.results.filter((r) => r.status === 'partial' || r.status === 'below-baseline')
-  const absent = report.results.filter((r) => r.status === 'absent')
-  const unknown = report.results.filter((r) => r.status === 'unknown')
+  // Every goal number on this page comes from one set (prompt 37 §1). The page
+  // used to derive each of these inline, and pair them with a denominator from
+  // goalsCoveredBy() — which counts matched goals in the unfiltered baseline
+  // package, a different set over different data. That is how the header came
+  // to read "1 goal in this baseline, 16 apply to this tenant" (T3).
+  const goals = goalCounts(report)
+  const applicable = applicableGoals(report)
+  const enforced = applicable.filter((r) => r.status === 'enforced')
+  const partial = applicable.filter((r) => r.status === 'partial' || r.status === 'below-baseline')
+  const absent = applicable.filter((r) => r.status === 'absent')
+  const unknown = applicable.filter((r) => r.status === 'unknown')
   const licence = report.results.filter((r) => r.status === 'licence-limited')
-  const scoredCount = report.results.filter((r) => r.status !== 'not-applicable' && r.status !== 'licence-limited').length
-  // Same count as the Baseline step (ux-review-05 §9): catalogue goals the baseline has a policy for, plus its ad-hoc goals.
-  const baselineGoals = baseline ? goalsCoveredBy(baseline.pkg) : report.results.length
+  const scoredCount = goals.applicable
   const active = summary.activityCounts.active
   const nameify = (s: string) => nameifyText(s, names)
 
@@ -473,7 +478,7 @@ export function CoveragePage({
   return (
     <StepFrame title={C.title} does={C.does} needs={needs} next="roadmap" nextLabel={C.next}>
       <ScanAge at={scan.at} baseline={baseline?.source ?? null} />
-      <p className="reason">{C.goalCounts(baselineGoals, scoredCount)}</p>
+      <p className="reason">{C.goalCounts(report.results.length, goals.applicable)}</p>
       <Tabs
         tabs={[
           { id: 'summary', label: C.tabs.summary, render: summaryTab },
