@@ -252,8 +252,9 @@ const CASES: Record<string, Case> = {
     },
   },
   'bg.drilled': { target: bgId, fail: (b) => { userAt(b, bgId(b)).lastSuccessfulSignIn = null } },
-  'bg.credentialStorage': { target: bgId, unknown: 'answers', fail: (b) => { b.state.breakGlassAnswers = { credentialStorage: false, signInMonitoring: true } } },
-  'bg.signInMonitoring': { target: bgId, unknown: 'answers', fail: (b) => { b.state.breakGlassAnswers = { credentialStorage: true, signInMonitoring: false } } },
+  // An absent answer is "not yet done", never unknown (prompt 46 item 21).
+  'bg.credentialStorage': { target: bgId, unknown: 'never', fail: (b) => { b.state.breakGlassAnswers = { credentialStorage: null, signInMonitoring: true } } },
+  'bg.signInMonitoring': { target: bgId, unknown: 'never', fail: (b) => { b.state.breakGlassAnswers = { credentialStorage: true, signInMonitoring: null } } },
   'bg.nameIdentifiesPurpose': { target: bgId, fail: (b) => { userAt(b, bgId(b)).displayName = 'Alex Garcia' } },
   // Notes report a fact either way; "fail" for them is the absence of the fact.
   // R10 inverted what these three report. The quiet state — never signed in, no

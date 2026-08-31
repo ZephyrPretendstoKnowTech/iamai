@@ -9,6 +9,7 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { MappingState, ValidationResult } from '../mapping/types.ts'
 import { evaluateSubject, isBlocking } from './rules.ts'
 import type { GroupFacts, RuleResult, RuleSubject, ValidationContext } from './rules.ts'
+import { HOUSEKEEPING } from '../copy/validation.ts'
 
 export type ValidationInputs = {
   snapshot: TenantSnapshot
@@ -79,6 +80,8 @@ export type SubjectReport = {
   targets: { target: unknown; label: string; results: RuleResult[] }[]
   blocking: RuleResult[]
   warnings: RuleResult[]
+  /** Checks a failed read kept from running: one housekeeping line, never a recommendation. */
+  notRun: RuleResult[]
 }
 
 function labelOf(snapshot: TenantSnapshot, target: unknown): string {
@@ -97,8 +100,24 @@ export function reportFor(subject: RuleSubject, targets: unknown[], ctx: Validat
     subject,
     targets: perTarget,
     blocking: all.filter(isBlocking),
-    warnings: all.filter((r) => r.severity === 'warning' && (r.outcome === 'fail' || r.outcome === 'unknown') && Boolean(r.finding)),
+    // A check that could not run is not a recommendation (prompt 46 item 21):
+    // it is counted once, in the housekeeping line below, never rendered as
+    // something to fix.
+    warnings: all.filter((r) => r.severity === 'warning' && r.outcome === 'fail' && Boolean(r.finding)),
+    notRun: all.filter((r) => r.outcome === 'unknown'),
   }
+}
+
+/**
+ * One line for the checks a failed read kept from running (prompt 46 item
+ * 21): "N checks could not run: <what was not read>". Null when every check
+ * ran. The reads are named from the rules' own unknown findings.
+ */
+export function checksNotRun(reports: SubjectReport[]): string | null {
+  const unknowns = reports.flatMap((r) => r.notRun)
+  if (unknowns.length === 0) return null
+  const reads = [...new Set(unknowns.map((u) => (u.finding ?? '').replace(/^[^:]*:\s*/, '').trim()).filter(Boolean))]
+  return HOUSEKEEPING.checksNotRun(unknowns.length, reads)
 }
 
 /**

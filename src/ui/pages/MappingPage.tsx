@@ -232,8 +232,6 @@ function answerSummary(def: WizardQuestionDef, state: MappingState, snapshot: Te
     }
     case 'countries':
       return state.allowedCountries.length > 0 ? state.allowedCountries.map(countryName).join(', ') : C.noneChosen
-    case 'highCare':
-      return state.highCareUserIds.length > 0 ? state.highCareUserIds.map(userName).join(', ') : C.nobody
     case 'trustedLocations': {
       const locs = (snapshot.config.namedLocations?.rows ?? []) as { id?: string; displayName?: string }[]
       return state.trustedLocationIds.length > 0
@@ -244,8 +242,6 @@ function answerSummary(def: WizardQuestionDef, state: MappingState, snapshot: Te
       return state.serviceAccountUserIds.length > 0 ? state.serviceAccountUserIds.map(userName).join(', ') : C.noneChosen
     case 'timeZone':
       return state.displayTimeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
-    case 'frameworks':
-      return state.frameworks.length > 0 ? state.frameworks.join(', ') : C.noneChosen
     case 'applicability': {
       const on = Object.entries(detectFacets(snapshot, state.facetOverrides as never))
         .filter(([, f]) => f.on)
@@ -318,16 +314,12 @@ function QuestionBody(props: QProps) {
       return <GlobalExclusionQuestion {...props} />
     case 'countries':
       return <CountriesQuestion {...props} />
-    case 'highCare':
-      return <HighCareQuestion {...props} />
     case 'trustedLocations':
       return <TrustedLocationsQuestion {...props} />
     case 'serviceAccounts':
       return <ServiceAccountsQuestion {...props} />
     case 'timeZone':
       return <TimeZoneQuestion {...props} />
-    case 'frameworks':
-      return <FrameworksQuestion {...props} />
     case 'applicability':
       return <ApplicabilityQuestion {...props} />
   }
@@ -757,28 +749,6 @@ const ALL_COUNTRY_CODES: string[] = (() => {
   return codes.filter((c) => countryName(c) !== c)
 })()
 
-function HighCareQuestion({ state, snapshot, suggestCtx, update, answered }: QProps) {
-  return (
-    <div>
-      <UserMultiPicker
-        questionId="highCare"
-        snapshot={snapshot}
-        suggestCtx={suggestCtx}
-        selected={state.highCareUserIds}
-        placeholder={C.searchVips}
-        onChange={(ids) => {
-          update((s) => ({ ...s, highCareUserIds: ids }))
-          answered('highCare')
-        }}
-      />
-      {state.highCareUserIds.length > 0 && <p className="reason">{C.careExplained(state.highCareUserIds.length)}</p>}
-      {/* Choosing nobody and confirming is the same answer the second button
-          used to give (R2). One affordance, one label. */}
-      <Confirm onConfirm={() => answered('highCare')} />
-    </div>
-  )
-}
-
 function TrustedLocationsQuestion({ state, snapshot, suggestCtx, update, answered, reportFindings }: QProps) {
   const locations = (snapshot.config.namedLocations?.rows ?? []) as { id?: string; displayName?: string; isTrusted?: boolean }[]
   const locValidations = state.trustedLocationIds.map((id) => {
@@ -916,31 +886,6 @@ function TimeZoneQuestion({ state, update, answered }: QProps) {
           answered('timeZone')
         }}
       />
-    </div>
-  )
-}
-
-function FrameworksQuestion({ state, update, answered }: QProps) {
-  return (
-    <div className="row">
-      {FRAMEWORK_OPTIONS.map((f) => {
-        const on = state.frameworks.includes(f)
-        return (
-          <Button
-            key={f}
-            size="sm"
-            variant={on ? 'primary' : 'secondary'}
-            onClick={() => {
-              update((s) => ({ ...s, frameworks: on ? s.frameworks.filter((x) => x !== f) : [...s.frameworks, f] }))
-              answered('frameworks')
-            }}
-          >
-            {f}
-          </Button>
-        )
-      })}
-      {/* Selecting none and confirming says "none" (R3). */}
-      <Confirm onConfirm={() => answered('frameworks')} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 {
- "fingerprint": "037436db042080ef",
+ "fingerprint": "381a42e3d7fa2808",
  "surfaces": [
   {
    "name": "Start",
@@ -404,7 +404,7 @@
     "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.",
     "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2",
     "or upload a package (how to make one):",
-    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)"
+    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 6 questions (all required)"
    ],
    "titles": [],
    "nav": [
@@ -427,7 +427,7 @@
     "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.": 1,
     "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2": 1,
     "or upload a package (how to make one):": 1,
-    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)": 1
+    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 6 questions (all required)": 1
    },
    "occurrencesAll": {
     "Picks the target policy set the rollout plan aims for.": 1,
@@ -438,7 +438,7 @@
     "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.": 1,
     "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2": 1,
     "or upload a package (how to make one):": 1,
-    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)": 1
+    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 6 questions (all required)": 1
    },
    "wordCounts": {
     "headings": 7,
@@ -805,15 +805,17 @@
    "empty": [],
    "summaries": [],
    "tips": [
-    "About Scan age"
+    "About Scan age",
+    "About Baseline reference"
    ],
    "sentences": [
     "Each answer shapes the plan and the checks that run against it.",
     "Needs: ✓ baseline loaded · ✓ scan complete",
     "Based on the scan from this minute · <date and time>.",
     "Re-scan",
-    "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.",
-    "No service accounts detected, so nothing needs a carve-out; the plan records that."
+    "6 of 6 answered Every required question is answered.",
+    "No service accounts detected, so nothing needs a carve-out; the plan records that.",
+    "2 baseline references resolved automatically."
    ],
    "titles": [],
    "nav": [
@@ -831,15 +833,17 @@
     "Each answer shapes the plan and the checks that run against it.": 1,
     "Needs: ✓ baseline loaded · ✓ scan complete": 1,
     "Based on the scan from this minute · <date and time>.": 1,
-    "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.": 1,
-    "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1
+    "6 of 6 answered Every required question is answered.": 1,
+    "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1,
+    "2 baseline references resolved automatically.": 1
    },
    "occurrencesAll": {
     "Each answer shapes the plan and the checks that run against it.": 1,
     "Needs: ✓ baseline loaded · ✓ scan complete": 1,
     "Based on the scan from this minute · <date and time>.": 1,
-    "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.": 1,
-    "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1
+    "6 of 6 answered Every required question is answered.": 1,
+    "No service accounts detected, so nothing needs a carve-out; the plan records that.": 1,
+    "2 baseline references resolved automatically.": 1
    },
    "wordCounts": {
     "headings": 1,
@@ -852,16 +856,16 @@
     "tiles": 0,
     "empty": 0,
     "summaries": 0,
-    "tips": 3,
-    "sentences": 70,
-    "total": 77
+    "tips": 6,
+    "sentences": 59,
+    "total": 69
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 6,
-    "words": 70
+    "sentences": 7,
+    "words": 59
    }
   },
   {
@@ -871,28 +875,41 @@
    "tabs": [],
    "buttons": [],
    "options": [
-    "Yes",
-    "Not yet",
-    "Doesn't exist yet"
+    "Edit"
    ],
-   "links": [],
+   "links": [
+    "Add a second account above",
+    "Entra admin center → Roles & admins → Global Administrator",
+    "Entra admin center → Users → this user",
+    "Break-glass drill step in the Roadmap"
+   ],
    "chips": [
-    "Required"
+    "3 must fix",
+    "3 recommended",
+    "Answered"
    ],
    "columns": [],
    "tiles": [],
    "empty": [],
    "summaries": [
-    "Question 1 · Which accounts are the emergency access (break-glass) admins?Required"
+    "Question 1 · Which accounts are the emergency access (break-glass) admins?3 must fix3 recommendedAnswered"
    ],
    "tips": [
     "About Explain this"
    ],
    "sentences": [
     "Question 1 ·",
-    "Why this matters: Every policy in the plan excludes these accounts, so a mistaken policy still leaves a way back in.",
-    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.YesNot yet",
-    "A sign-in by an emergency account raises an alert somebody sees.YesNot yet"
+    "Answered: Break-glass 01Edit",
+    "Must fix",
+    "only 1 emergency access account is nominated: two are needed: Add a second account above",
+    "not a Global Administrator: Entra admin center → Roles & admins → Global Administrator",
+    "looks like a person's own account: department Operations: Entra admin center → Users → this user",
+    "Recommended",
+    "last signed in <date>, over 90 days ago: a drill is due: Break-glass drill step in the Roadmap",
+    "where the credential is kept has not been recorded",
+    "nothing alerts when an emergency account signs in",
+    "Notes",
+    "last signed in <date>"
    ],
    "titles": [],
    "nav": [],
@@ -900,24 +917,28 @@
    "tables": [],
    "occurrences": {},
    "occurrencesAll": {
-    "Why this matters: Every policy in the plan excludes these accounts, so a mistaken policy still leaves a way back in.": 1,
-    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.YesNot yet": 1,
-    "A sign-in by an emergency account raises an alert somebody sees.YesNot yet": 1
+    "Answered: Break-glass 01Edit": 1,
+    "only 1 emergency access account is nominated: two are needed: Add a second account above": 1,
+    "not a Global Administrator: Entra admin center → Roles & admins → Global Administrator": 1,
+    "looks like a person's own account: department Operations: Entra admin center → Users → this user": 1,
+    "last signed in <date>, over 90 days ago: a drill is due: Break-glass drill step in the Roadmap": 1,
+    "where the credential is kept has not been recorded": 1,
+    "nothing alerts when an emergency account signs in": 1
    },
    "wordCounts": {
     "headings": 0,
     "tabs": 0,
     "buttons": 0,
-    "options": 6,
-    "links": 0,
-    "chips": 1,
+    "options": 1,
+    "links": 29,
+    "chips": 6,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
-    "summaries": 11,
+    "summaries": 14,
     "tips": 3,
-    "sentences": 58,
-    "total": 79
+    "sentences": 94,
+    "total": 147
    },
    "unnamedControls": [],
    "rows": [],
@@ -928,30 +949,31 @@
    }
   },
   {
-   "name": "Setup / Q2 — Which group holds the policy exclusions?",
+   "name": "Setup / Q2 — Which group holds the policy exclusions?nothing to che",
    "note": "one question",
    "headings": [],
    "tabs": [],
    "buttons": [],
    "options": [
-    "Doesn't exist yet"
+    "Edit"
    ],
    "links": [],
    "chips": [
-    "Required"
+    "nothing to check",
+    "Answered"
    ],
    "columns": [],
    "tiles": [],
    "empty": [],
    "summaries": [
-    "Question 2 · Which group holds the policy exclusions?Required"
+    "Question 2 · Which group holds the policy exclusions?nothing to checkAnswered"
    ],
    "tips": [
     "About Explain this"
    ],
    "sentences": [
     "Question 2 ·",
-    "Why this matters: One auditable group excluded from every policy keeps the escape hatch in a single place."
+    "Answered: Doesn't exist yetEdit"
    ],
    "titles": [],
    "nav": [],
@@ -959,22 +981,22 @@
    "tables": [],
    "occurrences": {},
    "occurrencesAll": {
-    "Why this matters: One auditable group excluded from every policy keeps the escape hatch in a single place.": 1
+    "Answered: Doesn't exist yetEdit": 1
    },
    "wordCounts": {
     "headings": 0,
     "tabs": 0,
     "buttons": 0,
-    "options": 3,
+    "options": 1,
     "links": 0,
-    "chips": 1,
+    "chips": 4,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
-    "summaries": 9,
+    "summaries": 11,
     "tips": 3,
-    "sentences": 21,
-    "total": 37
+    "sentences": 7,
+    "total": 26
    },
    "unnamedControls": [],
    "rows": [],
@@ -991,153 +1013,24 @@
    "tabs": [],
    "buttons": [],
    "options": [
-    "Australia (AU)",
-    "New Zealand (NZ)",
-    "Looks right"
+    "Edit"
    ],
    "links": [],
    "chips": [
-    "Required"
+    "Answered"
    ],
    "columns": [],
    "tiles": [],
    "empty": [],
    "summaries": [
-    "Question 3 · Which countries do your people sign in from?Required"
+    "Question 3 · Which countries do your people sign in from?Answered"
    ],
    "tips": [
     "About Explain this"
    ],
    "sentences": [
     "Question 3 ·",
-    "Why this matters: The allowed list becomes a named location and the block-everywhere-else policy; a missing country is a lockout for whoever is there.",
-    "Australia: 4 distinct users signed in from here · usage location of 4 users",
-    "New Zealand: 1 distinct user signed in from here",
-    "2 countries.",
-    "Matches the existing named location \"Allowed countries\"."
-   ],
-   "titles": [],
-   "nav": [],
-   "primary": [
-    "Australia (AU)",
-    "New Zealand (NZ)",
-    "Looks right"
-   ],
-   "tables": [],
-   "occurrences": {},
-   "occurrencesAll": {
-    "Why this matters: The allowed list becomes a named location and the block-everywhere-else policy; a missing country is a lockout for whoever is there.": 1,
-    "Australia: 4 distinct users signed in from here · usage location of 4 users": 1,
-    "New Zealand: 1 distinct user signed in from here": 1,
-    "Matches the existing named location \"Allowed countries\".": 1
-   },
-   "wordCounts": {
-    "headings": 0,
-    "tabs": 0,
-    "buttons": 0,
-    "options": 7,
-    "links": 0,
-    "chips": 1,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 11,
-    "tips": 3,
-    "sentences": 59,
-    "total": 81
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "pageProse": {
-    "sentences": 0,
-    "words": 0
-   }
-  },
-  {
-   "name": "Setup / Q4 — Who needs extra care?",
-   "note": "one question",
-   "headings": [],
-   "tabs": [],
-   "buttons": [],
-   "options": [
-    "Looks right"
-   ],
-   "links": [],
-   "chips": [
-    "Required"
-   ],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [
-    "Question 4 · Who needs extra care?Required"
-   ],
-   "tips": [
-    "About Explain this"
-   ],
-   "sentences": [
-    "Question 4 ·",
-    "Why this matters: These people are verified before anything is enforced and sequenced after the approach is proven."
-   ],
-   "titles": [],
-   "nav": [],
-   "primary": [
-    "Looks right"
-   ],
-   "tables": [],
-   "occurrences": {},
-   "occurrencesAll": {
-    "Why this matters: These people are verified before anything is enforced and sequenced after the approach is proven.": 1
-   },
-   "wordCounts": {
-    "headings": 0,
-    "tabs": 0,
-    "buttons": 0,
-    "options": 2,
-    "links": 0,
-    "chips": 1,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 7,
-    "tips": 3,
-    "sentences": 21,
-    "total": 34
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "pageProse": {
-    "sentences": 0,
-    "words": 0
-   }
-  },
-  {
-   "name": "Setup / Q5 — Which named locations count as trusted?",
-   "note": "one question",
-   "headings": [],
-   "tabs": [],
-   "buttons": [],
-   "options": [
-    "Doesn't exist yet"
-   ],
-   "links": [],
-   "chips": [
-    "Required"
-   ],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [
-    "Question 5 · Which named locations count as trusted?Required"
-   ],
-   "tips": [
-    "About Explain this"
-   ],
-   "sentences": [
-    "Question 5 ·",
-    "Why this matters: A trusted location lets registration and other sensitive actions happen only from the office network."
+    "Answered: Australia, New ZealandEdit"
    ],
    "titles": [],
    "nav": [],
@@ -1145,134 +1038,13 @@
    "tables": [],
    "occurrences": {},
    "occurrencesAll": {
-    "Why this matters: A trusted location lets registration and other sensitive actions happen only from the office network.": 1
+    "Answered: Australia, New ZealandEdit": 1
    },
    "wordCounts": {
     "headings": 0,
     "tabs": 0,
     "buttons": 0,
-    "options": 3,
-    "links": 0,
-    "chips": 1,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 9,
-    "tips": 3,
-    "sentences": 21,
-    "total": 37
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "pageProse": {
-    "sentences": 0,
-    "words": 0
-   }
-  },
-  {
-   "name": "Setup / Q6 — Which time zone should dates display in?",
-   "note": "one question",
-   "headings": [],
-   "tabs": [],
-   "buttons": [],
-   "options": [
-    "Looks right"
-   ],
-   "links": [],
-   "chips": [
-    "Required"
-   ],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [
-    "Question 6 · Which time zone should dates display in?Required"
-   ],
-   "tips": [
-    "About Explain this"
-   ],
-   "sentences": [
-    "Question 6 ·",
-    "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout."
-   ],
-   "titles": [],
-   "nav": [],
-   "primary": [
-    "Looks right"
-   ],
-   "tables": [],
-   "occurrences": {},
-   "occurrencesAll": {
-    "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout.": 1
-   },
-   "wordCounts": {
-    "headings": 0,
-    "tabs": 0,
-    "buttons": 0,
-    "options": 2,
-    "links": 0,
-    "chips": 1,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 10,
-    "tips": 3,
-    "sentences": 18,
-    "total": 34
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "pageProse": {
-    "sentences": 0,
-    "words": 0
-   }
-  },
-  {
-   "name": "Setup / Q7 — Which security frameworks is the tenant working toward",
-   "note": "one question",
-   "headings": [],
-   "tabs": [],
-   "buttons": [],
-   "options": [
-    "CIS Controls v8",
-    "Essential Eight (ACSC)",
-    "NIST CSF",
-    "Looks right"
-   ],
-   "links": [],
-   "chips": [
-    "Required"
-   ],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [
-    "Question 7 · Which security frameworks is the tenant working toward?Required"
-   ],
-   "tips": [
-    "About Explain this"
-   ],
-   "sentences": [
-    "Question 7 ·",
-    "Why this matters: Tagged steps let the plan stand in as evidence for an audit."
-   ],
-   "titles": [],
-   "nav": [],
-   "primary": [
-    "Looks right"
-   ],
-   "tables": [],
-   "occurrences": {},
-   "occurrencesAll": {
-    "Why this matters: Tagged steps let the plan stand in as evidence for an audit.": 1
-   },
-   "wordCounts": {
-    "headings": 0,
-    "tabs": 0,
-    "buttons": 0,
-    "options": 10,
+    "options": 1,
     "links": 0,
     "chips": 1,
     "columns": 0,
@@ -1280,8 +1052,8 @@
     "empty": 0,
     "summaries": 11,
     "tips": 3,
-    "sentences": 18,
-    "total": 43
+    "sentences": 7,
+    "total": 23
    },
    "unnamedControls": [],
    "rows": [],
@@ -1292,64 +1064,163 @@
    }
   },
   {
-   "name": "Setup / Q8 — Are the detected workloads right?",
+   "name": "Setup / Q4 — Which named locations count as trusted?",
    "note": "one question",
    "headings": [],
    "tabs": [],
    "buttons": [],
    "options": [
-    "Looks right"
+    "Edit"
    ],
    "links": [],
    "chips": [
-    "Required",
-    "marked as not used",
-    "Detected"
+    "Answered"
    ],
    "columns": [],
    "tiles": [],
    "empty": [],
    "summaries": [
-    "Question 8 · Are the detected workloads right?Required"
+    "Question 4 · Which named locations count as trusted?Answered"
    ],
    "tips": [
     "About Explain this"
    ],
    "sentences": [
-    "Question 8 ·",
-    "Why this matters: A workload marked off removes its goals from the plan; one marked on adds them.",
-    "no sign-ins in the last 30 days",
-    "sign-ins seen in the last 30 days",
-    "no Intune licence",
-    "no Workload Identities Premium licence"
+    "Question 4 ·",
+    "Answered: Head officeEdit"
    ],
    "titles": [],
    "nav": [],
-   "primary": [
-    "Looks right"
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 1,
+    "links": 0,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 9,
+    "tips": 3,
+    "sentences": 6,
+    "total": 20
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
+  },
+  {
+   "name": "Setup / Q5 — Which time zone should dates display in?",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "Edit"
    ],
+   "links": [],
+   "chips": [
+    "Answered"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 5 · Which time zone should dates display in?Answered"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 5 ·",
+    "Answered: America/DenverEdit"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
    "tables": [],
    "occurrences": {},
    "occurrencesAll": {
-    "Why this matters: A workload marked off removes its goals from the plan; one marked on adds them.": 1,
-    "no sign-ins in the last 30 days": 5,
-    "sign-ins seen in the last 30 days": 1,
-    "no Workload Identities Premium licence": 1
+    "Answered: America/DenverEdit": 1
    },
    "wordCounts": {
     "headings": 0,
     "tabs": 0,
     "buttons": 0,
-    "options": 2,
+    "options": 1,
     "links": 0,
-    "chips": 6,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 10,
+    "tips": 3,
+    "sentences": 5,
+    "total": 20
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
+  },
+  {
+   "name": "Setup / Q6 — Are the detected workloads right?",
+   "note": "one question",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [
+    "Edit"
+   ],
+   "links": [],
+   "chips": [
+    "Answered"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Question 6 · Are the detected workloads right?Answered"
+   ],
+   "tips": [
+    "About Explain this"
+   ],
+   "sentences": [
+    "Question 6 ·",
+    "Answered: SharePointEdit"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 1,
+    "links": 0,
+    "chips": 1,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 8,
     "tips": 3,
-    "sentences": 43,
-    "total": 62
+    "sentences": 5,
+    "total": 18
    },
    "unnamedControls": [],
    "rows": [],
@@ -1711,7 +1582,8 @@
    "headings": [
     "Roadmap",
     "Do this next",
-    "1 user is blocked today, before this plan changes anything"
+    "1 user is blocked today, before this plan changes anything",
+    "1 break-glass account unproven in 90+ days"
    ],
    "tabs": [
     "Plan",
@@ -1728,7 +1600,8 @@
    "links": [
     "Re-scan",
     "Recovery card",
-    "Troubleshoot sign-in problems with Conditional Access →"
+    "Troubleshoot sign-in problems with Conditional Access →",
+    "Manage emergency access accounts →"
    ],
    "chips": [],
    "columns": [],
@@ -1743,16 +1616,19 @@
     "Needs: ✓ scan complete · ✓ baseline loaded",
     "Based on the scan from this minute · <date and time>.",
     "Re-scan · Baseline: synthetic baseline",
-    "With this tenant's Entra ID P1, 20 of 25 steps are available now.",
+    "With this tenant's Entra ID P1, 22 of 27 steps are available now.",
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.",
     "Must fix first: 13 steps that can deny access are held until it passes.",
-    "nothing blocks it, and 13 later steps wait for it",
-    "setting up 1 person unblocks 3 steps · Priya Nair",
-    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.",
+    "Must fix first: 1 step that can deny access is held until it passes.",
+    "nothing blocks it, and 11 later steps wait for it",
+    "Before the plan starts, look at: 1 user is blocked today, before this plan changes anything; 1 break-glass account unproven in 90+ days.",
     "Their most recent sign-in failed an existing Conditional Access policy.",
     "Fix this first: otherwise the rollout gets the blame.",
     "Priya Nair: investigate the failing sign-in",
-    "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)"
+    "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)",
+    "An emergency account that has not signed in recently is unproven exactly when it matters.",
+    "Run the drill.",
+    "Break-glass 01: complete a test sign-in with its strong method"
    ],
    "titles": [],
    "nav": [],
@@ -1767,63 +1643,69 @@
     "Needs: ✓ scan complete · ✓ baseline loaded": 1,
     "Based on the scan from this minute · <date and time>.": 1,
     "Re-scan · Baseline: synthetic baseline": 1,
-    "With this tenant's Entra ID P1, 20 of 25 steps are available now.": 1,
+    "With this tenant's Entra ID P1, 22 of 27 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
     "Must fix first: 13 steps that can deny access are held until it passes.": 1,
-    "nothing blocks it, and 13 later steps wait for it": 1,
-    "setting up 1 person unblocks 3 steps · Priya Nair": 1,
-    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
+    "Must fix first: 1 step that can deny access is held until it passes.": 1,
+    "nothing blocks it, and 11 later steps wait for it": 1,
+    "Before the plan starts, look at: 1 user is blocked today, before this plan changes anything; 1 break-glass account unproven in 90+ days.": 1,
     "Their most recent sign-in failed an existing Conditional Access policy.": 1,
     "Fix this first: otherwise the rollout gets the blame.": 1,
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
-    "Troubleshoot sign-in problems with Conditional Access →": 1
+    "Troubleshoot sign-in problems with Conditional Access →": 1,
+    "An emergency account that has not signed in recently is unproven exactly when it matters.": 1,
+    "Break-glass 01: complete a test sign-in with its strong method": 1,
+    "Manage emergency access accounts →": 1
    },
    "occurrencesAll": {
     "Your plan: what to change, in what order, and what to watch.": 1,
     "Needs: ✓ scan complete · ✓ baseline loaded": 1,
     "Based on the scan from this minute · <date and time>.": 1,
     "Re-scan · Baseline: synthetic baseline": 1,
-    "With this tenant's Entra ID P1, 20 of 25 steps are available now.": 1,
+    "With this tenant's Entra ID P1, 22 of 27 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
     "Must fix first: 13 steps that can deny access are held until it passes.": 1,
-    "nothing blocks it, and 13 later steps wait for it": 1,
-    "setting up 1 person unblocks 3 steps · Priya Nair": 1,
-    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
+    "Must fix first: 1 step that can deny access is held until it passes.": 1,
+    "nothing blocks it, and 11 later steps wait for it": 1,
+    "Before the plan starts, look at: 1 user is blocked today, before this plan changes anything; 1 break-glass account unproven in 90+ days.": 1,
     "Their most recent sign-in failed an existing Conditional Access policy.": 1,
     "Fix this first: otherwise the rollout gets the blame.": 1,
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
-    "Troubleshoot sign-in problems with Conditional Access →": 1
+    "Troubleshoot sign-in problems with Conditional Access →": 1,
+    "An emergency account that has not signed in recently is unproven exactly when it matters.": 1,
+    "Break-glass 01: complete a test sign-in with its strong method": 1,
+    "Manage emergency access accounts →": 1
    },
    "wordCounts": {
-    "headings": 14,
+    "headings": 21,
     "tabs": 3,
     "buttons": 6,
     "options": 0,
-    "links": 10,
+    "links": 15,
     "chips": 0,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 0,
     "tips": 3,
-    "sentences": 156,
-    "total": 192
+    "sentences": 192,
+    "total": 240
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 14,
-    "words": 156
+    "sentences": 17,
+    "words": 192
    }
   },
   {
    "name": "Roadmap / Plan tab",
    "note": "panel only",
    "headings": [
-    "2 of 20 steps in place · finishes <date>",
+    "2 of 22 steps in place · finishes <date>",
     "What needs attention before you start",
     "Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.",
     "The journey",
@@ -1849,7 +1731,7 @@
     "Hide completed",
     "Safe today (0)",
     "Done (2)",
-    "Ready (4)",
+    "Ready (6)",
     "Blocked (13)",
     "In report-only (1)",
     "Ready to enforce (0)",
@@ -1859,8 +1741,10 @@
    "links": [
     "See the blocked steps →",
     "Emergency access accounts",
+    "Allowed countries",
     "Decide on 1 dormant account",
-    "Answer 8 setup questions",
+    "Create the policy exclusions group",
+    "Break-glass sign-in drill",
     "Security-info registration requires a trusted context",
     "Authentication transfer blocked",
     "Device-code flow blocked",
@@ -1882,10 +1766,12 @@
     "Make sure everyone can prove who they are: enforced",
     "Turn off old sign-in methods that skip MFA: in report-only",
     "ReadyPrerequisiteSort out emergency access before anything elseEmergency access accountsChecked: nothing blocks it and a foundation the later steps need.",
+    "ReadyPrerequisiteFix the allowed-countries list before it is usedAllowed countriesChecked: nothing blocks it and a foundation the later steps need.",
     "ReadyCheckDecide on 1 dormant accountChecked: nothing blocks it.",
-    "ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.",
-    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "ReadyPrerequisiteCreate the policy exclusions groupChecked: nothing blocks it and a foundation the later steps need.",
+    "ReadyRecurringBreak-glass sign-in drillChecked: nothing blocks it and 1 account overdue: Break-glass 01.",
     "ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.",
+    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "BlockedNew policyStop attackers adding their own MFA methodSecurity-info registration requires a trusted contextafter: Sort out emergency access before anything else",
     "BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedafter: Sort out emergency access before anything else",
@@ -1908,7 +1794,7 @@
     "planned",
     "Safe today (0)",
     "Done (2)",
-    "Ready (4)",
+    "Ready (6)",
     "Blocked (13)",
     "In report-only (1)",
     "Ready to enforce (0)",
@@ -1916,9 +1802,10 @@
     "Ready",
     "Prerequisite",
     "Check",
+    "Recurring",
+    "Verify",
     "Done",
     "New policy",
-    "Verify",
     "Blocked",
     "In report-only",
     "Change"
@@ -1937,7 +1824,7 @@
    ],
    "empty": [],
    "summaries": [
-    "Plan revision 2, <date>"
+    "Plan revision 3, <date>"
    ],
    "tips": [
     "About Steps done",
@@ -1947,14 +1834,14 @@
    ],
    "sentences": [
     "The plan is 4 weeks because two changes prompt the same people, so Browser sessions never persist for anyone cannot run in the same window as Unknown platforms blocked; everything else fits inside it.",
-    "1 thing to watch before anything is enforced.",
+    "2 things to watch before anything is enforced.",
     "13 steps blocked; each one names what unblocks it.",
     "See the blocked steps →",
     "3 Conditional Access policies in the tenant today; this plan adds 13, for 16 of the 195 Entra allows.",
-    "One subject has must-fix checks outstanding, holding 13 steps that can deny access.",
+    "2 subjects have must-fix checks outstanding, holding 13 steps that can deny access.",
     "2 steps were already covered before the plan began.",
     "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.",
-    "17",
+    "19",
     "Grey bars: steps planned to start that week.",
     "Green bars: steps that actually started.",
     "Hover a week for the counts.",
@@ -1965,11 +1852,13 @@
     "matched by what it does",
     "Plan revision 1, <date>: plan created",
     "Plan revision 2, <date>: 1 new step appended after a re-scan",
+    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies",
     "<date> → <date>",
     "Checked: nothing blocks it and a foundation the later steps need.",
     "Checked: nothing blocks it.",
-    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "Checked: nothing blocks it and 1 account overdue: Break-glass 01.",
     "Checked: nothing blocks it and enabled users still need setting up.",
+    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "after: Sort out emergency access before anything else",
     "1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.",
     "Not counted against the plan.",
@@ -1986,10 +1875,10 @@
    "tables": [],
    "occurrences": {
     "The plan is 4 weeks because two changes prompt the same people, so Browser sessions never persist for anyone cannot run in the same window as Unknown platforms blocked; everything else fits inside it.": 1,
-    "1 thing to watch before anything is enforced.": 1,
+    "2 things to watch before anything is enforced.": 1,
     "13 steps blocked; each one names what unblocks it.": 1,
     "3 Conditional Access policies in the tenant today; this plan adds 13, for 16 of the 195 Entra allows.": 1,
-    "One subject has must-fix checks outstanding, holding 13 steps that can deny access.": 1,
+    "2 subjects have must-fix checks outstanding, holding 13 steps that can deny access.": 1,
     "2 steps were already covered before the plan began.": 1,
     "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.": 1,
     "Grey bars: steps planned to start that week.": 1,
@@ -1999,6 +1888,7 @@
     "Nothing here is typed in; nothing can be edited.": 1,
     "Plan revision 1, <date>: plan created": 1,
     "Plan revision 2, <date>: 1 new step appended after a re-scan": 1,
+    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies": 1,
     "Not counted against the plan.": 1,
     "Each names the tier that would make it available.": 1,
     "· Risky sign-ins get MFA or are blocked · Entra ID P2": 1,
@@ -2009,10 +1899,10 @@
    },
    "occurrencesAll": {
     "The plan is 4 weeks because two changes prompt the same people, so Browser sessions never persist for anyone cannot run in the same window as Unknown platforms blocked; everything else fits inside it.": 1,
-    "1 thing to watch before anything is enforced.": 1,
+    "2 things to watch before anything is enforced.": 1,
     "13 steps blocked; each one names what unblocks it.": 1,
     "3 Conditional Access policies in the tenant today; this plan adds 13, for 16 of the 195 Entra allows.": 1,
-    "One subject has must-fix checks outstanding, holding 13 steps that can deny access.": 1,
+    "2 subjects have must-fix checks outstanding, holding 13 steps that can deny access.": 1,
     "2 steps were already covered before the plan began.": 1,
     "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.": 1,
     "Grey bars: steps planned to start that week.": 1,
@@ -2022,11 +1912,13 @@
     "Nothing here is typed in; nothing can be edited.": 1,
     "Plan revision 1, <date>: plan created": 1,
     "Plan revision 2, <date>: 1 new step appended after a re-scan": 1,
-    "Checked: nothing blocks it and a foundation the later steps need.": 2,
+    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies": 1,
+    "Checked: nothing blocks it and a foundation the later steps need.": 3,
     "Checked: nothing blocks it.": 1,
+    "Checked: nothing blocks it and 1 account overdue: Break-glass 01.": 1,
+    "Checked: nothing blocks it and enabled users still need setting up.": 1,
     "Every user satisfies MFA on every app": 1,
     "Done <date>: policy enforced on <date>; this policy already existed and covers this step.": 2,
-    "Checked: nothing blocks it and enabled users still need setting up.": 1,
     "Security-info registration requires a trusted context": 1,
     "after: Sort out emergency access before anything else": 13,
     "Authentication transfer blocked": 1,
@@ -2053,22 +1945,22 @@
     "tabs": 0,
     "buttons": 40,
     "options": 0,
-    "links": 518,
-    "chips": 38,
+    "links": 556,
+    "chips": 39,
     "columns": 4,
     "tiles": 6,
     "empty": 0,
     "summaries": 4,
     "tips": 10,
-    "sentences": 315,
-    "total": 1030
+    "sentences": 341,
+    "total": 1095
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 224,
-    "words": 461
+    "sentences": 229,
+    "words": 481
    }
   },
   {
@@ -2099,16 +1991,16 @@
    ],
    "options": [],
    "links": [
-    "<time> 5 people, by name: 8 changes",
-    "<time> 4 people, by name: 1 change",
+    "<time> 3 people, by name: 1 change",
+    "<time> 4 people, by name: 8 changes",
     "<time> Stop attackers adding their own MFA method",
     "<time> Everyone, nobody affected: 2 changes take effect",
     "<time> Everyone, sign-in methods: 2 changes take effect",
-    "<time> 5 people, by name, sign-in methods: 2 changes take effect",
+    "<time> 4 people, by name, sign-in methods: 2 changes take effect",
     "<time> Stop sign-ins from countries you don't work in",
     "<time> Turn off old sign-in methods that skip MFA",
     "<time> Block devices Entra cannot identify",
-    "<time> 5 people, by name, other changes: 4 changes take effect",
+    "<time> 4 people, by name, other changes: 4 changes take effect",
     "Day 0",
     "Registration",
     "Observation",
@@ -2116,10 +2008,12 @@
     "Wave 2 · Devices",
     "Wave 3 · Sessions and Advanced",
     "ReadyPrerequisiteSort out emergency access before anything elseEmergency access accountsChecked: nothing blocks it and a foundation the later steps need.",
+    "ReadyPrerequisiteFix the allowed-countries list before it is usedAllowed countriesChecked: nothing blocks it and a foundation the later steps need.",
     "ReadyCheckDecide on 1 dormant accountChecked: nothing blocks it.",
-    "ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.",
-    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "ReadyPrerequisiteCreate the policy exclusions groupChecked: nothing blocks it and a foundation the later steps need.",
+    "ReadyRecurringBreak-glass sign-in drillChecked: nothing blocks it and 1 account overdue: Break-glass 01.",
     "ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.",
+    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "BlockedNew policyStop attackers adding their own MFA methodSecurity-info registration requires a trusted contextafter: Sort out emergency access before anything else",
     "BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedafter: Sort out emergency access before anything else",
@@ -2135,13 +2029,15 @@
     "BlockedNew policyStop downloads to devices you do not manageUnmanaged devices cannot downloadafter: Sort out emergency access before anything else",
     "BlockedNew policyLimit what personal devices can do in the browserUnmanaged-device browser sessions are limitedafter: Sort out emergency access before anything else",
     "BlockedNew policyStop a stolen session token from being reusedWindows desktop sessions require token protectionafter: Sort out emergency access before anything else",
-    "Before Keep non-admins out of the admin portals: a quick check with you",
     "Before Stop attackers adding their own MFA method: a quick check with you",
-    "Reminder: Before Keep non-admins out of the admin portals: a quick check with you",
+    "Before Keep non-admins out of the admin portals: a quick check with you",
     "Reminder: Before Stop attackers adding their own MFA method: a quick check with you",
+    "Reminder: Before Keep non-admins out of the admin portals: a quick check with you",
     "Emergency access accounts",
+    "Allowed countries",
     "Decide on 1 dormant account",
-    "Answer 8 setup questions",
+    "Create the policy exclusions group",
+    "Break-glass sign-in drill",
     "Security-info registration requires a trusted context",
     "Authentication transfer blocked",
     "Legacy protocols blocked",
@@ -2162,9 +2058,10 @@
     "Ready",
     "Prerequisite",
     "Check",
+    "Recurring",
+    "Verify",
     "Done",
     "New policy",
-    "Verify",
     "Waiting period",
     "Blocked",
     "In report-only",
@@ -2203,12 +2100,12 @@
    "tiles": [],
    "empty": [],
    "summaries": [
-    "Day 0 <date> → Sep 4, 20262 of 6 steps done",
+    "Day 0 <date> → Sep 5, 20262 of 8 steps done",
     "Wave 1 · Low-impact blocks, Admin hardening and 2 more <date> → Sep 14, 20260 of 9 steps done",
     "Wave 2 · Devices <date> → Sep 20, 20260 of 1 step done",
     "Wave 3 · Sessions and Advanced <date> → Sep 27, 20260 of 4 steps done",
-    "Before Keep non-admins out of the admin portals: a quick check with you · 5 people, by name · <date>",
-    "Before Stop attackers adding their own MFA method: a quick check with you · 4 people, by name · <date>"
+    "Before Stop attackers adding their own MFA method: a quick check with you · 3 people, by name · <date>",
+    "Before Keep non-admins out of the admin portals: a quick check with you · 4 people, by name · <date>"
    ],
    "tips": [
     "About Done in this wave",
@@ -2226,17 +2123,18 @@
     "Nothing needs a reminder this week.",
     "No changes take effect this week.",
     "Nothing to announce this week.",
-    "4 weeks: a 0-week verification campaign, 8-day observation window, 3 enforcement waves, 14 steps waiting on Setup questions 1, 2 and 3.",
+    "4 weeks: a 0-week verification campaign, 8-day observation window, 3 enforcement waves.",
     "Hide completed",
     "<date> → <date>",
-    "2 of 6 steps done",
+    "2 of 8 steps done",
     "The 13 new policies start in report-only, where they affect nobody.",
     "What report-only means",
     "Checked: nothing blocks it and a foundation the later steps need.",
     "Checked: nothing blocks it.",
+    "Checked: nothing blocks it and 1 account overdue: Break-glass 01.",
+    "Checked: nothing blocks it and enabled users still need setting up.",
     "Every user satisfies MFA on every app",
     "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
-    "Checked: nothing blocks it and enabled users still need setting up.",
     "Guests satisfy MFA",
     "3 users still need setting up (4 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.",
     "Every new policy collects report-only evidence at the same time.",
@@ -2248,10 +2146,10 @@
     "One message per audience per week, at most.",
     "Nothing is sent by IAMAI, so copy each one into your own channel.",
     "(individual note)",
-    "Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Turn off old sign-in methods that skip MFA; Limit what personal devices can do in the browser; Sign everyone out when the browser closes; Stop a stolen session token from being reused; Stop downloads to devices you do not manage",
     "Stop attackers adding their own MFA method",
+    "Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Turn off old sign-in methods that skip MFA; Limit what personal devices can do in the browser; Sign everyone out when the browser closes; Stop a stolen session token from being reused; Stop downloads to devices you do not manage",
     "(reminder)",
-    "· 5 people, by name · <date>",
+    "· 3 people, by name · <date>",
     "EmailTeams or SlackHelp-desk noteIntranet noticeRemind",
     "Names and addresses stay in the browser until you copy or export them.",
     "· 4 people, by name · <date>",
@@ -2273,7 +2171,7 @@
     "Days across, the three kinds of event down: what to announce, remind about, and enforce on each day.": 1,
     "One message per audience per week, however many changes it covers.": 1,
     "Changes are grouped per day rather than per week, because a change takes effect on the day it takes effect; two on one audience in a week means two supervised windows, which the labels name.": 1,
-    "4 weeks: a 0-week verification campaign, 8-day observation window, 3 enforcement waves, 14 steps waiting on Setup questions 1, 2 and 3.": 1,
+    "4 weeks: a 0-week verification campaign, 8-day observation window, 3 enforcement waves.": 1,
     "The 13 new policies start in report-only, where they affect nobody.": 1,
     "3 users still need setting up (4 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.": 1,
     "Every new policy collects report-only evidence at the same time.": 1,
@@ -2293,13 +2191,14 @@
     "Nothing needs a reminder this week.": 3,
     "No changes take effect this week.": 1,
     "Nothing to announce this week.": 3,
-    "4 weeks: a 0-week verification campaign, 8-day observation window, 3 enforcement waves, 14 steps waiting on Setup questions 1, 2 and 3.": 1,
+    "4 weeks: a 0-week verification campaign, 8-day observation window, 3 enforcement waves.": 1,
     "The 13 new policies start in report-only, where they affect nobody.": 1,
-    "Checked: nothing blocks it and a foundation the later steps need.": 2,
+    "Checked: nothing blocks it and a foundation the later steps need.": 3,
     "Checked: nothing blocks it.": 1,
+    "Checked: nothing blocks it and 1 account overdue: Break-glass 01.": 1,
+    "Checked: nothing blocks it and enabled users still need setting up.": 1,
     "Every user satisfies MFA on every app": 1,
     "Done <date>: policy enforced on <date>; this policy already existed and covers this step.": 2,
-    "Checked: nothing blocks it and enabled users still need setting up.": 1,
     "3 users still need setting up (4 active users in total): each registers Microsoft Authenticator and completes one MFA sign-in; re-scans track it.": 1,
     "Every new policy collects report-only evidence at the same time.": 1,
     "Security-info registration requires a trusted context": 1,
@@ -2317,9 +2216,9 @@
     "Windows desktop sessions require token protection": 1,
     "One message per audience per week, at most.": 1,
     "Nothing is sent by IAMAI, so copy each one into your own channel.": 1,
-    "Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Turn off old sign-in methods that skip MFA; Limit what personal devices can do in the browser; Sign everyone out when the browser closes; Stop a stolen session token from being reused; Stop downloads to devices you do not manage": 2,
     "Stop attackers adding their own MFA method": 2,
-    "· 5 people, by name · <date>": 1,
+    "Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Turn off old sign-in methods that skip MFA; Limit what personal devices can do in the browser; Sign everyone out when the browser closes; Stop a stolen session token from being reused; Stop downloads to devices you do not manage": 2,
+    "· 3 people, by name · <date>": 1,
     "EmailTeams or SlackHelp-desk noteIntranet noticeRemind": 2,
     "Names and addresses stay in the browser until you copy or export them.": 2,
     "· 4 people, by name · <date>": 1,
@@ -2333,22 +2232,22 @@
     "tabs": 0,
     "buttons": 32,
     "options": 0,
-    "links": 638,
-    "chips": 25,
+    "links": 676,
+    "chips": 26,
     "columns": 21,
     "tiles": 0,
     "empty": 0,
     "summaries": 98,
     "tips": 10,
     "sentences": 503,
-    "total": 1342
+    "total": 1381
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
     "sentences": 32,
-    "words": 320
+    "words": 310
    }
   },
   {
@@ -2499,7 +2398,7 @@
    "name": "Roadmap / Plan / one step opened",
    "note": "panel only, first step expanded",
    "headings": [
-    "2 of 20 steps in place · finishes <date>",
+    "2 of 22 steps in place · finishes <date>",
     "What needs attention before you start",
     "Nothing has started yet: the plan below is the whole journey. Progress fills in from the next scan after the first policy is created.",
     "The journey",
@@ -2537,7 +2436,7 @@
     "Hide completed",
     "Safe today (0)",
     "Done (2)",
-    "Ready (4)",
+    "Ready (6)",
     "Blocked (13)",
     "In report-only (1)",
     "Ready to enforce (0)",
@@ -2551,8 +2450,10 @@
    "links": [
     "See the blocked steps →",
     "Emergency access accounts",
+    "Allowed countries",
     "Decide on 1 dormant account",
-    "Answer 8 setup questions",
+    "Create the policy exclusions group",
+    "Break-glass sign-in drill",
     "Security-info registration requires a trusted context",
     "Authentication transfer blocked",
     "Device-code flow blocked",
@@ -2587,10 +2488,12 @@
     "Stop downloads to devices you do not manage",
     "Limit what personal devices can do in the browser",
     "Stop a stolen session token from being reused",
+    "ReadyPrerequisiteFix the allowed-countries list before it is usedAllowed countriesChecked: nothing blocks it and a foundation the later steps need.",
     "ReadyCheckDecide on 1 dormant accountChecked: nothing blocks it.",
-    "ReadyPrerequisiteAnswer 8 setup questionsChecked: nothing blocks it and a foundation the later steps need.",
-    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "ReadyPrerequisiteCreate the policy exclusions groupChecked: nothing blocks it and a foundation the later steps need.",
+    "ReadyRecurringBreak-glass sign-in drillChecked: nothing blocks it and 1 account overdue: Break-glass 01.",
     "ReadyVerifyRun the MFA verification campaignChecked: nothing blocks it and enabled users still need setting up.",
+    "DoneNew policyMake sure everyone can prove who they areEvery user satisfies MFA on every appDone <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "DoneNew policyMake guests prove who they are tooGuests satisfy MFADone <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "BlockedNew policyStop attackers adding their own MFA methodSecurity-info registration requires a trusted contextafter: Sort out emergency access before anything else",
     "BlockedNew policyStop sign-ins being handed to another deviceAuthentication transfer blockedafter: Sort out emergency access before anything else",
@@ -2613,7 +2516,7 @@
     "planned",
     "Safe today (0)",
     "Done (2)",
-    "Ready (4)",
+    "Ready (6)",
     "Blocked (13)",
     "In report-only (1)",
     "Ready to enforce (0)",
@@ -2621,9 +2524,10 @@
     "Ready",
     "Prerequisite",
     "Check",
+    "Recurring",
+    "Verify",
     "Done",
     "New policy",
-    "Verify",
     "Blocked",
     "In report-only",
     "Change"
@@ -2642,8 +2546,8 @@
    ],
    "empty": [],
    "summaries": [
-    "Plan revision 2, <date>",
-    "Ready Prerequisite Sort out emergency access before anything elseEmergency access accounts1 must-fix check to clear. 13 steps that can deny access are held until then.Checked: nothing blocks it and a foundation the later steps need."
+    "Plan revision 3, <date>",
+    "Ready Prerequisite Sort out emergency access before anything elseEmergency access accounts3 must-fix checks to clear. 13 steps that can deny access are held until then.Checked: nothing blocks it and a foundation the later steps need."
    ],
    "tips": [
     "About Steps done",
@@ -2654,14 +2558,14 @@
    ],
    "sentences": [
     "The plan is 4 weeks because two changes prompt the same people, so Browser sessions never persist for anyone cannot run in the same window as Unknown platforms blocked; everything else fits inside it.",
-    "1 thing to watch before anything is enforced.",
+    "2 things to watch before anything is enforced.",
     "13 steps blocked; each one names what unblocks it.",
     "See the blocked steps →",
     "3 Conditional Access policies in the tenant today; this plan adds 13, for 16 of the 195 Entra allows.",
-    "One subject has must-fix checks outstanding, holding 13 steps that can deny access.",
+    "2 subjects have must-fix checks outstanding, holding 13 steps that can deny access.",
     "2 steps were already covered before the plan began.",
     "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.",
-    "17",
+    "19",
     "Grey bars: steps planned to start that week.",
     "Green bars: steps that actually started.",
     "Hover a week for the counts.",
@@ -2672,24 +2576,30 @@
     "matched by what it does",
     "Plan revision 1, <date>: plan created",
     "Plan revision 2, <date>: 1 new step appended after a re-scan",
+    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies",
     "<date> → <date>",
-    "1 must-fix check to clear.",
+    "3 must-fix checks to clear.",
     "13 steps that can deny access are held until then.",
     "Checked: nothing blocks it and a foundation the later steps need.",
     "Nothing changes for anyone.",
     "This is groundwork so a mistake later can be undone.",
     "In this tenant, sort out emergency access before anything else covers nobody today, so the change closes the gap without touching anyone.",
-    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 1 must-fix check outstanding.",
+    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 3 must-fix checks outstanding.",
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.",
     "Nothing has to exist first.",
     "Each of these has to pass:",
-    "no emergency access account is nominated → At least two emergency access accounts are nominated. (Add a second account above)",
+    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)",
+    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)",
+    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)",
     "Worth fixing too, though nothing waits on them:",
-    "could not be checked: an answer given in Setup could not be read on this scan → Where the credential is kept, and who can reach it, is recorded in the plan. (Answer it in Setup)",
-    "could not be checked: an answer given in Setup could not be read on this scan → A sign-in by an emergency account raises an alert. (Answer it in Setup)",
+    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)",
+    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.",
+    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.",
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.",
     "Add a second account above",
-    "Good looks like: The must-fix check passes on the next scan.",
+    "Entra admin center → Roles & admins → Global Administrator",
+    "Entra admin center → Users → this user",
+    "Good looks like: All 3 must-fix checks pass on the next scan.",
     "Answer any of these and IAMAI acts on it.",
     "Leaving one unanswered does not hold the change up; it is stated here so nothing is mistaken for safety.",
     "The records cannot confirm this.",
@@ -2697,8 +2607,10 @@
     "Are there shared or kiosk accounts?",
     "Earlier phases start first, and this belongs to a later one.",
     "It waits on nothing: it can start as soon as its window allows.",
-    "The must-fix check passes on the next scan.",
+    "All 3 must-fix checks pass on the next scan.",
     "At least two emergency access accounts are nominated.",
+    "Global Administrator is assigned permanently and active, never eligible-only.",
+    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.",
     "Emergency access accounts is the way back in when a security change goes wrong.",
     "The cost is an hour of admin time and no disruption to anyone.",
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.",
@@ -2706,8 +2618,9 @@
     "Scheduled date: —",
     "This one cannot be skipped: emergency access is what makes every other change reversible.",
     "Checked: nothing blocks it.",
-    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
+    "Checked: nothing blocks it and 1 account overdue: Break-glass 01.",
     "Checked: nothing blocks it and enabled users still need setting up.",
+    "Done <date>: policy enforced on <date>; this policy already existed and covers this step.",
     "after: Sort out emergency access before anything else",
     "1 user used legacy authentication (3 sign-ins; Exchange ActiveSync: 3): these are the people the change touches.",
     "Not counted against the plan.",
@@ -2724,10 +2637,10 @@
    "tables": [],
    "occurrences": {
     "The plan is 4 weeks because two changes prompt the same people, so Browser sessions never persist for anyone cannot run in the same window as Unknown platforms blocked; everything else fits inside it.": 1,
-    "1 thing to watch before anything is enforced.": 1,
+    "2 things to watch before anything is enforced.": 1,
     "13 steps blocked; each one names what unblocks it.": 1,
     "3 Conditional Access policies in the tenant today; this plan adds 13, for 16 of the 195 Entra allows.": 1,
-    "One subject has must-fix checks outstanding, holding 13 steps that can deny access.": 1,
+    "2 subjects have must-fix checks outstanding, holding 13 steps that can deny access.": 1,
     "2 steps were already covered before the plan began.": 1,
     "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.": 1,
     "Grey bars: steps planned to start that week.": 1,
@@ -2737,23 +2650,29 @@
     "Nothing here is typed in; nothing can be edited.": 1,
     "Plan revision 1, <date>: plan created": 1,
     "Plan revision 2, <date>: 1 new step appended after a re-scan": 1,
-    "1 must-fix check to clear.": 1,
+    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies": 1,
+    "3 must-fix checks to clear.": 1,
     "13 steps that can deny access are held until then.": 1,
     "Checked: nothing blocks it and a foundation the later steps need.": 1,
     "Nothing changes for anyone.": 2,
     "This is groundwork so a mistake later can be undone.": 2,
     "In this tenant, sort out emergency access before anything else covers nobody today, so the change closes the gap without touching anyone.": 1,
-    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 1 must-fix check outstanding.": 1,
+    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 3 must-fix checks outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
     "Nothing has to exist first.": 1,
     "Each of these has to pass:": 1,
-    "no emergency access account is nominated → At least two emergency access accounts are nominated. (Add a second account above)": 1,
+    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
+    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
+    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
     "Worth fixing too, though nothing waits on them:": 1,
-    "could not be checked: an answer given in Setup could not be read on this scan → Where the credential is kept, and who can reach it, is recorded in the plan. (Answer it in Setup)": 1,
-    "could not be checked: an answer given in Setup could not be read on this scan → A sign-in by an emergency account raises an alert. (Answer it in Setup)": 1,
+    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
+    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
+    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.": 1,
     "Add a second account above": 1,
-    "Good looks like: The must-fix check passes on the next scan.": 1,
+    "Entra admin center → Roles & admins → Global Administrator": 1,
+    "Entra admin center → Users → this user": 1,
+    "Good looks like: All 3 must-fix checks pass on the next scan.": 1,
     "Answer any of these and IAMAI acts on it.": 1,
     "Leaving one unanswered does not hold the change up; it is stated here so nothing is mistaken for safety.": 1,
     "The records cannot confirm this.": 1,
@@ -2774,8 +2693,10 @@
     "Stop downloads to devices you do not manage": 1,
     "Limit what personal devices can do in the browser": 1,
     "Stop a stolen session token from being reused": 1,
-    "The must-fix check passes on the next scan.": 1,
+    "All 3 must-fix checks pass on the next scan.": 1,
     "At least two emergency access accounts are nominated.": 1,
+    "Global Administrator is assigned permanently and active, never eligible-only.": 1,
+    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.": 1,
     "Emergency access accounts is the way back in when a security change goes wrong.": 1,
     "The cost is an hour of admin time and no disruption to anyone.": 1,
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1,
@@ -2791,10 +2712,10 @@
    },
    "occurrencesAll": {
     "The plan is 4 weeks because two changes prompt the same people, so Browser sessions never persist for anyone cannot run in the same window as Unknown platforms blocked; everything else fits inside it.": 1,
-    "1 thing to watch before anything is enforced.": 1,
+    "2 things to watch before anything is enforced.": 1,
     "13 steps blocked; each one names what unblocks it.": 1,
     "3 Conditional Access policies in the tenant today; this plan adds 13, for 16 of the 195 Entra allows.": 1,
-    "One subject has must-fix checks outstanding, holding 13 steps that can deny access.": 1,
+    "2 subjects have must-fix checks outstanding, holding 13 steps that can deny access.": 1,
     "2 steps were already covered before the plan began.": 1,
     "Each tile is a step, coloured by its current ring; the band reads left to right from planned to verified.": 1,
     "Grey bars: steps planned to start that week.": 1,
@@ -2804,23 +2725,29 @@
     "Nothing here is typed in; nothing can be edited.": 1,
     "Plan revision 1, <date>: plan created": 1,
     "Plan revision 2, <date>: 1 new step appended after a re-scan": 1,
-    "1 must-fix check to clear.": 1,
+    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies": 1,
+    "3 must-fix checks to clear.": 1,
     "13 steps that can deny access are held until then.": 1,
-    "Checked: nothing blocks it and a foundation the later steps need.": 2,
+    "Checked: nothing blocks it and a foundation the later steps need.": 3,
     "Nothing changes for anyone.": 2,
     "This is groundwork so a mistake later can be undone.": 2,
     "In this tenant, sort out emergency access before anything else covers nobody today, so the change closes the gap without touching anyone.": 1,
-    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 1 must-fix check outstanding.": 1,
+    "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 3 must-fix checks outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
     "Nothing has to exist first.": 1,
     "Each of these has to pass:": 1,
-    "no emergency access account is nominated → At least two emergency access accounts are nominated. (Add a second account above)": 1,
+    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
+    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
+    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
     "Worth fixing too, though nothing waits on them:": 1,
-    "could not be checked: an answer given in Setup could not be read on this scan → Where the credential is kept, and who can reach it, is recorded in the plan. (Answer it in Setup)": 1,
-    "could not be checked: an answer given in Setup could not be read on this scan → A sign-in by an emergency account raises an alert. (Answer it in Setup)": 1,
+    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
+    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
+    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.": 1,
     "Add a second account above": 1,
-    "Good looks like: The must-fix check passes on the next scan.": 1,
+    "Entra admin center → Roles & admins → Global Administrator": 1,
+    "Entra admin center → Users → this user": 1,
+    "Good looks like: All 3 must-fix checks pass on the next scan.": 1,
     "Answer any of these and IAMAI acts on it.": 1,
     "Leaving one unanswered does not hold the change up; it is stated here so nothing is mistaken for safety.": 1,
     "The records cannot confirm this.": 1,
@@ -2841,17 +2768,20 @@
     "Stop downloads to devices you do not manage": 1,
     "Limit what personal devices can do in the browser": 1,
     "Stop a stolen session token from being reused": 1,
-    "The must-fix check passes on the next scan.": 1,
+    "All 3 must-fix checks pass on the next scan.": 1,
     "At least two emergency access accounts are nominated.": 1,
+    "Global Administrator is assigned permanently and active, never eligible-only.": 1,
+    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.": 1,
     "Emergency access accounts is the way back in when a security change goes wrong.": 1,
     "The cost is an hour of admin time and no disruption to anyone.": 1,
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1,
     "Copy for your managerCopy as prompt": 1,
     "This one cannot be skipped: emergency access is what makes every other change reversible.": 1,
     "Checked: nothing blocks it.": 1,
+    "Checked: nothing blocks it and 1 account overdue: Break-glass 01.": 1,
+    "Checked: nothing blocks it and enabled users still need setting up.": 1,
     "Every user satisfies MFA on every app": 1,
     "Done <date>: policy enforced on <date>; this policy already existed and covers this step.": 2,
-    "Checked: nothing blocks it and enabled users still need setting up.": 1,
     "Security-info registration requires a trusted context": 1,
     "after: Sort out emergency access before anything else": 13,
     "Authentication transfer blocked": 1,
@@ -2878,22 +2808,22 @@
     "tabs": 0,
     "buttons": 50,
     "options": 0,
-    "links": 600,
-    "chips": 38,
+    "links": 638,
+    "chips": 39,
     "columns": 4,
     "tiles": 6,
     "empty": 0,
     "summaries": 39,
     "tips": 12,
-    "sentences": 707,
-    "total": 1581
+    "sentences": 849,
+    "total": 1762
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 258,
-    "words": 878
+    "sentences": 270,
+    "words": 1014
    }
   },
   {
@@ -3563,6 +3493,7 @@
    "headings": [
     "Recovery card",
     "Emergency access accounts",
+    "Where the credential is",
     "Turn a Conditional Access policy off",
     "Put a policy back to report-only",
     "If the portal itself blocks you",
@@ -3587,9 +3518,10 @@
     "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.",
     "Names in full, on purpose A redacted card is useless at the moment you need it.",
     "Keep the printout where only the right people can reach it.",
-    "No emergency access accounts are nominated in this plan.",
-    "That is the first thing to fix: without one, a policy that locks everybody out has no way back in.",
-    "The plan has a step for it.",
+    "Sign in with one of these if your own account is locked out.",
+    "bg01@contoso.onmicrosoft.com",
+    "Setup has no answer for where these credentials are kept.",
+    "Write it here by hand before filing this card.",
     "Go to entra.microsoft.com and sign in.",
     "Protection → Conditional Access → Policies.",
     "Open the policy by name.",
@@ -3618,9 +3550,10 @@
     "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.": 1,
     "Names in full, on purpose A redacted card is useless at the moment you need it.": 1,
     "Keep the printout where only the right people can reach it.": 1,
-    "No emergency access accounts are nominated in this plan.": 1,
-    "That is the first thing to fix: without one, a policy that locks everybody out has no way back in.": 1,
-    "The plan has a step for it.": 1,
+    "Sign in with one of these if your own account is locked out.": 1,
+    "bg01@contoso.onmicrosoft.com": 1,
+    "Setup has no answer for where these credentials are kept.": 1,
+    "Write it here by hand before filing this card.": 1,
     "Go to entra.microsoft.com and sign in.": 1,
     "Protection → Conditional Access → Policies.": 1,
     "It applies within a few minutes.": 1,
@@ -3641,9 +3574,10 @@
     "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.": 1,
     "Names in full, on purpose A redacted card is useless at the moment you need it.": 1,
     "Keep the printout where only the right people can reach it.": 1,
-    "No emergency access accounts are nominated in this plan.": 1,
-    "That is the first thing to fix: without one, a policy that locks everybody out has no way back in.": 1,
-    "The plan has a step for it.": 1,
+    "Sign in with one of these if your own account is locked out.": 1,
+    "bg01@contoso.onmicrosoft.com": 1,
+    "Setup has no answer for where these credentials are kept.": 1,
+    "Write it here by hand before filing this card.": 1,
     "Go to entra.microsoft.com and sign in.": 1,
     "Protection → Conditional Access → Policies.": 1,
     "It applies within a few minutes.": 1,
@@ -3659,7 +3593,7 @@
     "Microsoft support will ask for the tenant id.": 1
    },
    "wordCounts": {
-    "headings": 25,
+    "headings": 29,
     "tabs": 0,
     "buttons": 3,
     "options": 0,
@@ -3670,15 +3604,15 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 263,
-    "total": 291
+    "sentences": 260,
+    "total": 292
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 27,
-    "words": 264
+    "sentences": 28,
+    "words": 261
    }
   },
   {
@@ -3688,6 +3622,7 @@
     "Roadmap",
     "Do this next",
     "1 user is blocked today, before this plan changes anything",
+    "1 break-glass account unproven in 90+ days",
     "Recovery card",
     "Plan file",
     "Change record",
@@ -3720,7 +3655,8 @@
    "links": [
     "Re-scan",
     "Recovery card",
-    "Troubleshoot sign-in problems with Conditional Access →"
+    "Troubleshoot sign-in problems with Conditional Access →",
+    "Manage emergency access accounts →"
    ],
    "chips": [],
    "columns": [],
@@ -3735,16 +3671,19 @@
     "Needs: ✓ scan complete · ✓ baseline loaded",
     "Based on the scan from this minute · <date and time>.",
     "Re-scan · Baseline: synthetic baseline",
-    "With this tenant's Entra ID P1, 20 of 25 steps are available now.",
+    "With this tenant's Entra ID P1, 22 of 27 steps are available now.",
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.",
     "Must fix first: 13 steps that can deny access are held until it passes.",
-    "nothing blocks it, and 13 later steps wait for it",
-    "setting up 1 person unblocks 3 steps · Priya Nair",
-    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.",
+    "Must fix first: 1 step that can deny access is held until it passes.",
+    "nothing blocks it, and 11 later steps wait for it",
+    "Before the plan starts, look at: 1 user is blocked today, before this plan changes anything; 1 break-glass account unproven in 90+ days.",
     "Their most recent sign-in failed an existing Conditional Access policy.",
     "Fix this first: otherwise the rollout gets the blame.",
     "Priya Nair: investigate the failing sign-in",
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)",
+    "An emergency account that has not signed in recently is unproven exactly when it matters.",
+    "Run the drill.",
+    "Break-glass 01: complete a test sign-in with its strong method",
     "One page to print and keep.",
     "What to do if a change locks somebody out, including you.",
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.",
@@ -3785,17 +3724,20 @@
     "Needs: ✓ scan complete · ✓ baseline loaded": 1,
     "Based on the scan from this minute · <date and time>.": 1,
     "Re-scan · Baseline: synthetic baseline": 1,
-    "With this tenant's Entra ID P1, 20 of 25 steps are available now.": 1,
+    "With this tenant's Entra ID P1, 22 of 27 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
     "Must fix first: 13 steps that can deny access are held until it passes.": 1,
-    "nothing blocks it, and 13 later steps wait for it": 1,
-    "setting up 1 person unblocks 3 steps · Priya Nair": 1,
-    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
+    "Must fix first: 1 step that can deny access is held until it passes.": 1,
+    "nothing blocks it, and 11 later steps wait for it": 1,
+    "Before the plan starts, look at: 1 user is blocked today, before this plan changes anything; 1 break-glass account unproven in 90+ days.": 1,
     "Their most recent sign-in failed an existing Conditional Access policy.": 1,
     "Fix this first: otherwise the rollout gets the blame.": 1,
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
     "Troubleshoot sign-in problems with Conditional Access →": 1,
+    "An emergency account that has not signed in recently is unproven exactly when it matters.": 1,
+    "Break-glass 01: complete a test sign-in with its strong method": 1,
+    "Manage emergency access accounts →": 1,
     "One page to print and keep.": 1,
     "What to do if a change locks somebody out, including you.": 1,
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
@@ -3827,17 +3769,20 @@
     "Needs: ✓ scan complete · ✓ baseline loaded": 1,
     "Based on the scan from this minute · <date and time>.": 1,
     "Re-scan · Baseline: synthetic baseline": 1,
-    "With this tenant's Entra ID P1, 20 of 25 steps are available now.": 1,
+    "With this tenant's Entra ID P1, 22 of 27 steps are available now.": 1,
     "5 steps need Entra ID P2; the Licensing guide shows what they would add.": 1,
     "Must fix first: 13 steps that can deny access are held until it passes.": 1,
-    "nothing blocks it, and 13 later steps wait for it": 1,
-    "setting up 1 person unblocks 3 steps · Priya Nair": 1,
-    "One thing to look at before the plan starts: 1 user is blocked today, before this plan changes anything.": 1,
+    "Must fix first: 1 step that can deny access is held until it passes.": 1,
+    "nothing blocks it, and 11 later steps wait for it": 1,
+    "Before the plan starts, look at: 1 user is blocked today, before this plan changes anything; 1 break-glass account unproven in 90+ days.": 1,
     "Their most recent sign-in failed an existing Conditional Access policy.": 1,
     "Fix this first: otherwise the rollout gets the blame.": 1,
     "Priya Nair: investigate the failing sign-in": 1,
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)": 1,
     "Troubleshoot sign-in problems with Conditional Access →": 1,
+    "An emergency account that has not signed in recently is unproven exactly when it matters.": 1,
+    "Break-glass 01: complete a test sign-in with its strong method": 1,
+    "Manage emergency access accounts →": 1,
     "One page to print and keep.": 1,
     "What to do if a change locks somebody out, including you.": 1,
     "Everything: steps, rings, evidence, history, Setup answers and checkpoints.": 1,
@@ -3865,26 +3810,26 @@
     "Save as PDF from the print dialog.": 1
    },
    "wordCounts": {
-    "headings": 29,
+    "headings": 36,
     "tabs": 3,
     "buttons": 39,
     "options": 0,
-    "links": 10,
+    "links": 15,
     "chips": 0,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 0,
     "tips": 3,
-    "sentences": 406,
-    "total": 490
+    "sentences": 442,
+    "total": 538
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 39,
-    "words": 406
+    "sentences": 42,
+    "words": 442
    }
   }
  ]

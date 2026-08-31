@@ -38,7 +38,9 @@ import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { ACTION, CARE, COMMS, EVIDENCE, EXIT, IMPACT, PORTAL_WORDS, PREREQ, ROLLBACK, TEMPLATE_LABEL, UNBLOCK, stepTitle } from '../copy/steps.ts'
+import { ACTION, CARE, COMMS, EMERGENCY_DONE_WHEN, EVIDENCE, EXIT, IMPACT, PORTAL_WORDS, PREREQ, ROLLBACK, TEMPLATE_LABEL, UNBLOCK, stepTitle } from '../copy/steps.ts'
+import { detectHighCare } from '../derive/highCare.ts'
+import { checksNotRun } from '../validation/report.ts'
 import {
   BREAK_GLASS_DRILL_DAYS,
   EXIT_MIN_DAYS_OBSERVED,
@@ -104,7 +106,12 @@ export type RoadmapInput = {
   changeFreeze?: ChangeFreeze | null
 }
 
-export type RoadmapResult = { steps: Step[]; schedule: Schedule }
+export type RoadmapResult = {
+  steps: Step[]
+  schedule: Schedule
+  /** Plan-footer housekeeping that comes from the engine (prompt 46 item 21). */
+  housekeeping: { checksNotRun: string | null }
+}
 
 const EXTRAS = STEP_EXTRAS
 
@@ -446,7 +453,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Role names travel with the scan ($expand=roleDefinition); learn them before any label is built.
   learnRoleNames(input.snapshot.config.roleAssignments?.rows ?? [])
   const { snapshot, mapping, questions, viability, planId } = input
-  const highCareIds = new Set(mapping.highCareUserIds)
+  // Detection only (prompt 46 item 19): admins, the emergency-access accounts,
+  // confirmed service accounts, and active people with no method. A list saved
+  // by an older Setup is not read.
+  const highCareIds = detectHighCare({ snapshot, breakGlassUserIds: mapping.breakGlassUserIds, serviceAccountUserIds: mapping.serviceAccountUserIds, viability })
   const operatorId = input.operatorUserId ?? null
   const viabilityById = new Map(viability.map((v) => [v.userId, v]))
   // One lookup, built once. This was a linear search of the directory per call,
@@ -598,7 +608,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const bgStepId = BREAK_GLASS_STEP_ID
   if (bgMissing) {
     const p = PREREQ.breakGlass
-    steps.push(prereq(bgStepId, p.title, p.why, p.how, p.exit))
+    // The two facts nobody can read are done-when lines here (prompt 46 item 21).
+    steps.push(prereq(bgStepId, p.title, p.why, p.how, [...p.exit, ...EMERGENCY_DONE_WHEN]))
   }
   const geMissing = canUseConditionalAccess && mapping.records['__globalExclusion']?.doesNotExist === true
   const geStepId = PREREQ_STEP_ID.exclusionsGroup
@@ -1497,7 +1508,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
 
   annotateStateReasons(steps)
-  return { steps, schedule }
+  return { steps, schedule, housekeeping: { checksNotRun: checksNotRun(validationReports) } }
 }
 
 export function findTaggedPolicy(snapshot: TenantSnapshot, planId: string, stepId: string): string | null {

@@ -430,3 +430,9 @@ export const BLOCKER_STEP = {
   alsoRecommended: (n: number, first: string): string =>
     `${count(n, 'recommended fix', 'recommended fixes')} on these accounts, starting with: ${first}.`,
 }
+
+/** The Plan footer's housekeeping lines that come from validation (prompt 46 item 21). */
+export const HOUSEKEEPING = {
+  checksNotRun: (n: number, reads: string[]): string =>
+    reads.length === 0 ? `${count(n, 'check')} could not run.` : `${count(n, 'check')} could not run: ${list(reads)}.`,
+}

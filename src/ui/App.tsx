@@ -40,6 +40,7 @@ import { computeStepStatus } from './stepStatus.ts'
 import { activeWizardQuestions, wizardProgress } from '../mapping/wizard.ts'
 import type { WizardProgress } from '../mapping/wizard.ts'
 import { loadMappingState, saveMappingState } from '../mapping/store.ts'
+import { detectAssumptions } from './detectAssumptions.ts'
 import { probeStorage } from '../graph/collect/cache.ts'
 
 const DEV_PANEL =
@@ -75,6 +76,25 @@ export function App() {
   useEffect(() => {
     if (lastScan) learnRoleNames(lastScan.snapshot.config.roleAssignments?.rows ?? [])
   }, [lastScan])
+  // Nothing is asked before the plan exists (target-state §5, prompt 46 item
+  // 19): once a scan and a baseline are both here, every answer nobody has
+  // given gets its detected default, saved under the tenant.
+  useEffect(() => {
+    if (!lastScan || !baseline?.pkg || !account) return
+    let cancelled = false
+    const { snapshot } = lastScan
+    const pkg = baseline.pkg
+    void detectAssumptions(account.tenantId, snapshot, pkg)
+      .then((m) => {
+        if (!cancelled) setMapProgress(wizardProgress(m, activeWizardQuestions(pkg, { snapshot, state: m })))
+      })
+      .catch(() => {
+        // Detection is a convenience over a saved state; a failure leaves the saved state as it was.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [lastScan, baseline, account])
   const [visitedStart, setVisitedStart] = useState<boolean>(() => {
     try {
       return localStorage.getItem('iamai-visited-start') === '1'

@@ -131,7 +131,8 @@ try {
   await go('baseline')
   t = await text()
   check('Baseline: 1 policy loaded', /1 policy ·/.test(t))
-  check('Baseline: Setup will ask 8 questions (all required)', /Setup will ask 8 questions \(all required\)/.test(t), (t.match(/Setup will ask[^\n]*/) ?? [''])[0])
+  // Seven answers since prompt 46 item 19; the synthetic tenant has no service-account candidates, so six.
+  check('Baseline: Setup will ask 6 questions (all required)', /Setup will ask 6 questions \(all required\)/.test(t), (t.match(/Setup will ask[^\n]*/) ?? [''])[0])
 
   // Scan: the readiness table
   await go('scan')
@@ -143,11 +144,11 @@ try {
   check('Scan: rollout tiles name the window and the population', /MFA proven in the last 30 days/.test(t) && /To set up before enforcement/.test(t) && !/Challenged rate/.test(t))
   check('Scan: legend has three cards', (await evaluate(`document.querySelectorAll('.legend-card').length`)) === 3)
 
-  // Setup: 8 questions, 3 required
+  // Setup: 6 questions, all required; detection may already have answered them (prompt 46 item 19).
   await go('mapping')
   check('Setup: questions render', await waitFor(`/Question 1/.test(document.body.innerText)`))
   t = await text()
-  check('Setup: every shown question is required, 8 to go', /0 of 8 answered · 8 to go/.test(t))
+  check('Setup: every answer detected, 6 of 6', /6 of 6 answered/.test(t), (t.match(/\d of \d answered[^\n]*/) ?? [''])[0])
   check('Setup: no optional split', !/optional question/.test(t))
 
   // Findings

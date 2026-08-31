@@ -163,7 +163,6 @@ test('rule 5: no concept is expressed by more than one option label', () => {
 const RULE6_WAIVED: Waiver[] = [
   { id: 'R11', match: 'Roadmap: 3 primary' },
   { id: 'C18', match: 'Prompt pack: 4 primary' },
-  { id: 'R21', match: 'Q3 — Which countries do your people sign in from?: 3 primary' },
 ]
 
 test('rule 6: a surface offers one primary action', () => {

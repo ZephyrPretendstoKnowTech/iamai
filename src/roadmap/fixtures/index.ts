@@ -304,7 +304,7 @@ export function buildFixture(spec: Spec): Fixture {
     records: {
       __globalExclusion: { placeholder: '__globalExclusion', kind: 'group', group: 'globalExclusion', resolvedId: exclusionGroup, resolvedName: 'Core - Exclusions', provenance: 'confirmed', doesNotExist: false, validation: null },
     },
-    wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, highCare: true, trustedLocations: true, serviceAccounts: true, timeZone: true, frameworks: true, applicability: true },
+    wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, trustedLocations: true, serviceAccounts: true, timeZone: true, applicability: true },
   }
   const groups: GroupMembers = new Map()
   groups.set(bgGroup, { memberIds: bgIds, memberCount: bgIds.length, sampled: false, displayName: 'Core - Break glass' })

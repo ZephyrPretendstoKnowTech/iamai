@@ -83,8 +83,14 @@ export type MappingState = {
   allowedCountries: string[]
   displayTimeZone: string | null
   frameworks: string[]
-  /** Which wizard questions the operator has answered (progress + auto vs human). */
+  /** Which answers exist, detected or confirmed (progress + auto vs human). */
   wizardAnswered: Record<string, boolean>
+  /**
+   * Where each answer came from (prompt 46 item 19): detected at scan time,
+   * confirmed or edited by a person, or nothing found so the plan creates it.
+   * Absent for answers saved before detection existed; they read as confirmed.
+   */
+  assumed?: Record<string, 'detected' | 'confirmed' | 'noneFound'>
   /** Questions answered "not applicable to us", with the reason (prompt 26 §2). */
   notApplicable?: Record<string, string>
   updatedAt: string
