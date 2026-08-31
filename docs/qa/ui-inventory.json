@@ -1,5 +1,5 @@
 {
- "fingerprint": "aeebe01354df5ad9",
+ "fingerprint": "c7f3a1973a291893",
  "surfaces": [
   {
    "name": "Header",
@@ -51,6 +51,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -124,6 +125,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 5,
     "words": 59
@@ -233,6 +235,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 4,
     "words": 22
@@ -303,6 +306,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 4,
     "words": 31
@@ -366,6 +370,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 3,
     "words": 18
@@ -435,6 +440,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 3,
     "words": 33
@@ -561,6 +567,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 1,
     "words": 16
@@ -623,6 +630,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -718,6 +726,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -804,6 +813,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -982,6 +992,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 2,
     "words": 15
@@ -1097,6 +1108,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -1156,6 +1168,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 1,
     "words": 5
@@ -1245,6 +1258,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -1330,6 +1344,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 2,
     "words": 14
@@ -1474,6 +1489,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -1612,6 +1628,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -1803,6 +1820,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 1,
     "words": 10
@@ -2122,6 +2140,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 2,
     "words": 29
@@ -2173,6 +2192,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -2281,6 +2301,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 12,
     "words": 173
@@ -2394,6 +2415,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -2511,6 +2533,7 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -2661,6 +2684,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 0,
     "words": 0
@@ -2789,6 +2813,9 @@
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
+   "forbidEverywhereHits": [
+    "Setup has no answer"
+   ],
    "pageProse": {
     "sentences": 27,
     "words": 258
@@ -3510,6 +3537,7 @@
     }
    ],
    "forbidHits": [],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 14,
     "words": 134

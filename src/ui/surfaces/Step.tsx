@@ -86,6 +86,7 @@ export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onT
       {step.includesOperator && step.operatorNote && <p className="reason">{step.operatorNote}</p>}
 
       <h3>{C.step.doIt}</h3>
+      {step.action.omits && step.action.omits.length > 0 && <p className="reason omits-note">{C.step.omitsJson(step.action.omits)}</p>}
       {step.action.json ? (
         <>
           <div className="tabs no-print" role="tablist">

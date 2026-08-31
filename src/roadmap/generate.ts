@@ -212,9 +212,14 @@ export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}
   '{serviceAccountsGroup}': PREREQ_STEP_ID.serviceAccountsGroup,
 }
 
-/** Placeholder token for a baseline reference no Setup answer has resolved yet — never a GUID. */
-export function setupToken(questionNumber: number, role: string): string {
-  return `__IAMAI_SETUP_QUESTION_${questionNumber}_${role.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}__`
+/**
+ * Internal marker for a baseline reference no assumption has resolved yet: never
+ * a GUID, and never rendered. The JSON strips it (a downloaded artifact omits
+ * the clause); the portal steps resolve it to a plain label. The `__IAMAI`
+ * prefix is a tripwire — `forbidEverywhere` fails the build if one ever leaks.
+ */
+export function unresolvedToken(questionNumber: number, role: string): string {
+  return `__IAMAI_UNRESOLVED_${questionNumber}_${role.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}__`
 }
 
 export type Placeholders = Map<string, { label: string; token: string }>
@@ -248,6 +253,56 @@ function replaceReferences(policy: RawPolicy, mapping: MappingState, placeholder
   return body
 }
 
+/**
+ * Strip references no object resolves yet from a policy body so a downloaded
+ * artifact never carries a placeholder (prompt 49.1 item 1). An unresolved entry
+ * is a placeholder token or a {template} slot; it is dropped from its array, and
+ * an array that held only unresolved entries is dropped with its key. Returns the
+ * plain labels omitted, for the caption above the Do-it tabs. The portal steps
+ * keep the reference (resolved to a label), so only the JSON changes.
+ */
+function stripUnresolvedForJson(policy: RawPolicy, placeholders: Placeholders): { body: RawPolicy; omitted: string[] } {
+  const labelOf = new Map<string, string>()
+  for (const p of placeholders.values()) labelOf.set(p.token, p.label)
+  const cleanLabel = (l: string): string => l.replace(/\s*\(created by the step above\)\s*$/, '')
+  const omitted = new Map<string, string>()
+  const labelForUnresolved = (s: string): string | null => {
+    if (labelOf.has(s)) return cleanLabel(labelOf.get(s)!)
+    if (/^\{[A-Za-z]+\}$/.test(s)) return cleanLabel(TEMPLATE_LABEL[s as keyof typeof TEMPLATE_LABEL] ?? 'the object this step creates')
+    if (/^__IAMAI_/.test(s)) return 'the object this step creates'
+    return null
+  }
+  const walk = (v: unknown): unknown => {
+    if (Array.isArray(v)) {
+      const kept: unknown[] = []
+      for (const x of v) {
+        if (typeof x === 'string') {
+          const label = labelForUnresolved(x)
+          if (label) {
+            omitted.set(x, label)
+            continue
+          }
+        }
+        kept.push(walk(x))
+      }
+      return kept
+    }
+    if (v !== null && typeof v === 'object') {
+      const out: Record<string, unknown> = {}
+      for (const [k, val] of Object.entries(v as RawPolicy)) {
+        const w = walk(val)
+        // An array emptied by stripping loses its key; an originally-empty array stays.
+        if (Array.isArray(w) && w.length === 0 && Array.isArray(val) && (val as unknown[]).length > 0) continue
+        out[k] = w
+      }
+      return out
+    }
+    return v
+  }
+  const body = walk(structuredClone(policy)) as RawPolicy
+  return { body, omitted: [...omitted.values()] }
+}
+
 function unmappedKeysUsedBy(policy: RawPolicy, questions: MappingQuestion[], mapping: MappingState): string[] {
   const text = JSON.stringify(policy)
   return questions
@@ -267,7 +322,7 @@ function createdWithinStepKeys(policy: RawPolicy, mapping: MappingState): { key:
 }
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const TOKEN_RE = /^__IAMAI_SETUP_QUESTION_(\d+)_(.+)__$/
+const TOKEN_RE = /^__IAMAI_UNRESOLVED_(\d+)_(.+)__$/
 
 export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholders: Placeholders = new Map()): string[] {
   const one = (x: unknown, role = false): string => {
@@ -372,19 +427,20 @@ export function buildCreateAction(
   if (opts.displayName) body.displayName = opts.displayName
   const tag = `[IAMAI:${planId}:${stepId}]`
   body.description = `${tag}${typeof baselinePolicy.description === 'string' && baselinePolicy.description ? ' ' + baselinePolicy.description : ''}`
-  const json = JSON.stringify(body, null, 2)
-  const fileName = `${stepId}.json`
-  const unresolved = [...(opts.placeholders?.values() ?? [])].filter((p) => json.includes(p.token))
-  const comment = unresolved.length > 0 ? `# Replace the placeholders first: ${unresolved.map((p) => p.label).join('; ')}\n` : ''
+  // The portal steps keep the reference (resolved to a label); the JSON strips
+  // any object that does not exist yet, so a download never carries a placeholder.
   const steps = portalSteps(body, names, opts.placeholders)
+  const { body: jsonBody, omitted } = stripUnresolvedForJson(body, opts.placeholders ?? new Map())
+  const json = JSON.stringify(jsonBody, null, 2)
+  const fileName = `${stepId}.json`
   if (opts.adjust) {
     steps[0] = `Entra admin center → Protection → Conditional Access → Policies → open "${String(body.displayName ?? '')}"`
     steps[steps.length - 1] = 'Save (the policy keeps its current state)'
   }
   const powershell = opts.adjust
-    ? `${comment}Invoke-MgGraphRequest -Method PATCH -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${opts.adjust.policyId}' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
-    : `${comment}Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
-  return { kind: opts.adjust ? 'adjust' : 'create', summary: [ACTION.createReportOnly], json, portalSteps: steps, powershell }
+    ? `Invoke-MgGraphRequest -Method PATCH -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${opts.adjust.policyId}' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
+    : `Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
+  return { kind: opts.adjust ? 'adjust' : 'create', summary: [ACTION.createReportOnly], json, portalSteps: steps, powershell, omits: omitted.length > 0 ? omitted : undefined }
 }
 
 export { proposedPolicyName } from '../coverage/naming.ts'
@@ -452,7 +508,7 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
     full.portalSteps[full.portalSteps.length - 1],
   ].filter((s): s is string => typeof s === 'string')
   const powershell = full.powershell ? full.powershell.replace(/-Method POST/, '-Method PATCH') : null
-  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
+  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes, omits: full.omits }
 }
 
 function adjustSummary(result: GoalResult): string[] {
@@ -586,7 +642,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const role = country ? 'your allowed countries' : ROLE_LABEL[q.group]
     // Setup is gone (prompt 48.1 item 8): an unresolved object is created by the Wave 0 step.
     const label = n > 0 ? `${role} (created by the step above)` : role
-    placeholders.set(q.key, { label, token: setupToken(n, q.group) })
+    placeholders.set(q.key, { label, token: unresolvedToken(n, q.group) })
   }
   const naming = input.coverage.organisation.naming
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))

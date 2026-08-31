@@ -48,6 +48,8 @@ export type Action = {
   roleList?: { summary: string; names: string[] } | null
   /** For a change to an existing policy: current value → new value, field by field (roadmap-v2.md §4). */
   changes?: { field: string; from: string; to: string }[]
+  /** Objects a downloaded JSON leaves out because they do not exist yet (prompt 49.1 item 1); the caption above the tabs names them. */
+  omits?: string[]
 }
 
 /**

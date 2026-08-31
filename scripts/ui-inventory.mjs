@@ -140,6 +140,7 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   // the lint cannot disagree about what a row is.
   const REPEATERS = ${JSON.stringify(opts.repeaters ?? null)}
   const FORBID = ${JSON.stringify(opts.forbid ?? [])}
+  const FORBID_EVERY = ${JSON.stringify(opts.forbidEverywhere ?? [])}
   const skipped = (el) =>
     el.closest('.devtools, .print-only, [hidden]') !== null || (EXCLUDE !== '' && el.closest(EXCLUDE) !== null)
   // checkVisibility sees what offsetParent cannot: a closed <details> keeps
@@ -283,6 +284,16 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   rootClone.querySelectorAll('.devtools, .print-only, [hidden]').forEach((n) => n.remove())
   const rootText = stabilise((rootClone.textContent || '').replace(/\\s+/g, ' '))
   const forbidHits = FORBID.filter((f) => rootText.includes(f))
+  // forbidEverywhere: strings no surface may render as prose (prompt 49.1 item 1).
+  // Read from prose only, with code panels removed: a policy body legitimately
+  // carries urn:user:… (item 7), so a JSON or PowerShell tab is exempt, while a
+  // portal step, a caption or any prose that leaks one is caught. The placeholder
+  // token is stripped from the JSON at the source and the smoke asserts the raw
+  // artifact bytes, so nothing needs the code panels here.
+  const proseClone = root.cloneNode(true)
+  proseClone.querySelectorAll('.devtools, .print-only, [hidden], pre, code, .mono, .code-block').forEach((n) => n.remove())
+  const proseText = stabilise((proseClone.textContent || '').replace(/\\s+/g, ' '))
+  const forbidEverywhereHits = FORBID_EVERY.filter((f) => proseText.includes(f))
   // pageProse: sentences and words outside every repeater, which is what the
   // contract's budget bounds. Rows are budgeted separately.
   const proseSel = repSel ?? REPEATER
@@ -319,7 +330,7 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   const wordCounts = {}
   for (const [k, v] of Object.entries(sections)) wordCounts[k] = words(v)
   wordCounts.total = Object.values(wordCounts).reduce((a, b) => a + b, 0)
-  return { ...sections, titles, nav, primary, tables, occurrences, occurrencesAll, wordCounts, unnamedControls, rows, forbidHits, pageProse }
+  return { ...sections, titles, nav, primary, tables, occurrences, occurrencesAll, wordCounts, unnamedControls, rows, forbidHits, forbidEverywhereHits, pageProse }
 })()`
 
 const surfaces = []
@@ -328,6 +339,26 @@ const capture = async (name, note = '', rootExpr, excludeSel, extra = {}, opts =
   if (!data) {
     console.warn(`inventory: ${name} rendered nothing`)
     return
+  }
+  // Open every tab in a .tabs group inside this surface and fold each panel's
+  // text into the forbid checks (prompt 49.1 item 2): the placeholder in item 1
+  // lived in the step's non-default JSON tab, which a single snapshot never saw.
+  const rootSel = rootExpr ?? `document.querySelector('main.page')`
+  const tabCount = await evaluate(`(() => { const r = ${rootSel}; if (!r) return 0; return r.querySelectorAll('[role=tab], .tabs .tab').length })()`)
+  if (tabCount > 1) {
+    const forbid = new Set(data.forbidHits)
+    const forbidEvery = new Set(data.forbidEverywhereHits)
+    for (let i = 0; i < tabCount; i++) {
+      await evaluate(`(() => { const r = ${rootSel}; const t = r ? [...r.querySelectorAll('[role=tab], .tabs .tab')][${i}] : null; if (t) t.click(); return !!t })()`)
+      await sleep(150)
+      const d = await evaluate(extractIn(rootExpr, excludeSel, opts))
+      if (d) {
+        d.forbidHits.forEach((f) => forbid.add(f))
+        d.forbidEverywhereHits.forEach((f) => forbidEvery.add(f))
+      }
+    }
+    data.forbidHits = [...forbid]
+    data.forbidEverywhereHits = [...forbidEvery]
   }
   surfaces.push({ name, note, ...data, ...extra })
   console.log(`  ${name}: ${data.wordCounts.total} words`)
@@ -376,7 +407,7 @@ for (const c of built) {
     await sleep(700)
   }
   const meta = { contract: c.id, state: r.state ?? 'scanned', route: r.route ?? '/plan' }
-  const opts = { repeaters: contracts.repeaters ?? [], forbid: c.forbid ?? [] }
+  const opts = { repeaters: contracts.repeaters ?? [], forbid: c.forbid ?? [], forbidEverywhere: contracts.forbidEverywhere ?? [] }
   if (r.eachTab) {
     const tabLabels = await evaluate(
       `[...document.querySelectorAll('main.page [role=tab], main.page .tab')].filter((e) => e.offsetParent !== null).map((e) => (e.textContent || '').replace(/\\s+/g, ' ').replace(/\\d+$/, '').trim())`,

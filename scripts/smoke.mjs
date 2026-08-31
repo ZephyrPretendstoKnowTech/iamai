@@ -7,8 +7,12 @@
 //
 //   npm run smoke            (CHROME=/path/to/chrome to override the binary)
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
+
+// No rendered surface and no downloaded artifact may carry a forbidEverywhere
+// string (prompt 49.1 item 1): a placeholder token, a Setup mention, a raw URN.
+const FORBID_EVERYWHERE = JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')).forbidEverywhere ?? []
 
 const PORT = Number(process.env.SMOKE_PORT ?? 5199)
 const CDP_PORT = Number(process.env.SMOKE_CDP_PORT ?? 9444)
@@ -233,6 +237,20 @@ try {
   check('Plan: waves render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .wave').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 5 && /next/.test(pt))
   check('Plan: opening a row shows Do it', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Do it/.test(document.body.innerText) && /Tell your people|Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
+  // Item 1: the step's Do-it tabs (Portal steps, JSON, PowerShell) and the
+  // Download JSON artifact never carry a forbidEverywhere string. Open each tab
+  // so its panel renders, then download the JSON so the artifact check sees it.
+  if (await evaluate(`!!document.querySelector('main.page .step-body .tabs .tab')`)) {
+    for (const tabLabel of ['JSON', 'PowerShell', 'Portal steps']) {
+      await clickText(`/^${tabLabel}$/`)
+      await sleep(120)
+    }
+    const stepText = await evaluate(`(document.querySelector('main.page .step-body') || {}).textContent || ''`)
+    const stepHits = FORBID_EVERYWHERE.filter((f) => stepText.includes(f))
+    check('Step: the Do-it tabs carry no forbidden placeholder', stepHits.length === 0, stepHits.join('; '))
+    await clickText('/^Download JSON$/')
+    await sleep(200)
+  }
   check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
   check('Plan: the footer has the three details', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Housekeeping/g) || []).length === 3)
   check('Plan: no forbidden strings', !/Do this next|What needs attention before you start|The journey|Safe today/.test(pt))
@@ -300,6 +318,18 @@ try {
     await sleep(700)
     check('Export: Load a plan file runs the import path', ran && (await evaluate(`window.__alerts.length > 0 || location.hash === '#/plan'`)))
   }
+
+  // Item 1: every artifact generated so far (the step JSON, ICS, CSVs, prompts,
+  // bundle, plan file) carries no forbidEverywhere string. urn:user:… is the one
+  // exception a raw policy body needs (item 7), so it is allowed inside a .json
+  // artifact (the Download JSON and the plan file) and forbidden everywhere else.
+  const artifactHits = await evaluate(
+    `(async () => { const bad = ${JSON.stringify(FORBID_EVERYWHERE)}; const out = []; for (const d of window.__dl) { if (!d.blob) continue; const t = await d.blob.text(); const isJson = /\\.json$/.test(d.name); for (const f of bad) { if (f === 'urn:user:' && isJson) continue; if (t.includes(f)) out.push(d.name + ': ' + f) } } return out })()`,
+  )
+  check('Export: no downloaded artifact carries a forbidden placeholder', artifactHits.length === 0, artifactHits.join('; '))
+  const printText = await evaluate(`(document.querySelector('.print-plan') || {}).textContent || ''`)
+  const printHits = FORBID_EVERYWHERE.filter((f) => printText.includes(f))
+  check('Export: the print document carries no forbidden placeholder', printHits.length === 0, printHits.join('; '))
 
   // Recovery card (target-state §7).
   await go('recovery')
