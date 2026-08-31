@@ -12,6 +12,7 @@ export type Route =
   | 'home'
   | 'connect'
   | 'plan'
+  | 'export'
   | 'today'
   | 'inventory'
   | 'recovery'
@@ -44,6 +45,7 @@ const DEV = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ===
 export const VALID = new Set<string>([
   'connect',
   'plan',
+  'export',
   'today',
   'inventory',
   'recovery',

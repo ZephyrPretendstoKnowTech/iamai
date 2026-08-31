@@ -14,6 +14,7 @@ import type { BaselineResult } from './baseline.ts'
 import { LicensingPage } from './pages/LicensingPage.tsx'
 import { RoadmapPage } from './pages/RoadmapPage.tsx'
 import { Plan } from './surfaces/Plan.tsx'
+import { Export } from './surfaces/Export.tsx'
 import { Today } from './surfaces/Today.tsx'
 import { Inventory } from './surfaces/Inventory.tsx'
 import { TODAY } from '../copy/today.ts'
@@ -283,6 +284,7 @@ export function App() {
               </section>
             ))}
           {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
+          {route === 'export' && <Export scan={lastScan} baseline={baseline} account={account} />}
           {(route === 'roadmap' || route === 'roadmap/prompts') && (
             <RoadmapPage
               scan={lastScan}

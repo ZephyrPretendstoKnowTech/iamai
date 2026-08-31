@@ -1,6 +1,6 @@
 // Dedicated print layout for the plan (prompt 12 §D). Hidden on screen;
 // the screen layout is hidden in print. Light theme via tokens.css @media print.
-import { Fragment } from 'react'
+import { Fragment, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
@@ -44,6 +44,27 @@ export function PrintPlan({
   nameOf: (id: string) => string
 }) {
   const today = absoluteDate(new Date().toISOString())
+  // The saved PDF is named IAMAI Planner — <tenant> — <date> (prompt 49 item 8).
+  useEffect(() => {
+    // The saved PDF is named IAMAI Planner (em dash) tenant (em dash) date
+    // (prompt 49 item 8): set the title only for the print dialog, so browsing
+    // Export keeps the page title.
+    const pdfName = `IAMAI Planner \u2014 ${tenantName} \u2014 ${today}`
+    let prev = ""
+    const onBefore = (): void => {
+      prev = document.title
+      document.title = pdfName
+    }
+    const onAfter = (): void => {
+      document.title = prev
+    }
+    window.addEventListener("beforeprint", onBefore)
+    window.addEventListener("afterprint", onAfter)
+    return () => {
+      window.removeEventListener("beforeprint", onBefore)
+      window.removeEventListener("afterprint", onAfter)
+    }
+  }, [tenantName, today])
   const done = steps.filter((s) => s.status === 'done')
   const byId = new Map(steps.map((s) => [s.id, s]))
   const waves = schedule.waves.filter((w) => w.stepIds.length > 0)
