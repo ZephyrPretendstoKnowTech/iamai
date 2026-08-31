@@ -15,7 +15,10 @@ import { LicensingPage } from './pages/LicensingPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
 import { MappingPage } from './pages/MappingPage.tsx'
 import { RoadmapPage } from './pages/RoadmapPage.tsx'
-import { MfaViabilityScreen } from './MfaViabilityScreen.tsx'
+import { Today } from './surfaces/Today.tsx'
+import { Inventory } from './surfaces/Inventory.tsx'
+import { TODAY } from '../copy/today.ts'
+import { INVENTORY } from '../copy/inventory.ts'
 import { ChecksPage } from './pages/ChecksPage.tsx'
 import { NamingPage } from './pages/NamingPage.tsx'
 import { RecoveryCard } from './pages/RecoveryCard.tsx'
@@ -258,23 +261,17 @@ export function App() {
           )}
           {route === 'package' && <PackagePage />}
           {(route === 'today' || route === 'inventory') &&
-            (account ? (
-              <MfaViabilityScreen
-                key={route}
-                view={route === 'inventory' ? 'inventory' : 'readiness'}
-                tenantId={account.tenantId}
-                initial={lastScan}
-                onRunningChange={setScanRunning}
-                onComplete={(snapshot, at) => {
-                  setLastScan({ snapshot, at })
-                  void saveSnapshotRecord(account.tenantId, { snapshot, at })
-                }}
-              />
+            (account && lastScan ? (
+              route === 'today' ? (
+                <Today snapshot={lastScan.snapshot} tenantId={account.tenantId} />
+              ) : (
+                <Inventory snapshot={lastScan.snapshot} />
+              )
             ) : (
-              <section>
-                <h2>{route === 'inventory' ? SHELL.steps.inventory : SHELL.steps.scan}</h2>
+              <section className="surface">
+                <h1>{route === 'inventory' ? INVENTORY.heading : TODAY.title}</h1>
                 <p>
-                  {route === 'inventory' ? SHELL.inventoryNeedsConnect : SHELL.scanNeedsConnect} <a href="#/connect">{SHELL.connectLink}</a>
+                  {account ? TODAY.needsScan : SHELL.scanNeedsConnect} <a href="#/connect">{account ? TODAY.scanLink : SHELL.connectLink}</a>
                 </p>
               </section>
             ))}

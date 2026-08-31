@@ -3,7 +3,8 @@ import { count } from './statements.ts'
 
 export const INVENTORY = {
   title: 'Inventory',
-  intro: 'Everything the scan read, as found: no analysis. Every table exports to CSV.',
+  heading: 'Everything the scan read',
+  backToToday: '← Today',
   tabs: {
     policies: 'Policies',
     locations: 'Named locations',
@@ -150,9 +151,6 @@ export const INVENTORY = {
     seats: (enabled: number, consumed: number) => `${enabled} (${consumed} assigned)`,
     none: '—',
     empty: 'No subscribed licences were read.',
-    showZero: 'Show licences with no seats',
-    hideZero: 'Hide licences with no seats',
-    hiddenZero: (n: number) => `${count(n, 'licence')} with no seats hidden.`,
   },
   apps: {
     columns: { app: 'App', signIns: 'Sign-ins (30 days)', lastSp: 'Last service principal activity' },
@@ -173,9 +171,12 @@ export const INVENTORY = {
     byProtocol: 'By protocol',
     byCountry: 'By country (distinct users)',
     columns: { key: 'Value', count: 'Sign-ins', users: 'Users' },
-    deviceCode: 'Device-code flow users',
-    authTransfer: 'Authentication transfer users',
-    legacy: 'Legacy authentication users',
+    olderMethods: 'Older sign-in methods in use',
+    usageColumns: { method: 'Method', people: 'People' },
+    deviceCode: 'Device-code flow',
+    authTransfer: 'Authentication transfer',
+    legacy: 'Legacy authentication',
+    morePeople: (first: string[], more: number) => `${first.join(', ')} and ${count(more, 'other')}`,
     blockedToday: 'Blocked today, by policy',
     blockedColumns: { policy: 'Policy', users: 'Users' },
     noPolicy: 'No policy identified',

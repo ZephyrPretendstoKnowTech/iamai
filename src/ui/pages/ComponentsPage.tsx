@@ -21,8 +21,8 @@ import {
   Tabs,
 } from '../components/index.ts'
 import type { ChipStatus, Column, IconName, PickerOption } from '../components/index.ts'
-import { InventoryPage } from './InventoryPage.tsx'
-import { MfaViabilityScreen } from '../MfaViabilityScreen.tsx'
+import { Today } from '../surfaces/Today.tsx'
+import { Inventory } from '../surfaces/Inventory.tsx'
 import { MappingPage } from './MappingPage.tsx'
 import { CoveragePage } from './CoveragePage.tsx'
 import { RoadmapPage } from './RoadmapPage.tsx'
@@ -186,8 +186,8 @@ export function ComponentsPage() {
         <EmptyState icon="search" text="No sign-ins matched." action={<Button size="sm">Clear filters</Button>} />
       </Section>
 
-      <Section id="scan" title="Scan (synthetic tenant)">
-        <MfaViabilityScreen tenantId={FIXTURE.tenantId} initial={{ snapshot: FIXTURE, at: FIXTURE.asOf }} onRunningChange={() => {}} onComplete={() => {}} />
+      <Section id="today" title="Today (synthetic tenant)">
+        <Today snapshot={FIXTURE} tenantId={FIXTURE.tenantId} />
       </Section>
 
       <Section id="setup" title="Setup (synthetic tenant)">
@@ -203,7 +203,7 @@ export function ComponentsPage() {
       </Section>
 
       <Section id="inventory" title="Inventory (synthetic tenant)">
-        <InventoryPage snapshot={FIXTURE} />
+        <Inventory snapshot={FIXTURE} />
       </Section>
 
       <Section id="icon" title="Icon">

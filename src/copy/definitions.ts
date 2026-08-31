@@ -134,15 +134,6 @@ export const CHIP = {
 } as const satisfies Record<string, Definition>
 
 /** Legend groups in display order, for the Scan and Roadmap legends. */
-export const LEGEND: { heading: string; items: Definition[] }[] = [
-  { heading: TERMS.legendGroups.mfaState, items: Object.values(MFA_STATE) },
-  { heading: TERMS.legendGroups.activity, items: Object.values(ACTIVITY_STATE) },
-  { heading: TERMS.legendGroups.methodTier, items: Object.values(METHOD_TIER).filter((d) => d.title !== TERMS.methodTier.none) },
-  { heading: 'Goal status', items: Object.values(GOAL_STATUS) },
-  { heading: 'Step status', items: Object.values(STEP_STATUS) },
-  { heading: 'Step kind', items: Object.values(STEP_KIND) },
-  { heading: 'Numbers', items: Object.values(TILE) },
-]
 
 /**
  * Headline metrics and the population each is computed over. The
@@ -150,7 +141,30 @@ export const LEGEND: { heading: string; items: Definition[] }[] = [
  * window, when one applies), so a filtered percentage can never read as a
  * whole-tenant one (ux-review-04 §1).
  */
+/**
+ * Today's tiles (prompt 47 Part 5, target-state §4): three shares over active
+ * people, and the not-active count, which is listed and never counted. Each
+ * definition is the tile's info tip, 25 words or fewer.
+ */
+export const TODAY_TILE = {
+  proven: { title: 'MFA proven', text: 'Active people with a successful MFA sign-in in the collected records, as a share of active people. Seen, never assumed.' },
+  unproven: {
+    title: 'Registered, unproven',
+    text: 'Active people with a registered method and no MFA sign-in in the records: never prompted, or possibly broken. Share of active people.',
+  },
+  noMethod: { title: 'No method', text: 'Active people with no MFA-capable method registered, as a share of active people. Email and security questions do not count.' },
+  notActive: { title: 'Not active', text: 'Enabled people with no sign-in in 90 days, or none on record. Listed, never counted: nothing can lock out an unused account.' },
+} as const satisfies Record<string, Definition>
+
+/** The numbers in Today's one line, defined once. */
+export const TODAY_LINE = {
+  active: { title: 'Active people', text: 'Enabled people with a successful sign-in in the last 90 days. Enabled counts everyone who can sign in; admins hold a directory role.' },
+} as const satisfies Record<string, Definition>
+
 export const HEADLINE_METRICS: { tile: Definition; population: string; window: string | null }[] = [
+  { tile: TODAY_TILE.proven, population: 'active people', window: null },
+  { tile: TODAY_TILE.unproven, population: 'active people', window: null },
+  { tile: TODAY_TILE.noMethod, population: 'active people', window: null },
   { tile: TILE.mfaProven, population: POPULATION.enabled, window: WINDOW },
   { tile: TILE.noMethod, population: POPULATION.enabled, window: null },
   { tile: TILE.registeredUnproven, population: POPULATION.enabled, window: WINDOW },
