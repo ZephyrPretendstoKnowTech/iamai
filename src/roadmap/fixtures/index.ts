@@ -145,6 +145,7 @@ export function buildFixture(spec: Spec): Fixture {
   const authMethods: TenantSnapshot['authMethods'] = {}
   const signInEvidence: TenantSnapshot['signInEvidence'] = {}
   const rolesActive: Record<string, string[]> = {}
+  const spPrincipals: Record<string, string> = {}
   const ids: string[] = []
   const bgIds = [guid(spec.name, 1_000_001), guid(spec.name, 1_000_002)]
   const svcIds = Array.from({ length: spec.serviceAccounts ?? 0 }, (_, i) => guid(spec.name, 1_000_100 + i))
@@ -211,6 +212,23 @@ export function buildFixture(spec: Spec): Fixture {
     authMethods[id] = []
     signInEvidence[id] = { signInCount: 40, lastSignIn: daysAgo(1), lastMfaSuccess: null }
   }
+  // GetIAMAI, as the live walk found it (prompt 48.1 items 5, 6, 9).
+  if (spec.name === 'getiamai') {
+    // A service principal holds Global Administrator: named as one, never left as an id (item 5).
+    const spId = guid(spec.name, 1_000_900)
+    rolesActive[spId] = [GA]
+    spPrincipals[spId] = 'Contoso Backup Runner'
+    // Two active people are registered but have not completed MFA in the window (item 6).
+    const activeNonBg = ids.filter((id) => signInEvidence[id] && !bgIds.includes(id)).slice(0, 2)
+    for (const id of activeNonBg) {
+      const i = ids.indexOf(id)
+      registrationDetails[i] = { ...registrationDetails[i], isMfaCapable: true, isMfaRegistered: true, methodsRegistered: ['microsoftAuthenticatorPush'] }
+      authMethods[id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }]
+      signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: null }
+    }
+    // The two break-glass accounts share one Authenticator device: bg.separateDevices fails (item 9).
+    for (const id of bgIds) authMethods[id] = [{ kind: 'microsoftAuthenticator', displayName: 'SM-S918U', phoneAppVersion: '6.2508.0' }]
+  }
   // A directory-sync role holder on mid and a hybrid user on huge (prompt 48 items 13, 15).
   if (spec.name === 'mid' && ids[6]) rolesActive[ids[6]] = ['d29b2b05-8046-44ba-8758-1e26182fcf32']
   if (spec.name === 'huge' && users[3]) users[3].onPremisesSyncEnabled = true
@@ -276,7 +294,7 @@ export function buildFixture(spec: Spec): Fixture {
       authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Fido2', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
       crossTenantAccess: section([]),
-      roleAssignments: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], roleDefinition: { id: roles[0], displayName: 'Global Administrator' } }))),
+      roleAssignments: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], roleDefinition: { id: roles[0], displayName: 'Global Administrator' }, ...(spPrincipals[principalId] ? { principalType: 'ServicePrincipal', principal: { displayName: spPrincipals[principalId], '@odata.type': '#microsoft.graph.servicePrincipal' } } : {}) }))),
       pimEligibility: section([], p2 ? 'ok' : 'disabled', p2 ? null : 'needs Entra ID P2'),
       subscribedSkus: section([
         ...(p1 ? [{ skuId: 'sku-p1', skuPartNumber: 'AAD_PREMIUM', prepaidUnits: { enabled: spec.users + 20 }, consumedUnits: spec.users, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM', provisioningStatus: 'Success' }] }] : []),

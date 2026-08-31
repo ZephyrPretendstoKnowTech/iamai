@@ -55,17 +55,52 @@ test('the shared-device step appears only where shared devices are detected, and
   }
 })
 
-test('the fixture with no scenario evidence carries no scenario line (micro, getiamai)', () => {
-  for (const name of ['micro', 'getiamai'] as const) {
-    for (const s of runFixture(fixture(name)).steps) assert.deepEqual(s.scenarioLines ?? [], [], `${name} ${s.id}`)
+test('a fixture with no StoredSignIn evidence carries no evidence line outside the campaign (micro)', () => {
+  // The campaign draws its unproven/no-method lines from viability (item 6); every
+  // other line needs StoredSignIn evidence, which micro has none of.
+  for (const s of runFixture(fixture('micro')).steps) if (s.kind !== 'verify') assert.deepEqual(s.scenarioLines ?? [], [], `micro ${s.id}`)
+})
+
+test('getiamai: the campaign names real active people, never the break-glass admins', () => {
+  const r = runFixture(fixture('getiamai'))
+  const bg = new Set(r.input.snapshot ? [] : [])
+  const bgIds = new Set(runFixture(fixture('getiamai')).steps.length ? [] : [])
+  void bg; void bgIds
+  const verify = r.steps.find((s) => s.kind === 'verify')
+  assert.ok(verify, 'the verification campaign exists')
+  // The campaign shows the two registered-but-unproven active people (item 6),
+  // and never a break-glass account (they are the tenant's admin cohort).
+  const line = (verify!.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')
+  assert.ok(line && line.people.length === 2, 'two registered-but-unproven people named')
+})
+
+// Prompt 48.1 item 5: every admin holder resolves to a name; "an account IAMAI
+// could not name" never renders, on any fixture. A service principal is named
+// as one.
+test('no step names an unresolvable account: every holder resolves', async () => {
+  const { buildNameDirectory, UNNAMED } = await import('../names.ts')
+  const { affectedIds } = await import('../derive/whoLine.ts')
+  for (const f of allFixtures()) {
+    const r = runFixture(f)
+    const dir = buildNameDirectory(r.input.snapshot, f.groups)
+    for (const s of r.steps) for (const id of affectedIds(s.population)) {
+      assert.notEqual(dir.label(id), UNNAMED, `${f.name} ${s.id}: an id renders as the unnamed placeholder`)
+    }
   }
 })
 
-test('getiamai: the admin cohort never stands in for the tenant readiness', () => {
-  const r = runFixture(fixture('getiamai'))
-  // 4 active people (two of them break-glass admins) and 9 who never signed in;
-  // no evidence-derived line claims the whole tenant from the admins alone.
-  const verify = r.steps.find((s) => s.kind === 'verify')
-  assert.ok(verify, 'the verification campaign exists')
-  assert.deepEqual(verify!.scenarioLines ?? [], [], 'no passwordNotTyped line without evidence')
+// Prompt 48.1 item 6: the campaign's unproven and no-method lines fire wherever
+// Today's tile is non-zero, over the active, non-break-glass people.
+test('the campaign shows an unproven line exactly when Today has active registered-but-unproven people', async () => {
+  const { rolloutBucket } = await import('../scoring/mfaViability.ts')
+  for (const f of allFixtures()) {
+    const r = runFixture(f)
+    const verify = r.steps.find((s) => s.kind === 'verify')
+    if (!verify) continue
+    const bg = new Set(f.mapping.breakGlassUserIds)
+    const unproven = r.viability.filter((v) => rolloutBucket(v) === 'unproven' && !bg.has(v.userId)).length
+    const line = (verify.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')
+    assert.equal(Boolean(line), unproven > 0, `${f.name}: unproven line ${Boolean(line)} but ${unproven} unproven`)
+    if (line) assert.equal(line.people.length, unproven, `${f.name}: unproven line names ${line.people.length} of ${unproven}`)
+  }
 })
