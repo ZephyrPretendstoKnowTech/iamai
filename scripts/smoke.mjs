@@ -301,6 +301,38 @@ try {
   await sleep(400)
   check('Plan: clearing the answer reverts the chip to none seen and answer', /mail-sending devices none seen · answer/.test(await mailChip()))
 
+  // Item 10: Skip this step is real - an inline confirm, the Skipped chip, Unskip,
+  // and the header count drops.
+  const headerTotal = async () => Number(((await evaluate(`document.body.innerText`)).match(/(\d+) steps · \d+ in place/) || [])[1] || '0')
+  const totalBefore = await headerTotal()
+  // React renders asynchronously, so open each row Node-side (with a wait) until
+  // one has a Skip this step button in its More; the emergency-access step has none.
+  let foundSkip = false
+  const rowCount = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
+  for (let i = 0; i < rowCount && !foundSkip; i++) {
+    await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
+    await sleep(250)
+    await evaluate(`(() => { const d = document.querySelector('main.page .step-body details.more'); if (d) d.open = true; return true })()`)
+    await sleep(120)
+    foundSkip = await evaluate(`[...document.querySelectorAll('main.page .step-body button')].some((b) => b.textContent.trim() === 'Skip this step')`)
+    if (!foundSkip) {
+      await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
+      await sleep(120)
+    }
+  }
+  check('Plan: a non-emergency step offers Skip this step', foundSkip)
+  await sleep(200)
+  await evaluate(`([...document.querySelectorAll('main.page .step-body button')].find((b) => b.textContent.trim() === 'Skip this step') || {}).click?.()`)
+  await sleep(200)
+  check('Plan: Skip opens an inline confirm, not a dialog', /Skip this step\? It stays in the plan as Skipped\./.test(await evaluate(`(document.querySelector('main.page .skip-confirm') || {}).textContent || ''`)))
+  await evaluate(`(() => { const c = document.querySelector('main.page .skip-confirm'); const b = c && [...c.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Skip'); if (b) b.click(); return !!b })()`)
+  await sleep(600)
+  check('Plan: the step becomes Skipped and offers to put it back', /Skipped/.test(await evaluate(`(document.querySelector('main.page .step-body .chip.status') || {}).textContent || ''`)) && /Put it back in the plan/.test(await evaluate(`(document.querySelector('main.page .step-body') || {}).textContent || ''`)))
+  check('Plan: skipping a step drops the header count by one', (await headerTotal()) === totalBefore - 1)
+  await evaluate(`(() => { const d = document.querySelector('main.page .step-body details.more'); if (d) d.open = true; const b = document.querySelector('main.page .step-body') && [...document.querySelectorAll('main.page .step-body button')].find((x) => x.textContent.trim() === 'Put it back in the plan'); if (b) b.click(); return !!b })()`)
+  await sleep(600)
+  check('Plan: putting the step back restores the header count', (await headerTotal()) === totalBefore)
+
   // Export (target-state §7): six cards, every button makes bytes, and the plan
   // file round-trips carrying the tick just made.
   await go('export')

@@ -14,6 +14,7 @@ export const PLAN = {
   settings: 'Plan settings',
   settingsTitle: 'Plan settings',
   startDate: 'Start date',
+  resetStart: 'Clear the date to reset to the default, the next working day.',
   freezeFrom: 'Change freeze from',
   freezeTo: 'to',
   freezeClear: 'Clear freeze',

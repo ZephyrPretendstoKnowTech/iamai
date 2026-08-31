@@ -78,10 +78,11 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
     : C.header(total, inPlace, C.cannotFinish(waiting), weeks, '')
 
   const byId = new Map(c.steps.map((s) => [s.id, s]))
-  // Enforced and in-place steps are not work; they sit in the footer, not a wave (item 13).
-  const isWork = (st: Step): boolean => st.status !== 'done' && st.status !== 'skipped'
+  // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
+  // its wave, marked Skipped, so it can be found and put back (prompt 49.1 item 10).
+  const inWave = (st: Step): boolean => st.status !== 'done'
   const waveRows = c.schedule.waves
-    .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && isWork(st)) }))
+    .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && inWave(st)) }))
     .filter((w) => w.steps.length > 0)
   const waveNames = nameWaves(waveRows)
   let nextMarked = false
@@ -101,7 +102,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
           {C.settings}
         </a>
       </p>
-      {showSettings && <Settings data={data} onClose={() => setShowSettings(false)} />}
+      {showSettings && <Settings data={data} effectiveStart={c.schedule.start} onClose={() => setShowSettings(false)} />}
 
       {waveRows.map((w, wi) => {
         // When every blocked row in the wave shares one binding reason, the
@@ -114,7 +115,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkipped={data.onSkipped} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} />
             })}
           </section>
         )
@@ -125,7 +126,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkipped, onTick, computed, hideReason }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -134,7 +135,8 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
   schedule: PlanComputed['schedule']
   tenantName: string
   nameOf: (id: string) => string
-  onSkipped: (steps: Step[]) => void
+  onSkip: (stepId: string, reason: string) => void
+  onUnskip: (stepId: string) => void
   onTick: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   computed: PlanComputed
 }) {
@@ -151,7 +153,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
         </span>
         {step.status === 'blocked' && step.blockedReason && !hideReason && <span className="plan-row-reason">{C.afterShort(shortReason(step.blockedReason))}</span>}
       </div>
-      {open && <StepBody step={step} schedule={schedule} steps={computed.steps} tenantName={tenantName} nameOf={nameOf} onSkipped={() => onSkipped(computed.steps)} onTick={onTick} onClose={onToggle} />}
+      {open && <StepBody step={step} schedule={schedule} steps={computed.steps} tenantName={tenantName} nameOf={nameOf} onSkip={(reason) => onSkip(step.id, reason)} onUnskip={() => onUnskip(step.id)} onTick={onTick} onClose={onToggle} />}
     </>
   )
 }
@@ -193,14 +195,20 @@ function whenLine(step: Step): string {
   return at ?? C.who.now
 }
 
-function Settings({ data, onClose }: { data: ReturnType<typeof usePlanData>; onClose: () => void }) {
+function Settings({ data, effectiveStart, onClose }: { data: ReturnType<typeof usePlanData>; effectiveStart: string; onClose: () => void }) {
   return (
     <div className="plan-settings">
       <h3>{C.settingsTitle}</h3>
       <label className="rows">
         <span>{C.startDate}</span>
-        <input type="date" value={(data.startDate ?? '').slice(0, 10)} onChange={(e) => e.currentTarget.value && data.setStart(new Date(e.currentTarget.value).toISOString())} />
+        {/* The input shows the plan's effective start (the clamped working day),
+            and stores noon UTC to match the default, so re-entering the value
+            shown changes nothing (prompt 49.1 item 11). Clearing the field resets
+            to the default (the next working day): the plan.settings contract lists
+            only Close, so the reset is the field's own clear, not a new button. */}
+        <input type="date" value={effectiveStart.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
       </label>
+      <p className="reason">{C.resetStart}</p>
       <label className="rows">
         <span>{C.freezeFrom}</span>
         <input type="date" value={(data.freeze?.from ?? '').slice(0, 10)} onChange={(e) => data.setFreeze(e.currentTarget.value ? { from: new Date(e.currentTarget.value).toISOString(), to: data.freeze?.to ?? new Date(e.currentTarget.value).toISOString() } : null)} />
