@@ -1,5 +1,5 @@
 {
- "fingerprint": "4d57eaa3a887009c",
+ "fingerprint": "6e38522c2fdcb006",
  "surfaces": [
   {
    "name": "Start",
@@ -22,8 +22,7 @@
    "options": [],
    "links": [
     "The full list, with every endpoint and permission →",
-    "The source is public",
-    "See it with sample data"
+    "The source is public"
    ],
    "chips": [],
    "columns": [],
@@ -51,8 +50,7 @@
     "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.",
     "No account required with anyone.",
     "The source is public, so every claim above can be checked.",
-    "Predicted impact, confirmed in report-only.",
-    "Get started See it with sample data"
+    "Predicted impact, confirmed in report-only."
    ],
    "titles": [],
    "nav": [
@@ -87,8 +85,7 @@
     "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.": 1,
     "No account required with anyone.": 1,
     "The source is public, so every claim above can be checked.": 1,
-    "Predicted impact, confirmed in report-only.": 1,
-    "Get started See it with sample data": 1
+    "Predicted impact, confirmed in report-only.": 1
    },
    "occurrencesAll": {
     "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.": 1,
@@ -111,30 +108,29 @@
     "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.": 1,
     "No account required with anyone.": 1,
     "The source is public, so every claim above can be checked.": 1,
-    "Predicted impact, confirmed in report-only.": 1,
-    "Get started See it with sample data": 1
+    "Predicted impact, confirmed in report-only.": 1
    },
    "wordCounts": {
     "headings": 38,
     "tabs": 0,
     "buttons": 2,
     "options": 0,
-    "links": 18,
+    "links": 13,
     "chips": 0,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 225,
-    "total": 283
+    "sentences": 218,
+    "total": 271
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 21,
-    "words": 225
+    "sentences": 20,
+    "words": 218
    }
   },
   {
@@ -1942,8 +1938,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 231,
-    "words": 483
+    "sentences": 233,
+    "words": 485
    }
   },
   {
@@ -2805,8 +2801,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 272,
-    "words": 1016
+    "sentences": 274,
+    "words": 1018
    }
   },
   {

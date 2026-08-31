@@ -88,7 +88,6 @@ export const START = {
     "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.",
   caveat: 'Predicted impact, confirmed in report-only.',
   cta: 'Get started',
-  demoCta: 'See it with sample data',
   demoNote: 'No sign-in, and nothing read from any tenant. A sample tenant, walked end to end.',
   howTitle: 'How it works',
   how: [

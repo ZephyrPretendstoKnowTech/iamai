@@ -11,6 +11,7 @@ Read `SPEC.md` first. It holds every product decision; do not re-decide anything
 - Never bundle policy content from third-party baseline repos; ship path indexes (`baselines/*.index.json`) and fetch raw files at a pinned commit.
 - Any Graph 403 or licence error disables a section with a plain reason; it never fails the scan.
 - Never commit tenant-derived data. Diagnostic and spike outputs go under gitignored `docs/spikes/raw/`; findings docs use redacted identifiers (no UPNs, user object IDs, or tenant GUIDs). The spike harness redacts UPNs/GUIDs in anything it writes to disk.
+- The surface has a maximum: `docs/design/target-state.md` and `docs/qa/page-contracts.json`. Never edit them; fix violations by removing what violates, or report the case.
 
 ## Stack
 Vite + TypeScript + React, `@azure/msal-browser`, Web Worker for the replay engine, IndexedDB via `idb`.
@@ -60,7 +61,7 @@ on what the page says. Run `npm test && npm run smoke` before pushing, not
 ## Product rules (2026-08-27)
 - IAMAI speaks as an advisor, never as a checklist — in the third person or the imperative (the UX rules below override the earlier first-person voice).
 - Names, never IDs, anywhere a human reads (`src/names.ts`); an id in parentheses only when it matters.
-- Ask the operator only what cannot be inferred (the Setup wizard's ≤9 questions); auto-resolve the rest.
+- Ask the operator only what cannot be inferred: no questions before the plan exists; detected assumptions, editable on the Plan. Auto-resolve the rest.
 - Handle-with-care users are never excluded — changes apply, with extra caution, verification gating, and named callouts.
 - Every step: per-tenant impact, a Learn link or exact instructions, the danger areas by name.
 
