@@ -865,7 +865,8 @@ footer.app a {
 .plan-row-main {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
 }
 .plan-row-reason {
   display: block;
@@ -874,8 +875,8 @@ footer.app a {
   margin-top: 4px;
 }
 .plan-row .step-title {
-  flex: 1;
-  min-width: 12rem;
+  flex: 1 1 8rem;
+  min-width: 0;
 }
 .plan-row .who {
   color: var(--ink-2);
@@ -885,6 +886,7 @@ footer.app a {
   color: var(--ink-2);
   font-size: var(--t-2);
   white-space: nowrap;
+  margin-left: auto;
 }
 .step-body {
   padding: 12px 0 20px 16px;

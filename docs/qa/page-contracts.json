@@ -376,7 +376,7 @@
     {
       "id": "plan",
       "name": "Plan",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/plan",
         "state": "scanned",
@@ -435,7 +435,7 @@
     {
       "id": "plan.settings",
       "name": "Plan / settings",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/plan",
         "state": "scanned",
@@ -476,7 +476,7 @@
     {
       "id": "plan.footer",
       "name": "Plan / footer expanded",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/plan",
         "state": "scanned",
@@ -534,7 +534,7 @@
     {
       "id": "plan.step",
       "name": "Plan / one step opened",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/plan",
         "state": "scanned",
@@ -611,7 +611,7 @@
     {
       "id": "plan.step.more",
       "name": "Plan / one step / More expanded",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/plan",
         "state": "scanned",

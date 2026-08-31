@@ -306,9 +306,12 @@ for (const f of fixtures) {
     // a body, rings and content) and Wave 0 names the dormant accounts. The
     // test files run in parallel, so a bound within 1.3× of the isolated time
     // crossed over under contention rather than on a regression; this keeps
-    // the same headroom ratio the 300 ms bound had. Every other fixture keeps
-    // 200 ms.
-    const bound = f.name === 'huge' ? 400 : 200
+    // the same headroom ratio the 300 ms bound had. Prompt 48 adds the
+    // lockout-scenario lines to every step (named from evidence), a further
+    // per-plan cost like prompt 46's executable steps; isolated best is ~300 ms,
+    // so the bound moves to 500 to keep the same contention headroom. Every
+    // other fixture keeps 200 ms.
+    const bound = f.name === 'huge' ? 500 : 200
     const best = Math.min(run.roadmapMs, runFixture(f).roadmapMs, runFixture(f).roadmapMs)
     assert.ok(best < bound, `${best.toFixed(0)} ms against a ${bound} ms bound (with coverage: ${run.ms.toFixed(0)} ms)`)
   })
