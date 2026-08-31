@@ -11,6 +11,7 @@
 export type Route =
   | 'home'
   | 'connect'
+  | 'plan'
   | 'today'
   | 'inventory'
   | 'recovery'
@@ -25,8 +26,7 @@ export type Route =
   | 'package'
   | 'components'
 
-/** The Plan tab's target until prompt 48 lands the Plan surface. */
-export const PLAN_ROUTE: Route = 'roadmap'
+export const PLAN_ROUTE: Route = 'plan'
 export const PLAN_HREF = `#/${PLAN_ROUTE}`
 
 export const REDIRECT: Record<string, Route> = {
@@ -34,7 +34,6 @@ export const REDIRECT: Record<string, Route> = {
   baseline: 'connect',
   scan: 'today',
   readiness: 'today',
-  plan: PLAN_ROUTE,
   'baseline/package': 'package',
 }
 
@@ -42,6 +41,7 @@ const DEV = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ===
 
 export const VALID = new Set<string>([
   'connect',
+  'plan',
   'today',
   'inventory',
   'recovery',
@@ -58,6 +58,7 @@ export const VALID = new Set<string>([
 ])
 
 export const STEP_LINK = /^roadmap\/step\/(.+)$/
+const PLAN_STEP = /^plan\/(.+)$/
 
 /**
  * The fragment MSAL uses to hand back a sign-in: a code or token response, or
@@ -74,7 +75,10 @@ export function resolveHash(hash: string): { route: Route; redirect: string | nu
   if (isAuthResponseHash(hash)) return { route: 'home', redirect: null }
   const h = hash.replace(/^#\/?/, '')
   if (h === '') return { route: 'home', redirect: null }
-  if (STEP_LINK.test(h)) return { route: 'roadmap', redirect: null }
+  // #/roadmap/step/<id> is the old deep link; it now opens the step on the Plan (prompt 48 item 14).
+  const step = STEP_LINK.exec(h)
+  if (step) return { route: 'plan', redirect: `#/plan/${step[1]}` }
+  if (PLAN_STEP.test(h)) return { route: 'plan', redirect: null }
   const to = REDIRECT[h]
   if (to) return { route: to, redirect: `#/${to}` }
   if (VALID.has(h)) return { route: h as Route, redirect: null }

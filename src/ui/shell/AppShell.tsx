@@ -186,7 +186,7 @@ export function AppShell({
   const signedIn = account !== null && state !== 'signedOut'
   const tabsOn = state === 'scanned'
   const todayActive = route === 'today' || route === 'inventory'
-  const planActive = route === 'roadmap' || route === 'roadmap/prompts' || route === 'mapping' || route === 'coverage'
+  const planActive = route === 'plan' || route === 'roadmap' || route === 'roadmap/prompts' || route === 'mapping' || route === 'coverage'
   return (
     <div className="shell">
       <header className="app">
