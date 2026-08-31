@@ -142,7 +142,11 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   const FORBID = ${JSON.stringify(opts.forbid ?? [])}
   const skipped = (el) =>
     el.closest('.devtools, .print-only, [hidden]') !== null || (EXCLUDE !== '' && el.closest(EXCLUDE) !== null)
-  const vis = (el) => !skipped(el) && el.offsetParent !== null || (el.tagName === 'SUMMARY' && !skipped(el))
+  // checkVisibility sees what offsetParent cannot: a closed <details> keeps
+  // its children laid out under content-visibility, so they have an
+  // offsetParent and are still not on the page (prompt 47 Part 6).
+  const shown = (el) => (typeof el.checkVisibility === 'function' ? el.checkVisibility() : el.offsetParent !== null)
+  const vis = (el) => !skipped(el) && (shown(el) || el.tagName === 'SUMMARY')
   // Read the label without the furniture rendered inside it: a tab's count
   // badge, a stat tile's number, an info-tip button, an icon. Reading
   // textContent straight off the element glues those on ("Here's what's
@@ -177,7 +181,8 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   // A button inside a Setup question is an answer, not a page action.
   const allButtons = [...root.querySelectorAll('button, a.btn, a.button-like, [role=button]')]
     .filter(vis)
-    .filter((e) => !e.classList.contains('infotip-btn') && !isTab(e))
+    // A sortable column header carries role=button for the keyboard; it is a column.
+    .filter((e) => !e.classList.contains('infotip-btn') && !isTab(e) && e.tagName !== 'TH')
   const options = uniq(allButtons.filter((e) => e.closest('.setup-question, .workload-card, .picker')).map(txt))
   const buttons = uniq(allButtons.filter((e) => !e.closest('.setup-question, .workload-card, .picker')).map(txt))
   const links = uniq([...root.querySelectorAll('a[href]')].filter(vis).filter((e) => !e.classList.contains('btn') && !isTab(e)).map(txt))

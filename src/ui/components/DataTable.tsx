@@ -113,7 +113,11 @@ export function DataTable<T>({
                   }}
                 >
                   {c.header}
-                  {sort?.key === c.key ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
+                  {sort?.key === c.key && (
+                    <span className="icon" aria-hidden>
+                      {sort.dir === 1 ? ' ▲' : ' ▼'}
+                    </span>
+                  )}
                 </th>
               ))}
             </tr>

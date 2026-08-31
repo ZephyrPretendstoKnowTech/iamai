@@ -22,7 +22,7 @@ import { LICENSING } from '../../copy/pages.ts'
 import { SETUP_PAGE } from '../../copy/setup.ts'
 import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE, TILE } from '../../copy/definitions.ts'
 import { absoluteDate, relative } from '../format.ts'
-import { Button, Card, Chip, DataTable, EmptyState, InfoTip, Tabs } from '../components/index.ts'
+import { Button, Chip, DataTable, EmptyState, InfoTip, Tabs } from '../components/index.ts'
 import type { ChipStatus, Column } from '../components/index.ts'
 
 type Raw = Record<string, unknown>
@@ -318,10 +318,11 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
 
   return (
     <div>
-      <Heading text={A.methods} source="authentication" />
+      <Heading text={C.tabs.authentication} source="authentication" />
       {policy ? (
         <>
           <DataTable
+            caption={A.methods}
             rows={methodRows}
             rowKey={(r) => r.id}
             csvName="iamai-auth-methods.csv"
@@ -680,15 +681,16 @@ function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
           { key: 'caps', header: L.columns.capabilities, csv: (r) => r.caps, render: (r) => r.caps },
         ]}
       />
-      <Card title={L.summary}>
-        <div className="row">
-          {CAPABILITIES.map((c) => (
-            <Chip key={c} status={snapshot.capabilities[c].enabled ? 'done' : 'neutral'}>
-              {LICENSING.caps[c] ?? c}: {snapshot.capabilities[c].enabled ? L.seats(snapshot.capabilities[c].seats, snapshot.capabilities[c].consumed) : L.notLicensed}
-            </Chip>
-          ))}
-        </div>
-      </Card>
+      <DataTable
+        caption={L.summary}
+        rows={CAPABILITIES.map((c) => ({ id: c, name: LICENSING.caps[c] ?? c, enabled: snapshot.capabilities[c].enabled, seats: snapshot.capabilities[c].seats, consumed: snapshot.capabilities[c].consumed }))}
+        rowKey={(r) => r.id}
+        csvName="iamai-capabilities.csv"
+        columns={[
+          { key: 'capability', header: L.capColumns.capability, csv: (r) => r.name, render: (r) => r.name },
+          { key: 'seats', header: L.capColumns.seats, csv: (r) => (r.enabled ? L.seats(r.seats, r.consumed) : L.notLicensed), render: (r) => (r.enabled ? L.seats(r.seats, r.consumed) : L.notLicensed) },
+        ]}
+      />
     </div>
   )
 }
@@ -734,15 +736,25 @@ function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnT
           { key: 'lastSp', header: A.columns.lastSp, sortValue: (r) => r.lastSp ?? '', csv: (r) => (r.lastSp ? absoluteDate(r.lastSp) : ''), render: (r) => (r.lastSp ? <span title={absoluteDate(r.lastSp)}>{relative(r.lastSp)}</span> : '—') },
         ]}
       />
-      <Card title={A.facets}>
-        <div className="row">
-          {Object.entries(facets).map(([facet, f]) => (
-            <Chip key={facet} status={f.on ? 'done' : 'neutral'} title={f.reason}>
-              {SETUP_PAGE.workloadNames[facet] ?? facet}: {f.on ? A.on : A.off}
-            </Chip>
-          ))}
-        </div>
-      </Card>
+      <DataTable
+        caption={A.facets}
+        rows={Object.entries(facets).map(([facet, f]) => ({ facet, name: SETUP_PAGE.workloadNames[facet] ?? facet, on: f.on, reason: f.reason }))}
+        rowKey={(r) => r.facet}
+        csvName="iamai-workloads.csv"
+        columns={[
+          { key: 'workload', header: A.facetColumns.workload, csv: (r) => r.name, render: (r) => r.name },
+          {
+            key: 'detected',
+            header: A.facetColumns.detected,
+            csv: (r) => (r.on ? A.on : A.off),
+            render: (r) => (
+              <Chip status={r.on ? 'done' : 'neutral'} title={r.reason}>
+                {r.on ? A.on : A.off}
+              </Chip>
+            ),
+          },
+        ]}
+      />
     </div>
   )
 }

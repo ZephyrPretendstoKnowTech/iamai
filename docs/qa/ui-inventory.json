@@ -1,5 +1,5 @@
 {
- "fingerprint": "ba52d2f6e049012f",
+ "fingerprint": "2d8d0128e81cfb38",
  "surfaces": [
   {
    "name": "Connect",
@@ -1125,9 +1125,6 @@
     "<date>",
     "scan",
     "matched by what it does",
-    "Plan revision 1, <date>: plan created",
-    "Plan revision 2, <date>: 1 new step appended after a re-scan",
-    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies",
     "<date> → <date>",
     "Checked: nothing blocks it and a foundation the later steps need.",
     "Checked: nothing blocks it.",
@@ -1161,9 +1158,6 @@
     "Hover a week for the counts.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
-    "Plan revision 1, <date>: plan created": 1,
-    "Plan revision 2, <date>: 1 new step appended after a re-scan": 1,
-    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies": 1,
     "Not counted against the plan.": 1,
     "Each names the tier that would make it available.": 1,
     "· Risky sign-ins get MFA or are blocked · Entra ID P2": 1,
@@ -1185,9 +1179,6 @@
     "Hover a week for the counts.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
-    "Plan revision 1, <date>: plan created": 1,
-    "Plan revision 2, <date>: 1 new step appended after a re-scan": 1,
-    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies": 1,
     "Checked: nothing blocks it and a foundation the later steps need.": 3,
     "Checked: nothing blocks it.": 1,
     "Checked: nothing blocks it and 1 account overdue: Break-glass 01.": 1,
@@ -1227,15 +1218,15 @@
     "empty": 0,
     "summaries": 4,
     "tips": 10,
-    "sentences": 341,
-    "total": 1095
+    "sentences": 308,
+    "total": 1062
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 253,
-    "words": 505
+    "sentences": 260,
+    "words": 482
    }
   },
   {
@@ -1250,15 +1241,6 @@
    "tabs": [],
    "buttons": [
     "Hide completed",
-    "Email",
-    "Teams or Slack",
-    "Help-desk note",
-    "Intranet notice",
-    "Remind",
-    "Copy",
-    "Copy as prompt",
-    "Copy the recipient list",
-    "Recipients as CSV (for mail merge)",
     "Export to calendar (ICS)",
     "Small",
     "Mid",
@@ -1341,11 +1323,6 @@
     "Blocked",
     "In report-only",
     "Change",
-    "Email",
-    "Teams or Slack",
-    "Help-desk note",
-    "Intranet notice",
-    "Remind",
     "Small",
     "Mid",
     "Large"
@@ -1420,13 +1397,12 @@
     "0 of 4 steps done",
     "One message per audience per week, at most.",
     "Nothing is sent by IAMAI, so copy each one into your own channel.",
+    "Email",
     "(individual note)",
     "Stop attackers adding their own MFA method",
     "Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Turn off old sign-in methods that skip MFA; Limit what personal devices can do in the browser; Sign everyone out when the browser closes; Stop a stolen session token from being reused; Stop downloads to devices you do not manage",
     "(reminder)",
     "· 3 people, by name · <date>",
-    "EmailTeams or SlackHelp-desk noteIntranet noticeRemind",
-    "Names and addresses stay in the browser until you copy or export them.",
     "· 4 people, by name · <date>",
     "One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.",
     "today · <date>",
@@ -1494,8 +1470,6 @@
     "Stop attackers adding their own MFA method": 2,
     "Keep non-admins out of the admin portals; Stop sign-ins from countries you don't work in; Ask for MFA before a device can be registered; Turn off old sign-in methods that skip MFA; Limit what personal devices can do in the browser; Sign everyone out when the browser closes; Stop a stolen session token from being reused; Stop downloads to devices you do not manage": 2,
     "· 3 people, by name · <date>": 1,
-    "EmailTeams or SlackHelp-desk noteIntranet noticeRemind": 2,
-    "Names and addresses stay in the browser until you copy or export them.": 2,
     "· 4 people, by name · <date>": 1,
     "One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.": 1,
     "4 active users: Small band, detected · this pace usually takes 4 weeks": 1,
@@ -1505,17 +1479,17 @@
    "wordCounts": {
     "headings": 15,
     "tabs": 0,
-    "buttons": 32,
+    "buttons": 9,
     "options": 0,
     "links": 676,
-    "chips": 26,
+    "chips": 17,
     "columns": 21,
     "tiles": 0,
     "empty": 0,
     "summaries": 98,
     "tips": 10,
-    "sentences": 503,
-    "total": 1381
+    "sentences": 486,
+    "total": 1332
    },
    "unnamedControls": [],
    "rows": [],
@@ -1849,9 +1823,6 @@
     "<date>",
     "scan",
     "matched by what it does",
-    "Plan revision 1, <date>: plan created",
-    "Plan revision 2, <date>: 1 new step appended after a re-scan",
-    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies",
     "<date> → <date>",
     "3 must-fix checks to clear.",
     "13 steps that can deny access are held until then.",
@@ -1923,9 +1894,6 @@
     "Hover a week for the counts.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
-    "Plan revision 1, <date>: plan created": 1,
-    "Plan revision 2, <date>: 1 new step appended after a re-scan": 1,
-    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies": 1,
     "3 must-fix checks to clear.": 1,
     "13 steps that can deny access are held until then.": 1,
     "Checked: nothing blocks it and a foundation the later steps need.": 1,
@@ -1998,9 +1966,6 @@
     "Hover a week for the counts.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
-    "Plan revision 1, <date>: plan created": 1,
-    "Plan revision 2, <date>: 1 new step appended after a re-scan": 1,
-    "Plan revision 3, <date>: 3 new steps appended after a re-scan; 1 step no longer applies": 1,
     "3 must-fix checks to clear.": 1,
     "13 steps that can deny access are held until then.": 1,
     "Checked: nothing blocks it and a foundation the later steps need.": 3,
@@ -2090,15 +2055,15 @@
     "empty": 0,
     "summaries": 39,
     "tips": 12,
-    "sentences": 849,
-    "total": 1762
+    "sentences": 816,
+    "total": 1729
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 294,
-    "words": 1038
+    "sentences": 301,
+    "words": 1015
    }
   },
   {
@@ -3086,6 +3051,1811 @@
     "sentences": 42,
     "words": 442
    }
+  },
+  {
+   "name": "Header",
+   "note": "contract shell",
+   "headings": [],
+   "tabs": [
+    "Today",
+    "Plan"
+   ],
+   "buttons": [
+    "Re-scan · scanned just now",
+    "Light theme",
+    "Account"
+   ],
+   "options": [],
+   "links": [
+    "IAMAI",
+    "Recovery card"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 2,
+    "buttons": 8,
+    "options": 0,
+    "links": 3,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 0,
+    "total": 13
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "shell",
+   "state": "scanned",
+   "route": "/plan"
+  },
+  {
+   "name": "Connect (signed out)",
+   "note": "contract connect.signedOut",
+   "headings": [
+    "Connect a tenant"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Sign in with Microsoft"
+   ],
+   "options": [],
+   "links": [
+    "How IAMAI works →"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "What IAMAI asks for, and how to remove it"
+   ],
+   "tips": [],
+   "sentences": [
+    "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.",
+    "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.",
+    "Read-only, with nothing sent anywhere on its own: no server, no telemetry."
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [
+    "Sign in with Microsoft"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.": 1,
+    "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.": 1,
+    "Read-only, with nothing sent anywhere on its own: no server, no telemetry.": 1
+   },
+   "occurrencesAll": {
+    "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.": 1,
+    "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.": 1,
+    "Read-only, with nothing sent anywhere on its own: no server, no telemetry.": 1
+   },
+   "wordCounts": {
+    "headings": 3,
+    "tabs": 0,
+    "buttons": 4,
+    "options": 0,
+    "links": 4,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 9,
+    "tips": 0,
+    "sentences": 50,
+    "total": 70
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 3,
+    "words": 50
+   },
+   "contract": "connect.signedOut",
+   "state": "signedOut",
+   "route": "/connect"
+  },
+  {
+   "name": "Connect (signed out) / permissions expanded",
+   "note": "contract connect.signedOut.permissions",
+   "headings": [
+    "Removing it"
+   ],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [
+    "Permission",
+    "What IAMAI reads",
+    "Without it"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "What IAMAI asks for, and how to remove it"
+   ],
+   "tips": [],
+   "sentences": [
+    "Plus the standard sign-in permissions.",
+    "Entra admin center → Entra ID → Enterprise applications.",
+    "Find IAMAI in the list.",
+    "Properties → Delete."
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "Plus the standard sign-in permissions.": 1,
+    "Entra admin center → Entra ID → Enterprise applications.": 1
+   },
+   "occurrencesAll": {
+    "Plus the standard sign-in permissions.": 1,
+    "Entra admin center → Entra ID → Enterprise applications.": 1
+   },
+   "wordCounts": {
+    "headings": 2,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 6,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 9,
+    "tips": 0,
+    "sentences": 22,
+    "total": 39
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "PermissionWhat IAMAI readsWithout it",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Policy.Read.AllConditional Access policies, named locations, authentication strengths, the authentication methods policy, security defaults ",
+     "sentences": 1,
+     "words": 31
+    },
+    {
+     "selector": "tr",
+     "text": "Directory.Read.AllPeople, groups and their members, devices, the licences the tenant holds, the organisation name and the signed-in account.",
+     "sentences": 1,
+     "words": 32
+    },
+    {
+     "selector": "tr",
+     "text": "AuditLog.Read.AllInteractive sign-in records for the last 30 days, and the report of which sign-in methods each person has registered.No pre",
+     "sentences": 2,
+     "words": 38
+    },
+    {
+     "selector": "tr",
+     "text": "RoleManagement.Read.DirectoryWhich accounts hold which directory roles, and which roles are assigned through Privileged Identity Management ",
+     "sentences": 1,
+     "words": 37
+    },
+    {
+     "selector": "tr",
+     "text": "UserAuthenticationMethod.Read.AllWhich kinds of sign-in method each account has registered. Never the values: no phone numbers, no codes, no",
+     "sentences": 2,
+     "words": 36
+    },
+    {
+     "selector": "tr",
+     "text": "Reports.Read.AllAggregated per-application sign-in counts, and when each application identity last signed in.Advice about which applications",
+     "sentences": 1,
+     "words": 24
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 4,
+    "words": 22
+   },
+   "contract": "connect.signedOut.permissions",
+   "state": "signedOut",
+   "route": "/connect"
+  },
+  {
+   "name": "Connect (signed in, no scan)",
+   "note": "contract connect.noScan",
+   "headings": [
+    "Connect a tenant"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Sign out",
+    "change",
+    "Scan tenant"
+   ],
+   "options": [],
+   "links": [
+    "How IAMAI works →"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
+    "Baseline: synthetic baseline (1 policy) · change",
+    "About ten minutes.",
+    "Reads the tenant into this browser; nothing is sent anywhere."
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [
+    "Scan tenant"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
+    "Baseline: synthetic baseline (1 policy) · change": 1,
+    "Reads the tenant into this browser; nothing is sent anywhere.": 1
+   },
+   "occurrencesAll": {
+    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
+    "Baseline: synthetic baseline (1 policy) · change": 1,
+    "Reads the tenant into this browser; nothing is sent anywhere.": 1
+   },
+   "wordCounts": {
+    "headings": 3,
+    "tabs": 0,
+    "buttons": 5,
+    "options": 0,
+    "links": 4,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 31,
+    "total": 43
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 4,
+    "words": 31
+   },
+   "contract": "connect.noScan",
+   "state": "noScan",
+   "route": "/connect"
+  },
+  {
+   "name": "Connect (scanning)",
+   "note": "contract connect.scanning",
+   "headings": [
+    "Connect a tenant"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Stop"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "Signed in to Contoso Pty Ltd as alex@example.com",
+    "Baseline: synthetic baseline (1 policy)",
+    "Reading people · 1s elapsed"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "Signed in to Contoso Pty Ltd as alex@example.com": 1,
+    "Baseline: synthetic baseline (1 policy)": 1,
+    "Reading people · 1s elapsed": 1
+   },
+   "occurrencesAll": {
+    "Signed in to Contoso Pty Ltd as alex@example.com": 1,
+    "Baseline: synthetic baseline (1 policy)": 1,
+    "Reading people · 1s elapsed": 1
+   },
+   "wordCounts": {
+    "headings": 3,
+    "tabs": 0,
+    "buttons": 1,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 18,
+    "total": 22
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 3,
+    "words": 18
+   },
+   "contract": "connect.scanning",
+   "state": "scanning",
+   "route": "/connect"
+  },
+  {
+   "name": "Connect (scanned)",
+   "note": "contract connect.scanned",
+   "headings": [
+    "Connect a tenant"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Sign out",
+    "change",
+    "Open the plan →"
+   ],
+   "options": [],
+   "links": [
+    "How IAMAI works →"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
+    "Baseline: synthetic baseline (1 policy) · change",
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [
+    "Open the plan →"
+   ],
+   "tables": [],
+   "occurrences": {
+    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
+    "Baseline: synthetic baseline (1 policy) · change": 1,
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31": 1
+   },
+   "occurrencesAll": {
+    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
+    "Baseline: synthetic baseline (1 policy) · change": 1,
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31": 1
+   },
+   "wordCounts": {
+    "headings": 3,
+    "tabs": 0,
+    "buttons": 7,
+    "options": 0,
+    "links": 4,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 33,
+    "total": 47
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 3,
+    "words": 33
+   },
+   "contract": "connect.scanned",
+   "state": "scanned",
+   "route": "/connect"
+  },
+  {
+   "name": "Today",
+   "note": "contract today",
+   "headings": [
+    "Today"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [
+    "Everything the scan read →"
+   ],
+   "chips": [
+    "Admin",
+    "Proven",
+    "No method",
+    "Not active",
+    "Never prompted",
+    "Guest"
+   ],
+   "columns": [
+    "Person",
+    "State",
+    "Strongest method",
+    "Evidence"
+   ],
+   "tiles": [
+    "MFA proven",
+    "Registered, unproven",
+    "No method",
+    "Not active"
+   ],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Active people",
+    "About MFA proven",
+    "About Registered, unproven",
+    "About No method",
+    "About Not active"
+   ],
+   "sentences": [
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 1 → Aug 31"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 1 → Aug 31": 1,
+    "Everything the scan read →": 1
+   },
+   "occurrencesAll": {
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 1 → Aug 31": 1,
+    "Everything the scan read →": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 5,
+    "chips": 9,
+    "columns": 5,
+    "tiles": 8,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 15,
+    "sentences": 16,
+    "total": 61
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "PersonStateStrongest methodEvidence",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "Alex MorganAdminProvenPhishing-resistantMFA via Microsoft Authenticator notification 2 days ago",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": "tr",
+     "text": "Priya NairNo methodNoneno MFA-capable method registered",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": "tr",
+     "text": "Break-glass 01Not activeApp notificationinactive since <date>",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": "tr",
+     "text": "Sam LeeNever promptedApp notificationsigned in during the evidence window, never challenged for MFA",
+     "sentences": 1,
+     "words": 13
+    },
+    {
+     "selector": "tr",
+     "text": "Jordan KimGuestNever promptedApp notificationsigned in during the evidence window, never challenged for MFA",
+     "sentences": 1,
+     "words": 13
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 1,
+    "words": 16
+   },
+   "contract": "today",
+   "state": "scanned",
+   "route": "/today"
+  },
+  {
+   "name": "Inventory",
+   "note": "contract inventory",
+   "headings": [
+    "Everything the scan read"
+   ],
+   "tabs": [
+    "Policies",
+    "Named locations",
+    "Authentication",
+    "People",
+    "Groups",
+    "Devices",
+    "Roles",
+    "Apps",
+    "Licensing",
+    "Sign-in records"
+   ],
+   "buttons": [],
+   "options": [],
+   "links": [
+    "← Today"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 4,
+    "tabs": 12,
+    "buttons": 0,
+    "options": 0,
+    "links": 2,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 0,
+    "total": 18
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "inventory",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Policies",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Policies"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "On",
+    "Report-only",
+    "Off"
+   ],
+   "columns": [
+    "Policy",
+    "State",
+    "Users",
+    "Apps",
+    "Conditions",
+    "Grant",
+    "Session"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 3,
+    "columns": 7,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 0,
+    "total": 18
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "PolicyStateUsersAppsConditionsGrantSession",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "CA001 - Require MFA for all users OnAll usersAll apps—Require MFA—",
+     "sentences": 1,
+     "words": 11
+    },
+    {
+     "selector": "tr",
+     "text": "CA002 - Block legacy authentication Report-onlyAll usersAll appsclient apps: exchangeactivesync, otherBlock—",
+     "sentences": 1,
+     "words": 11
+    },
+    {
+     "selector": "tr",
+     "text": "CA003 - Admins phishing-resistant Off1 roleAll appslocations: all except Head officeRequire strength: Phishing-resistant MFAsign in every 4h",
+     "sentences": 1,
+     "words": 21
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Named locations",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Named locations"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "trusted",
+    "not trusted"
+   ],
+   "columns": [
+    "Location",
+    "Type",
+    "Trusted",
+    "Countries or IP ranges",
+    "Used by"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 2,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 3,
+    "columns": 9,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 0,
+    "total": 21
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "LocationTypeTrustedCountries or IP rangesUsed by",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": "tr",
+     "text": "Head officeIP rangestrusted203.0.113.0/241 policy",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Allowed countriesCountriesnot trustedAU, NZno policies",
+     "sentences": 1,
+     "words": 5
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Authentication",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Authentication"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "enabled",
+    "disabled",
+    "built-in",
+    "custom",
+    "off"
+   ],
+   "columns": [
+    "Method",
+    "State",
+    "Targets",
+    "Strength",
+    "Type",
+    "Allowed combinations",
+    "Measure",
+    "Users"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from",
+    "About Registration statistics"
+   ],
+   "sentences": [
+    "Authenticator registration campaign: on · Policy migration: complete (this policy is authoritative)",
+    "Windows Hello for Business, Passkey or FIDO2 security key, Certificate (multifactor)",
+    "Passkey or FIDO2 security key, Microsoft Authenticator (notification) + Federated sign-in (single factor)",
+    "Security defaults: off"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "Authenticator registration campaign: on · Policy migration: complete (this policy is authoritative)": 1
+   },
+   "occurrencesAll": {
+    "Authenticator registration campaign: on · Policy migration: complete (this policy is authoritative)": 1,
+    "Windows Hello for Business, Passkey or FIDO2 security key, Certificate (multifactor)": 1,
+    "Passkey or FIDO2 security key, Microsoft Authenticator (notification) + Federated sign-in (single factor)": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 5,
+    "columns": 9,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 8,
+    "sentences": 39,
+    "total": 64
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "MethodStateTargets",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Microsoft AuthenticatorenabledAll users",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "Passkey or FIDO2 security keyenabledAll users",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": "tr",
+     "text": "Text messagedisabledno targets",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "Temporary Access PassenabledAll users",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "StrengthTypeAllowed combinations",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "Phishing-resistant MFAbuilt-inWindows Hello for Business, Passkey or FIDO2 security key, Certificate (multifactor)",
+     "sentences": 1,
+     "words": 12
+    },
+    {
+     "selector": "tr",
+     "text": "Contoso passwordlesscustomPasskey or FIDO2 security key, Microsoft Authenticator (notification) + Federated sign-in (single factor)",
+     "sentences": 1,
+     "words": 14
+    },
+    {
+     "selector": "tr",
+     "text": "MeasureUsers",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "MFA-capable4",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "MFA-registered4",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Passwordless-capable1",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Registered: Microsoft Authenticator (notification)4",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Registered: Passkey (device-bound)1",
+     "sentences": 1,
+     "words": 3
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 2,
+    "words": 15
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — People",
+   "note": "contract inventory.tab",
+   "headings": [
+    "People"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "Guest"
+   ],
+   "columns": [
+    "Name",
+    "Sign-in address",
+    "Type",
+    "Activity",
+    "MFA state",
+    "Strongest method",
+    "Licence",
+    "Roles"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [
+    "alex@example.com",
+    "sam@example.com",
+    "priya@example.com",
+    "bg01@contoso.onmicrosoft.com",
+    "jordan_partner.example.com#EXT#@example.com"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {},
+   "occurrencesAll": {
+    "bg01@contoso.onmicrosoft.com": 1,
+    "jordan_partner.example.com#EXT#@example.com": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 1,
+    "columns": 11,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 5,
+    "total": 25
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "NameSign-in addressTypeActivityMFA stateStrongest methodLicenceRoles",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Alex Morganalex@example.comMemberActiveVerifiedPhishing-resistantP1Global Administrator",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "Sam Leesam@example.comMemberActiveNever promptedApp notificationP1—",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Priya Nairpriya@example.comMemberActiveNo method—P1—",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "Break-glass 01bg01@contoso.onmicrosoft.comMemberInactive 90+ daysPossibly brokenApp notificationP1—",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": "tr",
+     "text": "Jordan Kimjordan_partner.example.com#EXT#@example.comGuestActiveNever promptedApp notificationP1—",
+     "sentences": 1,
+     "words": 4
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Groups",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Groups"
+   ],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [
+    "No policy references a group."
+   ],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [
+    "No policy references a group."
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "No policy references a group.": 1
+   },
+   "occurrencesAll": {
+    "No policy references a group.": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 5,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 5,
+    "total": 16
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 1,
+    "words": 5
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Devices",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Devices"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "yes",
+    "no"
+   ],
+   "columns": [
+    "Device",
+    "OS",
+    "Trust type",
+    "Compliant",
+    "Managed",
+    "Last sign-in",
+    "Owner",
+    "Authenticator registrations"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 2,
+    "columns": 11,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 0,
+    "total": 21
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "DeviceOSTrust typeCompliantManagedLast sign-inOwnerAuthenticator registrations",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "LAPTOP-ALEXWindowsEntra joinedyesyesyesterdayAlex Morgan—",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "iPhoneiOSEntra registerednono12 days agoSam Lee—",
+     "sentences": 1,
+     "words": 5
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Roles",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Roles"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Show all roles",
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "privileged"
+   ],
+   "columns": [
+    "Role",
+    "Active holders",
+    "Eligible holders"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [
+    "134 built-in roles hidden: no holder, or held only by services.",
+    "Show all roles"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "134 built-in roles hidden: no holder, or held only by services.": 1
+   },
+   "occurrencesAll": {
+    "134 built-in roles hidden: no holder, or held only by services.": 1
+   },
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 5,
+    "options": 0,
+    "links": 0,
+    "chips": 1,
+    "columns": 5,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 14,
+    "total": 31
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "RoleActive holdersEligible holders",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "Global Administrator privilegedAlex Morgan—",
+     "sentences": 1,
+     "words": 4
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 2,
+    "words": 14
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Apps",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Apps"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [
+    "not detected",
+    "detected"
+   ],
+   "columns": [
+    "App",
+    "Sign-ins",
+    "Last activity",
+    "Workload",
+    "Detected"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 3,
+    "columns": 6,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 0,
+    "total": 17
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "AppSign-insLast activity",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "Office 365 SharePoint Online1207—",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Contoso Intranet4123 days ago",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "WorkloadDetected",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Azure Virtual Desktopnot detected",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Microsoft 365 Copilotnot detected",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Azure DevOpsnot detected",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "SharePointdetected",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "AI agentsnot detected",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "Azure managementnot detected",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "Intunenot detected",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "Workload identitiesnot detected",
+     "sentences": 1,
+     "words": 3
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Licensing",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Licensing"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [
+    "Licence",
+    "Seats",
+    "Assigned",
+    "Unlocks",
+    "Capability"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from"
+   ],
+   "sentences": [
+    "SPB",
+    "O365_BUSINESS_ESSENTIALS"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 1,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 5,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 5,
+    "sentences": 2,
+    "total": 15
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "LicenceSeatsAssignedUnlocks",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Microsoft 365 Business PremiumSPB255Entra ID P1",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": "tr",
+     "text": "Microsoft 365 Business BasicO365_BUSINESS_ESSENTIALS2520—",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "CapabilitySeats",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Entra ID P125 (5 assigned)",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": "tr",
+     "text": "Entra ID P2not licensed",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Intunenot licensed",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "Workload Identities Premiumnot licensed",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Global Secure Accessnot licensed",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Defender for Cloud Appsnot licensed",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": "tr",
+     "text": "Purview Insider Risknot licensed",
+     "sentences": 1,
+     "words": 4
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
+  },
+  {
+   "name": "Inventory / any tab — Sign-in records",
+   "note": "contract inventory.tab",
+   "headings": [
+    "Sign-in records"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Export CSV"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [
+    "Value",
+    "Sign-ins",
+    "Users",
+    "Method",
+    "People",
+    "Policy"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [
+    "About Where this comes from",
+    "About Distinct users"
+   ],
+   "sentences": [
+    "1,619 sign-ins covering <date> to <date> · 4 distinct users"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "1,619 sign-ins covering <date> to <date> · 4 distinct users": 1
+   },
+   "occurrencesAll": {
+    "1,619 sign-ins covering <date> to <date> · 4 distinct users": 1
+   },
+   "wordCounts": {
+    "headings": 2,
+    "tabs": 0,
+    "buttons": 2,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 6,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 8,
+    "sentences": 10,
+    "total": 28
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "ValueSign-ins",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Browser1200",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Mobile Apps and Desktop clients416",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": "tr",
+     "text": "Exchange ActiveSync3",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "ValueSign-ins",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Standard sign-in1616",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "Username and password in the app (ROPC)3",
+     "sentences": 1,
+     "words": 7
+    },
+    {
+     "selector": "tr",
+     "text": "Device-code flow0",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "ValueUsers",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "AU4",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "NZ1",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "MethodPeople",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "Legacy authenticationPriya Nair",
+     "sentences": 1,
+     "words": 3
+    },
+    {
+     "selector": "tr",
+     "text": "Device-code flownobody",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "Authentication transfernobody",
+     "sentences": 1,
+     "words": 2
+    },
+    {
+     "selector": "tr",
+     "text": "PolicyUsers",
+     "sentences": 1,
+     "words": 1
+    },
+    {
+     "selector": "tr",
+     "text": "CA001 - Require MFA for all usersPriya Nair",
+     "sentences": 1,
+     "words": 8
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 1,
+    "words": 10
+   },
+   "contract": "inventory.tab",
+   "state": "scanned",
+   "route": "/inventory"
   }
  ]
 }

@@ -199,7 +199,8 @@ textarea,
   font-size: var(--t-3);
   height: var(--control);
   padding: 0 8px;
-  border: 1px solid var(--rule-strong);
+  /* 3:1 against the page, as a control edge must be (WCAG 1.4.11): ink-3, not the hairline. */
+  border: 1px solid var(--ink-3);
   border-radius: var(--radius);
   background: var(--bg-inset);
   color: var(--ink);
@@ -342,9 +343,9 @@ details > *:not(summary) {
   cursor: pointer;
   width: 14px;
   height: 14px;
-  border: 1px solid var(--ink-3);
+  border: 1px solid var(--ink-2);
   border-radius: 50%;
-  color: var(--ink-3);
+  color: var(--ink-2);
   font-family: var(--font-serif);
   font-size: var(--t-1);
   line-height: 1;

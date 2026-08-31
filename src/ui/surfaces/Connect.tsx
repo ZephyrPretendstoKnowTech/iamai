@@ -51,6 +51,9 @@ export function Connect(props: {
 function SignedOut() {
   // The redirect takes seconds to start; the button must not look inert.
   const [opening, setOpening] = useState(false)
+  // The body mounts once the disclosure is opened: closed, a <details> still
+  // lays its children out, and the closed page must measure as what it shows.
+  const [permissionsOpen, setPermissionsOpen] = useState(false)
   const rows = scopeRows().filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length > 0)
   return (
     <>
@@ -71,8 +74,10 @@ function SignedOut() {
           {C.signIn}
         </Button>
       </p>
-      <details className="permissions">
+      <details className="permissions" onToggle={(e) => setPermissionsOpen(e.currentTarget.open)}>
         <summary>{C.permissionsSummary}</summary>
+        {permissionsOpen && (
+          <>
         <div className="table-wrap">
           <table>
             <thead>
@@ -102,6 +107,8 @@ function SignedOut() {
             <li key={line}>{line}</li>
           ))}
         </ol>
+          </>
+        )}
       </details>
       <p className="footer-link">
         <a href={HOW_HREF}>{C.how}</a>
