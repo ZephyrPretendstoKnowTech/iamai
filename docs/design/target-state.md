@@ -62,8 +62,11 @@ Routes: `#/connect` · `#/today` · `#/inventory` · `#/plan` · `#/plan/<stepId
 `scan`→`today`, `mapping|coverage|roadmap`→`plan`, `checks|reads|licensing|naming`→`how`,
 `baseline/package`→`how#package`. No route name is an implementation term.
 
-Demo (`?demo=1`) keeps working on the same surfaces. Its entry link is hidden until
-the fixture is rebuilt from the finished product (prompt 50).
+Demo (`?demo=1`) runs the same surfaces on a synthetic small-business tenant built to
+exercise the lockout scenarios, with relative dates so it never goes stale. It is
+entered from Connect (`See it with sample data →`) and the home page, carries a banner
+with `Leave the demo`, touches no real storage, and its Re-scan advances the sample to
+a week-two view so the tracking story can be seen without waiting a week.
 
 ---
 
