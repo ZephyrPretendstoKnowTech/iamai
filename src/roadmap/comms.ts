@@ -29,7 +29,7 @@ export const MONTHLY_WARNING_ABOVE = 3
 
 /** The audiences a step speaks to, from its population; more than one is common. */
 export function audiencesFor(step: Step, ctx: CommsContext): Audience[] {
-  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring') return []
+  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.kind === 'check') return []
   if (step.status === 'done' || step.status === 'skipped') return []
   if (step.safeToday || step.comms === NO_ANNOUNCEMENT || step.comms === null || step.population.total === 0) return [{ kind: 'none', label: AUDIENCE.none, ids: [] }]
   const ids = step.population.ids

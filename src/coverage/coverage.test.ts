@@ -20,6 +20,7 @@ function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     createdDateTime: '2024-01-01T00:00:00Z',
     lastSuccessfulSignIn: '2026-08-20T00:00:00Z',
     accountEnabled: true,
+    mail: null,
     assignedPlans: [],
     onPremisesSyncEnabled: null,
     externalUserState: null,

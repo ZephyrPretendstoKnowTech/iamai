@@ -228,7 +228,7 @@ test('T14: admin unverified sorts first; verification phase counts active users 
   assert.equal(summary.adminCounts.unverified, 1)
   // admin is active+unverified; dormant-user is excluded from the phase.
   assert.equal(summary.rollout.toSetUp, summary.rollout.noMethod + summary.rollout.unproven)
-  assert.equal(summary.rollout.enabled, summary.rollout.proven + summary.rollout.toSetUp)
+  assert.equal(summary.rollout.active, summary.rollout.proven + summary.rollout.toSetUp)
   assert.equal(summary.activityCounts.dormant, 1)
 })
 

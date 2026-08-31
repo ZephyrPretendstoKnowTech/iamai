@@ -49,6 +49,9 @@ export function effortMinutes(step: Step): number {
       return 30 + Math.max(0, step.population.total - step.population.active) * 0 + Math.round((step.impact.match(/\d+/)?.[0] ? Number(step.impact.match(/\d+/)![0]) : 0) * 3)
     case 'recurring':
       return 15
+    case 'check':
+      // A minute per account looked at, and a minute to decide.
+      return 1 + Math.min(60, step.population.total)
     case 'adjust':
       return 10 + Math.min(20, step.rings.length * 5)
     default:

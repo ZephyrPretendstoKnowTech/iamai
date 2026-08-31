@@ -1,7 +1,8 @@
 // Roadmap types (roadmap.md §1, §3–§5). Pure types only.
 import type { GoalScore } from '../scoring/priority.ts'
 
-export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforce' | 'recurring'
+/** `check`: a decision the operator makes about accounts, done when the count reaches 0 on re-scan (prompt 46 item 8). */
+export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforce' | 'recurring' | 'check'
 
 export type StepStatus = 'done' | 'ready' | 'blocked' | 'in-report-only' | 'ready-to-enforce' | 'skipped'
 
@@ -106,6 +107,12 @@ export type Step = {
   rollback: string
   history: StepHistoryEntry[]
   skipReason: string | null
+  /**
+   * The gap a partly-in-place or below-baseline goal leaves, as the clause a
+   * plan row shows: "sessions expire every 168h, baseline wants 4h". Null when
+   * there is no gap to state (prompt 46 item 9).
+   */
+  gap: string | null
   /** Policies that already deliver the goal (name and state), the evidence a Done step cites (ux-review-04 §5). */
   deliveredBy: string[]
   /** One line: why the step is in its current state; filled by annotateStateReasons. */

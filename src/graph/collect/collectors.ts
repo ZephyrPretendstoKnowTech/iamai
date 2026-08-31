@@ -120,6 +120,7 @@ function mapUser(raw: unknown): UserRow {
     createdDateTime: typeof u.createdDateTime === 'string' ? u.createdDateTime : null,
     lastSuccessfulSignIn: last,
     accountEnabled: typeof u.accountEnabled === 'boolean' ? u.accountEnabled : null,
+    mail: typeof u.mail === 'string' && u.mail.length > 0 ? u.mail : null,
     assignedPlans: plans
       .map((p) => p as Record<string, unknown>)
       .filter((p) => typeof p.servicePlanId === 'string')
@@ -144,7 +145,7 @@ export async function collectUsers(
   opts: { includeSignInActivity: boolean } = { includeSignInActivity: true },
 ): Promise<{ users: UserRow[]; partialReason: string | null }> {
   const baseSelect =
-    'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation'
+    'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,mail,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation'
   const select = `${baseSelect},signInActivity`
   if (!opts.includeSignInActivity) {
     const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${baseSelect}&$top=999`, {
@@ -166,7 +167,7 @@ export async function collectUsers(
     if (!(e instanceof SectionDisabledError)) throw e
     const rows = await graphPaged(
       ctx.tokens,
-      `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation&$top=999`,
+      `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,mail,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation&$top=999`,
       { signal: ctx.signal, onPage: async (page) => onUserPage(page.map(mapUser)) },
     )
     return { users: rows.map(mapUser), partialReason: `signInActivity unavailable: ${e.message}` }

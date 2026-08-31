@@ -10,7 +10,7 @@ import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
-import { heldBy, isNonPerson } from '../derive/sets.ts'
+import { heldBy, isNonPerson, notActiveUsers } from '../derive/sets.ts'
 import { accountVerdict } from './strand.ts'
 import { policyCountFor } from './policyCount.ts'
 import { describePopulation, populationContext } from './population.ts'
@@ -429,8 +429,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const highCareIds = new Set(mapping.highCareUserIds)
   const operatorId = input.operatorUserId ?? null
   const viabilityById = new Map(viability.map((v) => [v.userId, v]))
+  // One lookup, built once. This was a linear search of the directory per call,
+  // which nobody noticed until the dormant-accounts step named 3,671 people on
+  // the 25,000-user fixture and the engine took 500 ms instead of 180.
+  const userById = new Map(snapshot.users.map((u) => [u.id, u]))
   const nameOf = (id: string): string => {
-    const u = snapshot.users.find((x) => x.id === id)
+    const u = userById.get(id)
     return u?.displayName ?? u?.userPrincipalName ?? id
   }
   const tenantName =
@@ -602,6 +606,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(prereq(saStepId, p.title, p.why, [...p.how(mapping.serviceAccountUserIds.map(nameOf)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
   }
 
+  // Wave 0: the accounts nobody signs in to (target-state §8.1, prompt 46
+  // item 8). Not a denominator anywhere, and not a reason to wait — nothing
+  // can lock out an account nobody uses. The risk is the other way round:
+  // whoever signs in first registers the MFA method. Present only while there
+  // is somebody to decide on; done when the count reaches 0 on re-scan.
+  const dormant = notActiveUsers(snapshot, snapshot.asOf, new Set(mapping.serviceAccountUserIds))
+  if (dormant.length > 0) {
+    const p = PREREQ.dormantAccounts
+    const names = dormant.map((u) => nameOf(u.id))
+    const s = prereq('s-check-dormant-accounts', p.title(dormant.length), p.why, p.how(names), p.exit)
+    s.kind = 'check'
+    s.action = { ...s.action, kind: 'check' }
+    s.population = { total: dormant.length, active: 0, admins: 0, guests: 0, ids: dormant.map((u) => u.id) }
+    s.populationNames = names
+    steps.push(s)
+  }
+
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
   // Nothing can take security defaults' place without Conditional Access, so
   // turning them off is never the advice: the ladder asks for them instead.
@@ -766,7 +787,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     let existing: GoalResult['candidates'][number] | null = null
     let existingRaw: RawPolicy | null = null
 
-    if (result.status === 'enforced') {
+    // A step is done if and only if its goal's verdict is inPlace (target-state
+    // §8.2, prompt 46 item 9). Not the status, and never the plan's own idea of
+    // whether a policy exists: the verdict is decided once, in coverage.
+    if (result.verdict === 'inPlace') {
       kind = 'create'
       status = 'done'
       action = {
@@ -1021,6 +1045,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       history: [],
       skipReason: null,
       ...EXTRAS,
+      // After the defaults, or the default overwrites it: the gap a change step
+      // closes, on the step so the plan row can show it (prompt 46 item 9).
+      gap: result.gapSentence ?? null,
       impact,
       safeToday: false, // decided once every step exists (prerequisites, break-glass, operator, evidence): see safeTodayFor
       highCare: { userIds: care, ready: careReady, notes: careNotes },
@@ -1245,7 +1272,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Conflicts the tenant already has (security defaults, per-user MFA) come before everything (roadmap-v2.md §7, messy).
     if (s.id === 's-prereq-security-defaults' || s.id === 's-prereq-per-user-mfa') return -2000
     if (s.safeToday) return -1000
-    const sev = s.kind === 'prerequisite' || s.kind === 'recurring' ? 0 : stepSeverity(s)
+    const sev = s.kind === 'prerequisite' || s.kind === 'recurring' || s.kind === 'check' ? 0 : stepSeverity(s)
     const care = s.highCare.userIds.length > 0 ? 100_000 : 0
     return care + s.population.active * sev - (s.readiness.percent ?? 0)
   }

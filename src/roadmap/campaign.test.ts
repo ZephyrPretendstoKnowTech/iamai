@@ -89,7 +89,7 @@ test('a disabled account never counts: it is neither proven nor to set up', () =
   disabled.accountEnabled = false
   const before = summarizeTenant(buildViabilityInputs(fixtureSnapshot(), s.asOf).map(scoreMfaViability)).rollout
   const after = summarizeTenant(buildViabilityInputs(s, s.asOf).map(scoreMfaViability)).rollout
-  assert.equal(after.enabled, before.enabled - 1)
+  assert.equal(after.active, before.active - 1)
   assert.equal(after.noMethod, before.noMethod - 1, 'u-3 had no method and is now out of the picture')
-  assert.equal(after.proven + after.toSetUp, after.enabled, 'the buckets still sum to the enabled users')
+  assert.equal(after.proven + after.toSetUp, after.active, 'the buckets still sum to the active people')
 })

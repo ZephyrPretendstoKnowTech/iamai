@@ -144,7 +144,7 @@ export function trackExecution(
     }
 
     if (!match) {
-      if (goalStatus === 'enforced') {
+      if (result?.verdict === 'inPlace') {
         advance(step, 'done', TRACK.enforcedByOther(result?.candidates.find((c) => c.contribution === 'strong')?.policyName ?? 'an existing policy'), now)
         step.alreadyInPlace = planCreatedAt !== null
       }
@@ -196,7 +196,18 @@ export function trackExecution(
 
     // ---- Status transitions, each with the evidence that justified it ----
     if (state === 'enabled') {
-      advance(step, 'done', `${TRACK.enforced(absoluteDate(tracking.enforcedAt ?? now))}; ${tracking.note}`, now)
+      // A step is done if and only if its goal's verdict is inPlace (target-state
+      // §8.2, prompt 46 item 9). This used to advance on the policy's state
+      // alone, so a policy that was on but short of the baseline made its step
+      // done while Findings said partly: "Admin sessions expire quickly" was
+      // done on the Plan and partly in place on Findings, and the demo tenant
+      // counted 11 in place against 6. An enabled policy behind a partly goal
+      // is a change step whose object already exists, never a finished one.
+      if (result?.verdict === 'inPlace') {
+        advance(step, 'done', `${TRACK.enforced(absoluteDate(tracking.enforcedAt ?? now))}; ${tracking.note}`, now)
+      } else {
+        step.alreadyInPlace = false
+      }
       continue
     }
     if (state === 'enabledForReportingButNotEnforced') {
@@ -230,7 +241,7 @@ export type StepProgress = {
 
 export function stageOf(step: Step): Stage {
   if (step.status === 'done' && step.alreadyInPlace) return 'alreadyInPlace'
-  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring') return step.status === 'done' ? 'enforced' : 'planned'
+  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.kind === 'check') return step.status === 'done' ? 'enforced' : 'planned'
   if (step.status === 'done') return step.tracking?.evidenceQuality === 'enough' ? 'verified' : 'enforced'
   if (step.status === 'ready-to-enforce') return 'readyToEnforce'
   if (step.status === 'in-report-only') return (step.tracking?.daysInReportOnly ?? 0) > 0 && (step.tracking?.signIns ?? 0) > 0 ? 'soaking' : 'reportOnly'
@@ -246,14 +257,24 @@ function slipReason(step: Step, byId: Map<string, Step>): string | null {
   return TRACK.slip.noEvidence
 }
 
-export function stepProgress(steps: Step[], schedule: Schedule, now: string = new Date().toISOString()): StepProgress[] {
+export function stepProgress(steps: Step[], schedule: Schedule, now: string = new Date().toISOString(), planCreatedAt: string | null = null): StepProgress[] {
   const byId = new Map(steps.map((s) => [s.id, s]))
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w]))
   return trackable(steps).map((s) => {
       const wave = waveStart.get(schedule.waveOf[s.id] ?? 0)
       const plannedStart = s.rings[0]?.plannedStart ?? schedule.reportOnlyAt[s.id] ?? (s.kind === 'verify' ? schedule.verification.start : wave?.start ?? null)
       const plannedEnd = s.rings.at(-1)?.plannedEnd ?? (s.kind === 'verify' ? schedule.verification.end : plannedStart)
-      const actualStart = s.tracking?.enforcedAt ?? (s.status === 'done' ? s.history.find((h) => h.to === 'done')?.at ?? null : null)
+      // actualStart comes only from evidence dated after the plan was created
+      // (prompt 46 item 10). A policy that existed before the plan is in place
+      // before the plan, never an early execution: the headline read "Started
+      // Jul 24" for a plan made in September because the matched policy's own
+      // date was taken as the plan's start. With no creation date on record,
+      // nothing can be shown to postdate it, so only this plan's own history
+      // counts.
+      const afterPlan = (iso: string | null | undefined): iso is string => typeof iso === 'string' && (planCreatedAt === null || Date.parse(iso) >= Date.parse(planCreatedAt))
+      const fromEvidence = !s.alreadyInPlace && planCreatedAt !== null && afterPlan(s.tracking?.enforcedAt) ? (s.tracking?.enforcedAt as string) : null
+      const fromHistory = s.status === 'done' ? (s.history.find((h) => h.to === 'done')?.at ?? null) : null
+      const actualStart = s.alreadyInPlace ? null : (fromEvidence ?? (afterPlan(fromHistory) ? fromHistory : null))
       const actualEnd = s.status === 'done' ? actualStart : null
       let slipDays: number | null = null
       if (plannedStart && !s.alreadyInPlace) {

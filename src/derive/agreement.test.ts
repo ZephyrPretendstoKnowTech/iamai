@@ -118,3 +118,66 @@ test('a plan derived twice from the same fixture gives the same numbers', () => 
     assert.equal(b, a, `${f.name}: replanning the same scan produced different numbers`)
   }
 })
+
+// ---- prompt 46 Part 2: one denominator, one verdict ----
+
+test('one denominator: active people agree across sets, viability and rollout, and never-signed-in accounts are in none (prompt 46 item 7)', async () => {
+  const { activeUsers, notActiveUsers, peopleCounts } = await import('./sets.ts')
+  const { summarizeTenant } = await import('../scoring/mfaViability.ts')
+  for (const f of allFixtures()) {
+    const run = runFixture(f)
+    const snapshot = run.input.snapshot
+    const now = snapshot.asOf
+    const confirmed = new Set(f.mapping.serviceAccountUserIds ?? [])
+    const active = activeUsers(snapshot, now, confirmed)
+    const notActive = notActiveUsers(snapshot, now, confirmed)
+    const people = peopleCounts(snapshot, now, confirmed)
+    // The scoring engine's idea of active is the same set.
+    const viaActive = run.viability.filter((v) => v.activity === 'active').map((v) => v.userId).sort()
+    assert.deepEqual(active.map((u) => u.id).sort(), viaActive, `${f.name}: sets.activeUsers and viability.activity disagree`)
+    // Enabled splits cleanly into active and not active.
+    assert.equal(people.enabled, people.active + people.notActive, `${f.name}: enabled != active + notActive`)
+    assert.equal(people.notActive, notActive.length)
+    // Rollout counts over active people and nothing else.
+    const rollout = summarizeTenant(run.viability).rollout
+    assert.equal(rollout.active, active.length, `${f.name}: rollout denominator is not the active set`)
+    assert.equal(rollout.proven + rollout.noMethod + rollout.unproven, rollout.active, `${f.name}: rollout buckets do not sum to active`)
+    // A never-signed-in account is in no denominator.
+    const never = new Set(snapshot.users.filter((u) => !u.lastSuccessfulSignIn).map((u) => u.id))
+    for (const id of active) assert.ok(!never.has(id.id), `${f.name}: ${id.id} never signed in and is counted active`)
+    for (const v of run.viability) if (never.has(v.userId)) assert.notEqual(v.activity, 'active')
+    // Step populations count active people only.
+    for (const s of run.steps) assert.ok(s.population.active <= people.active, `${f.name}/${s.id}: population.active ${s.population.active} exceeds the tenant's active count ${people.active}`)
+  }
+})
+
+test('one verdict: for every goal in every fixture, the findings verdict and the step status agree (prompt 46 item 9)', async () => {
+  const { applyProgress } = await import('../roadmap/progress.ts')
+  for (const f of allFixtures()) {
+    const run = runFixture(f)
+    const snapshot = run.input.snapshot
+    // Tracking is what disagreed with coverage on the demo and mid fixtures
+    // (Findings 6 in place, Plan 11): a matched policy that was on advanced its
+    // step to done while the goal was partly in place. So the assertion runs
+    // after tracking, not before it.
+    const steps = applyProgress(run.steps, snapshot, run.coverage, `agreement-${f.name}`, snapshot.asOf, snapshot.asOf)
+    const byGoal = new Map(run.coverage.results.map((r) => [r.goal.id, r]))
+    const disagreements: string[] = []
+    for (const s of steps) {
+      if (s.kind !== 'create' && s.kind !== 'adjust') continue
+      const r = byGoal.get(s.goalId)
+      if (!r) continue
+      const stepDone = s.status === 'done'
+      const verdictDone = r.verdict === 'inPlace'
+      if (stepDone !== verdictDone) disagreements.push(`${f.name}: ${s.id} is ${s.status} while its goal's verdict is ${r.verdict}`)
+      // A partly or below-baseline goal is a change step carrying its gap.
+      if ((r.verdict === 'partly' || r.verdict === 'belowBaseline') && s.status !== 'done' && s.gap === null && r.gapSentence !== null) {
+        disagreements.push(`${f.name}: ${s.id} has no gap sentence though its goal has one`)
+      }
+    }
+    assert.deepEqual(disagreements, [])
+    // Header and footer count the same set.
+    const summary = planSummary(steps)
+    assert.equal(summary.done, doneSteps(steps).length, `${f.name}: the plan header's done count is not doneSteps`)
+  }
+})

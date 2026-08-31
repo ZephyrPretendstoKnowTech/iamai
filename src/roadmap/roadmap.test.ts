@@ -24,6 +24,7 @@ function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     createdDateTime: '2024-01-01T00:00:00Z',
     lastSuccessfulSignIn: '2026-08-20T00:00:00Z',
     accountEnabled: true,
+    mail: null,
     assignedPlans: [],
     onPremisesSyncEnabled: false,
     externalUserState: null,
@@ -250,7 +251,18 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
 
   const rows = snap2.config.caPolicies.rows as P[]
   rows[0] = { ...rows[0], state: 'enabled' }
+  // The policy is on, but this coverage still says the goal is missing. A step
+  // is done if and only if its goal's verdict is inPlace (target-state §8.2,
+  // prompt 46 item 9), so the policy's own state cannot finish it on its own:
+  // that is exactly how the Plan came to count 11 in place against Findings' 6.
   applyProgress(steps, snap2, input.coverage, PLAN)
+  assert.equal(step.status, 'ready-to-enforce', 'an enabled policy does not make a step done while coverage disagrees')
+  // On a real re-scan coverage is recomputed and agrees; then, and only then, the step is done.
+  const agreeing = {
+    ...input.coverage,
+    results: input.coverage.results.map((r) => (r.goal.id === 'mfa-all-users' ? { ...r, status: 'enforced' as const, verdict: 'inPlace' as const } : r)),
+  }
+  applyProgress(steps, snap2, agreeing, PLAN)
   assert.equal(step.status, 'done')
   assert.equal(step.history.length, 3)
 })

@@ -294,10 +294,18 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
  * are what the verification campaign has to work through.
  */
 export type RolloutBucket = 'proven' | 'noMethod' | 'unproven'
-export type RolloutSummary = { enabled: number; proven: number; noMethod: number; unproven: number; toSetUp: number }
+/**
+ * The rollout picture, over ACTIVE people (target-state §8.1, prompt 46 item 7).
+ * It counted enabled people, which put never-signed-in accounts in every
+ * readiness denominator and let a 12-person tenant with 4 active people read
+ * as two-thirds unready. The field is named for what it counts.
+ */
+export type RolloutSummary = { active: number; proven: number; noMethod: number; unproven: number; toSetUp: number }
 
 export function rolloutBucket(r: MfaViability): RolloutBucket | null {
-  if (!r.enabled) return null
+  // Not active is not in the rollout: a person who never signs in cannot be
+  // prompted to register, and cannot be locked out either.
+  if (!r.enabled || r.activity !== 'active') return null
   if (r.evidence) return 'proven'
   if (!r.mfaCapable) return 'noMethod'
   return 'unproven'
@@ -322,11 +330,11 @@ export function summarizeTenant(rows: MfaViability[]): TenantMfaSummary {
   const counts = EMPTY_MFA_COUNTS()
   const adminCounts = EMPTY_MFA_COUNTS()
   const activityCounts: Record<ActivityState, number> = { active: 0, dormant: 0, neverSignedIn: 0 }
-  const rollout: RolloutSummary = { enabled: 0, proven: 0, noMethod: 0, unproven: 0, toSetUp: 0 }
+  const rollout: RolloutSummary = { active: 0, proven: 0, noMethod: 0, unproven: 0, toSetUp: 0 }
   for (const r of rows) {
     const bucket = rolloutBucket(r)
     if (bucket) {
-      rollout.enabled += 1
+      rollout.active += 1
       rollout[bucket] += 1
     }
     counts[r.mfa] += 1

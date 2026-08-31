@@ -491,7 +491,7 @@ export function MfaViabilityScreen({
             ).map(([key, tip, n, tone]) => (
               <StatTile
                 key={key}
-                value={SCAN.rolloutValue(n, scored.summary.rollout.enabled)}
+                value={SCAN.rolloutValue(n, scored.summary.rollout.active)}
                 label={tip.title}
                 tone={n === 0 && key !== 'proven' ? 'neutral' : tone}
                 tip={tip}

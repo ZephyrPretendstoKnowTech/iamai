@@ -55,6 +55,7 @@ export function bigFixtureSnapshot(opts: BigFixtureOptions = {}): TenantSnapshot
       displayName,
       userPrincipalName: upn,
       userType: guest ? 'guest' : 'member',
+      mail: null,
       usageLocation: rand() < 0.9 ? 'AU' : 'NZ',
       createdDateTime: daysAgo(200 + Math.floor(rand() * 800)),
       lastSuccessfulSignIn: lastDays === null ? null : daysAgo(lastDays),

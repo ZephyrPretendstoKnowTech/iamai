@@ -41,7 +41,15 @@ import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
  */
 export function isNonPerson(u: UserRow, confirmedServiceAccountIds: ReadonlySet<string>): boolean {
   if (confirmedServiceAccountIds.has(u.id)) return true
+  // Sign-in blocked. A shared mailbox or a resource is created with sign-in
+  // disabled; it holds no person, and a policy cannot lock anybody out of it
+  // (target-state §8.1, prompt 46 item 7).
+  if (u.accountEnabled === false) return true
   const plans = u.assignedPlans.filter((p) => p.capabilityStatus === '' || p.capabilityStatus === 'Enabled')
+  // A mailbox with no service plans and no sign-in on record is a shared
+  // mailbox somebody created without blocking sign-in. The address is the tell:
+  // an account with no plans and no mail is just an unlicensed person.
+  if (u.mail && plans.length === 0 && !u.lastSuccessfulSignIn) return true
   return plans.length > 0 && plans.every((p) => EXCHANGE_PLANS.has(p.servicePlanId.toLowerCase()))
 }
 
@@ -88,14 +96,28 @@ export function adminUsers(snapshot: TenantSnapshot, confirmedServiceAccountIds:
   return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => admins.has(u.id))
 }
 
+/**
+ * Enabled people who are not active: never signed in, or inactive 90+ days
+ * (target-state §8.1, prompt 46 item 7). Shown, listed, never in a
+ * denominator, and never a reason to delay enforcement — nothing can lock out
+ * an account nobody signs into. They carry a risk of a different kind: whoever
+ * signs in first registers the MFA method. Wave 0 asks the operator to decide
+ * on each.
+ */
+export function notActiveUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
+  const active = new Set(activeUsers(snapshot, now, confirmedServiceAccountIds).map((u) => u.id))
+  return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => !active.has(u.id))
+}
+
 /** Every people-count on one screen, over one directory, at one instant. */
-export type PeopleCounts = { directory: number; enabled: number; active: number; admins: number }
+export type PeopleCounts = { directory: number; enabled: number; active: number; notActive: number; admins: number }
 
 export function peopleCounts(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): PeopleCounts {
   return {
     directory: personAccounts(snapshot, confirmedServiceAccountIds).length,
     enabled: enabledUsers(snapshot, confirmedServiceAccountIds).length,
     active: activeUsers(snapshot, now, confirmedServiceAccountIds).length,
+    notActive: notActiveUsers(snapshot, now, confirmedServiceAccountIds).length,
     admins: adminUsers(snapshot, confirmedServiceAccountIds).length,
   }
 }

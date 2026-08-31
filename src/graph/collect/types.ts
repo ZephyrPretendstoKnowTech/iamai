@@ -51,6 +51,8 @@ export type UserRow = {
   createdDateTime: string | null
   lastSuccessfulSignIn: string | null
   accountEnabled: boolean | null
+  /** The primary SMTP address; a mailbox with no plans and no sign-in is a shared mailbox, not a person (prompt 46 §8.1). */
+  mail: string | null
   assignedPlans: { servicePlanId: string; capabilityStatus: string }[]
   onPremisesSyncEnabled: boolean | null
   externalUserState: string | null

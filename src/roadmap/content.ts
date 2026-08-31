@@ -55,7 +55,7 @@ function activeIn(step: Step, ctx: ContentContext): string[] {
 
 /** The real-world failure modes for this control, each annotated with this tenant's evidence. */
 export function failureModesFor(step: Step, ctx: ContentContext): FailureMode[] {
-  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.status === 'done') return []
+  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.kind === 'check' || step.status === 'done') return []
   const { snapshot } = ctx
   const usable = evidenceUsable(snapshot)
   const usage = snapshot.evidenceUsage
@@ -234,7 +234,7 @@ export function verifyFor(step: Step, ctx: ContentContext, ringName: string | nu
 }
 
 export function helpDeskFor(step: Step): HelpDesk | null {
-  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.status === 'done') return null
+  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.kind === 'check' || step.status === 'done') return null
   const family = step.readiness.family
   const H = family === 'mfa' || family === 'guest' ? HELP_DESK.mfa : family === 'admin' ? HELP_DESK.admin : family === 'device' ? HELP_DESK.device : family === 'block' ? HELP_DESK.block : family === 'location' ? HELP_DESK.location : HELP_DESK.session
   const extra = family === 'guest' ? HELP_DESK.guest : null
