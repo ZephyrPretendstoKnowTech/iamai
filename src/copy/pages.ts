@@ -2,10 +2,11 @@
 // first person, no reassurance adjectives, no developer vocabulary.
 import { lowerFirst } from './statements.ts'
 import { count } from './statements.ts'
+import { PRODUCT } from './product.ts'
 
 export const SHELL = {
-  wordmark: 'IAMAI',
-  tagline: 'Conditional Access rollout planner for Microsoft Entra ID and Microsoft 365',
+  wordmark: PRODUCT.name,
+  tagline: PRODUCT.descriptor,
   tenantTooltip: (tenantId: string, username: string) => `Tenant ID ${tenantId} · signed in as ${username}`,
   lightTheme: 'Light theme',
   darkTheme: 'Dark theme',

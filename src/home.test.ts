@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { PRODUCT } from './copy/product.ts'
 
 const home = 'home'
 const html = readFileSync(join(home, 'index.html'), 'utf8')
@@ -45,7 +46,8 @@ test('every tool has what a card needs', () => {
 
 test('the planner is the first card, and points at the tool folder', () => {
   const first = tools[0]
-  assert.match(first.name, /rollout planner/i)
+  // The name lives in one place (prompt 47.1 Part 4).
+  assert.equal(first.name, PRODUCT.name)
   // An empty path means "this repository's tool", which the build resolves to
   // TOOL_PATH; anything else is a sibling folder.
   assert.equal(first.path, '')

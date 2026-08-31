@@ -228,6 +228,7 @@ try {
   await waitFor(`/Do this next/.test(document.body.innerText)`)
   t = await evaluate(`document.querySelector('header.app').innerText`)
   check('Header: the tenant name, both tabs and the controls', /Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
   check('Header: Re-scan carries the scan age', /Re-scan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
   check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))

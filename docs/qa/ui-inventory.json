@@ -1,5 +1,5 @@
 {
- "fingerprint": "2d8d0128e81cfb38",
+ "fingerprint": "a43b6f9b0f93fa36",
  "surfaces": [
   {
    "name": "Connect",
@@ -1225,8 +1225,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 260,
-    "words": 482
+    "sentences": 276,
+    "words": 498
    }
   },
   {
@@ -2062,8 +2062,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 301,
-    "words": 1015
+    "sentences": 317,
+    "words": 1031
    }
   },
   {
@@ -3067,7 +3067,7 @@
    ],
    "options": [],
    "links": [
-    "IAMAI",
+    "IAMAI Planner",
     "Recovery card"
    ],
    "chips": [],
@@ -3088,7 +3088,7 @@
     "tabs": 2,
     "buttons": 8,
     "options": 0,
-    "links": 3,
+    "links": 4,
     "chips": 0,
     "columns": 0,
     "tiles": 0,
@@ -3096,7 +3096,7 @@
     "summaries": 0,
     "tips": 0,
     "sentences": 0,
-    "total": 13
+    "total": 14
    },
    "unnamedControls": [],
    "rows": [],
@@ -3132,6 +3132,8 @@
    ],
    "tips": [],
    "sentences": [
+    "Plan the journey to your Conditional Access baseline.",
+    "Read-only.",
     "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.",
     "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.",
     "Read-only, with nothing sent anywhere on its own: no server, no telemetry."
@@ -3143,11 +3145,13 @@
    ],
    "tables": [],
    "occurrences": {
+    "Plan the journey to your Conditional Access baseline.": 1,
     "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.": 1,
     "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.": 1,
     "Read-only, with nothing sent anywhere on its own: no server, no telemetry.": 1
    },
    "occurrencesAll": {
+    "Plan the journey to your Conditional Access baseline.": 1,
     "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.": 1,
     "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.": 1,
     "Read-only, with nothing sent anywhere on its own: no server, no telemetry.": 1
@@ -3164,15 +3168,15 @@
     "empty": 0,
     "summaries": 9,
     "tips": 0,
-    "sentences": 50,
-    "total": 70
+    "sentences": 59,
+    "total": 79
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 3,
-    "words": 50
+    "sentences": 5,
+    "words": 59
    },
    "contract": "connect.signedOut",
    "state": "signedOut",

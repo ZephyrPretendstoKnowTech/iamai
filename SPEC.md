@@ -1,4 +1,4 @@
-# IAMAI — Specification (v0.1, 2026-08-25)
+# IAMAI Planner — Specification (v0.1, 2026-08-25)
 
 Read-only, browser-only Microsoft Entra Conditional Access **rollout planner**.
 It does not report "what's wrong" for its own sake; it produces the journey from a
