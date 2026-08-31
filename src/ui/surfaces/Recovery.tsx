@@ -112,9 +112,6 @@ export function Recovery({ scan = null }: { scan?: { snapshot: TenantSnapshot; a
       <Card title={RECOVERY.tenantTitle}>
         <ul className="sections">
           <li>
-            <strong>{RECOVERY.tenantIdLabel}</strong>: {snapshot.tenantId}
-          </li>
-          <li>
             <strong>{RECOVERY.domainLabel}</strong>: {domains.length > 0 ? domains.join(', ') : tenantName}
           </li>
         </ul>
