@@ -77,9 +77,7 @@ export const PHASE_NAME: Record<number, string> = {
  */
 export const BLOCKED = {
   setup: (numbers: number[]) =>
-    numbers.length === 1
-      ? `Setup question ${numbers[0]} is answered`
-      : `Setup questions ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]} are answered`,
+    numbers.length === 1 ? 'the tenant answer is in place' : 'the tenant answers are in place',
   step: (title: string) => `${title} is done`,
   // No prefix: whatever prints this supplies one. Carrying "Blocked while"
   // inside the cause is what produced the double prefix (T8).
@@ -170,10 +168,10 @@ export function stepTitle(goalName: string): string {
 
 export const PREREQ = {
   setupQuestions: {
-    title: (n: number) => `Answer ${count(n, 'setup question')}`,
+    title: (n: number) => `Confirm ${count(n, 'tenant answer')}`,
     why: 'A few answers about the tenant turn templates into exact, safe policy changes.',
     how: (titles: string[]) => [`Open the Setup step and answer: ${list(titles)}.`, 'Each takes under a minute; every pick is validated.'],
-    exit: ['Every required Setup question answered.'],
+    exit: ['Every required tenant answer confirmed on the plan.'],
   },
   breakGlass: {
     title: 'Create two break-glass accounts',
@@ -182,9 +180,9 @@ export const PREREQ = {
       'Create two cloud-only accounts (no on-premises sync) with long random passwords stored offline.',
       'Assign Global Administrator as a permanent active assignment (not PIM-eligible).',
       'Register a FIDO2 security key on each; never text message only.',
-      'Add them to the exclusions group, then answer the Setup question so IAMAI can validate them.',
+      'Add them to the exclusions group, then confirm them on the plan so IAMAI can check them.',
     ],
-    exit: ['Two accounts exist, validated by the Setup question.'],
+    exit: ['Two accounts exist, confirmed on the plan.'],
   },
   /** Wave 0: decide on the accounts nobody signs in to (prompt 46 item 8). Four branches on the count live in the title. */
   dormantAccounts: {
@@ -200,7 +198,7 @@ export const PREREQ = {
       'Entra admin center → Groups → New group → Security, assigned membership (never dynamic).',
       'Name it clearly, e.g. "CA - Policy Exclusions".',
       'Add only the break-glass accounts.',
-      'Then answer the Setup question so every generated policy excludes it.',
+      'Then confirm it on the plan so every generated policy excludes it.',
     ],
     exit: ['The group exists and is picked in Setup.'],
   },
@@ -210,7 +208,7 @@ export const PREREQ = {
     how: [
       'Entra admin center → Protection → Conditional Access → Named locations → + IP ranges location.',
       'Add the office egress ranges (never 0.0.0.0/0, nothing wider than /16) and mark the location as trusted.',
-      'Then answer the Setup question.',
+      'Then confirm it on the plan.',
     ],
     exit: ['A trusted location exists and is picked in Setup.'],
   },
@@ -256,15 +254,19 @@ export const PREREQ = {
   verifyMfa: {
     title: 'Run the MFA verification campaign',
     why: 'Before MFA is enforced, every active user should have a working, verified method: enforcement should change nothing for them.',
-    how: (c: { none: number; unverified: number; notChallenged: number }, careNames: string[], departments: number) => [
-      c.none + c.unverified + c.notChallenged === 0
-        ? 'Everyone active is already verified or likely viable. Confirm the Readiness table and move on.'
-        : `Work the Readiness table top-down: ${count(c.none, 'user')} without a method (issue Temporary Access Passes), ${c.unverified} unverified, ${c.notChallenged} never challenged.`,
+    /** Active people only, named (prompt 48.1 item 2): what each unproven and no-method person does; break-glass is never in it. */
+    how: (c: { unproven: string[]; noMethod: string[] }, careNames: string[], departments: number) => [
+      c.unproven.length === 0 && c.noMethod.length === 0
+        ? 'Everyone active is already verified or likely viable; nothing to chase.'
+        : c.unproven.length > 0
+          ? `Ask each of these to complete one MFA sign-in: ${list(c.unproven)}.`
+          : 'No unproven active people.',
+      ...(c.noMethod.length > 0 ? [`Register a method for each, and issue a Temporary Access Pass to anyone off a trusted network: ${list(c.noMethod)}.`] : []),
       ...(careNames.length > 0 ? [`Walk through setup personally with ${list(careNames)}: never an email blast for them.`] : []),
       departments > 1
-        ? `Pilot suggestion: Verified and Likely-viable users across the ${departments} departments, one admin, never break-glass or handle-with-care.`
-        : 'Pilot suggestion: a handful of Verified users plus one admin; never break-glass or handle-with-care.',
-    ],
+        ? `Pilot the verified people first, one admin, across the ${departments} departments; never break-glass or handle-with-care.`
+        : 'Pilot the verified people first, plus one admin; never break-glass or handle-with-care.',
+    ].filter((line) => line !== 'No unproven active people.'),
     exit: (threshold: number) => [`Readiness reaches ${threshold}% of active users.`],
   },
   /** Shared devices (prompt 48 item 4): Teams Rooms and shared devices get their own policy. */
@@ -312,8 +314,8 @@ const READINESS_NAME: Record<string, string> = {
 }
 
 export const UNBLOCK = {
-  setup: 'finish the Setup questions first',
-  question: (n: number, title: string, ask: string) => `Setup question ${n} (${title}): ${ask}`,
+  setup: 'set the tenant answers first',
+  question: (_n: number, title: string, ask: string) => `${title}: ${ask}`,
   createObject: 'create the missing object first (phase 0)',
   readiness: (percent: number, family: string, threshold: number) =>
     `${READINESS_NAME[family] ?? 'readiness'} is ${percent}%: the threshold is ${threshold}%; verify users first (phase 2)`,

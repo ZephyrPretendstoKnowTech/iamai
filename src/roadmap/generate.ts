@@ -56,6 +56,7 @@ import {
 import { evidenceFor } from './evidence.ts'
 import { goalFamily, readinessFor } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
+import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { DATE_NOTE } from '../copy/steps.ts'
@@ -161,15 +162,27 @@ function announcementAudience(pop: StepPopulation, admins: boolean, nameOf: (id:
 }
 
 function population(ids: string[], index: PopulationIndex): StepPopulation {
-  let active = 0
+  // One denominator (target-state §8.1): the who-line and the population line
+  // count active people. admins and guests are the active ones too, so the
+  // line and the count cannot disagree. inScope keeps the enabled total for the
+  // "covers N enabled" suffix.
+  const activeIds = ids.filter((id) => index.active.has(id))
   let admins = 0
   let guests = 0
-  for (const id of ids) {
-    if (index.active.has(id)) active += 1
+  for (const id of activeIds) {
     if (index.admins.has(id)) admins += 1
     if (index.guests.has(id)) guests += 1
   }
-  return { total: ids.length, active, admins, guests, ids }
+  return { total: ids.length, active: activeIds.length, admins, guests, ids, activeIds, inScope: ids.length }
+}
+
+/** The coverage gap, over the active denominator (prompt 48.1 item 3): "covers 1 of 4 active". */
+function activeGap(result: GoalResult, popActive: number, active: Set<string>): string | null {
+  const base = result.gapSentence
+  if (!base || !/^covers d+ of d+ people$/.test(base)) return base
+  const uncovered = new Set(result.reasons.filter((x) => !x.expected && (x.kind === 'not-targeted' || x.kind === 'excluded')).flatMap((x) => x.userIds))
+  const uncoveredActive = [...uncovered].filter((id) => active.has(id)).length
+  return `covers ${Math.max(0, popActive - uncoveredActive)} of ${popActive} active`
 }
 
 // ---- action building (roadmap.md §3) ----
@@ -261,7 +274,7 @@ export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholde
     const p = placeholders.get(x)
     if (p) return p.label
     const t = TOKEN_RE.exec(x)
-    if (t) return [...placeholders.values()].find((v) => v.token === x)?.label ?? `Setup question ${t[1]}`
+    if (t) return [...placeholders.values()].find((v) => v.token === x)?.label ?? 'an object the plan creates'
     if (role) return roleLabel(x)
     const name = names?.nameOf(x) ?? null
     if (name) return name
@@ -517,7 +530,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     blockedBy: [],
     blockers: [],
     unblockNotes: [],
-    population: { total: 0, active: 0, admins: 0, guests: 0, ids: [] },
+    population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 },
     readiness: { family: 'other', percent: null, lines: [] },
     evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
     action: { kind: 'prerequisite', summary, json: null, portalSteps: [], powershell: null },
@@ -542,7 +555,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const q = activeQuestions.find((x) => x.id === id)
     return q ? UNBLOCK.question(questionNumber(id), q.title, q.question.replace(/\?$/, '').toLowerCase()) : UNBLOCK.setup
   }
-  // Unresolved baseline references render as "<role> — Setup question N", never a GUID.
+  // Unresolved baseline references name the assumption and its state (prompt 48.1 item 8), never a GUID or a Setup question.
   const placeholders: Placeholders = new Map()
   const ROLE_QUESTION: Partial<Record<MappingQuestion['group'], WizardQuestionId>> = {
     breakGlass: 'breakGlass',
@@ -567,7 +580,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const qid = country ? 'countries' : ROLE_QUESTION[q.group]
     const n = qid ? questionNumber(qid) : 0
     const role = country ? 'your allowed countries' : ROLE_LABEL[q.group]
-    const label = n > 0 ? `${role} — Setup question ${n}` : role
+    // Setup is gone (prompt 48.1 item 8): an unresolved object is created by the Wave 0 step.
+    const label = n > 0 ? `${role} (created by the step above)` : role
     placeholders.set(q.key, { label, token: setupToken(n, q.group) })
   }
   const naming = input.coverage.organisation.naming
@@ -681,7 +695,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const s = prereq('s-check-dormant-accounts', p.title(dormant.length), p.why, p.how(names), p.exit)
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
-    s.population = { total: dormant.length, active: 0, admins: 0, guests: 0, ids: dormant.map((u) => u.id) }
+    // The dormant step is the one place never-signed-in accounts are a population (§8.1): it names them, though none are active.
+    s.population = { total: dormant.length, active: 0, admins: 0, guests: 0, ids: dormant.map((u) => u.id), activeIds: dormant.map((u) => u.id), inScope: dormant.length }
     s.populationNames = names
     steps.push(s)
   }
@@ -691,7 +706,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const p = PREREQ.sharedDevices
     const names_ = sharedDevices.map((u) => nameOf(u.id))
     const step = prereq('s-shared-devices', p.title, p.why, p.how(names_), p.exit)
-    step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id) }
+    step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id), activeIds: sharedDevices.map((u) => u.id), inScope: sharedDevices.length }
     step.populationNames = names_
     steps.push(step)
   }
@@ -1161,7 +1176,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...EXTRAS,
       // After the defaults, or the default overwrites it: the gap a change step
       // closes, on the step so the plan row can show it (prompt 46 item 9).
-      gap: result.gapSentence ?? null,
+      gap: activeGap(result, pop.active, popIndex.active),
       impact,
       safeToday: false, // decided once every step exists (prerequisites, break-glass, operator, evidence): see safeTodayFor
       highCare: { userIds: care, ready: careReady, notes: careNotes },
@@ -1195,7 +1210,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                     : MANAGER.other(),
       rollbackBody: kind === 'adjust' && existingRaw ? JSON.stringify(existingRaw, null, 2) : null,
       whatChanges:
-        status === 'done' ? WHAT_CHANGES.done : kind === 'adjust' ? WHAT_CHANGES.adjust(existing?.policyName ?? stepTitle(goal.name), action.changes?.length ?? adjustSections.size) : WHAT_CHANGES.create(stepTitle(goal.name), pop.total),
+        status === 'done' ? WHAT_CHANGES.done : kind === 'adjust' ? WHAT_CHANGES.adjust(existing?.policyName ?? stepTitle(goal.name), action.changes?.length ?? adjustSections.size) : WHAT_CHANGES.createPlain(goal.id, readiness.family),
       naming:
         kind === 'create' && status !== 'done'
           ? { proposed: namingNote?.name ?? proposedPolicyName(goal, naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
@@ -1207,10 +1222,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Phase 2 verification campaign ----
   const mfaGoal = input.coverage.results.find((r) => r.goal.id === 'mfa-all-users')
   if (mfaGoal) {
-    const counts = new Map<string, number>()
-    for (const v of viability) counts.set(v.mfa, (counts.get(v.mfa) ?? 0) + 1)
+    // The campaign works the active people only, named (prompt 48.1 item 2):
+    // never the dormant accounts, never break-glass (it has its own drill).
+    const bg = new Set(mapping.breakGlassUserIds)
+    const campaignUnproven = viability.filter((v) => rolloutBucket(v) === 'unproven' && !bg.has(v.userId)).map((v) => v.userId)
+    const campaignNoMethod = viability.filter((v) => rolloutBucket(v) === 'noMethod' && !bg.has(v.userId)).map((v) => v.userId)
     const departments = new Set(snapshot.users.map((u) => u.department).filter(Boolean))
-    const careList = [...highCareIds].map(nameOf)
+    // Break-glass is never in the campaign (prompt 48.1 item 2): it has its own drill.
+    const careList = [...highCareIds].filter((id) => !bg.has(id)).map(nameOf)
     const p = PREREQ.verifyMfa
     // Verification complete on this scan → the campaign is done and the
     // scheduler skips its window (prompt 18 §1).
@@ -1225,11 +1244,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         's-verify-mfa',
         p.title,
         p.why,
-        p.how(
-          { none: counts.get('none') ?? 0, unverified: counts.get('unverified') ?? 0, notChallenged: counts.get('notChallenged') ?? 0 },
-          careList,
-          departments.size,
-        ),
+        p.how({ unproven: campaignUnproven.map(nameOf), noMethod: campaignNoMethod.map(nameOf) }, careList, departments.size),
         p.exit(READINESS_THRESHOLD_MFA_PERCENT),
       ),
       phase: 2,
@@ -1528,6 +1543,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const enforceDate = s2.events?.enforce.date ?? (s2.rings[0]?.plannedStart ? absoluteDate(s2.rings[0].plannedStart) : null)
     const ctx = { ...scenarioBase, enforceDate }
     s2.scenarioLines = scenarioLinesFor(s2, ctx)
+    // The campaign names its registered-but-unproven and no-method active people (prompt 48.1 item 6).
+    if (s2.kind === 'verify') {
+      const bgSet = new Set(mapping.breakGlassUserIds)
+      const unproven = viability.filter((v) => rolloutBucket(v) === 'unproven' && !bgSet.has(v.userId)).map((v) => v.userId)
+      const noMethod = viability.filter((v) => rolloutBucket(v) === 'noMethod' && !bgSet.has(v.userId)).map((v) => v.userId)
+      const date = s2.events?.enforce.date ?? absoluteDate(schedule.targetEnd)
+      s2.scenarioLines = [
+        ...(unproven.length > 0 ? [{ kind: 'campaignUnproven', text: SCENARIO.campaignUnproven(unproven.map(nameOf), date), people: unproven, count: unproven.length }] : []),
+        ...(noMethod.length > 0 ? [{ kind: 'campaignNoMethod', text: SCENARIO.campaignNoMethod(noMethod.map(nameOf), date), people: noMethod, count: noMethod.length }] : []),
+        ...(s2.scenarioLines ?? []),
+      ]
+    }
     s2.cantSee = cantSeeFor(s2, ctx)
     // Date side-lines (item 7), once each on Dates.
     const notes: string[] = []

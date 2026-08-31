@@ -7,11 +7,17 @@ export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforc
 export type StepStatus = 'done' | 'ready' | 'blocked' | 'in-report-only' | 'ready-to-enforce' | 'skipped'
 
 export type StepPopulation = {
+  /** Enabled accounts in scope (the "covers N enabled" count). */
   total: number
   active: number
   admins: number
   guests: number
+  /** Every enabled id in scope. */
   ids: string[]
+  /** The active in-scope people a row and a step name (target-state §8.1). */
+  activeIds?: string[]
+  /** Enabled accounts in scope, shown once as "covers N enabled". */
+  inScope?: number
 }
 
 export type Readiness = {

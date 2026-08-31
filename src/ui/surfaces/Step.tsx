@@ -8,7 +8,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import { PLAN as C } from '../../copy/plan.ts'
-import { affectedLine } from '../../copy/steps.ts'
+import { populationLine } from '../../derive/whoLine.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { unknownsFor } from '../../roadmap/unknowns.ts'
 import { promptFor, stepContext } from '../../roadmap/prompts.ts'
@@ -68,7 +68,7 @@ export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onC
       </p>
 
       <h3>{C.step.whoTouches}</h3>
-      <p className="line">{affectedLine(pop.total, pop.active, pop.admins, pop.guests)}</p>
+      <p className="line">{populationLine(pop)}</p>
       {(step.scenarioLines ?? []).map((l, i) => (
         <p key={i} className="reason">
           {l.text}

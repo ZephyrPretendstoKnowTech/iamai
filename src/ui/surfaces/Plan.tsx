@@ -18,6 +18,7 @@ import { Button, InfoTip, Status } from '../components/index.ts'
 import { usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
+import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { Step as StepBody } from './Step.tsx'
 import { AssumptionsStrip } from './AssumptionsStrip.tsx'
 import { PlanFooter } from './PlanFooter.tsx'
@@ -70,12 +71,19 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const inPlace = doneSteps(c.steps).length
   const total = trackableSteps(c.steps).length
   const waiting = FINISH.waiting(finish.waiting)
+  // Weeks derive from the finish date, not the last blocked wave (item 15).
+  const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(c.schedule.start)) / (7 * 86_400_000))) : c.schedule.weeks
   const headerLine = finish.finish
-    ? C.header(total, inPlace, `finishes ${absoluteDate(finish.finish)}`, c.schedule.weeks, waiting)
-    : C.header(total, inPlace, C.cannotFinish(waiting), c.schedule.weeks, '')
+    ? C.header(total, inPlace, `finishes ${absoluteDate(finish.finish)}`, weeks, waiting)
+    : C.header(total, inPlace, C.cannotFinish(waiting), weeks, '')
 
   const byId = new Map(c.steps.map((s) => [s.id, s]))
-  const waves = c.schedule.waves.filter((w) => w.stepIds.length > 0)
+  // Enforced and in-place steps are not work; they sit in the footer, not a wave (item 13).
+  const isWork = (st: Step): boolean => st.status !== 'done' && st.status !== 'skipped'
+  const waveRows = c.schedule.waves
+    .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && isWork(st)) }))
+    .filter((w) => w.steps.length > 0)
+  const waveNames = nameWaves(waveRows)
   let nextMarked = false
 
   return (
@@ -95,27 +103,34 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
       </p>
       {showSettings && <Settings data={data} onClose={() => setShowSettings(false)} />}
 
-      {waves.map((w) => (
-        <section key={w.wave} className="wave">
-          <h2>{w.wave === 0 ? C.day0Dates(dateRange(w.start, w.end)) : C.wave(w.wave, dateRange(w.start, w.end), PHASE_NAME[w.phase] ?? '')}</h2>
-          {w.stepIds.map((id) => byId.get(id)).filter((s): s is Step => s !== undefined).map((s) => {
-            const isNext = !nextMarked && s.status === 'ready'
-            if (isNext) nextMarked = true
-            return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkipped={data.onSkipped} computed={c} />
-          })}
-        </section>
-      ))}
+      {waveRows.map((w, wi) => {
+        // When every blocked row in the wave shares one binding reason, the
+        // header carries it once and the rows drop their second line (item 14).
+        const reasons = w.steps.filter((st) => st.status === 'blocked').map((st) => st.blockedReason ?? '')
+        const shared = reasons.length > 0 && reasons.every((r) => r === reasons[0]) ? shortReason(reasons[0]) : null
+        return (
+          <section key={w.wave.wave} className="wave">
+            <h2>{w.wave.wave === 0 ? C.day0Dates(w.dates) : C.wave(w.wave.wave, w.dates, waveNames[wi], shared ?? undefined)}</h2>
+            {w.steps.map((s) => {
+              const isNext = !nextMarked && s.status === 'ready'
+              if (isNext) nextMarked = true
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkipped={data.onSkipped} computed={c} hideReason={shared !== null} />
+            })}
+          </section>
+        )
+      })}
 
       <PlanFooter computed={c} nameOf={nameOf} />
     </section>
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkipped, computed }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkipped, computed, hideReason }: {
   step: Step
   isNext: boolean
   open: boolean
   onToggle: () => void
+  hideReason?: boolean
   schedule: PlanComputed['schedule']
   tenantName: string
   nameOf: (id: string) => string
@@ -130,24 +145,44 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
           <Status tone={status.tone}>{status.word}</Status>
           {isNext && <span className="next-mark" aria-label={C.next}>{C.next}</span>}
           <span className="step-title">{step.plainTitle || step.title}</span>
-          <span className="who">{whoLine(step, nameOf)}</span>
+          <span className="who">{whoLineOf(step.population, nameOf, step.gap ?? null)}</span>
           <span className="when">{whenLine(step)}</span>
         </span>
-        {step.status === 'blocked' && step.blockedReason && <span className="plan-row-reason">{step.blockedReason}</span>}
+        {step.status === 'blocked' && step.blockedReason && !hideReason && <span className="plan-row-reason">{C.afterShort(shortReason(step.blockedReason))}</span>}
       </div>
       {open && <StepBody step={step} schedule={schedule} steps={computed.steps} tenantName={tenantName} nameOf={nameOf} onSkipped={() => onSkipped(computed.steps)} onClose={onToggle} />}
     </>
   )
 }
 
-function whoLine(step: Step, nameOf: (id: string) => string): string {
-  const p = step.population
-  if (step.safeToday || (p.active === 0 && step.evidence.status === 'ok')) return C.who.nobody
-  if (p.total === 0) return C.who.nobody
-  if (p.ids.length > 0 && p.ids.length <= 3) return C.who.named(p.ids.map(nameOf))
-  if (p.admins > 0 && p.admins === p.total) return C.who.admins(p.admins)
-  const gap = step.gap ? ` · ${step.gap}` : ''
-  return `${C.who.people(p.total)}${gap}`
+/** The short form of a blocked reason for a row and a wave header (item 14): "emergency access". */
+function shortReason(reason: string): string {
+  return reason.replace(/^after: /, '').replace(/^Sort out /, '').replace(/ before anything else$/, '')
+}
+
+/** A distinct name per wave (item 16): the phase name, or the dominant family when a phase repeats; a tie names both. */
+function nameWaves(waves: { phase: number; steps: Step[] }[]): string[] {
+  const used = new Set<string>()
+  return waves.map((w) => {
+    const base = PHASE_NAME[w.phase] ?? ''
+    if (w.phase === 0) return base
+    if (!used.has(base)) {
+      used.add(base)
+      return base
+    }
+    // Name from the dominant family (tie names both), never the same twice.
+    const counts = new Map<string, number>()
+    for (const st of w.steps) {
+      const fam = C.familyName[st.readiness.family] ?? 'Sessions'
+      counts.set(fam, (counts.get(fam) ?? 0) + 1)
+    }
+    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1])
+    let name = ranked.length > 1 && ranked[0][1] === ranked[1][1] ? C.and(ranked[0][0], ranked[1][0]) : ranked[0]?.[0] ?? base
+    let n = 2
+    while (used.has(name)) name = `${ranked[0]?.[0] ?? base} ${n++}`
+    used.add(name)
+    return name
+  })
 }
 
 function whenLine(step: Step): string {

@@ -181,3 +181,30 @@ test('one verdict: for every goal in every fixture, the findings verdict and the
     assert.equal(summary.done, doneSteps(steps).length, `${f.name}: the plan header's done count is not doneSteps`)
   }
 })
+
+// Prompt 48.1 item 4: Today's tiles and every step's who-line and population
+// line are the same denominator. A step that renders a number Today does not
+// produce is the "11 people" bug the live walk found (three denominators on one
+// page). Every population number is bounded by, and derived from, activeUsers /
+// enabledUsers / adminUsers — the sets Today counts.
+for (const f of allFixtures()) {
+  test(`${f.name}: Today's tiles and every step's who-line agree on the denominator`, async () => {
+    const { peopleCounts } = await import('./sets.ts')
+    const { affectedIds } = await import('./whoLine.ts')
+    const run = runFixture(f)
+    const snapshot = run.input.snapshot
+    const svc = new Set(f.mapping.serviceAccountUserIds)
+    const pc = peopleCounts(snapshot, snapshot.asOf, svc)
+    for (const s of run.steps) {
+      const p = s.population
+      assert.ok(p.active <= pc.active, `${s.id}: population active ${p.active} exceeds Today's active ${pc.active}`)
+      assert.ok(p.admins <= pc.admins, `${s.id}: population admins ${p.admins} exceeds Today's admins ${pc.admins}`)
+      assert.ok((p.inScope ?? p.total) <= pc.enabled, `${s.id}: in-scope ${p.inScope ?? p.total} exceeds Today's enabled ${pc.enabled}`)
+      // The who-line names people, never a count Today never counted.
+      assert.ok(affectedIds(p).length <= pc.enabled, `${s.id}: who-line names ${affectedIds(p).length}, more than Today's enabled ${pc.enabled}`)
+      // A step that touches active people names exactly the active set — never
+      // the in-scope count (the "11 people" regression).
+      if (p.active > 0) assert.equal(affectedIds(p).length, p.active, `${s.id}: who-line count ${affectedIds(p).length} is not the active set ${p.active}`)
+    }
+  })
+}
