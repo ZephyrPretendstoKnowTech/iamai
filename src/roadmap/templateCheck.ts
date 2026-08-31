@@ -21,6 +21,7 @@ export const WELL_KNOWN_IDS: ReadonlySet<string> = new Set([
   '00000000-0000-0000-0000-000000000002', // built-in strength: MFA
   '00000000-0000-0000-0000-000000000003', // built-in strength: Passwordless MFA
   '00000000-0000-0000-0000-000000000004', // built-in strength: Phishing-resistant MFA
+  'd29b2b05-8046-44ba-8758-1e26182fcf32', // Directory Synchronization Accounts, excluded from MFA and strength (prompt 48 item 13)
 ])
 const GUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
 /** Set by the engine, never by a template. */

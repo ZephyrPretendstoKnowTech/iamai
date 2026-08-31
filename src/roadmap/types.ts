@@ -191,6 +191,13 @@ export type Step = {
   ladder?: boolean
   /** A must-fix validation subject (validation-rules.md §2); leads every surface. */
   validationBlocker?: boolean
+  // ---- prompt 48: the lockout-scenario lines from this tenant's evidence ----
+  /** Named lines built from the derivations that fired (docs/design/lockout-scenarios.md). */
+  scenarioLines?: import('./scenarioLines.ts').ScenarioLine[]
+  /** What the tool cannot see for this step, plain text under More; never a question. */
+  cantSee?: string[]
+  /** One-off notes on the Dates section (item 7): a device certificate prompt, a block's session-refresh timing. */
+  dateNotes?: string[]
 }
 
 export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; day: string; date: string; time: string; reason: string; outOfHours: boolean }

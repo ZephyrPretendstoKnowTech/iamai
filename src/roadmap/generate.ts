@@ -55,6 +55,10 @@ import {
 } from './constants.ts'
 import { evidenceFor } from './evidence.ts'
 import { goalFamily, readinessFor } from './readiness.ts'
+import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
+import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
+import { staticViolations } from './staticRules.ts'
+import { DATE_NOTE } from '../copy/steps.ts'
 import { buildSchedule, nextMonday } from './schedule.ts'
 import type { ChangeFreeze, Schedule } from './schedule.ts'
 import type { Action, Blocker, Readiness, Step, StepPopulation, StepStatus } from './types.ts'
@@ -110,7 +114,7 @@ export type RoadmapResult = {
   steps: Step[]
   schedule: Schedule
   /** Plan-footer housekeeping that comes from the engine (prompt 46 item 21). */
-  housekeeping: { checksNotRun: string | null }
+  housekeeping: { checksNotRun: string | null; staticViolations: import('./staticRules.ts').StaticViolation[] }
 }
 
 const EXTRAS = STEP_EXTRAS
@@ -487,6 +491,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // "Feedback Mailbox" counted as a person with no method). The operator does
   // not have to have confirmed it first — the licence says what it is.
   for (const u of snapshot.users) if (isNonPerson(u, new Set(mapping.serviceAccountUserIds))) excluded.add(u.id)
+  // Shared devices (Teams Rooms) are out of every user policy and get their own
+  // step (prompt 48 item 4); the directory-sync account is out of the MFA and
+  // strength templates via excludeRoles in goals.json.
+  const sharedDevices = sharedDeviceUsers(snapshot)
+  for (const id of sharedDeviceIds(snapshot)) excluded.add(id)
   const exclusionGroupIds = [mapping.records['__globalExclusion']?.resolvedId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
   for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
@@ -670,6 +679,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.population = { total: dormant.length, active: 0, admins: 0, guests: 0, ids: dormant.map((u) => u.id) }
     s.populationNames = names
     steps.push(s)
+  }
+
+  // Shared devices, their own policy (prompt 48 item 4).
+  if (canUseConditionalAccess && sharedDevices.length > 0) {
+    const p = PREREQ.sharedDevices
+    const names_ = sharedDevices.map((u) => nameOf(u.id))
+    const step = prereq('s-shared-devices', p.title, p.why, p.how(names_), p.exit)
+    step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id) }
+    step.populationNames = names_
+    steps.push(step)
   }
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
@@ -1487,6 +1506,22 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.events = eventsFor(s, { rhythm, timeZone: mapping.displayTimeZone ?? 'UTC' })
   }
 
+  // The lockout-scenario lines, once every step has its enforce date (prompt 48
+  // items 6, 7). Built only from derivations that fired.
+  const noMethodActive = viability.filter((v) => v.activity === 'active' && !v.mfaCapable && !excluded.has(v.userId)).map((v) => v.userId)
+  const scenarioBase = scenarioContext({ snapshot, nameOf, noMethodActive })
+  for (const s2 of steps) {
+    const enforceDate = s2.events?.enforce.date ?? (s2.rings[0]?.plannedStart ? absoluteDate(s2.rings[0].plannedStart) : null)
+    const ctx = { ...scenarioBase, enforceDate }
+    s2.scenarioLines = scenarioLinesFor(s2, ctx)
+    s2.cantSee = cantSeeFor(s2, ctx)
+    // Date side-lines (item 7), once each on Dates.
+    const notes: string[] = []
+    if (s2.readiness.family === 'device' && enforceDate) notes.push(DATE_NOTE.certificate(enforceDate))
+    if (s2.readiness.family === 'block') notes.push(DATE_NOTE.sessionRefresh)
+    s2.dateNotes = notes
+  }
+
   // A subject with only recommendations attaches them to the step that already
   // covers the same object, rather than adding one nobody has to act on.
   const WARNING_HOST: Partial<Record<string, string>> = { breakGlass: DRILL_STEP_ID, exclusionGroup: EXCLUSION_GROUP_STEP_ID }
@@ -1508,7 +1543,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
 
   annotateStateReasons(steps)
-  return { steps, schedule, housekeeping: { checksNotRun: checksNotRun(validationReports) } }
+  // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a
+  // plan cannot fix by itself surface as Housekeeping.
+  const violations = staticViolations(snapshot.config.caPolicies?.rows ?? [], { technicianToolsOffCompliance: (snapshot.scenarioEvidence?.technicianToolsOffCompliance.count ?? 0) > 0 })
+  return { steps, schedule, housekeeping: { checksNotRun: checksNotRun(validationReports), staticViolations: violations } }
 }
 
 export function findTaggedPolicy(snapshot: TenantSnapshot, planId: string, stepId: string): string | null {

@@ -144,7 +144,9 @@ function mapUser(raw: unknown): UserRow {
     (typeof activity?.lastSignInDateTime === 'string' && activity.lastSignInDateTime) ||
     null
   const plans = Array.isArray(u.assignedPlans) ? u.assignedPlans : []
+  const licences = Array.isArray(u.assignedLicenses) ? u.assignedLicenses : []
   return {
+    skuIds: licences.map((l) => (l as Record<string, unknown>).skuId).filter((id): id is string => typeof id === 'string'),
     id: String(u.id ?? ''),
     displayName: typeof u.displayName === 'string' ? u.displayName : null,
     userPrincipalName: typeof u.userPrincipalName === 'string' ? u.userPrincipalName : null,
@@ -178,7 +180,7 @@ export async function collectUsers(
   opts: { includeSignInActivity: boolean } = { includeSignInActivity: true },
 ): Promise<{ users: UserRow[]; partialReason: string | null }> {
   const baseSelect =
-    'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,mail,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation'
+    'id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,mail,assignedPlans,assignedLicenses,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation'
   const select = `${baseSelect},signInActivity`
   if (!opts.includeSignInActivity) {
     const rows = await graphPaged(ctx.tokens, `${V1}/users?$select=${baseSelect}&$top=999`, {
@@ -200,7 +202,7 @@ export async function collectUsers(
     if (!(e instanceof SectionDisabledError)) throw e
     const rows = await graphPaged(
       ctx.tokens,
-      `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,mail,assignedPlans,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation&$top=999`,
+      `${V1}/users?$select=id,displayName,userPrincipalName,userType,usageLocation,createdDateTime,accountEnabled,mail,assignedPlans,assignedLicenses,onPremisesSyncEnabled,externalUserState,department,jobTitle,officeLocation&$top=999`,
       { signal: ctx.signal, onPage: async (page) => onUserPage(page.map(mapUser)) },
     )
     return { users: rows.map(mapUser), partialReason: `signInActivity unavailable: ${e.message}` }
