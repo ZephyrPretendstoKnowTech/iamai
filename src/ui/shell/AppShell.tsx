@@ -17,6 +17,17 @@ import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/d
 import { scanAge } from '../../derive/scanAge.ts'
 import { Button, Callout, InfoTip, LinkButton } from '../components/index.ts'
 import { RingMark } from '../components/Ring.tsx'
+import { PLAN_HREF, STEP_LINK, resolveHash } from './routes.ts'
+import type { Route } from './routes.ts'
+
+export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
+export type { Route } from './routes.ts'
+
+/** The scan runs from Connect (target-state §3); a re-scan returns to Plan when it finishes. */
+const RESCAN_HREF = '#/connect'
+
+// Pages whose main content is a table read better with the wider cap.
+const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'reads', 'licensing', 'checks'])
 
 export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
 export const GITHUB_URL = 'https://github.com/ZephyrPretendstoKnowTech'
@@ -24,79 +35,8 @@ export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 /** The home page this tool sits under (prompt 35 §3). */
 export const HOME_URL = 'https://getiamai.com/'
 
-/**
- * Routes (target-state §2). `home` is the empty hash: App sends it to Plan when
- * a scan exists and to Connect otherwise. The old page names redirect. Plan,
- * Export and How arrive in prompts 48 and 49; until then #/plan opens the
- * Roadmap, and the reference pages keep their old names.
- */
-export type Route =
-  | 'home'
-  | 'connect'
-  | 'today'
-  | 'inventory'
-  | 'recovery'
-  | 'mapping'
-  | 'coverage'
-  | 'roadmap'
-  | 'roadmap/prompts'
-  | 'licensing'
-  | 'reads'
-  | 'checks'
-  | 'naming'
-  | 'package'
-  | 'components'
-
 /** Where the shell is (target-state §2): it decides the tabs, Re-scan, and where an empty hash lands. */
 export type ShellState = 'signedOut' | 'noScan' | 'scanning' | 'scanned'
-
-/** The Plan tab's target until prompt 48 lands the Plan surface. */
-export const PLAN_ROUTE: Route = 'roadmap'
-export const PLAN_HREF = `#/${PLAN_ROUTE}`
-/** The scan runs from Connect (target-state §3); a re-scan returns to Plan when it finishes. */
-const RESCAN_HREF = '#/connect'
-
-const REDIRECT: Record<string, Route> = {
-  start: 'connect',
-  baseline: 'connect',
-  scan: 'today',
-  readiness: 'today',
-  plan: PLAN_ROUTE,
-  'baseline/package': 'package',
-}
-
-const VALID = new Set<string>([
-  'connect',
-  'today',
-  'inventory',
-  'recovery',
-  'mapping',
-  'coverage',
-  'roadmap',
-  'roadmap/prompts',
-  'licensing',
-  'reads',
-  'checks',
-  'naming',
-  'package',
-  ...(import.meta.env.DEV ? ['components'] : []),
-])
-
-// Pages whose main content is a table read better with the wider cap.
-const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'reads', 'licensing', 'checks'])
-
-const STEP_LINK = /^roadmap\/step\/(.+)$/
-
-/** The route a hash names, and the hash to show instead when the name is an old one. */
-export function resolveHash(hash: string): { route: Route; redirect: string | null } {
-  const h = hash.replace(/^#\/?/, '')
-  if (h === '') return { route: 'home', redirect: null }
-  if (STEP_LINK.test(h)) return { route: 'roadmap', redirect: null }
-  const to = REDIRECT[h]
-  if (to) return { route: to, redirect: `#/${to}` }
-  if (VALID.has(h)) return { route: h as Route, redirect: null }
-  return { route: 'connect', redirect: '#/connect' }
-}
 
 export function useHashRoute(): Route {
   const read = (): Route => {
