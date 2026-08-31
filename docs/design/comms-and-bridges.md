@@ -114,9 +114,10 @@ Ranked by value per unit of work.
    ruins a Tuesday. After a step is enforced, IAMAI watches for the failure signature on
    the next scans: sign-in failures with that policy applied, by user, against a baseline
    of the days before. The card shows "12 failures in 48 hours, 9 from one user" and a
-   plain revert threshold agreed in advance ("more than 5% of the affected population
-   fails: set it back to report-only"). This is the single most useful thing a technician
-   lacks the day after a change.
+   the fixed watch: if more than 5% of the affected people fail in the 72 hours after
+   enforcement, set the policy back to report-only. The threshold is a fixed constant
+   (`DEFAULT_REVERT_PERCENT`), not a setting. This is the single most useful thing a
+   technician lacks the day after a change.
 
 2. **Client-facing report.** A separate, brandable HTML export with the MSP's name and
    logo, written for the client rather than the technician: what was found, what is being

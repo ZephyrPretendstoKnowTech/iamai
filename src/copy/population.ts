@@ -16,14 +16,6 @@ export const POPULATION = {
   exportCsv: 'Export the list (CSV)',
   exportNote: 'The export is generated in the browser from the scan; nothing leaves this machine.',
   andMore: (n: number) => `and ${count(n, 'more')}`,
-  /**
-   * Said when an id could not be turned into a name (prompt 40 §12). The GUID
-   * was removed in 39 and a placeholder took its place in the middle of a list
-   * of people — "Lachlan Robinette, an account IAMAI could not name, Dalinar
-   * Kholin" (review-08 A8). A name list holds names; anything unresolved is
-   * counted at the end instead.
-   */
-  andUnnamed: (n: number) => `and ${count(n, 'account')} IAMAI could not name`,
   cohort: {
     department: 'Department',
     licence: 'Licence',

@@ -10,6 +10,7 @@ import type { BaselineResult } from '../baseline.ts'
 import type { SizeBand } from '../../roadmap/constants.ts'
 import { BANDS } from '../../roadmap/constants.ts'
 import { EXPORT as C } from '../../copy/export.ts'
+import { ROADMAP } from '../../copy/pages.ts'
 import { SHELL } from '../../copy/pages.ts'
 import { usePlanData } from './planData.ts'
 import { inventoryTables, todayTable } from './inventoryTables.ts'
@@ -98,17 +99,17 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const loadPlanInner = async (files: FileList): Promise<void> => {
     const { plan, error } = parsePlanFile(await files[0].text())
     if (!plan) {
-      window.alert?.(error ?? C.loadError)
+      window.alert?.(error ?? ROADMAP.couldNotRead)
       return
     }
     // The tenant check runs before anything is persisted (planTenant.test.ts).
     const planTenantId = plan.tenant?.id || plan.mappings?.tenantId || ''
     if (!planTenantId) {
-      window.alert?.(C.loadError)
+      window.alert?.(ROADMAP.planTenantUnknown(tenantName))
       return
     }
     if (planTenantId !== snapshot.tenantId) {
-      window.alert?.(C.loadError)
+      window.alert?.(ROADMAP.planFromAnotherTenant(plan.tenant?.name ?? '', tenantName))
       return
     }
     const stepsRecord: Record<string, SavedStep> = Object.fromEntries(plan.steps.map((s) => [s.id, savedStepOf(s)]))

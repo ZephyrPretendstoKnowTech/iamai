@@ -84,7 +84,7 @@ test('an unredacted export is only reachable from a surface that warns', () => {
 test('the grounding bundle still warns before it can be unredacted', () => {
   // The one export the product deliberately offers in full. The warning has to
   // render above the control that clears redaction, not after it.
-  const page = readFileSync('src/ui/pages/RoadmapPage.tsx', 'utf8')
+  const page = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
   const warning = page.indexOf('GROUNDING.warning')
   // The rendered control, not the useState declaration hundreds of lines above
   // it — the first version of this test compared against the declaration and
@@ -96,7 +96,7 @@ test('the grounding bundle still warns before it can be unredacted', () => {
 })
 
 test('redaction defaults to on for the bundle', () => {
-  const page = readFileSync('src/ui/pages/RoadmapPage.tsx', 'utf8')
+  const page = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
   assert.match(page, /useState\(true\)[^\n]*\n?/, 'no state initialises to true')
   assert.match(page, /bundleRedacted[\s\S]{0,80}useState\(true\)|useState\(true\)[\s\S]{0,80}bundleRedacted/, 'bundleRedacted does not default to redacted')
 })

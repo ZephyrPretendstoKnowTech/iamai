@@ -3,7 +3,7 @@
 // admin population is one set everywhere.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixtureBaseline, fixtureSnapshot } from '../ui/pages/fixtureSnapshot.ts'
+import { fixtureBaseline, fixtureSnapshot } from '../ui/fixtures/fixtureSnapshot.ts'
 import { computeCoverage } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { GroupMembers } from './population.ts'

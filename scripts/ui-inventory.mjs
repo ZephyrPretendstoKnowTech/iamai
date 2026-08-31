@@ -345,40 +345,8 @@ await goto('/connect');          await capture('Connect')
 // per tab, which inflates every cross-surface count by the number of tabs.
 const VISIBLE_PANEL = `[...document.querySelectorAll('main.page .tab-panel')].find((p) => p.offsetParent !== null)`
 
-// Today and Inventory are contract surfaces (prompt 47 Part 5): the contract walk below reaches them.
-
-// Setup and Findings are gone (prompt 48 Part 5); the Plan is a contract surface,
-// reached by the contract walk below. The Roadmap stays for its Export tab until 49.
-await goto('/plan')
-await capture('Plan', 'page chrome; the step body and open details are their own surfaces', undefined, '.step-body, details > *:not(summary)')
-if (await clickText('.plan-row', '/./')) {
-  await sleep(700)
-  await capture('Plan / one step opened', 'the opened step, More collapsed', "document.querySelector('.step-body')", 'details > *:not(summary)')
-}
-
-await goto('/roadmap')
-await capture('Roadmap', 'page chrome; tab panels are their own surfaces', undefined, '.tab-panel')
-for (const tab of ['^Progress', '^Plan', '^Watch', '^Schedule', '^Export']) {
-  if (await clickText('.tab, [role=tab]', `/${tab}/`)) {
-    await sleep(1100)
-    await capture(`Roadmap / ${tab.replace('^', '')} tab`, 'panel only', VISIBLE_PANEL)
-  }
-}
-// One opened step: the twelve-part body is the densest surface in the app.
-if (await clickText('.tab, [role=tab]', '/^Plan/')) {
-  await sleep(900)
-  if (await clickText('a.step-tile', '/./')) {
-    await sleep(1100)
-    await capture('Roadmap / Plan / one step opened', 'panel only, first step expanded', VISIBLE_PANEL)
-  }
-}
-
-await goto('/licensing');        await capture('Licensing guide')
-await goto('/reads');            await capture('What IAMAI reads')
-await goto('/checks');           await capture('Every check IAMAI runs')
-await goto('/naming');           await capture('Naming policies and groups')
-await goto('/recovery');         await capture('Recovery card')
-await goto('/roadmap/prompts');  await capture('Prompt pack')
+// The contract file is the only walk list (prompt 49 item 14): every built
+// surface is reached below by its contract reach. No hard-coded page walk.
 
 // ---- the contract walk (prompt 46 Part 1 item 1) ----
 //

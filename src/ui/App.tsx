@@ -11,8 +11,6 @@ import type { ShellState } from './shell/AppShell.tsx'
 import { Connect } from './surfaces/Connect.tsx'
 import { restoreBaseline } from './baseline.ts'
 import type { BaselineResult } from './baseline.ts'
-import { LicensingPage } from './pages/LicensingPage.tsx'
-import { RoadmapPage } from './pages/RoadmapPage.tsx'
 import { Plan } from './surfaces/Plan.tsx'
 import { Export } from './surfaces/Export.tsx'
 import { How } from './surfaces/How.tsx'
@@ -20,11 +18,7 @@ import { Today } from './surfaces/Today.tsx'
 import { Inventory } from './surfaces/Inventory.tsx'
 import { TODAY } from '../copy/today.ts'
 import { INVENTORY } from '../copy/inventory.ts'
-import { ChecksPage } from './pages/ChecksPage.tsx'
-import { NamingPage } from './pages/NamingPage.tsx'
 import { Recovery } from './surfaces/Recovery.tsx'
-import { WhatIamaiReads } from './WhatIamaiReads.tsx'
-import { PackagePage } from './pages/PackagePage.tsx'
 
 // Dev-only modules. The lazy import is itself inside an import.meta.env.DEV
 // branch, so in a production build the condition folds to false, the dynamic
@@ -33,9 +27,6 @@ import { PackagePage } from './pages/PackagePage.tsx'
 // carrying the Graph probe harness (audit egress-04, supply-08).
 const DevSpikes = import.meta.env.DEV
   ? lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m.DevSpikes })))
-  : () => null
-const ComponentsPage = import.meta.env.DEV
-  ? lazy(() => import('./pages/ComponentsPage.tsx').then((m) => ({ default: m.ComponentsPage })))
   : () => null
 import { SHELL } from '../copy/pages.ts'
 import { isDemo } from './demo.ts'
@@ -113,7 +104,7 @@ export function App() {
       return
     }
     if (MOCK) {
-      void Promise.all([import('./pages/fixtureSnapshot.ts'), import('./pages/bigFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }]) => {
+      void Promise.all([import('./fixtures/fixtureSnapshot.ts'), import('./fixtures/bigFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }]) => {
         const params = new URLSearchParams(window.location.search)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
@@ -268,7 +259,6 @@ export function App() {
               onAutoScanConsumed={() => setRescanRequested(false)}
             />
           )}
-          {route === 'package' && <PackagePage />}
           {(route === 'today' || route === 'inventory') &&
             (account && lastScan ? (
               route === 'today' ? (
@@ -287,23 +277,7 @@ export function App() {
           {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
           {route === 'export' && <Export scan={lastScan} baseline={baseline} account={account} />}
           {route === 'how' && <How />}
-          {(route === 'roadmap' || route === 'roadmap/prompts') && (
-            <RoadmapPage
-              scan={lastScan}
-              baseline={baseline}
-              operator={account ? { userId: account.localAccountId, userPrincipalName: account.username } : null}
-            />
-          )}
-          {route === 'licensing' && <LicensingPage scan={lastScan} />}
-          {route === 'reads' && <WhatIamaiReads />}
-          {route === 'checks' && <ChecksPage />}
-      {route === 'naming' && <NamingPage scan={lastScan} />}
       {route === 'recovery' && <Recovery scan={lastScan} />}
-          {route === 'components' && import.meta.env.DEV && (
-            <Suspense fallback={null}>
-              <ComponentsPage />
-            </Suspense>
-          )}
           {DEV_PANEL && account && (
             <Suspense fallback={null}>
               <DevSpikes tenantId={account.tenantId} />

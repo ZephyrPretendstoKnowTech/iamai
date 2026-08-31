@@ -4,7 +4,7 @@
 // cross-page identities the copy relies on.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixtureBaseline, fixtureSnapshot } from './pages/fixtureSnapshot.ts'
+import { fixtureBaseline, fixtureSnapshot } from './fixtures/fixtureSnapshot.ts'
 import { computeCoverage } from '../coverage/coverage.ts'
 import { buildStrengthLookup } from '../coverage/strength.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'

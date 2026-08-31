@@ -77,7 +77,7 @@ test('the Graph and login hosts are the only ones the collectors and MSAL call',
 })
 
 test('the styles self-host every font and import nothing remote', () => {
-  const css = ['src/ui/tokens.css', 'src/ui/styles.css'].map((f) => readFileSync(f, 'utf8')).join('\n')
+  const css = ['src/ui/tokens.css'].map((f) => readFileSync(f, 'utf8')).join('\n')
   for (const m of css.matchAll(/url\(([^)]+)\)/g)) assert.ok(!/^["']?https?:/i.test(m[1].trim()), `remote url in css: ${m[1]}`)
   assert.doesNotMatch(css, /@import\s+(?:url\()?["']?https?:/i)
 })

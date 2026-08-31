@@ -101,7 +101,7 @@ test('there is exactly one confirm label, and only the shared component says it'
     .filter((f) => readFileSync(f, 'utf8').includes(CONFIRM_LABEL_KEY))
     .map((f) => relative(SRC, f).split(sep).join('/'))
     .sort()
-  assert.deepEqual(readers, ['copy/setup.ts', 'mapping/questionSchema.ts', 'ui/components/Confirm.tsx'], 'something other than the shared confirm affordance prints the confirm label')
+  assert.deepEqual(readers, ['copy/setup.ts', 'mapping/questionSchema.ts'], 'something other than the shared confirm affordance prints the confirm label')
 })
 
 
