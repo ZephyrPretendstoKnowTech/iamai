@@ -23,7 +23,6 @@ const EMPTY_TENANT = { users: [], authMethods: {}, signInEvidence: {}, sources: 
 
 const TYPES = new Set(['pick-objects', 'confirm-default', 'multi-select-confirm', 'toggle-grid'])
 const OPT_OUTS = new Set(['none', 'doesNotExistYet'])
-const MAPPING_PAGE = readFileSync(new URL('../ui/pages/MappingPage.tsx', import.meta.url), 'utf8')
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -105,21 +104,6 @@ test('there is exactly one confirm label, and only the shared component says it'
   assert.deepEqual(readers, ['copy/setup.ts', 'mapping/questionSchema.ts', 'ui/components/Confirm.tsx'], 'something other than the shared confirm affordance prints the confirm label')
 })
 
-test('no question draws its own confirm affordance or its own way out', () => {
-  // "Not applicable to us" is gone from the renderer and from the copy (R1, R5).
-  assert.equal((MAPPING_PAGE.match(/<NotApplicable/g) ?? []).length, 0, 'the removed opt-out is back')
-  for (const retired of ['notApplicableToUs', 'notApplicableReason', 'nobodyNeedsCare', 'frameworkNone']) {
-    assert.ok(!MAPPING_PAGE.includes(retired), retired + ' is back in the renderer')
-  }
-  // Confirming is done by the shared component, never by a hand-rolled button.
-  for (const id of QUESTION_SCHEMA.filter((q) => q.type === 'confirm-default').map((q) => q.id)) {
-    // Some ids are also answered from a picker's onChange, so look forward from
-    // each shared-confirm call site rather than back from the first mention.
-    const call = `answered('` + id + `')`
-    const used = MAPPING_PAGE.split('<Confirm').slice(1).some((after) => after.slice(0, 240).includes(call))
-    assert.ok(used, id + ' is a confirm-default question that does not use the shared confirm affordance')
-  }
-})
 
 test('a tenant that is never asked a question can still finish Setup', () => {
   // The question count is one number with one source (prompt 37 §1, T3): the

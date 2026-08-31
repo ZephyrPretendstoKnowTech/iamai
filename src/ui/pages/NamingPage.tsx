@@ -115,7 +115,7 @@ export function NamingPage({ scan = null }: { scan?: { snapshot: TenantSnapshot 
       <p>{NAMING.renameNote}</p>
 
       <p className="step-next">
-        <LinkButton href="#/coverage">{NAMING.next}</LinkButton>
+        <LinkButton href="#/plan">{NAMING.next}</LinkButton>
       </p>
     </section>
   )

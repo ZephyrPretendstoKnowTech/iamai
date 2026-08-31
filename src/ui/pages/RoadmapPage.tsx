@@ -2423,7 +2423,7 @@ function StepCard({
             {step.blockers.map((b, i) => (
               <li key={i}>
                 {b.kind === 'step' && <a href={stepHref(b.stepId)}>{stepById.get(b.stepId)?.title ?? b.stepId}</a>}
-                {b.kind === 'setup' && <a href={`#/mapping`}>{C.setupQuestionLink(b.questionNumber)}</a>}
+                {b.kind === 'setup' && <a href={`#/plan`}>{C.setupQuestionLink(b.questionNumber)}</a>}
                 {b.kind !== 'step' && b.kind !== 'setup' && b.label}
               </li>
             ))}

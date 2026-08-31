@@ -82,7 +82,7 @@ export function ChecksPage() {
       })}
       {REGISTRY.length === 0 && <Card>{CHECKS_PAGE.empty}</Card>}
       <p className="step-next">
-        <LinkButton href="#/mapping">{CHECKS_PAGE.next}</LinkButton>
+        <LinkButton href="#/plan">{CHECKS_PAGE.next}</LinkButton>
       </p>
     </section>
   )

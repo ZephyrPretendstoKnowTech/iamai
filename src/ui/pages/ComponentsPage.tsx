@@ -23,8 +23,6 @@ import {
 import type { ChipStatus, Column, IconName, PickerOption } from '../components/index.ts'
 import { Today } from '../surfaces/Today.tsx'
 import { Inventory } from '../surfaces/Inventory.tsx'
-import { MappingPage } from './MappingPage.tsx'
-import { CoveragePage } from './CoveragePage.tsx'
 import { RoadmapPage } from './RoadmapPage.tsx'
 import { fixtureBaseline, fixtureSnapshot } from './fixtureSnapshot.ts'
 import { bigFixtureSnapshot } from './bigFixture.ts'
@@ -190,13 +188,9 @@ export function ComponentsPage() {
         <Today snapshot={FIXTURE} tenantId={FIXTURE.tenantId} />
       </Section>
 
-      <Section id="setup" title="Setup (synthetic tenant)">
-        <MappingPage scan={{ snapshot: FIXTURE, at: FIXTURE.asOf }} baseline={FIXTURE_BASELINE} onProgress={() => {}} />
-      </Section>
+      
 
-      <Section id="findings" title="Findings (synthetic tenant)">
-        <CoveragePage scan={{ snapshot: FIXTURE, at: FIXTURE.asOf }} baseline={FIXTURE_BASELINE} />
-      </Section>
+      
 
       <Section id="roadmap" title="Roadmap (synthetic tenant)">
         <RoadmapPage scan={{ snapshot: FIXTURE, at: FIXTURE.asOf }} baseline={FIXTURE_BASELINE} operator={{ userId: 'u-1', userPrincipalName: 'alex@example.com' }} />

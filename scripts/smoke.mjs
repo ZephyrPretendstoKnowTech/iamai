@@ -199,22 +199,6 @@ try {
   t = await text()
   check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))
 
-  // Setup: 6 questions, all required; detection may already have answered them (prompt 46 item 19).
-  await go('mapping')
-  check('Setup: questions render', await waitFor(`/Question 1/.test(document.body.innerText)`))
-  t = await text()
-  check('Setup: every answer detected, 6 of 6', /6 of 6 answered/.test(t), (t.match(/\d of \d answered[^\n]*/) ?? [''])[0])
-  check('Setup: no optional split', !/optional question/.test(t))
-
-  // Findings
-  await go('coverage')
-  check('Findings: tiles render', await waitFor(`document.querySelectorAll('.stat').length >= 5`))
-  t = await text()
-  check('Findings: 2 in place, 1 partly, 13 missing', /2\s+In place[\s\S]*1\s+Partly[\s\S]*13\s+Missing/.test(t))
-  check('Findings: MFA proven share and to-set-up count over enabled users', /%\s+of enabled users proved MFA in the last 30 days/.test(t) && /\d+\s+enabled users to set up before enforcement/.test(t))
-  check('Findings: grouped by domain by default', (await clickText('/[Nn]eeds attention/')) && (await waitFor(`[...document.querySelectorAll('select')].some(s => s.value === 'domain') && /Identity.*Admins/s.test(document.body.innerText)`)))
-  check('Findings: scan age shown', /Based on the scan from/.test(t))
-
   // Roadmap
   await go('roadmap')
   check('Roadmap: overview renders', await waitFor(`/steps in place/.test(document.body.innerText)`))
@@ -253,6 +237,9 @@ try {
   check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
   check('Plan: the footer has the three details', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Housekeeping/g) || []).length === 3)
   check('Plan: no forbidden strings', !/Do this next|What needs attention before you start|The journey|Safe today/.test(pt))
+  check('Plan: editing an assumption opens an editor with Save', (await clickText('/^time zone/')) && (await waitFor(`/Save/.test((document.querySelector('main.page .assumption-editor') || {}).textContent || '')`)))
+  check('Plan: Save regenerates the plan in place', (await clickText('/^Save$/')) && (await waitFor(`/Assumes:/.test(document.body.innerText) && document.querySelectorAll('main.page .plan-row').length >= 5`)))
+  check('Plan: one status word per row', await evaluate(`[...document.querySelectorAll('main.page .plan-row .chip.status')].length >= 5`))
 
   // The header (target-state §2): wordmark, tenant, tabs, Re-scan with the scan's age, Recovery card, theme, Account.
   await go('roadmap')
@@ -272,11 +259,11 @@ try {
   check('Header (signed out): only the wordmark and the theme control', /IAMAI/.test(t) && !/Today|Account|Recovery/.test(t), t.replace(/\s+/g, ' '))
 
   // Failure paths and first-visitor tenants (prompt 31 §4): every page reads clearly, nothing breaks.
-  await send('Page.navigate', { url: `${BASE}&licence=free#/coverage` })
+  await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
   await sleep(1500)
-  check('Unlicensed tenant: Findings renders from configuration and directory data', await waitFor(`document.querySelectorAll('.stat').length >= 3`))
+  check('Unlicensed tenant: the plan renders from configuration and directory data', await waitFor(`/Assumes:/.test(document.body.innerText)`))
   t = await text()
-  check('Unlicensed tenant: Findings says which goals need another licence', /goals need a licence tier this tenant does not have/.test(t))
+  check('Unlicensed tenant: the plan footer names what does not apply', /Doesn't apply here \(\d+\)/.test(t))
   await send('Page.navigate', { url: `${BASE}&licence=free#/today` })
   await sleep(1500)
   t = await text()
@@ -301,9 +288,9 @@ try {
       (await waitFor(`/enabled account/.test(document.body.innerText)`)) &&
       (await waitFor(`/Manage security defaults/.test(document.body.innerText)`)),
   )
-  await send('Page.navigate', { url: `${BASE}&policies=0#/coverage` })
+  await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
-  check('Zero policies: Findings renders', await waitFor(`document.querySelectorAll('.stat').length >= 3`))
+  check('Zero policies: the plan renders', await waitFor(`/Assumes:/.test(document.body.innerText)`))
   await send('Page.navigate', { url: `${BASE}&policies=0#/roadmap` })
   await sleep(1500)
   check('Zero policies: the plan renders with Do this next', await waitFor(`/Do this next/.test(document.body.innerText)`))

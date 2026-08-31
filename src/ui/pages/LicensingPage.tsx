@@ -140,7 +140,7 @@ export function LicensingPage({ scan }: { scan: { snapshot: TenantSnapshot; at: 
         </ol>
       </Card>
       <p className="step-next">
-        <LinkButton href="#/coverage">{LICENSING.nextAfterScan}</LinkButton>
+        <LinkButton href="#/plan">{LICENSING.nextAfterScan}</LinkButton>
       </p>
     </section>
   )
