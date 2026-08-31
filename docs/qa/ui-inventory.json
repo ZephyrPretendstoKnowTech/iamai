@@ -1,5 +1,5 @@
 {
- "fingerprint": "5b5a6b744abf5e00",
+ "fingerprint": "20db31f9a6485402",
  "surfaces": [
   {
    "name": "Connect",
@@ -667,8 +667,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 318,
-    "words": 540
+    "sentences": 324,
+    "words": 546
    }
   },
   {
@@ -1504,8 +1504,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 359,
-    "words": 1073
+    "sentences": 365,
+    "words": 1079
    }
   },
   {
@@ -4302,6 +4302,743 @@
    "contract": "inventory.tab",
    "state": "scanned",
    "route": "/inventory"
+  },
+  {
+   "name": "Plan",
+   "note": "contract plan",
+   "headings": [
+    "Plan",
+    "Before anything else · <date> → <date>",
+    "Wave 1 · <date> → <date> · Low-impact blocks",
+    "Wave 2 · <date> → <date> · Devices",
+    "Wave 3 · <date> → <date> · Sessions"
+   ],
+   "tabs": [],
+   "buttons": [
+    "emergency access 1 account · confirm",
+    "exclusions group none yet · change",
+    "sign-in countries AU, NZ · change",
+    "trusted locations 1 · change",
+    "service accounts none · confirm",
+    "shared devices none · change",
+    "time zone Denver · change",
+    "mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail. · answer",
+    "people who travel or work abroad none seen. Answering adds notice and a travel exclusion. · answer",
+    "partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion. · answer"
+   ],
+   "options": [],
+   "links": [
+    "Plan settings"
+   ],
+   "chips": [
+    "emergency access 1 account · confirm",
+    "exclusions group none yet · change",
+    "sign-in countries AU, NZ · change",
+    "trusted locations 1 · change",
+    "service accounts none · confirm",
+    "shared devices none · change",
+    "time zone Denver · change",
+    "mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail. · answer",
+    "people who travel or work abroad none seen. Answering adds notice and a travel exclusion. · answer",
+    "partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion. · answer",
+    "Ready",
+    "In place",
+    "Blocked",
+    "Report-only"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Already in place (2)",
+    "Doesn't apply here (10)",
+    "Housekeeping (1)"
+   ],
+   "tips": [
+    "About What set the plan length"
+   ],
+   "sentences": [
+    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks",
+    "Assumes:"
+   ],
+   "titles": [
+    "Sort out emergency access before anything else",
+    "Fix the allowed-countries list before it is used",
+    "Decide on 1 dormant account",
+    "Create the policy exclusions group",
+    "Break-glass sign-in drill",
+    "Run the MFA verification campaign",
+    "Make sure everyone can prove who they are",
+    "Make guests prove who they are too",
+    "Stop attackers adding their own MFA method",
+    "Stop sign-ins being handed to another device",
+    "Turn off old sign-in methods that skip MFA",
+    "Stop the device-code sign-in trick",
+    "Keep admin sessions short",
+    "Give admins a sign-in method that cannot be phished",
+    "Keep non-admins out of the admin portals",
+    "Stop sign-ins from countries you don't work in",
+    "Ask for MFA before a device can be registered",
+    "Block devices Entra cannot identify",
+    "Sign everyone out when the browser closes",
+    "Stop downloads to devices you do not manage",
+    "Limit what personal devices can do in the browser",
+    "Stop a stolen session token from being reused"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks": 1
+   },
+   "occurrencesAll": {
+    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks": 1
+   },
+   "wordCounts": {
+    "headings": 33,
+    "tabs": 0,
+    "buttons": 91,
+    "options": 0,
+    "links": 2,
+    "chips": 96,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 10,
+    "tips": 6,
+    "sentences": 29,
+    "total": 267
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": ".assumption",
+     "text": "emergency access 1 account · confirm",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": ".assumption",
+     "text": "exclusions group none yet · change",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": ".assumption",
+     "text": "sign-in countries AU, NZ · change",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": ".assumption",
+     "text": "trusted locations 1 · change",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": ".assumption",
+     "text": "service accounts none · confirm",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": ".assumption",
+     "text": "shared devices none · change",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": ".assumption",
+     "text": "time zone Denver · change",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": ".assumption",
+     "text": "mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail. · answer",
+     "sentences": 2,
+     "words": 21
+    },
+    {
+     "selector": ".assumption",
+     "text": "people who travel or work abroad none seen. Answering adds notice and a travel exclusion. · answer",
+     "sentences": 2,
+     "words": 17
+    },
+    {
+     "selector": ".assumption",
+     "text": "partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion. · answer",
+     "sentences": 2,
+     "words": 15
+    },
+    {
+     "selector": ".wave",
+     "text": "Before anything else · <date> → <date>",
+     "sentences": 1,
+     "words": 7
+    },
+    {
+     "selector": ".plan-row",
+     "text": "ReadynextSort out emergency access before anything elsenobody affectednow",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": ".plan-row",
+     "text": "ReadyFix the allowed-countries list before it is usednobody affectednow",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": ".plan-row",
+     "text": "ReadyDecide on 1 dormant accountBreak-glass 01now",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": ".plan-row",
+     "text": "ReadyCreate the policy exclusions groupnobody affectednow",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": ".plan-row",
+     "text": "ReadyBreak-glass sign-in drillBreak-glass 01now",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": ".plan-row",
+     "text": "ReadyRun the MFA verification campaign4 peoplenow",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": ".plan-row",
+     "text": "In placeMake sure everyone can prove who they are4 peoplenow",
+     "sentences": 1,
+     "words": 10
+    },
+    {
+     "selector": ".plan-row",
+     "text": "In placeMake guests prove who they are tooJordan Kimnow",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": ".wave",
+     "text": "Wave 1 · <date> → <date> · Low-impact blocks",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop attackers adding their own MFA methodAlex Morgan, Sam Lee, Priya Nair8 Sept 2026after: Sort out emergency access before anything",
+     "sentences": 1,
+     "words": 21
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop sign-ins being handed to another device4 people8 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 17
+    },
+    {
+     "selector": ".plan-row",
+     "text": "Report-onlyTurn off old sign-in methods that skip MFA4 people · report-only, not enforced9 Sept 2026",
+     "sentences": 1,
+     "words": 15
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop the device-code sign-in trick4 people8 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 15
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedKeep admin sessions shortAlex Morgan8 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 14
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedGive admins a sign-in method that cannot be phishedAlex Morgan8 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 19
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedKeep non-admins out of the admin portals4 people8 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 17
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop sign-ins from countries you don't work in4 people8 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 18
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedAsk for MFA before a device can be registered4 people8 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 19
+    },
+    {
+     "selector": ".wave",
+     "text": "Wave 2 · <date> → <date> · Devices",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedBlock devices Entra cannot identify4 people15 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 15
+    },
+    {
+     "selector": ".wave",
+     "text": "Wave 3 · <date> → <date> · Sessions",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedSign everyone out when the browser closes4 people22 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 17
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop downloads to devices you do not manage4 people22 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 18
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedLimit what personal devices can do in the browser4 people22 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 19
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop a stolen session token from being reused4 people22 Sept 2026after: Sort out emergency access before anything else",
+     "sentences": 1,
+     "words": 18
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 2,
+    "words": 29
+   },
+   "contract": "plan",
+   "state": "scanned",
+   "route": "/plan"
+  },
+  {
+   "name": "Plan / settings",
+   "note": "contract plan.settings",
+   "headings": [
+    "Plan settings"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Close"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {},
+   "occurrencesAll": {},
+   "wordCounts": {
+    "headings": 2,
+    "tabs": 0,
+    "buttons": 1,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 0,
+    "total": 3
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "plan.settings",
+   "state": "scanned",
+   "route": "/plan"
+  },
+  {
+   "name": "Plan / footer expanded",
+   "note": "contract plan.footer",
+   "headings": [],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [],
+   "chips": [
+    "In place"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "Already in place (2)",
+    "Doesn't apply here (10)",
+    "Housekeeping (1)"
+   ],
+   "tips": [],
+   "sentences": [
+    "**Office apps require a compliant or joined device**: does not apply (no Intune licence).",
+    "**Mobile access requires approved or protected apps**: does not apply (no Intune licence).",
+    "**Risky sign-ins get MFA or are blocked**: needs a licence tier this tenant does not have (p2).",
+    "**High-risk users must change password**: needs a licence tier this tenant does not have (p2).",
+    "**Azure management requires strong auth**: does not apply (no sign-in activity for Azure management).",
+    "**Service principals restricted**: does not apply (no Workload Identities Premium licence).",
+    "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).",
+    "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).",
+    "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).",
+    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).",
+    "CA002 - Block legacy authentication blocks every resource but excludes none of the sign-in dependencies.",
+    "Registration and enrolment break; exclude those four apps first."
+   ],
+   "titles": [
+    "Make sure everyone can prove who they are",
+    "Make guests prove who they are too"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "**Office apps require a compliant or joined device**: does not apply (no Intune licence).": 1,
+    "**Mobile access requires approved or protected apps**: does not apply (no Intune licence).": 1,
+    "**Risky sign-ins get MFA or are blocked**: needs a licence tier this tenant does not have (p2).": 1,
+    "**High-risk users must change password**: needs a licence tier this tenant does not have (p2).": 1,
+    "**Azure management requires strong auth**: does not apply (no sign-in activity for Azure management).": 1,
+    "**Service principals restricted**: does not apply (no Workload Identities Premium licence).": 1,
+    "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).": 1,
+    "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).": 1,
+    "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).": 1,
+    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).": 1,
+    "CA002 - Block legacy authentication blocks every resource but excludes none of the sign-in dependencies.": 1,
+    "Registration and enrolment break; exclude those four apps first.": 1
+   },
+   "occurrencesAll": {
+    "**Office apps require a compliant or joined device**: does not apply (no Intune licence).": 1,
+    "**Mobile access requires approved or protected apps**: does not apply (no Intune licence).": 1,
+    "**Risky sign-ins get MFA or are blocked**: needs a licence tier this tenant does not have (p2).": 1,
+    "**High-risk users must change password**: needs a licence tier this tenant does not have (p2).": 1,
+    "**Azure management requires strong auth**: does not apply (no sign-in activity for Azure management).": 1,
+    "**Service principals restricted**: does not apply (no Workload Identities Premium licence).": 1,
+    "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).": 1,
+    "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).": 1,
+    "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).": 1,
+    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).": 1,
+    "CA002 - Block legacy authentication blocks every resource but excludes none of the sign-in dependencies.": 1,
+    "Registration and enrolment break; exclude those four apps first.": 1
+   },
+   "wordCounts": {
+    "headings": 0,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 0,
+    "chips": 2,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 10,
+    "tips": 0,
+    "sentences": 173,
+    "total": 185
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": ".plan-row",
+     "text": "In placeMake sure everyone can prove who they are",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": ".plan-row",
+     "text": "In placeMake guests prove who they are too",
+     "sentences": 1,
+     "words": 8
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 12,
+    "words": 173
+   },
+   "contract": "plan.footer",
+   "state": "scanned",
+   "route": "/plan"
+  },
+  {
+   "name": "Plan / one step opened",
+   "note": "contract plan.step",
+   "headings": [
+    "Why",
+    "Who this touches",
+    "Do it",
+    "Dates",
+    "Done when",
+    "If it goes wrong"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Close"
+   ],
+   "options": [],
+   "links": [
+    "Recovery card →"
+   ],
+   "chips": [
+    "Ready"
+   ],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "More"
+   ],
+   "tips": [],
+   "sentences": [
+    "Sort out emergency access before anything else Ready",
+    "Nothing changes for anyone.",
+    "This is groundwork so a mistake later can be undone.",
+    "Emergency access accounts has 3 must-fix checks outstanding.",
+    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.",
+    "no people · 0 active",
+    "Each of these has to pass:",
+    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)",
+    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)",
+    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)",
+    "Worth fixing too, though nothing waits on them:",
+    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)",
+    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.",
+    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.",
+    "now",
+    "All 3 must-fix checks pass on the next scan.",
+    "At least two emergency access accounts are nominated.",
+    "Global Administrator is assigned permanently and active, never eligible-only.",
+    "Recovery card →"
+   ],
+   "titles": [
+    "Sort out emergency access before anything else"
+   ],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "Sort out emergency access before anything else Ready": 1,
+    "Nothing changes for anyone.": 2,
+    "This is groundwork so a mistake later can be undone.": 2,
+    "Emergency access accounts has 3 must-fix checks outstanding.": 1,
+    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
+    "Each of these has to pass:": 1,
+    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
+    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
+    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
+    "Worth fixing too, though nothing waits on them:": 1,
+    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
+    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
+    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
+    "All 3 must-fix checks pass on the next scan.": 1,
+    "At least two emergency access accounts are nominated.": 1,
+    "Global Administrator is assigned permanently and active, never eligible-only.": 1
+   },
+   "occurrencesAll": {
+    "Sort out emergency access before anything else Ready": 1,
+    "Nothing changes for anyone.": 2,
+    "This is groundwork so a mistake later can be undone.": 2,
+    "Emergency access accounts has 3 must-fix checks outstanding.": 1,
+    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
+    "Each of these has to pass:": 1,
+    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
+    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
+    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
+    "Worth fixing too, though nothing waits on them:": 1,
+    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
+    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
+    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
+    "All 3 must-fix checks pass on the next scan.": 1,
+    "At least two emergency access accounts are nominated.": 1,
+    "Global Administrator is assigned permanently and active, never eligible-only.": 1
+   },
+   "wordCounts": {
+    "headings": 13,
+    "tabs": 0,
+    "buttons": 1,
+    "options": 0,
+    "links": 3,
+    "chips": 1,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 1,
+    "tips": 0,
+    "sentences": 255,
+    "total": 274
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "plan.step",
+   "state": "scanned",
+   "route": "/plan"
+  },
+  {
+   "name": "Plan / one step / More expanded",
+   "note": "contract plan.step.more",
+   "headings": [
+    "What could go wrong",
+    "Prerequisites",
+    "What waits on this",
+    "Exit criteria",
+    "For your manager"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Copy",
+    "Copy as prompt"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "More"
+   ],
+   "tips": [],
+   "sentences": [
+    "Nothing has to exist first.",
+    "Stop attackers adding their own MFA method",
+    "Stop sign-ins being handed to another device",
+    "Turn off old sign-in methods that skip MFA",
+    "Stop the device-code sign-in trick",
+    "Keep admin sessions short",
+    "Give admins a sign-in method that cannot be phished",
+    "Keep non-admins out of the admin portals",
+    "Stop sign-ins from countries you don't work in",
+    "Block devices Entra cannot identify",
+    "Ask for MFA before a device can be registered",
+    "Sign everyone out when the browser closes",
+    "Stop downloads to devices you do not manage",
+    "Limit what personal devices can do in the browser",
+    "Stop a stolen session token from being reused",
+    "All 3 must-fix checks pass on the next scan.",
+    "At least two emergency access accounts are nominated.",
+    "Global Administrator is assigned permanently and active, never eligible-only.",
+    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.",
+    "Emergency access accounts is the way back in when a security change goes wrong.",
+    "The cost is an hour of admin time and no disruption to anyone.",
+    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.",
+    "CopyCopy as prompt"
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "Nothing has to exist first.": 1,
+    "Stop attackers adding their own MFA method": 1,
+    "Stop sign-ins being handed to another device": 1,
+    "Turn off old sign-in methods that skip MFA": 1,
+    "Stop the device-code sign-in trick": 1,
+    "Give admins a sign-in method that cannot be phished": 1,
+    "Keep non-admins out of the admin portals": 1,
+    "Stop sign-ins from countries you don't work in": 1,
+    "Block devices Entra cannot identify": 1,
+    "Ask for MFA before a device can be registered": 1,
+    "Sign everyone out when the browser closes": 1,
+    "Stop downloads to devices you do not manage": 1,
+    "Limit what personal devices can do in the browser": 1,
+    "Stop a stolen session token from being reused": 1,
+    "All 3 must-fix checks pass on the next scan.": 1,
+    "At least two emergency access accounts are nominated.": 1,
+    "Global Administrator is assigned permanently and active, never eligible-only.": 1,
+    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.": 1,
+    "Emergency access accounts is the way back in when a security change goes wrong.": 1,
+    "The cost is an hour of admin time and no disruption to anyone.": 1,
+    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1
+   },
+   "occurrencesAll": {
+    "Nothing has to exist first.": 1,
+    "Stop attackers adding their own MFA method": 1,
+    "Stop sign-ins being handed to another device": 1,
+    "Turn off old sign-in methods that skip MFA": 1,
+    "Stop the device-code sign-in trick": 1,
+    "Give admins a sign-in method that cannot be phished": 1,
+    "Keep non-admins out of the admin portals": 1,
+    "Stop sign-ins from countries you don't work in": 1,
+    "Block devices Entra cannot identify": 1,
+    "Ask for MFA before a device can be registered": 1,
+    "Sign everyone out when the browser closes": 1,
+    "Stop downloads to devices you do not manage": 1,
+    "Limit what personal devices can do in the browser": 1,
+    "Stop a stolen session token from being reused": 1,
+    "All 3 must-fix checks pass on the next scan.": 1,
+    "At least two emergency access accounts are nominated.": 1,
+    "Global Administrator is assigned permanently and active, never eligible-only.": 1,
+    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.": 1,
+    "Emergency access accounts is the way back in when a security change goes wrong.": 1,
+    "The cost is an hour of admin time and no disruption to anyone.": 1,
+    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1
+   },
+   "wordCounts": {
+    "headings": 14,
+    "tabs": 0,
+    "buttons": 4,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 1,
+    "tips": 0,
+    "sentences": 209,
+    "total": 228
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "plan.step.more",
+   "state": "scanned",
+   "route": "/plan"
   }
  ]
 }

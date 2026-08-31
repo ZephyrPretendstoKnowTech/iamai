@@ -33,7 +33,7 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
         <summary>{C.footer.doesNotApply(notApply.length)}</summary>
         <ul className="sections">
           {notApply.map((r) => (
-            <li key={r.goal.id}>{r.statement}</li>
+            <li key={r.goal.id}>{r.statement.replace(' Listed on the Licensing guide, not scored.', '')}</li>
           ))}
         </ul>
       </details>
