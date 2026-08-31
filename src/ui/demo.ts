@@ -33,8 +33,8 @@ export function isDemo(search: string = window.location.search): boolean {
 export function demoUrl(): string {
   const u = new URL(window.location.href)
   u.searchParams.set(DEMO_PARAM, '1')
-  // The demo enters at Plan (target-state §2); #/roadmap until prompt 48.
-  u.hash = '#/roadmap'
+  // The demo enters at Plan (target-state §2).
+  u.hash = '#/plan'
   return u.toString()
 }
 

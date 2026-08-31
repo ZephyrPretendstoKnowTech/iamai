@@ -15,6 +15,7 @@ import { LicensingPage } from './pages/LicensingPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
 import { MappingPage } from './pages/MappingPage.tsx'
 import { RoadmapPage } from './pages/RoadmapPage.tsx'
+import { Plan } from './surfaces/Plan.tsx'
 import { Today } from './surfaces/Today.tsx'
 import { Inventory } from './surfaces/Inventory.tsx'
 import { TODAY } from '../copy/today.ts'
@@ -275,6 +276,7 @@ export function App() {
                 </p>
               </section>
             ))}
+          {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
           {route === 'mapping' && <MappingPage scan={lastScan} baseline={baseline} onProgress={() => {}} />}
           {route === 'coverage' && <CoveragePage scan={lastScan} baseline={baseline} />}
           {(route === 'roadmap' || route === 'roadmap/prompts') && (

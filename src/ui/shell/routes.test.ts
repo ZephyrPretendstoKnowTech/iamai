@@ -23,8 +23,10 @@ test('routes and redirects are as they were', () => {
   assert.deepEqual(resolveHash('#/start'), { route: 'connect', redirect: '#/connect' })
   assert.deepEqual(resolveHash('#'), { route: 'home', redirect: null })
   assert.deepEqual(resolveHash(''), { route: 'home', redirect: null })
-  assert.deepEqual(resolveHash('#/roadmap/step/x'), { route: 'roadmap', redirect: null })
-  assert.deepEqual(resolveHash('#/plan'), { route: 'roadmap', redirect: '#/roadmap' })
+  assert.deepEqual(resolveHash('#/roadmap/step/x'), { route: 'plan', redirect: '#/plan/x' })
+  assert.deepEqual(resolveHash('#/plan/s-goal-mfa-all-users'), { route: 'plan', redirect: null })
+  assert.deepEqual(resolveHash('#/plan'), { route: 'plan', redirect: null })
+
   assert.deepEqual(resolveHash('#/nonsense'), { route: 'connect', redirect: '#/connect' })
   for (const h of ['#/connect', '#/start', '#', '#/roadmap/step/x', '#/today?state=1']) assert.equal(isAuthResponseHash(h), false, h)
 })

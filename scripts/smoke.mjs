@@ -127,7 +127,7 @@ try {
   await send('Page.navigate', { url: `${BASE}#code=abc&client_info=def&state=ghi` })
   await sleep(1500)
   check('Sign-in: an auth response in the fragment is intact when the first frame renders', (await evaluate('window.__firstFrameHash')) === '#code=abc&client_info=def&state=ghi', String(await evaluate('window.__firstFrameHash')))
-  check('Sign-in: once auth has settled the page lands on Plan', await waitFor(`location.hash === '#/roadmap'`))
+  check('Sign-in: once auth has settled the page lands on Plan', await waitFor(`location.hash === '#/plan'`))
 
   // The walk (prompt 47 Part 6 item 23): Connect signed out, sign in (the mock state), the scan, Today, Inventory, then the legacy Roadmap.
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
@@ -242,7 +242,17 @@ try {
   await go('scan')
   check('Scan redirects to Today', await waitFor(`location.hash === '#/today'`))
   await go('plan')
-  check('Plan opens the Roadmap until prompt 48', await waitFor(`location.hash === '#/roadmap'`))
+  check('Plan renders at #/plan', await waitFor(`location.hash === '#/plan' && /Assumes:/.test(document.body.innerText)`))
+  // The Plan surface (prompt 48 Part 2, target-state section 5).
+  let pt = await text()
+  check('Plan: the header line counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |nothing is dated)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
+  check('Plan: the assumptions strip carries the detected facts and the questions', /emergency access/.test(pt) && /time zone/.test(pt) && /mail-sending devices/.test(pt))
+  check('Plan: waves render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .wave').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 5 && /next/.test(pt))
+  check('Plan: opening a row shows Do it', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Do it/.test(document.body.innerText) && /Tell your people|Done when/.test(document.body.innerText)`)))
+  check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
+  check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
+  check('Plan: the footer has the three details', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Housekeeping/g) || []).length === 3)
+  check('Plan: no forbidden strings', !/Do this next|What needs attention before you start|The journey|Safe today/.test(pt))
 
   // The header (target-state §2): wordmark, tenant, tabs, Re-scan with the scan's age, Recovery card, theme, Account.
   await go('roadmap')

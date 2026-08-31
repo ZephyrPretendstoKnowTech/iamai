@@ -807,3 +807,113 @@ footer.app a {
     transition: none !important;
   }
 }
+
+/* ================= the plan (prompt 48) ================= */
+
+.assumptions-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.assumption {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.assumption > button.chip {
+  cursor: pointer;
+  max-width: 100%;
+  text-align: left;
+  white-space: normal;
+}
+.assumption-editor {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--rule);
+  padding: 12px;
+  margin-top: 4px;
+}
+.assumption-editor textarea,
+.assumption-editor select {
+  width: 100%;
+}
+.next-mark {
+  font-size: var(--t-1);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0 6px;
+}
+.wave {
+  margin: 24px 0;
+}
+.wave h2 {
+  font-size: var(--t-5);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.plan-row {
+  display: block;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+.plan-row-main {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.plan-row-reason {
+  display: block;
+  color: var(--ink-2);
+  font-size: var(--t-2);
+  margin-top: 4px;
+}
+.plan-row .step-title {
+  flex: 1;
+  min-width: 12rem;
+}
+.plan-row .who {
+  color: var(--ink-2);
+  font-size: var(--t-2);
+}
+.plan-row .when {
+  color: var(--ink-2);
+  font-size: var(--t-2);
+  white-space: nowrap;
+}
+.step-body {
+  padding: 12px 0 20px 16px;
+  border-left: 2px solid var(--rule);
+  margin: 0 0 8px;
+}
+.step-body h3 {
+  margin: 18px 0 6px;
+}
+.step-body pre.mono {
+  background: var(--bg-inset);
+  padding: 12px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.step-body .comms-draft {
+  white-space: pre-wrap;
+}
+.plan-settings {
+  border: 1px solid var(--rule);
+  padding: 16px;
+  margin: 0 0 16px;
+  max-width: 32rem;
+}
+.plan-footer {
+  margin-top: 32px;
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+}
+.plan-footer > details {
+  margin: 4px 0;
+}

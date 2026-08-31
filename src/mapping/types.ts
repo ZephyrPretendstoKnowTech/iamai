@@ -93,6 +93,8 @@ export type MappingState = {
   assumed?: Record<string, 'detected' | 'confirmed' | 'noneFound'>
   /** Questions answered "not applicable to us", with the reason (prompt 26 §2). */
   notApplicable?: Record<string, string>
+  /** Free-text answers to the three questions the tool cannot see (prompt 48 item 10). */
+  questionAnswers?: Record<string, string>
   updatedAt: string
 }
 

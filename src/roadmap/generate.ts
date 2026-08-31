@@ -59,6 +59,11 @@ import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.t
 import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { DATE_NOTE } from '../copy/steps.ts'
+const QUESTION_STEPS: [string, string, string][] = [
+  ['mailDevices', 'Set up an SMTP relay for the devices that send mail', 'Printers and apps that send mail by Authenticated SMTP break when legacy auth is blocked; an SMTP relay or a per-device exception keeps them working.'],
+  ['travel', 'Add a travel notice and exclusion', 'People who work abroad hit the country block; a short-lived exclusion and a notice keep them working while they travel.'],
+  ['partner', 'Exclude the partner or MSP accounts', 'Service-provider accounts sign in from another tenant; excluding "Service provider users" keeps their access while the policies enforce.'],
+]
 import { buildSchedule, nextMonday } from './schedule.ts'
 import type { ChangeFreeze, Schedule } from './schedule.ts'
 import type { Action, Blocker, Readiness, Step, StepPopulation, StepStatus } from './types.ts'
@@ -689,6 +694,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id) }
     step.populationNames = names_
     steps.push(step)
+  }
+
+  // The three questions the operator can answer (prompt 48 item 10): each
+  // answer adds a carve-out step. Unanswered, the plan proceeds on the evidence
+  // and the affected step carries the can't-see line.
+  const qa = mapping.questionAnswers ?? {}
+  for (const [id, title, why] of QUESTION_STEPS) {
+    if ((qa[id] ?? '').trim().length === 0) continue
+    steps.push(prereq(`s-question-${id}`, title, why, [`You listed: ${qa[id].trim().replace(/\n+/g, ', ')}.`], ['The carve-out exists and the affected policies exclude it.']))
   }
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
