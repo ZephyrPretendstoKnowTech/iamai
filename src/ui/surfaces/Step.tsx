@@ -24,9 +24,10 @@ const MAX_NAMES = 10
 // The two Dates side-lines live on Dates now, so the catalogue does not repeat them (item 7).
 const DATE_LINE_TITLES = new Set(['Report-only prompts for a certificate', 'Existing tokens keep working'])
 
-export function Step({ step, schedule, tenantName, nameOf, onSkipped, onClose }: {
+export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onClose }: {
   step: Step
   schedule: Schedule
+  steps: Step[]
   tenantName: string
   nameOf: (id: string) => string
   onSkipped: () => void
@@ -154,7 +155,7 @@ export function Step({ step, schedule, tenantName, nameOf, onSkipped, onClose }:
         </>
       )}
 
-      <More step={step} tenantName={tenantName} copy={copy} copied={copied} onSkipped={onSkipped} />
+      <More step={step} steps={steps} tenantName={tenantName} copy={copy} copied={copied} onSkipped={onSkipped} />
 
       <p className="actions no-print">
         <Button variant="tertiary" onClick={onClose}>
@@ -165,9 +166,10 @@ export function Step({ step, schedule, tenantName, nameOf, onSkipped, onClose }:
   )
 }
 
-function More({ step, tenantName, copy, copied, onSkipped }: { step: Step; tenantName: string; copy: (id: string, text: string) => void; copied: string | null; onSkipped: () => void }) {
+function More({ step, steps, tenantName, copy, copied, onSkipped }: { step: Step; steps: Step[]; tenantName: string; copy: (id: string, text: string) => void; copied: string | null; onSkipped: () => void }) {
   const catalogue = step.failureModes.filter((f) => !DATE_LINE_TITLES.has(f.title))
   const unknowns = unknownsFor(step)
+  const dependents = steps.filter((x) => x.blockedBy.includes(step.id) && x.status !== 'done' && x.status !== 'skipped')
   return (
     <details className="more">
       <summary>{C.step.more}</summary>
@@ -197,7 +199,11 @@ function More({ step, tenantName, copy, copied, onSkipped }: { step: Step; tenan
       )}
 
       <h3>{C.step.waitsOnThis}</h3>
-      <p className="reason">{C.step.nothingWaits}</p>
+      {dependents.length > 0 ? (
+        <ul className="sections">{dependents.map((d) => <li key={d.id}>{d.plainTitle || d.title}</li>)}</ul>
+      ) : (
+        <p className="reason">{C.step.nothingWaits}</p>
+      )}
 
       <h3>{C.step.exitCriteria}</h3>
       <ul className="sections">
