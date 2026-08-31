@@ -206,6 +206,36 @@ for (const [i, m] of MUTATIONS.entries()) {
   results.push({ ...m, caught, alsoFailed: failed.filter((n) => !n.startsWith(m.rule)) })
 }
 
+// ---- the design lint (prompt 47 Part 1 item 4): five checks, one injected violation each ----
+//
+// A stylesheet with exactly one violation is handed to design-lint.test.ts
+// through DESIGN_LINT_EXTRA; the check that owns the violation must fail.
+const DESIGN_TEST = 'src/ui/design-lint.test.ts'
+const DESIGN_MUTATIONS = [
+  { rule: 'design 1:', what: 'a colour literal outside tokens.css', css: '.probe { color: #ff0000; }' },
+  { rule: 'design 2:', what: 'a box-shadow that is not the focus ring', css: '.probe { box-shadow: 0 2px 8px var(--ink); }' },
+  { rule: 'design 3:', what: 'a border-radius over 4px', css: '.probe { border-radius: 12px; }' },
+  { rule: 'design 4:', what: 'a font-weight other than 400 or 500', css: '.probe { font-weight: 700; }' },
+  { rule: 'design 5:', what: 'a status colour outside a .status rule', css: '.probe { color: var(--ok); }' },
+]
+function failingDesignChecks(extraCss) {
+  let out = ''
+  try {
+    out = execFileSync(process.execPath, ['--test', '--test-reporter=tap', DESIGN_TEST], {
+      encoding: 'utf8', env: { ...process.env, DESIGN_LINT_EXTRA: extraCss }, stdio: ['ignore', 'pipe', 'pipe'],
+    })
+  } catch (err) {
+    out = `${err.stdout ?? ''}${err.stderr ?? ''}`
+  }
+  return [...out.matchAll(/^not ok \d+ - (.+)$/gm)].map((m) => m[1].trim())
+}
+for (const [i, m] of DESIGN_MUTATIONS.entries()) {
+  const path = join(dir, `design-${i}.css`)
+  writeFileSync(path, m.css)
+  const failed = failingDesignChecks(path)
+  results.push({ ...m, caught: failed.some((name) => name.startsWith(m.rule)), alsoFailed: failed.filter((n) => !n.startsWith(m.rule)) })
+}
+
 const width = Math.max(...results.map((r) => r.what.length))
 for (const r of results) {
   console.log(`${r.caught ? 'caught ' : 'MISSED '} ${r.rule.padEnd(20)} ${r.what.padEnd(width)}`)

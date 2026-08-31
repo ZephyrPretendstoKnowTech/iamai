@@ -1,13 +1,12 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Icon } from './Icon.tsx'
 import { COMPONENTS } from '../../copy/components.ts'
 
-// ⓘ glyph with a hover/click popover: a title and one or two sentences.
-// Replaces every "?" in the app. Keyboard: focus + Enter/Space toggles, Esc closes.
-// The popover renders in a portal at the top layer, positioned from the
-// button's viewport rectangle, and flips or shifts so it is never clipped by
-// a parent or the window edge (ux-review-04 §3).
+// A 14px outlined "i" in ink-3; the tip on hover or focus in bg-raised with a
+// hairline (prompt 47 Part 1). Text is at most 25 words, which the contract
+// measures. Keyboard: focus + Enter/Space toggles, Esc closes. The tip renders
+// in a portal at the top layer, positioned from the button's rectangle, and
+// flips or shifts so it is never clipped.
 const GAP = 6
 const MARGIN = 8
 
@@ -20,7 +19,6 @@ function place(anchor: DOMRect, pop: { width: number; height: number }): Placeme
   let left = anchor.left
   if (left + maxWidth > vw - MARGIN) left = Math.max(MARGIN, vw - MARGIN - maxWidth)
   let top = anchor.bottom + GAP
-  // Flip above when there is no room below and more room above.
   if (top + pop.height > vh - MARGIN && anchor.top - GAP - pop.height >= MARGIN) top = anchor.top - GAP - pop.height
   if (top + pop.height > vh - MARGIN) top = Math.max(MARGIN, vh - MARGIN - pop.height)
   return { top, left, maxWidth }
@@ -55,7 +53,6 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
-    // Scrolling or resizing moves the anchor: follow it rather than vanish.
     const onMove = () => {
       if (!ref.current || !popRef.current) return
       const rect = popRef.current.getBoundingClientRect()
@@ -73,7 +70,6 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
     }
   }, [open])
 
-  // Measure after the popover mounts, then place it against the button.
   useLayoutEffect(() => {
     if (!open || !ref.current || !popRef.current) return
     const anchor = ref.current.getBoundingClientRect()
@@ -113,12 +109,14 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
         aria-label={COMPONENTS.infoTip.about(title)}
         aria-expanded={open}
         aria-controls={id}
+        onFocus={openNow}
+        onBlur={closeSoon}
         onClick={(e) => {
-          e.stopPropagation() // never toggles a clickable tile around it
+          e.stopPropagation()
           setOpen((o) => !o)
         }}
       >
-        <Icon name="info" size={16} />
+        <span aria-hidden="true">i</span>
       </button>
       {popover}
     </span>

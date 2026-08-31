@@ -528,7 +528,7 @@ export function MfaViabilityScreen({
             {(mfaFilter.size > 0 || activityFilter.size > 0 || tierFilter.size > 0 || rolloutFilter !== null || search) && (
               <Button
                 size="sm"
-                variant="quiet"
+                variant="tertiary"
                 onClick={() => {
                   setMfaFilter(new Set())
                   setActivityFilter(new Set())

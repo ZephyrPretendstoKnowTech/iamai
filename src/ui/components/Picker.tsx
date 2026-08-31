@@ -138,7 +138,7 @@ export function Picker({
           ))}
           <div className="picker-footer">
             <span>{query.trim().length === 0 ? T.suggestions : T.results(list.length)}</span>
-            <Button size="sm" variant="quiet" onClick={() => setOpen(false)}>
+            <Button size="sm" variant="tertiary" onClick={() => setOpen(false)}>
               {T.done}
             </Button>
           </div>

@@ -1,55 +1,41 @@
-// Both themes must pass WCAG AA (prompt 08 §A): 4.5:1 for body text, 3:1 for
-// large text / UI components such as chips and accent buttons.
+// Both themes must pass WCAG AA on every pair the interface actually paints
+// (prompt 47 Part 1), and tokens.css must be exactly what tokens.ts renders.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BUTTON_STATES, BUTTON_VARIANTS, DARK, LIGHT, blend, buttonColours, contrastRatio } from './tokens.ts'
+import { readFileSync } from 'node:fs'
+import { DARK, LIGHT, contrastRatio, renderTokensCss, WEIGHTS } from './tokens.ts'
 import type { Palette } from './tokens.ts'
 
 const AA_TEXT = 4.5
-const AA_LARGE = 3
+const AA_COMPONENT = 3
 
 function check(name: string, p: Palette): void {
-  test(`${name}: body text on every surface is AA`, () => {
-    for (const surface of [p.bg, p.surface, p.raised]) {
-      assert.ok(contrastRatio(p.text, surface) >= AA_TEXT, `text on ${surface}`)
-      assert.ok(contrastRatio(p.muted, surface) >= AA_TEXT, `muted on ${surface}`)
+  test(`${name}: ink and ink-2 are AA text on the page, raised and inset backgrounds`, () => {
+    for (const bg of [p.bg, p.bgRaised, p.bgInset]) {
+      assert.ok(contrastRatio(p.ink, bg) >= AA_TEXT, `ink on ${bg} = ${contrastRatio(p.ink, bg).toFixed(2)}`)
+      assert.ok(contrastRatio(p.ink2, bg) >= AA_TEXT, `ink-2 on ${bg} = ${contrastRatio(p.ink2, bg).toFixed(2)}`)
+      assert.ok(contrastRatio(p.accent, bg) >= AA_TEXT, `accent (links, tabs) on ${bg} = ${contrastRatio(p.accent, bg).toFixed(2)}`)
     }
   })
-  test(`${name}: accent button ink is AA`, () => {
-    assert.ok(contrastRatio(p.accentInk, p.accent) >= AA_TEXT)
+  test(`${name}: the primary button's ink is AA on the accent`, () => {
+    assert.ok(contrastRatio(p.onAccent, p.accent) >= AA_TEXT, contrastRatio(p.onAccent, p.accent).toFixed(2))
   })
-  test(`${name}: status colours read against surfaces at large-text/component level`, () => {
-    for (const c of [p.success, p.warning, p.danger, p.info, p.accent]) {
-      assert.ok(contrastRatio(c, p.surface) >= AA_LARGE, `${c} on surface`)
-      assert.ok(contrastRatio(c, p.bg) >= AA_LARGE, `${c} on bg`)
-    }
+  test(`${name}: ink-3 is an icon colour, not a text colour; the status dots and the strong rule read as components`, () => {
+    assert.ok(contrastRatio(p.ink3, p.bg) >= AA_COMPONENT, `ink-3 on bg = ${contrastRatio(p.ink3, p.bg).toFixed(2)}`)
+    for (const c of [p.ok, p.wait, p.stop, p.idle]) assert.ok(contrastRatio(c, p.bg) >= AA_COMPONENT, `${c} dot on bg = ${contrastRatio(c, p.bg).toFixed(2)}`)
+    assert.ok(contrastRatio(p.ruleStrong, p.bg) >= 1.5, 'the strong rule is perceptible')
   })
 }
 
-check('dark', DARK)
 check('light', LIGHT)
+check('dark', DARK)
 
-// Prompt 19 §A1: no button variant may lose its label in any state.
-for (const [name, p] of [['dark', DARK], ['light', LIGHT]] as const) {
-  test(`${name}: every button variant keeps AA text in every state`, () => {
-    for (const variant of BUTTON_VARIANTS) {
-      for (const state of BUTTON_STATES) {
-        const { text, background } = buttonColours(p, variant, state)
-        assert.notEqual(text.toUpperCase(), background.toUpperCase(), `${variant}/${state} text equals background`)
-        assert.ok(contrastRatio(text, background) >= AA_TEXT, `${variant}/${state}: ${text} on ${background} = ${contrastRatio(text, background).toFixed(2)}`)
-      }
-    }
-  })
-}
+test('tokens.css is generated from tokens.ts and has not drifted', () => {
+  const onDisk = readFileSync('src/ui/tokens.css', 'utf8').replace(/\r\n/g, '\n')
+  assert.equal(onDisk, renderTokensCss(), 'run: node scripts/gen-tokens.mjs')
+})
 
-// ux-review-05 §43: the done chip's ink on its soft background, and the active
-// step's accent on its soft background, read at AA in both themes.
-for (const [name, p] of [['dark', DARK], ['light', LIGHT]] as const) {
-  test(`${name}: done chip and active step keep AA on their soft backgrounds`, () => {
-    const softSuccess = blend(p.success, p.softAlpha, p.surface)
-    assert.ok(contrastRatio(p.success, softSuccess) >= AA_TEXT, `done chip ${p.success} on ${softSuccess} = ${contrastRatio(p.success, softSuccess).toFixed(2)}`)
-    const softAccent = blend(p.accent, p.softAlpha, p.surface)
-    assert.ok(contrastRatio(p.text, softAccent) >= AA_TEXT, `active step text on ${softAccent}`)
-    assert.ok(contrastRatio(p.accent, softAccent) >= AA_LARGE, `active step accent on ${softAccent}`)
-  })
-}
+test('two weights, and every palette entry is an opaque hex colour', () => {
+  assert.deepEqual([...WEIGHTS], [400, 500])
+  for (const p of [LIGHT, DARK]) for (const [k, v] of Object.entries(p)) assert.match(v, /^#[0-9A-F]{6}$/i, `${k}: ${v}`)
+})

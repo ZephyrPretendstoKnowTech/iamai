@@ -1,5 +1,5 @@
 {
- "fingerprint": "6e38522c2fdcb006",
+ "fingerprint": "86f421db97498dc2",
  "surfaces": [
   {
    "name": "Start",
@@ -928,7 +928,7 @@
    }
   },
   {
-   "name": "Setup / Q2 — Which group holds the policy exclusions?nothing to che",
+   "name": "Setup / Q2 — Which group holds the policy exclusions?inothing to ch",
    "note": "one question",
    "headings": [],
    "tabs": [],
@@ -986,7 +986,7 @@
    }
   },
   {
-   "name": "Setup / Q3 — Which countries do your people sign in from?",
+   "name": "Setup / Q3 — Which countries do your people sign in from?i",
    "note": "one question",
    "headings": [],
    "tabs": [],
@@ -1043,7 +1043,7 @@
    }
   },
   {
-   "name": "Setup / Q4 — Which named locations count as trusted?",
+   "name": "Setup / Q4 — Which named locations count as trusted?i",
    "note": "one question",
    "headings": [],
    "tabs": [],
@@ -1098,7 +1098,7 @@
    }
   },
   {
-   "name": "Setup / Q5 — Which time zone should dates display in?",
+   "name": "Setup / Q5 — Which time zone should dates display in?i",
    "note": "one question",
    "headings": [],
    "tabs": [],
@@ -1155,7 +1155,7 @@
    }
   },
   {
-   "name": "Setup / Q6 — Are the detected workloads right?",
+   "name": "Setup / Q6 — Are the detected workloads right?i",
    "note": "one question",
    "headings": [],
    "tabs": [],
@@ -1938,8 +1938,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 233,
-    "words": 485
+    "sentences": 235,
+    "words": 487
    }
   },
   {
@@ -2801,8 +2801,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 274,
-    "words": 1018
+    "sentences": 276,
+    "words": 1020
    }
   },
   {

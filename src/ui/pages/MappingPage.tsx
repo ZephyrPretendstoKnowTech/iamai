@@ -282,7 +282,7 @@ function QuestionSection(props: QProps) {
             <Icon name="check" size={16} />
           </span>
           <span>{C.answeredAs(answerSummary(def, state, snapshot, knownGroups))}</span>
-          <Button size="sm" variant="quiet" onClick={() => reopen(def.id)}>
+          <Button size="sm" variant="tertiary" onClick={() => reopen(def.id)}>
             {C.edit}
           </Button>
         </p>
@@ -513,7 +513,7 @@ function findingCounts(results: (ValidationResult | null)[]): FindingCounts {
 function DoesNotExist({ onClick }: { onClick: () => void }) {
   return (
     <p>
-      <Button size="sm" variant="quiet" onClick={onClick}>
+      <Button size="sm" variant="tertiary" onClick={onClick}>
         {C.doesNotExist}
       </Button>
     </p>
@@ -549,10 +549,10 @@ function BreakGlassQuestion({ state, snapshot, knownGroups, suggestCtx, update, 
     <li key={key}>
       {C.breakGlassAsk[key]}
       <div className="row" style={{ marginTop: '4px' }}>
-        <Button size="sm" variant={answers[key] === true ? 'primary' : 'quiet'} onClick={() => setAnswer(key, true)}>
+        <Button size="sm" variant={answers[key] === true ? 'primary' : 'tertiary'} onClick={() => setAnswer(key, true)}>
           {C.breakGlassAsk.yes}
         </Button>
-        <Button size="sm" variant={answers[key] === false ? 'primary' : 'quiet'} onClick={() => setAnswer(key, false)}>
+        <Button size="sm" variant={answers[key] === false ? 'primary' : 'tertiary'} onClick={() => setAnswer(key, false)}>
           {C.breakGlassAsk.no}
         </Button>
       </div>
@@ -831,7 +831,7 @@ function ServiceAccountsQuestion({ state, snapshot, knownGroups, update, answere
         )}
         <Button
           size="sm"
-          variant="quiet"
+          variant="tertiary"
           onClick={() =>
             update((s) => {
               const ids = s.serviceAccountUserIds.filter((id) => id !== c.id)
@@ -952,7 +952,7 @@ function ApplicabilityQuestion({ state, snapshot, update, answered }: QProps) {
                       >
                         {C.confirmOff}
                       </Button>
-                      <Button size="sm" variant="quiet" onClick={() => setAskingOff(null)}>
+                      <Button size="sm" variant="tertiary" onClick={() => setAskingOff(null)}>
                         {C.cancel}
                       </Button>
                     </div>

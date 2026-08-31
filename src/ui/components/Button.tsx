@@ -2,8 +2,15 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { Icon } from './Icon.tsx'
 import type { IconName } from './Icon.tsx'
 
+// Three variants (prompt 47 Part 1): primary is filled accent and appears at
+// most once per view; secondary is accent text, underlined; tertiary is
+// ink-2 text. The class names keep the `btn-*` hooks the UI inventory and its
+// rule 6 read. `size`, `icon` and `loading` remain accepted for the legacy
+// pages until prompt 49; the height is one control height regardless.
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary'
+
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'quiet'
+  variant?: ButtonVariant
   size?: 'md' | 'sm'
   loading?: boolean
   icon?: IconName
@@ -18,16 +25,16 @@ export function Button({ variant = 'secondary', size = 'md', loading = false, ic
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? <span className="spinner" aria-hidden /> : icon ? <Icon name={icon} size={16} /> : null}
+      {loading ? <span className="spinner" aria-hidden /> : icon ? <Icon name={icon} size={14} /> : null}
       {children}
     </button>
   )
 }
 
-/** A link styled as a button (for hash navigation). */
-export function LinkButton({ href, variant = 'primary', children }: { href: string; variant?: 'primary' | 'secondary' | 'quiet'; children: ReactNode }) {
+/** A hash link styled as a button. Counted as a button by the inventory (`a.btn`). */
+export function LinkButton({ href, variant = 'primary', children }: { href: string; variant?: ButtonVariant; children: ReactNode }) {
   return (
-    <a href={href} className={`btn btn-${variant}`} style={{ textDecoration: 'none' }}>
+    <a href={href} className={`btn btn-${variant}`}>
       {children}
     </a>
   )

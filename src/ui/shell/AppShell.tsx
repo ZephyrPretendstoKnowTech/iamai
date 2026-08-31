@@ -165,7 +165,7 @@ export function AppShell({
           {account && (
             <Button
               size="sm"
-              variant="quiet"
+              variant="tertiary"
               onClick={() => {
                 void forgetTenant(account.tenantId)
                   .catch(() => {})
