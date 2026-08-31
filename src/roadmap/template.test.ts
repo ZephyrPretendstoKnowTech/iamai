@@ -69,8 +69,10 @@ test('item 12: every goal × implementation renders Do it from the template with
       assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
       assert.ok(action.portalSteps.length >= 4, `${goal.id}: portal steps`)
       assert.match(action.powershell ?? '', /Invoke-MgGraphRequest -Method POST/, `${goal.id}: PowerShell`)
-      // Nothing that would only make sense to a developer leaks into the portal steps.
-      assert.equal(action.portalSteps.some((l) => /\{[a-zA-Z]+\}|__IAMAI_/.test(l)), false, `${goal.id}: no raw placeholder in portal steps: ${action.portalSteps.join(' | ')}`)
+      // Nothing that would only make sense to a developer leaks into the portal
+      // steps: no placeholder, and no urn:user:… — a user action reads by name
+      // ("Register security information"), the URN staying in the JSON (item 7).
+      assert.equal(action.portalSteps.some((l) => /\{[a-zA-Z]+\}|__IAMAI_|urn:user:/.test(l)), false, `${goal.id}: no raw placeholder or URN in portal steps: ${action.portalSteps.join(' | ')}`)
     }
   }
 })

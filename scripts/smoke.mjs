@@ -281,6 +281,26 @@ try {
   await sleep(700)
   check('Plan: ticking a Done-when marks it done', await evaluate(`(document.querySelector('main.page .tick input[type=checkbox]') || {}).checked === true`))
 
+  // Item 9: an answered question chip reflects its answer and offers change.
+  const mailChip = () => evaluate(`([...document.querySelectorAll('main.page .assumption button.chip')].find((b) => /mail-sending devices/.test(b.textContent)) || {}).textContent || ''`)
+  const openMailChip = () => evaluate(`(() => { const b = [...document.querySelectorAll('main.page .assumption button.chip')].find((x) => /mail-sending devices/.test(x.textContent)); if (b) b.click(); return !!b })()`)
+  const typeAnswer = (v) => evaluate(`(() => { const ta = document.querySelector('main.page .assumption-editor textarea'); if (!ta) return false; const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set; setter.call(ta, ${JSON.stringify(v)}); ta.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
+  check('Plan: the mail-devices question reads none seen and offers answer', /mail-sending devices none seen · answer/.test(await mailChip()))
+  await openMailChip()
+  await sleep(200)
+  await typeAnswer('the office printer')
+  await sleep(100)
+  await clickText('/^Save$/')
+  await sleep(400)
+  check('Plan: answering the question flips the chip to listed and offers change', /mail-sending devices 1 listed · change/.test(await mailChip()))
+  await openMailChip()
+  await sleep(200)
+  await typeAnswer('')
+  await sleep(100)
+  await clickText('/^Save$/')
+  await sleep(400)
+  check('Plan: clearing the answer reverts the chip to none seen and answer', /mail-sending devices none seen · answer/.test(await mailChip()))
+
   // Export (target-state §7): six cards, every button makes bytes, and the plan
   // file round-trips carrying the tick just made.
   await go('export')

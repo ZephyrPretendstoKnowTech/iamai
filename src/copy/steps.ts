@@ -527,6 +527,15 @@ export const PORTAL_WORDS = {
     Array.isArray(values) && values.length > 0 ? values.map((v) => CLIENT_APP_WORDS[String(v).toLowerCase()] ?? String(v)).join(', ') : '',
   platforms: (values: unknown): string =>
     Array.isArray(values) && values.length > 0 ? values.map((v) => PLATFORM_WORDS[String(v).toLowerCase()] ?? String(v)).join(', ') : '',
+  // A user action reads as its portal name, never the urn:user: value (prompt
+  // 49.1 item 7). The URN stays in the JSON, where it is the field's real value.
+  userActions: (values: unknown): string =>
+    Array.isArray(values) && values.length > 0 ? [...new Set(values.map((v) => USER_ACTION_WORDS[String(v).toLowerCase()] ?? String(v)))].join(', ') : '',
+}
+
+const USER_ACTION_WORDS: Record<string, string> = {
+  'urn:user:registersecurityinfo': 'Register security information',
+  'urn:user:registerdevice': 'Register or join a device',
 }
 
 /** What a template placeholder stands for, where the portal steps name it before the object exists (prompt 46 item 12). */

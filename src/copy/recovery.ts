@@ -27,7 +27,7 @@ export const RECOVERY = {
     'No emergency access accounts are nominated in this plan. That is the first thing to fix: without one, a policy that locks everybody out has no way back in. The plan has a step for it.',
   accountsNote: 'Sign in with one of these if your own account is locked out.',
   credentialTitle: 'Where the credential is',
-  credentialNone: 'Setup has no answer for where these credentials are kept. Write it here by hand before filing this card.',
+  credentialNone: 'Not recorded. Write it here by hand before filing this card.',
 
   disableTitle: 'Turn a Conditional Access policy off',
   disableSteps: [

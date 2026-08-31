@@ -1,5 +1,5 @@
 {
- "fingerprint": "932aa35a064436d4",
+ "fingerprint": "a636dbadecdee963",
  "surfaces": [
   {
    "name": "Header",
@@ -2726,7 +2726,7 @@
     "Keep the printout where only the right people can reach it.",
     "Sign in with one of these if your own account is locked out.",
     "bg01@contoso.onmicrosoft.com",
-    "Setup has no answer for where these credentials are kept.",
+    "Not recorded.",
     "Write it here by hand before filing this card.",
     "Go to entra.microsoft.com and sign in.",
     "Protection → Conditional Access → Policies.",
@@ -2757,7 +2757,6 @@
     "Keep the printout where only the right people can reach it.": 1,
     "Sign in with one of these if your own account is locked out.": 1,
     "bg01@contoso.onmicrosoft.com": 1,
-    "Setup has no answer for where these credentials are kept.": 1,
     "Write it here by hand before filing this card.": 1,
     "Go to entra.microsoft.com and sign in.": 1,
     "Protection → Conditional Access → Policies.": 1,
@@ -2780,7 +2779,6 @@
     "Keep the printout where only the right people can reach it.": 1,
     "Sign in with one of these if your own account is locked out.": 1,
     "bg01@contoso.onmicrosoft.com": 1,
-    "Setup has no answer for where these credentials are kept.": 1,
     "Write it here by hand before filing this card.": 1,
     "Go to entra.microsoft.com and sign in.": 1,
     "Protection → Conditional Access → Policies.": 1,
@@ -2807,18 +2805,16 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 257,
-    "total": 289
+    "sentences": 249,
+    "total": 281
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
-   "forbidEverywhereHits": [
-    "Setup has no answer"
-   ],
+   "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 27,
-    "words": 258
+    "words": 250
    },
    "contract": "recovery",
    "state": "scanned",

@@ -17,7 +17,7 @@ import type { PickerOption } from '../components/index.ts'
 import type { PlanData, PlanComputed } from './planData.ts'
 
 type Kind = 'fact' | 'weak' | 'question'
-type Chip = { id: string; label: string; kind: Kind; signals?: string[]; explain?: string; editor: (close: () => void) => React.ReactNode }
+type Chip = { id: string; label: string; kind: Kind; signals?: string[]; explain?: string; answered?: boolean; editor: (close: () => void) => React.ReactNode }
 
 export function AssumptionsStrip({ data, snapshot, baseline, computed }: { data: PlanData; snapshot: TenantSnapshot; baseline: BaselineResult | null; computed: PlanComputed }) {
   const [open, setOpen] = useState<string | null>(null)
@@ -31,8 +31,8 @@ export function AssumptionsStrip({ data, snapshot, baseline, computed }: { data:
       <span className="muted">{C.assumes}</span>
       {chips.map((chip) => (
         <span key={chip.id} className="assumption">
-          <button type="button" className={`chip status status-${chip.kind === 'weak' ? 'wait' : chip.kind === 'question' ? 'wait' : 'idle'}`} onClick={() => setOpen((o) => (o === chip.id ? null : chip.id))}>
-            {chip.label} · {chip.kind === 'weak' ? C.confirm : chip.kind === 'question' ? 'answer' : C.change}
+          <button type="button" className={`chip status status-${chip.kind === 'weak' || (chip.kind === 'question' && !chip.answered) ? 'wait' : 'idle'}`} onClick={() => setOpen((o) => (o === chip.id ? null : chip.id))}>
+            {chip.label} · {chip.kind === 'weak' ? C.confirm : chip.kind === 'question' && !chip.answered ? C.answer : C.change}
           </button>
           {open === chip.id && (
             <span className="assumption-editor">
@@ -202,18 +202,25 @@ function buildChips(m: MappingState, snapshot: TenantSnapshot, data: PlanData): 
     editor: (close) => <TimeZoneEditor selected={m.displayTimeZone ?? 'UTC'} onSave={(tz) => { save((s) => ({ ...s, displayTimeZone: tz, wizardAnswered: { ...s.wizardAnswered, timeZone: true }, assumed: { ...(s.assumed ?? {}), timeZone: 'confirmed' } })); close() }} />,
   })
 
-  // The three questions the tool cannot answer from evidence.
+  // The three questions the tool cannot answer from evidence. Once answered the
+  // chip reflects the answer (`1 listed`) and offers `change` (prompt 49.1 item 9).
   const qa = m.questionAnswers ?? {}
-  const question = (id: string, label: string, prompt: string): Chip => ({
-    id,
-    label,
-    kind: 'question',
-    explain: C.explain[id],
-    editor: (close) => <FreeTextEditor prompt={prompt} value={qa[id] ?? ''} onSave={(text) => { save((s) => ({ ...s, questionAnswers: { ...(s.questionAnswers ?? {}), [id]: text } })); close() }} />,
-  })
-  chips.push(question('mailDevices', C.assumption.mailDevices, C.editor.mailDevicesPrompt))
-  chips.push(question('travel', C.assumption.travel, C.editor.travelPrompt))
-  chips.push(question('partner', C.assumption.partner, C.editor.partnerPrompt))
+  const listedCount = (text: string): number => text.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean).length
+  const question = (id: string, unanswered: string, answeredLabel: (n: number) => string, prompt: string): Chip => {
+    const answer = (qa[id] ?? '').trim()
+    const answered = answer.length > 0
+    return {
+      id,
+      label: answered ? answeredLabel(listedCount(answer)) : unanswered,
+      kind: 'question',
+      answered,
+      explain: C.explain[id],
+      editor: (close) => <FreeTextEditor prompt={prompt} value={qa[id] ?? ''} onSave={(text) => { save((s) => ({ ...s, questionAnswers: { ...(s.questionAnswers ?? {}), [id]: text } })); close() }} />,
+    }
+  }
+  chips.push(question('mailDevices', C.assumption.mailDevices, C.assumption.mailDevicesListed, C.editor.mailDevicesPrompt))
+  chips.push(question('travel', C.assumption.travel, C.assumption.travelListed, C.editor.travelPrompt))
+  chips.push(question('partner', C.assumption.partner, C.assumption.partnerListed, C.editor.partnerPrompt))
 
   void Status
   return chips

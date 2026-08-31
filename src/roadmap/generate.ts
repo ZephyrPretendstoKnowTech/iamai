@@ -24,7 +24,7 @@ import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
 import { DEFAULT_REVERT_PERCENT } from './watch.ts'
 import { SAFE } from '../copy/timing.ts'
-import { MANAGER, plainTitleFor } from '../copy/plain.ts'
+import { MANAGER, MANAGER_BY_GOAL, plainTitleFor } from '../copy/plain.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingState } from '../mapping/types.ts'
@@ -363,7 +363,7 @@ export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholde
     `Users → Include: ${inc || 'as exported'}${label(users.excludeGroups) ? `; Exclude groups: ${label(users.excludeGroups)}` : ''}${label(users.excludeUsers) ? `; Exclude users: ${label(users.excludeUsers)}` : ''}`,
   )
   const appInc = label(apps.includeApplications)
-  const actions = label(apps.includeUserActions)
+  const actions = PORTAL_WORDS.userActions(apps.includeUserActions)
   lines.push(
     actions
       ? `Target resources → User actions: ${actions}`
@@ -1253,7 +1253,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       denies: impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location',
       plainTitle: plainTitleFor(goal.id, stepTitle(goal.name)),
       forManager:
-        readiness.family === 'mfa' || readiness.family === 'guest'
+        MANAGER_BY_GOAL[goal.id]?.() ??
+        (readiness.family === 'mfa' || readiness.family === 'guest'
           ? readiness.family === 'guest'
             ? MANAGER.guest(pop.active)
             : MANAGER.mfa(pop.active, notReadyActive)
@@ -1267,7 +1268,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                   ? MANAGER.device(pop.active, pop.active - popIds.filter((id) => contentIndexes.deviceReady.has(id) && popIndex.active.has(id)).length)
                   : sessionOnly || /session/i.test(goal.name)
                     ? MANAGER.session(pop.active)
-                    : MANAGER.other(),
+                    : MANAGER.other()),
       rollbackBody: kind === 'adjust' && existingRaw ? JSON.stringify(existingRaw, null, 2) : null,
       whatChanges:
         status === 'done' ? WHAT_CHANGES.done : kind === 'adjust' ? WHAT_CHANGES.adjust(existing?.policyName ?? stepTitle(goal.name), action.changes?.length ?? adjustSections.size) : WHAT_CHANGES.createPlain(goal.id, readiness.family),
