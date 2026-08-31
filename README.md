@@ -1,4 +1,4 @@
-# IAMAI
+# IAMAI Planner
 
 **Home:** https://getiamai.com · **The planner:** https://getiamai.com/rollout/
 

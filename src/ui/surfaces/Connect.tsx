@@ -57,6 +57,7 @@ function SignedOut() {
   const rows = scopeRows().filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length > 0)
   return (
     <>
+      <p className="lede">{C.lede}</p>
       <ul>
         {C.need.map((line) => (
           <li key={line}>{line}</li>

@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { PRODUCT } from './src/copy/product.ts'
 
 // Dev-only: lets the spike harness save raw result JSON to docs/spikes/raw/.
 // This middleware exists only in the local dev server; the shipped app is a
@@ -34,6 +35,17 @@ function spikeCapture(): Plugin {
           res.end('ok')
         })
       })
+    },
+  }
+}
+
+// The page title, from the one PRODUCT constant (prompt 47.1 Part 4): the name
+// and the descriptor, joined the way a browser tab expects.
+function productTitle(): Plugin {
+  return {
+    name: 'product-title',
+    transformIndexHtml(html) {
+      return html.replace('__PRODUCT_TITLE__', `${PRODUCT.name} — ${PRODUCT.descriptor}`)
     },
   }
 }
@@ -79,7 +91,7 @@ export default defineConfig({
   // absolute URL, so nothing else has to change between them.
   base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? `/${TOOL_PATH}/`,
   build: { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
-  plugins: [react(), spikeCapture()],
+  plugins: [react(), spikeCapture(), productTitle()],
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },
 })

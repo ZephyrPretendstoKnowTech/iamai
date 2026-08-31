@@ -1,9 +1,12 @@
 // Connect (prompt 47 Part 4, target-state §3): one page, four states. Where
 // target-state gives the exact line, it is used verbatim.
 import { count, lowerFirst } from './statements.ts'
+import { PRODUCT } from './product.ts'
 
 export const CONNECT = {
   title: 'Connect a tenant',
+  /** One line under the heading, signed out (target-state §3). */
+  lede: `${PRODUCT.tagline} Read-only.`,
   /** Three lines, as a list: what is needed, what IAMAI reads, what it never does. */
   need: [
     'Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.',
