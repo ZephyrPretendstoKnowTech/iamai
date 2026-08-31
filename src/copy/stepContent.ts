@@ -40,8 +40,6 @@ export const SECTION = {
   whatToSay: 'What to say',
   ringAnnouncement: (ring: string, date: string) => `${ring} · ${date}`,
   scheduledDate: 'Scheduled date',
-  scheduledHint: 'Setting a date moves this step and everything that waits for it; the rings follow.',
-  scheduledClear: 'Use the plan date',
   filterLabel: 'Sign-in log filter (paste into the filter box):',
   goodLooksLike: 'Good looks like:',
 }
@@ -185,7 +183,7 @@ export const FAILURE = {
     },
   },
   guest: {
-    noTap: 'Guests who get stuck: a Temporary Access Pass cannot be issued to an external guest, so the usual rescue does not exist',
+    noTap: 'Guests who get stuck have no usual rescue, because a Temporary Access Pass cannot be issued to an external guest',
     partner: 'An IT partner administering this tenant through delegated access, which a policy aimed at external users can sever. Scope it with the Service provider user type rather than by naming people.',
     home: 'Guests whose home tenant MFA is not trusted here, prompted to register again',
     evidence: {

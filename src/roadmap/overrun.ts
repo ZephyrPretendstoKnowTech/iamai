@@ -16,10 +16,7 @@ import type { Step } from './types.ts'
 /** The length this product is built for. Past it, the plan explains itself. */
 export const LONG_PLAN_WEEKS = 12
 
-export type Remedy =
-  | { kind: 'pace'; cap: number; weeks: number }
-  | { kind: 'defer'; stepIds: string[]; weeks: number }
-  | { kind: 'readiness'; people: number; weeks: number }
+export type Remedy = { kind: 'defer'; stepIds: string[]; weeks: number } | { kind: 'readiness'; people: number; weeks: number }
 
 export type Overrun = { weeks: number; over: boolean; remedies: Remedy[] }
 
@@ -30,9 +27,10 @@ function weeksWith(steps: Step[], day0: string, active: number, band: SizeBand |
 }
 
 /**
- * Three levers, tried in the order a person would want them: go faster, do less,
- * or get people registered. Each is reported only when it actually helps, and
- * with the length it actually produces.
+ * Two levers, in the order a person would want them: do less, or get people
+ * registered. Each is reported only when it actually helps, and with the
+ * length it actually produces. Pace is not a lever any more: the weekly cap
+ * is a constant of the band (target-state §9).
  */
 export function overrunFor(
   steps: Step[],
@@ -45,14 +43,7 @@ export function overrunFor(
   if (weeks <= LONG_PLAN_WEEKS) return { weeks, over: false, remedies: [] }
   const remedies: Remedy[] = []
 
-  // 1. Pace. One more change window a week, if it helps.
-  const cap = options.enforcementCap ?? 0
-  if (cap > 0) {
-    const faster = weeksWith(steps, day0, active, band, { ...options, enforcementCap: cap + 1 })
-    if (faster < weeks) remedies.push({ kind: 'pace', cap: cap + 1, weeks: faster })
-  }
-
-  // 2. Deferral. The steps at the end of the plan, taken off one at a time
+  // 1. Deferral. The steps at the end of the plan, taken off one at a time
   // until the rest fits, so the list is the shortest that actually works.
   const enforcing = steps
     .filter((s) => s.rings[0] && s.status !== 'done' && s.status !== 'skipped')
@@ -68,12 +59,12 @@ export function overrunFor(
     }
   }
 
-  // 3. Readiness. What the plan becomes once nobody needs a method set up,
+  // 2. Readiness. What the plan becomes once nobody needs a method set up,
   // which is the campaign's whole reason for existing.
   const verify = steps.find((s) => s.kind === 'verify' && s.status !== 'done')
   if (verify) {
     const done = steps.map((s) => (s.id === verify.id ? { ...s, status: 'done' as const } : s))
-    const w = weeksWith(done, day0, active, band, { ...options, campaignDays: 0 })
+    const w = weeksWith(done, day0, active, band, { ...options, registrationDays: 0 })
     if (w < weeks) remedies.push({ kind: 'readiness', people: verify.population.active, weeks: w })
   }
 

@@ -417,7 +417,6 @@ export const STATE_REASON = {
   // One voice for every blocked step (prompt 37 §6). The causes are bare
   // clauses; the prefix is supplied here and nowhere else, so nothing reads
   // "Blocked by: ... Blocked while ...".
-  blocked: (causes: string[]) => `Blocked until ${list(causes)}.`,
   evidence: (line: string) => `${line}`,
   noEvidenceYet: 'No sign-in evidence collected yet.',
   checked: (checks: string[]) => `Checked: ${list(checks)}.`,

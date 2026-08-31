@@ -10,7 +10,7 @@ import { emptyCapabilities } from '../../licensing/capabilities.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { stepIdForGoal } from '../generate.ts'
 
-export type FixtureName = 'micro' | 'small' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile'
+export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile'
 
 export type Fixture = {
   name: FixtureName
@@ -86,6 +86,8 @@ type Spec = {
   exclusionGroupSize?: number
   midflight?: boolean
   hostile?: boolean
+  /** The last N people have never signed in: no sign-in date, no method, no evidence (the GetIAMAI shape). */
+  neverSignedIn?: number
   expect: FixtureExpectations
 }
 
@@ -151,9 +153,10 @@ export function buildFixture(spec: Spec): Fixture {
     const isAdmin = i < spec.admins
     const guest = !isAdmin && rand() < 0.05
     const dept = isAdmin && i < 3 ? 'IT' : pick(DEPARTMENTS)
-    const lastDays = rand() < 0.85 ? Math.floor(rand() * 45) : 90 + Math.floor(rand() * 200)
+    const never = spec.neverSignedIn !== undefined && i >= total - spec.neverSignedIn
+    const lastDays = never ? 100_000 : rand() < 0.85 ? Math.floor(rand() * 45) : 90 + Math.floor(rand() * 200)
     const tier = rand()
-    const methods = tier < 0.12 ? [] : tier < 0.25 ? ['mobilePhone'] : tier < 0.85 ? ['microsoftAuthenticatorPush'] : ['microsoftAuthenticatorPush', 'passKeyDeviceBound']
+    const methods = never ? [] : tier < 0.12 ? [] : tier < 0.25 ? ['mobilePhone'] : tier < 0.85 ? ['microsoftAuthenticatorPush'] : ['microsoftAuthenticatorPush', 'passKeyDeviceBound']
     users.push({
       id,
       displayName: `${pick(FIRST)} ${pick(LAST)}`,
@@ -161,7 +164,7 @@ export function buildFixture(spec: Spec): Fixture {
       userType: guest ? 'guest' : 'member',
       usageLocation: spec.multiGeo ? pick(COUNTRIES) : 'AU',
       createdDateTime: daysAgo(300 + Math.floor(rand() * 900)),
-      lastSuccessfulSignIn: daysAgo(lastDays),
+      lastSuccessfulSignIn: never ? null : daysAgo(lastDays),
       accountEnabled: true,
       mail: null,
       assignedPlans: p1 ? [{ servicePlanId: AAD_P1, capabilityStatus: 'Enabled' }] : [],
@@ -342,19 +345,31 @@ export function syntheticBaseline(seed: string): BaselinePackage {
 }
 
 export const FIXTURE_SPECS: Spec[] = [
-  { name: 'micro', users: 8, admins: 1, licence: 'none', policies: 0, securityDefaults: true, expect: { rings: 1, weeksAtMost: 5, namesListed: true, policyCapWarning: false } },
+  // Expected lengths are what the model computes (target-state §9), not targets:
+  // small band ≤4 weeks, mid ≤8, large ≤12 where it lands there, and the real
+  // number where it does not, with the constraint named in the test that reads it.
+  { name: 'micro', users: 8, admins: 1, licence: 'none', policies: 0, securityDefaults: true, expect: { rings: 1, weeksAtMost: 4, namesListed: true, policyCapWarning: false } },
   // Recomputed with batching (prompt 41 §8). The weekly cap counts supervised
   // change windows rather than steps, so twelve enforceable steps on the small
   // fixture now occupy two change days instead of seven, and the plan is five
   // weeks instead of seven. What sets every one of these numbers is the
   // registration campaign and the ring soak after it, not the enforcement pace.
-  { name: 'small', users: 28, admins: 2, licence: 'p1', policies: 3, expect: { rings: 2, weeksAtMost: 7, namesListed: true, policyCapWarning: false } },
-  { name: 'mid', users: 280, admins: 14, licence: 'mixed', policies: 11, serviceAccounts: 3, expect: { rings: 3, weeksAtMost: 9, namesListed: false, policyCapWarning: false } },
-  { name: 'large', users: 4900, admins: 60, licence: 'p1', policies: 40, hybrid: true, intuneShare: 0.55, expect: { rings: 4, weeksAtMost: 9, namesListed: false, policyCapWarning: true } },
-  { name: 'huge', users: 25000, admins: 300, licence: 'p2', policies: 120, multiGeo: true, expect: { rings: 4, weeksAtMost: 10, namesListed: false, policyCapWarning: true } },
-  { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 20, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: true } },
-  { name: 'midflight', users: 60, admins: 3, licence: 'p1', policies: 6, midflight: true, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
-  { name: 'hostile', users: 40, admins: 2, licence: 'p1', policies: 3, hostile: true, expect: { rings: 3, weeksAtMost: 9, namesListed: false, policyCapWarning: false } },
+  { name: 'small', users: 28, admins: 2, licence: 'p1', policies: 3, expect: { rings: 1, weeksAtMost: 4, namesListed: true, policyCapWarning: false } },
+  // The GetIAMAI shape (prompt 46 item 18): 4 people who sign in (two of them the
+  // break-glass accounts) and 9 who never have. Four weeks at most, with no registration window on the
+  // critical path.
+  { name: 'getiamai', users: 11, admins: 1, licence: 'p1', policies: 0, neverSignedIn: 9, expect: { rings: 1, weeksAtMost: 4, namesListed: true, policyCapWarning: false } },
+  { name: 'mid', users: 280, admins: 14, licence: 'mixed', policies: 11, serviceAccounts: 3, expect: { rings: 2, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
+  { name: 'large', users: 4900, admins: 60, licence: 'p1', policies: 40, hybrid: true, intuneShare: 0.55, expect: { rings: 4, weeksAtMost: 12, namesListed: false, policyCapWarning: true } },
+  // 21,000 active people: two change windows a week, four rings of seven days
+  // (above 3,000 the ring shape is unchanged), two high-disruption steps that
+  // cannot share a window. Fourteen weeks is what that computes to.
+  { name: 'huge', users: 25000, admins: 300, licence: 'p2', policies: 120, multiGeo: true, expect: { rings: 4, weeksAtMost: 14, namesListed: false, policyCapWarning: true } },
+  { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 20, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 2, weeksAtMost: 8, namesListed: false, policyCapWarning: true } },
+  { name: 'midflight', users: 60, admins: 3, licence: 'p1', policies: 6, midflight: true, expect: { rings: 2, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
+  // 36 active people and no sign-in evidence at all: nothing is in the zero
+  // class, so MFA, device and session changes chain a soak apart; 34 days.
+  { name: 'hostile', users: 40, admins: 2, licence: 'p1', policies: 3, hostile: true, expect: { rings: 1, weeksAtMost: 4, namesListed: false, policyCapWarning: false } },
 ]
 
 export function allFixtures(): Fixture[] {

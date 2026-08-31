@@ -18,7 +18,7 @@ export const DEPENDENCY = {
 }
 
 export const CALENDAR = {
-  noFriday: 'Enforcement never starts on a Friday or a weekend.',
+  noFriday: 'Enforcement lands on a Tuesday, Wednesday or Thursday, never a Friday or a weekend.',
   weeklyCap: (n: number) => `At most ${count(n, 'enforcement event')} a week for this size of tenant.`,
   freeze: (from: string, to: string) => `Change freeze from ${from} to ${to}: nothing is enforced inside it.`,
   freezeLabel: 'Change freeze',
@@ -47,7 +47,6 @@ export const CRITICAL = {
   // its own clause where its shape cannot break the sentence.
   cap: (n: number, step: string) => `only ${count(n, 'change window')} a week fit this size of tenant, and the last of them goes to ${step}`,
   freeze: (to: string, step: string) => `the change freeze ends on ${to} and ${step} starts after it`,
-  scheduled: (step: string, date: string) => `${step} is scheduled by hand for ${date}`,
   phase: (step: string, phase: string) => `${step} follows the ${phase} steps, which start first`,
   soft: (step: string, other: string) => `two changes prompt the same people, so ${step} cannot run in the same window as ${other}`,
   prerequisites: (n: number) => `${count(n, 'prerequisite')} take the first days`,
@@ -65,7 +64,6 @@ export const OVERRUN = {
   title: 'This plan is longer than most',
   lead: (weeks: number, bound: number) =>
     `At ${count(weeks, 'week')} this runs past the ${bound} weeks this planner is built for. Any one of these brings it back inside.`,
-  pace: (cap: number, weeks: number) => `Raise the pace to ${count(cap, 'change window')} a week: ${count(weeks, 'week')}.`,
   defer: (names: string[], weeks: number) =>
     `Defer ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`}: ${count(weeks, 'week')}.`,
   readiness: (people: number, weeks: number) =>

@@ -7,8 +7,12 @@ import type { TenantRhythm } from './rhythm.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
 import type { Step, StepEvent, StepEvents } from './types.ts'
 
-export type NoticeSettings = { low: number; medium: number; high: number }
-export const NOTICE_DEFAULTS: NoticeSettings = { low: 2, medium: 5, high: 10 }
+/**
+ * Notice, in working days, by disruption (target-state §9). Constants, not
+ * settings: when the records show no affected active person the notice is one
+ * working day, as a courtesy; otherwise 2 / 5 / 10 by disruption.
+ */
+export const NOTICE_WORKING_DAYS = { none: 1, low: 2, medium: 5, high: 10 } as const
 export const CARE_MINIMUM_NOTICE = 5
 const HIGH_DISRUPTION = 4
 const MEDIUM_DISRUPTION = 3
@@ -19,9 +23,6 @@ const ENFORCE_EARLIEST = 9
 
 export type TimingContext = {
   rhythm: TenantRhythm
-  notice: NoticeSettings
-  /** YYYY-MM-DD dates nothing is enforced on, or the working day before. */
-  holidays: string[]
   timeZone: string
 }
 
@@ -30,15 +31,11 @@ export function weekdayOf(iso: string): number {
   return (new Date(iso).getUTCDay() + 6) % 7
 }
 
-export function isHoliday(iso: string, holidays: string[]): boolean {
-  return holidays.includes(iso.slice(0, 10))
-}
-
-/** A working day: Monday to Friday, not a holiday. The tenant's rhythm can add weekend days. */
-export function isWorkingDay(iso: string, ctx: Pick<TimingContext, 'holidays' | 'rhythm'>): boolean {
+/** A working day: Monday to Friday. The tenant's rhythm can add weekend days. */
+export function isWorkingDay(iso: string, ctx: Pick<TimingContext, 'rhythm'>): boolean {
   const d = weekdayOf(iso)
   const weekend = d >= 5 && !ctx.rhythm.workingDays.includes(d)
-  return !weekend && !isHoliday(iso, ctx.holidays)
+  return !weekend
 }
 
 export function addDays(iso: string, days: number): string {
@@ -47,8 +44,21 @@ export function addDays(iso: string, days: number): string {
   return d.toISOString()
 }
 
+/** Step forward N working days from a date. */
+export function addWorkingDays(iso: string, n: number, ctx: Pick<TimingContext, 'rhythm'> = WEEKDAYS): string {
+  let cursor = iso
+  let left = n
+  let guard = 0
+  while (left > 0 && guard < 400) {
+    cursor = addDays(cursor, 1)
+    if (isWorkingDay(cursor, ctx)) left -= 1
+    guard += 1
+  }
+  return cursor
+}
+
 /** Step back N working days from a date. */
-export function workingDaysBefore(iso: string, n: number, ctx: Pick<TimingContext, 'holidays' | 'rhythm'>): string {
+export function workingDaysBefore(iso: string, n: number, ctx: Pick<TimingContext, 'rhythm'>): string {
   let cursor = iso
   let left = n
   let guard = 0
@@ -60,41 +70,19 @@ export function workingDaysBefore(iso: string, n: number, ctx: Pick<TimingContex
   return cursor
 }
 
-/** The last working day before a holiday is never an enforcement day (§2.2). */
-export function isDayBeforeHoliday(iso: string, ctx: Pick<TimingContext, 'holidays' | 'rhythm'>): boolean {
-  let next = addDays(iso, 1)
-  let guard = 0
-  while (!isWorkingDay(next, ctx) && guard < 10) {
-    if (isHoliday(next, ctx.holidays)) return true
-    next = addDays(next, 1)
-    guard += 1
-  }
-  return isHoliday(next, ctx.holidays)
-}
+const WEEKDAYS: Pick<TimingContext, 'rhythm'> = { rhythm: { workingDays: [0, 1, 2, 3, 4] } as TenantRhythm }
 
 /**
- * The enforcement day for a change: Tuesday or Wednesday (Tuesday only when
- * high-disruption), never a Friday, a holiday, the last working day before
- * one, or a weekend. Weekend-active tenants still enforce midweek: the rule
- * is about support cover, not about who is signed in.
+ * The enforcement day for a change: Tuesday, Wednesday or Thursday
+ * (target-state §9), never a Friday or a weekend. A change freeze, and the
+ * last working day before one, are the scheduler's to avoid: it knows the
+ * freeze. Weekend-active tenants still enforce midweek: the rule is about
+ * support cover, not about who is signed in.
  */
-export function toEnforcementDay(iso: string, opts: { highDisruption?: boolean; holidays?: string[]; rhythm?: TenantRhythm | null } = {}): string {
-  const ctx = { holidays: opts.holidays ?? [], rhythm: opts.rhythm ?? { workingDays: [0, 1, 2, 3, 4] } as TenantRhythm }
-  // No holidays: pure weekday arithmetic (the scheduler calls this thousands of times on a large tenant).
-  if (ctx.holidays.length === 0) {
-    const d = weekdayOf(iso)
-    if (opts.highDisruption) return d === 1 ? iso : addDays(iso, (1 - d + 7) % 7)
-    if (d === 1 || d === 2) return iso
-    return addDays(iso, (1 - d + 7) % 7)
-  }
-  let cursor = iso
-  for (let guard = 0; guard < 60; guard++) {
-    const d = weekdayOf(cursor)
-    const allowedDay = opts.highDisruption ? d === 1 : d === 1 || d === 2
-    if (allowedDay && !isHoliday(cursor, ctx.holidays) && !isDayBeforeHoliday(cursor, ctx)) return cursor
-    cursor = addDays(cursor, 1)
-  }
-  return cursor
+export function toEnforcementDay(iso: string): string {
+  const d = weekdayOf(iso)
+  if (d >= 1 && d <= 3) return iso
+  return addDays(iso, (1 - d + 7) % 7)
 }
 
 function atLocalHour(iso: string, hour: number, timeZone: string): string {
@@ -164,17 +152,20 @@ function spreadHour(base: number, stepId: string, ctx: TimingContext): number {
 }
 
 /**
- * An hour an announcement will actually be read: early in the working day, and
- * never in its last two hours.
+ * The records show no affected active person: sign-in evidence was read, and
+ * nobody in it meets this change. The same bar as the scheduler's zero batch
+ * class, never merely absent evidence.
  */
-function readableHour(hours: { start: number; end: number }): number {
-  const early = hours.start + 1
-  return Math.min(early, Math.max(hours.start, hours.end - 2))
+export function nobodyAffected(step: Step): boolean {
+  const family = step.readiness.family
+  const affected = family === 'block' || family === 'location' ? step.evidence.affectedUserIds.length : step.population.active
+  return step.evidence.status === 'ok' && affected === 0
 }
 
-export function noticeDaysFor(step: Step, notice: NoticeSettings): number {
+export function noticeDaysFor(step: Step): number {
+  if (nobodyAffected(step)) return NOTICE_WORKING_DAYS.none
   const disruption = step.score?.disruption ?? 1
-  const base = disruption >= HIGH_DISRUPTION ? notice.high : disruption >= MEDIUM_DISRUPTION ? notice.medium : notice.low
+  const base = disruption >= HIGH_DISRUPTION ? NOTICE_WORKING_DAYS.high : disruption >= MEDIUM_DISRUPTION ? NOTICE_WORKING_DAYS.medium : NOTICE_WORKING_DAYS.low
   return step.highCare.userIds.length > 0 ? Math.max(base, CARE_MINIMUM_NOTICE) : base
 }
 
@@ -198,47 +189,38 @@ export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
   const enforceAt = atLocalHour(enforceDay, peakHour, ctx.timeZone)
   const enforceReason = step.safeToday
     ? EVENT.reason.enforceSafeToday
-    : [high ? EVENT.reason.enforceHighTuesday : null, ctx.rhythm.status === 'ok' && ctx.rhythm.peak ? EVENT.reason.enforcePeak(`${WEEKDAY_NAMES[ctx.rhythm.peak.weekday]} ${hourLabel(ctx.rhythm.peak.hour)}`) : EVENT.reason.enforceDefault].filter(Boolean).join(' ')
+    : ctx.rhythm.status === 'ok' && ctx.rhythm.peak
+      ? EVENT.reason.enforcePeak(`${WEEKDAY_NAMES[ctx.rhythm.peak.weekday]} ${hourLabel(ctx.rhythm.peak.hour)}`)
+      : EVENT.reason.enforceDefault
   const enforce = event(enforceAt, enforceReason, ctx, 'enforce')
-  if (step.safeToday) return { announce: null, remind: null, remindMorning: null, enforce, noticeDays: 0 }
 
-  const noticeDays = noticeDaysFor(step, ctx.notice)
-  // Announce on a day the tenant actually works (prompt 37 §17). Tuesday and
-  // Wednesday remain the preference: a Monday inbox is full and a Friday note is
-  // read on Monday. A tenant whose people do not work midweek is not told to
-  // announce into an empty office, and when the rhythm is unreadable the
-  // defaults apply and the reason says so.
-  //
-  // The HOUR is no longer the quietest working hour. That was backwards: the
-  // quietest hour is when fewest people are signed in, which is the worst time
-  // to send something you want read, and on a tenant whose quiet hour sits late
-  // it put announcements at the end of the working day (review-09 finding 11,
-  // prompt 42 §12). An announcement goes out early enough to be read and acted
-  // on the same day, and never in the last two hours.
+  // Notice is a constant of the change, never a setting (target-state §9): one
+  // working day as a courtesy when the records show nobody affected, which a
+  // safe-today step always is; otherwise 2 / 5 / 10 by disruption. Announce at
+  // 09:30 on a Monday to Thursday the tenant works: a Friday note is read on
+  // Monday, and 09:30 is early enough to be read and acted on the same day.
+  const courtesy = nobodyAffected(step)
+  const noticeDays = noticeDaysFor(step)
   const usable = ctx.rhythm.status === 'ok' && ctx.rhythm.workingDays.length > 0
   const worksOn = (d: number): boolean => !usable || ctx.rhythm.workingDays.includes(d)
-  const announceHour = usable ? readableHour(ctx.rhythm.workingHours) : ANNOUNCE_HOUR
+  const announceHour = ANNOUNCE_HOUR
   let announceDay = workingDaysBefore(enforceDay, noticeDays, ctx)
   for (let guard = 0; guard < 14; guard++) {
     const d = weekdayOf(announceDay)
-    if ((d === 1 || d === 2) && worksOn(d)) break
+    if (d <= 3 && worksOn(d)) break
     announceDay = addDays(announceDay, -1)
   }
-  // Neither preferred day is a working day here: take the latest working day
-  // that still clears the notice period.
-  if (!worksOn(weekdayOf(announceDay))) {
-    announceDay = workingDaysBefore(enforceDay, noticeDays, ctx)
-    for (let guard = 0; guard < 14 && !worksOn(weekdayOf(announceDay)); guard++) announceDay = addDays(announceDay, -1)
-  }
-  const announceTime = hourLabel(Math.floor(announceHour))
+  const announceTime = '09:30'
   const chosenDay = WEEKDAY_NAMES[weekdayOf(announceDay)]
   const announceReason = [
     usable ? EVENT.reason.announceOn(chosenDay, announceTime) : `${EVENT.reason.announceDefaultDay(chosenDay, announceTime)} ${EVENT.reason.announceNoRhythm}`,
-    step.highCare.userIds.length > 0 ? EVENT.reason.announceCare : EVENT.reason.announceNotice(noticeDays),
+    courtesy ? EVENT.reason.announceCourtesy : step.highCare.userIds.length > 0 ? EVENT.reason.announceCare : EVENT.reason.announceNotice(noticeDays),
   ].join(' ')
   const announce = event(atLocalHour(announceDay, announceHour, ctx.timeZone), announceReason, ctx, 'announce')
+  // The reminder is the working day before. With one working day of notice
+  // that is the announcement itself, so there is no second message.
   const remindDay = workingDaysBefore(enforceDay, 1, ctx)
-  const remind = event(atLocalHour(remindDay, announceHour, ctx.timeZone), EVENT.reason.remindDayBefore, ctx, 'remind')
+  const remind = remindDay.slice(0, 10) === announceDay.slice(0, 10) ? null : event(atLocalHour(remindDay, announceHour, ctx.timeZone), EVENT.reason.remindDayBefore, ctx, 'remind')
   const remindMorning = high ? event(atLocalHour(enforceDay, Math.max(7, peakHour - 2), ctx.timeZone), EVENT.reason.remindMorningOf, ctx, 'remind') : null
   return { announce, remind, remindMorning, enforce, noticeDays }
 }

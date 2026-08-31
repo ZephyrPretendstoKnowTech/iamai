@@ -5,6 +5,7 @@ import { docFor } from '../baseline/index.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
+import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
@@ -20,8 +21,8 @@ import { failureModesFor, helpDeskFor, verifyFor } from './content.ts'
 import { ROLLBACK_V2, WHAT_CHANGES } from '../copy/stepContent.ts'
 import { NAMING } from '../copy/schedule.ts'
 import { tenantRhythm } from './rhythm.ts'
-import { NOTICE_DEFAULTS, eventsFor } from './timing.ts'
-import type { NoticeSettings } from './timing.ts'
+import { eventsFor } from './timing.ts'
+import { DEFAULT_REVERT_PERCENT } from './watch.ts'
 import { SAFE } from '../copy/timing.ts'
 import { MANAGER, plainTitleFor } from '../copy/plain.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
@@ -64,7 +65,7 @@ import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import { proposedGroupName, proposedLocationName, proposedStrengthName } from '../coverage/naming.ts'
 import { NAMING as STEP_NAMING } from '../copy/steps.ts'
 import { NAMED_BELOW } from './comms.ts'
-import { campaignDays } from './campaign.ts'
+import { registrationWindow } from './campaign.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
 import { ladderSteps } from './ladder.ts'
 import { GATING_SUBJECTS, attachWarnings, blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
@@ -94,18 +95,13 @@ export type RoadmapInput = {
   names?: NameDirectory
   /** Cached group memberships: the confirmed exclusion groups leave every step's population. */
   groupMembers?: GroupMembers
-  /** A date range in which nothing is enforced (roadmap-v2.md §2). */
+  /**
+   * A date range in which nothing is enforced (roadmap-v2.md §2). With the
+   * start date, the only schedule input there is (target-state §9): no pace,
+   * no notice periods, no holidays, no revert threshold, no per-step dates. A
+   * plan file that still carries those is read and the values ignored.
+   */
   changeFreeze?: ChangeFreeze | null
-  /** Operator-set start dates per step (roadmap-v2.md §4.12). */
-  scheduled?: Record<string, string> | null
-  /** Notice periods by disruption, in working days (scheduling-and-onboarding.md §2.3). */
-  notice?: NoticeSettings | null
-  /** YYYY-MM-DD dates nothing is enforced on (nor the working day before). */
-  holidays?: string[] | null
-  /** Supervised change windows a week, overriding the band default (prompt 42). */
-  enforcementCap?: number | null
-  /** The share of affected people failing after enforcement that means back to report-only (comms-and-bridges.md §3.1). */
-  watchThresholdPercent?: number | null
 }
 
 export type RoadmapResult = { steps: Step[]; schedule: Schedule }
@@ -949,7 +945,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         status = 'blocked'
         const label =
           readiness.family === 'device' ? BLOCKER.deviceReadiness(readiness.percent, threshold) : UNBLOCK.readiness(readiness.percent, readiness.family, threshold)
-        blockers.push({ kind: 'readiness', label })
+        blockers.push({ kind: 'readiness', label, binding: BLOCKED_REASON.reaches(READINESS_MEASURE[readiness.family] ?? 'readiness', `${threshold}%`, `${readiness.percent}%`) })
         unblockNotes.push(label)
       }
       // Nothing that can deny access is offered while the way back in is
@@ -997,7 +993,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (opVerdict?.stranded && status !== 'done') {
       status = 'blocked'
       const label = BLOCKER.operator(opVerdict.reason)
-      blockers.push({ kind: 'readiness', label })
+      blockers.push({ kind: 'readiness', label, binding: BLOCKED_REASON.exist(1, 'safe way in for the signed-in account', 0) })
       unblockNotes.push(BLOCKED.readiness(label))
     }
 
@@ -1086,7 +1082,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               EXIT.zeroFailures,
               ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []),
               ...(includesOperator ? [EXIT.operatorStrong] : []),
-              EXIT.watch(input.watchThresholdPercent ?? 5),
+              EXIT.watch(DEFAULT_REVERT_PERCENT),
             ]
 
     const score = scoreResult(result, snapshot, viability, {
@@ -1273,11 +1269,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Sequence safety (audit-program Layer C, guidance-audit-01) ----
   // Ordering rules that hold for any tenant, each one a way somebody gets
   // stranded if the plan runs in the wrong order.
-  const blockLate = (s: Step, label: string, dependsOn?: string): void => {
+  const blockLate = (s: Step, label: string, binding: string | null, dependsOn?: string): void => {
     if (s.status === 'done' || s.status === 'skipped') return
     if (dependsOn && !s.blockedBy.includes(dependsOn)) s.blockedBy.push(dependsOn)
     if (!s.blockers.some((b) => b.kind === 'readiness' && b.label === label)) {
-      s.blockers.push({ kind: 'readiness', label })
+      s.blockers.push({ kind: 'readiness', label, ...(binding ? { binding } : {}) })
       s.unblockNotes.push(BLOCKED.readiness(label))
     }
     s.status = 'blocked'
@@ -1289,12 +1285,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // have one (steps/security-info-registration.md).
   const registrationStep = steps.find((s) => s.goalId === 'register-info-protected')
   if (registrationStep) {
-    if (tapEnabled === false) blockLate(registrationStep, BLOCKER.registrationNoTap)
+    if (tapEnabled === false) blockLate(registrationStep, BLOCKER.registrationNoTap, BLOCKED_REASON.exist(1, 'Temporary Access Pass policy', 0))
     const withoutMethod = viability.filter((v) => v.activity === 'active' && v.mfa === 'none').length
     // A reason, not a dependency edge: the campaign sits in a later phase, and
     // pointing a phase 0 step at it would order the plan against itself.
-    if (withoutMethod > 0) blockLate(registrationStep, BLOCKER.registrationCoverage(withoutMethod))
-    if (trustedLocationCount === 0) blockLate(registrationStep, BLOCKER.registrationNoTrustedLocation)
+    if (withoutMethod > 0) blockLate(registrationStep, BLOCKER.registrationCoverage(withoutMethod), BLOCKED_REASON.reaches('people without a method', '0', String(withoutMethod)))
+    if (trustedLocationCount === 0) blockLate(registrationStep, BLOCKER.registrationNoTrustedLocation, BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
   // 2. No country block before the operator's own recent countries are in the
@@ -1302,7 +1298,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const countriesReport = validationReports.find((r) => r.subject === 'allowedCountries')
   if (countriesReport && countriesReport.blocking.length > 0) {
     for (const s of steps) {
-      if (s.readiness.family === 'location') blockLate(s, BLOCKER.countriesUnsafe, blockerStepId('allowedCountries'))
+      if (s.readiness.family === 'location') blockLate(s, BLOCKER.countriesUnsafe, null, blockerStepId('allowedCountries'))
     }
   }
 
@@ -1312,7 +1308,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (secDefaultsStep) {
     for (const s of steps) {
       if (s.kind !== 'create' && s.kind !== 'adjust') continue
-      blockLate(s, BLOCKER.securityDefaultsFirst, secDefaultsStep.id)
+      blockLate(s, BLOCKER.securityDefaultsFirst, null, secDefaultsStep.id)
     }
   }
 
@@ -1323,7 +1319,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const impl = input.coverage.results.find((r) => r.goal.id === s.goalId)?.goal.implementations[0]
     const floor = impl?.floor
     if (floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined) {
-      blockLate(s, BLOCKER.sessionLoop)
+      blockLate(s, BLOCKER.sessionLoop, BLOCKED_REASON.exist(1, 'MFA grant on this policy', 0))
     }
   }
 
@@ -1454,18 +1450,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
   const rhythm = tenantRhythm(snapshot, mapping.displayTimeZone)
-  const holidays = input.holidays ?? []
-  // The campaign is measured from the people who still need a method and how
-  // often they sign in, not from the size of the tenant (prompt 43 item 2).
+  // The registration window is sized by who still needs a proven method: five
+  // a working day, at most twenty working days, alongside the first soak
+  // (target-state §9). Never by the size of the tenant.
   const toSetUpIds = viability.filter((v) => rolloutBucket(v) === 'noMethod' || rolloutBucket(v) === 'unproven').map((v) => v.userId)
-  const campaign = campaignDays(toSetUpIds, snapshot)
+  const registration = registrationWindow(toSetUpIds)
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
-    scheduled: input.scheduled ?? null,
-    holidays,
     rhythm,
-    enforcementCap: input.enforcementCap ?? undefined,
-    campaignDays: campaign.days,
+    registrationDays: registration.workingDays,
   })
   schedule.rhythm = rhythm
   schedule.policyCount = policyCountFor(snapshot, steps, input.coverage.organisation)
@@ -1480,7 +1473,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     // A step that brought its own verification keeps it (the free-tier ladder).
     if (s.verify === null) s.verify = verifyFor(s, contentCtx, s.rings[0]?.name ?? null)
-    s.events = eventsFor(s, { rhythm, notice: input.notice ?? NOTICE_DEFAULTS, holidays, timeZone: mapping.displayTimeZone ?? 'UTC' })
+    s.events = eventsFor(s, { rhythm, timeZone: mapping.displayTimeZone ?? 'UTC' })
   }
 
   // A subject with only recommendations attaches them to the step that already

@@ -5,16 +5,13 @@ import { count } from './statements.ts'
 export const NEXT = {
   title: 'Do this next',
   open: 'Open the step',
-  // Above an hour and a half, minutes stop being a unit anyone can picture:
-  // "about 447 minutes" is a number, not an estimate.
-  minutes: (n: number) => (n < 90 ? `about ${count(n, 'minute')}` : `about ${count(Math.round(n / 30) / 2, 'hour')}`),
   why: {
     blocker: (held: number): string =>
       held === 0
         ? 'Must fix before the rest of the plan is safe to run.'
         : `Must fix first: ${held === 1 ? '1 step that can deny access is' : `${held} steps that can deny access are`} held until it passes.`,
     prerequisite: (waiting: number) => `nothing blocks it, and ${count(waiting, 'later step')} wait${waiting === 1 ? 's' : ''} for it`,
-    safeToday: (minutes: number) => `nothing blocks it, nobody is affected, about ${count(minutes, 'minute')}`,
+    safeToday: 'nothing blocks it and nobody is affected',
     readiness: (people: number, unblocks: number) => `setting up ${count(people, 'person', 'people')} unblocks ${count(unblocks, 'step')}`,
     ready: 'the best value for the least disruption among what is ready',
   },

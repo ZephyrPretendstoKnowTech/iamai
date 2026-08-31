@@ -22,10 +22,15 @@ export type RingBand = {
   ring2Departments: number
   soakDays: number
 }
+// By affected active people (target-state §9): up to 50, no rings at all
+// (report-only, then everyone); 51 to 300, a pilot of five (IT first) then
+// everyone; 301 to 3,000, pilot, a ring of 10% then everyone; above that
+// unchanged. Five-day soaks. A band with one ring is the "everyone" ring on
+// its own: the step still enforces once, for everyone, after its soak.
 export const RING_BANDS: RingBand[] = [
-  { maxActive: 30, rings: 2, pilot: 3, ring1Share: 0, ring2Departments: 0, soakDays: 3 },
-  { maxActive: 300, rings: 3, pilot: 5, ring1Share: 0.1, ring2Departments: 0, soakDays: 5 },
-  { maxActive: 3000, rings: 4, pilot: 5, ring1Share: 0.05, ring2Departments: 1, soakDays: 7 },
+  { maxActive: 50, rings: 1, pilot: 0, ring1Share: 0, ring2Departments: 0, soakDays: 5 },
+  { maxActive: 300, rings: 2, pilot: 5, ring1Share: 0, ring2Departments: 0, soakDays: 5 },
+  { maxActive: 3000, rings: 3, pilot: 5, ring1Share: 0.1, ring2Departments: 0, soakDays: 5 },
   { maxActive: Number.POSITIVE_INFINITY, rings: 4, pilot: 10, ring1Share: 0.02, ring2Departments: 2, soakDays: 7 },
 ]
 /** Above this many active users the last band soaks its longest (7 to 10 days). */
@@ -191,8 +196,10 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   const cached = partitionCache.get(step.population.ids)
   const drafts: Draft[] = cached ? cached : []
   if (!cached) {
-  const pilotIds = take(pickPilot(remaining, Math.min(band.pilot, total), ctx))
-  drafts.push({ name: RINGS.pilot, who: null, ids: pilotIds, kind: 'group', departments: [] })
+  if (band.pilot > 0) {
+    const pilotIds = take(pickPilot(remaining, Math.min(band.pilot, total), ctx))
+    drafts.push({ name: RINGS.pilot, who: null, ids: pilotIds, kind: 'group', departments: [] })
+  }
   if (band.rings >= 3) {
     const it = [...remaining].filter((id) => isIt(ctx.departmentOf.get(id)))
     const itSet = new Set(it)

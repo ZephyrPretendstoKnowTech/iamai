@@ -426,7 +426,6 @@ export const BLOCKER_STEP = {
     `${subject} is the way back in when a security change goes wrong. The cost is an hour of admin time and no disruption to anyone. Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.`,
   exit: (n: number): string => (n === 1 ? 'The must-fix check passes on the next scan.' : `All ${n} must-fix checks pass on the next scan.`),
   checklistLead: 'Each of these has to pass:',
-  blockedReason: (subject: string, n: number): string => `${subject.toLowerCase()} is not sorted yet (${count(n, 'must-fix item')})`,
   recommended: 'Worth fixing too, though nothing waits on them:',
   alsoRecommended: (n: number, first: string): string =>
     `${count(n, 'recommended fix', 'recommended fixes')} on these accounts, starting with: ${first}.`,

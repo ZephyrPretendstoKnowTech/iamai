@@ -135,27 +135,3 @@ export const WATCH = {
   thresholdHint: 'The share of the affected people failing after enforcement at which the policy goes back to report-only. Set once; every step uses it.',
   doneWhen: (percent: number) => `Failures after enforcement stay under ${percent}% of the affected people for 72 hours.`,
 }
-
-export const EFFORT = {
-  title: 'Effort',
-  minutes: (n: number) => `about ${count(n, 'minute')} of admin time`,
-  // Four branches. Zero is only reachable when the step touches nobody, so it
-  // says that rather than predicting silence (review-08 F, prompt 40 §23).
-  calls: (n: number) => (n === 0 ? 'nobody to contact about it' : `about ${count(n, 'help-desk contact')}`),
-  basis: 'Basis: minutes from the portal steps per kind of change; contacts from the affected people times a rate per control (MFA 3%, device 8%, admin strength 5%, geo 2%, block 1% of affected accounts, session 1%). A contact is one person asking about one change, so one person may account for several.',
-  /**
-   * Names the steps it adds up, so the total can be checked against the cards
-   * (prompt 41 §11). Three branches on time, because under an hour "about 0
-   * hours" is worse than no figure at all.
-   */
-  total: (minutes: number, calls: number, steps: number, announcements = 0) => {
-    const time = minutes < 60 ? `about ${count(minutes, 'minute')}` : `about ${count(Math.round(minutes / 60), 'hour')}`
-    // The messages and the contacts are two readings of one model: the people a
-    // change reaches are the people who may ask about it. Printing them apart,
-    // on different surfaces, made them look like unrelated figures for related
-    // things (review-09 finding 15, prompt 42 §16).
-    const reach = announcements > 0 ? ` The plan sends ${count(announcements, 'message')} to those same people.` : ''
-    return `Across the ${count(steps, 'step')} still to do: ${time} of admin time, and about ${count(calls, 'help-desk contact')}.${reach}`
-  },
-  fits: (minutes: number) => (minutes <= 15 ? 'fits in a coffee break' : minutes <= 60 ? 'fits in an hour' : 'needs a clear afternoon'),
-}

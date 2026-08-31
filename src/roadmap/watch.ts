@@ -3,7 +3,7 @@
 // carrying its policy in the hours since with the days before, by user,
 // against a revert threshold. Effort: admin minutes per step and help-desk
 // contacts from the affected people and the control type. Pure.
-import { EFFORT, WATCH } from '../copy/comms.ts'
+import { WATCH } from '../copy/comms.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Step } from './types.ts'
 
@@ -92,64 +92,4 @@ export function watchFor(step: Step, snapshot: TenantSnapshot, nameOf: (id: stri
     baseline: WATCH.baseline(perDayBefore, perDayAfter),
     verdict: breached ? WATCH.breached : WATCH.clear,
   }
-}
-
-// ---- Effort (§3.4): what fits in the time you have ----
-
-const CALL_RATE: Record<string, number> = { mfa: 0.03, guest: 0.03, admin: 0.05, device: 0.08, location: 0.02, block: 0.01, other: 0.01 }
-
-export function adminMinutes(step: Step): number {
-  switch (step.kind) {
-    case 'prerequisite':
-      return 10
-    case 'verify':
-      return 30
-    case 'recurring':
-      return 15
-    case 'check':
-      return 1 + Math.min(60, step.population.total)
-    case 'adjust':
-      return 10
-    default:
-      return 15 + Math.min(30, step.rings.length * 5)
-  }
-}
-
-export function helpDeskContacts(step: Step): number {
-  if (step.kind !== 'create' && step.kind !== 'adjust') return 0
-  if (step.safeToday) return 0
-  const family = step.readiness.family
-  const affected = family === 'block' || family === 'location' ? step.evidence.affectedUserIds.length : step.population.active
-  if (affected === 0) return 0
-  // People who are not ready when the change lands are near-certain callers, so
-  // they set the floor. Below that, any affected population rounds up rather
-  // than down: a change that touches somebody is not a change nobody asks about
-  // (review-08 F, prompt 40 §23).
-  const notReady = step.readiness.percent === null ? 0 : Math.round(affected * (1 - step.readiness.percent / 100))
-  return Math.max(notReady, 1, Math.round(affected * (CALL_RATE[family] ?? CALL_RATE.other)))
-}
-
-export function effortFor(step: Step): { minutes: number; contacts: number; sentence: string } {
-  const minutes = adminMinutes(step)
-  const contacts = helpDeskContacts(step)
-  return { minutes, contacts, sentence: `${EFFORT.minutes(minutes)} (${EFFORT.fits(minutes)}); ${EFFORT.calls(contacts)}.` }
-}
-
-/**
- * The plan's total effort, reconcilable with the step cards (prompt 41 §11).
- *
- * Two things were wrong. The total summed every outstanding step while only
- * some kinds print an estimate on their card, so "about 8 hours" could not be
- * checked against the twenty numbers on screen that add to six (review-09
- * finding 4). And "20 help-desk contacts" on a tenant with four active people
- * reads as twenty people (finding 3). It is twenty contacts: one person asking
- * about one change, and four people spread over many changes account for
- * several each. The arithmetic was right and the noun was doing the lying, so
- * the sentence now carries the step count and the unit says what it counts.
- */
-export function planEffort(steps: Step[], announcements = 0): { minutes: number; contacts: number; steps: number; announcements: number; sentence: string } {
-  const work = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
-  const minutes = work.reduce((n, s) => n + adminMinutes(s), 0)
-  const contacts = work.reduce((n, s) => n + helpDeskContacts(s), 0)
-  return { minutes, contacts, steps: work.length, announcements, sentence: EFFORT.total(minutes, contacts, work.length, announcements) }
 }

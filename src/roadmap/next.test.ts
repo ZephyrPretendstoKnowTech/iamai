@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { doThisNext, effortMinutes } from './next.ts'
+import { doThisNext } from './next.ts'
 import { appendLog, emptyLog, entriesForScan, logView, LOG_CAP } from './activityLog.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from './plan.ts'
 import { stepIdForGoal } from './generate.ts'
@@ -22,13 +22,12 @@ test('do this next: one to three items, never a blocked step, prerequisites firs
   for (const i of card.items) {
     const s = run.steps.find((x) => x.id === i.stepId)!
     assert.notEqual(s.status, 'blocked', `${i.stepId} is not blocked`)
-    assert.ok(i.why.length > 0 && i.touches.length > 0 && i.minutes > 0)
+    assert.ok(i.why.length > 0 && i.touches.length > 0)
   }
   const kinds = card.items.map((i) => i.kind)
   const order = ['prerequisite', 'safeToday', 'readiness', 'ready']
   assert.deepEqual([...kinds], [...kinds].sort((a, b) => order.indexOf(a) - order.indexOf(b)), 'selection order holds')
   assert.equal(card.waiting, null)
-  assert.ok(effortMinutes(run.steps.find((s) => s.id === stepIdForGoal('block-auth-transfer'))!) >= 15)
 })
 
 test('do this next: when everything waits, it says the date and why; after a re-scan it leads with what completed', () => {

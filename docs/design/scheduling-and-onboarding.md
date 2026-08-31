@@ -74,8 +74,9 @@ Lead time between announcement and enforcement, in working days:
 | High (lockout risk, device or geo requirements) | 10 working days | day before and morning of |
 | Anything touching a handle-with-care user | never less than 5, and that user is contacted individually first | day before |
 
-Notice periods are settings in Plan settings, with these as defaults, so an MSP can match
-its own client agreements.
+Notice periods are constants, not settings (target-state §9, prompt 46): when the records
+show no affected active person the notice is one working day, as a courtesy; otherwise the
+table above. Announcements go out at 09:30 on a Monday to Thursday the tenant works.
 
 ### 2.4 The fast path: what can be done today
 

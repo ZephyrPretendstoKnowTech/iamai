@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, weekdayHourBuckets } from './fixtures/index.ts'
 import { MIN_SIGNINS_FOR_RHYTHM, localiseBuckets, tenantRhythm } from './rhythm.ts'
-import { isDayBeforeHoliday, toEnforcementDay, weekdayOf, workingDaysBefore } from './timing.ts'
+import { toEnforcementDay, weekdayOf, workingDaysBefore } from './timing.ts'
 
 let seed = 7
 const rand = () => {
@@ -56,21 +56,20 @@ test('UTC buckets localise across the day boundary', () => {
   assert.equal(buckets.reduce((a, b) => a + b, 0), 1000)
 })
 
-test('enforcement lands on a Tuesday or Wednesday, Tuesday only when high-disruption, never before a holiday', () => {
+test('enforcement lands on a Tuesday, Wednesday or Thursday, never a Friday or a weekend (target-state §9)', () => {
   const friday = '2026-09-04T12:00:00.000Z'
-  assert.equal(weekdayOf(toEnforcementDay(friday, {})), 1)
+  assert.equal(weekdayOf(toEnforcementDay(friday)), 1, 'a Friday waits for Tuesday')
+  const monday = '2026-08-31T12:00:00.000Z'
+  assert.equal(weekdayOf(toEnforcementDay(monday)), 1, 'a Monday waits for Tuesday')
   const wednesday = '2026-09-02T12:00:00.000Z'
-  assert.equal(toEnforcementDay(wednesday, {}), wednesday)
-  assert.equal(weekdayOf(toEnforcementDay(wednesday, { highDisruption: true })), 1, 'a high-disruption change waits for Tuesday')
-  // Wednesday 9 Sep is the day before a holiday: enforcement moves on.
-  const holidays = ['2026-09-10']
-  assert.ok(isDayBeforeHoliday('2026-09-09T12:00:00.000Z', { holidays, rhythm: { workingDays: [0, 1, 2, 3, 4] } as never }))
-  const moved = toEnforcementDay('2026-09-09T12:00:00.000Z', { holidays })
-  assert.ok(moved > '2026-09-10', `moved past the holiday: ${moved}`)
-  assert.ok([1, 2].includes(weekdayOf(moved)))
-  // Working days skip weekends and holidays.
-  const back = workingDaysBefore('2026-09-15T12:00:00.000Z', 5, { holidays, rhythm: { workingDays: [0, 1, 2, 3, 4] } as never })
-  assert.equal(back.slice(0, 10), '2026-09-07')
+  assert.equal(toEnforcementDay(wednesday), wednesday)
+  const thursday = '2026-09-03T12:00:00.000Z'
+  assert.equal(toEnforcementDay(thursday), thursday, 'Thursday is an enforcement day')
+  const saturday = '2026-09-05T12:00:00.000Z'
+  assert.equal(weekdayOf(toEnforcementDay(saturday)), 1)
+  // Working days skip weekends; there is no holiday list any more.
+  const back = workingDaysBefore('2026-09-15T12:00:00.000Z', 5, { rhythm: { workingDays: [0, 1, 2, 3, 4] } as never })
+  assert.equal(back.slice(0, 10), '2026-09-08')
 })
 
 test('a thin sample reports the pattern as provisional and names the sample', () => {

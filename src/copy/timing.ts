@@ -28,19 +28,19 @@ export const EVENT = {
     // The chosen day is named, with the reason it was chosen (prompt 37 §17).
     // The old line stated Tuesday or Wednesday at 09:30 whatever the tenant's
     // pattern said, which is what made a computed rhythm look decorative (S4).
-    announceOn: (day: string, time: string) => `${day}, ${time}: one of the days your people work, at the quietest working hour.`,
+    announceOn: (day: string, time: string) => `${day}, ${time}: one of the days your people work, early enough to be read the same day.`,
     announceDefaultDay: (day: string, time: string) => `${day}, ${time}: Monday inboxes are full and a Friday note is read on Monday.`,
     announceNoRhythm: 'The sign-in sample is too small to read a working pattern, so the calendar defaults apply.',
     announceNotice: (days: number) => `${count(days, 'working day')} of notice for a change of this size.`,
+    announceCourtesy: 'One working day of notice, as a courtesy: the records show nobody affected.',
     announceCare: 'At least five working days, and the handle-with-care people are contacted individually first.',
     remindDayBefore: 'The working day before, same time: short enough to still be in memory.',
     remindMorningOf: 'The morning of the change as well: two clear reminders for a high-disruption change.',
-    enforcePeak: (peak: string) => `One hour after the busiest hour (${peak}): a full working day of support, then a spare day before the weekend.`,
-    enforceDefault: 'Tuesday or Wednesday, 10:00: a full working day of support, then a spare day before the weekend.',
+    enforcePeak: (peak: string) => `One hour after the busiest hour (${peak}): a full working day of support before the weekend.`,
+    enforceDefault: 'Tuesday, Wednesday or Thursday, 10:00: a full working day of support before the weekend.',
     enforceOn: (day: string) => `${day}: the tenant's own working days do not include the usual midweek slot, so the nearest working day was chosen.`,
-    enforceHighTuesday: 'Tuesday only for a high-disruption change: two clear days of support cover.',
     enforceReportOnly: 'Any day, any time: creating a policy in report-only affects nobody.',
-    enforceSafeToday: 'Safe to enforce today: nothing in the evidence would have been blocked, so no announcement is needed.',
+    enforceSafeToday: 'Safe to enforce today: nothing in the evidence would have been blocked. One working day of notice, as a courtesy.',
     campaignMonday: 'A Monday start gives people a full week.',
     deadlineWednesday: 'A Wednesday deadline leaves two days to chase stragglers.',
     none: 'No announcement: nobody is affected.',
@@ -48,17 +48,6 @@ export const EVENT = {
   outOfHours: 'outside working hours',
   suggested: 'Suggested',
   at: (day: string, date: string, time: string) => `${day} ${date}, ${time}`,
-}
-
-export const NOTICE = {
-  title: 'Notice',
-  hint: 'Suggested lead time between the announcement and the change, in working days, by how disruptive the change is. Suggestions, never commitments.',
-  low: 'Low disruption',
-  medium: 'Medium disruption',
-  high: 'High disruption',
-  holidays: 'Holidays',
-  holidaysHint: 'Dates nothing is enforced on, or on the last working day before. One per line, as YYYY-MM-DD.',
-  holidaysPlaceholder: '2026-12-25',
 }
 
 /**
@@ -71,7 +60,7 @@ export const NOTICE = {
  * the ordinary case.
  */
 export const NOTICE_LINE = {
-  none: 'Nobody is affected by this change, so no notice is needed. The draft below is there if the tenant announces changes as a matter of course.',
+  none: 'Nobody is affected by this change in the records, so the notice is one working day, as a courtesy.',
   care: (send: string, days: number) =>
     `Send this on ${send}, ${days} working days before the change. A handle-with-care user is in scope, so the notice is never shorter than that, and each of them is told individually first.`,
   overdue: (send: string) => `This was due to go out on ${send}. Send it now, and move the change if the notice no longer fits.`,
@@ -100,23 +89,11 @@ export const BATCH = {
  * Three branches, because a slower pace is not offered below one a week and a
  * pace that changes nothing should say so rather than dangle a choice.
  */
-export const PACE = {
-  title: 'Change windows a week',
-  hint: 'How many supervised change windows the plan schedules in a week. Every batch has already sat in report-only for its window with no would-be failures before it is enforced, so a window is watching a change the evidence says will do nothing, not finding out whether it will.',
-  weeks: (n: number) => `${count(n, 'week')}`,
-  compare: (slower: { cap: number; weeks: number } | null, faster: { cap: number; weeks: number } | null, weeks: number): string => {
-    const parts: string[] = []
-    if (slower && slower.weeks !== weeks) parts.push(`${slower.cap} would take ${count(slower.weeks, 'week')}`)
-    if (faster && faster.weeks !== weeks) parts.push(`${faster.cap} would take ${count(faster.weeks, 'week')}`)
-    if (parts.length === 0) return 'Changing the pace would not change the length: something else sets it.'
-    return `${parts.join('; ')}.`
-  },
-} as const
 
 export const SAFE = {
   verdictSafe: 'Safe to enforce today',
   verdictNotYet: (reason: string) => `Not yet: ${reason}`,
-  cardSentence: 'Nothing in the last 30 days would have been blocked by this. Safe to enforce today, no announcement needed.',
+  cardSentence: 'Nothing in the last 30 days would have been blocked by this. Safe to enforce today, with one working day of notice as a courtesy.',
   filter: 'Safe today',
   tile: 'Safe today',
   reasons: {
