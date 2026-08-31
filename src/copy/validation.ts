@@ -424,6 +424,7 @@ export const BLOCKER_STEP = {
       ? `${count(n, 'must-fix check')} to clear. Nothing in the plan is held by them yet.`
       : `${count(n, 'must-fix check')} to clear. ${count(held, 'step')} that can deny access ${held === 1 ? 'is' : 'are'} held until then.`,
   whatChanges: 'Nothing changes for anyone. This is groundwork so a mistake later can be undone.',
+  nothingToUndo: 'Nothing to undo.',
   forManager: (subject: string): string =>
     `${subject} is the way back in when a security change goes wrong. The cost is an hour of admin time and no disruption to anyone. Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.`,
   exit: (n: number): string => (n === 1 ? 'The must-fix check passes on the next scan.' : `All ${n} must-fix checks pass on the next scan.`),
@@ -431,6 +432,52 @@ export const BLOCKER_STEP = {
   recommended: 'Worth fixing too, though nothing waits on them:',
   alsoRecommended: (n: number, first: string): string =>
     `${count(n, 'recommended fix', 'recommended fixes')} on these accounts, starting with: ${first}.`,
+}
+
+/**
+ * A check step's Do it (prompt 48.1 item 9): each failing must-fix check as one
+ * imperative action, in the order to do them, with its portal path. Named
+ * specifics (which policies, which shared device) come from the finding.
+ * Could-not-run checks and the two attestations never appear here.
+ */
+export const RULE_ACTION: Record<string, (finding: string | null) => string> = {
+  'bg.count': () => 'Create a second emergency access account. Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.',
+  'bg.cloudOnly': () => 'Replace the synced account with a cloud-only one. Entra admin center → Users → New user, no on-premises sync.',
+  'bg.initialDomain': () => 'Give the account a sign-in address on the tenant onmicrosoft.com domain. Entra admin center → Users → the account.',
+  'bg.enabled': () => 'Enable the emergency account. Entra admin center → Users → the account → Account status.',
+  'bg.role.permanentGa': () => 'Assign Global Administrator to each account permanently, never eligible-only. Entra admin center → Roles and administrators → Global Administrator.',
+  'bg.hasMfaMethod': () => 'Register a passkey or FIDO2 security key for each account. Entra admin center → Users → the account → Authentication methods.',
+  'bg.phishingResistant': () => 'Register a passkey or FIDO2 security key for each account. Entra admin center → Users → the account → Authentication methods.',
+  'bg.excludedFromAllPolicies': (finding) =>
+    `Exclude both accounts from every Conditional Access policy${policiesFrom(finding)}. Entra admin center → Protection → Conditional Access → Policies.`,
+  'bg.notPersonal': () => 'Use a dedicated account for emergency access, with no department, job title or office, and not the operator. Entra admin center → Users → New user.',
+  'bg.separateDevices': (finding) => `Move an emergency account off the shared Authenticator device${deviceFrom(finding)}. Entra admin center → Users → the account → Authentication methods.`,
+  'bg.notInDynamicScope': () => 'Move the account out of any dynamic group that a policy targets, or exclude the account directly. Entra admin center → Groups.',
+}
+
+/** Rules that are attestations, not actions: they become Done-when lines the operator ticks (prompt 48.1 item 9). */
+export const ATTESTATION_RULES: ReadonlySet<string> = new Set(['bg.credentialStorage', 'bg.signInMonitoring'])
+export const ATTESTATION_DONE_WHEN: Record<string, string> = {
+  'bg.credentialStorage': 'The passphrase for each emergency account is written down where the admins can reach it without signing in.',
+  'bg.signInMonitoring': 'A sign-in by an emergency account raises an alert somebody sees.',
+}
+/** Migration state and other could-not-run checks are Housekeeping only, never an action (prompt 48.1 item 9). */
+export const HOUSEKEEPING_ONLY_RULES: ReadonlySet<string> = new Set(['bg.perUserMfaOff', 'bg.perUserMfa'])
+
+function policiesFrom(finding: string | null): string {
+  const m = finding ? /not excluded from (.+?)(?:, which|:|$)/.exec(finding) : null
+  return m ? `: ${m[1]}` : ''
+}
+function deviceFrom(finding: string | null): string {
+  const m = finding ? /device "([^"]+)"/.exec(finding) : null
+  return m ? ` "${m[1]}"` : ''
+}
+
+/** The imperative for a rule with no specific action: from its check, plus the portal path. */
+export function fallbackAction(what: string, portal: string | null): string {
+  const body = what.replace(/.$/, '')
+  const lead = /^(At least|No |Every |The account is|The account holds|Each |The sign-in)/.test(body) ? `Make sure ${body.charAt(0).toLowerCase()}${body.slice(1)}` : body
+  return portal ? `${lead}. ${portal}.` : `${lead}.`
 }
 
 /** The Plan footer's housekeeping lines that come from validation (prompt 46 item 21). */

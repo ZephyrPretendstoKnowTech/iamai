@@ -278,10 +278,7 @@ test('rule 10: no filler phrases', () => {
 // can act on.
 // Both from the blocker step built in prompt 32, which uses one string for
 // both `whatChanges` and `rollback`, so an opened step prints it twice.
-const RULE11_WAIVED: Waiver[] = [
-  { id: 'R-new', match: 'Nothing changes for anyone.' },
-  { id: 'R-new', match: 'This is groundwork so a mistake later can be undone.' },
-]
+const RULE11_WAIVED: Waiver[] = []
 
 test('rule 11: no surface states the same claim twice', () => {
   const found = surfaces.flatMap((s) =>
