@@ -122,3 +122,12 @@ test('every goal has a plain-language title and steps carry it beside the techni
   }
   assert.ok(Object.keys(PLAIN_TITLES).length >= 26)
 })
+
+// Prompt 47 item 9: a plain title fits a header line, so nine words at most.
+test('every plain title is at most nine words', () => {
+  for (const [goalId, title] of Object.entries(PLAIN_TITLES)) {
+    const words = title.trim().split(/\s+/).length
+    assert.ok(words <= 9, `${goalId}: "${title}" is ${words} words`)
+  }
+  assert.equal(PLAIN_TITLES['pim-activation-reauth'], 'Ask for MFA when an admin role is activated')
+})

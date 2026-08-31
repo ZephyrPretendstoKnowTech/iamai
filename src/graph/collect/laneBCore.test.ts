@@ -3,7 +3,7 @@
 // derived table. All I/O is injected — no fetch, no IndexedDB.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { aggregate, deriveBlockedToday, derivePolicyResults, runLaneB } from './laneBCore.ts'
+import { aggregate, deriveBlockedToday, derivePolicyResults, deriveUsageSignals, mapRow, runLaneB } from './laneBCore.ts'
 import type { LaneBDeps } from './laneBCore.ts'
 import type { StoredSignIn } from './types.ts'
 
@@ -161,4 +161,26 @@ test('derived: blocked today uses only the most recent sign-in per user', () => 
   assert.equal(blocked.length, 1)
   assert.equal(blocked[0].policyId, 'p1')
   assert.deepEqual(blocked[0].userIds, ['u2'])
+})
+
+// Prompt 47 item 6: the risk verdicts ride along with the sign-in, and the
+// usage signals count the people a risk policy would touch.
+test('risk: the higher of the two verdicts decides the level; hidden and unknown read as none', () => {
+  const rows = [
+    { id: 'a', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u1', riskLevelDuringSignIn: 'high', riskLevelAggregated: 'none' },
+    { id: 'b', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u2', riskLevelDuringSignIn: 'none', riskLevelAggregated: 'medium' },
+    { id: 'c', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u2', riskLevelDuringSignIn: 'medium', riskLevelAggregated: 'low' },
+    { id: 'd', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u3', riskLevelDuringSignIn: 'hidden', riskLevelAggregated: 'hidden' },
+    { id: 'e', createdDateTime: '2026-08-01T00:00:00Z', userId: 'u4' },
+  ].map((r) => mapRow(r)!)
+  assert.equal(rows[0].riskLevelDuringSignIn, 'high')
+  assert.equal(rows[4].riskLevelDuringSignIn, undefined)
+  const usage = deriveUsageSignals(rows)
+  assert.equal(usage.riskHigh.count, 1)
+  assert.deepEqual(usage.riskHigh.userIds, ['u1'])
+  assert.deepEqual(usage.riskHigh.byDetail, { 'during sign-in': 1 })
+  assert.equal(usage.riskMedium.count, 2)
+  assert.deepEqual(usage.riskMedium.userIds, ['u2'])
+  assert.deepEqual(usage.riskMedium.byDetail, { aggregated: 1, 'during sign-in': 1 })
+  assert.equal(usage.legacyAuth.count, 0)
 })

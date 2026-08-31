@@ -267,7 +267,7 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
     const exitCriteria: string[] = [RINGS.signedIn(n, band.soakDays), RINGS.accessProblems(n)]
     if (family === 'mfa' || family === 'admin' || family === 'guest') exitCriteria.push(RINGS.mfaSatisfied(RING_SUCCESS_PERCENT))
     if (family === 'device') exitCriteria.push(RINGS.deviceSatisfied(RING_SUCCESS_PERCENT))
-    if (family === 'block' || family === 'location') exitCriteria.push(RINGS.blockReviewed)
+    if (family === 'block' || family === 'location' || family === 'risk') exitCriteria.push(RINGS.blockReviewed)
     if (/session/i.test(step.title)) exitCriteria.push(RINGS.sessionAccepted)
     if (ctx.operatorId && d.ids.includes(ctx.operatorId)) exitCriteria.push(RINGS.operatorInRing)
     const care = d.ids.filter((id) => ctx.highCareIds.has(id)).length

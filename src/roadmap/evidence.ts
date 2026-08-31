@@ -10,6 +10,17 @@ import type { Evidence } from './types.ts'
 import { EVIDENCE } from '../copy/steps.ts'
 
 const BLOCK_GOALS = new Set(['block-legacy-auth', 'block-device-code', 'block-auth-transfer'])
+const RISK_HIGH_GOALS = new Set(['sign-in-risk', 'user-risk'])
+const RISK_MEDIUM_GOALS = new Set(['sign-in-risk-medium', 'user-risk-medium'])
+
+/** Risk evidence (prompt 47 item 6): a medium-or-above policy affects the medium and the high sign-ins. */
+function riskLines(level: string, signals: (UsageSignal | undefined)[]): { lines: string[]; ids: string[] } {
+  const present = signals.filter((s): s is UsageSignal => s !== undefined)
+  const count = present.reduce((n, s) => n + s.count, 0)
+  if (count === 0) return { lines: [EVIDENCE.noRisk(level)], ids: [] }
+  const ids = [...new Set(present.flatMap((s) => s.userIds))]
+  return { lines: [EVIDENCE.risk(ids.length, level, count)], ids }
+}
 
 function usageLines(label: string, sig: UsageSignal | undefined): { lines: string[]; ids: string[] } {
   if (!sig || sig.count === 0) {
@@ -61,6 +72,14 @@ export function evidenceFor(
     const u = usageLines(EVIDENCE.authTransfer, usage?.authTransfer)
     base.lines.push(...u.lines)
     base.affectedUserIds = u.ids
+  } else if (RISK_HIGH_GOALS.has(goalId)) {
+    const u = riskLines(EVIDENCE.riskHigh, [usage?.riskHigh])
+    base.lines.push(...u.lines)
+    base.affectedUserIds = u.ids
+  } else if (RISK_MEDIUM_GOALS.has(goalId)) {
+    const u = riskLines(EVIDENCE.riskMedium, [usage?.riskMedium, usage?.riskHigh])
+    base.lines.push(...u.lines)
+    base.affectedUserIds = u.ids
   }
 
   if (matchedPolicyId !== null) {
@@ -103,6 +122,6 @@ export function evidenceFor(
 
   // Only block goals are measured against sign-in usage; for everything else
   // the records say nothing yet, and the line says so.
-  if (base.lines.length === 0) base.lines.push(BLOCK_GOALS.has(goalId) ? EVIDENCE.none : EVIDENCE.notMeasured)
+  if (base.lines.length === 0) base.lines.push(BLOCK_GOALS.has(goalId) || RISK_HIGH_GOALS.has(goalId) || RISK_MEDIUM_GOALS.has(goalId) ? EVIDENCE.none : EVIDENCE.notMeasured)
   return base
 }

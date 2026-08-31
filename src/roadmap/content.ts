@@ -225,7 +225,7 @@ export function verifyFor(step: Step, ctx: ContentContext, ringName: string | nu
             ? VERIFY.filterMfa
             : VERIFY.filterSession
   const good =
-    family === 'block' || family === 'location'
+    family === 'block' || family === 'location' || family === 'risk'
       ? VERIFY.goodBlock
       : family === 'other'
         ? VERIFY.goodSession

@@ -1,5 +1,5 @@
 {
- "fingerprint": "86f421db97498dc2",
+ "fingerprint": "771c59ed825b2e3b",
  "surfaces": [
   {
    "name": "Start",
@@ -1938,8 +1938,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 235,
-    "words": 487
+    "sentences": 237,
+    "words": 489
    }
   },
   {
@@ -2801,8 +2801,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 276,
-    "words": 1020
+    "sentences": 278,
+    "words": 1022
    }
   },
   {

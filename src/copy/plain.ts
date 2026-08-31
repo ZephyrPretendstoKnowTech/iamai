@@ -25,7 +25,7 @@ export const PLAIN_TITLES: Record<string, string> = {
   'token-protection': 'Stop a stolen session token from being reused',
   'workload-identity-block': 'Keep automation accounts to the places they belong',
   'all-users-no-persistence': 'Sign everyone out when the browser closes',
-  'pim-activation-reauth': 'Ask for MFA every time an admin role is switched on',
+  'pim-activation-reauth': 'Ask for MFA when an admin role is activated',
   'intune-enrollment-reauth': 'Ask for MFA before a device is enrolled',
   'block-downloads-unmanaged': 'Stop downloads to devices you do not manage',
   'sign-in-risk-medium': 'Challenge moderately risky sign-ins',

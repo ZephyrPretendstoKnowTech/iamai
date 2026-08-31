@@ -173,7 +173,7 @@ export function fixtureSnapshot(): TenantSnapshot {
     evidenceUsage: {
       legacyAuth: { count: 3, userIds: ['u-3'], byDetail: { 'Exchange ActiveSync': 3 } },
       deviceCode: { count: 0, userIds: [], byDetail: {} },
-      authTransfer: { count: 0, userIds: [], byDetail: {} },
+      authTransfer: { count: 0, userIds: [], byDetail: {} }, riskHigh: { count: 0, userIds: [], byDetail: {} }, riskMedium: { count: 0, userIds: [], byDetail: {} },
     },
     evidenceAggregates: {
       total: 1619,

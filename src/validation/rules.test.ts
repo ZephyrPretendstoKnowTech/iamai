@@ -429,7 +429,7 @@ const CASES: Record<string, Case> = {
       b.snapshot.evidenceUsage = {
         legacyAuth: { count: 3, userIds: [id], byDetail: {} },
         deviceCode: { count: 0, userIds: [], byDetail: {} },
-        authTransfer: { count: 0, userIds: [], byDetail: {} },
+        authTransfer: { count: 0, userIds: [], byDetail: {} }, riskHigh: { count: 0, userIds: [], byDetail: {} }, riskMedium: { count: 0, userIds: [], byDetail: {} },
       }
     },
   },

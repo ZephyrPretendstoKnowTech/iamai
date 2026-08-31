@@ -43,6 +43,8 @@ export type ConfigSection = {
   /** How the read went (prompt 46 item 24): the last response's HTTP status and body length; null before a scan records them. */
   httpStatus?: number | null
   bodyBytes?: number | null
+  /** A field the v1.0 read lacked and a second read supplied (prompt 47 item 8), e.g. "policyMigrationState from beta". */
+  fallback?: string | null
 }
 
 export type UserRow = {
@@ -116,6 +118,9 @@ export type StoredSignIn = {
   authenticationProtocol?: string
   originalTransferMethod?: string
   country?: string
+  /** Identity Protection's verdicts on the sign-in (prompt 47 item 6): none · low · medium · high · hidden. */
+  riskLevelDuringSignIn?: string
+  riskLevelAggregated?: string
 }
 
 // Lane B derived table for the Inventory page: counts only, never raw rows.
@@ -137,6 +142,10 @@ export type EvidenceUsage = {
   legacyAuth: UsageSignal
   deviceCode: UsageSignal
   authTransfer: UsageSignal
+  /** Sign-ins Identity Protection rated high (prompt 47 item 6); the people a high-risk policy affects. */
+  riskHigh: UsageSignal
+  /** Rated medium; a medium-or-above policy affects these people and the high ones. */
+  riskMedium: UsageSignal
 }
 
 export type PolicyResultClass =
