@@ -138,7 +138,8 @@ function build(args: {
 }
 
 const stepFor = (steps: ReturnType<typeof generateRoadmap>['steps'], goalId: string) => {
-  const s = steps.find((x) => x.goalId === goalId)
+  // The verification campaign shares the MFA goal's id; these cases are about the policy step.
+  const s = steps.find((x) => x.goalId === goalId && x.kind !== 'verify') ?? steps.find((x) => x.goalId === goalId)
   assert.ok(s, `step for ${goalId}`)
   return s
 }

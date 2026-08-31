@@ -488,22 +488,19 @@ const bgCredentialStorage: ValidationRule = {
   id: 'bg.credentialStorage',
   subject: 'breakGlass',
   severity: 'warning',
-  needs: ['answers'],
-  evaluate: (_id, ctx) => {
-    if (ctx.answers.credentialStorage === null) return unknown(UNKNOWN.needs([NEED_LABEL.answers]), A.setup)
-    return ctx.answers.credentialStorage ? PASS : fail(F.bgCredentialStorage, A.setup)
-  },
+  needs: [],
+  // No tenant exposes this fact, so an absent answer is "not yet done", never
+  // "could not be checked" (prompt 46 item 21): the line stays on the
+  // emergency-access step until somebody says it is true.
+  evaluate: (_id, ctx) => (ctx.answers.credentialStorage === true ? PASS : fail(F.bgCredentialStorage)),
 }
 
 const bgSignInMonitoring: ValidationRule = {
   id: 'bg.signInMonitoring',
   subject: 'breakGlass',
   severity: 'warning',
-  needs: ['answers'],
-  evaluate: (_id, ctx) => {
-    if (ctx.answers.signInMonitoring === null) return unknown(UNKNOWN.needs([NEED_LABEL.answers]), A.setup)
-    return ctx.answers.signInMonitoring ? PASS : fail(F.bgSignInMonitoring, A.setup)
-  },
+  needs: [],
+  evaluate: (_id, ctx) => (ctx.answers.signInMonitoring === true ? PASS : fail(F.bgSignInMonitoring)),
 }
 
 const bgNameIdentifiesPurpose: ValidationRule = {
@@ -732,7 +729,7 @@ const ctyAtLeastOne: ValidationRule = {
   subject: 'allowedCountries',
   severity: 'blocker',
   needs: [],
-  evaluate: (_t, ctx) => (ctx.allowedCountries.length > 0 ? PASS : fail(F.ctyNone, A.setup)),
+  evaluate: (_t, ctx) => (ctx.allowedCountries.length > 0 ? PASS : fail(F.ctyNone)),
 }
 
 const ctyIncludesOperator: ValidationRule = {
@@ -741,11 +738,11 @@ const ctyIncludesOperator: ValidationRule = {
   severity: 'blocker',
   needs: ['signInEvidence'],
   evaluate: (_t, ctx) => {
-    if (ctx.operatorUserId === null) return unknown(UNKNOWN.needs([NEED_LABEL.users]), A.setup)
+    if (ctx.operatorUserId === null) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
     const seen = ctx.snapshot.signInEvidence[ctx.operatorUserId]?.countries ?? []
-    if (seen.length === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]), A.setup)
+    if (seen.length === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
     const missing = seen.filter((c) => !ctx.allowedCountries.includes(c))
-    return missing.length === 0 ? PASS : fail(F.ctyMissingOperator(missing), A.setup)
+    return missing.length === 0 ? PASS : fail(F.ctyMissingOperator(missing))
   },
 }
 
@@ -767,9 +764,9 @@ const ctySeenCountriesIncluded: ValidationRule = {
   needs: ['signInEvidence'],
   evaluate: (_t, ctx) => {
     const byCountry = ctx.snapshot.evidenceAggregates?.byCountry ?? null
-    if (byCountry === null) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]), A.setup)
+    if (byCountry === null) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
     const missing = Object.keys(byCountry).filter((c) => c && !ctx.allowedCountries.includes(c))
-    return missing.length === 0 ? PASS : fail(F.ctySeenMissing(missing), A.setup)
+    return missing.length === 0 ? PASS : fail(F.ctySeenMissing(missing))
   },
 }
 

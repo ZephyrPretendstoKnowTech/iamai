@@ -513,3 +513,13 @@ export const TEMPLATE_LABEL = {
   '{trustedLocations}': 'the trusted locations',
   '{allowedCountriesLocation}': 'the allowed-countries location',
 } as const
+
+/**
+ * The two emergency-access facts Microsoft Graph exposes nowhere
+ * (validation-rules.md §3), as done-when lines of the emergency-access step
+ * (prompt 46 item 21). Never a question: the line stays until it is true.
+ */
+export const EMERGENCY_DONE_WHEN = [
+  'The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.',
+  'A sign-in by an emergency account raises an alert somebody sees.',
+]

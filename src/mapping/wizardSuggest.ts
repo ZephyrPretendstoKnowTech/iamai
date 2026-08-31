@@ -13,7 +13,6 @@ const GA_ROLE = '62e90394-69f5-4237-9190-012177145e10'
 // Word-bounded so "Rebecca-Lee" (ca-), "Editor" (it-) and "Customer Service"
 // do not surface; the tokens are the ones operators actually use.
 const ACCOUNT_PATTERN = /\bbreak.?glass\b|\bemergency\b|\bglass\b|(?:^|[\s._-])admin(?:$|[\s._-])|^it[-_]|[\s._]it[-_]|\bsvc\b|\bservice[-_]|\bexclusion|^ca[-_]|[\s_]ca[-_]/i
-const VIP_PATTERN = /\b(?:ceo|cfo|coo|cto|ciso|cio|chief|director|executive|exec|vip|president|founder|owner|partner|principal)\b/i
 
 export type WizardSuggestion = {
   id: string
@@ -68,14 +67,6 @@ export function suggestForWizard(id: WizardQuestionId, ctx: WizardSuggestContext
     for (const u of ctx.snapshot.users) {
       const ga = (ctx.snapshot.roles.active[u.id] ?? []).some((r) => r.toLowerCase() === GA_ROLE)
       if (ga && u.onPremisesSyncEnabled !== true) add(userOption(u, W.cloudOnlyGa, 2))
-    }
-  }
-
-  if (id === 'highCare') {
-    // Extra-care candidates are executives, not emergency accounts.
-    for (const u of ctx.snapshot.users) {
-      const hit = nameHit(u.displayName, VIP_PATTERN) ?? nameHit(u.jobTitle, VIP_PATTERN)
-      if (hit) add(userOption(u, W.nameMatch(hit), 1))
     }
   }
 

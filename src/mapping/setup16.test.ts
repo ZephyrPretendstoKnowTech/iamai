@@ -137,15 +137,16 @@ test('countries: the allowlist geo ref resolves to a matching tenant location, e
 // Prompt 19 §A2: the Baseline promise and the Setup list share one function.
 test('question counts follow the rendered list and split required from optional', () => {
   const noScan = wizardQuestionCounts(null)
-  assert.equal(noScan.total, 9)
-  assert.equal(noScan.required, 9, 'every shown question is required (prompt 26)')
+  // Seven answers since prompt 46 item 19: handle-with-care and frameworks are no longer asked.
+  assert.equal(noScan.total, 7)
+  assert.equal(noScan.required, 7, 'every shown question is required (prompt 26)')
 
   const plain = snapshot([user('alice')])
   const withScan = wizardQuestionCounts(null, { snapshot: plain, state: emptyMappingState('t') })
   assert.equal(withScan.total, activeWizardQuestions(null, { snapshot: plain, state: emptyMappingState('t') }).length)
-  assert.equal(withScan.total, 7, 'service accounts and trusted locations are hidden when the tenant has neither')
+  assert.equal(withScan.total, 5, 'service accounts and trusted locations are hidden when the tenant has neither')
   assert.equal(withScan.required, withScan.total)
 
   const confirmed = { ...emptyMappingState('t'), serviceAccountUserIds: ['svc'] }
-  assert.equal(wizardQuestionCounts(null, { snapshot: plain, state: confirmed }).total, 8, "service accounts return; trusted locations stay hidden without named locations")
+  assert.equal(wizardQuestionCounts(null, { snapshot: plain, state: confirmed }).total, 6, "service accounts return; trusted locations stay hidden without named locations")
 })

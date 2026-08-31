@@ -24,12 +24,6 @@ export const SETUP_QUESTIONS = {
     help: 'Add any that are missing. Pre-selected from the countries seen in sign-in records and from each user\'s usage location. Sign-ins from anywhere else will be blocked once the geo policy is enforced.',
     why: 'The allowed list becomes a named location and the block-everywhere-else policy; a missing country is a lockout for whoever is there.',
   },
-  highCare: {
-    title: 'Handle with care',
-    question: 'Who needs extra care?',
-    help: 'Executives, VIPs, or anyone an accidental lockout would hurt. The changes still apply to them: enforcement waits until each is verified and every step that touches them names them.',
-    why: 'These people are verified before anything is enforced and sequenced after the approach is proven.',
-  },
   trustedLocations: {
     title: 'Trusted locations',
     question: 'Which named locations count as trusted?',
@@ -47,12 +41,6 @@ export const SETUP_QUESTIONS = {
     question: 'Which time zone should dates display in?',
     help: 'Affects display only; everything is stored in UTC.',
     why: 'Plan dates and sign-in times read correctly for whoever runs the rollout.',
-  },
-  frameworks: {
-    title: 'Frameworks',
-    question: 'Which security frameworks is the tenant working toward?',
-    help: 'Findings and plan steps are tagged with the matching controls so the plan doubles as compliance evidence.',
-    why: 'Tagged steps let the plan stand in as evidence for an audit.',
   },
   applicability: {
     title: 'Workloads',
@@ -210,7 +198,6 @@ export const SETUP_PAGE = {
 /** Fix paths for validation findings: a plan step, or the exact portal path. */
 export const VALIDATION_ACTION = {
   roadmap: { label: 'See the exclusions group step in the Roadmap', href: '#/roadmap/step/s-prereq-exclusion-group' },
-  setup: { label: 'Answer it in Setup', href: '#/mapping' },
   methods: { label: 'Entra admin center → Protection → Authentication methods → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/AuthenticationMethodsMenuBlade/~/AdminAuthMethods' },
   drill: { label: 'Break-glass drill step in the Roadmap', href: '#/roadmap/step/s-recurring-break-glass-drill' },
   pickAnother: { label: 'Pick a different account above', href: '#/mapping' },
@@ -249,3 +236,12 @@ export const COMMON_TIMEZONES = [
   'Asia/Singapore',
   'UTC',
 ]
+
+/** Why an account was detected as emergency access (prompt 46 item 20). */
+export const EMERGENCY_SIGNAL: Record<string, string> = {
+  name: 'named like an emergency account',
+  onmicrosoft: 'signs in with the onmicrosoft.com address',
+  globalAdmin: 'Global Administrator',
+  excludedEverywhere: 'excluded from every policy',
+  noLicence: 'no licence',
+}

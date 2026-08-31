@@ -477,10 +477,12 @@ export const ROADMAP = {
           ? `${names[0]} and ${names[1]}`
           : `${names[0]}, ${names[1]} and ${names.length - 2} more`,
   blockedBy: 'Blocked until',
+  // The lead is short because the items it introduces are whole clauses and the
+  // sentence has a 25-word budget (target-state §8.7).
   dangerLead: (titles: string[]) =>
     titles.length === 1
-      ? `One thing to look at before the plan starts: ${lowerFirst(titles[0])}.`
-      : `${titles.length} things to look at before the plan starts: ${titles.slice(0, 3).map(lowerFirst).join('; ')}${titles.length > 3 ? `; and ${titles.length - 3} more` : ''}.`,
+      ? `Before the plan starts, one thing to look at: ${lowerFirst(titles[0])}.`
+      : `Before the plan starts, look at: ${titles.slice(0, 3).map(lowerFirst).join('; ')}${titles.length > 3 ? `; and ${titles.length - 3} more` : ''}.`,
   showRoles: (n: number) => `Show the ${count(n, 'role')}`,
   whyLink: 'Reference from the baseline author →',
   setupQuestionLink: (n: number) => `Setup question ${n}`,

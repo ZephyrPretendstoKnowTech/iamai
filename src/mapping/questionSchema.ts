@@ -1,4 +1,9 @@
-// The Setup questions as data (prompt 36 part 3).
+// The answers a plan rests on, as data (prompt 36 part 3; prompt 46 item 19).
+// Every one of them gets a detected default at scan time (wizard.ts
+// applyDetectedDefaults), so nothing is asked before the plan exists; a
+// person edits an assumption on the Plan when the detection is wrong.
+// Handle-with-care and frameworks are no longer answers: care is detection
+// only (derive/highCare.ts) and CIS tags stay on the goals.
 //
 // Before this file, each question's component decided its own affordances: how
 // many confirm buttons it drew, what the confirm button said, whether it
@@ -79,11 +84,9 @@ export const QUESTION_SCHEMA: QuestionSchema[] = [
   { id: 'breakGlass', type: 'pick-objects', optOut: 'doesNotExistYet', min: 2, max: null, validationSubject: 'breakGlass', copy: COPY },
   { id: 'globalExclusion', type: 'pick-objects', optOut: 'doesNotExistYet', min: 1, max: 1, validationSubject: 'exclusionGroup', copy: COPY },
   { id: 'countries', type: 'multi-select-confirm', optOut: 'none', min: 0, max: null, validationSubject: 'allowedCountries', copy: COPY },
-  { id: 'highCare', type: 'pick-objects', optOut: 'none', min: 0, max: null, validationSubject: null, copy: COPY },
   { id: 'trustedLocations', type: 'multi-select-confirm', optOut: 'doesNotExistYet', min: 0, max: null, validationSubject: 'trustedLocation', copy: COPY },
   { id: 'serviceAccounts', type: 'pick-objects', optOut: 'none', min: 0, max: null, validationSubject: 'serviceAccount', copy: COPY },
   { id: 'timeZone', type: 'confirm-default', optOut: 'none', min: 1, max: 1, validationSubject: null, copy: COPY },
-  { id: 'frameworks', type: 'multi-select-confirm', optOut: 'none', min: 0, max: null, validationSubject: null, copy: COPY },
   { id: 'applicability', type: 'toggle-grid', optOut: 'none', min: 0, max: null, validationSubject: null, copy: COPY },
 ]
 

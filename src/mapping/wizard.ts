@@ -1,26 +1,21 @@
-// The Setup wizard (2026-08-27 redesign, restructured in prompt 16): a human
-// answers up to 9 plain-language questions; everything else the baseline
-// references is auto-resolved here so the roadmap never asks for input it
-// doesn't absolutely need. Pure.
+// The assumptions a plan rests on (2026-08-27 redesign, restructured in
+// prompt 16, detected since prompt 46): seven answers, each given a detected
+// default at scan time so nothing is asked before the plan exists, and every
+// other reference the baseline makes auto-resolved here. A person edits an
+// assumption when the detection is wrong. Pure.
 import type { BaselinePackage } from '../baseline/types.ts'
 import { strengthTier } from '../coverage/strength.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingRecord, MappingState, QuestionGroup } from './types.ts'
 import { buildQuestions } from './questions.ts'
 import { detectServiceAccounts } from './serviceAccounts.ts'
-import { isCountryLocationRef, tenantCountryLocation } from './countries.ts'
+import { isCountryLocationRef, suggestCountries, tenantCountryLocation } from './countries.ts'
 import { SETUP_QUESTIONS } from '../copy/setup.ts'
+import { detectEmergencyAccess } from './emergencyAccess.ts'
+import { suggestForWizard } from './wizardSuggest.ts'
+import type { WizardSuggestContext } from './wizardSuggest.ts'
 
-export type WizardQuestionId =
-  | 'breakGlass'
-  | 'globalExclusion'
-  | 'countries'
-  | 'highCare'
-  | 'trustedLocations'
-  | 'serviceAccounts'
-  | 'timeZone'
-  | 'frameworks'
-  | 'applicability'
+export type WizardQuestionId = 'breakGlass' | 'globalExclusion' | 'countries' | 'trustedLocations' | 'serviceAccounts' | 'timeZone' | 'applicability'
 
 export type WizardQuestionDef = {
   id: WizardQuestionId
@@ -39,11 +34,9 @@ const REQUIRED: Record<WizardQuestionId, boolean> = {
   breakGlass: true,
   globalExclusion: true,
   countries: true,
-  highCare: true,
   trustedLocations: true,
   serviceAccounts: true,
   timeZone: true,
-  frameworks: true,
   applicability: true,
 }
 
@@ -214,6 +207,83 @@ export function applyWizardAnswers(state: MappingState, pkg: BaselinePackage, sn
   }
 
   return next
+}
+
+export type DetectionContext = {
+  /** Cached group memberships, for the exclusions and service-accounts groups; empty when none are cached yet. */
+  knownGroups: WizardSuggestContext['knownGroups']
+  /** The time zone to assume when the tenant has not said (the operator's browser, in the app). */
+  defaultTimeZone?: string | null
+}
+
+/**
+ * Detected defaults for every answer nobody has given yet (prompt 46 item
+ * 19; target-state §5). Nothing is asked before the plan exists: emergency
+ * access from its signals, the exclusions group from the tenant's own policy
+ * shapes, countries from where people sign in, trusted locations from the
+ * ones marked trusted, service accounts from their usage, the time zone from
+ * the browser. Where nothing is found the answer is "none found" and the plan
+ * starts by creating the thing. Answers a person has already given are left
+ * alone; detected ones are recomputed on every scan until a person edits them.
+ */
+export function applyDetectedDefaults(state: MappingState, pkg: BaselinePackage, snapshot: TenantSnapshot, ctx: DetectionContext): MappingState {
+  const next: MappingState = { ...state, records: { ...state.records }, wizardAnswered: { ...state.wizardAnswered }, assumed: { ...(state.assumed ?? {}) } }
+  const assumed = next.assumed as NonNullable<MappingState['assumed']>
+  const tenantPolicies = snapshot.config.caPolicies?.rows ?? []
+  const detectable = (id: WizardQuestionId): boolean => next.wizardAnswered[id] !== true || assumed[id] === 'detected' || assumed[id] === 'noneFound'
+  const mark = (id: WizardQuestionId, found: boolean): void => {
+    next.wizardAnswered[id] = true
+    assumed[id] = found ? 'detected' : 'noneFound'
+  }
+
+  if (detectable('breakGlass')) {
+    const candidates = detectEmergencyAccess(snapshot, tenantPolicies)
+    next.breakGlassUserIds = candidates.map((c) => c.id)
+    if (candidates.length > 0) delete next.records['__breakGlassMissing']
+    else next.records['__breakGlassMissing'] = auto('__breakGlassMissing', 'user', 'breakGlass', null, null, true)
+    mark('breakGlass', candidates.length > 0)
+  }
+
+  const suggestCtx: WizardSuggestContext = { snapshot, tenantPolicies, knownGroups: ctx.knownGroups, breakGlassUserIds: next.breakGlassUserIds }
+  if (detectable('globalExclusion')) {
+    const best = suggestForWizard('globalExclusion', suggestCtx).find((x) => x.rank === 0) ?? null
+    next.records['__globalExclusion'] = best
+      ? auto('__globalExclusion', 'group', 'globalExclusion', best.id, best.name)
+      : auto('__globalExclusion', 'group', 'globalExclusion', null, null, true)
+    mark('globalExclusion', best !== null)
+  }
+
+  if (detectable('countries')) {
+    const seen = suggestCountries(snapshot).countries
+    const signedInFrom = seen.filter((c) => c.users > 0).map((c) => c.code)
+    const codes = signedInFrom.length > 0 ? signedInFrom : seen.map((c) => c.code)
+    next.allowedCountries = codes
+    mark('countries', codes.length > 0)
+  }
+
+  if (detectable('trustedLocations')) {
+    const trusted = ((snapshot.config.namedLocations?.rows ?? []) as { id?: string; isTrusted?: boolean }[]).filter((l) => l.isTrusted === true && typeof l.id === 'string').map((l) => l.id as string)
+    next.trustedLocationIds = trusted
+    mark('trustedLocations', trusted.length > 0)
+  }
+
+  if (detectable('serviceAccounts')) {
+    const candidates = detectServiceAccounts(snapshot, [...next.breakGlassUserIds, ...next.serviceAccountRejectedIds]).map((c) => c.id)
+    next.serviceAccountUserIds = candidates
+    const group = candidates.length > 0 ? (suggestForWizard('serviceAccounts', suggestCtx).find((x) => x.rank === 0) ?? null) : null
+    next.serviceAccountsGroupId = group?.id ?? null
+    mark('serviceAccounts', candidates.length > 0)
+  }
+
+  if (detectable('timeZone')) {
+    next.displayTimeZone = next.displayTimeZone ?? ctx.defaultTimeZone ?? null
+    mark('timeZone', next.displayTimeZone !== null)
+  }
+
+  if (detectable('applicability')) mark('applicability', true) // facets are detected by the coverage engine; overrides stay
+
+  const bound = applyWizardAnswers(next, pkg, snapshot)
+  return applyAutoResolution(bound, pkg, snapshot).state
 }
 
 export type WizardProgress = { answered: number; total: number; complete: boolean; requiredMissing: number }
