@@ -664,6 +664,17 @@ footer.app a {
 .surface .footer-link {
   margin-top: 24px;
 }
+.surface .back-link {
+  margin: 0 0 8px;
+  font-size: var(--t-2);
+}
+.surface table caption {
+  caption-side: top;
+  text-align: left;
+  color: var(--ink);
+  font-weight: 500;
+  padding: 20px 0 6px;
+}
 .surface details.permissions {
   margin: 24px 0;
 }

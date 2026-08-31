@@ -30,6 +30,7 @@ export function DataTable<T>({
   rowKey,
   expand,
   csvName,
+  caption,
   empty = T.empty,
   initialSort,
 }: {
@@ -38,6 +39,8 @@ export function DataTable<T>({
   rowKey: (row: T) => string
   expand?: (row: T) => ReactNode
   csvName?: string
+  /** A table's own title (prompt 47 Part 5): a caption, so a page with several tables carries one heading. */
+  caption?: ReactNode
   empty?: string
   initialSort?: { key: string; dir: 1 | -1 }
 }) {
@@ -75,12 +78,19 @@ export function DataTable<T>({
     )
   }
 
-  if (rows.length === 0) return <EmptyState icon="search" text={empty} />
+  if (rows.length === 0)
+    return (
+      <>
+        {caption && <p className="reason">{caption}</p>}
+        <EmptyState icon="search" text={empty} />
+      </>
+    )
 
   return (
     <div>
       <div className="datatable-wrap">
         <table className="datatable">
+          {caption && <caption>{caption}</caption>}
           <thead>
             <tr>
               {shown.map((c) => (

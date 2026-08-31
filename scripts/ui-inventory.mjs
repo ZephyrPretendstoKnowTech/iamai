@@ -340,13 +340,7 @@ await goto('/connect');          await capture('Connect')
 // per tab, which inflates every cross-surface count by the number of tabs.
 const VISIBLE_PANEL = `[...document.querySelectorAll('main.page .tab-panel')].find((p) => p.offsetParent !== null)`
 
-await goto('/today')
-await capture('Scan', 'page chrome; tab panels are their own surfaces', undefined, '.tab-panel')
-await capture('Scan / Readiness tab', 'panel only', VISIBLE_PANEL)
-if (await clickText('.tab, [role=tab]', '/Inventory/')) {
-  await sleep(900)
-  await capture('Scan / Inventory tab', 'panel only', VISIBLE_PANEL)
-}
+// Today and Inventory are contract surfaces (prompt 47 Part 5): the contract walk below reaches them.
 
 // Setup: every question is its own surface, read from inside its own element
 // rather than by expanding one at a time. The questions render open, so
@@ -403,9 +397,6 @@ await goto('/checks');           await capture('Every check IAMAI runs')
 await goto('/naming');           await capture('Naming policies and groups')
 await goto('/recovery');         await capture('Recovery card')
 await goto('/roadmap/prompts');  await capture('Prompt pack')
-// #/inventory is not a page: App.tsx renders the same MfaViabilityScreen as
-// #/scan with view='inventory', so it is already captured as Scan / Inventory
-// tab. Walking it again would count Scan's chrome a third time.
 
 // ---- the contract walk (prompt 46 Part 1 item 1) ----
 //

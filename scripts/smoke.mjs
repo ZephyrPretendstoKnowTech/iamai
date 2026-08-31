@@ -166,15 +166,16 @@ try {
   t = await text()
   check('Connect (signed out): the heading, the three lines and Sign in', /Connect a tenant/.test(t) && /Global Administrator or Global Reader/.test(t) && /Sign in with Microsoft/.test(t))
 
-  // Scan: the readiness table
-  await go('scan')
-  check('Scan: readiness table renders', await waitFor(`document.querySelectorAll('table.datatable tbody tr').length >= 5`))
-  await evaluate(`document.querySelectorAll('details').forEach(d => d.open = true)`)
+  // Today: where things are now, over active people (target-state §4).
+  await go('today')
+  check('Today: the table renders', await waitFor(`document.querySelectorAll('table.datatable tbody tr').length >= 4`))
   t = await text()
-  check('Scan: 5 users · 3 policies', /5 users · 3 policies/.test(t))
-  check('Scan: tiles 1 Verified, 4 Active', /1\s+Verified/.test(t) && /4\s+Active/.test(t))
-  check('Scan: rollout tiles name the window and the population', /MFA proven in the last 30 days/.test(t) && /To set up before enforcement/.test(t) && !/Challenged rate/.test(t))
-  check('Scan: legend has three cards', (await evaluate(`document.querySelectorAll('.legend-card').length`)) === 3)
+  check('Today: one line counts active people, enabled, admins and the sign-in window', /(\d+ active (person|people)|no enabled people) of \d+ enabled · (\d+ admins?|no admins) · sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/.test(t), (t.match(/[^\n]*active (person|people)[^\n]*/) ?? [''])[0])
+  check('Today: four tiles', /MFA proven/.test(t) && /Registered, unproven/.test(t) && /No method/.test(t) && /Not active/.test(t))
+  check('Today: state words are the plain six', /Proven|Likely works|Never prompted|Possibly broken|No method|Not active/.test(t) && !/Verified|Looks healthy/.test(t))
+  check('Today: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card').length`)) === 0)
+  check('Today: one Show dropdown and a search box', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)))
+  check('Today: the link to everything the scan read', /Everything the scan read →/.test(t))
 
   // Setup: 6 questions, all required; detection may already have answered them (prompt 46 item 19).
   await go('mapping')
@@ -217,11 +218,11 @@ try {
   check('Unlicensed tenant: Findings renders from configuration and directory data', await waitFor(`document.querySelectorAll('.stat').length >= 3`))
   t = await text()
   check('Unlicensed tenant: Findings says which goals need another licence', /goals need a licence tier this tenant does not have/.test(t))
-  await send('Page.navigate', { url: `${BASE}&licence=free#/scan` })
+  await send('Page.navigate', { url: `${BASE}&licence=free#/today` })
   await sleep(1500)
   t = await text()
-  check('Unlicensed tenant: sign-in records degrade with a plain reason', /not available on this licence \(needs Entra ID P1 or P2\)/.test(t))
-  check('Unlicensed tenant: readiness says nothing can be Verified without records', /nothing can be Verified without usable records/.test(t))
+  check('Unlicensed tenant: Today says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(/[^\n]*sign-in records[^\n]*/) ?? [''])[0])
+  check('Unlicensed tenant: nobody is Proven without records', !/\bProven\b/.test(t))
   await send('Page.navigate', { url: `${BASE}&licence=free#/roadmap` })
   await sleep(1500)
   check('Unlicensed tenant: the plan still generates', await waitFor(`/steps in place/.test(document.body.innerText)`))
@@ -250,7 +251,8 @@ try {
   t = await text()
   check('Zero policies: the policy count reads zero, not a wall of missing', /no Conditional Access policies in the tenant today/.test(t))
   // A sign-in with too little access names the role to ask for (prompt 31 4.18).
-  await send('Page.navigate', { url: `${BASE}&denied=1#/scan` })
+  // The refused-sections notice lives with the scan result, on Connect (prompt 47 Part 4).
+  await send('Page.navigate', { url: `${BASE}&denied=1#/connect` })
   await sleep(1500)
   check('Denied sections: the scan says a role is missing, never just insufficient privileges', await waitFor(`/Some sections need a higher role/.test(document.body.innerText)`))
   t = await text()
@@ -278,6 +280,9 @@ try {
   // Inventory and Licensing reachable
   await go('inventory')
   check('Inventory: policies table renders', await waitFor(`document.querySelectorAll('table tbody tr').length >= 3`))
+  t = await text()
+  check('Inventory: the heading, the ← Today link, and no intro sentence', /Everything the scan read/.test(t) && /← Today/.test(t) && !/as found: no analysis/.test(t))
+  check('Inventory: the ten tabs', (await evaluate(`document.querySelectorAll('main.page [role=tab]').length`)) === 10)
   await go('licensing')
   t = await text()
   check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))

@@ -84,7 +84,6 @@ export function InventoryPage({ snapshot }: { snapshot: TenantSnapshot }) {
 
   return (
     <div>
-      <p className="reason">{C.intro}</p>
       <Tabs
         tabs={[
           { id: 'policies', label: C.tabs.policies, badge: policies.length, render: () => <PoliciesTab facts={facts} names={names} /> },
@@ -341,8 +340,8 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
         <p className="reason">{A.empty}</p>
       )}
 
-      <h4>{A.strengths}</h4>
       <DataTable
+        caption={A.strengths}
         rows={strengthRows}
         rowKey={(r) => r.id}
         csvName="iamai-auth-strengths.csv"
@@ -353,11 +352,13 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
         ]}
       />
 
-      <h4>
-        {A.registration}
-        <InfoTip title={TILE.registration.title} text={TILE.registration.text} />
-      </h4>
       <DataTable
+        caption={
+          <>
+            {A.registration}
+            <InfoTip title={TILE.registration.title} text={TILE.registration.text} />
+          </>
+        }
         rows={regRows}
         rowKey={(r) => r.measure}
         csvName="iamai-registration.csv"
@@ -367,9 +368,8 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
         ]}
       />
 
-      <h4>{A.securityDefaults}</h4>
-      <p>
-        <Chip status={secDefaults?.isEnabled === true ? 'warning' : 'done'}>{secDefaults?.isEnabled === true ? A.on : A.off}</Chip>
+      <p className="reason">
+        {A.securityDefaults}: <Chip status={secDefaults?.isEnabled === true ? 'warning' : 'done'}>{secDefaults?.isEnabled === true ? A.on : A.off}</Chip>
       </p>
     </div>
   )
@@ -632,7 +632,6 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
 
 function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
   const L = C.licensing
-  const [showZero, setShowZero] = useState(false)
   const skus = (snapshot.config.subscribedSkus?.rows ?? []) as Raw[]
   const friendly = productNames.products as Record<string, string>
   type Row = { id: string; sku: string; name: string; seats: number; consumed: number; caps: string }
@@ -649,19 +648,10 @@ function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
       caps: unlocked.join(', ') || L.none,
     }
   })
-  const rows = showZero ? all : all.filter((r) => r.seats > 0)
-  const zero = all.length - all.filter((r) => r.seats > 0).length
+  const rows = all
   return (
     <div>
       <Heading text={C.tabs.licensing} source="licensing" />
-      {zero > 0 && (
-        <p className="reason">
-          {!showZero && `${L.hiddenZero(zero)} `}
-          <Button size="sm" variant="tertiary" onClick={() => setShowZero((v) => !v)}>
-            {showZero ? L.hideZero : L.showZero}
-          </Button>
-        </p>
-      )}
       <DataTable
         rows={rows}
         rowKey={(r) => r.id}
@@ -766,8 +756,8 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
   type CountRow = { key: string; count: number }
   const table = (title: string, data: Record<string, number>, header: string, csv: string) => (
     <>
-      <h4>{title}</h4>
       <DataTable
+        caption={title}
         rows={Object.entries(data).map(([key, count]) => ({ key, count }))}
         rowKey={(r) => r.key}
         csvName={csv}
@@ -780,7 +770,8 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
     </>
   )
   const usage = snapshot.evidenceUsage
-  const people = (ids: string[]) => (ids.length === 0 ? S.nobody : ids.map(names.label).join(', '))
+  // Three names at most per row: a long list is a count with the first three (row budget).
+  const people = (ids: string[]) => (ids.length === 0 ? S.nobody : ids.length <= 3 ? ids.map(names.label).join(', ') : S.morePeople(ids.slice(0, 3).map(names.label), ids.length - 3))
   return (
     <div>
       <Heading text={C.tabs.signIns} source="signIns" />
@@ -794,20 +785,23 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
           {table(S.byProtocol, Object.fromEntries(Object.entries(agg.byProtocol).map(([k, v]) => [protocolName(k), v])), S.columns.count, 'iamai-signins-by-protocol.csv')}
           {table(S.byCountry, agg.byCountry, S.columns.users, 'iamai-signins-by-country.csv')}
           {usage && (
-            <ul className="sections">
-              <li>
-                <strong>{S.legacy}:</strong> {people(usage.legacyAuth.userIds)}
-              </li>
-              <li>
-                <strong>{S.deviceCode}:</strong> {people(usage.deviceCode.userIds)}
-              </li>
-              <li>
-                <strong>{S.authTransfer}:</strong> {people(usage.authTransfer.userIds)}
-              </li>
-            </ul>
+            <DataTable
+              caption={S.olderMethods}
+              rows={[
+                { method: S.legacy, ids: usage.legacyAuth.userIds },
+                { method: S.deviceCode, ids: usage.deviceCode.userIds },
+                { method: S.authTransfer, ids: usage.authTransfer.userIds },
+              ]}
+              rowKey={(r) => r.method}
+              csvName="iamai-older-sign-in-methods.csv"
+              columns={[
+                { key: 'method', header: S.usageColumns.method, csv: (r) => r.method, render: (r) => r.method },
+                { key: 'people', header: S.usageColumns.people, csv: (r) => r.ids.map(names.label).join('; '), render: (r) => people(r.ids) },
+              ]}
+            />
           )}
-          <h4>{S.blockedToday}</h4>
           <DataTable
+            caption={S.blockedToday}
             rows={snapshot.blockedToday}
             rowKey={(r) => r.policyId}
             csvName="iamai-blocked-today.csv"
