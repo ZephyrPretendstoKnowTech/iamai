@@ -1,72 +1,6 @@
 {
- "fingerprint": "f50ab6f52866703e",
+ "fingerprint": "aeebe01354df5ad9",
  "surfaces": [
-  {
-   "name": "Connect",
-   "note": "",
-   "headings": [
-    "Connect a tenant"
-   ],
-   "tabs": [],
-   "buttons": [
-    "Sign out",
-    "change",
-    "Open the plan →"
-   ],
-   "options": [],
-   "links": [
-    "How IAMAI works →"
-   ],
-   "chips": [],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [],
-   "tips": [],
-   "sentences": [
-    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
-    "Baseline: synthetic baseline (1 policy) · change",
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31"
-   ],
-   "titles": [],
-   "nav": [],
-   "primary": [
-    "Open the plan →"
-   ],
-   "tables": [],
-   "occurrences": {
-    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policy) · change": 1,
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31": 1
-   },
-   "occurrencesAll": {
-    "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policy) · change": 1,
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31": 1
-   },
-   "wordCounts": {
-    "headings": 3,
-    "tabs": 0,
-    "buttons": 7,
-    "options": 0,
-    "links": 4,
-    "chips": 0,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 0,
-    "tips": 0,
-    "sentences": 33,
-    "total": 47
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "pageProse": {
-    "sentences": 3,
-    "words": 33
-   }
-  },
   {
    "name": "Header",
    "note": "contract shell",
@@ -2584,6 +2518,1005 @@
    "contract": "plan.step.more",
    "state": "scanned",
    "route": "/plan"
+  },
+  {
+   "name": "Export",
+   "note": "contract export",
+   "headings": [
+    "Export",
+    "Print or save as PDF",
+    "Calendar",
+    "Plan file",
+    "CSV",
+    "Prompts for your own assistant",
+    "Grounding bundle"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Print or save as PDF",
+    "Download calendar (ICS)",
+    "Save plan file",
+    "Load a plan file",
+    "Today as CSV",
+    "Policies as CSV",
+    "Named locations as CSV",
+    "Authentication as CSV",
+    "People as CSV",
+    "Groups as CSV",
+    "Devices as CSV",
+    "Roles as CSV",
+    "Apps as CSV",
+    "Licensing as CSV",
+    "Sign-in records as CSV",
+    "Download every prompt",
+    "Download the bundle"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "See the prompts"
+   ],
+   "tips": [],
+   "sentences": [
+    "The whole plan as a document: cover, waves, every step.",
+    "Save as PDF from the print dialog.",
+    "Every scheduled step as a calendar entry, with its portal path, done-when and rollback.",
+    "Everything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.",
+    "Save plan fileLoad a plan file",
+    "Today and each inventory table as a spreadsheet.",
+    "Today as CSVPolicies as CSVNamed locations as CSVAuthentication as CSVPeople as CSVGroups as CSVDevices as CSVRoles as CSVApps as CSVLicensing as CSVSign-in records as CSV",
+    "One file of prompts, grounded in this plan, for your own assistant.",
+    "The scan and plan as JSON, to feed another tool.",
+    "The unredacted file contains people's names and sign-in names.",
+    "Once you upload it to another tool it has left this browser."
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [
+    "Print or save as PDF"
+   ],
+   "tables": [],
+   "occurrences": {
+    "The whole plan as a document: cover, waves, every step.": 1,
+    "Save as PDF from the print dialog.": 1,
+    "Every scheduled step as a calendar entry, with its portal path, done-when and rollback.": 1,
+    "Everything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.": 1,
+    "Save plan fileLoad a plan file": 1,
+    "Today and each inventory table as a spreadsheet.": 1,
+    "Today as CSVPolicies as CSVNamed locations as CSVAuthentication as CSVPeople as CSVGroups as CSVDevices as CSVRoles as CSVApps as CSVLicensing as CSVSign-in records as CSV": 1,
+    "One file of prompts, grounded in this plan, for your own assistant.": 1,
+    "The scan and plan as JSON, to feed another tool.": 1,
+    "The unredacted file contains people's names and sign-in names.": 1,
+    "Once you upload it to another tool it has left this browser.": 1
+   },
+   "occurrencesAll": {
+    "The whole plan as a document: cover, waves, every step.": 1,
+    "Save as PDF from the print dialog.": 1,
+    "Every scheduled step as a calendar entry, with its portal path, done-when and rollback.": 1,
+    "Everything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.": 1,
+    "Save plan fileLoad a plan file": 1,
+    "Today and each inventory table as a spreadsheet.": 1,
+    "Today as CSVPolicies as CSVNamed locations as CSVAuthentication as CSVPeople as CSVGroups as CSVDevices as CSVRoles as CSVApps as CSVLicensing as CSVSign-in records as CSV": 1,
+    "One file of prompts, grounded in this plan, for your own assistant.": 1,
+    "The scan and plan as JSON, to feed another tool.": 1,
+    "The unredacted file contains people's names and sign-in names.": 1,
+    "Once you upload it to another tool it has left this browser.": 1
+   },
+   "wordCounts": {
+    "headings": 17,
+    "tabs": 0,
+    "buttons": 56,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 3,
+    "tips": 0,
+    "sentences": 127,
+    "total": 203
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": ".export-card",
+     "text": "Print or save as PDFThe whole plan as a document: cover, waves, every step. Save as PDF from the print dialog.Print or save as PDF",
+     "sentences": 2,
+     "words": 25
+    },
+    {
+     "selector": ".export-card",
+     "text": "CalendarEvery scheduled step as a calendar entry, with its portal path, done-when and rollback.Download calendar (ICS)",
+     "sentences": 1,
+     "words": 16
+    },
+    {
+     "selector": ".export-card",
+     "text": "Plan fileEverything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.Save plan fileLoad a plan file",
+     "sentences": 1,
+     "words": 20
+    },
+    {
+     "selector": ".export-card",
+     "text": "CSVToday and each inventory table as a spreadsheet.Today as CSVPolicies as CSVNamed locations as CSVAuthentication as CSVPeople as CSVGroups",
+     "sentences": 1,
+     "words": 32
+    },
+    {
+     "selector": ".export-card",
+     "text": "Prompts for your own assistantOne file of prompts, grounded in this plan, for your own assistant.Download every promptSee the prompts",
+     "sentences": 1,
+     "words": 20
+    },
+    {
+     "selector": ".export-card",
+     "text": "Grounding bundleThe scan and plan as JSON, to feed another tool.The unredacted file contains people's names and sign-in names. Once you uplo",
+     "sentences": 3,
+     "words": 38
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   },
+   "contract": "export",
+   "state": "scanned",
+   "route": "/export"
+  },
+  {
+   "name": "Recovery card",
+   "note": "contract recovery",
+   "headings": [
+    "Recovery card",
+    "Emergency access accounts",
+    "Where the credential is",
+    "Turn a Conditional Access policy off",
+    "Put a policy back to report-only",
+    "If the portal itself blocks you",
+    "This tenant"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Print this card"
+   ],
+   "options": [],
+   "links": [],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "One page to print and keep.",
+    "What to do if a change locks somebody out, including you.",
+    "Generated <date>.",
+    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.",
+    "Names in full, on purpose A redacted card is useless at the moment you need it.",
+    "Keep the printout where only the right people can reach it.",
+    "Sign in with one of these if your own account is locked out.",
+    "bg01@contoso.onmicrosoft.com",
+    "Setup has no answer for where these credentials are kept.",
+    "Write it here by hand before filing this card.",
+    "Go to entra.microsoft.com and sign in.",
+    "Protection → Conditional Access → Policies.",
+    "Open the policy by name.",
+    "Set Enable policy to Off.",
+    "Save.",
+    "It applies within a few minutes.",
+    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.",
+    "Open the policy as above.",
+    "Set Enable policy to Report-only instead of Off.",
+    "The policy keeps recording what it would have done, and stops doing it.",
+    "Use an emergency access account above, in a private browser window.",
+    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.",
+    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.",
+    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.",
+    "Domain: example.com, contoso.onmicrosoft.com",
+    "Microsoft support will ask for the tenant id."
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [],
+   "occurrences": {
+    "One page to print and keep.": 1,
+    "What to do if a change locks somebody out, including you.": 1,
+    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.": 1,
+    "Names in full, on purpose A redacted card is useless at the moment you need it.": 1,
+    "Keep the printout where only the right people can reach it.": 1,
+    "Sign in with one of these if your own account is locked out.": 1,
+    "bg01@contoso.onmicrosoft.com": 1,
+    "Setup has no answer for where these credentials are kept.": 1,
+    "Write it here by hand before filing this card.": 1,
+    "Go to entra.microsoft.com and sign in.": 1,
+    "Protection → Conditional Access → Policies.": 1,
+    "It applies within a few minutes.": 1,
+    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.": 1,
+    "Set Enable policy to Report-only instead of Off.": 1,
+    "The policy keeps recording what it would have done, and stops doing it.": 1,
+    "Use an emergency access account above, in a private browser window.": 1,
+    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.": 1,
+    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.": 1,
+    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.": 1,
+    "Domain: example.com, contoso.onmicrosoft.com": 1,
+    "Microsoft support will ask for the tenant id.": 1
+   },
+   "occurrencesAll": {
+    "One page to print and keep.": 1,
+    "What to do if a change locks somebody out, including you.": 1,
+    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.": 1,
+    "Names in full, on purpose A redacted card is useless at the moment you need it.": 1,
+    "Keep the printout where only the right people can reach it.": 1,
+    "Sign in with one of these if your own account is locked out.": 1,
+    "bg01@contoso.onmicrosoft.com": 1,
+    "Setup has no answer for where these credentials are kept.": 1,
+    "Write it here by hand before filing this card.": 1,
+    "Go to entra.microsoft.com and sign in.": 1,
+    "Protection → Conditional Access → Policies.": 1,
+    "It applies within a few minutes.": 1,
+    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.": 1,
+    "Set Enable policy to Report-only instead of Off.": 1,
+    "The policy keeps recording what it would have done, and stops doing it.": 1,
+    "Use an emergency access account above, in a private browser window.": 1,
+    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.": 1,
+    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.": 1,
+    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.": 1,
+    "Domain: example.com, contoso.onmicrosoft.com": 1,
+    "Microsoft support will ask for the tenant id.": 1
+   },
+   "wordCounts": {
+    "headings": 29,
+    "tabs": 0,
+    "buttons": 3,
+    "options": 0,
+    "links": 0,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 257,
+    "total": 289
+   },
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 27,
+    "words": 258
+   },
+   "contract": "recovery",
+   "state": "scanned",
+   "route": "/recovery"
+  },
+  {
+   "name": "How IAMAI works",
+   "note": "contract how",
+   "headings": [
+    "How IAMAI works",
+    "Permissions",
+    "What IAMAI reads",
+    "Every check",
+    "Baseline packages",
+    "Limits"
+   ],
+   "tabs": [],
+   "buttons": [],
+   "options": [],
+   "links": [
+    "Microsoft: manage emergency access accounts",
+    "Microsoft: report-only mode",
+    "Microsoft: Microsoft-managed policies",
+    "Microsoft: per-user MFA states",
+    "Microsoft: plan a Conditional Access deployment",
+    "Microsoft: network assignment and named locations",
+    "Microsoft: block access by location",
+    "Microsoft: authentication methods",
+    "Microsoft: Temporary Access Pass",
+    "Microsoft: Conditional Access for workload identities",
+    "Microsoft: best practices for roles",
+    "Microsoft: authentication strengths",
+    "Microsoft: manage authentication methods"
+   ],
+   "chips": [
+    "v1.0",
+    "beta",
+    "Must fix",
+    "Recommended",
+    "Note"
+   ],
+   "columns": [
+    "Permission",
+    "What IAMAI reads",
+    "Without it",
+    "Data",
+    "Endpoint",
+    "API",
+    "Permissions",
+    "Least role",
+    "When it can fail",
+    "Why",
+    "What it looks for",
+    "If it fails",
+    "Why it matters",
+    "Needs",
+    "Source"
+   ],
+   "tiles": [],
+   "empty": [],
+   "summaries": [],
+   "tips": [],
+   "sentences": [
+    "Every check IAMAI runs, generated from the rules the code runs from.",
+    "What a package is, three ways to make one, and what IAMAI does with it.",
+    "1.",
+    "Entra admin center",
+    "2.",
+    "PowerShell (Microsoft Graph SDK)",
+    "3.",
+    "Exports from other tools",
+    "IAMAI approximates how Microsoft evaluates a sign-in; report-only is the truth.",
+    "Some conditions, like device filters and token state, it cannot reproduce.",
+    "Without Entra ID P1 there is no impact analysis; the plan is licence, then security defaults, then Conditional Access.",
+    "Sign-in history shows behaviour under today's policy; it cannot see who would register MFA when first prompted.",
+    "There is no server: no scheduled re-scans, no alerts, no state shared across devices.",
+    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it."
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [],
+   "tables": [
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    },
+    {
+     "label": "",
+     "paginated": false
+    }
+   ],
+   "occurrences": {
+    "Every check IAMAI runs, generated from the rules the code runs from.": 1,
+    "What a package is, three ways to make one, and what IAMAI does with it.": 1,
+    "PowerShell (Microsoft Graph SDK)": 1,
+    "IAMAI approximates how Microsoft evaluates a sign-in; report-only is the truth.": 1,
+    "Some conditions, like device filters and token state, it cannot reproduce.": 1,
+    "Without Entra ID P1 there is no impact analysis; the plan is licence, then security defaults, then Conditional Access.": 1,
+    "Sign-in history shows behaviour under today's policy; it cannot see who would register MFA when first prompted.": 1,
+    "There is no server: no scheduled re-scans, no alerts, no state shared across devices.": 1,
+    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it.": 1
+   },
+   "occurrencesAll": {
+    "Every check IAMAI runs, generated from the rules the code runs from.": 1,
+    "What a package is, three ways to make one, and what IAMAI does with it.": 1,
+    "PowerShell (Microsoft Graph SDK)": 1,
+    "IAMAI approximates how Microsoft evaluates a sign-in; report-only is the truth.": 1,
+    "Some conditions, like device filters and token state, it cannot reproduce.": 1,
+    "Without Entra ID P1 there is no impact analysis; the plan is licence, then security defaults, then Conditional Access.": 1,
+    "Sign-in history shows behaviour under today's policy; it cannot see who would register MFA when first prompted.": 1,
+    "There is no server: no scheduled re-scans, no alerts, no state shared across devices.": 1,
+    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it.": 1
+   },
+   "wordCounts": {
+    "headings": 12,
+    "tabs": 0,
+    "buttons": 0,
+    "options": 0,
+    "links": 57,
+    "chips": 6,
+    "columns": 29,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 0,
+    "tips": 0,
+    "sentences": 134,
+    "total": 238
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": "tr",
+     "text": "PermissionWhat IAMAI readsWithout it",
+     "sentences": 1,
+     "words": 4
+    },
+    {
+     "selector": "tr",
+     "text": "Policy.Read.AllConditional Access policies, named locations, authentication strengths, the authentication methods policy, security defaults ",
+     "sentences": 1,
+     "words": 31
+    },
+    {
+     "selector": "tr",
+     "text": "Directory.Read.AllPeople, groups and their members, devices, the licences the tenant holds, the organisation name and the signed-in account.",
+     "sentences": 1,
+     "words": 32
+    },
+    {
+     "selector": "tr",
+     "text": "AuditLog.Read.AllInteractive sign-in records for the last 30 days, and the report of which sign-in methods each person has registered.No pre",
+     "sentences": 2,
+     "words": 38
+    },
+    {
+     "selector": "tr",
+     "text": "RoleManagement.Read.DirectoryWhich accounts hold which directory roles, and which roles are assigned through Privileged Identity Management ",
+     "sentences": 1,
+     "words": 37
+    },
+    {
+     "selector": "tr",
+     "text": "UserAuthenticationMethod.Read.AllWhich kinds of sign-in method each account has registered. Never the values: no phone numbers, no codes, no",
+     "sentences": 2,
+     "words": 36
+    },
+    {
+     "selector": "tr",
+     "text": "Reports.Read.AllAggregated per-application sign-in counts, and when each application identity last signed in.Advice about which applications",
+     "sentences": 1,
+     "words": 24
+    },
+    {
+     "selector": "tr",
+     "text": "DataEndpointAPIPermissionsLeast roleWhen it can failWhy",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": "tr",
+     "text": "CA policies/identity/conditionalAccess/policiesv1.0Policy.Read.AllSecurity ReadernoneThe tenant policy set the diff and roadmap work from; M",
+     "sentences": 1,
+     "words": 16
+    },
+    {
+     "selector": "tr",
+     "text": "Named locations/identity/conditionalAccess/namedLocationsv1.0Policy.Read.AllSecurity ReadernoneTrusted-location validation and location-base",
+     "sentences": 1,
+     "words": 7
+    },
+    {
+     "selector": "tr",
+     "text": "Authentication strengths/policies/authenticationStrengthPoliciesv1.0Policy.Read.AllSecurity ReadernoneResolve strength references in policie",
+     "sentences": 1,
+     "words": 10
+    },
+    {
+     "selector": "tr",
+     "text": "Auth methods policy/policies/authenticationMethodsPolicyv1.0Policy.Read.AllSecurity ReadernoneMethod availability, registrationEnforcement, ",
+     "sentences": 1,
+     "words": 14
+    },
+    {
+     "selector": "tr",
+     "text": "Security defaults/policies/identitySecurityDefaultsEnforcementPolicyv1.0Policy.Read.AllSecurity ReadernoneWhether security defaults are on (",
+     "sentences": 1,
+     "words": 11
+    },
+    {
+     "selector": "tr",
+     "text": "Cross-tenant access/policies/crossTenantAccessPolicyv1.0Policy.Read.AllSecurity ReadernoneGuest/B2B posture affecting external-user intents.",
+     "sentences": 1,
+     "words": 7
+    },
+    {
+     "selector": "tr",
+     "text": "Role assignments/roleManagement/directory/roleAssignments?$expand=roleDefinition($select=id,displayName)v1.0RoleManagement.Read.DirectoryGlo",
+     "sentences": 1,
+     "words": 14
+    },
+    {
+     "selector": "tr",
+     "text": "PIM eligibility/roleManagement/directory/roleEligibilitySchedulesv1.0RoleManagement.Read.DirectoryGlobal ReaderEntra ID P2Eligible vs perman",
+     "sentences": 1,
+     "words": 17
+    },
+    {
+     "selector": "tr",
+     "text": "Subscribed SKUs/subscribedSkusv1.0Directory.Read.AllDirectory ReadersnoneTenant licence capabilities and seat coverage.",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": "tr",
+     "text": "Organization/organizationv1.0Directory.Read.AllDirectory ReadersnoneTenant name and verified domains for the plan-file header.",
+     "sentences": 1,
+     "words": 10
+    },
+    {
+     "selector": "tr",
+     "text": "Signed-in operator/mev1.0Directory.Read.AllDirectory ReadersnoneOperator identity recorded in the plan file.",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": "tr",
+     "text": "Operator groups/me/memberOfv1.0Directory.Read.AllDirectory ReadersnoneWarn when the operator sits inside groups a plan step targets.",
+     "sentences": 1,
+     "words": 13
+    },
+    {
+     "selector": "tr",
+     "text": "DataEndpointAPIPermissionsLeast roleWhen it can failWhy",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": "tr",
+     "text": "Registration details/reports/authenticationMethods/userRegistrationDetailsv1.0AuditLog.Read.AllReports ReaderEntra ID P1/P2Per-user register",
+     "sentences": 1,
+     "words": 14
+    },
+    {
+     "selector": "tr",
+     "text": "Users/usersv1.0Directory.Read.All, AuditLog.Read.AllDirectory Readers and Reports ReadersignInActivity needs Entra ID P1/P2 (degrades to a p",
+     "sentences": 1,
+     "words": 24
+    },
+    {
+     "selector": "tr",
+     "text": "Devices/devicesv1.0Directory.Read.AllDirectory ReadersnoneCompliance/trust state with registered owners for device intents.",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": "tr",
+     "text": "SP sign-in activity/reports/servicePrincipalSignInActivitiesbetaReports.Read.AllReports Readerattempt and map the 403 (documented scope: Rep",
+     "sentences": 1,
+     "words": 16
+    },
+    {
+     "selector": "tr",
+     "text": "Auth methods/users/{id}/authentication/methods ($batch of 20)v1.0UserAuthenticationMethod.Read.AllGlobal Readerinner 403 marks that user unk",
+     "sentences": 1,
+     "words": 18
+    },
+    {
+     "selector": "tr",
+     "text": "App sign-in summary/reports/applicationSignInDetailedSummarybetaReports.Read.AllReports Readerattempt and map the 403Aggregated per-app usag",
+     "sentences": 1,
+     "words": 13
+    },
+    {
+     "selector": "tr",
+     "text": "DataEndpointAPIPermissionsLeast roleWhen it can failWhy",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": "tr",
+     "text": "Sign-in logs/auditLogs/signInsbetaAuditLog.Read.AllReports ReaderEntra ID P1/P2; only the preview endpoint returns the fields needed; read n",
+     "sentences": 1,
+     "words": 30
+    },
+    {
+     "selector": "tr",
+     "text": "DataEndpointAPIPermissionsLeast roleWhen it can failWhy",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": "tr",
+     "text": "Group transitive members/groups/{id} ($select=id,displayName,membershipRule) + /groups/{id}/transitiveMembers (+ $count)v1.0Directory.Read.A",
+     "sentences": 1,
+     "words": 28
+    },
+    {
+     "selector": "tr",
+     "text": "Group search/groups?$filter=startswith(displayName,…)v1.0Directory.Read.AllDirectory Readersruns only while the operator types in a Setup pi",
+     "sentences": 1,
+     "words": 20
+    },
+    {
+     "selector": "tr",
+     "text": "Name resolution/directoryObjects/getByIdsv1.0Directory.Read.AllDirectory Readersruns only for ids the UI would otherwise show rawShow displa",
+     "sentences": 1,
+     "words": 19
+    },
+    {
+     "selector": "tr",
+     "text": "What it looks forIf it failsWhy it mattersNeedsSource",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": "tr",
+     "text": "At least two emergency access accounts are nominated.Must fixOne account is a single point of failure: a lost key or a forgotten passphrase ",
+     "sentences": 1,
+     "words": 36
+    },
+    {
+     "selector": "tr",
+     "text": "Global Administrator is assigned permanently and active, never eligible-only.Must fixAn eligible-only account has to activate its role first",
+     "sentences": 1,
+     "words": 35
+    },
+    {
+     "selector": "tr",
+     "text": "The account is cloud-only, with no on-premises sync.Must fixA synced account depends on the directory synchronisation and the domain control",
+     "sentences": 1,
+     "words": 36
+    },
+    {
+     "selector": "tr",
+     "text": "The sign-in address is on the tenant's own onmicrosoft.com domain.Must fixA custom domain depends on public DNS and, when federated, on anot",
+     "sentences": 1,
+     "words": 40
+    },
+    {
+     "selector": "tr",
+     "text": "The account is enabled.Must fixAn account disabled for safety is not an escape hatch when it is needed.the user listMicrosoft: manage emerge",
+     "sentences": 1,
+     "words": 24
+    },
+    {
+     "selector": "tr",
+     "text": "The account is excluded from every enabled and report-only Conditional Access policy, Microsoft-managed ones included.Must fixThe account ex",
+     "sentences": 1,
+     "words": 43
+    },
+    {
+     "selector": "tr",
+     "text": "No dynamic group rule brings the account into policy scope.Must fixA dynamic rule re-evaluates on its own, so an account outside a policy to",
+     "sentences": 1,
+     "words": 38
+    },
+    {
+     "selector": "tr",
+     "text": "At least one method that can satisfy MFA is registered.Must fixWithout one, the account cannot sign in under any modern requirement, includi",
+     "sentences": 1,
+     "words": 33
+    },
+    {
+     "selector": "tr",
+     "text": "No two emergency accounts share an Authenticator device, and none shares one with a daily-use account.Must fixOne lost or wiped phone must n",
+     "sentences": 1,
+     "words": 35
+    },
+    {
+     "selector": "tr",
+     "text": "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.Must fixA person leaves",
+     "sentences": 2,
+     "words": 47
+    },
+    {
+     "selector": "tr",
+     "text": "The account is also excluded from the report-only policies.RecommendedA report-only policy denies nothing today, so Microsoft does not requi",
+     "sentences": 2,
+     "words": 45
+    },
+    {
+     "selector": "tr",
+     "text": "The account is excluded from the policies Microsoft manages.RecommendedMicrosoft creates these in report-only and turns them on itself, no l",
+     "sentences": 2,
+     "words": 43
+    },
+    {
+     "selector": "tr",
+     "text": "At least one phishing-resistant method (a security key, a passkey or Windows Hello for Business) is registered.RecommendedText and call code",
+     "sentences": 1,
+     "words": 45
+    },
+    {
+     "selector": "tr",
+     "text": "The emergency accounts do not all depend on the same single kind of method.RecommendedOne failing method type then takes out every emergency",
+     "sentences": 1,
+     "words": 31
+    },
+    {
+     "selector": "tr",
+     "text": "The tenant has finished migrating to the authentication methods policy.RecommendedMicrosoft says not to enable or enforce per-user MFA when ",
+     "sentences": 1,
+     "words": 49
+    },
+    {
+     "selector": "tr",
+     "text": "No licence is assigned unless something needs one, and no mailbox is in daily use.RecommendedA mailbox on an emergency account is somewhere ",
+     "sentences": 1,
+     "words": 37
+    },
+    {
+     "selector": "tr",
+     "text": "The account has signed in within the last 90 days.RecommendedA passphrase nobody has used in a year is found to be wrong at the worst moment",
+     "sentences": 1,
+     "words": 32
+    },
+    {
+     "selector": "tr",
+     "text": "Where the credential is kept, and who can reach it, is recorded in the plan.RecommendedAn emergency account whose passphrase lives only in o",
+     "sentences": 1,
+     "words": 39
+    },
+    {
+     "selector": "tr",
+     "text": "A sign-in by an emergency account raises an alert.RecommendedThese accounts should sign in almost never, so a sign-in is either a drill or a",
+     "sentences": 1,
+     "words": 37
+    },
+    {
+     "selector": "tr",
+     "text": "The display name makes the purpose obvious to whoever finds it next.RecommendedAn unexplained Global Administrator is deleted in a tidy-up, ",
+     "sentences": 1,
+     "words": 32
+    },
+    {
+     "selector": "tr",
+     "text": "When the account last signed in.NoteRecorded so the drill history is visible without opening the portal.the user listMicrosoft: manage emerg",
+     "sentences": 1,
+     "words": 22
+    },
+    {
+     "selector": "tr",
+     "text": "Countries the account has signed in from in the evidence window.NoteAn emergency account signing in from an unexpected country is worth a qu",
+     "sentences": 1,
+     "words": 25
+    },
+    {
+     "selector": "tr",
+     "text": "Whether the account has completed MFA in the evidence window.NoteA registered method that has never been used is a method nobody has proved ",
+     "sentences": 1,
+     "words": 29
+    },
+    {
+     "selector": "tr",
+     "text": "What it looks forIf it failsWhy it mattersNeedsSource",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": "tr",
+     "text": "Every member is an emergency access account or an approved exclusion.Must fixAnyone inside the group is outside every policy the group is ex",
+     "sentences": 1,
+     "words": 36
+    },
+    {
+     "selector": "tr",
+     "text": "No member holds an active admin role beyond the emergency accounts.Must fixAn administrator excluded from every policy is the most valuable ",
+     "sentences": 1,
+     "words": 34
+    },
+    {
+     "selector": "tr",
+     "text": "The group is not dynamic.Must fixA rule that adds members adds exclusions, without anybody deciding to.group membershipField practice",
+     "sentences": 1,
+     "words": 18
+    },
+    {
+     "selector": "tr",
+     "text": "The group is excluded from every enabled policy that assumes it.Must fixA group excluded from some policies and not others protects nobody r",
+     "sentences": 1,
+     "words": 35
+    },
+    {
+     "selector": "tr",
+     "text": "The group holds no more members than there are emergency accounts.RecommendedEach extra member is another account every policy will not appl",
+     "sentences": 1,
+     "words": 24
+    },
+    {
+     "selector": "tr",
+     "text": "The group is not mail-enabled and carries no licence.RecommendedA mail-enabled exclusions group is a target that also delivers mail.group me",
+     "sentences": 1,
+     "words": 21
+    },
+    {
+     "selector": "tr",
+     "text": "What it looks forIf it failsWhy it mattersNeedsSource",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": "tr",
+     "text": "No range covers the whole internet.Must fixA location that trusts everything makes every policy that relaxes inside it unconditional.named l",
+     "sentences": 1,
+     "words": 25
+    },
+    {
+     "selector": "tr",
+     "text": "No range is wider than a /16 unless it was confirmed.Must fixA wide range quietly includes networks nobody meant to trust.named locationsMic",
+     "sentences": 1,
+     "words": 27
+    },
+    {
+     "selector": "tr",
+     "text": "The location is marked as trusted.Must fixPolicies that relax inside a trusted location do nothing until the flag is set.named locationsMicr",
+     "sentences": 1,
+     "words": 26
+    },
+    {
+     "selector": "tr",
+     "text": "More than a single address.RecommendedOne address means one broken link takes the office out of its own trusted location.named locationsFiel",
+     "sentences": 1,
+     "words": 21
+    },
+    {
+     "selector": "tr",
+     "text": "The ranges appear in the sign-in records.RecommendedA range nobody has signed in from is usually an old office nobody removed.named location",
+     "sentences": 1,
+     "words": 28
+    },
+    {
+     "selector": "tr",
+     "text": "What it looks forIf it failsWhy it mattersNeedsSource",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": "tr",
+     "text": "At least one country is allowed.Must fixAn empty list blocks everyone, everywhere, including the person who set it.the assumptions stripMicr",
+     "sentences": 1,
+     "words": 24
+    },
+    {
+     "selector": "tr",
+     "text": "The countries the signed-in operator has recently signed in from are included.Must fixThe first person locked out by a country policy is usu",
+     "sentences": 1,
+     "words": 33
+    },
+    {
+     "selector": "tr",
+     "text": "Sign-ins from unknown countries are not silently allowed.RecommendedAddresses that resolve to no country then pass a policy meant to name ev",
+     "sentences": 1,
+     "words": 30
+    },
+    {
+     "selector": "tr",
+     "text": "Countries with sign-in history are either allowed or deliberately left out.RecommendedA country people actually work from, left off the list",
+     "sentences": 1,
+     "words": 33
+    },
+    {
+     "selector": "tr",
+     "text": "What it looks forIf it failsWhy it mattersNeedsSource",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": "tr",
+     "text": "The pilot group has at least one member.Must fixAn empty first ring proves nothing and delays every ring behind it.group membershipField pra",
+     "sentences": 1,
+     "words": 22
+    },
+    {
+     "selector": "tr",
+     "text": "No emergency access account is in the pilot.Must fixThe escape hatch must never be inside the group a change is being tested on.group member",
+     "sentences": 1,
+     "words": 28
+    },
+    {
+     "selector": "tr",
+     "text": "Members come from more than one department.RecommendedOne department shares one set of applications, so a single-department pilot proves les",
+     "sentences": 1,
+     "words": 27
+    },
+    {
+     "selector": "tr",
+     "text": "At least one administrator is in the pilot.RecommendedAdmin sign-ins hit paths ordinary accounts never reach.group membership, role assignme",
+     "sentences": 1,
+     "words": 19
+    },
+    {
+     "selector": "tr",
+     "text": "Every member has proved MFA.RecommendedA pilot member who cannot sign in becomes a help-desk call rather than a result.group membership, sig",
+     "sentences": 1,
+     "words": 23
+    },
+    {
+     "selector": "tr",
+     "text": "Passkeys and security keys are enabled in the authentication methods policy and pointed at the pilot group.RecommendedA pilot that cannot re",
+     "sentences": 1,
+     "words": 33
+    },
+    {
+     "selector": "tr",
+     "text": "Temporary Access Pass is enabled and pointed at the pilot group.RecommendedWithout it, a person with no method yet has no way to register th",
+     "sentences": 1,
+     "words": 32
+    },
+    {
+     "selector": "tr",
+     "text": "What it looks forIf it failsWhy it mattersNeedsSource",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": "tr",
+     "text": "No confirmed service account has an interactive sign-in in the window.RecommendedAn interactive sign-in means a person is using it, so treat",
+     "sentences": 1,
+     "words": 32
+    },
+    {
+     "selector": "tr",
+     "text": "No confirmed service account holds an admin role.RecommendedAn unattended account with an admin role is a password with tenant-wide reach.ro",
+     "sentences": 1,
+     "words": 25
+    },
+    {
+     "selector": "tr",
+     "text": "Every service account a block step would catch has an exclusion.RecommendedThe step that blocks legacy sign-in is the step that stops the sc",
+     "sentences": 1,
+     "words": 29
+    },
+    {
+     "selector": "tr",
+     "text": "What it looks forIf it failsWhy it mattersNeedsSource",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": "tr",
+     "text": "The strength the baseline names exists in the tenant.Must fixA policy referring to a strength that is not there cannot be created.authentica",
+     "sentences": 1,
+     "words": 25
+    },
+    {
+     "selector": "tr",
+     "text": "Somebody in the target population has registered a method the strength accepts.Must fixA strength nobody can satisfy is a lockout with a pol",
+     "sentences": 1,
+     "words": 31
+    },
+    {
+     "selector": "tr",
+     "text": "The combinations match the ones the baseline expects.RecommendedA strength that allows more than the baseline intends quietly weakens the po",
+     "sentences": 1,
+     "words": 24
+    }
+   ],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 14,
+    "words": 134
+   },
+   "contract": "how",
+   "state": "scanned",
+   "route": "/how"
   }
  ]
 }

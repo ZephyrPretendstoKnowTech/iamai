@@ -57,7 +57,6 @@ export const RECOVERY = {
   ],
 
   tenantTitle: 'This tenant',
-  tenantIdLabel: 'Tenant ID',
   domainLabel: 'Domain',
   supportNote: 'Microsoft support will ask for the tenant id.',
 

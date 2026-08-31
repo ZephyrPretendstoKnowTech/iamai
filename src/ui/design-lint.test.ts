@@ -26,7 +26,7 @@ const TOKEN_COPIES = ['home/theme.css']
 const SCANNED_CSS = ['src/ui/app.css']
 const SCANNED_DIRS = ['src/ui/shell', 'src/ui/surfaces', 'home']
 /** On borrowed time (prompt 47): deleted with the legacy pages in prompt 49. */
-export const LEGACY_ALLOW_LIST = ['src/ui/styles.css', 'src/ui/pages/**']
+export const LEGACY_ALLOW_LIST: string[] = []
 const CONTRACTS = JSON.parse(readFileSync(process.env.CONTRACTS_JSON ?? 'docs/qa/page-contracts.json', 'utf8')) as { enforceAll: boolean }
 
 function walk(dir: string, out: string[] = []): string[] {

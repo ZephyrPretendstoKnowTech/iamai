@@ -1,7 +1,7 @@
 {
   "$comment": "Page contracts (docs/design/target-state.md). One entry per surface the UI inventory walks. Every rendered heading, tab, tile, column, chip, button, summary and link on a built surface must match an entry in its allow list (exact string, or a regular expression when prefixed re:). Page-level prose (outside repeaters) must fit the budget. Claude Code never edits this file: a violation is fixed by removing what violates it, or reported for review with the case. `status` is flipped to built by the prompt that builds the surface; `enforceAll` is flipped by prompt 49, after which any inventory surface without a contract fails. Controls (buttons, links, chips) inside a repeater are items and are measured under `rows`, not against the surface's allow lists. An element matching `.step-title` is reported as `title` and measured against rules.stepTitleMaxWords, never as a heading. A surface may override the row budget with `rowBudget`.",
   "version": 1,
-  "enforceAll": false,
+  "enforceAll": true,
   "rules": {
     "sentenceMaxWords": 25,
     "rowMaxSentences": 2,
@@ -678,7 +678,7 @@
     {
       "id": "export",
       "name": "Export",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/export",
         "state": "scanned"
@@ -725,7 +725,7 @@
     {
       "id": "recovery",
       "name": "Recovery card",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/recovery",
         "state": "scanned"
@@ -758,7 +758,7 @@
     {
       "id": "how",
       "name": "How IAMAI works",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/how",
         "state": "scanned"

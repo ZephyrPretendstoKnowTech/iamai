@@ -336,10 +336,6 @@ const capture = async (name, note = '', rootExpr, excludeSel, extra = {}, opts =
 // ---- the walk ----
 console.log('inventory: walking surfaces')
 
-// #/start and #/baseline redirect to Connect since prompt 47 Part 3; the
-// pages they named are gone from the walk.
-await goto('/connect');          await capture('Connect')
-
 // A tabbed page is captured as chrome plus one surface per panel. Capturing the
 // whole page once per tab counts the title, the banner and the Next button once
 // per tab, which inflates every cross-surface count by the number of tabs.
@@ -352,8 +348,8 @@ const VISIBLE_PANEL = `[...document.querySelectorAll('main.page .tab-panel')].fi
 //
 // Every surface the contract marks built is reached the way the contract says:
 // its route, its mock state, its click actions, its root and its exclusions.
-// Planned surfaces are skipped. Until enforceAll is true the legacy walk above
-// keeps running unchanged, so the lint keeps seeing the pages that still exist.
+// Planned surfaces are skipped. The contract walk is the whole walk (prompt 49
+// item 14, enforceAll on): every walked surface is reached by its contract.
 const built = (contracts.surfaces ?? []).filter((c) => c.status === 'built')
 console.log(`inventory: ${built.length} built surface(s) in the contract, ${(contracts.surfaces ?? []).length - built.length} planned`)
 
