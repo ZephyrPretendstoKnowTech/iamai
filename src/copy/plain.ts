@@ -58,3 +58,17 @@ export const MANAGER = {
   verify: (people: number) =>
     `This confirms, before anything is enforced, that ${count(people, 'person', 'people')} can complete MFA. It costs each of them a few minutes once. Without it, enforcement locks out whoever was never set up.`,
 }
+
+// Goals whose control does something more specific than "everyone signs in with
+// MFA", so the family note above would name another control's effect (prompt
+// 49.1 item 5). Keyed by goal id; the family note is the fallback.
+export const MANAGER_BY_GOAL: Record<string, () => string> = {
+  'register-info-protected': () =>
+    'This stops an attacker with a stolen password from registering their own MFA method and locking the real person out. Anyone already set up sees no change. Without it, one leaked password becomes a lasting hold on the account.',
+  'device-registration-mfa': () =>
+    'This requires MFA before a device joins or registers to the tenant, so a stolen password cannot enrol a device the attacker controls. People adding a real device confirm once. Without it, a rogue device can be made to look trusted.',
+  'azure-management-mfa': () =>
+    'This requires MFA to reach the Azure management portals and APIs, where one session can change billing, resources and access. Admins confirm when they open them. Without it, a stolen admin password runs the subscription unchallenged.',
+  'admin-portals-protected': () =>
+    'This requires MFA to open the Microsoft admin portals, so a phished password alone cannot reach tenant settings. Admins confirm when they sign in. Without it, one leaked admin password reaches every control.',
+}

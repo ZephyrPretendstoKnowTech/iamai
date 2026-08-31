@@ -23,6 +23,7 @@ export const PLAN = {
   save: 'Save',
   confirm: 'confirm',
   change: 'change',
+  answer: 'answer',
   noneFound: 'none found, choose one',
   signals: (n: number, list_: string) => `${count(n, 'signal')}: ${list_}`,
   assumption: {
@@ -33,10 +34,14 @@ export const PLAN = {
     serviceAccounts: (n: number) => (n === 0 ? 'service accounts none' : `service accounts ${count(n, 'account')}`),
     sharedDevices: (n: number) => (n === 0 ? 'shared devices none' : `shared devices ${n}`),
     timeZone: (zone: string) => `time zone ${zone.split('/').pop()?.replace(/_/g, ' ') ?? zone}`,
-    // The three questions the tool cannot answer from evidence.
+    // The three questions the tool cannot answer from evidence. Once answered the
+    // chip reflects the answer and offers `change`, not `answer` (prompt 49.1 item 9).
     mailDevices: 'mail-sending devices none seen',
+    mailDevicesListed: (n: number) => `mail-sending devices ${count(n, 'listed', 'listed')}`,
     travel: 'people who travel or work abroad none seen',
+    travelListed: (n: number) => `people who travel or work abroad ${count(n, 'listed', 'listed')}`,
     partner: 'partner or MSP access none seen',
+    partnerListed: (n: number) => `partner or MSP access ${count(n, 'listed', 'listed')}`,
   },
   /** The editor's first line: what the chip's short label leaves out (prompt 48.1 item 12). */
   explain: {
