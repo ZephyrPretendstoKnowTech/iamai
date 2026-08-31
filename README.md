@@ -25,6 +25,12 @@ Connect → Today → Plan
 2. **Today** — the scan: configuration, users, devices, registration details, licences, and 30 days of interactive sign-ins, pulled in a Web Worker with honest coverage labels. The last scan is kept locally so nobody re-scans just to look around.
 3. **Plan** — dated waves from a start date you pick. Nothing is asked first: the emergency-access accounts, the exclusions group, the sign-in countries, trusted locations, service accounts and the time zone are detected from the scan and shown as assumptions you can edit on the Plan; whatever is missing becomes the plan's first steps. Every step says its gap, who it touches, when it lands, and how to do it in the portal, as JSON, or in PowerShell; the plan file saves, loads, prints, and pastes into a ticket as Markdown.
 
+Three more surfaces sit behind the header and the footer: **Export** (print or save as
+PDF, the calendar, the plan file, CSVs, the prompt pack, the grounding bundle), **How
+IAMAI works** (permissions, what it reads, every check, baseline packages, limits), and
+the **Recovery card**. Screenshots of Export, How IAMAI works and the Recovery card are
+under `docs/screens/`.
+
 The surface's maximum is written down in `docs/design/target-state.md` and measured by
 `docs/qa/page-contracts.json`.
 

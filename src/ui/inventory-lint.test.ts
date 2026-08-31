@@ -161,8 +161,6 @@ test('rule 5: no concept is expressed by more than one option label', () => {
 // L4 is closed: one continue, at the bottom, and the page's own action is
 // secondary wherever there is something to continue to.
 const RULE6_WAIVED: Waiver[] = [
-  { id: 'R11', match: 'Roadmap: 3 primary' },
-  { id: 'C18', match: 'Prompt pack: 4 primary' },
 ]
 
 test('rule 6: a surface offers one primary action', () => {
@@ -196,15 +194,11 @@ const MAX_WORDS = 25
 // product text. 37 rewrites the blocked reasons (T7, T8) and the bulletins
 // (S1); 38 rewrites the Start page (C1) and the step Why (C12).
 const RULE8_WAIVED: Waiver[] = [
-  { id: 'S1', match: 'Roadmap / Schedule tab:' },
-  { id: 'C12', match: 'Roadmap / Plan / one step opened:' },
-  { id: 'T7/T8', match: 'Roadmap / Plan tab:' },
   // Prompt 48: the Plan header line names every readiness family that waits
   // (target-state §5), and the emergency-access step's engine evidence is the
   // same long line already waived on the Roadmap step. 49 rewrites those.
   { id: '48-header', match: 'Plan: 28 words' },
   { id: '48-header', match: 'in place · finishes' },
-  { id: '48-step', match: 'Plan / one step opened:' },
   { id: '48-more', match: 'Plan / one step / More expanded:' },
 ]
 test(`rule 8: no user-facing sentence runs past ${MAX_WORDS} words`, () => {
@@ -224,7 +218,7 @@ const TRUNCATED_ID = /\b[0-9a-f]{8}[…]|\b[0-9a-f]{8}\.\.\./i
 // The tenant id is printed in the header's tooltip. Not the instance T9 caught
 // (that one needs a real directory), but the same defect: an id where a person
 // reads. 37 §9 removes it.
-const RULE9_WAIVED: Waiver[] = [{ id: 'T9', match: 'Tenant ID' }]
+const RULE9_WAIVED: Waiver[] = []
 
 test('rule 9: no user-facing string carries an id, whole or truncated', () => {
   const found = surfaces.flatMap((s) =>
@@ -252,9 +246,6 @@ const FILLER: { phrase: RegExp; why: string }[] = [
 // a waiver on the phrase alone waives every future occurrence too. The Scan
 // subtitle and the two Roadmap tab-level surfaces closed with R8, R12 and R13.
 const RULE10_WAIVED: Waiver[] = [
-  { id: 'R-new', match: 'Roadmap / Plan tab: [Before anything else]' },
-  { id: 'R-new', match: 'Roadmap / Plan / one step opened: [Before anything else]' },
-  { id: 'R-new', match: 'Roadmap / Schedule tab: [Before anything else]' },
   { id: '48', match: 'Plan: [Before anything else]' },
   { id: '48', match: 'Plan / one step opened: [Before anything else]' },
 ]

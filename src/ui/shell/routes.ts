@@ -17,16 +17,6 @@ export type Route =
   | 'today'
   | 'inventory'
   | 'recovery'
-  | 'mapping'
-  | 'coverage'
-  | 'roadmap'
-  | 'roadmap/prompts'
-  | 'licensing'
-  | 'reads'
-  | 'checks'
-  | 'naming'
-  | 'package'
-  | 'components'
 
 export const PLAN_ROUTE: Route = 'plan'
 export const PLAN_HREF = `#/${PLAN_ROUTE}`
@@ -38,6 +28,8 @@ export const REDIRECT: Record<string, Route> = {
   readiness: 'today',
   mapping: 'plan',
   coverage: 'plan',
+  roadmap: 'plan',
+  'roadmap/prompts': 'export',
   checks: 'how',
   reads: 'how',
   licensing: 'how',
@@ -54,16 +46,6 @@ export const VALID = new Set<string>([
   'today',
   'inventory',
   'recovery',
-  'mapping',
-  'coverage',
-  'roadmap',
-  'roadmap/prompts',
-  'licensing',
-  'reads',
-  'checks',
-  'naming',
-  'package',
-  ...(DEV ? ['components'] : []),
 ])
 
 export const STEP_LINK = /^roadmap\/step\/(.+)$/

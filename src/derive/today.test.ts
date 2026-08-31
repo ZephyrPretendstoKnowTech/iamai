@@ -3,8 +3,8 @@
 // listed, never counted.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixtureSnapshot } from '../ui/pages/fixtureSnapshot.ts'
-import { bigFixtureSnapshot } from '../ui/pages/bigFixture.ts'
+import { fixtureSnapshot } from '../ui/fixtures/fixtureSnapshot.ts'
+import { bigFixtureSnapshot } from '../ui/fixtures/bigFixture.ts'
 import { todayView } from './today.ts'
 import { TODAY } from '../copy/today.ts'
 

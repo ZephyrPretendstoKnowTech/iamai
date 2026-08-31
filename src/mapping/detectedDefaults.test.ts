@@ -3,7 +3,7 @@
 // becomes the plan's first steps.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixtureBaseline, fixtureSnapshot } from '../ui/pages/fixtureSnapshot.ts'
+import { fixtureBaseline, fixtureSnapshot } from '../ui/fixtures/fixtureSnapshot.ts'
 import { emptyMappingState } from './types.ts'
 import { QUESTION_SCHEMA } from './questionSchema.ts'
 import { activeWizardQuestions, applyDetectedDefaults, wizardProgress } from './wizard.ts'

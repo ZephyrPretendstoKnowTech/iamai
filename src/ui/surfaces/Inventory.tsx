@@ -3,7 +3,7 @@
 // exports to CSV.
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { INVENTORY as C } from '../../copy/inventory.ts'
-import { InventoryPage } from '../pages/InventoryPage.tsx'
+import { InventoryPage } from './InventoryPage.tsx'
 
 export function Inventory({ snapshot }: { snapshot: TenantSnapshot }) {
   return (

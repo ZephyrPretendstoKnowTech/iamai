@@ -19,7 +19,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { ROADMAP } from '../copy/pages.ts'
 
-const PAGE = readFileSync('src/ui/pages/RoadmapPage.tsx', 'utf8')
+const PAGE = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
 
 test('the tenant check runs before anything is persisted', () => {
   const check = PAGE.indexOf('planTenantId !== snapshot.tenantId')

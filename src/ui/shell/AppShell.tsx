@@ -187,7 +187,7 @@ export function AppShell({
   const tabsOn = state === 'scanned'
   const todayActive = route === 'today' || route === 'inventory'
   const exportActive = route === 'export'
-  const planActive = route === 'plan' || route === 'roadmap' || route === 'roadmap/prompts' || route === 'mapping' || route === 'coverage'
+  const planActive = route === 'plan'
   return (
     <div className="shell">
       <header className="app">
