@@ -9,10 +9,12 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { PRODUCT } from './copy/product.ts'
+import { renderHomeTheme } from '../scripts/build-home.ts'
 
 const home = 'home'
 const html = readFileSync(join(home, 'index.html'), 'utf8')
 const css = readFileSync(join(home, 'home.css'), 'utf8')
+const theme = readFileSync(join(home, 'theme.css'), 'utf8')
 const tools = JSON.parse(readFileSync(join(home, 'tools.json'), 'utf8')) as {
   name: string
   description: string
@@ -21,14 +23,28 @@ const tools = JSON.parse(readFileSync(join(home, 'tools.json'), 'utf8')) as {
 }[]
 
 test('the template keeps the markers the build substitutes', () => {
-  assert.ok(html.includes('<!-- tools -->'), 'the tool cards have somewhere to go')
-  assert.ok(css.includes('{{TOOL_PATH}}'), 'the font path is substituted rather than written out')
+  assert.ok(html.includes('<!-- tools -->'), 'the tool rows have somewhere to go')
+  assert.ok(theme.includes('{{TOOL_PATH}}'), 'the font path is substituted rather than written out')
+})
+
+// Prompt 47.1 Part 3: the home wears the planner's tokens, written by the build.
+test('home/theme.css is the planner\'s tokens, and is current', () => {
+  assert.equal(theme.replace(/\r\n/g, '\n'), renderHomeTheme().replace(/\r\n/g, '\n'), 'run node scripts/build-home.ts')
+  assert.match(html, /<link rel="stylesheet" href="\/theme\.css" \/>/)
+  assert.doesNotMatch(css, /@font-face/, 'the fonts come from the token file')
+})
+
+test('the theme control shares the planner\'s key and labels', () => {
+  assert.match(html, /'iamai-theme'/)
+  assert.match(html, /Light theme/)
+  assert.match(html, /Dark theme/)
+  assert.match(html, /prefers-color-scheme: dark/)
 })
 
 test('the tool path is never hard-coded outside the build constant', () => {
   // The one place "rollout" may appear is vite.config.ts and the assemble
   // script, as the default for TOOL_PATH.
-  for (const file of ['index.html', 'home.css']) {
+  for (const file of ['index.html', 'home.css', 'theme.css']) {
     const text = readFileSync(join(home, file), 'utf8')
     assert.doesNotMatch(text, /\/rollout\b/, `${file} spells out the tool path instead of using the placeholder`)
   }
@@ -70,7 +86,25 @@ test('the page carries its title, description and a shareable image', () => {
 })
 
 test('the home page loads nothing from anywhere else', () => {
-  // Same rule as the app (CLAUDE.md): no CDN, no framework, no analytics.
-  assert.doesNotMatch(html, /<script/i, 'the home page needs no script at all')
+  // Same rule as the app (CLAUDE.md): no CDN, no framework, no analytics. The
+  // one script is inline and same-origin: the theme control (prompt 47.1).
+  assert.doesNotMatch(html, /<script[^>]*\ssrc=/i, 'no script is fetched')
+  assert.doesNotMatch(html, /https?:\/\/[^"']*\.(js|css)\b/i, 'nothing loaded from another host')
   assert.doesNotMatch(css, /@import/i, 'no imported stylesheet')
+})
+
+test('the home page is one column: no cards, no boxes, the three sections in order', () => {
+  assert.doesNotMatch(css, /tool-card/, 'no card')
+  for (const m of css.matchAll(/border-radius:\s*([^;]+);/g)) assert.ok(['var(--radius)', '50%', '0'].includes(m[1].trim()), `radius ${m[1]} is beyond the token`)
+  const order = ['Know what a change will do before you make it.', '>Tools<', '>How these work<', '>About<']
+  let at = -1
+  for (const s of order) {
+    const i = html.indexOf(s)
+    assert.ok(i > at, `${s} comes in order`)
+    at = i
+  }
+  const lede = html.match(/<p class="lede">([\s\S]*?)<\/p>/)?.[1].replace(/\s+/g, ' ').trim() ?? ''
+  assert.ok(lede.split(' ').length <= 40, `the lede is ${lede.split(' ').length} words`)
+  const about = html.match(/<h2 id="about-heading">About<\/h2>\s*<p>([\s\S]*?)<\/p>/)?.[1].replace(/\s+/g, ' ').trim() ?? ''
+  assert.ok(about.split(' ').length <= 60, `About is ${about.split(' ').length} words`)
 })

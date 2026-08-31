@@ -23,7 +23,7 @@ jobs:
       # verified once by hand is a rule that rots; this runs the check on every
       # commit. See scripts/lint-mutations.mjs.
       - run: npm run lint-mutations
-      - run: npm run build
+      - run: npm run build:site
       # ubuntu-latest ships Google Chrome; the scripts find it on their own.
       - run: npm run smoke
         env:
