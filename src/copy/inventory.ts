@@ -122,7 +122,7 @@ export const INVENTORY = {
     empty: 'No policy references a group.',
   },
   devices: {
-    columns: { name: 'Device', os: 'OS', trust: 'Trust type', compliant: 'Compliant', managed: 'Managed', lastSignIn: 'Last sign-in', owner: 'Owner', authenticator: 'Authenticator registrations with this device name' },
+    columns: { name: 'Device', os: 'OS', trust: 'Trust type', compliant: 'Compliant', managed: 'Managed', lastSignIn: 'Last sign-in', owner: 'Owner', authenticator: 'Authenticator registrations' },
     yes: 'yes',
     no: 'no',
     unknown: '—',
@@ -146,6 +146,7 @@ export const INVENTORY = {
   licensing: {
     columns: { sku: 'Licence', seats: 'Seats', consumed: 'Assigned', capabilities: 'Unlocks' },
     summary: 'Tenant capabilities',
+    capColumns: { capability: 'Capability', seats: 'Seats' },
     enabled: 'enabled',
     notLicensed: 'not licensed',
     seats: (enabled: number, consumed: number) => `${enabled} (${consumed} assigned)`,
@@ -153,8 +154,9 @@ export const INVENTORY = {
     empty: 'No subscribed licences were read.',
   },
   apps: {
-    columns: { app: 'App', signIns: 'Sign-ins (30 days)', lastSp: 'Last service principal activity' },
+    columns: { app: 'App', signIns: 'Sign-ins', lastSp: 'Last activity' },
     facets: 'Detected workloads',
+    facetColumns: { workload: 'Workload', detected: 'Detected' },
     on: 'detected',
     off: 'not detected',
     empty: 'No app sign-in summary is available on this licence.',

@@ -117,40 +117,28 @@ await send('Accessibility.enable')
 await send('Runtime.enable')
 
 try {
-  // The old names redirect (target-state §2, prompt 47 Part 3).
-  await go('start')
-  check('Start redirects to Connect', await waitFor(`location.hash === '#/connect'`))
-  await go('baseline')
-  check('Baseline redirects to Connect', await waitFor(`location.hash === '#/connect'`))
-  await go('scan')
-  check('Scan redirects to Today', await waitFor(`location.hash === '#/today'`))
-  await go('plan')
-  check('Plan opens the Roadmap until prompt 48', await waitFor(`location.hash === '#/roadmap'`))
-
-  // The header (target-state §2): wordmark, tenant, tabs, Re-scan with the scan's age, Recovery card, theme, Account.
-  await go('roadmap')
-  await waitFor(`/Do this next/.test(document.body.innerText)`)
-  let t = await evaluate(`document.querySelector('header.app').innerText`)
-  check('Header: the tenant name, both tabs and the controls', /Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
-  check('Header: Re-scan carries the scan age', /Re-scan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
-  check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
-  check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
-  await send('Page.navigate', { url: `${BASE}&state=noScan#/roadmap` })
-  await sleep(1200)
-  check('Header (no scan): the tabs are disabled until the first scan', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 2 && (await evaluate(`document.querySelector('header.app nav a').title`)) === 'after the first scan')
+  let t = ''
+  // The walk (prompt 47 Part 6 item 23): Connect signed out, sign in (the mock state), the scan, Today, Inventory, then the legacy Roadmap.
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
-  t = await evaluate(`document.querySelector('header.app').innerText`)
-  check('Header (signed out): only the wordmark and the theme control', /IAMAI/.test(t) && !/Today|Account|Recovery/.test(t), t.replace(/\s+/g, ' '))
-
-  // Connect, scanned: who is signed in, the baseline line, the one-line result, Open the plan (target-state §3).
-  await go('connect')
-  await sleep(600)
   t = await text()
-  check('Connect: signed in as the operator', /Signed in to Contoso Pty Ltd as alex@example\.com/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
-  check('Connect: the baseline line names the baseline and its policy count', /Baseline: synthetic baseline \(1 policy\)/.test(t), (t.match(/Baseline:[^\n]*/) ?? [''])[0])
-  check('Connect (scanned): the one-line result and Open the plan', /Scan complete · 5 people · 3 policies · sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/.test(t) && /Open the plan →/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
-  check('Connect (scanned): the baseline picker opens with two choices', (await clickText('/^change$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /how to make one →/.test(document.body.innerText)`)))
+  check('Connect (signed out): the heading, the three lines and Sign in', /Connect a tenant/.test(t) && /Global Administrator or Global Reader/.test(t) && /Sign in with Microsoft/.test(t))
+
+  // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await sleep(1000)
+  check(
+    'Connect: the permissions disclosure opens and lists the scopes',
+    (await clickText('/What IAMAI asks for/')) && (await waitFor(`/Policy.Read.All/.test(document.body.innerText)`)),
+  )
+  t = await text()
+  check('Connect: six permission rows, three columns', (await evaluate(`document.querySelectorAll('details.permissions tbody tr').length`)) === 6 && /Permission\s+What IAMAI reads\s+Without it/.test(t))
+  check('Connect: the standard sign-in permissions are one line, not a table', /Plus the standard sign-in permissions\./.test(t) && !/openid/.test(t))
+  check('Connect: it gives the removal path and stops there', /Enterprise applications/.test(t) && /Properties → Delete/.test(t) && !/leaves nothing behind/.test(t))
+  // Prompt 46 item 23: Application.Read.All is gone, so every requested scope
+  // has a collector behind it and the "requested, not yet used" group is absent.
+  check('Connect: no requested scope sits unused', !/Requested, not yet used/.test(t) && !/Application\.Read\.All/.test(t) && !/Used for/.test(t))
+
   await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
   await sleep(1200)
   t = await text()
@@ -161,11 +149,14 @@ try {
   t = await text()
   check('Connect (scanning): the lane in plain words and Stop', /Reading people/.test(t) && /Stop/.test(t) && !/Scan tenant/.test(t), (t.match(/Reading[^\n]*/) ?? [''])[0])
   check('Connect (scanning): the header tabs are disabled', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 2)
-  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
-  await sleep(1200)
+  // Connect, scanned: who is signed in, the baseline line, the one-line result, Open the plan (target-state §3).
+  await go('connect')
+  await sleep(600)
   t = await text()
-  check('Connect (signed out): the heading, the three lines and Sign in', /Connect a tenant/.test(t) && /Global Administrator or Global Reader/.test(t) && /Sign in with Microsoft/.test(t))
-
+  check('Connect: signed in as the operator', /Signed in to Contoso Pty Ltd as alex@example\.com/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
+  check('Connect: the baseline line names the baseline and its policy count', /Baseline: synthetic baseline \(1 policy\)/.test(t), (t.match(/Baseline:[^\n]*/) ?? [''])[0])
+  check('Connect (scanned): the one-line result and Open the plan', /Scan complete · 5 people · 3 policies · sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/.test(t) && /Open the plan →/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
+  check('Connect (scanned): the baseline picker opens with two choices', (await clickText('/^change$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /how to make one →/.test(document.body.innerText)`)))
   // Today: where things are now, over active people (target-state §4).
   await go('today')
   check('Today: the table renders', await waitFor(`document.querySelectorAll('table.datatable tbody tr').length >= 4`))
@@ -176,6 +167,16 @@ try {
   check('Today: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card').length`)) === 0)
   check('Today: one Show dropdown and a search box', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)))
   check('Today: the link to everything the scan read', /Everything the scan read →/.test(t))
+
+  // Inventory and Licensing reachable
+  await go('inventory')
+  check('Inventory: policies table renders', await waitFor(`document.querySelectorAll('table tbody tr').length >= 3`))
+  t = await text()
+  check('Inventory: the heading, the ← Today link, and no intro sentence', /Everything the scan read/.test(t) && /← Today/.test(t) && !/as found: no analysis/.test(t))
+  check('Inventory: the ten tabs', (await evaluate(`document.querySelectorAll('main.page [role=tab]').length`)) === 10)
+  await go('licensing')
+  t = await text()
+  check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))
 
   // Setup: 6 questions, all required; detection may already have answered them (prompt 46 item 19).
   await go('mapping')
@@ -211,6 +212,32 @@ try {
   check('Roadmap: the Plan tab carries the journey', (await clickText('/^Plan/')) && (await waitFor(`/The journey/.test(document.body.innerText)`)))
   check('Roadmap: Schedule tab carries the dates and the calendar export', (await clickText('/^Schedule/')) && (await waitFor(`/Export to calendar/.test(document.body.innerText)`)))
   check('Roadmap: Do this next and History render', (await clickText('/^Plan/')) && (await waitFor(`/Do this next/.test(document.body.innerText) && /History/.test(document.body.innerText)`)))
+
+  // The old names redirect (target-state §2, prompt 47 Part 3).
+  await go('start')
+  check('Start redirects to Connect', await waitFor(`location.hash === '#/connect'`))
+  await go('baseline')
+  check('Baseline redirects to Connect', await waitFor(`location.hash === '#/connect'`))
+  await go('scan')
+  check('Scan redirects to Today', await waitFor(`location.hash === '#/today'`))
+  await go('plan')
+  check('Plan opens the Roadmap until prompt 48', await waitFor(`location.hash === '#/roadmap'`))
+
+  // The header (target-state §2): wordmark, tenant, tabs, Re-scan with the scan's age, Recovery card, theme, Account.
+  await go('roadmap')
+  await waitFor(`/Do this next/.test(document.body.innerText)`)
+  t = await evaluate(`document.querySelector('header.app').innerText`)
+  check('Header: the tenant name, both tabs and the controls', /Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: Re-scan carries the scan age', /Re-scan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
+  check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
+  await send('Page.navigate', { url: `${BASE}&state=noScan#/roadmap` })
+  await sleep(1200)
+  check('Header (no scan): the tabs are disabled until the first scan', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 2 && (await evaluate(`document.querySelector('header.app nav a').title`)) === 'after the first scan')
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await sleep(1200)
+  t = await evaluate(`document.querySelector('header.app').innerText`)
+  check('Header (signed out): only the wordmark and the theme control', /IAMAI/.test(t) && !/Today|Account|Recovery/.test(t), t.replace(/\s+/g, ' '))
 
   // Failure paths and first-visitor tenants (prompt 31 §4): every page reads clearly, nothing breaks.
   await send('Page.navigate', { url: `${BASE}&licence=free#/coverage` })
@@ -276,31 +303,6 @@ try {
   const after = tenantId ? await countFor(tenantId) : 0
   check('Forget: every store is empty for the tenant afterwards', after === 0, `rows=${after}`)
   check('Forget: no MSAL account remains in session storage', (await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\.windows|microsoftonline/.test(k)).length`)) === 0)
-
-  // Inventory and Licensing reachable
-  await go('inventory')
-  check('Inventory: policies table renders', await waitFor(`document.querySelectorAll('table tbody tr').length >= 3`))
-  t = await text()
-  check('Inventory: the heading, the ← Today link, and no intro sentence', /Everything the scan read/.test(t) && /← Today/.test(t) && !/as found: no analysis/.test(t))
-  check('Inventory: the ten tabs', (await evaluate(`document.querySelectorAll('main.page [role=tab]').length`)) === 10)
-  await go('licensing')
-  t = await text()
-  check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))
-
-  // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
-  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
-  await sleep(1000)
-  check(
-    'Connect: the permissions disclosure opens and lists the scopes',
-    (await clickText('/What IAMAI asks for/')) && (await waitFor(`/Policy.Read.All/.test(document.body.innerText)`)),
-  )
-  t = await text()
-  check('Connect: six permission rows, three columns', (await evaluate(`document.querySelectorAll('details.permissions tbody tr').length`)) === 6 && /Permission\s+What IAMAI reads\s+Without it/.test(t))
-  check('Connect: the standard sign-in permissions are one line, not a table', /Plus the standard sign-in permissions\./.test(t) && !/openid/.test(t))
-  check('Connect: it gives the removal path and stops there', /Enterprise applications/.test(t) && /Properties → Delete/.test(t) && !/leaves nothing behind/.test(t))
-  // Prompt 46 item 23: Application.Read.All is gone, so every requested scope
-  // has a collector behind it and the "requested, not yet used" group is absent.
-  check('Connect: no requested scope sits unused', !/Requested, not yet used/.test(t) && !/Application\.Read\.All/.test(t) && !/Used for/.test(t))
 
   // The feedback channel shows the message before anything opens (prompt 34 part 2).
   await go('roadmap')

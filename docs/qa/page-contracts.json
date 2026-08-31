@@ -28,7 +28,7 @@
     {
       "id": "shell",
       "name": "Header",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/plan",
         "state": "scanned",
@@ -66,7 +66,7 @@
     {
       "id": "connect.signedOut",
       "name": "Connect (signed out)",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/connect",
         "state": "signedOut"
@@ -97,7 +97,7 @@
     {
       "id": "connect.signedOut.permissions",
       "name": "Connect (signed out) / permissions expanded",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/connect",
         "state": "signedOut",
@@ -146,7 +146,7 @@
     {
       "id": "connect.noScan",
       "name": "Connect (signed in, no scan)",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/connect",
         "state": "noScan"
@@ -178,7 +178,7 @@
     {
       "id": "connect.scanning",
       "name": "Connect (scanning)",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/connect",
         "state": "scanning"
@@ -205,7 +205,7 @@
     {
       "id": "connect.scanned",
       "name": "Connect (scanned)",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/connect",
         "state": "scanned"
@@ -237,7 +237,7 @@
     {
       "id": "today",
       "name": "Today",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/today",
         "state": "scanned"
@@ -293,7 +293,7 @@
     {
       "id": "inventory",
       "name": "Inventory",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/inventory",
         "state": "scanned",
@@ -332,7 +332,7 @@
     {
       "id": "inventory.tab",
       "name": "Inventory / any tab",
-      "status": "planned",
+      "status": "built",
       "reach": {
         "route": "/inventory",
         "state": "scanned",
