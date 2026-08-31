@@ -1,4 +1,8 @@
 export { Button, LinkButton } from './Button.tsx'
+export type { ButtonVariant } from './Button.tsx'
+export { Status } from './Status.tsx'
+export type { StatusTone } from './Status.tsx'
+export { Tile, Tiles } from './Tile.tsx'
 export { Chip, FilterChip } from './Chip.tsx'
 export type { ChipStatus } from './Chip.tsx'
 export { InfoTip } from './InfoTip.tsx'

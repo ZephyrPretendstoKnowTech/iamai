@@ -1,70 +1,107 @@
-// Design tokens v2 (prompt 08, ux-review-01 §4) — the source of truth. The
-// CSS custom properties in tokens.css mirror these values; the contrast test
-// reads this file so both themes stay WCAG AA.
+// Design tokens v3 (prompt 47 Part 1): the source of truth for every colour,
+// face, size and length the interface uses. src/ui/tokens.css is GENERATED
+// from this file (`node scripts/gen-tokens.mjs`); tokens.test.ts fails when
+// the two drift, and the design lint (design-lint.test.ts) fails on any colour
+// literal anywhere else.
+//
+// The product is a document people read, print and execute from: paper in
+// light mode, ink on charcoal in dark mode. No gradients, shadows, glows,
+// blur or opacity on text. The focus ring is the only box-shadow. Pure.
 
 export type Palette = {
+  /** The page. */
   bg: string
-  surface: string
-  raised: string
-  border: string
-  text: string
-  muted: string
+  /** An open step, tooltips, menus. */
+  bgRaised: string
+  /** Code, inputs. */
+  bgInset: string
+  ink: string
+  ink2: string
+  /** Icons and the idle state only: below AA for text on either page (4.4:1 light, 4.1:1 dark). */
+  ink3: string
+  rule: string
+  ruleStrong: string
   accent: string
-  accentHover: string
-  accentInk: string
-  success: string
-  warning: string
-  danger: string
-  info: string
-  focus: string
-  /** Alpha of the *-soft overlays (tokens.css). */
-  softAlpha: number
+  onAccent: string
+  ok: string
+  wait: string
+  stop: string
+  idle: string
 }
 
-export const DARK: Palette = {
-  bg: '#0A1220',
-  surface: '#0F182B',
-  raised: '#152038',
-  border: '#22304A',
-  text: '#E6EDF7',
-  muted: '#8FA3BF',
-  accent: '#2DD4BF',
-  accentHover: '#5EEAD4',
-  accentInk: '#04221E',
-  success: '#22C55E',
-  warning: '#F5B301',
-  danger: '#F04E4E',
-  info: '#60A5FA',
-  focus: 'rgba(94, 234, 212, 0.6)',
-  softAlpha: 0.12,
-}
-
-// Light status colours are the dark ones darkened ~10% for contrast on white.
+/** Paper. The default; print always uses it. */
 export const LIGHT: Palette = {
-  bg: '#F6F8FB',
-  surface: '#FFFFFF',
-  raised: '#F1F5F9',
-  border: '#DCE3EE',
-  text: '#0F172A',
-  muted: '#5B6B82',
-  // Prompt 08 lists #0F9F8F, which gives 3.3:1 against white ink — below the
-  // AA text floor the same prompt requires. Darkened until white ink passes.
-  accent: '#0B7F72',
-  accentHover: '#095F55',
-  accentInk: '#FFFFFF',
-  // Darkened from #15803D so the done chip's ink reads AA on its soft background (ux-review-05 §43).
-  success: '#166534',
-  warning: '#B45309',
-  danger: '#C62828',
-  info: '#1D4ED8',
-  focus: 'rgba(15, 159, 143, 0.6)',
-  softAlpha: 0.1,
+  bg: '#FBF9F5',
+  bgRaised: '#F4F1EA',
+  bgInset: '#EDE9E0',
+  ink: '#1B1B1B',
+  ink2: '#55554F',
+  ink3: '#767670',
+  rule: '#E3DFD6',
+  ruleStrong: '#C9C4B8',
+  accent: '#0B5B57',
+  onAccent: '#FBF9F5',
+  ok: '#2F6B4F',
+  wait: '#8A5A0B',
+  stop: '#9B2C2C',
+  idle: '#8A8A83',
 }
 
-export const TYPE = { xl: 30, lg: 22, md: 17, base: 15, sm: 13 } as const
-export const SPACE = [4, 8, 12, 16, 24, 32, 48] as const
-export const RADIUS = { card: 12, input: 8, chip: 999 } as const
-export const MAX_CONTENT_WIDTH = 1100
+/** Ink on charcoal. Neutral, never navy. */
+export const DARK: Palette = {
+  bg: '#15171A',
+  bgRaised: '#1D2024',
+  bgInset: '#24282D',
+  ink: '#ECEAE4',
+  ink2: '#A7A59D',
+  ink3: '#7A7871',
+  rule: '#2C3036',
+  ruleStrong: '#3D4249',
+  accent: '#5FB8B0',
+  onAccent: '#0F1214',
+  ok: '#7BC9A0',
+  wait: '#E0B25C',
+  stop: '#E28B8B',
+  idle: '#7A7871',
+}
+
+/** Three families, self-hosted Latin subsets under public/fonts (OFL). Two weights: 400 and 500. */
+export const FONTS = {
+  serif: "'IBM Plex Serif', Georgia, 'Times New Roman', serif",
+  sans: "'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif",
+  mono: "'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace",
+} as const
+
+export const FONT_FILES = [
+  { family: 'IBM Plex Serif', weight: 400, file: 'IBMPlexSerif-Regular-Latin1.woff2' },
+  { family: 'IBM Plex Serif', weight: 500, file: 'IBMPlexSerif-Medium-Latin1.woff2' },
+  { family: 'IBM Plex Sans', weight: 400, file: 'IBMPlexSans-Regular-Latin1.woff2' },
+  { family: 'IBM Plex Sans', weight: 500, file: 'IBMPlexSans-Medium-Latin1.woff2' },
+  { family: 'IBM Plex Mono', weight: 400, file: 'IBMPlexMono-Regular-Latin1.woff2' },
+] as const
+
+/** The scale, in px: meta · small · body · h3 · h2 · h1. */
+export const TYPE = { 't-1': 12, 't-2': 13, 't-3': 14, 't-4': 16, 't-5': 20, 't-6': 26 } as const
+export const LINE_HEIGHT = { body: 1.5, heading: 1.25 } as const
+export const WEIGHTS = [400, 500] as const
+
+export const LAYOUT = {
+  /** Prose measure. */
+  measureCh: 72,
+  /** The page column. */
+  pagePx: 760,
+  /** Tables run full width to this. */
+  tablePx: 1040,
+  paddingPx: 24,
+  headerPx: 48,
+  controlPx: 32,
+  /** Radius on a control; everything else is square. */
+  radiusPx: 4,
+  /** Tooltips and menus fade in; nothing else moves. */
+  motionMs: 120,
+} as const
+
+export const FOCUS_RING = '0 0 0 2px var(--accent)'
 
 // ---- WCAG contrast helpers (pure) ----
 
@@ -88,44 +125,142 @@ export function contrastRatio(fg: string, bg: string): number {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-// ---- Button states (prompt 19 §A1) ----
-// Every variant keeps its own ink in every state; styles.css mirrors this
-// table with explicit `color` on the hover/active/focus rules so the global
-// `a:hover` colour can never win on a LinkButton. The soft backgrounds are
-// the accent at softAlpha over the surface, composited here so the test sees
-// real colours.
+// ---- tokens.css, rendered from the values above ----
 
-export type ButtonVariant = 'primary' | 'secondary' | 'quiet'
-export type ButtonState = 'default' | 'hover' | 'active' | 'focus' | 'disabled'
-export const BUTTON_VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'quiet']
-export const BUTTON_STATES: ButtonState[] = ['default', 'hover', 'active', 'focus', 'disabled']
-
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '')
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+const VAR_NAMES: Record<keyof Palette, string> = {
+  bg: '--bg',
+  bgRaised: '--bg-raised',
+  bgInset: '--bg-inset',
+  ink: '--ink',
+  ink2: '--ink-2',
+  ink3: '--ink-3',
+  rule: '--rule',
+  ruleStrong: '--rule-strong',
+  accent: '--accent',
+  onAccent: '--on-accent',
+  ok: '--ok',
+  wait: '--wait',
+  stop: '--stop',
+  idle: '--idle',
 }
 
-/** Composite `top` at `alpha` over `under`; both opaque hex. */
-export function blend(top: string, alpha: number, under: string): string {
-  const t = hexToRgb(top)
-  const u = hexToRgb(under)
-  const mix = t.map((c, i) => Math.round(c * alpha + u[i] * (1 - alpha)))
-  return '#' + mix.map((c) => c.toString(16).padStart(2, '0')).join('').toUpperCase()
+function paletteBlock(p: Palette, indent = '  '): string {
+  return (Object.keys(VAR_NAMES) as (keyof Palette)[]).map((k) => `${indent}${VAR_NAMES[k]}: ${p[k].toLowerCase()};`).join('\n')
 }
 
-export function buttonColours(p: Palette, variant: ButtonVariant, state: ButtonState): { text: string; background: string } {
-  const hovered = state === 'hover' || state === 'active'
-  if (variant === 'primary') return { text: p.accentInk, background: hovered ? p.accentHover : p.accent }
-  if (variant === 'quiet') {
-    // The soft overlay lightens the surface just enough that the plain accent
-    // drops under 4.5:1 in the light theme; hovered ink darkens to match.
-    return hovered ? { text: p.accentHover, background: blend(p.accent, p.softAlpha, p.surface) } : { text: p.accent, background: p.surface }
+/**
+ * The whole of tokens.css. Light is the default, dark via [data-theme='dark'],
+ * prefers-color-scheme decides a first visit before the toggle has stored a
+ * choice, print always uses light. The legacy bridge at the end maps the v2
+ * names styles.css still reads onto the v3 palette; it goes with styles.css in
+ * prompt 49.
+ */
+export function renderTokensCss(): string {
+  const faces = FONT_FILES.map(
+    (f) => `@font-face {
+  font-family: '${f.family}';
+  src: url('/fonts/${f.file}') format('woff2');
+  font-weight: ${f.weight};
+  font-style: normal;
+  font-display: swap;
+}`,
+  ).join('\n')
+  const scale = (Object.entries(TYPE) as [string, number][]).map(([k, v]) => `  --${k}: ${v}px;`).join('\n')
+  return `/* GENERATED from src/ui/tokens.ts by scripts/gen-tokens.mjs. Do not edit by hand:
+   tokens.test.ts fails when this file and tokens.ts disagree. */
+
+${faces}
+
+:root {
+  --font-serif: ${FONTS.serif};
+  --font-sans: ${FONTS.sans};
+  --font-mono: ${FONTS.mono};
+
+${scale}
+  --lh-body: ${LINE_HEIGHT.body};
+  --lh-heading: ${LINE_HEIGHT.heading};
+
+  --measure: ${LAYOUT.measureCh}ch;
+  --page: ${LAYOUT.pagePx}px;
+  --table: ${LAYOUT.tablePx}px;
+  --pad: ${LAYOUT.paddingPx}px;
+  --header: ${LAYOUT.headerPx}px;
+  --control: ${LAYOUT.controlPx}px;
+  --radius: ${LAYOUT.radiusPx}px;
+  --motion: ${LAYOUT.motionMs}ms;
+  --focus-ring: ${FOCUS_RING};
+
+  /* light: paper */
+${paletteBlock(LIGHT)}
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+${paletteBlock(DARK, '    ')}
   }
-  return { text: p.text, background: p.surface }
 }
 
-/** The plan's temperature (ux-review-07 §F4), mirrored in tokens.css: past settled, present at full strength, future cool. */
-export const TEMPERATURE = {
-  dark: { past: '#6FB59A', present: DARK.accent, future: '#8AA6D6' },
-  light: { past: '#2F6B57', present: LIGHT.accent, future: '#4A6FA5' },
+:root[data-theme='dark'] {
+${paletteBlock(DARK)}
+}
+
+@media print {
+  :root,
+  :root[data-theme='dark'] {
+${paletteBlock(LIGHT, '    ')}
+  }
+}
+
+/* Legacy bridge: the v2 names styles.css and src/ui/pages still read, mapped
+   onto the v3 palette so the old pages keep working inside the new shell until
+   prompt 49 deletes them together with this block. No new colour is introduced
+   here; the soft backgrounds are the palette mixed with the page. */
+:root {
+  --font-display: var(--font-serif);
+  --text-xl: var(--t-6);
+  --text-lg: var(--t-5);
+  --text-md: var(--t-4);
+  --text-base: var(--t-3);
+  --text-sm: var(--t-2);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --radius-card: 0;
+  --radius-input: var(--radius);
+  --radius-chip: var(--radius);
+  --max-content: var(--table);
+  --max-content-wide: var(--table);
+  --gutter: var(--pad);
+  --shadow-1: none;
+  --motion-rise: var(--motion);
+  --surface: var(--bg-raised);
+  --raised: var(--bg-inset);
+  --border: var(--rule-strong);
+  --border-control: var(--rule-strong);
+  --text: var(--ink);
+  --muted: var(--ink-2);
+  --accent-hover: var(--accent);
+  --accent-ink: var(--on-accent);
+  --success: var(--ok);
+  --warning: var(--wait);
+  --danger: var(--stop);
+  --info: var(--accent);
+  --focus: var(--accent);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  --success-soft: color-mix(in srgb, var(--ok) 12%, var(--bg));
+  --warning-soft: color-mix(in srgb, var(--wait) 12%, var(--bg));
+  --danger-soft: color-mix(in srgb, var(--stop) 12%, var(--bg));
+  --info-soft: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  --past: var(--ink-2);
+  --past-soft: color-mix(in srgb, var(--ink-2) 12%, var(--bg));
+  --present: var(--accent);
+  --present-soft: var(--accent-soft);
+  --future: var(--accent);
+  --future-soft: var(--accent-soft);
+}
+`
 }

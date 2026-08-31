@@ -598,7 +598,7 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
       <p className="reason">
         {resolved === null && `${R.resolving} `}
         {!showAll && hidden > 0 && `${R.hiddenNote(hidden)} `}
-        <Button size="sm" variant="quiet" onClick={() => setShowAll((v) => !v)}>
+        <Button size="sm" variant="tertiary" onClick={() => setShowAll((v) => !v)}>
           {showAll ? R.showHeld : R.showAll}
         </Button>
       </p>
@@ -657,7 +657,7 @@ function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
       {zero > 0 && (
         <p className="reason">
           {!showZero && `${L.hiddenZero(zero)} `}
-          <Button size="sm" variant="quiet" onClick={() => setShowZero((v) => !v)}>
+          <Button size="sm" variant="tertiary" onClick={() => setShowZero((v) => !v)}>
             {showZero ? L.hideZero : L.showZero}
           </Button>
         </p>

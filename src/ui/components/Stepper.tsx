@@ -52,7 +52,7 @@ export function Stepper({
     <nav className={`stepper ${collapsed ? 'is-collapsed' : ''}`} aria-label={T.nav}>
       <Button
         size="sm"
-        variant="quiet"
+        variant="tertiary"
         className="stepper-collapse"
         icon="chevron"
         aria-label={collapsed ? T.expand : T.collapse}

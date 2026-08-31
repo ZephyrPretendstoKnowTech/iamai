@@ -1,31 +1,150 @@
-/* Design tokens v2 — mirrors src/ui/tokens.ts (the source of truth; the
-   contrast test runs against that file). Dark by default, light via
-   [data-theme='light'], print always light. */
+/* GENERATED from src/ui/tokens.ts by scripts/gen-tokens.mjs. Do not edit by hand:
+   tokens.test.ts fails when this file and tokens.ts disagree. */
 
-/* The display face (ux-review-07 §F2): Space Grotesk, OFL, self-hosted and
-   subset to Latin (public/fonts). Headings and large numerals only; body
-   text stays on the system sans. */
 @font-face {
-  font-family: 'Space Grotesk';
-  src: url('/fonts/SpaceGrotesk-Latin.woff2') format('woff2');
-  font-weight: 300 700;
+  font-family: 'IBM Plex Serif';
+  src: url('/fonts/IBMPlexSerif-Regular-Latin1.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Serif';
+  src: url('/fonts/IBMPlexSerif-Medium-Latin1.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/IBMPlexSans-Regular-Latin1.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/IBMPlexSans-Medium-Latin1.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-Regular-Latin1.woff2') format('woff2');
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 :root {
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: 'Space Grotesk', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  --font-serif: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
 
-  /* type: 30/22/17/15/13 */
-  --text-xl: 30px;
-  --text-lg: 22px;
-  --text-md: 17px;
-  --text-base: 15px;
-  --text-sm: 13px;
+  --t-1: 12px;
+  --t-2: 13px;
+  --t-3: 14px;
+  --t-4: 16px;
+  --t-5: 20px;
+  --t-6: 26px;
+  --lh-body: 1.5;
+  --lh-heading: 1.25;
 
-  /* spacing 4/8/12/16/24/32/48 */
+  --measure: 72ch;
+  --page: 760px;
+  --table: 1040px;
+  --pad: 24px;
+  --header: 48px;
+  --control: 32px;
+  --radius: 4px;
+  --motion: 120ms;
+  --focus-ring: 0 0 0 2px var(--accent);
+
+  /* light: paper */
+  --bg: #fbf9f5;
+  --bg-raised: #f4f1ea;
+  --bg-inset: #ede9e0;
+  --ink: #1b1b1b;
+  --ink-2: #55554f;
+  --ink-3: #767670;
+  --rule: #e3dfd6;
+  --rule-strong: #c9c4b8;
+  --accent: #0b5b57;
+  --on-accent: #fbf9f5;
+  --ok: #2f6b4f;
+  --wait: #8a5a0b;
+  --stop: #9b2c2c;
+  --idle: #8a8a83;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #15171a;
+    --bg-raised: #1d2024;
+    --bg-inset: #24282d;
+    --ink: #eceae4;
+    --ink-2: #a7a59d;
+    --ink-3: #7a7871;
+    --rule: #2c3036;
+    --rule-strong: #3d4249;
+    --accent: #5fb8b0;
+    --on-accent: #0f1214;
+    --ok: #7bc9a0;
+    --wait: #e0b25c;
+    --stop: #e28b8b;
+    --idle: #7a7871;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #15171a;
+  --bg-raised: #1d2024;
+  --bg-inset: #24282d;
+  --ink: #eceae4;
+  --ink-2: #a7a59d;
+  --ink-3: #7a7871;
+  --rule: #2c3036;
+  --rule-strong: #3d4249;
+  --accent: #5fb8b0;
+  --on-accent: #0f1214;
+  --ok: #7bc9a0;
+  --wait: #e0b25c;
+  --stop: #e28b8b;
+  --idle: #7a7871;
+}
+
+@media print {
+  :root,
+  :root[data-theme='dark'] {
+    --bg: #fbf9f5;
+    --bg-raised: #f4f1ea;
+    --bg-inset: #ede9e0;
+    --ink: #1b1b1b;
+    --ink-2: #55554f;
+    --ink-3: #767670;
+    --rule: #e3dfd6;
+    --rule-strong: #c9c4b8;
+    --accent: #0b5b57;
+    --on-accent: #fbf9f5;
+    --ok: #2f6b4f;
+    --wait: #8a5a0b;
+    --stop: #9b2c2c;
+    --idle: #8a8a83;
+  }
+}
+
+/* Legacy bridge: the v2 names styles.css and src/ui/pages still read, mapped
+   onto the v3 palette so the old pages keep working inside the new shell until
+   prompt 49 deletes them together with this block. No new colour is introduced
+   here; the soft backgrounds are the palette mixed with the page. */
+:root {
+  --font-display: var(--font-serif);
+  --text-xl: var(--t-6);
+  --text-lg: var(--t-5);
+  --text-md: var(--t-4);
+  --text-base: var(--t-3);
+  --text-sm: var(--t-2);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -33,116 +152,36 @@
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
-
-  /* radius 12 cards / 8 inputs / 999 chips */
-  --radius-card: 12px;
-  --radius-input: 8px;
-  --radius-chip: 999px;
-
-  --max-content: 1440px;
-  --max-content-wide: 1600px;
-  --gutter: 32px;
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --motion: 180ms ease;
-
-  /* dark (default) */
-  --bg: #0a1220;
-  --surface: #0f182b;
-  --raised: #152038;
-  /* L5: was #22304a, 1.34:1 against the surface — visible only if you were
-     looking for it. Raised so a card edge reads as an edge in both themes. */
-  --border: #425887;
-  /* L5: a control's edge is what identifies it as a control, so WCAG 1.4.11
-     asks 3:1 of it — more than a grouping container needs. Clears 3:1 on all
-     three dark surfaces (bg, surface, raised). */
-  --border-control: #5872a8;
-  --text: #e6edf7;
-  --muted: #8fa3bf;
-  --accent: #2dd4bf;
-  --accent-hover: #5eead4;
-  --accent-ink: #04221e;
-  --success: #22c55e;
-  --warning: #f5b301;
-  --danger: #f04e4e;
-  --info: #60a5fa;
-  --focus: rgba(94, 234, 212, 0.6);
-  --accent-soft: rgba(45, 212, 191, 0.12);
-  --success-soft: rgba(34, 197, 94, 0.14);
-  --warning-soft: rgba(245, 179, 1, 0.14);
-  --danger-soft: rgba(240, 78, 78, 0.14);
-  --info-soft: rgba(96, 165, 250, 0.14);
-
-  /* The plan's temperature (ux-review-07 §F4): past settled, present at full
-     strength, future cool. Danger and warning stay reserved for real risk. */
-  --past: #6fb59a;
-  --past-soft: rgba(111, 181, 154, 0.16);
+  --radius-card: 0;
+  --radius-input: var(--radius);
+  --radius-chip: var(--radius);
+  --max-content: var(--table);
+  --max-content-wide: var(--table);
+  --gutter: var(--pad);
+  --shadow-1: none;
+  --motion-rise: var(--motion);
+  --surface: var(--bg-raised);
+  --raised: var(--bg-inset);
+  --border: var(--rule-strong);
+  --border-control: var(--rule-strong);
+  --text: var(--ink);
+  --muted: var(--ink-2);
+  --accent-hover: var(--accent);
+  --accent-ink: var(--on-accent);
+  --success: var(--ok);
+  --warning: var(--wait);
+  --danger: var(--stop);
+  --info: var(--accent);
+  --focus: var(--accent);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  --success-soft: color-mix(in srgb, var(--ok) 12%, var(--bg));
+  --warning-soft: color-mix(in srgb, var(--wait) 12%, var(--bg));
+  --danger-soft: color-mix(in srgb, var(--stop) 12%, var(--bg));
+  --info-soft: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  --past: var(--ink-2);
+  --past-soft: color-mix(in srgb, var(--ink-2) 12%, var(--bg));
   --present: var(--accent);
   --present-soft: var(--accent-soft);
-  --future: #8aa6d6;
-  --future-soft: rgba(138, 166, 214, 0.16);
-  --motion-rise: 150ms;
-}
-
-:root[data-theme='light'] {
-  --past: #2f6b57;
-  --past-soft: rgba(47, 107, 87, 0.12);
-  --future: #4a6fa5;
-  --future-soft: rgba(74, 111, 165, 0.12);
-  --bg: #f6f8fb;
-  --surface: #ffffff;
-  --raised: #f1f5f9;
-  /* L5: was #dce3ee, 1.21:1 against the page. The light palette was added after
-     the dark one and its borders never got the same pass. */
-  --border: #a9b8d0;
-  /* Clears 3:1 on white, the page and the raised surface. */
-  --border-control: #70819e;
-  --text: #0f172a;
-  --muted: #5b6b82;
-  --accent: #0b7f72;
-  --accent-hover: #095f55;
-  --accent-ink: #ffffff;
-  --success: #166534;
-  --warning: #b45309;
-  --danger: #c62828;
-  --info: #1d4ed8;
-  --focus: rgba(15, 159, 143, 0.6);
-  --accent-soft: rgba(11, 127, 114, 0.1);
-  --success-soft: rgba(22, 101, 52, 0.1);
-  --warning-soft: rgba(180, 83, 9, 0.1);
-  --danger-soft: rgba(198, 40, 40, 0.1);
-  --info-soft: rgba(29, 78, 216, 0.1);
-  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-@media print {
-  :root {
-    --past: #2f6b57;
-    --past-soft: rgba(47, 107, 87, 0.12);
-    --future: #4a6fa5;
-    --future-soft: rgba(74, 111, 165, 0.12);
-    --bg: #ffffff;
-    --surface: #ffffff;
-    --raised: #f6f8fb;
-    /* L5: was #dce3ee, 1.21:1 against the page. The light palette was added after
-     the dark one and its borders never got the same pass. */
-  --border: #a9b8d0;
-  /* Clears 3:1 on white, the page and the raised surface. */
-  --border-control: #70819e;
-    --text: #0f172a;
-    --muted: #5b6b82;
-    --accent: #0b7f72;
-    --accent-hover: #095f55;
-    --accent-ink: #ffffff;
-    --success: #166534;
-    --warning: #b45309;
-    --danger: #c62828;
-    --info: #1d4ed8;
-    --focus: transparent;
-    --accent-soft: transparent;
-    --success-soft: transparent;
-    --warning-soft: transparent;
-    --danger-soft: transparent;
-    --info-soft: transparent;
-    --shadow-1: none;
-  }
+  --future: var(--accent);
+  --future-soft: var(--accent-soft);
 }

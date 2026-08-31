@@ -52,7 +52,7 @@ export function FeedbackPanel({ snapshot }: { snapshot: TenantSnapshot | null })
         <a className="button-like" href={`${REPO_URL}/issues`} target="_blank" rel="noopener noreferrer">
           {C.issue}
         </a>
-        <Button variant="quiet" onClick={() => setOpen(false)}>
+        <Button variant="tertiary" onClick={() => setOpen(false)}>
           {C.close}
         </Button>
       </div>

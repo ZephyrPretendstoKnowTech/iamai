@@ -1161,7 +1161,7 @@ export function RoadmapPage({
               </FilterChip>
             ))}
             {schedule.bandSource === 'override' && (
-              <Button size="sm" variant="quiet" onClick={() => setBand(null)}>
+              <Button size="sm" variant="tertiary" onClick={() => setBand(null)}>
                 {C.bandReset}
               </Button>
             )}
@@ -1191,7 +1191,7 @@ export function RoadmapPage({
               />
             </label>
             {saved?.freeze && (
-              <Button size="sm" variant="quiet" onClick={() => setFreeze(null)}>
+              <Button size="sm" variant="tertiary" onClick={() => setFreeze(null)}>
                 {CALENDAR.freezeClear}
               </Button>
             )}
@@ -1416,7 +1416,7 @@ export function RoadmapPage({
             <>
               {' '}
               {!showCompleted && C.completedHidden(completedCount)}{' '}
-              <Button size="sm" variant="quiet" onClick={() => setShowCompleted((v) => !v)}>
+              <Button size="sm" variant="tertiary" onClick={() => setShowCompleted((v) => !v)}>
                 {showCompleted ? C.hideCompleted : C.showCompleted}
               </Button>
             </>
@@ -1503,7 +1503,7 @@ export function RoadmapPage({
         <p className="reason">
           {!showCompleted && statusFilter.size === 0 && C.completedHidden(completedCount)}{' '}
           {completedCount > 0 && (
-            <Button size="sm" variant="quiet" onClick={() => setShowCompleted((v) => !v)}>
+            <Button size="sm" variant="tertiary" onClick={() => setShowCompleted((v) => !v)}>
               {showCompleted ? C.hideCompleted : C.showCompleted}
             </Button>
           )}
@@ -1619,7 +1619,7 @@ export function RoadmapPage({
                         }}
                       />
                       <p className="no-print">
-                        <Button size="sm" variant="quiet" onClick={() => setOpenStepId(null)}>
+                        <Button size="sm" variant="tertiary" onClick={() => setOpenStepId(null)}>
                           {C.collapseStep}
                         </Button>
                       </p>
@@ -2201,7 +2201,7 @@ function SkipPanel({
         >
           {SKIP.confirm}
         </Button>
-        <Button size="sm" variant="quiet" onClick={onCancel}>
+        <Button size="sm" variant="tertiary" onClick={onCancel}>
           {SKIP.cancel}
         </Button>
       </p>
@@ -2732,12 +2732,12 @@ function StepCard({
                             decision. */}
                         {openAssert === u.id ? (
                           ASSERTION_CHOICES.map((c) => (
-                            <Button key={c.effect} size="sm" variant="quiet" onClick={() => { onAssert(step.id, u.id, 'yes', c.effect); setOpenAssert(null) }}>
+                            <Button key={c.effect} size="sm" variant="tertiary" onClick={() => { onAssert(step.id, u.id, 'yes', c.effect); setOpenAssert(null) }}>
                               {c.label}
                             </Button>
                           ))
                         ) : (
-                          <Button size="sm" variant="quiet" onClick={() => setOpenAssert(u.id)}>
+                          <Button size="sm" variant="tertiary" onClick={() => setOpenAssert(u.id)}>
                             {VERDICT.answer}
                           </Button>
                         )}
@@ -2983,7 +2983,7 @@ function StepCard({
         <p className="no-print row">
           <Chip status="neutral">{SKIP.skippedChip}</Chip>
           <span className="reason">{step.skipReason}</span>
-          <Button size="sm" variant="quiet" onClick={() => { unskipStep(step); onSkipped(step) }}>
+          <Button size="sm" variant="tertiary" onClick={() => { unskipStep(step); onSkipped(step) }}>
             {SKIP.unskip}
           </Button>
         </p>
@@ -3012,7 +3012,7 @@ function StepCard({
               }}
             />
           ) : (
-            <Button size="sm" variant="quiet" onClick={() => setSkipDraft({ id: step.id, reason: '', reasonId: 'notApplicable', detail: '', typed: '', alsoSkip: true })}>
+            <Button size="sm" variant="tertiary" onClick={() => setSkipDraft({ id: step.id, reason: '', reasonId: 'notApplicable', detail: '', typed: '', alsoSkip: true })}>
               {SKIP.action}
             </Button>
           )}

@@ -85,7 +85,7 @@ export function ComponentsPage() {
         <div className="row">
           <Button variant="primary">Primary</Button>
           <Button variant="secondary">Secondary</Button>
-          <Button variant="quiet">Quiet</Button>
+          <Button variant="tertiary">Quiet</Button>
           <Button variant="primary" loading>
             Scanning
           </Button>
