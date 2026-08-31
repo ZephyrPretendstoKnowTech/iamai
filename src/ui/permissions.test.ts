@@ -50,3 +50,11 @@ test('no write permission is requested', () => {
     assert.doesNotMatch(scope, /Write|ReadWrite/i, `${scope} is not a read scope`)
   }
 })
+
+test('Application.Read.All is not requested (prompt 46 item 23)', () => {
+  assert.equal(GRAPH_SCOPES.includes('Application.Read.All'), false)
+  assert.equal('Application.Read.All' in SCOPE_COPY, false)
+  // Every requested tenant scope now has a collector behind it.
+  const used = new Set(COLLECTOR_REGISTRY.flatMap((s) => s.scopes))
+  for (const scope of GRAPH_SCOPES) if (!SIGN_IN_SCOPES.includes(scope)) assert.ok(used.has(scope), `${scope} is requested and spent`)
+})

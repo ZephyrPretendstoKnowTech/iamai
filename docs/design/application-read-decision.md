@@ -1,5 +1,7 @@
 # Application.Read.All: the decision
 
+**Status (2026-08-30, prompt 46 item 23): removed.** The scope is no longer requested, explained or listed anywhere in the app; SPEC §4 records it under "Not requested". The app registration's configured permissions are outside the repo and should drop it as well.
+
 Prompt 39 Part 3, answering review 07 finding P1. Written 2026-08-30.
 
 **Recommendation: drop `Application.Read.All` from the scope set.** Not because the

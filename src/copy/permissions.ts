@@ -28,12 +28,9 @@ export const PERMISSIONS = {
   columns: { permission: 'Permission', reads: 'What it lets IAMAI read', without: 'Without it' },
   usedFor: (names: string[]): string => `Used for: ${names.join(', ')}.`,
   unusedGroup: 'Requested, not yet used',
-  unusedNote: [
-    'This permission is on the consent screen and nothing in IAMAI calls it.',
-    'It was consented for a service-principal inventory that has not been built.',
-    'That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.',
-    'The recommendation is to remove it.',
-  ],
+  // Rendered only if a requested scope has no collector behind it; none does
+  // since Application.Read.All was removed (prompt 46 item 23).
+  unusedNote: ['This permission is on the consent screen and nothing in IAMAI calls it.', 'The recommendation is to remove it.'],
   unusedLink: 'The full reasoning',
   notUsedYet: 'Not used by anything IAMAI runs today.',
   fullList: 'Every endpoint, in full →',
@@ -67,10 +64,6 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
   'Reports.Read.All': {
     reads: 'Aggregated per-application sign-in counts, and when each application identity last signed in.',
     without: 'Advice about which applications a policy should be scoped to loses its evidence.',
-  },
-  'Application.Read.All': {
-    reads: 'Application and service principal registrations.',
-    without: 'Nothing. No part of IAMAI calls anything that needs it.',
   },
   openid: { reads: 'That the sign-in happened, and who signed in.', without: 'Signing in at all.' },
   profile: { reads: 'The signed-in name and sign-in address, to show whose session it is.', without: 'The header could not say who is signed in.' },

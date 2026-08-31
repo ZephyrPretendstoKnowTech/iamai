@@ -262,9 +262,9 @@ try {
   check('Connect: it says the permissions are read-only', /Signs in read-only/.test(t) && /No write permission is in the set/.test(t))
   check('Connect: it says what consent creates', /an enterprise application named IAMAI/.test(t))
   check('Connect: it gives the removal path', /Enterprise applications/.test(t) && /Properties . Delete|Properties → Delete/.test(t))
-  // Item 11: an unused scope is now in its own group with the reason, rather than
-  // a note inside the table of permissions the tool relies on.
-  check('Connect: a scope nothing uses sits outside the working set', /Requested, not yet used/.test(t) && /nothing in IAMAI calls it/i.test(t))
+  // Prompt 46 item 23: Application.Read.All is gone, so every requested scope
+  // has a collector behind it and the "requested, not yet used" group is absent.
+  check('Connect: no requested scope sits unused', !/Requested, not yet used/.test(t) && !/Application\.Read\.All/.test(t))
 
   // The feedback channel shows the message before anything opens (prompt 34 part 2).
   await go('roadmap')

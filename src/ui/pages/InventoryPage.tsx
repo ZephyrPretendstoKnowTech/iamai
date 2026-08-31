@@ -10,7 +10,7 @@ import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { detectFacets } from '../../coverage/applicability.ts'
 import { CAPABILITIES, deriveTenantCapabilities, deriveUserCapabilities } from '../../licensing/capabilities.ts'
 import { buildNameDirectory } from '../../names.ts'
-import { ROLE_TEMPLATES, coversAdminSet, roleLabel, roleName, roleTemplate } from '../../roles.ts'
+import { ROLE_TEMPLATES, coversAdminSet, roleLabel, roleName, roleTemplate, heldOnlyByServices } from '../../roles.ts'
 import { resolveObjects } from '../../graph/collect/onDemand.ts'
 import type { ResolvedObject } from '../../graph/collect/onDemand.ts'
 import productNames from '../../../data/product-names.json' with { type: 'json' }
@@ -571,7 +571,13 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
     return names.label(id)
   }
   type Row = { id: string; name: string; privileged: boolean; active: string; eligible: string; activeN: number; held: boolean }
-  const ids = showAll ? new Set([...ROLE_TEMPLATES.map((r) => r.templateId), ...byRole.keys()]) : new Set(byRole.keys())
+  // A built-in role held only by service principals is hidden by default (prompt 46 item 25).
+  const kindOf = (id: string): string | null => resolved?.get(id)?.kind ?? null
+  const serviceOnly = (id: string): boolean => {
+    const e = byRole.get(id)
+    return e !== undefined && roleTemplate(id) !== undefined && heldOnlyByServices([...e.active, ...e.eligible], kindOf)
+  }
+  const ids = showAll ? new Set([...ROLE_TEMPLATES.map((r) => r.templateId), ...byRole.keys()]) : new Set([...byRole.keys()].filter((id) => !serviceOnly(id)))
   const rows: Row[] = [...ids].map((id) => {
     const e = byRole.get(id) ?? { active: new Set<string>(), eligible: new Set<string>() }
     return {
@@ -585,7 +591,7 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
       held: e.active.size + e.eligible.size > 0,
     }
   })
-  const hidden = ROLE_TEMPLATES.filter((r) => !byRole.has(r.templateId)).length
+  const hidden = ROLE_TEMPLATES.filter((r) => !byRole.has(r.templateId)).length + [...byRole.keys()].filter(serviceOnly).length
   return (
     <div>
       <Heading text={C.tabs.roles} source="roles" />

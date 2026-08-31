@@ -31,7 +31,6 @@ plain words:
 | `RoleManagement.Read.Directory` | Which accounts hold which directory roles, permanently or through PIM | IAMAI cannot tell who administers the tenant |
 | `UserAuthenticationMethod.Read.All` | Which kinds of method each account has registered, never the values | The emergency-access method and shared-device checks cannot run |
 | `Reports.Read.All` | Aggregated per-application sign-in counts, and application sign-in activity | App-scoping advice loses its evidence |
-| `Application.Read.All` | Application and service principal registrations | Nothing today: consented for a planned service-principal inventory (SPEC §4) that has not been built |
 | `openid`, `profile`, `offline_access` | That the sign-in happened, who signed in, and a session that can refresh | Signing in, and finishing a long scan |
 
 Granting consent creates **one** thing in the tenant: an enterprise application

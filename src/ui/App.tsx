@@ -320,7 +320,7 @@ export function App() {
           )}
           {DEV_PANEL && account && (
             <Suspense fallback={null}>
-              <DevSpikes />
+              <DevSpikes tenantId={account.tenantId} />
             </Suspense>
           )}
         </ErrorBoundary>

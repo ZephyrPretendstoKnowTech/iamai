@@ -1,5 +1,5 @@
 {
- "fingerprint": "381a42e3d7fa2808",
+ "fingerprint": "4d57eaa3a887009c",
  "surfaces": [
   {
    "name": "Start",
@@ -222,7 +222,6 @@
    "note": "disclosure expanded",
    "headings": [
     "Connect",
-    "Requested, not yet used",
     "Sign in, and stay signed in",
     "Removing it"
    ],
@@ -264,10 +263,6 @@
     "Used for: Role assignments, PIM eligibility.",
     "Used for: Auth methods.",
     "Used for: SP sign-in activity, App sign-in summary.",
-    "This permission is on the consent screen and nothing in IAMAI calls it.",
-    "It was consented for a service-principal inventory that has not been built.",
-    "That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.",
-    "The recommendation is to remove it.",
     "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.",
     "Nothing else is created, and no data is copied anywhere.",
     "Entra admin center → Entra ID → Enterprise applications.",
@@ -295,10 +290,6 @@
     {
      "label": "",
      "paginated": false
-    },
-    {
-     "label": "",
-     "paginated": false
     }
    ],
    "occurrences": {
@@ -310,10 +301,6 @@
     "Microsoft shows this list on its own consent screen.": 1,
     "It is here in plain words so it can be read first.": 1,
     "No write permission is in the set below.": 1,
-    "This permission is on the consent screen and nothing in IAMAI calls it.": 1,
-    "It was consented for a service-principal inventory that has not been built.": 1,
-    "That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.": 1,
-    "The recommendation is to remove it.": 1,
     "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.": 1,
     "Nothing else is created, and no data is copied anywhere.": 1,
     "Entra admin center → Entra ID → Enterprise applications.": 1,
@@ -334,10 +321,6 @@
     "Used for: Registration details, Users, Sign-in logs.": 1,
     "Used for: Role assignments, PIM eligibility.": 1,
     "Used for: SP sign-in activity, App sign-in summary.": 1,
-    "This permission is on the consent screen and nothing in IAMAI calls it.": 1,
-    "It was consented for a service-principal inventory that has not been built.": 1,
-    "That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.": 1,
-    "The recommendation is to remove it.": 1,
     "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.": 1,
     "Nothing else is created, and no data is copied anywhere.": 1,
     "Entra admin center → Entra ID → Enterprise applications.": 1,
@@ -345,7 +328,7 @@
     "Anything IAMAI held was in the browser, and Forget this tenant clears that separately.": 1
    },
    "wordCounts": {
-    "headings": 13,
+    "headings": 9,
     "tabs": 0,
     "buttons": 4,
     "options": 0,
@@ -356,15 +339,15 @@
     "empty": 0,
     "summaries": 10,
     "tips": 0,
-    "sentences": 259,
-    "total": 301
+    "sentences": 211,
+    "total": 249
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 19,
-    "words": 201
+    "sentences": 15,
+    "words": 153
    }
   },
   {
@@ -1959,8 +1942,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 229,
-    "words": 481
+    "sentences": 231,
+    "words": 483
    }
   },
   {
@@ -2822,8 +2805,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 270,
-    "words": 1014
+    "sentences": 272,
+    "words": 1016
    }
   },
   {
@@ -3039,7 +3022,6 @@
    "note": "",
    "headings": [
     "What IAMAI reads",
-    "Requested, not yet used",
     "Sign in, and stay signed in",
     "Removing it",
     "On every load: configuration",
@@ -3083,10 +3065,6 @@
     "Used for: Role assignments, PIM eligibility.",
     "Used for: Auth methods.",
     "Used for: SP sign-in activity, App sign-in summary.",
-    "This permission is on the consent screen and nothing in IAMAI calls it.",
-    "It was consented for a service-principal inventory that has not been built.",
-    "That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.",
-    "The recommendation is to remove it.",
     "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.",
     "Nothing else is created, and no data is copied anywhere.",
     "Entra admin center → Entra ID → Enterprise applications.",
@@ -3130,10 +3108,6 @@
     {
      "label": "",
      "paginated": false
-    },
-    {
-     "label": "",
-     "paginated": false
     }
    ],
    "occurrences": {
@@ -3143,10 +3117,6 @@
     "Microsoft shows this list on its own consent screen.": 1,
     "It is here in plain words so it can be read first.": 1,
     "No write permission is in the set below.": 1,
-    "This permission is on the consent screen and nothing in IAMAI calls it.": 1,
-    "It was consented for a service-principal inventory that has not been built.": 1,
-    "That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.": 1,
-    "The recommendation is to remove it.": 1,
     "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.": 1,
     "Nothing else is created, and no data is copied anywhere.": 1,
     "Entra admin center → Entra ID → Enterprise applications.": 1,
@@ -3165,10 +3135,6 @@
     "Used for: Registration details, Users, Sign-in logs.": 1,
     "Used for: Role assignments, PIM eligibility.": 1,
     "Used for: SP sign-in activity, App sign-in summary.": 1,
-    "This permission is on the consent screen and nothing in IAMAI calls it.": 1,
-    "It was consented for a service-principal inventory that has not been built.": 1,
-    "That inventory turns out not to need it: Microsoft documents Directory.Read.All, which IAMAI already requests, as sufficient.": 1,
-    "The recommendation is to remove it.": 1,
     "Granting consent creates one thing in the tenant: an enterprise application named IAMAI, which records that the permissions were granted.": 1,
     "Nothing else is created, and no data is copied anywhere.": 1,
     "Entra admin center → Entra ID → Enterprise applications.": 1,
@@ -3176,7 +3142,7 @@
     "Anything IAMAI held was in the browser, and Forget this tenant clears that separately.": 1
    },
    "wordCounts": {
-    "headings": 34,
+    "headings": 30,
     "tabs": 0,
     "buttons": 2,
     "options": 0,
@@ -3187,15 +3153,15 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 242,
-    "total": 297
+    "sentences": 194,
+    "total": 245
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 17,
-    "words": 184
+    "sentences": 13,
+    "words": 136
    }
   },
   {

@@ -6,9 +6,10 @@ import { runPlatformCheck } from '../graph/spikes/platformCheck.ts'
 import { runSpike1, runSpike1Followup, runSpike1Paging, runSpike1Retest } from '../graph/spikes/spike1.ts'
 import type { Spike1Results, Spike1RetestResults } from '../graph/spikes/spike1.ts'
 import { runAuthRequirementsSpike, runDevicesSpike, runSpike1Extended } from '../graph/spikes/spike1Extended.ts'
+import { downloadSavedScanDiagnostics } from './diagnosticsDownload.ts'
 
 // Dev-only spike harness. Rendered only in DEV builds with ?dev=1.
-export function DevSpikes() {
+export function DevSpikes({ tenantId }: { tenantId: string }) {
   const [spike, setSpike] = useState<'idle' | 'running' | 'done' | 'failed'>('idle')
   const [summary, setSummary] = useState<string | null>(null)
 
@@ -90,6 +91,10 @@ export function DevSpikes() {
     <div className="devtools">
       <h3>Dev spikes</h3>
       <p>
+        {/* The scan diagnostics bundle (prompt 46 item 24): per-read status and body length, no values. */}
+        <Button size="sm" onClick={() => void downloadSavedScanDiagnostics(tenantId)}>
+          Download scan diagnostics (last saved scan)
+        </Button>
         {buttons.map((b) => (
           <span key={b.key}>
             <Button size="sm" onClick={() => void run(b.key)} disabled={spike === 'running'}>
