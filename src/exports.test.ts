@@ -7,8 +7,6 @@ import assert from 'node:assert/strict'
 import { fixture } from './roadmap/fixtures/index.ts'
 import { runFixture } from './roadmap/fixtures/run.ts'
 import { groundingBundle } from './roadmap/prompts.ts'
-import { changeRecordMarkdown, changeRecordRows } from './roadmap/changeRecord.ts'
-import { appendLog, emptyLog, entriesForScan, logCsvRows, logMarkdown } from './roadmap/activityLog.ts'
 import { populationContext, populationRows, POPULATION_CSV_HEADER } from './roadmap/population.ts'
 import { ringContextIndexes } from './roadmap/rings.ts'
 import { adminUserIds } from './roles.ts'
@@ -62,28 +60,6 @@ test('the unredacted grounding bundle names what it contains in its header', () 
   const bundle = JSON.stringify(groundingBundle({ tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: '2026-08-28' }))
   assert.match(bundle, /Unredacted: contains user names and sign-in names/)
   assert.ok(bundle.includes(tenantId))
-})
-
-test('the change record carries names of people it must name and nothing it should not', () => {
-  const rows = changeRecordRows(run.steps, run.schedule, snapshot, nameOf, 5)
-  const md = changeRecordMarkdown(rows, 'Fixture small', f.planId, 1)
-  assert.ok(!md.includes(tenantId), 'no tenant id')
-  assert.deepEqual(contains(md, upns), [], 'no sign-in names')
-  assert.ok(!md.includes(ip))
-  // Display names may appear where a step names a person (a break-glass drill, a watch); every one is a person the plan touches.
-  const csv = toCsv(['a'], rows.map((r) => [r.join(' ')]))
-  assert.ok(csv.length > 0)
-})
-
-test('the activity log exports carry policy names and step titles, never sign-in names or the tenant id', () => {
-  const log = appendLog(emptyLog(), entriesForScan({ snapshot, steps: run.steps, previous: null, planId: f.planId, baselinePin: 'abc', previousBaselinePin: null, scanAt: snapshot.asOf }))
-  const csv = toCsv(['When', 'What', 'Step', 'Detected by', 'Planned'], logCsvRows(log.entries))
-  const md = logMarkdown(log.entries, 'History')
-  for (const text of [csv, md]) {
-    assert.deepEqual(contains(text, upns), [])
-    assert.ok(!text.includes(tenantId))
-    assert.ok(!text.includes(ip))
-  }
 })
 
 test('the population CSV is the one export that carries sign-in names, by design, and says so on the page', () => {

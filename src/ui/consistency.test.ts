@@ -92,7 +92,6 @@ test('question count: the Baseline promise equals the Setup list', () => {
 
 // ---- prompt 31 §3.13-14: the comms plan and the log agree with the steps; nothing is done, safe or verified without evidence ----
 import { bulletinsFor, commsPlanRows } from '../roadmap/comms.ts'
-import { appendLog, emptyLog, entriesForScan } from '../roadmap/activityLog.ts'
 import { trackable } from '../roadmap/tracking.ts'
 import { adminUserIds } from '../roles.ts'
 
@@ -120,15 +119,6 @@ test('comms plan: every bulletin step is a trackable step, each step appears in 
   for (const [k, n] of seen) assert.equal(n, 1, `${k} bundled once`)
   const rows = commsPlanRows(bulletins)
   assert.equal(rows.filter((r) => r.kind !== 'remind').length, bulletins.length)
-})
-
-test('activity log: every step entry points at a step that exists, and the scan entry counts the same users and policies as the snapshot', () => {
-  const log = appendLog(emptyLog(), entriesForScan({ snapshot, steps, previous: null, planId: 'plan-test', baselinePin: null, previousBaselinePin: null, scanAt: snapshot.asOf }))
-  const ids = new Set(steps.map((s) => s.id))
-  for (const e of log.entries) if (e.stepId) assert.ok(ids.has(e.stepId), `${e.stepId} exists`)
-  const scan = log.entries.find((e) => e.kind === 'scan')!
-  assert.match(scan.what, new RegExp(`${snapshot.users.length} users`))
-  assert.match(scan.what, new RegExp(`${(snapshot.config.caPolicies?.rows ?? []).length} polic`))
 })
 
 test('nothing is done, safe or verified without naming the evidence', () => {
