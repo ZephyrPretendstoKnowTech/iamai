@@ -9,6 +9,7 @@
 // numbered series continues rather than repeating.
 import { proposeName } from '../roadmap/convention.ts'
 import type { Convention } from '../roadmap/convention.ts'
+import type { Goal, Implementation } from './types.ts'
 
 export type NamingConvention = {
   prefix: string | null
@@ -21,13 +22,23 @@ export type NamingConvention = {
 /** A proposed name, and whether it matches something this tenant already does. */
 export type ProposedName = { name: string; matchesTenant: boolean }
 
+/** Block, Require or Session: the verb the policy name carries, from the implementation floor. */
+export function actionVerb(impl: Pick<Implementation, 'floor'>): 'Block' | 'Require' | 'Session' {
+  if (impl.floor.grant === 'block') return 'Block'
+  if (impl.floor.grant !== undefined) return 'Require'
+  return 'Session'
+}
+
 /**
- * Objects the plan asks the user to create, each with the parts the documented
- * pattern wants and the phrase to use where the tenant writes fewer segments
- * (prompt 43 item 4).
+ * The policy the plan proposes: `{prefix} - {Action} - {shortName}` in the
+ * tenant's convention, else the documented one (prompt 46 item 13,
+ * target-state §8.4). It names the control, never the goal sentence.
  */
-export function proposedPolicyName(title: string, naming: NamingConvention): string {
-  return proposedName({ prefix: 'CA', rest: ['Global', title], collapsed: title }, naming).name
+export function proposedPolicyName(goal: Pick<Goal, 'shortName' | 'implementations'>, naming: NamingConvention): string {
+  const action = actionVerb(goal.implementations[0])
+  const control = goal.shortName
+  const collapsed = `${action} ${control.charAt(0).toLowerCase()}${control.slice(1)}`
+  return proposedName({ prefix: 'CA', rest: [action, control], collapsed }, naming).name
 }
 
 export function proposedName(

@@ -301,8 +301,7 @@ export function CoveragePage({
       {(r.status === 'partial' || r.status === 'below-baseline') && (
         // A missing goal already names its proposal in the sentence (ux-review-05 §46); partial ones name it here.
         <p>
-          <strong>{C.proposedName}</strong> {proposedPolicyName(stepTitle(r.goal.name), report.organisation.naming)}
-          {r.goal.adHocSource && <span className="sub"> {NAMING.fromBaseline(r.goal.adHocSource)}</span>}
+          <strong>{C.proposedName}</strong> {proposedPolicyName(r.goal, report.organisation.naming)}
         </p>
       )}
       {r.goal.learnUrl && (

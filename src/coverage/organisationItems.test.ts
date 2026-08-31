@@ -19,6 +19,7 @@ function report(over: Partial<OrganisationReport['naming']> = {}, consolidation:
   const names = over.names ?? []
   return {
     notInBaseline: [],
+    notAssessed: [],
     consolidation,
     naming: {
       pattern: null,

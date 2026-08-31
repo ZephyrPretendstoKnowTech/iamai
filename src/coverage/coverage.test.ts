@@ -348,7 +348,7 @@ test('12: P2 goal on a P1 tenant → licence-limited, excluded from score', () =
   assert.equal(r.summary.licenceLimited >= 2, true) // sign-in-risk + user-risk
 })
 
-test('13: unclassifiable baseline policy → ad-hoc goal created and evaluated structurally', () => {
+test('13: unclassifiable baseline policy → not assessed, never a goal (prompt 46 item 14)', () => {
   const odd = mkPolicy({
     displayName: 'Baseline Odd TOU',
     conditions: mergeConditions({
@@ -357,10 +357,19 @@ test('13: unclassifiable baseline policy → ad-hoc goal created and evaluated s
     }),
     grantControls: { operator: 'OR', builtInControls: [], termsOfUse: ['tou-1'] },
   })
-  const r = run([], { baselinePolicies: [odd] })
-  const g = r.results.find((x) => x.goal.id === 'adhoc:Baseline Odd TOU')
-  assert.ok(g, 'ad-hoc goal exists')
-  assert.equal(g.goal.adHocSource, 'Baseline Odd TOU')
+  const r = run([], { baselinePolicies: [odd], baselineUnusable: [{ policyName: 'Baseline Broken', warning: 'the file is not a policy' }] })
+  // No result carries the baseline policy's name or an invented title.
+  assert.equal(r.results.some((x) => x.goal.id.startsWith('adhoc:') || /Odd TOU/.test(x.goal.name) || /^Restrict access to/.test(x.goal.name)), false)
+  // It is listed as not assessed under its own name, with its JSON and one reason.
+  const odds = r.organisation.notAssessed.find((n) => n.name === 'Baseline Odd TOU')
+  assert.ok(odds, 'listed as not assessed')
+  assert.ok(odds.json && odds.json.includes('"termsOfUse"'), 'carries the baseline JSON')
+  assert.equal(odds.reason, 'No security goal in the catalogue matches this policy')
+  // So is a policy the adapter could not read, with the adapter's reason.
+  const broken = r.organisation.notAssessed.find((n) => n.name === 'Baseline Broken')
+  assert.ok(broken)
+  assert.equal(broken.reason, 'the file is not a policy')
+  assert.equal(broken.json, null)
 })
 
 test('14: guests excluded from the all-users policy plus a separate guests policy → enforced by union', () => {

@@ -282,7 +282,7 @@ export const ACTION = {
   alreadyDelivered: 'Already delivered by existing policies: nothing to do.',
   createReportOnly: 'Create this policy in report-only mode; the description tag lets re-scans track it.',
   createsGroup: (name: string) => `This step also creates a new pilot group it targets, for example "${name}". Create it empty first; pilot users go in later.`,
-  noBaselineMatch: 'No baseline policy matches this goal directly. Create a policy that meets the goal floor.',
+  fromTemplate: "No baseline policy covers this goal, so this body is the goal floor from Microsoft's documented policy.",
   raiseGrant: (detail: string) => `Raise the grant control: ${detail}.`,
   tightenSession: (detail: string) => `Tighten the session controls: ${detail}.`,
   reviewExclusion: (detail: string) => `Review the exclusion (${detail}). Remove it or confirm it in Setup.`,
@@ -505,3 +505,12 @@ export const PORTAL_WORDS = {
   platforms: (values: unknown): string =>
     Array.isArray(values) && values.length > 0 ? values.map((v) => PLATFORM_WORDS[String(v).toLowerCase()] ?? String(v)).join(', ') : '',
 }
+
+/** What a template placeholder stands for, where the portal steps name it before the object exists (prompt 46 item 12). */
+export const TEMPLATE_LABEL = {
+  '{breakGlass}': 'the emergency-access accounts',
+  '{exclusionsGroup}': 'the exclusions group',
+  '{serviceAccountsGroup}': 'the service accounts group',
+  '{trustedLocations}': 'the trusted locations',
+  '{allowedCountriesLocation}': 'the allowed-countries location',
+} as const

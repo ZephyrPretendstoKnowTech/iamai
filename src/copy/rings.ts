@@ -10,7 +10,6 @@ export const RINGS = {
   itAndEarly: 'IT and early adopters',
   and: (a: string, b: string) => `${a} and ${b}`,
   otherDepartments: 'other departments',
-  groupNoun: (ringName: string, stepTitle: string, sep: string) => `${ringName}${sep}${stepTitle}`,
 
   // ---- targeting ----
   members: (n: number) => `Suggested members (${count(n, 'person', 'people')}): verified users first, one admin, never a break-glass account.`,

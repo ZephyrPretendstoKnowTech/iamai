@@ -3,10 +3,12 @@
 // operator self-safety, Learn links, auto-scheduling). Pure.
 import { docFor } from '../baseline/index.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
-import { matchesSignature } from '../coverage/classify.ts'
+import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
+import { placeholdersIn, resolveTemplate } from './template.ts'
+import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
-import type { CoverageReport, GoalResult } from '../coverage/types.ts'
+import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
@@ -35,7 +37,7 @@ import type { NameDirectory } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { ACTION, CARE, COMMS, EVIDENCE, EXIT, IMPACT, PORTAL_WORDS, PREREQ, ROLLBACK, UNBLOCK, stepTitle } from '../copy/steps.ts'
+import { ACTION, CARE, COMMS, EVIDENCE, EXIT, IMPACT, PORTAL_WORDS, PREREQ, ROLLBACK, TEMPLATE_LABEL, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import {
   BREAK_GLASS_DRILL_DAYS,
   EXIT_MIN_DAYS_OBSERVED,
@@ -161,6 +163,28 @@ function population(ids: string[], index: PopulationIndex): StepPopulation {
 // ---- action building (roadmap.md §3) ----
 
 type RawPolicy = Record<string, unknown>
+
+/** The Wave 0 steps that create the objects the plan's policies reference. */
+export const PREREQ_STEP_ID = {
+  breakGlass: BREAK_GLASS_STEP_ID,
+  exclusionsGroup: 's-prereq-exclusion-group',
+  trustedLocation: 's-prereq-trusted-location',
+  allowedCountries: 's-prereq-allowed-countries',
+  serviceAccountsGroup: 's-prereq-service-accounts-group',
+} as const
+
+/**
+ * The Wave 0 step a template placeholder waits on while the tenant has no
+ * object for it (prompt 46 item 12). {namePrefix} and {coreAdminRoles} always
+ * resolve, so they are not here.
+ */
+export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}' | '{coreAdminRoles}'>, string> = {
+  '{breakGlass}': PREREQ_STEP_ID.breakGlass,
+  '{exclusionsGroup}': PREREQ_STEP_ID.exclusionsGroup,
+  '{trustedLocations}': PREREQ_STEP_ID.trustedLocation,
+  '{allowedCountriesLocation}': PREREQ_STEP_ID.allowedCountries,
+  '{serviceAccountsGroup}': PREREQ_STEP_ID.serviceAccountsGroup,
+}
 
 /** Placeholder token for a baseline reference no Setup answer has resolved yet — never a GUID. */
 export function setupToken(questionNumber: number, role: string): string {
@@ -325,7 +349,7 @@ export function buildCreateAction(
   const json = JSON.stringify(body, null, 2)
   const fileName = `${stepId}.json`
   const unresolved = [...(opts.placeholders?.values() ?? [])].filter((p) => json.includes(p.token))
-  const comment = unresolved.length > 0 ? `# Replace the __IAMAI_SETUP_QUESTION_…__ tokens first: ${unresolved.map((p) => p.label).join('; ')}\n` : ''
+  const comment = unresolved.length > 0 ? `# Replace the placeholders first: ${unresolved.map((p) => p.label).join('; ')}\n` : ''
   const steps = portalSteps(body, names, opts.placeholders)
   if (opts.adjust) {
     steps[0] = `Entra admin center → Protection → Conditional Access → Policies → open "${String(body.displayName ?? '')}"`
@@ -530,8 +554,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
   /** The tenant-convention name, suffixed when a policy of that name already exists; the note explains. */
-  const uniqueName = (title: string): { name: string; note: string | null } => {
-    const base = proposedPolicyName(title, naming)
+  const uniqueName = (goal: Goal): { name: string; note: string | null } => {
+    const base = proposedPolicyName(goal, naming)
     if (!existingNames.has(base.toLowerCase()) && !proposedTaken.has(base.toLowerCase())) {
       proposedTaken.add(base.toLowerCase())
       return { name: base, note: null }
@@ -548,6 +572,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // nothing to serve: the free-tier ladder is the plan instead (SPEC §12).
   const canUseConditionalAccess = snapshot.capabilities.entraP1.enabled
 
+  // The baseline policy that stands for each goal is decided once, here, so
+  // the prerequisites know which template placeholders the plan will need.
+  const baselineFactsList = input.baseline.policies.map((p) => ({
+    policy: p as unknown as RawPolicy,
+    facts: policyFacts(p, input.strengths),
+  }))
+  // Style variants are decided by data, never by a question (prompt 16 §4):
+  // "NoExclusions" variants are never considered.
+  const baselineMatchesFor = (goal: Goal): typeof baselineFactsList => {
+    const impl = goal.implementations[0]
+    return baselineFactsList.filter((b) => matchesSignature(b.facts, impl.signature)).filter((b) => !/no[-_ ]?exclusions?/i.test(b.facts.name))
+  }
+  const templateNeeds = new Set<TemplatePlaceholder>()
+  for (const r of input.coverage.results) {
+    if (r.status !== 'absent' || baselineMatchesFor(r.goal).length > 0) continue
+    for (const p of placeholdersIn(r.goal.implementations[0].template)) templateNeeds.add(p)
+  }
+
   const setupStepId = 's-setup-questions'
   if (missingSetup.length > 0) {
     const p = PREREQ.setupQuestions
@@ -563,7 +605,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(prereq(bgStepId, p.title, p.why, p.how, p.exit))
   }
   const geMissing = canUseConditionalAccess && mapping.records['__globalExclusion']?.doesNotExist === true
-  const geStepId = 's-prereq-exclusion-group'
+  const geStepId = PREREQ_STEP_ID.exclusionsGroup
   if (geMissing) {
     const p = PREREQ.globalExclusion
     // Every object the plan asks for carries a proposed name, in the tenant's own
@@ -576,8 +618,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     canUseConditionalAccess &&
     mapping.wizardAnswered.trustedLocations === true &&
     mapping.trustedLocationIds.length === 0 &&
-    questions.some((q) => q.group === 'namedLocations')
-  const locStepId = 's-prereq-trusted-location'
+    (questions.some((q) => q.group === 'namedLocations') || templateNeeds.has('{trustedLocations}'))
+  const locStepId = PREREQ_STEP_ID.trustedLocation
   if (locMissing) {
     const p = PREREQ.trustedLocation
     const proposed = proposedLocationName('Trusted', 'Head office', naming)
@@ -586,7 +628,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
   // 0 unless the tenant already has one with exactly that list.
-  const countriesStepId = 's-prereq-allowed-countries'
+  const countriesStepId = PREREQ_STEP_ID.allowedCountries
   const countriesMissing =
     canUseConditionalAccess &&
     mapping.wizardAnswered.countries === true &&
@@ -599,7 +641,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(prereq(countriesStepId, p.title, p.why, [...p.how(mapping.allowedCountries.map(countryName)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
-  const saStepId = 's-prereq-service-accounts-group'
+  const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
   if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
     const p = PREREQ.serviceAccountsGroup
     const proposed = proposedGroupName('Exception', 'Service accounts', naming)
@@ -674,11 +716,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const validationSteps = blockerSteps(validationReports, 0)
   steps.push(...validationSteps)
 
+  // What each template placeholder is worth in this tenant (prompt 46 item
+  // 12). null: nothing yet, so the step waits on the Wave 0 step that creates
+  // it; an empty array: nothing to put there and nothing to wait for.
+  const templateValues: TemplateValues = {
+    '{namePrefix}': naming.prefix ?? 'CA',
+    '{exclusionsGroup}': mapping.records['__globalExclusion']?.resolvedId ?? null,
+    '{breakGlass}': mapping.breakGlassUserIds.length > 0 ? mapping.breakGlassUserIds : null,
+    '{serviceAccountsGroup}': mapping.serviceAccountsGroupId ?? (mapping.serviceAccountUserIds.length === 0 ? [] : null),
+    '{trustedLocations}': mapping.trustedLocationIds.length > 0 ? mapping.trustedLocationIds : mapping.wizardAnswered.trustedLocations === true ? [] : null,
+    '{allowedCountriesLocation}': tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null,
+    '{coreAdminRoles}': [...CORE_ADMIN_ROLE_IDS],
+  }
+  // Named in the portal steps while the object does not exist yet.
+  const templatePlaceholders: Placeholders = new Map(
+    (Object.keys(PLACEHOLDER_STEP) as (keyof typeof PLACEHOLDER_STEP)[]).map((p) => [p, { label: TEMPLATE_LABEL[p], token: p }]),
+  )
+
   // ---- Goal steps ----
-  const baselineFactsList = input.baseline.policies.map((p) => ({
-    policy: p as unknown as RawPolicy,
-    facts: policyFacts(p, input.strengths),
-  }))
 
   for (const result of input.coverage.results) {
     if (result.status === 'not-applicable' || result.status === 'licence-limited' || result.status === 'unknown') continue
@@ -689,9 +744,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Style variants are decided by data, never by a question (prompt 16 §4):
     // the geo policy is always the allowlist style, and "NoExclusions"
     // variants are never considered.
-    const matches = baselineFactsList
-      .filter((b) => matchesSignature(b.facts, impl.signature))
-      .filter((b) => !/no[-_ ]?exclusions?/i.test(b.facts.name))
+    const matches = baselineMatchesFor(goal)
     let source = matches.find((m) => goal.id === 'geo-restriction' && isAllowlistGeoPolicy(m.policy as never)) ?? matches[0] ?? null
     for (const [, chosen] of Object.entries(mapping.variantChoices)) {
       const hit = matches.find((m) => m.facts.name === chosen)
@@ -780,6 +833,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         if (steps.some((s) => s.id === pid)) blockByStep(pid, UNBLOCK.createObject)
       }
     }
+    // A template placeholder the tenant has no object for yet: the step waits
+    // on the Wave 0 step that creates it, or on the Setup question that says
+    // whether it exists at all.
+    const blockPlaceholder = (p: TemplatePlaceholder): void => {
+      if (p === '{namePrefix}' || p === '{coreAdminRoles}') return
+      const prereqId = PLACEHOLDER_STEP[p]
+      if (steps.some((s) => s.id === prereqId)) {
+        blockByStep(prereqId, UNBLOCK.createObject)
+        return
+      }
+      const qid: WizardQuestionId | null =
+        p === '{breakGlass}' ? 'breakGlass' : p === '{exclusionsGroup}' ? 'globalExclusion' : p === '{trustedLocations}' ? 'trustedLocations' : p === '{allowedCountriesLocation}' ? 'countries' : null
+      if (qid !== null) blockBySetup(qid)
+    }
     let action: Action
     let kind: Step['kind']
     let status: StepStatus = 'ready'
@@ -804,7 +871,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'create'
       if (source) {
         blockUnmapped(source.policy)
-        const proposed = uniqueName(stepTitle(goal.name))
+        const proposed = uniqueName(goal)
         action = buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
           placeholders,
           displayName: proposed.name,
@@ -814,16 +881,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const personas = createdWithinStepKeys(source.policy, mapping).filter((c) => c.group === 'personaGroups')
         for (const p of personas) {
           // The baseline names the group by id; the plan names it in the tenant's convention (ux-review-06 §4).
-          action.summary.push(ACTION.createsGroup(proposedPolicyName(`Pilot${naming?.separator ?? ' - '}${stepTitle(goal.name)}`, naming)))
+          action.summary.push(ACTION.createsGroup(proposedGroupName('Pilot', goal.shortName, naming).name))
         }
       } else {
-        action = {
-          kind: 'create',
-          summary: [ACTION.noBaselineMatch],
-          json: null,
-          portalSteps: [],
-          powershell: null,
-        }
+        // No baseline policy stands for this goal: the goal's own template is
+        // the body, with the tenant's objects filled in where they exist and a
+        // Wave 0 step named where they do not (prompt 46 item 12). Every step
+        // is executable; nothing says "create a policy that meets the floor".
+        const resolved = resolveTemplate(impl.template as TemplateBody, templateValues)
+        for (const p of resolved.unresolved) blockPlaceholder(p)
+        const proposed = uniqueName(goal)
+        action = buildCreateAction(resolved.body, mapping, planId, stepId, input.names, {
+          placeholders: new Map([...placeholders, ...templatePlaceholders]),
+          displayName: proposed.name,
+        })
+        action.summary.push(ACTION.fromTemplate)
+        if (proposed.note) action.summary.push(proposed.note)
+        namingNote = proposed
       }
     } else {
       kind = 'adjust'
@@ -841,7 +915,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         ? adjustAction(
             buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
               placeholders,
-              displayName: existing?.policyName ?? proposedPolicyName(stepTitle(goal.name), naming),
+              displayName: existing?.policyName ?? proposedPolicyName(goal, naming),
               adjust: existing ? { policyId: existing.policyId, state: existing.state } : undefined,
             }),
             result,
@@ -1084,7 +1158,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         status === 'done' ? WHAT_CHANGES.done : kind === 'adjust' ? WHAT_CHANGES.adjust(existing?.policyName ?? stepTitle(goal.name), action.changes?.length ?? adjustSections.size) : WHAT_CHANGES.create(stepTitle(goal.name), pop.total),
       naming:
         kind === 'create' && status !== 'done'
-          ? { proposed: namingNote?.name ?? proposedPolicyName(stepTitle(goal.name), naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
+          ? { proposed: namingNote?.name ?? proposedPolicyName(goal, naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
           : null,
       score,
     })
