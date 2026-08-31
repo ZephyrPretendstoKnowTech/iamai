@@ -7,7 +7,7 @@ export const PLAN = {
   title: 'Plan',
   /** The one header line: steps, in place, finish, weeks, and what waits. */
   header: (total: number, inPlace: number, finish: string, weeks: number, waiting: string) =>
-    `${count(total, 'step')} · ${inPlace} in place · ${finish}${waiting ? ` · ${waiting}` : ''} · ${count(weeks, 'week')}`,
+    `${count(total, 'step')} · ${inPlace} in place · ${finish} · ${count(weeks, 'week')}${waiting ? ` · ${waiting}` : ''}`,
   cannotFinish: (waiting: string) => `${waiting}; nothing is dated until it clears`,
   constraintTip: 'What set the plan length',
   next: 'next',
@@ -34,10 +34,16 @@ export const PLAN = {
     sharedDevices: (n: number) => (n === 0 ? 'shared devices none' : `shared devices ${n}`),
     timeZone: (zone: string) => `time zone ${zone.split('/').pop()?.replace(/_/g, ' ') ?? zone}`,
     // The three questions the tool cannot answer from evidence.
-    mailDevices: 'mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail.',
-    travel: 'people who travel or work abroad none seen. Answering adds notice and a travel exclusion.',
-    partner: 'partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion.',
+    mailDevices: 'mail-sending devices none seen',
+    travel: 'people who travel or work abroad none seen',
+    partner: 'partner or MSP access none seen',
   },
+  /** The editor's first line: what the chip's short label leaves out (prompt 48.1 item 12). */
+  explain: {
+    mailDevices: 'None seen in the last 30 days. Answering adds an SMTP-relay step for printers or apps that send mail.',
+    travel: 'None seen in the records. Answering adds notice and a travel exclusion.',
+    partner: 'No service-provider sign-ins seen. Answering adds a partner exclusion.',
+  } as Record<string, string>,
   editor: {
     emergencyAccount: 'Search people',
     group: 'Search groups',
@@ -67,8 +73,13 @@ export const PLAN = {
   },
   // Wave headers and rows.
   day0: 'Before anything else',
-  wave: (n: number, dates: string, areas: string) => `Wave ${n} · ${dates} · ${areas}`,
+  wave: (n: number, dates: string, areas: string, after?: string) => `Wave ${n} · ${dates} · ${areas}${after ? ` · after ${after}` : ''}`,
+  /** The row's short blocked reason (item 14): "after: emergency access". */
+  afterShort: (reason: string) => `after: ${reason}`,
   day0Dates: (dates: string) => `Before anything else · ${dates}`,
+  familyName: { mfa: 'MFA', admin: 'Admin hardening', device: 'Devices', guest: 'Guests', block: 'Low-impact blocks', location: 'Locations', risk: 'Risk', other: 'Sessions' } as Record<string, string>,
+  and: (a: string, b: string) => `${a} and ${b}`,
+  enforcedPending: 'Enforced · verified on the next scan',
   who: {
     nobody: 'nobody affected',
     admins: (n: number) => count(n, 'admin'),

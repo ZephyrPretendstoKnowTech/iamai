@@ -17,7 +17,7 @@ import type { PickerOption } from '../components/index.ts'
 import type { PlanData, PlanComputed } from './planData.ts'
 
 type Kind = 'fact' | 'weak' | 'question'
-type Chip = { id: string; label: string; kind: Kind; signals?: string[]; editor: (close: () => void) => React.ReactNode }
+type Chip = { id: string; label: string; kind: Kind; signals?: string[]; explain?: string; editor: (close: () => void) => React.ReactNode }
 
 export function AssumptionsStrip({ data, snapshot, baseline, computed }: { data: PlanData; snapshot: TenantSnapshot; baseline: BaselineResult | null; computed: PlanComputed }) {
   const [open, setOpen] = useState<string | null>(null)
@@ -36,6 +36,7 @@ export function AssumptionsStrip({ data, snapshot, baseline, computed }: { data:
           </button>
           {open === chip.id && (
             <span className="assumption-editor">
+              {chip.explain && <span className="reason">{chip.explain}</span>}
               {chip.signals && chip.signals.length > 0 && <span className="reason">{C.signals(chip.signals.length, chip.signals.join(', '))}</span>}
               {chip.editor(() => setOpen(null))}
             </span>
@@ -57,7 +58,7 @@ function userOptions(snapshot: TenantSnapshot, query: string): PickerOption[] {
 function SaveRow({ onSave }: { onSave: () => void }) {
   return (
     <p className="actions">
-      <Button variant="secondary" onClick={onSave}>
+      <Button variant="primary" onClick={onSave}>
         {C.save}
       </Button>
     </p>
@@ -207,6 +208,7 @@ function buildChips(m: MappingState, snapshot: TenantSnapshot, data: PlanData): 
     id,
     label,
     kind: 'question',
+    explain: C.explain[id],
     editor: (close) => <FreeTextEditor prompt={prompt} value={qa[id] ?? ''} onSave={(text) => { save((s) => ({ ...s, questionAnswers: { ...(s.questionAnswers ?? {}), [id]: text } })); close() }} />,
   })
   chips.push(question('mailDevices', C.assumption.mailDevices, C.editor.mailDevicesPrompt))
@@ -246,7 +248,7 @@ function CountryEditor({ selected, onSave }: { selected: string[]; onSave: (code
     <>
       <span className="picker">
         {codes.map((c) => (
-          <Button key={c} variant="secondary" onClick={() => toggle(c)}>
+          <Button key={c} variant={codes.includes(c) ? 'secondary' : 'tertiary'} onClick={() => toggle(c)}>
             {c}
           </Button>
         ))}
