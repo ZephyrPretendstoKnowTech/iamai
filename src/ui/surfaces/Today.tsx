@@ -94,8 +94,8 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
       render: (r) => (
         <>
           {r.user.displayName ?? r.user.userPrincipalName}
-          {r.viability.isAdmin && <span className="chip">{C.admin}</span>}
-          {r.user.userType === 'guest' && <span className="chip">{C.guest}</span>}
+          {r.viability.isAdmin && <span className="chip tag">{C.admin}</span>}
+          {r.user.userType === 'guest' && <span className="chip tag">{C.guest}</span>}
         </>
       ),
     },

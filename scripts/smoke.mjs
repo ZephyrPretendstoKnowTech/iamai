@@ -149,6 +149,9 @@ try {
   // Prompt 46 item 23: Application.Read.All is gone, so every requested scope
   // has a collector behind it and the "requested, not yet used" group is absent.
   check('Connect: no requested scope sits unused', !/Requested, not yet used/.test(t) && !/Application\.Read\.All/.test(t) && !/Used for/.test(t))
+  // Walk fixes (prompt 47.1 Part 2): the permission name on one line, the prose at the page column.
+  check('Connect: no permission name breaks mid-word', await evaluate(`[...document.querySelectorAll('details.permissions tbody td:first-child code')].every((c) => c.getClientRects().length === 1)`))
+  check('Connect: the prose reads at the page column, not the measure', (await evaluate(`Math.round(document.querySelector('.connect ul').getBoundingClientRect().width)`)) >= 700, String(await evaluate(`Math.round(document.querySelector('.connect ul').getBoundingClientRect().width)`)))
 
   await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
   await sleep(1200)
@@ -178,6 +181,10 @@ try {
   check('Today: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card').length`)) === 0)
   check('Today: one Show dropdown and a search box', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)))
   check('Today: the link to everything the scan read', /Everything the scan read →/.test(t))
+  // Walk fixes (prompt 47.1 Part 2): markers stand off the name; no inner scroll; a hairline header, not a band.
+  check('Today: the Admin marker stands off the name, small and quiet', await evaluate(`(() => { const c = document.querySelector('main.page td .chip:not(.status)'); if (!c) return false; const cs = getComputedStyle(c); return parseFloat(cs.marginLeft) >= 6 && cs.fontSize === '12px' })()`))
+  check('Today: the table has no inner scroll', (await evaluate(`getComputedStyle(document.querySelector('main.page .datatable-wrap')).maxHeight`)) === 'none')
+  check('Today: the header row is a hairline, not a band', await evaluate(`(() => { const cs = getComputedStyle(document.querySelector('main.page table.datatable th')); return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.position === 'static' && cs.textTransform === 'none' })()`))
 
   // Inventory and Licensing reachable
   await go('inventory')
@@ -185,6 +192,9 @@ try {
   t = await text()
   check('Inventory: the heading, the ← Today link, and no intro sentence', /Everything the scan read/.test(t) && /← Today/.test(t) && !/as found: no analysis/.test(t))
   check('Inventory: the ten tabs', (await evaluate(`document.querySelectorAll('main.page [role=tab]').length`)) === 10)
+  // Walk fixes (prompt 47.1 Part 2): the table column, and a hairline header.
+  check('Inventory: the page uses the 1040px table column', (await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)) >= 1040, String(await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)))
+  check('Inventory: the header row is a hairline, not a band', (await evaluate(`getComputedStyle(document.querySelector('main.page table.datatable th')).backgroundColor`)) === 'rgba(0, 0, 0, 0)')
   await go('licensing')
   t = await text()
   check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))

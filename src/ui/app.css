@@ -679,6 +679,69 @@ footer.app a {
 .surface details.permissions {
   margin: 24px 0;
 }
+/* The permission name never breaks mid-word: the column is at least as wide as
+   UserAuthenticationMethod.Read.All in mono at --t-1 (prompt 47.1 item 5). */
+.surface details.permissions th:first-child,
+.surface details.permissions td:first-child {
+  min-width: 33ch;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.surface details.permissions td:first-child code {
+  font-size: var(--t-1);
+}
+/* Connect is prose, and reads at the page column, not the measure (item 5). */
+.surface.connect p,
+.surface.connect ul,
+.surface.connect ol {
+  max-width: none;
+}
+/* A marker beside a name (Admin, Guest) stands off it, small and quiet (item 6).
+   ink-2, not ink-3: at 12px ink-3 measures 4.35:1 on the page and AA text needs 4.5. */
+.surface .tag {
+  margin-left: 8px;
+  font-size: var(--t-1);
+  color: var(--ink-2);
+}
+/* Tables on a surface (items 7 and 8): no inner scroll, the page scrolls and
+   pagination is the height control; the header row is a hairline, not a band.
+   These override styles.css's datatable, which the legacy pages keep until 49. */
+.surface .datatable-wrap {
+  max-height: none;
+  overflow: visible;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+}
+.surface table.datatable {
+  border-collapse: collapse;
+  border-spacing: 0;
+  background: transparent;
+}
+.surface table.datatable th {
+  position: static;
+  background: transparent;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--t-1);
+  font-weight: 500;
+  color: var(--ink-2);
+  min-width: 0;
+  white-space: nowrap;
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.surface table.datatable td {
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.surface table.datatable th:last-child,
+.surface table.datatable td:last-child {
+  padding-right: 0;
+}
+.surface table.datatable tbody tr:hover {
+  background: var(--bg-raised);
+}
 .surface details.permissions .removing {
   margin-top: 16px;
 }
