@@ -129,10 +129,12 @@ try {
     source: `(() => { const seen = () => { if (window.__firstFrameHash === undefined && document.querySelector('header.app')) window.__firstFrameHash = location.hash }; new MutationObserver(seen).observe(document, { childList: true, subtree: true }); document.addEventListener('DOMContentLoaded', seen) })()`,
   })
   // Capture downloads (produced bytes), swallow alerts (they would block the
-  // headless page), and make print a no-op that still fires before/afterprint.
+  // headless page), and make print a no-op. It fires beforeprint but NOT
+  // afterprint: the print DOM mounts on demand (prompt 49.1 item 4) and afterprint
+  // tears it down, so the walk fires afterprint itself once it has read the page.
   await send('Page.addScriptToEvaluateOnNewDocument', {
     source: 'window.__dl = []; window.__alerts = []; window.__printed = 0;' +
-      'window.print = function () { try { window.dispatchEvent(new Event("beforeprint")); } catch (e) {} window.__printed++; try { window.dispatchEvent(new Event("afterprint")); } catch (e) {} };' +
+      'window.print = function () { try { window.dispatchEvent(new Event("beforeprint")); } catch (e) {} window.__printed++; };' +
       'window.alert = function (m) { window.__alerts.push(String(m)); };' +
       'var _c = URL.createObjectURL.bind(URL); URL.createObjectURL = function (b) { window.__lastBlob = b; return _c(b); };' +
       'var _k = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) { var b = window.__lastBlob; window.__dl.push({ name: this.download, size: b ? b.size : 0, blob: b }); return; } return _k.call(this); };',
@@ -330,6 +332,12 @@ try {
   const printText = await evaluate(`(document.querySelector('.print-plan') || {}).textContent || ''`)
   const printHits = FORBID_EVERYWHERE.filter((f) => printText.includes(f))
   check('Export: the print document carries no forbidden placeholder', printHits.length === 0, printHits.join('; '))
+  // The rebuilt print shows the step content, not the old pre-48 body (item 3).
+  check('Export: the print renders the step body, not the old fields', /Who this touches/.test(printText) && !/Proposed name:|What the last 30 days say/.test(printText))
+  // Item 4: the print DOM lives only while printing; afterprint tears it down.
+  await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
+  await sleep(200)
+  check('Export: the print DOM is gone once printing ends', (await evaluate(`document.querySelector('.print-plan') === null`)))
 
   // Recovery card (target-state §7).
   await go('recovery')

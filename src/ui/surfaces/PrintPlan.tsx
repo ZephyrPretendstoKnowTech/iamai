@@ -1,19 +1,36 @@
 // Dedicated print layout for the plan (prompt 12 §D). Hidden on screen;
 // the screen layout is hidden in print. Light theme via tokens.css @media print.
-import { Fragment, useEffect } from 'react'
+import { Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { DangerArea } from '../../roadmap/dangers.ts'
-import { NAMING, PHASE_NAME, PRINT as C, STEP_KIND_LABEL, STEP_STATUS_LABEL, affectedLine, stepKindLabel } from '../../copy/steps.ts'
+import { PHASE_NAME, PRINT as C } from '../../copy/steps.ts'
+import { PLAN } from '../../copy/plan.ts'
 import { ROADMAP } from '../../copy/pages.ts'
-import { SECTION } from '../../copy/stepContent.ts'
-import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { roadmapOverview, scheduleRationale } from '../../copy/statements.ts'
 import { absoluteDate, dateRange, when } from '../../copy/dates.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
+import { populationLine } from '../../derive/whoLine.ts'
+import { statusOf } from './statusWord.ts'
+import { unknownsFor } from '../../roadmap/unknowns.ts'
 import { RingMark } from '../components/Ring.tsx'
+
+// The step body prints the same content the on-screen step shows (prompt 49.1
+// item 3): the plan copy, populationLine, statusOf and the step's own data
+// fields, first-open then More, without the tabs, checkboxes or the raw JSON a
+// person cannot execute from paper. Kept in step with Step.tsx.
+const S = PLAN.step
+const DATE_LINE_TITLES = new Set(['Report-only prompts for a certificate', 'Existing tokens keep working'])
+const shortDate = (iso: string): string => new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(iso))
+const citationUrl = (modes: Step['failureModes']): string | null => {
+  for (const m of modes) {
+    const c = m.citation
+    if (c && typeof c === 'object' && 'url' in c) return c.url
+  }
+  return null
+}
 
 export function PrintPlan({
   tenantName,
@@ -26,7 +43,6 @@ export function PrintPlan({
   schedule,
   verificationNote,
   dangers,
-  nameOf,
 }: {
   tenantName: string
   baselineLabel: string
@@ -41,35 +57,12 @@ export function PrintPlan({
   verificationNote: string
   schedule: Schedule
   dangers: DangerArea[]
-  nameOf: (id: string) => string
 }) {
   const today = absoluteDate(new Date().toISOString())
-  // The saved PDF is named IAMAI Planner — <tenant> — <date> (prompt 49 item 8).
-  useEffect(() => {
-    // The saved PDF is named IAMAI Planner (em dash) tenant (em dash) date
-    // (prompt 49 item 8): set the title only for the print dialog, so browsing
-    // Export keeps the page title.
-    const pdfName = `IAMAI Planner \u2014 ${tenantName} \u2014 ${today}`
-    let prev = ""
-    const onBefore = (): void => {
-      prev = document.title
-      document.title = pdfName
-    }
-    const onAfter = (): void => {
-      document.title = prev
-    }
-    window.addEventListener("beforeprint", onBefore)
-    window.addEventListener("afterprint", onAfter)
-    return () => {
-      window.removeEventListener("beforeprint", onBefore)
-      window.removeEventListener("afterprint", onAfter)
-    }
-  }, [tenantName, today])
   const done = steps.filter((s) => s.status === 'done')
   const byId = new Map(steps.map((s) => [s.id, s]))
   const waves = schedule.waves.filter((w) => w.stepIds.length > 0)
   const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? ROADMAP.day0 : ROADMAP.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
-  const jsonSteps = steps.filter((s) => s.action.json && (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done')
   // The finish date comes from src/derive (prompt 47 item 7): the last date
   // the calendar sets, with the steps a readiness threshold still holds.
   const finish = planFinish(steps)
@@ -133,7 +126,6 @@ export function PrintPlan({
           {waves.map((w) => (
             <li key={w.wave}>{waveTitle(w)}</li>
           ))}
-          {jsonSteps.length > 0 && <li>{C.appendix}</li>}
         </ol>
       </section>
 
@@ -238,136 +230,167 @@ export function PrintPlan({
           {w.stepIds.map((id) => {
             const s = byId.get(id)
             if (!s) return null
-            return (
-              <article key={s.id} className="print-step">
-                <h3>{s.title}</h3>
-                <p className="muted">
-                  {C.step.kind}: {stepKindLabel(s)} · {C.step.status}: {STEP_STATUS_LABEL[s.status]}
-                </p>
-                <p>{s.impact}</p>
-                {/* Blocked steps print their causes once, below (prompt 37 §6). */}
-                {s.status !== 'blocked' && <p className="muted">{s.stateReason}</p>}
-                {s.naming && (
-                  <p>
-                    <strong>{ROADMAP.proposedName}</strong> {s.naming.proposed}
-                    {s.naming.fromBaseline && <span className="muted"> ({NAMING.fromBaseline(s.naming.fromBaseline)})</span>}
-                  </p>
-                )}
-                <h4>{C.step.why}</h4>
-                <p>{s.why}</p>
-                {s.whyLink && <p className="muted">{ROADMAP.whyLink} {s.whyLink}</p>}
-                {/* Every warning on paper says where it came from (audit-program §6). */}
-                {s.failureModes.length > 0 && (
-                  <>
-                    <h4>{SECTION.couldGoWrong}</h4>
-                    <ul>
-                      {s.failureModes.map((m, i) => (
-                        <li key={i}>
-                          {m.title}: {m.evidence}
-                          {m.citation === FIELD_PRACTICE && <span className="muted"> {CITATION.fieldPractice}</span>}
-                          {m.citation !== undefined && m.citation !== FIELD_PRACTICE && (
-                            <span className="muted"> {CITATION.source}: {m.citation.url}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {s.learn && (
-                  <p className="muted">
-                    {C.step.learn} {s.learn.url}
-                  </p>
-                )}
-                {(s.population.total > 0 || s.highCare.userIds.length > 0) && (
-                  <>
-                    <h4>{C.step.who}</h4>
-                    {s.population.total > 0 && <p>{affectedLine(s.population.total, s.population.active, s.population.admins, s.population.guests)}</p>}
-                    {s.highCare.userIds.length > 0 && (
-                      <>
-                        <p>{ROADMAP.careTitle(s.highCare.userIds.map(nameOf).join(', '))}</p>
-                        <ul>
-                          {s.highCare.notes.map((n, i) => (
-                            <li key={i}>{n}</li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
-                    {s.operatorNote && <p>{s.operatorNote}</p>}
-                  </>
-                )}
-                {s.evidence.lines.length > 0 && (
-                  <>
-                    <h4>{ROADMAP.last30}</h4>
-                    <ul>
-                      {s.evidence.lines.map((l, i) => (
-                        <li key={i}>{l}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {s.readiness.lines.length > 0 && (
-                  <>
-                    <h4>{C.step.readiness}</h4>
-                    <ul>
-                      {s.readiness.lines.map((l, i) => (
-                        <li key={i}>{l}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {s.status === 'blocked' && (s.blockers.length > 0 || s.unblockNotes.length > 0) && (
-                  <p>
-                    <strong>{ROADMAP.blockedBy}:</strong> {(s.unblockNotes.length > 0 ? s.unblockNotes : s.blockers.map((b) => b.label)).join('; ')}
-                  </p>
-                )}
-                <h4>{C.step.change}</h4>
-                <ul>
-                  {s.action.summary.map((l, i) => (
-                    <li key={i}>{l}</li>
-                  ))}
-                </ul>
-                {s.action.portalSteps.length > 0 && (
-                  <>
-                    <h4>{C.step.portal}</h4>
-                    <ol>
-                      {s.action.portalSteps.map((l, i) => (
-                        <li key={i}>{l}</li>
-                      ))}
-                    </ol>
-                  </>
-                )}
-                <h4>{C.step.exit}</h4>
-                <ul>
-                  {s.exitCriteria.map((l, i) => (
-                    <li key={i}>{l}</li>
-                  ))}
-                </ul>
-                <h4>{C.step.rollback}</h4>
-                <p>{s.rollback}</p>
-                {s.comms && (
-                  <>
-                    <h4>{ROADMAP.tellPeople}</h4>
-                    <p>{s.comms}</p>
-                  </>
-                )}
-              </article>
-            )
+            return <PrintStep key={s.id} step={s} steps={steps} schedule={schedule} />
           })}
         </section>
       ))}
-
-      {jsonSteps.length > 0 && (
-        <section className="print-page">
-          <h2>{C.appendix}</h2>
-          {jsonSteps.map((s) => (
-            <div key={s.id} className="print-json">
-              <h3>{s.title}</h3>
-              <pre className="code-block">{s.action.json}</pre>
-            </div>
-          ))}
-        </section>
-      )}
     </div>,
     document.body,
+  )
+}
+
+// One step in full: the first-open sections, then the More sections, the same
+// content Step.tsx renders, as static print markup (prompt 49.1 item 3).
+function PrintStep({ step, steps, schedule }: { step: Step; steps: Step[]; schedule: Schedule }) {
+  const s = step
+  const catalogue = s.failureModes.filter((f) => !DATE_LINE_TITLES.has(f.title))
+  const unknowns = unknownsFor(s)
+  const dependents = steps.filter((x) => x.blockedBy.includes(s.id) && x.status !== 'done' && x.status !== 'skipped')
+  const learn = citationUrl(catalogue)
+  return (
+    <article className="print-step">
+      <h3 className="print-step-title">
+        {s.plainTitle || s.title} <span className="muted">· {statusOf(s).word}</span>
+      </h3>
+      <p>{s.whatChanges}</p>
+
+      <h4>{S.why}</h4>
+      <p>
+        {s.why}
+        {s.learn && <span className="muted"> {S.learn} {s.learn.url}</span>}
+        {s.learn?.cis.map((c) => <span key={c} className="muted"> {S.cis(c)}</span>)}
+      </p>
+
+      <h4>{S.whoTouches}</h4>
+      <p>{populationLine(s.population)}</p>
+      {(s.scenarioLines ?? []).length > 0 && (
+        <ul>
+          {s.scenarioLines!.map((l, i) => (
+            <li key={i}>{l.text}</li>
+          ))}
+        </ul>
+      )}
+      {s.includesOperator && s.operatorNote && <p>{s.operatorNote}</p>}
+
+      <h4>{S.doIt}</h4>
+      {s.action.omits && s.action.omits.length > 0 && <p className="muted">{S.omitsJson(s.action.omits)}</p>}
+      {s.action.portalSteps.length > 0 ? (
+        <ol>
+          {s.action.portalSteps.map((l, i) => (
+            <li key={i}>{l}</li>
+          ))}
+        </ol>
+      ) : (
+        <ul>
+          {s.action.summary.map((l, i) => (
+            <li key={i}>{l}</li>
+          ))}
+        </ul>
+      )}
+
+      <h4>{S.dates}</h4>
+      {s.events ? (
+        <p>{S.datesLine(s.events.announce?.date ?? '—', schedule.reportOnlyAt[s.id] ? shortDate(schedule.reportOnlyAt[s.id]) : '—', s.events.enforce.date)}</p>
+      ) : (
+        <p>{PLAN.who.now}</p>
+      )}
+      {s.rings.length > 1 && <p className="muted">{s.rings.map((r) => S.ring(r.name, shortDate(r.plannedStart), r.targeting.memberCount)).join(' · ')}</p>}
+      {(s.dateNotes ?? []).map((n, i) => (
+        <p key={i} className="muted">
+          {n}
+        </p>
+      ))}
+
+      <h4>{S.doneWhen}</h4>
+      <ul>
+        {s.exitCriteria.slice(0, 3).map((x, i) => (
+          <li key={i}>{x}</li>
+        ))}
+        {(s.tickable ?? []).map((t) => (
+          <li key={t.key}>{t.done ? '☑' : '☐'} {t.text}</li>
+        ))}
+      </ul>
+
+      <h4>{S.ifWrong}</h4>
+      <p>{s.rollback}</p>
+
+      {s.comms && (
+        <>
+          <h4>{S.tellPeople}</h4>
+          <p className="print-comms">{s.comms}</p>
+        </>
+      )}
+
+      <h4>{S.couldGoWrong}</h4>
+      <ul>
+        {catalogue.map((f, i) => (
+          <li key={i}>
+            {f.title}
+            {f.applies === 'yes' && <span className="muted"> ({S.appliesHere})</span>}
+          </li>
+        ))}
+        {learn && <li className="muted">{S.learn} {learn}</li>}
+      </ul>
+
+      <h4>{S.prerequisites}</h4>
+      {s.blockedBy.length > 0 || s.unblockNotes.length > 0 ? (
+        <ul>
+          {s.unblockNotes.map((n, i) => (
+            <li key={i}>{n}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>{S.noPrerequisites}</p>
+      )}
+
+      <h4>{S.waitsOnThis}</h4>
+      {dependents.length > 0 ? (
+        <ul>
+          {dependents.map((d) => (
+            <li key={d.id}>{d.plainTitle || d.title}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>{S.nothingWaits}</p>
+      )}
+
+      <h4>{S.exitCriteria}</h4>
+      <ul>
+        {s.exitCriteria.map((x, i) => (
+          <li key={i}>{x}</li>
+        ))}
+        {s.rings.flatMap((r) => r.exitCriteria).map((x, i) => (
+          <li key={`r${i}`}>{x}</li>
+        ))}
+      </ul>
+
+      {s.helpDesk && (
+        <>
+          <h4>{S.forHelpDesk}</h4>
+          <ul>
+            {s.helpDesk.whatToSay.map((x, i) => (
+              <li key={i}>{x}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <h4>{S.forManager}</h4>
+      <p>{s.forManager}</p>
+
+      {(s.cantSee ?? []).length > 0 && (
+        <>
+          <h4>{S.cantSee}</h4>
+          <ul>
+            {s.cantSee!.map((x, i) => (
+              <li key={i}>{x}</li>
+            ))}
+            {unknowns.map((u) => (
+              <li key={u.id}>{u.cannotSee}</li>
+            ))}
+          </ul>
+        </>
+      )}
+    </article>
   )
 }

@@ -16,23 +16,32 @@
 // oscillation the review saw, and one that is not will fail here.
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import type { Step, StepStatus } from '../roadmap/types.ts'
 import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { doThisNext } from '../roadmap/next.ts'
-import { planSummary } from '../roadmap/summary.ts'
-import { applicableGoals, doneSteps, goalCounts, outstandingSteps, trackableSteps } from './sets.ts'
+import { applicableGoals, doneSteps, goalCounts, trackableSteps } from './sets.ts'
 
-/** Everything the four surfaces put on screen, from one plan. */
+const STATUSES: StepStatus[] = ['done', 'ready', 'blocked', 'in-report-only', 'ready-to-enforce', 'skipped']
+
+// The Plan header's counts, from src/derive alone (the old planSummary generator
+// is gone with the surfaces it fed): total steps, the trackable set, done and the
+// remainder, and one count per status.
+function planCounts(steps: Step[]) {
+  const byStatus = Object.fromEntries(STATUSES.map((s) => [s, 0])) as Record<StepStatus, number>
+  for (const s of steps) byStatus[s.status] = (byStatus[s.status] ?? 0) + 1
+  const trackable = trackableSteps(steps).length
+  const done = doneSteps(steps).length
+  return { total: steps.length, trackable, done, remaining: trackable - done, byStatus }
+}
+
+/** The Plan header and footer counts, from one plan. */
 function surfaces(run: ReturnType<typeof runFixture>) {
-  const { steps, schedule, coverage, viability } = run
-  const summary = planSummary(steps)
-  const goals = goalCounts(coverage)
-  const next = doThisNext(steps, schedule, viability, (id) => id, null, run.input.snapshot.asOf)
+  const { steps, coverage } = run
+  const summary = planCounts(steps)
   return {
-    findings: goals,
+    findings: goalCounts(coverage),
     plan: { trackable: summary.trackable, byStatus: summary.byStatus, total: summary.total },
     progress: { done: summary.done, of: summary.trackable },
-    next: { items: next.items.length, completed: next.completed.length, waiting: next.waiting },
   }
 }
 
@@ -68,11 +77,8 @@ for (const f of allFixtures()) {
       if (!step.goalId) continue
       const goal = status.get(step.goalId)
       if (goal === undefined) continue
-      assert.notEqual(goal, 'absent', `${step.id} is done while Findings reports goal ${step.goalId} as absent`)
+      assert.notEqual(goal, 'absent', `${step.id} is done while a goal it covers is reported absent`)
     }
-
-    // Do this next draws from the outstanding set and nothing else.
-    assert.ok(s.next.items <= outstandingSteps(steps).length, 'Do this next offers more items than there are outstanding steps')
   })
 
   test(`${f.name}: re-rendering ten times cannot change a number`, () => {
@@ -93,9 +99,9 @@ test('skipping a step moves the badge and the chips together', () => {
     const run = runFixture(f)
     const victim = run.steps.find((s) => s.status !== 'done')
     if (!victim) continue
-    const before = planSummary(run.steps)
+    const before = planCounts(run.steps)
     victim.status = 'skipped'
-    const after = planSummary(run.steps)
+    const after = planCounts(run.steps)
 
     assert.equal(after.total, before.total, `${f.name}: skipping changed the number of steps`)
     assert.equal(after.trackable, before.trackable - 1, `${f.name}: a skipped step is still in the trackable set`)
@@ -177,7 +183,7 @@ test('one verdict: for every goal in every fixture, the findings verdict and the
     }
     assert.deepEqual(disagreements, [])
     // Header and footer count the same set.
-    const summary = planSummary(steps)
+    const summary = planCounts(steps)
     assert.equal(summary.done, doneSteps(steps).length, `${f.name}: the plan header's done count is not doneSteps`)
   }
 })

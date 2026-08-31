@@ -2,7 +2,7 @@
 // one button. The exporters are the existing ones, moved here from the Roadmap
 // page, not rewritten: the ICS, the plan file (v2, round-tripped), the CSVs,
 // the prompt pack, the grounding bundle, and the print layout.
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -32,21 +32,40 @@ import { PrintPlan } from './PrintPlan.tsx'
 
 type PlanStore = { planId: string; steps: Record<string, SavedStep>; checkpoints?: unknown[]; startDate?: string; band?: SizeBand; freeze?: { from: string; to: string } | null; revision?: number; revisions?: unknown; stepIds?: string[]; baselinePin?: string | null; log?: unknown }
 
+// The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
+// source (the copy lint forbids one as punctuation).
+const DASH = String.fromCharCode(0x2014)
+
 export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null; account: AccountInfo | null }) {
   const data = usePlanData(scan, baseline)
   const [copied, setCopied] = useState<string | null>(null)
   const [showPrompts, setShowPrompts] = useState(false)
   const [bundleRedacted, setBundleRedacted] = useState(true)
   const fileInput = useRef<HTMLInputElement>(null)
+  const [printing, setPrinting] = useState(false)
   const c = data.computed
   const snapshot = scan?.snapshot ?? null
 
-  // The print document exists once a plan is computed.
-  useEffect(() => {
-    if (!c) return
+  // The print document is mounted only while printing (prompt 49.1 item 4): it is
+  // not in the screen DOM otherwise. Setting `printing` mounts it and hides the
+  // app; the layout effect runs after it is in the DOM, names the PDF, prints,
+  // and tears everything down on afterprint.
+  const printTenantName = (snapshot?.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account?.username ?? ''
+  useLayoutEffect(() => {
+    if (!printing) return
     document.body.classList.add('has-print-plan')
-    return () => document.body.classList.remove('has-print-plan')
-  }, [c])
+    const prevTitle = document.title
+    // The saved PDF is named IAMAI Planner (em dash) tenant (em dash) date.
+    document.title = `IAMAI Planner ${DASH} ${printTenantName} ${DASH} ${absoluteDate(new Date().toISOString())}`
+    const after = (): void => {
+      document.body.classList.remove('has-print-plan')
+      document.title = prevTitle
+      setPrinting(false)
+    }
+    window.addEventListener('afterprint', after)
+    exportPrint(unredactedFrom('print-document'))
+    return () => window.removeEventListener('afterprint', after)
+  }, [printing, printTenantName])
 
   if (!scan || !account || !snapshot) {
     return (
@@ -114,7 +133,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     }
     const stepsRecord: Record<string, SavedStep> = Object.fromEntries(plan.steps.map((s) => [s.id, savedStepOf(s)]))
     const loadedBand = plan.schedule?.band && BANDS[plan.schedule.band as SizeBand] ? (plan.schedule.band as SizeBand) : data.band ?? undefined
-    const record: PlanStore = { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: plan.schedule?.startDate ?? data.startDate ?? undefined, band: loadedBand, freeze: plan.schedule?.freeze ?? null, revision: plan.revision, revisions: plan.revisions, stepIds: plan.steps.map((s) => s.id), baselinePin: plan.baselinePin, log: plan.log }
+    const record: PlanStore = { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: plan.schedule?.startDate ?? data.startDate ?? undefined, band: loadedBand, freeze: plan.schedule?.freeze ?? null, revision: plan.revision, revisions: plan.revisions, stepIds: plan.steps.map((s) => s.id), baselinePin: plan.baselinePin }
     await savePlanRecord(snapshot.tenantId, record)
     if (plan.mappings && plan.mappings.tenantId === snapshot.tenantId) await saveMappingState(plan.mappings)
     window.location.hash = '#/plan'
@@ -130,7 +149,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={C.pdf.title}>
           <p className="reason">{C.pdf.line}</p>
           <p className="actions no-print">
-            <Button variant="primary" onClick={() => exportPrint(unredactedFrom('print-document'))}>
+            <Button variant="primary" onClick={() => setPrinting(true)}>
               {C.pdf.button}
             </Button>
           </p>
@@ -204,17 +223,18 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         </Card>
       </div>
 
-      <PrintPlan
-        tenantName={tenantName}
-        baselineLabel={baseline?.source ?? ''}
-        operator={operator.userPrincipalName}
-        baselinePin={baselineIndex.commit ?? null}
-        steps={steps}
-        schedule={schedule}
-        verificationNote={rollout.toSetUp > 0 ? `${rollout.toSetUp} of ${rollout.active} active people still to set up.` : 'Everyone active is ready.'}
-        dangers={dangers}
-        nameOf={nameOf}
-      />
+      {printing && (
+        <PrintPlan
+          tenantName={tenantName}
+          baselineLabel={baseline?.source ?? ''}
+          operator={operator.userPrincipalName}
+          baselinePin={baselineIndex.commit ?? null}
+          steps={steps}
+          schedule={schedule}
+          verificationNote={rollout.toSetUp > 0 ? `${rollout.toSetUp} of ${rollout.active} active people still to set up.` : 'Everyone active is ready.'}
+          dangers={dangers}
+        />
+      )}
     </section>
   )
 }
