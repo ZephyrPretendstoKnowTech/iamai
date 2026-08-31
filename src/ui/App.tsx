@@ -209,8 +209,16 @@ export function App() {
   // an empty hash lands.
   const shellState: ShellState = !account ? 'signedOut' : scanRunning ? 'scanning' : lastScan ? 'scanned' : 'noScan'
   useEffect(() => {
-    if (!ready || route !== 'home') return
-    window.location.replace(shellState === 'scanned' ? PLAN_HREF : '#/connect')
+    if (!ready) return
+    if (route === 'home') {
+      window.location.replace(shellState === 'scanned' ? PLAN_HREF : '#/connect')
+      return
+    }
+    // Signed out, Connect is the page (target-state §2, prompt 48.1 item 17): a
+    // gated route never renders its "connect first" placeholder.
+    if (shellState === 'signedOut' && (route === 'plan' || route === 'today' || route === 'inventory')) {
+      window.location.replace('#/connect')
+    }
   }, [ready, route, shellState])
 
   return (

@@ -1,5 +1,5 @@
 {
- "fingerprint": "45a2dba4466e200b",
+ "fingerprint": "8b497d71d6e3e132",
  "surfaces": [
   {
    "name": "Connect",
@@ -73,9 +73,9 @@
    "headings": [
     "Plan",
     "Before anything else · <date> → <date>",
-    "Wave 1 · <date> → <date> · Low-impact blocks",
-    "Wave 2 · <date> → <date> · Devices",
-    "Wave 3 · <date> → <date> · Sessions"
+    "Wave 1 · <date> → <date> · Low-impact blocks · after emergency access",
+    "Wave 2 · <date> → <date> · Devices · after emergency access",
+    "Wave 3 · <date> → <date> · Sessions · after emergency access"
    ],
    "tabs": [],
    "buttons": [
@@ -86,9 +86,9 @@
     "service accounts none · confirm",
     "shared devices none · change",
     "time zone Denver · change",
-    "mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail. · answer",
-    "people who travel or work abroad none seen. Answering adds notice and a travel exclusion. · answer",
-    "partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion. · answer"
+    "mail-sending devices none seen · answer",
+    "people who travel or work abroad none seen · answer",
+    "partner or MSP access none seen · answer"
    ],
    "options": [],
    "links": [
@@ -102,11 +102,10 @@
     "service accounts none · confirm",
     "shared devices none · change",
     "time zone Denver · change",
-    "mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail. · answer",
-    "people who travel or work abroad none seen. Answering adds notice and a travel exclusion. · answer",
-    "partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion. · answer",
+    "mail-sending devices none seen · answer",
+    "people who travel or work abroad none seen · answer",
+    "partner or MSP access none seen · answer",
     "Ready",
-    "In place",
     "Blocked",
     "Report-only"
    ],
@@ -122,7 +121,7 @@
     "About What set the plan length"
    ],
    "sentences": [
-    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks",
+    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness",
     "Assumes:"
    ],
    "titles": [
@@ -132,8 +131,6 @@
     "Create the policy exclusions group",
     "Break-glass sign-in drill",
     "Run the MFA verification campaign",
-    "Make sure everyone can prove who they are",
-    "Make guests prove who they are too",
     "Stop attackers adding their own MFA method",
     "Stop sign-ins being handed to another device",
     "Turn off old sign-in methods that skip MFA",
@@ -153,25 +150,25 @@
    "primary": [],
    "tables": [],
    "occurrences": {
-    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks": 1
+    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness": 1
    },
    "occurrencesAll": {
-    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks": 1
+    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness": 1
    },
    "wordCounts": {
-    "headings": 33,
+    "headings": 45,
     "tabs": 0,
-    "buttons": 91,
+    "buttons": 62,
     "options": 0,
     "links": 2,
-    "chips": 96,
+    "chips": 65,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 10,
     "tips": 6,
     "sentences": 29,
-    "total": 267
+    "total": 219
    },
    "unnamedControls": [],
    "rows": [],
@@ -216,19 +213,16 @@
     "This is groundwork so a mistake later can be undone.",
     "Emergency access accounts has 3 must-fix checks outstanding.",
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.",
-    "no people · 0 active",
-    "Each of these has to pass:",
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)",
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)",
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)",
-    "Worth fixing too, though nothing waits on them:",
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)",
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.",
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.",
+    "nobody affected",
+    "Create a second emergency access account.",
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.",
+    "Assign Global Administrator to each account permanently, never eligible-only.",
+    "Entra admin center → Roles and administrators → Global Administrator.",
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.",
+    "Entra admin center → Users → New user.",
     "now",
     "All 3 must-fix checks pass on the next scan.",
-    "At least two emergency access accounts are nominated.",
-    "Global Administrator is assigned permanently and active, never eligible-only.",
+    "Nothing to undo.",
     "Recovery card →"
    ],
    "titles": [
@@ -239,39 +233,31 @@
    "tables": [],
    "occurrences": {
     "Sort out emergency access before anything else Ready": 1,
-    "Nothing changes for anyone.": 2,
-    "This is groundwork so a mistake later can be undone.": 2,
+    "Nothing changes for anyone.": 1,
+    "This is groundwork so a mistake later can be undone.": 1,
     "Emergency access accounts has 3 must-fix checks outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
-    "Each of these has to pass:": 1,
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
-    "Worth fixing too, though nothing waits on them:": 1,
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1,
-    "At least two emergency access accounts are nominated.": 1,
-    "Global Administrator is assigned permanently and active, never eligible-only.": 1
+    "Create a second emergency access account.": 1,
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.": 1,
+    "Assign Global Administrator to each account permanently, never eligible-only.": 1,
+    "Entra admin center → Roles and administrators → Global Administrator.": 1,
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
+    "Entra admin center → Users → New user.": 1,
+    "All 3 must-fix checks pass on the next scan.": 1
    },
    "occurrencesAll": {
     "Sort out emergency access before anything else Ready": 1,
-    "Nothing changes for anyone.": 2,
-    "This is groundwork so a mistake later can be undone.": 2,
+    "Nothing changes for anyone.": 1,
+    "This is groundwork so a mistake later can be undone.": 1,
     "Emergency access accounts has 3 must-fix checks outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
-    "Each of these has to pass:": 1,
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
-    "Worth fixing too, though nothing waits on them:": 1,
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1,
-    "At least two emergency access accounts are nominated.": 1,
-    "Global Administrator is assigned permanently and active, never eligible-only.": 1
+    "Create a second emergency access account.": 1,
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.": 1,
+    "Assign Global Administrator to each account permanently, never eligible-only.": 1,
+    "Entra admin center → Roles and administrators → Global Administrator.": 1,
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
+    "Entra admin center → Users → New user.": 1,
+    "All 3 must-fix checks pass on the next scan.": 1
    },
    "wordCounts": {
     "headings": 13,
@@ -285,15 +271,15 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 255,
-    "total": 274
+    "sentences": 139,
+    "total": 158
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 21,
-    "words": 269
+    "sentences": 16,
+    "words": 139
    }
   },
   {
@@ -667,8 +653,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 326,
-    "words": 548
+    "sentences": 334,
+    "words": 556
    }
   },
   {
@@ -1238,7 +1224,7 @@
    "empty": [],
    "summaries": [
     "Plan revision 3, <date>",
-    "Ready Prerequisite Sort out emergency access before anything elseEmergency access accounts3 must-fix checks to clear. 13 steps that can deny access are held until then.Checked: nothing blocks it and a foundation the later steps need."
+    "Ready Prerequisite Sort out emergency access before anything elseEmergency access accountsno must-fix checks to clear. 13 steps that can deny access are held until then.Checked: nothing blocks it and a foundation the later steps need."
    ],
    "tips": [
     "About Steps done",
@@ -1266,7 +1252,7 @@
     "scan",
     "matched by what it does",
     "<date> → <date>",
-    "3 must-fix checks to clear.",
+    "no must-fix checks to clear.",
     "13 steps that can deny access are held until then.",
     "Checked: nothing blocks it and a foundation the later steps need.",
     "Nothing changes for anyone.",
@@ -1275,14 +1261,12 @@
     "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 3 must-fix checks outstanding.",
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.",
     "Nothing has to exist first.",
-    "Each of these has to pass:",
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)",
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)",
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)",
-    "Worth fixing too, though nothing waits on them:",
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)",
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.",
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.",
+    "Create a second emergency access account.",
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.",
+    "Assign Global Administrator to each account permanently, never eligible-only.",
+    "Entra admin center → Roles and administrators → Global Administrator.",
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.",
+    "Entra admin center → Users → New user.",
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.",
     "Add a second account above",
     "Entra admin center → Roles & admins → Global Administrator",
@@ -1296,9 +1280,7 @@
     "Earlier phases start first, and this belongs to a later one.",
     "It waits on nothing: it can start as soon as its window allows.",
     "All 3 must-fix checks pass on the next scan.",
-    "At least two emergency access accounts are nominated.",
-    "Global Administrator is assigned permanently and active, never eligible-only.",
-    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.",
+    "Nothing to undo.",
     "Emergency access accounts is the way back in when a security change goes wrong.",
     "The cost is an hour of admin time and no disruption to anyone.",
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.",
@@ -1336,23 +1318,21 @@
     "Hover a week for the counts.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
-    "3 must-fix checks to clear.": 1,
+    "no must-fix checks to clear.": 1,
     "13 steps that can deny access are held until then.": 1,
     "Checked: nothing blocks it and a foundation the later steps need.": 1,
-    "Nothing changes for anyone.": 2,
-    "This is groundwork so a mistake later can be undone.": 2,
+    "Nothing changes for anyone.": 1,
+    "This is groundwork so a mistake later can be undone.": 1,
     "In this tenant, sort out emergency access before anything else covers nobody today, so the change closes the gap without touching anyone.": 1,
     "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 3 must-fix checks outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
     "Nothing has to exist first.": 1,
-    "Each of these has to pass:": 1,
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
-    "Worth fixing too, though nothing waits on them:": 1,
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
+    "Create a second emergency access account.": 1,
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.": 1,
+    "Assign Global Administrator to each account permanently, never eligible-only.": 1,
+    "Entra admin center → Roles and administrators → Global Administrator.": 1,
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
+    "Entra admin center → Users → New user.": 1,
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.": 1,
     "Add a second account above": 1,
     "Entra admin center → Roles & admins → Global Administrator": 1,
@@ -1379,9 +1359,6 @@
     "Limit what personal devices can do in the browser": 1,
     "Stop a stolen session token from being reused": 1,
     "All 3 must-fix checks pass on the next scan.": 1,
-    "At least two emergency access accounts are nominated.": 1,
-    "Global Administrator is assigned permanently and active, never eligible-only.": 1,
-    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.": 1,
     "Emergency access accounts is the way back in when a security change goes wrong.": 1,
     "The cost is an hour of admin time and no disruption to anyone.": 1,
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1,
@@ -1408,23 +1385,21 @@
     "Hover a week for the counts.": 1,
     "Everything the scans noticed, newest first.": 1,
     "Nothing here is typed in; nothing can be edited.": 1,
-    "3 must-fix checks to clear.": 1,
+    "no must-fix checks to clear.": 1,
     "13 steps that can deny access are held until then.": 1,
     "Checked: nothing blocks it and a foundation the later steps need.": 3,
-    "Nothing changes for anyone.": 2,
-    "This is groundwork so a mistake later can be undone.": 2,
+    "Nothing changes for anyone.": 1,
+    "This is groundwork so a mistake later can be undone.": 1,
     "In this tenant, sort out emergency access before anything else covers nobody today, so the change closes the gap without touching anyone.": 1,
     "Why the control exists, from IAMAI's own catalogue: Emergency access accounts has 3 must-fix checks outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
     "Nothing has to exist first.": 1,
-    "Each of these has to pass:": 1,
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
-    "Worth fixing too, though nothing waits on them:": 1,
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
+    "Create a second emergency access account.": 1,
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.": 1,
+    "Assign Global Administrator to each account permanently, never eligible-only.": 1,
+    "Entra admin center → Roles and administrators → Global Administrator.": 1,
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
+    "Entra admin center → Users → New user.": 1,
     "No ring plan: this step prepares the tenant and denies nobody access, so it lands in one go.": 1,
     "Add a second account above": 1,
     "Entra admin center → Roles & admins → Global Administrator": 1,
@@ -1451,9 +1426,6 @@
     "Limit what personal devices can do in the browser": 1,
     "Stop a stolen session token from being reused": 1,
     "All 3 must-fix checks pass on the next scan.": 1,
-    "At least two emergency access accounts are nominated.": 1,
-    "Global Administrator is assigned permanently and active, never eligible-only.": 1,
-    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.": 1,
     "Emergency access accounts is the way back in when a security change goes wrong.": 1,
     "The cost is an hour of admin time and no disruption to anyone.": 1,
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1,
@@ -1497,15 +1469,15 @@
     "empty": 0,
     "summaries": 39,
     "tips": 12,
-    "sentences": 816,
-    "total": 1729
+    "sentences": 685,
+    "total": 1598
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 367,
-    "words": 1081
+    "sentences": 369,
+    "words": 944
    }
   },
   {
@@ -4309,9 +4281,9 @@
    "headings": [
     "Plan",
     "Before anything else · <date> → <date>",
-    "Wave 1 · <date> → <date> · Low-impact blocks",
-    "Wave 2 · <date> → <date> · Devices",
-    "Wave 3 · <date> → <date> · Sessions"
+    "Wave 1 · <date> → <date> · Low-impact blocks · after emergency access",
+    "Wave 2 · <date> → <date> · Devices · after emergency access",
+    "Wave 3 · <date> → <date> · Sessions · after emergency access"
    ],
    "tabs": [],
    "buttons": [
@@ -4322,9 +4294,9 @@
     "service accounts none · confirm",
     "shared devices none · change",
     "time zone Denver · change",
-    "mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail. · answer",
-    "people who travel or work abroad none seen. Answering adds notice and a travel exclusion. · answer",
-    "partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion. · answer"
+    "mail-sending devices none seen · answer",
+    "people who travel or work abroad none seen · answer",
+    "partner or MSP access none seen · answer"
    ],
    "options": [],
    "links": [
@@ -4338,11 +4310,10 @@
     "service accounts none · confirm",
     "shared devices none · change",
     "time zone Denver · change",
-    "mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail. · answer",
-    "people who travel or work abroad none seen. Answering adds notice and a travel exclusion. · answer",
-    "partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion. · answer",
+    "mail-sending devices none seen · answer",
+    "people who travel or work abroad none seen · answer",
+    "partner or MSP access none seen · answer",
     "Ready",
-    "In place",
     "Blocked",
     "Report-only"
    ],
@@ -4358,7 +4329,7 @@
     "About What set the plan length"
    ],
    "sentences": [
-    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks",
+    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness",
     "Assumes:"
    ],
    "titles": [
@@ -4368,8 +4339,6 @@
     "Create the policy exclusions group",
     "Break-glass sign-in drill",
     "Run the MFA verification campaign",
-    "Make sure everyone can prove who they are",
-    "Make guests prove who they are too",
     "Stop attackers adding their own MFA method",
     "Stop sign-ins being handed to another device",
     "Turn off old sign-in methods that skip MFA",
@@ -4389,25 +4358,25 @@
    "primary": [],
    "tables": [],
    "occurrences": {
-    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks": 1
+    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness": 1
    },
    "occurrencesAll": {
-    "22 steps · 2 in place · finishes <date> · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness · 4 weeks": 1
+    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness": 1
    },
    "wordCounts": {
-    "headings": 33,
+    "headings": 45,
     "tabs": 0,
-    "buttons": 91,
+    "buttons": 62,
     "options": 0,
     "links": 2,
-    "chips": 96,
+    "chips": 65,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 10,
     "tips": 6,
     "sentences": 29,
-    "total": 267
+    "total": 219
    },
    "unnamedControls": [],
    "rows": [
@@ -4455,21 +4424,21 @@
     },
     {
      "selector": ".assumption",
-     "text": "mail-sending devices none seen in 30 days. Answering adds an SMTP-relay step for printers or apps that send mail. · answer",
-     "sentences": 2,
-     "words": 21
+     "text": "mail-sending devices none seen · answer",
+     "sentences": 1,
+     "words": 6
     },
     {
      "selector": ".assumption",
-     "text": "people who travel or work abroad none seen. Answering adds notice and a travel exclusion. · answer",
-     "sentences": 2,
-     "words": 17
+     "text": "people who travel or work abroad none seen · answer",
+     "sentences": 1,
+     "words": 10
     },
     {
      "selector": ".assumption",
-     "text": "partner or MSP access no service-provider sign-ins seen. Answering adds a partner exclusion. · answer",
-     "sentences": 2,
-     "words": 15
+     "text": "partner or MSP access none seen · answer",
+     "sentences": 1,
+     "words": 8
     },
     {
      "selector": ".wave",
@@ -4503,7 +4472,7 @@
     },
     {
      "selector": ".plan-row",
-     "text": "ReadyBreak-glass sign-in drillBreak-glass 01now",
+     "text": "ReadyBreak-glass sign-in drillnobody affectednow",
      "sentences": 1,
      "words": 4
     },
@@ -4514,34 +4483,22 @@
      "words": 6
     },
     {
+     "selector": ".wave",
+     "text": "Wave 1 · <date> → <date> · Low-impact blocks · after emergency access",
+     "sentences": 1,
+     "words": 13
+    },
+    {
      "selector": ".plan-row",
-     "text": "In placeMake sure everyone can prove who they are4 peoplenow",
+     "text": "BlockedStop attackers adding their own MFA methodAlex Morgan, Sam Lee and Priya Nair8 Sept 2026",
+     "sentences": 1,
+     "words": 15
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop sign-ins being handed to another device4 people8 Sept 2026",
      "sentences": 1,
      "words": 10
-    },
-    {
-     "selector": ".plan-row",
-     "text": "In placeMake guests prove who they are tooJordan Kimnow",
-     "sentences": 1,
-     "words": 9
-    },
-    {
-     "selector": ".wave",
-     "text": "Wave 1 · <date> → <date> · Low-impact blocks",
-     "sentences": 1,
-     "words": 9
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedStop attackers adding their own MFA methodAlex Morgan, Sam Lee, Priya Nair8 Sept 2026after: Sort out emergency access before anything",
-     "sentences": 1,
-     "words": 21
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedStop sign-ins being handed to another device4 people8 Sept 2026after: Sort out emergency access before anything else",
-     "sentences": 1,
-     "words": 17
     },
     {
      "selector": ".plan-row",
@@ -4551,81 +4508,81 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedStop the device-code sign-in trick4 people8 Sept 2026after: Sort out emergency access before anything else",
-     "sentences": 1,
-     "words": 15
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedKeep admin sessions shortAlex Morgan8 Sept 2026after: Sort out emergency access before anything else",
-     "sentences": 1,
-     "words": 14
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedGive admins a sign-in method that cannot be phishedAlex Morgan8 Sept 2026after: Sort out emergency access before anything else",
-     "sentences": 1,
-     "words": 19
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedKeep non-admins out of the admin portals4 people8 Sept 2026after: Sort out emergency access before anything else",
-     "sentences": 1,
-     "words": 17
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedStop sign-ins from countries you don't work in4 people8 Sept 2026after: Sort out emergency access before anything else",
-     "sentences": 1,
-     "words": 18
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedAsk for MFA before a device can be registered4 people8 Sept 2026after: Sort out emergency access before anything else",
-     "sentences": 1,
-     "words": 19
-    },
-    {
-     "selector": ".wave",
-     "text": "Wave 2 · <date> → <date> · Devices",
+     "text": "BlockedStop the device-code sign-in trick4 people8 Sept 2026",
      "sentences": 1,
      "words": 8
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedBlock devices Entra cannot identify4 people15 Sept 2026after: Sort out emergency access before anything else",
+     "text": "BlockedKeep admin sessions shortAlex Morgan8 Sept 2026",
      "sentences": 1,
-     "words": 15
+     "words": 7
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedGive admins a sign-in method that cannot be phishedAlex Morgan8 Sept 2026",
+     "sentences": 1,
+     "words": 12
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedKeep non-admins out of the admin portals4 people8 Sept 2026",
+     "sentences": 1,
+     "words": 10
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop sign-ins from countries you don't work in4 people8 Sept 2026",
+     "sentences": 1,
+     "words": 11
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedAsk for MFA before a device can be registered4 people8 Sept 2026",
+     "sentences": 1,
+     "words": 12
     },
     {
      "selector": ".wave",
-     "text": "Wave 3 · <date> → <date> · Sessions",
+     "text": "Wave 2 · <date> → <date> · Devices · after emergency access",
+     "sentences": 1,
+     "words": 12
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedBlock devices Entra cannot identify4 people15 Sept 2026",
      "sentences": 1,
      "words": 8
     },
     {
-     "selector": ".plan-row",
-     "text": "BlockedSign everyone out when the browser closes4 people22 Sept 2026after: Sort out emergency access before anything else",
+     "selector": ".wave",
+     "text": "Wave 3 · <date> → <date> · Sessions · after emergency access",
      "sentences": 1,
-     "words": 17
+     "words": 12
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedStop downloads to devices you do not manage4 people22 Sept 2026after: Sort out emergency access before anything else",
+     "text": "BlockedSign everyone out when the browser closes4 people22 Sept 2026",
      "sentences": 1,
-     "words": 18
+     "words": 10
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedLimit what personal devices can do in the browser4 people22 Sept 2026after: Sort out emergency access before anything else",
+     "text": "BlockedStop downloads to devices you do not manage4 people22 Sept 2026",
      "sentences": 1,
-     "words": 19
+     "words": 11
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedStop a stolen session token from being reused4 people22 Sept 2026after: Sort out emergency access before anything else",
+     "text": "BlockedLimit what personal devices can do in the browser4 people22 Sept 2026",
      "sentences": 1,
-     "words": 18
+     "words": 12
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedStop a stolen session token from being reused4 people22 Sept 2026",
+     "sentences": 1,
+     "words": 11
     }
    ],
    "forbidHits": [],
@@ -4831,19 +4788,16 @@
     "This is groundwork so a mistake later can be undone.",
     "Emergency access accounts has 3 must-fix checks outstanding.",
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.",
-    "no people · 0 active",
-    "Each of these has to pass:",
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)",
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)",
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)",
-    "Worth fixing too, though nothing waits on them:",
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)",
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.",
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.",
+    "nobody affected",
+    "Create a second emergency access account.",
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.",
+    "Assign Global Administrator to each account permanently, never eligible-only.",
+    "Entra admin center → Roles and administrators → Global Administrator.",
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.",
+    "Entra admin center → Users → New user.",
     "now",
     "All 3 must-fix checks pass on the next scan.",
-    "At least two emergency access accounts are nominated.",
-    "Global Administrator is assigned permanently and active, never eligible-only.",
+    "Nothing to undo.",
     "Recovery card →"
    ],
    "titles": [
@@ -4854,39 +4808,31 @@
    "tables": [],
    "occurrences": {
     "Sort out emergency access before anything else Ready": 1,
-    "Nothing changes for anyone.": 2,
-    "This is groundwork so a mistake later can be undone.": 2,
+    "Nothing changes for anyone.": 1,
+    "This is groundwork so a mistake later can be undone.": 1,
     "Emergency access accounts has 3 must-fix checks outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
-    "Each of these has to pass:": 1,
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
-    "Worth fixing too, though nothing waits on them:": 1,
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1,
-    "At least two emergency access accounts are nominated.": 1,
-    "Global Administrator is assigned permanently and active, never eligible-only.": 1
+    "Create a second emergency access account.": 1,
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.": 1,
+    "Assign Global Administrator to each account permanently, never eligible-only.": 1,
+    "Entra admin center → Roles and administrators → Global Administrator.": 1,
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
+    "Entra admin center → Users → New user.": 1,
+    "All 3 must-fix checks pass on the next scan.": 1
    },
    "occurrencesAll": {
     "Sort out emergency access before anything else Ready": 1,
-    "Nothing changes for anyone.": 2,
-    "This is groundwork so a mistake later can be undone.": 2,
+    "Nothing changes for anyone.": 1,
+    "This is groundwork so a mistake later can be undone.": 1,
     "Emergency access accounts has 3 must-fix checks outstanding.": 1,
     "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
-    "Each of these has to pass:": 1,
-    "only 1 emergency access account is nominated: two are needed → At least two emergency access accounts are nominated. (Add a second account above)": 1,
-    "not a Global Administrator → Global Administrator is assigned permanently and active, never eligible-only. (Entra admin center → Roles & admins → Global Administrator)": 1,
-    "looks like a person's own account: department Operations → The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator. (Entra admin center → Users → this user)": 1,
-    "Worth fixing too, though nothing waits on them:": 1,
-    "last signed in <date>, over 90 days ago: a drill is due → The account has signed in within the last 90 days. (Break-glass drill step in the Roadmap)": 1,
-    "where the credential is kept has not been recorded → Where the credential is kept, and who can reach it, is recorded in the plan.": 1,
-    "nothing alerts when an emergency account signs in → A sign-in by an emergency account raises an alert.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1,
-    "At least two emergency access accounts are nominated.": 1,
-    "Global Administrator is assigned permanently and active, never eligible-only.": 1
+    "Create a second emergency access account.": 1,
+    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.": 1,
+    "Assign Global Administrator to each account permanently, never eligible-only.": 1,
+    "Entra admin center → Roles and administrators → Global Administrator.": 1,
+    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
+    "Entra admin center → Users → New user.": 1,
+    "All 3 must-fix checks pass on the next scan.": 1
    },
    "wordCounts": {
     "headings": 13,
@@ -4900,8 +4846,8 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 255,
-    "total": 274
+    "sentences": 139,
+    "total": 158
    },
    "unnamedControls": [],
    "rows": [],
@@ -4956,9 +4902,6 @@
     "Limit what personal devices can do in the browser",
     "Stop a stolen session token from being reused",
     "All 3 must-fix checks pass on the next scan.",
-    "At least two emergency access accounts are nominated.",
-    "Global Administrator is assigned permanently and active, never eligible-only.",
-    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.",
     "Emergency access accounts is the way back in when a security change goes wrong.",
     "The cost is an hour of admin time and no disruption to anyone.",
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.",
@@ -4984,9 +4927,6 @@
     "Limit what personal devices can do in the browser": 1,
     "Stop a stolen session token from being reused": 1,
     "All 3 must-fix checks pass on the next scan.": 1,
-    "At least two emergency access accounts are nominated.": 1,
-    "Global Administrator is assigned permanently and active, never eligible-only.": 1,
-    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.": 1,
     "Emergency access accounts is the way back in when a security change goes wrong.": 1,
     "The cost is an hour of admin time and no disruption to anyone.": 1,
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1
@@ -5007,9 +4947,6 @@
     "Limit what personal devices can do in the browser": 1,
     "Stop a stolen session token from being reused": 1,
     "All 3 must-fix checks pass on the next scan.": 1,
-    "At least two emergency access accounts are nominated.": 1,
-    "Global Administrator is assigned permanently and active, never eligible-only.": 1,
-    "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.": 1,
     "Emergency access accounts is the way back in when a security change goes wrong.": 1,
     "The cost is an hour of admin time and no disruption to anyone.": 1,
     "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1
@@ -5026,8 +4963,8 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 209,
-    "total": 228
+    "sentences": 174,
+    "total": 193
    },
    "unnamedControls": [],
    "rows": [],
