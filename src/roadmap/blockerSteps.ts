@@ -100,6 +100,7 @@ export function blockerSteps(reports: SubjectReport[], heldSteps: number): Step[
       rollback: BLOCKER_STEP.whatChanges,
       history: [],
       skipReason: null,
+      gap: null,
       deliveredBy: [],
       stateReason: '',
       impact: BLOCKER_STEP.impact(n, held),

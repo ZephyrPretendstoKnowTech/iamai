@@ -13,6 +13,7 @@ import type { FacetOverrides } from './applicability.ts'
 import { REASON } from '../copy/reasons.ts'
 import { proposedPolicyName, stepTitle } from './naming.ts'
 import { organisationReport } from './organisation.ts'
+import { gapSentenceOf, verdictOf } from './verdict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type {
   AssumedExclusions,
@@ -161,6 +162,12 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
 
   // The organisation report knows the tenant's naming convention; missing
   // goals then name the policy the plan will propose, first (§46).
+  // One verdict and one gap sentence per goal (target-state §8.2, prompt 46
+  // item 9), derived from the final status so no later step re-decides it.
+  for (const r of results) {
+    r.verdict = verdictOf(r.status)
+    r.gapSentence = gapSentenceOf(r)
+  }
   const organisation = organisationReport(tenantFacts, results, snapshot, matchedTenantIds)
   // Threaded through the names already proposed, so a numbered series advances.
   // Without this every missing goal proposed CA004, because each call saw only
@@ -240,6 +247,9 @@ function evaluateGoal(
     reasons: [],
     candidates: [],
     floorRaised: null,
+    // Set from the final status in computeCoverage; never read before then.
+    verdict: 'unknown',
+    gapSentence: null,
   }
 
   // Vendor-specific policy (SPEC §7): applies only when the vendor's app is seen.

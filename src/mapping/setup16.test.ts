@@ -18,6 +18,7 @@ function user(id: string, over: Partial<UserRow> = {}): UserRow {
     createdDateTime: '2024-01-01T00:00:00Z',
     lastSuccessfulSignIn: '2026-08-01T00:00:00Z',
     accountEnabled: true,
+    mail: null,
     assignedPlans: [],
     onPremisesSyncEnabled: false,
     externalUserState: null,

@@ -417,7 +417,7 @@ export function buildSchedule(
   const graph = dependencyGraph(steps)
 
   // ---- Day 0: foundation work takes real days before any policy can be created ----
-  const foundationWork = steps.filter((s) => isWork(s) && s.kind === 'prerequisite').length
+  const foundationWork = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length
   const day0Days = foundationWork > 0 ? Math.min(5, 1 + foundationWork) : 0
   const day0End = addDays(day0, day0Days)
 
@@ -487,7 +487,7 @@ export function buildSchedule(
     // Prerequisites and the recurring check finish inside day 0; the campaign ends with its window.
     for (const s of steps) {
       if (!isWork(s)) continue
-      if (s.kind === 'prerequisite' || s.kind === 'recurring') placed.set(s.id, { start: day0, end: day0End, reason: { kind: 'prerequisites', ref: null } })
+      if (s.kind === 'prerequisite' || s.kind === 'recurring' || s.kind === 'check') placed.set(s.id, { start: day0, end: day0End, reason: { kind: 'prerequisites', ref: null } })
       if (s.kind === 'verify') placed.set(s.id, { start: verification.start, end: verification.end, reason: { kind: 'verification', ref: null } })
     }
     const inFreeze = (iso: string): boolean => freeze !== null && iso >= freeze.from && iso <= freeze.to
@@ -787,7 +787,7 @@ function derive(
         relaxed,
       }
     }
-    const prereqs = steps.filter((s) => isWork(s) && s.kind === 'prerequisite').length
+    const prereqs = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length
     return prereqs > 0
       ? { criticalPath: CRITICAL.sentence(weeks, CRITICAL.prerequisites(prereqs)), constraint: 'prerequisites', chain: [], relaxed }
       : { criticalPath: CRITICAL.sentenceDone, constraint: 'none', chain: [], relaxed }

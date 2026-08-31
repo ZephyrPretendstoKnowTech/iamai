@@ -273,7 +273,7 @@ export function CoveragePage({
         <StatTile value={partial.length} label={C.tiles.partly} tone="warning" tip={TILE.partly} />
         <StatTile value={absent.length} label={C.tiles.missing} tone="danger" tip={TILE.missing} />
         <StatTile value={`${goals.applicable === 0 ? 0 : Math.round((goals.inPlace / goals.applicable) * 100)}%`} label={C.tiles.scored} tip={TILE.scoredGoals} />
-        <StatTile value={`${summary.rollout.enabled === 0 ? 0 : Math.round((summary.rollout.proven / summary.rollout.enabled) * 100)}%`} label={C.tiles.proven} tone="success" tip={TILE.mfaProven} />
+        <StatTile value={`${summary.rollout.active === 0 ? 0 : Math.round((summary.rollout.proven / summary.rollout.active) * 100)}%`} label={C.tiles.proven} tone="success" tip={TILE.mfaProven} />
         <StatTile value={summary.rollout.toSetUp} label={C.tiles.toSetUp} tone={summary.rollout.toSetUp === 0 ? 'neutral' : 'warning'} tip={TILE.toSetUp} />
       </Stats>
     </div>

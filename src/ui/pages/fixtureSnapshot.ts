@@ -128,6 +128,7 @@ export function fixtureSnapshot(): TenantSnapshot {
       id,
       displayName,
       userPrincipalName,
+      mail: null,
       userType,
       usageLocation: 'AU',
       createdDateTime: daysAgo(400),

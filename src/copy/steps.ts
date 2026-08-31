@@ -186,6 +186,13 @@ export const PREREQ = {
     ],
     exit: ['Two accounts exist, validated by the Setup question.'],
   },
+  /** Wave 0: decide on the accounts nobody signs in to (prompt 46 item 8). Four branches on the count live in the title. */
+  dormantAccounts: {
+    title: (n: number) => (n === 1 ? 'Decide on 1 dormant account' : `Decide on ${n} dormant accounts`),
+    why: 'Nobody has signed in to these for 90 days, or ever. A policy affects nobody who never signs in, so they hold nothing up; the risk is that whoever signs in first registers the MFA method.',
+    how: (names: string[]) => [`Disable each one, or confirm it is still in use: ${list(names)}.`, 'Entra admin center → Users → the account → Account status.'],
+    exit: ['Each account is disabled or has signed in.'],
+  },
   globalExclusion: {
     title: 'Create the policy exclusions group',
     why: 'One assigned group, containing only break-glass, excluded from every policy in the plan: a single, auditable escape hatch.',
@@ -348,6 +355,7 @@ export const ROLLBACK = {
   create: 'Switch the policy back to report-only (or delete it); nothing else changes.',
   verify: 'Nothing to undo: the campaign changes no policy. Pause the announcements if people are confused; the readiness numbers stay.',
   recurring: 'Nothing to undo: this is a check, not a change.',
+  check: 'Nothing to undo: this is a decision about accounts, not a policy change.',
 }
 
 export const COMMS = {

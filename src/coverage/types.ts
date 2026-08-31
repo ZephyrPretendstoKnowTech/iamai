@@ -181,9 +181,25 @@ export type GoalStatus =
   | 'not-applicable'
   | 'unknown'
 
+/**
+ * The one verdict a goal has (target-state §8.2, prompt 46 item 9). Computed
+ * once here; a step is in place if and only if its goal's verdict is inPlace,
+ * and the plan header and footer count the same set. The status field carries
+ * the classifier's finer result; the verdict is what every surface renders.
+ */
+export type Verdict = 'inPlace' | 'partly' | 'missing' | 'belowBaseline' | 'notApplicable' | 'licenceLimited' | 'unknown'
+
 export type GoalResult = {
   goal: Goal
   status: GoalStatus
+  /** One verdict, from the status. Set once in computeCoverage. */
+  verdict: Verdict
+  /**
+   * The clause a partly-in-place row shows: "sessions expire every 168h,
+   * baseline wants 4h". Null when the goal is in place, missing, or the gap
+   * cannot be stated from the facts the classifier kept.
+   */
+  gapSentence: string | null
   statement: string
   enforcedIds: string[]
   weakIds: string[]

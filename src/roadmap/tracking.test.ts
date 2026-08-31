@@ -275,3 +275,26 @@ test('one denominator: the badge, the headline and the journey agree', () => {
   assert.equal([...byStage.values()].reduce((a, b) => a + b, 0), tracked.length)
   assert.equal(head.enforced + head.alreadyInPlace, tracked.filter((s) => s.status === 'done' && (s.kind !== 'prerequisite' && s.kind !== 'verify' && s.kind !== 'recurring')).length + tracked.filter((s) => s.status === 'done' && (s.kind === 'prerequisite' || s.kind === 'verify' || s.kind === 'recurring')).length)
 })
+
+test('actualStart comes only from evidence dated after the plan was created (prompt 46 item 10)', async () => {
+  const { stepProgress } = await import('./tracking.ts')
+  const { allFixtures } = await import('./fixtures/index.ts')
+  const { runFixture } = await import('./fixtures/run.ts')
+  const run = runFixture(allFixtures().find((f) => f.name === 'small')!)
+  const target = run.steps.find((s) => s.kind === 'create' && s.status !== 'done')!
+  const planCreatedAt = '2026-09-01T00:00:00.000Z'
+  // A matched policy that was enabled BEFORE the plan existed.
+  const before = { ...target, status: 'done' as const, alreadyInPlace: false, tracking: { ...(target.tracking ?? { policyId: 'p', policyName: 'p', matchedBy: 'tag' as const, note: '', createdAt: null, modifiedAt: null, state: 'enabled', reportOnlyAt: null, regressedAt: null, noticedAt: null, daysInReportOnly: 0, signIns: 0, failures: 0, interruptions: 0, failuresByUser: [], evidenceQuality: 'none' as const }), enforcedAt: '2026-07-24T00:00:00.000Z' } }
+  const rowBefore = stepProgress([before as never], run.schedule, '2026-09-30T00:00:00.000Z', planCreatedAt).find((r) => r.stepId === target.id)!
+  assert.equal(rowBefore.actualStart, null, 'a policy enabled before the plan is not the plan starting')
+  assert.equal(rowBefore.slipDays, null, 'and carries no slip')
+  // The same policy enabled AFTER the plan was created.
+  const after = { ...before, tracking: { ...before.tracking!, enforcedAt: '2026-09-10T00:00:00.000Z' } }
+  const rowAfter = stepProgress([after as never], run.schedule, '2026-09-30T00:00:00.000Z', planCreatedAt).find((r) => r.stepId === target.id)!
+  assert.equal(rowAfter.actualStart, '2026-09-10T00:00:00.000Z')
+  // A row already in place before the plan never shows a start at all.
+  const inPlace = { ...after, alreadyInPlace: true }
+  const rowInPlace = stepProgress([inPlace as never], run.schedule, '2026-09-30T00:00:00.000Z', planCreatedAt).find((r) => r.stepId === target.id)!
+  assert.equal(rowInPlace.actualStart, null)
+  assert.equal(rowInPlace.stage, 'alreadyInPlace')
+})

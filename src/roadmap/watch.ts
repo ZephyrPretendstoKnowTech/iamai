@@ -106,6 +106,8 @@ export function adminMinutes(step: Step): number {
       return 30
     case 'recurring':
       return 15
+    case 'check':
+      return 1 + Math.min(60, step.population.total)
     case 'adjust':
       return 10
     default:

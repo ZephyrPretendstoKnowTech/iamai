@@ -1550,7 +1550,7 @@ export function RoadmapPage({
                   <div className="step-grid">{inWave.map((st) => stepTile(st, () => { setActiveTab('plan'); setOpenStepId(st.id) }))}</div>
                 </details>
               )}
-              {w.wave === 0 && schedule.verification.days > 0 && windowCard('window-verification', C.verificationWindow(schedule.verification.days), C.verificationText(rollout.toSetUp, rollout.enabled), schedule.verification)}
+              {w.wave === 0 && schedule.verification.days > 0 && windowCard('window-verification', C.verificationWindow(schedule.verification.days), C.verificationText(rollout.toSetUp, rollout.active), schedule.verification)}
               {w.wave === 0 && schedule.verification.days === 0 && steps.some((st) => st.kind === 'verify') && work.length > 0 && (
                 <p className="reason">{C.verificationDone}</p>
               )}
@@ -1927,7 +1927,7 @@ export function RoadmapPage({
         comms={commsRows.map((r) => ({ at: r.at, audience: r.audience, channels: r.channels, subject: r.subject, steps: r.steps }))}
         steps={steps}
         schedule={schedule}
-        verificationNote={C.verificationText(rollout.toSetUp, rollout.enabled)}
+        verificationNote={C.verificationText(rollout.toSetUp, rollout.active)}
         dangers={dangers}
         nameOf={nameOf}
       />

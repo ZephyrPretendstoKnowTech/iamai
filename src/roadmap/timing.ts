@@ -180,7 +180,7 @@ export function noticeDaysFor(step: Step, notice: NoticeSettings): number {
 
 /** The three dates for a step, from its first ring's enforcement date. */
 export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
-  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring') return null
+  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.kind === 'check') return null
   if (step.status === 'done' || step.status === 'skipped') return null
   const enforceDay = step.scheduledDate ?? step.rings[0]?.plannedStart ?? null
   if (!enforceDay) return null

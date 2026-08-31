@@ -163,6 +163,7 @@ export function buildFixture(spec: Spec): Fixture {
       createdDateTime: daysAgo(300 + Math.floor(rand() * 900)),
       lastSuccessfulSignIn: daysAgo(lastDays),
       accountEnabled: true,
+      mail: null,
       assignedPlans: p1 ? [{ servicePlanId: AAD_P1, capabilityStatus: 'Enabled' }] : [],
       onPremisesSyncEnabled: spec.hybrid ? rand() < 0.7 : false,
       externalUserState: guest ? 'Accepted' : null,
@@ -193,14 +194,14 @@ export function buildFixture(spec: Spec): Fixture {
   }
   // Break-glass accounts: cloud-only GAs, excluded everywhere; SMS-only when messy.
   for (const [k, id] of bgIds.entries()) {
-    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${spec.name}.onmicrosoft.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
+    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${spec.name}.onmicrosoft.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
     registrationDetails.push({ id, userPrincipalName: `bg${k + 1}@${spec.name}.example.com`, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: !spec.breakGlassSmsOnly, methodsRegistered: spec.breakGlassSmsOnly ? ['mobilePhone'] : ['fido2SecurityKey'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: true, userType: 'member' })
     authMethods[id] = spec.breakGlassSmsOnly ? [{ kind: 'phone', phoneType: 'mobile' }] : [{ kind: 'fido2' }]
     rolesActive[id] = [GA]
   }
   // Service accounts: legacy-auth users with no MFA.
   for (const [k, id] of svcIds.entries()) {
-    users.push({ id, displayName: `svc-mailer-${k + 1}`, userPrincipalName: `svc-mailer-${k + 1}@${spec.name}.example.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(900), lastSuccessfulSignIn: daysAgo(1), accountEnabled: true, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
+    users.push({ id, displayName: `svc-mailer-${k + 1}`, userPrincipalName: `svc-mailer-${k + 1}@${spec.name}.example.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(900), lastSuccessfulSignIn: daysAgo(1), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
     registrationDetails.push({ id, userPrincipalName: `svc-mailer-${k + 1}@${spec.name}.example.com`, isMfaCapable: false, isMfaRegistered: false, isPasswordlessCapable: false, methodsRegistered: [], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: false, userType: 'member' })
     authMethods[id] = []
     signInEvidence[id] = { signInCount: 40, lastSignIn: daysAgo(1), lastMfaSuccess: null }

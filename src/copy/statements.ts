@@ -142,8 +142,8 @@ export type FindingsSummaryInput = {
   scored: number
   users: number
   active: number
-  /** The four rollout numbers over enabled users (ux-review-04 §1). */
-  rollout: { enabled: number; proven: number; noMethod: number; unproven: number; toSetUp: number }
+  /** The four rollout numbers over ACTIVE people (target-state §8.1; prompt 46 item 7). */
+  rollout: { active: number; proven: number; noMethod: number; unproven: number; toSetUp: number }
   working: string[]
   fixFirst: string[]
   licenceLimited: number
@@ -177,13 +177,13 @@ export function findingsSummary(i: FindingsSummaryInput): string[] {
   if (r.noMethod > 0) gaps.push(`${count(r.noMethod, 'user has', 'users have')} no MFA method`)
   if (r.unproven > 0) gaps.push(`${count(r.unproven, 'user is', 'users are')} registered but unproven`)
   const rollout =
-    r.enabled === 0
-      ? 'No enabled users yet, so the rollout picture cannot be drawn.'
+    r.active === 0
+      ? 'No active people yet, so the rollout picture cannot be drawn.'
       : r.toSetUp === 0
-        ? `Every one of the ${count(r.enabled, 'enabled user')} proved MFA in ${WINDOW}: nobody needs setting up before enforcement.`
+        ? `Every one of the ${count(r.active, 'active person', 'active people')} proved MFA in ${WINDOW}: nobody needs setting up before enforcement.`
         : r.proven === 0
-          ? `None of the ${count(r.enabled, 'enabled user')} proved MFA in ${WINDOW}. ${capital(list(gaps))}: all ${r.toSetUp} need setting up before enforcement.`
-          : `${r.proven} of ${r.enabled} enabled users (${Math.round((r.proven / r.enabled) * 100)}%) proved MFA in ${WINDOW}. ${capital(list(gaps))}: ${count(r.toSetUp, 'user')} to set up before enforcement.`
+          ? `None of the ${count(r.active, 'active person', 'active people')} proved MFA in ${WINDOW}. ${capital(list(gaps))}: all ${r.toSetUp} need setting up before enforcement.`
+          : `${r.proven} of ${r.active} active people (${Math.round((r.proven / r.active) * 100)}%) proved MFA in ${WINDOW}. ${capital(list(gaps))}: ${count(r.toSetUp, 'user')} to set up before enforcement.`
   out.push(`${count(i.users, 'user')} in the directory, ${i.active} active in the last 90 days. ${rollout}`)
 
   if (i.working.length > 0) {

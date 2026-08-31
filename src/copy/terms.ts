@@ -31,6 +31,7 @@ export const TERMS = {
     verify: 'Verify',
     enforce: 'Enforce',
     recurring: 'Recurring',
+    check: 'Check',
   },
   legendGroups: {
     mfaState: 'MFA state',
