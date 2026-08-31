@@ -312,7 +312,7 @@ test('10: missing required answer → dependent step blocked with the question n
   assert.equal(step.status, 'blocked')
   // Causes are conditions now, so they complete the "Blocked until …" frame
   // both places print them in (prompt 40 §11).
-  assert.match(step.unblockNotes[0], /Setup question 2 is answered/)
+  assert.match(step.unblockNotes[0], /the tenant answer(s)? (is|are) in place/)
   assert.equal(step.blockers[0].kind, 'setup')
 })
 

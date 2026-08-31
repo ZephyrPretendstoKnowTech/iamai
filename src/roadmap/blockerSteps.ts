@@ -8,7 +8,7 @@
 // enforcement is offered while the escape hatch is unverified.
 //
 // Pure: no DOM, no network.
-import { BLOCKER_STEP, SEVERITY, SUBJECT, SUBJECT_PLAIN, SUBJECT_WHERE } from '../copy/validation.ts'
+import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, HOUSEKEEPING_ONLY_RULES, RULE_ACTION, SEVERITY, SUBJECT, SUBJECT_PLAIN, SUBJECT_WHERE, fallbackAction } from '../copy/validation.ts'
 import { heldBy } from '../derive/sets.ts'
 import { ruleText } from '../validation/rules.ts'
 import type { RuleResult, RuleSubject } from '../validation/rules.ts'
@@ -58,6 +58,27 @@ function checklistLine(r: RuleResult, label: string | null): string {
   return `${who}${r.finding ?? what} → ${what}${where}`
 }
 
+/**
+ * A check step's Do it (prompt 48.1 item 9): the failing must-fix checks as
+ * numbered imperative actions. Could-not-run checks (outcome unknown) and the
+ * migration-state checks are Housekeeping, never here; the two attestations are
+ * Done-when lines, returned separately.
+ */
+function checkActions(report: SubjectReport): { actions: string[]; doneWhen: string[] } {
+  const failing = report.blocking.filter((r) => r.outcome === 'fail' && !HOUSEKEEPING_ONLY_RULES.has(r.id))
+  const actions: string[] = []
+  const doneWhen: string[] = []
+  for (const r of failing) {
+    if (ATTESTATION_RULES.has(r.id)) {
+      doneWhen.push(ATTESTATION_DONE_WHEN[r.id] ?? ruleText(r.id).what)
+      continue
+    }
+    const make = RULE_ACTION[r.id]
+    actions.push(make ? make(r.finding ?? null) : fallbackAction(ruleText(r.id).what, r.fix?.label ?? null))
+  }
+  return { actions: [...new Set(actions)], doneWhen: [...new Set(doneWhen)] }
+}
+
 function linesFor(report: SubjectReport, results: RuleResult[]): string[] {
   const labelOf = new Map<RuleResult, string | null>()
   const multi = report.targets.length > 1
@@ -77,8 +98,10 @@ export function blockerSteps(reports: SubjectReport[], heldSteps: number): Step[
     const name = SUBJECT[subject] ?? subject
     const n = report.blocking.length
     const held = GATING_SUBJECTS.includes(subject) ? heldSteps : 0
-    const summary = [BLOCKER_STEP.checklistLead, ...linesFor(report, report.blocking)]
-    if (report.warnings.length > 0) summary.push(BLOCKER_STEP.recommended, ...linesFor(report, report.warnings))
+    // The Do it is numbered imperative actions (prompt 48.1 item 9), not the old
+    // finding-to-rule checklist. Attestations become Done-when lines; recommended
+    // fixes wait under More; could-not-run checks are Housekeeping only.
+    const { actions, doneWhen } = checkActions(report)
     out.push({
       ...STEP_EXTRAS,
       id: blockerStepId(subject),
@@ -96,9 +119,10 @@ export function blockerSteps(reports: SubjectReport[], heldSteps: number): Step[
       population: { total: 0, active: 0, admins: 0, guests: 0, ids: [] },
       readiness: { family: 'other', percent: null, lines: [] },
       evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
-      action: { kind: 'prerequisite', summary, json: null, portalSteps: [], powershell: null },
-      exitCriteria: [BLOCKER_STEP.exit(n), ...report.blocking.map((r) => ruleText(r.id).what)],
-      rollback: BLOCKER_STEP.whatChanges,
+      action: { kind: 'check', summary: actions, json: null, portalSteps: actions, powershell: null },
+      exitCriteria: [BLOCKER_STEP.exit(n), ...doneWhen],
+      // A check step changes no policy, so there is nothing to undo (prompt 48.1 item 11).
+      rollback: BLOCKER_STEP.nothingToUndo,
       history: [],
       skipReason: null,
       gap: null,
