@@ -1,5 +1,5 @@
 {
- "fingerprint": "07ba8dff6bf3797b",
+ "fingerprint": "2680e3c18e70f01e",
  "surfaces": [
   {
    "name": "Connect",
@@ -659,8 +659,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 340,
-    "words": 562
+    "sentences": 346,
+    "words": 568
    }
   },
   {
@@ -1482,8 +1482,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 375,
-    "words": 950
+    "sentences": 381,
+    "words": 956
    }
   },
   {
@@ -2478,7 +2478,8 @@
    "headings": [],
    "tabs": [
     "Today",
-    "Plan"
+    "Plan",
+    "Export"
    ],
    "buttons": [
     "Re-scan · scanned just now",
@@ -2505,7 +2506,7 @@
    "occurrencesAll": {},
    "wordCounts": {
     "headings": 0,
-    "tabs": 2,
+    "tabs": 3,
     "buttons": 8,
     "options": 0,
     "links": 4,
@@ -2516,7 +2517,7 @@
     "summaries": 0,
     "tips": 0,
     "sentences": 0,
-    "total": 14
+    "total": 15
    },
    "unnamedControls": [],
    "rows": [],

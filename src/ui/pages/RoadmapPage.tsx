@@ -81,7 +81,7 @@ import { planSummary } from '../../roadmap/summary.ts'
 import { BANDS } from '../../roadmap/constants.ts'
 import type { SizeBand } from '../../roadmap/constants.ts'
 import type { ChangeFreeze, Schedule } from '../../roadmap/schedule.ts'
-import { PrintPlan } from './PrintPlan.tsx'
+import { PrintPlan } from '../surfaces/PrintPlan.tsx'
 import { absolute, absoluteDate, dateRange, relative, toCsv, when, whenAt } from '../format.ts'
 import { ScanAge, StepFrame, stepHref, useHashStepId } from '../shell/AppShell.tsx'
 import { Button, Callout, Card, Chip, ExpandCard, FilterChip, InfoTip, LinkButton, ScoreBadges, StatTile, Stats, Tabs } from '../components/index.ts'
@@ -1279,7 +1279,7 @@ export function RoadmapPage({
           </label>
         </p>
         <p className="row no-print">
-          <Button icon="download" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ tenant: tenantName, snapshot, coverage: computed.coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
+          <Button icon="download" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ tenant: tenantName, snapshot, coverage: computed.coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json', REDACTED /* moved to Export.tsx (prompt 49) */)}>
             {GROUNDING.download}
           </Button>
           <span className="reason">{bundleRedacted ? GROUNDING.redacted : GROUNDING.unredacted}</span>
@@ -1288,7 +1288,7 @@ export function RoadmapPage({
       <Card title={EXPORT_TAB.pdf}>
         <p className="reason">{EXPORT_TAB.pdfText}</p>
         <p className="row no-print">
-          <Button icon="print" onClick={() => exportPrint(unredactedFrom('print-document'))}>
+          <Button icon="print" onClick={() => exportPrint(REDACTED) /* moved to Export.tsx (prompt 49) */}>
             {EXPORT_TAB.print}
           </Button>
         </p>

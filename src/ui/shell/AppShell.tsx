@@ -186,6 +186,7 @@ export function AppShell({
   const signedIn = account !== null && state !== 'signedOut'
   const tabsOn = state === 'scanned'
   const todayActive = route === 'today' || route === 'inventory'
+  const exportActive = route === 'export'
   const planActive = route === 'plan' || route === 'roadmap' || route === 'roadmap/prompts' || route === 'mapping' || route === 'coverage'
   return (
     <div className="shell">
@@ -202,6 +203,9 @@ export function AppShell({
             </Tab>
             <Tab href={PLAN_HREF} active={planActive} enabled={tabsOn}>
               {SHELL.tabs.plan}
+            </Tab>
+            <Tab href="#/export" active={exportActive} enabled={tabsOn}>
+              {SHELL.tabs.export}
             </Tab>
           </nav>
         )}

@@ -162,7 +162,7 @@ try {
   await sleep(1200)
   t = await text()
   check('Connect (scanning): the lane in plain words and Stop', /Reading people/.test(t) && /Stop/.test(t) && !/Scan tenant/.test(t), (t.match(/Reading[^\n]*/) ?? [''])[0])
-  check('Connect (scanning): the header tabs are disabled', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 2)
+  check('Connect (scanning): the header tabs are disabled', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 3)
   // Connect, scanned: who is signed in, the baseline line, the one-line result, Open the plan (target-state §3).
   await go('connect')
   await sleep(600)
@@ -252,7 +252,7 @@ try {
   check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=noScan#/roadmap` })
   await sleep(1200)
-  check('Header (no scan): the tabs are disabled until the first scan', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 2 && (await evaluate(`document.querySelector('header.app nav a').title`)) === 'after the first scan')
+  check('Header (no scan): the tabs are disabled until the first scan', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 3 && (await evaluate(`document.querySelector('header.app nav a').title`)) === 'after the first scan')
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await evaluate(`document.querySelector('header.app').innerText`)
