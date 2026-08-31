@@ -44,8 +44,36 @@ export const SECTION = {
   goodLooksLike: 'Good looks like:',
 }
 
+/** Plain what-changes for a new policy (prompt 48.1 item 7): the control in plain words, no catalogue name, no count. */
+const WHAT_CHANGES_GOAL: Record<string, string> = {
+  'mfa-all-users': 'A new policy asks everyone to prove who they are with MFA, report-only first.',
+  'register-info-protected': 'A new policy blocks MFA registration from outside your trusted locations, report-only first.',
+  'block-legacy-auth': 'A new policy turns off the old sign-in methods that skip MFA, report-only first.',
+  'block-device-code': 'A new policy blocks the device-code sign-in trick, report-only first.',
+  'block-auth-transfer': 'A new policy stops a sign-in being handed to another device, report-only first.',
+  'geo-restriction': "A new policy blocks sign-ins from countries you don't work in, report-only first.",
+  'guests-mfa': 'A new policy asks guests to prove who they are, report-only first.',
+  'admins-phishing-resistant': 'A new policy gives admins a sign-in that cannot be phished, report-only first.',
+  'admin-portals-protected': 'A new policy keeps non-admins out of the admin portals, report-only first.',
+  'require-managed-device': 'A new policy requires a company-managed device for company data, report-only first.',
+  'block-unsupported-platforms': 'A new policy blocks devices Entra cannot identify, report-only first.',
+  'token-protection': 'A new policy stops a stolen session token being reused, report-only first.',
+}
+const WHAT_CHANGES_FAMILY: Record<string, string> = {
+  mfa: 'A new policy asks people to prove who they are with MFA, report-only first.',
+  admin: 'A new policy asks admins for a stronger sign-in, report-only first.',
+  guest: 'A new policy asks guests to prove who they are, report-only first.',
+  block: 'A new policy blocks a risky sign-in path, report-only first.',
+  location: "A new policy blocks sign-ins from countries you don't work in, report-only first.",
+  device: 'A new policy requires a managed device for company data, report-only first.',
+  risk: 'A new policy challenges risky sign-ins, report-only first.',
+  other: 'A new policy tightens how sessions behave, report-only first.',
+}
+
 export const WHAT_CHANGES = {
   create: (title: string, people: number) => `A new Conditional Access policy applies "${title}" to ${count(people, 'person', 'people')}, in report-only first, then enforced ring by ring.`,
+  /** The plain create line (item 7): the control named in plain words, no catalogue name, no count. */
+  createPlain: (goalId: string, family: string): string => WHAT_CHANGES_GOAL[goalId] ?? WHAT_CHANGES_FAMILY[family] ?? 'A new policy is added, report-only first.',
   adjust: (name: string, fields: number) => `The existing policy ${name} changes in ${count(fields, 'field')}; nothing else about it moves.`,
   prerequisite: 'An object or an answer is put in place; nobody notices a difference.',
   verify: (people: number) => `${count(people, 'person', 'people')} prove they can complete MFA before anything is enforced.`,

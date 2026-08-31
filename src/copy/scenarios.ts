@@ -40,7 +40,12 @@ export const SCENARIO = {
   // 11 — service provider (GDAP).
   serviceProvider: (n: number, tenants: number, date: string | null) =>
     `${count(n, 'service-provider account')} from ${count(tenants, 'partner tenant')} signed in this month, so exclude "Service provider users" or they lose access.${by(date)}`,
-  // 12 — verification campaign.
+  // 12 — the campaign's registered-but-unproven and no-method active people (prompt 48.1 item 6).
+  campaignUnproven: (people: string[], date: string) =>
+    `${count(people.length, 'person', 'people')} registered but unproven (${names(people)}), so ask each for one MFA sign-in before ${date}.`,
+  campaignNoMethod: (people: string[], date: string) =>
+    `${count(people.length, 'person', 'people')} with no method (${names(people)}), so register each and issue a Temporary Access Pass when off a trusted network, before ${date}.`,
+  // 12 (48) — verification campaign, password-not-typed.
   passwordNotTyped: (people: string[]) =>
     `${count(people.length, 'person', 'people')} have not typed a password this month (${names(people)}), so line up a reset path before enforcement.`,
   // 15 — user risk.
