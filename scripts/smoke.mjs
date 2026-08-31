@@ -118,6 +118,17 @@ await send('Runtime.enable')
 
 try {
   let t = ''
+  // An MSAL auth response in the fragment survives the first frame (prompt 47.1
+  // Part 1): the mock never goes through MSAL, so this records what the hash
+  // was the moment the header first rendered, before anything could rewrite it.
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `(() => { const seen = () => { if (window.__firstFrameHash === undefined && document.querySelector('header.app')) window.__firstFrameHash = location.hash }; new MutationObserver(seen).observe(document, { childList: true, subtree: true }); document.addEventListener('DOMContentLoaded', seen) })()`,
+  })
+  await send('Page.navigate', { url: `${BASE}#code=abc&client_info=def&state=ghi` })
+  await sleep(1500)
+  check('Sign-in: an auth response in the fragment is intact when the first frame renders', (await evaluate('window.__firstFrameHash')) === '#code=abc&client_info=def&state=ghi', String(await evaluate('window.__firstFrameHash')))
+  check('Sign-in: once auth has settled the page lands on Plan', await waitFor(`location.hash === '#/roadmap'`))
+
   // The walk (prompt 47 Part 6 item 23): Connect signed out, sign in (the mock state), the scan, Today, Inventory, then the legacy Roadmap.
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
