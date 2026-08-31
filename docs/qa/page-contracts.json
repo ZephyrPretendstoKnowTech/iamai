@@ -386,7 +386,7 @@
         "headings": [
           "Plan",
           "re:^Before anything else( · .+)?$",
-          "re:^Wave \\d · .+ → .+ · .+$"
+          "re:^Wave \\d · .+ → .+ · [^·]+( · after .+)?$"
         ],
         "tabs": [],
         "tiles": [],
@@ -399,10 +399,10 @@
           "Report-only",
           "Enforced",
           "Skipped",
-          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|shared devices|time zone|mail-sending devices|people who travel or work abroad|partner or MSP access) .{1,140}$"
+          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|shared devices|time zone|mail-sending devices|people who travel or work abroad|partner or MSP access) .{1,40} · (confirm|change|answer)$"
         ],
         "buttons": [
-          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|shared devices|time zone|mail-sending devices|people who travel or work abroad|partner or MSP access) .{1,140}$",
+          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|shared devices|time zone|mail-sending devices|people who travel or work abroad|partner or MSP access) .{1,40} · (confirm|change|answer)$",
           "Save"
         ],
         "summaries": [
@@ -429,7 +429,10 @@
         "Why not fully",
         "Recovery card link",
         "help-desk contacts",
-        "hours of admin time"
+        "hours of admin time",
+        "an account IAMAI could not name",
+        "Setup question",
+        "Readiness table"
       ]
     },
     {
@@ -605,7 +608,14 @@
         "Ring plan",
         "help-desk contact",
         "minutes of admin time",
-        "Proposed name:"
+        "Proposed name:",
+        "an account IAMAI could not name",
+        "Setup question",
+        "Readiness table",
+        "could not be checked",
+        "Worth fixing too",
+        "Add a second account above",
+        "no people · 0 active"
       ]
     },
     {
