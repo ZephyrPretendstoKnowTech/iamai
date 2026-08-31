@@ -39,6 +39,35 @@ type Surface = {
   occurrencesAll: Record<string, number>
   /** Controls a screen reader would announce as nameless (prompt 40 §23). */
   unnamedControls: string[]
+  // ---- contract captures (prompt 46 Part 1) ----
+  /** The contract id this capture was reached under; absent on legacy captures. */
+  contract?: string
+  state?: string
+  route?: string
+  /** Elements matching .step-title, measured against stepTitleMaxWords, never as headings. */
+  titles?: string[]
+  /** One entry per element matching a contract repeater, measured on its own text. */
+  rows?: { selector: string; text: string; sentences: number; words: number }[]
+  /** Contract forbid strings found in the surface's text. */
+  forbidHits?: string[]
+  /** Prose outside every repeater, which is what the surface budget bounds. */
+  pageProse?: { sentences: number; words: number }
+}
+
+type Contract = {
+  id: string
+  name: string
+  status: 'built' | 'planned'
+  allow: Record<string, string[]>
+  budget: { sentences: number; words: number }
+  rowBudget?: { sentences: number; words: number }
+  forbid?: string[]
+}
+type Contracts = {
+  enforceAll: boolean
+  rules: { sentenceMaxWords: number; rowMaxSentences: number; rowMaxWords: number; blockedReasonMaxWords: number; stepTitleMaxWords: number; tipMaxWords: number }
+  repeaters: string[]
+  surfaces: Contract[]
 }
 
 // scripts/lint-mutations.mjs points this at a deliberately corrupted copy to
@@ -47,6 +76,25 @@ const INVENTORY = process.env.INVENTORY_JSON ?? 'docs/qa/ui-inventory.json'
 const raw = readFileSync(INVENTORY, 'utf8')
 const inventory = JSON.parse(raw) as { fingerprint: string; surfaces: Surface[] }
 const surfaces = inventory.surfaces
+
+// The surface contract (docs/design/target-state.md). Rule 12 holds every
+// built surface to it. Claude Code never edits it: a violation is fixed by
+// removing what violates, or reported with the measured count. The env
+// override exists for lint-mutations, which points the rules at a scratch
+// contract to prove each check fires.
+const CONTRACTS = process.env.CONTRACTS_JSON ?? 'docs/qa/page-contracts.json'
+const contracts = JSON.parse(readFileSync(CONTRACTS, 'utf8')) as Contracts
+const contractOf = (s: Surface): Contract | null => (s.contract ? (contracts.surfaces.find((c) => c.id === s.contract) ?? null) : null)
+/** Every capture that was reached under a contract, paired with it. */
+const contracted = (): { s: Surface; c: Contract }[] =>
+  surfaces.flatMap((s) => {
+    const c = contractOf(s)
+    return c ? [{ s, c }] : []
+  })
+/** Exact string, or a regular expression when the allow entry is prefixed re:. */
+const matchesAllow = (item: string, allow: string[]): boolean =>
+  allow.some((a) => (a.startsWith('re:') ? new RegExp(a.slice(3)).test(item) : a === item))
+const wordsIn = (t: string): number => t.split(/\s+/).filter(Boolean).length
 
 
 test('the inventory matches the source it was generated from', () => {
@@ -238,7 +286,60 @@ test('rule 11: no surface states the same claim twice', () => {
   assert.deepEqual(unwaived(found, RULE11_WAIVED), [], 'claims printed more than once on one surface')
 })
 
-test('rule 12: every control on every surface has an accessible name (prompt 40 §23)', () => {
+// ---- 12. the surface contract (prompt 46 Part 1) ----
+//
+// One test per check, and no waivers: the contract is the maximum, and a waiver
+// is a way to exceed it that nobody reviewed. When a built surface renders
+// something its contract does not list, the fix is to remove it, or to report
+// the case with the measured count so the reviewer can change the contract.
+const CONTRACT_KINDS = ['headings', 'tabs', 'tiles', 'columns', 'chips', 'buttons', 'summaries', 'links'] as const
+
+test('rule 12: allow list — every heading, tab, tile, column, chip, button, summary and link on a built surface is in its contract', () => {
+  const found = contracted().flatMap(({ s, c }) =>
+    CONTRACT_KINDS.flatMap((k) => (s[k] ?? []).filter((item) => !matchesAllow(item, c.allow[k] ?? [])).map((item) => `${s.name}: ${k} "${item}" is not in contract ${c.id}`)),
+  )
+  assert.deepEqual(found, [], 'rendered items the contract does not list')
+})
+
+test('rule 12: forbid — no forbidden string appears on a built surface', () => {
+  const found = contracted().flatMap(({ s, c }) => (s.forbidHits ?? []).map((f) => `${s.name}: "${f}" (forbidden by contract ${c.id})`))
+  assert.deepEqual(found, [], 'forbidden strings on built surfaces')
+})
+
+test('rule 12: budget — page-level prose on a built surface is within its sentence and word budget', () => {
+  const found = contracted().flatMap(({ s, c }) => {
+    const prose = s.pageProse ?? { sentences: 0, words: 0 }
+    const out: string[] = []
+    if (prose.sentences > c.budget.sentences) out.push(`${s.name}: ${prose.sentences} sentences, budget ${c.budget.sentences}`)
+    if (prose.words > c.budget.words) out.push(`${s.name}: ${prose.words} words, budget ${c.budget.words}`)
+    return out
+  })
+  assert.deepEqual(found, [], 'built surfaces over their prose budget')
+})
+
+test('rule 12: rows — every repeater row on a built surface is within the row budget', () => {
+  const found = contracted().flatMap(({ s, c }) => {
+    const rb = c.rowBudget ?? { sentences: contracts.rules.rowMaxSentences, words: contracts.rules.rowMaxWords }
+    return (s.rows ?? [])
+      .filter((r) => r.sentences > rb.sentences || r.words > rb.words)
+      .map((r) => `${s.name}: ${r.selector} ${r.sentences} sentences / ${r.words} words (budget ${rb.sentences} / ${rb.words}) — ${r.text.slice(0, 60)}`)
+  })
+  assert.deepEqual(found, [], 'rows over the row budget')
+})
+
+test('rule 12: titles — every step title on a built surface is within stepTitleMaxWords', () => {
+  const max = contracts.rules.stepTitleMaxWords
+  const found = contracted().flatMap(({ s }) => (s.titles ?? []).filter((t) => wordsIn(t) > max).map((t) => `${s.name}: ${wordsIn(t)} words — ${t}`))
+  assert.deepEqual(found, [], `step titles over ${max} words`)
+})
+
+test('rule 12: enforceAll — when the contract file says so, every inventory surface has a contract', () => {
+  if (!contracts.enforceAll) return
+  const found = surfaces.filter((s) => !contractOf(s)).map((s) => `${s.name}: no contract`)
+  assert.deepEqual(found, [], 'surfaces without a contract while enforceAll is true')
+})
+
+test('rule 13: every control on every surface has an accessible name (prompt 40 §23)', () => {
   // Read from the rendered DOM, not the source. The sidebar chevron was carried
   // forward through two reviews as unlabelled; it is labelled, and what was
   // actually nameless was a country search input with only a placeholder. Only

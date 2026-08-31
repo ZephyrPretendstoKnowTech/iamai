@@ -24,6 +24,12 @@ import { join } from 'node:path'
 
 /** The directories whose content the inventory is generated from. */
 export const FINGERPRINTED = ['src/copy', 'src/ui']
+/**
+ * Single files that also decide what the inventory holds. The surface contract
+ * chooses which surfaces are walked, how each is reached, and what counts as a
+ * row, so a change to it has to invalidate the inventory too (prompt 46 Part 1).
+ */
+export const FINGERPRINTED_FILES = ['docs/qa/page-contracts.json']
 
 /**
  * Text as git stores it, so the same commit hashes the same on every platform.
@@ -55,6 +61,7 @@ export function sourceFiles(): string[] {
     }
   }
   for (const dir of FINGERPRINTED) walk(dir)
+  files.push(...FINGERPRINTED_FILES)
   // Sorted on the normalised path, so the order does not depend on the
   // platform's path separator either.
   return files.map((f) => f.split('\\').join('/')).sort()

@@ -57,3 +57,4 @@ wizard, Findings narrative, and dated Roadmap as the baseline experience.
 | `43-naming-consolidation-serviceprincipals.md` | Naming explainer and detection, organisation report, safe consolidation, missing service principals | 42 done; docs/design/naming-and-consolidation.md present |
 | `44-skips-recovery-drift.md` | Skipping with reasons, unskippable emergency access, printable recovery card, exclusion drift | 43 done |
 | `45-demo-mode-and-remaining.md` | Sample-data demo mode, remaining review items, why-this-order | 44 done |
+| `46-contracts-and-engine.md` | Contract lint from page-contracts.json, one denominator and one verdict, every step executable from a template, fixed schedule constants, detected assumptions replace Setup, Application.Read.All removed | 45 done; docs/design/target-state.md and docs/qa/page-contracts.json present |

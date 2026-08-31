@@ -65,6 +65,10 @@ export function App() {
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
   const [lastScan, setLastScan] = useState<{ snapshot: TenantSnapshot; at: string } | null>(null)
   const [scanRunning, setScanRunning] = useState(false)
+  // A scan frozen mid-lane, for the 'scanning' mock state (prompt 46 Part 1
+  // item 2). The progress view is otherwise unreachable by a harness: it lasts
+  // as long as the worker takes, and the synthetic tenant has no worker.
+  const [frozenScan, setFrozenScan] = useState<Record<string, { source: string; status: string; rows?: number; reason?: string; ms?: number }> | null>(null)
   const [mapProgress, setMapProgress] = useState<WizardProgress | null>(null)
   const route = useHashRoute()
   // Role names the scan carries ($expand=roleDefinition) resolve ids the bundled catalogue lacks.
@@ -141,6 +145,16 @@ export function App() {
         }
         // ?policies=0: a tenant with no Conditional Access policies at all (prompt 31 §4.19).
         if (params.get('policies') === '0') snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [] }
+        // ?state=<signedOut|noScan|scanning|scanned>: which state the synthetic
+        // tenant is in (prompt 46 Part 1 item 2). The contract reaches each
+        // surface in a named state, and the inventory has to be able to put the
+        // app there without a sign-in or a worker. 'scanned' is the default
+        // and today's behaviour.
+        const state = params.get('state') ?? 'scanned'
+        if (state === 'signedOut') {
+          setReady(true)
+          return
+        }
         setAccount({
           homeAccountId: 'mock',
           environment: 'login.windows.net',
@@ -150,9 +164,19 @@ export function App() {
           name: 'Alex Morgan',
         } as AccountInfo)
         setTenantName('Contoso Pty Ltd')
-        setLastScan({ snapshot, at: snapshot.asOf })
         setBaseline(fixtureBaseline())
-        void loadMappingState(snapshot.tenantId).then((m) => setMapProgress(wizardProgress(m, activeWizardQuestions(null, { snapshot, state: m }))))
+        if (state === 'scanning') {
+          // Frozen two lanes in: configuration read, people in progress.
+          setFrozenScan({
+            caPolicies: { source: 'caPolicies', status: 'ok', rows: 3, ms: 412 },
+            namedLocations: { source: 'namedLocations', status: 'ok', rows: 2, ms: 205 },
+            users: { source: 'users', status: 'started' },
+          })
+          setScanRunning(true)
+        } else if (state === 'scanned') {
+          setLastScan({ snapshot, at: snapshot.asOf })
+          void loadMappingState(snapshot.tenantId).then((m) => setMapProgress(wizardProgress(m, activeWizardQuestions(null, { snapshot, state: m }))))
+        }
         setReady(true)
       })
       return
@@ -238,6 +262,7 @@ export function App() {
                 view={route === 'inventory' ? 'inventory' : 'readiness'}
                 tenantId={account.tenantId}
                 initial={lastScan}
+                frozen={frozenScan}
                 onRunningChange={setScanRunning}
                 onComplete={(snapshot, at) => {
                   setLastScan({ snapshot, at })

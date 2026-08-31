@@ -21,7 +21,30 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const SOURCE = 'docs/qa/ui-inventory.json'
+const CONTRACT_SOURCE = 'docs/qa/page-contracts.json'
 const TEST = 'src/ui/inventory-lint.test.ts'
+
+// A scratch contract with one built surface (prompt 46 Part 1 item 5). The real
+// contract is never edited; every rule 12 check is proved against this one.
+const probeContract = (over = {}) => ({
+  version: 1,
+  enforceAll: false,
+  rules: { sentenceMaxWords: 25, rowMaxSentences: 2, rowMaxWords: 30, blockedReasonMaxWords: 12, stepTitleMaxWords: 9, tipMaxWords: 25 },
+  repeaters: ['tr'],
+  mockStates: ['scanned'],
+  surfaces: [
+    {
+      id: 'mutation-probe',
+      name: 'Mutation probe',
+      status: 'built',
+      reach: { route: '/probe', state: 'scanned' },
+      allow: { headings: ['Allowed heading'], tabs: [], tiles: [], columns: [], chips: [], buttons: ['re:^Allowed .+$'], summaries: [], links: [] },
+      budget: { sentences: 2, words: 20 },
+      forbid: ['Forbidden phrase'],
+    },
+  ],
+  ...over,
+})
 
 /** An inventory surface with every field present and nothing in any of them. */
 const blankSurface = (name) => ({
@@ -30,30 +53,33 @@ const blankSurface = (name) => ({
   headings: [], tabs: [], buttons: [], options: [], links: [], chips: [],
   columns: [], tiles: [], empty: [], summaries: [], tips: [], sentences: [],
   nav: [], primary: [], tables: [], occurrences: {}, occurrencesAll: {},
-  wordCounts: {},
+  wordCounts: {}, titles: [], rows: [], forbidHits: [], pageProse: { sentences: 0, words: 0 },
 })
+
+/** A probe reached under the scratch contract, with nothing on it. */
+const contractedSurface = (name) => ({ ...blankSurface(name), contract: 'mutation-probe', state: 'scanned', route: '/probe' })
 
 // One violation each, in the shape the rule that owns it looks for.
 const MUTATIONS = [
   {
-    rule: 'rule 5',
+    rule: 'rule 5:',
     what: 'two labels for one concept',
     // Both labels, so the mutation stands on its own if the build stops
     // shipping either of them.
     apply: (s) => { s.options.push('Looks right', 'This is correct') },
   },
   {
-    rule: 'rule 6',
+    rule: 'rule 6:',
     what: 'a second primary action on one surface',
     apply: (s) => { s.primary.push('Do the thing', 'Do the other thing') },
   },
   {
-    rule: 'rule 7',
+    rule: 'rule 7:',
     what: 'a row count on a table that does not paginate',
     apply: (s) => { s.tables.push({ label: '9 entries', paginated: false }) },
   },
   {
-    rule: 'rule 8',
+    rule: 'rule 8:',
     what: 'a sentence past the word limit',
     apply: (s) => {
       s.sentences.push(
@@ -63,24 +89,73 @@ const MUTATIONS = [
     },
   },
   {
-    rule: 'rule 9',
+    rule: 'rule 9:',
     what: 'a whole id in user-facing text',
     apply: (s) => { s.sentences.push('Excluded: 3f2b9c14-7d85-4a61-b0e2-5c9a18d4f7e3.') },
   },
   {
-    rule: 'rule 9',
+    rule: 'rule 9:',
     what: 'a truncated id in user-facing text',
     apply: (s) => { s.sentences.push('Excluded: 6744cba6… and two others.') },
   },
   {
-    rule: 'rule 10',
+    rule: 'rule 10:',
     what: 'a filler phrase',
     apply: (s) => { s.sentences.push('Before anything else, the plan needs a way back.') },
   },
   {
-    rule: 'rule 11',
+    rule: 'rule 11:',
     what: 'one claim printed twice on a page',
     apply: (s) => { s.occurrences['This claim is stated twice on one page.'] = 2 },
+  },
+  // ---- rule 12: the surface contract (prompt 46 Part 1) ----
+  {
+    rule: 'rule 12: allow',
+    what: 'a heading the contract does not list',
+    contracted: true,
+    apply: (s) => { s.headings.push('Allowed heading', 'A heading nobody agreed to') },
+  },
+  {
+    rule: 'rule 12: allow',
+    what: 'a button that misses the contract pattern',
+    contracted: true,
+    apply: (s) => { s.buttons.push('Allowed action', 'Forbidden action') },
+  },
+  {
+    rule: 'rule 12: forbid',
+    what: 'a forbidden string on a built surface',
+    contracted: true,
+    apply: (s) => { s.forbidHits.push('Forbidden phrase') },
+  },
+  {
+    rule: 'rule 12: budget',
+    what: 'page prose over the sentence budget',
+    contracted: true,
+    apply: (s) => { s.pageProse = { sentences: 3, words: 12 } },
+  },
+  {
+    rule: 'rule 12: budget',
+    what: 'page prose over the word budget',
+    contracted: true,
+    apply: (s) => { s.pageProse = { sentences: 1, words: 21 } },
+  },
+  {
+    rule: 'rule 12: rows',
+    what: 'a row over the row budget',
+    contracted: true,
+    apply: (s) => { s.rows.push({ selector: 'tr', text: 'A row that says too much. And keeps saying it. And again.', sentences: 3, words: 12 }) },
+  },
+  {
+    rule: 'rule 12: titles',
+    what: 'a step title over stepTitleMaxWords',
+    contracted: true,
+    apply: (s) => { s.titles.push('A step title that runs on for far more than nine words in total') },
+  },
+  {
+    rule: 'rule 12: enforceAll',
+    what: 'a surface with no contract while enforceAll is true',
+    contract: () => probeContract({ enforceAll: true }),
+    apply: () => {},
   },
 ]
 
@@ -88,11 +163,11 @@ const base = JSON.parse(readFileSync(SOURCE, 'utf8'))
 const dir = mkdtempSync(join(tmpdir(), 'iamai-lint-'))
 
 /** Which rule tests failed against this inventory. */
-function failingRules(path) {
+function failingRules(path, contractPath = CONTRACT_SOURCE) {
   let out = ''
   try {
     out = execFileSync(process.execPath, ['--test', '--test-reporter=tap', TEST], {
-      encoding: 'utf8', env: { ...process.env, INVENTORY_JSON: path }, stdio: ['ignore', 'pipe', 'pipe'],
+      encoding: 'utf8', env: { ...process.env, INVENTORY_JSON: path, CONTRACTS_JSON: contractPath }, stdio: ['ignore', 'pipe', 'pipe'],
     })
   } catch (err) {
     // A failing test run exits non-zero; the TAP output is what we came for.
@@ -113,19 +188,27 @@ if (baselineFailures.length > 0) {
 const results = []
 for (const [i, m] of MUTATIONS.entries()) {
   const copy = JSON.parse(JSON.stringify(base))
-  const probe = blankSurface(`Mutation probe ${i + 1}`)
+  const probe = m.contracted ? contractedSurface(`Mutation probe ${i + 1}`) : blankSurface(`Mutation probe ${i + 1}`)
   m.apply(probe)
   copy.surfaces.push(probe)
   const path = join(dir, `inventory-${i}.json`)
   writeFileSync(path, JSON.stringify(copy))
-  const failed = failingRules(path)
-  const caught = failed.some((name) => name.startsWith(m.rule + ':'))
-  results.push({ ...m, caught, alsoFailed: failed.filter((n) => !n.startsWith(m.rule + ':')) })
+  // A contract mutation runs against the scratch contract; everything else
+  // against the real one, so a rule that only fires under the scratch contract
+  // is still proved to leave the shipped inventory alone.
+  let contractPath = CONTRACT_SOURCE
+  if (m.contracted || m.contract) {
+    contractPath = join(dir, `contract-${i}.json`)
+    writeFileSync(contractPath, JSON.stringify(m.contract ? m.contract() : probeContract()))
+  }
+  const failed = failingRules(path, contractPath)
+  const caught = failed.some((name) => name.startsWith(m.rule))
+  results.push({ ...m, caught, alsoFailed: failed.filter((n) => !n.startsWith(m.rule)) })
 }
 
 const width = Math.max(...results.map((r) => r.what.length))
 for (const r of results) {
-  console.log(`${r.caught ? 'caught ' : 'MISSED '} ${r.rule.padEnd(8)} ${r.what.padEnd(width)}`)
+  console.log(`${r.caught ? 'caught ' : 'MISSED '} ${r.rule.padEnd(20)} ${r.what.padEnd(width)}`)
   for (const other of r.alsoFailed) console.log(`         also failed: ${other}`)
 }
 
