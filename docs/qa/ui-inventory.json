@@ -1,5 +1,5 @@
 {
- "fingerprint": "8b497d71d6e3e132",
+ "fingerprint": "07ba8dff6bf3797b",
  "surfaces": [
   {
    "name": "Connect",
@@ -222,6 +222,8 @@
     "Entra admin center → Users → New user.",
     "now",
     "All 3 must-fix checks pass on the next scan.",
+    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.",
+    "A sign-in by an emergency account raises an alert somebody sees.",
     "Nothing to undo.",
     "Recovery card →"
    ],
@@ -243,7 +245,9 @@
     "Entra admin center → Roles and administrators → Global Administrator.": 1,
     "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
     "Entra admin center → Users → New user.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1
+    "All 3 must-fix checks pass on the next scan.": 1,
+    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.": 1,
+    "A sign-in by an emergency account raises an alert somebody sees.": 1
    },
    "occurrencesAll": {
     "Sort out emergency access before anything else Ready": 1,
@@ -257,7 +261,9 @@
     "Entra admin center → Roles and administrators → Global Administrator.": 1,
     "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
     "Entra admin center → Users → New user.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1
+    "All 3 must-fix checks pass on the next scan.": 1,
+    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.": 1,
+    "A sign-in by an emergency account raises an alert somebody sees.": 1
    },
    "wordCounts": {
     "headings": 13,
@@ -271,15 +277,15 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 139,
-    "total": 158
+    "sentences": 171,
+    "total": 190
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 16,
-    "words": 139
+    "sentences": 18,
+    "words": 171
    }
   },
   {
@@ -653,8 +659,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 334,
-    "words": 556
+    "sentences": 340,
+    "words": 562
    }
   },
   {
@@ -1476,8 +1482,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 369,
-    "words": 944
+    "sentences": 375,
+    "words": 950
    }
   },
   {
@@ -4797,6 +4803,8 @@
     "Entra admin center → Users → New user.",
     "now",
     "All 3 must-fix checks pass on the next scan.",
+    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.",
+    "A sign-in by an emergency account raises an alert somebody sees.",
     "Nothing to undo.",
     "Recovery card →"
    ],
@@ -4818,7 +4826,9 @@
     "Entra admin center → Roles and administrators → Global Administrator.": 1,
     "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
     "Entra admin center → Users → New user.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1
+    "All 3 must-fix checks pass on the next scan.": 1,
+    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.": 1,
+    "A sign-in by an emergency account raises an alert somebody sees.": 1
    },
    "occurrencesAll": {
     "Sort out emergency access before anything else Ready": 1,
@@ -4832,7 +4842,9 @@
     "Entra admin center → Roles and administrators → Global Administrator.": 1,
     "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
     "Entra admin center → Users → New user.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1
+    "All 3 must-fix checks pass on the next scan.": 1,
+    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.": 1,
+    "A sign-in by an emergency account raises an alert somebody sees.": 1
    },
    "wordCounts": {
     "headings": 13,
@@ -4846,8 +4858,8 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 139,
-    "total": 158
+    "sentences": 171,
+    "total": 190
    },
    "unnamedControls": [],
    "rows": [],

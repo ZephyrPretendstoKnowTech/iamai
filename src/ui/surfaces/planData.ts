@@ -69,6 +69,8 @@ export type PlanData = {
   setBand: (b: SizeBand | null) => void
   setFreeze: (f: ChangeFreeze | null) => void
   onSkipped: (steps: Step[]) => void
+  /** Tick a recorded-by-hand emergency-access fact (prompt 49 item 5); stored in the mapping and the plan file. */
+  tickAnswer: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   groups: GroupMembers
 }
 
@@ -208,5 +210,13 @@ export function usePlanData(
       bump()
     },
     onSkipped: () => bump(),
+    tickAnswer: (key, done) => {
+      if (!mapping) return
+      const prev = mapping.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
+      const next = { ...mapping, breakGlassAnswers: { ...prev, [key]: done } }
+      setMapping(next)
+      void saveMappingState(next)
+      bump()
+    },
   }
 }

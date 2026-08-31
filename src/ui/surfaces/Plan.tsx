@@ -114,7 +114,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkipped={data.onSkipped} computed={c} hideReason={shared !== null} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkipped={data.onSkipped} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} />
             })}
           </section>
         )
@@ -125,7 +125,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkipped, computed, hideReason }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkipped, onTick, computed, hideReason }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -135,6 +135,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
   tenantName: string
   nameOf: (id: string) => string
   onSkipped: (steps: Step[]) => void
+  onTick: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   computed: PlanComputed
 }) {
   const status = statusOf(step)
@@ -150,7 +151,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
         </span>
         {step.status === 'blocked' && step.blockedReason && !hideReason && <span className="plan-row-reason">{C.afterShort(shortReason(step.blockedReason))}</span>}
       </div>
-      {open && <StepBody step={step} schedule={schedule} steps={computed.steps} tenantName={tenantName} nameOf={nameOf} onSkipped={() => onSkipped(computed.steps)} onClose={onToggle} />}
+      {open && <StepBody step={step} schedule={schedule} steps={computed.steps} tenantName={tenantName} nameOf={nameOf} onSkipped={() => onSkipped(computed.steps)} onTick={onTick} onClose={onToggle} />}
     </>
   )
 }
@@ -166,7 +167,8 @@ function nameWaves(waves: { phase: number; steps: Step[] }[]): string[] {
   return waves.map((w) => {
     const base = PHASE_NAME[w.phase] ?? ''
     if (w.phase === 0) return base
-    if (!used.has(base)) {
+    // "Advanced" is not a name (prompt 49 item 6): name it from its families instead.
+    if (base !== 'Advanced' && !used.has(base)) {
       used.add(base)
       return base
     }
