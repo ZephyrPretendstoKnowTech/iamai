@@ -40,6 +40,9 @@ export type ConfigSection = {
   status: 'ok' | 'disabled' | 'error'
   reason: string | null
   rows: unknown[]
+  /** How the read went (prompt 46 item 24): the last response's HTTP status and body length; null before a scan records them. */
+  httpStatus?: number | null
+  bodyBytes?: number | null
 }
 
 export type UserRow = {

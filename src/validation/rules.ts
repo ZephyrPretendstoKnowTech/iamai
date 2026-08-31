@@ -448,8 +448,13 @@ const bgPerUserMfaOff: ValidationRule = {
   evaluate: (_id, ctx) => {
     // Per-user MFA state is not exposed by Microsoft Graph at all; the closest
     // readable fact is whether the tenant has finished the methods migration.
-    const row = (ctx.snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
-    if (!row?.policyMigrationState) return unknown(UNKNOWN.needs([NEED_LABEL.authMethodsPolicy]))
+    // "Could not be read" only when the read actually failed (prompt 46 item
+    // 24). A read that succeeded and came back without the field is a
+    // different fact, and says so.
+    const section = ctx.snapshot.config.authMethodsPolicy ?? null
+    if (!section || section.status !== 'ok') return unknown(UNKNOWN.needs([NEED_LABEL.authMethodsPolicy]))
+    const row = (section.rows[0] ?? null) as { policyMigrationState?: string } | null
+    if (!row?.policyMigrationState) return unknown(UNKNOWN.readWithout(NEED_LABEL.authMethodsPolicy, 'migration state'))
     return row.policyMigrationState === 'migrationComplete' ? PASS : fail(F.bgPerUserMfa, A.roles)
   },
 }

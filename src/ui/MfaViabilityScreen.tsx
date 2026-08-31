@@ -8,6 +8,7 @@ import { rolloutBucket, scoreMfaViability, sortViability, summarizeTenant } from
 import type { RolloutBucket } from '../scoring/mfaViability.ts'
 import type { ActivityState, MethodTier, MfaState, MfaViability } from '../scoring/mfaViability.ts'
 import { REDACTED, exportDownload } from './exportGuard.ts'
+import { downloadScanDiagnostics } from './diagnosticsDownload.ts'
 import { STALE_SCAN_DAYS, absolute, absoluteDate, elapsedLabel, friendlyMethod, relative, scanAgeDays, whenAt } from './format.ts'
 import { loadMappingState } from '../mapping/store.ts'
 import { SCAN, SHELL } from '../copy/pages.ts'
@@ -182,17 +183,10 @@ export function MfaViabilityScreen({
     apply(next)
   }
 
-  const downloadDiagnostics = async () => {
-    const bundle = {
-      generatedAt: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      schemaVersion: snapshot?.schemaVersion ?? null,
-      tenantIdHash: await hashTenantId(tenantId),
-      sources: snapshot?.sources ?? null,
-      sections: Object.values(sections),
-    }
-    exportDownload(`iamai-diagnostics-${Date.now()}.json`, JSON.stringify(bundle, null, 2), 'application/json', REDACTED)
-  }
+  // The same bundle the ?dev=1 panel offers (prompt 46 item 24), with this
+  // screen's live section rows added.
+  const downloadDiagnostics = () => downloadScanDiagnostics(tenantId, snapshot, Object.values(sections))
+  void downloadDiagnostics
 
   const evidence = snapshot?.sources.signInEvidence
   const sectionList = Object.values(sections).filter((s) => s.source !== 'signInEvidence')

@@ -19,9 +19,23 @@ export type TokenSource = {
 
 // 403/licence → section disabled with a plain reason; never retried (§6).
 export class SectionDisabledError extends Error {
-  constructor(reason: string) {
+  readonly status: number
+  constructor(reason: string, status = 403) {
     super(reason)
     this.name = 'SectionDisabledError'
+    this.status = status
+  }
+}
+
+/** Any other non-2xx answer, carrying the status and Graph's error code so a collector can record how the read went (prompt 46 item 24). */
+export class GraphRequestError extends Error {
+  readonly status: number
+  readonly code: string | null
+  constructor(status: number, code: string | null, message: string) {
+    super(`${status} ${code ?? ''}: ${message}`)
+    this.name = 'GraphRequestError'
+    this.status = status
+    this.code = code
   }
 }
 
@@ -42,6 +56,8 @@ export type GraphRequestOpts = {
   headers?: Record<string, string>
   /** Retry wait; injectable so tests run the policy without sleeping. */
   wait?: (ms: number, signal?: AbortSignal) => Promise<void>
+  /** Called once per settled response (after retries) with its status and body length. */
+  onResponse?: (info: { status: number; bytes: number }) => void
 }
 
 function jitter(ms: number): number {
@@ -117,17 +133,21 @@ export async function graphRequest(tokens: TokenSource, url: string, opts: Graph
     if (!res) throw new Error(`request failed after retries (timeout): ${url}`)
 
     let body: GraphBody = {}
+    let bytes = 0
     try {
-      const parsed: unknown = await res.json()
+      const raw = await res.text()
+      bytes = raw.length
+      const parsed: unknown = raw.length > 0 ? JSON.parse(raw) : {}
       body = typeof parsed === 'number' ? { count: parsed } : ((parsed ?? {}) as GraphBody)
     } catch {
       body = {}
     }
+    opts.onResponse?.({ status: res.status, bytes })
     if (res.status === 403) {
-      throw new SectionDisabledError(body.error?.message ?? 'access denied (403)')
+      throw new SectionDisabledError(body.error?.message ?? 'access denied (403)', 403)
     }
     if (!res.ok) {
-      throw new Error(`${res.status} ${body.error?.code ?? ''}: ${body.error?.message ?? 'request failed'}`)
+      throw new GraphRequestError(res.status, body.error?.code ?? null, body.error?.message ?? 'request failed')
     }
     return body
   }

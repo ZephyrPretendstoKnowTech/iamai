@@ -43,7 +43,7 @@ tenant's current state to a chosen baseline without lockouts.
 
 ## 4. Graph scopes (delegated, read-only) and gates
 
-`Policy.Read.All Directory.Read.All Application.Read.All AuditLog.Read.All RoleManagement.Read.Directory UserAuthenticationMethod.Read.All Reports.Read.All openid profile offline_access`
+`Policy.Read.All Directory.Read.All AuditLog.Read.All RoleManagement.Read.Directory UserAuthenticationMethod.Read.All Reports.Read.All openid profile offline_access`
 
 The table below is **generated from the collector registry**
 (`src/graph/collect/registry.ts`) by `node scripts/spec-scopes.ts` — edit the
@@ -82,12 +82,12 @@ B = sign-in evidence, on-demand = after baseline selection).
 | on-demand | Show display names instead of raw identifiers, everywhere. | `/directoryObjects/getByIds` | v1.0 | Directory.Read.All | Directory Readers | runs only for ids the UI would otherwise show raw |
 
 Planned but not yet in the registry: CA templates (beta), What If
-(`/identity/conditionalAccess/evaluate`), `/servicePrincipals`
-(Application.Read.All — the reason that scope is consented), and device-code /
+(`/identity/conditionalAccess/evaluate`), `/servicePrincipals` (under
+`Directory.Read.All`, which is already consented), and device-code /
 auth-transfer detection via beta sign-in fields (`authenticationProtocol`,
 `originalTransferMethod`) — each gets a registry row when its collector lands.
 
-Not requested in v1: Intune scopes (Entra device objects suffice), `Agreement.Read.All` (add only if a baseline references Terms of Use). `UserAuthenticationMethod.Read.All` was originally excluded (phone numbers) but added 2026-08-26 by Lachlan's decision; tenants consented before that date will see one incremental consent prompt.
+Not requested in v1: Intune scopes (Entra device objects suffice), `Agreement.Read.All` (add only if a baseline references Terms of Use), `Application.Read.All` (removed 2026-08-30, prompt 46 item 23: nothing called it and the service-principal inventory does not need it — docs/design/application-read-decision.md; tenants that consented earlier keep a stale grant until an admin reviews it, and the app registration's configured permissions should drop it too). `UserAuthenticationMethod.Read.All` was originally excluded (phone numbers) but added 2026-08-26 by Lachlan's decision; tenants consented before that date will see one incremental consent prompt.
 
 Degradation rule: a 403 or licence error disables a **section** with a plain reason; it never fails the scan.
 

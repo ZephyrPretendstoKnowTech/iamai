@@ -5,9 +5,9 @@
 // WHAT THIS CANNOT DO, said here rather than implied by the copy.
 //
 // Proving a service principal is absent needs GET /servicePrincipals, which the
-// scan does not call. docs/design/application-read-decision.md (prompt 39)
-// recommends dropping Application.Read.All precisely because nothing consumed
-// it, and adding a collector is not something to do quietly inside a naming
+// scan does not call. That collector lands under Directory.Read.All
+// (docs/design/application-read-decision.md; Application.Read.All was removed
+// in prompt 46), and adding it is not something to do quietly inside a naming
 // prompt. So this reports what the evidence already collected can support:
 //
 //   - An app with sign-in activity in this tenant HAS a service principal.

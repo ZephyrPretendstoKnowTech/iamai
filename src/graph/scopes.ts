@@ -7,10 +7,12 @@
 //
 // Requested once at sign-in: one consent screen, the full set, no staged
 // consent. Every entry is a read scope; there is no write scope in the app.
+// Application.Read.All was removed on 2026-08-30 (prompt 46 item 23): nothing
+// called it, and the service-principal inventory it was consented for lands
+// under Directory.Read.All (docs/design/application-read-decision.md).
 export const GRAPH_SCOPES = [
   'Policy.Read.All',
   'Directory.Read.All',
-  'Application.Read.All',
   'AuditLog.Read.All',
   'RoleManagement.Read.Directory',
   'UserAuthenticationMethod.Read.All',

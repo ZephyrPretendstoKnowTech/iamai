@@ -1,7 +1,7 @@
 // Lane 0 + Lane A collectors (docs/design/collection.md §2). Worker-safe: no
 // DOM, no MSAL. Every collector maps failures instead of throwing outward —
 // a 403/licence error disables its section, never the scan.
-import { graphPaged, graphRequest, SectionDisabledError, V1, BETA } from './http.ts'
+import { GraphRequestError, graphPaged, graphRequest, SectionDisabledError, V1, BETA } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { COLLECTOR_REGISTRY } from './registry.ts'
 import { deriveAuthenticatorPlatform } from '../../scoring/platform.ts'
@@ -60,16 +60,27 @@ export function deriveRoles(
 
 export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Promise<ConfigSection> {
   const { url, paged } = CONFIG_ENDPOINTS[key]
+  // How the read went travels with the section (prompt 46 item 24), so a
+  // diagnostics bundle can say whether a read failed or succeeded and returned
+  // a body without the field a rule wanted.
+  let last: { status: number; bytes: number } | null = null
+  const onResponse = (info: { status: number; bytes: number }): void => {
+    last = info
+  }
+  const how = (fallbackStatus: number | null = null): Pick<ConfigSection, 'httpStatus' | 'bodyBytes'> => ({
+    httpStatus: last?.status ?? fallbackStatus,
+    bodyBytes: last?.bytes ?? null,
+  })
   try {
     if (paged) {
-      const rows = await graphPaged(ctx.tokens, url, { signal: ctx.signal })
-      return { status: 'ok', reason: null, rows }
+      const rows = await graphPaged(ctx.tokens, url, { signal: ctx.signal, onResponse })
+      return { status: 'ok', reason: null, rows, ...how() }
     }
-    const body = await graphRequest(ctx.tokens, url, { signal: ctx.signal })
-    return { status: 'ok', reason: null, rows: [body] }
+    const body = await graphRequest(ctx.tokens, url, { signal: ctx.signal, onResponse })
+    return { status: 'ok', reason: null, rows: [body], ...how() }
   } catch (e) {
-    if (e instanceof SectionDisabledError) return { status: 'disabled', reason: e.message, rows: [] }
-    return { status: 'error', reason: e instanceof Error ? e.message : String(e), rows: [] }
+    if (e instanceof SectionDisabledError) return { status: 'disabled', reason: e.message, rows: [], ...how(e.status) }
+    return { status: 'error', reason: e instanceof Error ? e.message : String(e), rows: [], ...how(e instanceof GraphRequestError ? e.status : null) }
   }
 }
 

@@ -76,3 +76,14 @@ export function adminUserIds(roles: { active: Record<string, string[]> }): Set<s
   }
   return out
 }
+
+/**
+ * A role held only by service principals is application plumbing, not
+ * administration (prompt 46 item 25): hidden by default in the inventory,
+ * shown with "Show all roles". Holders whose kind is not known yet count as
+ * people, so nothing is hidden on a guess.
+ */
+export function heldOnlyByServices(holderIds: Iterable<string>, kindOf: (id: string) => string | null): boolean {
+  const ids = [...holderIds]
+  return ids.length > 0 && ids.every((id) => kindOf(id) === 'servicePrincipal')
+}

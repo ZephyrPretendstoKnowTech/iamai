@@ -67,6 +67,8 @@ export const NEED_LABEL: Record<string, string> = {
 
 export const UNKNOWN = {
   needs: (labels: string[]): string => `could not be checked: ${list(labels)} could not be read on this scan`,
+  /** The read succeeded; the answer was not in it (prompt 46 item 24). Never "could not be read". */
+  readWithout: (label: string, field: string): string => `could not be checked: ${label} was read but reports no ${field}`,
   blocked: 'A check that cannot be run is treated as failed while it gates access.',
 }
 
