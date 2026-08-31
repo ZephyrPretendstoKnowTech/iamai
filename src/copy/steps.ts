@@ -267,6 +267,17 @@ export const PREREQ = {
     ],
     exit: (threshold: number) => [`Readiness reaches ${threshold}% of active users.`],
   },
+  /** Shared devices (prompt 48 item 4): Teams Rooms and shared devices get their own policy. */
+  sharedDevices: {
+    title: 'Give shared devices their own policy',
+    why: 'Teams Rooms, panels and shared phones cannot answer an MFA prompt or a registration request, so a user policy signs them out. Microsoft\'s guidance is one policy of their own.',
+    how: (names_: string[]) => [
+      `Entra admin center → Protection → Conditional Access → New policy, for the shared-device accounts: ${names_.join(', ')}.`,
+      'Require a known location and a compliant device; do not require MFA, a sign-in frequency, or block the device-code flow.',
+      'Exclude these accounts from every other policy in the plan.',
+    ],
+    exit: ['A policy scoped to the shared-device accounts requires a known location and a compliant device, and nothing that prompts a person.'],
+  },
   breakGlassDrill: {
     title: 'Break-glass sign-in drill',
     why: (days: number) => `An emergency account that has not signed in for ${days} days is unproven exactly when it matters.`,
@@ -378,6 +389,12 @@ export const READINESS = {
   devicesUnreadable: (reason: string) => `Device data could not be read (${reason}): device readiness is unknown, so every ring starts with a personal check instead of a percentage.`,
   location: 'Compare the countries seen in the sign-in records with the allowed list.',
   risk: 'Readiness is measured by the sign-ins Identity Protection flagged. See who they belong to below.',
+}
+
+/** One-off notes on the Dates section (prompt 48 item 7), each said once. */
+export const DATE_NOTE = {
+  certificate: (date: string) => `Report-only will prompt mobile users to pick a certificate from ${date}.`,
+  sessionRefresh: 'Takes effect as sessions refresh, within a day; to apply now, revoke sessions.',
 }
 
 export const EVIDENCE = {

@@ -59,6 +59,8 @@ export type UserRow = {
   /** The primary SMTP address; a mailbox with no plans and no sign-in is a shared mailbox, not a person (prompt 46 §8.1). */
   mail: string | null
   assignedPlans: { servicePlanId: string; capabilityStatus: string }[]
+  /** Licence SKUs assigned directly or by group (prompt 48 item 4): a Teams Shared Devices licence has no service plan of its own. */
+  skuIds?: string[]
   onPremisesSyncEnabled: boolean | null
   externalUserState: string | null
   department: string | null
@@ -121,6 +123,22 @@ export type StoredSignIn = {
   /** Identity Protection's verdicts on the sign-in (prompt 47 item 6): none · low · medium · high · hidden. */
   riskLevelDuringSignIn?: string
   riskLevelAggregated?: string
+  // ---- prompt 48 item 1: derived labels only, never an address or a user-agent string ----
+  /** From deviceDetail.operatingSystem, normalised; '' when Graph gave none. Absent on rows stored before schema 7. */
+  os?: '' | 'Windows' | 'macOS' | 'iOS' | 'Android' | 'Linux' | 'ChromeOS'
+  /** Browser family only (Chrome, Edge, Safari, Firefox, Rich Client); '' when none. */
+  browser?: string
+  isCompliant?: boolean
+  isManaged?: boolean
+  trustType?: 'joined' | 'hybrid' | 'registered' | 'none'
+  crossTenantAccessType?: 'none' | 'b2bCollaboration' | 'b2bDirectConnect' | 'serviceProvider' | 'passthrough' | 'other'
+  /** The signing-in account's home tenant, for counting partner tenants; stays in the worker and the cache. */
+  homeTenantId?: string
+  appDisplayName?: string
+  resourceDisplayName?: string
+  /** Named locations the sign-in matched, by name, and whether any of them was trusted. */
+  namedLocations?: string[]
+  trustedLocation?: boolean
 }
 
 // Lane B derived table for the Inventory page: counts only, never raw rows.
@@ -191,6 +209,8 @@ export type TenantSnapshot = {
   blockedToday: BlockedTodayEntry[]
   evidenceUsage: EvidenceUsage | null
   evidenceAggregates?: EvidenceAggregates | null
+  /** The lockout-scenario derivations (prompt 48 item 3), from the rows; null until Lane B has run. */
+  scenarioEvidence?: import('../../derive/evidence.ts').ScenarioEvidence | null
   // Tenant licence capabilities derived from subscribedSkus (SPEC §12).
   capabilities: Record<Capability, { enabled: boolean; seats: number; consumed: number }>
   // CA policies that Microsoft manages (display-name prefix or templateId).

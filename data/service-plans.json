@@ -2,12 +2,108 @@
   "$comment": "Service plan ids/names to capability mapping. Refresh with: node scripts/refresh-service-plans.ts (pulls Microsoft's licensing CSV). namePatterns are regex sources matched against servicePlanName.",
   "asOf": "2026-08-26",
   "capabilities": {
-    "entraP1": { "servicePlanIds": ["41781fb2-bc02-4b7c-bd55-b576c07bb09d"], "namePatterns": ["^AAD_PREMIUM$"] },
-    "entraP2": { "servicePlanIds": ["eec0eb4f-6444-4f95-aba0-50c24d67f998"], "namePatterns": ["^AAD_PREMIUM_P2$"] },
-    "intune": { "servicePlanIds": ["c1ec4a95-1f05-45b3-a911-aa3fa01094f5"], "namePatterns": ["^INTUNE_A$"] },
-    "workloadIdPremium": { "servicePlanIds": [], "namePatterns": ["WORKLOAD_IDENTITIES", "AAD_WRKLDID"] },
-    "globalSecureAccess": { "servicePlanIds": [], "namePatterns": ["ENTRA_INTERNET_ACCESS", "ENTRA_PRIVATE_ACCESS", "GLOBAL_SECURE_ACCESS"] },
-    "defenderForCloudApps": { "servicePlanIds": [], "namePatterns": ["^ADALLOM_S_STANDALONE$", "^ADALLOM_S_O365"] },
-    "purviewInsiderRisk": { "servicePlanIds": [], "namePatterns": ["INSIDER_RISK"] }
+    "entraP1": {
+      "servicePlanIds": [
+        "41781fb2-bc02-4b7c-bd55-b576c07bb09d"
+      ],
+      "namePatterns": [
+        "^AAD_PREMIUM$"
+      ]
+    },
+    "entraP2": {
+      "servicePlanIds": [
+        "eec0eb4f-6444-4f95-aba0-50c24d67f998"
+      ],
+      "namePatterns": [
+        "^AAD_PREMIUM_P2$"
+      ]
+    },
+    "intune": {
+      "servicePlanIds": [
+        "c1ec4a95-1f05-45b3-a911-aa3fa01094f5"
+      ],
+      "namePatterns": [
+        "^INTUNE_A$"
+      ]
+    },
+    "workloadIdPremium": {
+      "servicePlanIds": [],
+      "namePatterns": [
+        "WORKLOAD_IDENTITIES",
+        "AAD_WRKLDID"
+      ]
+    },
+    "globalSecureAccess": {
+      "servicePlanIds": [],
+      "namePatterns": [
+        "ENTRA_INTERNET_ACCESS",
+        "ENTRA_PRIVATE_ACCESS",
+        "GLOBAL_SECURE_ACCESS"
+      ]
+    },
+    "defenderForCloudApps": {
+      "servicePlanIds": [],
+      "namePatterns": [
+        "^ADALLOM_S_STANDALONE$",
+        "^ADALLOM_S_O365"
+      ]
+    },
+    "purviewInsiderRisk": {
+      "servicePlanIds": [],
+      "namePatterns": [
+        "INSIDER_RISK"
+      ]
+    }
+  },
+  "sharedDevices": {
+    "$comment": "Teams Rooms and Teams Shared Devices (prompt 48 item 4): a user holding one of these service plans, or licensed with one of these SKUs, is a shared-device account. Teams Shared Devices (MCOCAP) has no service plan of its own, so its SKU ids are listed too.",
+    "servicePlanIds": [
+      "ec17f317-f4bc-451e-b2da-0167e5c260f9",
+      "0374d34c-6be4-4dbb-b3f0-26105db0b28a",
+      "92c6b761-01de-457a-9dd9-793a975238f7",
+      "c8529366-cffd-4415-ab8f-be0144a33ab1",
+      "8081ca9c-188c-4b49-a8e5-c23b5e9463a8",
+      "ecc74eae-eeb7-4ad5-9c88-e8b2bfca75b8",
+      "bdaa59a3-74fd-4137-981a-31d4f84eb8a0"
+    ],
+    "namePatterns": [
+      "^Teams_Rooms?_",
+      "^MTRProManagement$",
+      "^MMR_P1$"
+    ],
+    "skuIds": [
+      "295a8eb0-f78d-45c7-8b5b-1eed5ed02dff",
+      "420c7602-7f70-4895-9394-d3d679ea36fb",
+      "b1511558-69bd-4e1b-8270-59ca96dba0f3",
+      "4cde982a-ede4-4409-9ae6-b003453c8ea6",
+      "c25e2b36-e161-4946-bef2-69239729f690",
+      "31ecb341-2a17-483e-9140-c473006d1e1a",
+      "21943e3a-2429-4f83-84c1-02735cd49e78",
+      "6070a4c8-34c6-4937-8dfb-39bbc6397a60",
+      "9571e9ac-2741-4b63-95fd-a79696f0d0ac",
+      "b4348f75-a776-4061-ac6c-36b9016b01d1",
+      "61bec411-e46a-4dab-8f46-8b58ec845ffe",
+      "4fb214cb-a430-4a91-9c91-4976763aa78f",
+      "6af4b3d6-14bb-4a2a-960c-6c902aad34f3",
+      "a4e376bd-c61e-4618-9901-3fc0cb1b88bb",
+      "50509a35-f0bd-4c5e-89ac-22f0e16a00f8"
+    ],
+    "skuPartNumbers": [
+      "MCOCAP",
+      "MCOCAP_FACULTY",
+      "MCOCAP_GOV",
+      "Microsoft_Teams_Rooms_Pro",
+      "Microsoft_Teams_Rooms_Pro_FAC",
+      "Microsoft_Teams_Rooms_Pro_GCC",
+      "Microsoft_Teams_Rooms_Pro_without_Audio_Conferencing",
+      "MEETING_ROOM",
+      "MEETING_ROOM_GOV",
+      "MEETING_ROOM_GOV_NOAUDIOCONF",
+      "MEETING_ROOM_NOAUDIOCONF",
+      "MTR_PREM",
+      "Microsoft_Teams_Rooms_Basic",
+      "Microsoft_Teams_Rooms_Basic_FAC",
+      "Microsoft_Teams_Rooms_Basic_without_Audio_Conferencing"
+    ]
   }
 }

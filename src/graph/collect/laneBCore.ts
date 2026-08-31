@@ -10,6 +10,8 @@ import {
 } from './constants.ts'
 import { SectionDisabledError } from './http.ts'
 import { absolute } from '../../copy/dates.ts'
+import { deriveScenarioEvidence } from '../../derive/evidence.ts'
+import type { ScenarioEvidence } from '../../derive/evidence.ts'
 import type {
   BlockedTodayEntry,
   EvidenceAggregates,
@@ -20,7 +22,9 @@ import type {
 } from './types.ts'
 
 // Bump when the fetched row shape changes; mismatched caches are ignored.
-export const EVIDENCE_SCHEMA = 6
+export const EVIDENCE_SCHEMA = 7
+/** A cache written at this schema or later still loads: rows from 6 simply lack the prompt 48 labels (their derived lines do not fire). */
+export const EVIDENCE_SCHEMA_COMPATIBLE_FROM = 6
 
 // No $select on the Lane B pull: mfaDetail and authenticationDetails are not
 // selectable on beta /auditLogs/signIns (400 "Unsupported Query", confirmed
@@ -37,6 +41,8 @@ export type SignInEvidence = {
   blockedToday: BlockedTodayEntry[]
   usage: import('./types.ts').EvidenceUsage
   aggregates: EvidenceAggregates
+  /** Prompt 48 item 3: the scenario derivations; browserWithoutClaims is narrowed to compliant-device owners by the worker. */
+  scenarios: ScenarioEvidence
 }
 
 export type LaneBProgress = { pages: number; rows: number; ms: number; oldest: string | null }
@@ -76,7 +82,70 @@ export function mapRow(raw: unknown): StoredSignIn | null {
     })(),
     riskLevelDuringSignIn: typeof r.riskLevelDuringSignIn === 'string' ? r.riskLevelDuringSignIn : undefined,
     riskLevelAggregated: typeof r.riskLevelAggregated === 'string' ? r.riskLevelAggregated : undefined,
+    ...deviceLabels(r),
+    crossTenantAccessType: crossTenantType(r.crossTenantAccessType),
+    homeTenantId: typeof r.homeTenantId === 'string' ? r.homeTenantId : undefined,
+    appDisplayName: typeof r.appDisplayName === 'string' ? r.appDisplayName : undefined,
+    resourceDisplayName: typeof r.resourceDisplayName === 'string' ? r.resourceDisplayName : undefined,
+    ...networkLabels(r),
   }
+}
+
+// ---- prompt 48 item 1: labels, never the address or the user-agent string ----
+
+export function normaliseOs(raw: unknown): NonNullable<StoredSignIn['os']> {
+  const s = typeof raw === 'string' ? raw.trim() : ''
+  if (/^windows/i.test(s)) return 'Windows'
+  if (/^mac/i.test(s)) return 'macOS'
+  if (/^ios|^ipados/i.test(s)) return 'iOS'
+  if (/^android/i.test(s)) return 'Android'
+  if (/^linux/i.test(s)) return 'Linux'
+  if (/chrome\s?os/i.test(s)) return 'ChromeOS'
+  return ''
+}
+
+/** "Chrome 118.0.0" → "Chrome"; "Mobile Safari 17.1" → "Mobile Safari"; "Rich Client 4.61" → "Rich Client". */
+export function browserFamily(raw: unknown): string {
+  const s = typeof raw === 'string' ? raw.trim() : ''
+  return s.replace(/\s*[\d.]+.*$/, '').trim()
+}
+
+export function normaliseTrustType(raw: unknown): NonNullable<StoredSignIn['trustType']> {
+  const s = typeof raw === 'string' ? raw.toLowerCase() : ''
+  if (s.includes('hybrid')) return 'hybrid'
+  if (s.includes('registered')) return 'registered'
+  if (s.includes('joined')) return 'joined'
+  return 'none'
+}
+
+function deviceLabels(r: Record<string, unknown>): Pick<StoredSignIn, 'os' | 'browser' | 'isCompliant' | 'isManaged' | 'trustType'> {
+  const d = (r.deviceDetail ?? null) as Record<string, unknown> | null
+  return {
+    os: normaliseOs(d?.operatingSystem),
+    browser: browserFamily(d?.browser),
+    isCompliant: d?.isCompliant === true,
+    isManaged: d?.isManaged === true,
+    trustType: normaliseTrustType(d?.trustType),
+  }
+}
+
+function crossTenantType(raw: unknown): StoredSignIn['crossTenantAccessType'] {
+  const s = typeof raw === 'string' ? raw : ''
+  if (s === 'none' || s === 'b2bCollaboration' || s === 'b2bDirectConnect' || s === 'serviceProvider' || s === 'passthrough') return s
+  return s === '' ? 'none' : 'other'
+}
+
+function networkLabels(r: Record<string, unknown>): Pick<StoredSignIn, 'namedLocations' | 'trustedLocation'> {
+  const details = Array.isArray(r.networkLocationDetails) ? (r.networkLocationDetails as Record<string, unknown>[]) : []
+  const names = new Set<string>()
+  let trusted = false
+  for (const d of details) {
+    const type = typeof d.networkType === 'string' ? d.networkType : ''
+    if (!/namedLocation/i.test(type)) continue
+    if (/trusted/i.test(type)) trusted = true
+    for (const n of Array.isArray(d.networkNames) ? d.networkNames : []) if (typeof n === 'string' && n) names.add(n)
+  }
+  return { namedLocations: [...names].sort(), trustedLocation: trusted }
 }
 
 // Inventory counts (prompt 10 §B): by client app, by protocol, by country
@@ -351,6 +420,7 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
       blockedToday: deriveBlockedToday(contiguous),
       usage: deriveUsageSignals(contiguous),
       aggregates: deriveAggregates(contiguous),
+      scenarios: deriveScenarioEvidence(contiguous),
     }
   }
 

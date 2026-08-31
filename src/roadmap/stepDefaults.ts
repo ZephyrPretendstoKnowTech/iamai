@@ -8,6 +8,7 @@ export type StepExtras = Pick<
   | 'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
   | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate' | 'tracking' | 'alreadyInPlace'
   | 'events' | 'safeVerdict' | 'plainTitle' | 'forManager' | 'gap' | 'blockedReason'
+  | 'scenarioLines' | 'cantSee' | 'dateNotes'
 >
 
 export const STEP_EXTRAS: StepExtras = {
@@ -39,4 +40,7 @@ export const STEP_EXTRAS: StepExtras = {
   safeVerdict: { safe: false, reason: '', sentence: '' },
   plainTitle: '',
   forManager: '',
+  scenarioLines: [],
+  cantSee: [],
+  dateNotes: [],
 }

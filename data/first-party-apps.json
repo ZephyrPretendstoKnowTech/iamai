@@ -1,5 +1,5 @@
 {
-  "$comment": "Microsoft first-party application ids, seeded from Microsoft's documented list (learn.microsoft.com 'Application IDs of commonly used Microsoft applications'). Refresh with: node scripts/refresh-first-party-apps.ts",
+  "$comment": "Microsoft first-party application ids, seeded from Microsoft's documented list (learn.microsoft.com 'Application IDs of commonly used Microsoft applications'). Refresh with: node scripts/refresh-first-party-apps.ts. `role` (prompt 48 item 2): dependency (a block policy must exclude it), technician tool (admin CLIs and shells), device sign-in (Teams devices), server sign-in (RDP and Azure VMs).",
   "asOf": "2026-08-26",
   "apps": [
     { "appId": "00000002-0000-0ff1-ce00-000000000000", "displayName": "Office 365 Exchange Online", "category": "office", "inOffice365Bundle": true },
@@ -12,15 +12,23 @@
     { "appId": "4765445b-32c6-49b0-83e6-1d93765276ca", "displayName": "OfficeHome", "category": "office", "inOffice365Bundle": true },
     { "appId": "89bee1f7-5e6e-4d8a-9f3d-ecd601259da7", "displayName": "Office365 Shell WCSS-Client", "category": "office", "inOffice365Bundle": true },
     { "appId": "c44b4083-3bb0-49c1-b47d-974e53cbdf3c", "displayName": "Azure Portal", "category": "admin-tool", "inOffice365Bundle": false },
-    { "appId": "04b07795-8ddb-461a-bbee-02f9e1bf7b46", "displayName": "Microsoft Azure CLI", "category": "dev-tool", "inOffice365Bundle": false },
-    { "appId": "1950a258-227b-4e31-a9cf-717495945fc2", "displayName": "Microsoft Azure PowerShell", "category": "dev-tool", "inOffice365Bundle": false },
+    { "appId": "04b07795-8ddb-461a-bbee-02f9e1bf7b46", "displayName": "Microsoft Azure CLI", "category": "dev-tool", "inOffice365Bundle": false, "role": "technician tool" },
+    { "appId": "1950a258-227b-4e31-a9cf-717495945fc2", "displayName": "Microsoft Azure PowerShell", "category": "dev-tool", "inOffice365Bundle": false, "role": "technician tool" },
     { "appId": "797f4846-ba00-4fd7-ba43-dac1f8f63013", "displayName": "Windows Azure Service Management API", "category": "platform", "inOffice365Bundle": false },
     { "appId": "a0c73c16-a7e3-4564-9a95-2bdf47383716", "displayName": "Microsoft Exchange Online Remote PowerShell", "category": "admin-tool", "inOffice365Bundle": false },
     { "appId": "00000009-0000-0000-c000-000000000000", "displayName": "Power BI Service", "category": "office", "inOffice365Bundle": false },
     { "appId": "0000000a-0000-0000-c000-000000000000", "displayName": "Microsoft Intune", "category": "device-management", "inOffice365Bundle": false },
     { "appId": "9ba1a5c7-f17a-4de9-a1f1-6178c8d51223", "displayName": "Microsoft Intune Company Portal", "category": "device-management", "inOffice365Bundle": false },
-    { "appId": "14d82eec-204b-4c2f-b7e8-296a70dab67e", "displayName": "Microsoft Graph Command Line Tools", "category": "dev-tool", "inOffice365Bundle": false },
-    { "appId": "de8bc8b5-d9f9-48b1-a8ad-b748da725064", "displayName": "Graph Explorer", "category": "dev-tool", "inOffice365Bundle": false },
-    { "appId": "872cd9fa-d31f-45e0-9eab-6e460a02d1f1", "displayName": "Visual Studio", "category": "dev-tool", "inOffice365Bundle": false }
+    { "appId": "14d82eec-204b-4c2f-b7e8-296a70dab67e", "displayName": "Microsoft Graph Command Line Tools", "category": "dev-tool", "inOffice365Bundle": false, "role": "technician tool" },
+    { "appId": "de8bc8b5-d9f9-48b1-a8ad-b748da725064", "displayName": "Graph Explorer", "category": "dev-tool", "inOffice365Bundle": false, "role": "technician tool" },
+    { "appId": "872cd9fa-d31f-45e0-9eab-6e460a02d1f1", "displayName": "Visual Studio", "category": "dev-tool", "inOffice365Bundle": false },
+    { "appId": "38aa3b87-a06d-4817-b275-7a316988d93b", "displayName": "Windows Sign In", "category": "platform", "inOffice365Bundle": false, "role": "dependency" },
+    { "appId": "29d9ed98-a469-4536-ade2-f981bc1d605e", "displayName": "Microsoft Authentication Broker", "category": "platform", "inOffice365Bundle": false, "role": "dependency" },
+    { "appId": "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9", "displayName": "Device Registration Service", "category": "platform", "inOffice365Bundle": false, "role": "dependency" },
+    { "appId": "d4ebce55-015a-49b5-a083-c84d1797ae8c", "displayName": "Microsoft Intune Enrollment", "category": "device-management", "inOffice365Bundle": false, "role": "dependency" },
+    { "appId": "372140e0-b3b7-4226-8ef9-d57986796201", "displayName": "Azure Windows VM Sign-In", "category": "platform", "inOffice365Bundle": false, "role": "server sign-in" },
+    { "appId": "a4a365df-50f1-4397-bc59-1a1564b8bb9c", "displayName": "Microsoft Remote Desktop", "category": "platform", "inOffice365Bundle": false, "role": "server sign-in" },
+    { "appId": "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe", "displayName": "Microsoft Teams Services", "category": "office", "inOffice365Bundle": true, "role": "device sign-in" },
+    { "appId": "87749df4-7ccf-48f8-aa87-704bad0e0e16", "displayName": "Microsoft Teams - Device Admin Agent", "category": "office", "inOffice365Bundle": false, "role": "device sign-in" }
   ]
 }

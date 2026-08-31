@@ -5,7 +5,7 @@ import { PAGE_ABORT_MS } from './constants.ts'
 import { BETA, graphRequest } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { loadEvidenceCache, saveEvidenceCache } from './cache.ts'
-import { EVIDENCE_SCHEMA, runLaneB } from './laneBCore.ts'
+import { EVIDENCE_SCHEMA, EVIDENCE_SCHEMA_COMPATIBLE_FROM, runLaneB } from './laneBCore.ts'
 import type { LaneBProgress, SignInEvidence } from './laneBCore.ts'
 
 export type { LaneBProgress, SignInEvidence }
@@ -28,7 +28,9 @@ export async function collectSignInEvidence(
     fetchPage: (url) => graphRequest(ctx.tokens, url, { abortMs: PAGE_ABORT_MS, signal: ctx.signal }),
     loadCache: async () => {
       const cached = await loadEvidenceCache(opts.tenantId)
-      if (!cached || cached.meta.schema !== EVIDENCE_SCHEMA) return null
+      // A cache from schema 6 loads with the prompt 48 labels absent; older ones are refetched.
+      const schema = cached?.meta.schema ?? 0
+      if (!cached || schema < EVIDENCE_SCHEMA_COMPATIBLE_FROM || schema > EVIDENCE_SCHEMA) return null
       return { covered: cached.meta.covered, rows: cached.rows }
     },
     saveCache: (covered, rows) => saveEvidenceCache(opts.tenantId, covered, rows, EVIDENCE_SCHEMA),

@@ -3,6 +3,8 @@
 // small in the repo, and free of real identifiers. docs/design/fixtures.md
 // describes each shape and what it must prove.
 import type { TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
+import { deriveScenarioEvidence } from '../../derive/evidence.ts'
+import { scenarioRows, sharedId } from './scenarioRows.ts'
 import type { BaselinePackage } from '../../baseline/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { emptyMappingState } from '../../mapping/types.ts'
@@ -209,6 +211,14 @@ export function buildFixture(spec: Spec): Fixture {
     authMethods[id] = []
     signInEvidence[id] = { signInCount: 40, lastSignIn: daysAgo(1), lastMfaSuccess: null }
   }
+  // A directory-sync role holder on mid and a hybrid user on huge (prompt 48 items 13, 15).
+  if (spec.name === 'mid' && ids[6]) rolesActive[ids[6]] = ['d29b2b05-8046-44ba-8758-1e26182fcf32']
+  if (spec.name === 'huge' && users[3]) users[3].onPremisesSyncEnabled = true
+  // A shared-device SKU on the reserved account (prompt 48 item 8) so the licence path fires too.
+  if (spec.name === 'mid') {
+    const shared = users.find((x) => x.id === sharedId(ids))
+    if (shared) shared.skuIds = ['295a8eb0-f78d-45c7-8b5b-1eed5ed02dff']
+  }
   const bgGroup = guid(spec.name, 1_000_500)
   const exclusionGroup = guid(spec.name, 1_000_501)
 
@@ -292,6 +302,12 @@ export function buildFixture(spec: Spec): Fixture {
     capabilities: caps,
     microsoftManagedPolicyIds: [],
     roles: { active: rolesActive, eligible: {} },
+  }
+  if (!hostile) {
+    const rows = scenarioRows(spec.name, ids, svcIds)
+    const compliantOwners = new Set<string>()
+    for (const d of snapshot.devices) if (d.isCompliant === true) for (const o of d.ownerIds) compliantOwners.add(o)
+    snapshot.scenarioEvidence = deriveScenarioEvidence(rows, compliantOwners)
   }
 
   const mapping: MappingState = {
