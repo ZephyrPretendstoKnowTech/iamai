@@ -1,5 +1,5 @@
 {
- "fingerprint": "0ca1763b8384ce30",
+ "fingerprint": "9b70d07d3c3edff2",
  "surfaces": [
   {
    "name": "Start",
@@ -54,6 +54,7 @@
     "Predicted impact, confirmed in report-only.",
     "Get started See it with sample data"
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Get started",
@@ -128,7 +129,13 @@
     "sentences": 225,
     "total": 283
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 21,
+    "words": 225
+   }
   },
   {
    "name": "Connect",
@@ -161,6 +168,7 @@
     "Tenant ID 00000000-0000-0000-0000-000000000000",
     "A scan from this minute · <date and time> (5 users) is saved on this device: go straight to Findings or Roadmap."
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Baseline",
@@ -201,7 +209,13 @@
     "sentences": 54,
     "total": 71
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 5,
+    "words": 54
+   }
   },
   {
    "name": "Connect / permissions disclosure",
@@ -262,6 +276,7 @@
     "That removes every permission immediately and leaves nothing behind.",
     "Anything IAMAI held was in the browser, and Forget this tenant clears that separately."
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Baseline",
@@ -344,7 +359,13 @@
     "sentences": 259,
     "total": 301
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 19,
+    "words": 201
+   }
   },
   {
    "name": "Baseline",
@@ -385,6 +406,7 @@
     "or upload a package (how to make one):",
     "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 8 questions (all required)"
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Scan",
@@ -433,7 +455,13 @@
     "sentences": 171,
     "total": 192
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 10,
+    "words": 171
+   }
   },
   {
    "name": "Scan",
@@ -466,6 +494,7 @@
     "Re-scan any time for fresh numbers.",
     "5 users · 3 policies · sign-in records for <date> to <date>"
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Setup",
@@ -504,7 +533,13 @@
     "sentences": 50,
     "total": 59
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 5,
+    "words": 50
+   }
   },
   {
    "name": "Scan / Readiness tab",
@@ -609,6 +644,7 @@
     "sam@example.com",
     "jordan_partner.example.com#EXT#@example.com"
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [
@@ -642,7 +678,13 @@
     "sentences": 23,
     "total": 196
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 2,
+    "words": 18
+   }
   },
   {
    "name": "Scan / Inventory tab",
@@ -703,6 +745,7 @@
     "Everything the scan read, as found: no analysis.",
     "Every table exports to CSV."
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [
@@ -734,7 +777,13 @@
     "sentences": 13,
     "total": 57
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 2,
+    "words": 13
+   }
   },
   {
    "name": "Setup",
@@ -766,6 +815,7 @@
     "0 of 8 answered · 8 to go Still to answer: Emergency access, Exclusion group, Countries, Handle with care, Trusted locations, Time zone, Frameworks, Workloads.",
     "No service accounts detected, so nothing needs a carve-out; the plan records that."
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Findings",
@@ -806,7 +856,13 @@
     "sentences": 70,
     "total": 77
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 6,
+    "words": 70
+   }
   },
   {
    "name": "Setup / Q1 — Which accounts are the emergency access (break-glass) ",
@@ -838,6 +894,7 @@
     "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.YesNot yet",
     "A sign-in by an emergency account raises an alert somebody sees.YesNot yet"
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -862,7 +919,13 @@
     "sentences": 58,
     "total": 79
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Setup / Q2 — Which group holds the policy exclusions?",
@@ -890,6 +953,7 @@
     "Question 2 ·",
     "Why this matters: One auditable group excluded from every policy keeps the escape hatch in a single place."
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -912,7 +976,13 @@
     "sentences": 21,
     "total": 37
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Setup / Q3 — Which countries do your people sign in from?",
@@ -946,6 +1016,7 @@
     "2 countries.",
     "Matches the existing named location \"Allowed countries\"."
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Australia (AU)",
@@ -975,7 +1046,13 @@
     "sentences": 59,
     "total": 81
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Setup / Q4 — Who needs extra care?",
@@ -1003,6 +1080,7 @@
     "Question 4 ·",
     "Why this matters: These people are verified before anything is enforced and sequenced after the approach is proven."
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Looks right"
@@ -1027,7 +1105,13 @@
     "sentences": 21,
     "total": 34
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Setup / Q5 — Which named locations count as trusted?",
@@ -1055,6 +1139,7 @@
     "Question 5 ·",
     "Why this matters: A trusted location lets registration and other sensitive actions happen only from the office network."
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -1077,7 +1162,13 @@
     "sentences": 21,
     "total": 37
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Setup / Q6 — Which time zone should dates display in?",
@@ -1105,6 +1196,7 @@
     "Question 6 ·",
     "Why this matters: Plan dates and sign-in times read correctly for whoever runs the rollout."
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Looks right"
@@ -1129,7 +1221,13 @@
     "sentences": 18,
     "total": 34
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Setup / Q7 — Which security frameworks is the tenant working toward",
@@ -1160,6 +1258,7 @@
     "Question 7 ·",
     "Why this matters: Tagged steps let the plan stand in as evidence for an audit."
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Looks right"
@@ -1184,7 +1283,13 @@
     "sentences": 18,
     "total": 43
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Setup / Q8 — Are the detected workloads right?",
@@ -1218,6 +1323,7 @@
     "no Intune licence",
     "no Workload Identities Premium licence"
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Looks right"
@@ -1245,7 +1351,13 @@
     "sentences": 43,
     "total": 62
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Findings",
@@ -1286,6 +1398,7 @@
     "26 goals considered, 16 apply to this tenant.",
     "The rest are under Details with the reason each one does not apply."
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Roadmap",
@@ -1328,7 +1441,13 @@
     "sentences": 52,
     "total": 71
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 6,
+    "words": 52
+   }
   },
   {
    "name": "Findings / Summary tab",
@@ -1369,6 +1488,7 @@
     "The Roadmap dates each one, names who it touches, and gives the exact change.",
     "5 goals need a licence tier this tenant does not have; they are listed on the Licensing guide and left out of the score."
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -1409,7 +1529,13 @@
     "sentences": 159,
     "total": 209
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 9,
+    "words": 159
+   }
   },
   {
    "name": "Findings / attention tab",
@@ -1453,6 +1579,7 @@
     "About Why this matters"
    ],
    "sentences": [],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -1473,7 +1600,13 @@
     "sentences": 0,
     "total": 333
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 0,
+    "words": 0
+   }
   },
   {
    "name": "Findings / Details tab",
@@ -1523,6 +1656,7 @@
     "CA003 - Admins phishing-resistant",
     "Naming: 100% of the policies share the prefix \"CA\" How IAMAI names things"
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -1563,7 +1697,13 @@
     "sentences": 102,
     "total": 341
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 10,
+    "words": 102
+   }
   },
   {
    "name": "Roadmap",
@@ -1621,6 +1761,7 @@
     "Priya Nair: investigate the failing sign-in",
     "Where: Entra admin center → Identity → Monitoring & health → Sign-in logs (filter: Failure)"
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Open the step",
@@ -1681,7 +1822,13 @@
     "sentences": 192,
     "total": 234
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 19,
+    "words": 192
+   }
   },
   {
    "name": "Roadmap / Plan tab",
@@ -1845,6 +1992,7 @@
     "· Medium-risk sign-ins require MFA · Entra ID P2",
     "· Medium-risk users must change their password · Entra ID P2"
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -1928,7 +2076,13 @@
     "sentences": 430,
     "total": 1291
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 211,
+    "words": 443
+   }
   },
   {
    "name": "Roadmap / Schedule tab",
@@ -2125,7 +2279,7 @@
     "Names and addresses stay in the browser until you copy or export them.",
     "· 4 people, by name · <date>",
     "One calendar entry per scheduled step, from its first ring to its last, with the portal path, the done-when criteria and the rollback in the body.",
-    "tomorrow · <date>",
+    "today · <date>",
     "Pace:",
     "4 active users: Small band, detected · this pace usually takes 7 weeks",
     "Change freeze",
@@ -2134,6 +2288,7 @@
     "Enforcement never starts on a Friday or a weekend.",
     "At most 3 enforcement events a week for this size of tenant."
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -2216,7 +2371,13 @@
     "sentences": 634,
     "total": 1664
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 38,
+    "words": 337
+   }
   },
   {
    "name": "Roadmap / Export tab",
@@ -2279,6 +2440,7 @@
     "The print layout: cover, waves, every step in full.",
     "Save as PDF from the print dialog."
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Save plan"
@@ -2353,7 +2515,13 @@
     "sentences": 250,
     "total": 300
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 25,
+    "words": 250
+   }
   },
   {
    "name": "Roadmap / Plan / one step opened",
@@ -2580,6 +2748,7 @@
     "· Medium-risk sign-ins require MFA · Entra ID P2",
     "· Medium-risk users must change their password · Entra ID P2"
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -2752,7 +2921,13 @@
     "sentences": 821,
     "total": 1844
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 245,
+    "words": 859
+   }
   },
   {
    "name": "Licensing guide",
@@ -2840,6 +3015,7 @@
     ": An account nobody uses is an account nobody notices being used; disable after 90 days of silence.",
     ": Text and call codes are the weakest tier; the verification campaign moves people to Microsoft Authenticator or passkeys."
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Findings",
@@ -2953,7 +3129,13 @@
     "sentences": 466,
     "total": 523
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 44,
+    "words": 466
+   }
   },
   {
    "name": "What IAMAI reads",
@@ -3016,6 +3198,7 @@
     "That removes every permission immediately and leaves nothing behind.",
     "Anything IAMAI held was in the browser, and Forget this tenant clears that separately."
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Connect",
@@ -3110,7 +3293,13 @@
     "sentences": 242,
     "total": 297
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 17,
+    "words": 184
+   }
   },
   {
    "name": "Every check IAMAI runs",
@@ -3178,6 +3367,7 @@
     "3 recommended",
     "2 must-fix, 1 recommended"
    ],
+   "titles": [],
    "nav": [
     {
      "label": "Next: Setup",
@@ -3253,7 +3443,13 @@
     "sentences": 105,
     "total": 201
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 14,
+    "words": 103
+   }
   },
   {
    "name": "Naming policies and groups",
@@ -3313,6 +3509,7 @@
     "Nobody is affected, nothing needs a report-only window, and it can be undone by renaming it back.",
     "Consolidating two policies into one is a different thing entirely and follows the six stages on that step."
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Findings"
@@ -3385,7 +3582,13 @@
     "sentences": 306,
     "total": 336
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 29,
+    "words": 306
+   }
   },
   {
    "name": "Recovery card",
@@ -3438,6 +3641,7 @@
     "Domain: example.com, contoso.onmicrosoft.com",
     "Microsoft support will ask for the tenant id."
    ],
+   "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
@@ -3502,7 +3706,13 @@
     "sentences": 263,
     "total": 291
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 27,
+    "words": 264
+   }
   },
   {
    "name": "Prompt pack",
@@ -3601,6 +3811,7 @@
     "The print layout: cover, waves, every step in full.",
     "Save as PDF from the print dialog."
    ],
+   "titles": [],
    "nav": [],
    "primary": [
     "Open the step",
@@ -3712,7 +3923,13 @@
     "sentences": 442,
     "total": 532
    },
-   "unnamedControls": []
+   "unnamedControls": [],
+   "rows": [],
+   "forbidHits": [],
+   "pageProse": {
+    "sentences": 44,
+    "words": 442
+   }
   }
  ]
 }

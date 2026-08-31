@@ -52,19 +52,22 @@ type Row = MfaViability & { user: UserRow | undefined; name: string }
 export function MfaViabilityScreen({
   tenantId,
   initial,
+  frozen = null,
   onRunningChange,
   onComplete,
   view = 'readiness',
 }: {
   tenantId: string
   initial: { snapshot: TenantSnapshot; at: string } | null
+  /** A scan held mid-lane, so the progress view can be captured (prompt 46 Part 1 item 2). Never set outside the mock. */
+  frozen?: Record<string, SectionRow> | null
   onRunningChange: (running: boolean) => void
   onComplete: (snapshot: TenantSnapshot, at: string) => void
   view?: 'readiness' | 'inventory'
 }) {
-  const [scanState, setScanState] = useState<'idle' | 'running' | 'paused' | 'done' | 'failed'>(initial ? 'done' : 'idle')
+  const [scanState, setScanState] = useState<'idle' | 'running' | 'paused' | 'done' | 'failed'>(initial ? 'done' : frozen ? 'running' : 'idle')
   const handleRef = useRef<ScanHandle | null>(null)
-  const [sections, setSections] = useState<Record<string, SectionRow>>({})
+  const [sections, setSections] = useState<Record<string, SectionRow>>(frozen ?? {})
   const [snapshot, setSnapshot] = useState<TenantSnapshot | null>(initial?.snapshot ?? null)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [nowTick, setNowTick] = useState(Date.now())

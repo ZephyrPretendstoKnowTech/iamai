@@ -59,7 +59,9 @@ test('the file list is platform independent', () => {
   for (const f of files) {
     assert.ok(!f.includes('\\'), `${f} carries a Windows separator, so the sort order would differ by platform`)
     assert.ok(!/\.test\.tsx?$/.test(f), `${f} is a test and must not be fingerprinted`)
-    assert.ok(f.startsWith('src/copy/') || f.startsWith('src/ui/'), `${f} is outside the fingerprinted directories`)
+    // The surface contract is fingerprinted too (prompt 46 Part 1): it decides
+    // what the inventory captures, so changing it must invalidate the inventory.
+    assert.ok(f.startsWith('src/copy/') || f.startsWith('src/ui/') || f === 'docs/qa/page-contracts.json', `${f} is outside the fingerprinted directories`)
   }
   assert.deepEqual(files, [...files].sort(), 'the list is not sorted, so the hash depends on directory order')
   // This module computes the hash; it must not be an input to it.

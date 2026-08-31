@@ -1,0 +1,804 @@
+{
+  "$comment": "Page contracts (docs/design/target-state.md). One entry per surface the UI inventory walks. Every rendered heading, tab, tile, column, chip, button, summary and link on a built surface must match an entry in its allow list (exact string, or a regular expression when prefixed re:). Page-level prose (outside repeaters) must fit the budget. Claude Code never edits this file: a violation is fixed by removing what violates it, or reported for review with the case. `status` is flipped to built by the prompt that builds the surface; `enforceAll` is flipped by prompt 49, after which any inventory surface without a contract fails. Controls (buttons, links, chips) inside a repeater are items and are measured under `rows`, not against the surface's allow lists. An element matching `.step-title` is reported as `title` and measured against rules.stepTitleMaxWords, never as a heading. A surface may override the row budget with `rowBudget`.",
+  "version": 1,
+  "enforceAll": false,
+  "rules": {
+    "sentenceMaxWords": 25,
+    "rowMaxSentences": 2,
+    "rowMaxWords": 30,
+    "blockedReasonMaxWords": 12,
+    "stepTitleMaxWords": 9,
+    "tipMaxWords": 25
+  },
+  "repeaters": [
+    ".plan-row",
+    "tr",
+    ".wave",
+    ".export-card",
+    ".assumption",
+    ".ring"
+  ],
+  "mockStates": [
+    "signedOut",
+    "noScan",
+    "scanning",
+    "scanned"
+  ],
+  "surfaces": [
+    {
+      "id": "shell",
+      "name": "Header",
+      "status": "planned",
+      "reach": {
+        "route": "/plan",
+        "state": "scanned",
+        "root": "header.app"
+      },
+      "allow": {
+        "headings": [],
+        "tabs": [
+          "Today",
+          "Plan",
+          "Export"
+        ],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "re:^Re-scan( · scanned .+)?$",
+          "Light theme",
+          "Dark theme",
+          "Account",
+          "Sign out",
+          "Forget this tenant"
+        ],
+        "summaries": [],
+        "links": [
+          "IAMAI",
+          "Recovery card"
+        ]
+      },
+      "budget": {
+        "sentences": 0,
+        "words": 12
+      }
+    },
+    {
+      "id": "connect.signedOut",
+      "name": "Connect (signed out)",
+      "status": "planned",
+      "reach": {
+        "route": "/connect",
+        "state": "signedOut"
+      },
+      "allow": {
+        "headings": [
+          "Connect a tenant"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "Sign in with Microsoft"
+        ],
+        "summaries": [
+          "What IAMAI asks for, and how to remove it"
+        ],
+        "links": [
+          "How IAMAI works →"
+        ]
+      },
+      "budget": {
+        "sentences": 6,
+        "words": 110
+      }
+    },
+    {
+      "id": "connect.signedOut.permissions",
+      "name": "Connect (signed out) / permissions expanded",
+      "status": "planned",
+      "reach": {
+        "route": "/connect",
+        "state": "signedOut",
+        "actions": [
+          {
+            "click": "summary",
+            "text": "What IAMAI asks for"
+          }
+        ],
+        "root": "details.permissions"
+      },
+      "allow": {
+        "headings": [
+          "Removing it"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [
+          "Permission",
+          "What IAMAI reads",
+          "Without it"
+        ],
+        "chips": [],
+        "buttons": [],
+        "summaries": [
+          "What IAMAI asks for, and how to remove it"
+        ],
+        "links": []
+      },
+      "budget": {
+        "sentences": 8,
+        "words": 140
+      },
+      "forbid": [
+        "Application.Read.All",
+        "Used for",
+        "Requested, not yet used",
+        "openid",
+        "offline_access"
+      ],
+      "rowBudget": {
+        "sentences": 3,
+        "words": 45
+      }
+    },
+    {
+      "id": "connect.noScan",
+      "name": "Connect (signed in, no scan)",
+      "status": "planned",
+      "reach": {
+        "route": "/connect",
+        "state": "noScan"
+      },
+      "allow": {
+        "headings": [
+          "Connect a tenant"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "Sign out",
+          "Scan tenant",
+          "change"
+        ],
+        "summaries": [],
+        "links": [
+          "how to make one →",
+          "How IAMAI works →"
+        ]
+      },
+      "budget": {
+        "sentences": 5,
+        "words": 80
+      }
+    },
+    {
+      "id": "connect.scanning",
+      "name": "Connect (scanning)",
+      "status": "planned",
+      "reach": {
+        "route": "/connect",
+        "state": "scanning"
+      },
+      "allow": {
+        "headings": [
+          "Connect a tenant"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "Stop"
+        ],
+        "summaries": [],
+        "links": []
+      },
+      "budget": {
+        "sentences": 4,
+        "words": 60
+      }
+    },
+    {
+      "id": "connect.scanned",
+      "name": "Connect (scanned)",
+      "status": "planned",
+      "reach": {
+        "route": "/connect",
+        "state": "scanned"
+      },
+      "allow": {
+        "headings": [
+          "Connect a tenant"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "Sign out",
+          "Open the plan →",
+          "change"
+        ],
+        "summaries": [],
+        "links": [
+          "how to make one →",
+          "How IAMAI works →"
+        ]
+      },
+      "budget": {
+        "sentences": 4,
+        "words": 70
+      }
+    },
+    {
+      "id": "today",
+      "name": "Today",
+      "status": "planned",
+      "reach": {
+        "route": "/today",
+        "state": "scanned"
+      },
+      "allow": {
+        "headings": [
+          "Today"
+        ],
+        "tabs": [],
+        "tiles": [
+          "MFA proven",
+          "Registered, unproven",
+          "No method",
+          "Not active"
+        ],
+        "columns": [
+          "Person",
+          "State",
+          "Strongest method",
+          "Evidence"
+        ],
+        "chips": [
+          "Proven",
+          "Likely works",
+          "Never prompted",
+          "Possibly broken",
+          "No method",
+          "Not active",
+          "Admin",
+          "Guest"
+        ],
+        "buttons": [
+          "Export CSV",
+          "Previous",
+          "Next"
+        ],
+        "summaries": [],
+        "links": [
+          "Everything the scan read →"
+        ]
+      },
+      "budget": {
+        "sentences": 3,
+        "words": 60
+      },
+      "forbid": [
+        "Legend",
+        "Rollout",
+        "To set up before enforcement",
+        "Sign-in records: complete"
+      ]
+    },
+    {
+      "id": "inventory",
+      "name": "Inventory",
+      "status": "planned",
+      "reach": {
+        "route": "/inventory",
+        "state": "scanned",
+        "exclude": ".tab-panel"
+      },
+      "allow": {
+        "headings": [
+          "Everything the scan read"
+        ],
+        "tabs": [
+          "Policies",
+          "Named locations",
+          "Authentication",
+          "People",
+          "Groups",
+          "Devices",
+          "Roles",
+          "Apps",
+          "Licensing",
+          "Sign-in records"
+        ],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [],
+        "summaries": [],
+        "links": [
+          "← Today"
+        ]
+      },
+      "budget": {
+        "sentences": 0,
+        "words": 10
+      }
+    },
+    {
+      "id": "inventory.tab",
+      "name": "Inventory / any tab",
+      "status": "planned",
+      "reach": {
+        "route": "/inventory",
+        "state": "scanned",
+        "eachTab": true,
+        "root": "visiblePanel"
+      },
+      "allow": {
+        "headings": [
+          "re:^(Policies|Named locations|Authentication|People|Groups|Devices|Roles|Apps|Licensing|Sign-in records)$"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [
+          "re:^[A-Z][A-Za-z /-]{1,28}$"
+        ],
+        "chips": [
+          "re:^[A-Za-z -]{2,20}$"
+        ],
+        "buttons": [
+          "Export CSV",
+          "Show all roles",
+          "Previous",
+          "Next"
+        ],
+        "summaries": [],
+        "links": []
+      },
+      "budget": {
+        "sentences": 2,
+        "words": 40
+      },
+      "forbid": [
+        "Everything the scan read, as found",
+        "sign-in records for"
+      ],
+      "rowBudget": {
+        "sentences": 3,
+        "words": 60
+      }
+    },
+    {
+      "id": "plan",
+      "name": "Plan",
+      "status": "planned",
+      "reach": {
+        "route": "/plan",
+        "state": "scanned",
+        "exclude": ".step-body, details > *:not(summary)"
+      },
+      "allow": {
+        "headings": [
+          "Plan",
+          "re:^Before anything else( · .+)?$",
+          "re:^Wave \\d · .+ → .+ · .+$"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [
+          "In place",
+          "Ready",
+          "Blocked",
+          "Scheduled",
+          "Report-only",
+          "Enforced",
+          "Skipped",
+          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|time zone) .{1,60}$"
+        ],
+        "buttons": [
+          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|time zone) .{1,60}$"
+        ],
+        "summaries": [
+          "re:^Already in place \\(\\d+\\)$",
+          "re:^Doesn't apply here \\(\\d+\\)$",
+          "re:^Housekeeping \\(\\d+\\)$"
+        ],
+        "links": [
+          "Plan settings"
+        ]
+      },
+      "budget": {
+        "sentences": 4,
+        "words": 90
+      },
+      "forbid": [
+        "Do this next",
+        "What needs attention before you start",
+        "Nothing has started yet",
+        "The journey",
+        "Planned against actual",
+        "History",
+        "Safe today",
+        "Why not fully",
+        "Recovery card link",
+        "help-desk contacts",
+        "hours of admin time"
+      ]
+    },
+    {
+      "id": "plan.settings",
+      "name": "Plan / settings",
+      "status": "planned",
+      "reach": {
+        "route": "/plan",
+        "state": "scanned",
+        "actions": [
+          {
+            "click": "a",
+            "text": "Plan settings"
+          }
+        ],
+        "root": ".plan-settings"
+      },
+      "allow": {
+        "headings": [
+          "Plan settings"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "Close"
+        ],
+        "summaries": [],
+        "links": []
+      },
+      "budget": {
+        "sentences": 3,
+        "words": 45
+      },
+      "forbid": [
+        "Pace",
+        "Change windows",
+        "Notice",
+        "Holidays",
+        "Revert threshold"
+      ]
+    },
+    {
+      "id": "plan.footer",
+      "name": "Plan / footer expanded",
+      "status": "planned",
+      "reach": {
+        "route": "/plan",
+        "state": "scanned",
+        "actions": [
+          {
+            "click": "summary",
+            "text": "Already in place"
+          },
+          {
+            "click": "summary",
+            "text": "Doesn't apply here"
+          },
+          {
+            "click": "summary",
+            "text": "Housekeeping"
+          }
+        ],
+        "root": ".plan-footer"
+      },
+      "allow": {
+        "headings": [],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [
+          "In place",
+          "Skipped"
+        ],
+        "buttons": [
+          "JSON"
+        ],
+        "summaries": [
+          "re:^Already in place \\(\\d+\\)$",
+          "re:^Doesn't apply here \\(\\d+\\)$",
+          "re:^Housekeeping \\(\\d+\\)$"
+        ],
+        "links": [
+          "re:^.{3,60}$"
+        ]
+      },
+      "budget": {
+        "sentences": 20,
+        "words": 320
+      },
+      "forbid": [
+        "Could not be evaluated",
+        "How this tenant is organised",
+        "Renaming a policy changes no evaluation"
+      ],
+      "rowBudget": {
+        "sentences": 2,
+        "words": 40
+      }
+    },
+    {
+      "id": "plan.step",
+      "name": "Plan / one step opened",
+      "status": "planned",
+      "reach": {
+        "route": "/plan",
+        "state": "scanned",
+        "actions": [
+          {
+            "click": ".plan-row",
+            "nth": 1
+          }
+        ],
+        "root": ".step-body",
+        "exclude": "details > *:not(summary)"
+      },
+      "allow": {
+        "headings": [
+          "Why",
+          "Who this touches",
+          "Do it",
+          "Dates",
+          "Done when",
+          "If it goes wrong",
+          "Tell your people"
+        ],
+        "tabs": [
+          "Portal steps",
+          "JSON",
+          "PowerShell"
+        ],
+        "tiles": [],
+        "columns": [],
+        "chips": [
+          "In place",
+          "Ready",
+          "Blocked",
+          "Scheduled",
+          "Report-only",
+          "Enforced",
+          "Skipped",
+          "re:^CIS \\d+(\\.\\d+)?$"
+        ],
+        "buttons": [
+          "Download JSON",
+          "Copy",
+          "Export CSV",
+          "Close"
+        ],
+        "summaries": [
+          "More"
+        ],
+        "links": [
+          "Learn →",
+          "Recovery card →",
+          "re:^.{3,60} →$"
+        ]
+      },
+      "budget": {
+        "sentences": 34,
+        "words": 520
+      },
+      "forbid": [
+        "What the last 30 days say",
+        "Why now",
+        "Waiting on this",
+        "Answer this",
+        "Scheduled date",
+        "unknown here",
+        "What could go wrong",
+        "Exit criteria",
+        "Ring plan",
+        "help-desk contact",
+        "minutes of admin time",
+        "Proposed name:"
+      ]
+    },
+    {
+      "id": "plan.step.more",
+      "name": "Plan / one step / More expanded",
+      "status": "planned",
+      "reach": {
+        "route": "/plan",
+        "state": "scanned",
+        "actions": [
+          {
+            "click": ".plan-row",
+            "nth": 1
+          },
+          {
+            "click": "summary",
+            "text": "More"
+          }
+        ],
+        "root": ".step-body details.more"
+      },
+      "allow": {
+        "headings": [
+          "What could go wrong",
+          "Prerequisites",
+          "What waits on this",
+          "Exit criteria",
+          "For the help desk",
+          "For your manager",
+          "What IAMAI can't see"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [
+          "applies here"
+        ],
+        "buttons": [
+          "Copy as prompt",
+          "Copy",
+          "Skip this step"
+        ],
+        "summaries": [
+          "More"
+        ],
+        "links": [
+          "Learn →",
+          "re:^.{3,60} →$"
+        ]
+      },
+      "budget": {
+        "sentences": 60,
+        "words": 1000
+      },
+      "forbid": [
+        "Answer this",
+        "unknown here"
+      ]
+    },
+    {
+      "id": "export",
+      "name": "Export",
+      "status": "planned",
+      "reach": {
+        "route": "/export",
+        "state": "scanned"
+      },
+      "allow": {
+        "headings": [
+          "Export",
+          "Print or save as PDF",
+          "Calendar",
+          "Plan file",
+          "CSV",
+          "Prompts for your own assistant",
+          "Grounding bundle"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "Print or save as PDF",
+          "Download calendar (ICS)",
+          "Save plan file",
+          "Load a plan file",
+          "Today as CSV",
+          "re:^[A-Z][a-z -]{2,24} as CSV$",
+          "Download every prompt",
+          "re:^Copy prompt$",
+          "Download the bundle"
+        ],
+        "summaries": [
+          "See the prompts"
+        ],
+        "links": []
+      },
+      "budget": {
+        "sentences": 9,
+        "words": 160
+      },
+      "rowBudget": {
+        "sentences": 3,
+        "words": 60
+      }
+    },
+    {
+      "id": "recovery",
+      "name": "Recovery card",
+      "status": "planned",
+      "reach": {
+        "route": "/recovery",
+        "state": "scanned"
+      },
+      "allow": {
+        "headings": [
+          "Recovery card",
+          "Emergency access accounts",
+          "Where the credential is",
+          "Turn a Conditional Access policy off",
+          "Put a policy back to report-only",
+          "If the portal itself blocks you",
+          "This tenant"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "Print this card"
+        ],
+        "summaries": [],
+        "links": []
+      },
+      "budget": {
+        "sentences": 40,
+        "words": 600
+      }
+    },
+    {
+      "id": "how",
+      "name": "How IAMAI works",
+      "status": "planned",
+      "reach": {
+        "route": "/how",
+        "state": "scanned"
+      },
+      "allow": {
+        "headings": [
+          "How IAMAI works",
+          "Permissions",
+          "What IAMAI reads",
+          "Every check",
+          "Baseline packages",
+          "Limits"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [
+          "Permission",
+          "What IAMAI reads",
+          "Without it",
+          "What it looks for",
+          "If it fails",
+          "Why it matters",
+          "Needs",
+          "Source",
+          "re:^[A-Z][A-Za-z /-]{1,28}$"
+        ],
+        "chips": [
+          "Must fix",
+          "Recommended",
+          "Note",
+          "re:^(v1\\.0|beta)$"
+        ],
+        "buttons": [],
+        "summaries": [],
+        "links": [
+          "re:^.{3,80}$"
+        ]
+      },
+      "budget": {
+        "sentences": 24,
+        "words": 380
+      },
+      "forbid": [
+        "The same checks again",
+        "Application.Read.All",
+        "Requested, not yet used"
+      ],
+      "rowBudget": {
+        "sentences": 4,
+        "words": 60
+      }
+    }
+  ]
+}

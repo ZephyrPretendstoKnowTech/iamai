@@ -13,7 +13,7 @@
 // Runs against the synthetic tenant (?dev=1&mock=1). The dev panel that flag
 // also enables is excluded by selector, as is anything print-only.
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { sourceFingerprint } from '../src/fingerprint.ts'
 
@@ -26,6 +26,13 @@ const PORT = Number(process.env.INVENTORY_PORT ?? 5201)
 const CDP_PORT = Number(process.env.INVENTORY_CDP_PORT ?? 9446)
 const BASE = `http://localhost:${PORT}/rollout/?dev=1&mock=1`
 const OUT = 'docs/qa/ui-inventory.md'
+// The surface contract (prompt 46 Part 1). Every surface it marks built is
+// reached the way it says and captured under its name; the lint then holds
+// each capture to the contract's allow lists and budgets. Claude Code never
+// edits the contract; the env override exists so lint-mutations can point the
+// walk at a scratch copy and prove the machinery fires.
+const CONTRACTS = process.env.CONTRACTS_JSON ?? 'docs/qa/page-contracts.json'
+const contracts = JSON.parse(readFileSync(CONTRACTS, 'utf8'))
 
 const CANDIDATES = [
   process.env.CHROME,
@@ -122,10 +129,15 @@ const clickText = (selector, re) =>
 // `rootExpr` resolves the element to read; `excludeSel`, when given, drops any
 // descendant inside it (used to keep Setup's page chrome apart from the eight
 // questions, each of which is walked as its own surface).
-const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel = '') => `(() => {
+const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel = '', opts = {}) => `(() => {
   const root = ${rootExpr}
   if (!root) return null
   const EXCLUDE = ${JSON.stringify(excludeSel)}
+  // Contract inputs (prompt 46 Part 1). The repeater selectors and the forbid
+  // list come from the contract file, never from this script, so the walk and
+  // the lint cannot disagree about what a row is.
+  const REPEATERS = ${JSON.stringify(opts.repeaters ?? null)}
+  const FORBID = ${JSON.stringify(opts.forbid ?? [])}
   const skipped = (el) =>
     el.closest('.devtools, .print-only, [hidden]') !== null || (EXCLUDE !== '' && el.closest(EXCLUDE) !== null)
   const vis = (el) => !skipped(el) && el.offsetParent !== null || (el.tagName === 'SUMMARY' && !skipped(el))
@@ -152,7 +164,10 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   }
   const uniq = (a) => [...new Set(a.filter(Boolean))]
 
-  const headings = uniq([...root.querySelectorAll('h1,h2,h3,h4')].filter(vis).map(txt))
+  // An element matching .step-title is a title, measured against the contract's
+  // stepTitleMaxWords, never a heading (page-contracts.json, $comment).
+  const headings = uniq([...root.querySelectorAll('h1,h2,h3,h4')].filter(vis).filter((e) => !e.classList.contains('step-title')).map(txt))
+  const titles = uniq([...root.querySelectorAll('.step-title')].filter(vis).map(txt))
   const tabs = uniq([...root.querySelectorAll('[role=tab], .tab')].filter(vis).map((e) => txt(e)))
   // A button inside a Setup question is an answer, not a page action.
   const allButtons = [...root.querySelectorAll('button, a.btn, a.button-like, [role=button]')]
@@ -231,6 +246,39 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   }
 
   const words = (list) => list.join(' ').split(/\\s+/).filter(Boolean).length
+
+  // ---- contract measurements (prompt 46 Part 1 item 3) ----
+  //
+  // rows: every element matching a contract repeater, measured on its own text
+  // with nested repeaters removed, so a wave header is measured apart from the
+  // plan rows inside it and a table apart from its rows.
+  const repSel = REPEATERS && REPEATERS.length > 0 ? REPEATERS.join(', ') : null
+  const rows = []
+  if (repSel) {
+    for (const el of [...root.querySelectorAll(repSel)].filter(vis)) {
+      const c = el.cloneNode(true)
+      c.querySelectorAll(repSel).forEach((n) => n.remove())
+      c.querySelectorAll('.tab-badge, .stat-num, .infotip, .icon, svg, .ring-mark').forEach((n) => n.remove())
+      const text = stabilise((c.textContent || '').replace(/\\s+/g, ' ').trim())
+      if (!text) continue
+      const ss = text.split(/(?<=[.!?])\\s+(?=[A-Z0-9"'])/).map((x) => x.trim()).filter((x) => x.length > 1)
+      rows.push({ selector: REPEATERS.find((r) => el.matches(r)) ?? repSel, text: text.slice(0, 140), sentences: ss.length, words: words([text]) })
+    }
+  }
+  // forbidHits: a contract forbid string anywhere in the surface's own text,
+  // exact case. The lists are authored precisely; a case-insensitive match on
+  // "History" would fire on prose about history.
+  const rootClone = root.cloneNode(true)
+  if (EXCLUDE !== '') rootClone.querySelectorAll(EXCLUDE).forEach((n) => n.remove())
+  rootClone.querySelectorAll('.devtools, .print-only, [hidden]').forEach((n) => n.remove())
+  const rootText = stabilise((rootClone.textContent || '').replace(/\\s+/g, ' '))
+  const forbidHits = FORBID.filter((f) => rootText.includes(f))
+  // pageProse: sentences and words outside every repeater, which is what the
+  // contract's budget bounds. Rows are budgeted separately.
+  const proseSel = repSel ?? REPEATER
+  const pageTexts = blockEls.filter((e) => e.closest(proseSel) === null).map(txt).filter((t) => t.length > 0 && !claimed.has(t))
+  const pageSentences = pageTexts.flatMap((t) => t.split(/(?<=[.!?])\\s+(?=[A-Z0-9"'])/)).map((x) => x.trim()).filter((x) => x.length > 1)
+  const pageProse = { sentences: pageSentences.length, words: words(pageSentences) }
   // Controls a screen reader would announce as nameless (prompt 40 §23). The
   // sidebar chevron was reported unlabelled; it is not, and capturing the check
   // here is what makes that answer hold rather than be re-argued each review.
@@ -261,17 +309,17 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   const wordCounts = {}
   for (const [k, v] of Object.entries(sections)) wordCounts[k] = words(v)
   wordCounts.total = Object.values(wordCounts).reduce((a, b) => a + b, 0)
-  return { ...sections, nav, primary, tables, occurrences, occurrencesAll, wordCounts, unnamedControls }
+  return { ...sections, titles, nav, primary, tables, occurrences, occurrencesAll, wordCounts, unnamedControls, rows, forbidHits, pageProse }
 })()`
 
 const surfaces = []
-const capture = async (name, note = '', rootExpr, excludeSel) => {
-  const data = await evaluate(extractIn(rootExpr, excludeSel))
+const capture = async (name, note = '', rootExpr, excludeSel, extra = {}, opts = {}) => {
+  const data = await evaluate(extractIn(rootExpr, excludeSel, opts))
   if (!data) {
     console.warn(`inventory: ${name} rendered nothing`)
     return
   }
-  surfaces.push({ name, note, ...data })
+  surfaces.push({ name, note, ...data, ...extra })
   console.log(`  ${name}: ${data.wordCounts.total} words`)
 }
 
@@ -355,6 +403,53 @@ await goto('/roadmap/prompts');  await capture('Prompt pack')
 // #/inventory is not a page: App.tsx renders the same MfaViabilityScreen as
 // #/scan with view='inventory', so it is already captured as Scan / Inventory
 // tab. Walking it again would count Scan's chrome a third time.
+
+// ---- the contract walk (prompt 46 Part 1 item 1) ----
+//
+// Every surface the contract marks built is reached the way the contract says:
+// its route, its mock state, its click actions, its root and its exclusions.
+// Planned surfaces are skipped. Until enforceAll is true the legacy walk above
+// keeps running unchanged, so the lint keeps seeing the pages that still exist.
+const built = (contracts.surfaces ?? []).filter((c) => c.status === 'built')
+console.log(`inventory: ${built.length} built surface(s) in the contract, ${(contracts.surfaces ?? []).length - built.length} planned`)
+
+const gotoState = async (route, state) => {
+  await send('Page.navigate', { url: `${BASE}&state=${encodeURIComponent(state ?? 'scanned')}#${route}` })
+  await sleep(1600)
+}
+const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const clickNth = (selector, nth) =>
+  evaluate(
+    `(() => { const els = [...document.querySelectorAll(${JSON.stringify(selector)})].filter((e) => e.offsetParent !== null || e.tagName === 'SUMMARY'); const el = els[${Number(nth) - 1}]; if (el) el.click(); return !!el })()`,
+  )
+const rootExprOf = (root) => {
+  if (root === undefined || root === null || root === 'main.page') return undefined
+  if (root === 'visiblePanel') return VISIBLE_PANEL
+  return `document.querySelector(${JSON.stringify(root)})`
+}
+for (const c of built) {
+  const r = c.reach ?? {}
+  await gotoState(r.route ?? '/plan', r.state)
+  for (const a of r.actions ?? []) {
+    const ok = a.nth ? await clickNth(a.click, a.nth) : await clickText(a.click, `/${escapeRe(a.text ?? '')}/`)
+    if (!ok) console.warn(`inventory: ${c.name}: nothing matched action ${JSON.stringify(a)}`)
+    await sleep(700)
+  }
+  const meta = { contract: c.id, state: r.state ?? 'scanned', route: r.route ?? '/plan' }
+  const opts = { repeaters: contracts.repeaters ?? [], forbid: c.forbid ?? [] }
+  if (r.eachTab) {
+    const tabLabels = await evaluate(
+      `[...document.querySelectorAll('main.page [role=tab], main.page .tab')].filter((e) => e.offsetParent !== null).map((e) => (e.textContent || '').replace(/\\s+/g, ' ').replace(/\\d+$/, '').trim())`,
+    )
+    for (const label of tabLabels ?? []) {
+      if (!(await clickText('.tab, [role=tab]', `/^${escapeRe(label)}/`))) continue
+      await sleep(900)
+      await capture(`${c.name} — ${label}`, `contract ${c.id}`, rootExprOf(r.root ?? 'visiblePanel'), r.exclude, meta, opts)
+    }
+  } else {
+    await capture(c.name, `contract ${c.id}`, rootExprOf(r.root), r.exclude, meta, opts)
+  }
+}
 
 // ---- cross-surface tables ----
 //
@@ -509,6 +604,24 @@ const body = surfaces
   })
   .join('\n')
 
+// Contract budgets (prompt 46 Part 1 item 6): measured against allowed, per
+// built surface, so a reviewer can see headroom without running anything.
+const matchesAllow = (item, allow) => allow.some((a) => (a.startsWith('re:') ? new RegExp(a.slice(3)).test(item) : a === item))
+const KINDS = ['headings', 'tabs', 'tiles', 'columns', 'chips', 'buttons', 'summaries', 'links']
+const contractRows = surfaces
+  .filter((s) => s.contract)
+  .map((s) => {
+    const c = (contracts.surfaces ?? []).find((x) => x.id === s.contract)
+    if (!c) return `| ${s.name} | _no contract_ | | | | |`
+    const misses = KINDS.flatMap((k) => (s[k] ?? []).filter((item) => !matchesAllow(item, c.allow?.[k] ?? [])).map((item) => `${k}: ${item}`))
+    const rb = c.rowBudget ?? { sentences: contracts.rules.rowMaxSentences, words: contracts.rules.rowMaxWords }
+    const overRows = (s.rows ?? []).filter((r) => r.sentences > rb.sentences || r.words > rb.words).length
+    const prose = s.pageProse ?? { sentences: 0, words: 0 }
+    const fmt = (n, max) => (n > max ? `**${n}** / ${max}` : `${n} / ${max}`)
+    return `| ${s.name} | ${fmt(prose.sentences, c.budget.sentences)} | ${fmt(prose.words, c.budget.words)} | ${overRows} of ${(s.rows ?? []).length} | ${(s.forbidHits ?? []).length} | ${misses.length}${misses.length ? ` (${misses.slice(0, 3).join('; ')})` : ''} |`
+  })
+const contractTable = contractRows.length > 0 ? contractRows.join('\n') : '| _no built surfaces yet_ | | | | | |'
+
 const totalWords = surfaces.reduce((n, s) => n + s.wordCounts.total, 0)
 const doc = `# UI inventory
 
@@ -560,6 +673,15 @@ Where the forward action sits. More than one row is more than one pattern.
 | Placement | Surfaces | Labels | Where |
 |---|---|---|---|
 ${navTable || '| _none_ | | | |'}
+
+## Contract budgets
+
+Measured against \`docs/qa/page-contracts.json\`, one row per built surface. Bold
+means over budget; the lint fails on it. Planned surfaces are not walked.
+
+| Surface | Prose sentences / budget | Prose words / budget | Rows over row budget | Forbid hits | Allow-list misses |
+|---|---|---|---|---|---|
+${contractTable}
 
 ## Cross-surface: every action label
 
