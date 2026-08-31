@@ -22,8 +22,8 @@ import { deniedSources, useScanRunner } from '../scan/useScanRunner.ts'
 import type { SectionRow } from '../scan/useScanRunner.ts'
 
 /** Until prompt 49 lands How IAMAI works, the footer link opens the reads page and the package section keeps its own page. */
-const HOW_HREF = '#/reads'
-const PACKAGE_HREF = '#/package'
+const HOW_HREF = '#/how'
+const PACKAGE_HREF = '#/how#package'
 
 export function Connect(props: {
   account: AccountInfo | null

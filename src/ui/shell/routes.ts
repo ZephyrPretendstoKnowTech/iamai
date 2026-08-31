@@ -13,6 +13,7 @@ export type Route =
   | 'connect'
   | 'plan'
   | 'export'
+  | 'how'
   | 'today'
   | 'inventory'
   | 'recovery'
@@ -37,7 +38,10 @@ export const REDIRECT: Record<string, Route> = {
   readiness: 'today',
   mapping: 'plan',
   coverage: 'plan',
-  'baseline/package': 'package',
+  checks: 'how',
+  reads: 'how',
+  licensing: 'how',
+  naming: 'how',
 }
 
 const DEV = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
@@ -46,6 +50,7 @@ export const VALID = new Set<string>([
   'connect',
   'plan',
   'export',
+  'how',
   'today',
   'inventory',
   'recovery',
@@ -83,6 +88,8 @@ export function resolveHash(hash: string): { route: Route; redirect: string | nu
   const step = STEP_LINK.exec(h)
   if (step) return { route: 'plan', redirect: `#/plan/${step[1]}` }
   if (PLAN_STEP.test(h)) return { route: 'plan', redirect: null }
+  // The baseline-package how-to is an anchor on How (prompt 49 item 11).
+  if (h === 'package' || h === 'baseline/package') return { route: 'how', redirect: '#/how#package' }
   const to = REDIRECT[h]
   if (to) return { route: to, redirect: `#/${to}` }
   if (VALID.has(h)) return { route: h as Route, redirect: null }

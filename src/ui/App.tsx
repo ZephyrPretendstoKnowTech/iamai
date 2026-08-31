@@ -15,13 +15,14 @@ import { LicensingPage } from './pages/LicensingPage.tsx'
 import { RoadmapPage } from './pages/RoadmapPage.tsx'
 import { Plan } from './surfaces/Plan.tsx'
 import { Export } from './surfaces/Export.tsx'
+import { How } from './surfaces/How.tsx'
 import { Today } from './surfaces/Today.tsx'
 import { Inventory } from './surfaces/Inventory.tsx'
 import { TODAY } from '../copy/today.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 import { ChecksPage } from './pages/ChecksPage.tsx'
 import { NamingPage } from './pages/NamingPage.tsx'
-import { RecoveryCard } from './pages/RecoveryCard.tsx'
+import { Recovery } from './surfaces/Recovery.tsx'
 import { WhatIamaiReads } from './WhatIamaiReads.tsx'
 import { PackagePage } from './pages/PackagePage.tsx'
 
@@ -285,6 +286,7 @@ export function App() {
             ))}
           {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
           {route === 'export' && <Export scan={lastScan} baseline={baseline} account={account} />}
+          {route === 'how' && <How />}
           {(route === 'roadmap' || route === 'roadmap/prompts') && (
             <RoadmapPage
               scan={lastScan}
@@ -296,7 +298,7 @@ export function App() {
           {route === 'reads' && <WhatIamaiReads />}
           {route === 'checks' && <ChecksPage />}
       {route === 'naming' && <NamingPage scan={lastScan} />}
-      {route === 'recovery' && <RecoveryCard scan={lastScan} />}
+      {route === 'recovery' && <Recovery scan={lastScan} />}
           {route === 'components' && import.meta.env.DEV && (
             <Suspense fallback={null}>
               <ComponentsPage />

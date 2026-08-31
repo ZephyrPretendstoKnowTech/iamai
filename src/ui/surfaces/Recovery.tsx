@@ -19,7 +19,7 @@ import { Button, Callout, Card, EmptyState, LinkButton } from '../components/ind
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 
-export function RecoveryCard({ scan = null }: { scan?: { snapshot: TenantSnapshot; at: string } | null }) {
+export function Recovery({ scan = null }: { scan?: { snapshot: TenantSnapshot; at: string } | null }) {
   const snapshot = scan?.snapshot ?? null
   // The card loads its own Setup answers rather than being handed them, so it
   // renders on its own route with no dependency on the Roadmap having computed
@@ -34,7 +34,7 @@ export function RecoveryCard({ scan = null }: { scan?: { snapshot: TenantSnapsho
     return (
       <section>
         <h2>{RECOVERY.title}</h2>
-        <EmptyState icon="shield" text={RECOVERY.noPlan} action={<LinkButton href="#/scan">{RECOVERY.title}</LinkButton>} />
+        <EmptyState icon="shield" text={RECOVERY.noPlan} action={<LinkButton href="#/connect">{RECOVERY.title}</LinkButton>} />
       </section>
     )
   }
