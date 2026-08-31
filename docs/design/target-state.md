@@ -150,11 +150,29 @@ header line and the assumptions strip.
   line says so in one clause instead of a date.
 - **assumptions strip**, one line, each item a chip that edits in place:
   `Assumes: emergency access Breakglass (1) · exclusions group none yet · sign-in
-  countries US · trusted locations none · service accounts none · time zone Denver`.
-  Editing a chip regenerates the plan. This is Setup. There is no Setup page, no
-  question, no validation block, no portal path here: whatever an assumption is missing
-  becomes the plan's first steps. When no emergency-access candidate is detected the
-  chip reads `emergency access none found — choose`.
+  countries US · trusted locations none · service accounts none · shared devices none ·
+  time zone Denver`. Editing a chip regenerates the plan. This is Setup. There is no
+  Setup page, no validation block, no portal path here: whatever an assumption is
+  missing becomes the plan's first steps.
+
+  Three kinds of chip, and the kind decides whether a question is asked:
+  - **detected with evidence** (time zone from the browser; countries from the
+    sign-ins; exclusions group, trusted locations, shared devices from the tenant):
+    shown as a fact, editable, never asked;
+  - **detected weakly** (emergency access from signals; service accounts from name and
+    behaviour): shown with `confirm` and the evidence that nominated it ("2 signals:
+    name, excluded from every policy"); the steps that depend on it wait for the
+    confirmation and say so;
+  - **cannot be seen**: asked, once, in the same strip, with the evidence that prompted
+    the question and what answering changes: `mail-sending devices: none seen in 30
+    days — any printers or apps send mail? adds an SMTP-relay step` · `people who
+    travel or work abroad: none seen — adds notice and a travel exclusion` · `partner
+    or MSP access: no service-provider sign-ins seen — adds a partner exclusion`.
+    Unanswered means the plan proceeds on the evidence and the step carries the
+    can't-see line; a question is never a gate.
+  One editor pattern for every chip: the picker, then one button, `Save`, at its end.
+  The first Ready row in the plan carries a small `next` mark; there is no other "do
+  this next" anywhere, and the mark moves as rows complete or a re-scan lands.
 - `Plan settings` link (small, right): start date · change freeze from/to. Nothing else.
 
 **Waves**
