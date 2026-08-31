@@ -15,6 +15,7 @@ import type { RuleResult, RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import type { Step } from './types.ts'
+import { BLOCKED_REASON } from '../copy/reasons.ts'
 
 /** Subjects whose blockers hold every step that can deny access (design §2). */
 export const GATING_SUBJECTS: RuleSubject[] = ['breakGlass', 'exclusionGroup']
@@ -136,12 +137,12 @@ export function attachWarnings(report: SubjectReport, host: Step): void {
   host.impact = `${host.impact} ${BLOCKER_STEP.alsoRecommended(report.warnings.length, first)}`.trim()
 }
 
-/** The sentence a held step shows: the subject, and how many items are open. */
+/** The cause a held step carries: the gating step, in the blocked-reason shape (target-state §8.5). */
 export function gateReason(reports: SubjectReport[]): { stepId: string; label: string } | null {
   for (const subject of GATING_SUBJECTS) {
     const report = reports.find((r) => r.subject === subject)
     if (report && report.blocking.length > 0) {
-      return { stepId: blockerStepId(subject), label: BLOCKER_STEP.blockedReason(SUBJECT[subject] ?? subject, report.blocking.length) }
+      return { stepId: blockerStepId(subject), label: BLOCKED_REASON.after(SUBJECT_PLAIN[subject] ?? SUBJECT[subject] ?? subject) }
     }
   }
   return null

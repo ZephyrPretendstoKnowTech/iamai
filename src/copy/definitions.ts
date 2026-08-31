@@ -116,12 +116,6 @@ export const TILE = {
   phaseProgress: { title: 'Done in this wave', text: 'Steps in this wave already delivered by existing policies or completed since the plan started.' },
 } as const satisfies Record<string, Definition>
 
-/** What the effort figures count (prompt 41 §11). */
-export const EFFORT_DEF = {
-  adminTime: { title: 'Admin time', text: 'Time at the keyboard to make the changes, summed over the steps still to do. It excludes waiting: report-only observation and the registration campaign run on their own.' },
-  contacts: { title: 'Help-desk contacts', text: 'One person asking about one change. A person affected by several changes may contact the help desk several times, so this can exceed the number of people in the tenant.' },
-} as const satisfies Record<string, Definition>
-
 /** The three scores on every finding and step (ux-review-03 §A7). */
 export const SCORE = {
   value: { title: 'Security value', text: 'How much the goal reduces risk, 1 to 5, from the catalogue; raised by one when the tenant shows the exposure it closes.' },

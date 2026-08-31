@@ -5,17 +5,17 @@ import { absoluteDate } from '../copy/dates.ts'
 import { PROGRESS, SCHEDULE_TAB } from '../copy/progress.ts'
 import { ROADMAP } from '../copy/pages.ts'
 import { SECTION } from '../copy/stepContent.ts'
-import { EFFORT, WATCH } from '../copy/comms.ts'
+import { WATCH } from '../copy/comms.ts'
 import { STEP_KIND_LABEL, stepKindLabel } from '../copy/steps.ts'
 import { TRACK } from '../copy/progress.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Schedule } from './schedule.ts'
 import { stepProgress, trackable } from './tracking.ts'
 import type { Step } from './types.ts'
-import { effortFor, watchFor } from './watch.ts'
+import { watchFor } from './watch.ts'
 import { SKIP } from '../copy/skip.ts'
 
-export const CHANGE_RECORD_HEADER = [SCHEDULE_TAB.colStep, ROADMAP.kindLabel, ROADMAP.goalLabel, ROADMAP.whoItTouches, PROGRESS.colPlanned, PROGRESS.colActual, ROADMAP.evidenceLabel, SECTION.rollback, EFFORT.title, WATCH.title]
+export const CHANGE_RECORD_HEADER = [SCHEDULE_TAB.colStep, ROADMAP.kindLabel, ROADMAP.goalLabel, ROADMAP.whoItTouches, PROGRESS.colPlanned, PROGRESS.colActual, ROADMAP.evidenceLabel, SECTION.rollback, WATCH.title]
 
 export function changeRecordRows(steps: Step[], schedule: Schedule, snapshot: TenantSnapshot, nameOf: (id: string) => string, watchThreshold: number): (string | number)[][] {
   const progress = stepProgress(steps, schedule)
@@ -53,7 +53,6 @@ export function changeRecordRows(steps: Step[], schedule: Schedule, snapshot: Te
       row?.actualStart ? absoluteDate(row.actualStart) : PROGRESS.absent,
       evidence,
       st.rollback,
-      effortFor(st).sentence,
       watchFor(st, snapshot, nameOf, watchThreshold)?.sentence ?? '',
     ]
   })

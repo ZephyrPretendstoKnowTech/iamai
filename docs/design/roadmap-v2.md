@@ -191,13 +191,20 @@ assert plan properties against them, in `src/roadmap/fixtures/`:
 | Fixture | Shape | What it must prove |
 |---|---|---|
 | `micro` | 8 users, 1 admin, no P1, security defaults on | Plan is the free-tier ladder; no CA steps; no crash on missing data |
-| `small` | 28 users, 2 admins, P1, 3 policies | 2 rings, 4 weeks, registration campaign sized to 12 users |
-| `mid` | 280 users, 14 admins, mixed P1/P2, 11 policies, 3 legacy-auth service accounts | 3 rings, 8 weeks, service accounts surfaced before the legacy block, per-department pilot |
-| `large` | 4,900 users, 60 admins, hybrid, Intune partial, 40 policies | 4 rings, 12 weeks, cohort populations only, no name lists, policy-count warning |
-| `huge` | 25,000 users, 300 admins, 120 policies, multi-geo | Policy cap warning, plan still renders under 200 ms, campaign length scales, no memory blowup |
-| `messy` | Per-user MFA enforced, security defaults on with CA policies present, 20 disabled policies, 6 report-only, break-glass with SMS only, exclusion group of 400 | Conflicts detected and ordered first; no step proposes something the tenant blocks |
-| `midflight` | Half the plan already applied, two steps applied out of order, one enforced policy later disabled | Progress map correct, regression reopened, no duplicate steps |
-| `hostile` | No sign-in evidence, 403 on registration report, no device data | Every step still produced, with readiness marked unknown and criteria adjusted |
+| `small` | 28 users (24 active), 2 admins, P1, 3 policies | No rings (report-only then everyone), 4 weeks; the same-people rule sets the length |
+| `getiamai` | 13 users, 4 active, 9 never signed in, 1 admin, P1, no policies | 4 weeks at most, no registration window on the critical path, the 9 dormant accounts as Wave 0 housekeeping |
+| `mid` | 280 users (248 active), 14 admins, mixed P1/P2, 11 policies, 3 legacy-auth service accounts | Pilot of 5 then everyone, 8 weeks (the 20-working-day registration window then the same-people chain), service accounts surfaced before the legacy block |
+| `large` | 4,900 users (4,171 active), 60 admins, hybrid, Intune partial, 40 policies | 4 rings, 12 weeks (two change windows a week set it), cohort populations only, no name lists, policy-count warning |
+| `huge` | 25,000 users (21,331 active), 300 admins, 120 policies, multi-geo | 14 weeks: two windows a week, four 7-day rings, two high-disruption steps that cannot share a window; policy cap warning; renders under 400 ms |
+| `messy` | Per-user MFA enforced, security defaults on with CA policies present, 20 disabled policies, 6 report-only, break-glass with SMS only, exclusion group of 400 | 6 weeks; conflicts detected and ordered first; no step proposes something the tenant blocks; policy-count warning at 43 |
+| `midflight` | Half the plan already applied, two steps applied out of order, one enforced policy later disabled | 5 weeks; progress map correct, regression reopened, no duplicate steps |
+| `hostile` | No sign-in evidence, 403 on registration report, no device data (36 active) | Every step still produced, readiness unknown, criteria adjusted; 34 days (5 weeks by rounding): with nothing in the zero class, MFA, device and session changes chain one soak apart |
+
+Lengths are what the schedule rules (target-state §9) compute for each shape, never
+targets: the small band lands at or under 4 weeks, the mid band at or under 8, the
+large fixture at 12; `huge` is above the 500-user ceiling this product is for and
+computes to 14. The binding constraint is the one sentence the plan itself writes
+(`schedule.derivation.criticalPath`), asserted per fixture in properties.test.ts.
 
 Assertions to run over every fixture (property tests, not snapshots):
 - No step's execution can strand the operator or a break-glass account (simulate each step

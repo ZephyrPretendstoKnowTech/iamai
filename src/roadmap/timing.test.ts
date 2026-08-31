@@ -6,7 +6,7 @@ import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { stepIdForGoal } from './generate.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
-import { NOTICE_DEFAULTS, noticeDaysFor } from './timing.ts'
+import { nobodyAffected, noticeDaysFor } from './timing.ts'
 import { PLAIN_TITLES } from '../copy/plain.ts'
 
 test('thin evidence never produces Safe today, and every step says the single reason', () => {
@@ -24,8 +24,13 @@ test('30 days of dense evidence and zero would-be blocks produce Safe today, in 
   const run = runFixture(fixture('small'))
   const transfer = run.steps.find((s) => s.id === stepIdForGoal('block-auth-transfer'))!
   assert.equal(transfer.safeToday, true, transfer.safeVerdict.sentence)
-  assert.equal(transfer.safeVerdict.sentence, 'Nothing in the last 30 days would have been blocked by this. Safe to enforce today, no announcement needed.')
-  assert.equal(transfer.events?.announce, null, 'no announcement for a safe-today step')
+  assert.equal(transfer.safeVerdict.sentence, 'Nothing in the last 30 days would have been blocked by this. Safe to enforce today, with one working day of notice as a courtesy.')
+  // Nobody affected in the records: one working day of notice, as a courtesy,
+  // and no separate reminder because the announcement is the day before.
+  assert.ok(transfer.events?.announce, 'a courtesy announcement for a safe-today step')
+  assert.equal(transfer.events?.noticeDays, 1)
+  assert.equal(transfer.events?.remind, null)
+  assert.match(transfer.events!.announce!.reason, /courtesy/)
   assert.ok(transfer.events?.enforce)
   // A step with people who would be affected is not safe, and says how many.
   const mid = runFixture(fixture('mid'))
@@ -42,12 +47,16 @@ test('every policy step carries announce, remind and enforce with a day, a local
   assert.ok(dated.length > 5)
   for (const s of dated) {
     const e = s.events!
-    assert.ok(['Tuesday', 'Wednesday'].includes(e.enforce.day), `${s.id} enforces on a Tuesday or Wednesday (${e.enforce.day})`)
+    assert.ok(['Tuesday', 'Wednesday', 'Thursday'].includes(e.enforce.day), `${s.id} enforces on a Tuesday, Wednesday or Thursday (${e.enforce.day})`)
     assert.match(e.enforce.time, /^\d\d:\d\d$/)
     assert.ok(e.enforce.reason.length > 0)
     if (!s.safeToday) {
-      assert.ok(e.announce && e.remind, `${s.id} has an announcement and a reminder`)
-      assert.ok(e.announce!.at < e.remind!.at && e.remind!.at < e.enforce.at, `${s.id}: announce, then remind, then enforce`)
+      assert.ok(e.announce, `${s.id} has an announcement`)
+      // The reminder is the working day before; with one working day of notice
+      // that is the announcement itself (target-state §9).
+      if (e.noticeDays > 1) assert.ok(e.remind, `${s.id} has a reminder`)
+      if (e.remind) assert.ok(e.announce!.at < e.remind.at && e.remind.at < e.enforce.at, `${s.id}: announce, then remind, then enforce`)
+      else assert.ok(e.announce!.at < e.enforce.at, `${s.id}: announce, then enforce`)
       // Announcements follow the tenant's rhythm now (prompt 37 §17): a
       // preferred midweek day the tenant actually works, at its quietest
       // working hour. 09:30 is the fallback when the rhythm is unreadable, not
@@ -69,14 +78,14 @@ test('every policy step carries announce, remind and enforce with a day, a local
           `${s.id} announces at ${e.announce!.time}, outside the readable part of a ${rhythm!.workingHours.start} to ${rhythm!.workingHours.end} day`,
         )
       } else {
-        assert.ok(['Tuesday', 'Wednesday'].includes(e.announce!.day), 'announcements go out on a Tuesday or Wednesday')
+        assert.ok(['Monday', 'Tuesday', 'Wednesday', 'Thursday'].includes(e.announce!.day), 'announcements go out Monday to Thursday')
         assert.equal(e.announce!.time, '09:30')
       }
       assert.ok(e.announce!.reason.length > 0, 'the announcement says which day was chosen and why')
-      assert.equal(e.noticeDays, noticeDaysFor(s, NOTICE_DEFAULTS))
+      assert.equal(e.noticeDays, noticeDaysFor(s))
+      assert.ok(['Tuesday', 'Wednesday', 'Thursday'].includes(e.enforce.day), `${s.id} enforces on ${e.enforce.day}`)
       if ((s.score?.disruption ?? 0) >= 4) {
-        assert.equal(e.enforce.day, 'Tuesday', 'a high-disruption change enforces on a Tuesday')
-        assert.ok(e.remindMorning, 'and gets a morning-of reminder')
+        assert.ok(e.remindMorning, 'a high-disruption change gets a morning-of reminder')
       }
     }
   }
@@ -96,7 +105,8 @@ test('a handle-with-care user in scope forces at least five working days of noti
   const f = fixture('small')
   f.mapping.highCareUserIds = [f.snapshot.users[3].id]
   const run = runFixture(f)
-  const touched = run.steps.filter((s) => s.events && s.highCare.userIds.length > 0 && !s.safeToday)
+  // A change the records show affects nobody gets the one-day courtesy notice whoever is in scope.
+  const touched = run.steps.filter((s) => s.events && s.highCare.userIds.length > 0 && !nobodyAffected(s))
   assert.ok(touched.length > 0)
   for (const s of touched) assert.ok(s.events!.noticeDays >= 5, `${s.id}: ${s.events!.noticeDays} days`)
   f.mapping.highCareUserIds = []

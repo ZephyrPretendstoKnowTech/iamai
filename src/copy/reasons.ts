@@ -29,3 +29,23 @@ export const NOT_ASSESSED = {
   noGoal: 'No security goal in the catalogue matches this policy',
   agentIdentity: 'An agent-identity policy; IAMAI does not assess these yet',
 }
+
+/**
+ * The one binding reason a blocked row shows (target-state §8.5, prompt 46
+ * item 16): at most twelve words, in one of three shapes. The rest of the
+ * reasons stay on the step, under More.
+ */
+export const BLOCKED_REASON_MAX_WORDS = 12
+export const BLOCKED_REASON = {
+  after: (stepTitle: string): string => `after: ${stepTitle}`,
+  reaches: (measure: string, threshold: string, now: string): string => `when ${measure} reaches ${threshold} (now ${now})`,
+  exist: (n: number, thing: string, now: number): string => `when ${count(n, thing)} exist${n === 1 ? 's' : ''} (now ${now})`,
+}
+
+/** The measure a readiness threshold is stated against, by family. */
+export const READINESS_MEASURE: Record<string, string> = {
+  mfa: 'MFA readiness',
+  guest: 'guest MFA readiness',
+  admin: 'admin readiness',
+  device: 'device readiness',
+}

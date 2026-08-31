@@ -9,7 +9,7 @@ import { runFixture } from './fixtures/run.ts'
 import { audiencesFor, bulletinsFor, commsPlanRows, monthlyWarnings, recipientRows } from './comms.ts'
 import type { CommsContext } from './comms.ts'
 import { groundingBundle, promptFor, promptPack, stepContext } from './prompts.ts'
-import { effortFor, planEffort, watchFor } from './watch.ts'
+import { watchFor } from './watch.ts'
 import { buildIcs } from './ics.ts'
 import { adminUserIds } from '../roles.ts'
 import type { Step } from './types.ts'
@@ -136,14 +136,6 @@ test('the watch reads per-day failures after enforcement against the threshold; 
       f.snapshot.evidencePolicyResults.pop()
     }
   }
-  const e = effortFor(steps.find((s) => s.kind === 'create' && s.status !== 'done')!)
-  assert.ok(e.minutes >= 15 && /about \d+ minutes of admin time/.test(e.sentence))
-  const total = planEffort(steps)
-  // The total names the steps it adds up, so a reader can check it against the
-  // cards on screen (prompt 41 §11, review-09 finding 4).
-  assert.ok(total.minutes > 0)
-  assert.match(total.sentence, /^Across the \d+ steps still to do: about \d+ (minutes|hours) of admin time, and about \d+ help-desk contacts?\.$/)
-  assert.equal(total.steps, steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').length)
   const ics = buildIcs(steps, 'Fixture', f.planId, 5)
   assert.match(ics, /Rollback: /)
   assert.match(ics, /Watch: more than 5% of the affected people/)

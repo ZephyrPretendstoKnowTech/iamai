@@ -12,7 +12,7 @@ import type { SizeBand } from './constants.ts'
 import { ringBandFor } from './rings.ts'
 import { waitingOnSetup as waitingOnSetupQ } from '../derive/sets.ts'
 import { promptsPeople } from './strand.ts'
-import { toEnforcementDay as enforcementDay } from './timing.ts'
+import { addWorkingDays, nobodyAffected, toEnforcementDay as enforcementDay } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import { CRITICAL, DEPENDENCY } from '../copy/schedule.ts'
 import { PHASE_NAME } from '../copy/steps.ts'
@@ -43,7 +43,7 @@ export type Dependency = {
   reason: string
 }
 
-export type ConstraintKind = 'none' | 'verification' | 'dependency' | 'rings' | 'cap' | 'freeze' | 'soft' | 'prerequisites' | 'scheduled' | 'phase'
+export type ConstraintKind = 'none' | 'verification' | 'dependency' | 'rings' | 'cap' | 'freeze' | 'soft' | 'prerequisites' | 'phase'
 
 export type Derivation = {
   /** The one sentence for the Overview (§2). */
@@ -77,8 +77,8 @@ export type Schedule = {
   weeks: number
   /** Within the band's expected length (a week of slack allowed). */
   withinBand: boolean
-  /** Registration and verification window; 0 days once verification is complete. */
-  verification: { start: string; end: string; days: number; complete: boolean }
+  /** The registration window (target-state §9): calendar days and working days; 0 once verification is complete. */
+  verification: { start: string; end: string; days: number; workingDays: number; complete: boolean }
   observation: { start: string; end: string; days: number }
   waves: WaveSchedule[]
   /** step id → the wave it enforces in (0 for day 0 / done). */
@@ -111,34 +111,29 @@ export type Schedule = {
   rhythm?: TenantRhythm | null
 }
 
+/**
+ * The only inputs (target-state §9): the plan start date, a change freeze,
+ * the tenant's working rhythm, and the registration window the generator
+ * measured. No pace, no windows-per-week, no holidays, no per-step dates.
+ */
 export type ScheduleOptions = {
   freeze?: ChangeFreeze | null
-  /** YYYY-MM-DD dates nothing is enforced on (nor the working day before). */
-  holidays?: string[]
   rhythm?: TenantRhythm | null
-  /** step id → operator-set start date: the step starts no earlier (roadmap-v2.md §4.12). */
-  scheduled?: Record<string, string> | null
-  /** Change windows a week, overriding the band default (prompt 42, pace control). */
-  enforcementCap?: number
-  /** Campaign length in days, measured from who needs a method (prompt 43 item 2). */
-  campaignDays?: number
+  /** The registration window in working days (campaign.ts); 0 or absent when nobody needs setting up. */
+  registrationDays?: number
 }
 
 /**
- * Supervised change windows a week, by band. Overridable in Plan settings.
+ * Supervised change windows a week, by band (target-state §9): three up to 300
+ * active people, two above. A constant, not a setting.
  *
- * small was 2, which is a change-control number, and a thirteen-user tenant has
- * no change control. Three is defensible because every batch has already sat in
- * report-only for its window with zero would-be failures before it is enforced:
- * the supervision is watching a change that the evidence says will do nothing,
- * not discovering whether it will.
- *
- * On the small fixture this is the binding constraint until 4: 13 weeks at 1,
- * 7 at 2, 6 at 3, and 5 at 4 and above, where the registration campaign takes
- * over. The Plan settings control computes those numbers rather than quoting
- * them, so the copy cannot drift from the scheduler.
+ * Three is defensible because every batch has already sat in report-only for
+ * its window with zero would-be failures before it is enforced: the
+ * supervision is watching a change that the evidence says will do nothing,
+ * not discovering whether it will. Above 300 people each window is a bigger
+ * event, and two a week is what a small team can watch properly.
  */
-export const ENFORCEMENT_CAP: Record<SizeBand, number> = { small: 3, mid: 3, large: 5 }
+export const ENFORCEMENT_CAP: Record<SizeBand, number> = { small: 3, mid: 3, large: 2 }
 
 /**
  * How many changes may take effect on one day.
@@ -186,45 +181,12 @@ export function observationDaysFor(step: Step): number {
   return batchClassOf(step) === 'zero' ? OBSERVATION_DAYS_ZERO : OBSERVATION_DAYS
 }
 
-/**
- * What the plan would run to at one window a week fewer, and one more
- * (prompt 42, pace control).
- *
- * Computed by re-running the scheduler, never written by hand: the Plan
- * settings sentence quotes these numbers, and a hand-written "two would take
- * seven weeks" is wrong the moment anything upstream of it changes. The steps
- * are deep-copied because buildSchedule writes planned dates back into their
- * rings.
- */
-export function paceAlternatives(
-  steps: Step[],
-  day0: string,
-  activeUsers: number,
-  bandOverride: SizeBand | null,
-  options: ScheduleOptions,
-): { cap: number; weeks: number; slower: { cap: number; weeks: number } | null; faster: { cap: number; weeks: number } | null } {
-  const cap = options.enforcementCap ?? ENFORCEMENT_CAP[bandOverride ?? bandForActiveUsers(activeUsers)]
-  const weeksAt = (n: number): number => {
-    const copy = steps.map((st) => ({ ...st, rings: st.rings.map((r) => ({ ...r })) })) as Step[]
-    return buildSchedule(copy, day0, activeUsers, bandOverride, { ...options, enforcementCap: n }).weeks
-  }
-  return {
-    cap,
-    weeks: weeksAt(cap),
-    slower: cap > 1 ? { cap: cap - 1, weeks: weeksAt(cap - 1) } : null,
-    faster: { cap: cap + 1, weeks: weeksAt(cap + 1) },
-  }
-}
-
 export function batchClassOf(step: Step): BatchClass {
   const family = step.readiness.family
   // Evidence-backed zero, not merely absent evidence, and not an unmeasured
-  // field read as zero. affectedUserIds is only populated for the families
-  // where usage is actually measured; for the rest the affected set is the
-  // population, so treating an empty array as 'nobody' put almost every step in
-  // the zero class and handed it a 3-day window it had not earned.
-  const affected = family === 'block' || family === 'location' ? step.evidence.affectedUserIds.length : step.population.active
-  if (step.evidence.status === 'ok' && affected === 0) return 'zero'
+  // field read as zero (nobodyAffected in timing.ts is the one definition; the
+  // notice period reads the same bar).
+  if (nobodyAffected(step)) return 'zero'
   if (family === 'mfa' || family === 'admin' || family === 'guest') return 'mfa'
   if (family === 'device' || family === 'location') return 'deviceSession'
   return 'other'
@@ -247,12 +209,12 @@ export function toWeekday(iso: string): string {
 }
 
 /**
- * Enforcement starts on a Tuesday or a Wednesday (Tuesday only for a
- * high-disruption change), never a Friday, a weekend, a holiday or the last
- * working day before one (scheduling-and-onboarding.md §2.2).
+ * Enforcement starts on a Tuesday, a Wednesday or a Thursday, never a Friday
+ * or a weekend (target-state §9). A change freeze, and the last working day
+ * before one, are avoided in the placement loop, which knows the freeze.
  */
-export function toEnforcementDay(iso: string, opts: { highDisruption?: boolean; holidays?: string[]; rhythm?: TenantRhythm | null } = {}): string {
-  return enforcementDay(iso, { highDisruption: opts.highDisruption ?? false, holidays: opts.holidays ?? [], rhythm: opts.rhythm ?? null })
+export function toEnforcementDay(iso: string): string {
+  return enforcementDay(iso)
 }
 
 export function nextMonday(fromIso: string): string {
@@ -349,7 +311,13 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
       // classes, where a method prompt and a device prompt really are two
       // different interruptions, and between two high-disruption changes
       // whatever their class.
-      else if (promptsPeople(a) && promptsPeople(b) && batchClassOf(a) !== batchClassOf(b))
+      //
+      // And a change the records show affects nobody (the zero class) interrupts
+      // nobody, so it cannot be the second interruption in anyone's week: the
+      // rule does not fire on it in either direction (prompt 46 Part 4). Before
+      // this, "Guests need MFA" on a tenant with no guests held the device and
+      // session changes back a full soak each.
+      else if (promptsPeople(a) && promptsPeople(b) && batchClassOf(a) !== batchClassOf(b) && batchClassOf(a) !== 'zero' && batchClassOf(b) !== 'zero')
         add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.samePeople(b.title) })
     }
   }
@@ -410,9 +378,10 @@ export function buildSchedule(
   const ringBand = ringBandFor(activeUsers)
   const expectedDays = preset.weeks * 7
   const day0 = toWeekday(startIso)
-  const cap = options.enforcementCap ?? ENFORCEMENT_CAP[band]
+  const cap = ENFORCEMENT_CAP[band]
   const perDay = EVENTS_PER_DAY[band]
   const freeze = options.freeze && options.freeze.from < options.freeze.to ? options.freeze : null
+  const rhythmCtx = { rhythm: options.rhythm ?? ({ workingDays: [0, 1, 2, 3, 4] } as TenantRhythm) }
   const byId = new Map(steps.map((s) => [s.id, s]))
   const graph = dependencyGraph(steps)
 
@@ -421,19 +390,23 @@ export function buildSchedule(
   const day0Days = foundationWork > 0 ? Math.min(5, 1 + foundationWork) : 0
   const day0End = addDays(day0, day0Days)
 
-  // ---- Verification window ----
+  // ---- Registration window (target-state §9) ----
+  // Sized by the generator from who still needs a proven method: five a
+  // working day, at most twenty working days. It runs ALONGSIDE the first
+  // report-only soak, never before it: the window opens on the day the
+  // policies are created, and the steps that need it wait for its end through
+  // their hard dependency on the verify step, while everything independent of
+  // registration proceeds on its own evidence.
   const verifyStep = steps.find((s) => s.kind === 'verify') ?? null
   const verificationComplete = verifyStep === null || !isWork(verifyStep)
-  // The campaign is as long as the work in it, not as long as the tenant is
-  // big (prompt 43 item 2). The caller measures who still needs a method and
-  // how often those people sign in; the band constant remains only as the
-  // fallback for a plan built without that measurement.
-  const verificationDays =
-    verifyStep !== null && !verificationComplete ? (options.campaignDays ?? preset.verificationDays) : 0
+  const registrationDays = verifyStep !== null && !verificationComplete ? Math.max(0, options.registrationDays ?? 0) : 0
+  const creationDayForWindow = day0
+  const verificationEnd = addWorkingDays(creationDayForWindow, registrationDays, rhythmCtx)
   const verification = {
-    start: toWeekday(day0End),
-    end: addDays(toWeekday(day0End), verificationDays),
-    days: verificationDays,
+    start: creationDayForWindow,
+    end: verificationEnd,
+    days: Math.round((Date.parse(verificationEnd) - Date.parse(creationDayForWindow)) / 86_400_000),
+    workingDays: registrationDays,
     complete: verificationComplete,
   }
   const needsObservation = steps.some((s) => isWork(s) && (s.kind === 'create' || s.kind === 'adjust'))
@@ -462,7 +435,14 @@ export function buildSchedule(
    * so every window was credited with a day in which its policy did not yet
    * exist.
    */
-  const creationDay = toWeekday(addDays(day0End, 1))
+  //
+  // Created ON day 0 (prompt 42, cap item 1; target-state §9): the policies
+  // are report-only and affect nobody, so nothing about Day 0's other work
+  // has to finish first. Until prompt 46 they were created the day AFTER Day 0
+  // closed, which with four or more prerequisites was the following Monday: a
+  // week in which every observation window had not yet opened. Enforcement
+  // still never lands on or before the day Day 0 closes (below).
+  const creationDay = day0
   const observationStart = creationDay
   const observation = { start: observationStart, end: addDays(observationStart, obsDays), days: obsDays }
 
@@ -491,14 +471,16 @@ export function buildSchedule(
       if (s.kind === 'verify') placed.set(s.id, { start: verification.start, end: verification.end, reason: { kind: 'verification', ref: null } })
     }
     const inFreeze = (iso: string): boolean => freeze !== null && iso >= freeze.from && iso <= freeze.to
+    // Never inside a freeze, and never the last working day before one
+    // (target-state §9): a change the day before a freeze cannot be watched.
+    const dayBeforeFreeze = (iso: string): boolean => freeze !== null && !inFreeze(iso) && inFreeze(addWorkingDays(iso, 1, rhythmCtx))
     // An enforcement event is a change day: every step that starts that day
     // shares one change window. The cap limits change days per week.
-    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, highDisruption = false, batch: BatchClass = 'other', exempt = false): string => {
-      const dayOpts = { highDisruption, holidays: options.holidays ?? [], rhythm: options.rhythm ?? null }
-      let cursor = toEnforcementDay(iso, dayOpts)
+    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, batch: BatchClass = 'other', exempt = false): string => {
+      let cursor = toEnforcementDay(iso)
       for (let guard = 0; guard < 400; guard++) {
-        if (inFreeze(cursor)) {
-          cursor = toEnforcementDay(addDays(freeze!.to, 1), dayOpts)
+        if (inFreeze(cursor) || dayBeforeFreeze(cursor)) {
+          cursor = toEnforcementDay(addDays(freeze!.to, 1))
           note.kind = 'freeze'
           continue
         }
@@ -522,7 +504,7 @@ export function buildSchedule(
         // allowed. Try the next enforcement day: toEnforcementDay only returns
         // the midweek slots, so once this week's allowance is spent the search
         // lands in the next week on its own.
-        cursor = toEnforcementDay(addDays(cursor, 1), dayOpts)
+        cursor = toEnforcementDay(addDays(cursor, 1))
         note.kind = 'cap'
       }
       return cursor
@@ -538,13 +520,11 @@ export function buildSchedule(
       // The step's own window, not the plan's longest (prompt 42 §1): a block
       // on a flow nobody uses waits three days, not seven.
       const ownObservationEnd = addDays(observationStart, observationDaysFor(s))
-      let earliest = s.kind === 'create' ? ownObservationEnd : creation
+      // Never on the day Day 0 closes, nor before it (review-08 C2, prompt 40
+      // §21): the foundation work has to be finished, not finishing.
+      const afterDay0 = day0Days > 0 ? addDays(day0End, 1) : day0
+      let earliest = max(s.kind === 'create' ? ownObservationEnd : creation, afterDay0)
       const reason: { kind: ConstraintKind; ref: string | null } = { kind: s.kind === 'create' ? 'rings' : 'none', ref: null }
-      const pinned = options.scheduled?.[s.id]
-      if (pinned && pinned > earliest) {
-        earliest = pinned
-        reason.kind = 'scheduled'
-      }
       // Phase order (ux-review-07 §3): phases begin in order, so a step starts no
       // earlier than the FIRST start of any lower phase. The map is named for
       // what it holds; it was called latestStartByPhase and stores the minimum.
@@ -582,11 +562,10 @@ export function buildSchedule(
       const batch = batchClassOf(s)
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
         const windows: { start: string; end: string }[] = []
-        const high = (s.score?.disruption ?? 0) >= HIGH_DISRUPTION
-        let cursor = shift(from, reason, high, batch, s.safeToday)
+        let cursor = shift(from, reason, batch, s.safeToday)
         const start = cursor
         for (const [i, soak] of soaks.entries()) {
-          if (i > 0) cursor = shift(cursor, reason, high, batch, s.safeToday)
+          if (i > 0) cursor = shift(cursor, reason, batch, s.safeToday)
           const end = addDays(cursor, soak)
           windows.push({ start: cursor, end })
           cursor = end
@@ -823,9 +802,6 @@ function derive(
       break
     case 'freeze':
       reason = CRITICAL.freeze(freeze ? absoluteDate(freeze.to) : '', last.title)
-      break
-    case 'scheduled':
-      reason = CRITICAL.scheduled(last.title, absoluteDate(p.start))
       break
     case 'phase': {
       const other = p.reason.ref ? byId.get(p.reason.ref) : undefined

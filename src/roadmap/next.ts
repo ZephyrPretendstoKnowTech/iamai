@@ -17,7 +17,6 @@ export type NextItem = {
   title: string
   why: string
   touches: string
-  minutes: number
 }
 
 export type NextCard = {
@@ -28,36 +27,6 @@ export type NextCard = {
   completed: string[]
 }
 
-/**
- * Minutes of admin work to carry out a step: portal clicks for the kind, plus
- * the work the step's own contents imply.
- *
- * R22 read the estimate as a default because every prerequisite returned a flat
- * ten minutes, and Do this next is mostly prerequisites — so every card said
- * "about 10 minutes" whether it was one toggle or reviewing forty accounts.
- * The kind sets the floor; the people and the checks the step carries move it.
- */
-export function effortMinutes(step: Step): number {
-  switch (step.kind) {
-    case 'prerequisite':
-      // Two minutes per portal action the step actually lists, plus a minute
-      // for each person whose account has to be looked at. A step that creates
-      // one named location and a step that reviews forty accounts no longer
-      // carry the same number.
-      return 6 + step.action.summary.length * 2 + Math.min(60, step.population.total)
-    case 'verify':
-      return 30 + Math.max(0, step.population.total - step.population.active) * 0 + Math.round((step.impact.match(/\d+/)?.[0] ? Number(step.impact.match(/\d+/)![0]) : 0) * 3)
-    case 'recurring':
-      return 15
-    case 'check':
-      // A minute per account looked at, and a minute to decide.
-      return 1 + Math.min(60, step.population.total)
-    case 'adjust':
-      return 10 + Math.min(20, step.rings.length * 5)
-    default:
-      return 15 + Math.min(30, step.rings.length * 5)
-  }
-}
 
 export function doThisNext(
   steps: Step[],
@@ -91,7 +60,6 @@ export function doThisNext(
       title: s.plainTitle || s.title,
       why: NEXT.why.blocker(waitedOn.get(s.id) ?? 0),
       touches: NEXT.touches.nobody,
-      minutes: effortMinutes(s),
     })
   }
   // (a) unblocked prerequisites that other steps wait on
@@ -100,12 +68,12 @@ export function doThisNext(
     .sort((a, b) => (waitedOn.get(b.id) ?? 0) - (waitedOn.get(a.id) ?? 0))
   for (const s of prereqs) {
     if (items.length >= 3) break
-    items.push({ kind: 'prerequisite', stepId: s.id, title: s.plainTitle || s.title, why: NEXT.why.prerequisite(waitedOn.get(s.id) ?? 0), touches: NEXT.touches.nobody, minutes: effortMinutes(s) })
+    items.push({ kind: 'prerequisite', stepId: s.id, title: s.plainTitle || s.title, why: NEXT.why.prerequisite(waitedOn.get(s.id) ?? 0), touches: NEXT.touches.nobody })
   }
   // (b) safe-today steps with nobody affected
   for (const s of work.filter((x) => x.safeToday && x.status !== 'blocked')) {
     if (items.length >= 3) break
-    items.push({ kind: 'safeToday', stepId: s.id, title: s.plainTitle || s.title, why: NEXT.why.safeToday(effortMinutes(s)), touches: touches(s), minutes: effortMinutes(s) })
+    items.push({ kind: 'safeToday', stepId: s.id, title: s.plainTitle || s.title, why: NEXT.why.safeToday, touches: touches(s) })
   }
   // (c) the readiness work that unblocks the most steps
   if (items.length < 3) {
@@ -114,7 +82,7 @@ export function doThisNext(
     const unblocks = work.filter((s) => s.blockers.some((b) => b.kind === 'readiness') && (s.readiness.family === 'mfa' || s.readiness.family === 'guest')).length
     if (verify && verify.status === 'ready' && needSetup.length > 0 && unblocks > 0) {
       const names = needSetup.slice(0, 3).map((v) => nameOf(v.userId)).join(', ')
-      items.push({ kind: 'readiness', stepId: verify.id, title: verify.plainTitle || verify.title, why: NEXT.why.readiness(needSetup.length, unblocks), touches: needSetup.length <= 3 ? names : NEXT.touches.people(needSetup.length), minutes: 5 * needSetup.length })
+      items.push({ kind: 'readiness', stepId: verify.id, title: verify.plainTitle || verify.title, why: NEXT.why.readiness(needSetup.length, unblocks), touches: needSetup.length <= 3 ? names : NEXT.touches.people(needSetup.length) })
     }
   }
   // (d) the highest value-to-disruption step that is ready
@@ -124,7 +92,7 @@ export function doThisNext(
       .sort((a, b) => (b.score?.priority ?? 0) - (a.score?.priority ?? 0))
     for (const s of ready) {
       if (items.length >= 3) break
-      items.push({ kind: 'ready', stepId: s.id, title: s.plainTitle || s.title, why: NEXT.why.ready, touches: touches(s), minutes: effortMinutes(s) })
+      items.push({ kind: 'ready', stepId: s.id, title: s.plainTitle || s.title, why: NEXT.why.ready, touches: touches(s) })
     }
   }
 

@@ -227,6 +227,7 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
       history: [],
       skipReason: null,
       gap: null,
+      blockedReason: null,
       deliveredBy: v.evidence,
       stateReason: '',
       impact: v.impact,

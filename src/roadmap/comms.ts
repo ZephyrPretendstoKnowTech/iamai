@@ -171,6 +171,11 @@ export function bulletinsFor(steps: Step[], ctx: CommsContext): Bulletin[] {
     const c = compose('bulletin', g.audience, bs, refs, ctx, absoluteDate(g.week + 'T12:00:00.000Z'))
     out.push({ id: `bulletin-${g.audience.kind}-${g.week}-${g.audience.label.replace(/\W+/g, '-')}`, audience: g.audience, weekKey: g.week, kind: 'bulletin', sendAt, remindAt, steps: bs, references: refs, recipients: g.audience.ids, ...c })
   }
+  // Two named audiences that share their first three people and their week
+  // used to share an id as well, which surfaced as duplicate rows once two
+  // steps could announce on the same day (prompt 46 Part 4). The id stays
+  // readable; a second such group gets a suffix.
+  const namedIds = new Map<string, number>()
   for (const g of individuals.values()) {
     // The earliest notice period among the steps affecting these people.
     const ordered = [...g.steps].sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))
@@ -178,7 +183,10 @@ export function bulletinsFor(steps: Step[], ctx: CommsContext): Bulletin[] {
     const sendAt = ordered.map((s) => s.events!.announce?.at ?? s.events!.enforce.at).sort()[0]
     const week = weekKeyOf(ordered[0].events!.enforce.at)
     const c = compose('individual', g.audience, bs, [], ctx, absoluteDate(week + 'T12:00:00.000Z'))
-    out.push({ id: `named-${g.audience.ids.slice(0, 3).join('-')}-${week}`, audience: g.audience, weekKey: week, kind: 'individual', sendAt, remindAt: ordered[0].events!.remind?.at ?? null, steps: bs, references: [], recipients: g.audience.ids, ...c })
+    const base = `named-${g.audience.ids.slice(0, 3).join('-')}-${week}`
+    const nth = (namedIds.get(base) ?? 0) + 1
+    namedIds.set(base, nth)
+    out.push({ id: nth === 1 ? base : `${base}-${nth}`, audience: g.audience, weekKey: week, kind: 'individual', sendAt, remindAt: ordered[0].events!.remind?.at ?? null, steps: bs, references: [], recipients: g.audience.ids, ...c })
   }
   return [...out, ...soloBulletins].sort((a, b) => a.sendAt.localeCompare(b.sendAt))
 }

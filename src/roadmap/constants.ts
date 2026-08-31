@@ -10,38 +10,29 @@ export const EXIT_MAX_FAILURES = 0
 
 export const BREAK_GLASS_DRILL_DAYS = 90
 
-// Pace follows tenant size (ux-review-03 §A3, prompt 18): the band sets the
-// expected length, the registration-and-verification window, and the wave
-// spacing that makes the total land on the band. Observation is always 7
-// days. The band is auto-detected from active users and overridable.
+// The plan's length follows the number of active people (target-state §9).
+// The band sets the expected length in weeks, the weekly cap on supervised
+// change windows (schedule.ts ENFORCEMENT_CAP) and the ring shape (rings.ts
+// RING_BANDS). None of it is a promise: the plan names the one constraint
+// that set its own length, in the sentence it already writes. Expected
+// outcomes, reported never targeted: up to 30 active people about 3 to 4
+// weeks; 31 to 300 about 6 to 8; above 300 about 10 to 12.
 export type SizeBand = 'small' | 'mid' | 'large'
-//
-// `weeks` is a typical length, not a promise, and for the small band it is the
-// middle of a range rather than a number (prompt 42).
-//
-// Three things move it, and which one binds depends on the tenant:
-//
-//   Readiness. If people still need to register a method, the campaign sets the
-//   length and nothing else can shorten it. That is verificationDays below:
-//   2 weeks small, 4 mid, 6 large. A tenant whose people are already registered
-//   skips it entirely, and its plan is much shorter than the band suggests.
-//
-//   Pace. ENFORCEMENT_CAP change windows a week, adjustable in Plan settings.
-//   On the small fixture this is the binding constraint until it reaches 4:
-//   13 weeks at 1 a week, 7 at 2, 6 at 3, 5 at 4 and above.
-//
-//   The dependency graph. Two policies that prompt the same people cannot
-//   overlap, so a tenant with many overlapping populations runs longer whatever
-//   the pace. This is what sets the mid fixture.
-//
-// So the small band is roughly 3 to 7 weeks, and the number below is the
-// typical case. The plan does not rely on the band to explain itself: it names
-// the constraint that set its own length, in the sentence it already writes.
-export const BANDS: Record<SizeBand, { maxActive: number; weeks: number; verificationDays: number }> = {
-  small: { maxActive: 50, weeks: 7, verificationDays: 14 },
-  mid: { maxActive: 200, weeks: 8, verificationDays: 21 },
-  large: { maxActive: Number.POSITIVE_INFINITY, weeks: 10, verificationDays: 28 },
+export const BANDS: Record<SizeBand, { maxActive: number; weeks: number }> = {
+  small: { maxActive: 50, weeks: 4 },
+  mid: { maxActive: 300, weeks: 8 },
+  large: { maxActive: Number.POSITIVE_INFINITY, weeks: 12 },
 }
+
+/**
+ * The registration window (target-state §9): the active people who still have
+ * no proven method, at this many a working day. It runs alongside the first
+ * report-only soak, never before it.
+ */
+export const REGISTRATION_PER_WORKING_DAY = 5
+/** Never longer than this, in working days: past four weeks the answer is a Temporary Access Pass, not more waiting. */
+export const REGISTRATION_MAX_WORKING_DAYS = 20
+
 /**
  * How long a policy sits in report-only before anyone can call it safe
  * (observation-and-readiness.md §1, prompt 42 §1).
@@ -59,8 +50,6 @@ export const OBSERVATION_DAYS = 7
 
 /** Where evidence already shows zero affected users, there is less to watch for. */
 export const OBSERVATION_DAYS_ZERO = 3
-/** An enforcement wave never runs shorter than this, whatever the band. */
-export const MIN_WAVE_DAYS = 2
 
 export function bandForActiveUsers(active: number): SizeBand {
   if (active <= BANDS.small.maxActive) return 'small'

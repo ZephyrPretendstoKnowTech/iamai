@@ -44,11 +44,16 @@ export type Action = {
   changes?: { field: string; from: string; to: string }[]
 }
 
+/**
+ * A named cause. `binding` is the cause in one of the three blocked-reason
+ * shapes (copy/reasons.ts BLOCKED_REASON), set by whoever knows the numbers;
+ * a step blocker needs none, its step title is the reason.
+ */
 export type Blocker =
-  | { kind: 'step'; stepId: string; label: string }
-  | { kind: 'setup'; questionNumber: number; label: string }
-  | { kind: 'readiness'; label: string }
-  | { kind: 'evidence'; label: string }
+  | { kind: 'step'; stepId: string; label: string; binding?: string }
+  | { kind: 'setup'; questionNumber: number; label: string; binding?: string }
+  | { kind: 'readiness'; label: string; binding?: string }
+  | { kind: 'evidence'; label: string; binding?: string }
 
 export type StepHistoryEntry ={ at: string; from: StepStatus; to: StepStatus; note: string | null }
 
@@ -117,6 +122,11 @@ export type Step = {
   deliveredBy: string[]
   /** One line: why the step is in its current state; filled by annotateStateReasons. */
   stateReason: string
+  /**
+   * The one binding reason while blocked (target-state §8.5): at most twelve
+   * words, in one of three shapes; null otherwise. The full list is `blockers`.
+   */
+  blockedReason: string | null
   // ---- 2026-08-27 redesign ----
   /** One sentence: what this changes for THIS tenant, in numbers. */
   impact: string

@@ -15,7 +15,7 @@ import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../../scoring/mfaViability.ts'
 import { generateRoadmap } from '../../roadmap/generate.ts'
 import { findDangerAreas } from '../../roadmap/dangers.ts'
-import { batchClassOf, nextMonday, paceAlternatives } from '../../roadmap/schedule.ts'
+import { batchClassOf, nextMonday } from '../../roadmap/schedule.ts'
 import { LONG_PLAN_WEEKS, overrunFor } from '../../roadmap/overrun.ts'
 import { insightsUrl, preflightFor, verdictFor, whatIfUrl } from '../../roadmap/verdict.ts'
 import type { Preflight, Verdict } from '../../roadmap/verdict.ts'
@@ -29,7 +29,7 @@ import type { Step, StepStatus } from '../../roadmap/types.ts'
 import { saveDevResults } from '../../devSave.ts'
 import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import { ROADMAP as C } from '../../copy/pages.ts'
-import { CHIP, EFFORT_DEF, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
+import { CHIP, STEP_KIND, STEP_STATUS, TILE } from '../../copy/definitions.ts'
 import { overrunList, roadmapOverview, scheduleOverrun, scheduleRationale } from '../../copy/statements.ts'
 import { CALENDAR, OVERRUN } from '../../copy/schedule.ts'
 import { POPULATION } from '../../copy/population.ts'
@@ -38,10 +38,9 @@ import { RINGS } from '../../copy/rings.ts'
 import { RingProgress } from '../components/Ring.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import { Term } from '../components/Term.tsx'
-import { BATCH, EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE, NOTICE_LINE, PACE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
+import { BATCH, EVENT as EVENT_LABEL, LICENCE_HEADER, TERM_WORDS, MANAGER as MANAGER_UI, NOTICE_LINE, RHYTHM, SAFE, THIS_WEEK, WEEK_VIEW } from '../../copy/timing.ts'
 import { LADDER } from '../../copy/ladder.ts'
 import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
-import { NOTICE_DEFAULTS } from '../../roadmap/timing.ts'
 import { PLAIN_TITLES } from '../../copy/plain.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import { RECOVERY } from '../../copy/recovery.ts'
@@ -56,13 +55,12 @@ import { LOG, NEXT } from '../../copy/next.ts'
 import { doThisNext } from '../../roadmap/next.ts'
 import { appendLog, emptyLog, entriesForScan, logCsvRows, logMarkdown, logView, rolledUpSentence } from '../../roadmap/activityLog.ts'
 import type { ActivityLog } from '../../roadmap/activityLog.ts'
-import { COMMS_PLAN, EFFORT, GROUNDING, PROMPTS, WATCH, BULLETIN } from '../../copy/comms.ts'
+import { COMMS_PLAN, GROUNDING, PROMPTS, WATCH, BULLETIN } from '../../copy/comms.ts'
 import { audiencesFor, bulletinsFor, commsPlanRows, monthlyWarnings, recipientRows } from '../../roadmap/comms.ts'
 import type { Bulletin, CommsContext } from '../../roadmap/comms.ts'
 import { groundingBundle, promptFor, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
-import { DEFAULT_REVERT_PERCENT, effortFor, planEffort, watchFor } from '../../roadmap/watch.ts'
+import { DEFAULT_REVERT_PERCENT, watchFor } from '../../roadmap/watch.ts'
 import { CHANGE_RECORD_HEADER, changeRecordMarkdown as changeRecordMarkdownPure, changeRecordRows } from '../../roadmap/changeRecord.ts'
-import type { NoticeSettings } from '../../roadmap/timing.ts'
 import type { StepEvent } from '../../roadmap/types.ts'
 import { EXPORT_TAB, PROGRESS, SCHEDULE_TAB, TRACK } from '../../copy/progress.ts'
 import { changesSince, groupGrowth, progressHeadline, stepProgress } from '../../roadmap/tracking.ts'
@@ -110,12 +108,6 @@ type PlanStore = {
   baselinePin?: string | null
   /** When this plan was first generated: evidence before it is "already in place" (ux-review-07 §1). */
   planCreatedAt?: string
-  /** Suggested notice periods by disruption, in working days (scheduling-and-onboarding.md §2.3). */
-  notice?: NoticeSettings
-  /** Supervised change windows a week, overriding the band default (prompt 42). */
-  enforcementCap?: number
-  /** YYYY-MM-DD dates nothing is enforced on. */
-  holidays?: string[]
   /**
    * Answers to the questions a short observation window cannot answer
    * (prompt 42 item 4), keyed by step id then unknown id. Stored with the date
@@ -125,8 +117,6 @@ type PlanStore = {
   assertions?: Record<string, Record<string, { answer: 'yes' | 'no'; at: string; effect: 'carveOut' | 'laterWave' | 'accepted' }>>
   /** The automatic activity log (prompt 30 §3). */
   log?: ActivityLog
-  /** The post-enforcement revert threshold, a share of the affected people (comms-and-bridges.md §3.1). */
-  watchThresholdPercent?: number
   /** The scan the log last recorded, so one scan is logged once. */
   loggedScanAt?: string
 }
@@ -275,10 +265,6 @@ export function RoadmapPage({
       names,
       groupMembers: groups,
       changeFreeze: saved?.freeze ?? null,
-      notice: saved?.notice ?? NOTICE_DEFAULTS,
-      holidays: saved?.holidays ?? [],
-      watchThresholdPercent: saved?.watchThresholdPercent ?? DEFAULT_REVERT_PERCENT,
-      scheduled: Object.fromEntries(Object.entries(saved?.steps ?? {}).flatMap(([id, v]) => (v.scheduledDate ? [[id, v.scheduledDate]] : []))),
     })
     mergePersisted(steps, saved?.steps ?? null)
     applyProgress(steps, snapshot, coverage, planId, undefined, saved?.revisions?.[0]?.at ?? saved?.planCreatedAt ?? null)
@@ -465,7 +451,6 @@ export function RoadmapPage({
     setSaved((p) => (p ? { ...p, band: next } : p))
     setVersion((v) => v + 1)
   }
-  // Notice periods and holidays travel with the plan (scheduling-and-onboarding.md §2.2, §2.3).
   const setAssertion = (stepId: string, unknownId: string, answer: 'yes' | 'no', effect: 'carveOut' | 'laterWave' | 'accepted'): void => {
     const entry = { answer, at: new Date().toISOString(), effect }
     setSaved((prev) => {
@@ -476,29 +461,6 @@ export function RoadmapPage({
     })
     setVersion((v) => v + 1)
   }
-  const setEnforcementCap = (n: number): void => {
-    const next = Math.max(1, Math.min(10, Math.round(n) || 1))
-    setSaved((p) => (p ? { ...p, enforcementCap: next } : p))
-    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), enforcementCap: next })
-    setVersion((v) => v + 1)
-  }
-  const setNotice = (next: NoticeSettings): void => {
-    setSaved((p) => (p ? { ...p, notice: next } : p))
-    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), notice: next })
-    setVersion((v) => v + 1)
-  }
-  const setWatchThreshold = (n: number): void => {
-    const next = Math.max(1, Math.min(50, Math.round(n) || DEFAULT_REVERT_PERCENT))
-    setSaved((p) => (p ? { ...p, watchThresholdPercent: next } : p))
-    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), watchThresholdPercent: next })
-    setVersion((v) => v + 1)
-  }
-  const setHolidays = (text: string): void => {
-    const next = text.split(/[\n,;]+/).map((x) => x.trim()).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x))
-    setSaved((p) => (p ? { ...p, holidays: next } : p))
-    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId, steps: {}, checkpoints: [] }), holidays: next })
-    setVersion((v) => v + 1)
-  }
   // The change freeze travels with the plan (roadmap-v2.md §2): the schedule moves around it.
   const setFreeze = (next: ChangeFreeze | null): void => {
     setSaved((p) => (p ? { ...p, freeze: next } : p))
@@ -507,17 +469,6 @@ export function RoadmapPage({
   }
   const waveTitle = (w: Schedule['waves'][number]) =>
     w.wave === 0 ? C.day0 : C.wave(w.wave, C.waveAreas(w.phases.map((p) => PHASE_NAME[p]).filter((n): n is string => Boolean(n))))
-  // Owner and scheduled date travel with the plan (roadmap-v2.md §4.12); a date re-plans in place.
-  const saveStepMeta = (st: Step, meta: { scheduledDate?: string | null }): void => {
-    setSaved((p) => {
-      const base = p ?? { planId, steps: {}, checkpoints: [] }
-      const prev = base.steps[st.id] ?? { status: st.status, history: st.history, skipReason: st.skipReason }
-      const next = { ...base, steps: { ...base.steps, [st.id]: { ...prev, ...meta } } }
-      void savePlanRecord(snapshot.tenantId, next)
-      return next
-    })
-    if (meta.scheduledDate !== undefined) setVersion((v) => v + 1)
-  }
   // The population export is built in the browser from the scan (roadmap-v2.md §3): nothing leaves this machine.
   // Built on demand (after the early returns above, so no hook); cohorts and the CSV share it.
   let populationCtxCache: ReturnType<typeof populationContext> | null = null
@@ -1101,9 +1052,7 @@ export function RoadmapPage({
           <ul className="sections">
             {longPlan.remedies.map((r, i) => (
               <li key={i}>
-                {r.kind === 'pace'
-                  ? OVERRUN.pace(r.cap, r.weeks)
-                  : r.kind === 'defer'
+                {r.kind === 'defer'
                     ? OVERRUN.defer(
                         r.stepIds.map((id) => stepById.get(id)?.plainTitle || stepById.get(id)?.title || id),
                         r.weeks,
@@ -1182,9 +1131,7 @@ export function RoadmapPage({
                 <td>
                   <a href={stepHref(st.id)} onClick={(e) => { e.preventDefault(); setActiveTab('plan'); setOpenStepId(st.id) }}>{st.title}</a>
                 </td>
-                <td>
-                  <input type="date" value={(st.scheduledDate ?? st.rings[0]?.plannedStart ?? '').slice(0, 10)} aria-label={`${SECTION.scheduledDate}: ${st.title}`} onChange={(e) => e.currentTarget.value && saveStepMeta(st, { scheduledDate: `${e.currentTarget.value}T12:00:00.000Z` })} />
-                </td>
+                <td>{st.rings[0]?.plannedStart ? absoluteDate(st.rings[0].plannedStart) : SCHEDULE_TAB.unscheduled}</td>
                 <td>{st.rings.at(-1) ? absoluteDate(st.rings.at(-1)!.plannedEnd) : SCHEDULE_TAB.unscheduled}</td>
                 <td>{st.rings.length > 0 ? st.rings.map((r) => r.name).join(' → ') : '—'}</td>
               </tr>
@@ -1251,52 +1198,6 @@ export function RoadmapPage({
             <InfoTip title={CALENDAR.freezeLabel} text={CALENDAR.freezeHint} />
           </div>
           {schedule.freeze && <p className="reason">{CALENDAR.freeze(absoluteDate(schedule.freeze.from), absoluteDate(schedule.freeze.to))}</p>}
-          <div className="row">
-            <span className="muted">{NOTICE.title}</span>
-            {(['low', 'medium', 'high'] as const).map((k) => (
-              <label key={k}>
-                {NOTICE[k]}{' '}
-                <input
-                  type="number"
-                  min={0}
-                  max={30}
-                  value={(saved?.notice ?? NOTICE_DEFAULTS)[k]}
-                  aria-label={`${NOTICE.title}: ${NOTICE[k]}`}
-                  style={{ minWidth: '4rem', width: '5rem' }}
-                  onChange={(e) => setNotice({ ...(saved?.notice ?? NOTICE_DEFAULTS), [k]: Math.max(0, Number(e.currentTarget.value) || 0) })}
-                />
-              </label>
-            ))}
-            <InfoTip title={NOTICE.title} text={NOTICE.hint} />
-          </div>
-          <PaceControl
-            steps={steps}
-            schedule={schedule}
-            holidays={saved?.holidays ?? []}
-            cap={saved?.enforcementCap ?? schedule.enforcementCap}
-            onChange={setEnforcementCap}
-          />
-          <div className="row">
-            <label>
-              {NOTICE.holidays}{' '}
-              <input
-                type="text"
-                defaultValue={(saved?.holidays ?? []).join(', ')}
-                placeholder={NOTICE.holidaysPlaceholder}
-                aria-label={NOTICE.holidays}
-                onBlur={(e) => setHolidays(e.currentTarget.value)}
-                style={{ minWidth: '18rem' }}
-              />
-            </label>
-            <InfoTip title={NOTICE.holidays} text={NOTICE.holidaysHint} />
-          </div>
-          <div className="row">
-            <label>
-              {WATCH.thresholdSetting}{' '}
-              <input type="number" min={1} max={50} value={saved?.watchThresholdPercent ?? DEFAULT_REVERT_PERCENT} aria-label={WATCH.thresholdSetting} style={{ minWidth: '4rem', width: '5rem' }} onChange={(e) => setWatchThreshold(Number(e.currentTarget.value))} />%
-            </label>
-            <InfoTip title={WATCH.thresholdSetting} text={WATCH.thresholdHint} />
-          </div>
           <p className="reason">
             {CALENDAR.noFriday} {CALENDAR.weeklyCap(schedule.enforcementCap)}
           </p>
@@ -1679,10 +1580,8 @@ export function RoadmapPage({
                         cohortsOf={cohortsOf}
                         boundedNames={boundedNames}
                         dependencies={schedule.graph[step.id] ?? []}
-                        onMeta={saveStepMeta}
                         onPrompt={(id, kind, context, draft) => void copyPrompt(id, kind, context, draft)}
                         watch={watchFor(step, snapshot, nameOf, watchThreshold)}
-                        effort={effortFor(step)}
                         snapshotForApps={snapshot}
                         assertions={saved?.assertions?.[step.id] ?? {}}
                         onAssert={setAssertion}
@@ -1821,17 +1720,16 @@ export function RoadmapPage({
     })),
     since: lastCheckpoint?.at ?? schedule.start,
   })
-  const effortTotal = planEffort(steps, bulletins.length)
   // Only runs when the plan is actually over the bound; it re-schedules copies.
   const longPlan = overrunFor(
     steps,
     schedule.start,
     schedule.activeUsers,
     schedule.bandSource === 'override' ? schedule.band : null,
-    { freeze: schedule.freeze, holidays: saved?.holidays ?? [], rhythm: schedule.rhythm ?? null, enforcementCap: saved?.enforcementCap ?? schedule.enforcementCap },
+    { freeze: schedule.freeze, rhythm: schedule.rhythm ?? null },
     schedule.weeks,
   )
-  const watchThreshold = saved?.watchThresholdPercent ?? DEFAULT_REVERT_PERCENT
+  const watchThreshold = DEFAULT_REVERT_PERCENT
   const copyPrompt = (id: string, kind: Parameters<typeof promptFor>[0], context: string, draft: string): Promise<void> => copy(`${id}:prompt`, promptFor(kind, tenantName, context, draft))
 
   // ---- Licence awareness (§3.4): what this tenant's licence makes available ----
@@ -1846,11 +1744,7 @@ export function RoadmapPage({
   return (
     <StepFrame title={C.title} does={C.does} needs={needs}>
       {scan && <ScanAge at={scan.at} baseline={baseline?.source ?? null} />}
-      <p className="reason">
-        {licenceSentence} {effortTotal.sentence}{' '}
-        <InfoTip title={EFFORT_DEF.adminTime.title} text={EFFORT_DEF.adminTime.text} />{' '}
-        <InfoTip title={EFFORT_DEF.contacts.title} text={EFFORT_DEF.contacts.text} />
-      </p>
+      <p className="reason">{licenceSentence}</p>
       {/* Reachable from the header as well as the Export tab (prompt 44 item 10):
           the moment somebody needs it, they are not browsing tabs. */}
       <p className="row no-print">
@@ -1884,7 +1778,6 @@ export function RoadmapPage({
                   </div>
                 </div>
                 <div className="row">
-                  <span className="reason">{NEXT.minutes(item.minutes)}</span>
                   <Button size="sm" variant="primary" onClick={() => { setSafeOnly(false); setStatusFilter(new Set()); setActiveTab('plan'); setOpenStepId(item.stepId) }}>
                     {NEXT.open}
                   </Button>
@@ -2205,50 +2098,6 @@ function VerdictCard({
   )
 }
 
-function PaceControl({
-  steps,
-  schedule,
-  holidays,
-  cap,
-  onChange,
-}: {
-  steps: Step[]
-  schedule: Schedule
-  holidays: string[]
-  cap: number
-  onChange: (n: number) => void
-}) {
-  const pace = useMemo(
-    () =>
-      paceAlternatives(steps, schedule.start, schedule.activeUsers, schedule.bandSource === 'override' ? schedule.band : null, {
-        freeze: schedule.freeze,
-        holidays,
-        rhythm: schedule.rhythm ?? null,
-        enforcementCap: cap,
-      }),
-    [steps, schedule, holidays, cap],
-  )
-  return (
-    <div className="row">
-      <label>
-        {PACE.title}{' '}
-        <input
-          type="number"
-          min={1}
-          max={10}
-          value={cap}
-          aria-label={PACE.title}
-          style={{ minWidth: '4rem', width: '5rem' }}
-          onChange={(e) => onChange(Math.max(1, Number(e.currentTarget.value) || 1))}
-        />
-      </label>
-      <InfoTip title={PACE.title} text={PACE.hint} />
-      {/* Computed, never quoted. */}
-      <span className="reason">{PACE.compare(pace.slower, pace.faster, pace.weeks)}</span>
-    </div>
-  )
-}
-
 /** The draft a skip is composed in, before anything is written. */
 export type SkipDraft = { id: string; reason: string; reasonId: SkipReasonId; detail: string; typed: string; alsoSkip: boolean }
 
@@ -2416,10 +2265,8 @@ function StepCard({
   cohortsOf,
   boundedNames,
   dependencies,
-  onMeta,
   onPrompt,
   watch,
-  effort,
   snapshotForApps,
   assertions,
   onAssert,
@@ -2462,10 +2309,8 @@ function StepCard({
   cohortsOf: (step: Step) => NonNullable<Step['populationView']>['cohorts']
   boundedNames: (ids: string[]) => string
   dependencies: Dependency[]
-  onMeta: (step: Step, meta: { scheduledDate?: string | null }) => void
   onPrompt: (id: string, kind: 'announcement' | 'reminder' | 'helpDesk' | 'manager', context: string, draft: string) => void
   watch: import('../../roadmap/watch.ts').WatchResult | null
-  effort: { minutes: number; contacts: number; sentence: string }
   /** For the service-principal activity check (prompt 43 item 11). */
   snapshotForApps: TenantSnapshot
   /** Answers already given for this step's unknowns (prompt 42 item 4). */
@@ -2525,7 +2370,6 @@ function StepCard({
           ))}
         </div>
       )}
-      {(step.kind === 'create' || step.kind === 'adjust') && step.status !== 'done' && <p className="reason">{effort.sentence}</p>}
       {watch && (
         <Callout kind={watch.breached ? 'danger' : watch.hasEvidence ? 'success' : 'info'}>
           <strong>{WATCH.title}.</strong> {watch.sentence} {watch.hasEvidence && watch.baseline} {watch.threshold} {watch.verdict}
@@ -3114,25 +2958,8 @@ function StepCard({
       {step.status !== 'done' && step.status !== 'skipped' && (
         <>
           <h4>{SECTION.ownerAndDate}</h4>
-          <p className="row no-print">
-            <label>
-              {SECTION.scheduledDate}{' '}
-              <input
-                type="date"
-                value={step.scheduledDate?.slice(0, 10) ?? ''}
-                aria-label={SECTION.scheduledDate}
-                onChange={(e) => e.currentTarget.value && onMeta(step, { scheduledDate: `${e.currentTarget.value}T12:00:00.000Z` })}
-              />
-            </label>
-            {step.scheduledDate && (
-              <Button size="sm" variant="quiet" onClick={() => onMeta(step, { scheduledDate: null })}>
-                {SECTION.scheduledClear}
-              </Button>
-            )}
-            <InfoTip title={SECTION.scheduledDate} text={SECTION.scheduledHint} />
-          </p>
-          <p className="reason print-only">
-            {SECTION.scheduledDate}: {step.scheduledDate ? absoluteDate(step.scheduledDate) : step.rings[0] ? absoluteDate(step.rings[0].plannedStart) : '—'}
+          <p className="reason">
+            {SECTION.scheduledDate}: {step.rings[0] ? absoluteDate(step.rings[0].plannedStart) : '—'}
           </p>
         </>
       )}

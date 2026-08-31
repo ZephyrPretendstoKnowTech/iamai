@@ -64,8 +64,10 @@ test('Done names the evidence that satisfied it; Blocked names the blocker; Read
   const blocked = steps.filter((s) => s.status === 'blocked')
   assert.ok(blocked.length > 0)
   for (const s of blocked) {
-    assert.match(s.stateReason, /^Blocked until /, `${s.id}: ${s.stateReason}`)
-    // The named blocker is a real step title or a readiness sentence, never an id.
+    // One binding reason in one of the three shapes (target-state §8.5); the
+    // named blocker is a real step title or a measure, never an id.
+    assert.match(s.stateReason, /^(after: .+|when .+ reaches .+ \(now .+\)|when \d+ .+ exists? \(now \d+\))$/, `${s.id}: ${s.stateReason}`)
+    assert.equal(s.stateReason, s.blockedReason)
     assert.doesNotMatch(s.stateReason, /s-[a-z-]+/)
   }
   const ready = steps.filter((s) => s.status === 'ready')

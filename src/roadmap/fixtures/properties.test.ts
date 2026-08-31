@@ -124,7 +124,7 @@ for (const f of fixtures) {
     for (const s of steps) {
       for (const r of ringsOf(s)) {
         const day = new Date(r.plannedStart).getUTCDay()
-        assert.ok(day === 2 || day === 3, `${s.id} ring ${r.plannedStart} starts on a Tuesday or a Wednesday`)
+        assert.ok(day === 2 || day === 3 || day === 4, `${s.id} ring ${r.plannedStart} starts on a Tuesday, a Wednesday or a Thursday`)
         assert.ok(r.plannedEnd > r.plannedStart, `${s.id} ring has a real window`)
       }
       for (const d of graph[s.id] ?? []) {
@@ -412,16 +412,28 @@ for (const f of fixtures) {
   })
 }
 
-test('owner and scheduled date travel with the plan and move the schedule', () => {
+test('getiamai: 4 active people and 9 who never signed in plan in four weeks with no registration window on the critical path', () => {
+  const r = runFixture(byName('getiamai'))
+  assert.equal(r.schedule.activeUsers, 4)
+  assert.equal(r.schedule.band, 'small')
+  assert.ok(r.schedule.weeks <= 4, `${r.schedule.weeks} weeks`)
+  assert.notEqual(r.schedule.derivation.constraint, 'verification', r.schedule.derivation.criticalPath)
+  const verify = r.steps.find((s) => s.kind === 'verify')
+  if (verify) assert.equal(r.schedule.derivation.chain.includes(verify.id), false, 'the registration window is not on the critical path')
+  // The nine who never signed in are Wave 0 housekeeping, not a denominator anywhere.
+  const dormant = r.steps.find((s) => s.id === 's-check-dormant-accounts')
+  assert.ok(dormant && dormant.population.total === 9, 'nine dormant accounts to decide on')
+  for (const s of r.steps) if (s.rings.length > 0) assert.equal(s.rings.length, 1, `${s.id}: no rings below 50 active people`)
+})
+
+test('owner travels with the plan file; a per-step date no longer moves the schedule (target-state §9)', () => {
   const f = byName('small')
   const first = runFixture(f)
-  const target = first.steps.find((s) => s.rings.length > 0 && s.status !== 'done')!
+  const moved = first.steps.find((s) => s.rings.length > 0 && s.status !== 'done')!
   const later = '2026-11-02T12:00:00.000Z'
-  const second = runFixture(f, { scheduled: { [target.id]: later } })
-  const moved = second.steps.find((s) => s.id === target.id)!
-  assert.ok(moved.rings[0].plannedStart >= later, `${moved.rings[0].plannedStart} is on or after the scheduled date`)
-  assert.equal(second.schedule.derivation.constraint === 'scheduled' || second.schedule.derivation.chain.length > 0, true)
   moved.owner = 'Identity team'
+  // Read from an older plan file for compatibility, then ignored: the schedule
+  // has one start date and a freeze, and nothing else moves a step.
   moved.scheduledDate = later
   const file = buildPlanFile({
     planId: f.planId,
@@ -429,11 +441,11 @@ test('owner and scheduled date travel with the plan and move the schedule', () =
     operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' },
     baselineSource: { owner: 'fixture', repo: 'baseline', label: 'Fixture', commit: 'abc' } as never,
     mapping: f.mapping,
-    steps: second.steps,
+    steps: first.steps,
     checkpoints: [],
   })
   const back = JSON.parse(JSON.stringify(file)) as typeof file
-  const saved = back.steps.find((s) => s.id === target.id)!
+  const saved = back.steps.find((s) => s.id === moved.id)!
   assert.equal(saved.owner, 'Identity team')
   assert.equal(saved.scheduledDate, later)
   assert.deepEqual(saved.rings, moved.rings)
