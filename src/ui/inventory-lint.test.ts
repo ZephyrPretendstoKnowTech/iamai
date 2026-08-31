@@ -50,6 +50,8 @@ type Surface = {
   rows?: { selector: string; text: string; sentences: number; words: number }[]
   /** Contract forbid strings found in the surface's text. */
   forbidHits?: string[]
+  /** forbidEverywhere strings found anywhere in the surface's text, code panels included (prompt 49.1 item 1). */
+  forbidEverywhereHits?: string[]
   /** Prose outside every repeater, which is what the surface budget bounds. */
   pageProse?: { sentences: number; words: number }
 }
@@ -68,6 +70,7 @@ type Contracts = {
   rules: { sentenceMaxWords: number; rowMaxSentences: number; rowMaxWords: number; blockedReasonMaxWords: number; stepTitleMaxWords: number; tipMaxWords: number }
   repeaters: string[]
   surfaces: Contract[]
+  forbidEverywhere?: string[]
 }
 
 // scripts/lint-mutations.mjs points this at a deliberately corrupted copy to
@@ -299,6 +302,17 @@ test('rule 12: allow list — every heading, tab, tile, column, chip, button, su
 test('rule 12: forbid — no forbidden string appears on a built surface', () => {
   const found = contracted().flatMap(({ s, c }) => (s.forbidHits ?? []).map((f) => `${s.name}: "${f}" (forbidden by contract ${c.id})`))
   assert.deepEqual(found, [], 'forbidden strings on built surfaces')
+})
+
+// forbidEverywhere holds on every surface, not just contracted ones, and reads
+// code panels too (prompt 49.1 item 1): a placeholder token, a Setup mention or
+// a raw urn:user: must never reach a rendered surface. The matching smoke check
+// asserts the same strings never reach a downloaded artifact.
+test('rule 12: forbidEverywhere — no globally forbidden string appears on any surface', () => {
+  const banned = contracts.forbidEverywhere ?? []
+  assert.ok(banned.length > 0, 'the contract declares no forbidEverywhere strings')
+  const found = surfaces.flatMap((s) => (s.forbidEverywhereHits ?? []).map((f) => `${s.name}: "${f}"`))
+  assert.deepEqual(found, [], 'globally forbidden strings rendered on a surface')
 })
 
 test('rule 12: budget — page-level prose on a built surface is within its sentence and word budget', () => {

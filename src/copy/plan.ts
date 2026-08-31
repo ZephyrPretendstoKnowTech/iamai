@@ -113,6 +113,12 @@ export const PLAN = {
     json: 'JSON',
     powershell: 'PowerShell',
     downloadJson: 'Download JSON',
+    omitsJson: (labels: string[]) => {
+      const list = labels.join(', ')
+      const one = labels.length === 1
+      const head = list.charAt(0).toUpperCase() + list.slice(1)
+      return `${head} ${one ? "doesn't" : "don't"} exist yet. This JSON omits ${one ? 'it' : 'them'}; re-download after that step.`
+    },
     copy: 'Copy',
     andMore: (n: number) => `and ${count(n, 'more')}`,
     exportCsv: 'Export CSV',
