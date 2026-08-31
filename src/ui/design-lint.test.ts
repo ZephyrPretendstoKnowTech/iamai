@@ -21,8 +21,10 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const TOKENS = 'src/ui/tokens.css'
+/** home/theme.css is the same tokens, written by scripts/build-home.ts: a token file, not a stylesheet to lint. */
+const TOKEN_COPIES = ['home/theme.css']
 const SCANNED_CSS = ['src/ui/app.css']
-const SCANNED_DIRS = ['src/ui/shell', 'src/ui/surfaces']
+const SCANNED_DIRS = ['src/ui/shell', 'src/ui/surfaces', 'home']
 /** On borrowed time (prompt 47): deleted with the legacy pages in prompt 49. */
 export const LEGACY_ALLOW_LIST = ['src/ui/styles.css', 'src/ui/pages/**']
 const CONTRACTS = JSON.parse(readFileSync(process.env.CONTRACTS_JSON ?? 'docs/qa/page-contracts.json', 'utf8')) as { enforceAll: boolean }
@@ -32,7 +34,7 @@ function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry)
     if (statSync(full).isDirectory()) walk(full, out)
-    else if (/\.(css|tsx|ts)$/.test(entry) && !/\.test\.ts$/.test(entry)) out.push(full)
+    else if (/\.(css|tsx|ts|html)$/.test(entry) && !/\.test\.ts$/.test(entry) && !TOKEN_COPIES.includes(full.replace(/\\/g, '/'))) out.push(full)
   }
   return out
 }

@@ -7,10 +7,11 @@
 // CNAME is placed here instead: it has to sit at the site root or the custom
 // domain is dropped.
 //
-// The home page is hand-written HTML with no framework and no build step. This
-// script only substitutes the tool path and expands the tool cards from
-// home/tools.json, so adding a tool later is a data change and the path lives
-// in exactly one place.
+// The home page is hand-written HTML with no framework. Its theme file is
+// written from the planner's tokens by scripts/build-home.ts (run by vite
+// build); this script only substitutes the tool path and expands the tool rows
+// from home/tools.json, so adding a tool later is a data change and the path
+// lives in exactly one place.
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
@@ -25,23 +26,23 @@ if (!existsSync(join(dist, TOOL_PATH, 'index.html'))) {
 }
 
 const STATUS_LABEL = { live: 'Live', testing: 'In testing', planned: 'Planned' }
+// The status as a dot and a word, in the planner's status colours (prompt 47.1 Part 3 item 13).
+const STATUS_TONE = { live: 'ok', testing: 'wait', planned: 'idle' }
 
-/** One card per tool, in the order the data file lists them. */
-function toolCards() {
+/** One row per tool, in the order the data file lists them: name and descriptor, the sentence, the status. */
+function toolRows() {
   const tools = JSON.parse(readFileSync(join(home, 'tools.json'), 'utf8'))
   return tools
     .map((t) => {
-      // A card may name where in the tool it lands (prompt 47 Part 3: the planner opens at Connect).
+      // A row may name where in the tool it lands (prompt 47 Part 3: the planner opens at Connect).
       const href = t.path === null ? null : `/${t.path === '' ? TOOL_PATH : t.path}/${t.hash ?? ''}`
       const status = STATUS_LABEL[t.status] ?? t.status
-      const inner = `
-        <h3>${t.name}</h3>
-        <p>${t.description}</p>
-        <span class="chip chip-${t.status}">${status}</span>`
-      return href
-        ? `      <a class="tool-card" href="${href}">${inner}
-      </a>`
-        : `      <div class="tool-card is-inert">${inner}
+      const name = href ? `<a href="${href}">${t.name}</a>` : t.name
+      const descriptor = t.descriptor ? ` <span class="descriptor">${t.descriptor}</span>` : ''
+      return `      <div class="tool-row">
+        <p class="tool-name">${name}${descriptor}</p>
+        <p class="tool-desc">${t.description}</p>
+        <span class="status status-${STATUS_TONE[t.status] ?? 'idle'}">${status}</span>
       </div>`
     })
     .join('\n')
@@ -49,7 +50,7 @@ function toolCards() {
 
 const html = readFileSync(join(home, 'index.html'), 'utf8')
   .replaceAll('{{TOOL_PATH}}', TOOL_PATH)
-  .replace('<!-- tools -->', toolCards())
+  .replace('<!-- tools -->', toolRows())
 
 if (html.includes('{{') || html.includes('<!-- tools -->')) {
   console.error('assemble-site: a placeholder was left unsubstituted in the home page.')

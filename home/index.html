@@ -23,77 +23,101 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f182b'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%232dd4bf'/%3E%3Cpath d='M16 7 A9 9 0 1 1 7 16' fill='none' stroke='%232dd4bf' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M16 2.5 A13.5 13.5 0 0 1 29.5 16' fill='none' stroke='%232dd4bf' stroke-width='2.4' stroke-linecap='round' opacity='0.55'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23FBF9F5'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%230B5B57'/%3E%3Cpath d='M16 7 A9 9 0 1 1 7 16' fill='none' stroke='%230B5B57' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E"
     />
+    <!-- The planner's tokens (home/theme.css, written by scripts/build-home.ts), then this page's few rules. -->
+    <link rel="stylesheet" href="/theme.css" />
     <link rel="stylesheet" href="/home.css" />
   </head>
   <body>
-    <header class="topbar">
+    <header class="app">
       <a class="wordmark" href="/">
-        <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
           <circle cx="16" cy="16" r="4" fill="currentColor" />
           <path d="M16 6 A10 10 0 1 1 6 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
-          <path d="M16 1.5 A14.5 14.5 0 0 1 30.5 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" opacity="0.55" />
         </svg>
-        <span>IAMAI</span>
+        IAMAI
       </a>
-      <p class="tagline">Practical tools for Microsoft Entra identity work.</p>
+      <div class="right">
+        <button class="btn" id="theme" type="button" title="Switch between dark and light themes">Dark theme</button>
+      </div>
     </header>
 
-    <main>
-      <section class="intro">
-        <h1>Know what a change will do before you make it.</h1>
-        <p>
-          I am an identity and access engineer. These are the tools I wanted when I started: the ones that read a tenant
-          as it actually is, say what a change would do to real people, and never touch anything.
-        </p>
-        <p>
-          Each one runs entirely in your browser, holds read-only permissions, and shows its working. There is no
-          account to create and nothing to install.
-        </p>
-      </section>
+    <main class="page">
+      <h1>Know what a change will do before you make it.</h1>
+      <p class="lede">
+        These are the tools I wanted when I started: they read a tenant as it is, say what a change would do to real
+        people, never touch anything, and run in your browser with no account to create.
+      </p>
 
-      <section aria-labelledby="tools-heading">
-        <h2 id="tools-heading">Tools</h2>
-        <div class="tool-grid">
+      <h2 id="tools-heading">Tools</h2>
+      <div class="rows" aria-labelledby="tools-heading">
 <!-- tools -->
-        </div>
-      </section>
+      </div>
 
-      <section aria-labelledby="how-heading">
-        <h2 id="how-heading">How these work</h2>
-        <ul class="plain-list">
-          <li><strong>Read-only.</strong> No tool here holds a permission that can create, change or delete anything.</li>
-          <li><strong>Nothing is sent automatically.</strong> There is no server and no telemetry. What a tool reads stays on your device until you export it, and exports are redacted unless you say otherwise.</li>
-          <li>
-            <strong>The source is public.</strong> Read the code, then decide whether to connect:
-            <a href="https://github.com/ZephyrPretendstoKnowTech/iamai">github.com/ZephyrPretendstoKnowTech/iamai</a>.
-          </li>
-        </ul>
-      </section>
+      <h2 id="how-heading">How these work</h2>
+      <ul aria-labelledby="how-heading">
+        <li><strong>Read-only.</strong> No tool here holds a permission that can create, change or delete anything.</li>
+        <li><strong>Nothing is sent automatically.</strong> There is no server and no telemetry. What a tool reads stays on your device until you export it, and exports are redacted unless you say otherwise.</li>
+        <li>
+          <strong>The source is public.</strong> Read the code, then decide whether to connect:
+          <a href="https://github.com/ZephyrPretendstoKnowTech/iamai">github.com/ZephyrPretendstoKnowTech/iamai</a>.
+        </li>
+      </ul>
 
-      <section aria-labelledby="about-heading">
-        <h2 id="about-heading">About</h2>
-        <p>
-          Built by Lachlan Robinette. I work on identity and access, mostly in Microsoft Entra, and mostly for
-          organisations small enough that the person doing the security work is also doing four other jobs. If one of
-          these tools is wrong, or unclear, I would rather hear about it than not.
-        </p>
-        <p class="links">
-          <a href="https://www.linkedin.com/in/lachlanrobinette/">LinkedIn</a>
-          <a href="https://github.com/ZephyrPretendstoKnowTech">GitHub</a>
-          <a href="mailto:feedback@getiamai.com">feedback@getiamai.com</a>
-        </p>
-      </section>
+      <h2 id="about-heading">About</h2>
+      <p>
+        Built by Lachlan Robinette. I work on identity and access, mostly in Microsoft Entra, and mostly for
+        organisations small enough that the person doing the security work is also doing four other jobs. If one of
+        these tools is wrong, or unclear, I would rather hear about it than not.
+      </p>
+      <p class="links">
+        <a href="https://www.linkedin.com/in/lachlanrobinette/">LinkedIn</a>
+        <a href="https://github.com/ZephyrPretendstoKnowTech">GitHub</a>
+        <a href="mailto:feedback@getiamai.com">feedback@getiamai.com</a>
+      </p>
     </main>
 
-    <footer>
-      <span>Read-only · nothing leaves your browser</span>
-      <span class="links">
-        <a href="https://www.linkedin.com/in/lachlanrobinette/">Lachlan Robinette</a>
+    <footer class="app">
+      <span>Read-only · nothing is sent automatically</span>
+      <span class="footer-links">
+        <span>Follow me here: <a href="https://www.linkedin.com/in/lachlanrobinette/"><strong>Lachlan Robinette</strong></a></span>
         <a href="https://github.com/ZephyrPretendstoKnowTech">GitHub</a>
         <a href="https://github.com/ZephyrPretendstoKnowTech/iamai">Source</a>
       </span>
     </footer>
+
+    <!-- The theme control shares the planner's key and labels (prompt 47.1 item 12): a choice made on either side
+         carries to the other; prefers-color-scheme decides a first visit. Inline, same origin, nothing fetched. -->
+    <script>
+      ;(function () {
+        var key = 'iamai-theme'
+        var root = document.documentElement
+        var button = document.getElementById('theme')
+        function stored() {
+          try {
+            return localStorage.getItem(key)
+          } catch (e) {
+            return null
+          }
+        }
+        function system() {
+          return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        function apply(theme) {
+          if (theme) root.setAttribute('data-theme', theme)
+          else root.removeAttribute('data-theme')
+          button.textContent = (theme || system()) === 'dark' ? 'Light theme' : 'Dark theme'
+        }
+        apply(stored())
+        button.addEventListener('click', function () {
+          var next = (stored() || system()) === 'dark' ? 'light' : 'dark'
+          try {
+            localStorage.setItem(key, next)
+          } catch (e) {}
+          apply(next)
+        })
+      })()
+    </script>
   </body>
 </html>

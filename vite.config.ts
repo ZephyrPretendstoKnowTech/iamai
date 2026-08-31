@@ -5,6 +5,7 @@ import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { PRODUCT } from './src/copy/product.ts'
+import { buildHome } from './scripts/build-home.ts'
 
 // Dev-only: lets the spike harness save raw result JSON to docs/spikes/raw/.
 // This middleware exists only in the local dev server; the shipped app is a
@@ -50,6 +51,18 @@ function productTitle(): Plugin {
   }
 }
 
+// The home page's theme file, from the same tokens as the bundle (prompt 47.1
+// Part 3 item 11): written on every build so the two cannot drift.
+function homeTheme(): Plugin {
+  return {
+    name: 'home-theme',
+    apply: 'build',
+    buildStart() {
+      buildHome()
+    },
+  }
+}
+
 // The tool version a person can quote in a feedback email (prompt 34 §2).
 const APP_VERSION = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')).version
 
@@ -91,7 +104,7 @@ export default defineConfig({
   // absolute URL, so nothing else has to change between them.
   base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? `/${TOOL_PATH}/`,
   build: { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
-  plugins: [react(), spikeCapture(), productTitle()],
+  plugins: [react(), spikeCapture(), productTitle(), homeTheme()],
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },
 })
