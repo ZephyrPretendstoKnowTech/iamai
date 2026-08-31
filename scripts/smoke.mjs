@@ -195,9 +195,10 @@ try {
   // Walk fixes (prompt 47.1 Part 2): the table column, and a hairline header.
   check('Inventory: the page uses the 1040px table column', (await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)) >= 1040, String(await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)))
   check('Inventory: the header row is a hairline, not a band', (await evaluate(`getComputedStyle(document.querySelector('main.page table.datatable th')).backgroundColor`)) === 'rgba(0, 0, 0, 0)')
-  await go('licensing')
+  await go('how')
   t = await text()
-  check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))
+  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check IAMAI runs/.test(t) && /Baseline packages/.test(t) && /Limits/.test(t))
+  check('How: the old reference routes redirect here', (await (async () => { await send('Page.navigate', { url: `${BASE}#/checks` }); await sleep(600); return await waitFor(`location.hash === '#/how'`) })()))
 
   // Roadmap
   await go('roadmap')
@@ -339,7 +340,7 @@ try {
   await go('checks')
   t = await text()
   check('Checks: the reference page lists the registry by subject', /Every check IAMAI runs/.test(t) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
-  check('Checks: severities and the unknown rule are stated', /Must fix/.test(t) && /Recommended/.test(t) && /holds the plan exactly as a failure does/.test(t))
+  check('Checks: the severities render', /Must fix/.test(t) && /Recommended/.test(t) && /Note/.test(t))
   check('Checks: a break-glass rule is on the page in plain language', /Global Administrator is assigned permanently and active/.test(t))
   // Every check names its source, and the ones nobody documents say so (audit-program 6).
   check('Checks: every rule names a source', /Source/.test(t) && /Microsoft: manage emergency access accounts/.test(t))

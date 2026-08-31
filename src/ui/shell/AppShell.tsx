@@ -27,7 +27,7 @@ export type { Route } from './routes.ts'
 const RESCAN_HREF = '#/connect'
 
 // Pages whose main content is a table read better with the wider cap.
-const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'reads', 'licensing', 'checks'])
+const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'how'])
 
 export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
 export const GITHUB_URL = 'https://github.com/ZephyrPretendstoKnowTech'
