@@ -1,0 +1,110 @@
+// Every step executable (prompt 46 Part 3, target-state §6): each goal's
+// template is the goal it claims to be, renders Do it from the same renderer a
+// baseline policy would, and every placeholder either resolves from the
+// assumptions or names the Wave 0 step that creates the missing object.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { CATALOGUE } from '../coverage/coverage.ts'
+import { actionVerb, proposedPolicyName } from '../coverage/naming.ts'
+import { emptyMappingState } from '../mapping/types.ts'
+import { buildCreateAction, PLACEHOLDER_STEP } from './generate.ts'
+import { allFixtures } from './fixtures/index.ts'
+import { runFixture } from './fixtures/run.ts'
+import { checkTemplate, SHORT_NAME_MAX_WORDS } from './templateCheck.ts'
+import { placeholdersIn, resolveTemplate, SAMPLE_VALUES, TEMPLATE_PLACEHOLDERS } from './template.ts'
+import type { TemplateBody } from './template.ts'
+
+const ALWAYS_RESOLVED = new Set(['{namePrefix}', '{coreAdminRoles}'])
+
+test('item 11: every goal has a shortName and every implementation a template that is its own goal', () => {
+  assert.ok(CATALOGUE.length >= 26)
+  for (const goal of CATALOGUE) {
+    assert.ok(goal.shortName.trim().length > 0, `${goal.id} has no shortName`)
+    assert.ok(goal.shortName.trim().split(/\s+/).length <= SHORT_NAME_MAX_WORDS, `${goal.id}: shortName "${goal.shortName}" is over ${SHORT_NAME_MAX_WORDS} words`)
+    assert.notEqual(goal.shortName.toLowerCase(), goal.name.toLowerCase(), `${goal.id}: shortName is the goal sentence`)
+    for (const impl of goal.implementations) {
+      const r = checkTemplate(goal, impl)
+      assert.ok(r.ok, `${goal.id}: ${r.problems.join('; ')}`)
+      // The name inside the template is the one the plan will propose.
+      assert.equal(impl.template.displayName, `{namePrefix} - ${actionVerb(impl)} - ${goal.shortName}`, `${goal.id}: displayName`)
+    }
+  }
+})
+
+test('item 12: every goal × implementation renders Do it from the template with a grant or session control', () => {
+  const mapping = emptyMappingState('t')
+  for (const goal of CATALOGUE) {
+    for (const impl of goal.implementations) {
+      const { body, unresolved } = resolveTemplate(impl.template as TemplateBody, SAMPLE_VALUES)
+      assert.deepEqual(unresolved, [], `${goal.id}: sample values resolve everything`)
+      const action = buildCreateAction(body, mapping, 'plan-1', `s-goal-${goal.id}`, undefined, { displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` })
+      assert.ok(action.json, `${goal.id}: json`)
+      const parsed = JSON.parse(action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null; state: string; description: string }
+      const grants = (parsed.grantControls?.builtInControls?.length ?? 0) + (parsed.grantControls?.authenticationStrength ? 1 : 0)
+      const sessions = Object.values(parsed.sessionControls ?? {}).filter((v) => v && typeof v === 'object' && (v as { isEnabled?: boolean }).isEnabled === true).length
+      assert.ok(grants + sessions >= 1, `${goal.id}: at least one grant or session control`)
+      assert.equal(parsed.state, 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only`)
+      assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
+      assert.ok(action.portalSteps.length >= 4, `${goal.id}: portal steps`)
+      assert.match(action.powershell ?? '', /Invoke-MgGraphRequest -Method POST/, `${goal.id}: PowerShell`)
+      // Nothing that would only make sense to a developer leaks into the portal steps.
+      assert.equal(action.portalSteps.some((l) => /\{[a-zA-Z]+\}|__IAMAI_/.test(l)), false, `${goal.id}: no raw placeholder in portal steps: ${action.portalSteps.join(' | ')}`)
+    }
+  }
+})
+
+test('item 12: every placeholder a template uses has a Wave 0 step that creates the object, or always resolves', () => {
+  for (const goal of CATALOGUE) {
+    for (const impl of goal.implementations) {
+      const { unresolved } = resolveTemplate(impl.template as TemplateBody, {})
+      for (const p of placeholdersIn(impl.template)) {
+        if (ALWAYS_RESOLVED.has(p)) continue
+        assert.ok(unresolved.includes(p), `${goal.id}: ${p} is reported unresolved with no values`)
+        assert.ok(p in PLACEHOLDER_STEP, `${goal.id}: ${p} has no Wave 0 step`)
+      }
+    }
+  }
+  assert.deepEqual(new Set([...Object.keys(PLACEHOLDER_STEP), ...ALWAYS_RESOLVED]), new Set(TEMPLATE_PLACEHOLDERS))
+})
+
+test('item 12: with no baseline at all, every create step still carries a body, and unresolved objects block on Wave 0 or Setup', () => {
+  const f = allFixtures().find((x) => x.name === 'small')
+  assert.ok(f)
+  const r = runFixture({ ...f, baseline: { ...f.baseline, policies: [], docs: [] } })
+  const creates = r.steps.filter((s) => s.goalId && s.kind === 'create' && s.status !== 'done')
+  assert.ok(creates.length >= 10, `expected many create steps, got ${creates.length}`)
+  for (const s of creates) {
+    assert.ok(s.action.json, `${s.id}: has a body`)
+    assert.equal(s.action.summary.some((l) => /No baseline policy matches/.test(l)), false, `${s.id}: no "create a policy that meets the floor" hand-off`)
+    const leftover = TEMPLATE_PLACEHOLDERS.filter((p) => s.action.json?.includes(p))
+    for (const p of leftover) {
+      assert.ok(p in PLACEHOLDER_STEP, `${s.id}: ${p} left in the body`)
+      const prereq = PLACEHOLDER_STEP[p as keyof typeof PLACEHOLDER_STEP]
+      const held = s.blockedBy.includes(prereq) || s.blockers.some((b) => b.kind === 'setup')
+      assert.ok(held, `${s.id}: ${p} unresolved but the step waits on nothing (blockedBy ${s.blockedBy.join(', ') || 'nothing'})`)
+    }
+  }
+})
+
+test('item 13: proposed names are {prefix} - {Action} - {shortName}, never the goal sentence', () => {
+  const legacy = CATALOGUE.find((g) => g.id === 'block-legacy-auth')
+  const admins = CATALOGUE.find((g) => g.id === 'admins-phishing-resistant')
+  const session = CATALOGUE.find((g) => g.id === 'admin-session')
+  assert.ok(legacy && admins && session)
+  assert.equal(proposedPolicyName(legacy, null), `CA - Block - ${legacy.shortName}`)
+  assert.equal(proposedPolicyName(admins, null), `CA - Require - ${admins.shortName}`)
+  assert.equal(proposedPolicyName(session, null), `CA - Session - ${session.shortName}`)
+  // A two-segment tenant convention collapses the action into the control.
+  const two = proposedPolicyName(legacy, { prefix: 'Core', separator: ' - ' })
+  assert.equal(two, `Core - Block ${legacy.shortName.charAt(0).toLowerCase()}${legacy.shortName.slice(1)}`)
+  for (const g of CATALOGUE) assert.equal(proposedPolicyName(g, null).includes(g.name), false, `${g.id}: name carries the goal sentence`)
+})
+
+test('item 14: no fixture produces an ad-hoc goal or a "Restrict access to" step', () => {
+  for (const f of allFixtures()) {
+    const r = runFixture(f)
+    assert.equal(r.coverage.results.some((x) => x.goal.id.startsWith('adhoc:')), false, `${f.name}: ad-hoc goal`)
+    assert.equal(r.steps.some((s) => /^Restrict access to/.test(s.title)), false, `${f.name}: invented title`)
+    assert.ok(Array.isArray(r.coverage.organisation.notAssessed), `${f.name}: notAssessed present`)
+  }
+})

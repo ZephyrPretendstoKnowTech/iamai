@@ -4,7 +4,7 @@
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NamingConvention } from '../coverage/naming.ts'
-import { proposedPolicyName } from '../coverage/naming.ts'
+import { proposedGroupName } from '../coverage/naming.ts'
 import { RINGS } from '../copy/rings.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { OBSERVATION_DAYS } from './constants.ts'
@@ -179,8 +179,7 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   const pool = step.population.ids.filter((id) => !ctx.breakGlassIds.has(id))
   const total = pool.length
   const useFilter = total > FILTER_THRESHOLD
-  const sep = ctx.naming?.separator ?? ' - '
-  const groupName = (ring: string): string => proposedPolicyName(RINGS.groupNoun(ring, step.title, sep), ctx.naming)
+  const groupName = (ring: string): string => proposedGroupName(ring, step.title, ctx.naming).name
   const remaining = new Set(pool)
   const take = (ids: string[]): string[] => {
     const out = ids.filter((id) => remaining.has(id))

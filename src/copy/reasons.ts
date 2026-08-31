@@ -23,3 +23,9 @@ export const REASON = {
   excludedDirectly: (breakGlass: boolean, assumedNote: string, userIds: string[] = []): string =>
     `Excluded directly${userIds.length > 0 ? `: ${userIds.join(', ')}` : ''}${breakGlass ? ` (break-glass${assumedNote})` : ''}`,
 }
+
+/** Why a baseline policy is listed as not assessed (prompt 46 item 14): one reason, at most twelve words. */
+export const NOT_ASSESSED = {
+  noGoal: 'No security goal in the catalogue matches this policy',
+  agentIdentity: 'An agent-identity policy; IAMAI does not assess these yet',
+}

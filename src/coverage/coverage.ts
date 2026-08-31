@@ -2,7 +2,7 @@
 import goalsData from '../../data/goals.json' with { type: 'json' }
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
-import { adHocGoal, matchesSignature, raiseFloor } from './classify.ts'
+import { matchesSignature, raiseFloor } from './classify.ts'
 import { policyFacts } from './facts.ts'
 import type { StrengthLookup } from './strength.ts'
 import { satisfiesFloor } from './strength.ts'
@@ -10,8 +10,8 @@ import { resolveFactsWho, resolvePopulation } from './population.ts'
 import type { GroupMembers } from './population.ts'
 import { detectFacets } from './applicability.ts'
 import type { FacetOverrides } from './applicability.ts'
-import { REASON } from '../copy/reasons.ts'
-import { proposedPolicyName, stepTitle } from './naming.ts'
+import { NOT_ASSESSED, REASON } from '../copy/reasons.ts'
+import { proposedPolicyName } from './naming.ts'
 import { organisationReport } from './organisation.ts'
 import { gapSentenceOf, verdictOf } from './verdict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
@@ -21,6 +21,7 @@ import type {
   CoverageReport,
   Goal,
   GoalResult,
+  NotAssessed,
   PolicyFacts,
   Reason,
 } from './types.ts'
@@ -123,30 +124,16 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     for (const b of baselineMatches) matchedBaseline.add(b.name)
     return { goal, baselineMatches }
   })
-  // Ad-hoc goals with the same intent fingerprint are one goal (§12); the
-  // other source policies stay named in the detail.
-  const byFingerprint = new Map<string, { goal: Goal; baselineMatches: PolicyFacts[] }>()
-  // App names the tenant knows, so an ad-hoc goal can be named by its app.
-  const appNames = new Map<string, string>()
-  for (const raw of snapshot.appSignInSummary) {
-    const a = raw as { appId?: string; appDisplayName?: string }
-    if (typeof a.appId === 'string' && typeof a.appDisplayName === 'string') appNames.set(a.appId.toLowerCase(), a.appDisplayName)
-  }
-  for (const b of baselineFacts) {
-    if (matchedBaseline.has(b.name)) continue
-    const goal = adHocGoal(b, appNames)
-    // Same fingerprint, or the same generated title, is one goal (§12).
-    const key = [...byFingerprint.entries()].find(([, e]) => e.goal.name === goal.name)?.[0] ?? JSON.stringify(goal.implementations[0].signature)
-    const existing = byFingerprint.get(key)
-    if (existing) {
-      existing.baselineMatches.push(b)
-      existing.goal.adHocSources = [...(existing.goal.adHocSources ?? [existing.goal.adHocSource ?? '']), b.name]
-      continue
-    }
-    const entry = { goal, baselineMatches: [b] }
-    byFingerprint.set(key, entry)
-    goals.push(entry)
-  }
+  // Baseline policies no catalogue goal matches are not goals, findings or
+  // steps (prompt 46 item 14, target-state §5 footer). They are listed as not
+  // assessed, under the baseline's own name, with their JSON and one reason;
+  // so are the policies the adapter could not read.
+  const rawByName = new Map(input.baselinePolicies.map((p) => [String((p as { displayName?: unknown }).displayName ?? ''), p]))
+  const jsonOf = (name: string): string | null => (rawByName.has(name) ? JSON.stringify(rawByName.get(name), null, 2) : null)
+  const notAssessed: NotAssessed[] = baselineFacts
+    .filter((b) => !matchedBaseline.has(b.name))
+    .map((b) => ({ name: b.name, json: jsonOf(b.name), reason: b.workload !== null ? NOT_ASSESSED.agentIdentity : NOT_ASSESSED.noGoal }))
+  for (const w of input.baselineUnusable) notAssessed.push({ name: w.policyName, json: jsonOf(w.policyName), reason: w.warning })
 
   const results: GoalResult[] = goals.map(({ goal, baselineMatches }) =>
     evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets),
@@ -168,7 +155,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     r.verdict = verdictOf(r.status)
     r.gapSentence = gapSentenceOf(r)
   }
-  const organisation = organisationReport(tenantFacts, results, snapshot, matchedTenantIds)
+  const organisation = organisationReport(tenantFacts, results, snapshot, matchedTenantIds, notAssessed)
   // Threaded through the names already proposed, so a numbered series advances.
   // Without this every missing goal proposed CA004, because each call saw only
   // the tenant's existing names and none of the plan's own (prompt 43 Part 2).
@@ -176,7 +163,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   for (const r of results) {
     if (r.status !== 'absent') continue
     const match = goals.find((g) => g.goal.id === r.goal.id)?.baselineMatches[0]?.name ?? null
-    const proposed = proposedPolicyName(stepTitle(r.goal.name), naming)
+    const proposed = proposedPolicyName(r.goal, naming)
     naming.names.push(proposed)
     r.statement = missingStatement(r.goal.name, proposed, match)
   }
@@ -208,19 +195,6 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   }
 }
 
-// Seen = in the app sign-in summary, service-principal activity, or targeted
-// by an existing tenant policy. (No service-principal inventory is collected.)
-function vendorAppSeen(appIds: string[], snapshot: TenantSnapshot, tenantPolicies: unknown[]): boolean {
-  const wanted = new Set(appIds.map((a) => a.toLowerCase()))
-  const rows = [...(snapshot.appSignInSummary as { appId?: string }[]), ...(snapshot.spActivity as { appId?: string }[])]
-  if (rows.some((r) => typeof r.appId === 'string' && wanted.has(r.appId.toLowerCase()))) return true
-  for (const raw of tenantPolicies) {
-    const apps = (raw as { conditions?: { applications?: { includeApplications?: string[] } } }).conditions?.applications?.includeApplications ?? []
-    if (apps.some((a) => wanted.has(String(a).toLowerCase()))) return true
-  }
-  return false
-}
-
 function confirmedExclusions(mapping: NonNullable<CoverageInput['mapping']>): AssumedExclusions {
   return {
     groups: new Map(Object.entries(mapping.exclusionGroups ?? {})),
@@ -250,11 +224,6 @@ function evaluateGoal(
     // Set from the final status in computeCoverage; never read before then.
     verdict: 'unknown',
     gapSentence: null,
-  }
-
-  // Vendor-specific policy (SPEC §7): applies only when the vendor's app is seen.
-  if (goal.vendor && !vendorAppSeen(goal.vendor.appIds, input.snapshot, input.tenantPolicies)) {
-    return { ...base, status: 'not-applicable', statement: notApplicableStatement(goal.name, `the ${goal.vendor.name} app is not present in this tenant`) }
   }
 
   // Applicability facet (§9).

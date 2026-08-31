@@ -93,6 +93,12 @@ export type Implementation = {
   expectedApps: string
   floor: Floor
   allowedExclusions: string[]
+  /**
+   * The goal floor written as a Graph conditionalAccessPolicy body, with the
+   * tenant's own objects as placeholders (src/roadmap/template.ts). The Do-it
+   * body whenever no baseline policy matches the goal (prompt 46 item 11).
+   */
+  template: Record<string, unknown>
 }
 
 /**
@@ -109,6 +115,8 @@ export type Domain = 'Identity' | 'Admins' | 'Devices' | 'Sessions' | 'Legacy ac
 export type Goal = {
   id: string
   name: string
+  /** The control noun, at most six words: what the proposed policy is named after (target-state §8.4). */
+  shortName: string
   description: string
   phase: number
   /** Scoring inputs (ux-review-03 §A7); ad-hoc goals may lack them. */
@@ -123,12 +131,6 @@ export type Goal = {
   tldr?: string
   /** Related CIS Controls v8 safeguard ids. */
   cis?: string[]
-  /** Set for ad-hoc goals built from unmatched baseline policies. */
-  adHocSource?: string
-  /** Every baseline policy merged into this ad-hoc goal (§12). */
-  adHocSources?: string[]
-  /** Third-party vendor the policy targets (SPEC §7); not-applicable unless the app is seen in the tenant. */
-  vendor?: { name: string; appIds: string[] }
 }
 
 export type ResolvedPopulation = {
@@ -216,8 +218,17 @@ export type AssumedExclusions = {
   confirmed: boolean // false until Mapping confirms — UI shows "assumed" banner
 }
 
+/**
+ * A baseline policy the plan does not assess (prompt 46 item 14): no catalogue
+ * goal matches it, or the adapter could not read it. Named as the baseline
+ * names it, with its JSON and one reason, for the Plan footer. Never a goal,
+ * a finding or a step.
+ */
+export type NotAssessed = { name: string; json: string | null; reason: string }
+
 export type OrganisationReport = {
   notInBaseline: { id: string; name: string; state: string }[]
+  notAssessed: NotAssessed[]
   consolidation: { goalId: string; goalName: string; policyNames: string[] }[]
   naming: {
     pattern: string | null

@@ -1,7 +1,7 @@
 // Naming and organisation report (intents.md §10) — secondary, never mixed
 // into coverage scoring. Pure.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import type { GoalResult, OrganisationReport, PolicyFacts } from './types.ts'
+import type { GoalResult, NotAssessed, OrganisationReport, PolicyFacts } from './types.ts'
 import { detectConvention, usable as usableConvention } from '../roadmap/convention.ts'
 
 export function organisationReport(
@@ -9,6 +9,7 @@ export function organisationReport(
   results: GoalResult[],
   snapshot: TenantSnapshot,
   matchedTenantIds?: Set<string>,
+  notAssessed: NotAssessed[] = [],
 ): OrganisationReport {
   const matchedPolicyIds = matchedTenantIds ?? new Set(results.flatMap((r) => r.candidates.map((c) => c.policyId)))
   const managedIds = new Set(snapshot.microsoftManagedPolicyIds)
@@ -30,7 +31,6 @@ export function organisationReport(
     return JSON.stringify({ all: f.who.all, guests: f.who.guests, who, grant })
   }
   const consolidation = results
-    .filter((r) => !r.goal.adHocSource)
     .flatMap((r) => {
       const enabled = r.candidates.filter((c) => c.state === 'enabled')
       const groups = new Map<string, string[]>()
@@ -84,6 +84,7 @@ export function organisationReport(
 
   return {
     notInBaseline,
+    notAssessed,
     consolidation,
     naming: { pattern, share, outliers, prefix, separator, convention, unprefixed, names },
     microsoftManaged,

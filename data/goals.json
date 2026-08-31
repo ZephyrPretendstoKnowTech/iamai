@@ -4,6 +4,7 @@
     {
       "id": "mfa-all-users",
       "name": "Every user satisfies MFA on every app",
+      "shortName": "MFA for all users",
       "description": "All members and guests must complete multifactor authentication for every application.",
       "phase": 2,
       "domain": "Identity",
@@ -34,7 +35,39 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - MFA for all users",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000002"
+              }
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -48,6 +81,7 @@
     {
       "id": "admins-phishing-resistant",
       "name": "Admins use phishing-resistant auth",
+      "shortName": "Phishing-resistant MFA for admins",
       "description": "Core admin roles must authenticate with phishing-resistant methods.",
       "phase": 3,
       "domain": "Admins",
@@ -74,7 +108,36 @@
           },
           "allowedExclusions": [
             "breakGlass"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Phishing-resistant MFA for admins",
+            "conditions": {
+              "users": {
+                "includeRoles": [
+                  "{coreAdminRoles}"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000004"
+              }
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -87,6 +150,7 @@
     {
       "id": "admin-portals-protected",
       "name": "Admin portals need strong auth or are blocked for non-admins",
+      "shortName": "Admin portals",
       "description": "Access to Microsoft admin portals requires strong authentication or is blocked outright.",
       "phase": 3,
       "domain": "Admins",
@@ -113,7 +177,39 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Admin portals",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "MicrosoftAdminPortals"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000002"
+              }
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -126,6 +222,7 @@
     {
       "id": "guests-mfa",
       "name": "Guests satisfy MFA",
+      "shortName": "MFA for guests and external users",
       "description": "Every guest and external user type present in the tenant must complete MFA.",
       "phase": 4,
       "domain": "Identity",
@@ -152,7 +249,39 @@
           },
           "allowedExclusions": [
             "breakGlass"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - MFA for guests and external users",
+            "conditions": {
+              "users": {
+                "includeGuestsOrExternalUsers": {
+                  "guestOrExternalUserTypes": "internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider",
+                  "externalTenants": {
+                    "@odata.type": "#microsoft.graph.conditionalAccessAllExternalTenants",
+                    "membershipKind": "all"
+                  }
+                },
+                "excludeUsers": [
+                  "{breakGlass}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "mfa"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -165,6 +294,7 @@
     {
       "id": "register-info-protected",
       "name": "Security-info registration requires a trusted context",
+      "shortName": "Security info registration",
       "description": "Registering security info requires MFA or happens only from trusted locations.",
       "phase": 0,
       "domain": "Identity",
@@ -191,7 +321,53 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Security info registration",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ],
+                "excludeGuestsOrExternalUsers": {
+                  "guestOrExternalUserTypes": "internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider",
+                  "externalTenants": {
+                    "@odata.type": "#microsoft.graph.conditionalAccessAllExternalTenants",
+                    "membershipKind": "all"
+                  }
+                }
+              },
+              "applications": {
+                "includeUserActions": [
+                  "urn:user:registersecurityinfo"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "locations": {
+                "includeLocations": [
+                  "All"
+                ],
+                "excludeLocations": [
+                  "AllTrusted"
+                ]
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "mfa"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -204,6 +380,7 @@
     {
       "id": "block-legacy-auth",
       "name": "Legacy protocols blocked",
+      "shortName": "Legacy authentication",
       "description": "Exchange ActiveSync and other legacy clients are blocked for everyone.",
       "phase": 1,
       "domain": "Legacy access",
@@ -233,7 +410,40 @@
             "breakGlass",
             "globalExclusion",
             "serviceAccounts"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Legacy authentication",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}",
+                  "{serviceAccountsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "exchangeActiveSync",
+                "other"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -246,6 +456,7 @@
     {
       "id": "block-device-code",
       "name": "Device-code flow blocked",
+      "shortName": "Device code flow",
       "description": "The device-code authentication flow is blocked.",
       "phase": 1,
       "domain": "Legacy access",
@@ -272,7 +483,38 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Device code flow",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "authenticationFlows": {
+                "transferMethods": "deviceCodeFlow"
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -285,6 +527,7 @@
     {
       "id": "block-auth-transfer",
       "name": "Authentication transfer blocked",
+      "shortName": "Authentication transfer",
       "description": "The authentication-transfer flow is blocked.",
       "phase": 1,
       "domain": "Legacy access",
@@ -311,7 +554,41 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Authentication transfer",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "authenticationFlows": {
+                "transferMethods": "authenticationTransfer"
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -324,6 +601,7 @@
     {
       "id": "geo-restriction",
       "name": "Sign-ins outside allowed countries blocked",
+      "shortName": "Countries not allowed",
       "description": "Sign-ins from outside the allowed countries are blocked.",
       "phase": 4,
       "domain": "Identity",
@@ -353,7 +631,47 @@
             "breakGlass",
             "globalExclusion",
             "serviceAccounts"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Countries not allowed",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}",
+                  "{serviceAccountsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "locations": {
+                "includeLocations": [
+                  "All"
+                ],
+                "excludeLocations": [
+                  "{allowedCountriesLocation}"
+                ]
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -366,6 +684,7 @@
     {
       "id": "admin-session",
       "name": "Admin sessions expire quickly and never persist",
+      "shortName": "Admin session lifetime",
       "description": "Core admin roles get a short sign-in frequency and no persistent browser sessions.",
       "phase": 3,
       "domain": "Admins",
@@ -395,7 +714,42 @@
           },
           "allowedExclusions": [
             "breakGlass"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Session - Admin session lifetime",
+            "conditions": {
+              "users": {
+                "includeRoles": [
+                  "{coreAdminRoles}"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": null,
+            "sessionControls": {
+              "signInFrequency": {
+                "value": 12,
+                "type": "hours",
+                "isEnabled": true,
+                "frequencyInterval": "timeBased",
+                "authenticationType": "primaryAndSecondaryAuthentication"
+              },
+              "persistentBrowser": {
+                "mode": "never",
+                "isEnabled": true
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -408,6 +762,7 @@
     {
       "id": "byod-session-controls",
       "name": "Unmanaged-device browser sessions are limited",
+      "shortName": "App-enforced restrictions",
       "description": "Browser sessions from unmanaged devices get app-enforced restrictions, no persistence, or a sign-in frequency.",
       "phase": 6,
       "domain": "Sessions",
@@ -439,7 +794,37 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Session - App-enforced restrictions",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": null,
+            "sessionControls": {
+              "applicationEnforcedRestrictions": {
+                "isEnabled": true
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -452,6 +837,7 @@
     {
       "id": "require-managed-device",
       "name": "Office apps require a compliant or joined device",
+      "shortName": "Compliant device for Office 365",
       "description": "Office 365 access requires a compliant or domain-joined device.",
       "phase": 5,
       "domain": "Devices",
@@ -480,7 +866,39 @@
             "breakGlass",
             "globalExclusion",
             "serviceAccounts"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Compliant device for Office 365",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}",
+                  "{serviceAccountsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "Office365"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "compliantDevice"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -493,6 +911,7 @@
     {
       "id": "block-unsupported-platforms",
       "name": "Unknown platforms blocked",
+      "shortName": "Unsupported platforms",
       "description": "Platforms outside the supported set are blocked.",
       "phase": 5,
       "domain": "Devices",
@@ -517,7 +936,46 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Unsupported platforms",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "platforms": {
+                "includePlatforms": [
+                  "all"
+                ],
+                "excludePlatforms": [
+                  "android",
+                  "iOS",
+                  "windows",
+                  "macOS"
+                ]
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -530,6 +988,7 @@
     {
       "id": "mobile-app-protection",
       "name": "Mobile access requires approved or protected apps",
+      "shortName": "App protection on mobile devices",
       "description": "iOS and Android access requires approved client apps or app protection policies.",
       "phase": 5,
       "domain": "Devices",
@@ -554,7 +1013,45 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - App protection on mobile devices",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "platforms": {
+                "includePlatforms": [
+                  "android",
+                  "iOS"
+                ],
+                "excludePlatforms": []
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "compliantApplication"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -567,6 +1064,7 @@
     {
       "id": "sign-in-risk",
       "name": "Risky sign-ins get MFA or are blocked",
+      "shortName": "Sign-in risk",
       "description": "High (and medium) sign-in risk requires MFA or blocks the sign-in.",
       "phase": 7,
       "domain": "Risk",
@@ -593,7 +1091,48 @@
           },
           "allowedExclusions": [
             "breakGlass"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Sign-in risk",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "signInRiskLevels": [
+                "high",
+                "medium"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000002"
+              }
+            },
+            "sessionControls": {
+              "signInFrequency": {
+                "value": null,
+                "type": null,
+                "isEnabled": true,
+                "frequencyInterval": "everyTime",
+                "authenticationType": "primaryAndSecondaryAuthentication"
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -606,6 +1145,7 @@
     {
       "id": "user-risk",
       "name": "High-risk users must change password",
+      "shortName": "High user risk",
       "description": "High user risk forces a secured password change or blocks access.",
       "phase": 7,
       "domain": "Risk",
@@ -632,7 +1172,45 @@
           },
           "allowedExclusions": [
             "breakGlass"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - High user risk",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "userRiskLevels": [
+                "high"
+              ]
+            },
+            "grantControls": {
+              "operator": "AND",
+              "builtInControls": [
+                "mfa",
+                "passwordChange"
+              ]
+            },
+            "sessionControls": {
+              "signInFrequency": {
+                "isEnabled": true,
+                "frequencyInterval": "everyTime",
+                "authenticationType": "primaryAndSecondaryAuthentication"
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -645,6 +1223,7 @@
     {
       "id": "azure-management-mfa",
       "name": "Azure management requires strong auth",
+      "shortName": "Azure management",
       "description": "The Azure management plane requires MFA.",
       "phase": 3,
       "domain": "Admins",
@@ -674,7 +1253,39 @@
             "breakGlass",
             "globalExclusion",
             "serviceAccounts"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Azure management",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}",
+                  "{serviceAccountsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "797f4846-ba00-4fd7-ba43-dac1f8f63013"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "mfa"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -687,6 +1298,7 @@
     {
       "id": "device-registration-mfa",
       "name": "Registering or joining a device requires MFA",
+      "shortName": "MFA for device registration",
       "description": "The register-or-join-device user action requires MFA.",
       "phase": 5,
       "domain": "Devices",
@@ -713,7 +1325,39 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - MFA for device registration",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeUserActions": [
+                  "urn:user:registerdevice"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000002"
+              }
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -726,6 +1370,7 @@
     {
       "id": "token-protection",
       "name": "Windows desktop sessions require token protection",
+      "shortName": "Token protection",
       "description": "Windows sessions require token protection (secure sign-in session).",
       "phase": 7,
       "domain": "Sessions",
@@ -753,7 +1398,45 @@
             "breakGlass",
             "globalExclusion",
             "serviceAccounts"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Session - Token protection",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}",
+                  "{serviceAccountsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "00000002-0000-0ff1-ce00-000000000000",
+                  "00000003-0000-0ff1-ce00-000000000000",
+                  "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe"
+                ]
+              },
+              "platforms": {
+                "includePlatforms": [
+                  "windows"
+                ]
+              },
+              "clientAppTypes": [
+                "mobileAppsAndDesktopClients"
+              ]
+            },
+            "grantControls": null,
+            "sessionControls": {
+              "secureSignInSession": {
+                "isEnabled": true
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -766,6 +1449,7 @@
     {
       "id": "workload-identity-block",
       "name": "Service principals restricted",
+      "shortName": "Service principals outside trusted locations",
       "description": "Workload identities are blocked or risk-restricted by policy.",
       "phase": 7,
       "domain": "Legacy access",
@@ -787,7 +1471,38 @@
           "floor": {
             "grant": "block"
           },
-          "allowedExclusions": []
+          "allowedExclusions": [],
+          "template": {
+            "displayName": "{namePrefix} - Block - Service principals outside trusted locations",
+            "conditions": {
+              "clientApplications": {
+                "includeServicePrincipals": [
+                  "ServicePrincipalsInMyTenant"
+                ],
+                "excludeServicePrincipals": []
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "locations": {
+                "includeLocations": [
+                  "All"
+                ],
+                "excludeLocations": [
+                  "AllTrusted"
+                ]
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -800,6 +1515,7 @@
     {
       "id": "all-users-no-persistence",
       "name": "Browser sessions never persist for anyone",
+      "shortName": "Non-persistent browser sessions",
       "description": "All users get 'persistent browser session: never' so closing the browser ends the session.",
       "phase": 6,
       "domain": "Sessions",
@@ -830,7 +1546,38 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Session - Non-persistent browser sessions",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": null,
+            "sessionControls": {
+              "persistentBrowser": {
+                "mode": "never",
+                "isEnabled": true
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -843,6 +1590,7 @@
     {
       "id": "pim-activation-reauth",
       "name": "Activating a privileged role asks for MFA every time",
+      "shortName": "MFA at every role activation",
       "description": "PIM activation carries an authentication context that requires a fresh MFA every time.",
       "phase": 3,
       "domain": "Admins",
@@ -869,7 +1617,43 @@
           },
           "allowedExclusions": [
             "breakGlass"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - MFA at every role activation",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ]
+              },
+              "applications": {
+                "includeAuthenticationContextClassReferences": [
+                  "c1"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "mfa"
+              ]
+            },
+            "sessionControls": {
+              "signInFrequency": {
+                "value": null,
+                "type": null,
+                "frequencyInterval": "everyTime",
+                "authenticationType": "primaryAndSecondaryAuthentication",
+                "isEnabled": true
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -883,6 +1667,7 @@
     {
       "id": "intune-enrollment-reauth",
       "name": "Enrolling a device in Intune asks for MFA every time",
+      "shortName": "Fresh sign-in for Intune enrollment",
       "description": "The Intune enrollment app requires a fresh sign-in every time so a stolen session cannot enrol a device.",
       "phase": 5,
       "domain": "Devices",
@@ -912,7 +1697,44 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Fresh sign-in for Intune enrollment",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "d4ebce55-015a-49b5-a083-c84d1797ae8c"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "mfa"
+              ]
+            },
+            "sessionControls": {
+              "signInFrequency": {
+                "isEnabled": true,
+                "frequencyInterval": "everyTime",
+                "authenticationType": "primaryAndSecondaryAuthentication"
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -925,6 +1747,7 @@
     {
       "id": "block-downloads-unmanaged",
       "name": "Unmanaged devices cannot download",
+      "shortName": "Downloads on unmanaged devices",
       "description": "Browser sessions from devices that are not compliant get app-enforced restrictions (limited, read-only access).",
       "phase": 6,
       "domain": "Sessions",
@@ -951,7 +1774,40 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Session - Downloads on unmanaged devices",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "Office365"
+                ]
+              },
+              "devices": {
+                "deviceFilter": {
+                  "mode": "include",
+                  "rule": "device.isCompliant -ne True -and device.trustType -ne \"ServerAD\""
+                }
+              }
+            },
+            "grantControls": null,
+            "sessionControls": {
+              "applicationEnforcedRestrictions": {
+                "isEnabled": true
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -964,6 +1820,7 @@
     {
       "id": "sign-in-risk-medium",
       "name": "Medium-risk sign-ins require MFA",
+      "shortName": "Medium sign-in risk",
       "description": "Sign-ins Identity Protection rates medium (or higher) must satisfy MFA.",
       "phase": 7,
       "domain": "Risk",
@@ -990,7 +1847,46 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Medium sign-in risk",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "signInRiskLevels": [
+                "high",
+                "medium"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [],
+              "authenticationStrength": {
+                "id": "00000000-0000-0000-0000-000000000002"
+              }
+            },
+            "sessionControls": {
+              "signInFrequency": {
+                "isEnabled": true,
+                "frequencyInterval": "everyTime",
+                "authenticationType": "primaryAndSecondaryAuthentication"
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -1003,6 +1899,7 @@
     {
       "id": "user-risk-medium",
       "name": "Medium-risk users must change their password",
+      "shortName": "Password change for medium-risk users",
       "description": "Users Identity Protection rates medium (or higher) must complete MFA and change their password.",
       "phase": 7,
       "domain": "Risk",
@@ -1029,7 +1926,49 @@
           "allowedExclusions": [
             "breakGlass",
             "globalExclusion"
-          ]
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Require - Password change for medium-risk users",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "userRiskLevels": [
+                "high",
+                "medium"
+              ]
+            },
+            "grantControls": {
+              "operator": "AND",
+              "builtInControls": [
+                "mfa",
+                "passwordChange"
+              ]
+            },
+            "sessionControls": {
+              "signInFrequency": {
+                "isEnabled": true,
+                "frequencyInterval": "everyTime",
+                "authenticationType": "primaryAndSecondaryAuthentication"
+              }
+            }
+          }
         }
       ],
       "free": [],

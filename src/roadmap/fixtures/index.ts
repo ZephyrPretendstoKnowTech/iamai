@@ -352,7 +352,7 @@ export const FIXTURE_SPECS: Spec[] = [
   { name: 'mid', users: 280, admins: 14, licence: 'mixed', policies: 11, serviceAccounts: 3, expect: { rings: 3, weeksAtMost: 9, namesListed: false, policyCapWarning: false } },
   { name: 'large', users: 4900, admins: 60, licence: 'p1', policies: 40, hybrid: true, intuneShare: 0.55, expect: { rings: 4, weeksAtMost: 9, namesListed: false, policyCapWarning: true } },
   { name: 'huge', users: 25000, admins: 300, licence: 'p2', policies: 120, multiGeo: true, expect: { rings: 4, weeksAtMost: 10, namesListed: false, policyCapWarning: true } },
-  { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 20, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
+  { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 20, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: true } },
   { name: 'midflight', users: 60, admins: 3, licence: 'p1', policies: 6, midflight: true, expect: { rings: 3, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
   { name: 'hostile', users: 40, admins: 2, licence: 'p1', policies: 3, hostile: true, expect: { rings: 3, weeksAtMost: 9, namesListed: false, policyCapWarning: false } },
 ]

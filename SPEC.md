@@ -124,7 +124,7 @@ Findings about the default source to hand to Jon when ready: one file with a JSO
 - Planned, not yet read by the app: `lookup.json` (id → displayName/type), `manifest.json` (placeholder roles, variant sets, phases, author/version), the package validator, and "Export as baseline package".
 - Every baseline source must supply the About fields (`author`, `authorUrl`, `repoUrl`, `description`, `goal`, `tiers` on its index/manifest); sources without them show "no description provided".
 - Best path: connect a reference tenant with the same read-only flow → "Export as baseline package" (emits lookup + manifest). How-to page lists the Graph/PowerShell one-liners for manual exports and the accepted tool outputs (idPowerToys, CA Policy Copier, DCToolbox, CIPP templates, Jon's/Kenneth's/Joey's repos).
-- Vendor-specific policies: a baseline policy that targets a third-party app (`data/vendor-apps.json`, starting with Inforcer) carries `vendor` metadata and is not-applicable unless that app is seen in the tenant (sign-in summary, service-principal activity, or an existing policy that targets it). It is shown under Findings → Details → "Does not apply" with the vendor named. The vendor-specific policies in the default baseline are pending review with the baseline author (2026-08-27).
+- Vendor-specific and other unmatched baseline policies: a baseline policy no catalogue goal matches is never a goal, a finding or a step (prompt 46 item 14, target-state §5). It is listed as not assessed — the baseline's own policy name, its JSON, one reason — in the Plan footer's Housekeeping line, and nothing invents a title for it. The earlier ad-hoc goal path and its vendor detection (`data/vendor-apps.json`) are retired (2026-08-30).
 
 ## 8. Tool deployment
 

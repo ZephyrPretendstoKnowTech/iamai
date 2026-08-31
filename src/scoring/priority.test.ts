@@ -8,13 +8,14 @@ function goal(over: Partial<Goal> = {}, grant: 'block' | 'mfa' | undefined = 'mf
   return {
     id: 'g',
     name: 'Goal',
+    shortName: 'Goal',
     description: '',
     phase: 1,
     domain: 'Identity',
     securityValue: 4,
     baseEffort: 2,
     applicability: null,
-    implementations: [{ tier: 'p1', kind: 'ca', signature: {}, expectedWho: { kind: 'all' }, expectedApps: 'all', floor: grant ? { grant } : { session: { anyOf: true } }, allowedExclusions: [] }],
+    implementations: [{ tier: 'p1', kind: 'ca', signature: {}, expectedWho: { kind: 'all' }, expectedApps: 'all', floor: grant ? { grant } : { session: { anyOf: true } }, allowedExclusions: [], template: {} }],
     free: [],
     ...over,
   }

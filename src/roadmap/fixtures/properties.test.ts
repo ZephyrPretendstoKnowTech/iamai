@@ -297,11 +297,15 @@ for (const f of fixtures) {
   test(`${f.name}: the roadmap engine finishes inside its bound`, () => {
     // Coverage is computed once per scan and cached; the roadmap is what a re-plan, a ring change or a Steps render pays for.
     // Best of three: the bound is on the engine, not on the machine's noise.
-    // The 25,000-user fixture gets 300 ms rather than 200: measured at 183 ms
-    // best of four in isolation, and the test files run in parallel, so the
-    // tighter bound crossed over under contention rather than on a regression.
-    // Every other fixture keeps 200 ms.
-    const bound = f.name === 'huge' ? 300 : 200
+    // The 25,000-user fixture gets 400 ms rather than 200: measured at 183 ms
+    // best of four in isolation before prompt 46, and 218–237 ms after it,
+    // because every goal step is now executable (16 more steps per plan carry
+    // a body, rings and content) and Wave 0 names the dormant accounts. The
+    // test files run in parallel, so a bound within 1.3× of the isolated time
+    // crossed over under contention rather than on a regression; this keeps
+    // the same headroom ratio the 300 ms bound had. Every other fixture keeps
+    // 200 ms.
+    const bound = f.name === 'huge' ? 400 : 200
     const best = Math.min(run.roadmapMs, runFixture(f).roadmapMs, runFixture(f).roadmapMs)
     assert.ok(best < bound, `${best.toFixed(0)} ms against a ${bound} ms bound (with coverage: ${run.ms.toFixed(0)} ms)`)
   })
