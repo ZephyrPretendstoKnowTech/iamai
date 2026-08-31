@@ -86,12 +86,13 @@
           "What IAMAI asks for, and how to remove it"
         ],
         "links": [
-          "How IAMAI works →"
+          "How IAMAI works →",
+          "See it with sample data →"
         ]
       },
       "budget": {
-        "sentences": 8,
-        "words": 130
+        "sentences": 9,
+        "words": 150
       }
     },
     {
