@@ -41,8 +41,12 @@ Detail is available on every step behind one **More**. It is never in the flow.
 No sidebar. No stepper. One header:
 
 ```
-IAMAI · <tenant name>        Today   Plan   Export        Re-scan (scanned 24h ago) · Recovery card · theme · account
+IAMAI Planner · <tenant name>    Today   Plan   Export    Re-scan (scanned 24h ago) · Recovery card · theme · account
 ```
+
+The product is **IAMAI Planner**; its descriptor, `Conditional Access rollout planner`,
+is the page title and the home-page row; its tagline is `Plan the journey to your
+Conditional Access baseline.` The path stays `/rollout/` until the demo rebuild.
 
 Signed out, the header shows only the wordmark and theme; the page is Connect.
 
@@ -70,6 +74,7 @@ One page, three states.
 **Signed out**
 
 - h1 `Connect a tenant`
+- one line under it: `Plan the journey to your Conditional Access baseline. Read-only.`
 - three lines, as a list: what you need (Global Administrator or Global Reader; Entra ID
   P1 for sign-in evidence, works without it) · what IAMAI reads (Conditional Access
   configuration, user, device and licence inventory, 30 days of sign-in records) · what it
