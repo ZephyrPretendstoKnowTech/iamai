@@ -39,7 +39,7 @@ import { scoreResult } from '../../roadmap/score.ts'
 import { arrangeGoals } from '../../scoring/arrange.ts'
 import type { GroupBy } from '../../scoring/arrange.ts'
 import type { GoalScore, ScoreSort } from '../../scoring/priority.ts'
-import type { BaselineResult } from './BaselinePage.tsx'
+import type { BaselineResult } from '../baseline.ts'
 
 const STATUS_CHIP: Record<GoalStatus, ChipStatus> = {
   'below-baseline': 'warning',

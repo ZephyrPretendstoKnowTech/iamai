@@ -334,8 +334,6 @@ console.log('inventory: walking surfaces')
 // #/start and #/baseline redirect to Connect since prompt 47 Part 3; the
 // pages they named are gone from the walk.
 await goto('/connect');          await capture('Connect')
-await clickText('summary', '/What IAMAI will ask for/'); await sleep(500)
-await capture('Connect / permissions disclosure', 'disclosure expanded')
 
 // A tabbed page is captured as chrome plus one surface per panel. Capturing the
 // whole page once per tab counts the title, the banner and the Next button once

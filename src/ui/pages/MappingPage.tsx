@@ -24,7 +24,7 @@ import { setDisplayTimeZone } from '../format.ts'
 import { Button, Callout, Card, Chip, Confirm, Icon, InfoTip, Picker, Toast, Toggle, useToast } from '../components/index.ts'
 import type { IconName, PickerOption } from '../components/index.ts'
 import { ScanAge, StepFrame } from '../shell/AppShell.tsx'
-import type { BaselineResult } from './BaselinePage.tsx'
+import type { BaselineResult } from '../baseline.ts'
 
 export function MappingPage({
   scan,

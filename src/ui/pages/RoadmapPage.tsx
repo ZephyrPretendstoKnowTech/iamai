@@ -90,7 +90,7 @@ import { SCORE } from '../../copy/definitions.ts'
 import { FINDINGS } from '../../copy/pages.ts'
 import { compareScores } from '../../scoring/priority.ts'
 import type { ScoreSort } from '../../scoring/priority.ts'
-import type { BaselineResult } from './BaselinePage.tsx'
+import type { BaselineResult } from '../baseline.ts'
 
 type SavedSteps = Record<string, import('../../roadmap/progress.ts').SavedStep>
 type PlanStore = {

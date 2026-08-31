@@ -44,7 +44,7 @@ export type Route =
   | 'reads'
   | 'checks'
   | 'naming'
-  | 'baseline/package'
+  | 'package'
   | 'components'
 
 /** Where the shell is (target-state §2): it decides the tabs, Re-scan, and where an empty hash lands. */
@@ -53,8 +53,8 @@ export type ShellState = 'signedOut' | 'noScan' | 'scanning' | 'scanned'
 /** The Plan tab's target until prompt 48 lands the Plan surface. */
 export const PLAN_ROUTE: Route = 'roadmap'
 export const PLAN_HREF = `#/${PLAN_ROUTE}`
-/** Re-scan's target until prompt 47 Part 4 moves the scan to Connect. */
-const RESCAN_HREF = '#/today'
+/** The scan runs from Connect (target-state §3); a re-scan returns to Plan when it finishes. */
+const RESCAN_HREF = '#/connect'
 
 const REDIRECT: Record<string, Route> = {
   start: 'connect',
@@ -62,6 +62,7 @@ const REDIRECT: Record<string, Route> = {
   scan: 'today',
   readiness: 'today',
   plan: PLAN_ROUTE,
+  'baseline/package': 'package',
 }
 
 const VALID = new Set<string>([
@@ -77,7 +78,7 @@ const VALID = new Set<string>([
   'reads',
   'checks',
   'naming',
-  'baseline/package',
+  'package',
   ...(import.meta.env.DEV ? ['components'] : []),
 ])
 
@@ -225,6 +226,7 @@ export function AppShell({
   route,
   state,
   scannedAt = null,
+  onRescan,
   snapshot = null,
   children,
 }: {
@@ -234,6 +236,8 @@ export function AppShell({
   state: ShellState
   /** When the scan the pages read was taken; the header shows its age. */
   scannedAt?: string | null
+  /** Re-scan: the app opens Connect in its scanning state and comes back to Plan when done. */
+  onRescan?: () => void
   /** Only for the feedback summary, which is counts and never names. */
   snapshot?: TenantSnapshot | null
   children: ReactNode
@@ -266,7 +270,8 @@ export function AppShell({
             <Button
               variant="tertiary"
               onClick={() => {
-                window.location.hash = RESCAN_HREF
+                if (onRescan) onRescan()
+                else window.location.hash = RESCAN_HREF
               }}
             >
               {SHELL.rescanScanned(scanAge(scannedAt))}

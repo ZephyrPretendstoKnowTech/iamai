@@ -1,4 +1,4 @@
-// Package instructions (#/baseline/package): what a package is, three ways to
+// Package instructions (#/package): what a package is, three ways to
 // make one, and what happens to the upload.
 import { useState } from 'react'
 import { REDACTED, exportClipboard } from '../exportGuard.ts'
@@ -29,7 +29,7 @@ export function PackagePage() {
     })
   }
   return (
-    <StepFrame title={C.title} does={C.does} next="baseline" nextLabel={C.next}>
+    <StepFrame title={C.title} does={C.does} next="connect" nextLabel={C.next}>
       <Card title={C.whatTitle}>
         <ul>
           {C.what.map((w) => (

@@ -143,12 +143,28 @@ try {
   t = await evaluate(`document.querySelector('header.app').innerText`)
   check('Header (signed out): only the wordmark and the theme control', /IAMAI/.test(t) && !/Today|Account|Recovery/.test(t), t.replace(/\s+/g, ' '))
 
-  // Connect shows the mock account and the saved scan
+  // Connect, scanned: who is signed in, the baseline line, the one-line result, Open the plan (target-state §3).
   await go('connect')
   await sleep(600)
   t = await text()
-  check('Connect: signed in as the operator', /alex@example\.com/.test(t), 'operator UPN visible')
-  check('Connect: the saved scan is offered', /5 users/.test(t))
+  check('Connect: signed in as the operator', /Signed in to Contoso Pty Ltd as alex@example\.com/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
+  check('Connect: the baseline line names the baseline and its policy count', /Baseline: synthetic baseline \(1 policy\)/.test(t), (t.match(/Baseline:[^\n]*/) ?? [''])[0])
+  check('Connect (scanned): the one-line result and Open the plan', /Scan complete · 5 people · 3 policies · sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/.test(t) && /Open the plan →/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
+  check('Connect (scanned): the baseline picker opens with two choices', (await clickText('/^change$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /how to make one →/.test(document.body.innerText)`)))
+  await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
+  await sleep(1200)
+  t = await text()
+  check('Connect (no scan): Scan tenant and the ten-minute line', /Scan tenant/.test(t) && /About ten minutes\. Reads the tenant into this browser; nothing is sent anywhere\./.test(t))
+  check('Connect (no scan): nothing about a plan yet', !/Open the plan/.test(t))
+  await send('Page.navigate', { url: `${BASE}&state=scanning#/connect` })
+  await sleep(1200)
+  t = await text()
+  check('Connect (scanning): the lane in plain words and Stop', /Reading people/.test(t) && /Stop/.test(t) && !/Scan tenant/.test(t), (t.match(/Reading[^\n]*/) ?? [''])[0])
+  check('Connect (scanning): the header tabs are disabled', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 2)
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await sleep(1200)
+  t = await text()
+  check('Connect (signed out): the heading, the three lines and Sign in', /Connect a tenant/.test(t) && /Global Administrator or Global Reader/.test(t) && /Sign in with Microsoft/.test(t))
 
   // Scan: the readiness table
   await go('scan')
@@ -266,23 +282,20 @@ try {
   t = await text()
   check('Licensing: Entra ID P1 detected', /Entra ID P1/.test(t))
 
-  // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1).
-  await go('connect')
-  await sleep(700)
+  // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await sleep(1000)
   check(
     'Connect: the permissions disclosure opens and lists the scopes',
-    (await clickText('/What IAMAI will ask for/')) && (await waitFor(`/Policy.Read.All/.test(document.body.innerText)`)),
+    (await clickText('/What IAMAI asks for/')) && (await waitFor(`/Policy.Read.All/.test(document.body.innerText)`)),
   )
   t = await text()
-  // The claim is made once, in the lead sentence; the disclosure carries the
-  // evidence for it (review-07 R20, prompt 40 §23). Both are checked, so a
-  // rewrite cannot quietly drop either half.
-  check('Connect: it says the permissions are read-only', /Signs in read-only/.test(t) && /No write permission is in the set/.test(t))
-  check('Connect: it says what consent creates', /an enterprise application named IAMAI/.test(t))
-  check('Connect: it gives the removal path', /Enterprise applications/.test(t) && /Properties . Delete|Properties → Delete/.test(t))
+  check('Connect: six permission rows, three columns', (await evaluate(`document.querySelectorAll('details.permissions tbody tr').length`)) === 6 && /Permission\s+What IAMAI reads\s+Without it/.test(t))
+  check('Connect: the standard sign-in permissions are one line, not a table', /Plus the standard sign-in permissions\./.test(t) && !/openid/.test(t))
+  check('Connect: it gives the removal path and stops there', /Enterprise applications/.test(t) && /Properties → Delete/.test(t) && !/leaves nothing behind/.test(t))
   // Prompt 46 item 23: Application.Read.All is gone, so every requested scope
   // has a collector behind it and the "requested, not yet used" group is absent.
-  check('Connect: no requested scope sits unused', !/Requested, not yet used/.test(t) && !/Application\.Read\.All/.test(t))
+  check('Connect: no requested scope sits unused', !/Requested, not yet used/.test(t) && !/Application\.Read\.All/.test(t) && !/Used for/.test(t))
 
   // The feedback channel shows the message before anything opens (prompt 34 part 2).
   await go('roadmap')
