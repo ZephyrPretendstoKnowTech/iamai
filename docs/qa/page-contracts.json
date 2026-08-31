@@ -811,5 +811,11 @@
         "words": 60
       }
     }
+  ],
+  "forbidEverywhere": [
+    "__IAMAI",
+    "Setup question",
+    "Setup has no answer",
+    "urn:user:"
   ]
 }

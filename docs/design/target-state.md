@@ -317,7 +317,9 @@ One binding reason per row, ≤12 words, one of three shapes: `after: <step titl
 ### 8.6 Selectors the contract relies on
 
 The new pages use these class names, because the contract reaches and measures by
-them: `header.app`, `main.page`, `.tab-panel`, `details.permissions`, `.assumption`,
+them. Two surface depths exist: waves and export entries render as raised panels
+(`--bg-raised`, hairline border, 8px radius) so sections read as units; everything
+else separates by hairlines, and per-step tiles do not return. Selectors: `header.app`, `main.page`, `.tab-panel`, `details.permissions`, `.assumption`,
 `.wave`, `.plan-row`, `.step-title`, `.step-body`, `details.more`, `.plan-footer`,
 `.plan-settings`, `.export-card`. Controls inside a repeater (a row, a card, a chip
 strip) are items, not page actions.
