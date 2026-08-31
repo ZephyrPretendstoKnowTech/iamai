@@ -12,8 +12,8 @@ import { populationLine } from '../../derive/whoLine.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { unknownsFor } from '../../roadmap/unknowns.ts'
 import { promptFor, stepContext } from '../../roadmap/prompts.ts'
-import { skipStep } from '../../roadmap/progress.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
+import { SKIP } from '../../copy/skip.ts'
 import { toCsv } from '../format.ts'
 import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
@@ -24,13 +24,14 @@ const MAX_NAMES = 10
 // The two Dates side-lines live on Dates now, so the catalogue does not repeat them (item 7).
 const DATE_LINE_TITLES = new Set(['Report-only prompts for a certificate', 'Existing tokens keep working'])
 
-export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onTick, onClose }: {
+export function Step({ step, schedule, steps, tenantName, nameOf, onSkip, onUnskip, onTick, onClose }: {
   step: Step
   schedule: Schedule
   steps: Step[]
   tenantName: string
   nameOf: (id: string) => string
-  onSkipped: () => void
+  onSkip: (reason: string) => void
+  onUnskip: () => void
   onTick: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   onClose: () => void
 }) {
@@ -164,7 +165,7 @@ export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onT
         </>
       )}
 
-      <More step={step} steps={steps} tenantName={tenantName} copy={copy} copied={copied} onSkipped={onSkipped} />
+      <More step={step} steps={steps} tenantName={tenantName} copy={copy} copied={copied} onSkip={onSkip} onUnskip={onUnskip} />
 
       <p className="actions no-print">
         <Button variant="tertiary" onClick={onClose}>
@@ -175,7 +176,8 @@ export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onT
   )
 }
 
-function More({ step, steps, tenantName, copy, copied, onSkipped }: { step: Step; steps: Step[]; tenantName: string; copy: (id: string, text: string) => void; copied: string | null; onSkipped: () => void }) {
+function More({ step, steps, tenantName, copy, copied, onSkip, onUnskip }: { step: Step; steps: Step[]; tenantName: string; copy: (id: string, text: string) => void; copied: string | null; onSkip: (reason: string) => void; onUnskip: () => void }) {
+  const [confirmSkip, setConfirmSkip] = useState(false)
   const catalogue = step.failureModes.filter((f) => !DATE_LINE_TITLES.has(f.title))
   const unknowns = unknownsFor(step)
   const dependents = steps.filter((x) => x.blockedBy.includes(step.id) && x.status !== 'done' && x.status !== 'skipped')
@@ -260,15 +262,25 @@ function More({ step, steps, tenantName, copy, copied, onSkipped }: { step: Step
         </>
       )}
 
-      {!isEmergencyAccess(step) && (
+      {step.status === 'skipped' ? (
         <p className="actions">
-          <Button
-            variant="tertiary"
-            onClick={() => {
-              const r = skipStep(step, 'Deferred to a later phase')
-              if (r.ok) onSkipped()
-            }}
-          >
+          <Button variant="tertiary" onClick={onUnskip}>
+            {SKIP.unskip}
+          </Button>
+        </p>
+      ) : isEmergencyAccess(step) ? null : confirmSkip ? (
+        <p className="actions skip-confirm reason">
+          {SKIP.confirmLine}{' '}
+          <Button variant="tertiary" onClick={() => { setConfirmSkip(false); onSkip(SKIP.defaultReason) }}>
+            {SKIP.confirmSkip}
+          </Button>
+          <Button variant="tertiary" onClick={() => setConfirmSkip(false)}>
+            {SKIP.confirmCancel}
+          </Button>
+        </p>
+      ) : (
+        <p className="actions">
+          <Button variant="tertiary" onClick={() => setConfirmSkip(true)}>
             {C.step.skip}
           </Button>
         </p>

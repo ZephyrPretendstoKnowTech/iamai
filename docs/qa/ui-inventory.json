@@ -1,5 +1,5 @@
 {
- "fingerprint": "a636dbadecdee963",
+ "fingerprint": "882117c39e2c3cf2",
  "surfaces": [
   {
    "name": "Header",
@@ -2167,13 +2167,19 @@
    "empty": [],
    "summaries": [],
    "tips": [],
-   "sentences": [],
+   "sentences": [
+    "Clear the date to reset to the default, the next working day."
+   ],
    "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
-   "occurrences": {},
-   "occurrencesAll": {},
+   "occurrences": {
+    "Clear the date to reset to the default, the next working day.": 1
+   },
+   "occurrencesAll": {
+    "Clear the date to reset to the default, the next working day.": 1
+   },
    "wordCounts": {
     "headings": 2,
     "tabs": 0,
@@ -2186,16 +2192,16 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 0,
-    "total": 3
+    "sentences": 12,
+    "total": 15
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
-    "sentences": 0,
-    "words": 0
+    "sentences": 1,
+    "words": 12
    },
    "contract": "plan.settings",
    "state": "scanned",

@@ -61,6 +61,12 @@ export const SKIP = {
   /** Item 6: the steps that make everything else reversible. */
   cannotSkip: 'This one cannot be skipped: emergency access is what makes every other change reversible.',
 
+  /** Prompt 49.1 item 10: an inline confirm, not a dialog. */
+  confirmLine: 'Skip this step? It stays in the plan as Skipped.',
+  confirmSkip: 'Skip',
+  confirmCancel: 'Cancel',
+  defaultReason: 'Skipped by the operator',
+
   /** Item 8: one click back. */
   unskip: 'Put it back in the plan',
   skippedChip: 'Skipped',

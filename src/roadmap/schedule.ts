@@ -395,7 +395,9 @@ export function buildSchedule(
   // ---- Day 0: foundation work takes real days before any policy can be created ----
   const foundationWork = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length
   const day0Days = foundationWork > 0 ? Math.min(5, 1 + foundationWork) : 0
-  const day0End = addDays(day0, day0Days)
+  // Foundation and window edges land on a working day (prompt 49.1 item 11): a
+  // window that opens or closes on a weekend reads wrong on the plan.
+  const day0End = toWeekday(addDays(day0, day0Days))
 
   // ---- Registration window (target-state §9) ----
   // Sized by the generator from who still needs a proven method: five a
@@ -451,7 +453,7 @@ export function buildSchedule(
   // still never lands on or before the day Day 0 closes (below).
   const creationDay = day0
   const observationStart = creationDay
-  const observation = { start: observationStart, end: addDays(observationStart, obsDays), days: obsDays }
+  const observation = { start: observationStart, end: toWeekday(addDays(observationStart, obsDays)), days: obsDays }
 
   // ---- Placement ----
   const attempt = (relaxSamePeople: boolean): { placed: Map<string, Placed>; reportOnlyAt: Record<string, string> } => {

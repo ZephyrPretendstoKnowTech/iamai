@@ -65,10 +65,14 @@ export type PlanData = {
   freeze: ChangeFreeze | null
   /** Save a new mapping (an assumptions edit) and regenerate. */
   saveMapping: (next: MappingState) => void
-  setStart: (iso: string) => void
+  /** Set the plan start; null clears the override and restores the default (prompt 49.1 item 11). */
+  setStart: (iso: string | null) => void
   setBand: (b: SizeBand | null) => void
   setFreeze: (f: ChangeFreeze | null) => void
-  onSkipped: (steps: Step[]) => void
+  /** Skip a step, persisted so a re-scan and reload keep it (prompt 49.1 item 10). */
+  onSkip: (stepId: string, reason: string) => void
+  /** Put a skipped step back. */
+  onUnskip: (stepId: string) => void
   /** Tick a recorded-by-hand emergency-access fact (prompt 49 item 5); stored in the mapping and the plan file. */
   tickAnswer: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   groups: GroupMembers
@@ -198,7 +202,7 @@ export function usePlanData(
       bump()
     },
     setStart: (iso) => {
-      setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), startDate: iso }))
+      setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), startDate: iso ?? undefined }))
       bump()
     },
     setBand: (b) => {
@@ -209,7 +213,32 @@ export function usePlanData(
       setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), freeze: f }))
       bump()
     },
-    onSkipped: () => bump(),
+    onSkip: (stepId, reason) => {
+      // Persist the skip to the saved record so mergePersisted re-applies it on
+      // every regenerate; otherwise the fresh plan drops it (the skip race).
+      setSaved((p) => {
+        const base = p ?? { planId, steps: {}, checkpoints: [] }
+        const prev = base.steps[stepId]
+        const entry: SavedStep = {
+          ...(prev ?? { status: 'blocked', history: [], skipReason: null }),
+          status: 'skipped',
+          skipReason: reason,
+          history: [...(prev?.history ?? []), { at: new Date().toISOString(), from: prev?.status ?? 'blocked', to: 'skipped', note: reason }],
+        }
+        return { ...base, steps: { ...base.steps, [stepId]: entry } }
+      })
+      bump()
+    },
+    onUnskip: (stepId) => {
+      // Drop the saved entry: the generator recomputes the step from the tenant
+      // as it is now, rather than restoring a judgement made against an old scan.
+      setSaved((p) => {
+        if (!p || !p.steps[stepId]) return p
+        const { [stepId]: _drop, ...rest } = p.steps
+        return { ...p, steps: rest }
+      })
+      bump()
+    },
     tickAnswer: (key, done) => {
       if (!mapping) return
       const prev = mapping.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
