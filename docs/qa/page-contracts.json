@@ -399,10 +399,11 @@
           "Report-only",
           "Enforced",
           "Skipped",
-          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|time zone) .{1,60}$"
+          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|shared devices|time zone|mail-sending devices|people who travel or work abroad|partner or MSP access) .{1,140}$"
         ],
         "buttons": [
-          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|time zone) .{1,60}$"
+          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|shared devices|time zone|mail-sending devices|people who travel or work abroad|partner or MSP access) .{1,140}$",
+          "Save"
         ],
         "summaries": [
           "re:^Already in place \\(\\d+\\)$",
@@ -414,8 +415,8 @@
         ]
       },
       "budget": {
-        "sentences": 4,
-        "words": 90
+        "sentences": 6,
+        "words": 140
       },
       "forbid": [
         "Do this next",
