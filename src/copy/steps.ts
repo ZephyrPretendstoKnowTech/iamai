@@ -178,8 +178,7 @@ export const PREREQ = {
     why: 'Emergency access that works when everything else fails: the first move of any lockout-proof rollout.',
     how: [
       'Create two cloud-only accounts (no on-premises sync) with long random passwords stored offline.',
-      'Assign Global Administrator as a permanent active assignment (not PIM-eligible).',
-      'Register a FIDO2 security key on each; never text message only.',
+      'Assign Global Administrator permanently (not PIM-eligible), then register a passkey or FIDO2 key on each and record where its credential is kept; never text message only.',
       'Add them to the exclusions group, then confirm them on the plan so IAMAI can check them.',
     ],
     exit: ['Two accounts exist, confirmed on the plan.'],

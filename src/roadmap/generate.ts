@@ -35,6 +35,7 @@ import { adminUserIds, learnRoleNames, roleListSummary } from '../roles.ts'
 import { proposedPolicyName } from '../coverage/naming.ts'
 import { rolloutBucket, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
+import { collidingGuestIds } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
@@ -179,7 +180,7 @@ function population(ids: string[], index: PopulationIndex): StepPopulation {
 /** The coverage gap, over the active denominator (prompt 48.1 item 3): "covers 1 of 4 active". */
 function activeGap(result: GoalResult, popActive: number, active: Set<string>): string | null {
   const base = result.gapSentence
-  if (!base || !/^covers d+ of d+ people$/.test(base)) return base
+  if (!base || !/^covers \d+ of \d+ people$/.test(base)) return base
   const uncovered = new Set(result.reasons.filter((x) => !x.expected && (x.kind === 'not-targeted' || x.kind === 'excluded')).flatMap((x) => x.userIds))
   const uncoveredActive = [...uncovered].filter((id) => active.has(id)).length
   return `covers ${Math.max(0, popActive - uncoveredActive)} of ${popActive} active`
@@ -485,9 +486,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // which nobody noticed until the dormant-accounts step named 3,671 people on
   // the 25,000-user fixture and the engine took 500 ms instead of 180.
   const userById = new Map(snapshot.users.map((u) => [u.id, u]))
+  // A guest sharing a display name carries a (guest) marker on every pre-baked string too (prompt 49 item 1).
+  const markedGuests = collidingGuestIds(snapshot.users)
   const nameOf = (id: string): string => {
     const u = userById.get(id)
-    return u?.displayName ?? u?.userPrincipalName ?? id
+    const base = u?.displayName ?? u?.userPrincipalName ?? id
+    return u && markedGuests.has(u.id) ? `${base} (guest)` : base
   }
   const tenantName =
     ((snapshot.config.organization?.rows?.[0] ?? {}) as { displayName?: string }).displayName ?? 'your organisation'
@@ -1256,7 +1260,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       readiness: verifyReadiness,
       comms: COMMS.verify(tenantName),
       impact: IMPACT.verifyCampaign(toSetUp),
-      whatChanges: WHAT_CHANGES.verify(toSetUp),
+      // The step's own count, not the tenant-wide unproven count (prompt 49 item 2).
+      whatChanges: WHAT_CHANGES.verify(campaignUnproven.length + campaignNoMethod.length),
       plainTitle: p.title,
       forManager: MANAGER.verify(toSetUp),
     })
@@ -1581,6 +1586,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const step = steps.find((s) => s.id === blockerStepId(report.subject))
       if (step) step.impact = BLOCKER_STEP.impact(report.blocking.length, GATING_SUBJECTS.includes(report.subject) ? held : 0)
     }
+  }
+
+  // The two recorded-by-hand emergency-access facts are tickable Done-when lines,
+  // stored in the plan file and read back by the checks (prompt 49 item 5).
+  const answers = mapping.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
+  const eaStep = steps.find((st) => st.id === blockerStepId('breakGlass')) ?? steps.find((st) => st.id === BREAK_GLASS_STEP_ID) ?? steps.find((st) => st.id === DRILL_STEP_ID)
+  if (eaStep) {
+    eaStep.tickable = [
+      { text: EMERGENCY_DONE_WHEN[0], key: 'credentialStorage', done: answers.credentialStorage === true },
+      { text: EMERGENCY_DONE_WHEN[1], key: 'signInMonitoring', done: answers.signInMonitoring === true },
+    ]
+    // These two live only as tick lines now, never doubled in the plain done-when list.
+    eaStep.exitCriteria = eaStep.exitCriteria.filter((x) => !EMERGENCY_DONE_WHEN.includes(x))
   }
 
   annotateStateReasons(steps)

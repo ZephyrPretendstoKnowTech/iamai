@@ -24,13 +24,14 @@ const MAX_NAMES = 10
 // The two Dates side-lines live on Dates now, so the catalogue does not repeat them (item 7).
 const DATE_LINE_TITLES = new Set(['Report-only prompts for a certificate', 'Existing tokens keep working'])
 
-export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onClose }: {
+export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onTick, onClose }: {
   step: Step
   schedule: Schedule
   steps: Step[]
   tenantName: string
   nameOf: (id: string) => string
   onSkipped: () => void
+  onTick: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   onClose: () => void
 }) {
   const [tab, setTab] = useState<DoTab>('portal')
@@ -134,6 +135,13 @@ export function Step({ step, schedule, steps, tenantName, nameOf, onSkipped, onC
       <ul className="sections">
         {step.exitCriteria.slice(0, 3).map((x, i) => (
           <li key={i}>{x}</li>
+        ))}
+        {(step.tickable ?? []).map((t) => (
+          <li key={t.key} className="tick">
+            <label>
+              <input type="checkbox" checked={t.done} onChange={(e) => onTick(t.key, e.currentTarget.checked)} /> {t.text}
+            </label>
+          </li>
         ))}
       </ul>
 

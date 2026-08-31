@@ -9,6 +9,15 @@ import type { GroupMembers } from './coverage/population.ts'
 
 /** Shown where a name is genuinely unknown. Never an id (CLAUDE.md: names, never IDs). */
 export const UNNAMED = 'an account IAMAI could not name'
+
+/** Guest ids whose display name is shared by another account (prompt 49 item 1): they carry a (guest) marker. */
+export function collidingGuestIds(users: { id: string; displayName: string | null; userType: 'member' | 'guest' }[]): Set<string> {
+  const count = new Map<string, number>()
+  for (const u of users) if (u.displayName) count.set(u.displayName, (count.get(u.displayName) ?? 0) + 1)
+  const out = new Set<string>()
+  for (const u of users) if (u.userType === 'guest' && u.displayName && (count.get(u.displayName) ?? 0) > 1) out.add(u.id)
+  return out
+}
 /** A role held by software rather than a person (prompt 48.1 item 5). */
 export const SERVICE_PRINCIPAL = 'a service principal'
 
@@ -49,7 +58,12 @@ export function buildNameDirectory(
   for (const s of builtinStrengths.strengths) put(s.id, s.displayName)
 
   if (snapshot) {
-    for (const u of snapshot.users) put(u.id, u.displayName ?? u.userPrincipalName ?? undefined)
+    // The guest of a colliding display-name pair carries a (guest) marker (prompt 49 item 1).
+    const markedGuests = collidingGuestIds(snapshot.users)
+    for (const u of snapshot.users) {
+      const base = u.displayName ?? u.userPrincipalName ?? undefined
+      put(u.id, typeof base === 'string' && markedGuests.has(u.id) ? `${base} (guest)` : base)
+    }
     for (const raw of snapshot.config.namedLocations?.rows ?? []) {
       const l = raw as { id?: string; displayName?: string }
       put(l.id, l.displayName)

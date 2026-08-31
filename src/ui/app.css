@@ -919,3 +919,10 @@ footer.app a {
 .plan-footer > details {
   margin: 4px 0;
 }
+
+.step-body li.tick label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+}

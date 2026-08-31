@@ -208,3 +208,17 @@ for (const f of allFixtures()) {
     }
   })
 }
+
+// Prompt 49 item 4: a gap suffix counts active people, never the enabled total.
+// "covers 1 of 4 active", never "of 13 people".
+for (const f of allFixtures()) {
+  test(`${f.name}: every coverage gap counts active people`, () => {
+    const run = runFixture(f)
+    for (const s of run.steps) {
+      const g = s.gap
+      if (!g || !/covers \d+ of \d+/.test(g)) continue
+      assert.match(g, /covers \d+ of \d+ active$/, `${s.id}: gap "${g}" does not count active people`)
+      assert.doesNotMatch(g, /of \d+ people/, `${s.id}: gap "${g}" still counts the enabled total`)
+    }
+  })
+}

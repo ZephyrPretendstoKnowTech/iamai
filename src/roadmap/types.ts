@@ -204,6 +204,8 @@ export type Step = {
   cantSee?: string[]
   /** One-off notes on the Dates section (item 7): a device certificate prompt, a block's session-refresh timing. */
   dateNotes?: string[]
+  /** The two recorded-by-hand emergency-access facts, ticked by hand and stored in the plan file (prompt 49 item 5). */
+  tickable?: { text: string; key: 'credentialStorage' | 'signInMonitoring'; done: boolean }[]
 }
 
 export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; day: string; date: string; time: string; reason: string; outOfHours: boolean }
