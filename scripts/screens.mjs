@@ -49,7 +49,7 @@ await send('Runtime.enable')
 mkdirSync(OUT, { recursive: true })
 let n = 0
 for (const theme of ['dark', 'light']) {
-  await send('Page.navigate', { url: `${BASE}#/start` })
+  await send('Page.navigate', { url: `${BASE}#/connect` })
   await sleep(1200)
   await evaluate(`(() => { try { localStorage.setItem('iamai-theme', ${JSON.stringify(theme)}) } catch {} })()`)
   for (const width of WIDTHS) {

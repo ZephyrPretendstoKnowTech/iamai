@@ -31,7 +31,8 @@ function toolCards() {
   const tools = JSON.parse(readFileSync(join(home, 'tools.json'), 'utf8'))
   return tools
     .map((t) => {
-      const href = t.path === null ? null : `/${t.path === '' ? TOOL_PATH : t.path}/`
+      // A card may name where in the tool it lands (prompt 47 Part 3: the planner opens at Connect).
+      const href = t.path === null ? null : `/${t.path === '' ? TOOL_PATH : t.path}/${t.hash ?? ''}`
       const status = STATUS_LABEL[t.status] ?? t.status
       const inner = `
         <h3>${t.name}</h3>

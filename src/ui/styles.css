@@ -65,53 +65,11 @@ select {
 
 /* ================= shell ================= */
 
-.shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-5);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  min-width: 0;
-}
-
 .wordmark {
   font-size: var(--text-lg);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--accent);
-}
-
-.tagline {
-  color: var(--muted);
-}
-
-.topbar-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.tenant-name {
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 24rem;
-}
-
-.body-grid {
-  display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr);
-  min-height: 0;
 }
 
 main.page.page-wide { max-width: var(--max-content-wide); }
@@ -150,177 +108,6 @@ footer.footer {
   row-gap: var(--space-1);
   max-width: 100%;
   min-width: 0;
-}
-
-/* ================= stepper (left nav) ================= */
-
-nav.stepper {
-  border-right: 1px solid var(--border);
-  padding: var(--space-4) 0;
-  background: var(--surface);
-  /* L1: fills the viewport rather than stopping where its content does, so the
-     background does not end partway down a long page. Sticky, and scrolls
-     itself when its own content is taller than the window. */
-  position: sticky;
-  top: 0;
-  align-self: start;
-  height: 100vh;
-  overflow-y: auto;
-  transition: width 0.15s ease;
-}
-
-/* L1: collapsed to icons and numbers; the choice persists across visits. */
-nav.stepper.is-collapsed {
-  width: 3.25rem;
-  overflow-x: hidden;
-}
-nav.stepper.is-collapsed .stepper-label,
-nav.stepper.is-collapsed .stepper-group-title {
-  display: none;
-}
-.stepper-collapse {
-  display: block;
-  margin: 0 var(--space-3) var(--space-3);
-}
-/* The chevron points the way the click goes. */
-nav.stepper:not(.is-collapsed) .stepper-collapse .icon { transform: rotate(90deg); }
-nav.stepper.is-collapsed .stepper-collapse .icon { transform: rotate(-90deg); }
-
-.stepper-group-title {
-  padding: 0 var(--space-5);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  margin: var(--space-3) 0 var(--space-1);
-}
-
-.stepper-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-5);
-  color: var(--text);
-  text-decoration: none;
-  border-left: 3px solid transparent;
-  font-size: var(--text-base);
-  transition: background var(--motion);
-}
-
-.stepper-item:hover {
-  background: var(--raised);
-  color: var(--text);
-}
-
-.stepper-item.active {
-  border-left-color: var(--accent);
-  background: var(--accent-soft);
-  font-weight: 600;
-}
-
-.stepper-num {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-sm);
-  font-family: var(--font-mono);
-  flex: none;
-}
-
-.stepper-item.active .stepper-num {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.stepper-item .chip {
-  margin-left: auto;
-}
-
-@media (max-width: 900px) {
-  .body-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  nav.stepper {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: var(--space-2) var(--space-3);
-    display: flex;
-    overflow-x: auto;
-    gap: var(--space-1);
-    /* The base rule fills the viewport height for the side rail (L1). As a
-       horizontal strip it must be as tall as its contents, and it must not be
-       able to push the page sideways. */
-    height: auto;
-    max-width: 100%;
-    position: static;
-  }
-  /* Collapsing is for the side rail; the strip is already compact. */
-  nav.stepper.is-collapsed {
-    width: auto;
-  }
-  .stepper-collapse {
-    display: none;
-  }
-  .stepper-group-title {
-    display: none;
-  }
-  .stepper-item {
-    border-left: none;
-    border-bottom: 3px solid transparent;
-    padding: var(--space-2) var(--space-3);
-    white-space: nowrap;
-  }
-  .stepper-item.active {
-    border-bottom-color: var(--accent);
-  }
-  .stepper-item .chip {
-    display: none;
-  }
-  main.page {
-    padding: var(--space-4);
-  }
-}
-
-@media (max-width: 560px) {
-  .topbar { flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
-  /* The group of buttons on the right takes a line of its own here.
-     Letting it wrap internally was not enough: as a flex item its automatic
-     size is its max-content width - every button on one line, 357px on a
-     runner with wider fonts - and `margin-left: auto` absorbs the free space
-     that would otherwise make it shrink. So it still claimed 357px inside a
-     336px content box and pushed the document to 381px, scrolling every page
-     sideways. Given its own line it is sized by the line, not by its content. */
-  .topbar-right {
-    flex: 1 0 100%;
-    /* A hard cap as well as the basis. On the runner the box still measured its
-       max-content width (357px in a 336px content box) with the basis alone,
-       and I could not reproduce that here to find out why. max-width resolves
-       against the containing block in every engine, so the box cannot exceed
-       its line whatever the flex sizing does. Nothing is hidden: the buttons
-       wrap inside it. */
-    max-width: 100%;
-    min-width: 0;
-    margin-left: 0;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    row-gap: var(--space-1);
-  }
-  .topbar-right .btn { max-width: 100%; }
-  .tagline { display: none; }
-  .tenant-name { max-width: 10rem; }
-  main.page { padding: var(--space-3); }
-  .grid-cards { grid-template-columns: 1fr; }
-  .timeline-row { grid-template-columns: 1fr; }
-  /* `align-items: flex-start` in a column gives every child its max-content
-     width, so a line of links became as wide as it wanted to be and took the
-     document with it. Stretch keeps them inside the footer, where they wrap. */
-  footer.footer { flex-direction: column; align-items: stretch; gap: var(--space-1); }
-  footer.footer > * { max-width: 100%; min-width: 0; }
-  .hero h1 { font-size: var(--text-lg); }
 }
 
 /* ================= components ================= */
@@ -697,7 +484,7 @@ table.datatable tbody tr:hover { background: var(--raised); }
 
 @media print {
   @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
-  nav.stepper, header.topbar, footer.footer, .devtools, .no-print, .tabs { display: none !important; }
+  .devtools, .no-print, .tabs { display: none !important; }
   /* Pages without a dedicated print layout fall back to the screen layout. */
   .step-card > *:not(summary) { display: block !important; }
   .tab-panel { display: block !important; }

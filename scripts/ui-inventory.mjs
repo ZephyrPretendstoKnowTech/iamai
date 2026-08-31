@@ -116,9 +116,11 @@ const rehash = async (hash) => {
   await evaluate(`location.hash = ${JSON.stringify(hash)}`)
   await sleep(900)
 }
+// Scoped to the page: the header carries a Plan tab of its own (prompt 47 Part 3), and a
+// walk that means the Roadmap's Plan tab must not find the header's first.
 const clickText = (selector, re) =>
   evaluate(
-    `(() => { const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find(x => ${re}.test((x.textContent || '').trim())); if (el) el.click(); return !!el })()`,
+    `(() => { const r = document.querySelector('main.page') ?? document; const el = [...r.querySelectorAll(${JSON.stringify(selector)})].find(x => ${re}.test((x.textContent || '').trim())); if (el) el.click(); return !!el })()`,
   )
 
 // ---- the extractor, injected into the page ----
@@ -168,14 +170,17 @@ const extractIn = (rootExpr = `document.querySelector('main.page')`, excludeSel 
   // stepTitleMaxWords, never a heading (page-contracts.json, $comment).
   const headings = uniq([...root.querySelectorAll('h1,h2,h3,h4')].filter(vis).filter((e) => !e.classList.contains('step-title')).map(txt))
   const titles = uniq([...root.querySelectorAll('.step-title')].filter(vis).map(txt))
+  // A tab is a tab (prompt 47 Part 3): the element that carries it is not
+  // also counted as a button or a link, whichever element renders it.
+  const isTab = (e) => e.matches('[role=tab], .tab')
   const tabs = uniq([...root.querySelectorAll('[role=tab], .tab')].filter(vis).map((e) => txt(e)))
   // A button inside a Setup question is an answer, not a page action.
   const allButtons = [...root.querySelectorAll('button, a.btn, a.button-like, [role=button]')]
     .filter(vis)
-    .filter((e) => !e.classList.contains('infotip-btn'))
+    .filter((e) => !e.classList.contains('infotip-btn') && !isTab(e))
   const options = uniq(allButtons.filter((e) => e.closest('.setup-question, .workload-card, .picker')).map(txt))
   const buttons = uniq(allButtons.filter((e) => !e.closest('.setup-question, .workload-card, .picker')).map(txt))
-  const links = uniq([...root.querySelectorAll('a[href]')].filter(vis).filter((e) => !e.classList.contains('btn')).map(txt))
+  const links = uniq([...root.querySelectorAll('a[href]')].filter(vis).filter((e) => !e.classList.contains('btn') && !isTab(e)).map(txt))
   const chips = uniq([...root.querySelectorAll('.chip')].filter(vis).map(txt))
   const columns = uniq([...root.querySelectorAll('th')].filter(vis).map(txt))
   const tiles = uniq([...root.querySelectorAll('.stat-label')].filter(vis).map(txt))
@@ -326,18 +331,18 @@ const capture = async (name, note = '', rootExpr, excludeSel, extra = {}, opts =
 // ---- the walk ----
 console.log('inventory: walking surfaces')
 
-await goto('/start');            await capture('Start')
+// #/start and #/baseline redirect to Connect since prompt 47 Part 3; the
+// pages they named are gone from the walk.
 await goto('/connect');          await capture('Connect')
 await clickText('summary', '/What IAMAI will ask for/'); await sleep(500)
 await capture('Connect / permissions disclosure', 'disclosure expanded')
 
-await goto('/baseline');         await capture('Baseline')
 // A tabbed page is captured as chrome plus one surface per panel. Capturing the
 // whole page once per tab counts the title, the banner and the Next button once
 // per tab, which inflates every cross-surface count by the number of tabs.
 const VISIBLE_PANEL = `[...document.querySelectorAll('main.page .tab-panel')].find((p) => p.offsetParent !== null)`
 
-await goto('/scan')
+await goto('/today')
 await capture('Scan', 'page chrome; tab panels are their own surfaces', undefined, '.tab-panel')
 await capture('Scan / Readiness tab', 'panel only', VISIBLE_PANEL)
 if (await clickText('.tab, [role=tab]', '/Inventory/')) {
@@ -420,7 +425,7 @@ const gotoState = async (route, state) => {
 const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const clickNth = (selector, nth) =>
   evaluate(
-    `(() => { const els = [...document.querySelectorAll(${JSON.stringify(selector)})].filter((e) => e.offsetParent !== null || e.tagName === 'SUMMARY'); const el = els[${Number(nth) - 1}]; if (el) el.click(); return !!el })()`,
+    `(() => { const r = document.querySelector('main.page') ?? document; const els = [...r.querySelectorAll(${JSON.stringify(selector)})].filter((e) => e.offsetParent !== null || e.tagName === 'SUMMARY'); const el = els[${Number(nth) - 1}]; if (el) el.click(); return !!el })()`,
   )
 const rootExprOf = (root) => {
   if (root === undefined || root === null || root === 'main.page') return undefined

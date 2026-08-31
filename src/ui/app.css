@@ -482,6 +482,15 @@ details > *:not(summary) {
 
 /* ================= the shell ================= */
 
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.shell > main.page {
+  flex: 1;
+  width: 100%;
+}
 header.app {
   height: var(--header);
   display: flex;

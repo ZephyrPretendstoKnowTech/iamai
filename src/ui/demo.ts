@@ -33,14 +33,15 @@ export function isDemo(search: string = window.location.search): boolean {
 export function demoUrl(): string {
   const u = new URL(window.location.href)
   u.searchParams.set(DEMO_PARAM, '1')
-  u.hash = '#/scan'
+  // The demo enters at Plan (target-state §2); #/roadmap until prompt 48.
+  u.hash = '#/roadmap'
   return u.toString()
 }
 
 export function exitDemoUrl(): string {
   const u = new URL(window.location.href)
   u.searchParams.delete(DEMO_PARAM)
-  u.hash = '#/start'
+  u.hash = '#/connect'
   return u.toString()
 }
 
