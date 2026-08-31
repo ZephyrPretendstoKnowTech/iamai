@@ -29,17 +29,13 @@ tenant's current state to a chosen baseline without lockouts.
 
 ## 3. Flow
 
-1. **Choose baseline** — default: Jon's repo (pinned SHA, live fetch, bundled index). Alt: upload package (one or more Graph `conditionalAccessPolicy` JSON files, any casing; zip is planned). Later: any public GitHub repo URL (same conventions as Jon's analyzer: root, `Policies/`, `policies/`, `CA/`, `Updated/` preferred).
-2. **Connect tenant** — MSAL redirect flow, authority `organizations`, optional tenant-ID field (GDAP / guest scenarios). Admin consent creates an enterprise app in the customer tenant; removal = delete that enterprise app. Say so on the sign-in page.
-3. **Resolve references** — three layers:
-   - Declared roles the baseline expects (from manifest if present; otherwise inferred by usage signature — see §6).
-   - Guided mapping with auto-suggestions: users excluded from most enabled policies → break-glass; groups named emergency/breakglass; named locations with `isTrusted`.
-   - Validation of each pick. Break-glass: cloud-only, enabled, permanent GA (not eligible-only), excluded from every policy incl. report-only and Microsoft-managed, methods registered (FIDO2 good / SMS-only flag; flag when a break-glass account's Authenticator displayName matches another user's — shared-device risk), last sign-in, not swept in by dynamic groups, ≥2 accounts. Passkey pilot group: FIDO2 method enabled+targeted, TAP enabled+targeted, Azure Credential Configuration Endpoint SP present. Trusted locations: no 0.0.0.0/0. Exclusion group membership sanity. Compliance pilot group: members have compliant devices.
-   - Every "doesn't exist" answer becomes a Phase 0 step with a how-to. Mapping is stored in the plan file.
-4. **Diff (intent coverage)** — compile each baseline policy to intents (scope + condition + control). Compute tenant coverage of each intent from the effective union of enabled policies minus exclusions, ignoring names. Per intent: enforced / partial (narrower scope, broad exclusions, report-only) / absent, with statements like "no policy named X, but Y + Z cover it, except group G (40 members) is excluded from both." Naming/consolidation report is separate. Count against the CA policy limit.
-5. **Impact** — replay the last 7–30 days of interactive sign-ins against each missing/drifted policy in a Web Worker. Split findings: **hard blocks** (legacy auth, device code, geo, unsupported platform, no compliant device, phishing-resistant required with no capable method) vs **soft interruptions** (MFA registration, TAP needed). Session controls are reported as friction, not risk. What If (`POST /identity/conditionalAccess/evaluate`) is run for the consenting admin and break-glass accounts against the *existing* policy set every phase.
-6. **Roadmap** — phases from dependencies: 0 prerequisites → foundation blocks → MFA → admin hardening → device → sessions/P2/workload. Each step: why, auto-checked prereqs, affected population with drill-down export, portal path + exact JSON in `enabledForReportingButNotEnforced`, pilot group, report-only exit criteria, rollback, user-comms template. Policies get a stable fingerprint (intent hash) so tracking survives renames.
-7. **Re-scan** — cheap config scan on every load; sign-in replay cached with an "as of" timestamp, re-run on request or when stale. Reads `appliedConditionalAccessPolicies` results (`reportOnlyFailure`, `reportOnlyInterrupted`) to move each planned policy through planned → report-only observed → enforced.
+The flow, the surfaces and their maximum are defined in `docs/design/target-state.md`
+(Connect → Today → Plan → a step; assumptions detected at scan time and edited on the Plan;
+nothing asked before the plan exists) and measured by `docs/qa/page-contracts.json`.
+Neither file is edited to make a violation pass. The engine rules the flow rests on are in
+the same document: one denominator (§8.1), one verdict (§8.2), the schedule rules (§9).
+The mechanics below this heading — baseline sources, MSAL, intent coverage, replay,
+re-scan — remain as decided in §2 and §4–§12.
 
 ## 4. Graph scopes (delegated, read-only) and gates
 

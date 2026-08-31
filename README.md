@@ -19,14 +19,14 @@ Predicted impact, confirmed in report-only. Never "risk accepted".
 
 ## The journey
 
-Start → Connect → Baseline → Scan → Setup → Findings → Roadmap
+Connect → Today → Plan
 
-1. **Connect** — one admin-consent sign-in. Consent creates an enterprise app; deleting it removes all access.
-2. **Baseline** — the default is Jon Hope's Conditional Access baseline, fetched live from GitHub at a pinned commit (only a path index is bundled). Or upload your own package.
-3. **Scan** — configuration, users, devices, registration details, licences, and 30 days of interactive sign-ins, pulled in a Web Worker with honest coverage labels. The last scan is kept locally so nobody re-scans just to look around.
-4. **Setup** — five to nine plain-language questions (emergency access, exclusion group, handle-with-care users, trusted locations…). Everything else the baseline references is resolved automatically.
-5. **Findings** — the advisor's narrative: what's in place, what needs attention, and why.
-6. **Roadmap** — dated phases from a start date you pick, the "safe today" wins, danger areas with named people and exact Entra paths, per-step impact, comms drafts, and a plan file you can save, load, print, or paste into a ticket as Markdown.
+1. **Connect** — one admin-consent sign-in. Consent creates an enterprise app; deleting it removes all access. The default baseline is Jon Hope's Conditional Access baseline, fetched live from GitHub at a pinned commit (only a path index is bundled); or upload your own package.
+2. **Today** — the scan: configuration, users, devices, registration details, licences, and 30 days of interactive sign-ins, pulled in a Web Worker with honest coverage labels. The last scan is kept locally so nobody re-scans just to look around.
+3. **Plan** — dated waves from a start date you pick. Nothing is asked first: the emergency-access accounts, the exclusions group, the sign-in countries, trusted locations, service accounts and the time zone are detected from the scan and shown as assumptions you can edit on the Plan; whatever is missing becomes the plan's first steps. Every step says its gap, who it touches, when it lands, and how to do it in the portal, as JSON, or in PowerShell; the plan file saves, loads, prints, and pastes into a ticket as Markdown.
+
+The surface's maximum is written down in `docs/design/target-state.md` and measured by
+`docs/qa/page-contracts.json`.
 
 ## Run it
 
