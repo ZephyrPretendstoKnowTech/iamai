@@ -1,7 +1,7 @@
 // Synthetic tenant for the dev-only component gallery — invented names,
 // no real identifiers. Never used outside DEV builds.
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import type { BaselineResult } from './BaselinePage.tsx'
+import type { BaselineResult } from '../baseline.ts'
 import { emptyCapabilities } from '../../licensing/capabilities.ts'
 
 const now = new Date()

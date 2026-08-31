@@ -3,14 +3,14 @@ import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/msal.ts'
 import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { loadBaselineRecord, loadSnapshotRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
+import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
 import { BackToTop, Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
 import type { ShellState } from './shell/AppShell.tsx'
-import { ConnectPage } from './pages/ConnectPage.tsx'
-import { restoreBaseline } from './pages/BaselinePage.tsx'
-import type { BaselineResult } from './pages/BaselinePage.tsx'
+import { Connect } from './surfaces/Connect.tsx'
+import { restoreBaseline } from './baseline.ts'
+import type { BaselineResult } from './baseline.ts'
 import { LicensingPage } from './pages/LicensingPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
 import { MappingPage } from './pages/MappingPage.tsx'
@@ -62,6 +62,9 @@ export function App() {
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
   const [lastScan, setLastScan] = useState<{ snapshot: TenantSnapshot; at: string } | null>(null)
   const [scanRunning, setScanRunning] = useState(false)
+  // The header's Re-scan: Connect starts the scan as soon as it mounts, and
+  // returns to Plan when it finishes (target-state §2).
+  const [rescanRequested, setRescanRequested] = useState(false)
   // A scan frozen mid-lane, for the 'scanning' mock state (prompt 46 Part 1
   // item 2). The progress view is otherwise unreachable by a harness: it lasts
   // as long as the worker takes, and the synthetic tenant has no worker.
@@ -157,8 +160,8 @@ export function App() {
         if (state === 'scanning') {
           // Frozen two lanes in: configuration read, people in progress.
           setFrozenScan({
-            caPolicies: { source: 'caPolicies', status: 'ok', rows: 3, ms: 412 },
-            namedLocations: { source: 'namedLocations', status: 'ok', rows: 2, ms: 205 },
+            'config:caPolicies': { source: 'config:caPolicies', status: 'ok', rows: 3, ms: 412 },
+            'config:namedLocations': { source: 'config:namedLocations', status: 'ok', rows: 2, ms: 205 },
             users: { source: 'users', status: 'started' },
           })
           setScanRunning(true)
@@ -182,16 +185,17 @@ export function App() {
           // A blocked store shows as a plain sentence, never as a silently empty app.
           void probeStorage().catch((e: unknown) => setStorageWarning(e instanceof Error ? e.message : String(e)))
           // The loaded baseline comes back too (prompt 14 §6): pinned index by
-          // commit, or the uploaded files themselves.
-          void loadBaselineRecord<BaselineResult['origin']>(a.tenantId).then(async (origin) => {
-            if (!origin) return
+          // commit, or the uploaded files themselves. Awaited, so Connect does
+          // not load the default over a baseline that was about to be restored.
+          const origin = await loadBaselineRecord<BaselineResult['origin']>(a.tenantId).catch(() => null)
+          if (origin) {
             try {
               setBaseline(await restoreBaseline(origin))
             } catch (e) {
-              // Say so on the Baseline step rather than silently offering the load again.
+              // Connect says so and offers the choice again.
               setBaselineRestoreError(e instanceof Error ? e.message : String(e))
             }
-          })
+          }
         }
       })
       .catch((e: unknown) => setAuthError(e instanceof Error ? e.message : String(e)))
@@ -208,7 +212,18 @@ export function App() {
   }, [ready, route, shellState])
 
   return (
-    <AppShell account={account} tenantName={tenantName} route={route} state={shellState} scannedAt={lastScan?.at ?? null} snapshot={lastScan?.snapshot ?? null}>
+    <AppShell
+      account={account}
+      tenantName={tenantName}
+      route={route}
+      state={shellState}
+      scannedAt={lastScan?.at ?? null}
+      onRescan={() => {
+        setRescanRequested(true)
+        window.location.hash = '#/connect'
+      }}
+      snapshot={lastScan?.snapshot ?? null}
+    >
       {!ready ? (
         SHELL.loading
       ) : (
@@ -220,14 +235,28 @@ export function App() {
           )}
           {storageWarning && <Callout kind="warning" title={SHELL.storageBlocked}>{storageWarning}</Callout>}
           {route === 'connect' && (
-            <ConnectPage
+            <Connect
               account={account}
               tenantName={tenantName}
-              lastScanAt={lastScan?.at ?? null}
-              userCount={lastScan?.snapshot.users.length ?? null}
+              baseline={baseline}
+              baselineRestoreError={baselineRestoreError}
+              onBaseline={(r) => {
+                setBaseline(r)
+                setBaselineRestoreError(null)
+                if (account) void saveBaselineRecord(account.tenantId, r.origin)
+              }}
+              lastScan={lastScan}
+              frozen={frozenScan}
+              onRunningChange={setScanRunning}
+              onComplete={(snapshot, at) => {
+                setLastScan({ snapshot, at })
+                if (account) void saveSnapshotRecord(account.tenantId, { snapshot, at })
+              }}
+              autoScan={rescanRequested}
+              onAutoScanConsumed={() => setRescanRequested(false)}
             />
           )}
-          {route === 'baseline/package' && <PackagePage />}
+          {route === 'package' && <PackagePage />}
           {(route === 'today' || route === 'inventory') &&
             (account ? (
               <MfaViabilityScreen
@@ -235,7 +264,6 @@ export function App() {
                 view={route === 'inventory' ? 'inventory' : 'readiness'}
                 tenantId={account.tenantId}
                 initial={lastScan}
-                frozen={frozenScan}
                 onRunningChange={setScanRunning}
                 onComplete={(snapshot, at) => {
                   setLastScan({ snapshot, at })

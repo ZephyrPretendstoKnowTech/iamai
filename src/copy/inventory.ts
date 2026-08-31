@@ -224,7 +224,7 @@ export const PACKAGE = {
   ],
   copy: 'Copy',
   copied: 'Copied ✓',
-  next: 'Baseline',
+  next: 'Connect',
 }
 
 // ---- Friendly names for Graph enumerations (prompt 19 §B: no raw ids where a human reads) ----

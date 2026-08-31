@@ -25,7 +25,7 @@ export const PERMISSIONS = {
   ],
   removalNote:
     'That removes every permission immediately and leaves nothing behind. Anything IAMAI held was in the browser, and Forget this tenant clears that separately.',
-  columns: { permission: 'Permission', reads: 'What it lets IAMAI read', without: 'Without it' },
+  columns: { permission: 'Permission', reads: 'What IAMAI reads', without: 'Without it' },
   usedFor: (names: string[]): string => `Used for: ${names.join(', ')}.`,
   unusedGroup: 'Requested, not yet used',
   // Rendered only if a requested scope has no collector behind it; none does

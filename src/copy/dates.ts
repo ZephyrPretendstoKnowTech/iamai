@@ -22,6 +22,16 @@ export function absoluteDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: displayTimeZone }).format(new Date(iso))
 }
 
+/** "Jul 30": a day inside a range whose year is obvious. */
+export function monthDay(iso: string): string {
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: displayTimeZone }).format(new Date(iso))
+}
+
+/** "Jul 30 → Aug 29": the sign-in window on Connect, in the range form the plan uses. */
+export function monthDayRange(fromIso: string, toIso: string): string {
+  return `${monthDay(fromIso)} → ${monthDay(toIso)}`
+}
+
 /** "in 9 days", "3 hours ago", "today". */
 export function relative(iso: string, nowMs = Date.now()): string {
   const diffMs = Date.parse(iso) - nowMs
