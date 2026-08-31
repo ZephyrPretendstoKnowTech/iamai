@@ -7,5 +7,5 @@ painted, in both modes, on every built surface (9), at 360, 700, 1024, 1440 and 
 
 ## Lowest ratio per mode
 
-- light: 3.08:1 (needs 3) — status dot — chip status status-idle :: Not active — at 360px today
-- dark: 3.7:1 (needs 3) — status dot — chip status status-idle :: Not active — at 360px today
+- light: 3.3:1 (needs 3) — status dot — chip status status-idle :: Not active — at 360px today
+- dark: 4.06:1 (needs 3) — control edge — INPUT — at 360px today

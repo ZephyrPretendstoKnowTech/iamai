@@ -1,5 +1,5 @@
 {
- "fingerprint": "8f00746bc57f13ee",
+ "fingerprint": "b77b78a8d3f9483d",
  "surfaces": [
   {
    "name": "Connect",
@@ -1225,8 +1225,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 280,
-    "words": 502
+    "sentences": 288,
+    "words": 510
    }
   },
   {
@@ -2062,8 +2062,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 321,
-    "words": 1035
+    "sentences": 329,
+    "words": 1043
    }
   },
   {
