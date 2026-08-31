@@ -1,0 +1,40 @@
+// The finish date (prompt 47 Part 2 item 7): the last enforcement date among
+// the steps nothing but the calendar holds, plus the steps a readiness
+// threshold holds, counted with the threshold that holds them. "finishes Sep
+// 20 · 3 device steps wait for device readiness" is this, rendered. Pure.
+import { READINESS_MEASURE } from '../copy/reasons.ts'
+import type { Step } from '../roadmap/types.ts'
+
+export type PlanFinish = {
+  /** ISO date the last unheld enforcement ends; null when nothing enforces. */
+  finish: string | null
+  /** Steps a readiness threshold holds, by the measure that holds them, in plan order of first appearance. */
+  waiting: { measure: string; count: number; family: Step['readiness']['family'] }[]
+  waitingCount: number
+}
+
+/** A blocker written in the "when <measure> reaches <threshold>" shape by a readiness threshold. */
+export function heldByReadiness(step: Step): boolean {
+  return step.status === 'blocked' && step.blockers.some((b) => b.kind === 'readiness' && typeof b.binding === 'string' && /readiness reaches/.test(b.binding))
+}
+
+const lastRingEnd = (s: Step): string | null => s.rings.at(-1)?.plannedEnd ?? null
+
+export function planFinish(steps: Step[]): PlanFinish {
+  let finish: string | null = null
+  const waiting = new Map<string, { measure: string; count: number; family: Step['readiness']['family'] }>()
+  for (const s of steps) {
+    if (s.status === 'done' || s.status === 'skipped') continue
+    if (heldByReadiness(s)) {
+      const measure = READINESS_MEASURE[s.readiness.family] ?? 'readiness'
+      const w = waiting.get(measure) ?? { measure, count: 0, family: s.readiness.family }
+      w.count += 1
+      waiting.set(measure, w)
+      continue
+    }
+    const end = lastRingEnd(s)
+    if (end && (finish === null || end > finish)) finish = end
+  }
+  const list = [...waiting.values()]
+  return { finish, waiting: list, waitingCount: list.reduce((n, w) => n + w.count, 0) }
+}

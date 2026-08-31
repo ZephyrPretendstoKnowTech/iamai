@@ -156,7 +156,7 @@ export function bigFixtureSnapshot(opts: BigFixtureOptions = {}): TenantSnapshot
     evidenceUsage: {
       legacyAuth: { count: 120, userIds: activeIds.slice(0, 40), byDetail: { 'Exchange ActiveSync': 120 } },
       deviceCode: { count: 4, userIds: activeIds.slice(40, 44), byDetail: {} },
-      authTransfer: { count: 0, userIds: [], byDetail: {} },
+      authTransfer: { count: 0, userIds: [], byDetail: {} }, riskHigh: { count: 0, userIds: [], byDetail: {} }, riskMedium: { count: 0, userIds: [], byDetail: {} },
     },
     evidenceAggregates: evidence
       ? { ...evidence, total: signIns, distinctUsers: Object.keys(signInEvidence).length, byClientApp: { Browser: Math.round(signIns * 0.7), 'Mobile Apps and Desktop clients': Math.round(signIns * 0.29), 'Exchange ActiveSync': 120 } }

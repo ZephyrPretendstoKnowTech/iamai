@@ -158,7 +158,7 @@ function spreadHour(base: number, stepId: string, ctx: TimingContext): number {
  */
 export function nobodyAffected(step: Step): boolean {
   const family = step.readiness.family
-  const affected = family === 'block' || family === 'location' ? step.evidence.affectedUserIds.length : step.population.active
+  const affected = family === 'block' || family === 'location' || family === 'risk' ? step.evidence.affectedUserIds.length : step.population.active
   return step.evidence.status === 'ok' && affected === 0
 }
 

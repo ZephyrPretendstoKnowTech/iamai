@@ -85,7 +85,10 @@ for (const f of fixtures) {
   })
 
   test(`${f.name}: no two high-disruption steps overlap the same ring window for the same population`, () => {
-    const risky = steps.filter((s) => (s.score?.disruption ?? 0) >= HIGH_DISRUPTION && s.status !== 'done' && s.status !== 'skipped')
+    // A zero-class step reaches nobody, so it shares no population with anything
+    // (prompt 47 item 6): the four risk policies on a tenant with no flagged
+    // sign-in may enforce in the one window.
+    const risky = steps.filter((s) => (s.score?.disruption ?? 0) >= HIGH_DISRUPTION && s.status !== 'done' && s.status !== 'skipped' && batchClassOf(s) !== 'zero')
     const failures: string[] = []
     for (let i = 0; i < risky.length; i++) {
       for (let j = i + 1; j < risky.length; j++) {
@@ -449,4 +452,34 @@ test('owner travels with the plan file; a per-step date no longer moves the sche
   assert.equal(saved.owner, 'Identity team')
   assert.equal(saved.scheduledDate, later)
   assert.deepEqual(saved.rings, moved.rings)
+})
+
+// Prompt 47 item 6: a wave holds at least one step that reaches somebody. A
+// step that affects nobody (a block nobody uses, a risk policy with no flagged
+// sign-in) batches into a wave with a real change, never a wave of its own.
+test('no wave whose only occupants are zero-class steps (small, getiamai, and every other tenant)', () => {
+  for (const { name } of fixtures) {
+    const r = runFixture(byName(name))
+    const byId = new Map(r.steps.map((s) => [s.id, s]))
+    for (const w of r.schedule.waves) {
+      if (w.wave === 0 || w.stepIds.length === 0) continue
+      const classes = w.stepIds.map((id) => batchClassOf(byId.get(id)!))
+      assert.ok(classes.some((c) => c !== 'zero'), `${name}: wave ${w.wave} holds only zero-class steps: ${w.stepIds.join(', ')}`)
+    }
+  }
+})
+
+test('risk goals affect nobody when the collected sign-ins carry no risk verdict', () => {
+  // Risk policies need a P2 licence, so the P1 tenants (small, getiamai) plan none; the P2 tenants prove the rule.
+  let seen = 0
+  for (const f of fixtures) {
+    const r = runFixture(f)
+    for (const s of r.steps.filter((x) => x.readiness.family === 'risk')) {
+      if (s.evidence.status !== 'ok') continue
+      seen += 1
+      assert.equal(s.evidence.affectedUserIds.length, 0, `${f.name} ${s.id}: nobody had a flagged sign-in`)
+      assert.equal(batchClassOf(s), 'zero', `${f.name} ${s.id} is zero-class`)
+    }
+  }
+  assert.ok(seen >= 4, `risk steps with usable evidence across the fixtures: ${seen}`)
 })

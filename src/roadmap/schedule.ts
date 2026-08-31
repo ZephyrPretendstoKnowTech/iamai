@@ -187,7 +187,8 @@ export function batchClassOf(step: Step): BatchClass {
   // field read as zero (nobodyAffected in timing.ts is the one definition; the
   // notice period reads the same bar).
   if (nobodyAffected(step)) return 'zero'
-  if (family === 'mfa' || family === 'admin' || family === 'guest') return 'mfa'
+  // A risk policy that does apply prompts for MFA, so it batches with the MFA changes.
+  if (family === 'mfa' || family === 'admin' || family === 'guest' || family === 'risk') return 'mfa'
   if (family === 'device' || family === 'location') return 'deviceSession'
   return 'other'
 }
@@ -280,7 +281,7 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
     if (!isEnforcement(s)) continue
     const family = s.readiness.family
     if (exclusion) add(s, { stepId: exclusion.id, kind: 'hard', reason: DEPENDENCY.exclusionGroup })
-    if (family === 'block' || family === 'location') {
+    if (family === 'block' || family === 'location' || family === 'risk') {
       if (breakGlass) add(s, { stepId: breakGlass.id, kind: 'hard', reason: DEPENDENCY.breakGlass })
       if (drill) add(s, { stepId: drill.id, kind: 'hard', reason: DEPENDENCY.breakGlassDrill })
     }
@@ -298,7 +299,13 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
       const b = enforcement[j]
       if (overlapShare(a.population.ids, b.population.ids) <= OVERLAP_SHARE) continue
       const bothHigh = (a.score?.disruption ?? 0) >= HIGH_DISRUPTION && (b.score?.disruption ?? 0) >= HIGH_DISRUPTION
-      if (bothHigh) add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.highDisruption(b.title) })
+      // The zero class (below) is exempt here too: a high-disruption change the
+      // records show reaches nobody disrupts nobody, so two of them in a week
+      // are no interruption at all. Before this (prompt 47 item 6) the four
+      // risk policies on a tenant with no flagged sign-in chained a week apart
+      // into four waves of their own.
+      const eitherZero = batchClassOf(a) === 'zero' || batchClassOf(b) === 'zero'
+      if (bothHigh && !eitherZero) add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.highDisruption(b.title) })
       // Two changes enforced in the SAME change window prompt people once, not
       // twice, so the same-people rule does not separate them. It protects
       // people from repeated interruption; changes made together in one

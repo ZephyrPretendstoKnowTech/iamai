@@ -15,7 +15,7 @@ export type StepPopulation = {
 }
 
 export type Readiness = {
-  family: 'mfa' | 'admin' | 'device' | 'guest' | 'block' | 'location' | 'other'
+  family: 'mfa' | 'admin' | 'device' | 'guest' | 'block' | 'location' | 'risk' | 'other'
   percent: number | null // null when readiness is evidence (block goals)
   lines: string[] // plain-language numbers per §4
 }

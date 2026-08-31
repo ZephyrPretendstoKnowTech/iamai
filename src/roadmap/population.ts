@@ -76,7 +76,7 @@ export function riskReasons(id: string, step: Step, ctx: PopulationContext): { w
     reasons.push(POPULATION.reasons.noDevice)
     weight += 8
   }
-  if ((family === 'block' || family === 'location') && step.evidence.affectedUserIds.includes(id)) {
+  if ((family === 'block' || family === 'location' || family === 'risk') && step.evidence.affectedUserIds.includes(id)) {
     reasons.push(POPULATION.reasons.seen)
     weight += 8
   }
@@ -106,7 +106,7 @@ function riskWeight(id: string, step: Step, ctx: PopulationContext): number {
   let weight = 0
   if ((family === 'mfa' || family === 'guest' || family === 'admin') && v?.mfa === 'none') weight += 8
   if (family === 'device' && ctx.devicesKnown && !ctx.deviceReady.has(id)) weight += 8
-  if ((family === 'block' || family === 'location') && step.evidence.affectedUserIds.includes(id)) weight += 8
+  if ((family === 'block' || family === 'location' || family === 'risk') && step.evidence.affectedUserIds.includes(id)) weight += 8
   if (ctx.adminIds.has(id)) weight += 4
   if (v?.activity === 'neverSignedIn') weight += 3
   if ((family === 'mfa' || family === 'guest' || family === 'admin') && v?.mfa === 'unverified') weight += 2
@@ -191,7 +191,7 @@ export function basisFor(step: Step, ctx: PopulationContext): string {
   } else if (family === 'device' && ctx.devicesKnown) {
     const noDevice = countCached(ids, 'noDevice', () => ids.filter((id) => !ctx.deviceReady.has(id)).length)
     if (noDevice > 0) sentence += POPULATION.ofWhomNoDevice(noDevice)
-  } else if ((family === 'block' || family === 'location') && step.evidence.affectedUserIds.length > 0) {
+  } else if ((family === 'block' || family === 'location' || family === 'risk') && step.evidence.affectedUserIds.length > 0) {
     sentence += POPULATION.ofWhomSeen(step.evidence.affectedUserIds.length)
   }
   return sentence

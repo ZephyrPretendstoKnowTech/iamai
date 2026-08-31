@@ -377,6 +377,7 @@ export const READINESS = {
   registrationUnreadable: (reason: string) => `Registration data could not be read (${reason}): readiness is unknown, so every ring starts with a personal check instead of a percentage.`,
   devicesUnreadable: (reason: string) => `Device data could not be read (${reason}): device readiness is unknown, so every ring starts with a personal check instead of a percentage.`,
   location: 'Compare the countries seen in the sign-in records with the allowed list.',
+  risk: 'Readiness is measured by the sign-ins Identity Protection flagged. See who they belong to below.',
 }
 
 export const EVIDENCE = {
@@ -394,6 +395,11 @@ export const EVIDENCE = {
   legacyAuth: 'legacy authentication',
   deviceCode: 'the device-code flow',
   authTransfer: 'authentication transfer',
+  /** Risk evidence (prompt 47 item 6): the level a goal acts on, and who the flagged sign-ins belong to. */
+  noRisk: (level: string) => `No ${level} sign-in in the collected records, so expect zero impact.`,
+  risk: (users: number, level: string, signIns: number) => `${count(users, 'person', 'people')} had ${count(signIns, level + ' sign-in')} in the collected records.`,
+  riskHigh: 'high-risk',
+  riskMedium: 'medium- or high-risk',
 }
 
 export function affectedLine(total: number, active: number, admins: number, guests: number): string {

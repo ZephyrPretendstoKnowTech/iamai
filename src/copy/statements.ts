@@ -284,3 +284,19 @@ export function overrunList(extendedBy: string[]): string[] {
 export function lowerFirst(s: string): string {
   return s.length > 1 && s[1] === s[1].toLowerCase() ? s[0].toLowerCase() + s.slice(1) : s
 }
+
+/**
+ * The header's finish clause (prompt 47 item 7): the last date the calendar
+ * sets, and what a readiness threshold still holds, by measure.
+ */
+export const FINISH = {
+  /** "3 device steps wait for device readiness", one clause per measure. */
+  waiting: (waiting: { measure: string; count: number; family: string }[]): string => {
+    const word = (family: string): string => (family === 'mfa' || family === 'guest' ? 'MFA' : family === 'admin' ? 'admin' : family === 'device' ? 'device' : family)
+    return waiting.map((w) => `${w.count} ${word(w.family)} ${w.count === 1 ? 'step waits' : 'steps wait'} for ${w.measure}`).join(' · ')
+  },
+  line: (date: string | null, waiting: { measure: string; count: number; family: string }[]): string => {
+    const head = date ? `finishes ${date}` : 'nothing is dated'
+    return waiting.length === 0 ? head : `${head} · ${FINISH.waiting(waiting)}`
+  },
+}

@@ -4,7 +4,10 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Readiness } from './types.ts'
 import { READINESS } from '../copy/steps.ts'
 
-const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected', 'sign-in-risk', 'user-risk'])
+const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected'])
+// Risk policies act on the sign-ins Identity Protection flags, so their
+// evidence is usage, like a block's (prompt 47 item 6).
+const RISK_GOALS = new Set(['sign-in-risk', 'user-risk', 'sign-in-risk-medium', 'user-risk-medium'])
 const ADMIN_GOALS = new Set(['admins-phishing-resistant', 'admin-session'])
 const DEVICE_GOALS = new Set(['require-managed-device', 'block-unsupported-platforms', 'mobile-app-protection'])
 const GUEST_GOALS = new Set(['guests-mfa'])
@@ -18,6 +21,7 @@ export function goalFamily(goalId: string): Readiness['family'] {
   if (GUEST_GOALS.has(goalId)) return 'guest'
   if (BLOCK_GOALS.has(goalId)) return 'block'
   if (LOCATION_GOALS.has(goalId)) return 'location'
+  if (RISK_GOALS.has(goalId)) return 'risk'
   return 'other'
 }
 
@@ -89,6 +93,9 @@ export function readinessFor(
   }
   if (family === 'location') {
     return { family, percent: null, lines: [READINESS.location] }
+  }
+  if (family === 'risk') {
+    return { family, percent: null, lines: [READINESS.risk] }
   }
   return { family, percent: null, lines: [] }
 }

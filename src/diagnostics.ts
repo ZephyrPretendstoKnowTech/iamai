@@ -33,6 +33,8 @@ export type DiagnosticsBundle = {
     /** Property names on the first row: the shape of what came back, not its values. */
     keys: string[]
     policyMigrationState: string | null
+    /** Which read supplied the migration state, when v1.0 did not (prompt 47 item 8). */
+    fallback: string | null
   }
 }
 
@@ -67,6 +69,7 @@ export function diagnosticsBundle(
       bodyBytes: amp?.bodyBytes ?? null,
       keys: row ? Object.keys(row).sort() : [],
       policyMigrationState: typeof row?.policyMigrationState === 'string' ? row.policyMigrationState : null,
+      fallback: amp?.fallback ?? null,
     },
   }
 }

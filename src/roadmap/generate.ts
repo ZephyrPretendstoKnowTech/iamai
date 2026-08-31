@@ -1037,7 +1037,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Announcements by goal family (prompt 13 §8); nobody affected → no template.
     const evidenceUsable = evidence.status === 'ok' || evidence.status === 'partial'
     const nobodyAffected =
-      (evidenceUsable && readiness.family === 'block' && evidence.affectedUserIds.length === 0) ||
+      (evidenceUsable && (readiness.family === 'block' || readiness.family === 'risk') && evidence.affectedUserIds.length === 0) ||
       ((readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'admin') && notReadyActive === 0) ||
       (readiness.family === 'device' && readiness.percent === 100) ||
       pop.active === 0
@@ -1430,7 +1430,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const threshold = family === 'mfa' || family === 'guest' ? READINESS_THRESHOLD_MFA_PERCENT : family === 'admin' ? READINESS_THRESHOLD_ADMINS_PERCENT : family === 'device' ? READINESS_THRESHOLD_DEVICES_PERCENT : null
     if (threshold !== null && s.readiness.percent !== null && s.readiness.percent < threshold) return notYet(SAFE.reasons.readiness(s.readiness.percent, threshold))
     let affected = 0
-    if (family === 'block') affected = s.evidence.affectedUserIds.length
+    if (family === 'block' || family === 'risk') affected = s.evidence.affectedUserIds.length
     else if (family === 'location') affected = outsideCountries
     else if (family === 'mfa' || family === 'guest' || family === 'admin') {
       affected = memoAffected(s.population.ids, family, () => s.population.ids.filter((id) => {

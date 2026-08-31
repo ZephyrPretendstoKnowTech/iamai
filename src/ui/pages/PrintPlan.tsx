@@ -11,6 +11,8 @@ import { SECTION } from '../../copy/stepContent.ts'
 import { CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { roadmapOverview, scheduleRationale } from '../../copy/statements.ts'
 import { absoluteDate, dateRange, when } from '../../copy/dates.ts'
+import { planFinish } from '../../derive/finish.ts'
+import { FINISH } from '../../copy/statements.ts'
 import { RingMark } from '../components/Ring.tsx'
 
 export function PrintPlan({
@@ -47,12 +49,15 @@ export function PrintPlan({
   const waves = schedule.waves.filter((w) => w.stepIds.length > 0)
   const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? ROADMAP.day0 : ROADMAP.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
   const jsonSteps = steps.filter((s) => s.action.json && (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done')
+  // The finish date comes from src/derive (prompt 47 item 7): the last date
+  // the calendar sets, with the steps a readiness threshold still holds.
+  const finish = planFinish(steps)
   const overview = roadmapOverview({
     tenant: tenantName,
     done: done.length,
     total: steps.length,
     pace: ROADMAP.bandWord[schedule.band] ?? schedule.band,
-    finishes: when(schedule.targetEnd),
+    finishes: when(finish.finish ?? schedule.targetEnd),
     weeks: schedule.weeks,
   })
   const rationale = scheduleRationale({
@@ -83,7 +88,10 @@ export function PrintPlan({
             </>
           )}
           <dt>{C.cover.dates}</dt>
-          <dd>{dateRange(schedule.start, schedule.targetEnd)}</dd>
+          <dd>
+            {dateRange(schedule.start, finish.finish ?? schedule.targetEnd)}
+            {finish.waiting.length > 0 && ` · ${FINISH.waiting(finish.waiting)}`}
+          </dd>
           <dt>{C.cover.pace}</dt>
           <dd>
             {ROADMAP.bands[schedule.band]?.label ?? schedule.band} · {ROADMAP.expected(schedule.expectedDays / 7)}

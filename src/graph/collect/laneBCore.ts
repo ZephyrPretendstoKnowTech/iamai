@@ -20,7 +20,7 @@ import type {
 } from './types.ts'
 
 // Bump when the fetched row shape changes; mismatched caches are ignored.
-export const EVIDENCE_SCHEMA = 5
+export const EVIDENCE_SCHEMA = 6
 
 // No $select on the Lane B pull: mfaDetail and authenticationDetails are not
 // selectable on beta /auditLogs/signIns (400 "Unsupported Query", confirmed
@@ -74,6 +74,8 @@ export function mapRow(raw: unknown): StoredSignIn | null {
       const loc = (r.location ?? null) as Record<string, unknown> | null
       return typeof loc?.countryOrRegion === 'string' ? loc.countryOrRegion : undefined
     })(),
+    riskLevelDuringSignIn: typeof r.riskLevelDuringSignIn === 'string' ? r.riskLevelDuringSignIn : undefined,
+    riskLevelAggregated: typeof r.riskLevelAggregated === 'string' ? r.riskLevelAggregated : undefined,
   }
 }
 
@@ -128,6 +130,8 @@ export function deriveUsageSignals(rows: Iterable<StoredSignIn>): import('./type
   const legacy = mk()
   const device = mk()
   const transfer = mk()
+  const riskHigh = mk()
+  const riskMedium = mk()
   const hit = (sig: ReturnType<typeof mk>, row: StoredSignIn, detail: string): void => {
     sig.count += 1
     if (row.userId) sig.users.add(row.userId)
@@ -140,9 +144,24 @@ export function deriveUsageSignals(rows: Iterable<StoredSignIn>): import('./type
     if (row.originalTransferMethod && row.originalTransferMethod !== 'none') {
       hit(transfer, row, row.originalTransferMethod)
     }
+    // Risk is the higher of the two verdicts Identity Protection puts on a
+    // sign-in (prompt 47 item 6): a risk policy affects the people these
+    // sign-ins belong to and nobody else.
+    const level = riskLevelOf(row)
+    if (level === 'high') hit(riskHigh, row, row.riskLevelDuringSignIn === 'high' ? 'during sign-in' : 'aggregated')
+    if (level === 'medium') hit(riskMedium, row, row.riskLevelDuringSignIn === 'medium' ? 'during sign-in' : 'aggregated')
   }
   const out = (sig: ReturnType<typeof mk>) => ({ count: sig.count, userIds: [...sig.users], byDetail: sig.byDetail })
-  return { legacyAuth: out(legacy), deviceCode: out(device), authTransfer: out(transfer) }
+  return { legacyAuth: out(legacy), deviceCode: out(device), authTransfer: out(transfer), riskHigh: out(riskHigh), riskMedium: out(riskMedium) }
+}
+
+const RISK_RANK: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3 }
+/** The higher of the two risk verdicts; 'hidden' and unknown values read as no risk. */
+export function riskLevelOf(row: StoredSignIn): 'none' | 'low' | 'medium' | 'high' {
+  const a = RISK_RANK[(row.riskLevelDuringSignIn ?? '').toLowerCase()] ?? 0
+  const b = RISK_RANK[(row.riskLevelAggregated ?? '').toLowerCase()] ?? 0
+  const top = Math.max(a, b)
+  return top === 3 ? 'high' : top === 2 ? 'medium' : top === 1 ? 'low' : 'none'
 }
 
 function mfaSuccessOf(row: StoredSignIn): string | null {

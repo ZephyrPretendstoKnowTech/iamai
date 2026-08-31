@@ -77,10 +77,32 @@ export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Pro
       return { status: 'ok', reason: null, rows, ...how() }
     }
     const body = await graphRequest(ctx.tokens, url, { signal: ctx.signal, onResponse })
-    return { status: 'ok', reason: null, rows: [body], ...how() }
+    const fallback = key === 'authMethodsPolicy' ? await migrationStateFallback(ctx, body as Record<string, unknown>) : null
+    return { status: 'ok', reason: null, rows: [body], ...how(), ...(fallback ? { fallback } : {}) }
   } catch (e) {
     if (e instanceof SectionDisabledError) return { status: 'disabled', reason: e.message, rows: [], ...how(e.status) }
     return { status: 'error', reason: e instanceof Error ? e.message : String(e), rows: [], ...how(e instanceof GraphRequestError ? e.status : null) }
+  }
+}
+
+/**
+ * The v1.0 authentication methods policy returns no policyMigrationState on
+ * some tenants (prompt 47 item 8). Read that one field from beta, in the same
+ * collector, and tolerate its absence: the rule that wants it says so only
+ * when neither read carried it. Mutates the v1.0 body in place.
+ */
+async function migrationStateFallback(ctx: Ctx, body: Record<string, unknown>): Promise<string | null> {
+  if (typeof body.policyMigrationState === 'string' && body.policyMigrationState.length > 0) return null
+  try {
+    const beta = await graphRequest(ctx.tokens, `${BETA}/policies/authenticationMethodsPolicy?$select=policyMigrationState`, { signal: ctx.signal })
+    const state = (beta as Record<string, unknown>).policyMigrationState
+    if (typeof state === 'string' && state.length > 0) {
+      body.policyMigrationState = state
+      return 'policyMigrationState from beta'
+    }
+    return 'policyMigrationState absent from v1.0 and beta'
+  } catch {
+    return 'policyMigrationState absent from v1.0; beta read failed'
   }
 }
 
