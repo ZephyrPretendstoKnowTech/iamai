@@ -334,7 +334,7 @@ export function RoadmapPage({
     if (saved?.loggedScanAt !== snapshot.asOf) {
       log = appendLog(
         log,
-        entriesForScan({ snapshot, steps: computed.steps, previous: saved?.checkpoints.at(-1) ?? null, planId, baselinePin: pin, previousBaselinePin: saved?.baselinePin ?? null, scanAt: snapshot.asOf, since: saved?.loggedScanAt ?? null }),
+        entriesForScan({ snapshot, steps: computed.steps, previous: saved?.checkpoints?.at(-1) ?? null, planId, baselinePin: pin, previousBaselinePin: saved?.baselinePin ?? null, scanAt: snapshot.asOf, since: saved?.loggedScanAt ?? null }),
       )
     }
     void savePlanRecord(snapshot.tenantId, {
@@ -710,7 +710,7 @@ export function RoadmapPage({
   // ---- Progress (roadmap-v2.md §5, §8): the overview plus the journey ----
   const progressRows = stepProgress(steps, schedule)
   const headline = progressHeadline(steps, schedule, undefined, saved?.planCreatedAt ?? saved?.revisions?.[0]?.at ?? null)
-  const lastCheckpoint = saved?.checkpoints.at(-1) ?? null
+  const lastCheckpoint = saved?.checkpoints?.at(-1) ?? null
   const changes = [...changesSince(snapshot, lastCheckpoint, steps, planId), ...groupGrowth(lastCheckpoint, groups)]
   const STAGES: { id: (typeof progressRows)[number]['stage']; label: string }[] = [
     { id: 'planned', label: TRACK.stage.planned },

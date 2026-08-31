@@ -37,6 +37,9 @@ import type { NameDirectory } from '../../names.ts'
 type PlanStore = {
   planId: string
   steps: Record<string, SavedStep>
+  // The Roadmap page shares this per-tenant record and reads checkpoints.at(-1);
+  // the Plan never writes checkpoints, but it must not drop the key (CI crash).
+  checkpoints?: unknown[]
   startDate?: string
   band?: SizeBand
   freeze?: ChangeFreeze | null
@@ -86,7 +89,7 @@ export function usePlanData(
     if (!snapshot) return
     void Promise.all([loadMappingState(snapshot.tenantId), loadPlanRecord<PlanStore>(snapshot.tenantId)]).then(([m, p]) => {
       setMapping(m)
-      setSaved(p ?? { planId, steps: {} })
+      setSaved(p ?? { planId, steps: {}, checkpoints: [] })
       setLoaded(true)
     })
   }, [snapshot, planId])
@@ -174,7 +177,7 @@ export function usePlanData(
     const key = computed.steps.map((s) => `${s.id}:${s.status}`).join('|')
     if (key === lastPersist.current) return
     lastPersist.current = key
-    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId }), planId, steps: stepsRecord, startDate, band, freeze, planCreatedAt: saved?.planCreatedAt ?? new Date().toISOString() })
+    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId }), planId, steps: stepsRecord, checkpoints: saved?.checkpoints ?? [], startDate, band, freeze, planCreatedAt: saved?.planCreatedAt ?? new Date().toISOString() })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [computed, snapshot])
 
@@ -193,15 +196,15 @@ export function usePlanData(
       bump()
     },
     setStart: (iso) => {
-      setSaved((p) => ({ ...(p ?? { planId, steps: {} }), startDate: iso }))
+      setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), startDate: iso }))
       bump()
     },
     setBand: (b) => {
-      setSaved((p) => ({ ...(p ?? { planId, steps: {} }), band: b ?? undefined }))
+      setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), band: b ?? undefined }))
       bump()
     },
     setFreeze: (f) => {
-      setSaved((p) => ({ ...(p ?? { planId, steps: {} }), freeze: f }))
+      setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), freeze: f }))
       bump()
     },
     onSkipped: () => bump(),
