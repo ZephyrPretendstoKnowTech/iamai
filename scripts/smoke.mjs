@@ -1,6 +1,6 @@
 // First-run smoke test (prompt 20 §10): starts the dev server, drives headless
 // Chrome over the DevTools protocol with no dependencies beyond Node 22+, and
-// walks Start → Connect → Baseline → Scan → Setup → Findings → Roadmap
+// walks Connect → Today → Plan → Export → How → Recovery
 // against the synthetic tenant (?dev=1&mock=1), asserting the key numbers.
 // The same fixture backs src/ui/consistency.test.ts, so the numbers asserted
 // here are the ones the pure tests prove.
@@ -124,6 +124,15 @@ try {
   await send('Page.addScriptToEvaluateOnNewDocument', {
     source: `(() => { const seen = () => { if (window.__firstFrameHash === undefined && document.querySelector('header.app')) window.__firstFrameHash = location.hash }; new MutationObserver(seen).observe(document, { childList: true, subtree: true }); document.addEventListener('DOMContentLoaded', seen) })()`,
   })
+  // Capture downloads (produced bytes), swallow alerts (they would block the
+  // headless page), and make print a no-op that still fires before/afterprint.
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: 'window.__dl = []; window.__alerts = []; window.__printed = 0;' +
+      'window.print = function () { try { window.dispatchEvent(new Event("beforeprint")); } catch (e) {} window.__printed++; try { window.dispatchEvent(new Event("afterprint")); } catch (e) {} };' +
+      'window.alert = function (m) { window.__alerts.push(String(m)); };' +
+      'var _c = URL.createObjectURL.bind(URL); URL.createObjectURL = function (b) { window.__lastBlob = b; return _c(b); };' +
+      'var _k = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) { var b = window.__lastBlob; window.__dl.push({ name: this.download, size: b ? b.size : 0, blob: b }); return; } return _k.call(this); };',
+  })
   await send('Page.navigate', { url: `${BASE}#code=abc&client_info=def&state=ghi` })
   await sleep(1500)
   check('Sign-in: an auth response in the fragment is intact when the first frame renders', (await evaluate('window.__firstFrameHash')) === '#code=abc&client_info=def&state=ghi', String(await evaluate('window.__firstFrameHash')))
@@ -200,24 +209,7 @@ try {
   check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check IAMAI runs/.test(t) && /Baseline packages/.test(t) && /Limits/.test(t))
   check('How: the old reference routes redirect here', (await (async () => { await send('Page.navigate', { url: `${BASE}#/checks` }); await sleep(600); return await waitFor(`location.hash === '#/how'`) })()))
 
-  // Roadmap
-  await go('roadmap')
-  check('Roadmap: overview renders', await waitFor(`/steps in place/.test(document.body.innerText)`))
-  t = await text()
-  check('Roadmap: headline counts the steps in place and says when it finishes', /\d+ of \d+ steps in place · finishes /.test(t))
-  // Setup is unanswered on the mock walk, so emergency access is not validated:
-  // the plan must lead with it and hold everything that can deny access (32).
-  check('Roadmap: Do this next leads with the emergency-access blocker', /Sort out emergency access before anything else/.test(t))
-  check('Roadmap: the blocker says what it is holding', /Must fix first: \d+ steps that can deny access are held until it passes/.test(t))
-  check('Roadmap: tiles Safe today and Blocked', /\d+\s+Safe today/.test(t) && /\d+\s+Blocked/.test(t))
-  // R11 removed the "This week" line: it repeated card one of Do this next verbatim.
-  check('Roadmap: the licence sentence', /With this tenant's Entra ID/.test(t))
-  check('Roadmap: danger areas name the blocked user', /1 user is blocked today|Watch first\s+1/.test(t))
-  check('Roadmap: Plan tab lists the verification campaign', (await clickText('/^Plan/')) && (await waitFor(`/Run the MFA verification campaign/.test(document.body.innerText)`)))
-  // R13: Progress is the Plan tab's header now, not a tab of its own.
-  check('Roadmap: the Plan tab carries the journey', (await clickText('/^Plan/')) && (await waitFor(`/The journey/.test(document.body.innerText)`)))
-  check('Roadmap: Schedule tab carries the dates and the calendar export', (await clickText('/^Schedule/')) && (await waitFor(`/Export to calendar/.test(document.body.innerText)`)))
-  check('Roadmap: Do this next and History render', (await clickText('/^Plan/')) && (await waitFor(`/Do this next/.test(document.body.innerText) && /History/.test(document.body.innerText)`)))
+
 
   // The old names redirect (target-state §2, prompt 47 Part 3).
   await go('start')
@@ -226,6 +218,12 @@ try {
   check('Baseline redirects to Connect', await waitFor(`location.hash === '#/connect'`))
   await go('scan')
   check('Scan redirects to Today', await waitFor(`location.hash === '#/today'`))
+  await go('roadmap')
+  check('Roadmap redirects to Plan', await waitFor(`location.hash === '#/plan'`))
+  await go('reads')
+  check('What IAMAI reads redirects to How', await waitFor(`location.hash === '#/how'`))
+  await go('licensing')
+  check('Licensing redirects to How', await waitFor(`location.hash === '#/how'`))
   await go('plan')
   check('Plan renders at #/plan', await waitFor(`location.hash === '#/plan' && /Assumes:/.test(document.body.innerText)`))
   // The Plan surface (prompt 48 Part 2, target-state section 5).
@@ -242,16 +240,85 @@ try {
   check('Plan: Save regenerates the plan in place', (await clickText('/^Save$/')) && (await waitFor(`/Assumes:/.test(document.body.innerText) && document.querySelectorAll('main.page .plan-row').length >= 5`)))
   check('Plan: one status word per row', await evaluate(`[...document.querySelectorAll('main.page .plan-row .chip.status')].length >= 5`))
 
+  // Plan: tick a Done-when (prompt 48.1's tickable), so the saved plan carries it.
+  const clickExact = (label, root = 'main.page') =>
+    evaluate(`(() => { const r = document.querySelector(${JSON.stringify(root)}) ?? document; const b = [...r.querySelectorAll('button, a, summary')].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return !!b })()`)
+  const openTickStep = async () => {
+    const n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
+    for (let i = 0; i < n; i++) {
+      await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
+      await sleep(300)
+      if (await evaluate(`!!document.querySelector('main.page .tick input[type=checkbox]')`)) return true
+      await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
+      await sleep(120)
+    }
+    return false
+  }
+  await go('plan')
+  await waitFor(`/Assumes:/.test(document.body.innerText)`)
+  check('Plan: a Done-when has a checkbox to tick', await openTickStep())
+  await evaluate(`(() => { const cb = document.querySelector('main.page .tick input[type=checkbox]'); if (cb && !cb.checked) cb.click(); return true })()`)
+  await sleep(700)
+  check('Plan: ticking a Done-when marks it done', await evaluate(`(document.querySelector('main.page .tick input[type=checkbox]') || {}).checked === true`))
+
+  // Export (target-state §7): six cards, every button makes bytes, and the plan
+  // file round-trips carrying the tick just made.
+  await go('export')
+  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
+  check('Export: six cards render', (await evaluate(`document.querySelectorAll('main.page .export-card').length`)) === 6)
+  for (const label of ['Download calendar (ICS)', 'Today as CSV', 'Download every prompt', 'Download the bundle']) {
+    const before = await evaluate(`window.__dl.length`)
+    const clicked = await clickExact(label)
+    await sleep(350)
+    const grew = await evaluate(`window.__dl.length > ${before} && window.__dl[window.__dl.length - 1].size > 0`)
+    check(`Export: "${label}" produces bytes`, clicked && grew)
+  }
+  const printed = await clickExact('Print or save as PDF')
+  await sleep(200)
+  check('Export: Print or save as PDF prints the document', printed && (await evaluate(`window.__printed >= 1`)))
+  check('Export: the print document renders its cover', /Conditional Access rollout plan/.test(await evaluate(`(document.querySelector('.print-plan .print-cover h1') || {}).textContent || ''`)))
+  const nBefore = await evaluate(`window.__dl.length`)
+  await clickExact('Save plan file')
+  await sleep(450)
+  check('Export: Save plan file produces bytes', await evaluate(`window.__dl.length > ${nBefore} && window.__dl[window.__dl.length - 1].size > 0`))
+  const planJson = await evaluate(`(async () => { const d = window.__dl[window.__dl.length - 1]; return d && d.blob ? await d.blob.text() : null })()`)
+  check('Export: the saved plan carries the ticked done-when', typeof planJson === 'string' && /"(credentialStorage|signInMonitoring)":\s*true/.test(planJson))
+  // The round-trip carries the tick: the saved bytes parse back to a plan whose
+  // emergency-access step still has the Done-when ticked (steps[].tickable[].done
+  // and mappings.breakGlassAnswers). Identifier redaction rewrites the tenant id
+  // in the downloaded file, so a live reload into the same tenant is refused by
+  // the tenant guard by design (planTenant.test); the format round-trip is what
+  // carries the tick, and Load a plan file runs the import path.
+  const reparsed = typeof planJson === 'string' ? JSON.parse(planJson) : null
+  const tickedInFile =
+    !!reparsed &&
+    (reparsed.steps || []).some((st) => (st.tickable || []).some((t) => t.done === true)) &&
+    !!(reparsed.mappings && reparsed.mappings.breakGlassAnswers && Object.values(reparsed.mappings.breakGlassAnswers).some((v) => v === true))
+  check('Export: the plan file round-trips with the tick (parses back with the Done-when ticked)', tickedInFile)
+  if (typeof planJson === 'string') {
+    const ran = await evaluate(`(() => { const input = document.querySelector('main.page input[type=file]'); if (!input) return false; const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(planJson)}], 'plan.json', { type: 'application/json' })); input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+    await sleep(700)
+    check('Export: Load a plan file runs the import path', ran && (await evaluate(`window.__alerts.length > 0 || location.hash === '#/plan'`)))
+  }
+
+  // Recovery card (target-state §7).
+  await go('recovery')
+  await waitFor(`document.querySelector('.recovery-card') !== null`)
+  const rct = await text()
+  check('Recovery: the card renders with its heading and a print button', /Recovery card/.test(rct) && /Emergency access accounts/.test(rct) && (await evaluate(`[...document.querySelectorAll('.recovery-card button')].some((b) => /Print/.test(b.textContent))`)))
+  check('Recovery: it warns before it names people in full', /Names in full, on purpose/.test(rct))
+
+
   // The header (target-state §2): wordmark, tenant, tabs, Re-scan with the scan's age, Recovery card, theme, Account.
-  await go('roadmap')
-  await waitFor(`/Do this next/.test(document.body.innerText)`)
+  await go('plan')
+  await waitFor(`/Assumes:/.test(document.body.innerText)`)
   t = await evaluate(`document.querySelector('header.app').innerText`)
   check('Header: the tenant name, both tabs and the controls', /Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
   check('Header: Re-scan carries the scan age', /Re-scan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
   check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
-  await send('Page.navigate', { url: `${BASE}&state=noScan#/roadmap` })
+  await send('Page.navigate', { url: `${BASE}&state=noScan#/plan` })
   await sleep(1200)
   check('Header (no scan): the tabs are disabled until the first scan', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 3 && (await evaluate(`document.querySelector('header.app nav a').title`)) === 'after the first scan')
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
@@ -270,33 +337,25 @@ try {
   t = await text()
   check('Unlicensed tenant: Today says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(/[^\n]*sign-in records[^\n]*/) ?? [''])[0])
   check('Unlicensed tenant: nobody is Proven without records', !/\bProven\b/.test(t))
-  await send('Page.navigate', { url: `${BASE}&licence=free#/roadmap` })
+  await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
   await sleep(1500)
-  check('Unlicensed tenant: the plan still generates', await waitFor(`/steps in place/.test(document.body.innerText)`))
+  check('Unlicensed tenant: the plan still generates', await waitFor(`/Assumes:/.test(document.body.innerText)`))
   t = await text()
-  check('Unlicensed tenant: the licence header names the tier and what needs another', /With this tenant's Entra ID Free/.test(t))
-  // The free-tier ladder is the plan for a tenant that cannot hold a policy (SPEC 12).
-  check('Unlicensed tenant: the plan says it is the free hardening ladder', /free hardening ladder/.test(t))
-  check(
-    'Unlicensed tenant: the ladder is the plan, with this tenant own numbers',
-    (await clickText('/^Plan/')) && (await waitFor(`/Switch on the free protection|Keep two emergency accounts/.test(document.body.innerText)`)),
-  )
+  check('Unlicensed tenant: the ladder steps are the plan', /Switch on the free protection|Keep two emergency accounts/.test(await text()))
   t = await text()
   check('Unlicensed tenant: nothing asks for objects a policy would reference', !/Create a trusted named location|Create the exclusions group/.test(t))
   check(
     'Unlicensed tenant: a ladder step names what it changes here, and where to click',
-    (await clickText('/Switch on the free protection/')) &&
-      (await waitFor(`/enabled account/.test(document.body.innerText)`)) &&
+    (await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => /Switch on the free protection/.test(x.textContent)); if (r) r.click(); return !!r })()`)) &&
       (await waitFor(`/Manage security defaults/.test(document.body.innerText)`)),
   )
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
   check('Zero policies: the plan renders', await waitFor(`/Assumes:/.test(document.body.innerText)`))
-  await send('Page.navigate', { url: `${BASE}&policies=0#/roadmap` })
+  await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
-  check('Zero policies: the plan renders with Do this next', await waitFor(`/Do this next/.test(document.body.innerText)`))
+  check('Zero policies: the plan renders', await waitFor(`/Assumes:/.test(document.body.innerText)`))
   t = await text()
-  check('Zero policies: the policy count reads zero, not a wall of missing', /no Conditional Access policies in the tenant today/.test(t))
   // A sign-in with too little access names the role to ask for (prompt 31 4.18).
   // The refused-sections notice lives with the scan result, on Connect (prompt 47 Part 4).
   await send('Page.navigate', { url: `${BASE}&denied=1#/connect` })
@@ -310,8 +369,8 @@ try {
   check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))
 
   // Forget this tenant clears every store for it (prompt 31 §2.8).
-  await go('roadmap')
-  await waitFor(`/Do this next/.test(document.body.innerText)`)
+  await go('plan')
+  await waitFor(`/Assumes:/.test(document.body.innerText)`)
   const tenantId = await evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const tx = db.transaction('plan'); const all = await new Promise((r) => { const q = tx.objectStore('plan').getAllKeys(); q.onsuccess = () => r(q.result) }); db.close(); return all[0] ?? null })()`)
   const countFor = (id) => evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); let n = 0; for (const name of [...db.objectStoreNames]) { const tx = db.transaction(name); const rows = await new Promise((r) => { const q = tx.objectStore(name).getAll(); q.onsuccess = () => r(q.result) }); n += rows.filter((x) => x && x.tenantId === ${JSON.stringify(id)}).length } db.close(); return n })()`)
   const before = tenantId ? await countFor(tenantId) : 0
@@ -325,14 +384,14 @@ try {
   check('Forget: no MSAL account remains in session storage', (await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\.windows|microsoftonline/.test(k)).length`)) === 0)
 
   // The feedback channel shows the message before anything opens (prompt 34 part 2).
-  await go('roadmap')
+  await go('plan')
   await sleep(1200)
   check(
     'Feedback: the footer link opens the panel',
     (await clickText('/Something wrong or unclear/', 'footer.app')) && (await waitFor(`/What the email will contain/.test(document.body.innerText)`)),
   )
   t = await text()
-  check('Feedback: the message shows the page, version and browser', /Page: #\/roadmap/.test(t) && /Version:/.test(t) && /Browser:/.test(t))
+  check('Feedback: the message shows the page, version and browser', /Page: #\/plan/.test(t) && /Version:/.test(t) && /Browser:/.test(t))
   check('Feedback: nothing is sent automatically', /Nothing is sent from here/.test(t))
   check('Feedback: the scan summary is opt-in and not attached by default', !/Users in the directory/.test(t))
 
@@ -351,7 +410,7 @@ try {
   // reader announces something is not our judgement to make, so this asks the
   // browser, in both themes, and reports what it says.
   for (const theme of ['light', 'dark']) {
-    await send('Page.navigate', { url: `${BASE}#/roadmap` })
+    await send('Page.navigate', { url: `${BASE}#/plan` })
     await sleep(2500)
     await evaluate(`document.documentElement.setAttribute('data-theme', ${JSON.stringify(theme)})`)
     await sleep(400)
