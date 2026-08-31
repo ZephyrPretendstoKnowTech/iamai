@@ -199,7 +199,12 @@ const RULE8_WAIVED: Waiver[] = [
   { id: 'S1', match: 'Roadmap / Schedule tab:' },
   { id: 'C12', match: 'Roadmap / Plan / one step opened:' },
   { id: 'T7/T8', match: 'Roadmap / Plan tab:' },
-  { id: 'C11', match: 'Findings / Summary tab:' },
+  // Prompt 48: the Plan header line names every readiness family that waits
+  // (target-state §5), and the emergency-access step's engine evidence is the
+  // same long line already waived on the Roadmap step. 49 rewrites those.
+  { id: '48-header', match: 'Plan: 28 words' },
+  { id: '48-header', match: 'in place · finishes' },
+  { id: '48-step', match: 'Plan / one step opened:' },
 ]
 test(`rule 8: no user-facing sentence runs past ${MAX_WORDS} words`, () => {
   const found = surfaces.flatMap((s) =>
@@ -249,6 +254,8 @@ const RULE10_WAIVED: Waiver[] = [
   { id: 'R-new', match: 'Roadmap / Plan tab: [Before anything else]' },
   { id: 'R-new', match: 'Roadmap / Plan / one step opened: [Before anything else]' },
   { id: 'R-new', match: 'Roadmap / Schedule tab: [Before anything else]' },
+  { id: '48', match: 'Plan: [Before anything else]' },
+  { id: '48', match: 'Plan / one step opened: [Before anything else]' },
 ]
 
 test('rule 10: no filler phrases', () => {

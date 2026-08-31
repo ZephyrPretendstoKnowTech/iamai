@@ -200,10 +200,10 @@ export const VALIDATION_ACTION = {
   roadmap: { label: 'See the exclusions group step in the Roadmap', href: '#/roadmap/step/s-prereq-exclusion-group' },
   methods: { label: 'Entra admin center → Protection → Authentication methods → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/AuthenticationMethodsMenuBlade/~/AdminAuthMethods' },
   drill: { label: 'Break-glass drill step in the Roadmap', href: '#/roadmap/step/s-recurring-break-glass-drill' },
-  pickAnother: { label: 'Pick a different account above', href: '#/mapping' },
+  pickAnother: { label: 'Pick a different account above', href: '#/plan' },
   // Two accounts are needed, so when only one is nominated the action is to add
   // the second, not to replace the first (review-08 E1, prompt 40 §14).
-  addAnother: { label: 'Add a second account above', href: '#/mapping' },
+  addAnother: { label: 'Add a second account above', href: '#/plan' },
   policies: { label: 'Entra admin center → Protection → Conditional Access → Policies', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/Policies' },
   roles: { label: 'Entra admin center → Roles & admins → Global Administrator', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles' },
   namedLocations: { label: 'Entra admin center → Protection → Conditional Access → Named locations', href: 'https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/NamedLocations' },

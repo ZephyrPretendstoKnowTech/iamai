@@ -347,36 +347,13 @@ const VISIBLE_PANEL = `[...document.querySelectorAll('main.page .tab-panel')].fi
 
 // Today and Inventory are contract surfaces (prompt 47 Part 5): the contract walk below reaches them.
 
-// Setup: every question is its own surface, read from inside its own element
-// rather than by expanding one at a time. The questions render open, so
-// toggling would fight React and produce eight identical captures; containment
-// gives true attribution, which is the whole point of the opt-out table.
-await goto('/mapping')
-await capture('Setup', 'page chrome only; each question is its own surface below', undefined, '.setup-question')
-const questionCount = await evaluate(`document.querySelectorAll('main.page .setup-question').length`)
-for (let i = 0; i < questionCount; i++) {
-  const title = await evaluate(
-    `(() => {
-      const q = [...document.querySelectorAll('main.page .setup-question')][${i}]
-      const s = q && q.querySelector('summary')
-      if (!s) return 'question ${i + 1}'
-      const raw = (s.textContent || '').replace(/\\s+/g, ' ').trim()
-      // The summary carries the question title plus its status chip; keep the title.
-      return raw.replace(/(Required|Answered|Needs attention|\\d+ (must fix|recommended|to fix)).*$/i, '').replace(/^Question \\d+ · /, '').trim().slice(0, 54)
-    })()`,
-  )
-  await capture(
-    `Setup / Q${i + 1} — ${title}`,
-    'one question',
-    `[...document.querySelectorAll('main.page .setup-question')][${i}]`,
-  )
-}
-
-await goto('/coverage')
-await capture('Findings', 'page chrome; tab panels are their own surfaces', undefined, '.tab-panel')
-await capture('Findings / Summary tab', 'panel only', VISIBLE_PANEL)
-for (const tab of ['working', 'attention', 'Details']) {
-  if (await clickText('.tab, [role=tab]', `/${tab}/`)) { await sleep(900); await capture(`Findings / ${tab} tab`, 'panel only', VISIBLE_PANEL) }
+// Setup and Findings are gone (prompt 48 Part 5); the Plan is a contract surface,
+// reached by the contract walk below. The Roadmap stays for its Export tab until 49.
+await goto('/plan')
+await capture('Plan', 'page chrome; the step body and open details are their own surfaces', undefined, '.step-body, details > *:not(summary)')
+if (await clickText('.plan-row', '/./')) {
+  await sleep(700)
+  await capture('Plan / one step opened', 'the opened step, More collapsed', "document.querySelector('.step-body')", 'details > *:not(summary)')
 }
 
 await goto('/roadmap')

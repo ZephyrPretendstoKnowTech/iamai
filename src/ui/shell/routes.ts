@@ -34,6 +34,8 @@ export const REDIRECT: Record<string, Route> = {
   baseline: 'connect',
   scan: 'today',
   readiness: 'today',
+  mapping: 'plan',
+  coverage: 'plan',
   'baseline/package': 'package',
 }
 
