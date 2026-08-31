@@ -202,8 +202,9 @@ const CONTRAST = (rootJs) => `(() => {
     const fg = parse(cs.color)
     if (!fg || fg.a < 0.5) continue
     const size = parseFloat(cs.fontSize)
-    const bold = parseInt(cs.fontWeight, 10) >= 700
-    const need = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5
+    // Prompt 49.1 item 14: all text below 18px needs 4.5:1 in both modes; only
+    // 18px and up (headings) may sit at 3:1. The build fails under this floor.
+    const need = size >= 18 ? 3 : 4.5
     const r = ratio(fg, bgOf(el))
     note('text', r, need, el.className + ' :: ' + text)
     if (r < need) record('text', el, r, need, el.className + ' :: ' + text)

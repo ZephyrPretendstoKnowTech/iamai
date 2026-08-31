@@ -106,7 +106,7 @@ hr {
   color: var(--ink-2);
 }
 .meta {
-  font-size: var(--t-1);
+  font-size: var(--t-2);
 }
 .small {
   font-size: var(--t-2);
@@ -265,7 +265,7 @@ table {
 }
 th {
   font-family: var(--font-sans);
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   font-weight: 500;
   color: var(--ink-2);
   text-align: left;
@@ -347,7 +347,7 @@ details > *:not(summary) {
   border-radius: 50%;
   color: var(--ink-2);
   font-family: var(--font-serif);
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -409,7 +409,7 @@ details > *:not(summary) {
 }
 .tab-badge {
   color: var(--ink-2);
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   margin-left: 4px;
   background: transparent;
   padding: 0;
@@ -446,7 +446,7 @@ details > *:not(summary) {
   align-items: center;
 }
 .tile .stat-sub {
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   color: var(--ink-2);
 }
 @media (max-width: 700px) {
@@ -569,7 +569,7 @@ footer.app {
   margin: 0 auto;
   padding: 16px var(--pad) 32px;
   color: var(--ink-2);
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
@@ -688,7 +688,7 @@ footer.app a {
   overflow-wrap: normal;
 }
 .surface details.permissions td:first-child code {
-  font-size: var(--t-1);
+  font-size: var(--t-2);
 }
 /* Connect is prose, and reads at the page column, not the measure (item 5). */
 .surface.connect p,
@@ -700,7 +700,7 @@ footer.app a {
    ink-2, not ink-3: at 12px ink-3 measures 4.35:1 on the page and AA text needs 4.5. */
 .surface .tag {
   margin-left: 8px;
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   color: var(--ink-2);
 }
 /* Tables on a surface (items 7 and 8): no inner scroll, the page scrolls and
@@ -723,7 +723,7 @@ footer.app a {
   background: transparent;
   text-transform: none;
   letter-spacing: 0;
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   font-weight: 500;
   color: var(--ink-2);
   min-width: 0;
@@ -842,25 +842,41 @@ footer.app a {
   width: 100%;
 }
 .next-mark {
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   padding: 0 6px;
 }
+/* A wave is a raised panel, so a section reads as a unit (prompt 49.1 item 12):
+   --bg-raised, a hairline border, an 8px radius, the header inside, its rows
+   separated by hairlines within it. Nothing else outside .export-card gets a box. */
 .wave {
-  margin: 24px 0;
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 4px 16px 8px;
+  margin: 20px 0;
 }
 .wave h2 {
-  font-size: var(--t-5);
-  padding-bottom: 6px;
+  font-size: var(--t-4);
+  margin: 14px 0 2px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--rule);
 }
 .plan-row {
   display: block;
-  padding: 10px 0;
+  padding: 10px 6px;
   border-bottom: 1px solid var(--rule);
+  border-radius: 4px;
   cursor: pointer;
+}
+.plan-row:last-child {
+  border-bottom: 0;
+}
+/* A hover surface on the row (item 13). */
+.plan-row:hover {
+  background: var(--bg-inset);
 }
 .plan-row-main {
   display: flex;
@@ -868,30 +884,38 @@ footer.app a {
   flex-wrap: wrap;
   gap: 4px 12px;
 }
+/* The status column is fixed-width so the dots align down the page (item 13). */
+.plan-row-main .status {
+  flex: 0 0 7.5rem;
+}
 .plan-row-reason {
   display: block;
-  color: var(--ink-2);
+  color: var(--ink-3);
   font-size: var(--t-2);
   margin-top: 4px;
 }
+/* Row hierarchy (item 13): the title carries the weight; status, who and date recede. */
 .plan-row .step-title {
   flex: 1 1 8rem;
   min-width: 0;
+  font-weight: 500;
 }
 .plan-row .who {
-  color: var(--ink-2);
+  color: var(--ink-3);
   font-size: var(--t-2);
 }
 .plan-row .when {
-  color: var(--ink-2);
+  color: var(--ink-3);
   font-size: var(--t-2);
   white-space: nowrap;
   margin-left: auto;
 }
+/* The open step keeps a raised treatment inside the wave panel (item 12). */
 .step-body {
   padding: 12px 0 20px 16px;
   border-left: 2px solid var(--rule);
   margin: 0 0 8px;
+  line-height: 1.55;
 }
 .step-body h3 {
   margin: 18px 0 6px;
@@ -936,7 +960,7 @@ footer.app a {
   body.has-print-plan > .print-plan { display: block; }
   .print-plan { color: var(--ink); font-size: var(--t-2); line-height: 1.45; }
   .print-plan a { color: inherit; text-decoration: none; }
-  .print-running { position: fixed; top: -12mm; left: 0; right: 0; font-size: var(--t-1); color: var(--ink-2); border-bottom: 1px solid var(--rule); padding-bottom: 2mm; }
+  .print-running { position: fixed; top: -12mm; left: 0; right: 0; font-size: var(--t-2); color: var(--ink-2); border-bottom: 1px solid var(--rule); padding-bottom: 2mm; }
   .print-cover { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; break-after: page; }
   .print-cover h1 { font-size: var(--t-6); margin: 0 0 12mm; }
   .print-cover dl { display: grid; grid-template-columns: 8rem 1fr; gap: 3mm 6mm; }
@@ -944,15 +968,15 @@ footer.app a {
   .print-page { break-before: page; }
   .print-page h2 { font-size: var(--t-5); margin: 0 0 4mm; border-bottom: 2px solid var(--accent); padding-bottom: 2mm; }
   .print-page h3 { font-size: var(--t-4); margin: 6mm 0 2mm; }
-  .print-page h4 { font-size: var(--t-1); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); margin: 3mm 0 1mm; }
+  .print-page h4 { font-size: var(--t-2); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); margin: 3mm 0 1mm; }
   .print-step { break-inside: avoid-page; border-top: 1px solid var(--rule); padding-top: 3mm; margin-top: 4mm; }
   .print-json { break-inside: auto; }
   .print-plan .datatable, .print-plan table { width: 100%; border-collapse: collapse; }
-  .print-plan .datatable th, .print-plan .datatable td, .print-plan table th, .print-plan table td { border: 1px solid var(--rule); padding: 2mm; text-align: left; vertical-align: top; font-size: var(--t-1); }
-  .print-plan pre, .print-plan .code-block { font-size: var(--t-1); border: 1px solid var(--rule); background: var(--bg-inset); }
+  .print-plan .datatable th, .print-plan .datatable td, .print-plan table th, .print-plan table td { border: 1px solid var(--rule); padding: 2mm; text-align: left; vertical-align: top; font-size: var(--t-2); }
+  .print-plan pre, .print-plan .code-block { font-size: var(--t-2); border: 1px solid var(--rule); background: var(--bg-inset); }
   .export-grid, .journey { grid-template-columns: 1fr !important; }
   .print-cover .ring-mark { color: var(--accent); margin-bottom: 8mm; }
-  .print-cover .print-statement { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: var(--t-1); }
+  .print-cover .print-statement { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: var(--t-2); }
   .print-progress { border: 1px solid var(--rule); padding: 3mm 4mm; margin: 4mm 0; }
   .print-progress p { margin: 0 0 1mm; }
 }
@@ -963,6 +987,13 @@ footer.app a {
   grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
   gap: 16px;
   margin-top: 16px;
+}
+/* Each export entry is a raised panel, the second surface depth (item 12). */
+.export-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 16px;
 }
 .export-card .actions {
   display: flex;
