@@ -41,9 +41,9 @@ export function signIn(): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
-  // Never signed in through MSAL (the dev mock): nothing to log out of; go back to the start.
+  // Never signed in through MSAL (the dev mock): nothing to log out of; back to Connect.
   if (!initialized) {
-    window.location.hash = '#/start'
+    window.location.hash = '#/connect'
     return
   }
   await initialized

@@ -1,138 +1,6 @@
 {
- "fingerprint": "771c59ed825b2e3b",
+ "fingerprint": "088879d3e516740c",
  "surfaces": [
-  {
-   "name": "Start",
-   "note": "",
-   "headings": [
-    "Know what a Conditional Access change will do before you make it.",
-    "How it works",
-    "Connect",
-    "Choose a baseline",
-    "Scan and see readiness",
-    "Follow the roadmap",
-    "What you'll need",
-    "What IAMAI reads, and why",
-    "What IAMAI never does"
-   ],
-   "tabs": [],
-   "buttons": [
-    "Get started"
-   ],
-   "options": [],
-   "links": [
-    "The full list, with every endpoint and permission →",
-    "The source is public"
-   ],
-   "chips": [],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [],
-   "tips": [],
-   "sentences": [
-    "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.",
-    "One sign-in, one consent screen, on the tenant you already administer.",
-    "Start from a maintained policy set, or upload a package.",
-    "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.",
-    "Waves with dates, the changes that are safe today, and what to watch first.",
-    "A Microsoft 365 tenant with Microsoft Entra ID (any licence).",
-    "A Global Administrator or Global Reader account.",
-    "Entra ID P1 for sign-in records.",
-    "IAMAI works without it, with less evidence.",
-    "About ten minutes for the first scan.",
-    "The Conditional Access configuration: to compare it with the baseline.",
-    "User, device, and licence inventory: to size every step's impact.",
-    "Recent interactive sign-in records: to check that MFA works before anything is enforced.",
-    "No changes to the tenant: the app holds read-only permissions only.",
-    "No tenant data is sent anywhere on its own.",
-    "There is no server, no analytics and no telemetry.",
-    "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.",
-    "No account required with anyone.",
-    "The source is public, so every claim above can be checked.",
-    "Predicted impact, confirmed in report-only."
-   ],
-   "titles": [],
-   "nav": [
-    {
-     "label": "Get started",
-     "at": "bottom",
-     "inFooterSlot": true
-    }
-   ],
-   "primary": [
-    "Get started"
-   ],
-   "tables": [],
-   "occurrences": {
-    "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.": 1,
-    "One sign-in, one consent screen, on the tenant you already administer.": 1,
-    "Start from a maintained policy set, or upload a package.": 1,
-    "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.": 1,
-    "Waves with dates, the changes that are safe today, and what to watch first.": 1,
-    "A Microsoft 365 tenant with Microsoft Entra ID (any licence).": 1,
-    "A Global Administrator or Global Reader account.": 1,
-    "Entra ID P1 for sign-in records.": 1,
-    "IAMAI works without it, with less evidence.": 1,
-    "About ten minutes for the first scan.": 1,
-    "The Conditional Access configuration: to compare it with the baseline.": 1,
-    "User, device, and licence inventory: to size every step's impact.": 1,
-    "Recent interactive sign-in records: to check that MFA works before anything is enforced.": 1,
-    "The full list, with every endpoint and permission →": 1,
-    "No changes to the tenant: the app holds read-only permissions only.": 1,
-    "No tenant data is sent anywhere on its own.": 1,
-    "There is no server, no analytics and no telemetry.": 1,
-    "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.": 1,
-    "No account required with anyone.": 1,
-    "The source is public, so every claim above can be checked.": 1,
-    "Predicted impact, confirmed in report-only.": 1
-   },
-   "occurrencesAll": {
-    "IAMAI reads your Microsoft 365 tenant and tells you who each change locks out, what order to make them in, and what to watch afterwards.": 1,
-    "One sign-in, one consent screen, on the tenant you already administer.": 1,
-    "Start from a maintained policy set, or upload a package.": 1,
-    "Who could pass MFA today, who needs a hand, and who is blocked right now: by name.": 1,
-    "Waves with dates, the changes that are safe today, and what to watch first.": 1,
-    "A Microsoft 365 tenant with Microsoft Entra ID (any licence).": 1,
-    "A Global Administrator or Global Reader account.": 1,
-    "Entra ID P1 for sign-in records.": 1,
-    "IAMAI works without it, with less evidence.": 1,
-    "About ten minutes for the first scan.": 1,
-    "The Conditional Access configuration: to compare it with the baseline.": 1,
-    "User, device, and licence inventory: to size every step's impact.": 1,
-    "Recent interactive sign-in records: to check that MFA works before anything is enforced.": 1,
-    "The full list, with every endpoint and permission →": 1,
-    "No changes to the tenant: the app holds read-only permissions only.": 1,
-    "No tenant data is sent anywhere on its own.": 1,
-    "There is no server, no analytics and no telemetry.": 1,
-    "What you export moves when you choose it: saving a plan or a CSV, copying a prompt, printing, or emailing feedback.": 1,
-    "No account required with anyone.": 1,
-    "The source is public, so every claim above can be checked.": 1,
-    "Predicted impact, confirmed in report-only.": 1
-   },
-   "wordCounts": {
-    "headings": 38,
-    "tabs": 0,
-    "buttons": 2,
-    "options": 0,
-    "links": 13,
-    "chips": 0,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 0,
-    "tips": 0,
-    "sentences": 218,
-    "total": 271
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "pageProse": {
-    "sentences": 20,
-    "words": 218
-   }
-  },
   {
    "name": "Connect",
    "note": "",
@@ -347,102 +215,6 @@
    }
   },
   {
-   "name": "Baseline",
-   "note": "",
-   "headings": [
-    "Baseline",
-    "About this baseline",
-    "Loaded: synthetic baseline"
-   ],
-   "tabs": [],
-   "buttons": [
-    "Load this baseline",
-    "Next: Scan"
-   ],
-   "options": [],
-   "links": [
-    "Jon Hope",
-    "repository",
-    "how to make one"
-   ],
-   "chips": [],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [
-    "Technical details"
-   ],
-   "tips": [],
-   "sentences": [
-    "Picks the target policy set the rollout plan aims for.",
-    "A baseline is a set of Conditional Access policies somebody has already worked out and maintains: what to require, of whom, and in what order.",
-    "IAMAI compares this tenant against one and builds the plan from the difference, so the target is a published policy set rather than an opinion.",
-    "Jon Hope — Defense in Depth CA baseline by Jon Hope, Microsoft MVP in identity and access · repository",
-    "version ceccdc2",
-    "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.",
-    "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.",
-    "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2",
-    "or upload a package (how to make one):",
-    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 6 questions (all required)"
-   ],
-   "titles": [],
-   "nav": [
-    {
-     "label": "Next: Scan",
-     "at": "bottom",
-     "inFooterSlot": true
-    }
-   ],
-   "primary": [
-    "Next: Scan"
-   ],
-   "tables": [],
-   "occurrences": {
-    "Picks the target policy set the rollout plan aims for.": 1,
-    "A baseline is a set of Conditional Access policies somebody has already worked out and maintains: what to require, of whom, and in what order.": 1,
-    "IAMAI compares this tenant against one and builds the plan from the difference, so the target is a published policy set rather than an opinion.": 1,
-    "Jon Hope — Defense in Depth CA baseline by Jon Hope, Microsoft MVP in identity and access · repository": 1,
-    "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.": 1,
-    "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.": 1,
-    "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2": 1,
-    "or upload a package (how to make one):": 1,
-    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 6 questions (all required)": 1
-   },
-   "occurrencesAll": {
-    "Picks the target policy set the rollout plan aims for.": 1,
-    "A baseline is a set of Conditional Access policies somebody has already worked out and maintains: what to require, of whom, and in what order.": 1,
-    "IAMAI compares this tenant against one and builds the plan from the difference, so the target is a published policy set rather than an opinion.": 1,
-    "Jon Hope — Defense in Depth CA baseline by Jon Hope, Microsoft MVP in identity and access · repository": 1,
-    "A defence-in-depth Conditional Access policy set covering identity, device, session, and workload protections, maintained as importable Graph policy JSON.": 1,
-    "Bring a tenant to a layered, exclusion-aware Conditional Access posture without lockouts, starting from MFA for everyone and building up to device and session controls.": 1,
-    "155 files, 1 usable policy · targets Entra ID P1, Entra ID P2": 1,
-    "or upload a package (how to make one):": 1,
-    "1 policy · 1 security goal in this baseline (Findings shows how many apply to the tenant) · Setup will ask 6 questions (all required)": 1
-   },
-   "wordCounts": {
-    "headings": 7,
-    "tabs": 0,
-    "buttons": 5,
-    "options": 0,
-    "links": 7,
-    "chips": 0,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 2,
-    "tips": 0,
-    "sentences": 171,
-    "total": 192
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "pageProse": {
-    "sentences": 10,
-    "words": 171
-   }
-  },
-  {
    "name": "Scan",
    "note": "page chrome; tab panels are their own surfaces",
    "headings": [
@@ -454,8 +226,6 @@
    ],
    "buttons": [
     "Re-scan tenant",
-    "Readiness",
-    "Inventory",
     "Next: Setup"
    ],
    "options": [],
@@ -500,7 +270,7 @@
    "wordCounts": {
     "headings": 1,
     "tabs": 2,
-    "buttons": 6,
+    "buttons": 4,
     "options": 0,
     "links": 0,
     "chips": 0,
@@ -510,7 +280,7 @@
     "summaries": 0,
     "tips": 0,
     "sentences": 50,
-    "total": 59
+    "total": 57
    },
    "unnamedControls": [],
    "rows": [],
@@ -684,16 +454,6 @@
     "Sign-in records"
    ],
    "buttons": [
-    "Policies",
-    "Named locations",
-    "Authentication",
-    "People",
-    "Groups",
-    "Devices",
-    "Roles",
-    "Apps",
-    "Licensing",
-    "Sign-in records",
     "Policy",
     "State",
     "Export CSV"
@@ -744,7 +504,7 @@
    "wordCounts": {
     "headings": 1,
     "tabs": 12,
-    "buttons": 16,
+    "buttons": 4,
     "options": 0,
     "links": 0,
     "chips": 3,
@@ -754,7 +514,7 @@
     "summaries": 0,
     "tips": 5,
     "sentences": 13,
-    "total": 57
+    "total": 45
    },
    "unnamedControls": [],
    "rows": [],
@@ -1222,10 +982,6 @@
     "Details"
    ],
    "buttons": [
-    "Summary",
-    "In place",
-    "Needs attention",
-    "Details",
     "Next: Roadmap"
    ],
    "options": [],
@@ -1279,7 +1035,7 @@
    "wordCounts": {
     "headings": 1,
     "tabs": 6,
-    "buttons": 8,
+    "buttons": 2,
     "options": 0,
     "links": 1,
     "chips": 0,
@@ -1289,7 +1045,7 @@
     "summaries": 0,
     "tips": 3,
     "sentences": 52,
-    "total": 71
+    "total": 65
    },
    "unnamedControls": [],
    "rows": [],
@@ -1570,10 +1326,7 @@
     "Export"
    ],
    "buttons": [
-    "Open the step",
-    "Plan",
-    "Schedule",
-    "Export"
+    "Open the step"
    ],
    "options": [],
    "links": [
@@ -1660,7 +1413,7 @@
    "wordCounts": {
     "headings": 21,
     "tabs": 3,
-    "buttons": 6,
+    "buttons": 3,
     "options": 0,
     "links": 15,
     "chips": 0,
@@ -1670,7 +1423,7 @@
     "summaries": 0,
     "tips": 3,
     "sentences": 192,
-    "total": 240
+    "total": 237
    },
    "unnamedControls": [],
    "rows": [],
@@ -1938,8 +1691,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 237,
-    "words": 489
+    "sentences": 243,
+    "words": 495
    }
   },
   {
@@ -2801,8 +2554,8 @@
    "rows": [],
    "forbidHits": [],
    "pageProse": {
-    "sentences": 278,
-    "words": 1022
+    "sentences": 284,
+    "words": 1028
    }
   },
   {
@@ -3599,9 +3352,6 @@
    ],
    "buttons": [
     "Open the step",
-    "Plan",
-    "Schedule",
-    "Export",
     "Save plan",
     "Load plan",
     "Copy as Markdown",
@@ -3774,7 +3524,7 @@
    "wordCounts": {
     "headings": 36,
     "tabs": 3,
-    "buttons": 39,
+    "buttons": 36,
     "options": 0,
     "links": 15,
     "chips": 0,
@@ -3784,7 +3534,7 @@
     "summaries": 0,
     "tips": 3,
     "sentences": 442,
-    "total": 538
+    "total": 535
    },
    "unnamedControls": [],
    "rows": [],

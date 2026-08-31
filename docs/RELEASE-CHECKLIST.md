@@ -69,7 +69,7 @@ export redaction test) run in CI on every push; this list is the rest.
       lives in repository settings instead; the file is kept so the intent is visible in the
       repository and so a switch back to branch publishing does not silently drop the domain.
 - [ ] After the first deploy, open `https://getiamai.com/` for the home page and
-      `https://getiamai.com/rollout/#/start` for the planner, sign in to a
+      `https://getiamai.com/rollout/#/connect` for the planner, sign in to a
       test tenant, and walk Start → Connect → Baseline → Scan → Setup → Findings → Roadmap.
       Print the Roadmap. Save the plan, forget the tenant, reload the plan.
 - [ ] Take the first-run screenshots (Start, Findings, Roadmap Progress, Roadmap Plan) at

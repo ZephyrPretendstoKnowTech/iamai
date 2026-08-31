@@ -12,6 +12,17 @@ export const SHELL = {
   themeTooltip: 'Switch between dark and light themes',
   themeState: (theme: string) => `Theme: ${theme}. Switch to ${theme === 'dark' ? 'light' : 'dark'}`,
   forget: 'Forget this tenant',
+  // The header (prompt 47 Part 3, target-state §2).
+  navLabel: 'Sections',
+  tabs: { today: 'Today', plan: 'Plan', export: 'Export' },
+  tabsAfterScan: 'after the first scan',
+  /** "Re-scan · scanned 24h ago": the age in the fewest characters, as target-state §2 writes it. */
+  rescanScanned: (age: { hours: number; days: number }) =>
+    `Re-scan · scanned ${age.hours < 1 ? 'just now' : age.hours < 48 ? `${age.hours}h ago` : `${age.days}d ago`}`,
+  recovery: 'Recovery card',
+  account: 'Account',
+  accountTooltip: (username: string) => `Signed in as ${username}`,
+  signOut: 'Sign out',
   /** The demo banner (prompt 45 Part 1). Persistent, and one click to leave. */
   demoBanner: 'Sample data. Nothing here is from a real tenant.',
   demoLeave: 'Leave the demo',

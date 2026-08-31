@@ -1,7 +1,7 @@
 // Per-page error boundary (prompt 20 §2): a render error shows a plain
 // message, a redacted diagnostics download, and Start over. Never a white
 // screen. Saved data on this device is untouched; Start over only drops what
-// is in memory by reloading at the Start step.
+// is in memory by reloading at Connect.
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { SHELL } from '../../copy/pages.ts'
@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   startOver = (): void => {
-    window.location.hash = '#/start'
+    window.location.hash = '#/connect'
     window.location.reload()
   }
 

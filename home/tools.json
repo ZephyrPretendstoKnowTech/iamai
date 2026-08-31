@@ -3,6 +3,7 @@
     "name": "Conditional Access rollout planner",
     "description": "Know what a Conditional Access change will do before you make it: who it locks out, what order to make changes in, and what to watch afterwards. Read-only, runs in your browser.",
     "status": "testing",
-    "path": ""
+    "path": "",
+    "hash": "#/connect"
   }
 ]

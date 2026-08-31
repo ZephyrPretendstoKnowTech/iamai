@@ -18,7 +18,6 @@ import {
   ProgressBar,
   StatTile,
   Stats,
-  Stepper,
   Tabs,
 } from '../components/index.ts'
 import type { ChipStatus, Column, IconName, PickerOption } from '../components/index.ts'
@@ -185,22 +184,6 @@ export function ComponentsPage() {
 
       <Section id="emptystate" title="EmptyState">
         <EmptyState icon="search" text="No sign-ins matched." action={<Button size="sm">Clear filters</Button>} />
-      </Section>
-
-      <Section id="stepper" title="Stepper">
-        <div style={{ maxWidth: '16rem' }}>
-          <Stepper
-            active="baseline"
-            steps={[
-              { route: 'start', label: 'Start', status: 'done' },
-              { route: 'connect', label: 'Connect', status: 'done' },
-              { route: 'baseline', label: 'Baseline', status: 'inProgress' },
-              { route: 'scan', label: 'Scan', status: 'attention' },
-              { route: 'mapping', label: 'Setup' },
-            ]}
-            reference={[{ route: 'reads', label: 'What IAMAI reads' }]}
-          />
-        </div>
       </Section>
 
       <Section id="scan" title="Scan (synthetic tenant)">

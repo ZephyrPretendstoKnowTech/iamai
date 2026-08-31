@@ -3,14 +3,13 @@ import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/msal.ts'
 import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
-import { AppShell, useHashRoute } from './shell/AppShell.tsx'
+import { loadBaselineRecord, loadSnapshotRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
+import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
 import { BackToTop, Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
-import type { Route, StepStatus } from './shell/AppShell.tsx'
-import { StartPage } from './pages/StartPage.tsx'
+import type { ShellState } from './shell/AppShell.tsx'
 import { ConnectPage } from './pages/ConnectPage.tsx'
-import { BaselinePage, restoreBaseline } from './pages/BaselinePage.tsx'
+import { restoreBaseline } from './pages/BaselinePage.tsx'
 import type { BaselineResult } from './pages/BaselinePage.tsx'
 import { LicensingPage } from './pages/LicensingPage.tsx'
 import { CoveragePage } from './pages/CoveragePage.tsx'
@@ -36,10 +35,7 @@ const ComponentsPage = import.meta.env.DEV
   : () => null
 import { SHELL } from '../copy/pages.ts'
 import { isDemo } from './demo.ts'
-import { computeStepStatus } from './stepStatus.ts'
-import { activeWizardQuestions, wizardProgress } from '../mapping/wizard.ts'
-import type { WizardProgress } from '../mapping/wizard.ts'
-import { loadMappingState, saveMappingState } from '../mapping/store.ts'
+import { saveMappingState } from '../mapping/store.ts'
 import { detectAssumptions } from './detectAssumptions.ts'
 import { probeStorage } from '../graph/collect/cache.ts'
 
@@ -70,7 +66,6 @@ export function App() {
   // item 2). The progress view is otherwise unreachable by a harness: it lasts
   // as long as the worker takes, and the synthetic tenant has no worker.
   const [frozenScan, setFrozenScan] = useState<Record<string, { source: string; status: string; rows?: number; reason?: string; ms?: number }> | null>(null)
-  const [mapProgress, setMapProgress] = useState<WizardProgress | null>(null)
   const route = useHashRoute()
   // Role names the scan carries ($expand=roleDefinition) resolve ids the bundled catalogue lacks.
   useEffect(() => {
@@ -81,36 +76,10 @@ export function App() {
   // given gets its detected default, saved under the tenant.
   useEffect(() => {
     if (!lastScan || !baseline?.pkg || !account) return
-    let cancelled = false
-    const { snapshot } = lastScan
-    const pkg = baseline.pkg
-    void detectAssumptions(account.tenantId, snapshot, pkg)
-      .then((m) => {
-        if (!cancelled) setMapProgress(wizardProgress(m, activeWizardQuestions(pkg, { snapshot, state: m })))
-      })
-      .catch(() => {
-        // Detection is a convenience over a saved state; a failure leaves the saved state as it was.
-      })
-    return () => {
-      cancelled = true
-    }
+    void detectAssumptions(account.tenantId, lastScan.snapshot, baseline.pkg).catch(() => {
+      // Detection is a convenience over a saved state; a failure leaves the saved state as it was.
+    })
   }, [lastScan, baseline, account])
-  const [visitedStart, setVisitedStart] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('iamai-visited-start') === '1'
-    } catch {
-      return false
-    }
-  })
-  useEffect(() => {
-    if (route !== 'start' || visitedStart) return
-    setVisitedStart(true)
-    try {
-      localStorage.setItem('iamai-visited-start', '1')
-    } catch {
-      // storage unavailable: the status resets next visit
-    }
-  }, [route, visitedStart])
 
   useEffect(() => {
     if (DEMO) {
@@ -195,24 +164,21 @@ export function App() {
           setScanRunning(true)
         } else if (state === 'scanned') {
           setLastScan({ snapshot, at: snapshot.asOf })
-          void loadMappingState(snapshot.tenantId).then((m) => setMapProgress(wizardProgress(m, activeWizardQuestions(null, { snapshot, state: m }))))
         }
         setReady(true)
       })
       return
     }
     initAuth()
-      .then((a) => {
+      .then(async (a) => {
         setAccount(a)
         if (a) {
           void fetchTenantName().then(setTenantName)
-          // Restore the last scan so nobody re-scans just to look around.
-          void loadSnapshotRecord<{ snapshot: TenantSnapshot; at: string }>(a.tenantId).then((stored) => {
-            if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
-            // The stepper measures completeness against the questions this
-            // tenant is asked, which needs the snapshot (prompt 37 §7).
-            void loadMappingState(a.tenantId).then((m) => setMapProgress(wizardProgress(m, activeWizardQuestions(null, { snapshot: stored?.snapshot ?? null, state: m }))))
-          })
+          // Restore the last scan so nobody re-scans just to look around. Where
+          // the app lands depends on it (target-state §2: a scanned tenant
+          // lands on Plan), so the shell waits for the record before drawing.
+          const stored = await loadSnapshotRecord<{ snapshot: TenantSnapshot; at: string }>(a.tenantId).catch(() => null)
+          if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
           // A blocked store shows as a plain sentence, never as a silently empty app.
           void probeStorage().catch((e: unknown) => setStorageWarning(e instanceof Error ? e.message : String(e)))
           // The loaded baseline comes back too (prompt 14 §6): pinned index by
@@ -232,18 +198,17 @@ export function App() {
       .finally(() => setReady(true))
   }, [])
 
-  const stepStatus: Partial<Record<Route, StepStatus>> = computeStepStatus({
-    visitedStart,
-    signedIn: account !== null,
-    baselineLoaded: baseline !== null,
-    scanRunning,
-    hasSnapshot: lastScan !== null,
-    setup: mapProgress ? { answered: mapProgress.answered, requiredMissing: mapProgress.requiredMissing } : null,
-  })
+  // The shell's state (target-state §2): signed out, signed in with no scan,
+  // scanning, or scanned. It decides the tabs, the Re-scan control and where
+  // an empty hash lands.
+  const shellState: ShellState = !account ? 'signedOut' : scanRunning ? 'scanning' : lastScan ? 'scanned' : 'noScan'
+  useEffect(() => {
+    if (!ready || route !== 'home') return
+    window.location.replace(shellState === 'scanned' ? PLAN_HREF : '#/connect')
+  }, [ready, route, shellState])
 
   return (
-    <AppShell account={account} tenantName={tenantName} route={route} stepStatus={stepStatus}
-          snapshot={lastScan?.snapshot ?? null}>
+    <AppShell account={account} tenantName={tenantName} route={route} state={shellState} scannedAt={lastScan?.at ?? null} snapshot={lastScan?.snapshot ?? null}>
       {!ready ? (
         SHELL.loading
       ) : (
@@ -254,7 +219,6 @@ export function App() {
             </p>
           )}
           {storageWarning && <Callout kind="warning" title={SHELL.storageBlocked}>{storageWarning}</Callout>}
-          {route === 'start' && <StartPage />}
           {route === 'connect' && (
             <ConnectPage
               account={account}
@@ -263,19 +227,8 @@ export function App() {
               userCount={lastScan?.snapshot.users.length ?? null}
             />
           )}
-          {route === 'baseline' && (
-            <BaselinePage
-              result={baseline}
-              restoreError={baselineRestoreError}
-              scan={lastScan}
-              onLoaded={(r) => {
-                setBaseline(r)
-                if (account) void saveBaselineRecord(account.tenantId, r.origin)
-              }}
-            />
-          )}
           {route === 'baseline/package' && <PackagePage />}
-          {(route === 'scan' || route === 'inventory') &&
+          {(route === 'today' || route === 'inventory') &&
             (account ? (
               <MfaViabilityScreen
                 key={route}
@@ -297,9 +250,7 @@ export function App() {
                 </p>
               </section>
             ))}
-          {route === 'mapping' && (
-            <MappingPage scan={lastScan} baseline={baseline} onProgress={setMapProgress} />
-          )}
+          {route === 'mapping' && <MappingPage scan={lastScan} baseline={baseline} onProgress={() => {}} />}
           {route === 'coverage' && <CoveragePage scan={lastScan} baseline={baseline} />}
           {(route === 'roadmap' || route === 'roadmap/prompts') && (
             <RoadmapPage

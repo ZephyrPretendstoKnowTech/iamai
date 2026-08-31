@@ -1,5 +1,10 @@
-import { RingMark } from '../components/Ring.tsx'
-import { useEffect, useState } from 'react'
+// The shell (prompt 47 Part 3, target-state §2): one 48px header with a
+// hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
+// "Next" framing. Signed out, the header is the wordmark and the theme control;
+// signed in it adds the tenant name, the Today and Plan tabs (enabled once a
+// scan exists), Re-scan with the scan's age, the Recovery card link and the
+// Account menu.
+import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
@@ -9,8 +14,9 @@ import { exitDemoUrl, isDemo } from '../demo.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { FeedbackPanel } from '../FeedbackPanel.tsx'
 import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/dates.ts'
-import { Button, Callout, InfoTip, LinkButton, Stepper } from '../components/index.ts'
-import type { StepperStatus } from '../components/index.ts'
+import { scanAge } from '../../derive/scanAge.ts'
+import { Button, Callout, InfoTip, LinkButton } from '../components/index.ts'
+import { RingMark } from '../components/Ring.tsx'
 
 export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
 export const GITHUB_URL = 'https://github.com/ZephyrPretendstoKnowTech'
@@ -18,68 +24,84 @@ export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 /** The home page this tool sits under (prompt 35 §3). */
 export const HOME_URL = 'https://getiamai.com/'
 
+/**
+ * Routes (target-state §2). `home` is the empty hash: App sends it to Plan when
+ * a scan exists and to Connect otherwise. The old page names redirect. Plan,
+ * Export and How arrive in prompts 48 and 49; until then #/plan opens the
+ * Roadmap, and the reference pages keep their old names.
+ */
 export type Route =
-  | 'start'
+  | 'home'
   | 'connect'
-  | 'baseline'
-  | 'scan'
+  | 'today'
+  | 'inventory'
+  | 'recovery'
   | 'mapping'
   | 'coverage'
   | 'roadmap'
+  | 'roadmap/prompts'
   | 'licensing'
   | 'reads'
   | 'checks'
   | 'naming'
-  | 'recovery'
-  | 'inventory'
   | 'baseline/package'
-  | 'roadmap/prompts'
   | 'components'
 
-export type StepStatus = StepperStatus
+/** Where the shell is (target-state §2): it decides the tabs, Re-scan, and where an empty hash lands. */
+export type ShellState = 'signedOut' | 'noScan' | 'scanning' | 'scanned'
 
-const STEPS: { route: Route; label: string }[] = [
-  { route: 'start', label: SHELL.steps.start },
-  { route: 'connect', label: SHELL.steps.connect },
-  { route: 'baseline', label: SHELL.steps.baseline },
-  { route: 'scan', label: SHELL.steps.scan },
-  { route: 'mapping', label: SHELL.steps.mapping },
-  { route: 'coverage', label: SHELL.steps.coverage },
-  { route: 'roadmap', label: SHELL.steps.roadmap },
-]
+/** The Plan tab's target until prompt 48 lands the Plan surface. */
+export const PLAN_ROUTE: Route = 'roadmap'
+export const PLAN_HREF = `#/${PLAN_ROUTE}`
+/** Re-scan's target until prompt 47 Part 4 moves the scan to Connect. */
+const RESCAN_HREF = '#/today'
 
-// Inventory is a tab under Scan, not a second entry point (ux-review-04 §6).
-// The Prompt pack is likewise a card on the Export tab, not a sidebar entry
-// (R14); #/roadmap/prompts still resolves and opens that tab (L7).
-const REFERENCE: { route: Route; label: string }[] = [
-  { route: 'licensing', label: SHELL.steps.licensing },
-  { route: 'reads', label: SHELL.steps.reads },
-  { route: 'checks', label: SHELL.steps.checks },
-  { route: 'naming', label: SHELL.steps.naming },
-  { route: 'recovery', label: SHELL.steps.recovery },
-]
-
-// Pages whose main content is a table read better with the wider cap (ux-review-06 §28).
-const WIDE_ROUTES = new Set<string>(['scan', 'inventory', 'reads', 'licensing', 'checks'])
+const REDIRECT: Record<string, Route> = {
+  start: 'connect',
+  baseline: 'connect',
+  scan: 'today',
+  readiness: 'today',
+  plan: PLAN_ROUTE,
+}
 
 const VALID = new Set<string>([
-  ...[...STEPS, ...REFERENCE].map((n) => n.route as string),
-  'baseline/package',
+  'connect',
+  'today',
   'inventory',
-  // Reachable without a sidebar entry, like the two above: the Prompt pack is a
-  // card on the Export tab now (R14), and this route opens that tab (L7).
+  'recovery',
+  'mapping',
+  'coverage',
+  'roadmap',
   'roadmap/prompts',
+  'licensing',
+  'reads',
+  'checks',
+  'naming',
+  'baseline/package',
   ...(import.meta.env.DEV ? ['components'] : []),
 ])
 
+// Pages whose main content is a table read better with the wider cap.
+const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'reads', 'licensing', 'checks'])
+
 const STEP_LINK = /^roadmap\/step\/(.+)$/
+
+/** The route a hash names, and the hash to show instead when the name is an old one. */
+export function resolveHash(hash: string): { route: Route; redirect: string | null } {
+  const h = hash.replace(/^#\/?/, '')
+  if (h === '') return { route: 'home', redirect: null }
+  if (STEP_LINK.test(h)) return { route: 'roadmap', redirect: null }
+  const to = REDIRECT[h]
+  if (to) return { route: to, redirect: `#/${to}` }
+  if (VALID.has(h)) return { route: h as Route, redirect: null }
+  return { route: 'connect', redirect: '#/connect' }
+}
 
 export function useHashRoute(): Route {
   const read = (): Route => {
-    const h = window.location.hash.replace(/^#\//, '')
-    if (h === 'readiness') return 'scan'
-    if (STEP_LINK.test(h)) return 'roadmap'
-    return VALID.has(h) ? (h as Route) : 'start'
+    const { route, redirect } = resolveHash(window.location.hash)
+    if (redirect) window.history.replaceState(null, '', redirect)
+    return route
   }
   const [route, setRoute] = useState<Route>(read)
   useEffect(() => {
@@ -109,12 +131,20 @@ export function useHashStepId(): string | null {
   return id
 }
 
+function systemTheme(): string {
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  } catch {
+    return 'light'
+  }
+}
+
 function useTheme(): [string, () => void] {
   const [theme, setTheme] = useState<string>(() => {
     try {
-      return localStorage.getItem('iamai-theme') ?? 'dark'
+      return localStorage.getItem('iamai-theme') ?? systemTheme()
     } catch {
-      return 'dark'
+      return systemTheme()
     }
   })
   useEffect(() => {
@@ -128,79 +158,140 @@ function useTheme(): [string, () => void] {
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
 }
 
+function Tab({ href, active, enabled, children }: { href: string; active: boolean; enabled: boolean; children: ReactNode }) {
+  if (!enabled) {
+    return (
+      <a className="tab" href={href} aria-disabled="true" title={SHELL.tabsAfterScan} onClick={(e) => e.preventDefault()}>
+        {children}
+      </a>
+    )
+  }
+  return (
+    <a className={`tab ${active ? 'active' : ''}`} href={href} aria-current={active ? 'page' : undefined}>
+      {children}
+    </a>
+  )
+}
+
+function AccountMenu({ account }: { account: AccountInfo }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  return (
+    <div className="menu" ref={ref}>
+      <Button variant="tertiary" aria-haspopup="menu" aria-expanded={open} title={SHELL.accountTooltip(account.username)} onClick={() => setOpen((o) => !o)}>
+        {SHELL.account}
+      </Button>
+      {open && (
+        <div className="menu-list" role="menu">
+          <Button variant="tertiary" role="menuitem" onClick={() => void signOut()}>
+            {SHELL.signOut}
+          </Button>
+          <Button
+            variant="tertiary"
+            role="menuitem"
+            title={SHELL.forgetTooltip}
+            onClick={() => {
+              void forgetTenant(account.tenantId)
+                .catch(() => {})
+                .then(() => signOut())
+            }}
+          >
+            {SHELL.forget}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function AppShell({
   account,
   tenantName,
   route,
-  stepStatus,
+  state,
+  scannedAt = null,
   snapshot = null,
   children,
 }: {
   account: AccountInfo | null
   tenantName: string | null
   route: Route
-  stepStatus: Partial<Record<Route, StepStatus>>
+  state: ShellState
+  /** When the scan the pages read was taken; the header shows its age. */
+  scannedAt?: string | null
   /** Only for the feedback summary, which is counts and never names. */
   snapshot?: TenantSnapshot | null
   children: ReactNode
 }) {
   const [theme, toggleTheme] = useTheme()
+  const signedIn = account !== null && state !== 'signedOut'
+  const tabsOn = state === 'scanned'
+  const todayActive = route === 'today' || route === 'inventory'
+  const planActive = route === 'roadmap' || route === 'roadmap/prompts' || route === 'mapping' || route === 'coverage'
   return (
     <div className="shell">
-      <header className="topbar">
-        <span className="wordmark">
-          <RingMark size={22} />
+      <header className="app">
+        <a className="wordmark" href={tabsOn ? PLAN_HREF : '#/connect'}>
+          <RingMark size={18} />
           {SHELL.wordmark}
-        </span>
-        <span className="tagline">{SHELL.tagline}</span>
-        <div className="topbar-right">
-          {account && (
-            <span className="tenant-name" title={SHELL.tenantTooltip(account.tenantId, account.username)}>
-              {tenantName ?? account.username}
-            </span>
-          )}
-          <Button size="sm" onClick={toggleTheme} title={SHELL.themeTooltip} aria-pressed={theme === 'dark'} aria-label={SHELL.themeState(theme)}>
-            {theme === 'dark' ? SHELL.lightTheme : SHELL.darkTheme}
-          </Button>
-          {account && (
+        </a>
+        {signedIn && <span className="tenant">{tenantName ?? account.username}</span>}
+        {signedIn && (
+          <nav aria-label={SHELL.navLabel}>
+            <Tab href="#/today" active={todayActive} enabled={tabsOn}>
+              {SHELL.tabs.today}
+            </Tab>
+            <Tab href={PLAN_HREF} active={planActive} enabled={tabsOn}>
+              {SHELL.tabs.plan}
+            </Tab>
+          </nav>
+        )}
+        <div className="right">
+          {signedIn && tabsOn && scannedAt && (
             <Button
-              size="sm"
               variant="tertiary"
               onClick={() => {
-                void forgetTenant(account.tenantId)
-                  .catch(() => {})
-                  .then(() => signOut())
+                window.location.hash = RESCAN_HREF
               }}
-              title={SHELL.forgetTooltip}
             >
-              {SHELL.forget}
+              {SHELL.rescanScanned(scanAge(scannedAt))}
             </Button>
           )}
+          {signedIn && <a href="#/recovery">{SHELL.recovery}</a>}
+          <Button variant="tertiary" onClick={toggleTheme} title={SHELL.themeTooltip}>
+            {theme === 'dark' ? SHELL.lightTheme : SHELL.darkTheme}
+          </Button>
+          {signedIn && <AccountMenu account={account} />}
         </div>
       </header>
-      {/* Outside body-grid: that grid is two columns, so a banner placed inside
-          it takes a cell and pushes main into the sidebar column (prompt 45
-          Part 1). It renders full width above the whole layout instead. */}
       {isDemo() && (
         <p className="demo-banner" role="status">
           {SHELL.demoBanner} <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
         </p>
       )}
-      <div className="body-grid">
-        <Stepper
-          steps={STEPS.map((s) => ({ ...s, status: stepStatus[s.route] ?? 'notStarted' }))}
-          reference={REFERENCE}
-          active={route === 'baseline/package' ? 'baseline' : route === 'roadmap/prompts' ? 'roadmap' : route}
-        />
       <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
-          {account && (
-            <div className="print-only muted">
-              {SHELL.printHeader(tenantName ?? account.username, absoluteDate(new Date().toISOString()), account.username)}
-            </div>
-          )}
-          {children}
-        </main>
-      </div>
+        {signedIn && (
+          <div className="print-only muted">
+            {SHELL.printHeader(tenantName ?? account.username, absoluteDate(new Date().toISOString()), account.username)}
+          </div>
+        )}
+        {children}
+      </main>
       <Footer snapshot={snapshot ?? null} />
     </div>
   )
@@ -220,7 +311,7 @@ const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
 export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null } = {}) {
   const buildLabel = SHELL.footerBuild(BUILD_COMMIT, absoluteDate(`${BUILD_DATE}T12:00:00.000Z`))
   return (
-    <footer className="footer">
+    <footer className="app">
       <span>{SHELL.footerLeft}</span>
       <span className="footer-links">
         {/* Quiet, on every page (prompt 34 §2). */}
@@ -256,7 +347,8 @@ export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null }
   )
 }
 
-// Step-page framing: what the step does, what it needs, and the next step.
+// Step-page framing for the pages that wait for prompts 48 and 49: what the
+// step does, what it needs, and the next step. New surfaces do not use it.
 export function StepFrame({
   title,
   does,
@@ -268,7 +360,7 @@ export function StepFrame({
   title: string
   does: string
   needs?: { met: boolean; text: string; href?: string }[]
-  next?: Route
+  next?: string
   nextLabel?: string
   children: ReactNode
 }) {
@@ -302,20 +394,20 @@ export function StepFrame({
 
 /**
  * The scan a page is based on, with a warning past STALE_SCAN_DAYS
- * (prompt 20 §9). Every page that reads the scan shows this.
+ * (prompt 20 §9). Every legacy page that reads the scan shows this.
  */
 export function ScanAge({ at, baseline }: { at: string; baseline?: string | null }) {
   const days = scanAgeDays(at)
   return (
     <>
       <p className="reason">
-        {SHELL.basedOn(whenAt(at))} <a className="no-print" href="#/scan">{SHELL.rescan}</a>
+        {SHELL.basedOn(whenAt(at))} <a className="no-print" href={RESCAN_HREF}>{SHELL.rescan}</a>
         {baseline && <> · {SHELL.baselineLoaded(baseline)}</>}
         <InfoTip title={SHELL.scanAgeTip} text={SHELL.evidenceAgeNote} />
       </p>
       {days >= STALE_SCAN_DAYS && (
         <Callout kind="warning" title={SHELL.scanStale(days)}>
-          <a href="#/scan">{SHELL.scanStaleAction}</a>
+          <a href={RESCAN_HREF}>{SHELL.scanStaleAction}</a>
         </Callout>
       )}
     </>

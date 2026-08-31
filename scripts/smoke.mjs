@@ -109,30 +109,46 @@ const waitFor = async (expr, ms = 15000) => {
   return false
 }
 const text = () => evaluate('document.body.innerText')
-const clickText = (re) => evaluate(`(() => { const b = [...document.querySelectorAll('a, button, summary')].find(x => ${re}.test(x.textContent.trim())); if (b) b.click(); return !!b })()`)
+// Scoped to the page by default: the header carries a Plan tab of its own (prompt 47 Part 3), so a page click must not find it first.
+const clickText = (re, root = 'main.page') => evaluate(`(() => { const r = document.querySelector(${JSON.stringify(root)}) ?? document; const b = [...r.querySelectorAll('a, button, summary')].find(x => ${re}.test(x.textContent.trim())); if (b) b.click(); return !!b })()`)
 
 await send('Page.enable')
 await send('Accessibility.enable')
 await send('Runtime.enable')
 
 try {
-  // Start
+  // The old names redirect (target-state §2, prompt 47 Part 3).
   await go('start')
-  check('Start renders the headline', await waitFor(`!!document.querySelector('h1')`))
-  check('Start: Get started leads to Connect', (await clickText('/^Get started/')) && (await waitFor(`location.hash === '#/connect'`)))
+  check('Start redirects to Connect', await waitFor(`location.hash === '#/connect'`))
+  await go('baseline')
+  check('Baseline redirects to Connect', await waitFor(`location.hash === '#/connect'`))
+  await go('scan')
+  check('Scan redirects to Today', await waitFor(`location.hash === '#/today'`))
+  await go('plan')
+  check('Plan opens the Roadmap until prompt 48', await waitFor(`location.hash === '#/roadmap'`))
+
+  // The header (target-state §2): wordmark, tenant, tabs, Re-scan with the scan's age, Recovery card, theme, Account.
+  await go('roadmap')
+  await waitFor(`/Do this next/.test(document.body.innerText)`)
+  let t = await evaluate(`document.querySelector('header.app').innerText`)
+  check('Header: the tenant name, both tabs and the controls', /Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: Re-scan carries the scan age', /Re-scan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
+  check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
+  await send('Page.navigate', { url: `${BASE}&state=noScan#/roadmap` })
+  await sleep(1200)
+  check('Header (no scan): the tabs are disabled until the first scan', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 2 && (await evaluate(`document.querySelector('header.app nav a').title`)) === 'after the first scan')
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await sleep(1200)
+  t = await evaluate(`document.querySelector('header.app').innerText`)
+  check('Header (signed out): only the wordmark and the theme control', /IAMAI/.test(t) && !/Today|Account|Recovery/.test(t), t.replace(/\s+/g, ' '))
 
   // Connect shows the mock account and the saved scan
+  await go('connect')
   await sleep(600)
-  let t = await text()
+  t = await text()
   check('Connect: signed in as the operator', /alex@example\.com/.test(t), 'operator UPN visible')
   check('Connect: the saved scan is offered', /5 users/.test(t))
-
-  // Baseline: the loaded synthetic baseline and the Setup promise
-  await go('baseline')
-  t = await text()
-  check('Baseline: 1 policy loaded', /1 policy ·/.test(t))
-  // Seven answers since prompt 46 item 19; the synthetic tenant has no service-account candidates, so six.
-  check('Baseline: Setup will ask 6 questions (all required)', /Setup will ask 6 questions \(all required\)/.test(t), (t.match(/Setup will ask[^\n]*/) ?? [''])[0])
 
   // Scan: the readiness table
   await go('scan')
@@ -235,7 +251,9 @@ try {
   const countFor = (id) => evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); let n = 0; for (const name of [...db.objectStoreNames]) { const tx = db.transaction(name); const rows = await new Promise((r) => { const q = tx.objectStore(name).getAll(); q.onsuccess = () => r(q.result) }); n += rows.filter((x) => x && x.tenantId === ${JSON.stringify(id)}).length } db.close(); return n })()`)
   const before = tenantId ? await countFor(tenantId) : 0
   check('Forget: stores hold rows for the tenant before forgetting', before > 0, `rows=${before}`)
-  check('Forget: the button is there', await clickText('/^Forget this tenant/'))
+  check('Forget: the Account menu opens', await clickText('/^Account$/', 'header.app'))
+  await sleep(200)
+  check('Forget: the button is there', await clickText('/^Forget this tenant/', 'header.app'))
   await sleep(1500)
   const after = tenantId ? await countFor(tenantId) : 0
   check('Forget: every store is empty for the tenant afterwards', after === 0, `rows=${after}`)
@@ -271,7 +289,7 @@ try {
   await sleep(1200)
   check(
     'Feedback: the footer link opens the panel',
-    (await clickText('/Something wrong or unclear/')) && (await waitFor(`/What the email will contain/.test(document.body.innerText)`)),
+    (await clickText('/Something wrong or unclear/', 'footer.app')) && (await waitFor(`/What the email will contain/.test(document.body.innerText)`)),
   )
   t = await text()
   check('Feedback: the message shows the page, version and browser', /Page: #\/roadmap/.test(t) && /Version:/.test(t) && /Browser:/.test(t))
@@ -289,12 +307,9 @@ try {
   check('Checks: field practice is labelled rather than dressed up as Microsoft', /Field practice/.test(t))
 
   // Accessible names, from Chrome's own accessibility tree rather than from our
-  // own name computation (prompt 42 §17, review-09 finding 16).
-  //
-  // The sidebar chevron was reported unlabelled after review 08 and again after
-  // review 09. Both times our answer came from a rule we wrote about what counts
-  // as a name. Whether a screen reader announces something is not our judgement
-  // to make, so this asks the browser, in both themes, and reports what it says.
+  // own name computation (prompt 42 §17, review-09 finding 16). Whether a screen
+  // reader announces something is not our judgement to make, so this asks the
+  // browser, in both themes, and reports what it says.
   for (const theme of ['light', 'dark']) {
     await send('Page.navigate', { url: `${BASE}#/roadmap` })
     await sleep(2500)
@@ -305,8 +320,6 @@ try {
     const INTERACTIVE = ['button', 'link', 'checkbox', 'textbox', 'combobox', 'switch', 'tab']
     const unnamed = nodes.filter((n) => INTERACTIVE.includes(n.role?.value) && !n.ignored && !(n.name?.value ?? '').trim())
     check(`Accessibility (${theme}): every control has a name a screen reader can announce`, unnamed.length === 0, unnamed.map((n) => n.role?.value).slice(0, 4).join(', '))
-    const chevron = nodes.find((n) => /the steps list/.test(n.name?.value ?? ''))
-    check(`Accessibility (${theme}): the sidebar collapse control is named`, Boolean(chevron), chevron ? '' : 'no node carries that name')
   }
 
   check('No console errors or exceptions across the walk', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '))
