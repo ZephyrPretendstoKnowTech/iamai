@@ -135,7 +135,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
         </span>
         {step.status === 'blocked' && step.blockedReason && <span className="plan-row-reason">{step.blockedReason}</span>}
       </div>
-      {open && <StepBody step={step} schedule={schedule} tenantName={tenantName} nameOf={nameOf} onSkipped={() => onSkipped(computed.steps)} onClose={onToggle} />}
+      {open && <StepBody step={step} schedule={schedule} steps={computed.steps} tenantName={tenantName} nameOf={nameOf} onSkipped={() => onSkipped(computed.steps)} onClose={onToggle} />}
     </>
   )
 }
