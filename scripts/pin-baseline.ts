@@ -15,6 +15,9 @@ import { writeFileSync, mkdirSync, readFileSync } from 'node:fs'
 import { discoverPolicies } from '../src/baseline/discover.ts'
 import type { CaPolicy } from '../src/baseline/types.ts'
 import type { BaselineFile } from '../src/baseline/types.ts'
+import { policyFacts } from '../src/coverage/facts.ts'
+import { mapGoalsToPolicies } from '../src/coverage/goalIdentity.ts'
+import type { GoalMapResult, PolicyForMap } from '../src/coverage/goalIdentity.ts'
 import firstParty from '../data/first-party-apps.json' with { type: 'json' }
 import index from '../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 
@@ -151,7 +154,19 @@ async function main(): Promise<void> {
   process.stdout.write(`pin-baseline: pinning ${OWNER}/${REPO} at ${target}\n`)
   const next = await snapshotAt(target)
   const generatedAt = new Date().toISOString()
-  const pinned = { commit: target, generatedAt, policies: next.policies, stripped: next.stripped }
+
+  // Stage 3 (baseline-onboarding, owner resolution): map each goal to the one
+  // baseline policy that implements it, by the strict identity rule, and store it.
+  // The runtime reads this map; it never matches at render time. Two policies in
+  // the author's export carry no id, so the map keys by id when present and by
+  // the (unique) display name otherwise — recorded in the report below.
+  const forMap: PolicyForMap[] = next.policies.map((p) => ({
+    id: p.id ?? p.displayName,
+    name: p.displayName,
+    facts: policyFacts(p, new Map()),
+  }))
+  const goals: GoalMapResult = mapGoalsToPolicies(forMap)
+  const pinned = { commit: target, generatedAt, policies: next.policies, stripped: next.stripped, goalMap: goals.map }
   writeFileSync(`baselines/${BASE}.pinned.json`, JSON.stringify(pinned, null, 2) + '\n')
   process.stdout.write(`pin-baseline: wrote baselines/${BASE}.pinned.json (${next.policies.length} policies, ${next.stripped.length} stripped exclusions)\n`)
 
@@ -176,6 +191,22 @@ async function main(): Promise<void> {
     ``,
     `### Changed (${d.changed.length})`,
     ...d.changed.map((x) => `- ${x}`),
+    ``,
+    `## Goal map (stage 3)`,
+    ``,
+    `Each goal's What to do renders from the one policy named here; the runtime reads this map and never matches at render time.`,
+    ``,
+    `### Mapped (${Object.keys(goals.map).length})`,
+    ...Object.entries(goals.map).map(([g, ids]) => `- ${g} → ${ids.map((id) => forMap.find((p) => p.id === id)?.name ?? id).join(' + ')}`),
+    ``,
+    `### Ties — mapped to nothing, for the reviewer (${goals.ties.length})`,
+    ...goals.ties.map((t) => `- ${t.goalId}: ${t.candidates.join(' | ')}`),
+    ``,
+    `### Goals not in this baseline (${goals.unmappedGoals.length})`,
+    ...goals.unmappedGoals.map((g) => `- ${g}`),
+    ``,
+    `### Policies not assessed — Cleanup rows (${goals.unmappedPolicies.length})`,
+    ...goals.unmappedPolicies.map((n) => `- ${n}`),
     ``,
   ].join('\n')
   mkdirSync(`docs/baselines/${BASE}`, { recursive: true })

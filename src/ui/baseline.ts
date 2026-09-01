@@ -18,8 +18,8 @@ export type BaselineResult = {
 export const PINNED_BASELINE = baselineIndex as BaselineIndex
 
 type PinnedPolicy = { id: string | null; displayName: string; state: string | null; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
-type PinnedBaseline = { commit: string; generatedAt: string; policies: PinnedPolicy[]; stripped: string[] }
-export const PINNED = pinnedBaseline as PinnedBaseline
+type PinnedBaseline = { commit: string; generatedAt: string; policies: PinnedPolicy[]; stripped: string[]; goalMap?: Record<string, string[]> }
+export const PINNED = pinnedBaseline as unknown as PinnedBaseline
 
 /** The pinned policies as baseline files, so loadBaseline builds the package with no network (prompt 51 decision 1). */
 function pinnedFiles(): BaselineFile[] {
