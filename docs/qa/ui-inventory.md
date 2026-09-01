@@ -10,7 +10,7 @@ actually appears on. Surfaces below page level (each Setup question, each
 Roadmap tab, an opened step) are walked separately for the same reason: a single
 string rendered seven times is seven rows here and one row in the source.
 
-**26 surfaces, 2110 words.**
+**26 surfaces, 2086 words.**
 
 ## Candidate duplicate concepts
 
@@ -79,7 +79,7 @@ means over budget; the lint fails on it. Planned surfaces are not walked.
 | Inventory / any tab — Sign-in records | 1 / 2 | 10 / 40 | 0 of 17 | 0 | 0 |
 | Plan | 2 / 6 | 29 / 140 | 0 of 34 | 0 | 0 |
 | Plan / settings | 1 / 3 | 12 / 45 | 0 of 0 | 0 | 0 |
-| Plan / footer expanded | 12 / 20 | 173 / 320 | 0 of 2 | 0 | 0 |
+| Plan / footer expanded | 10 / 20 | 149 / 320 | 0 of 2 | 0 | 0 |
 | Plan / one step opened | 0 / 34 | 0 / 520 | 0 of 0 | 0 | 0 |
 | Plan / one step / More expanded | 0 / 60 | 0 / 1000 | 0 of 0 | 0 | 0 |
 | Export | 0 / 9 | 0 / 160 | 0 of 6 | 0 | 0 |
@@ -169,7 +169,7 @@ and, where it is legitimate at all, one home.
 | Inventory / any tab — Sign-in records | 28 |
 | Plan | 219 |
 | Plan / settings | 15 |
-| Plan / footer expanded | 185 |
+| Plan / footer expanded | 161 |
 | Plan / one step opened | 190 |
 | Plan / one step / More expanded | 193 |
 | Export | 203 |
@@ -759,7 +759,7 @@ Words: **219** — headings 45, prose 29, buttons 62, options 0, links 2, chips 
 
 - Already in place (2)
 - Doesn't apply here (10)
-- Housekeeping (1)
+- Housekeeping (0)
 
 **Links** (1)
 
@@ -810,19 +810,19 @@ Words: **15** — headings 2, prose 12, buttons 1, options 0, links 0, chips 0, 
 ### Plan / footer expanded
 _contract plan.footer_
 
-Words: **185** — headings 0, prose 173, buttons 0, options 0, links 0, chips 2, columns 0, tiles 0, tips 0.
+Words: **161** — headings 0, prose 149, buttons 0, options 0, links 0, chips 2, columns 0, tiles 0, tips 0.
 
 **Collapsed section headers** (3)
 
 - Already in place (2)
 - Doesn't apply here (10)
-- Housekeeping (1)
+- Housekeeping (0)
 
 **Chips** (1)
 
 - In place
 
-**Body sentences** (12)
+**Body sentences** (10)
 
 - **Office apps require a compliant or joined device**: does not apply (no Intune licence).
 - **Mobile access requires approved or protected apps**: does not apply (no Intune licence).
@@ -834,8 +834,6 @@ Words: **185** — headings 0, prose 173, buttons 0, options 0, links 0, chips 2
 - **Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).
 - **Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).
 - **Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).
-- CA002 - Block legacy authentication blocks every resource but excludes none of the sign-in dependencies.
-- Registration and enrolment break; exclude those four apps first.
 
 ### Plan / one step opened
 _contract plan.step_
