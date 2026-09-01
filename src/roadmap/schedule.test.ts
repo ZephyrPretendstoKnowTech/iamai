@@ -74,6 +74,7 @@ function step(over: Partial<Step> & { id: string }): Step {
     tracking: null,
     alreadyInPlace: false,
     gap: null,
+    gapShort: null,
     blockedReason: null,
     events: null,
     safeVerdict: { safe: false, reason: '', sentence: '' },

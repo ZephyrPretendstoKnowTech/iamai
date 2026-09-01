@@ -186,6 +186,15 @@ function activeGap(result: GoalResult, popActive: number, active: Set<string>): 
   return `covers ${Math.max(0, popActive - uncoveredActive)} of ${popActive} active`
 }
 
+/** The row's short gap clause (prompt 50.1 item 9), over the active denominator like activeGap. */
+function activeGapShort(result: GoalResult, popActive: number, active: Set<string>): string | null {
+  const base = result.gapClause
+  if (!base || !/^covers \d+ of \d+ people$/.test(base)) return base
+  const uncovered = new Set(result.reasons.filter((x) => !x.expected && (x.kind === 'not-targeted' || x.kind === 'excluded')).flatMap((x) => x.userIds))
+  const uncoveredActive = [...uncovered].filter((id) => active.has(id)).length
+  return `covers ${Math.max(0, popActive - uncoveredActive)} of ${popActive} active`
+}
+
 // ---- action building (roadmap.md §3) ----
 
 type RawPolicy = Record<string, unknown>
@@ -1237,6 +1246,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // After the defaults, or the default overwrites it: the gap a change step
       // closes, on the step so the plan row can show it (prompt 46 item 9).
       gap: activeGap(result, pop.active, popIndex.active),
+      gapShort: activeGapShort(result, pop.active, popIndex.active),
       impact,
       safeToday: false, // decided once every step exists (prerequisites, break-glass, operator, evidence): see safeTodayFor
       highCare: { userIds: care, ready: careReady, notes: careNotes },

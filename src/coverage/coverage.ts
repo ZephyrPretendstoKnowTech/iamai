@@ -13,7 +13,7 @@ import type { FacetOverrides } from './applicability.ts'
 import { NOT_ASSESSED, REASON } from '../copy/reasons.ts'
 import { proposedPolicyName } from './naming.ts'
 import { organisationReport } from './organisation.ts'
-import { gapSentenceOf, verdictOf } from './verdict.ts'
+import { gapClauseOf, gapSentenceOf, verdictOf } from './verdict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type {
   AssumedExclusions,
@@ -154,6 +154,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   for (const r of results) {
     r.verdict = verdictOf(r.status)
     r.gapSentence = gapSentenceOf(r)
+    r.gapClause = gapClauseOf(r)
   }
   const organisation = organisationReport(tenantFacts, results, snapshot, matchedTenantIds, notAssessed)
   // Threaded through the names already proposed, so a numbered series advances.
@@ -224,6 +225,7 @@ function evaluateGoal(
     // Set from the final status in computeCoverage; never read before then.
     verdict: 'unknown',
     gapSentence: null,
+    gapClause: null,
   }
 
   // Applicability facet (§9).

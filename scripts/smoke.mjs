@@ -538,24 +538,29 @@ try {
 
   check('No console errors or exceptions across the walk', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '))
 
-  // Item 7: the first click on Sign in with Microsoft, right after the page
-  // loads, starts the sign-in flow. It used to race MSAL's initialize() and do
-  // nothing until a second click; signIn now awaits init first. The mock never
-  // reaches Microsoft, but loginRedirect writes its request to sessionStorage
-  // before it navigates, so a click that started the flow leaves that trace and
-  // a no-op leaves none.
+  // Item 7 (prompt 50.1): the first click on Sign in with Microsoft, right after
+  // the page loads, starts the flow. The button warms up (initialize plus a real
+  // fetch of the authority metadata) carrying a spinner but staying clickable; a
+  // click made during the warm is queued and fires when ready, so the first click
+  // always lands where it used to do nothing until the second. This tests the
+  // real authority metadata fetch, not the mock: authReady fetches
+  // login.microsoftonline.com's metadata, and loginRedirect writes its request to
+  // sessionStorage before it navigates, so a click that started the flow leaves
+  // that trace and a no-op leaves none.
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
-  // Wait only for the button to exist, not for anything to settle: the click has
-  // to land in the same window the race used to lose.
+  // Click as soon as the button exists — during the warm — not after it settles.
   await waitFor(`!!document.querySelector('.connect .actions button')`)
+  // The warming button carries a spinner but is not disabled, so an early click lands.
+  const clickable = await evaluate(`(() => { const b = document.querySelector('.connect .actions button'); return !!b && !b.disabled })()`)
   const clickedSignIn = await clickText('/Sign in with Microsoft/')
-  await sleep(2500)
-  // The click navigated away; come back to the app's origin and read the trace
-  // it left. The signed-out mock never runs initAuth, so nothing clears it.
+  await sleep(2800)
+  // The queued click navigated away once ready; come back to the app's origin and
+  // read the trace it left. The signed-out mock never runs initAuth, so nothing clears it.
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1000)
   const msalTrace = await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\\.windows|microsoftonline/.test(k)).length`)
-  check('Sign-in: the first click after load starts the flow (item 7)', clickedSignIn && msalTrace > 0, `sign-in trace keys=${msalTrace}`)
+  check('Sign-in: the warming button is clickable so an early click is not lost (item 7)', clickable)
+  check('Sign-in: the first click after load starts the flow, via the real metadata fetch (item 7)', clickedSignIn && msalTrace > 0, `sign-in trace keys=${msalTrace}`)
 
   // The demo (prompt 50 item 16): a stranger enters from Connect with no
   // sign-in, walks the whole flow, advances to week two and back, leaves, and no

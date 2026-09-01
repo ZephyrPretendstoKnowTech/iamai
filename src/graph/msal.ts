@@ -36,11 +36,35 @@ export function initAuth(): Promise<AccountInfo | null> {
   return initialized
 }
 
+let authorityWarm: Promise<void> | undefined
+
+/**
+ * Fetch the authority's OpenID metadata so the browser has it cached before the
+ * first `loginRedirect` needs it (prompt 50.1 item 7). `initialize()` does not
+ * load it — `loginRedirect` fetches it lazily and awaits it, so the first click
+ * on a cold page still stalls on the network. Warming it up front, and gating
+ * the button on it, means the click that lands is the one that navigates.
+ * Memoized; a failure resolves rather than rejects, so a warm that cannot reach
+ * the network never traps the button disabled.
+ */
+export function warmAuthority(): Promise<void> {
+  authorityWarm ??= fetch('https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration', { method: 'GET' })
+    .then(() => undefined)
+    .catch(() => undefined)
+  return authorityWarm
+}
+
+/** MSAL is ready to sign in: initialised, the redirect handled, the metadata warmed. */
+export function authReady(): Promise<unknown> {
+  return Promise.all([initAuth(), warmAuthority()])
+}
+
 export async function signIn(): Promise<void> {
   // The first click used to race MSAL's initialize(); loginRedirect before it
   // resolved was a no-op, so the button did nothing until the second click
-  // (prompt 50 item 7). Await the memoized init first.
-  await initAuth()
+  // (prompt 50 item 7). Await the memoized init and the warmed metadata first,
+  // so a queued early click navigates the moment it can (prompt 50.1 item 7).
+  await authReady()
   return msal.loginRedirect({ scopes: GRAPH_SCOPES })
 }
 
@@ -51,7 +75,27 @@ export async function signOut(): Promise<void> {
     return
   }
   await initialized
+  // Warming MSAL up initialises it without ever signing in (the mock, or a
+  // visitor who never clicked): there is no account to redirect a logout for, so
+  // stay local and go back to Connect.
+  if (!msal.getActiveAccount()) {
+    window.location.hash = '#/connect'
+    return
+  }
   return msal.logoutRedirect()
+}
+
+/**
+ * Remove every local MSAL trace, so "Forget this tenant" leaves nothing behind
+ * (prompt 31 §2.8) even when sign-in only ever got as far as warming MSAL up and
+ * writing its cache. Session-storage only; MSAL keeps nothing else locally.
+ */
+export function clearAuthCache(): void {
+  try {
+    for (const k of Object.keys(sessionStorage)) if (/^msal\./i.test(k) || /login\.windows|microsoftonline/i.test(k)) sessionStorage.removeItem(k)
+  } catch {
+    // Session storage blocked; there is nothing to clear.
+  }
 }
 
 /**

@@ -126,6 +126,8 @@ export type Step = {
    * there is no gap to state (prompt 46 item 9).
    */
   gap: string | null
+  /** The gap shortened to one dimension for the row (prompt 50.1 item 9); the full sentence (gap) stays on the step. */
+  gapShort: string | null
   /** Policies that already deliver the goal (name and state), the evidence a Done step cites (ux-review-04 §5). */
   deliveredBy: string[]
   /** One line: why the step is in its current state; filled by annotateStateReasons. */
