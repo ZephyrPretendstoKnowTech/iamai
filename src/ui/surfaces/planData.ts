@@ -25,8 +25,8 @@ import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
-import { mergePersisted, savedStepOf, applyProgress } from '../../roadmap/progress.ts'
-import type { SavedStep } from '../../roadmap/progress.ts'
+import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
+import type { PlanDecisions } from '../../roadmap/progress.ts'
 import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
 import { nextWorkingDay } from '../../roadmap/schedule.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
@@ -34,18 +34,12 @@ import { getGroupMembers } from '../../graph/collect/onDemand.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NameDirectory } from '../../names.ts'
 
-type PlanStore = {
-  planId: string
-  steps: Record<string, SavedStep>
-  // The Roadmap page shares this per-tenant record and reads checkpoints.at(-1);
-  // the Plan never writes checkpoints, but it must not drop the key (CI crash).
-  checkpoints?: unknown[]
-  startDate?: string
-  band?: SizeBand
-  freeze?: ChangeFreeze | null
-  assertions?: Record<string, unknown>
-  planCreatedAt?: string
-}
+// The persisted record holds decisions only (prompt 50.1 item 1): skips, the
+// start date, the freeze, the checkpoints. Steps, statuses, populations,
+// evidence and dates are regenerated from the snapshot on every load and
+// re-scan — never read back from here. A pre-50.1 record (a full step blob) is
+// migrated on load by decisionsOf and rewritten in this shape.
+type LegacyOrDecisions = Partial<PlanDecisions> & { steps?: Record<string, { status: string; skipReason?: string | null; history?: { at: string }[] }> }
 
 export type PlanComputed = {
   steps: Step[]
@@ -85,7 +79,7 @@ export function usePlanData(
   const snapshot = scan?.snapshot ?? null
   const planId = snapshot ? `plan-${snapshot.tenantId.slice(0, 8)}` : ''
   const [mapping, setMapping] = useState<MappingState | null>(null)
-  const [saved, setSaved] = useState<PlanStore | null>(null)
+  const [saved, setSaved] = useState<PlanDecisions | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [groups, setGroups] = useState<GroupMembers>(new Map())
   const [groupsLoaded, setGroupsLoaded] = useState(false)
@@ -93,9 +87,11 @@ export function usePlanData(
 
   useEffect(() => {
     if (!snapshot) return
-    void Promise.all([loadMappingState(snapshot.tenantId), loadPlanRecord<PlanStore>(snapshot.tenantId)]).then(([m, p]) => {
+    void Promise.all([loadMappingState(snapshot.tenantId), loadPlanRecord<LegacyOrDecisions>(snapshot.tenantId)]).then(([m, p]) => {
       setMapping(m)
-      setSaved(p ?? { planId, steps: {}, checkpoints: [] })
+      // Read the record once for its decisions, in whatever shape it was written;
+      // a pre-50.1 blob is reduced to its skips here and rewritten on the next save.
+      setSaved(decisionsOf(p as never, planId))
       setLoaded(true)
     })
   }, [snapshot, planId])
@@ -167,7 +163,8 @@ export function usePlanData(
       changeFreeze: freeze,
     })
     const { steps, schedule } = result
-    mergePersisted(steps, saved?.steps ?? null)
+    // The one decision a regeneration cannot know; everything else is derived.
+    applySkips(steps, saved?.skips ?? null)
     applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null)
     annotateStateReasons(steps)
     refreshBlockerImpact(steps)
@@ -175,17 +172,28 @@ export function usePlanData(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, mapping, groupsLoaded, loaded, groups, saved, planId, version, startDate, band, freeze])
 
-  // Persist the step progress so a re-scan and Skip survive a reload.
+  // Persist the decisions only, so a Skip and the start/freeze survive a reload;
+  // the plan itself is regenerated, never stored. Writing here also completes the
+  // migration of a pre-50.1 record: its blob was dropped on load, and this
+  // rewrites the record in the decisions-only shape (prompt 50.1 items 1-2).
   const lastPersist = useRef('')
   useEffect(() => {
-    if (!computed || !snapshot) return
-    const stepsRecord: Record<string, SavedStep> = Object.fromEntries(computed.steps.map((s) => [s.id, { ...(saved?.steps[s.id] ?? {}), ...savedStepOf(s) }]))
-    const key = computed.steps.map((s) => `${s.id}:${s.status}`).join('|')
+    if (!computed || !snapshot || !saved) return
+    const decisions: PlanDecisions = {
+      planId,
+      skips: saved.skips,
+      startDate: saved.startDate,
+      band: saved.band,
+      freeze: saved.freeze ?? null,
+      checkpoints: saved.checkpoints ?? [],
+      planCreatedAt: saved.planCreatedAt ?? new Date().toISOString(),
+    }
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, band: decisions.band, freeze: decisions.freeze })
     if (key === lastPersist.current) return
     lastPersist.current = key
-    void savePlanRecord(snapshot.tenantId, { ...(saved ?? { planId }), planId, steps: stepsRecord, checkpoints: saved?.checkpoints ?? [], startDate, band, freeze, planCreatedAt: saved?.planCreatedAt ?? new Date().toISOString() })
+    void savePlanRecord(snapshot.tenantId, decisions)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [computed, snapshot])
+  }, [computed, snapshot, saved])
 
   const bump = (): void => setVersion((v) => v + 1)
   return {
@@ -202,40 +210,33 @@ export function usePlanData(
       bump()
     },
     setStart: (iso) => {
-      setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), startDate: iso ?? undefined }))
+      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), startDate: iso ?? undefined }))
       bump()
     },
     setBand: (b) => {
-      setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), band: b ?? undefined }))
+      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), band: b ?? undefined }))
       bump()
     },
     setFreeze: (f) => {
-      setSaved((p) => ({ ...(p ?? { planId, steps: {}, checkpoints: [] }), freeze: f }))
+      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), freeze: f }))
       bump()
     },
     onSkip: (stepId, reason) => {
-      // Persist the skip to the saved record so mergePersisted re-applies it on
-      // every regenerate; otherwise the fresh plan drops it (the skip race).
+      // Record the skip decision; applySkips re-applies it on every regenerate,
+      // otherwise the fresh plan drops it (the skip race).
       setSaved((p) => {
-        const base = p ?? { planId, steps: {}, checkpoints: [] }
-        const prev = base.steps[stepId]
-        const entry: SavedStep = {
-          ...(prev ?? { status: 'blocked', history: [], skipReason: null }),
-          status: 'skipped',
-          skipReason: reason,
-          history: [...(prev?.history ?? []), { at: new Date().toISOString(), from: prev?.status ?? 'blocked', to: 'skipped', note: reason }],
-        }
-        return { ...base, steps: { ...base.steps, [stepId]: entry } }
+        const base = p ?? { planId, skips: {}, checkpoints: [] }
+        return { ...base, skips: { ...base.skips, [stepId]: { reason, at: new Date().toISOString() } } }
       })
       bump()
     },
     onUnskip: (stepId) => {
-      // Drop the saved entry: the generator recomputes the step from the tenant
-      // as it is now, rather than restoring a judgement made against an old scan.
+      // Drop the decision: the generator recomputes the step from the tenant as it
+      // is now, rather than restoring a judgement made against an old scan.
       setSaved((p) => {
-        if (!p || !p.steps[stepId]) return p
-        const { [stepId]: _drop, ...rest } = p.steps
-        return { ...p, steps: rest }
+        if (!p || !p.skips[stepId]) return p
+        const { [stepId]: _drop, ...rest } = p.skips
+        return { ...p, skips: rest }
       })
       bump()
     },

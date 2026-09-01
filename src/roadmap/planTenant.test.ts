@@ -36,11 +36,11 @@ test('a plan with no tenant is refused rather than assumed', () => {
 })
 
 test('both refusals return without writing', () => {
-  // Each guard must `return`, not fall through with a warning.
-  // Scoped to loadPlanInner: `const stepsRecord` also appears in the
-  // persistence effect earlier in the file, and indexOf found that one.
+  // Each guard must `return`, not fall through with a warning. Scoped to
+  // loadPlanInner, ending at `const record` (the decisions-only record the guards
+  // protect), so the two returns counted are the two guards, not anything later.
   const fn = PAGE.slice(PAGE.indexOf('const loadPlanInner'))
-  const region = fn.slice(fn.indexOf('const planTenantId'), fn.indexOf('const stepsRecord'))
+  const region = fn.slice(fn.indexOf('const planTenantId'), fn.indexOf('const record'))
   assert.equal((region.match(/return/g) ?? []).length, 2, `expected two early returns, found: ${region}`)
 })
 
