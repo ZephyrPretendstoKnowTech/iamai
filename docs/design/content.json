@@ -1,6 +1,6 @@
 {
-  "$comment": "docs/design/content.json — every sentence the product shows, written here and nowhere else. The app imports this file; the review page renders it. Text in {braces} is a variable the engine fills; the engine never chooses between phrasings. {list:...} renders as a numbered list. A field set to null is not rendered. Dates in the product are '{dow} {mon} {d}' (Tue Sep 8); in emails they are spelled out ('Tuesday, September 8'). The engine pluralises counts: '{n} people' renders as '1 person' or '3 people'; the review page shows the raw pattern.",
-  "version": 1,
+  "$comment": "docs/design/content.json: every sentence the product shows, written here and nowhere else. The app imports this file; the review page renders it. Text in {braces} is a variable the engine fills; the engine never chooses between phrasings. {list:...} renders as a numbered list. A field set to null is not rendered. Dates in the product are '{dow} {mon} {d}' (Tue Sep 8); in emails they are spelled out ('Tuesday, September 8'). The engine pluralises counts: '{n} people' renders as '1 person' or '3 people'; the review page shows the raw pattern. On policy steps the product's What to do is generated from the pinned baseline's policy by the portal-line translator; 'whatToDoReference' is the reviewer's rendering for the review page only and is never shown in the product. The review page prefers docs/design/translator-output.json (npm run translator-dump) when it exists.",
+  "version": 1.3,
   "shared": {
     "signatureDefault": "IT",
     "adaptLine": "Paste this into your own assistant to match your voice.",
@@ -70,13 +70,22 @@
         "How IAMAI works →",
         "See it with sample data →"
       ],
-      "tip": "Sign in with a Global Administrator or Global Reader account. Entra ID P1 adds sign-in evidence; the plan works without it."
+      "tip": "Sign in with a Global Administrator or Global Reader account. Entra ID P1 adds sign-in evidence; the plan works without it.",
+      "cantCatchSummary": "IAMAI limitations",
+      "cantCatch": [
+        "Devices that send mail without signing in: Direct Send printers, scanners and some applications. Nothing appears in the records, so a legacy-authentication block can stop one the plan never listed. Ask whoever manages printing and scan-to-email; the step asks before that block enforces.",
+        "Authentication that happens outside Entra: a federated domain, third-party MFA, applications against on-premises AD. Entra records the sign-in but not what the other system enforced. Check the domain list for federation and the other system's own console.",
+        "Anything on a longer cycle than the collected records: the quarterly invoice run, the yearly renewal job. It exists, it authenticates, and it has left no evidence yet. Where those exist, keep new blocks in report-only across a full business cycle.",
+        "Credentials saved on equipment nobody has touched in years: routers, NAS boxes, UPS cards, an old copier. They surface the day something blocks them; a walk through the comms room beats any report.",
+        "What a partner's own tenant enforces for their people. IAMAI sees their sign-ins here, never their controls; the guest steps ask how much to trust them."
+      ],
+      "cantCatchIntro": "IAMAI plans from what Microsoft records, and nothing else. Where something outside those records could change what a step does, the step says so and asks you before anything is enforced. What that covers, and how to check each yourself:"
     },
     "connectNoScan": {
       "h1": "Connect a tenant",
       "signedIn": "Signed in to {tenant} as {upn} · Sign out",
       "baselineLine": "Baseline: {baselineName} ({policyCount} policies) · change",
-      "baselineWhat": "A published set of Conditional Access policies for a small organisation, maintained by its author and loaded live.",
+      "baselineWhat": "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech. IAMAI pins a reviewed version and tells you when he updates it.",
       "baselineHow": "IAMAI compares what each policy is for with what {tenant} has, and plans the difference.",
       "scanButton": "Scan tenant",
       "scanNote": "About ten minutes. Reads the tenant into this browser; nothing is sent anywhere.",
@@ -84,29 +93,14 @@
       "stop": "Stop",
       "baselineUpdated": "Baseline updated by its author on {date}: {n} policies changed · review",
       "baselineUpdatedRow": "{policy}: {change}",
-      "baselineUpdatedNote": "Shown on Connect only when the author's repository is ahead of the pinned version; review lists each changed policy and the steps that change."
+      "baselineUpdatedNote": "Shown on Connect only when the author's repository is ahead of the pinned version; review lists each changed policy and the steps that change.",
+      "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy."
     },
     "tenant": {
       "h1": "Connect a tenant",
       "scanLine": "Scan complete · {people} people · {policies} policies · sign-ins {from} → {to}",
-      "foundLabel": "What IAMAI found",
-      "found": {
-        "emergency": "Emergency access accounts: {list:emergencyAccounts} — recognised by {signals}",
-        "emergencyNone": "Emergency access accounts: none recognised",
-        "exclusions": "Exclusions group: {exclusionsGroup} — excluded from {n} of {total} policies",
-        "exclusionsNone": "Exclusions group: none found",
-        "trusted": "Trusted network: {list:trustedLocations}",
-        "trustedNone": "Trusted network: no trusted location",
-        "countries": "Countries people sign in from: {countries}",
-        "serviceAccounts": "Service accounts: {list:serviceAccounts} — {signals}",
-        "serviceAccountsNone": "Service accounts: none recognised",
-        "sharedDevices": "Shared devices: {list:sharedDevices}",
-        "sharedDevicesNone": "Shared devices: none recognised",
-        "window": "Sign-in records: {from} → {to}",
-        "timezone": "Time zone: {timezone}"
-      },
       "open": "Open the plan →",
-      "tip": "This is what the plan is built from. Anything to confirm or change is done inside the step that uses it."
+      "tip": "Everything the scan found is inside the plan's steps, where you can confirm or change it."
     },
     "plan": {
       "h1": "Plan",
@@ -142,9 +136,9 @@
       "footer": {
         "inPlace": "Already in place ({n})",
         "doesntApply": "Doesn't apply here ({n})",
-        "doesntApplyRow": "{stepTitle} — you said: {reason}",
+        "doesntApplyRow": "{stepTitle}: you said: {reason}",
         "notLicensed": "Not licensed ({n})",
-        "notLicensedRow": "{stepTitle} — needs a licence this tenant does not hold: {licence}",
+        "notLicensedRow": "{stepTitle}: needs a licence this tenant does not hold: {licence}",
         "notLicensedNote": "Nothing in the plan waits on these.",
         "housekeeping": "Housekeeping ({n})",
         "notInBaseline": "{policy}: not in the baseline · {verdict}",
@@ -152,7 +146,10 @@
         "notInBaselineReview": "review",
         "rename": "{policy}: off the tenant's naming convention · proposed {proposed}"
       },
-      "tip": "Rows open in place. Every choice the plan needs is made inside the step that needs it."
+      "tip": "Rows open in place. Every choice the plan needs is made inside the step that needs it.",
+      "startControl": "Start the plan",
+      "startNote": "Starting locks the dates. Until then, every visit proposes dates from today.",
+      "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}"
     },
     "today": {
       "h1": "Today",
@@ -163,7 +160,7 @@
           "label": "MFA proven",
           "value": "{n} · {pct} of active",
           "heldBy": null,
-          "tip": "Active people with a successful MFA sign-in in the collected records. Seen in the records, not inferred from a registration."
+          "tip": "Active people with a successful MFA sign-in since {from}. Seen in the records, not inferred from a registration."
         },
         "unproven": {
           "label": "Registered, unproven",
@@ -257,7 +254,7 @@
       },
       "unredactedWarning": "The unredacted file contains people's names and sign-in names. Once you upload it to another tool it has left this browser.",
       "printPage1": {
-        "title": "{tenant} — Conditional Access posture, {date}",
+        "title": "{tenant}: Conditional Access posture, {date}",
         "inPlace": "{n} baseline controls in place",
         "toDo": "{n} to do, finishing {finish}",
         "doesntApply": "{n} do not apply here",
@@ -266,7 +263,7 @@
       "tip": "Save the plan file to keep the plan; the sign-in session lasts about a day and the plan does not depend on it."
     },
     "footer": {
-      "readOnly": "Read-only · nothing is sent automatically",
+      "readOnly": "Read-only",
       "links": [
         "feedback@getiamai.com",
         "All IAMAI tools",
@@ -284,7 +281,41 @@
       "exclusionsCheckReworded": "The group is excluded from every enabled policy that relies on it.",
       "groupSearchReworded": "runs only while the operator types in a step's picker",
       "packageProblem": "{policy}: the export dropped a condition this package cannot carry (for example agent identities), so it is listed and not assessed. Re-export it through Graph REST to assess it.",
-      "tip": "Everything IAMAI reads, every check it runs, and how to make a baseline package of your own."
+      "tip": "Everything IAMAI reads, every check it runs, and how to make a baseline package of your own.",
+      "noAi": "No AI runs in these tools. Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round."
+    },
+    "home": {
+      "metaTitle": "IAMAI: tools for Microsoft Entra identity work",
+      "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change would lock out before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
+      "h1": "Know what a change will do before you make it.",
+      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a security baseline, and plans the rollout of that baseline while catching the pitfalls of hardening: the admin whose only method is a text message, the country rule that blocks its author, the account with no method at all. Read-only, in your browser, no account to create.",
+      "toolsLabel": "Tools",
+      "planner": {
+        "name": "IAMAI Planner",
+        "descriptor": "Conditional Access rollout planner",
+        "label": "Preview",
+        "body": "Reads the tenant's configuration and all the available sign-in evidence, compares it with a published baseline, and writes a dated plan: report-only before enforced, readiness before either, nobody locked out. Every step carries the portal clicks, the policy JSON, and the communications to send, timed to keep your people in the loop. Ships with Microsoft MVP Jon Hope's Defense in Depth baseline today; more baselines are coming, including the ability to load your own.",
+        "open": "Open the planner",
+        "demo": "See it with sample data"
+      },
+      "howLabel": "How these work",
+      "how": [
+        "Read-only. No tool here holds a permission that can create, change or delete anything, and nothing it reads leaves this browser unless you export it yourself.",
+        "The source is public. Read the code, then decide whether to connect: github.com/ZephyrPretendstoKnowTech/iamai."
+      ],
+      "aboutLabel": "About",
+      "about": "Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not.",
+      "aboutLinks": [
+        "LinkedIn",
+        "GitHub",
+        "feedback@getiamai.com"
+      ],
+      "footer": "Read-only",
+      "footerLinks": [
+        "Lachlan Robinette",
+        "GitHub",
+        "Source"
+      ]
     }
   },
   "cleanup": {
@@ -358,7 +389,7 @@
       "who": {
         "lead": "The emergency access accounts, and every policy that must exclude them:",
         "accounts": "{list:emergencyAccounts}",
-        "policiesNotExcluding": "Policies that do not yet exclude the exclusions group: {list:policiesNotExcluding} — fixed in Create or Correct Exclusions Group, never by excluding these accounts directly.",
+        "policiesNotExcluding": "Policies that do not yet exclude the exclusions group: {list:policiesNotExcluding}; fixed in Create or Correct Exclusions Group, never by excluding these accounts directly.",
         "operatorNote": "Your own account, {operator}, is not one of these and must not be."
       },
       "decision": {
@@ -472,7 +503,8 @@
               "otherAccount": "Lachlan Robinette"
             }
           ]
-        ]
+        ],
+        "from": "Aug 1"
       },
       "partner": "Done together with Create or Correct Exclusions Group: these accounts are the members of that group, and the group is what every policy excludes."
     },
@@ -511,7 +543,7 @@
           "members-only-emergency": "Remove {list:extraMembers}: anyone in this group is outside every policy it is excluded from.",
           "no-admin-members": "{name} holds {role} and is in the group; an excluded administrator is the most valuable unprotected account in the tenant. Remove them.",
           "not-dynamic": "The group is dynamic; recreate it with assigned membership.",
-          "excluded-from-every-policy": "Exclude the group from {list:policies} — open each policy → Users → Exclude → Groups.",
+          "excluded-from-every-policy": "Exclude the group from {list:policies}: open each policy → Users → Exclude → Groups.",
           "member-count": "The group has {memberCount} members and there are {emergencyCount} emergency accounts; each extra member is an account no policy applies to.",
           "not-mail-enabled": "The group is mail-enabled or licensed; remove the mail address and the licence."
         }
@@ -569,7 +601,8 @@
         "groups": [
           "Breakglass Exclusion · 1 member · excluded from 9 of 10 policies",
           "Core - Exclusion - Travellers · 2 members · excluded from 1 of 10 policies"
-        ]
+        ],
+        "from": "Aug 1"
       },
       "partner": "Done together with Create or Correct Emergency Access Accounts: the accounts chosen there are this group's only members."
     },
@@ -621,15 +654,16 @@
       "example": {
         "n": 8,
         "accountsWithState": [
-          "Adolin Kholin — no sign-in on record",
-          "Dalinar Kholin — no sign-in on record",
-          "Jasnah Kholin — no sign-in on record",
-          "Lift — no sign-in on record",
-          "Navani Kholin — no sign-in on record",
-          "Renarin Kholin — no sign-in on record",
-          "Shallan Davar — no sign-in on record",
-          "Szeth-son-son-Vallano — no sign-in on record"
-        ]
+          "Adolin Kholin · no sign-in on record",
+          "Dalinar Kholin · no sign-in on record",
+          "Jasnah Kholin · no sign-in on record",
+          "Lift · no sign-in on record",
+          "Navani Kholin · no sign-in on record",
+          "Renarin Kholin · no sign-in on record",
+          "Shallan Davar · no sign-in on record",
+          "Szeth-son-son-Vallano · no sign-in on record"
+        ],
+        "from": "Aug 1"
       }
     },
     {
@@ -649,16 +683,16 @@
       },
       "decision": {
         "label": "Allowed countries",
-        "help": "Ticked: every country with sign-ins in the last 30 days. Untick a country nobody should work from; add one people will travel to.",
+        "help": "Ticked: every country with sign-ins since {from}. Untick a country nobody should work from; add one people will travel to.",
         "pickerRow": "{country} · {people} people · {signIns} sign-ins",
         "save": "Save",
         "question": {
           "label": "People who travel or work abroad",
-          "text": "No sign-ins from outside {countries} in the last 30 days. Does anyone travel or work abroad?",
+          "text": "No sign-ins from outside {countries} since {from}. Does anyone travel or work abroad?",
           "options": [
             "Nobody",
-            "Occasionally — I will add a country before each trip",
-            "Regularly — add: {travelCountries}"
+            "Occasionally: I will add a country before each trip",
+            "Regularly: add: {travelCountries}"
           ],
           "effect": "Answering adds the countries now, and the countries step's email tells people how to arrange a trip."
         },
@@ -667,7 +701,7 @@
           "help": "If a countries location already exists, pick it and IAMAI corrects it; otherwise the steps below create one.",
           "pickerSource": "countryLocations",
           "pickerRow": "{name} · {countryCount} countries",
-          "none": "No countries location exists yet — create one below."
+          "none": "No countries location exists yet: create one below."
         }
       },
       "whatToDo": {
@@ -709,7 +743,7 @@
         "tenant": "GetIAMAI",
         "countries": "the United States",
         "countriesWithCounts": [
-          "United States — 3 people, 41 sign-ins"
+          "United States · 3 people, 41 sign-ins"
         ],
         "operatorCountries": "the United States",
         "proposedName": "Core - Allowed - Countries",
@@ -724,7 +758,8 @@
         "countryLocations": [
           "Core - Allowed - Countries · 1 country"
         ],
-        "travelCountries": "[type the countries]"
+        "travelCountries": "[type the countries]",
+        "from": "Aug 1"
       }
     },
     {
@@ -738,7 +773,7 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
       },
       "who": {
-        "lead": "Trusted locations in {tenant} today, and how many sign-ins matched each in the last 30 days:",
+        "lead": "Trusted locations in {tenant} today, and how many sign-ins matched each since {from}:",
         "locations": "{list:locationsWithMatches}",
         "none": "No trusted location exists in {tenant}. {topRanges}",
         "remoteHint": "If your team has no office network, this step does not apply; the policies that would relax inside it simply always apply."
@@ -765,7 +800,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "A trusted location exists whose ranges match sign-ins in the records."
+        "A trusted location exists whose ranges match sign-ins since {from}."
       ],
       "ifWrong": null,
       "comms": null,
@@ -800,7 +835,8 @@
         "fixes": [
           "Remove the range 0.0.0.0/0",
           "Tick Mark as trusted location"
-        ]
+        ],
+        "from": "Aug 1"
       }
     },
     {
@@ -856,8 +892,8 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "accountsWithSignals": [
-          "svc-mailer-1 — name; no interactive sign-in; excluded from 2 policies",
-          "svc-mailer-2 — name; 1 sign-in by password over ROPC to Azure PowerShell"
+          "svc-mailer-1 · name; no interactive sign-in; excluded from 2 policies",
+          "svc-mailer-2 · name; 1 sign-in by password over ROPC to Azure PowerShell"
         ],
         "proposedName": "Core - Exception - Service accounts",
         "serviceAccounts": [
@@ -866,7 +902,8 @@
         ],
         "ropcAccounts": [
           "svc-mailer-2"
-        ]
+        ],
+        "from": "Aug 1"
       }
     },
     {
@@ -892,18 +929,6 @@
         "help": "Tick the accounts that belong to a room, a panel or a shared phone. These are excluded from every people policy and get this one.",
         "pickerRow": "{name} · {signals}",
         "save": "Save"
-      },
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: {list:sharedDevices}",
-          "Target resources → Resources → All resources",
-          "Grant → Require device to be marked as compliant",
-          "{reportOnlyLine}",
-          "Then exclude the same accounts from every policy that prompts a person: {list:peoplePolicies}"
-        ]
       },
       "dates": "{datesNew}",
       "doneWhen": [
@@ -931,7 +956,7 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "devicesWithSignals": [
-          "Boardroom — Teams Rooms licence; no department; signs in from one device"
+          "Boardroom · Teams Rooms licence; no department; signs in from one device"
         ],
         "policyName": "Core - Allow - Shared devices",
         "sharedDevices": [
@@ -942,7 +967,20 @@
           "Require MFA for Everyone",
           "End Browser Sessions When the Browser Closes"
         ],
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: {list:sharedDevices}",
+          "Target resources → Resources → All resources",
+          "Grant → Require device to be marked as compliant",
+          "{reportOnlyLine}",
+          "Then exclude the same accounts from every policy that prompts a person: {list:peoplePolicies}"
+        ]
       }
     },
     {
@@ -990,7 +1028,8 @@
       "example": {
         "tenant": "GetIAMAI",
         "firstEnforce": "Tue Sep 8",
-        "firstPolicy": "Require MFA for Everyone"
+        "firstPolicy": "Require MFA for Everyone",
+        "from": "Aug 1"
       },
       "placement": "Placed immediately before the first policy that enforces, on that day, whatever else the plan holds. Shown only when security defaults are on."
     },
@@ -1036,9 +1075,10 @@
       "example": {
         "n": 2,
         "accounts": [
-          "Kaladin Stormblessed — Enforced",
-          "Breakglass — Enabled"
-        ]
+          "Kaladin Stormblessed · Enforced",
+          "Breakglass · Enabled"
+        ],
+        "from": "Aug 1"
       },
       "placement": "Shown only when at least one account has per-user MFA set."
     },
@@ -1102,10 +1142,11 @@
         "attestation": "Yes",
         "keyRestrictions": "No",
         "registeredKeys": [
-          "YubiKey 5 NFC — 2fc0579f-8113-47ea-b116-bb5a8db9202a (Breakglass)"
+          "YubiKey 5 NFC · 2fc0579f-8113-47ea-b116-bb5a8db9202a (Breakglass)"
         ],
         "aaguidAndroid": "de1e552d-db1d-4423-a619-566b625cdc84",
-        "aaguidIos": "90a3ccdf-635c-4729-a248-9b709135078f"
+        "aaguidIos": "90a3ccdf-635c-4729-a248-9b709135078f",
+        "from": "Aug 1"
       }
     },
     {
@@ -1162,7 +1203,8 @@
       "example": {
         "tenant": "GetIAMAI",
         "strengths": [],
-        "strengthName": "Modern MFA + TAP"
+        "strengthName": "Modern MFA + TAP",
+        "from": "Aug 1"
       }
     },
     {
@@ -1205,7 +1247,8 @@
       "example": {
         "operator": "Lachlan Robinette",
         "method": "Phishing-resistant",
-        "evidence": "MFA completed 21 hours ago"
+        "evidence": "MFA completed 21 hours ago",
+        "from": "Aug 1"
       },
       "partner": "Do this before the registration campaign, so you have done what you are about to ask others to do."
     },
@@ -1223,15 +1266,15 @@
         "lead": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90% until {enrollBy}.",
         "timeline": "Enrol by {enrollBy}. The first policy enforces on {firstEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
         "groups": {
-          "noMethod": "{n} people with no method — issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
-          "insufficient": "{n} people whose only method is text or call — register a passkey in Microsoft Authenticator, then remove the phone number:",
-          "pushOnly": "{n} people with Authenticator approval but no passkey — add a passkey in Authenticator; a risky sign-in requires one:",
-          "unproven": "{n} people registered but never seen to complete MFA — ask each for one MFA sign-in:",
-          "possiblyBroken": "{n} people whose last sign-in is older than the records — treat as unverified; ask each for one MFA sign-in:",
-          "holdouts": "{n} people past the enrol-by date with nothing done — review each; they are locked out when the policy enforces:"
+          "noMethod": "{n} people with no method; issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
+          "insufficient": "{n} people whose only method is text or call; register a passkey in Microsoft Authenticator, then remove the phone number:",
+          "pushOnly": "{n} people with Authenticator approval but no passkey; add a passkey in Authenticator; a risky sign-in requires one:",
+          "unproven": "{n} people registered but never seen to complete MFA; ask each for one MFA sign-in:",
+          "possiblyBroken": "{n} people whose last sign-in is older than the records; treat as unverified; ask each for one MFA sign-in:",
+          "holdouts": "{n} people past the enrol-by date with nothing done; review each; they are locked out when the policy enforces:"
         },
         "overlap": "Each person appears once, in the first list that applies to them, top to bottom; an admin with no method is in the no-method list with the admin instructions.",
-        "adminsNote": "Admins: {list:admins} — Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key."
+        "adminsNote": "Admins: {list:admins}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key."
       },
       "decision": {
         "label": "People who need special care",
@@ -1265,7 +1308,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "Over the next two weeks we are moving everyone at {tenant} to a passkey in the Microsoft Authenticator app to confirm sign-ins; from {firstEnforceLong} it will be required. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method → Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "body": "From {firstEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next two weeks. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "signature": "{signature}",
         "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together."
       },
@@ -1309,25 +1352,26 @@
         "signature": "IT",
         "noMethod": [],
         "unproven": [
-          "Lachlan Robinette (guest) — never prompted"
+          "Lachlan Robinette (guest) · never prompted"
         ],
         "insufficient": [],
         "possiblyBroken": [],
         "adminsList": [
-          "Lachlan Robinette — passkey registered",
-          "Breakglass — see the emergency-access step"
+          "Lachlan Robinette · passkey registered",
+          "Breakglass · see the emergency-access step"
         ],
         "enrollBy": "Fri Sep 4",
         "firstEnforce": "Tue Sep 8",
         "firstEnforceLong": "Tuesday, September 8",
         "holdouts": [],
         "specialCare": [
-          "Lachlan Robinette — admin, phishing-resistant, proven",
-          "Kaladin Stormblessed — admin, phishing-resistant, proven",
-          "Lachlan Robinette (guest) — registered, never prompted"
+          "Lachlan Robinette · admin, phishing-resistant, proven",
+          "Kaladin Stormblessed · admin, phishing-resistant, proven",
+          "Lachlan Robinette (guest) · registered, never prompted"
         ],
         "adminCount": 2,
-        "pushOnly": []
+        "pushOnly": [],
+        "from": "Aug 1"
       }
     },
     {
@@ -1344,24 +1388,13 @@
         "lead": "{active} active people · {admins} admins · {guests} guests",
         "evidence": [
           "The baseline's floor for everyone is the Multifactor authentication strength: a passkey, Authenticator approval or a security key all satisfy it. The campaign registers passkeys because Challenge High-Risk Sign-ins requires one the moment a sign-in looks wrong.",
-          "{n} people have no method and will be stopped — register before {enforce}: {list:noMethod}",
-          "{n} people registered but never seen to complete MFA — their first prompt is enforcement: {list:unproven}",
-          "Your account is in scope: {operatorSignIns} sign-ins in 30 days.",
+          "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
+          "{n} people registered but never seen to complete MFA: their first prompt is enforcement: {list:unproven}",
+          "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} {syncRoleNote}",
-          "Target resources → Resources → All resources",
-          "Grant → Require authentication strength: Multifactor authentication",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -1416,7 +1449,19 @@
         "enforce": "Tue Sep 8",
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine} {syncRoleNote}",
+          "Target resources → Resources → All resources",
+          "Grant → Require authentication strength: Multifactor authentication",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -1433,24 +1478,13 @@
         "lead": "{admins} people hold an admin role",
         "evidence": [
           "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, End Browser Sessions When the Browser Closes).",
-          "{n} admins have no phishing-resistant method — register before {enforce}: {list:adminsWithout}",
+          "{n} admins have no phishing-resistant method; register before {enforce}: {list:adminsWithout}",
           "{n} admins are covered: {list:adminsWith}",
           "Roles held through Privileged Identity Management are in scope only while activated.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: Directory roles → {list:coreAdminRoles}. {exclusionsLine} {syncRoleNote}",
-          "Target resources → Resources → All resources",
-          "Grant → Require authentication strength: {strengthName}",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
@@ -1524,7 +1558,19 @@
         "existingPolicies": [
           "Core - Allow - MFA for Admins"
         ],
-        "strengthName": "Modern MFA + TAP"
+        "strengthName": "Modern MFA + TAP",
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: Directory roles → {list:coreAdminRoles}. {exclusionsLine} {syncRoleNote}",
+          "Target resources → Resources → All resources",
+          "Grant → Require authentication strength: {strengthName}",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -1540,8 +1586,8 @@
       "who": {
         "lead": "{active} active people · {adminCount} admins in {adminsGroup}",
         "evidence": [
-          "{n} non-admins opened an admin portal in the last 30 days — they are blocked from {enforce}: {list:nonAdminPortalUsers}",
-          "Nobody outside the admins group opened an admin portal in the last 30 days.",
+          "{n} non-admins opened an admin portal since {from}; they are blocked from {enforce}: {list:nonAdminPortalUsers}",
+          "Nobody outside the admins group opened an admin portal since {from}.",
           "{existingCoverage}"
         ]
       },
@@ -1551,18 +1597,6 @@
         "pickerSource": "adminGroups",
         "pickerRow": "{name} · {memberCount} members · {rolesHeld}",
         "save": "Save"
-      },
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "If no admins group exists: Entra admin center → Entra ID → Groups → New group → Security, assigned; name it {adminsGroupProposed}; add every admin: {list:admins}",
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. Exclude → Groups: {exclusionsGroup}, {adminsGroup}. Exclude → Guest or external users → Service provider users.",
-          "Target resources → Resources → Select resources → Microsoft Admin Portals, Windows Azure Service Management API, Microsoft Purview",
-          "Grant → Block access",
-          "{reportOnlyLine}"
-        ]
       },
       "dates": "{datesNew}",
       "doneWhen": [
@@ -1613,7 +1647,20 @@
         "n": 0,
         "nonAdminPortalUsers": [],
         "exclusionsGroup": "Breakglass Exclusion",
-        "enforce": "Tue Sep 8"
+        "enforce": "Tue Sep 8",
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "If no admins group exists: Entra admin center → Entra ID → Groups → New group → Security, assigned; name it {adminsGroupProposed}; add every admin: {list:admins}",
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. Exclude → Groups: {exclusionsGroup}, {adminsGroup}. Exclude → Guest or external users → Service provider users.",
+          "Target resources → Resources → Select resources → Microsoft Admin Portals, Windows Azure Service Management API, Microsoft Purview",
+          "Grant → Block access",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -1630,7 +1677,7 @@
         "lead": "{guests} guests and external users signed in during the last 30 days",
         "evidence": [
           "{list:guestsWithState}",
-          "{n} service-provider accounts from {partners} partner tenants signed in this month — an IT partner is cut off by a policy aimed at external users unless the Service provider type is excluded.",
+          "{n} service-provider accounts from {partners} partner tenants signed in since {from}; an IT partner is cut off by a policy aimed at external users unless the Service provider type is excluded.",
           "Until Microsoft's B2B passkey rollout lands (from October 2026), a guest cannot register a passkey in {tenant}; a phishing-resistant requirement on guests works only for partner tenants whose MFA you trust. The baseline's partner tier is offered below for that case.",
           "{existingCoverage}"
         ]
@@ -1644,29 +1691,13 @@
         "multi": true,
         "question": {
           "label": "Partner or MSP access",
-          "text": "{n} service-provider sign-ins in 30 days from {list:partnerTenantsList}. Should this policy prompt them too?",
+          "text": "{n} service-provider sign-ins since {from} from {list:partnerTenantsList}. Should this policy prompt them too?",
           "options": [
             "Prompt them like any guest",
             "Exclude service providers (they use their own tenant's MFA)"
           ],
           "effect": "Excluding adds the Service provider type to the policy's exclusions."
         }
-      },
-      "whatToDo": {
-        "lead": "Policy A, every guest — and Policy B only for the partner tenants ticked above.",
-        "steps": [
-          "Cross-tenant trust first, if you ticked a partner: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → Organizational settings → the partner → Inbound access → Trust settings → Trust multifactor authentication from Microsoft Entra tenants: On.",
-          "Policy A — {policyName}: {portalRoot}",
-          "Users → Include: Guest or external users → all types{serviceProviderClause}. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Grant → Require multifactor authentication",
-          "{reportOnlyLine}",
-          "Policy B — {policyNameB} (only if a partner is ticked): {portalRoot}",
-          "Users → Include: Guest or external users → B2B collaboration guest users, B2B collaboration member users → Selected external tenants: {list:partnerTenantsList}. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Grant → Require authentication strength: {strengthName}",
-          "{reportOnlyLine}"
-        ]
       },
       "dates": "{datesNew}",
       "doneWhen": [
@@ -1713,7 +1744,7 @@
         "tenant": "GetIAMAI",
         "guests": 1,
         "guestsWithState": [
-          "Lachlan Robinette (guest) — registered, never prompted"
+          "Lachlan Robinette (guest) · registered, never prompted"
         ],
         "n": 0,
         "partners": 0,
@@ -1732,7 +1763,24 @@
         "partnerTenantsList": [],
         "policyNameB": "Core - Require - Phishing-resistant MFA for partners",
         "strengthName": "Modern MFA + TAP",
-        "trust": "off"
+        "trust": "off",
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": "Policy A, every guest: and Policy B only for the partner tenants ticked above.",
+        "steps": [
+          "Cross-tenant trust first, if you ticked a partner: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → Organizational settings → the partner → Inbound access → Trust settings → Trust multifactor authentication from Microsoft Entra tenants: On.",
+          "Policy A: {policyName}: {portalRoot}",
+          "Users → Include: Guest or external users → all types{serviceProviderClause}. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Grant → Require multifactor authentication",
+          "{reportOnlyLine}",
+          "Policy B: {policyNameB} (only if a partner is ticked): {portalRoot}",
+          "Users → Include: Guest or external users → B2B collaboration guest users, B2B collaboration member users → Selected external tenants: {list:partnerTenantsList}. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Grant → Require authentication strength: {strengthName}",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -1748,31 +1796,13 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people registered a method from outside the trusted network in the last 30 days — after enforcement they register in the office or with you: {list:remoteRegistrants}",
+          "{n} people registered a method from outside the trusted network since {from}: after enforcement they register in the office or with you: {list:remoteRegistrants}",
           "Trusted network: {trustedLocation}, {matches} sign-ins matched in 30 days.",
           "Guests can only register here from the trusted network; if guests must pass MFA here, trust their home tenant's MFA instead (Require MFA for Guests).",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": "The baseline blocks registration outside the trusted network:",
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → User actions → Register security information",
-          "Conditions → Locations → Include: Any location; Exclude: All trusted locations",
-          "Grant → Block access",
-          "{reportOnlyLine}"
-        ],
-        "fallback": {
-          "when": "If Define the Trusted Network is marked Doesn't apply here (no office network), the block would stop registration everywhere, so the step uses Microsoft's form instead:",
-          "steps": [
-            "Grant → Require multifactor authentication, instead of Block access; everything else as above. A person with no method registers with a Temporary Access Pass."
-          ]
-        }
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -1821,7 +1851,26 @@
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
         "existingPolicies": [],
-        "remoteRegistrants": []
+        "remoteRegistrants": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": "The baseline blocks registration outside the trusted network:",
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → User actions → Register security information",
+          "Conditions → Locations → Include: Any location; Exclude: All trusted locations",
+          "Grant → Block access",
+          "{reportOnlyLine}"
+        ],
+        "fallback": {
+          "when": "If Define the Trusted Network is marked Doesn't apply here (no office network), the block would stop registration everywhere, so the step uses Microsoft's form instead:",
+          "steps": [
+            "Grant → Require multifactor authentication, instead of Block access; everything else as above. A person with no method registers with a Temporary Access Pass."
+          ]
+        }
       }
     },
     {
@@ -1837,31 +1886,19 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} accounts signed in by a legacy protocol in the last 30 days — fix before {enforce}: {list:legacyUsers}",
-          "Nobody used a legacy protocol in the last 30 days.",
+          "{n} accounts signed in by a legacy protocol since {from}: fix before {enforce}: {list:legacyUsers}",
+          "Nobody used a legacy protocol since {from}.",
           "{existingCoverage}"
         ]
       },
       "decision": {
         "label": "Mail-sending devices",
-        "help": "No printer, scanner or application sent mail by SMTP in the last 30 days. Is there one? A device that sends by SMTP AUTH stops when this is enforced.",
+        "help": "No printer, scanner or application sent mail by SMTP since {from}. Is there one? A device that sends by SMTP AUTH stops when this is enforced.",
         "options": [
           "None",
-          "Yes — add: {devices}; the service-accounts group carries them"
+          "Yes: add: {devices}; the service-accounts group carries them"
         ],
         "save": "Save"
-      },
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
-          "Target resources → Resources → All resources",
-          "Conditions → Client apps → Exchange ActiveSync clients, Other clients",
-          "Grant → Block access",
-          "{reportOnlyLine}"
-        ]
       },
       "dates": "{datesNew}",
       "doneWhen": [
@@ -1907,7 +1944,20 @@
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
         "devices": "the Ricoh copier",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
+          "Target resources → Resources → All resources",
+          "Conditions → Client apps → Exchange ActiveSync clients, Other clients",
+          "Grant → Block access",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -1923,24 +1973,12 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} device-code sign-ins in the last 30 days by {list:deviceCodeUsers} — usually a script or a TV app; move each before {enforce}.",
-          "No device-code sign-ins in the last 30 days.",
+          "{n} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
+          "No device-code sign-ins since {from}.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Conditions → Authentication flows → Device code flow",
-          "Grant → Block access",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -1970,7 +2008,20 @@
         "deviceCodeUsers": [],
         "policyName": "Core - Block - Device code flow",
         "enforce": "Tue Sep 8",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → Authentication flows → Device code flow",
+          "Grant → Block access",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -1986,24 +2037,12 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} authentication transfers in the last 30 days by {list:transferUsers}.",
-          "No authentication transfers in the last 30 days.",
+          "{n} authentication transfers since {from} by {list:transferUsers}.",
+          "No authentication transfers since {from}.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Conditions → Authentication flows → Authentication transfer",
-          "Grant → Block access",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -2032,7 +2071,20 @@
         "n": 0,
         "transferUsers": [],
         "policyName": "Core - Block - Authentication transfer",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → Authentication flows → Authentication transfer",
+          "Grant → Block access",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2048,32 +2100,20 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} sign-ins from outside {countries} in the last 30 days by {list:outsideUsers} — a travel exception or a country to add before {enforce}.",
-          "Nobody signed in from outside {countries} in the last 30 days.",
-          "{n} service-provider sign-ins from {partners} partner tenants outside {countries} — the service-accounts group or the Service provider exclusion carries them.",
+          "{n} sign-ins from outside {countries} since {from} by {list:outsideUsers}; a travel exception or a country to add before {enforce}.",
+          "Nobody signed in from outside {countries} since {from}.",
+          "{n} service-provider sign-ins from {partners} partner tenants outside {countries}: the service-accounts group or the Service provider exclusion carries them.",
           "{existingCoverage}"
         ]
       },
       "decision": {
         "label": "Partner or MSP access",
-        "help": "{n} service-provider sign-ins in 30 days from {list:partnerTenants}, {location}. Should they be blocked by country like everyone else?",
+        "help": "{n} service-provider sign-ins since {from} from {list:partnerTenants}, {location}. Should they be blocked by country like everyone else?",
         "options": [
           "Block them like everyone else",
           "Exclude service providers"
         ],
         "save": "Save"
-      },
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}{serviceProviderClause}.",
-          "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {allowedCountriesLocation}",
-          "Grant → Block access",
-          "{reportOnlyLine}"
-        ]
       },
       "dates": "{datesNew}",
       "doneWhen": [
@@ -2109,7 +2149,7 @@
           "Travel: log the trip and add the country to the allowed list for its dates; never a user exclusion.",
           "VPN exit abroad: add the VPN's egress address to the trusted location."
         ],
-        "manager": "Sign-ins from places the business does not operate in are blocked. Nobody signed in from outside {countries} in the last 30 days; without this, a stolen password works from anywhere in the world.",
+        "manager": "Sign-ins from places the business does not operate in are blocked. Nobody signed in from outside {countries} since {from}; without this, a stolen password works from anywhere in the world.",
         "waits": null
       },
       "example": {
@@ -2129,7 +2169,20 @@
         "enforce": "Tue Sep 8",
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}{serviceProviderClause}.",
+          "Target resources → Resources → All resources",
+          "Conditions → Locations → Include: Any location; Exclude: {allowedCountriesLocation}",
+          "Grant → Block access",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2146,30 +2199,11 @@
         "lead": "{admins} admins",
         "evidence": [
           "Today: {current}, and sessions persist. The baseline wants {wanted} and never persistent.",
-          "Apps these sessions cover, with sign-ins in 30 days: {list:appsCovered}",
+          "Apps these sessions cover, with sign-ins since {from}: {list:appsCovered}",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalOpen}",
-          "Today the policy includes {includes} and excludes {excludes}; leave those alone.",
-          "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}",
-          "Session → Persistent browser session → Never persistent",
-          "Save. The policy keeps its current state."
-        ],
-        "new": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: Directory roles → {list:coreAdminRoles}. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Conditions → Client apps → Browser",
-          "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesChange}",
       "doneWhen": [
         "{changeDoneWhen}",
@@ -2229,7 +2263,27 @@
         "policyName": "Core - Session - Admin session lifetime",
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalOpen}",
+          "Today the policy includes {includes} and excludes {excludes}; leave those alone.",
+          "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}",
+          "Session → Persistent browser session → Never persistent",
+          "Save. The policy keeps its current state."
+        ],
+        "new": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: Directory roles → {list:coreAdminRoles}. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → Client apps → Browser",
+          "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2249,29 +2303,12 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people signed in from a device Entra does not manage in the last 30 days — they will see the limited experience from {enforce}: {list:unmanagedUsers}",
+          "{n} people signed in from a device Entra does not manage since {from}; they will see the limited experience from {enforce}: {list:unmanagedUsers}",
           "{n} people signed in only from managed devices and notice nothing.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": "The Conditional Access policies only tell SharePoint and Exchange to apply a restriction; the restriction itself is set once in SharePoint. Do that first.",
-        "steps": [
-          "SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save. Exchange Online follows this setting for Outlook on the web.",
-          "Policy A — {policyNameA}: {portalRoot}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → Select resources → Office 365",
-          "Conditions → Client apps → Browser. Conditions → Device platforms → Include: Any device; Exclude: Android, iOS, macOS, Linux. Conditions → Filter for devices → Exclude devices matching: device.isCompliant -eq True -and device.trustType -eq \"ServerAD\"",
-          "Session → Use app enforced restrictions. {reportOnlyLine}",
-          "Policy B — {policyNameB}: {portalRoot}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → Select resources → Office 365",
-          "Conditions → Locations → Include: Any location; Exclude: All trusted locations. Conditions → Device platforms → Include: Any device; Exclude: Android, iOS, Windows, macOS. Conditions → Filter for devices → Exclude devices matching: device.isCompliant -eq True -or device.trustType -eq \"AzureAD\" -or device.trustType -eq \"ServerAD\"",
-          "Session → Use Conditional Access App Control → Block downloads. This control needs Microsoft Defender for Cloud Apps; if {tenant} does not hold it, create Policy A only and note Policy B under Not licensed.",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
@@ -2322,7 +2359,25 @@
         "enforce": "Tue Sep 15",
         "enforceLong": "Tuesday, September 15",
         "signature": "IT",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": "The Conditional Access policies only tell SharePoint and Exchange to apply a restriction; the restriction itself is set once in SharePoint. Do that first.",
+        "steps": [
+          "SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save. Exchange Online follows this setting for Outlook on the web.",
+          "Policy A: {policyNameA}: {portalRoot}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → Select resources → Office 365",
+          "Conditions → Client apps → Browser. Conditions → Device platforms → Include: Any device; Exclude: Android, iOS, macOS, Linux. Conditions → Filter for devices → Exclude devices matching: device.isCompliant -eq True -and device.trustType -eq \"ServerAD\"",
+          "Session → Use app enforced restrictions. {reportOnlyLine}",
+          "Policy B: {policyNameB}: {portalRoot}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → Select resources → Office 365",
+          "Conditions → Locations → Include: Any location; Exclude: All trusted locations. Conditions → Device platforms → Include: Any device; Exclude: Android, iOS, Windows, macOS. Conditions → Filter for devices → Exclude devices matching: device.isCompliant -eq True -or device.trustType -eq \"AzureAD\" -or device.trustType -eq \"ServerAD\"",
+          "Session → Use Conditional Access App Control → Block downloads. This control needs Microsoft Defender for Cloud Apps; if {tenant} does not hold it, create Policy A only and note Policy B under Not licensed.",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2338,27 +2393,14 @@
       "who": {
         "lead": "{active} active people · device readiness {readiness}, the plan waits for 80%",
         "evidence": [
-          "{n} people signed in from devices that are neither compliant nor joined — enrol or exclude before {enforce}: {list:unmanagedUsers}",
+          "{n} people signed in from devices that are neither compliant nor joined; enrol or exclude before {enforce}: {list:unmanagedUsers}",
           "{name} signed in from a browser without device claims on a compliant device, so those sign-ins are blocked until the browser is signed in to the device account.",
-          "{n} sign-ins to servers or Azure VMs by {list:serverUsers} — servers cannot be compliant; scope them out or they lose RDP.",
-          "{n} sign-ins to Microsoft Graph Command Line Tools from non-compliant devices — Autopilot registration from those machines stops.",
+          "{n} sign-ins to servers or Azure VMs by {list:serverUsers}: servers cannot be compliant; scope them out or they lose RDP.",
+          "{n} sign-ins to Microsoft Graph Command Line Tools from non-compliant devices: Autopilot registration from those machines stops.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "Before this policy: Intune → Devices → Compliance → Compliance policy settings → Mark devices with no compliance policy assigned as: Not compliant; and set a grace period of 3 days on the Mark device non-compliant action in each compliance policy.",
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
-          "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: All trusted locations",
-          "Grant → Require device to be marked as compliant, Require Microsoft Entra hybrid joined device; Require one of the selected controls",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
@@ -2419,7 +2461,21 @@
         "enforce": "Tue Sep 22",
         "enforceLong": "Tuesday, September 22",
         "signature": "IT",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "Before this policy: Intune → Devices → Compliance → Compliance policy settings → Mark devices with no compliance policy assigned as: Not compliant; and set a grace period of 3 days on the Mark device non-compliant action in each compliance policy.",
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
+          "Target resources → Resources → All resources",
+          "Conditions → Locations → Include: Any location; Exclude: All trusted locations",
+          "Grant → Require device to be marked as compliant, Require Microsoft Entra hybrid joined device; Require one of the selected controls",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2435,24 +2491,12 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} sign-ins in the last 30 days carried no platform ({apps}) by {list:noPlatformUsers} — they would be stopped.",
-          "Every sign-in in the last 30 days came from a supported platform.",
+          "{n} sign-ins since {from} carried no platform ({apps}) by {list:noPlatformUsers}; they would be stopped.",
+          "Every sign-in since {from} came from a supported platform.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Conditions → Device platforms → Include: Any device; Exclude: Android, iOS, Windows, macOS",
-          "Grant → Block access",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -2486,7 +2530,20 @@
         "apps": "",
         "noPlatformUsers": [],
         "policyName": "Core - Block - Unsupported platforms",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → Device platforms → Include: Any device; Exclude: Android, iOS, Windows, macOS",
+          "Grant → Block access",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2502,25 +2559,12 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people signed in from a phone in the last 30 days: {list:phoneUsers}",
+          "{n} people signed in from a phone since {from}: {list:phoneUsers}",
           "{n} of those used an app without protection ({apps}) and will be redirected to Outlook or Edge.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": "An app protection policy must exist in Intune before this policy is enforced:",
-        "steps": [
-          "Intune → Apps → App protection policies → Create → iOS/iPadOS and again for Android: Microsoft apps, require PIN, block save-as to unmanaged locations; assign to All users.",
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Conditions → Device platforms → Include: Android, iOS",
-          "Grant → Require app protection policy. Do not use Require approved client app: Microsoft retired it on June 30, 2026.",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -2564,7 +2608,21 @@
         "policyName": "Core - Require - App protection on mobile devices",
         "enforceLong": "Tuesday, September 22",
         "signature": "IT",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": "An app protection policy must exist in Intune before this policy is enforced:",
+        "steps": [
+          "Intune → Apps → App protection policies → Create → iOS/iPadOS and again for Android: Microsoft apps, require PIN, block save-as to unmanaged locations; assign to All users.",
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → Device platforms → Include: Android, iOS",
+          "Grant → Require app protection policy. Do not use Require approved client app: Microsoft retired it on June 30, 2026.",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2580,23 +2638,12 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people used Azure management in the last 30 days: {list:azureUsers}",
-          "{n} sign-ins by scripts or service accounts — the service-accounts group carries them, or move them to a managed identity.",
+          "{n} people used Azure management since {from}: {list:azureUsers}",
+          "{n} sign-ins by scripts or service accounts: the service-accounts group carries them, or move them to a managed identity.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
-          "Target resources → Resources → Select resources → Windows Azure Service Management API",
-          "Grant → Require multifactor authentication",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -2628,7 +2675,19 @@
         ],
         "serviceAccountsGroup": "Core - Exception - Service accounts",
         "policyName": "Core - Require - Azure management",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
+          "Target resources → Resources → Select resources → Windows Azure Service Management API",
+          "Grant → Require multifactor authentication",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2644,22 +2703,11 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} devices were registered in the last 30 days by {list:registrars}.",
+          "{n} devices were registered since {from} by {list:registrars}.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → User actions → Register or join devices",
-          "Grant → Require authentication strength: Multifactor authentication",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -2690,7 +2738,19 @@
           "Lachlan Robinette"
         ],
         "policyName": "Core - Require - MFA for device registration",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → User actions → Register or join devices",
+          "Grant → Require authentication strength: Multifactor authentication",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2706,24 +2766,12 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered — they are signed out from {enforce} until the device is registered: {list:unboundUsers}",
+          "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; they are signed out from {enforce} until the device is registered: {list:unboundUsers}",
           "Everyone on Windows signs in from a joined or registered device.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
-          "Target resources → Resources → Select resources → Office 365 Exchange Online, Office 365 SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop, Windows 365",
-          "Conditions → Device platforms → Include: Windows. Conditions → Client apps → Mobile apps and desktop clients. Conditions → Filter for devices → Exclude devices matching: device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"",
-          "Session → Require token protection for sign-in sessions",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -2769,7 +2817,20 @@
         "enforce": "Tue Sep 15",
         "enforceLong": "Tuesday, September 15",
         "signature": "IT",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
+          "Target resources → Resources → Select resources → Office 365 Exchange Online, Office 365 SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop, Windows 365",
+          "Conditions → Device platforms → Include: Windows. Conditions → Client apps → Mobile apps and desktop clients. Conditions → Filter for devices → Exclude devices matching: device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"",
+          "Session → Require token protection for sign-in sessions",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2784,23 +2845,10 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity"
       },
       "who": {
-        "lead": "Entra Connect in {tenant}: {syncStatus}. The sync service principal signed in from {list:syncAddresses} in the last 30 days.",
+        "lead": "Entra Connect in {tenant}: {syncStatus}. The sync service principal signed in from {list:syncAddresses} since {from}.",
         "none": "No Entra Connect sync in {tenant}; this step does not apply."
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location: name it {locationName}; add the Entra Connect server's public address {list:syncAddresses}",
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users or workload identities → Workload identities → Select service principals → the Entra Connect sync service principal",
-          "Target resources → Resources → All resources",
-          "Conditions → Locations → Include: Any location; Exclude: {locationName}",
-          "Grant → Block access",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -2833,7 +2881,21 @@
         "existingPolicies": [],
         "syncStatus": "not configured",
         "syncAddresses": [],
-        "locationName": "Core - Trusted - Entra Connect"
+        "locationName": "Core - Trusted - Entra Connect",
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location: name it {locationName}; add the Entra Connect server's public address {list:syncAddresses}",
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users or workload identities → Workload identities → Select service principals → the Entra Connect sync service principal",
+          "Target resources → Resources → All resources",
+          "Conditions → Locations → Include: Any location; Exclude: {locationName}",
+          "Grant → Block access",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -2849,29 +2911,12 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people signed in from browsers on unmanaged devices in the last 30 days — they re-authenticate every 9 hours from {enforce}: {list:browserUsers}",
+          "{n} people signed in from browsers on unmanaged devices since {from}; they re-authenticate every 9 hours from {enforce}: {list:browserUsers}",
           "Shared devices are excluded by Give Shared Devices Their Own Policy.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": "Two policies, as the baseline has them: everyone's browser, and everything on an unmanaged device.",
-        "steps": [
-          "Policy A — {policyName}: {portalRoot}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
-          "Target resources → Resources → All resources",
-          "Conditions → Client apps → Browser",
-          "Session → Sign-in frequency → Periodic reauthentication → 12 hours; Persistent browser session → Never persistent",
-          "{reportOnlyLine}",
-          "Policy B — {policyNameB}: {portalRoot}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
-          "Target resources → Resources → All resources",
-          "Conditions → Filter for devices → Exclude devices matching: device.isCompliant -eq True",
-          "Session → Sign-in frequency → Periodic reauthentication → 9 hours; Persistent browser session → Never persistent",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
@@ -2925,12 +2970,30 @@
         "signature": "IT",
         "existingPolicies": [],
         "policyNameB": "Core - Session - Unmanaged device sessions",
-        "enforce": "Tue Sep 15"
+        "enforce": "Tue Sep 15",
+        "from": "Aug 1"
       },
       "mergesGoals": [
         "all-users-no-persistence",
         "byod-persistence"
-      ]
+      ],
+      "whatToDoReference": {
+        "lead": "Two policies, as the baseline has them: everyone's browser, and everything on an unmanaged device.",
+        "steps": [
+          "Policy A: {policyName}: {portalRoot}",
+          "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
+          "Target resources → Resources → All resources",
+          "Conditions → Client apps → Browser",
+          "Session → Sign-in frequency → Periodic reauthentication → 12 hours; Persistent browser session → Never persistent",
+          "{reportOnlyLine}",
+          "Policy B: {policyNameB}: {portalRoot}",
+          "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
+          "Target resources → Resources → All resources",
+          "Conditions → Filter for devices → Exclude devices matching: device.isCompliant -eq True",
+          "Session → Sign-in frequency → Periodic reauthentication → 9 hours; Persistent browser session → Never persistent",
+          "{reportOnlyLine}"
+        ]
+      }
     },
     {
       "id": "pim-activation-reauth",
@@ -2950,19 +3013,6 @@
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "Entra admin center → Entra ID → Conditional Access → Authentication context → New: name it {contextName}, publish it.",
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Authentication context → {contextName}",
-          "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
-          "{reportOnlyLine}",
-          "Privileged Identity Management → Entra roles → Settings → each role → On activation, require: Microsoft Entra Conditional Access authentication context → {contextName}."
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
@@ -2994,7 +3044,7 @@
       "example": {
         "n": 1,
         "eligible": [
-          "Kaladin Stormblessed — Security Administrator"
+          "Kaladin Stormblessed · Security Administrator"
         ],
         "contextName": "c1 - Privileged role activation",
         "emergencyAccounts": [
@@ -3005,7 +3055,21 @@
         "enforceLong": "Tuesday, September 15",
         "signature": "IT",
         "existingPolicies": [],
-        "strengthName": "Modern MFA + TAP"
+        "strengthName": "Modern MFA + TAP",
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "Entra admin center → Entra ID → Conditional Access → Authentication context → New: name it {contextName}, publish it.",
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Authentication context → {contextName}",
+          "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
+          "{reportOnlyLine}",
+          "Privileged Identity Management → Entra roles → Settings → each role → On activation, require: Microsoft Entra Conditional Access authentication context → {contextName}."
+        ]
       }
     },
     {
@@ -3021,22 +3085,11 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} devices were enrolled in the last 30 days by {list:enrollers}.",
+          "{n} devices were enrolled since {from} by {list:enrollers}.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → Select resources → Microsoft Intune Enrollment",
-          "Session → Sign-in frequency → Every time",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -3065,7 +3118,19 @@
         "n": 0,
         "enrollers": [],
         "policyName": "Core - Require - Fresh sign-in for Intune enrollment",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → Select resources → Microsoft Intune Enrollment",
+          "Session → Sign-in frequency → Every time",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -3083,24 +3148,12 @@
         "lead": "{active} active people",
         "evidence": [
           "The baseline requires {strengthName} on a high-risk sign-in: a passkey, security key, Windows Hello, certificate, or a one-time pass. Authenticator approval does not pass, which is why the campaign registers passkeys for everyone.",
-          "{n} risky sign-ins in the last 30 days by {list:riskyUsers}.",
-          "No sign-in was rated risky in the last 30 days.",
+          "{n} risky sign-ins since {from} by {list:riskyUsers}.",
+          "No sign-in was rated risky since {from}.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Conditions → Sign-in risk → High, Medium",
-          "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -3134,7 +3187,20 @@
         ],
         "policyName": "Core - Require - Sign-in risk",
         "existingPolicies": [],
-        "strengthName": "Modern MFA + TAP"
+        "strengthName": "Modern MFA + TAP",
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → Sign-in risk → High, Medium",
+          "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -3157,19 +3223,6 @@
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required.",
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Conditions → User risk → High",
-          "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -3203,7 +3256,21 @@
           "Emergency Access 2"
         ],
         "policyName": "Core - Require - High user risk",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required.",
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → User risk → High",
+          "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -3220,23 +3287,11 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} medium-risk sign-ins in the last 30 days by {list:riskyUsers}.",
+          "{n} medium-risk sign-ins since {from} by {list:riskyUsers}.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine}",
-          "Target resources → Resources → All resources",
-          "Conditions → Sign-in risk → Medium",
-          "Grant → Require authentication strength: Multifactor authentication. Session → Sign-in frequency → Every time",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -3265,7 +3320,20 @@
         "n": 0,
         "riskyUsers": [],
         "policyName": "Core - Require - Medium sign-in risk",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → Sign-in risk → Medium",
+          "Grant → Require authentication strength: Multifactor authentication. Session → Sign-in frequency → Every time",
+          "{reportOnlyLine}"
+        ]
       }
     },
     {
@@ -3287,18 +3355,6 @@
         ]
       },
       "decision": null,
-      "whatToDo": {
-        "lead": null,
-        "steps": [
-          "{portalRoot}",
-          "Name: {policyName}",
-          "Users → Include: All users. {exclusionsLine} Also exclude Guest or external users (all types).",
-          "Target resources → Resources → All resources",
-          "Conditions → User risk → High, Medium",
-          "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
-          "{reportOnlyLine}"
-        ]
-      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -3327,7 +3383,20 @@
         "n": 0,
         "atRiskUsers": [],
         "policyName": "Core - Require - Password change for medium-risk users",
-        "existingPolicies": []
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: All users. {exclusionsLine} Also exclude Guest or external users (all types).",
+          "Target resources → Resources → All resources",
+          "Conditions → User risk → High, Medium",
+          "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
+          "{reportOnlyLine}"
+        ]
       }
     }
   ]

@@ -2,6 +2,9 @@ import json, re, html, sys
 
 C = json.load(open(sys.argv[1]))
 S = C["shared"]
+import os
+_tp = os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), "translator-output.json")
+TRANSLATED = json.load(open(_tp)) if os.path.exists(_tp) else {}
 
 def esc(s): return html.escape(str(s))
 
@@ -20,7 +23,7 @@ def fill(text, ex, shared_ctx=None, depth=0):
     }
     defaults = {"announce": "Tue Sep 1", "reportOnly": "Tue Sep 1", "enforce": "Tue Sep 8", "reportOnlyDays": "7", "date": "Aug 28, 2026", "n": 3,
                 "exclusionsGroup": "Breakglass Exclusion", "emergencyAccounts": ["Breakglass", "Emergency Access 2"],
-                "policy": ex.get("policyName", "") if ex else "", "tenant": "GetIAMAI"}
+                "policy": ex.get("policyName", "") if ex else "", "tenant": "GetIAMAI", "from": "Aug 1"}
     def sub_list(m):
         key = m.group(1)
         items = ctx.get(key, defaults.get(key))
@@ -163,6 +166,12 @@ def render_step(st):
         parts.append(btn(d.get("save","Save")) + "</div>")
     # What to do
     w = st.get("whatToDo") or {}
+    if kind == "policy":
+        tr = TRANSLATED.get(st["id"])
+        if tr: w = {"lead": st.get("whatToDoReference", {}).get("lead"), "steps": tr.get("steps") or tr}
+        else:
+            w = st.get("whatToDoReference") or {}
+            parts.append('<p class="annot">Note: reviewer\'s rendering; the product generates this section from the baseline policy. Run npm run translator-dump to show the product\'s version here.</p>')
     parts.append(h("What to do"))
     if w.get("lead"): parts.append(p(w["lead"], ex))
     if w.get("steps"): parts.append(ol(w["steps"], ex))
@@ -243,23 +252,35 @@ def kv(label, val, ex=None):
 
 def render_pages():
     P = C["pages"]; out = []
+    if P.get("home"):
+        H = P["home"]
+        pl = H["planner"]
+        out.append('<section class="page"><h3>Home page — getiamai.com</h3>'
+          + f'<h2 class="h1">{esc(H["h1"])}</h2>' + p(H["intro"], {})
+          + h(H["toolsLabel"])
+          + f'<div class="card"><b>{esc(pl["name"])}</b> <span class="chip">{esc(pl["label"])}</span><p class="sub">{esc(pl["descriptor"])}</p><p>{esc(pl["body"])}</p>' + btn(pl["open"], True) + btn(pl["demo"]) + '</div>'
+          + h(H["howLabel"]) + ul(H["how"], {})
+          + h(H["aboutLabel"]) + p(H["about"], {})
+          + '<p>' + " &nbsp;·&nbsp; ".join(f'<a>{esc(l)}</a>' for l in H["aboutLinks"]) + '</p>'
+          + f'<p class="sub">{esc(H["footer"])} &nbsp;·&nbsp; ' + " &nbsp;·&nbsp; ".join(f'<a>{esc(l)}</a>' for l in H["footerLinks"]) + '</p>'
+          + f'<p class="sub">Meta description: {esc(H["metaDescription"])}</p></section>')
     ex_t = {"tenant": "GetIAMAI", "upn": "Lachlan@getiamai.com", "baselineName": "Jon Hope — Defense in Depth", "policyCount": 46, "people": 12, "policies": 10, "from": "Aug 1", "to": "Aug 31", "emergencyAccounts": ["Breakglass"], "signals": "name, Global Administrator, excluded from 9 policies", "exclusionsGroup": "Breakglass Exclusion", "n": 9, "total": 10, "countries": "the United States", "trustedLocations": [], "serviceAccounts": [], "sharedDevices": [], "timezone": "America/Denver", "lane": "Reading sign-in records", "done": 3, "steps": 31, "inPlace": 7, "finish": "Sun Sep 27", "weeks": "4 weeks", "age": "17h ago", "active": 4, "enabled": 12, "admins": 3, "pct": "50%", "date": "Sep 1, 2026", "blocker": "Create or Correct Emergency Access Accounts", "constraint": "two changes prompt the same people, so Require a Fresh Sign-in for Intune Enrollment cannot enforce in the same window as Block Unsupported Device Platforms", "stepTitle": "Define the Trusted Network", "reason": "fully remote, no office network", "licence": "Microsoft Entra ID P2", "policy": "Monitor Kaladin using Forms", "verdict": "fine to keep", "proposed": "Core - Block - Copilot", "current": "weekly", "wanted": "4 hours", "name": "Phase 1", "start": "Sep 8", "end": "Sep 13", "measure": "MFA readiness", "threshold": "90%", "value": "50%", "thing": "emergency access accounts", "have": 1}
     def sec(title, body): out.append(f'<section class="page"><h3>{esc(title)}</h3>{body}</section>')
     o = P["opener"]
     sec("The opener (signed out)",
         f'<h2 class="h1">{esc(o["h1"])}</h2>' + p(o["intro"], {}) + h(o["builtForLabel"]) + p(o["builtFor"], {}) + h(o["catchesLabel"]) + ul(o["catches"], {})
         + btn(o["signIn"], True) + f'<details><summary>{esc(o["permissionsSummary"])}</summary><p class="sub">(the six-row permissions table, unchanged)</p><p>{esc(o["permissionsNote"])}</p>{h(o["removingLabel"])}{ol(o["removing"], {})}</details>'
-        + '<p>' + " &nbsp;·&nbsp; ".join(f'<a>{esc(l)}</a>' for l in o["links"]) + '</p>' + f'<div class="tip">{esc(o["tip"])}<span class="q">?</span></div>')
+        + '<p>' + " &nbsp;·&nbsp; ".join(f'<a>{esc(l)}</a>' for l in o["links"]) + '</p>'
+        + f'<details class="limits" open><summary>{esc(o["cantCatchSummary"])}</summary>' + p(o["cantCatchIntro"], {}) + ul(o["cantCatch"], {}) + '</details>'
+        + f'<div class="tip">{esc(o["tip"])}<span class="q">?</span></div>')
     c = P["connectNoScan"]
-    sec("Connect (signed in, no scan)", f'<h2 class="h1">{esc(c["h1"])}</h2>' + p(c["signedIn"], ex_t) + p(c["baselineLine"], ex_t) + p(c["baselineWhat"], ex_t) + p(c["baselineHow"], ex_t) + btn(c["scanButton"], True) + p(c["scanNote"], {}) + p(c["baselineUpdated"], {"date": "Aug 28, 2026", "n": 3}, "sub") + p(c["baselineUpdatedNote"], {}, "sub") + f'<p class="sub">While scanning: <span class="progress">{fill(c["scanning"], {"lane": "Reading sign-in records", "done": 3, "total": 8})}</span> {btn(c["stop"])}</p>')
+    sec("Connect (signed in, no scan)", f'<h2 class="h1">{esc(c["h1"])}</h2>' + p(c["signedIn"], ex_t) + p(c["baselineLine"], ex_t) + p(c["baselineWhat"], ex_t) + p(c["baselineGoal"], ex_t) + p(c["baselineHow"], ex_t) + btn(c["scanButton"], True) + p(c["scanNote"], {}) + p(c["baselineUpdated"], {"date": "Aug 28, 2026", "n": 3}) + p("Note: the line above renders only when the author's repository is ahead of the pinned version.", {}, "annot") + f'<p class="sub">While scanning: <span class="progress">{fill(c["scanning"], {"lane": "Reading sign-in records", "done": 3, "total": 8})}</span> {btn(c["stop"])}</p>')
     t = P["tenant"]
-    found = t["found"]
-    rows = [fill(found["emergency"], ex_t), fill(found["exclusions"], ex_t), fill(found["trustedNone"], ex_t), fill(found["countries"], ex_t), fill(found["serviceAccountsNone"], ex_t), fill(found["sharedDevicesNone"], ex_t), fill(found["window"], ex_t), fill(found["timezone"], ex_t)]
-    sec("The tenant page (scanned)", f'<h2 class="h1">{esc(t["h1"])}</h2>' + p(t["scanLine"], ex_t) + h(t["foundLabel"]) + '<div class="found">' + "".join(f'<div class="frow"><p>{r}</p></div>' for r in rows) + '</div>' + btn(t["open"], True) + f'<div class="tip">{esc(t["tip"])}<span class="q">?</span></div>')
+    sec("Connect (scanned)", f'<h2 class="h1">{esc(t["h1"])}</h2>' + p(t["scanLine"], ex_t) + btn(t["open"], True) + f'<div class="tip">{esc(t["tip"])}<span class="q">?</span></div>')
     pl = P["plan"]
     s = pl["settings"]
     sec("Plan header, settings, blocked reasons, footer",
-        f'<h2 class="h1">{esc(pl["h1"])}</h2>' + p(pl["line1"], ex_t) + p(pl["line2"], ex_t) + f'<p class="sub">If it cannot finish: {fill(pl["line1CannotFinish"], ex_t)}</p><p class="sub">Length tooltip: {fill(pl["lengthTip"], ex_t)}</p>'
+        f'<h2 class="h1">{esc(pl["h1"])}</h2>' + p(pl["line1"], ex_t) + btn(pl["startControl"], True) + p(pl["startNote"], ex_t, "sub") + p("After starting: " + fill(pl["line1Started"], dict(ex_t, done=4, start="Mon Sep 7")), ex_t, "sub") + p(pl["line2"], ex_t) + f'<p class="sub">If it cannot finish: {fill(pl["line1CannotFinish"], ex_t)}</p><p class="sub">Length tooltip: {fill(pl["lengthTip"], ex_t)}</p>'
         + f'<p class="sub">Phase heading: <b>{fill(C["phases"]["heading"], ex_t)}</b> — first phase <b>{esc(C["phases"]["first"])}</b>, last <b>{esc(C["phases"]["last"])}</b></p>'
         + '<div class="settings"><b>' + esc(s["h3"]) + '</b>' + kv(s["start"], "[date]  " + s["startNote"]) + kv(s["freeze"], f'{s["freezeFrom"]} [date] {s["freezeTo"]} [date]  {s["freezeNote"]}') + kv(s["timezone"], "America/Denver") + kv(s["signature"], "IT") + btn(s["close"]) + '</div>'
         + h("Blocked reasons (one per row)") + ul([pl["blocked"]["after"], pl["blocked"]["readiness"], pl["blocked"]["count"]], ex_t)
@@ -271,7 +292,7 @@ def render_pages():
     sec("Today", f'<h2 class="h1">{esc(td["h1"])}</h2>' + p(td["purpose"], {}) + p(td["line"], ex_t) + f'<div class="tiles">{tiles}</div>' + f'<p class="sub">Show: {" · ".join(td["show"])}</p>' + h("State definitions") + "<ul>" + "".join(f"<li><b>{esc(k)}</b> — {esc(v)}</li>" for k, v in td["states"].items()) + "</ul>" + h("Method definitions") + "<ul>" + "".join(f"<li><b>{esc(k)}</b> — {esc(v)}</li>" for k, v in td["methods"].items()) + "</ul>" + f'<div class="tip">{esc(td["tip"])}<span class="q">?</span></div>')
     ex_p = P["export"]
     sec("Export and print page 1", "".join(f'<div class="card"><b>{esc(v[0])}</b><p>{esc(v[1])}</p><p class="sub">{esc(v[2])}</p></div>' for v in ex_p["cards"].values()) + h("Print page 1") + ul([ex_p["printPage1"]["title"], ex_p["printPage1"]["inPlace"], ex_p["printPage1"]["toDo"], ex_p["printPage1"]["doesntApply"], ex_p["printPage1"]["notLicensed"]], {"tenant": "GetIAMAI", "date": "September 1, 2026", "n": 7, "finish": "September 27"}) + f'<div class="tip">{esc(ex_p["tip"])}<span class="q">?</span></div>')
-    sec("Footer, How IAMAI works, step tip", p(P["footer"]["readOnly"] + " · " + " · ".join(P["footer"]["links"]), {}) + h("How IAMAI works — reworded lines") + ul([P["how"]["exclusionsCheckReworded"], P["how"]["groupSearchReworded"], P["how"]["packageProblem"]], {"policy": "IAC - AGENT - BLOCK - HighRiskAgent"}) + p("Needs column now names the step: " + ", ".join(P["how"]["needsByStep"].values()), {}) + h("Tip on every step") + p(P["stepTip"], {}))
+    sec("Footer, How IAMAI works, step tip", p(P["footer"]["readOnly"] + " · " + " · ".join(P["footer"]["links"]), {}) + h("How IAMAI works — reworded lines") + ul([P["how"]["exclusionsCheckReworded"], P["how"]["groupSearchReworded"], P["how"]["packageProblem"]], {"policy": "IAC - AGENT - BLOCK - HighRiskAgent"}) + p("Needs column now names the step: " + ", ".join(P["how"]["needsByStep"].values()), {}) + p("Under Limits: " + P["how"]["noAi"], {}) + h("Tip on every step") + p(P["stepTip"], {}))
     return "".join(out)
 
 CSS = """
@@ -306,13 +327,13 @@ var{font-style:normal}.v{color:var(--var);text-decoration:underline dotted;text-
 details.more{margin-top:14px;border-top:1px dashed var(--line);padding-top:6px}details.more summary{cursor:default;color:var(--muted)}
 details.allchecks{margin:6px 0}details.allchecks summary{font-size:13px;color:var(--muted)}
 .page{border:1px solid var(--line);border-radius:8px;background:#fff;padding:18px 22px;margin:22px 0}
-.tip{border:1px solid var(--line);border-radius:8px;background:var(--raised);padding:8px 40px 8px 12px;font-size:13px;color:var(--muted);position:relative;margin:14px 0 0}
+details.limits{border:1px solid var(--line);border-radius:8px;background:var(--raised);padding:8px 14px;margin:14px 0 0}details.limits summary{font-weight:600;cursor:default}details.limits ul{margin-top:4px}.tip{border:1px solid var(--line);border-radius:8px;background:var(--raised);padding:8px 40px 8px 12px;font-size:13px;color:var(--muted);position:relative;margin:14px 0 0}
 .tip .q{position:absolute;right:10px;top:7px;width:20px;height:20px;border-radius:10px;border:1px solid var(--line);text-align:center;line-height:18px;background:#fff;color:var(--ink)}
 .found .frow{border-bottom:1px solid var(--line);padding:4px 0}.found .frow:last-child{border:0}
 .tiles{display:flex;gap:18px;margin:12px 0}.tile{flex:1}.tv{font-family:Georgia,serif;font-size:22px}.tl{font-weight:600;font-size:13px}.held{font-size:12px;color:var(--muted)}.ttip{font-size:12px;color:var(--muted);margin-top:4px}
 .settings{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:10px 0;background:#fff}.kv{display:flex;gap:12px;margin:6px 0}.k{width:130px;color:var(--muted);font-size:13px}.val{font-size:14px}
 .card{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;background:var(--raised)}
-.legend{font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:#fff;margin-bottom:20px}
+.annot{font-style:italic;color:#8a6d3b;font-size:13px}.legend{font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:#fff;margin-bottom:20px}
 .index li{margin:2px 0}
 """
 

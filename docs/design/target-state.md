@@ -125,6 +125,12 @@ What it is, who it is built for, what it catches. Not a how-to page.
     One line under the table: "Plus the standard sign-in permissions."
   - `Removing it`: the three portal steps. Nothing after "Properties → Delete".
 - links `How IAMAI works →` · `See it with sample data →`
+- below the links, above the tip, a raised expandable panel `IAMAI limitations`: one intro
+  line (the tool plans from what Microsoft records; where something outside those records
+  could change a step's effect, the step says so and asks first) and five lines, each a blind
+  spot with how to check it yourself: Direct Send devices, authentication outside Entra
+  (federation, third-party MFA, on-prem AD), anything on a longer cycle than the records,
+  credentials saved on forgotten equipment, and what a partner's tenant enforces.
 
 Gone: the "Needs a Global Administrator…" bullets (the licence fact moves to the tip; the
 read-only fact is on the home page and in the footer already).
@@ -144,7 +150,16 @@ read-only fact is on the home page and in the footer already).
 **Scanning**: the same page; the two-lane progress with the current lane in plain words
 ("Reading sign-in records, 3 of 8 pages"); the Scan button replaced by `Stop`.
 
-**Scanned — the tenant page**
+**Scanned**
+
+One transition screen: `Scan complete · 12 people · 10 policies · sign-ins Jul 30 – Aug 29`
+(every number from `src/derive`), then `Open the plan →`. Everything the scan found renders
+inside the step that uses it, and nowhere else. `Scan to update the plan` lives in the header
+from now on.
+
+The superseded version of this state follows for history and is not built:
+
+**Scanned — the tenant page (superseded)**
 
 - `Scan complete · 12 people · 10 policies · sign-ins Jul 30 – Aug 29` (every number from
   `src/derive`, §8.1)
@@ -208,6 +223,12 @@ The front door once a scan exists. The plan is the page; nothing sits above it b
   nothing else.
 - line two: `Built from what IAMAI found on <tenant>, scanned 17h ago · Today shows where each
   person stands.` — the only place the Plan refers to Today.
+- the start control: until the person presses `Start the plan`, every visit proposes dates from
+  today and the header says so in one small line; pressing it locks the start date into the
+  plan file, the header's line one becomes `31 steps · 4 done · started Mon Sep 7 · finishes
+  Thu Sep 24`, and later visits and scans update statuses and evidence but never move a
+  scheduled date. Changing the start afterwards happens in Plan settings and is a deliberate
+  re-plan.
 - `Plan settings` link (small, right); the panel: `Start date` with its input on one line;
   `Change freeze` with `from` and `to` labelled on one line; one sentence: "No step enforces
   inside the freeze or on the last working day before it." Nothing else.
@@ -533,6 +554,7 @@ Unchanged from version 1, with two additions:
 | Finish | the header's finish date is the end of the last phase, Cleanup included |
 | Registration gate | the campaign's readiness threshold holds until the enrol-by date; after it, enforcement proceeds on schedule and holdouts are listed for review |
 | Security defaults | the step is scheduled on the first enforcement day, immediately before that policy |
+| Start | dates are proposals recomputed from today until the plan is started; starting anchors them; a scan never moves an anchored date |
 
 Expected outcomes, reported never targeted: ≤30 active people about 3–4 weeks; 31–300 about
 6–8; above 300 about 10–12. The plan states the one constraint that set its length, in one
@@ -611,6 +633,11 @@ complete" is not done.
 
 Still awaiting the owner's yes or no. Nothing here is built, approximated or partially built.
 
+0. A "Microsoft recommended, not in this baseline" set: registration protection, the
+   legacy-authentication block and emergency access rendered when the active baseline lacks
+   them, labelled as not the author's. Raised Sep 1 when Jon Hope's head dropped office-only
+   registration, leaving a P1 tenant on that baseline with no control on method registration.
+
 1. A since-last-scan line on the Plan header and on Today.
 2. Today tiles linking to the steps they hold (the tiles name the steps; whether they link is open).
 3. Already-in-place rows that open to show the satisfying policy, its state and the evidence date.
@@ -625,14 +652,22 @@ persistence policies likewise); `Not licensed` as its own list; the rollback pro
 the emergency-access step; the baseline-onboarding process; re-pinning the baseline to its
 author's current commit with a diff on each update.
 
-Logged for later, out of scope: an automation that watches every baseline for author pushes and
-tells the owner, then a purpose-built skill that evaluates the diff and tunes the product with a
+Logged for later, out of scope: detecting federated domains and third-party-MFA hints from the
+tenant's domain list and surfacing them on the affected steps; an automation that watches every
+baseline for author pushes and tells the owner, then a purpose-built skill that evaluates the diff and tunes the product with a
 short version note.
 
 ---
 
 ## 14. Build order
 
+- **52** — the frame from the content file: the home page generated from `pages.home`, the
+  signed-out opener with the `IAMAI limitations` panel, the footer, Today's purpose line, the
+  scanned Connect state cut to its transition, the baseline explanation with the author's
+  site, the How page's no-AI line; the translator dump for the review page; 51's deferred
+  items (decision persistence, the second-pass list derivations, the Cleanup phase and finish,
+  the Connect "Baseline updated" line, the licence ladder); then `Start the plan`, last and
+  droppable if time is short.
 - **51** — the engine and the step (§5, §6, §8.1–8.5, §8.9–8.11, §9): the content loader,
   the portal-line translator, recognition, the baseline re-pin and diff, the header (§2), the
   Recovery card removal (§10), the vocabulary sweep (§10), the first-click sign-in (§2),
