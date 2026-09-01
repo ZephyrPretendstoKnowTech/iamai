@@ -1,5 +1,5 @@
 {
- "fingerprint": "b35679d6e39300c0",
+ "fingerprint": "db38b9f42f87c724",
  "surfaces": [
   {
    "name": "Header",
@@ -2190,22 +2190,22 @@
    "tips": [],
    "sentences": [
     "Create or Correct Emergency Access Accounts Ready",
-    "Emergency access accounts are how you keep access to <var class=\"v\">Contoso Pty Ltd</var> if a change goes wrong.",
+    "Emergency access accounts are how you keep access to Contoso Pty Ltd if a change goes wrong.",
     "Learn →",
     "The emergency access accounts, and every policy that must exclude them:",
-    "</p><ol class=\"names\"><li><var class=\"v\">Break-glass 01</var></li></ol><p>",
-    "Your own account, <var class=\"v miss\">{operator}</var>, is not one of these and must not be.",
+    "Break-glass 01",
+    "Your own account,, is not one of these and must not be.",
     "Tick every account that exists only for this purpose; two are needed.",
     "IAMAI nominated these from their names, roles and exclusions.",
     "Create the rest below.",
-    "Fix each failing check, top to bottom. <var class=\"v miss\">{failing}</var> of <var class=\"v\">0</var> checks fail today.",
-    "All <var class=\"v\">0</var> checks pass on the next scan.",
+    "Fix each failing check, top to bottom. of 0 checks fail today.",
+    "All 0 checks pass on the next scan.",
     "Both passphrases are stored offline in two places, and two named people know where.",
     "Sign in with one of the emergency accounts above, in a private browser window.",
     "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only (or Off) → Save.",
     "It applies within minutes.",
-    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId &lt;id&gt; -State enabledForReportingButNotEnforced.",
-    "If no route works, Microsoft support can help; they will ask for the tenant id: <var class=\"v miss\">{tenantId}</var>.",
+    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId <id> -State enabledForReportingButNotEnforced.",
+    "If no route works, Microsoft support can help; they will ask for the tenant id:.",
     "Scan to update the planClose"
    ],
    "titles": [
@@ -2216,38 +2216,36 @@
    "tables": [],
    "occurrences": {
     "Create or Correct Emergency Access Accounts Ready": 1,
-    "Emergency access accounts are how you keep access to <var class=\"v\">Contoso Pty Ltd</var> if a change goes wrong.": 1,
+    "Emergency access accounts are how you keep access to Contoso Pty Ltd if a change goes wrong.": 1,
     "The emergency access accounts, and every policy that must exclude them:": 1,
-    "</p><ol class=\"names\"><li><var class=\"v\">Break-glass 01</var></li></ol><p>": 1,
-    "Your own account, <var class=\"v miss\">{operator}</var>, is not one of these and must not be.": 1,
+    "Your own account,, is not one of these and must not be.": 1,
     "Tick every account that exists only for this purpose; two are needed.": 1,
     "IAMAI nominated these from their names, roles and exclusions.": 1,
-    "Fix each failing check, top to bottom. <var class=\"v miss\">{failing}</var> of <var class=\"v\">0</var> checks fail today.": 1,
-    "All <var class=\"v\">0</var> checks pass on the next scan.": 1,
+    "Fix each failing check, top to bottom. of 0 checks fail today.": 1,
+    "All 0 checks pass on the next scan.": 1,
     "Both passphrases are stored offline in two places, and two named people know where.": 1,
     "Sign in with one of the emergency accounts above, in a private browser window.": 1,
     "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only (or Off) → Save.": 1,
     "It applies within minutes.": 1,
-    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId &lt;id&gt; -State enabledForReportingButNotEnforced.": 1,
-    "If no route works, Microsoft support can help; they will ask for the tenant id: <var class=\"v miss\">{tenantId}</var>.": 1,
+    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId <id> -State enabledForReportingButNotEnforced.": 1,
+    "If no route works, Microsoft support can help; they will ask for the tenant id:.": 1,
     "Scan to update the planClose": 1
    },
    "occurrencesAll": {
     "Create or Correct Emergency Access Accounts Ready": 1,
-    "Emergency access accounts are how you keep access to <var class=\"v\">Contoso Pty Ltd</var> if a change goes wrong.": 1,
+    "Emergency access accounts are how you keep access to Contoso Pty Ltd if a change goes wrong.": 1,
     "The emergency access accounts, and every policy that must exclude them:": 1,
-    "</p><ol class=\"names\"><li><var class=\"v\">Break-glass 01</var></li></ol><p>": 1,
-    "Your own account, <var class=\"v miss\">{operator}</var>, is not one of these and must not be.": 1,
+    "Your own account,, is not one of these and must not be.": 1,
     "Tick every account that exists only for this purpose; two are needed.": 1,
     "IAMAI nominated these from their names, roles and exclusions.": 1,
-    "Fix each failing check, top to bottom. <var class=\"v miss\">{failing}</var> of <var class=\"v\">0</var> checks fail today.": 1,
-    "All <var class=\"v\">0</var> checks pass on the next scan.": 1,
+    "Fix each failing check, top to bottom. of 0 checks fail today.": 1,
+    "All 0 checks pass on the next scan.": 1,
     "Both passphrases are stored offline in two places, and two named people know where.": 1,
     "Sign in with one of the emergency accounts above, in a private browser window.": 1,
     "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only (or Off) → Save.": 1,
     "It applies within minutes.": 1,
-    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId &lt;id&gt; -State enabledForReportingButNotEnforced.": 1,
-    "If no route works, Microsoft support can help; they will ask for the tenant id: <var class=\"v miss\">{tenantId}</var>.": 1,
+    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId <id> -State enabledForReportingButNotEnforced.": 1,
+    "If no route works, Microsoft support can help; they will ask for the tenant id:.": 1,
     "Scan to update the planClose": 1
    },
    "wordCounts": {
@@ -2262,16 +2260,16 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 226,
-    "total": 251
+    "sentences": 212,
+    "total": 237
    },
    "unnamedControls": [],
    "rows": [
     {
      "selector": ".decision",
-     "text": "Emergency access accounts <var class=\"v miss\">{name}</var> · <var class=\"v miss\">{upn}</var> · <var class=\"v miss\">{signals}</var>Save",
+     "text": "Emergency access accounts · ·Save",
      "sentences": 1,
-     "words": 14
+     "words": 5
     }
    ],
    "forbidHits": [],
