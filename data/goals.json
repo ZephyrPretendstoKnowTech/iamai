@@ -216,6 +216,60 @@
             },
             "sessionControls": null
           }
+        },
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "appsAdminPortals": true,
+            "grantBlock": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "adminPortals",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "adminsGroup"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Admin portals",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "MicrosoftAdminPortals"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -791,10 +845,10 @@
           "expectedWho": {
             "kind": "all"
           },
-          "expectedApps": "all",
+          "expectedApps": "office365",
           "floor": {
             "session": {
-              "anyOf": true
+              "appEnforced": true
             }
           },
           "allowedExclusions": [
@@ -1443,6 +1497,66 @@
               }
             }
           }
+        },
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "secureSignInSession": true,
+            "platformsIncludeWindows": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "specific",
+          "floor": {
+            "session": {
+              "secureSignInSession": true
+            }
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion",
+            "serviceAccounts"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Session - Token protection",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}",
+                  "{serviceAccountsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "00000002-0000-0ff1-ce00-000000000000",
+                  "00000003-0000-0ff1-ce00-000000000000",
+                  "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe"
+                ]
+              },
+              "platforms": {
+                "includePlatforms": [
+                  "windows"
+                ]
+              },
+              "clientAppTypes": [
+                "mobileAppsAndDesktopClients"
+              ]
+            },
+            "grantControls": null,
+            "sessionControls": {
+              "secureSignInSession": {
+                "isEnabled": true
+              }
+            }
+          }
         }
       ],
       "free": [],
@@ -1614,7 +1728,7 @@
           "expectedWho": {
             "kind": "coreAdmins"
           },
-          "expectedApps": "specific",
+          "expectedApps": "authContext",
           "floor": {
             "grant": "mfa",
             "session": {

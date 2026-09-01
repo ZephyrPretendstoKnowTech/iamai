@@ -23,10 +23,20 @@ test('every mapped policy key resolves to a pinned policy, and spot checks hold'
   }
   assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'mfa-all-users')[0]?.displayName, 'IAC - GLOBAL - GRANT - MFA - AllUsers')
   assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'block-device-code')[0]?.displayName, 'IAC - GLOBAL - BLOCK - Device Code Auth Flow')
+  // Owner fixes: admin portals via block, token protection scoped to the app set.
+  assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'admin-portals-protected')[0]?.displayName, 'IAC - ZTCA - GLOBAL – BLOCK – Admin Portal')
+  assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'token-protection')[0]?.displayName, 'IAC - GLOBAL - SESSION - Windows - TokenProtection')
 })
 
-test('the ties and unmapped goals are pinned (reviewer reconciles them in the baseline report)', () => {
-  assert.equal(built.ties.length, 3, 'the tie set changed — reconcile the baseline report')
-  assert.deepEqual(built.ties.map((t) => t.goalId).sort(), ['byod-session-controls', 'geo-restriction', 'guests-mfa'])
-  assert.equal(built.unmappedGoals.length, 11, 'the unmapped-goal set changed — reconcile the baseline report')
+test('guests-mfa is the ordered A/B pair (A the multifactor grant, B the strength grant)', () => {
+  const pair = policiesForGoal(PINNED_GOAL_MAP, policies, 'guests-mfa')
+  assert.equal(pair.length, 2, 'guests-mfa is a two-policy goal (Policy A / Policy B)')
+  assert.equal(pair[0].displayName, 'IAC - GLOBAL - GRANT - MFA - Mixed-Guests')
+  assert.equal(pair[1].displayName, 'IAC - GLOBAL - GRANT - MFA - B2B-Guest')
+})
+
+test('no ties remain; the unmapped goals are pinned for the reviewer, and geo NoExclusions is a variant', () => {
+  assert.equal(built.ties.length, 0, 'a tie reappeared — the declared-pair or variant rule regressed')
+  assert.equal(built.unmappedGoals.length, 10, 'the unmapped-goal set changed — reconcile the baseline report')
+  assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])
 })
