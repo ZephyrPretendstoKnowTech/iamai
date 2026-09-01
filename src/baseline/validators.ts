@@ -23,11 +23,21 @@ export function runBaselineValidators(policies: CaPolicy[]): ValidatorFinding[] 
     const session = p.sessionControls
     const hasSession = Boolean(session) && Object.keys(session as object).length > 0
 
-    // excl-01 (must): emergency accounts are excluded through a group, never named as users.
-    for (const x of s(u.excludeUsers)) if (GUID.test(x)) out.push({ id: 'excl-01', level: 'must', policy: p.displayName, detail: `names a user (${x}) in excludeUsers; emergency accounts are excluded through the group` })
+    // A policy that is only the author's own break-glass hardening is not one of
+    // our goals; it becomes a not-assessed Cleanup row and the goal validators do
+    // not run on it (owner resolution).
+    const notAssessed = /break.?glass/i.test(p.displayName)
 
-    // sess-01 (must): a grant policy carries no session control (frequency/persistence live in their own policies).
-    if (hasGrant && hasSession) out.push({ id: 'sess-01', level: 'must', policy: p.displayName, detail: 'a grant policy also carries a session control' })
+    // excl-01 (must): emergency accounts are excluded through a group, never named as users.
+    if (!notAssessed) for (const x of s(u.excludeUsers)) if (GUID.test(x)) out.push({ id: 'excl-01', level: 'must', policy: p.displayName, detail: `names a user (${x}) in excludeUsers; emergency accounts are excluded through the group` })
+
+    // sess-01 (must): a grant policy carries no LIFETIME session control (periodic
+    // sign-in frequency or persistence). Every-time frequency alongside a grant is
+    // allowed — a reauth prompt is not a lifetime (owner resolution).
+    const sc = session as { signInFrequency?: { isEnabled?: boolean; frequencyInterval?: string }; persistentBrowser?: unknown } | null
+    const periodicFrequency = Boolean(sc?.signInFrequency && sc.signInFrequency.isEnabled !== false && sc.signInFrequency.frequencyInterval && sc.signInFrequency.frequencyInterval !== 'everyTime')
+    const persistence = Boolean(sc && 'persistentBrowser' in sc && sc.persistentBrowser)
+    if (hasGrant && (periodicFrequency || persistence)) out.push({ id: 'sess-01', level: 'must', policy: p.displayName, detail: 'a grant policy also carries a lifetime session control (periodic sign-in frequency or persistence)' })
 
     // sess-02 (must): never-persistent applies only with all resources targeted.
     if ((session as { persistentBrowser?: { mode?: string } } | null)?.persistentBrowser?.mode === 'never' && !s(p.conditions?.applications?.includeApplications).some((a) => /^all$/i.test(a)))
