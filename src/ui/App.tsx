@@ -60,6 +60,8 @@ export function App() {
   // The header's Re-scan: Connect starts the scan as soon as it mounts, and
   // returns to Plan when it finishes (target-state §2).
   const [rescanRequested, setRescanRequested] = useState(false)
+  // The demo's Re-scan advances to a week-two snapshot and back (prompt 50 item 14).
+  const [demoWeek2, setDemoWeek2] = useState(false)
   // A scan frozen mid-lane, for the 'scanning' mock state (prompt 46 Part 1
   // item 2). The progress view is otherwise unreachable by a harness: it lasts
   // as long as the worker takes, and the synthetic tenant has no worker.
@@ -82,7 +84,7 @@ export function App() {
   useEffect(() => {
     if (DEMO) {
       void import('./demo.ts').then(async ({ demoTenant, DEMO_TENANT_ID }) => {
-        const d = demoTenant()
+        const d = demoTenant(demoWeek2)
         // Seed the Setup answers, or the Roadmap has nothing to compute from and
         // renders empty: the demo would show a stranger a blank page, which is
         // worse than not offering it. Written under the demo tenant id, so it
@@ -198,7 +200,9 @@ export function App() {
       })
       .catch((e: unknown) => setAuthError(e instanceof Error ? e.message : String(e)))
       .finally(() => setReady(true))
-  }, [])
+    // Re-runs only for the demo (demoWeek2 toggles); the real auth path runs once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoWeek2])
 
   // The shell's state (target-state §2): signed out, signed in with no scan,
   // scanning, or scanned. It decides the tabs, the Re-scan control and where
@@ -225,10 +229,16 @@ export function App() {
       state={shellState}
       scannedAt={lastScan?.at ?? null}
       onRescan={() => {
+        if (DEMO) {
+          // Re-scan in the demo advances to week two and back, without a worker.
+          setDemoWeek2((w) => !w)
+          return
+        }
         setRescanRequested(true)
         window.location.hash = '#/connect'
       }}
       snapshot={lastScan?.snapshot ?? null}
+      demoWeek2={demoWeek2}
     >
       {!ready ? (
         SHELL.loading

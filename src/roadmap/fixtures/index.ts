@@ -2,7 +2,7 @@
 // Every fixture is a seeded generator, never committed JSON: deterministic,
 // small in the repo, and free of real identifiers. docs/design/fixtures.md
 // describes each shape and what it must prove.
-import type { TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
+import type { TenantSnapshot, UserRow, PolicyAppliedResult, PolicyResultClass } from '../../graph/collect/types.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import { scenarioRows, sharedId } from './scenarioRows.ts'
 import type { BaselinePackage } from '../../baseline/types.ts'
@@ -132,9 +132,11 @@ export function weekdayHourBuckets(total: number, shape: 'office' | 'flat', rand
 }
 
 export function buildFixture(spec: Spec): Fixture {
-  const rand = rng(hash(spec.name))
+  // The demo family shares one seed, so week two is the SAME tenant a week later.
+  const seed = spec.demo ? 'demo' : spec.name
+  const rand = rng(hash(seed))
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)]
-  const tenantId = guid(spec.name, 0)
+  const tenantId = guid(seed, 0)
   const planId = `plan-${spec.name}`
   const caps = emptyCapabilities()
   const p1 = spec.licence !== 'none'
@@ -151,11 +153,11 @@ export function buildFixture(spec: Spec): Fixture {
   const rolesActive: Record<string, string[]> = {}
   const spPrincipals: Record<string, string> = {}
   const ids: string[] = []
-  const bgIds = [guid(spec.name, 1_000_001), guid(spec.name, 1_000_002)]
-  const svcIds = Array.from({ length: spec.serviceAccounts ?? 0 }, (_, i) => guid(spec.name, 1_000_100 + i))
+  const bgIds = [guid(seed, 1_000_001), guid(seed, 1_000_002)]
+  const svcIds = Array.from({ length: spec.serviceAccounts ?? 0 }, (_, i) => guid(seed, 1_000_100 + i))
   const total = spec.users
   for (let i = 0; i < total; i++) {
-    const id = guid(spec.name, 1000 + i)
+    const id = guid(seed, 1000 + i)
     ids.push(id)
     const isAdmin = i < spec.admins
     const guest = !isAdmin && rand() < 0.05
@@ -167,7 +169,7 @@ export function buildFixture(spec: Spec): Fixture {
     users.push({
       id,
       displayName: `${pick(FIRST)} ${pick(LAST)}`,
-      userPrincipalName: `user${i}@${spec.name}.example.com`,
+      userPrincipalName: `user${i}@${seed}.example.com`,
       userType: guest ? 'guest' : 'member',
       usageLocation: spec.multiGeo ? pick(COUNTRIES) : 'AU',
       createdDateTime: daysAgo(300 + Math.floor(rand() * 900)),
@@ -183,7 +185,7 @@ export function buildFixture(spec: Spec): Fixture {
     })
     registrationDetails.push({
       id,
-      userPrincipalName: `user${i}@${spec.name}.example.com`,
+      userPrincipalName: `user${i}@${seed}.example.com`,
       isMfaCapable: methods.length > 0,
       isMfaRegistered: methods.length > 0,
       isPasswordlessCapable: methods.includes('passKeyDeviceBound'),
@@ -204,15 +206,15 @@ export function buildFixture(spec: Spec): Fixture {
   }
   // Break-glass accounts: cloud-only GAs, excluded everywhere; SMS-only when messy.
   for (const [k, id] of bgIds.entries()) {
-    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${spec.name}.onmicrosoft.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
-    registrationDetails.push({ id, userPrincipalName: `bg${k + 1}@${spec.name}.example.com`, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: !spec.breakGlassSmsOnly, methodsRegistered: spec.breakGlassSmsOnly ? ['mobilePhone'] : ['fido2SecurityKey'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: true, userType: 'member' })
+    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${seed}.onmicrosoft.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
+    registrationDetails.push({ id, userPrincipalName: `bg${k + 1}@${seed}.example.com`, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: !spec.breakGlassSmsOnly, methodsRegistered: spec.breakGlassSmsOnly ? ['mobilePhone'] : ['fido2SecurityKey'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: true, userType: 'member' })
     authMethods[id] = spec.breakGlassSmsOnly ? [{ kind: 'phone', phoneType: 'mobile' }] : [{ kind: 'fido2' }]
     rolesActive[id] = [GA]
   }
   // Service accounts: legacy-auth users with no MFA.
   for (const [k, id] of svcIds.entries()) {
-    users.push({ id, displayName: `svc-mailer-${k + 1}`, userPrincipalName: `svc-mailer-${k + 1}@${spec.name}.example.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(900), lastSuccessfulSignIn: daysAgo(1), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
-    registrationDetails.push({ id, userPrincipalName: `svc-mailer-${k + 1}@${spec.name}.example.com`, isMfaCapable: false, isMfaRegistered: false, isPasswordlessCapable: false, methodsRegistered: [], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: false, userType: 'member' })
+    users.push({ id, displayName: `svc-mailer-${k + 1}`, userPrincipalName: `svc-mailer-${k + 1}@${seed}.example.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(900), lastSuccessfulSignIn: daysAgo(1), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
+    registrationDetails.push({ id, userPrincipalName: `svc-mailer-${k + 1}@${seed}.example.com`, isMfaCapable: false, isMfaRegistered: false, isPasswordlessCapable: false, methodsRegistered: [], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: false, userType: 'member' })
     authMethods[id] = []
     signInEvidence[id] = { signInCount: 40, lastSignIn: daysAgo(1), lastMfaSuccess: null }
   }
@@ -223,7 +225,7 @@ export function buildFixture(spec: Spec): Fixture {
     const memberUser = users.find((u) => u.userType === 'member' && !bgIds.includes(u.id) && u.displayName)
     if (guestUser && memberUser) guestUser.displayName = memberUser.displayName
     // A service principal holds Global Administrator: named as one, never left as an id (item 5).
-    const spId = guid(spec.name, 1_000_900)
+    const spId = guid(seed, 1_000_900)
     rolesActive[spId] = [GA]
     spPrincipals[spId] = 'Contoso Backup Runner'
     // Two active people are registered but have not completed MFA in the window (item 6).
@@ -274,8 +276,14 @@ export function buildFixture(spec: Spec): Fixture {
       signInEvidence[id] = { ...(signInEvidence[id] ?? { signInCount: 5, lastSignIn: daysAgo(3), countries: ['AU'] }), lastMfaSuccess: null }
     }
     // Five registered-but-unproven active people (the campaign; scenario 12).
+    // They are made active and registered here so exactly three can flip to
+    // proven in week two (prompt 50 item 15).
     const unproven = ids.slice(spec.admins + 8, spec.admins + 13)
-    for (const id of unproven) if (signInEvidence[id]) signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: null }
+    for (const id of unproven) {
+      setReg(id, { isMfaCapable: true, isMfaRegistered: true, methodsRegistered: ['microsoftAuthenticatorPush'] })
+      authMethods[id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }]
+      signInEvidence[id] = { signInCount: 8, lastSignIn: daysAgo(3), lastMfaSuccess: null, countries: ['AU'] }
+    }
     // One person has not typed a password in 30 days (passwordless).
     setUser(at(spec.admins + 11), { displayName: users.find((u) => u.id === at(spec.admins + 11))?.displayName ?? 'Kaladin Stormblood' })
     // A Teams Room shared-device account (scenario 8): the reserved last id.
@@ -289,14 +297,14 @@ export function buildFixture(spec: Spec): Fixture {
       for (const id of unproven.slice(0, 3)) if (signInEvidence[id]) signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: { at: daysAgo(2), method: 'Mobile app notification' } }
     }
   }
-  const bgGroup = guid(spec.name, 1_000_500)
-  const exclusionGroup = guid(spec.name, 1_000_501)
+  const bgGroup = guid(seed, 1_000_500)
+  const exclusionGroup = guid(seed, 1_000_501)
 
   // ---- policies ----
   const policies: unknown[] = []
   const tag = (goalId: string) => (spec.midflight ? `[IAMAI:${planId}:${stepIdForGoal(goalId)}]` : '')
   const policy = (n: number, displayName: string, state: string, body: Record<string, unknown>, goalId?: string) => ({
-    id: guid(spec.name, 2_000_000 + n),
+    id: guid(seed, 2_000_000 + n),
     displayName,
     state,
     description: goalId ? tag(goalId) : '',
@@ -321,6 +329,25 @@ export function buildFixture(spec: Spec): Fixture {
   }
   for (let n = 0; n < (spec.disabledPolicies ?? 0); n++) policies.push(policy(500 + n, `Old - Disabled ${n}`, 'disabled', templates[n % templates.length][2]))
   for (let n = 0; n < (spec.reportOnlyPolicies ?? 0); n++) policies.push(policy(600 + n, `Test - Report only ${n}`, 'enabledForReportingButNotEnforced', templates[n % templates.length][2]))
+  // The demo, one week on (prompt 50 Part 4 item 14): the plan created two Wave 1
+  // policies now sitting in report-only with sign-in evidence, and one enforced.
+  const week2Results: PolicyAppliedResult[] = []
+  if (spec.week2) {
+    const body = { conditions: { users: { includeUsers: ['All'], excludeGroups: [bgGroup] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
+    const advanced: [string, string, PolicyResultClass][] = [
+      ['token-protection', 'enabledForReportingButNotEnforced', 'reportOnlySuccess'],
+      ['block-auth-transfer', 'enabledForReportingButNotEnforced', 'reportOnlySuccess'],
+      ['register-info-protected', 'enabled', 'enforcedSuccess'],
+    ]
+    const zero = { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: 0, enforcedFailure: 0, enforcedSuccess: 0 } as const
+    const noIds = { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] } as Record<PolicyResultClass, string[]>
+    for (const [goalId, state, cls] of advanced) {
+      const pid = guid(seed, 2_200_000 + policies.length)
+      const name = `Core - Require - ${goalId}`
+      policies.push({ id: pid, displayName: name, state, description: `[IAMAI:${planId}:${stepIdForGoal(goalId)}]`, createdDateTime: daysAgo(7), modifiedDateTime: daysAgo(2), ...body })
+      week2Results.push({ policyId: pid, displayName: name, counts: { ...zero, [cls]: 24 }, affectedUserIds: { ...noIds, [cls]: ids.slice(0, 24) } })
+    }
+  }
 
   const section = (rows: unknown[], status: 'ok' | 'disabled' | 'error' = 'ok', reason: string | null = null) => ({ status, reason, rows })
   const ok = (extra: Partial<TenantSnapshot['sources'][keyof TenantSnapshot['sources']]> = {}) => ({ status: 'ok' as const, coveredWindow: null, reason: null, asOf: NOW, ...extra })
@@ -341,7 +368,7 @@ export function buildFixture(spec: Spec): Fixture {
     },
     config: {
       caPolicies: section(policies),
-      namedLocations: section([{ '@odata.type': '#microsoft.graph.ipNamedLocation', id: guid(spec.name, 4_000_001), displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] }]),
+      namedLocations: section([{ '@odata.type': '#microsoft.graph.ipNamedLocation', id: guid(seed, 4_000_001), displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] }]),
       authStrengths: section([{ id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] }]),
       authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Fido2', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
@@ -352,20 +379,20 @@ export function buildFixture(spec: Spec): Fixture {
         ...(p1 ? [{ skuId: 'sku-p1', skuPartNumber: 'AAD_PREMIUM', prepaidUnits: { enabled: spec.users + 20 }, consumedUnits: spec.users, servicePlans: [{ servicePlanId: AAD_P1, servicePlanName: 'AAD_PREMIUM', provisioningStatus: 'Success' }] }] : []),
         ...(p2 ? [{ skuId: 'sku-p2', skuPartNumber: 'AAD_PREMIUM_P2', prepaidUnits: { enabled: Math.round(spec.users / 2) }, consumedUnits: Math.round(spec.users * 0.4), servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2', provisioningStatus: 'Success' }] }] : []),
       ]),
-      me: section([{ id: ids[0], displayName: 'Operator', userPrincipalName: `user0@${spec.name}.example.com` }]),
-      organization: section([{ displayName: spec.demo ? 'Contoso Pty Ltd' : `Fixture ${spec.name}`, verifiedDomains: [{ name: `${spec.name}.example.com`, isInitial: false }, { name: `${spec.name}.onmicrosoft.com`, isInitial: true }] }]),
+      me: section([{ id: ids[0], displayName: 'Operator', userPrincipalName: `user0@${seed}.example.com` }]),
+      organization: section([{ displayName: spec.demo ? 'Contoso Pty Ltd' : `Fixture ${spec.name}`, verifiedDomains: [{ name: `${seed}.example.com`, isInitial: false }, { name: `${seed}.onmicrosoft.com`, isInitial: true }] }]),
       meMemberOf: section([]),
     },
     registrationDetails: hostile ? [] : registrationDetails,
     users,
     devices: hostile
       ? []
-      : ids.slice(0, Math.round(ids.length * (spec.intuneShare ?? 0.6))).map((owner, i) => ({ id: guid(spec.name, 3_000_000 + i), displayName: `DEVICE-${i}`, isCompliant: i % 3 !== 0, isManaged: i % 4 !== 0, trustType: spec.hybrid && i % 2 === 0 ? 'ServerAd' : 'AzureAd', ownerIds: [owner], operatingSystem: i % 5 === 0 ? 'iOS' : 'Windows', approximateLastSignIn: daysAgo(i % 40) })),
+      : ids.slice(0, Math.round(ids.length * (spec.intuneShare ?? 0.6))).map((owner, i) => ({ id: guid(seed, 3_000_000 + i), displayName: `DEVICE-${i}`, isCompliant: i % 3 !== 0, isManaged: i % 4 !== 0, trustType: spec.hybrid && i % 2 === 0 ? 'ServerAd' : 'AzureAd', ownerIds: [owner], operatingSystem: i % 5 === 0 ? 'iOS' : 'Windows', approximateLastSignIn: daysAgo(i % 40) })),
     spActivity: [],
     authMethods: hostile ? Object.fromEntries(Object.keys(authMethods).map((k) => [k, 'unknown' as const])) : authMethods,
     appSignInSummary: [{ appId: '00000003-0000-0ff1-ce00-000000000000', appDisplayName: 'Office 365 SharePoint Online', signInCount: spec.users * 12 }],
     signInEvidence: hostile ? {} : signInEvidence,
-    evidencePolicyResults: [],
+    evidencePolicyResults: week2Results,
     blockedToday: [],
     evidenceUsage: hostile ? null : { legacyAuth: { count: svcIds.length * 40, userIds: svcIds, byDetail: { 'IMAP4': svcIds.length * 40 } }, deviceCode: { count: 0, userIds: [], byDetail: {} }, authTransfer: { count: 0, userIds: [], byDetail: {} }, riskHigh: { count: 0, userIds: [], byDetail: {} }, riskMedium: { count: 0, userIds: [], byDetail: {} } },
     evidenceAggregates: hostile ? null : { total: spec.users * 8, distinctUsers: Object.keys(signInEvidence).length, byClientApp: { Browser: spec.users * 6, 'Mobile Apps and Desktop clients': spec.users * 2 }, byProtocol: { none: spec.users * 8 }, byCountry: { AU: spec.users }, byWeekdayHour: weekdayHourBuckets(spec.users * 8, spec.multiGeo ? 'flat' : 'office', rand) },
@@ -402,7 +429,7 @@ export function buildFixture(spec: Spec): Fixture {
   groups.set(exclusionGroup, { memberIds: exclusionMembers, memberCount: exclusionMembers.length, sampled: false, displayName: 'Core - Exclusions' })
   // midflight's tagged policies were applied by the plan, so the plan predates them; every other plan is generated now.
   const planCreatedAt = spec.midflight ? daysAgo(60) : NOW
-  return { name: spec.name, snapshot, baseline: syntheticBaseline(spec.name), mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect }
+  return { name: spec.name, snapshot, baseline: syntheticBaseline(seed), mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect }
 }
 
 /** A baseline with one policy per catalogue family, so every family produces steps. */
