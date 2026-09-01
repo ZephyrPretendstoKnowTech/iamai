@@ -197,8 +197,11 @@ test('6: AND grant [mfa, compliantDevice] vs floor compliantDevice → satisfies
   const r = run(
     [
       mkPolicy({
+        // All resources: require-managed-device expects all resources (the baseline's
+        // scope, prompt 51), so the fixture targets all resources to test the grant,
+        // not the scope. Was: Office 365 only.
         displayName: 'MFA and Device',
-        conditions: mergeConditions({ applications: { includeApplications: ['Office365'] } }),
+        conditions: mergeConditions({ applications: { includeApplications: ['All'] } }),
         grantControls: { operator: 'AND', builtInControls: ['mfa', 'compliantDevice'] },
       }),
     ],

@@ -1,6 +1,6 @@
 {
   "commit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-  "generatedAt": "2026-09-01T19:21:04.244Z",
+  "generatedAt": "2026-09-01T19:42:07.185Z",
   "policies": [
     {
       "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
@@ -2305,6 +2305,9 @@
       "e0fabad3-bd0f-42e4-a901-51ef7ab8889c",
       "f25f94e0-98b6-41be-b9d6-68cb781004a4"
     ],
+    "register-info-protected": [
+      "768858bd-a5ad-47de-8acb-5e815cde0857"
+    ],
     "block-legacy-auth": [
       "9eab445f-7f21-479a-85c9-29769512067e"
     ],
@@ -2320,11 +2323,20 @@
     "admin-session": [
       "04b969aa-3e98-4e0f-8b32-2319b199b56a"
     ],
+    "require-managed-device": [
+      "660ab461-0de5-4b00-baea-ec7325280f60"
+    ],
     "block-unsupported-platforms": [
       "9e21fa64-8d9a-4e62-81da-9abce8859a0c"
     ],
+    "sign-in-risk": [
+      "53a8df0b-4658-4835-ace2-100b5d287aac"
+    ],
     "user-risk": [
       "544cd9ef-5e37-4568-9ad8-b8e151be1814"
+    ],
+    "azure-management-mfa": [
+      "ab659968-2e8a-4448-9710-d930aada3499"
     ],
     "device-registration-mfa": [
       "aeb49474-5250-4b65-8b0a-56c47127ee0f"
@@ -2337,6 +2349,18 @@
     ],
     "all-users-no-persistence": [
       "ea9459a9-91b6-4d2b-b929-03781ac81d54"
+    ],
+    "pim-activation-reauth": [
+      "a6b3b754-9079-48f0-abb2-9e79b2f41095"
+    ],
+    "intune-enrollment-reauth": [
+      "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime"
+    ],
+    "sign-in-risk-medium": [
+      "180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc"
+    ],
+    "user-risk-medium": [
+      "7475b373-0544-4ee8-8827-cff35009136d"
     ]
   }
 }
