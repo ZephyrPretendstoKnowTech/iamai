@@ -12,7 +12,7 @@ import { emptyCapabilities } from '../../licensing/capabilities.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { stepIdForGoal } from '../generate.ts'
 
-export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile'
+export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile' | 'demo' | 'demo-week2'
 
 export type Fixture = {
   name: FixtureName
@@ -90,6 +90,10 @@ type Spec = {
   hostile?: boolean
   /** The last N people have never signed in: no sign-in date, no method, no evidence (the GetIAMAI shape). */
   neverSignedIn?: number
+  /** The demo tenant: a small business built to exercise the lockout scenarios (prompt 50 Part 2). */
+  demo?: boolean
+  /** The demo, one week on: three of the unproven now proven, the second break-glass and the exclusions group created, two Wave 1 policies in report-only and one enforced (prompt 50 Part 4). */
+  week2?: boolean
   expect: FixtureExpectations
 }
 
@@ -241,6 +245,50 @@ export function buildFixture(spec: Spec): Fixture {
     const shared = users.find((x) => x.id === sharedId(ids))
     if (shared) shared.skuIds = ['295a8eb0-f78d-45c7-8b5b-1eed5ed02dff']
   }
+  // The demo tenant, built to show the finished product (prompt 50 Part 2).
+  if (spec.demo) {
+    const at = (i: number): string => ids[i]
+    const setUser = (id: string, u: Partial<UserRow>): void => {
+      const x = users.find((y) => y.id === id)
+      if (x) Object.assign(x, u)
+    }
+    const setReg = (id: string, r: Partial<TenantSnapshot['registrationDetails'][number]>): void => {
+      const i = ids.indexOf(id)
+      if (i >= 0) registrationDetails[i] = { ...registrationDetails[i], ...r }
+    }
+    // Exactly two guests, and everyone else a member (the loop's random guests
+    // are cleared). Their home-tenant MFA trust is off (empty crossTenantAccess).
+    const guests = [at(spec.admins), at(spec.admins + 1)]
+    for (const id of ids) {
+      const isGuest = guests.includes(id)
+      setUser(id, { userType: isGuest ? 'guest' : 'member', externalUserState: isGuest ? 'Accepted' : null })
+      setReg(id, { userType: isGuest ? 'guest' : 'member' })
+    }
+    // A directory-sync service account holds the sync role (scenario 13).
+    const syncId = at(spec.admins + 3)
+    if (syncId) rolesActive[syncId] = ['d29b2b05-8046-44ba-8758-1e26182fcf32']
+    // Three active people have no MFA method (the campaign; scenario 14).
+    for (const id of ids.slice(spec.admins + 5, spec.admins + 8)) {
+      setReg(id, { isMfaCapable: false, isMfaRegistered: false, isPasswordlessCapable: false, methodsRegistered: [] })
+      authMethods[id] = []
+      signInEvidence[id] = { ...(signInEvidence[id] ?? { signInCount: 5, lastSignIn: daysAgo(3), countries: ['AU'] }), lastMfaSuccess: null }
+    }
+    // Five registered-but-unproven active people (the campaign; scenario 12).
+    const unproven = ids.slice(spec.admins + 8, spec.admins + 13)
+    for (const id of unproven) if (signInEvidence[id]) signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: null }
+    // One person has not typed a password in 30 days (passwordless).
+    setUser(at(spec.admins + 11), { displayName: users.find((u) => u.id === at(spec.admins + 11))?.displayName ?? 'Kaladin Stormblood' })
+    // A Teams Room shared-device account (scenario 8): the reserved last id.
+    const shared = users.find((x) => x.id === sharedId(ids))
+    if (shared) {
+      shared.displayName = 'Boardroom'
+      shared.skuIds = ['295a8eb0-f78d-45c7-8b5b-1eed5ed02dff']
+    }
+    // Week two: three of the unproven are now proven (prompt 50 Part 4 item 14).
+    if (spec.week2) {
+      for (const id of unproven.slice(0, 3)) if (signInEvidence[id]) signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: { at: daysAgo(2), method: 'Mobile app notification' } }
+    }
+  }
   const bgGroup = guid(spec.name, 1_000_500)
   const exclusionGroup = guid(spec.name, 1_000_501)
 
@@ -305,7 +353,7 @@ export function buildFixture(spec: Spec): Fixture {
         ...(p2 ? [{ skuId: 'sku-p2', skuPartNumber: 'AAD_PREMIUM_P2', prepaidUnits: { enabled: Math.round(spec.users / 2) }, consumedUnits: Math.round(spec.users * 0.4), servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2', provisioningStatus: 'Success' }] }] : []),
       ]),
       me: section([{ id: ids[0], displayName: 'Operator', userPrincipalName: `user0@${spec.name}.example.com` }]),
-      organization: section([{ displayName: `Fixture ${spec.name}`, verifiedDomains: [{ name: `${spec.name}.example.com`, isInitial: false }, { name: `${spec.name}.onmicrosoft.com`, isInitial: true }] }]),
+      organization: section([{ displayName: spec.demo ? 'Contoso Pty Ltd' : `Fixture ${spec.name}`, verifiedDomains: [{ name: `${spec.name}.example.com`, isInitial: false }, { name: `${spec.name}.onmicrosoft.com`, isInitial: true }] }]),
       meMemberOf: section([]),
     },
     registrationDetails: hostile ? [] : registrationDetails,
@@ -332,15 +380,19 @@ export function buildFixture(spec: Spec): Fixture {
     snapshot.scenarioEvidence = deriveScenarioEvidence(rows, compliantOwners)
   }
 
+  // The demo starts with no exclusions group and unconfirmed emergency-access
+  // facts; its week-two twin has both done (prompt 50 Part 2 item 10, Part 4).
+  const exclusionExists = !spec.demo || spec.week2 === true
+  const demoConfirmed = !spec.demo || spec.week2 === true
   const mapping: MappingState = {
     ...emptyMappingState(tenantId),
     breakGlassUserIds: bgIds,
-    breakGlassAnswers: spec.hostile ? { credentialStorage: false, signInMonitoring: false } : { credentialStorage: true, signInMonitoring: true },
+    breakGlassAnswers: spec.hostile ? { credentialStorage: false, signInMonitoring: false } : spec.demo ? { credentialStorage: demoConfirmed, signInMonitoring: demoConfirmed } : { credentialStorage: true, signInMonitoring: true },
     serviceAccountUserIds: svcIds,
     allowedCountries: spec.multiGeo ? ['AU', 'NZ', 'GB', 'US'] : ['AU'],
     displayTimeZone: 'Australia/Sydney',
     records: {
-      __globalExclusion: { placeholder: '__globalExclusion', kind: 'group', group: 'globalExclusion', resolvedId: exclusionGroup, resolvedName: 'Core - Exclusions', provenance: 'confirmed', doesNotExist: false, validation: null },
+      __globalExclusion: { placeholder: '__globalExclusion', kind: 'group', group: 'globalExclusion', resolvedId: exclusionExists ? exclusionGroup : null, resolvedName: exclusionExists ? 'Core - Exclusions' : null, provenance: 'confirmed', doesNotExist: !exclusionExists, validation: null },
     },
     wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, trustedLocations: true, serviceAccounts: true, timeZone: true, applicability: true },
   }
@@ -408,6 +460,11 @@ export const FIXTURE_SPECS: Spec[] = [
   // 36 active people and no sign-in evidence at all: nothing is in the zero
   // class, so MFA, device and session changes chain a soak apart; 34 days.
   { name: 'hostile', users: 40, admins: 2, licence: 'p1', policies: 3, hostile: true, expect: { rings: 1, weeksAtMost: 4, namesListed: false, policyCapWarning: false } },
+  // The demo tenant (prompt 50 Part 2): a plausible small business, ~40 accounts,
+  // Entra ID P1 + Intune, a messy real-world start, built so at least twelve of
+  // the lockout scenarios fire. Its week-two twin advances the tracking story.
+  { name: 'demo', users: 34, admins: 3, licence: 'p1', policies: 5, serviceAccounts: 2, hybrid: true, intuneShare: 0.5, demo: true, expect: { rings: 1, weeksAtMost: 5, namesListed: false, policyCapWarning: false } },
+  { name: 'demo-week2', users: 34, admins: 3, licence: 'p1', policies: 5, serviceAccounts: 2, hybrid: true, intuneShare: 0.5, demo: true, week2: true, expect: { rings: 1, weeksAtMost: 5, namesListed: false, policyCapWarning: false } },
 ]
 
 export function allFixtures(): Fixture[] {

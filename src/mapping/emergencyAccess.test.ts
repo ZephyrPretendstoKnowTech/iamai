@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { detectEmergencyAccess, emergencySignals } from './emergencyAccess.ts'
-import { fixtureSnapshot } from '../ui/fixtures/fixtureSnapshot.ts'
+import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import type { UserRow } from '../graph/collect/types.ts'
 
 const GA = '62e90394-69f5-4237-9190-012177145e10'

@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { diagnosticsBundle } from './diagnostics.ts'
-import { fixtureSnapshot } from './ui/fixtures/fixtureSnapshot.ts'
+import { fixtureSnapshot } from './testing/uiSnapshot.ts'
 
 const meta = { tenantIdHash: 'abc', userAgent: 'test', generatedAt: '2026-08-30T00:00:00.000Z' }
 

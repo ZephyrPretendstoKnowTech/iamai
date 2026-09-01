@@ -47,13 +47,30 @@ export function exitDemoUrl(): string {
 
 export type DemoTenant = { snapshot: TenantSnapshot; mapping: MappingState; baseline: ReturnType<typeof fixture>['baseline']; operatorId: string }
 
+/** Shift every ISO date in a value by `offsetMs`, so the fixture reads as of now. */
+function shiftDates<T>(value: T, offsetMs: number): T {
+  if (typeof value === 'string') {
+    return (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) ? new Date(Date.parse(value) + offsetMs).toISOString() : value) as unknown as T
+  }
+  if (Array.isArray(value)) return value.map((v) => shiftDates(v, offsetMs)) as unknown as T
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = shiftDates(v, offsetMs)
+    return out as unknown as T
+  }
+  return value
+}
+
 /**
  * The sample tenant, with its ids rewritten so nothing it writes can land on a
- * real tenant's keys.
+ * real tenant's keys, and every date shifted so it reads as of the day it is
+ * viewed (prompt 50 item 9): the `demo` fixture is built at a fixed instant for
+ * the property tests, and shifted here. `week2` advances to the tracking view.
  */
-export function demoTenant(): DemoTenant {
-  const f = fixture('mid')
-  const snapshot = { ...f.snapshot, tenantId: DEMO_TENANT_ID }
+export function demoTenant(week2 = false): DemoTenant {
+  const f = fixture(week2 ? 'demo-week2' : 'demo')
+  const offset = Date.now() - Date.parse(f.snapshot.asOf)
+  const snapshot = shiftDates({ ...f.snapshot, tenantId: DEMO_TENANT_ID }, offset)
   const mapping = { ...f.mapping, tenantId: DEMO_TENANT_ID }
   return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId }
 }

@@ -7,6 +7,39 @@ import assert from 'node:assert/strict'
 import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 
+// Prompt 50 item 10: at least twelve of the twenty-two lockout scenarios fire on
+// the demo, and the property test names which — so the demo keeps showing them.
+const DEMO_SCENARIOS = [
+  'autopilot', // 3
+  'browserClaims', // 18
+  'campaignNoMethod', // 12/14
+  'campaignUnproven', // 12
+  'emptyPlatform', // 17
+  'gdap', // 11
+  'guests', // 6
+  'legacyClient', // 1/7/21
+  'noMethodRemote', // 14
+  'passwordNotTyped', // 12
+  'ropc', // 19
+  'servers', // 16
+  'sessionApps', // 4
+  'syncAccount', // 13
+  'tokenProtection', // 9
+  'trustedStale', // 5
+]
+
+function demoScenarioKinds(name: 'demo' | 'demo-week2'): Set<string> {
+  const kinds = new Set<string>()
+  for (const s of runFixture(fixture(name)).steps) for (const l of s.scenarioLines ?? []) kinds.add(l.kind)
+  return kinds
+}
+
+test('prompt 50 item 10: at least twelve scenarios fire on the demo, and these are the ones', () => {
+  const kinds = demoScenarioKinds('demo')
+  assert.ok(kinds.size >= 12, `only ${kinds.size} scenario kinds fire on the demo: ${[...kinds].sort().join(', ')}`)
+  for (const k of DEMO_SCENARIOS) assert.ok(kinds.has(k), `${k} no longer fires on the demo`)
+})
+
 const EVIDENCE_KINDS = [
   'legacyClient',
   'autopilot',
