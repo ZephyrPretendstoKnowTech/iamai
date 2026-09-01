@@ -10,6 +10,7 @@ import { isPrivilegeDenial } from '../../graph/collect/roles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
 import { CONNECT as C } from '../../copy/connect.ts'
+import { demoUrl } from '../demo.ts'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
 import { monthDayRange } from '../../copy/dates.ts'
 import { Button, Callout, LinkButton } from '../components/index.ts'
@@ -113,6 +114,9 @@ function SignedOut() {
       </details>
       <p className="footer-link">
         <a href={HOW_HREF}>{C.how}</a>
+      </p>
+      <p className="footer-link">
+        <a href={demoUrl()}>{C.sampleData}</a>
       </p>
     </>
   )

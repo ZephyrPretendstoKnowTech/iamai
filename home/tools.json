@@ -5,6 +5,7 @@
     "description": "Plan the journey to your Conditional Access baseline: dated, in order, nobody locked out.",
     "status": "testing",
     "path": "",
-    "hash": "#/connect"
+    "hash": "#/connect",
+    "demo": "?demo=1#/plan"
   }
 ]

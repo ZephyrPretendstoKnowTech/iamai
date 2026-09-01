@@ -18,6 +18,7 @@ export const CONNECT = {
   signInScopes: 'Plus the standard sign-in permissions.',
   removalTitle: 'Removing it',
   how: 'How IAMAI works →',
+  sampleData: 'See it with sample data →',
   signedInTo: 'Signed in to',
   as: 'as',
   signOut: 'Sign out',
