@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { content, stepById } from '../../content/content.ts'
-import { fill } from '../../content/render.ts'
+import { fillText } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines } from './stepPortal.ts'
@@ -35,7 +35,7 @@ const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}
 /** A content string, filled with the tenant's values. */
 function T({ s, ex }: { s: unknown; ex: Ex }) {
   if (s === null || s === undefined) return null
-  return <>{fill(s, ex as Record<string, unknown>)}</>
+  return <>{fillText(s, ex as Record<string, unknown>)}</>
 }
 
 export function ContentStep({
@@ -242,7 +242,7 @@ function More({ cs, ex, step, onSkip, onUnskip, copy, copied }: { cs: Record<str
         <>
           <h3>For your manager</h3>
           <p className="reason"><T s={more.manager} ex={ex} /></p>
-          <p className="actions"><Button variant="secondary" onClick={() => copy('manager', fill(more.manager, ex as Record<string, unknown>))}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
+          <p className="actions"><Button variant="secondary" onClick={() => copy('manager', fillText(more.manager, ex as Record<string, unknown>))}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
         </>
       )}
       {cs.skip && step.status !== 'skipped' && (
@@ -254,7 +254,7 @@ function More({ cs, ex, step, onSkip, onUnskip, copy, copied }: { cs: Record<str
 }
 
 function commsText(comms: Record<string, any>, ex: Ex): string {
-  return [comms.salutation, fill(comms.body, ex as Record<string, unknown>), fill(comms.signature, ex as Record<string, unknown>)].join('\n\n')
+  return [comms.salutation, fillText(comms.body, ex as Record<string, unknown>), fillText(comms.signature, ex as Record<string, unknown>)].join('\n\n')
 }
 
 function policyJson(step: Step): unknown {

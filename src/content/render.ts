@@ -35,6 +35,37 @@ function truthy(v: unknown): boolean {
   return Boolean(v)
 }
 
+// The app renderer (prompt 51): plain text, the tenant's own values, no review
+// markup and no example defaults. `fill` above is for the review HTML (values in
+// <var>, lists as <ol>, and example fallbacks); the app never wants those. A
+// variable the tenant does not supply renders empty, so the caller's gating drops
+// the line rather than showing a placeholder or sample datum.
+export function fillText(text: unknown, ex: Ex, depth = 0): string {
+  if (text === null || text === undefined) return ''
+  if (depth > 4) return String(text)
+  const sharedRefs: Record<string, unknown> = {
+    portalRoot: S.portalRoot, reportOnlyLine: S.reportOnlyLine, exclusionsLine: S.exclusionsLine,
+    signature: ex && ex.signature !== undefined ? ex.signature : S.signatureDefault,
+    policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, datesNew: S.datesNew, datesChange: S.datesChange,
+    portalOpen: S.portalOpen, existingCoverage: S.existingCoverage ?? '', syncRoleNote: S.syncRoleNote ?? '', strengthName: (ex && ex.strengthName) ?? '',
+  }
+  const subList = (_m: string, key: string): string => {
+    const items = (ex as Record<string, unknown>)[key]
+    if (Array.isArray(items)) return items.length === 0 ? '' : items.join(', ')
+    return items === undefined || items === null ? '' : String(items)
+  }
+  const sub = (_m: string, key: string): string => {
+    if (key in sharedRefs) return fillText(sharedRefs[key], ex, depth + 1)
+    const v = (ex as Record<string, unknown>)[key]
+    if (v === undefined || v === null || Array.isArray(v) || typeof v === 'object') return ''
+    return String(v)
+  }
+  let out = String(text)
+  out = out.replace(/\{list:([a-zA-Z0-9_]+)\}/g, subList)
+  out = out.replace(/\{([a-zA-Z0-9_]+)\}/g, sub)
+  return out.replace(/\s{2,}/g, ' ').replace(/\s+([.;:,])/g, '$1').trim()
+}
+
 export function fill(text: unknown, ex: Ex, depth = 0): string {
   if (text === null || text === undefined) return ''
   if (depth > 4) return esc(text)
