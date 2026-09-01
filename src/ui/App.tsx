@@ -3,7 +3,7 @@ import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/msal.ts'
 import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
+import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache } from '../graph/collect/cache.ts'
 import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
 import { BackToTop, Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
@@ -90,6 +90,16 @@ export function App() {
         // worse than not offering it. Written under the demo tenant id, so it
         // cannot land on a real tenant's keys.
         await saveMappingState(d.mapping)
+        // Seed the exclusion and target group members so coverage resolves each
+        // policy's scope; without them every excluding policy reads as not in
+        // place and the demo shows one step in place instead of five, and a
+        // re-scan cannot raise the count (prompt 50.1 item 5). Under the demo
+        // tenant id, so it cannot land on a real tenant's keys.
+        await Promise.all(
+          [...d.groups].map(([groupId, g]) =>
+            saveGroupMembersCache({ tenantId: DEMO_TENANT_ID, groupId, displayName: g.displayName ?? null, membershipRule: null, mailEnabled: false, memberCount: g.memberCount, memberIds: g.memberIds, sampled: g.sampled, asOf: d.snapshot.asOf }),
+          ),
+        )
         setAccount({
           homeAccountId: 'demo',
           environment: 'login.windows.net',

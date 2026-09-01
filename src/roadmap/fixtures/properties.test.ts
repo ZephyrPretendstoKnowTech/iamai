@@ -54,6 +54,20 @@ for (const f of fixtures) {
     }
   })
 
+  test(`${f.name}: every step renders exactly one row or one footer line (prompt 50.1 item 4)`, () => {
+    // The Plan renders a step as a wave row when it is in a wave and not done
+    // (Plan.tsx inWave); a done step renders once, in the footer's "Already in
+    // place" (PlanFooter). A step that is neither in a wave nor done renders
+    // nowhere — the failure a readiness-held step used to be, before the plan was
+    // regenerated from the snapshot.
+    const inWaves = new Set(schedule.waves.flatMap((w) => w.stepIds))
+    for (const s of steps) {
+      const asRow = s.status !== 'done' && inWaves.has(s.id)
+      const inFooter = s.status === 'done'
+      assert.ok(asRow !== inFooter, `${f.name} ${s.id} (${s.status}) renders ${asRow && inFooter ? 'twice' : 'nowhere'}: inWave=${inWaves.has(s.id)}`)
+    }
+  })
+
   test(`${f.name}: no step strands the operator or a break-glass account`, () => {
     const failures: string[] = []
     for (const s of steps) {

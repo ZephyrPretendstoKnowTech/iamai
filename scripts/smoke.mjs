@@ -583,6 +583,10 @@ try {
   check('Demo: the banner says nothing is from a real tenant and offers to leave', /Sample data . nothing here is from a real tenant/.test(demoText) && /Leave the demo/.test(demoText))
   check('Demo: the plan header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |nothing is dated)/.test(demoText), demoDay1Header)
   check('Demo: the header names the sample org', /Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)))
+  // Item 4: a readiness-held step renders as a Blocked row whose date column
+  // reads the reason in the 46 shape, not a date.
+  const whenCols = await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => e.textContent.trim()).join(' | ')`)
+  check('Demo: a readiness-held step reads its reason in the date column', /when [a-z ]*readiness reaches \d+% \(now \d+%\)/.test(whenCols), (whenCols.match(/when [a-z ]*readiness reaches[^|]*/) ?? ['none'])[0].trim())
 
   // Two steps: open two plan rows, each shows its step body.
   let demoOpened = 0
@@ -615,26 +619,37 @@ try {
   await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
   await sleep(200)
 
-  // Re-scan advances to week two, and a second Re-scan returns to day one (item 14).
+  // Re-scan advances to week two, and a second Re-scan returns to day one
+  // (item 14). By week two the exclusions-group step is done and two Wave 1
+  // policies are in report-only, so the plan differs in its rows and the header's
+  // "in place" count rises (prompt 50.1 item 5) — the fix a decisions-only record
+  // makes possible: the ratchet no longer pins day-one statuses across the scan.
   await demoGo('plan')
   await waitFor(`/Sample data/.test(document.body.innerText)`)
   await sleep(400)
   const planBody = () => evaluate(`document.querySelector('main.page').innerText`)
+  const headerOf = (body) => (body.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
+  const inPlaceOf = (body) => Number((body.match(/(\d+) in place/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
+  const day1Header = headerOf(day1Body)
   await clickText('/^Re-scan/', 'header.app')
   check('Demo: Re-scan advances to the week-two snapshot', await waitFor(`/Sample data . week 2/.test(document.body.innerText)`))
   // The week-two snapshot reloads asynchronously (a dynamic import, then a
   // regenerate); the banner flips first. Poll the plan until its body changes
   // from day one, so the check proves the plan advanced, not just the banner.
-  const headerLine = async () => ((await planBody()).match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
   let week2Body = day1Body
   for (let i = 0; i < 25; i++) {
     await sleep(200)
     week2Body = await planBody()
     if (week2Body !== day1Body) break
   }
-  const demoWeek2Header = ((week2Body.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0]).trim()
-  check('Demo: the week-two plan advances the tracking story (its plan differs from day one)', week2Body !== day1Body, demoWeek2Header)
+  const demoWeek2Header = headerOf(week2Body)
+  check('Demo: the week-two plan differs in its rows from day one', week2Body !== day1Body, demoWeek2Header)
+  check(
+    'Demo: week two raises the header in-place count',
+    inPlaceOf(week2Body) > inPlaceOf(day1Body),
+    `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
+  )
   await clickText('/^Re-scan/', 'header.app')
   check('Demo: a second Re-scan returns to day one', await waitFor(`/Sample data . nothing here is from a real tenant/.test(document.body.innerText)`))
 

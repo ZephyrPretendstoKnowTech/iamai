@@ -324,7 +324,11 @@ export function buildFixture(spec: Spec): Fixture {
   const wanted = Math.max(0, spec.policies)
   for (let n = 0; n < wanted; n++) {
     const t = templates[n % templates.length]
-    const state = n < templates.length ? t[1] : n % 4 === 0 ? 'enabledForReportingButNotEnforced' : 'enabled'
+    const base = n < templates.length ? t[1] : n % 4 === 0 ? 'enabledForReportingButNotEnforced' : 'enabled'
+    // The demo, one week on (prompt 50.1 item 5): the admins phishing-resistant
+    // policy, report-only on day one, is now enforced, so its step moves into
+    // place and the header's in-place count rises.
+    const state = spec.week2 && t[3] === 'admins-phishing-resistant' ? 'enabled' : base
     policies.push(policy(n, n < templates.length ? t[0] : `Core - Extra ${n} - ${t[0].split(' - ').slice(1).join(' - ')}`, state, t[2], n < templates.length ? t[3] : undefined))
   }
   for (let n = 0; n < (spec.disabledPolicies ?? 0); n++) policies.push(policy(500 + n, `Old - Disabled ${n}`, 'disabled', templates[n % templates.length][2]))
@@ -337,7 +341,6 @@ export function buildFixture(spec: Spec): Fixture {
     const advanced: [string, string, PolicyResultClass][] = [
       ['token-protection', 'enabledForReportingButNotEnforced', 'reportOnlySuccess'],
       ['block-auth-transfer', 'enabledForReportingButNotEnforced', 'reportOnlySuccess'],
-      ['register-info-protected', 'enabled', 'enforcedSuccess'],
     ]
     const zero = { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: 0, enforcedFailure: 0, enforcedSuccess: 0 } as const
     const noIds = { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] } as Record<PolicyResultClass, string[]>
