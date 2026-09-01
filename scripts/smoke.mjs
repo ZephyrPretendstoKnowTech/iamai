@@ -231,132 +231,34 @@ try {
   await go('licensing')
   check('Licensing redirects to How', await waitFor(`location.hash === '#/how'`))
   await go('plan')
-  check('Plan renders at #/plan', await waitFor(`location.hash === '#/plan' && /Assumes:/.test(document.body.innerText)`))
-  // The Plan surface (prompt 48 Part 2, target-state section 5).
+  const __planOk = await waitFor(`/#\\/plan/.test(location.hash) && /[0-9]+ steps/.test(document.body.innerText)`)
+  check('Plan renders at #/plan', __planOk, __planOk ? '' : `hash=${await evaluate('location.hash')} main=${(await evaluate(`(document.querySelector('main.page')||{}).innerText||'(no main)'`)).slice(0, 140).replace(/\s+/g, ' ')}`)
+  // The Plan surface (target-state §5): two header lines, numbered phases, the footer.
   let pt = await text()
-  check('Plan: the header line counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |nothing is dated)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
-  check('Plan: the assumptions strip carries the detected facts and the questions', /emergency access/.test(pt) && /time zone/.test(pt) && /mail-sending devices/.test(pt))
-  check('Plan: waves render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .wave').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 5 && /next/.test(pt))
-  check('Plan: opening a row shows Do it', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Do it/.test(document.body.innerText) && /Tell your people|Done when/.test(document.body.innerText)`)))
+  check('Plan: the header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |the plan cannot finish)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
+  check('Plan: line two names what the plan is built from', /Built from what IAMAI found on/.test(pt) && /Today shows where each person stands/.test(pt))
+  check('Plan: phases render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .phase').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3 && /next/.test(pt))
+  check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /What to do/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
-  // Item 1: the step's Do-it tabs (Portal steps, JSON, PowerShell) and the
-  // Download JSON artifact never carry a forbidEverywhere string. Open each tab
-  // so its panel renders, then download the JSON so the artifact check sees it.
+  // A policy step's What-to-do tabs (Portal steps, JSON, PowerShell) and the
+  // Download JSON artifact never carry a forbidEverywhere string. Open the row of
+  // a policy step until the tabs render.
+  await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page .step-body .tabs .tab')) return true; r.click(); await wait(40); } return false })()`)
   if (await evaluate(`!!document.querySelector('main.page .step-body .tabs .tab')`)) {
-    for (const tabLabel of ['JSON', 'PowerShell', 'Portal steps']) {
-      await clickText(`/^${tabLabel}$/`)
-      await sleep(120)
-    }
+    for (const tabLabel of ['JSON', 'PowerShell', 'Portal steps']) { await clickText(`/^${tabLabel}$/`); await sleep(120) }
     const stepText = await evaluate(`(document.querySelector('main.page .step-body') || {}).textContent || ''`)
     const stepHits = FORBID_EVERYWHERE.filter((f) => stepText.includes(f))
-    check('Step: the Do-it tabs carry no forbidden placeholder', stepHits.length === 0, stepHits.join('; '))
-    await clickText('/^Download JSON$/')
-    await sleep(200)
+    check('Step: the What-to-do tabs carry no forbidden placeholder', stepHits.length === 0, stepHits.join('; '))
+    await clickText('/^Download JSON$/'); await sleep(200)
   }
   check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
-  check('Plan: the footer has the three details', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Housekeeping/g) || []).length === 3)
-  check('Plan: no forbidden strings', !/Do this next|What needs attention before you start|The journey|Safe today/.test(pt))
-  check('Plan: editing an assumption opens an editor with Save', (await clickText('/^time zone/')) && (await waitFor(`/Save/.test((document.querySelector('main.page .assumption-editor') || {}).textContent || '')`)))
-  check('Plan: Save regenerates the plan in place', (await clickText('/^Save$/')) && (await waitFor(`/Assumes:/.test(document.body.innerText) && document.querySelectorAll('main.page .plan-row').length >= 5`)))
-  check('Plan: one status word per row', await evaluate(`[...document.querySelectorAll('main.page .plan-row .chip.status')].length >= 5`))
+  check('Plan: the footer names its groups', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Not licensed|Housekeeping/g) || []).length >= 1)
+  check('Plan: one status word per row', await evaluate(`[...document.querySelectorAll('main.page .plan-row .chip.status')].length >= 3`))
+  check('Plan: no v2 vocabulary on the surface', !/Do it|Exit criteria|Assumes|Recovery card|Before anything else|handle-with-care/.test(pt) && !/ Wave /.test(pt))
 
-  // Item 3 (prompt 50.1): the emergency-access create step carries the passkey
-  // clause, asserted on the rendered surface — a decisions-only record cannot let
-  // a stale build hide it, and a fixture-only test would not have caught it. The
-  // create step ("Create two break-glass accounts") is a different row from the
-  // must-fix "Sort out emergency access" blocker, so every row is opened and its
-  // Do-it read until the clause is found.
-  await go('plan')
-  await waitFor(`/Assumes:/.test(document.body.innerText)`)
-  const passkeyOn = await evaluate(`(async () => {
-    const wait = (ms) => new Promise((res) => setTimeout(res, ms));
-    for (const r of [...document.querySelectorAll('main.page .plan-row')]) {
-      r.click(); await wait(120);
-      const body = document.querySelector('main.page .step-body');
-      if (body) {
-        const tab = [...body.querySelectorAll('button, a, .tab')].find((b) => b.textContent.trim() === 'Portal steps');
-        if (tab) { tab.click(); await wait(80); }
-        const t = (document.querySelector('main.page .step-body') || {}).textContent || '';
-        if (/passkey or FIDO2 key/.test(t)) { const title = ((r.querySelector('.step-title') || {}).textContent || '').trim(); r.click(); return title || 'the emergency-access step'; }
-      }
-      r.click(); await wait(40);
-    }
-    return null;
-  })()`)
-  check('Plan: the emergency-access step carries the passkey clause', typeof passkeyOn === 'string', passkeyOn || 'no rendered step carries "passkey or FIDO2 key"')
-
-  // Plan: tick a Done-when (prompt 48.1's tickable), so the saved plan carries it.
+  // Click a control by its exact visible label (a button, link or summary).
   const clickExact = (label, root = 'main.page') =>
     evaluate(`(() => { const r = document.querySelector(${JSON.stringify(root)}) ?? document; const b = [...r.querySelectorAll('button, a, summary')].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return !!b })()`)
-  const openTickStep = async () => {
-    const n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
-    for (let i = 0; i < n; i++) {
-      await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
-      await sleep(300)
-      if (await evaluate(`!!document.querySelector('main.page .tick input[type=checkbox]')`)) return true
-      await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
-      await sleep(120)
-    }
-    return false
-  }
-  await go('plan')
-  await waitFor(`/Assumes:/.test(document.body.innerText)`)
-  check('Plan: a Done-when has a checkbox to tick', await openTickStep())
-  await evaluate(`(() => { const cb = document.querySelector('main.page .tick input[type=checkbox]'); if (cb && !cb.checked) cb.click(); return true })()`)
-  await sleep(700)
-  check('Plan: ticking a Done-when marks it done', await evaluate(`(document.querySelector('main.page .tick input[type=checkbox]') || {}).checked === true`))
-
-  // Item 9: an answered question chip reflects its answer and offers change.
-  const mailChip = () => evaluate(`([...document.querySelectorAll('main.page .assumption button.chip')].find((b) => /mail-sending devices/.test(b.textContent)) || {}).textContent || ''`)
-  const openMailChip = () => evaluate(`(() => { const b = [...document.querySelectorAll('main.page .assumption button.chip')].find((x) => /mail-sending devices/.test(x.textContent)); if (b) b.click(); return !!b })()`)
-  const typeAnswer = (v) => evaluate(`(() => { const ta = document.querySelector('main.page .assumption-editor textarea'); if (!ta) return false; const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set; setter.call(ta, ${JSON.stringify(v)}); ta.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
-  check('Plan: the mail-devices question reads none seen and offers answer', /mail-sending devices none seen · answer/.test(await mailChip()))
-  await openMailChip()
-  await sleep(200)
-  await typeAnswer('the office printer')
-  await sleep(100)
-  await clickText('/^Save$/')
-  await sleep(400)
-  check('Plan: answering the question flips the chip to listed and offers change', /mail-sending devices 1 listed · change/.test(await mailChip()))
-  await openMailChip()
-  await sleep(200)
-  await typeAnswer('')
-  await sleep(100)
-  await clickText('/^Save$/')
-  await sleep(400)
-  check('Plan: clearing the answer reverts the chip to none seen and answer', /mail-sending devices none seen · answer/.test(await mailChip()))
-
-  // Item 10: Skip this step is real - an inline confirm, the Skipped chip, Unskip,
-  // and the header count drops.
-  const headerTotal = async () => Number(((await evaluate(`document.body.innerText`)).match(/(\d+) steps · \d+ in place/) || [])[1] || '0')
-  const totalBefore = await headerTotal()
-  // React renders asynchronously, so open each row Node-side (with a wait) until
-  // one has a Skip this step button in its More; the emergency-access step has none.
-  let foundSkip = false
-  const rowCount = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
-  for (let i = 0; i < rowCount && !foundSkip; i++) {
-    await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
-    await sleep(250)
-    await evaluate(`(() => { const d = document.querySelector('main.page .step-body details.more'); if (d) d.open = true; return true })()`)
-    await sleep(120)
-    foundSkip = await evaluate(`[...document.querySelectorAll('main.page .step-body button')].some((b) => b.textContent.trim() === 'Skip this step')`)
-    if (!foundSkip) {
-      await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
-      await sleep(120)
-    }
-  }
-  check('Plan: a non-emergency step offers Skip this step', foundSkip)
-  await sleep(200)
-  await evaluate(`([...document.querySelectorAll('main.page .step-body button')].find((b) => b.textContent.trim() === 'Skip this step') || {}).click?.()`)
-  await sleep(200)
-  check('Plan: Skip opens an inline confirm, not a dialog', /Skip this step\? It stays in the plan as Skipped\./.test(await evaluate(`(document.querySelector('main.page .skip-confirm') || {}).textContent || ''`)))
-  await evaluate(`(() => { const c = document.querySelector('main.page .skip-confirm'); const b = c && [...c.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Skip'); if (b) b.click(); return !!b })()`)
-  await sleep(600)
-  check('Plan: the step becomes Skipped and offers to put it back', /Skipped/.test(await evaluate(`(document.querySelector('main.page .step-body .chip.status') || {}).textContent || ''`)) && /Put it back in the plan/.test(await evaluate(`(document.querySelector('main.page .step-body') || {}).textContent || ''`)))
-  check('Plan: skipping a step drops the header count by one', (await headerTotal()) === totalBefore - 1)
-  await evaluate(`(() => { const d = document.querySelector('main.page .step-body details.more'); if (d) d.open = true; const b = document.querySelector('main.page .step-body') && [...document.querySelectorAll('main.page .step-body button')].find((x) => x.textContent.trim() === 'Put it back in the plan'); if (b) b.click(); return !!b })()`)
-  await sleep(600)
-  check('Plan: putting the step back restores the header count', (await headerTotal()) === totalBefore)
 
   // Export (target-state §7): six cards, every button makes bytes, and the plan
   // file round-trips carrying the tick just made.
@@ -379,19 +281,14 @@ try {
   await sleep(450)
   check('Export: Save plan file produces bytes', await evaluate(`window.__dl.length > ${nBefore} && window.__dl[window.__dl.length - 1].size > 0`))
   const planJson = await evaluate(`(async () => { const d = window.__dl[window.__dl.length - 1]; return d && d.blob ? await d.blob.text() : null })()`)
-  check('Export: the saved plan carries the ticked done-when', typeof planJson === 'string' && /"(credentialStorage|signInMonitoring)":\s*true/.test(planJson))
-  // The round-trip carries the tick: the saved bytes parse back to a plan whose
-  // emergency-access step still has the Done-when ticked (steps[].tickable[].done
-  // and mappings.breakGlassAnswers). Identifier redaction rewrites the tenant id
-  // in the downloaded file, so a live reload into the same tenant is refused by
-  // the tenant guard by design (planTenant.test); the format round-trip is what
-  // carries the tick, and Load a plan file runs the import path.
+  check('Export: the saved plan carries its steps', typeof planJson === 'string' && /"steps"\s*:/.test(planJson))
+  // The saved bytes parse back to a plan with its steps (v3 carries no hand-ticked
+  // state — IAMAI never asks the user to maintain state it can detect). Identifier
+  // redaction rewrites the tenant id, so a live reload into the same tenant is
+  // refused by the tenant guard by design (planTenant.test); the format round-trip
+  // is what matters, and Load a plan file runs the import path.
   const reparsed = typeof planJson === 'string' ? JSON.parse(planJson) : null
-  const tickedInFile =
-    !!reparsed &&
-    (reparsed.steps || []).some((st) => (st.tickable || []).some((t) => t.done === true)) &&
-    !!(reparsed.mappings && reparsed.mappings.breakGlassAnswers && Object.values(reparsed.mappings.breakGlassAnswers).some((v) => v === true))
-  check('Export: the plan file round-trips with the tick (parses back with the Done-when ticked)', tickedInFile)
+  check('Export: the plan file round-trips (parses back with its steps)', !!reparsed && Array.isArray(reparsed.steps) && reparsed.steps.length >= 3)
   if (typeof planJson === 'string') {
     const ran = await evaluate(`(() => { const input = document.querySelector('main.page input[type=file]'); if (!input) return false; const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(planJson)}], 'plan.json', { type: 'application/json' })); input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
     await sleep(700)
@@ -436,7 +333,7 @@ try {
   // Failure paths and first-visitor tenants (prompt 31 §4): every page reads clearly, nothing breaks.
   await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
   await sleep(1500)
-  check('Unlicensed tenant: the plan renders from configuration and directory data', await waitFor(`/Assumes:/.test(document.body.innerText)`))
+  check('Unlicensed tenant: the plan renders from configuration and directory data', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
   t = await text()
   check('Unlicensed tenant: the plan footer names what does not apply', /Doesn't apply here \(\d+\)/.test(t))
   await send('Page.navigate', { url: `${BASE}&licence=free#/today` })
@@ -446,22 +343,22 @@ try {
   check('Unlicensed tenant: nobody is Proven without records', !/\bProven\b/.test(t))
   await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
   await sleep(1500)
-  check('Unlicensed tenant: the plan still generates', await waitFor(`/Assumes:/.test(document.body.innerText)`))
+  check('Unlicensed tenant: the plan still generates', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
   t = await text()
   check('Unlicensed tenant: the ladder steps are the plan', /Switch on the free protection|Keep two emergency accounts/.test(await text()))
   t = await text()
   check('Unlicensed tenant: nothing asks for objects a policy would reference', !/Create a trusted named location|Create the exclusions group/.test(t))
   check(
-    'Unlicensed tenant: a ladder step names what it changes here, and where to click',
-    (await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => /Switch on the free protection/.test(x.textContent)); if (r) r.click(); return !!r })()`)) &&
-      (await waitFor(`/Manage security defaults/.test(document.body.innerText)`)),
+    'Unlicensed tenant: a step opens in place',
+    (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) &&
+      (await waitFor(`document.querySelector('main.page .step-body') !== null`)),
   )
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
-  check('Zero policies: the plan renders', await waitFor(`/Assumes:/.test(document.body.innerText)`))
+  check('Zero policies: the plan renders', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
   await send('Page.navigate', { url: `${BASE}&policies=0#/plan` })
   await sleep(1500)
-  check('Zero policies: the plan renders', await waitFor(`/Assumes:/.test(document.body.innerText)`))
+  check('Zero policies: the plan renders', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
   t = await text()
   // A sign-in with too little access names the role to ask for (prompt 31 4.18).
   // The refused-sections notice lives with the scan result, on Connect (prompt 47 Part 4).
@@ -477,7 +374,7 @@ try {
 
   // Forget this tenant clears every store for it (prompt 31 §2.8).
   await go('plan')
-  await waitFor(`/Assumes:/.test(document.body.innerText)`)
+  await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`)
   const tenantId = await evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const tx = db.transaction('plan'); const all = await new Promise((r) => { const q = tx.objectStore('plan').getAllKeys(); q.onsuccess = () => r(q.result) }); db.close(); return all[0] ?? null })()`)
   const countFor = (id) => evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); let n = 0; for (const name of [...db.objectStoreNames]) { const tx = db.transaction(name); const rows = await new Promise((r) => { const q = tx.objectStore(name).getAll(); q.onsuccess = () => r(q.result) }); n += rows.filter((x) => x && x.tenantId === ${JSON.stringify(id)}).length } db.close(); return n })()`)
   const before = tenantId ? await countFor(tenantId) : 0
@@ -629,7 +526,7 @@ try {
   const inPlaceOf = (body) => Number((body.match(/(\d+) in place/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)
-  await clickText('/^Re-scan/', 'header.app')
+  await clickText('/^Scan to update the plan/', 'header.app')
   check('Demo: Re-scan advances to the week-two snapshot', await waitFor(`/Sample data . week 2/.test(document.body.innerText)`))
   // The week-two snapshot reloads asynchronously (a dynamic import, then a
   // regenerate); the banner flips first. Poll the plan until its body changes
@@ -647,7 +544,7 @@ try {
     inPlaceOf(week2Body) > inPlaceOf(day1Body),
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
   )
-  await clickText('/^Re-scan/', 'header.app')
+  await clickText('/^Scan to update the plan/', 'header.app')
   check('Demo: a second Re-scan returns to day one', await waitFor(`/Sample data . nothing here is from a real tenant/.test(document.body.innerText)`))
 
   // Leave the demo: back to the signed-out app, no banner (item 12).

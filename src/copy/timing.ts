@@ -33,7 +33,7 @@ export const EVENT = {
     announceNoRhythm: 'The sign-in sample is too small to read a working pattern, so the calendar defaults apply.',
     announceNotice: (days: number) => `${count(days, 'working day')} of notice for a change of this size.`,
     announceCourtesy: 'One working day of notice, as a courtesy: the records show nobody affected.',
-    announceCare: 'At least five working days, and the handle-with-care people are contacted individually first.',
+    announceCare: 'At least five working days, and the special-care people are contacted individually first.',
     remindDayBefore: 'The working day before, same time: short enough to still be in memory.',
     remindMorningOf: 'The morning of the change as well: two clear reminders for a high-disruption change.',
     enforcePeak: (peak: string) => `One hour after the busiest hour (${peak}): a full working day of support before the weekend.`,
@@ -56,13 +56,13 @@ export const EVENT = {
  * The plan dated every event and then left the person to work out which date
  * governed the thing in front of them. Four branches, because the answer is
  * genuinely different in four cases: nobody is affected so no notice is owed,
- * a handle-with-care user sets the floor, the message is already overdue, and
+ * a special-care user sets the floor, the message is already overdue, and
  * the ordinary case.
  */
 export const NOTICE_LINE = {
   none: 'Nobody is affected by this change in the records, so the notice is one working day, as a courtesy.',
   care: (send: string, days: number) =>
-    `Send this on ${send}, ${days} working days before the change. A handle-with-care user is in scope, so the notice is never shorter than that, and each of them is told individually first.`,
+    `Send this on ${send}, ${days} working days before the change. A special-care user is in scope, so the notice is never shorter than that, and each of them is told individually first.`,
   overdue: (send: string) => `This was due to go out on ${send}. Send it now, and move the change if the notice no longer fits.`,
   standard: (send: string, days: number) => `Send this on ${send}, ${days} working ${days === 1 ? 'day' : 'days'} before the change.`,
 } as const

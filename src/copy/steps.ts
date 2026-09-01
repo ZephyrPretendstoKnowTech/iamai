@@ -260,8 +260,8 @@ export const PREREQ = {
       ...(c.noMethod.length > 0 ? [`Register a method for each, and issue a Temporary Access Pass to anyone off a trusted network: ${list(c.noMethod)}.`] : []),
       ...(careNames.length > 0 ? [`Walk through setup personally with ${list(careNames)}: never an email blast for them.`] : []),
       departments > 1
-        ? `Pilot the verified people first, one admin, across the ${departments} departments; never break-glass or handle-with-care.`
-        : 'Pilot the verified people first, plus one admin; never break-glass or handle-with-care.',
+        ? `Pilot the verified people first, one admin, across the ${departments} departments; never break-glass or special-care.`
+        : 'Pilot the verified people first, plus one admin; never break-glass or special-care.',
     ].filter((line) => line !== 'No unproven active people.'),
     exit: (threshold: number) => [`Readiness reaches ${threshold}% of active users.`],
   },
@@ -347,7 +347,7 @@ export const EXIT = {
   reportOnlyDays: (days: number) => `Policy live in report-only for at least ${count(days, 'day')}.`,
   signIns: (perUser: number, absolute: number) => `At least ${count(perUser, 'sign-in')} per active user in the population (or ${absolute} total).`,
   zeroFailures: 'Zero report-only failures or interruptions.',
-  careVerified: (n: number) => `Every handle-with-care user in scope is verified (${n} to check).`,
+  careVerified: (n: number) => `Every special-care user in scope is verified (${n} to check).`,
   operatorStrong: 'The signed-in account holds a strong MFA method (checked at every re-scan).',
   thenEnforce: 'Once the evidence is clean, switch the policy from report-only to On.',
   adjustApplied: 'The changed fields match the baseline on the next re-scan.',

@@ -1,5 +1,5 @@
 {
- "fingerprint": "db38b9f42f87c724",
+ "fingerprint": "99b81e02dd3aa0df",
  "surfaces": [
   {
    "name": "Header",
@@ -1787,8 +1787,8 @@
     "About What set the plan length"
    ],
    "sentences": [
-    "<var class=\"v\">22</var> steps · <var class=\"v\">2</var> in place · finishes <var class=\"v\"><date></var> · <var class=\"v\">4 weeks</var>",
-    "Built from what IAMAI found on <var class=\"v\">Contoso Pty Ltd</var>, scanned <var class=\"v\">just now</var> · Today shows where each person stands."
+    "22 steps · 2 in place · finishes <date> · 4 weeks",
+    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands."
    ],
    "titles": [
     "Sort out emergency access before anything else",
@@ -1816,12 +1816,12 @@
    "primary": [],
    "tables": [],
    "occurrences": {
-    "<var class=\"v\">22</var> steps · <var class=\"v\">2</var> in place · finishes <var class=\"v\"><date></var> · <var class=\"v\">4 weeks</var>": 1,
-    "Built from what IAMAI found on <var class=\"v\">Contoso Pty Ltd</var>, scanned <var class=\"v\">just now</var> · Today shows where each person stands.": 1
+    "22 steps · 2 in place · finishes <date> · 4 weeks": 1,
+    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1
    },
    "occurrencesAll": {
-    "<var class=\"v\">22</var> steps · <var class=\"v\">2</var> in place · finishes <var class=\"v\"><date></var> · <var class=\"v\">4 weeks</var>": 1,
-    "Built from what IAMAI found on <var class=\"v\">Contoso Pty Ltd</var>, scanned <var class=\"v\">just now</var> · Today shows where each person stands.": 1
+    "22 steps · 2 in place · finishes <date> · 4 weeks": 1,
+    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1
    },
    "wordCounts": {
     "headings": 24,
@@ -1835,8 +1835,8 @@
     "empty": 0,
     "summaries": 11,
     "tips": 6,
-    "sentences": 37,
-    "total": 83
+    "sentences": 31,
+    "total": 77
    },
    "unnamedControls": [],
    "rows": [
@@ -1989,7 +1989,7 @@
    "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 2,
-    "words": 37
+    "words": 31
    },
    "contract": "plan",
    "state": "scanned",

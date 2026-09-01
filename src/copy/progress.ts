@@ -10,7 +10,7 @@ export const TRACK = {
   enforcedByOther: (name: string) => `${name} already enforces this`,
   modifiedAfter: (date: string) => `policy modified after enforcement on ${date}`,
   soak: (days: number, signIns: number, failures: number) => `${count(days, 'day')} in report-only, ${count(signIns, 'sign-in')}, ${count(failures, 'failure or interruption', 'failures or interruptions')}`,
-  readyToEnforce: 'report-only evidence meets the exit criterion and every handle-with-care user is verified',
+  readyToEnforce: 'report-only evidence meets the exit criterion and every special-care user is verified',
   evidence: { enough: 'enough sign-ins to judge', thin: 'too few sign-ins to judge yet', none: 'no sign-in evidence' },
   regression: {
     disabled: (name: string, since: string) => `${name} was disabled after ${since}; the goal is open again`,
