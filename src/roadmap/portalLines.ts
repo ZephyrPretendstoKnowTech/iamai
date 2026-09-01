@@ -1,0 +1,241 @@
+// The portal-line translator (target-state §8.9, prompt 51 §3.1–3.2): the one
+// place the product composes prose rather than reading it from the content file,
+// because "What to do" on a policy step is generated from the baseline's policy
+// object, not a catalogue template — the baseline wins. Given a parsed policy
+// (src/coverage/facts.ts `policyFacts`) and a context that resolves ids to the
+// tenant's names, it returns the numbered portal lines: the root, the name, the
+// users and groups, the resources, the conditions, the grant or session control,
+// and the report-only/state line. Ids never appear; every line is a name.
+//
+// content.json's `whatToDo.steps` for a goal are the *expected* output of this
+// translator for the pinned baseline (the review page renders them); the runtime
+// renders this. Where the two differ, the baseline wins and the difference is
+// reported (portalLines.test.ts), never hand-patched.
+//
+// Pure: no DOM, no network, no snapshot. Runs in Node tests and in the worker.
+import type { PolicyFacts } from '../coverage/types.ts'
+
+/** What the translator needs to turn a policy's ids into the tenant's names. */
+export type PortalContext = {
+  /** The proposed policy name, for the `Name:` line (§8.4). */
+  policyName: string
+  /** id → display name; the caller supplies the tenant or baseline directory. */
+  nameOf: (id: string) => string
+  /** The custom strength's name, for `Require authentication strength: <name>`. */
+  strengthName?: string | null
+  /** shared.portalRoot, resolved — `Entra admin center → … → New policy`. */
+  portalRoot: string
+  /** shared.portalOpen, for a change to an existing policy (no `Name:` line). */
+  portalOpen?: string
+  /** shared.reportOnlyLine, resolved — `Enable policy: Report-only → Create`. */
+  reportOnlyLine: string
+  /** shared.exclusionsLine, resolved with the exclusions group's name. */
+  exclusionsLine: string
+  /** Recognised groups, so an exclude of one is labelled, not left as an id. */
+  serviceAccountsGroupId?: string | null
+  adminsGroupId?: string | null
+  exclusionsGroupId?: string | null
+  /** Shared-device accounts, so an exclude of them is labelled. */
+  sharedDeviceIds?: string[]
+}
+
+/** How the step opens: a new policy (root + Name) or a change to an existing one. */
+export type PortalMode = 'new' | 'change'
+
+/** The registration step's fallback: require MFA instead of Block when the tenant has no trusted network. */
+export type GrantOverride = 'mfa'
+
+const lc = (s: string): string => s.toLowerCase()
+const names = (ids: Iterable<string>, ctx: PortalContext): string => [...ids].map((id) => ctx.nameOf(id)).join(', ')
+
+const PLATFORM_LABEL: Record<string, string> = { android: 'Android', ios: 'iOS', windows: 'Windows', macos: 'macOS', linux: 'Linux', windowsphone: 'Windows Phone' }
+const CLIENT_APP_LABEL: Record<string, string> = {
+  exchangeactivesync: 'Exchange ActiveSync clients',
+  other: 'Other clients',
+  browser: 'Browser',
+  mobileappsanddesktopclients: 'Mobile apps and desktop clients',
+}
+const FLOW_LABEL: Record<string, string> = { devicecodeflow: 'Device code flow', authenticationtransfer: 'Authentication transfer' }
+// Graph guestOrExternalUserTypes tokens are developer vocabulary; the portal
+// (and the content file) show these names instead (UX rule: no developer words).
+const GUEST_TYPE_LABEL: Record<string, string> = {
+  b2bcollaborationguest: 'B2B collaboration guest users',
+  b2bcollaborationmember: 'B2B collaboration member users',
+  b2bdirectconnectuser: 'B2B direct connect users',
+  internalguest: 'Local guest users',
+  serviceprovider: 'Service provider users',
+  otherexternaluser: 'Other external users',
+}
+const RISK_LABEL: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' }
+const RISK_ORDER = ['high', 'medium', 'low']
+
+function platformList(s: Set<string>, ctx: PortalContext): string {
+  return [...s].map((p) => PLATFORM_LABEL[lc(p)] ?? ctx.nameOf(p)).join(', ')
+}
+function riskList(s: Set<string>): string {
+  return RISK_ORDER.filter((r) => s.has(r)).map((r) => RISK_LABEL[r]).join(', ')
+}
+
+/** The `Users → Include: … Exclude …` line for a policy. */
+function usersLine(f: PolicyFacts, ctx: PortalContext): string {
+  // Workload identities are their own include shape (the Entra Connect block).
+  if (f.workload) {
+    const sps = f.workload.sps.size > 0 ? names(f.workload.sps, ctx) : (f.workload.filterRule ?? '')
+    return `Users or workload identities → Workload identities → Select service principals → ${sps}`
+  }
+  const include: string[] = []
+  if (f.who.all) include.push('All users')
+  if (f.who.roles.size > 0) include.push(`Directory roles → ${names(f.who.roles, ctx)}`)
+  if (f.who.guests !== null) {
+    const kinds = f.who.guests.length > 0 ? f.who.guests.map((t) => GUEST_TYPE_LABEL[lc(t)] ?? t).join(', ') : 'all types'
+    include.push(`Guest or external users → ${kinds}`)
+  }
+  if (f.who.groups.size > 0) include.push(`Groups: ${names(f.who.groups, ctx)}`)
+  if (f.who.users.size > 0) include.push(names(f.who.users, ctx))
+  const includeClause = include.length > 0 ? include.join(', ') : 'All users'
+
+  // Excludes: the exclusions group is always the shared line; other excludes are
+  // named in the vocabulary the content file uses for them (§8.9).
+  const parts = [`Users → Include: ${includeClause}.`]
+  const excludesExclusionsGroup =
+    (ctx.exclusionsGroupId != null && f.whoNot.groups.has(ctx.exclusionsGroupId)) || f.whoNot.groups.size > 0 || f.whoNot.users.size > 0
+  if (excludesExclusionsGroup) parts.push(ctx.exclusionsLine)
+  if (ctx.serviceAccountsGroupId != null && f.whoNot.groups.has(ctx.serviceAccountsGroupId)) parts.push(`Also exclude the service accounts group ${ctx.nameOf(ctx.serviceAccountsGroupId)}.`)
+  if (ctx.adminsGroupId != null && f.whoNot.groups.has(ctx.adminsGroupId)) parts.push(`Also exclude the admins group ${ctx.nameOf(ctx.adminsGroupId)}.`)
+  const sharedExcluded = (ctx.sharedDeviceIds ?? []).filter((id) => f.whoNot.users.has(id))
+  if (sharedExcluded.length > 0) parts.push(`Also exclude the shared-device accounts ${names(sharedExcluded, ctx)}.`)
+  if (f.whoNot.guests) parts.push('Also exclude Guest or external users (all types).')
+  return parts.join(' ')
+}
+
+/** The `Target resources → …` line. */
+function resourcesLine(f: PolicyFacts, ctx: PortalContext): string | null {
+  const a = f.apps
+  if (a.userActions.has('urn:user:registersecurityinfo')) return 'Target resources → User actions → Register security information'
+  if (a.userActions.has('urn:user:registerdevice')) return 'Target resources → User actions → Register or join devices'
+  if (a.authContexts.size > 0) return `Target resources → Authentication context → ${names(a.authContexts, ctx)}`
+  if (a.all) return 'Target resources → Resources → All resources'
+  const selected: string[] = []
+  if (a.office365) selected.push('Office 365')
+  if (a.adminPortals) selected.push('Microsoft Admin Portals')
+  for (const id of a.ids) selected.push(ctx.nameOf(id))
+  if (selected.length > 0) return `Target resources → Resources → Select resources → ${selected.join(', ')}`
+  return null
+}
+
+/** Each condition present, one line each (§6.5 lists conditions before the control). */
+function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
+  const out: string[] = []
+  if (f.locations) {
+    const inc = [...f.locations.include].map((l) => (/^all$/i.test(l) ? 'Any location' : ctx.nameOf(l))).join(', ')
+    const exc = [...f.locations.exclude].map((l) => (/^alltrusted$/i.test(l) ? 'All trusted locations' : ctx.nameOf(l))).join(', ')
+    out.push(`Conditions → Locations → Include: ${inc || 'Any location'}${exc ? `; Exclude: ${exc}` : ''}`)
+  }
+  const clientApps = [...f.clientApps].filter((c) => c !== 'all')
+  if (clientApps.length > 0) out.push(`Conditions → Client apps → ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}`)
+  if (f.flows.size > 0) out.push(`Conditions → Authentication flows → ${[...f.flows].map((t) => FLOW_LABEL[lc(t)] ?? t).join(', ')}`)
+  if (f.platforms && (f.platforms.include.size > 0 || f.platforms.exclude.size > 0)) {
+    const inc = f.platforms.include.size > 0 ? platformList(f.platforms.include, ctx) : 'Any device'
+    const exc = f.platforms.exclude.size > 0 ? `; Exclude: ${platformList(f.platforms.exclude, ctx)}` : ''
+    out.push(`Conditions → Device platforms → Include: ${inc}${exc}`)
+  }
+  if (f.deviceFilter) out.push(`Conditions → Filter for devices → ${f.deviceFilter.mode === 'exclude' ? 'Exclude' : 'Include'} devices matching: ${f.deviceFilter.rule}`)
+  if (f.signInRisk.size > 0) out.push(`Conditions → Sign-in risk → ${riskList(f.signInRisk)}`)
+  if (f.userRisk.size > 0) out.push(`Conditions → User risk → ${riskList(f.userRisk)}`)
+  return out
+}
+
+const GRANT_LABEL: Record<string, string> = {
+  compliantdevice: 'Require device to be marked as compliant',
+  domainjoineddevice: 'Require Microsoft Entra hybrid joined device',
+  compliantapplication: 'Require app protection policy',
+  passwordchange: 'Require password change',
+  approvedapplication: 'Require approved client app',
+}
+
+/** The `Grant → …` line, or null when the policy is session-only. */
+function grantLine(f: PolicyFacts, ctx: PortalContext, override?: GrantOverride): string | null {
+  if (!f.grant) return null
+  if (override === 'mfa') return 'Grant → Require multifactor authentication'
+  const controls = new Set([...f.grant.controls].map(lc))
+  if (controls.has('block')) return 'Grant → Block access'
+  const reqs: string[] = []
+  if (f.grant.strengthId) reqs.push(`Require authentication strength: ${ctx.strengthName ?? 'Multifactor authentication'}`)
+  else if (controls.has('mfa')) reqs.push('Require multifactor authentication')
+  for (const c of ['compliantdevice', 'domainjoineddevice', 'compliantapplication', 'passwordchange', 'approvedapplication'])
+    if (controls.has(c)) reqs.push(GRANT_LABEL[c])
+  if (reqs.length === 0) return null
+  let line = `Grant → ${reqs.join(', ')}`
+  if (reqs.length > 1) line += f.grant.operator === 'OR' ? '; Require one of the selected controls' : '; Require all the selected controls'
+  return line
+}
+
+/** Durations in words (§8.4): never `168h`. */
+function hoursInWords(hours: number): string {
+  if (hours % 168 === 0) return hours === 168 ? 'weekly' : `${hours / 24} days`
+  if (hours % 24 === 0) return hours === 24 ? 'daily' : `${hours / 24} days`
+  return `${hours} hours`
+}
+
+/** The `Session → …` lines. */
+function sessionLines(f: PolicyFacts): string[] {
+  const s = f.session
+  const out: string[] = []
+  if (s.signInFrequencyEveryTime) out.push('Session → Sign-in frequency → Every time')
+  else if (s.signInFrequencyHours !== null) out.push(`Session → Sign-in frequency → Periodic reauthentication → ${hoursInWords(s.signInFrequencyHours)}`)
+  if (s.persistentBrowser === 'never') out.push('Session → Persistent browser session → Never persistent')
+  if (s.persistentBrowser === 'always') out.push('Session → Persistent browser session → Always persistent')
+  if (s.appEnforced) out.push('Session → Use app enforced restrictions')
+  if (s.cloudAppSecurity) out.push('Session → Use Conditional Access App Control → Block downloads')
+  if (s.secureSignInSession) out.push('Session → Require token protection for sign-in sessions')
+  return out
+}
+
+/**
+ * The numbered portal lines for one policy, in the content file's order: root,
+ * name, users, resources, conditions, the grant or session control, the state.
+ * Every line is resolved — no `{placeholder}` survives. A policy with neither a
+ * grant nor a session control returns a block with no control line, which the
+ * caller treats as a build failure (shape-01).
+ */
+export function portalLines(f: PolicyFacts, ctx: PortalContext, opts: { mode?: PortalMode; grantOverride?: GrantOverride } = {}): string[] {
+  const mode = opts.mode ?? 'new'
+  const out: string[] = []
+  out.push(mode === 'change' ? (ctx.portalOpen ?? ctx.portalRoot) : ctx.portalRoot)
+  if (mode !== 'change') out.push(`Name: ${ctx.policyName}`)
+  out.push(usersLine(f, ctx))
+  const res = resourcesLine(f, ctx)
+  if (res) out.push(res)
+  out.push(...conditionLines(f, ctx))
+  const grant = grantLine(f, ctx, opts.grantOverride)
+  if (grant) out.push(grant)
+  out.push(...sessionLines(f))
+  out.push(ctx.reportOnlyLine)
+  return out
+}
+
+/** True when the block carries a grant or session control (shape-01). */
+export function endsInControl(lines: string[]): boolean {
+  return lines.some((l) => l.startsWith('Grant →') || l.startsWith('Session →'))
+}
+
+/** True when a line still carries an unresolved `{placeholder}` token. */
+export function hasUnresolvedPlaceholder(lines: string[]): boolean {
+  return lines.some((l) => /\{[a-zA-Z][\w:]*\}/.test(l))
+}
+
+/**
+ * A goal the baseline implements with two policies (mergesGoals): Policy A and
+ * Policy B, each its own block, labelled. The step body supplies the two names.
+ */
+export function portalLinesAB(
+  a: { facts: PolicyFacts; ctx: PortalContext },
+  b: { facts: PolicyFacts; ctx: PortalContext },
+  labels: { a: string; b: string },
+): string[] {
+  const block = (label: string, one: { facts: PolicyFacts; ctx: PortalContext }): string[] => {
+    const [root, ...rest] = portalLines(one.facts, one.ctx)
+    return [`Policy ${label} — ${one.ctx.policyName}: ${root}`, ...rest]
+  }
+  return [...block('A', a), ...block('B', b)]
+}
