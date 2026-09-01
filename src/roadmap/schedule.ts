@@ -15,7 +15,6 @@ import { promptsPeople } from './strand.ts'
 import { addWorkingDays, nobodyAffected, toEnforcementDay as enforcementDay } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import { CRITICAL, DEPENDENCY } from '../copy/schedule.ts'
-import { PHASE_NAME } from '../copy/steps.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { Step } from './types.ts'
 
@@ -824,7 +823,7 @@ function derive(
     case 'phase': {
       const other = p.reason.ref ? byId.get(p.reason.ref) : undefined
       if (other) chain.unshift(other.id)
-      reason = CRITICAL.phase(last.title, PHASE_NAME[other?.phase ?? 0] ?? '')
+      reason = CRITICAL.phase(last.title, other?.title ?? '')
       break
     }
     default:

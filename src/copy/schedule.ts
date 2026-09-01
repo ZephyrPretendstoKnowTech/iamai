@@ -47,7 +47,7 @@ export const CRITICAL = {
   // its own clause where its shape cannot break the sentence.
   cap: (n: number, step: string) => `only ${count(n, 'change window')} a week fit this size of tenant, and the last of them goes to ${step}`,
   freeze: (to: string, step: string) => `the change freeze ends on ${to} and ${step} starts after it`,
-  phase: (step: string, phase: string) => `${step} follows the ${phase} steps, which start first`,
+  phase: (step: string, other: string) => `${step} follows ${other}, which starts first`,
   soft: (step: string, other: string) => `two changes prompt the same people, so ${step} cannot run in the same window as ${other}`,
   prerequisites: (n: number) => `${count(n, 'prerequisite')} take the first days`,
   shorterSoak: (from: number, to: number) => `Each ring soaks ${count(to, 'day')} instead of ${from}; the longer soak would run past the size band.`,

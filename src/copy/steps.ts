@@ -50,17 +50,6 @@ export const WHY_NOW = {
   waitsOnNothing: 'It waits on nothing: it can start as soon as its window allows.',
 } as const
 
-export const PHASE_NAME: Record<number, string> = {
-  0: 'Foundations',
-  1: 'Low-impact blocks',
-  2: 'MFA for everyone',
-  3: 'Admin hardening',
-  4: 'Guests and locations',
-  5: 'Devices',
-  6: 'Sessions',
-  7: 'Advanced',
-}
-
 /**
  * One blocker cause, phrased as the CONDITION that clears it.
  *

@@ -9,7 +9,7 @@ import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { PLAN as C } from '../../copy/plan.ts'
 import { SHELL } from '../../copy/pages.ts'
-import { PHASE_NAME } from '../../copy/steps.ts'
+import { waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
@@ -84,7 +84,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const waveRows = c.schedule.waves
     .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && inWave(st)) }))
     .filter((w) => w.steps.length > 0)
-  const waveNames = nameWaves(waveRows)
+  const waveNames = waveLabels(waveRows)
   let nextMarked = false
 
   return (
@@ -163,31 +163,6 @@ function shortReason(reason: string): string {
   return reason.replace(/^after: /, '').replace(/^Sort out /, '').replace(/ before anything else$/, '')
 }
 
-/** A distinct name per wave (item 16): the phase name, or the dominant family when a phase repeats; a tie names both. */
-function nameWaves(waves: { phase: number; steps: Step[] }[]): string[] {
-  const used = new Set<string>()
-  return waves.map((w) => {
-    const base = PHASE_NAME[w.phase] ?? ''
-    if (w.phase === 0) return base
-    // "Advanced" is not a name (prompt 49 item 6): name it from its families instead.
-    if (base !== 'Advanced' && !used.has(base)) {
-      used.add(base)
-      return base
-    }
-    // Name from the dominant family (tie names both), never the same twice.
-    const counts = new Map<string, number>()
-    for (const st of w.steps) {
-      const fam = C.familyName[st.readiness.family] ?? 'Sessions'
-      counts.set(fam, (counts.get(fam) ?? 0) + 1)
-    }
-    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1])
-    let name = ranked.length > 1 && ranked[0][1] === ranked[1][1] ? C.and(ranked[0][0], ranked[1][0]) : ranked[0]?.[0] ?? base
-    let n = 2
-    while (used.has(name)) name = `${ranked[0]?.[0] ?? base} ${n++}`
-    used.add(name)
-    return name
-  })
-}
 
 function whenLine(step: Step): string {
   // A step a readiness threshold holds has no enforcement date; its date column
