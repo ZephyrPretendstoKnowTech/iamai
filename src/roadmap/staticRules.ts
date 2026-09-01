@@ -25,6 +25,31 @@ function conditions(p: Raw): { apps: Raw; users: Raw; grant: string[]; sessionKe
   return { apps, users, grant, sessionKeys, name: typeof p.displayName === 'string' ? p.displayName : 'a policy' }
 }
 
+/**
+ * A block over all resources that is already narrowed by a client-app,
+ * authentication-flow, platform, device-filter or location condition never
+ * touches a normal registration or enrolment sign-in, so it does not need the
+ * dependency exclusions (prompt 50.1 item 6). `Core - Block - Legacy
+ * authentication` and `Core - Block - Device code flow` are the two most
+ * standard policies in existence; flagging them for excluding no dependencies
+ * costs trust. Client-app types are the exception: the default is ["all"], which
+ * narrows nothing; only a subset without "all" narrows.
+ */
+function narrowedScope(p: Raw): boolean {
+  const c = (p.conditions ?? {}) as Raw
+  const clientAppTypes = asArray(c.clientAppTypes)
+  if (clientAppTypes.length > 0 && !clientAppTypes.some((a) => a.toLowerCase() === 'all')) return true
+  const transfer = (c.authenticationFlows as Raw | undefined)?.transferMethods
+  if (typeof transfer === 'string' && transfer.trim().length > 0) return true
+  const platforms = (c.platforms ?? {}) as Raw
+  if (asArray(platforms.includePlatforms).length > 0 || asArray(platforms.excludePlatforms).length > 0) return true
+  const rule = ((c.devices as Raw | undefined)?.deviceFilter as Raw | undefined)?.rule
+  if (typeof rule === 'string' && rule.trim().length > 0) return true
+  const locations = (c.locations ?? {}) as Raw
+  if (asArray(locations.includeLocations).length > 0 || asArray(locations.excludeLocations).length > 0) return true
+  return false
+}
+
 /** Every violation one policy commits. */
 export function violationsOf(p: Raw, source: PolicySource, opts: { technicianToolsOffCompliance: boolean } = { technicianToolsOffCompliance: false }): StaticViolation[] {
   const out: StaticViolation[] = []
@@ -35,8 +60,10 @@ export function violationsOf(p: Raw, source: PolicySource, opts: { technicianToo
   const allResources = includeApps.some((a) => a.toLowerCase() === 'all')
   const isBlock = grant.includes('block')
 
-  // 20 / 14 — a block over all resources must exclude the registration action and the dependency apps.
-  if (isBlock && allResources) {
+  // 20 / 14 — a block over all resources must exclude the registration action and
+  // the dependency apps, unless its scope is already narrowed so it never reaches
+  // a registration or enrolment sign-in (prompt 50.1 item 6).
+  if (isBlock && allResources && !narrowedScope(p)) {
     if (!includeActions.some((a) => REGISTER_ACTIONS.has(a.toLowerCase())) && !asArray(apps.excludeUserActions).some((a) => REGISTER_ACTIONS.has(a.toLowerCase()))) {
       // The block covers the sign-in flow, not the user action, so it can catch registration.
     }

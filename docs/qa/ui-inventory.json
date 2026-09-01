@@ -1878,7 +1878,7 @@
    "summaries": [
     "Already in place (2)",
     "Doesn't apply here (10)",
-    "Housekeeping (1)"
+    "Housekeeping (0)"
    ],
    "tips": [
     "About What set the plan length"
@@ -2225,7 +2225,7 @@
    "summaries": [
     "Already in place (2)",
     "Doesn't apply here (10)",
-    "Housekeeping (1)"
+    "Housekeeping (0)"
    ],
    "tips": [],
    "sentences": [
@@ -2238,9 +2238,7 @@
     "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).",
     "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).",
     "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).",
-    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).",
-    "CA002 - Block legacy authentication blocks every resource but excludes none of the sign-in dependencies.",
-    "Registration and enrolment break; exclude those four apps first."
+    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2)."
    ],
    "titles": [
     "Make sure everyone can prove who they are",
@@ -2259,9 +2257,7 @@
     "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).": 1,
     "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).": 1,
     "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).": 1,
-    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).": 1,
-    "CA002 - Block legacy authentication blocks every resource but excludes none of the sign-in dependencies.": 1,
-    "Registration and enrolment break; exclude those four apps first.": 1
+    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).": 1
    },
    "occurrencesAll": {
     "**Office apps require a compliant or joined device**: does not apply (no Intune licence).": 1,
@@ -2273,9 +2269,7 @@
     "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).": 1,
     "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).": 1,
     "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).": 1,
-    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).": 1,
-    "CA002 - Block legacy authentication blocks every resource but excludes none of the sign-in dependencies.": 1,
-    "Registration and enrolment break; exclude those four apps first.": 1
+    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).": 1
    },
    "wordCounts": {
     "headings": 0,
@@ -2289,8 +2283,8 @@
     "empty": 0,
     "summaries": 10,
     "tips": 0,
-    "sentences": 173,
-    "total": 185
+    "sentences": 149,
+    "total": 161
    },
    "unnamedControls": [],
    "rows": [
@@ -2310,8 +2304,8 @@
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
-    "sentences": 12,
-    "words": 173
+    "sentences": 10,
+    "words": 149
    },
    "contract": "plan.footer",
    "state": "scanned",
