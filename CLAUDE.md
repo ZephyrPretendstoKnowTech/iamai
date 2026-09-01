@@ -8,7 +8,7 @@ Read `SPEC.md` first. It holds every product decision; do not re-decide anything
 - One admin-consent screen with the full read scope set from `SPEC.md` §4. No staged consent.
 - Product copy says "predicted impact, confirmed in report-only." Never promise no lockouts.
 - Baseline `state` from any source is lab state; treat every baseline policy as intended-enforced.
-- Never bundle policy content from third-party baseline repos; ship path indexes (`baselines/*.index.json`) and fetch raw files at a pinned commit.
+- Never bundle policy content from third-party baseline repos; ship path indexes (`baselines/*.index.json`) and fetch raw files at a pinned commit. Exception (owner-authorised, prompt 51): `baselines/*.pinned.json` is a derived snapshot in IAMAI's own schema — normalised, placeholders resolved, author-specific exclusions stripped — written by the dev-only `scripts/pin-baseline.ts`; it is committed and read by the runtime and tests, and is what the supply-chain rule protects.
 - Any Graph 403 or licence error disables a section with a plain reason; it never fails the scan.
 - Never commit tenant-derived data. Diagnostic and spike outputs go under gitignored `docs/spikes/raw/`; findings docs use redacted identifiers (no UPNs, user object IDs, or tenant GUIDs). The spike harness redacts UPNs/GUIDs in anything it writes to disk.
 - The surface has a maximum: `docs/design/target-state.md` and `docs/qa/page-contracts.json`. Never edit them; fix violations by removing what violates, or report the case.
