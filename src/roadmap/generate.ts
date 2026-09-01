@@ -66,7 +66,7 @@ const QUESTION_STEPS: [string, string, string][] = [
   ['travel', 'Add a travel notice and exclusion', 'People who work abroad hit the country block; a short-lived exclusion and a notice keep them working while they travel.'],
   ['partner', 'Exclude the partner or MSP accounts', 'Service-provider accounts sign in from another tenant; excluding "Service provider users" keeps their access while the policies enforce.'],
 ]
-import { buildSchedule, nextMonday } from './schedule.ts'
+import { buildSchedule, nextWorkingDay } from './schedule.ts'
 import type { ChangeFreeze, Schedule } from './schedule.ts'
 import type { Action, Blocker, Readiness, Step, StepPopulation, StepStatus } from './types.ts'
 import type { SizeBand } from './constants.ts'
@@ -1555,7 +1555,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
 
   // ---- Rings (roadmap-v2.md §1): proposed from readiness data, dated by the schedule ----
-  const startIso = input.startDate ?? nextMonday(snapshot.asOf)
+  const startIso = input.startDate ?? nextWorkingDay(snapshot.asOf)
   const activeTotal = viability.filter((v) => v.activity === 'active').length
   const ringCtx = {
     snapshot,

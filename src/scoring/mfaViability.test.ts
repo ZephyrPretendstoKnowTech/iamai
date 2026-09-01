@@ -65,7 +65,7 @@ test('T2: same as T1 but evidence insufficient → unverified with stale version
     }),
   )
   assert.equal(r.mfa, 'unverified')
-  assert.ok(hasReason(r.reasons, 'Authenticator version stale'))
+  assert.ok(hasReason(r.reasons, 'Authenticator app, update available'))
   assert.ok(hasReason(r.reasons, 'no sign-in evidence collected'))
 })
 

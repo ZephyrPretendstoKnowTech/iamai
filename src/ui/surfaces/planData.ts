@@ -28,7 +28,7 @@ import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { mergePersisted, savedStepOf, applyProgress } from '../../roadmap/progress.ts'
 import type { SavedStep } from '../../roadmap/progress.ts'
 import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
-import { nextMonday } from '../../roadmap/schedule.ts'
+import { nextWorkingDay } from '../../roadmap/schedule.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
@@ -129,7 +129,7 @@ export function usePlanData(
     }
   }, [snapshot])
 
-  const startDate = saved?.startDate ?? (snapshot ? nextMonday(new Date().toISOString()) : null)
+  const startDate = saved?.startDate ?? (snapshot ? nextWorkingDay(new Date().toISOString()) : null)
   const band: SizeBand | null = saved?.band && BANDS[saved.band] ? saved.band : null
   const freeze = saved?.freeze ?? null
 

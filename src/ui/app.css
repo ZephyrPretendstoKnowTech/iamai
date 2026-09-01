@@ -954,8 +954,12 @@ footer.app a {
 /* ================= print document (prompt 49 item 8, rebuilt on the tokens) ================= */
 
 .print-plan { display: none; }
+/* Print-only content exists only under @media print (prompt 50 item 1): the
+   running header and any print-labelled panel never render on screen. */
+.print-only { display: none; }
 
 @media print {
+  .print-only { display: revert; }
   body.has-print-plan > #root { display: none !important; }
   body.has-print-plan > .print-plan { display: block; }
   .print-plan { color: var(--ink); font-size: var(--t-2); line-height: 1.45; }

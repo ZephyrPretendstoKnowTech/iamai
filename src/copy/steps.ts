@@ -129,14 +129,22 @@ export const BLOCKER = {
 export const PRINT = {
   title: (tenant: string) => `Microsoft Entra Conditional Access rollout plan. ${tenant}`,
   cover: {
+    tenant: 'Tenant',
+    scanned: 'Scanned',
     baseline: 'Baseline',
     dates: 'Plan dates',
     generated: 'Generated',
-    pace: 'Pace',
-    pin: 'Baseline version',
     prepared: (by: string) => `Prepared with IAMAI by ${by}`,
     feedback: 'Something in this plan look wrong? feedback@getiamai.com',
     readOnly: 'IAMAI reads the tenant and never writes to it. Every change in this document is carried out by a person, in the portal, in the order given; every impact stated here is predicted from the scan and confirmed in report-only before enforcement.',
+  },
+  // The posture summary on page 1 (prompt 50 item 8): in place / to do / doesn't apply, by goal name.
+  posture: {
+    inPlace: (n: number) => `In place (${n}):`,
+    toDo: (n: number) => `To do (${n}):`,
+    doesntApply: (n: number) => `Doesn't apply (${n}):`,
+    noneYet: 'none yet',
+    none: 'none',
   },
   progress: 'Progress',
   contents: 'Contents',
@@ -282,7 +290,10 @@ export const PREREQ = {
   breakGlassDrill: {
     title: 'Break-glass sign-in drill',
     why: (days: number) => `An emergency account that has not signed in for ${days} days is unproven exactly when it matters.`,
-    how: ['Sign in with each break-glass account, complete its strong method, and record the drill.'],
+    how: [
+      'Sign in with each break-glass account, complete its strong method, and record the drill.',
+      'Each account has a passkey or FIDO2 key registered, not a phone method, and where its credential is kept is recorded.',
+    ],
     exit: (days: number) => [`Every break-glass account has a successful sign-in within ${days} days.`],
     overdue: (names: string[]) => `${count(names.length, 'account')} overdue: ${list(names)}`,
     allDrilled: 'All accounts recently drilled.',

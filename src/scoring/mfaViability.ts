@@ -208,7 +208,8 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
           return {
             ...base,
             mfa: 'likelyViable',
-            reasons: [`Authenticator current (seen ${m.phoneAppVersion}, newest ${newest})`],
+            // A person reads a method, not a build number (prompt 50 item 6).
+            reasons: ['Authenticator app, current'],
           }
         }
       }
@@ -258,7 +259,8 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
             newest,
             releasesBehind: behind === Infinity ? Number.MAX_SAFE_INTEGER : behind,
           }
-          reasons.push(`Authenticator version stale (seen ${m.phoneAppVersion}, newest ${newest}, ${shown})`)
+          void shown
+          reasons.push('Authenticator app, update available')
         }
       }
     }

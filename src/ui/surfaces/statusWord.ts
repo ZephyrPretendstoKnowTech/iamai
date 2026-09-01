@@ -13,12 +13,14 @@ export function statusOf(step: Step): StatusView {
     case 'ready':
       return { word: 'Ready', tone: 'ok' }
     case 'blocked':
-      return { word: 'Blocked', tone: 'stop' }
+      // Blocked-by-prerequisite is a waiting state, not a fault (prompt 50 item 5):
+      // --wait. --stop is reserved for Skipped and a step that would strand the operator.
+      return { word: 'Blocked', tone: step.operatorSafe === false ? 'stop' : 'wait' }
     case 'in-report-only':
       return { word: 'Report-only', tone: 'wait' }
     case 'ready-to-enforce':
       return { word: 'Scheduled', tone: 'wait' }
     case 'skipped':
-      return { word: 'Skipped', tone: 'idle' }
+      return { word: 'Skipped', tone: 'stop' }
   }
 }
