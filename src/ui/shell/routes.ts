@@ -16,7 +16,7 @@ export type Route =
   | 'how'
   | 'today'
   | 'inventory'
-  | 'recovery'
+
 
 export const PLAN_ROUTE: Route = 'plan'
 export const PLAN_HREF = `#/${PLAN_ROUTE}`
@@ -34,6 +34,7 @@ export const REDIRECT: Record<string, Route> = {
   reads: 'how',
   licensing: 'how',
   naming: 'how',
+  recovery: 'plan',
 }
 
 const DEV = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
@@ -45,7 +46,6 @@ export const VALID = new Set<string>([
   'how',
   'today',
   'inventory',
-  'recovery',
 ])
 
 export const STEP_LINK = /^roadmap\/step\/(.+)$/

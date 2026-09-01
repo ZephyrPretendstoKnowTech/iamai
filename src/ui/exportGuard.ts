@@ -26,15 +26,11 @@ import { SHELL } from '../copy/pages.ts'
  *
  * - `grounding-bundle` — the Export tab's bundle card, whose warning Callout
  *   (`GROUNDING.warning`) renders above the checkbox that clears redaction.
- * - `recovery-card` — the recovery card. It names the emergency access accounts
- *   and their sign-in addresses because a redacted one would be useless at the
- *   moment somebody needs it; the page carries a Callout saying so above the
- *   print button.
  * - `print-document` — the print layout. Printing exists to put the plan in
  *   front of the person doing the work, and a redacted printout would be
  *   useless for that; the print card states what the document contains.
  */
-export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'recovery-card'
+export type UnredactedSurface = 'grounding-bundle' | 'print-document'
 
 export type Disposition = { redact: true } | { redact: false; surface: UnredactedSurface }
 

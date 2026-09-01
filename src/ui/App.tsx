@@ -18,7 +18,6 @@ import { Today } from './surfaces/Today.tsx'
 import { Inventory } from './surfaces/Inventory.tsx'
 import { TODAY } from '../copy/today.ts'
 import { INVENTORY } from '../copy/inventory.ts'
-import { Recovery } from './surfaces/Recovery.tsx'
 
 // Dev-only modules. The lazy import is itself inside an import.meta.env.DEV
 // branch, so in a production build the condition folds to false, the dynamic
@@ -31,7 +30,6 @@ const DevSpikes = import.meta.env.DEV
 import { SHELL } from '../copy/pages.ts'
 import { isDemo } from './demo.ts'
 import { saveMappingState } from '../mapping/store.ts'
-import { detectAssumptions } from './detectAssumptions.ts'
 import { probeStorage } from '../graph/collect/cache.ts'
 
 const DEV_PANEL =
@@ -71,16 +69,6 @@ export function App() {
   useEffect(() => {
     if (lastScan) learnRoleNames(lastScan.snapshot.config.roleAssignments?.rows ?? [])
   }, [lastScan])
-  // Nothing is asked before the plan exists (target-state §5, prompt 46 item
-  // 19): once a scan and a baseline are both here, every answer nobody has
-  // given gets its detected default, saved under the tenant.
-  useEffect(() => {
-    if (!lastScan || !baseline?.pkg || !account) return
-    void detectAssumptions(account.tenantId, lastScan.snapshot, baseline.pkg).catch(() => {
-      // Detection is a convenience over a saved state; a failure leaves the saved state as it was.
-    })
-  }, [lastScan, baseline, account])
-
   useEffect(() => {
     if (DEMO) {
       void import('./demo.ts').then(async ({ demoTenant, DEMO_TENANT_ID }) => {
@@ -302,7 +290,6 @@ export function App() {
           {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
           {route === 'export' && <Export scan={lastScan} baseline={baseline} account={account} />}
           {route === 'how' && <How />}
-      {route === 'recovery' && <Recovery scan={lastScan} />}
           {DEV_PANEL && account && (
             <Suspense fallback={null}>
               <DevSpikes tenantId={account.tenantId} />

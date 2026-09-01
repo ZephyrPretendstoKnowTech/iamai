@@ -416,21 +416,13 @@ try {
   await sleep(200)
   check('Export: the print DOM is gone once printing ends', (await evaluate(`document.querySelector('.print-plan') === null`)))
 
-  // Recovery card (target-state §7).
-  await go('recovery')
-  await waitFor(`document.querySelector('.recovery-card') !== null`)
-  const rct = await text()
-  check('Recovery: the card renders with its heading and a print button', /Recovery card/.test(rct) && /Emergency access accounts/.test(rct) && (await evaluate(`[...document.querySelectorAll('.recovery-card button')].some((b) => /Print/.test(b.textContent))`)))
-  check('Recovery: it warns before it names people in full', /Names in full, on purpose/.test(rct))
-
-
-  // The header (target-state §2): wordmark, tenant, tabs, Re-scan with the scan's age, Recovery card, theme, Account.
+  // The header (target-state §2): wordmark, tenant, tabs, Scan to update the plan with the scan's age, theme, Account.
   await go('plan')
-  await waitFor(`/Assumes:/.test(document.body.innerText)`)
+  await waitFor(`/\\bsteps\\b/.test(document.body.innerText)`)
   t = await evaluate(`document.querySelector('header.app').innerText`)
-  check('Header: the tenant name, both tabs and the controls', /Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: the tenant name, both tabs and the controls', /Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && !/Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
-  check('Header: Re-scan carries the scan age', /Re-scan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: Scan to update the plan carries the scan age', /Scan to update the plan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
   check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=noScan#/plan` })
