@@ -5,9 +5,10 @@
 // sharing it. Demo mode removes that: the whole flow, with no sign-in and no
 // Graph call.
 //
-// It runs the real code paths over the `mid` fixture already used in the tests,
-// so what a visitor sees is what the tool actually does, not a screenshot that
-// drifts. The one thing it changes is the tenant id.
+// It runs the real code paths over the `demo` fixture (prompt 50 item 9), built
+// to show the finished product, so what a visitor sees is what the tool actually
+// does, not a screenshot that drifts. It changes the tenant id, and shifts every
+// date so the sample reads as of the day it is viewed.
 import { fixture } from '../roadmap/fixtures/index.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'

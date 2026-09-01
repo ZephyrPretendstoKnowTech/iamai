@@ -512,6 +512,122 @@ try {
   }
 
   check('No console errors or exceptions across the walk', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '))
+
+  // Item 7: the first click on Sign in with Microsoft, right after the page
+  // loads, starts the sign-in flow. It used to race MSAL's initialize() and do
+  // nothing until a second click; signIn now awaits init first. The mock never
+  // reaches Microsoft, but loginRedirect writes its request to sessionStorage
+  // before it navigates, so a click that started the flow leaves that trace and
+  // a no-op leaves none.
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  // Wait only for the button to exist, not for anything to settle: the click has
+  // to land in the same window the race used to lose.
+  await waitFor(`!!document.querySelector('.connect .actions button')`)
+  const clickedSignIn = await clickText('/Sign in with Microsoft/')
+  await sleep(2500)
+  // The click navigated away; come back to the app's origin and read the trace
+  // it left. The signed-out mock never runs initAuth, so nothing clears it.
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await sleep(1000)
+  const msalTrace = await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\\.windows|microsoftonline/.test(k)).length`)
+  check('Sign-in: the first click after load starts the flow (item 7)', clickedSignIn && msalTrace > 0, `sign-in trace keys=${msalTrace}`)
+
+  // The demo (prompt 50 item 16): a stranger enters from Connect with no
+  // sign-in, walks the whole flow, advances to week two and back, leaves, and no
+  // real tenant's storage is touched. Every demo store keys on the demo tenant
+  // id; any other tenant id is a real one. In-demo navigation sets the hash so
+  // the demo query survives (go() rebuilds the URL from BASE and would drop it).
+  const DEMO_TENANT_ID = 'demo-sample-tenant'
+  const realKeys = () =>
+    evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const out = []; for (const name of [...db.objectStoreNames]) { const tx = db.transaction(name); const rows = await new Promise((r) => { const q = tx.objectStore(name).getAll(); q.onsuccess = () => r(q.result) }); for (const x of rows) if (x && x.tenantId && x.tenantId !== ${JSON.stringify(DEMO_TENANT_ID)}) out.push(name + ':' + x.tenantId) } db.close(); return out.sort() })()`)
+  const demoGo = async (hash) => {
+    await evaluate(`location.hash = ${JSON.stringify('#/' + hash)}`)
+    await sleep(900)
+  }
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await sleep(1500)
+  const realBefore = await realKeys()
+  check('Demo: Connect offers the sample-data entry (item 12)', await waitFor(`/See it with sample data/.test(document.body.innerText)`))
+  const demoErrBase = consoleErrors.length
+  // Enter the demo by the link a visitor clicks, not by a crafted URL.
+  await clickText('/See it with sample data/')
+  check('Demo: entering lands on the plan under the sample-data banner', await waitFor(`location.hash === '#/plan' && /Sample data/.test(document.body.innerText)`))
+  await sleep(600)
+  let demoText = await text()
+  const demoDay1Header = (demoText.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
+  check('Demo: the banner says nothing is from a real tenant and offers to leave', /Sample data . nothing here is from a real tenant/.test(demoText) && /Leave the demo/.test(demoText))
+  check('Demo: the plan header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |nothing is dated)/.test(demoText), demoDay1Header)
+  check('Demo: the header names the sample org', /Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)))
+
+  // Two steps: open two plan rows, each shows its step body.
+  let demoOpened = 0
+  const demoRows = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
+  for (let i = 0; i < demoRows && demoOpened < 2; i++) {
+    await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
+    await sleep(250)
+    if (await evaluate(`!!document.querySelector('main.page .step-body')`)) {
+      demoOpened++
+      await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; if (r) r.click(); return true })()`)
+      await sleep(120)
+    }
+  }
+  check('Demo: two steps open and show their detail', demoOpened >= 2)
+
+  // Today renders over the sample people.
+  await demoGo('today')
+  check('Demo: Today renders over the sample people', await waitFor(`document.querySelectorAll('main.page table.datatable tbody tr').length >= 4`))
+
+  // Export: print page 1 is the posture summary (item 8).
+  await demoGo('export')
+  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
+  const demoPrinted = await clickExact('Print or save as PDF')
+  await sleep(300)
+  const demoCover = await evaluate(`(document.querySelector('.print-plan .print-cover') || {}).textContent || ''`)
+  check(
+    'Demo: print page 1 renders the posture summary',
+    demoPrinted && /Conditional Access rollout plan/.test(demoCover) && /Tenant/.test(demoCover) && /Scanned/.test(demoCover) && /Baseline/.test(demoCover) && /In place \(/.test(demoCover) && /To do \(/.test(demoCover) && /Doesn't apply \(/.test(demoCover),
+  )
+  await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
+  await sleep(200)
+
+  // Re-scan advances to week two, and a second Re-scan returns to day one (item 14).
+  await demoGo('plan')
+  await waitFor(`/Sample data/.test(document.body.innerText)`)
+  await sleep(400)
+  const planBody = () => evaluate(`document.querySelector('main.page').innerText`)
+  const day1Body = await planBody()
+  await clickText('/^Re-scan/', 'header.app')
+  check('Demo: Re-scan advances to the week-two snapshot', await waitFor(`/Sample data . week 2/.test(document.body.innerText)`))
+  // The week-two snapshot reloads asynchronously (a dynamic import, then a
+  // regenerate); the banner flips first. Poll the plan until its body changes
+  // from day one, so the check proves the plan advanced, not just the banner.
+  const headerLine = async () => ((await planBody()).match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
+  let week2Body = day1Body
+  for (let i = 0; i < 25; i++) {
+    await sleep(200)
+    week2Body = await planBody()
+    if (week2Body !== day1Body) break
+  }
+  const demoWeek2Header = ((week2Body.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0]).trim()
+  check('Demo: the week-two plan advances the tracking story (its plan differs from day one)', week2Body !== day1Body, demoWeek2Header)
+  await clickText('/^Re-scan/', 'header.app')
+  check('Demo: a second Re-scan returns to day one', await waitFor(`/Sample data . nothing here is from a real tenant/.test(document.body.innerText)`))
+
+  // Leave the demo: back to the signed-out app, no banner (item 12).
+  await clickText('/Leave the demo/', '.demo-banner')
+  check('Demo: Leave returns to Connect with the banner gone', (await waitFor(`location.hash === '#/connect'`)) && !/Sample data/.test(await text()))
+
+  const realAfter = await realKeys()
+  check(
+    'Demo: no real tenant storage was touched by the demo',
+    realBefore.length === realAfter.length && realBefore.every((k, i) => k === realAfter[i]),
+    `before=[${realBefore.join(', ')}] after=[${realAfter.join(', ')}]`,
+  )
+  check(
+    'Demo: no console errors during the demo walk',
+    consoleErrors.slice(demoErrBase).filter((e) => !/authmethods|favicon|microsoftonline|net::|ERR_/.test(e)).length === 0,
+    consoleErrors.slice(demoErrBase).slice(0, 3).join(' | '),
+  )
 } catch (e) {
   check('walk completed', false, e instanceof Error ? e.message : String(e))
 } finally {
