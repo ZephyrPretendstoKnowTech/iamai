@@ -1,6 +1,6 @@
 {
   "commit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-  "generatedAt": "2026-09-01T19:04:22.971Z",
+  "generatedAt": "2026-09-01T19:21:04.244Z",
   "policies": [
     {
       "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
@@ -2298,6 +2298,13 @@
     "admins-phishing-resistant": [
       "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce"
     ],
+    "admin-portals-protected": [
+      "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e"
+    ],
+    "guests-mfa": [
+      "e0fabad3-bd0f-42e4-a901-51ef7ab8889c",
+      "f25f94e0-98b6-41be-b9d6-68cb781004a4"
+    ],
     "block-legacy-auth": [
       "9eab445f-7f21-479a-85c9-29769512067e"
     ],
@@ -2306,6 +2313,9 @@
     ],
     "block-auth-transfer": [
       "fa005ec2-4940-49c8-b4e7-b58e66ef481c"
+    ],
+    "geo-restriction": [
+      "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5"
     ],
     "admin-session": [
       "04b969aa-3e98-4e0f-8b32-2319b199b56a"
@@ -2319,14 +2329,14 @@
     "device-registration-mfa": [
       "aeb49474-5250-4b65-8b0a-56c47127ee0f"
     ],
+    "token-protection": [
+      "8bb25c6a-ed35-4556-bed4-b3aaa14e192b"
+    ],
     "workload-identity-block": [
       "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP"
     ],
     "all-users-no-persistence": [
       "ea9459a9-91b6-4d2b-b929-03781ac81d54"
-    ],
-    "intune-enrollment-reauth": [
-      "a6b3b754-9079-48f0-abb2-9e79b2f41095"
     ]
   }
 }

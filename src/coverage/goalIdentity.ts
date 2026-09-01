@@ -29,7 +29,19 @@ export type GoalMapResult = {
   unmappedGoals: string[]
   unmappedPolicies: string[]
   ties: { goalId: string; candidates: string[] }[]
+  /** A policy that differs from a mapped one only in its exclusion set (owner resolution). */
+  variants: { policy: string; variantOf: string }[]
 }
+
+// Content renders these goals with two policies (Policy A / Policy B), so the map
+// value is an ordered pair, never a tie. A mergesGoals step's anchor goal maps to
+// the pair [its own policy, the merged goal's policy]; the merged goal is not
+// mapped separately. guests-mfa is a single goal the baseline implements with two
+// policies — A the multifactor grant, B the stronger authentication-strength grant
+// (matching content.json's Policy A/B). Derived from content.json's mergesGoals
+// and Policy A/B leads; kept here because goalIdentity has no content import.
+const MERGE_ANCHOR: Record<string, string> = { 'byod-session-controls': 'block-downloads-unmanaged' }
+const DECLARED_PAIR = new Set(['guests-mfa'])
 
 type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members'
 type CondTag = string // 'locations' | 'platforms' | 'clientAppsRestricted' | 'flows' | 'deviceFilter' | 'userActions' | 'authContext' | 'signInRisk:high' | 'userRisk:medium' | …
@@ -47,7 +59,7 @@ function appsClass(f: PolicyFacts): string {
   if (a.adminPortals) return 'adminPortals'
   if (a.ids.has(ASM_APP_ID)) return 'azureManagement'
   if (a.userActions.size > 0) return 'userAction'
-  if (a.authContexts.size > 0) return 'specific'
+  if (a.authContexts.size > 0) return 'authContext' // its own class, distinct from an app set (owner resolution)
   if (a.all) return 'all'
   if (a.office365) return 'office365'
   if (a.ids.size > 0) return 'specific'
@@ -146,13 +158,24 @@ function candidates(impl: Implementation, policies: PolicyForMap[]): PolicyForMa
  * unmapped policy (a not-assessed Cleanup row).
  */
 export function mapGoalsToPolicies(policies: PolicyForMap[]): GoalMapResult {
-  const map: GoalMap = {}
-  const unmappedGoals: string[] = []
-  const ties: { goalId: string; candidates: string[] }[] = []
-  const claimed = new Set<string>()
+  const goalById = new Map(CATALOGUE.map((g) => [g.id, g]))
+  const variants: { policy: string; variantOf: string }[] = []
 
-  for (const goal of CATALOGUE) {
-    // A policy is a candidate if it implements ANY of the goal's implementations.
+  // A policy without its exclusion set — two policies with the same core are one
+  // goal plus a variant (owner resolution). The exclusion set is compared apart.
+  const core = (f: PolicyFacts): string =>
+    JSON.stringify([
+      userClass(f), appsClass(f),
+      [...condTags(f)].sort(),
+      f.grant ? [[...f.grant.controls].sort(), f.grant.strengthId ? 'strength' : ''] : null,
+      [f.session.signInFrequencyHours, f.session.signInFrequencyEveryTime, f.session.persistentBrowser, f.session.appEnforced, f.session.secureSignInSession, f.session.cloudAppSecurity],
+      [...f.who.roles].sort(), [...f.who.groups].sort(), [...f.who.users].sort(), f.who.all, f.who.guests?.slice().sort() ?? null,
+    ])
+
+  /** Candidates for one goal, with variants collapsed to the placeholder-carrier. */
+  const collapsedCandidates = (goalId: string): { cands: PolicyForMap[]; bestTemplate: Set<CondTag> } => {
+    const goal = goalById.get(goalId)
+    if (!goal) return { cands: [], bestTemplate: new Set() }
     const found = new Map<string, PolicyForMap>()
     let bestTemplate = new Set<CondTag>()
     for (const impl of goal.implementations) {
@@ -162,27 +185,81 @@ export function mapGoalsToPolicies(policies: PolicyForMap[]): GoalMapResult {
         if (tt.size > bestTemplate.size) bestTemplate = tt
       }
     }
-    const cands = [...found.values()]
-    if (cands.length === 0) {
-      unmappedGoals.push(goal.id)
-      continue
+    // Collapse variants: group by core; the one with the most excluded groups (the
+    // placeholder-carrying policy) wins, the rest are recorded as variants.
+    const byCore = new Map<string, PolicyForMap[]>()
+    for (const p of found.values()) {
+      const k = core(p.facts)
+      ;(byCore.get(k) ?? byCore.set(k, []).get(k)!).push(p)
     }
-    if (cands.length === 1) {
-      map[goal.id] = [cands[0].id]
-      claimed.add(cands[0].id)
-      continue
+    const cands: PolicyForMap[] = []
+    for (const group of byCore.values()) {
+      if (group.length === 1) { cands.push(group[0]); continue }
+      const ranked = [...group].sort((a, b) => b.facts.whoNot.groups.size - a.facts.whoNot.groups.size || a.name.localeCompare(b.name))
+      cands.push(ranked[0])
+      for (const loser of ranked.slice(1)) variants.push({ policy: loser.name, variantOf: ranked[0].name })
     }
-    // Closest superset of the template: the fewest conditions beyond it.
-    const extra = (p: PolicyForMap): number => [...condTags(p.facts)].filter((t) => !bestTemplate.has(t)).length
-    const ranked = [...cands].sort((a, b) => extra(a) - extra(b))
-    if (extra(ranked[0]) === extra(ranked[1])) {
-      ties.push({ goalId: goal.id, candidates: ranked.filter((p) => extra(p) === extra(ranked[0])).map((p) => p.name) })
-      continue // a tie maps nothing (owner resolution)
-    }
-    map[goal.id] = [ranked[0].id]
-    claimed.add(ranked[0].id)
+    return { cands, bestTemplate }
   }
 
-  const unmappedPolicies = policies.filter((p) => !claimed.has(p.id)).map((p) => p.name)
-  return { map, unmappedGoals, unmappedPolicies, ties }
+  /** The one policy for a goal after collapse and closest-superset; null on a tie. */
+  const pick = (goalId: string): PolicyForMap | { tie: string[] } | null => {
+    const { cands, bestTemplate } = collapsedCandidates(goalId)
+    if (cands.length === 0) return null
+    if (cands.length === 1) return cands[0]
+    const extra = (p: PolicyForMap): number => [...condTags(p.facts)].filter((t) => !bestTemplate.has(t)).length
+    const ranked = [...cands].sort((a, b) => extra(a) - extra(b))
+    if (extra(ranked[0]) === extra(ranked[1])) return { tie: ranked.filter((p) => extra(p) === extra(ranked[0])).map((p) => p.name) }
+    return ranked[0]
+  }
+
+  const map: GoalMap = {}
+  const unmappedGoals: string[] = []
+  const ties: { goalId: string; candidates: string[] }[] = []
+  const claimed = new Set<string>()
+  const merged = new Set(Object.values(MERGE_ANCHOR))
+  const isPolicy = (v: PolicyForMap | { tie: string[] } | null): v is PolicyForMap => v !== null && !('tie' in v)
+
+  for (const goal of CATALOGUE) {
+    if (merged.has(goal.id)) continue // mapped as part of its anchor's pair
+
+    // A mergesGoals anchor maps to the ordered pair [its policy, the merged goal's].
+    const other = MERGE_ANCHOR[goal.id]
+    if (other) {
+      const a = pick(goal.id)
+      const b = pick(other)
+      if (isPolicy(a) && isPolicy(b)) {
+        map[goal.id] = [a.id, b.id]
+        claimed.add(a.id).add(b.id)
+      } else {
+        // The pair could not be formed; fall through to a singleton or a report.
+        if (isPolicy(a)) { map[goal.id] = [a.id]; claimed.add(a.id) }
+        else if (a && 'tie' in a) ties.push({ goalId: goal.id, candidates: a.tie })
+        else unmappedGoals.push(goal.id)
+      }
+      continue
+    }
+
+    // A declared two-policy goal (guests-mfa): both candidates, A the multifactor
+    // grant, B the stronger authentication-strength grant.
+    if (DECLARED_PAIR.has(goal.id)) {
+      const { cands } = collapsedCandidates(goal.id)
+      if (cands.length >= 2) {
+        const ordered = [...cands].sort((x, y) => Number(!!x.facts.grant?.strengthId) - Number(!!y.facts.grant?.strengthId) || x.name.localeCompare(y.name))
+        map[goal.id] = ordered.map((p) => p.id)
+        for (const p of ordered) claimed.add(p.id)
+        continue
+      }
+      // Fewer than two — resolve as a normal goal below.
+    }
+
+    const one = pick(goal.id)
+    if (one === null) unmappedGoals.push(goal.id)
+    else if ('tie' in one) ties.push({ goalId: goal.id, candidates: one.tie })
+    else { map[goal.id] = [one.id]; claimed.add(one.id) }
+  }
+
+  const variantPolicies = new Set(variants.map((v) => v.policy))
+  const unmappedPolicies = policies.filter((p) => !claimed.has(p.id) && !variantPolicies.has(p.name)).map((p) => p.name)
+  return { map, unmappedGoals, unmappedPolicies, ties, variants }
 }
