@@ -5,7 +5,6 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { batchClassOf, buildSchedule, dependencyGraph, nextMonday, observationDaysFor, toEnforcementDay } from './schedule.ts'
 import { bandForActiveUsers } from './constants.ts'
-import { PHASE_NAME } from '../copy/steps.ts'
 import { ROADMAP as C } from '../copy/pages.ts'
 import type { Ring, Step } from './types.ts'
 
@@ -349,11 +348,9 @@ test('a wave is named by every goal area it holds, not by one dominant phase (pr
   ]
   const s = buildSchedule(steps, MON, 12)
   const withBoth = s.waves.filter((w) => w.wave >= 1).find((w) => w.stepIds.includes('admin') && w.stepIds.includes('devices'))
-  if (withBoth) {
-    assert.deepEqual(withBoth.phases, [3, 5], 'the wave records both areas it holds')
-    const name = C.waveAreas(withBoth.phases.map((p) => PHASE_NAME[p]))
-    assert.ok(name.includes(PHASE_NAME[3]) && name.includes(PHASE_NAME[5]), `"${name}" names both areas`)
-  }
+  // Phases are numbered, not named (target-state §5): the wave still records the
+  // goal-area bands it holds, but the wave-name table that labelled them is gone.
+  if (withBoth) assert.deepEqual(withBoth.phases, [3, 5], 'the wave records both areas it holds')
   // Every wave records at least the phase it is ordered by, whatever it holds.
   for (const w of s.waves) assert.ok(w.phases.length > 0 && w.phases.includes(w.phase), `wave ${w.wave} records its own phase`)
 })

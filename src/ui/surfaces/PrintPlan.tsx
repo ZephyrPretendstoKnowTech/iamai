@@ -6,7 +6,8 @@ import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { DangerArea } from '../../roadmap/dangers.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
-import { PHASE_NAME, PRINT as C } from '../../copy/steps.ts'
+import { PRINT as C } from '../../copy/steps.ts'
+import { waveLabels } from '../../derive/phases.ts'
 import { PLAN } from '../../copy/plan.ts'
 import { ROADMAP } from '../../copy/pages.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
@@ -70,7 +71,8 @@ export function PrintPlan({
   const done = steps.filter((s) => s.status === 'done')
   const byId = new Map(steps.map((s) => [s.id, s]))
   const waves = schedule.waves.filter((w) => w.stepIds.length > 0)
-  const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? ROADMAP.day0 : ROADMAP.wave(w.wave, PHASE_NAME[w.phase] ?? ''))
+  const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
+  const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? ROADMAP.day0 : ROADMAP.wave(w.wave, waveLabelByNumber.get(w.wave) ?? ''))
   // The finish date comes from src/derive (prompt 47 item 7): the last date
   // the calendar sets, with the steps a readiness threshold still holds.
   const finish = planFinish(steps)
