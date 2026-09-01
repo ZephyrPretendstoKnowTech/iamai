@@ -226,6 +226,15 @@ export function nextMonday(fromIso: string): string {
   return addDays(fromIso.slice(0, 10) + 'T12:00:00.000Z', delta)
 }
 
+/**
+ * The plan's default start: the next working day, not the next Monday (prompt 50
+ * item 2). Noon UTC so the calendar day is the same in every display zone, and
+ * the weekday clamp reads the same after that anchoring (Fri and weekends → Mon).
+ */
+export function nextWorkingDay(fromIso: string): string {
+  return toWeekday(addDays(fromIso.slice(0, 10) + 'T12:00:00.000Z', 1))
+}
+
 const isWork = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped'
 const isEnforcement = (s: Step): boolean => isWork(s) && (s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce')
 

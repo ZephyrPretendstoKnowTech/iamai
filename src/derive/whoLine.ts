@@ -7,18 +7,31 @@
 import type { StepPopulation } from '../roadmap/types.ts'
 import { count, list } from '../copy/statements.ts'
 
-const NAMED_AT_MOST = 3
+// A row names people only when they fit; otherwise the count, with the names on
+// the step (prompt 50 item 4). The gap on a row is one shortened clause; the
+// full sentence is on the step.
+const NAMED_AT_MOST = 2
+const NAME_CHARS = 28
+const GAP_CHARS = 40
 
 /** The people a step's row and step name: its active in-scope set (the dormant step names its own accounts). */
 export function affectedIds(pop: StepPopulation): string[] {
   return pop.activeIds ?? pop.ids
 }
 
-/** The row's who-line: names when three or fewer, else the count, else nobody. */
+/** A row's gap suffix: one shortened clause, ≤40 characters (the full sentence is on the step). */
+export function shortGap(gap: string): string {
+  const s = gap.replace(/^sessions /, '').replace(/\bbaseline wants\b/, 'wants')
+  if (s.length <= GAP_CHARS) return s
+  return s.slice(0, GAP_CHARS - 1).replace(/[\s,]+\S*$/, '') + '…'
+}
+
+/** The row's who-line: names only when ≤2 and they fit in 28 characters, else the count. */
 export function whoLine(pop: StepPopulation, nameOf: (id: string) => string, gap: string | null = null): string {
   const ids = affectedIds(pop)
-  const head = ids.length === 0 ? 'nobody affected' : ids.length <= NAMED_AT_MOST ? list(ids.map(nameOf)) : count(ids.length, 'person', 'people')
-  return gap ? `${head} · ${gap}` : head
+  const names = list(ids.map(nameOf))
+  const head = ids.length === 0 ? 'nobody affected' : ids.length <= NAMED_AT_MOST && names.length <= NAME_CHARS ? names : count(ids.length, 'person', 'people')
+  return gap ? `${head} · ${shortGap(gap)}` : head
 }
 
 /** The step's population line: the active count, then `covers N enabled` when more are in scope. */

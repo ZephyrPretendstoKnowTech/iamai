@@ -36,7 +36,11 @@ export function initAuth(): Promise<AccountInfo | null> {
   return initialized
 }
 
-export function signIn(): Promise<void> {
+export async function signIn(): Promise<void> {
+  // The first click used to race MSAL's initialize(); loginRedirect before it
+  // resolved was a no-op, so the button did nothing until the second click
+  // (prompt 50 item 7). Await the memoized init first.
+  await initAuth()
   return msal.loginRedirect({ scopes: GRAPH_SCOPES })
 }
 

@@ -233,6 +233,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           schedule={schedule}
           verificationNote={rollout.toSetUp > 0 ? `${rollout.toSetUp} of ${rollout.active} active people still to set up.` : 'Everyone active is ready.'}
           dangers={dangers}
+          scanAt={scan.at}
+          coverage={coverage}
         />
       )}
     </section>

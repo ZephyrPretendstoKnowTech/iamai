@@ -71,6 +71,7 @@ export function Step({ step, schedule, steps, tenantName, nameOf, onSkip, onUnsk
 
       <h3>{C.step.whoTouches}</h3>
       <p className="line">{populationLine(pop)}</p>
+      {step.gap && <p className="reason">{step.gap}</p>}
       {(step.scenarioLines ?? []).map((l, i) => (
         <p key={i} className="reason">
           {l.text}

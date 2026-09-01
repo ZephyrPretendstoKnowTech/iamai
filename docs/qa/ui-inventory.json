@@ -1,5 +1,5 @@
 {
- "fingerprint": "7de4e2cc8d027c01",
+ "fingerprint": "779016ec5e68022b",
  "surfaces": [
   {
    "name": "Header",
@@ -2044,9 +2044,9 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedStop attackers adding their own MFA methodAlex Morgan, Sam Lee and Priya Nair8 Sept 2026",
+     "text": "BlockedStop attackers adding their own MFA method3 people8 Sept 2026",
      "sentences": 1,
-     "words": 15
+     "words": 10
     },
     {
      "selector": ".plan-row",

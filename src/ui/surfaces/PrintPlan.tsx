@@ -5,13 +5,14 @@ import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { DangerArea } from '../../roadmap/dangers.ts'
+import type { CoverageReport } from '../../coverage/types.ts'
 import { PHASE_NAME, PRINT as C } from '../../copy/steps.ts'
 import { PLAN } from '../../copy/plan.ts'
 import { ROADMAP } from '../../copy/pages.ts'
-import { roadmapOverview, scheduleRationale } from '../../copy/statements.ts'
-import { absoluteDate, dateRange, when } from '../../copy/dates.ts'
+import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
+import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { populationLine } from '../../derive/whoLine.ts'
 import { statusOf } from './statusWord.ts'
 import { unknownsFor } from '../../roadmap/unknowns.ts'
@@ -43,6 +44,8 @@ export function PrintPlan({
   schedule,
   verificationNote,
   dangers,
+  scanAt,
+  coverage,
 }: {
   tenantName: string
   baselineLabel: string
@@ -57,7 +60,12 @@ export function PrintPlan({
   verificationNote: string
   schedule: Schedule
   dangers: DangerArea[]
+  /** The scan the plan reads, so page 1 can date the posture. */
+  scanAt: string
+  /** The goal verdicts, so page 1 can name what does not apply. */
+  coverage: CoverageReport
 }) {
+  void baselinePin
   const today = absoluteDate(new Date().toISOString())
   const done = steps.filter((s) => s.status === 'done')
   const byId = new Map(steps.map((s) => [s.id, s]))
@@ -66,22 +74,19 @@ export function PrintPlan({
   // The finish date comes from src/derive (prompt 47 item 7): the last date
   // the calendar sets, with the steps a readiness threshold still holds.
   const finish = planFinish(steps)
-  const overview = roadmapOverview({
-    tenant: tenantName,
-    done: done.length,
-    total: steps.length,
-    pace: ROADMAP.bandWord[schedule.band] ?? schedule.band,
-    finishes: when(finish.finish ?? schedule.targetEnd),
-    weeks: schedule.weeks,
-  })
-  const rationale = scheduleRationale({
-    weeks: schedule.weeks,
-    campaigns: schedule.verification.days > 0 ? 1 : 0,
-    verificationDays: schedule.verification.days,
-    observationDays: schedule.observation.days,
-    waves: schedule.waves.filter((w) => w.wave > 0).length,
-    waitingOnSetup: schedule.waitingOnSetup,
-  })
+
+  // Page 1 is the posture summary an MSP hands a client (prompt 50 item 8,
+  // target-state §7): in place / to do / doesn't apply by goal name, the plan's
+  // one-line header, and no pace, baseline pin or pace sentence.
+  const inPlaceNames = done.map((s) => s.plainTitle || s.title)
+  const toDoNames = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').map((s) => s.plainTitle || s.title)
+  const doesntApplyNames = coverage.results.filter((r) => r.status === 'not-applicable' || r.status === 'licence-limited').map((r) => r.goal.shortName || r.goal.name)
+  const inPlaceCount = doneSteps(steps).length
+  const totalCount = trackableSteps(steps).length
+  const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(schedule.start)) / (7 * 86_400_000))) : schedule.weeks
+  const headerLine = finish.finish
+    ? PLAN.header(totalCount, inPlaceCount, `finishes ${absoluteDate(finish.finish)}`, weeks, FINISH.waiting(finish.waiting))
+    : PLAN.header(totalCount, inPlaceCount, PLAN.cannotFinish(FINISH.waiting(finish.waiting)), weeks, '')
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
   // shows only this document, on every route.
@@ -93,26 +98,30 @@ export function PrintPlan({
         <RingMark size={56} />
         <h1>{C.title(tenantName)}</h1>
         <dl>
+          <dt>{C.cover.tenant}</dt>
+          <dd>{tenantName}</dd>
+          <dt>{C.cover.scanned}</dt>
+          <dd>{absoluteDate(scanAt)}</dd>
           <dt>{C.cover.baseline}</dt>
           <dd>{baselineLabel}</dd>
-          {baselinePin && (
-            <>
-              <dt>{C.cover.pin}</dt>
-              <dd>{baselinePin.slice(0, 12)}</dd>
-            </>
-          )}
           <dt>{C.cover.dates}</dt>
           <dd>
             {dateRange(schedule.start, finish.finish ?? schedule.targetEnd)}
             {finish.waiting.length > 0 && ` · ${FINISH.waiting(finish.waiting)}`}
           </dd>
-          <dt>{C.cover.pace}</dt>
-          <dd>
-            {ROADMAP.bands[schedule.band]?.label ?? schedule.band} · {ROADMAP.expected(schedule.expectedDays / 7)}
-          </dd>
-          <dt>{C.cover.generated}</dt>
-          <dd>{today}</dd>
         </dl>
+        <p className="print-statement">{headerLine}</p>
+        <div className="print-posture">
+          <p>
+            <strong>{C.posture.inPlace(inPlaceNames.length)}</strong> {inPlaceNames.length > 0 ? inPlaceNames.join(', ') : C.posture.noneYet}
+          </p>
+          <p>
+            <strong>{C.posture.toDo(toDoNames.length)}</strong> {toDoNames.join(', ')}
+          </p>
+          <p>
+            <strong>{C.posture.doesntApply(doesntApplyNames.length)}</strong> {doesntApplyNames.length > 0 ? doesntApplyNames.join(', ') : C.posture.none}
+          </p>
+        </div>
         <p className="muted">{C.cover.prepared(operator)}</p>
         <p className="print-statement">{C.cover.readOnly}</p>
         {/* Whoever reads this on paper can still say it is wrong (prompt 34 §5). */}
@@ -131,9 +140,6 @@ export function PrintPlan({
 
       <section className="print-page">
         <h2>{C.summary}</h2>
-        <p>
-          {overview} {rationale}
-        </p>
         {progress && (
           <div className="print-progress">
             <h3>{C.progress}</h3>
