@@ -428,59 +428,6 @@
             },
             "sessionControls": null
           }
-        },
-        {
-          "tier": "p1",
-          "kind": "ca",
-          "signature": {
-            "userActionsInclude": [
-              "urn:user:registersecurityinfo"
-            ],
-            "grantBlock": true,
-            "clientAppsAll": true
-          },
-          "expectedWho": {
-            "kind": "all"
-          },
-          "expectedApps": "userAction",
-          "floor": {
-            "grant": "block"
-          },
-          "allowedExclusions": [
-            "breakGlass",
-            "globalExclusion"
-          ],
-          "template": {
-            "displayName": "{namePrefix} - Block - Security info registration",
-            "conditions": {
-              "users": {
-                "includeUsers": [
-                  "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
-                "excludeGroups": [
-                  "{exclusionsGroup}"
-                ]
-              },
-              "applications": {
-                "includeUserActions": [
-                  "urn:user:registersecurityinfo"
-                ]
-              },
-              "clientAppTypes": [
-                "all"
-              ]
-            },
-            "grantControls": {
-              "operator": "OR",
-              "builtInControls": [
-                "block"
-              ]
-            },
-            "sessionControls": null
-          }
         }
       ],
       "free": [],

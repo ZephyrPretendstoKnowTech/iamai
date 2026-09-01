@@ -20,9 +20,11 @@ import goalsData from '../../data/goals.json' with { type: 'json' }
 import type { Goal, Implementation, PolicyFacts } from './types.ts'
 
 const CATALOGUE = goalsData.goals as unknown as Goal[]
-// The Azure/directory management plane: the Service Management API and the
-// Windows Azure Active Directory app. Either scopes the "Azure management" goal.
-const AZURE_MGMT_APP_IDS = new Set(['797f4846-ba00-4fd7-ba43-dac1f8f63013', '00000002-0000-0000-c000-000000000000'])
+// The Azure management plane is the Windows Azure Service Management API. The
+// Windows Azure Active Directory app (00000002-…-c000-…) is the directory/Graph
+// app, not the management plane, so it does not scope the "Azure management" goal
+// (owner: if a policy targets it, the goal is not in this baseline).
+const AZURE_MGMT_APP_IDS = new Set(['797f4846-ba00-4fd7-ba43-dac1f8f63013'])
 
 export type PolicyForMap = { id: string; name: string; facts: PolicyFacts }
 export type GoalMap = Record<string, string[]>

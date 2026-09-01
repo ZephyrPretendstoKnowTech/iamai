@@ -1,6 +1,6 @@
 {
   "commit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-  "generatedAt": "2026-09-01T19:42:07.185Z",
+  "generatedAt": "2026-09-01T19:56:41.187Z",
   "policies": [
     {
       "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
@@ -2305,9 +2305,6 @@
       "e0fabad3-bd0f-42e4-a901-51ef7ab8889c",
       "f25f94e0-98b6-41be-b9d6-68cb781004a4"
     ],
-    "register-info-protected": [
-      "768858bd-a5ad-47de-8acb-5e815cde0857"
-    ],
     "block-legacy-auth": [
       "9eab445f-7f21-479a-85c9-29769512067e"
     ],
@@ -2334,9 +2331,6 @@
     ],
     "user-risk": [
       "544cd9ef-5e37-4568-9ad8-b8e151be1814"
-    ],
-    "azure-management-mfa": [
-      "ab659968-2e8a-4448-9710-d930aada3499"
     ],
     "device-registration-mfa": [
       "aeb49474-5250-4b65-8b0a-56c47127ee0f"
