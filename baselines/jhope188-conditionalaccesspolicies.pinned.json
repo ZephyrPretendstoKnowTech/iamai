@@ -1,6 +1,6 @@
 {
   "commit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-  "generatedAt": "2026-09-01T18:03:31.743Z",
+  "generatedAt": "2026-09-01T19:04:22.971Z",
   "policies": [
     {
       "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
@@ -2290,5 +2290,43 @@
     "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 0000000c-0000-0000-c000-000000000000",
     "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 1b912ec3-a9dd-4c4d-a53e-76aa7adb28d7",
     "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 8c59ead7-d703-4a27-9e55-c96a0054c8d2"
-  ]
+  ],
+  "goalMap": {
+    "mfa-all-users": [
+      "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4"
+    ],
+    "admins-phishing-resistant": [
+      "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce"
+    ],
+    "block-legacy-auth": [
+      "9eab445f-7f21-479a-85c9-29769512067e"
+    ],
+    "block-device-code": [
+      "8b42eda3-6917-4ab4-afb2-e32c37520f9b"
+    ],
+    "block-auth-transfer": [
+      "fa005ec2-4940-49c8-b4e7-b58e66ef481c"
+    ],
+    "admin-session": [
+      "04b969aa-3e98-4e0f-8b32-2319b199b56a"
+    ],
+    "block-unsupported-platforms": [
+      "9e21fa64-8d9a-4e62-81da-9abce8859a0c"
+    ],
+    "user-risk": [
+      "544cd9ef-5e37-4568-9ad8-b8e151be1814"
+    ],
+    "device-registration-mfa": [
+      "aeb49474-5250-4b65-8b0a-56c47127ee0f"
+    ],
+    "workload-identity-block": [
+      "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP"
+    ],
+    "all-users-no-persistence": [
+      "ea9459a9-91b6-4d2b-b929-03781ac81d54"
+    ],
+    "intune-enrollment-reauth": [
+      "a6b3b754-9079-48f0-abb2-9e79b2f41095"
+    ]
+  }
 }
