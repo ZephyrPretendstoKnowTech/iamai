@@ -1,0 +1,2294 @@
+{
+  "commit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+  "generatedAt": "2026-09-01T18:03:31.743Z",
+  "policies": [
+    {
+      "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
+      "displayName": "IAC - AGENT - BLOCK - HighRiskAgent",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "clientApplications": {
+          "excludeServicePrincipals": [],
+          "includeServicePrincipals": []
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "None"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {}
+    },
+    {
+      "id": "1d8beea4-2ea1-4758-8e22-d6310a60220a",
+      "displayName": "IAC - AGENT - BLOCK - NonTrustedAgents",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "clientApplications": {
+          "excludeServicePrincipals": [],
+          "includeServicePrincipals": []
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "None"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {}
+    },
+    {
+      "id": "1f960ec9-885f-4032-a6b2-a5c559279274",
+      "displayName": "IAC - APP - BLOCK - SharePoint-OneDrive-NonTrustedLocations",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "00000003-0000-0ff1-ce00-000000000000"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "locations": {
+          "excludeLocations": [
+            "AllTrusted"
+          ],
+          "includeLocations": [
+            "All"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "e663a7ce-daec-4062-88b8-5970bfec8019",
+            "9ee031a3-3551-4bc3-a81d-d6f0149ae329",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
+        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "1d3a7677-a723-4c56-924c-2e1dc63df105",
+      "displayName": "IAC - APP - inforcer - RequireMFA",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "708861da-226e-4d65-a57a-24128df64524"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "locations": {
+          "excludeLocations": [],
+          "includeLocations": [
+            "All"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "mfa"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": null,
+      "displayName": "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "users": {
+          "includeUsers": [
+            "All"
+          ],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "excludeGroups": [
+            "CA-GlobalExclusions-GroupID-ReplaceMe"
+          ],
+          "includeRoles": [],
+          "excludeRoles": []
+        },
+        "applications": {
+          "includeApplications": [
+            "d4ebce55-015a-49b5-a083-c84d1797ae8c"
+          ],
+          "excludeApplications": [],
+          "includeUserActions": [],
+          "includeAuthenticationContextClassReferences": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "userRiskLevels": [],
+        "signInRiskLevels": []
+      },
+      "grantControls": null,
+      "sessionControls": {
+        "signInFrequency": {
+          "authenticationType": "primaryAndSecondaryAuthentication",
+          "frequencyInterval": "everyTime",
+          "isEnabled": true
+        }
+      },
+      "placeholders": {
+        "CA-GlobalExclusions-GroupID-ReplaceMe": "serviceAccountsGroup"
+      }
+    },
+    {
+      "id": "9bc2ad69-4aed-4242-807d-788446196b8b",
+      "displayName": "IAC - APP – BLOCK – AVD - Exclude - AllowedAVDUsers",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "0af06dc6-e4b5-4f28-818e-e78e62d137a5",
+            "9cdead84-a844-4324-93f2-b2e6bb768d07"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "9ee031a3-3551-4bc3-a81d-d6f0149ae329",
+            "902993ed-96f7-4af6-825c-510dfc97b258",
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "travellersGroup",
+        "902993ed-96f7-4af6-825c-510dfc97b258": "serviceAccountsGroup",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "b13dd393-f644-45c8-81bf-aa7f4032ebd3",
+      "displayName": "IAC - APP – BLOCK – AVD - NonTrustedLocations",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "0af06dc6-e4b5-4f28-818e-e78e62d137a5",
+            "9cdead84-a844-4324-93f2-b2e6bb768d07"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "locations": {
+          "excludeLocations": [
+            "AllTrusted"
+          ],
+          "includeLocations": [
+            "All"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "9ee031a3-3551-4bc3-a81d-d6f0149ae329",
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "travellersGroup",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "fa005ec2-4940-49c8-b4e7-b58e66ef481c",
+      "displayName": "IAC - GLOBAL - BLOCK - Authentication Transfer",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "authenticationFlows": {
+          "transferMethods": "authenticationTransfer"
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "e663a7ce-daec-4062-88b8-5970bfec8019",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "8b42eda3-6917-4ab4-afb2-e32c37520f9b",
+      "displayName": "IAC - GLOBAL - BLOCK - Device Code Auth Flow",
+      "state": "enabled",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "authenticationFlows": {
+          "transferMethods": "deviceCodeFlow"
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "9e21fa64-8d9a-4e62-81da-9abce8859a0c",
+      "displayName": "IAC - GLOBAL - BLOCK - Unsupported Device Platforms",
+      "state": "enabled",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "platforms": {
+          "excludePlatforms": [
+            "android",
+            "iOS",
+            "windows",
+            "macOS"
+          ],
+          "includePlatforms": [
+            "all"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "1588fdc7-f34a-468e-8023-4d788ef5d226",
+      "displayName": "IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "locations": {
+          "excludeLocations": [
+            "0403d368-f07f-4e4c-b75d-aa169d5b6683"
+          ],
+          "includeLocations": [
+            "All"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [],
+          "excludeRoles": [],
+          "excludeUsers": [
+            "ebb6b745-eb22-4e8e-8b09-95e9bb568ce2"
+          ],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "cec6164b-ea04-4646-b1b0-125cb7b0c71b"
+          ]
+        }
+      },
+      "grantControls": {
+        "authenticationStrength": {
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime",
+            "temporaryAccessPassMultiUse"
+          ],
+          "combinationConfigurations": [],
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "description": "",
+          "displayName": "Modern MFA + TAP",
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "modifiedDateTime": "2026-05-04T23:40:40.6249015Z",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa"
+        },
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "0403d368-f07f-4e4c-b75d-aa169d5b6683": "allowedCountries",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce",
+      "displayName": "IAC - GLOBAL - GRANT - MFA - AllAdmins",
+      "state": "enabled",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [
+            "62e90394-69f5-4237-9190-012177145e10",
+            "f2ef992c-3afb-46b9-b7cf-a126ee74c451",
+            "e8611ab8-c189-46e8-94e1-60213ab1f814",
+            "7be44c8a-adaf-4e2a-84d6-ab2649e08a13",
+            "194ae4cb-b126-40b2-bd5b-6091b380977d",
+            "5f2222b1-57c3-48ba-8ad5-d4759f1fde6f",
+            "5d6b6bb7-de71-4623-b4af-96380a352509",
+            "17315797-102d-40b4-93e0-432062caca18",
+            "e6d1a23a-da11-4be4-9570-befc86d067a7",
+            "892c5842-a9a6-463a-8041-72aa08ca3cf6",
+            "c4e39bd9-1100-46d3-8c65-fb160da0071f",
+            "0526716b-113d-4c15-b2c8-68e3c22b9f80",
+            "b1be1c3e-b65d-4f19-8427-f6fa0d97feb9",
+            "8ac3fc64-6eca-42ea-9e69-59f4c7b60eb2",
+            "45d8d3c5-c802-45c6-b32a-1d70b5e1e86e",
+            "be2f45a1-457d-42af-a067-6ec1fa63bc45",
+            "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3",
+            "158c047a-c907-4556-b7ef-446551a6b5f7",
+            "cf1c38e5-3621-4004-a7cb-879624dced7c",
+            "fe930be7-5e62-47db-91af-98c3a49a38b1",
+            "fdd7a751-b60b-444a-984c-02652fe8fa1c",
+            "966707d0-3269-4727-9be2-8c3a10f19b9d",
+            "729827e3-9c14-49f7-bb1b-9608f156bbb8",
+            "4d6ac14f-3453-41d0-bef9-a3e0c569773a",
+            "95e79109-95c0-4d8e-aee3-d01accf2d47b",
+            "3a2c62db-5318-420d-8d74-23affee5d9d5",
+            "7698a772-787b-4ac8-901f-60d6b08affd2",
+            "11451d60-acb2-45eb-a7d6-43d0f0125c13",
+            "32696413-001a-46ae-978c-ce0f6b3620d2",
+            "29232cdf-9323-42fd-ade2-1d097af3e4de",
+            "f28a1f50-f6e7-4571-818b-6a12f2af6b6c",
+            "69091246-20e8-4a56-aa4d-066075b2a7a8",
+            "a9ea8996-122f-4c74-9520-8edcd192826c",
+            "44367163-eba1-44c3-98af-f5787879f96a",
+            "11648597-926c-4cf3-9c36-bcebb0ba8dcc",
+            "88d8e3e3-8f55-4a1e-953a-9b9898b8876b",
+            "9360feb5-f418-4baa-8175-e2a00bac4301",
+            "8329153b-31d0-4727-b945-745eb3bc5f31",
+            "b0f54661-2d74-4c50-afa3-1ec803f12efe",
+            "4a5d8f65-41da-4de4-8968-e035b65339cf",
+            "ac434307-12b9-4fa1-a708-88bf58caabc1",
+            "d37c8bed-0711-4417-ba38-b4abe66ce4c2",
+            "59d46f88-662b-457b-bceb-5c3809e5908f",
+            "db506228-d27e-4b7d-95e5-295956d6615f",
+            "1fe13547-53f6-408d-ac04-7f8eed167b38",
+            "b6a27b2b-f905-4b2e-81b5-0d90e0ef1fdb"
+          ],
+          "includeUsers": []
+        }
+      },
+      "grantControls": {
+        "authenticationStrength": {
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime",
+            "temporaryAccessPassMultiUse"
+          ],
+          "combinationConfigurations": [],
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "description": "",
+          "displayName": "Modern MFA + TAP",
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "modifiedDateTime": "2026-05-04T23:40:40.6249015Z",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa"
+        },
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4",
+      "displayName": "IAC - GLOBAL - GRANT - MFA - AllUsers",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [
+            "d4ebce55-015a-49b5-a083-c84d1797ae8c"
+          ],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "e663a7ce-daec-4062-88b8-5970bfec8019",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "mfa"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "f25f94e0-98b6-41be-b9d6-68cb781004a4",
+      "displayName": "IAC - GLOBAL - GRANT - MFA - B2B-Guest",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeGuestsOrExternalUsers": {
+            "externalTenants": {
+              "membershipKind": "all"
+            },
+            "guestOrExternalUserTypes": "internalGuest,b2bCollaborationMember,b2bDirectConnectUser,serviceProvider"
+          },
+          "includeRoles": [],
+          "includeUsers": []
+        }
+      },
+      "grantControls": {
+        "authenticationStrength": {
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime",
+            "temporaryAccessPassMultiUse"
+          ],
+          "combinationConfigurations": [],
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "description": "",
+          "displayName": "Modern MFA + TAP",
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "modifiedDateTime": "2026-05-04T23:40:40.6249015Z",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa"
+        },
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "e0fabad3-bd0f-42e4-a901-51ef7ab8889c",
+      "displayName": "IAC - GLOBAL - GRANT - MFA - Mixed-Guests",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeGuestsOrExternalUsers": {
+            "externalTenants": {
+              "membershipKind": "all"
+            },
+            "guestOrExternalUserTypes": "b2bCollaborationGuest,otherExternalUser"
+          },
+          "includeRoles": [],
+          "includeUsers": []
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "mfa"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "ab659968-2e8a-4448-9710-d930aada3499",
+      "displayName": "IAC - GLOBAL - GRANT - MFA - WindowsAzureAD-BaselineScopes",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "userRiskLevels": [],
+        "signInRiskLevels": [],
+        "clientAppTypes": [
+          "all"
+        ],
+        "applications": {
+          "includeApplications": [
+            "00000002-0000-0000-c000-000000000000"
+          ],
+          "excludeApplications": [],
+          "includeUserActions": [],
+          "includeAuthenticationContextClassReferences": []
+        },
+        "users": {
+          "includeUsers": [
+            "All"
+          ],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "excludeGroups": [
+            "5628ad67-f9d1-4495-abe3-99dc8f9074f1"
+          ],
+          "includeRoles": [],
+          "excludeRoles": []
+        }
+      },
+      "grantControls": {
+        "operator": "OR",
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "termsOfUse": [],
+        "authenticationStrength@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('ab659968-2e8a-4448-9710-d930aada3499')/grantControls/authenticationStrength/$entity",
+        "authenticationStrength": {
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "modifiedDateTime": "2026-08-12T13:23:05.2711028Z",
+          "displayName": "Modern MFA + TAP",
+          "description": "",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa",
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime"
+          ],
+          "combinationConfigurations@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('ab659968-2e8a-4448-9710-d930aada3499')/grantControls/authenticationStrength/combinationConfigurations",
+          "combinationConfigurations": []
+        }
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "serviceAccountsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "30a1edce-e832-456b-b2c5-4b1098d3a9b3",
+      "displayName": "IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": [
+            "urn:user:registerdevice"
+          ]
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "platforms": {
+          "excludePlatforms": [
+            "macOS",
+            "windows"
+          ],
+          "includePlatforms": [
+            "iOS"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [
+            "1178bb5d-4f19-4b69-b33b-44eb7f5b39c9"
+          ],
+          "includeRoles": [],
+          "includeUsers": []
+        }
+      },
+      "grantControls": {
+        "authenticationStrength": {
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime",
+            "temporaryAccessPassMultiUse"
+          ],
+          "combinationConfigurations": [],
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "description": "",
+          "displayName": "Modern MFA + TAP",
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "modifiedDateTime": "2026-05-04T23:40:40.6249015Z",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa"
+        },
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "a53c4c2b-b577-4d88-b64d-36b92f8f3ca0",
+      "displayName": "IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [
+            "5f96c57d-380f-4872-97ff-cfd74ef1ac1a"
+          ],
+          "includeRoles": [],
+          "includeUsers": []
+        }
+      },
+      "grantControls": {
+        "authenticationStrength": {
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime",
+            "temporaryAccessPassMultiUse"
+          ],
+          "combinationConfigurations": [],
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "description": "",
+          "displayName": "Modern MFA + TAP",
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "modifiedDateTime": "2026-05-04T23:40:40.6249015Z",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa"
+        },
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "8bb25c6a-ed35-4556-bed4-b3aaa14e192b",
+      "displayName": "IAC - GLOBAL - SESSION - Windows - TokenProtection",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "00000002-0000-0ff1-ce00-000000000000",
+            "00000003-0000-0ff1-ce00-000000000000",
+            "0af06dc6-e4b5-4f28-818e-e78e62d137a5",
+            "9cdead84-a844-4324-93f2-b2e6bb768d07",
+            "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "mobileAppsAndDesktopClients"
+        ],
+        "devices": {
+          "deviceFilter": {
+            "mode": "exclude",
+            "rule": "device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\""
+          }
+        },
+        "platforms": {
+          "excludePlatforms": [],
+          "includePlatforms": [
+            "windows"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": null,
+      "sessionControls": {
+        "secureSignInSession": {
+          "isEnabled": true
+        }
+      },
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "9eab445f-7f21-479a-85c9-29769512067e",
+      "displayName": "IAC - GLOBAL – BLOCK - Legacy Authentication",
+      "state": "enabled",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "exchangeActiveSync",
+          "other"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5",
+      "displayName": "IAC - GLOBAL – BLOCK – Countries not Allowed",
+      "state": "enabled",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "locations": {
+          "excludeLocations": [
+            "1d421232-4f10-4436-9883-27d9bd3f64cd"
+          ],
+          "includeLocations": [
+            "All"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9",
+            "cc7f9bb7-425b-42fc-b025-311a1a3eb0f4"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "cc7f9bb7-425b-42fc-b025-311a1a3eb0f4": "travellersGroup",
+        "1d421232-4f10-4436-9883-27d9bd3f64cd": "allowedCountries"
+      }
+    },
+    {
+      "id": "1eaf943a-abad-4c77-b101-0c5342fc1044",
+      "displayName": "IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions",
+      "state": "enabled",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "locations": {
+          "excludeLocations": [],
+          "includeLocations": [
+            "1267ac22-ce4d-4a2e-ae00-fd3a3a7f4748"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "1267ac22-ce4d-4a2e-ae00-fd3a3a7f4748": "allowedCountries"
+      }
+    },
+    {
+      "id": "99eabebd-877c-4800-aa15-d389b8767760",
+      "displayName": "IAC - GLOBAL – BLOCK – Service Accounts",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "locations": {
+          "excludeLocations": [
+            "0403d368-f07f-4e4c-b75d-aa169d5b6683"
+          ],
+          "includeLocations": [
+            "All"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "e663a7ce-daec-4062-88b8-5970bfec8019",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [
+            "6612d6d7-12c8-4cbd-8ad5-7460ae2a6579"
+          ],
+          "includeRoles": [],
+          "includeUsers": []
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "0403d368-f07f-4e4c-b75d-aa169d5b6683": "allowedCountries"
+      }
+    },
+    {
+      "id": "04b969aa-3e98-4e0f-8b32-2319b199b56a",
+      "displayName": "IAC - GLOBAL – SESSION – Admin Persistence (4 Hours)",
+      "state": "enabled",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "browser"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [
+            "62e90394-69f5-4237-9190-012177145e10",
+            "f2ef992c-3afb-46b9-b7cf-a126ee74c451",
+            "e8611ab8-c189-46e8-94e1-60213ab1f814",
+            "7be44c8a-adaf-4e2a-84d6-ab2649e08a13",
+            "194ae4cb-b126-40b2-bd5b-6091b380977d",
+            "5f2222b1-57c3-48ba-8ad5-d4759f1fde6f",
+            "5d6b6bb7-de71-4623-b4af-96380a352509",
+            "17315797-102d-40b4-93e0-432062caca18",
+            "e6d1a23a-da11-4be4-9570-befc86d067a7",
+            "892c5842-a9a6-463a-8041-72aa08ca3cf6",
+            "c4e39bd9-1100-46d3-8c65-fb160da0071f",
+            "0526716b-113d-4c15-b2c8-68e3c22b9f80",
+            "b1be1c3e-b65d-4f19-8427-f6fa0d97feb9",
+            "8ac3fc64-6eca-42ea-9e69-59f4c7b60eb2",
+            "45d8d3c5-c802-45c6-b32a-1d70b5e1e86e",
+            "be2f45a1-457d-42af-a067-6ec1fa63bc45",
+            "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3",
+            "158c047a-c907-4556-b7ef-446551a6b5f7",
+            "cf1c38e5-3621-4004-a7cb-879624dced7c",
+            "fe930be7-5e62-47db-91af-98c3a49a38b1",
+            "fdd7a751-b60b-444a-984c-02652fe8fa1c",
+            "966707d0-3269-4727-9be2-8c3a10f19b9d",
+            "729827e3-9c14-49f7-bb1b-9608f156bbb8",
+            "4d6ac14f-3453-41d0-bef9-a3e0c569773a",
+            "95e79109-95c0-4d8e-aee3-d01accf2d47b",
+            "3a2c62db-5318-420d-8d74-23affee5d9d5",
+            "7698a772-787b-4ac8-901f-60d6b08affd2",
+            "11451d60-acb2-45eb-a7d6-43d0f0125c13",
+            "32696413-001a-46ae-978c-ce0f6b3620d2",
+            "29232cdf-9323-42fd-ade2-1d097af3e4de",
+            "f28a1f50-f6e7-4571-818b-6a12f2af6b6c",
+            "69091246-20e8-4a56-aa4d-066075b2a7a8",
+            "a9ea8996-122f-4c74-9520-8edcd192826c",
+            "44367163-eba1-44c3-98af-f5787879f96a",
+            "11648597-926c-4cf3-9c36-bcebb0ba8dcc",
+            "88d8e3e3-8f55-4a1e-953a-9b9898b8876b",
+            "9360feb5-f418-4baa-8175-e2a00bac4301",
+            "8329153b-31d0-4727-b945-745eb3bc5f31",
+            "b0f54661-2d74-4c50-afa3-1ec803f12efe",
+            "4a5d8f65-41da-4de4-8968-e035b65339cf",
+            "ac434307-12b9-4fa1-a708-88bf58caabc1",
+            "d37c8bed-0711-4417-ba38-b4abe66ce4c2",
+            "59d46f88-662b-457b-bceb-5c3809e5908f",
+            "db506228-d27e-4b7d-95e5-295956d6615f",
+            "1fe13547-53f6-408d-ac04-7f8eed167b38",
+            "b6a27b2b-f905-4b2e-81b5-0d90e0ef1fdb"
+          ],
+          "includeUsers": []
+        }
+      },
+      "grantControls": null,
+      "sessionControls": {
+        "persistentBrowser": {
+          "isEnabled": true,
+          "mode": "never"
+        },
+        "signInFrequency": {
+          "authenticationType": "primaryAndSecondaryAuthentication",
+          "frequencyInterval": "timeBased",
+          "isEnabled": true,
+          "type": "hours",
+          "value": 4
+        }
+      },
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "ea9459a9-91b6-4d2b-b929-03781ac81d54",
+      "displayName": "IAC - GLOBAL – SESSION – All Users Persistence (9-12 Hours)",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "browser"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": null,
+      "sessionControls": {
+        "persistentBrowser": {
+          "isEnabled": true,
+          "mode": "never"
+        },
+        "signInFrequency": {
+          "authenticationType": "primaryAndSecondaryAuthentication",
+          "frequencyInterval": "timeBased",
+          "isEnabled": true,
+          "type": "hours",
+          "value": 12
+        }
+      },
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "660ab461-0de5-4b00-baea-ec7325280f60",
+      "displayName": "IAC - INTUNE - GRANT - RequireCompliantDevice",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "locations": {
+          "excludeLocations": [
+            "AllTrusted"
+          ],
+          "includeLocations": [
+            "All"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "2d25c298-555e-4f26-9984-90dfb7eae325",
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "compliantDevice",
+          "domainJoinedDevice"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "2d25c298-555e-4f26-9984-90dfb7eae325": "serviceAccountsGroup",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "aeb49474-5250-4b65-8b0a-56c47127ee0f",
+      "displayName": "IAC - INTUNE – GRANT – Device Registration from trusted location",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": [
+            "urn:user:registerdevice"
+          ]
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "2d25c298-555e-4f26-9984-90dfb7eae325",
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "authenticationStrength": {
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "deviceBasedPush",
+            "temporaryAccessPassOneTime",
+            "temporaryAccessPassMultiUse",
+            "password,microsoftAuthenticatorPush",
+            "password,softwareOath",
+            "password,hardwareOath",
+            "password,sms",
+            "password,voice",
+            "federatedMultiFactor",
+            "microsoftAuthenticatorPush,federatedSingleFactor",
+            "softwareOath,federatedSingleFactor",
+            "hardwareOath,federatedSingleFactor",
+            "sms,federatedSingleFactor",
+            "voice,federatedSingleFactor"
+          ],
+          "combinationConfigurations": [],
+          "createdDateTime": "2021-12-01T08:00:00Z",
+          "description": "Combinations of methods that satisfy strong authentication, such as a password + SMS",
+          "displayName": "Multifactor authentication",
+          "id": "00000000-0000-0000-0000-000000000002",
+          "modifiedDateTime": "2021-12-01T08:00:00Z",
+          "policyType": "builtIn",
+          "requirementsSatisfied": "mfa"
+        },
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "2d25c298-555e-4f26-9984-90dfb7eae325": "serviceAccountsGroup",
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "00000000-0000-0000-0000-000000000002": "strength"
+      }
+    },
+    {
+      "id": "a6b3b754-9079-48f0-abb2-9e79b2f41095",
+      "displayName": "IAC - P2 - APP - SESSION - PIM - Reauthentication",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [],
+          "includeAuthenticationContextClassReferences": [
+            "c1"
+          ],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "authenticationStrength": {
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime",
+            "temporaryAccessPassMultiUse"
+          ],
+          "combinationConfigurations": [],
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "description": "",
+          "displayName": "Modern MFA + TAP",
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "modifiedDateTime": "2026-05-04T23:40:40.6249015Z",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa"
+        },
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": {
+        "signInFrequency": {
+          "authenticationType": "primaryAndSecondaryAuthentication",
+          "frequencyInterval": "everyTime",
+          "isEnabled": true
+        }
+      },
+      "placeholders": {
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "768858bd-a5ad-47de-8acb-5e815cde0857",
+      "displayName": "IAC - P2 - GLOBAL - BLOCK - RiskyUsers - RegisterSecurityInfo",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": [
+            "urn:user:registersecurityinfo"
+          ]
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [
+          "high",
+          "medium"
+        ],
+        "users": {
+          "excludeGroups": [
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "bb6a814e-808a-467c-9475-06f89140ce99",
+      "displayName": "IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation",
+      "state": "enabled",
+      "conditions": {
+        "userRiskLevels": [
+          "high"
+        ],
+        "signInRiskLevels": [],
+        "clientAppTypes": [
+          "all"
+        ],
+        "applications": {
+          "includeApplications": [
+            "All"
+          ],
+          "excludeApplications": [],
+          "includeUserActions": [],
+          "includeAuthenticationContextClassReferences": []
+        },
+        "users": {
+          "includeUsers": [],
+          "excludeUsers": [],
+          "includeGroups": [
+            "8d0564e5-ab28-4283-9a94-9883c581adde"
+          ],
+          "excludeGroups": [
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9",
+            "5628ad67-f9d1-4495-abe3-99dc8f9074f1"
+          ],
+          "includeRoles": [],
+          "excludeRoles": []
+        }
+      },
+      "grantControls": {
+        "operator": "AND",
+        "builtInControls": [
+          "mfa",
+          "riskRemediation"
+        ],
+        "customAuthenticationFactors": [],
+        "termsOfUse": [],
+        "authenticationStrength@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('bb6a814e-808a-467c-9475-06f89140ce99')/grantControls/authenticationStrength/$entity"
+      },
+      "sessionControls": {
+        "signInFrequency": {
+          "authenticationType": "primaryAndSecondaryAuthentication",
+          "frequencyInterval": "everyTime",
+          "isEnabled": true
+        }
+      },
+      "placeholders": {
+        "8d0564e5-ab28-4283-9a94-9883c581adde": "serviceAccountsGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "serviceAccountsGroup"
+      }
+    },
+    {
+      "id": "53a8df0b-4658-4835-ace2-100b5d287aac",
+      "displayName": "IAC - P2 - GLOBAL - GRANT - High-Risk Sign-Ins",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [
+          "high"
+        ],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "authenticationStrength": {
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime",
+            "temporaryAccessPassMultiUse"
+          ],
+          "combinationConfigurations": [],
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "description": "",
+          "displayName": "Modern MFA + TAP",
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "modifiedDateTime": "2026-05-04T23:40:40.6249015Z",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa"
+        },
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": {
+        "signInFrequency": {
+          "authenticationType": "primaryAndSecondaryAuthentication",
+          "frequencyInterval": "everyTime",
+          "isEnabled": true
+        }
+      },
+      "placeholders": {
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "544cd9ef-5e37-4568-9ad8-b8e151be1814",
+      "displayName": "IAC - P2 - GLOBAL - GRANT - High-Risk Users - Risk Remediation",
+      "state": "enabled",
+      "conditions": {
+        "userRiskLevels": [
+          "high"
+        ],
+        "signInRiskLevels": [],
+        "clientAppTypes": [
+          "all"
+        ],
+        "applications": {
+          "includeApplications": [
+            "All"
+          ],
+          "excludeApplications": [],
+          "includeUserActions": [],
+          "includeAuthenticationContextClassReferences": []
+        },
+        "users": {
+          "includeUsers": [
+            "All"
+          ],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "excludeGroups": [
+            "5628ad67-f9d1-4495-abe3-99dc8f9074f1",
+            "8d0564e5-ab28-4283-9a94-9883c581adde"
+          ],
+          "includeRoles": [],
+          "excludeRoles": []
+        }
+      },
+      "grantControls": {
+        "operator": "AND",
+        "builtInControls": [
+          "riskRemediation"
+        ],
+        "customAuthenticationFactors": [],
+        "termsOfUse": [],
+        "authenticationStrength@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('544cd9ef-5e37-4568-9ad8-b8e151be1814')/grantControls/authenticationStrength/$entity",
+        "authenticationStrength": {
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "modifiedDateTime": "2026-08-12T13:23:05.2711028Z",
+          "displayName": "Modern MFA + TAP",
+          "description": "",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa",
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime"
+          ],
+          "combinationConfigurations@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('544cd9ef-5e37-4568-9ad8-b8e151be1814')/grantControls/authenticationStrength/combinationConfigurations",
+          "combinationConfigurations": []
+        }
+      },
+      "sessionControls": {
+        "signInFrequency": {
+          "authenticationType": "primaryAndSecondaryAuthentication",
+          "frequencyInterval": "everyTime",
+          "isEnabled": true
+        }
+      },
+      "placeholders": {
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "serviceAccountsGroup",
+        "8d0564e5-ab28-4283-9a94-9883c581adde": "serviceAccountsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": "180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc",
+      "displayName": "IAC - P2 - GLOBAL - GRANT - Medium-Risk Sign-Ins",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [
+          "medium"
+        ],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "mfa"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "7475b373-0544-4ee8-8827-cff35009136d",
+      "displayName": "IAC - P2 - GLOBAL - GRANT - Medium-Risk Users",
+      "state": "enabled",
+      "conditions": {
+        "userRiskLevels": [
+          "medium"
+        ],
+        "signInRiskLevels": [],
+        "clientAppTypes": [
+          "all"
+        ],
+        "applications": {
+          "includeApplications": [
+            "All"
+          ],
+          "excludeApplications": [],
+          "includeUserActions": [],
+          "includeAuthenticationContextClassReferences": []
+        },
+        "users": {
+          "includeUsers": [
+            "All"
+          ],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "excludeGroups": [
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9",
+            "5628ad67-f9d1-4495-abe3-99dc8f9074f1"
+          ],
+          "includeRoles": [],
+          "excludeRoles": [],
+          "excludeGuestsOrExternalUsers": {
+            "guestOrExternalUserTypes": "internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider",
+            "externalTenants": {
+              "membershipKind": "all"
+            }
+          }
+        }
+      },
+      "grantControls": {
+        "operator": "AND",
+        "builtInControls": [
+          "passwordChange"
+        ],
+        "customAuthenticationFactors": [],
+        "termsOfUse": [],
+        "authenticationStrength@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('7475b373-0544-4ee8-8827-cff35009136d')/grantControls/authenticationStrength/$entity",
+        "authenticationStrength": {
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "modifiedDateTime": "2026-08-12T13:23:05.2711028Z",
+          "displayName": "Modern MFA + TAP",
+          "description": "",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa",
+          "allowedCombinations": [
+            "windowsHelloForBusiness",
+            "fido2",
+            "x509CertificateMultiFactor",
+            "temporaryAccessPassOneTime"
+          ],
+          "combinationConfigurations@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('7475b373-0544-4ee8-8827-cff35009136d')/grantControls/authenticationStrength/combinationConfigurations",
+          "combinationConfigurations": []
+        }
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
+        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "serviceAccountsGroup",
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
+      }
+    },
+    {
+      "id": null,
+      "displayName": "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "userRiskLevels": [],
+        "signInRiskLevels": [],
+        "clientAppTypes": [
+          "all"
+        ],
+        "applications": {
+          "includeApplications": [
+            "None"
+          ],
+          "excludeApplications": [],
+          "includeUserActions": [],
+          "includeAuthenticationContextClassReferences": []
+        },
+        "users": {
+          "includeUsers": [
+            "None"
+          ],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "excludeGroups": [],
+          "includeRoles": [],
+          "excludeRoles": []
+        },
+        "locations": {
+          "includeLocations": [
+            "All"
+          ],
+          "excludeLocations": [
+            "0de51b52-e831-4248-a053-a51aa56f28f1"
+          ]
+        },
+        "clientApplications": {
+          "includeServicePrincipals": [
+            "36f1bcde-43dc-44f4-86fc-34133aa68573"
+          ],
+          "excludeServicePrincipals": []
+        }
+      },
+      "grantControls": {
+        "operator": "OR",
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "termsOfUse": [],
+        "authenticationStrength@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('021f1fec-4c8c-4900-aab6-9aaf64b0fafc')/grantControls/authenticationStrength/$entity"
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "0de51b52-e831-4248-a053-a51aa56f28f1": "trustedLocation"
+      }
+    },
+    {
+      "id": "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e",
+      "displayName": "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "708861da-226e-4d65-a57a-24128df64524",
+            "797f4846-ba00-4fd7-ba43-dac1f8f63013",
+            "MicrosoftAdminPortals",
+            "fd642066-7bfc-4b65-9463-6a08841c12f0",
+            "ba9ff945-a723-4ab5-a977-bd8c9044fe61"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "e663a7ce-daec-4062-88b8-5970bfec8019",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeGuestsOrExternalUsers": {
+            "externalTenants": {
+              "membershipKind": "enumerated"
+            },
+            "guestOrExternalUserTypes": "serviceProvider"
+          },
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "2dd84b12-7900-40f0-b192-027c20aaa83f",
+      "displayName": "IAC - ZTCA - INTUNE - BLOCK - AllApps - ExcludeTrustedLocation",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "devices": {
+          "deviceFilter": {
+            "mode": "exclude",
+            "rule": "device.isCompliant -eq True -or device.trustType -eq \"ServerAD\" -or device.trustType -eq \"Workplace\""
+          }
+        },
+        "locations": {
+          "excludeLocations": [
+            "AllTrusted"
+          ],
+          "includeLocations": [
+            "All"
+          ]
+        },
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeGuestsOrExternalUsers": {
+            "externalTenants": {
+              "membershipKind": "all"
+            },
+            "guestOrExternalUserTypes": "serviceProvider"
+          },
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    },
+    {
+      "id": "8417ec17-17f5-44c1-b937-85b1917f5d9e",
+      "displayName": "IAC- ZTCA - GLOBAL - BLOCK - AllApps -Exclude CA-Global",
+      "state": "enabledForReportingButNotEnforced",
+      "conditions": {
+        "applications": {
+          "excludeApplications": [],
+          "includeApplications": [
+            "All"
+          ],
+          "includeAuthenticationContextClassReferences": [],
+          "includeUserActions": []
+        },
+        "clientAppTypes": [
+          "all"
+        ],
+        "servicePrincipalRiskLevels": [],
+        "signInRiskLevels": [],
+        "userRiskLevels": [],
+        "users": {
+          "excludeGroups": [
+            "62d67e66-2bc9-43cd-b00c-6326dae53d18",
+            "e663a7ce-daec-4062-88b8-5970bfec8019",
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+          ],
+          "excludeRoles": [],
+          "excludeUsers": [],
+          "includeGroups": [],
+          "includeRoles": [],
+          "includeUsers": [
+            "All"
+          ]
+        }
+      },
+      "grantControls": {
+        "builtInControls": [
+          "block"
+        ],
+        "customAuthenticationFactors": [],
+        "operator": "OR",
+        "termsOfUse": []
+      },
+      "sessionControls": null,
+      "placeholders": {
+        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
+        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
+      }
+    }
+  ],
+  "stripped": [
+    "IAC - GLOBAL - GRANT - MFA - AllUsers: 00000012-0000-0000-c000-000000000000",
+    "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 00000002-0000-0000-c000-000000000000",
+    "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 0000000c-0000-0000-c000-000000000000",
+    "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 1b912ec3-a9dd-4c4d-a53e-76aa7adb28d7",
+    "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 8c59ead7-d703-4a27-9e55-c96a0054c8d2"
+  ]
+}
