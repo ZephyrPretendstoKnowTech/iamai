@@ -6,6 +6,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
+import type { PlanDecisions } from './decisions.ts'
 import { PROGRESS } from '../copy/progress.ts'
 
 export const PLAN_SCHEMA_VERSION = 2
@@ -49,6 +50,15 @@ export type PlanFile = {
   }
   mappings: MappingState
   steps: Step[]
+  /**
+   * The decisions the plan was built from (prompt 50.1 item 1): skips, start
+   * date, freeze, checkpoints. On load these are taken and the plan is
+   * regenerated from the connected tenant; the steps above are the regenerated
+   * plan at save time, kept so the file reads on its own, never trusted back.
+   * Absent in a pre-50.1 file, in which case the decisions are recovered from the
+   * steps and schedule.
+   */
+  decisions?: PlanDecisions
   checkpoints: Checkpoint[]
   /** Pacing choices travel with the plan (prompt 13 audit). */
   schedule?: { startDate: string; band?: string; pace?: string; owner?: string; freeze?: { from: string; to: string } | null }
@@ -152,6 +162,16 @@ export function buildPlanFile(args: {
     },
     mappings: args.mapping,
     steps: args.steps,
+    decisions: {
+      planId: args.planId,
+      skips: Object.fromEntries(
+        args.steps.filter((s) => s.status === 'skipped').map((s) => [s.id, { reason: s.skipReason ?? '', at: s.history.find((h) => h.to === 'skipped')?.at ?? generated }]),
+      ),
+      ...(args.schedule?.startDate ? { startDate: args.schedule.startDate } : {}),
+      ...(args.schedule?.band ? { band: args.schedule.band as PlanDecisions['band'] } : {}),
+      freeze: args.schedule?.freeze ?? null,
+      checkpoints: trimCheckpoints(args.checkpoints),
+    },
     checkpoints: trimCheckpoints(args.checkpoints),
     ...(args.schedule ? { schedule: args.schedule } : {}),
     revision: args.revision ?? 1,

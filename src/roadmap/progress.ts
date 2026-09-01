@@ -5,6 +5,9 @@ import { trackExecution } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { SKIP } from '../copy/skip.ts'
 import type { Step, StepStatus } from './types.ts'
+import type { PlanDecisions, SkipDecision } from './decisions.ts'
+
+export type { PlanDecisions, SkipDecision } from './decisions.ts'
 
 const RANK: Record<StepStatus, number> = {
   blocked: 0,
@@ -65,6 +68,62 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
 // keeps the entry point the page and the tests call.
 export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string, planCreatedAt: string | null = null): Step[] {
   return trackExecution(steps, snapshot, coverage, planId, now, planCreatedAt)
+}
+
+// ---- Decisions-only record (prompt 50.1 item 1) ----
+//
+// The plan the operator sees is regenerated from the snapshot on every load,
+// re-scan and edit. The only thing that is persisted is what the operator
+// *decided* (PlanDecisions, decisions.ts), which a regeneration cannot know.
+// Statuses, populations, evidence lines and dates are never stored — a stale
+// build cannot pin them, and a re-scan moves every row that the new snapshot
+// moves.
+
+/**
+ * Read a stored record of any vintage for its decisions. A pre-50.1 record
+ * carried a full per-step blob (status, tracking, ring dates); the only
+ * decisions inside it were which steps were skipped. This drops everything else,
+ * so migrating a record is reading it once through this function and writing the
+ * result back (prompt 50.1 item 2).
+ */
+export function decisionsOf(
+  rec: (Partial<PlanDecisions> & { steps?: Record<string, SavedStep> }) | null | undefined,
+  planId: string,
+): PlanDecisions {
+  const skips: Record<string, SkipDecision> = {}
+  if (rec?.skips) for (const [id, d] of Object.entries(rec.skips)) skips[id] = { reason: d.reason, at: d.at }
+  // A legacy record's skips live inside its step blob; the generated fields are dropped.
+  for (const [id, s] of Object.entries(rec?.steps ?? {})) {
+    if (s.status === 'skipped' && !skips[id]) skips[id] = { reason: s.skipReason ?? '', at: s.history?.at(-1)?.at ?? '' }
+  }
+  return {
+    planId: rec?.planId ?? planId,
+    skips,
+    startDate: rec?.startDate,
+    band: rec?.band,
+    freeze: rec?.freeze ?? null,
+    checkpoints: rec?.checkpoints ?? [],
+    planCreatedAt: rec?.planCreatedAt,
+  }
+}
+
+/**
+ * Apply the skip decisions to freshly generated steps — the one thing a
+ * regeneration cannot know. Everything else (status, tracking, dates) is left to
+ * trackExecution over the current snapshot. Emergency access is never skippable
+ * (a skipped break-glass step would read as satisfied and drop the edges that
+ * keep the tenant recoverable), so a stray decision against it is ignored.
+ */
+export function applySkips(steps: Step[], skips: Record<string, SkipDecision> | null | undefined): Step[] {
+  if (!skips) return steps
+  for (const step of steps) {
+    const d = skips[step.id]
+    if (!d || isEmergencyAccess(step)) continue
+    step.history = [...step.history, { at: d.at || new Date().toISOString(), from: step.status, to: 'skipped', note: d.reason }]
+    step.skipReason = d.reason
+    step.status = 'skipped'
+  }
+  return steps
 }
 
 // Skipping needs a reason — and is never "risk accepted" (§1, §9 test 8).

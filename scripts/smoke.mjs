@@ -260,6 +260,31 @@ try {
   check('Plan: Save regenerates the plan in place', (await clickText('/^Save$/')) && (await waitFor(`/Assumes:/.test(document.body.innerText) && document.querySelectorAll('main.page .plan-row').length >= 5`)))
   check('Plan: one status word per row', await evaluate(`[...document.querySelectorAll('main.page .plan-row .chip.status')].length >= 5`))
 
+  // Item 3 (prompt 50.1): the emergency-access create step carries the passkey
+  // clause, asserted on the rendered surface — a decisions-only record cannot let
+  // a stale build hide it, and a fixture-only test would not have caught it. The
+  // create step ("Create two break-glass accounts") is a different row from the
+  // must-fix "Sort out emergency access" blocker, so every row is opened and its
+  // Do-it read until the clause is found.
+  await go('plan')
+  await waitFor(`/Assumes:/.test(document.body.innerText)`)
+  const passkeyOn = await evaluate(`(async () => {
+    const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+    for (const r of [...document.querySelectorAll('main.page .plan-row')]) {
+      r.click(); await wait(120);
+      const body = document.querySelector('main.page .step-body');
+      if (body) {
+        const tab = [...body.querySelectorAll('button, a, .tab')].find((b) => b.textContent.trim() === 'Portal steps');
+        if (tab) { tab.click(); await wait(80); }
+        const t = (document.querySelector('main.page .step-body') || {}).textContent || '';
+        if (/passkey or FIDO2 key/.test(t)) { const title = ((r.querySelector('.step-title') || {}).textContent || '').trim(); r.click(); return title || 'the emergency-access step'; }
+      }
+      r.click(); await wait(40);
+    }
+    return null;
+  })()`)
+  check('Plan: the emergency-access step carries the passkey clause', typeof passkeyOn === 'string', passkeyOn || 'no rendered step carries "passkey or FIDO2 key"')
+
   // Plan: tick a Done-when (prompt 48.1's tickable), so the saved plan carries it.
   const clickExact = (label, root = 'main.page') =>
     evaluate(`(() => { const r = document.querySelector(${JSON.stringify(root)}) ?? document; const b = [...r.querySelectorAll('button, a, summary')].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return !!b })()`)

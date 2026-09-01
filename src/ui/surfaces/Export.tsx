@@ -16,8 +16,8 @@ import { usePlanData } from './planData.ts'
 import { inventoryTables, todayTable } from './inventoryTables.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
-import { savedStepOf } from '../../roadmap/progress.ts'
-import type { SavedStep } from '../../roadmap/progress.ts'
+import { decisionsOf } from '../../roadmap/progress.ts'
+import type { PlanDecisions } from '../../roadmap/progress.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { findDangerAreas } from '../../roadmap/dangers.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
@@ -29,8 +29,6 @@ import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
-
-type PlanStore = { planId: string; steps: Record<string, SavedStep>; checkpoints?: unknown[]; startDate?: string; band?: SizeBand; freeze?: { from: string; to: string } | null; revision?: number; revisions?: unknown; stepIds?: string[]; baselinePin?: string | null; log?: unknown }
 
 // The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
 // source (the copy lint forbids one as punctuation).
@@ -131,9 +129,20 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
       window.alert?.(ROADMAP.planFromAnotherTenant(plan.tenant?.name ?? '', tenantName))
       return
     }
-    const stepsRecord: Record<string, SavedStep> = Object.fromEntries(plan.steps.map((s) => [s.id, savedStepOf(s)]))
+    // Take the decisions and regenerate: a 50.1 file carries a decisions block;
+    // a pre-50.1 file has none, so recover the decisions from its steps and
+    // schedule (decisionsOf reads either shape). Nothing generated is trusted back.
     const loadedBand = plan.schedule?.band && BANDS[plan.schedule.band as SizeBand] ? (plan.schedule.band as SizeBand) : data.band ?? undefined
-    const record: PlanStore = { planId: plan.planId, steps: stepsRecord, checkpoints: plan.checkpoints, startDate: plan.schedule?.startDate ?? data.startDate ?? undefined, band: loadedBand, freeze: plan.schedule?.freeze ?? null, revision: plan.revision, revisions: plan.revisions, stepIds: plan.steps.map((s) => s.id), baselinePin: plan.baselinePin }
+    const record: PlanDecisions = decisionsOf(
+      plan.decisions ?? {
+        steps: Object.fromEntries(plan.steps.map((s) => [s.id, { status: s.status, skipReason: s.skipReason, history: s.history }])),
+        startDate: plan.schedule?.startDate ?? data.startDate ?? undefined,
+        band: loadedBand,
+        freeze: plan.schedule?.freeze ?? null,
+        checkpoints: plan.checkpoints,
+      },
+      plan.planId,
+    )
     await savePlanRecord(snapshot.tenantId, record)
     if (plan.mappings && plan.mappings.tenantId === snapshot.tenantId) await saveMappingState(plan.mappings)
     window.location.hash = '#/plan'
