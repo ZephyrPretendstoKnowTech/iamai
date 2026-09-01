@@ -16,7 +16,7 @@ export const PLAN = {
   startDate: 'Start date',
   resetStart: 'Clear the date to reset to the default, the next working day.',
   freezeFrom: 'Change freeze from',
-  freezeTo: 'to',
+  freezeTo: 'until',
   freezeClear: 'Clear freeze',
   close: 'Close',
   // Assumptions strip.

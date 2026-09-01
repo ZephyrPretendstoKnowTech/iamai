@@ -39,6 +39,7 @@ import {
   belowBaselineStatement,
 } from '../copy/statements.ts'
 
+const TIER_NAME: Record<string, string> = { p1: 'Entra ID P1', p2: 'Entra ID P2', intune: 'Intune', workloadId: 'Workload Identities Premium', gsa: 'Global Secure Access', mcas: 'Defender for Cloud Apps', free: 'Entra ID Free' }
 export const CATALOGUE: Goal[] = goalsData.goals as unknown as Goal[]
 
 const TIER_CAPABILITY: Record<string, keyof TenantSnapshot['capabilities'] | null> = {
@@ -242,7 +243,7 @@ function evaluateGoal(
     return {
       ...base,
       status: 'licence-limited',
-      statement: licenceLimitedStatement(goal.name, impl.tier),
+      statement: licenceLimitedStatement(goal.name, TIER_NAME[impl.tier] ?? impl.tier),
     }
   }
 

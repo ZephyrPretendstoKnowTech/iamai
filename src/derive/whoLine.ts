@@ -32,6 +32,7 @@ export function shortGap(gap: string): string {
 
 /** The row's who-line: names only when ≤2 and they fit in 28 characters, else the count. */
 export function whoLine(pop: StepPopulation, nameOf: (id: string) => string, gap: string | null = null): string {
+  gap = gap ? gap.replace(/\*/g, '') : gap
   const ids = affectedIds(pop)
   const names = list(ids.map(nameOf))
   const head = ids.length === 0 ? 'nobody affected' : ids.length <= NAMED_AT_MOST && names.length <= NAME_CHARS ? names : count(ids.length, 'person', 'people')

@@ -217,7 +217,7 @@ export const PACKAGE = {
     'Named locations: so location conditions resolve to real places instead of ids.',
     'Authentication strengths: so custom strengths resolve to their allowed combinations.',
   ],
-  missing: 'References that are not included are not a problem: Setup asks about the ones that need a human and resolves the rest from the scan.',
+  missing: 'References that are not included are not a problem: IAMAI asks about the ones that need a human and resolves the rest from the scan.',
   doesTitle: 'What IAMAI does with the upload',
   doesList: [
     'Reads the files in the browser. There is no server, and nothing is uploaded: the files are parsed here and stay on this device unless you export them.',

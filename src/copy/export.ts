@@ -7,7 +7,7 @@ export const EXPORT = {
   calendar: { title: 'Calendar', line: 'Every scheduled step as a calendar entry, with its portal path, done-when and rollback.', button: 'Download calendar (ICS)' },
   planFile: {
     title: 'Plan file',
-    line: 'Everything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.',
+    line: 'Everything, to load back on any machine: steps, evidence, the recorded facts and checkpoints.',
     save: 'Save plan file',
     load: 'Load a plan file',
   },

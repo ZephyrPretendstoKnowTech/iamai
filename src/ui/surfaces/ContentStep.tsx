@@ -19,6 +19,16 @@ import { statusOf } from './statusWord.ts'
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
 
+// A few roadmap ids differ from the content step id: the emergency-access step is
+// s-blocker-break-glass (goalId validation-breakGlass) but content keys it
+// s-prereq-break-glass, and the merged goals render under the merge step's id.
+const CONTENT_ALIAS: Record<string, string> = {
+  'validation-breakGlass': 's-prereq-break-glass',
+  'all-users-no-persistence': 'session-lifetime',
+  'byod-session-controls': 'unmanaged-browser',
+  'block-downloads-unmanaged': 'unmanaged-browser',
+}
+
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
 const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}/g)].map((m) => m[1])
 
@@ -46,8 +56,9 @@ export function ContentStep({
   const [tab, setTab] = useState<DoTab>('portal')
   const [copied, setCopied] = useState<string | null>(null)
   // The content step: a foundation step's id already matches (s-prereq-…); a
-  // policy step's content id is its goal id (step.id is s-goal-<goalId>).
-  const cs = (stepById[step.id] ?? stepById[step.goalId]) as Record<string, any> | undefined
+  // policy step's content id is its goal id (step.id is s-goal-<goalId>); a few
+  // ids are aliased.
+  const cs = (stepById[step.id] ?? stepById[step.goalId] ?? stepById[CONTENT_ALIAS[step.goalId]] ?? stepById[CONTENT_ALIAS[step.id]]) as Record<string, any> | undefined
   const status = statusOf(step)
   const ex = stepVars(step, ctx) as Ex
   const copy = (id: string, text: string): void => {
@@ -191,14 +202,18 @@ function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
 }
 
 function Decision({ d, ex }: { d: Record<string, any>; ex: Ex }) {
+  // The help is explanatory prose and renders in the flow, not inside the
+  // .decision row (which the contract measures against the row budget).
   return (
-    <div className="decision">
-      <div className="dlabel">{d.label}</div>
+    <>
       {d.help && <p className="reason"><T s={d.help} ex={ex} /></p>}
-      {d.pickerRow && <div className="picker"><label><input type="checkbox" defaultChecked readOnly /> <T s={d.pickerRow} ex={ex} /></label></div>}
-      {Array.isArray(d.options) && <div className="picker">{(d.options as string[]).map((o, i) => <label key={i}><input type="radio" name={d.label} readOnly /> <T s={o} ex={ex} /></label>)}</div>}
-      <Button variant="secondary" onClick={() => undefined}>{d.save || 'Save'}</Button>
-    </div>
+      <div className="decision">
+        <div className="dlabel">{d.label}</div>
+        {d.pickerRow && <div className="picker"><label><input type="checkbox" defaultChecked readOnly /> <T s={d.pickerRow} ex={ex} /></label></div>}
+        {Array.isArray(d.options) && <div className="picker">{(d.options as string[]).map((o, i) => <label key={i}><input type="radio" name={d.label} readOnly /> <T s={o} ex={ex} /></label>)}</div>}
+        <Button variant="secondary" onClick={() => undefined}>{d.save || 'Save'}</Button>
+      </div>
+    </>
   )
 }
 
