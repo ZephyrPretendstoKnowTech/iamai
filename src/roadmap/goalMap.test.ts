@@ -35,23 +35,28 @@ test('guests-mfa is the ordered A/B pair (A the multifactor grant, B the strengt
   assert.equal(pair[1].displayName, 'IAC - GLOBAL - GRANT - MFA - B2B-Guest')
 })
 
-test('no ties remain; only the three goals whose control no policy carries are unmapped; geo NoExclusions is a variant', () => {
+test('no ties remain; only the five goals whose control no policy carries at head are unmapped; geo NoExclusions is a variant', () => {
   assert.equal(built.ties.length, 0, 'a tie reappeared — the declared-pair or variant rule regressed')
-  // Not in this baseline: no app-enforced-restrictions policy (byod, and its merge
-  // partner block-downloads), no cloud-app-security policy, no app-protection policy.
-  assert.deepEqual(built.unmappedGoals.slice().sort(), ['block-downloads-unmanaged', 'byod-session-controls', 'mobile-app-protection'])
-  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 23, 'the mapped-goal count changed — reconcile the baseline report')
+  // Not in this baseline at head: register-info-protected (its trusted-location
+  // block was removed; the risky-users P2 block is a separate policy, never this
+  // goal's implementation), azure-management-mfa (the policy targets the Windows
+  // Azure AD app, not the Service Management API), byod-session-controls and its
+  // merge partner block-downloads-unmanaged (no app-enforced / cloud-app-security
+  // policy — O365-Timeout was removed), mobile-app-protection (no app-protection).
+  assert.deepEqual(built.unmappedGoals.slice().sort(), ['azure-management-mfa', 'block-downloads-unmanaged', 'byod-session-controls', 'mobile-app-protection', 'register-info-protected'])
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 21, 'the mapped-goal count changed — reconcile the baseline report')
   assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])
 })
 
 test('the reconciled goals map to their baseline policy (owner: the baseline decides scope and shape)', () => {
   const one = (id: string): string | undefined => policiesForGoal(PINNED_GOAL_MAP, policies, id)[0]?.displayName
   assert.equal(one('require-managed-device'), 'IAC - INTUNE - GRANT - RequireCompliantDevice')
-  assert.equal(one('register-info-protected'), 'IAC - P2 - GLOBAL - BLOCK - RiskyUsers - RegisterSecurityInfo')
   assert.equal(one('intune-enrollment-reauth'), 'IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime')
   assert.equal(one('pim-activation-reauth'), 'IAC - P2 - APP - SESSION - PIM - Reauthentication')
   assert.equal(one('sign-in-risk'), 'IAC - P2 - GLOBAL - GRANT - High-Risk Sign-Ins')
   assert.equal(one('sign-in-risk-medium'), 'IAC - P2 - GLOBAL - GRANT - Medium-Risk Sign-Ins')
   assert.equal(one('user-risk-medium'), 'IAC - P2 - GLOBAL - GRANT - Medium-Risk Users')
-  assert.equal(one('azure-management-mfa'), 'IAC - GLOBAL - GRANT - MFA - WindowsAzureAD-BaselineScopes')
+  // register-info-protected and azure-management-mfa are unmapped (not in this baseline).
+  assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'register-info-protected').length, 0)
+  assert.equal(policiesForGoal(PINNED_GOAL_MAP, policies, 'azure-management-mfa').length, 0)
 })
