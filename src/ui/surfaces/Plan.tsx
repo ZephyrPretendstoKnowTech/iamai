@@ -19,8 +19,14 @@ import { usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
-import { Step as StepBody } from './Step.tsx'
+import { ContentStep } from './ContentStep.tsx'
+import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
+
+// The plan only renders once a mapping is loaded (usePlanData returns computed
+// only then), so this fallback is never the live value; it keeps ContentStep's
+// contentLists total when a step opens a frame before the mapping settles.
+const EMPTY_MAPPING = { breakGlassUserIds: [], serviceAccountUserIds: [] } as unknown as MappingState
 
 function planStepFromHash(): string | null {
   const m = /^#\/plan\/(.+)$/.exec(window.location.hash)
@@ -113,7 +119,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} snapshot={scan.snapshot} mapping={data.mapping} />
             })}
           </section>
         )
@@ -124,7 +130,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason, snapshot, mapping }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -137,6 +143,8 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
   onUnskip: (stepId: string) => void
   onTick: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   computed: PlanComputed
+  snapshot: TenantSnapshot
+  mapping: MappingState | null
 }) {
   const status = statusOf(step)
   return (
@@ -151,7 +159,16 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
         </span>
         {step.status === 'blocked' && step.blockedReason && !hideReason && !heldByReadiness(step) && <span className="plan-row-reason">{C.afterShort(shortReason(step.blockedReason))}</span>}
       </div>
-      {open && <StepBody step={step} schedule={schedule} steps={computed.steps} tenantName={tenantName} nameOf={nameOf} onSkip={(reason) => onSkip(step.id, reason)} onUnskip={() => onUnskip(step.id)} onTick={onTick} onClose={onToggle} />}
+      {open && (
+        <ContentStep
+          step={step}
+          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId: null, now: snapshot.asOf }}
+          onSkip={(reason) => onSkip(step.id, reason)}
+          onUnskip={() => onUnskip(step.id)}
+          onClose={onToggle}
+          onScan={() => { window.location.hash = '#/connect' }}
+        />
+      )}
     </>
   )
 }
