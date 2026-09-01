@@ -2,7 +2,7 @@
 // hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
 // "Next" framing. Signed out, the header is the wordmark and the theme control;
 // signed in it adds the tenant name, the Today and Plan tabs (enabled once a
-// scan exists), Re-scan with the scan's age, the Recovery card link and the
+// scan exists), Scan to update the plan with the scan's age and the
 // Account menu.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
@@ -233,7 +233,6 @@ export function AppShell({
               {SHELL.rescanScanned(scanAge(scannedAt))}
             </Button>
           )}
-          {signedIn && <a href="#/recovery">{SHELL.recovery}</a>}
           <Button variant="tertiary" onClick={toggleTheme} title={SHELL.themeTooltip}>
             {theme === 'dark' ? SHELL.lightTheme : SHELL.darkTheme}
           </Button>

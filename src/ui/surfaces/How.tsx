@@ -70,7 +70,7 @@ export function How() {
               { key: 'what', header: 'What it looks for', render: (r) => ruleText(r.id).what },
               { key: 'severity', header: 'If it fails', render: (r) => <Chip status={SEVERITY_CHIP[r.severity]}>{SEVERITY[r.severity]}</Chip> },
               { key: 'why', header: 'Why it matters', render: (r) => ruleText(r.id).why },
-              { key: 'needs', header: 'Needs', render: (r) => (r.needs.length === 0 ? 'the assumptions strip' : r.needs.map((n) => NEED_LABEL[n] ?? n).join(', ')) },
+              { key: 'needs', header: 'Needs', render: (r) => (r.needs.length === 0 ? 'nothing' : r.needs.map((n) => NEED_LABEL[n] ?? n).join(', ')) },
               {
                 key: 'source',
                 header: CITATION.source,

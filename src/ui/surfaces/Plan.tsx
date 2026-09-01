@@ -1,7 +1,7 @@
 // The Plan (prompt 48 Part 2, target-state §5). The front door once a scan
-// exists: the header line, the assumptions strip, the waves as rows, the
-// footer. Clicking a row opens the step under it. Nothing sits above the plan
-// but its header and the strip.
+// exists: two header lines, the phases as rows, the footer. Clicking a row opens
+// the step under it. Nothing sits above the plan but its two header lines; every
+// decision the plan needs is made in the step that needs it (§5, §6.4).
 import { useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -20,7 +20,6 @@ import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { Step as StepBody } from './Step.tsx'
-import { AssumptionsStrip } from './AssumptionsStrip.tsx'
 import { PlanFooter } from './PlanFooter.tsx'
 
 function planStepFromHash(): string | null {
@@ -95,7 +94,6 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         <InfoTip title={C.constraintTip} text={c.schedule.derivation.criticalPath} />
       </p>
 
-      <AssumptionsStrip data={data} snapshot={scan.snapshot} baseline={baseline} computed={c} />
 
       <p className="line no-print">
         <a href="#/plan" onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>

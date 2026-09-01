@@ -17,10 +17,9 @@ export const SHELL = {
   navLabel: 'Sections',
   tabs: { today: 'Today', plan: 'Plan', export: 'Export' },
   tabsAfterScan: 'after the first scan',
-  /** "Re-scan · scanned 24h ago": the age in the fewest characters, as target-state §2 writes it. */
+  /** "Scan to update the plan · scanned 24h ago": the header control, as target-state §2 writes it. */
   rescanScanned: (age: { hours: number; days: number }) =>
-    `Re-scan · scanned ${age.hours < 1 ? 'just now' : age.hours < 48 ? `${age.hours}h ago` : `${age.days}d ago`}`,
-  recovery: 'Recovery card',
+    `Scan to update the plan · scanned ${age.hours < 1 ? 'just now' : age.hours < 48 ? `${age.hours}h ago` : `${age.days}d ago`}`,
   account: 'Account',
   accountTooltip: (username: string) => `Signed in as ${username}`,
   signOut: 'Sign out',
@@ -78,7 +77,6 @@ export const SHELL = {
     reads: 'What IAMAI reads',
     checks: 'Every check IAMAI runs',
     naming: 'Naming policies and groups',
-    recovery: 'Recovery card',
     inventory: 'Inventory',
     prompts: 'Prompt pack',
   },
