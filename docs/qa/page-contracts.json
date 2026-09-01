@@ -1,6 +1,6 @@
 {
-  "$comment": "Page contracts (docs/design/target-state.md). One entry per surface the UI inventory walks. Every rendered heading, tab, tile, column, chip, button, summary and link on a built surface must match an entry in its allow list (exact string, or a regular expression when prefixed re:). Page-level prose (outside repeaters) must fit the budget. Claude Code never edits this file: a violation is fixed by removing what violates it, or reported for review with the case. `status` is flipped to built by the prompt that builds the surface; `enforceAll` is flipped by prompt 49, after which any inventory surface without a contract fails. Controls (buttons, links, chips) inside a repeater are items and are measured under `rows`, not against the surface's allow lists. An element matching `.step-title` is reported as `title` and measured against rules.stepTitleMaxWords, never as a heading. A surface may override the row budget with `rowBudget`.",
-  "version": 1,
+  "$comment": "Page contracts, version 3 (docs/design/target-state.md v2.1). One entry per surface the UI inventory walks. Every rendered heading, tab, tile, column, chip, button, summary and link on a built surface must match an entry in its allow list (exact string, or a regular expression when prefixed re:). Page-level prose (outside repeaters) must fit the budget. Claude Code never edits this file: a violation is fixed by removing what violates it, or reported for review with the case. `status` is `built` for a surface that is measured; a status of the form `planned:<prompt>` names the prompt that builds the surface and flips it to `built` — a surface that is not `built` is not measured. `enforceAll` is true: any inventory surface without a contract fails, so a deleted surface (the Recovery card) fails the build if it still renders. Controls (buttons, links, chips) inside a repeater are items and are measured under `rows`, not against the surface's allow lists. An element matching `.step-title` is reported as `title` and measured against rules.stepTitleMaxWords, never as a heading. A surface may override the row budget with `rowBudget`. `forbid` and `forbidEverywhere` entries are case-sensitive substrings.",
+  "version": 3,
   "enforceAll": true,
   "rules": {
     "sentenceMaxWords": 25,
@@ -8,14 +8,19 @@
     "rowMaxWords": 30,
     "blockedReasonMaxWords": 12,
     "stepTitleMaxWords": 9,
+    "tipMaxSentences": 2,
     "tipMaxWords": 25
   },
   "repeaters": [
     ".plan-row",
     "tr",
-    ".wave",
+    ".phase",
     ".export-card",
-    ".assumption",
+    ".found",
+    ".decision",
+    ".names",
+    ".copy-box",
+    ".tip",
     ".ring"
   ],
   "mockStates": [
@@ -45,7 +50,7 @@
         "columns": [],
         "chips": [],
         "buttons": [
-          "re:^Re-scan( · scanned .+)?$",
+          "re:^Scan to update the plan( · scanned .+)?$",
           "Light theme",
           "Dark theme",
           "Account",
@@ -54,26 +59,32 @@
         ],
         "summaries": [],
         "links": [
-          "IAMAI Planner",
-          "Recovery card"
+          "IAMAI Planner"
         ]
       },
       "budget": {
         "sentences": 0,
         "words": 12
-      }
+      },
+      "forbid": [
+        "Recovery card",
+        "Re-scan",
+        "Wave"
+      ]
     },
     {
       "id": "connect.signedOut",
-      "name": "Connect (signed out)",
-      "status": "built",
+      "name": "The opener (signed out)",
+      "status": "planned:52",
       "reach": {
         "route": "/connect",
         "state": "signedOut"
       },
       "allow": {
         "headings": [
-          "Connect a tenant"
+          "Plan the journey to your Conditional Access baseline.",
+          "Built for",
+          "What it catches"
         ],
         "tabs": [],
         "tiles": [],
@@ -91,13 +102,19 @@
         ]
       },
       "budget": {
-        "sentences": 9,
-        "words": 150
-      }
+        "sentences": 14,
+        "words": 220
+      },
+      "forbid": [
+        "Connect a tenant",
+        "Needs a Global Administrator",
+        "How to use",
+        "Step 1"
+      ]
     },
     {
       "id": "connect.signedOut.permissions",
-      "name": "Connect (signed out) / permissions expanded",
+      "name": "The opener / permissions expanded",
       "status": "built",
       "reach": {
         "route": "/connect",
@@ -172,9 +189,14 @@
         ]
       },
       "budget": {
-        "sentences": 5,
-        "words": 80
-      }
+        "sentences": 8,
+        "words": 130
+      },
+      "forbid": [
+        "About this baseline",
+        "version",
+        "files"
+      ]
     },
     {
       "id": "connect.scanning",
@@ -205,7 +227,7 @@
     },
     {
       "id": "connect.scanned",
-      "name": "Connect (scanned)",
+      "name": "The tenant page (scanned)",
       "status": "built",
       "reach": {
         "route": "/connect",
@@ -213,7 +235,8 @@
       },
       "allow": {
         "headings": [
-          "Connect a tenant"
+          "Connect a tenant",
+          "What IAMAI found"
         ],
         "tabs": [],
         "tiles": [],
@@ -231,8 +254,18 @@
         ]
       },
       "budget": {
-        "sentences": 4,
-        "words": 70
+        "sentences": 6,
+        "words": 100
+      },
+      "forbid": [
+        "confirm",
+        "answer",
+        "question",
+        "Assumes"
+      ],
+      "rowBudget": {
+        "sentences": 2,
+        "words": 40
       }
     },
     {
@@ -281,14 +314,16 @@
         ]
       },
       "budget": {
-        "sentences": 3,
-        "words": 60
+        "sentences": 6,
+        "words": 110
       },
       "forbid": [
         "Legend",
         "Rollout",
         "To set up before enforcement",
-        "Sign-in records: complete"
+        "Sign-in records: complete",
+        "assume",
+        "nothing can lock out"
       ]
     },
     {
@@ -386,8 +421,9 @@
       "allow": {
         "headings": [
           "Plan",
-          "re:^Before anything else( · .+)?$",
-          "re:^Wave \\d · .+ → .+ · [^·]+( · after .+)?$"
+          "re:^Preparation( · .+ → .+)?$",
+          "re:^Phase \\d+ · .+ → .+$",
+          "re:^Cleanup( · .+ → .+)?$"
         ],
         "tabs": [],
         "tiles": [],
@@ -400,15 +436,13 @@
           "Report-only",
           "Enforced",
           "Skipped",
-          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|shared devices|time zone|mail-sending devices|people who travel or work abroad|partner or MSP access) .{1,40} · (confirm|change|answer)$"
+          "Doesn't apply"
         ],
-        "buttons": [
-          "re:^(emergency access|exclusions group|sign-in countries|trusted locations|service accounts|shared devices|time zone|mail-sending devices|people who travel or work abroad|partner or MSP access) .{1,40} · (confirm|change|answer)$",
-          "Save"
-        ],
+        "buttons": [],
         "summaries": [
           "re:^Already in place \\(\\d+\\)$",
           "re:^Doesn't apply here \\(\\d+\\)$",
+          "re:^Not licensed \\(\\d+\\)$",
           "re:^Housekeeping \\(\\d+\\)$"
         ],
         "links": [
@@ -416,10 +450,14 @@
         ]
       },
       "budget": {
-        "sentences": 6,
-        "words": 140
+        "sentences": 4,
+        "words": 90
       },
       "forbid": [
+        "Assumes",
+        "Before anything else",
+        "Housekeeping (0)",
+        "(0)",
         "Do this next",
         "What needs attention before you start",
         "Nothing has started yet",
@@ -428,12 +466,18 @@
         "History",
         "Safe today",
         "Why not fully",
-        "Recovery card link",
+        "Recovery card",
         "help-desk contacts",
         "hours of admin time",
         "an account IAMAI could not name",
-        "Setup question",
-        "Readiness table"
+        "Setup",
+        "Readiness table",
+        "time zone",
+        "168h",
+        "Wave",
+        "wave",
+        "Sessions ·",
+        "Devices ·"
       ]
     },
     {
@@ -466,15 +510,16 @@
         "links": []
       },
       "budget": {
-        "sentences": 3,
-        "words": 45
+        "sentences": 4,
+        "words": 60
       },
       "forbid": [
         "Pace",
         "Change windows",
         "Notice",
         "Holidays",
-        "Revert threshold"
+        "Revert threshold",
+        "fromto"
       ]
     },
     {
@@ -495,6 +540,10 @@
           },
           {
             "click": "summary",
+            "text": "Not licensed"
+          },
+          {
+            "click": "summary",
             "text": "Housekeeping"
           }
         ],
@@ -507,14 +556,15 @@
         "columns": [],
         "chips": [
           "In place",
-          "Skipped"
+          "Enforced",
+          "Skipped",
+          "Doesn't apply"
         ],
-        "buttons": [
-          "JSON"
-        ],
+        "buttons": [],
         "summaries": [
           "re:^Already in place \\(\\d+\\)$",
           "re:^Doesn't apply here \\(\\d+\\)$",
+          "re:^Not licensed \\(\\d+\\)$",
           "re:^Housekeeping \\(\\d+\\)$"
         ],
         "links": [
@@ -522,13 +572,22 @@
         ]
       },
       "budget": {
-        "sentences": 20,
-        "words": 320
+        "sentences": 24,
+        "words": 380
       },
       "forbid": [
         "Could not be evaluated",
         "How this tenant is organised",
-        "Renaming a policy changes no evaluation"
+        "Renaming a policy changes no evaluation",
+        "**",
+        "(p2)",
+        "not assessed",
+        "re-export",
+        "SDK",
+        "Graph REST",
+        "needs a licence tier",
+        "unlock",
+        "upgrade"
       ],
       "rowBudget": {
         "sentences": 2,
@@ -555,10 +614,11 @@
         "headings": [
           "Why",
           "Who this touches",
-          "Do it",
+          "What to do",
           "Dates",
           "Done when",
           "If it goes wrong",
+          "If a change locks you out",
           "Tell your people"
         ],
         "tabs": [
@@ -576,12 +636,14 @@
           "Report-only",
           "Enforced",
           "Skipped",
+          "Doesn't apply",
           "re:^CIS \\d+(\\.\\d+)?$"
         ],
         "buttons": [
           "Download JSON",
-          "Copy",
           "Export CSV",
+          "Scan to update the plan",
+          "Doesn't apply here",
           "Close"
         ],
         "summaries": [
@@ -589,15 +651,37 @@
         ],
         "links": [
           "Learn →",
-          "Recovery card →",
           "re:^.{3,60} →$"
         ]
       },
       "budget": {
-        "sentences": 34,
-        "words": 520
+        "sentences": 40,
+        "words": 620
       },
       "forbid": [
+        "Do it",
+        "Exit criteria",
+        "Recovery card",
+        "Nothing changes for anyone",
+        "nobody notices",
+        "An object or an answer",
+        "This is groundwork",
+        "Nothing destructive here",
+        "Nothing to undo",
+        "confirm it on the plan",
+        "picked in Setup",
+        "Setup",
+        "created by the step above",
+        "re-download after that step",
+        "undefined",
+        "Report-only from —",
+        "e.g. \"",
+        "the ring's",
+        "this ring",
+        "soak",
+        "handle-with-care",
+        "168h",
+        "Learn →CIS",
         "What the last 30 days say",
         "Why now",
         "Waiting on this",
@@ -605,18 +689,24 @@
         "Scheduled date",
         "unknown here",
         "What could go wrong",
-        "Exit criteria",
         "Ring plan",
         "help-desk contact",
         "minutes of admin time",
         "Proposed name:",
         "an account IAMAI could not name",
-        "Setup question",
         "Readiness table",
         "could not be checked",
         "Worth fixing too",
         "Add a second account above",
-        "no people · 0 active"
+        "no people · 0 active",
+        "IAMAI can't see",
+        "New policy, report-only first",
+        "Change:",
+        "wave",
+        "Exclude users",
+        "Exclude: the emergency access accounts",
+        "never eligible",
+        "Determine location by:"
       ]
     },
     {
@@ -641,9 +731,9 @@
       "allow": {
         "headings": [
           "What could go wrong",
+          "Also possible",
           "Prerequisites",
           "What waits on this",
-          "Exit criteria",
           "For the help desk",
           "For your manager",
           "What IAMAI can't see"
@@ -668,12 +758,22 @@
         ]
       },
       "budget": {
-        "sentences": 60,
-        "words": 1000
+        "sentences": 50,
+        "words": 800
       },
       "forbid": [
+        "Exit criteria",
         "Answer this",
-        "unknown here"
+        "unknown here",
+        "the ring's",
+        "this ring",
+        "soak",
+        "handle-with-care",
+        "This puts an object in place",
+        "closes a gap the baseline names",
+        "is done",
+        "Recovery card",
+        "wave"
       ]
     },
     {
@@ -718,42 +818,13 @@
         "sentences": 9,
         "words": 160
       },
+      "forbid": [
+        "Recovery card",
+        "ticked facts"
+      ],
       "rowBudget": {
         "sentences": 3,
         "words": 60
-      }
-    },
-    {
-      "id": "recovery",
-      "name": "Recovery card",
-      "status": "built",
-      "reach": {
-        "route": "/recovery",
-        "state": "scanned"
-      },
-      "allow": {
-        "headings": [
-          "Recovery card",
-          "Emergency access accounts",
-          "Where the credential is",
-          "Turn a Conditional Access policy off",
-          "Put a policy back to report-only",
-          "If the portal itself blocks you",
-          "This tenant"
-        ],
-        "tabs": [],
-        "tiles": [],
-        "columns": [],
-        "chips": [],
-        "buttons": [
-          "Print this card"
-        ],
-        "summaries": [],
-        "links": []
-      },
-      "budget": {
-        "sentences": 40,
-        "words": 600
       }
     },
     {
@@ -799,13 +870,16 @@
         ]
       },
       "budget": {
-        "sentences": 24,
-        "words": 380
+        "sentences": 26,
+        "words": 420
       },
       "forbid": [
         "The same checks again",
         "Application.Read.All",
-        "Requested, not yet used"
+        "Requested, not yet used",
+        "assumptions strip",
+        "assumes it",
+        "Setup"
       ],
       "rowBudget": {
         "sentences": 4,
@@ -817,6 +891,17 @@
     "__IAMAI",
     "Setup question",
     "Setup has no answer",
-    "urn:user:"
+    "urn:user:",
+    "Assumes",
+    "assume",
+    "Assume",
+    "Recovery card",
+    "undefined",
+    "**",
+    "handle-with-care",
+    "168h",
+    "(p2)",
+    "Wave ",
+    "wave "
   ]
 }
