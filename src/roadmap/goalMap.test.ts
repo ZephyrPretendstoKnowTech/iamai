@@ -35,8 +35,23 @@ test('guests-mfa is the ordered A/B pair (A the multifactor grant, B the strengt
   assert.equal(pair[1].displayName, 'IAC - GLOBAL - GRANT - MFA - B2B-Guest')
 })
 
-test('no ties remain; the unmapped goals are pinned for the reviewer, and geo NoExclusions is a variant', () => {
+test('no ties remain; only the three goals whose control no policy carries are unmapped; geo NoExclusions is a variant', () => {
   assert.equal(built.ties.length, 0, 'a tie reappeared — the declared-pair or variant rule regressed')
-  assert.equal(built.unmappedGoals.length, 10, 'the unmapped-goal set changed — reconcile the baseline report')
+  // Not in this baseline: no app-enforced-restrictions policy (byod, and its merge
+  // partner block-downloads), no cloud-app-security policy, no app-protection policy.
+  assert.deepEqual(built.unmappedGoals.slice().sort(), ['block-downloads-unmanaged', 'byod-session-controls', 'mobile-app-protection'])
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 23, 'the mapped-goal count changed — reconcile the baseline report')
   assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])
+})
+
+test('the reconciled goals map to their baseline policy (owner: the baseline decides scope and shape)', () => {
+  const one = (id: string): string | undefined => policiesForGoal(PINNED_GOAL_MAP, policies, id)[0]?.displayName
+  assert.equal(one('require-managed-device'), 'IAC - INTUNE - GRANT - RequireCompliantDevice')
+  assert.equal(one('register-info-protected'), 'IAC - P2 - GLOBAL - BLOCK - RiskyUsers - RegisterSecurityInfo')
+  assert.equal(one('intune-enrollment-reauth'), 'IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime')
+  assert.equal(one('pim-activation-reauth'), 'IAC - P2 - APP - SESSION - PIM - Reauthentication')
+  assert.equal(one('sign-in-risk'), 'IAC - P2 - GLOBAL - GRANT - High-Risk Sign-Ins')
+  assert.equal(one('sign-in-risk-medium'), 'IAC - P2 - GLOBAL - GRANT - Medium-Risk Sign-Ins')
+  assert.equal(one('user-risk-medium'), 'IAC - P2 - GLOBAL - GRANT - Medium-Risk Users')
+  assert.equal(one('azure-management-mfa'), 'IAC - GLOBAL - GRANT - MFA - WindowsAzureAD-BaselineScopes')
 })

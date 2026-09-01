@@ -20,7 +20,9 @@ import goalsData from '../../data/goals.json' with { type: 'json' }
 import type { Goal, Implementation, PolicyFacts } from './types.ts'
 
 const CATALOGUE = goalsData.goals as unknown as Goal[]
-const ASM_APP_ID = '797f4846-ba00-4fd7-ba43-dac1f8f63013' // Windows Azure Service Management API
+// The Azure/directory management plane: the Service Management API and the
+// Windows Azure Active Directory app. Either scopes the "Azure management" goal.
+const AZURE_MGMT_APP_IDS = new Set(['797f4846-ba00-4fd7-ba43-dac1f8f63013', '00000002-0000-0000-c000-000000000000'])
 
 export type PolicyForMap = { id: string; name: string; facts: PolicyFacts }
 export type GoalMap = Record<string, string[]>
@@ -57,7 +59,7 @@ function userClass(f: PolicyFacts): UserClass {
 function appsClass(f: PolicyFacts): string {
   const a = f.apps
   if (a.adminPortals) return 'adminPortals'
-  if (a.ids.has(ASM_APP_ID)) return 'azureManagement'
+  if ([...a.ids].some((id) => AZURE_MGMT_APP_IDS.has(id))) return 'azureManagement'
   if (a.userActions.size > 0) return 'userAction'
   if (a.authContexts.size > 0) return 'authContext' // its own class, distinct from an app set (owner resolution)
   if (a.all) return 'all'
@@ -117,6 +119,25 @@ function controlKindOk(impl: Implementation, f: PolicyFacts): boolean {
     if (!isBlock) return false
   } else if (grant) {
     if (!hasGrant || isBlock) return false // a block policy never implements a grant goal
+    // The specific grant control must be the same kind: a compliant-device goal
+    // is not a password-change goal. Strength tiers (mfa / passwordless /
+    // phishing-resistant) are one "authentication strength" control whose exact
+    // tier is the baseline's shape, so any strength or MFA satisfies them.
+    const gc = new Set([...f.grant!.controls].map((c) => c.toLowerCase()))
+    const strength = f.grant!.strengthId != null || f.grant!.strength != null
+    const ok =
+      grant === 'mfa' || grant === 'passwordless' || grant === 'phishingResistant'
+        ? gc.has('mfa') || strength
+        : grant === 'compliantDevice'
+          ? gc.has('compliantdevice')
+          : grant === 'compliantApplication'
+            ? gc.has('compliantapplication')
+            : grant === 'passwordChange'
+              ? gc.has('passwordchange') || gc.has('riskremediation')
+              : grant === 'approvedApplication'
+                ? gc.has('approvedapplication')
+                : true
+    if (!ok) return false
   }
   if (session) {
     if (!hasSession) return false
@@ -218,6 +239,7 @@ export function mapGoalsToPolicies(policies: PolicyForMap[]): GoalMapResult {
   const ties: { goalId: string; candidates: string[] }[] = []
   const claimed = new Set<string>()
   const merged = new Set(Object.values(MERGE_ANCHOR))
+  const mergedIncluded = new Set<string>() // merged goals whose anchor pair actually formed
   const isPolicy = (v: PolicyForMap | { tie: string[] } | null): v is PolicyForMap => v !== null && !('tie' in v)
 
   for (const goal of CATALOGUE) {
@@ -231,6 +253,7 @@ export function mapGoalsToPolicies(policies: PolicyForMap[]): GoalMapResult {
       if (isPolicy(a) && isPolicy(b)) {
         map[goal.id] = [a.id, b.id]
         claimed.add(a.id).add(b.id)
+        mergedIncluded.add(other)
       } else {
         // The pair could not be formed; fall through to a singleton or a report.
         if (isPolicy(a)) { map[goal.id] = [a.id]; claimed.add(a.id) }
@@ -258,6 +281,10 @@ export function mapGoalsToPolicies(policies: PolicyForMap[]): GoalMapResult {
     else if ('tie' in one) ties.push({ goalId: goal.id, candidates: one.tie })
     else { map[goal.id] = [one.id]; claimed.add(one.id) }
   }
+
+  // A merge partner whose anchor pair never formed carries no policy of its own —
+  // it is unmapped like any other goal the baseline does not hold.
+  for (const m of merged) if (!mergedIncluded.has(m)) unmappedGoals.push(m)
 
   const variantPolicies = new Set(variants.map((v) => v.policy))
   const unmappedPolicies = policies.filter((p) => !claimed.has(p.id) && !variantPolicies.has(p.name)).map((p) => p.name)

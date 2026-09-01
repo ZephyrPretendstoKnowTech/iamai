@@ -428,6 +428,59 @@
             },
             "sessionControls": null
           }
+        },
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "userActionsInclude": [
+              "urn:user:registersecurityinfo"
+            ],
+            "grantBlock": true,
+            "clientAppsAll": true
+          },
+          "expectedWho": {
+            "kind": "all"
+          },
+          "expectedApps": "userAction",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Security info registration",
+            "conditions": {
+              "users": {
+                "includeUsers": [
+                  "All"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeUserActions": [
+                  "urn:user:registersecurityinfo"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ]
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
         }
       ],
       "free": [],
@@ -916,9 +969,9 @@
             "noRisk": true
           },
           "expectedWho": {
-            "kind": "members"
+            "kind": "all"
           },
-          "expectedApps": "office365",
+          "expectedApps": "all",
           "floor": {
             "grant": "compliantDevice"
           },
@@ -1172,8 +1225,7 @@
                 "all"
               ],
               "signInRiskLevels": [
-                "high",
-                "medium"
+                "high"
               ]
             },
             "grantControls": {
@@ -1726,7 +1778,7 @@
             "signInFrequencyEveryTime": true
           },
           "expectedWho": {
-            "kind": "coreAdmins"
+            "kind": "all"
           },
           "expectedApps": "authContext",
           "floor": {
@@ -1809,7 +1861,6 @@
           },
           "expectedApps": "specific",
           "floor": {
-            "grant": "mfa",
             "session": {
               "signInFrequencyEveryTime": true
             }
@@ -1819,7 +1870,7 @@
             "globalExclusion"
           ],
           "template": {
-            "displayName": "{namePrefix} - Require - Fresh sign-in for Intune enrollment",
+            "displayName": "{namePrefix} - Session - Fresh sign-in for Intune enrollment",
             "conditions": {
               "users": {
                 "includeUsers": [
@@ -1988,7 +2039,6 @@
                 ]
               },
               "signInRiskLevels": [
-                "high",
                 "medium"
               ]
             },
@@ -2070,7 +2120,6 @@
                 "all"
               ],
               "userRiskLevels": [
-                "high",
                 "medium"
               ]
             },
