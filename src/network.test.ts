@@ -9,7 +9,11 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-const REQUEST_HOSTS = new Set(['graph.microsoft.com', 'login.microsoftonline.com', 'raw.githubusercontent.com'])
+// api.github.com is the one runtime call added in prompt 51 (decision 1): an
+// unauthenticated read of the author repo's latest commit, so Connect can show
+// "Baseline updated" when the pinned snapshot is behind. Same trust class as the
+// raw baseline fetch — read-only, public, no tenant data leaves. src/ui/baseline.ts.
+const REQUEST_HOSTS = new Set(['graph.microsoft.com', 'login.microsoftonline.com', 'raw.githubusercontent.com', 'api.github.com'])
 /** Hosts that appear only as places a person may navigate to; never fetched. */
 // getiamai.com is the site's own origin: the home page links to itself and
 // declares its OpenGraph URL and image there. A social scraper fetches the
