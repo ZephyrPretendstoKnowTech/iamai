@@ -11,16 +11,21 @@
 // content variables are a view over that, not a re-derivation.
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
+import { contentLists } from '../../derive/contentLists.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
+  mapping: MappingState
   nameOf: (id: string) => string
   /** The technician's sign-off name, from Plan settings (default "IT"). */
   signature: string
   /** The operator's own account id, when in scope, for the operator-evidence line. */
   operatorId: string | null
+  /** As-of time for the campaign buckets (usually snapshot.asOf). */
+  now: string
 }
 
 /** A long, spelled-out date: "Tuesday, September 8". */
@@ -86,6 +91,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // Existing coverage: whether a policy already delivers the goal (drives the
   // {existingCoverage} line's presence).
   v.existingPolicies = step.deliveredBy.length > 0 ? step.deliveredBy : []
+
+  // The list variables, derived from what the scan collected (never gated when
+  // the data exists): the campaign buckets, the lockout-scenario people, and the
+  // emergency/service/admin id sets. A step reads only the keys it uses.
+  Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now }))
 
   return v
 }
