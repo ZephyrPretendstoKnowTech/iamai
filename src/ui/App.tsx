@@ -104,7 +104,10 @@ export function App() {
       return
     }
     if (MOCK) {
-      void Promise.all([import('./fixtures/fixtureSnapshot.ts'), import('./fixtures/bigFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }]) => {
+      // The dev-only contract walk and failure-path checks run against a
+      // calibrated synthetic tenant (test support); the demo (?demo=1) is what
+      // loads the demo fixture through the same App snapshot-setting path.
+      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }]) => {
         const params = new URLSearchParams(window.location.search)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.

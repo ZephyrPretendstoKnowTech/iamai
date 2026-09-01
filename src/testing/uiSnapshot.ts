@@ -1,8 +1,8 @@
 // Synthetic tenant for the dev-only component gallery — invented names,
 // no real identifiers. Never used outside DEV builds.
-import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import type { BaselineResult } from '../baseline.ts'
-import { emptyCapabilities } from '../../licensing/capabilities.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { BaselineResult } from '../ui/baseline.ts'
+import { emptyCapabilities } from '../licensing/capabilities.ts'
 
 const now = new Date()
 const daysAgo = (d: number) => new Date(now.getTime() - d * 86_400_000).toISOString()

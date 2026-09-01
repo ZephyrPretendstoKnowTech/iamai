@@ -1,8 +1,8 @@
 // Large synthetic tenant for the performance guard (prompt 20 §7): 5,000
 // users, 40,000 sign-in records, 60 policies, 200 groups. Invented names and
 // ids only; dev builds only. Deterministic so timings are comparable.
-import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { fixtureSnapshot } from './fixtureSnapshot.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { fixtureSnapshot } from './uiSnapshot.ts'
 
 export type BigFixtureOptions = { users?: number; signIns?: number; policies?: number; groups?: number }
 

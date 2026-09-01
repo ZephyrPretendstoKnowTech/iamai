@@ -80,6 +80,40 @@ export function scenarioRows(name: string, ids: string[], svcIds: string[]): Sto
       row({ userId: u(4), riskLevelAggregated: 'high' }),
     ]
   }
+  if (name === 'demo' || name === 'demo-week2') {
+    // The demo carries the lockout scenarios a small P1 + Intune business meets,
+    // so at least twelve fire on it (prompt 50 items 9, 10).
+    return [
+      // 1 / 7 / 21 — legacy mail clients: a person on IMAP, the printer on SMTP AUTH, a phone's built-in Mail.
+      row({ userId: u(4), clientAppUsed: 'IMAP4' }),
+      row({ userId: svcIds[0] ?? u(5), clientAppUsed: 'Authenticated SMTP' }),
+      row({ userId: u(6), clientAppUsed: 'Exchange ActiveSync' }),
+      // 4 — a non-Microsoft app for the session steps.
+      row({ userId: u(7), appId: 'ffffffff-0000-0000-0000-000000000001', appDisplayName: 'FortiClient VPN' }),
+      row({ userId: u(8), appId: 'ffffffff-0000-0000-0000-000000000001', appDisplayName: 'FortiClient VPN' }),
+      // 6 — a guest signs in (trust off by default).
+      row({ userId: u(9), crossTenantAccessType: 'b2bCollaboration' }),
+      // 11 — one partner (GDAP) sign-in.
+      row({ userId: u(10), crossTenantAccessType: 'serviceProvider', homeTenantId: 't-partner-1' }),
+      // 12 — a person who has not typed a password (passwordless sign-ins only).
+      row({ userId: u(11), authenticationDetails: [{ succeeded: true, authenticationMethod: 'Windows Hello for Business' }] }),
+      // 17 — an empty-platform mobile sign-in.
+      row({ userId: u(12), os: '', appDisplayName: 'Outlook Mobile' }),
+      // 3 — a technician tool from a non-compliant device (Intune tenant).
+      row({ userId: u(0), appId: '14d82eec-204b-4c2f-b7e8-296a70dab67e', appDisplayName: 'Microsoft Graph Command Line Tools', isCompliant: false, isManaged: false, trustType: 'none' }),
+      // 16 — a server sign-in.
+      row({ userId: u(1), appId: '372140e0-b3b7-4226-8ef9-d57986796201', appDisplayName: 'Azure Windows VM Sign-In' }),
+      // 9 — Outlook from an unregistered Windows device (token protection).
+      row({ userId: u(2), appDisplayName: 'Outlook', resourceDisplayName: 'Office 365 Exchange Online', trustType: 'none', isCompliant: false, isManaged: false }),
+      // 18 — a compliant laptop on Chrome without device claims.
+      row({ userId: u(1), browser: 'Chrome', trustType: 'none', isCompliant: false, isManaged: false }),
+      // 19 — a script on ROPC to a technician tool.
+      row({ userId: svcIds[1] ?? u(13), authenticationProtocol: 'ropc', appId: '1950a258-227b-4e31-a9cf-717495945fc2', appDisplayName: 'Microsoft Azure PowerShell' }),
+      // 5 — a stale trusted location: fewer than half the sign-ins match it.
+      ...Array.from({ length: 10 }, () => row({ userId: u(3), namedLocations: [] })),
+      row({ userId: u(3), namedLocations: ['Head office'], trustedLocation: true }),
+    ]
+  }
   return []
 }
 
