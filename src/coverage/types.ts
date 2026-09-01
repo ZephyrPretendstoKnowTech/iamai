@@ -202,6 +202,12 @@ export type GoalResult = {
    * cannot be stated from the facts the classifier kept.
    */
   gapSentence: string | null
+  /**
+   * The same gap, shortened to one dimension for a row (prompt 50.1 item 9):
+   * "sessions expire every 168h, baseline wants 4h", never a mid-word ellipsis.
+   * The full sentence stays on the step; this is what the row shows.
+   */
+  gapClause: string | null
   statement: string
   enforcedIds: string[]
   weakIds: string[]

@@ -21,9 +21,13 @@ export function affectedIds(pop: StepPopulation): string[] {
 
 /** A row's gap suffix: one shortened clause, ≤40 characters (the full sentence is on the step). */
 export function shortGap(gap: string): string {
-  const s = gap.replace(/^sessions /, '').replace(/\bbaseline wants\b/, 'wants')
+  let s = gap.replace(/^sessions /, '').replace(/\bbaseline wants\b/, 'wants')
+  // Shortened, never truncated (prompt 50.1 item 9): drop secondary clauses
+  // joined by " and " rather than cutting mid-word into "…persist in the…".
+  if (s.length > GAP_CHARS) s = s.replace(/ and [^,]*/g, '')
   if (s.length <= GAP_CHARS) return s
-  return s.slice(0, GAP_CHARS - 1).replace(/[\s,]+\S*$/, '') + '…'
+  // Still over budget: keep whole words up to the budget, with no ellipsis.
+  return s.slice(0, GAP_CHARS).replace(/[\s,]+\S*$/, '')
 }
 
 /** The row's who-line: names only when ≤2 and they fit in 28 characters, else the count. */

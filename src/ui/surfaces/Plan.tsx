@@ -148,7 +148,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
           <Status tone={status.tone}>{status.word}</Status>
           {isNext && <span className="next-mark" aria-label={C.next}>{C.next}</span>}
           <span className="step-title">{step.plainTitle || step.title}</span>
-          <span className="who">{whoLineOf(step.population, nameOf, step.gap ?? null)}</span>
+          <span className="who">{whoLineOf(step.population, nameOf, step.gapShort ?? step.gap ?? null)}</span>
           <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{whenLine(step)}</span>
         </span>
         {step.status === 'blocked' && step.blockedReason && !hideReason && !heldByReadiness(step) && <span className="plan-row-reason">{C.afterShort(shortReason(step.blockedReason))}</span>}

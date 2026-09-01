@@ -54,3 +54,15 @@ export function gapSentenceOf(r: GoalResult): string | null {
   if (r.reportOnlyIds.length > 0 && r.enforcedIds.length === 0) return 'report-only, not enforced'
   return null
 }
+
+/**
+ * The gap shortened for a row (prompt 50.1 item 9). A session or control gap can
+ * name several dimensions ("expire every 168h and persist in the browser"); the
+ * row shows only the first, so it fits without a mid-word ellipsis, and the full
+ * sentence stays on the step. Everything after " and ", up to the comma, is
+ * dropped.
+ */
+export function gapClauseOf(r: GoalResult): string | null {
+  const full = gapSentenceOf(r)
+  return full === null ? null : full.replace(/ and [^,]*/g, '')
+}

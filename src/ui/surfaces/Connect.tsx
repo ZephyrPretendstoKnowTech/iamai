@@ -5,7 +5,7 @@
 // progress line and Stop. Scanned: the one-line result and Open the plan.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
-import { signIn, signOut } from '../../graph/msal.ts'
+import { authReady, signIn, signOut } from '../../graph/msal.ts'
 import { isPrivilegeDenial } from '../../graph/collect/roles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
@@ -52,6 +52,30 @@ export function Connect(props: {
 function SignedOut() {
   // The redirect takes seconds to start; the button must not look inert.
   const [opening, setOpening] = useState(false)
+  // MSAL is warming: initialising and fetching the authority metadata. Until it
+  // is ready, the button carries a spinner but stays clickable; a click made now
+  // is queued and fires the moment it is ready, so the first click always lands
+  // (prompt 50.1 item 7). It used to race MSAL and do nothing until the second.
+  const [signInReady, setSignInReady] = useState(false)
+  const firing = useRef(false)
+  useEffect(() => {
+    let live = true
+    void authReady().then(() => {
+      if (live) setSignInReady(true)
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+  useEffect(() => {
+    if (signInReady && opening && !firing.current) {
+      firing.current = true
+      void signIn().catch(() => {
+        firing.current = false
+        setOpening(false)
+      })
+    }
+  }, [signInReady, opening])
   // The body mounts once the disclosure is opened: closed, a <details> still
   // lays its children out, and the closed page must measure as what it shows.
   const [permissionsOpen, setPermissionsOpen] = useState(false)
@@ -68,9 +92,12 @@ function SignedOut() {
         <Button
           variant="primary"
           loading={opening}
+          busy={!signInReady}
           onClick={() => {
+            // Record the intent; the effect fires sign-in as soon as MSAL is
+            // ready (immediately, if it already is). A click while warming is
+            // not lost.
             setOpening(true)
-            void signIn().catch(() => setOpening(false))
           }}
         >
           {C.signIn}

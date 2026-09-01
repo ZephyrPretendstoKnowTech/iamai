@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
-import { signOut } from '../../graph/msal.ts'
+import { clearAuthCache, signOut } from '../../graph/msal.ts'
 import { SHELL } from '../../copy/pages.ts'
 import { exitDemoUrl, isDemo } from '../demo.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -153,7 +153,12 @@ function AccountMenu({ account }: { account: AccountInfo }) {
             onClick={() => {
               void forgetTenant(account.tenantId)
                 .catch(() => {})
-                .then(() => signOut())
+                .then(() => {
+                  // Clear MSAL's own local cache too, so forgetting leaves no trace
+                  // even after the sign-in button warmed MSAL up (prompt 50.1 item 7).
+                  clearAuthCache()
+                  return signOut()
+                })
             }}
           >
             {SHELL.forget}
