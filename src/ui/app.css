@@ -910,6 +910,13 @@ footer.app a {
   white-space: nowrap;
   margin-left: auto;
 }
+/* A readiness-held step reads its reason here, not a date (prompt 50.1 item 4):
+   longer than a date, so it wraps and right-aligns rather than pushing the row wide. */
+.plan-row .when.when-reason {
+  white-space: normal;
+  text-align: right;
+  max-width: 18rem;
+}
 /* The open step keeps a raised treatment inside the wave panel (item 12). */
 .step-body {
   padding: 12px 0 20px 16px;

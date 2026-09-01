@@ -1,5 +1,5 @@
 {
- "fingerprint": "61134c315a2145f6",
+ "fingerprint": "8cbeea0fd43e548c",
  "surfaces": [
   {
    "name": "Header",
@@ -2045,9 +2045,9 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedStop attackers adding their own MFA method3 people8 Sept 2026",
+     "text": "BlockedStop attackers adding their own MFA method3 peoplewhen MFA readiness reaches 90% (now 33%)",
      "sentences": 1,
-     "words": 10
+     "words": 14
     },
     {
      "selector": ".plan-row",
@@ -2081,9 +2081,9 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedKeep non-admins out of the admin portals4 people8 Sept 2026",
+     "text": "BlockedKeep non-admins out of the admin portals4 peoplewhen MFA readiness reaches 90% (now 25%)",
      "sentences": 1,
-     "words": 10
+     "words": 14
     },
     {
      "selector": ".plan-row",
@@ -2093,9 +2093,9 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedAsk for MFA before a device can be registered4 people8 Sept 2026",
+     "text": "BlockedAsk for MFA before a device can be registered4 peoplewhen MFA readiness reaches 90% (now 25%)",
      "sentences": 1,
-     "words": 12
+     "words": 16
     },
     {
      "selector": ".wave",
@@ -2105,9 +2105,9 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedBlock devices Entra cannot identify4 people15 Sept 2026",
+     "text": "BlockedBlock devices Entra cannot identify4 peoplewhen device readiness reaches 80% (now 25%)",
      "sentences": 1,
-     "words": 8
+     "words": 12
     },
     {
      "selector": ".wave",

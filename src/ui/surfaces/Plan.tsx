@@ -10,7 +10,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { PLAN as C } from '../../copy/plan.ts'
 import { SHELL } from '../../copy/pages.ts'
 import { PHASE_NAME } from '../../copy/steps.ts'
-import { planFinish } from '../../derive/finish.ts'
+import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
@@ -149,9 +149,9 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
           {isNext && <span className="next-mark" aria-label={C.next}>{C.next}</span>}
           <span className="step-title">{step.plainTitle || step.title}</span>
           <span className="who">{whoLineOf(step.population, nameOf, step.gap ?? null)}</span>
-          <span className="when">{whenLine(step)}</span>
+          <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{whenLine(step)}</span>
         </span>
-        {step.status === 'blocked' && step.blockedReason && !hideReason && <span className="plan-row-reason">{C.afterShort(shortReason(step.blockedReason))}</span>}
+        {step.status === 'blocked' && step.blockedReason && !hideReason && !heldByReadiness(step) && <span className="plan-row-reason">{C.afterShort(shortReason(step.blockedReason))}</span>}
       </div>
       {open && <StepBody step={step} schedule={schedule} steps={computed.steps} tenantName={tenantName} nameOf={nameOf} onSkip={(reason) => onSkip(step.id, reason)} onUnskip={() => onUnskip(step.id)} onTick={onTick} onClose={onToggle} />}
     </>
@@ -190,6 +190,13 @@ function nameWaves(waves: { phase: number; steps: Step[] }[]): string[] {
 }
 
 function whenLine(step: Step): string {
+  // A step a readiness threshold holds has no enforcement date; its date column
+  // reads the reason in the 46 shape instead (prompt 50.1 item 4). The blocker
+  // already carries it: "when MFA readiness reaches 90% (now 40%)".
+  if (heldByReadiness(step)) {
+    const b = step.blockers.find((x) => x.kind === 'readiness' && typeof x.binding === 'string' && /readiness reaches/.test(x.binding))
+    if (b && typeof b.binding === 'string') return b.binding
+  }
   if (step.kind === 'prerequisite' || step.kind === 'check' || step.kind === 'recurring') return C.who.now
   const at = step.events?.enforce.date ?? (step.rings[0]?.plannedStart ? absoluteDate(step.rings[0].plannedStart) : null)
   return at ?? C.who.now

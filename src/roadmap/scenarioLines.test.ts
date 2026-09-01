@@ -40,17 +40,17 @@ test('prompt 50 item 10: at least twelve scenarios fire on the demo, and these a
   for (const k of DEMO_SCENARIOS) assert.ok(kinds.has(k), `${k} no longer fires on the demo`)
 })
 
-test('prompt 50 item 15: the week-two snapshot advances the tracking story by the same derivations', () => {
+test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracking story, and the in-place count rises', () => {
   const day1 = runFixture(fixture('demo'))
   const week2 = runFixture(fixture('demo-week2'))
   const unproven = (r: ReturnType<typeof runFixture>): number => (r.steps.find((s) => s.kind === 'verify')?.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')?.people.length ?? 0
+  const inPlace = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'done').length
   const reportOnly = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'in-report-only').length
-  const enforced = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.tracking?.enforcedAt).length
   const exclusionStep = (r: ReturnType<typeof runFixture>): boolean => r.steps.some((s) => s.id === 's-prereq-exclusion-group')
   assert.equal(unproven(week2), unproven(day1) - 3, 'three of the unproven are proven in week two')
-  assert.equal(reportOnly(week2), reportOnly(day1) + 2, 'two more steps are in report-only in week two')
-  assert.equal(enforced(week2), enforced(day1) + 1, 'one more step is enforced in week two')
-  assert.ok(exclusionStep(day1) && !exclusionStep(week2), 'the exclusions group is created by week two, so the emergency-access setup is in place')
+  assert.equal(inPlace(week2), inPlace(day1) + 1, 'the admins phishing-resistant policy is enforced by week two, so one more step is in place')
+  assert.equal(reportOnly(week2), 2, 'two Wave 1 policies are in report-only in week two')
+  assert.ok(exclusionStep(day1) && !exclusionStep(week2), 'the exclusions group is created by week two, so its prerequisite is satisfied')
 })
 
 const EVIDENCE_KINDS = [
