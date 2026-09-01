@@ -11,16 +11,11 @@ import type { CaPolicy } from './types.ts'
 const findings = runBaselineValidators(pinned.policies as unknown as CaPolicy[])
 const key = (f: { id: string; policy: string }): string => `${f.id} · ${f.policy}`
 
-// The findings on the pin at commit 8461e0f, each reported in docs/reports/51.md
-// for the owner. `must` findings that would stop a fresh import; kept because
-// this baseline is the owner's own and the findings are theirs to resolve.
-const EXPECTED = [
-  'excl-01 · IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations',
-  'sess-01 · IAC - P2 - APP - SESSION - PIM - Reauthentication',
-  'sess-01 · IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation',
-  'sess-01 · IAC - P2 - GLOBAL - GRANT - High-Risk Sign-Ins',
-  'sess-01 · IAC - P2 - GLOBAL - GRANT - High-Risk Users - Risk Remediation',
-]
+// The pinned baseline is clean after the owner's finding resolutions: the four
+// P2 grant+reauth policies use every-time frequency (not a lifetime control), and
+// the author's break-glass hardening policy is not-assessed. A new finding here
+// is a real regression to reconcile in docs/reports/51.md, never hand-patched.
+const EXPECTED: string[] = []
 
 test('the §3 validators produce exactly the documented findings on the pinned baseline', () => {
   assert.deepEqual(findings.map(key).sort(), [...EXPECTED].sort(), 'the baseline findings changed — reconcile docs/reports/51.md, never hand-patch content or the baseline')
