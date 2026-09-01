@@ -16,7 +16,7 @@ export const DANGER = {
     },
   },
   careAtRisk: {
-    title: (n: number) => `${count(n, 'handle-with-care user')} would struggle with MFA today`,
+    title: (n: number) => `${count(n, 'special-care user')} would struggle with MFA today`,
     detail: 'Set these people up personally before their step goes live: a call or a desk visit, not an email blast. Enforcement stays gated until each is ready.',
     noMethod: 'has no MFA method, so issue a Temporary Access Pass and walk them through Authenticator',
     smsOnly: 'has only text or call, so upgrade them to Microsoft Authenticator',

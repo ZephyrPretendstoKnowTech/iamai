@@ -117,7 +117,7 @@ export function groundingBundle(args: { tenant: string; snapshot: TenantSnapshot
     signInEvidence: snapshot.sources.signInEvidence?.status ?? 'unknown',
     registrationMfaCapable: snapshot.registrationDetails.filter((r) => r.isMfaCapable).length,
   }
-  const findings = args.coverage.results.map((r) => ({ goal: r.goal.id, name: r.goal.name, status: r.status, statement: r.statement }))
+  const findings = args.coverage.results.map((r) => ({ goal: r.goal.id, name: r.goal.name, status: r.status, statement: r.statement.replace(/\*\*/g, '') }))
   const steps = args.steps.map((s) => ({
     id: s.id,
     title: s.title,

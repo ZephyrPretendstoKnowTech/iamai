@@ -38,7 +38,7 @@ export const RINGS = {
   blockReviewed: 'Every blocked sign-in in the soak was reviewed and none was legitimate work.',
   sessionAccepted: 'Re-authentication prompts arrived at the set frequency and nobody lost unsaved work to them.',
   operatorInRing: 'The signed-in account completed a sign-in under the policy from its usual device.',
-  careVerified: (n: number) => `${count(n, 'handle-with-care user')} in this ring confirmed access personally.`,
+  careVerified: (n: number) => `${count(n, 'special-care user')} in this ring confirmed access personally.`,
 
   // ---- plan text ----
   summary: (rings: number, soak: number, weeks: number) => `${count(rings, 'ring')}, ${count(soak, 'day')} of soak each, ${count(weeks, 'week')} end to end.`,

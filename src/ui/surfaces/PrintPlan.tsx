@@ -72,7 +72,8 @@ export function PrintPlan({
   const byId = new Map(steps.map((s) => [s.id, s]))
   const waves = schedule.waves.filter((w) => w.stepIds.length > 0)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
-  const waveTitle = (w: Schedule['waves'][number]) => (w.wave === 0 ? ROADMAP.day0 : ROADMAP.wave(w.wave, waveLabelByNumber.get(w.wave) ?? ''))
+  // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
+  const waveTitle = (w: Schedule['waves'][number]) => waveLabelByNumber.get(w.wave) ?? ''
   // The finish date comes from src/derive (prompt 47 item 7): the last date
   // the calendar sets, with the steps a readiness threshold still holds.
   const finish = planFinish(steps)

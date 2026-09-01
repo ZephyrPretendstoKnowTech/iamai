@@ -10,7 +10,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { PLAN as C } from '../../copy/plan.ts'
 import { SHELL } from '../../copy/pages.ts'
 import { pages } from '../../content/content.ts'
-import { fill } from '../../content/render.ts'
+import { fillText } from '../../content/render.ts'
 import { scanAge } from '../../derive/scanAge.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
@@ -86,10 +86,10 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const age = scanAge(scan.at)
   const ageText = age.hours < 1 ? 'just now' : age.hours < 48 ? `${age.hours}h ago` : `${age.days}d ago`
   const line1 = finish.finish
-    ? fill(P.line1, { steps: total, inPlace, finish: absoluteDate(finish.finish), weeks: weeksText })
-    : fill(P.line1CannotFinish, { steps: total, inPlace, weeks: weeksText, constraint: waiting })
-  const line2 = fill(P.line2, { tenant: tenantName, age: ageText })
-  const lengthTip = fill(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.criticalPath })
+    ? fillText(P.line1, { steps: total, inPlace, finish: absoluteDate(finish.finish), weeks: weeksText })
+    : fillText(P.line1CannotFinish, { steps: total, inPlace, weeks: weeksText, constraint: waiting })
+  const line2 = fillText(P.line2, { tenant: tenantName, age: ageText })
+  const lengthTip = fillText(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.criticalPath })
 
   const byId = new Map(c.steps.map((s) => [s.id, s]))
   // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
