@@ -197,12 +197,14 @@ const MAX_WORDS = 25
 // product text. 37 rewrites the blocked reasons (T7, T8) and the bulletins
 // (S1); 38 rewrites the Start page (C1) and the step Why (C12).
 const RULE8_WAIVED: Waiver[] = [
-  // Prompt 48: the Plan header line names every readiness family that waits
-  // (target-state §5), and the emergency-access step's engine evidence is the
-  // same long line already waived on the Roadmap step. 49 rewrites those.
-  { id: '48-header', match: 'Plan: 28 words' },
-  { id: '48-header', match: 'in place · finishes' },
-  { id: '48-more', match: 'Plan / one step / More expanded:' },
+  // Prompt 51: two locked-out instruction lines in content.json (s-prereq-break-glass
+  // §6.8) exceed the 25-word prose budget because they are not prose — a portal
+  // navigation path (arrow steps) and a PowerShell recovery command. content.json
+  // and the contract are not editable; the instruction cannot be shortened without
+  // losing the recovery path. Recorded as a content-vs-contract length conflict in
+  // docs/reports/51.md for the reviewer.
+  { id: '51-locked-out-portal-path', match: 'Policies → open' },
+  { id: '51-locked-out-powershell', match: 'If the portal itself is blocked' },
 ]
 test(`rule 8: no user-facing sentence runs past ${MAX_WORDS} words`, () => {
   const found = surfaces.flatMap((s) =>
@@ -249,8 +251,6 @@ const FILLER: { phrase: RegExp; why: string }[] = [
 // a waiver on the phrase alone waives every future occurrence too. The Scan
 // subtitle and the two Roadmap tab-level surfaces closed with R8, R12 and R13.
 const RULE10_WAIVED: Waiver[] = [
-  { id: '48', match: 'Plan: [Before anything else]' },
-  { id: '48', match: 'Plan / one step opened: [Before anything else]' },
 ]
 
 test('rule 10: no filler phrases', () => {

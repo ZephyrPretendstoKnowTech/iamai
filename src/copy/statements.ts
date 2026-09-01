@@ -121,8 +121,8 @@ export function notApplicableStatement(goal: string, reason: string): string {
   return `${strong(goal)}: does not apply (${reason}).`
 }
 
-export function licenceLimitedStatement(goal: string, tier: string): string {
-  return `${strong(goal)}: needs a licence tier this tenant does not have (${tier}). Listed on the Licensing guide, not scored.`
+export function licenceLimitedStatement(goal: string, tierName: string): string {
+  return `${goal}: needs a licence this tenant does not hold: ${tierName}.`
 }
 
 function capital(s: string): string {

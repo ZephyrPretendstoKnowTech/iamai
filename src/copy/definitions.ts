@@ -53,7 +53,7 @@ export const GOAL_STATUS = {
   'below-baseline': { title: 'Below the baseline', text: 'The goal itself is met; the baseline sets a stricter bar (a stronger control or tighter limits) that the current policy does not reach.' },
   absent: { title: 'Missing', text: 'No enabled policy does this yet.' },
   'not-applicable': { title: 'Does not apply', text: 'The workload this goal protects is not used in this tenant, so it is left out of the score.' },
-  'licence-limited': { title: 'Needs a licence', text: 'This goal needs a licence tier the tenant does not have. Listed for reference, not scored.' },
+  'licence-limited': { title: 'Needs a licence', text: 'This goal needs a licence the tenant does not hold. Listed for reference, not scored.' },
   unknown: { title: 'Could not tell', text: "A group's members could not be read, so the people this goal covers could not be counted." },
 } as const satisfies Record<string, Definition>
 

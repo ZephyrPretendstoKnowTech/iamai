@@ -1,5 +1,5 @@
 {
- "fingerprint": "e2f568c684681b3f",
+ "fingerprint": "b35679d6e39300c0",
  "surfaces": [
   {
    "name": "Header",
@@ -11,14 +11,13 @@
     "Export"
    ],
    "buttons": [
-    "Re-scan · scanned just now",
+    "Scan to update the plan · scanned just now",
     "Light theme",
     "Account"
    ],
    "options": [],
    "links": [
-    "IAMAI Planner",
-    "Recovery card"
+    "IAMAI Planner"
    ],
    "chips": [],
    "columns": [],
@@ -36,9 +35,9 @@
    "wordCounts": {
     "headings": 0,
     "tabs": 3,
-    "buttons": 8,
+    "buttons": 12,
     "options": 0,
-    "links": 4,
+    "links": 2,
     "chips": 0,
     "columns": 0,
     "tiles": 0,
@@ -46,7 +45,7 @@
     "summaries": 0,
     "tips": 0,
     "sentences": 0,
-    "total": 15
+    "total": 17
    },
    "unnamedControls": [],
    "rows": [],
@@ -61,82 +60,7 @@
    "route": "/plan"
   },
   {
-   "name": "Connect (signed out)",
-   "note": "contract connect.signedOut",
-   "headings": [
-    "Connect a tenant"
-   ],
-   "tabs": [],
-   "buttons": [
-    "Sign in with Microsoft"
-   ],
-   "options": [],
-   "links": [
-    "How IAMAI works →",
-    "See it with sample data →"
-   ],
-   "chips": [],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [
-    "What IAMAI asks for, and how to remove it"
-   ],
-   "tips": [],
-   "sentences": [
-    "Plan the journey to your Conditional Access baseline.",
-    "Read-only.",
-    "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.",
-    "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.",
-    "Read-only, with nothing sent anywhere on its own: no server, no telemetry."
-   ],
-   "titles": [],
-   "nav": [],
-   "primary": [
-    "Sign in with Microsoft"
-   ],
-   "tables": [],
-   "occurrences": {
-    "Plan the journey to your Conditional Access baseline.": 1,
-    "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.": 1,
-    "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.": 1,
-    "Read-only, with nothing sent anywhere on its own: no server, no telemetry.": 1
-   },
-   "occurrencesAll": {
-    "Plan the journey to your Conditional Access baseline.": 1,
-    "Needs a Global Administrator or Global Reader account; Entra ID P1 adds sign-in evidence, and the plan works without it.": 1,
-    "IAMAI reads the Conditional Access configuration, the user, device and licence inventory, and 30 days of sign-in records.": 1,
-    "Read-only, with nothing sent anywhere on its own: no server, no telemetry.": 1
-   },
-   "wordCounts": {
-    "headings": 3,
-    "tabs": 0,
-    "buttons": 4,
-    "options": 0,
-    "links": 10,
-    "chips": 0,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 9,
-    "tips": 0,
-    "sentences": 59,
-    "total": 85
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "forbidEverywhereHits": [],
-   "pageProse": {
-    "sentences": 5,
-    "words": 59
-   },
-   "contract": "connect.signedOut",
-   "state": "signedOut",
-   "route": "/connect"
-  },
-  {
-   "name": "Connect (signed out) / permissions expanded",
+   "name": "The opener / permissions expanded",
    "note": "contract connect.signedOut.permissions",
    "headings": [
     "Removing it"
@@ -381,7 +305,7 @@
    "route": "/connect"
   },
   {
-   "name": "Connect (scanned)",
+   "name": "The tenant page (scanned)",
    "note": "contract connect.scanned",
    "headings": [
     "Connect a tenant"
@@ -405,7 +329,7 @@
    "sentences": [
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
     "Baseline: synthetic baseline (1 policy) · change",
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31"
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1"
    ],
    "titles": [],
    "nav": [],
@@ -416,12 +340,12 @@
    "occurrences": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
     "Baseline: synthetic baseline (1 policy) · change": 1,
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31": 1
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1": 1
    },
    "occurrencesAll": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
     "Baseline: synthetic baseline (1 policy) · change": 1,
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 1 → Aug 31": 1
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1": 1
    },
    "wordCounts": {
     "headings": 3,
@@ -494,7 +418,7 @@
     "About Not active"
    ],
    "sentences": [
-    "4 active people of 5 enabled · 1 admin · sign-ins Aug 1 → Aug 31"
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1"
    ],
    "titles": [],
    "nav": [],
@@ -506,11 +430,11 @@
     }
    ],
    "occurrences": {
-    "4 active people of 5 enabled · 1 admin · sign-ins Aug 1 → Aug 31": 1,
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1": 1,
     "Everything the scan read →": 1
    },
    "occurrencesAll": {
-    "4 active people of 5 enabled · 1 admin · sign-ins Aug 1 → Aug 31": 1,
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1": 1,
     "Everything the scan read →": 1
    },
    "wordCounts": {
@@ -1835,39 +1759,18 @@
    "note": "contract plan",
    "headings": [
     "Plan",
-    "Before anything else · <date> → <date>",
-    "Wave 1 · <date> → <date> · Low-impact blocks · after emergency access",
-    "Wave 2 · <date> → <date> · Devices · after emergency access",
-    "Wave 3 · <date> → <date> · Sessions · after emergency access"
+    "Preparation · <date> → <date>",
+    "Phase 1 · <date> → <date>",
+    "Phase 2 · <date> → <date>",
+    "Phase 3 · <date> → <date>"
    ],
    "tabs": [],
-   "buttons": [
-    "emergency access 1 account · confirm",
-    "exclusions group none yet · change",
-    "sign-in countries AU, NZ · change",
-    "trusted locations 1 · change",
-    "service accounts none · confirm",
-    "shared devices none · change",
-    "time zone Denver · change",
-    "mail-sending devices none seen · answer",
-    "people who travel or work abroad none seen · answer",
-    "partner or MSP access none seen · answer"
-   ],
+   "buttons": [],
    "options": [],
    "links": [
     "Plan settings"
    ],
    "chips": [
-    "emergency access 1 account · confirm",
-    "exclusions group none yet · change",
-    "sign-in countries AU, NZ · change",
-    "trusted locations 1 · change",
-    "service accounts none · confirm",
-    "shared devices none · change",
-    "time zone Denver · change",
-    "mail-sending devices none seen · answer",
-    "people who travel or work abroad none seen · answer",
-    "partner or MSP access none seen · answer",
     "Ready",
     "Blocked",
     "Report-only"
@@ -1877,15 +1780,15 @@
    "empty": [],
    "summaries": [
     "Already in place (2)",
-    "Doesn't apply here (10)",
-    "Housekeeping (0)"
+    "Doesn't apply here (5)",
+    "Not licensed (5)"
    ],
    "tips": [
     "About What set the plan length"
    ],
    "sentences": [
-    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness",
-    "Assumes:"
+    "<var class=\"v\">22</var> steps · <var class=\"v\">2</var> in place · finishes <var class=\"v\"><date></var> · <var class=\"v\">4 weeks</var>",
+    "Built from what IAMAI found on <var class=\"v\">Contoso Pty Ltd</var>, scanned <var class=\"v\">just now</var> · Today shows where each person stands."
    ],
    "titles": [
     "Sort out emergency access before anything else",
@@ -1913,93 +1816,35 @@
    "primary": [],
    "tables": [],
    "occurrences": {
-    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness": 1
+    "<var class=\"v\">22</var> steps · <var class=\"v\">2</var> in place · finishes <var class=\"v\"><date></var> · <var class=\"v\">4 weeks</var>": 1,
+    "Built from what IAMAI found on <var class=\"v\">Contoso Pty Ltd</var>, scanned <var class=\"v\">just now</var> · Today shows where each person stands.": 1
    },
    "occurrencesAll": {
-    "22 steps · 2 in place · finishes <date> · 4 weeks · 3 MFA steps wait for MFA readiness · 1 device step waits for device readiness": 1
+    "<var class=\"v\">22</var> steps · <var class=\"v\">2</var> in place · finishes <var class=\"v\"><date></var> · <var class=\"v\">4 weeks</var>": 1,
+    "Built from what IAMAI found on <var class=\"v\">Contoso Pty Ltd</var>, scanned <var class=\"v\">just now</var> · Today shows where each person stands.": 1
    },
    "wordCounts": {
-    "headings": 45,
+    "headings": 24,
     "tabs": 0,
-    "buttons": 62,
+    "buttons": 0,
     "options": 0,
     "links": 2,
-    "chips": 65,
+    "chips": 3,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
-    "summaries": 10,
+    "summaries": 11,
     "tips": 6,
-    "sentences": 29,
-    "total": 219
+    "sentences": 37,
+    "total": 83
    },
    "unnamedControls": [],
    "rows": [
     {
-     "selector": ".assumption",
-     "text": "emergency access 1 account · confirm",
-     "sentences": 1,
-     "words": 6
-    },
-    {
-     "selector": ".assumption",
-     "text": "exclusions group none yet · change",
-     "sentences": 1,
-     "words": 6
-    },
-    {
-     "selector": ".assumption",
-     "text": "sign-in countries AU, NZ · change",
-     "sentences": 1,
-     "words": 6
-    },
-    {
-     "selector": ".assumption",
-     "text": "trusted locations 1 · change",
+     "selector": ".phase",
+     "text": "Preparation · <date> → <date>",
      "sentences": 1,
      "words": 5
-    },
-    {
-     "selector": ".assumption",
-     "text": "service accounts none · confirm",
-     "sentences": 1,
-     "words": 5
-    },
-    {
-     "selector": ".assumption",
-     "text": "shared devices none · change",
-     "sentences": 1,
-     "words": 5
-    },
-    {
-     "selector": ".assumption",
-     "text": "time zone Denver · change",
-     "sentences": 1,
-     "words": 5
-    },
-    {
-     "selector": ".assumption",
-     "text": "mail-sending devices none seen · answer",
-     "sentences": 1,
-     "words": 6
-    },
-    {
-     "selector": ".assumption",
-     "text": "people who travel or work abroad none seen · answer",
-     "sentences": 1,
-     "words": 10
-    },
-    {
-     "selector": ".assumption",
-     "text": "partner or MSP access none seen · answer",
-     "sentences": 1,
-     "words": 8
-    },
-    {
-     "selector": ".wave",
-     "text": "Before anything else · <date> → <date>",
-     "sentences": 1,
-     "words": 7
     },
     {
      "selector": ".plan-row",
@@ -2038,10 +1883,10 @@
      "words": 6
     },
     {
-     "selector": ".wave",
-     "text": "Wave 1 · <date> → <date> · Low-impact blocks · after emergency access",
+     "selector": ".phase",
+     "text": "Phase 1 · <date> → <date>",
      "sentences": 1,
-     "words": 13
+     "words": 6
     },
     {
      "selector": ".plan-row",
@@ -2098,10 +1943,10 @@
      "words": 16
     },
     {
-     "selector": ".wave",
-     "text": "Wave 2 · <date> → <date> · Devices · after emergency access",
+     "selector": ".phase",
+     "text": "Phase 2 · <date> → <date>",
      "sentences": 1,
-     "words": 12
+     "words": 6
     },
     {
      "selector": ".plan-row",
@@ -2110,10 +1955,10 @@
      "words": 12
     },
     {
-     "selector": ".wave",
-     "text": "Wave 3 · <date> → <date> · Sessions · after emergency access",
+     "selector": ".phase",
+     "text": "Phase 3 · <date> → <date>",
      "sentences": 1,
-     "words": 12
+     "words": 6
     },
     {
      "selector": ".plan-row",
@@ -2144,7 +1989,7 @@
    "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 2,
-    "words": 29
+    "words": 37
    },
    "contract": "plan",
    "state": "scanned",
@@ -2224,21 +2069,22 @@
    "empty": [],
    "summaries": [
     "Already in place (2)",
-    "Doesn't apply here (10)",
-    "Housekeeping (0)"
+    "Doesn't apply here (5)",
+    "Not licensed (5)"
    ],
    "tips": [],
    "sentences": [
-    "**Office apps require a compliant or joined device**: does not apply (no Intune licence).",
-    "**Mobile access requires approved or protected apps**: does not apply (no Intune licence).",
-    "**Risky sign-ins get MFA or are blocked**: needs a licence tier this tenant does not have (p2).",
-    "**High-risk users must change password**: needs a licence tier this tenant does not have (p2).",
-    "**Azure management requires strong auth**: does not apply (no sign-in activity for Azure management).",
-    "**Service principals restricted**: does not apply (no Workload Identities Premium licence).",
-    "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).",
-    "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).",
-    "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).",
-    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2)."
+    "Office apps require a compliant or joined device: does not apply (no Intune licence).",
+    "Mobile access requires approved or protected apps: does not apply (no Intune licence).",
+    "Azure management requires strong auth: does not apply (no sign-in activity for Azure management).",
+    "Service principals restricted: does not apply (no Workload Identities Premium licence).",
+    "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).",
+    "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.",
+    "High-risk users must change password: needs a licence this tenant does not hold: Entra ID P2.",
+    "Activating a privileged role asks for MFA every time: needs a licence this tenant does not hold: Entra ID P2.",
+    "Medium-risk sign-ins require MFA: needs a licence this tenant does not hold: Entra ID P2.",
+    "Medium-risk users must change their password: needs a licence this tenant does not hold: Entra ID P2.",
+    "Nothing in the plan waits on these."
    ],
    "titles": [
     "Make sure everyone can prove who they are",
@@ -2248,28 +2094,30 @@
    "primary": [],
    "tables": [],
    "occurrences": {
-    "**Office apps require a compliant or joined device**: does not apply (no Intune licence).": 1,
-    "**Mobile access requires approved or protected apps**: does not apply (no Intune licence).": 1,
-    "**Risky sign-ins get MFA or are blocked**: needs a licence tier this tenant does not have (p2).": 1,
-    "**High-risk users must change password**: needs a licence tier this tenant does not have (p2).": 1,
-    "**Azure management requires strong auth**: does not apply (no sign-in activity for Azure management).": 1,
-    "**Service principals restricted**: does not apply (no Workload Identities Premium licence).": 1,
-    "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).": 1,
-    "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).": 1,
-    "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).": 1,
-    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).": 1
+    "Office apps require a compliant or joined device: does not apply (no Intune licence).": 1,
+    "Mobile access requires approved or protected apps: does not apply (no Intune licence).": 1,
+    "Azure management requires strong auth: does not apply (no sign-in activity for Azure management).": 1,
+    "Service principals restricted: does not apply (no Workload Identities Premium licence).": 1,
+    "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).": 1,
+    "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "High-risk users must change password: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Activating a privileged role asks for MFA every time: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Medium-risk sign-ins require MFA: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Medium-risk users must change their password: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Nothing in the plan waits on these.": 1
    },
    "occurrencesAll": {
-    "**Office apps require a compliant or joined device**: does not apply (no Intune licence).": 1,
-    "**Mobile access requires approved or protected apps**: does not apply (no Intune licence).": 1,
-    "**Risky sign-ins get MFA or are blocked**: needs a licence tier this tenant does not have (p2).": 1,
-    "**High-risk users must change password**: needs a licence tier this tenant does not have (p2).": 1,
-    "**Azure management requires strong auth**: does not apply (no sign-in activity for Azure management).": 1,
-    "**Service principals restricted**: does not apply (no Workload Identities Premium licence).": 1,
-    "**Activating a privileged role asks for MFA every time**: needs a licence tier this tenant does not have (p2).": 1,
-    "**Enrolling a device in Intune asks for MFA every time**: does not apply (no Intune licence).": 1,
-    "**Medium-risk sign-ins require MFA**: needs a licence tier this tenant does not have (p2).": 1,
-    "**Medium-risk users must change their password**: needs a licence tier this tenant does not have (p2).": 1
+    "Office apps require a compliant or joined device: does not apply (no Intune licence).": 1,
+    "Mobile access requires approved or protected apps: does not apply (no Intune licence).": 1,
+    "Azure management requires strong auth: does not apply (no sign-in activity for Azure management).": 1,
+    "Service principals restricted: does not apply (no Workload Identities Premium licence).": 1,
+    "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).": 1,
+    "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "High-risk users must change password: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Activating a privileged role asks for MFA every time: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Medium-risk sign-ins require MFA: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Medium-risk users must change their password: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Nothing in the plan waits on these.": 1
    },
    "wordCounts": {
     "headings": 0,
@@ -2281,10 +2129,10 @@
     "columns": 0,
     "tiles": 0,
     "empty": 0,
-    "summaries": 10,
+    "summaries": 11,
     "tips": 0,
-    "sentences": 149,
-    "total": 161
+    "sentences": 161,
+    "total": 174
    },
    "unnamedControls": [],
    "rows": [
@@ -2304,8 +2152,8 @@
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
-    "sentences": 10,
-    "words": 149
+    "sentences": 11,
+    "words": 161
    },
    "contract": "plan.footer",
    "state": "scanned",
@@ -2317,18 +2165,18 @@
    "headings": [
     "Why",
     "Who this touches",
-    "Do it",
-    "Dates",
+    "What to do",
     "Done when",
-    "If it goes wrong"
+    "If a change locks you out"
    ],
    "tabs": [],
    "buttons": [
+    "Scan to update the plan",
     "Close"
    ],
    "options": [],
    "links": [
-    "Recovery card →"
+    "Learn →"
    ],
    "chips": [
     "Ready"
@@ -2341,80 +2189,91 @@
    ],
    "tips": [],
    "sentences": [
-    "Sort out emergency access before anything else Ready",
-    "Nothing changes for anyone.",
-    "This is groundwork so a mistake later can be undone.",
-    "Emergency access accounts has 3 must-fix checks outstanding.",
-    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.",
-    "nobody affected",
-    "Create a second emergency access account.",
-    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.",
-    "Assign Global Administrator to each account permanently, never eligible-only.",
-    "Entra admin center → Roles and administrators → Global Administrator.",
-    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.",
-    "Entra admin center → Users → New user.",
-    "now",
-    "All 3 must-fix checks pass on the next scan.",
-    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.",
-    "A sign-in by an emergency account raises an alert somebody sees.",
-    "Nothing to undo.",
-    "Recovery card →"
+    "Create or Correct Emergency Access Accounts Ready",
+    "Emergency access accounts are how you keep access to <var class=\"v\">Contoso Pty Ltd</var> if a change goes wrong.",
+    "Learn →",
+    "The emergency access accounts, and every policy that must exclude them:",
+    "</p><ol class=\"names\"><li><var class=\"v\">Break-glass 01</var></li></ol><p>",
+    "Your own account, <var class=\"v miss\">{operator}</var>, is not one of these and must not be.",
+    "Tick every account that exists only for this purpose; two are needed.",
+    "IAMAI nominated these from their names, roles and exclusions.",
+    "Create the rest below.",
+    "Fix each failing check, top to bottom. <var class=\"v miss\">{failing}</var> of <var class=\"v\">0</var> checks fail today.",
+    "All <var class=\"v\">0</var> checks pass on the next scan.",
+    "Both passphrases are stored offline in two places, and two named people know where.",
+    "Sign in with one of the emergency accounts above, in a private browser window.",
+    "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only (or Off) → Save.",
+    "It applies within minutes.",
+    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId &lt;id&gt; -State enabledForReportingButNotEnforced.",
+    "If no route works, Microsoft support can help; they will ask for the tenant id: <var class=\"v miss\">{tenantId}</var>.",
+    "Scan to update the planClose"
    ],
    "titles": [
-    "Sort out emergency access before anything else"
+    "Create or Correct Emergency Access Accounts"
    ],
    "nav": [],
    "primary": [],
    "tables": [],
    "occurrences": {
-    "Sort out emergency access before anything else Ready": 1,
-    "Nothing changes for anyone.": 1,
-    "This is groundwork so a mistake later can be undone.": 1,
-    "Emergency access accounts has 3 must-fix checks outstanding.": 1,
-    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
-    "Create a second emergency access account.": 1,
-    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.": 1,
-    "Assign Global Administrator to each account permanently, never eligible-only.": 1,
-    "Entra admin center → Roles and administrators → Global Administrator.": 1,
-    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
-    "Entra admin center → Users → New user.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1,
-    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.": 1,
-    "A sign-in by an emergency account raises an alert somebody sees.": 1
+    "Create or Correct Emergency Access Accounts Ready": 1,
+    "Emergency access accounts are how you keep access to <var class=\"v\">Contoso Pty Ltd</var> if a change goes wrong.": 1,
+    "The emergency access accounts, and every policy that must exclude them:": 1,
+    "</p><ol class=\"names\"><li><var class=\"v\">Break-glass 01</var></li></ol><p>": 1,
+    "Your own account, <var class=\"v miss\">{operator}</var>, is not one of these and must not be.": 1,
+    "Tick every account that exists only for this purpose; two are needed.": 1,
+    "IAMAI nominated these from their names, roles and exclusions.": 1,
+    "Fix each failing check, top to bottom. <var class=\"v miss\">{failing}</var> of <var class=\"v\">0</var> checks fail today.": 1,
+    "All <var class=\"v\">0</var> checks pass on the next scan.": 1,
+    "Both passphrases are stored offline in two places, and two named people know where.": 1,
+    "Sign in with one of the emergency accounts above, in a private browser window.": 1,
+    "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only (or Off) → Save.": 1,
+    "It applies within minutes.": 1,
+    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId &lt;id&gt; -State enabledForReportingButNotEnforced.": 1,
+    "If no route works, Microsoft support can help; they will ask for the tenant id: <var class=\"v miss\">{tenantId}</var>.": 1,
+    "Scan to update the planClose": 1
    },
    "occurrencesAll": {
-    "Sort out emergency access before anything else Ready": 1,
-    "Nothing changes for anyone.": 1,
-    "This is groundwork so a mistake later can be undone.": 1,
-    "Emergency access accounts has 3 must-fix checks outstanding.": 1,
-    "Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.": 1,
-    "Create a second emergency access account.": 1,
-    "Entra admin center → Users → New user: cloud-only, on the onmicrosoft.com domain, no licence, Global Administrator assigned permanently.": 1,
-    "Assign Global Administrator to each account permanently, never eligible-only.": 1,
-    "Entra admin center → Roles and administrators → Global Administrator.": 1,
-    "Use a dedicated account for emergency access, with no department, job title or office, and not the operator.": 1,
-    "Entra admin center → Users → New user.": 1,
-    "All 3 must-fix checks pass on the next scan.": 1,
-    "The passphrase for each emergency account is written down where the admins can reach it without signing in to this tenant.": 1,
-    "A sign-in by an emergency account raises an alert somebody sees.": 1
+    "Create or Correct Emergency Access Accounts Ready": 1,
+    "Emergency access accounts are how you keep access to <var class=\"v\">Contoso Pty Ltd</var> if a change goes wrong.": 1,
+    "The emergency access accounts, and every policy that must exclude them:": 1,
+    "</p><ol class=\"names\"><li><var class=\"v\">Break-glass 01</var></li></ol><p>": 1,
+    "Your own account, <var class=\"v miss\">{operator}</var>, is not one of these and must not be.": 1,
+    "Tick every account that exists only for this purpose; two are needed.": 1,
+    "IAMAI nominated these from their names, roles and exclusions.": 1,
+    "Fix each failing check, top to bottom. <var class=\"v miss\">{failing}</var> of <var class=\"v\">0</var> checks fail today.": 1,
+    "All <var class=\"v\">0</var> checks pass on the next scan.": 1,
+    "Both passphrases are stored offline in two places, and two named people know where.": 1,
+    "Sign in with one of the emergency accounts above, in a private browser window.": 1,
+    "Entra admin center → Entra ID → Conditional Access → Policies → open the policy that changed today → Enable policy: Report-only (or Off) → Save.": 1,
+    "It applies within minutes.": 1,
+    "If the portal itself is blocked: sign in from a device and network the policies trust (a managed laptop on the office network), or from any device run Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess and then Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId &lt;id&gt; -State enabledForReportingButNotEnforced.": 1,
+    "If no route works, Microsoft support can help; they will ask for the tenant id: <var class=\"v miss\">{tenantId}</var>.": 1,
+    "Scan to update the planClose": 1
    },
    "wordCounts": {
-    "headings": 13,
+    "headings": 15,
     "tabs": 0,
-    "buttons": 1,
+    "buttons": 6,
     "options": 0,
-    "links": 3,
+    "links": 2,
     "chips": 1,
     "columns": 0,
     "tiles": 0,
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 171,
-    "total": 190
+    "sentences": 226,
+    "total": 251
    },
    "unnamedControls": [],
-   "rows": [],
+   "rows": [
+    {
+     "selector": ".decision",
+     "text": "Emergency access accounts <var class=\"v miss\">{name}</var> · <var class=\"v miss\">{upn}</var> · <var class=\"v miss\">{signals}</var>Save",
+     "sentences": 1,
+     "words": 14
+    }
+   ],
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
@@ -2429,17 +2288,10 @@
    "name": "Plan / one step / More expanded",
    "note": "contract plan.step.more",
    "headings": [
-    "What could go wrong",
-    "Prerequisites",
-    "What waits on this",
-    "Exit criteria",
-    "For your manager"
+    "What could go wrong"
    ],
    "tabs": [],
-   "buttons": [
-    "Copy",
-    "Copy as prompt"
-   ],
+   "buttons": [],
    "options": [],
    "links": [],
    "chips": [],
@@ -2451,75 +2303,29 @@
    ],
    "tips": [],
    "sentences": [
-    "Nothing has to exist first.",
-    "Stop attackers adding their own MFA method",
-    "Stop sign-ins being handed to another device",
-    "Turn off old sign-in methods that skip MFA",
-    "Stop the device-code sign-in trick",
-    "Keep admin sessions short",
-    "Give admins a sign-in method that cannot be phished",
-    "Keep non-admins out of the admin portals",
-    "Stop sign-ins from countries you don't work in",
-    "Block devices Entra cannot identify",
-    "Ask for MFA before a device can be registered",
-    "Sign everyone out when the browser closes",
-    "Stop downloads to devices you do not manage",
-    "Limit what personal devices can do in the browser",
-    "Stop a stolen session token from being reused",
-    "All 3 must-fix checks pass on the next scan.",
-    "Emergency access accounts is the way back in when a security change goes wrong.",
-    "The cost is an hour of admin time and no disruption to anyone.",
-    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.",
-    "CopyCopy as prompt"
+    "Also possible",
+    "A dynamic group rule re-evaluates on its own, so an account outside a policy today can be inside it tomorrow.",
+    "Microsoft-managed policies start in report-only and are turned on by Microsoft, no less than thirty days later.",
+    "A mailbox on an emergency account is somewhere to phish and somewhere for mail to sit unread."
    ],
    "titles": [],
    "nav": [],
    "primary": [],
    "tables": [],
    "occurrences": {
-    "Nothing has to exist first.": 1,
-    "Stop attackers adding their own MFA method": 1,
-    "Stop sign-ins being handed to another device": 1,
-    "Turn off old sign-in methods that skip MFA": 1,
-    "Stop the device-code sign-in trick": 1,
-    "Give admins a sign-in method that cannot be phished": 1,
-    "Keep non-admins out of the admin portals": 1,
-    "Stop sign-ins from countries you don't work in": 1,
-    "Block devices Entra cannot identify": 1,
-    "Ask for MFA before a device can be registered": 1,
-    "Sign everyone out when the browser closes": 1,
-    "Stop downloads to devices you do not manage": 1,
-    "Limit what personal devices can do in the browser": 1,
-    "Stop a stolen session token from being reused": 1,
-    "All 3 must-fix checks pass on the next scan.": 1,
-    "Emergency access accounts is the way back in when a security change goes wrong.": 1,
-    "The cost is an hour of admin time and no disruption to anyone.": 1,
-    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1
+    "A dynamic group rule re-evaluates on its own, so an account outside a policy today can be inside it tomorrow.": 1,
+    "Microsoft-managed policies start in report-only and are turned on by Microsoft, no less than thirty days later.": 1,
+    "A mailbox on an emergency account is somewhere to phish and somewhere for mail to sit unread.": 1
    },
    "occurrencesAll": {
-    "Nothing has to exist first.": 1,
-    "Stop attackers adding their own MFA method": 1,
-    "Stop sign-ins being handed to another device": 1,
-    "Turn off old sign-in methods that skip MFA": 1,
-    "Stop the device-code sign-in trick": 1,
-    "Give admins a sign-in method that cannot be phished": 1,
-    "Keep non-admins out of the admin portals": 1,
-    "Stop sign-ins from countries you don't work in": 1,
-    "Block devices Entra cannot identify": 1,
-    "Ask for MFA before a device can be registered": 1,
-    "Sign everyone out when the browser closes": 1,
-    "Stop downloads to devices you do not manage": 1,
-    "Limit what personal devices can do in the browser": 1,
-    "Stop a stolen session token from being reused": 1,
-    "All 3 must-fix checks pass on the next scan.": 1,
-    "Emergency access accounts is the way back in when a security change goes wrong.": 1,
-    "The cost is an hour of admin time and no disruption to anyone.": 1,
-    "Without it, a mistake in a later step can lock the organisation out of its own tenant, which is a support case with Microsoft rather than a five-minute fix.": 1
+    "A dynamic group rule re-evaluates on its own, so an account outside a policy today can be inside it tomorrow.": 1,
+    "Microsoft-managed policies start in report-only and are turned on by Microsoft, no less than thirty days later.": 1,
+    "A mailbox on an emergency account is somewhere to phish and somewhere for mail to sit unread.": 1
    },
    "wordCounts": {
-    "headings": 14,
+    "headings": 4,
     "tabs": 0,
-    "buttons": 4,
+    "buttons": 0,
     "options": 0,
     "links": 0,
     "chips": 0,
@@ -2528,8 +2334,8 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 174,
-    "total": 193
+    "sentences": 56,
+    "total": 61
    },
    "unnamedControls": [],
    "rows": [],
@@ -2589,7 +2395,7 @@
     "The whole plan as a document: cover, waves, every step.",
     "Save as PDF from the print dialog.",
     "Every scheduled step as a calendar entry, with its portal path, done-when and rollback.",
-    "Everything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.",
+    "Everything, to load back on any machine: steps, evidence, the recorded facts and checkpoints.",
     "Save plan fileLoad a plan file",
     "Today and each inventory table as a spreadsheet.",
     "Today as CSVPolicies as CSVNamed locations as CSVAuthentication as CSVPeople as CSVGroups as CSVDevices as CSVRoles as CSVApps as CSVLicensing as CSVSign-in records as CSV",
@@ -2608,7 +2414,7 @@
     "The whole plan as a document: cover, waves, every step.": 1,
     "Save as PDF from the print dialog.": 1,
     "Every scheduled step as a calendar entry, with its portal path, done-when and rollback.": 1,
-    "Everything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.": 1,
+    "Everything, to load back on any machine: steps, evidence, the recorded facts and checkpoints.": 1,
     "Save plan fileLoad a plan file": 1,
     "Today and each inventory table as a spreadsheet.": 1,
     "Today as CSVPolicies as CSVNamed locations as CSVAuthentication as CSVPeople as CSVGroups as CSVDevices as CSVRoles as CSVApps as CSVLicensing as CSVSign-in records as CSV": 1,
@@ -2621,7 +2427,7 @@
     "The whole plan as a document: cover, waves, every step.": 1,
     "Save as PDF from the print dialog.": 1,
     "Every scheduled step as a calendar entry, with its portal path, done-when and rollback.": 1,
-    "Everything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.": 1,
+    "Everything, to load back on any machine: steps, evidence, the recorded facts and checkpoints.": 1,
     "Save plan fileLoad a plan file": 1,
     "Today and each inventory table as a spreadsheet.": 1,
     "Today as CSVPolicies as CSVNamed locations as CSVAuthentication as CSVPeople as CSVGroups as CSVDevices as CSVRoles as CSVApps as CSVLicensing as CSVSign-in records as CSV": 1,
@@ -2661,7 +2467,7 @@
     },
     {
      "selector": ".export-card",
-     "text": "Plan fileEverything, to load back on any machine: steps, evidence, the ticked facts and checkpoints.Save plan fileLoad a plan file",
+     "text": "Plan fileEverything, to load back on any machine: steps, evidence, the recorded facts and checkpoints.Save plan fileLoad a plan file",
      "sentences": 1,
      "words": 20
     },
@@ -2693,133 +2499,6 @@
    "contract": "export",
    "state": "scanned",
    "route": "/export"
-  },
-  {
-   "name": "Recovery card",
-   "note": "contract recovery",
-   "headings": [
-    "Recovery card",
-    "Emergency access accounts",
-    "Where the credential is",
-    "Turn a Conditional Access policy off",
-    "Put a policy back to report-only",
-    "If the portal itself blocks you",
-    "This tenant"
-   ],
-   "tabs": [],
-   "buttons": [
-    "Print this card"
-   ],
-   "options": [],
-   "links": [],
-   "chips": [],
-   "columns": [],
-   "tiles": [],
-   "empty": [],
-   "summaries": [],
-   "tips": [],
-   "sentences": [
-    "One page to print and keep.",
-    "What to do if a change locks somebody out, including you.",
-    "Generated <date>.",
-    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.",
-    "Names in full, on purpose A redacted card is useless at the moment you need it.",
-    "Keep the printout where only the right people can reach it.",
-    "Sign in with one of these if your own account is locked out.",
-    "bg01@contoso.onmicrosoft.com",
-    "Not recorded.",
-    "Write it here by hand before filing this card.",
-    "Go to entra.microsoft.com and sign in.",
-    "Protection → Conditional Access → Policies.",
-    "Open the policy by name.",
-    "Set Enable policy to Off.",
-    "Save.",
-    "It applies within a few minutes.",
-    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.",
-    "Open the policy as above.",
-    "Set Enable policy to Report-only instead of Off.",
-    "The policy keeps recording what it would have done, and stops doing it.",
-    "Use an emergency access account above, in a private browser window.",
-    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.",
-    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.",
-    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.",
-    "Domain: example.com, contoso.onmicrosoft.com",
-    "Microsoft support will ask for the tenant id."
-   ],
-   "titles": [],
-   "nav": [],
-   "primary": [],
-   "tables": [],
-   "occurrences": {
-    "One page to print and keep.": 1,
-    "What to do if a change locks somebody out, including you.": 1,
-    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.": 1,
-    "Names in full, on purpose A redacted card is useless at the moment you need it.": 1,
-    "Keep the printout where only the right people can reach it.": 1,
-    "Sign in with one of these if your own account is locked out.": 1,
-    "bg01@contoso.onmicrosoft.com": 1,
-    "Write it here by hand before filing this card.": 1,
-    "Go to entra.microsoft.com and sign in.": 1,
-    "Protection → Conditional Access → Policies.": 1,
-    "It applies within a few minutes.": 1,
-    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.": 1,
-    "Set Enable policy to Report-only instead of Off.": 1,
-    "The policy keeps recording what it would have done, and stops doing it.": 1,
-    "Use an emergency access account above, in a private browser window.": 1,
-    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.": 1,
-    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.": 1,
-    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.": 1,
-    "Domain: example.com, contoso.onmicrosoft.com": 1,
-    "Microsoft support will ask for the tenant id.": 1
-   },
-   "occurrencesAll": {
-    "One page to print and keep.": 1,
-    "What to do if a change locks somebody out, including you.": 1,
-    "Reprint this after any change to emergency access, because the accounts below are the part that goes stale.": 1,
-    "Names in full, on purpose A redacted card is useless at the moment you need it.": 1,
-    "Keep the printout where only the right people can reach it.": 1,
-    "Sign in with one of these if your own account is locked out.": 1,
-    "bg01@contoso.onmicrosoft.com": 1,
-    "Write it here by hand before filing this card.": 1,
-    "Go to entra.microsoft.com and sign in.": 1,
-    "Protection → Conditional Access → Policies.": 1,
-    "It applies within a few minutes.": 1,
-    "Report-only is the better move where the policy is worth keeping: it stops the harm and keeps the evidence.": 1,
-    "Set Enable policy to Report-only instead of Off.": 1,
-    "The policy keeps recording what it would have done, and stops doing it.": 1,
-    "Use an emergency access account above, in a private browser window.": 1,
-    "If that is also blocked, sign in from a device and location the policy trusts: an office network, a managed laptop.": 1,
-    "If Conditional Access blocks every route, a Global Administrator can disable a policy with PowerShell from any device: Connect-MgGraph, then update the policy state.": 1,
-    "A tenant with no working way in needs Microsoft support, and they will ask for the tenant id below.": 1,
-    "Domain: example.com, contoso.onmicrosoft.com": 1,
-    "Microsoft support will ask for the tenant id.": 1
-   },
-   "wordCounts": {
-    "headings": 29,
-    "tabs": 0,
-    "buttons": 3,
-    "options": 0,
-    "links": 0,
-    "chips": 0,
-    "columns": 0,
-    "tiles": 0,
-    "empty": 0,
-    "summaries": 0,
-    "tips": 0,
-    "sentences": 249,
-    "total": 281
-   },
-   "unnamedControls": [],
-   "rows": [],
-   "forbidHits": [],
-   "forbidEverywhereHits": [],
-   "pageProse": {
-    "sentences": 27,
-    "words": 250
-   },
-   "contract": "recovery",
-   "state": "scanned",
-   "route": "/recovery"
   },
   {
    "name": "How IAMAI works",
@@ -3174,7 +2853,7 @@
     },
     {
      "selector": "tr",
-     "text": "Group search/groups?$filter=startswith(displayName,…)v1.0Directory.Read.AllDirectory Readersruns only while the operator types in a Setup pi",
+     "text": "Group search/groups?$filter=startswith(displayName,…)v1.0Directory.Read.AllDirectory Readersruns only while the operator types in a group pi",
      "sentences": 1,
      "words": 20
     },
@@ -3194,7 +2873,7 @@
      "selector": "tr",
      "text": "At least two emergency access accounts are nominated.Must fixOne account is a single point of failure: a lost key or a forgotten passphrase ",
      "sentences": 1,
-     "words": 36
+     "words": 34
     },
     {
      "selector": "tr",
@@ -3296,13 +2975,13 @@
      "selector": "tr",
      "text": "Where the credential is kept, and who can reach it, is recorded in the plan.RecommendedAn emergency account whose passphrase lives only in o",
      "sentences": 1,
-     "words": 39
+     "words": 37
     },
     {
      "selector": "tr",
      "text": "A sign-in by an emergency account raises an alert.RecommendedThese accounts should sign in almost never, so a sign-in is either a drill or a",
      "sentences": 1,
-     "words": 37
+     "words": 35
     },
     {
      "selector": "tr",
@@ -3354,9 +3033,9 @@
     },
     {
      "selector": "tr",
-     "text": "The group is excluded from every enabled policy that assumes it.Must fixA group excluded from some policies and not others protects nobody r",
+     "text": "The group is excluded from every enabled policy that relies on it.Must fixA group excluded from some policies and not others protects nobody",
      "sentences": 1,
-     "words": 35
+     "words": 36
     },
     {
      "selector": "tr",
@@ -3414,9 +3093,9 @@
     },
     {
      "selector": "tr",
-     "text": "At least one country is allowed.Must fixAn empty list blocks everyone, everywhere, including the person who set it.the assumptions stripMicr",
+     "text": "At least one country is allowed.Must fixAn empty list blocks everyone, everywhere, including the person who set it.nothingMicrosoft: block a",
      "sentences": 1,
-     "words": 24
+     "words": 22
     },
     {
      "selector": "tr",

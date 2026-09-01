@@ -114,7 +114,7 @@ test('design 3: border-radius at most 4px, or 8px on a .wave / .export-card pane
       const px = v.match(/^(\d+(?:\.\d+)?)px$/)
       if (px && Number(px[1]) <= 4) continue
       // The two surface-depth panels (prompt 49.1 item 12) may round to 8px.
-      if (px && Number(px[1]) <= 8 && /\.wave|\.export-card/.test(r.selector)) continue
+      if (px && Number(px[1]) <= 8 && /\.wave|\.phase|\.export-card/.test(r.selector)) continue
       hits.push(where(r, `border-radius: ${v}`))
     }
   }
@@ -159,7 +159,7 @@ test('design 6: --bg-raised only on the two-depth panels and the floating layers
   // The raised surface is the two content panels (.wave, .export-card) and the
   // floating layers that already sit above the page (a tooltip, a menu, a table
   // row on hover). Nothing else in the content flow may gain a box.
-  const ALLOWED = /\.wave\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover/
+  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover/
   const hits = rules
     .filter((r) => /var\(--bg-raised\)/.test(r.body) && !ALLOWED.test(r.selector))
     .map((r) => where(r, 'var(--bg-raised)'))

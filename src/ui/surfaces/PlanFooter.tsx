@@ -13,7 +13,10 @@ import type { PlanComputed } from './planData.ts'
 export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameOf: (id: string) => string }) {
   void nameOf
   const inPlace = computed.steps.filter((s) => s.status === 'done')
-  const notApply = computed.coverage.results.filter((r) => r.status === 'not-applicable' || r.status === 'licence-limited')
+  // Doesn't apply here and Not licensed are separate footer groups (§5).
+  const notApply = computed.coverage.results.filter((r) => r.status === 'not-applicable')
+  const notLicensed = computed.coverage.results.filter((r) => r.status === 'licence-limited')
+  const clean = (s: string): string => s.replace(/\*\*/g, '').replace(/\*/g, '')
   const org = computed.coverage.organisation
   const housekeeping: { text: string; json?: string | null }[] = []
   for (const p of org.notInBaseline) housekeeping.push({ text: C.footer.notInBaseline(p.name, p.state) })
@@ -23,27 +26,43 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
 
   return (
     <div className="plan-footer">
-      <details>
-        <summary>{C.footer.inPlace(inPlace.length)}</summary>
-        {inPlace.map((s) => (
-          <FooterRow key={s.id} step={s} />
-        ))}
-      </details>
-      <details>
-        <summary>{C.footer.doesNotApply(notApply.length)}</summary>
-        <ul className="sections">
-          {notApply.map((r) => (
-            <li key={r.goal.id}>{r.statement.replace(' Listed on the Licensing guide, not scored.', '')}</li>
+      {inPlace.length > 0 && (
+        <details>
+          <summary>{C.footer.inPlace(inPlace.length)}</summary>
+          {inPlace.map((s) => (
+            <FooterRow key={s.id} step={s} />
           ))}
-        </ul>
-      </details>
-      <details>
-        <summary>{C.footer.housekeeping(housekeeping.length)}</summary>
-        <ul className="sections">
-          {housekeeping.map((h, i) => (
-            <li key={i}>
-              {h.text}
-              {h.json && (
+        </details>
+      )}
+      {notApply.length > 0 && (
+        <details>
+          <summary>{C.footer.doesNotApply(notApply.length)}</summary>
+          <ul className="sections">
+            {notApply.map((r) => (
+              <li key={r.goal.id}>{clean(r.statement)}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {notLicensed.length > 0 && (
+        <details>
+          <summary>{`Not licensed (${notLicensed.length})`}</summary>
+          <ul className="sections">
+            {notLicensed.map((r) => (
+              <li key={r.goal.id}>{clean(r.statement)}</li>
+            ))}
+          </ul>
+          <p className="reason">Nothing in the plan waits on these.</p>
+        </details>
+      )}
+      {housekeeping.length > 0 && (
+        <details>
+          <summary>{C.footer.housekeeping(housekeeping.length)}</summary>
+          <ul className="sections">
+            {housekeeping.map((h, i) => (
+              <li key={i}>
+                {clean(h.text)}
+                {h.json && (
                 <>
                   {' '}
                   <Button variant="tertiary" onClick={() => exportDownload('policy.json', h.json!, 'application/json', REDACTED)}>
@@ -51,10 +70,11 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
                   </Button>
                 </>
               )}
-            </li>
-          ))}
-        </ul>
-      </details>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   )
 }

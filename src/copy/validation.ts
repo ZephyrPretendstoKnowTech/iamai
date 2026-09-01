@@ -40,12 +40,12 @@ export const SUBJECT_PLAIN = {
 
 /** Where a subject is fixed, when no individual check offered a path. */
 export const SUBJECT_WHERE: Record<string, string> = {
-  breakGlass: 'Entra admin center → Identity → Users, and the Setup step in IAMAI',
+  breakGlass: 'Entra admin center → Identity → Users',
   exclusionGroup: 'Entra admin center → Identity → Groups → this group → Members',
   trustedLocation: 'Entra admin center → Protection → Conditional Access → Named locations',
-  allowedCountries: 'The allowed-countries answer in Setup, and Protection → Conditional Access → Named locations',
+  allowedCountries: 'The allowed-countries decision on the plan, and Protection → Conditional Access → Named locations',
   pilotGroup: 'Entra admin center → Identity → Groups → this group → Members',
-  serviceAccount: 'The service-accounts answer in Setup',
+  serviceAccount: 'The service-accounts decision on the plan',
   authStrength: 'Entra admin center → Protection → Authentication methods → Authentication strengths',
 }
 
@@ -62,7 +62,7 @@ export const NEED_LABEL: Record<string, string> = {
   signInEvidence: 'sign-in records',
   devices: 'devices',
   groupMembers: 'group membership',
-  answers: 'an answer given in Setup',
+  answers: 'an answer given on the plan',
 }
 
 export const UNKNOWN = {
@@ -258,7 +258,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'A rule that adds members adds exclusions, without anybody deciding to.',
   },
   'xg.usedConsistently': {
-    what: 'The group is excluded from every enabled policy that assumes it.',
+    what: 'The group is excluded from every enabled policy that relies on it.',
     why: 'A group excluded from some policies and not others protects nobody reliably and hides which is which.',
   },
   'xg.sizeReasonable': {
@@ -405,12 +405,12 @@ export const CHECKS_PAGE = {
   sectionCount: (blockers: number, warnings: number, notes: number): string =>
     [blockers > 0 ? `${blockers} must-fix` : null, warnings > 0 ? `${warnings} recommended` : null, notes > 0 ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : null].filter(Boolean).join(', '),
   columns: { id: 'Check', what: 'What it looks for', severity: 'If it fails', why: 'Why it matters', needs: 'Needs' },
-  needsNone: 'the answer given in Setup',
+  needsNone: 'the answer given on the plan',
   unknownRule: 'A check whose data is missing reports that it could not be run. On a must-fix check, that holds the plan exactly as a failure does.',
   // C17: this defined "Field practice" before the label had appeared. It is
   // defined on the label itself now, where a reader meets it.
   sources: 'Every check names its source.',
-  next: 'Next: Setup',
+  next: 'Next: the plan',
   empty: 'The registry is empty.',
 }
 
