@@ -98,7 +98,9 @@ export function App() {
           localAccountId: d.operatorId,
           name: 'Sample Admin',
         } as AccountInfo)
-        setTenantName('Sample Tenant (demo)')
+        // The sample org's own name; the banner, not the tenant name, tells a
+        // visitor it is sample data (prompt 50 item 12).
+        setTenantName('Contoso Pty Ltd')
         setLastScan({ snapshot: d.snapshot, at: d.snapshot.asOf })
         setBaseline({ source: 'sample baseline', pkg: d.baseline } as BaselineResult)
         setReady(true)

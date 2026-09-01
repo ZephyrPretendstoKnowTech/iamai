@@ -2,6 +2,8 @@
 
 **Home:** https://getiamai.com · **The planner:** https://getiamai.com/rollout/
 
+**Try it:** https://getiamai.com/rollout/?demo=1#/plan — the whole flow on a sample tenant, no sign-in, nothing from a real tenant.
+
 **A read-only, browser-only rollout planner for Microsoft Entra Conditional Access.**
 
 Point it at a tenant and it reads the real policies, people, devices, licences, and recent
