@@ -39,10 +39,12 @@ function toolRows() {
       const status = STATUS_LABEL[t.status] ?? t.status
       const name = href ? `<a href="${href}">${t.name}</a>` : t.name
       const descriptor = t.descriptor ? ` <span class="descriptor">${t.descriptor}</span>` : ''
+      // A tool may offer a no-consent demo beside its status (prompt 50 item 12).
+      const demo = t.demo ? `<a class="tool-demo" href="/${t.path === '' ? TOOL_PATH : t.path}/${t.demo}">Try it with sample data</a>` : ''
       return `      <div class="tool-row">
         <p class="tool-name">${name}${descriptor}</p>
         <p class="tool-desc">${t.description}</p>
-        <span class="status status-${STATUS_TONE[t.status] ?? 'idle'}">${status}</span>
+        <span class="status status-${STATUS_TONE[t.status] ?? 'idle'}">${status}</span>${demo}
       </div>`
     })
     .join('\n')

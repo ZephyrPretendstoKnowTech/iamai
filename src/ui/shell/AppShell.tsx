@@ -80,10 +80,14 @@ function systemTheme(): string {
   }
 }
 
+// The demo keeps its own theme key, so it never reads or writes the real theme
+// choice, and leaving the demo restores whatever was there before (prompt 50 item 13).
+const THEME_KEY = isDemo() ? 'iamai-theme-demo' : 'iamai-theme'
+
 function useTheme(): [string, () => void] {
   const [theme, setTheme] = useState<string>(() => {
     try {
-      return localStorage.getItem('iamai-theme') ?? systemTheme()
+      return localStorage.getItem(THEME_KEY) ?? systemTheme()
     } catch {
       return systemTheme()
     }
@@ -91,7 +95,7 @@ function useTheme(): [string, () => void] {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     try {
-      localStorage.setItem('iamai-theme', theme)
+      localStorage.setItem(THEME_KEY, theme)
     } catch {
       // storage unavailable: theme just won't persist
     }
@@ -168,6 +172,7 @@ export function AppShell({
   scannedAt = null,
   onRescan,
   snapshot = null,
+  demoWeek2 = false,
   children,
 }: {
   account: AccountInfo | null
@@ -178,6 +183,8 @@ export function AppShell({
   scannedAt?: string | null
   /** Re-scan: the app opens Connect in its scanning state and comes back to Plan when done. */
   onRescan?: () => void
+  /** The demo is showing its week-two snapshot: the banner says so (prompt 50 item 14). */
+  demoWeek2?: boolean
   /** Only for the feedback summary, which is counts and never names. */
   snapshot?: TenantSnapshot | null
   children: ReactNode
@@ -230,7 +237,7 @@ export function AppShell({
       </header>
       {isDemo() && (
         <p className="demo-banner" role="status">
-          {SHELL.demoBanner} <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
+          {SHELL.demoBanner(demoWeek2)} · <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
         </p>
       )}
       <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
