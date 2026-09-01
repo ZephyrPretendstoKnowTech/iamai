@@ -851,14 +851,14 @@ footer.app a {
 /* A wave is a raised panel, so a section reads as a unit (prompt 49.1 item 12):
    --bg-raised, a hairline border, an 8px radius, the header inside, its rows
    separated by hairlines within it. Nothing else outside .export-card gets a box. */
-.wave {
+.phase {
   background: var(--bg-raised);
   border: 1px solid var(--rule);
   border-radius: 8px;
   padding: 4px 16px 8px;
   margin: 20px 0;
 }
-.wave h2 {
+.phase h2 {
   font-size: var(--t-4);
   margin: 14px 0 2px;
   padding-bottom: 8px;

@@ -9,6 +9,9 @@ import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { PLAN as C } from '../../copy/plan.ts'
 import { SHELL } from '../../copy/pages.ts'
+import { pages } from '../../content/content.ts'
+import { fill } from '../../content/render.ts'
+import { scanAge } from '../../derive/scanAge.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -78,9 +81,15 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const waiting = FINISH.waiting(finish.waiting)
   // Weeks derive from the finish date, not the last blocked wave (item 15).
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(c.schedule.start)) / (7 * 86_400_000))) : c.schedule.weeks
-  const headerLine = finish.finish
-    ? C.header(total, inPlace, `finishes ${absoluteDate(finish.finish)}`, weeks, waiting)
-    : C.header(total, inPlace, C.cannotFinish(waiting), weeks, '')
+  const P = pages.plan as Record<string, string>
+  const weeksText = `${weeks} week${weeks === 1 ? '' : 's'}`
+  const age = scanAge(scan.at)
+  const ageText = age.hours < 1 ? 'just now' : age.hours < 48 ? `${age.hours}h ago` : `${age.days}d ago`
+  const line1 = finish.finish
+    ? fill(P.line1, { steps: total, inPlace, finish: absoluteDate(finish.finish), weeks: weeksText })
+    : fill(P.line1CannotFinish, { steps: total, inPlace, weeks: weeksText, constraint: waiting })
+  const line2 = fill(P.line2, { tenant: tenantName, age: ageText })
+  const lengthTip = fill(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.criticalPath })
 
   const byId = new Map(c.steps.map((s) => [s.id, s]))
   // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
@@ -94,12 +103,12 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
 
   return (
     <section className="surface plan">
-      <h1>{C.title}</h1>
+      <h1>{P.h1}</h1>
       <p className="line">
-        {headerLine}
-        <InfoTip title={C.constraintTip} text={c.schedule.derivation.criticalPath} />
+        {line1}
+        <InfoTip title={C.constraintTip} text={lengthTip} />
       </p>
-
+      <p className="line">{line2}</p>
 
       <p className="line no-print">
         <a href="#/plan" onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>
@@ -114,8 +123,8 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         const reasons = w.steps.filter((st) => st.status === 'blocked').map((st) => st.blockedReason ?? '')
         const shared = reasons.length > 0 && reasons.every((r) => r === reasons[0]) ? shortReason(reasons[0]) : null
         return (
-          <section key={w.wave.wave} className="wave">
-            <h2>{w.wave.wave === 0 ? C.day0Dates(w.dates) : C.wave(w.wave.wave, w.dates, waveNames[wi], shared ?? undefined)}</h2>
+          <section key={w.wave.wave} className="phase">
+            <h2>{`${waveNames[wi]} · ${w.dates}`}</h2>
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
