@@ -75,7 +75,7 @@
     {
       "id": "connect.signedOut",
       "name": "The opener (signed out)",
-      "status": "planned:52",
+      "status": "built",
       "reach": {
         "route": "/connect",
         "state": "signedOut"
@@ -94,7 +94,8 @@
           "Sign in with Microsoft"
         ],
         "summaries": [
-          "What IAMAI asks for, and how to remove it"
+          "What IAMAI asks for, and how to remove it",
+          "IAMAI limitations"
         ],
         "links": [
           "How IAMAI works →",
@@ -235,8 +236,7 @@
       },
       "allow": {
         "headings": [
-          "Connect a tenant",
-          "What IAMAI found"
+          "Connect a tenant"
         ],
         "tabs": [],
         "tiles": [],
@@ -261,7 +261,8 @@
         "confirm",
         "answer",
         "question",
-        "Assumes"
+        "Assumes",
+        "What IAMAI found"
       ],
       "rowBudget": {
         "sentences": 2,
@@ -438,7 +439,9 @@
           "Skipped",
           "Doesn't apply"
         ],
-        "buttons": [],
+        "buttons": [
+          "Start the plan"
+        ],
         "summaries": [
           "re:^Already in place \\(\\d+\\)$",
           "re:^Doesn't apply here \\(\\d+\\)$",

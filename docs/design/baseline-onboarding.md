@@ -47,7 +47,10 @@ line in the baseline's report; a stage that cannot complete stops the import and
    - an application id that is not a Microsoft first-party id and appears as an exclusion → the
      author's own app; stripped, and listed in the report ("author-specific exclusion removed:
      Inforcer Integration")
-   Anything unresolved is listed for the owner with the policy it sits in.
+   Anything unresolved is listed for the owner with the policy it sits in. Policies under an
+   author's `Test/` (or similar) folder are excluded and reported as "in the author's Test
+   folder", never as removed; a policy present at the previous pin and absent at the new one
+   is "removed at head".
 3. **Map to goals.** Match each policy to a goal by signature (users, resources, conditions,
    controls). One goal may take several policies (downloads; session lifetime) — record the set.
    A policy that matches no goal is listed as "not assessed" and becomes a Cleanup row. A goal
@@ -110,7 +113,13 @@ is fixed only in prose.
 
 ---
 
-## 5. Later — logged, not scheduled
+## 5. Open
+
+Whether IAMAI carries a small "Microsoft recommended, not in this baseline" set (registration
+protection, the legacy-authentication block, emergency access) rendered when a baseline lacks
+them, labelled as not the author's. Target-state §13.0; the owner's call.
+
+## 6. Later — logged, not scheduled
 
 An automation that watches every baseline the tool knows (author repos, uploaded packages),
 notices a push, and tells the owner; then a purpose-built Claude skill that reads the diff,
