@@ -8,7 +8,8 @@
 // layer, which renders every step, cleanup entry and page from the file.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { content } from './content.ts'
 import { reviewBody } from './render.ts'
 
@@ -50,6 +51,12 @@ test('no rendered sentence carries a forbidden word or a broken value', () => {
 const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.doesntApplyPrompt',
   '.shared.licenceRule',
+  // Shared references the portal translator can emit but this example's mapped
+  // policies do not trigger: portalOpen is the change-to-an-existing-policy
+  // opener (every mapped policy here is created new), syncRoleNote is the
+  // directory-sync caveat (no synced account in the example).
+  '.shared.portalOpen',
+  '.shared.syncRoleNote',
   '.pages.home.metaTitle',
   '.pages.connectNoScan.baselineUpdatedNote',
   '.pages.plan.gapSuffix.guests-mfa',
@@ -84,8 +91,13 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[37].who.evidence[0]',
 ]
 
+// whatToDoReference is a policy step's reviewer-only reference block (prompt 52
+// Part 2): the product renders the translator's output from the baseline, never
+// these lines, and the review page swaps them for the translation wherever the
+// goal is mapped. It is documentation, not rendered content, so it is set aside
+// like the structural keys; a separate test proves no product renderer reads it.
 const isStructural = (p: string): boolean =>
-  /\.id$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.(url|cis)$/.test(p)
+  /\.id$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.(url|cis)$/.test(p) || /\.whatToDoReference\b/.test(p)
 
 test('no orphan content string: every non-structural key renders, or is a known example-suppressed / app-only variant', () => {
   const body = reviewBody()
@@ -117,4 +129,27 @@ test('no orphan content string: every non-structural key renders, or is a known 
     miss.push(path)
   }
   assert.deepEqual(miss.sort(), [...EXAMPLE_SUPPRESSED_OR_APP_ONLY].sort(), 'the set of non-rendered content strings changed; a new entry is a content key no renderer consumes')
+})
+
+// Prompt 52 Part 2: a policy step's whatToDoReference is the reviewer's reference
+// portal lines; the product generates What-to-do from the baseline policy
+// (src/ui/surfaces/stepPortal.ts) and must never read the reference. Only the
+// review renderer (render.ts) and the translator dump (scripts/translator-dump.ts)
+// may name it. This walks the source and fails if a product renderer references
+// whatToDoReference, whichever surface it is written on.
+test('no product renderer reads whatToDoReference (prompt 52 Part 2)', () => {
+  const ALLOWED = new Set(['src/content/render.ts', 'src/content/content.test.ts'])
+  const offenders: string[] = []
+  const walk = (dir: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name).split('\\').join('/')
+      if (e.isDirectory()) {
+        walk(p)
+      } else if (/\.(ts|tsx)$/.test(e.name) && !ALLOWED.has(p)) {
+        if (readFileSync(p, 'utf8').includes('whatToDoReference')) offenders.push(p)
+      }
+    }
+  }
+  walk('src')
+  assert.deepEqual(offenders, [], 'a product renderer references whatToDoReference; it must render the baseline translation instead')
 })
