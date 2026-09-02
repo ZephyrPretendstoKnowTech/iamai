@@ -287,8 +287,13 @@ function whoHasContent(who: Record<string, any>, ex: Ex): boolean {
 /** The who-line evidence lines that apply to this tenant (render.ts renderStep gating). */
 function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
   const out: string[] = []
+  let none: string | null = null
   for (const [k, v] of Object.entries(who)) {
     if (['lead', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
+    if (k === 'none') {
+      none = typeof v === 'string' ? v : null
+      continue
+    }
     const arr = Array.isArray(v) ? (v as string[]) : typeof v === 'string' ? [v] : []
     for (let line of arr) {
       if (line === '{existingCoverage}') {
@@ -301,6 +306,8 @@ function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
       out.push(line)
     }
   }
+  // The none branch stands in only when nothing else in the block renders.
+  if (none !== null && !out.some((line) => whole(line, ex))) out.push(none)
   return out
 }
 
