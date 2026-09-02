@@ -153,17 +153,13 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
       {showSettings && <Settings data={data} effectiveStart={c.schedule.start} onClose={() => setShowSettings(false)} />}
 
       {waveRows.map((w, wi) => {
-        // When every blocked row in the wave shares one binding reason, the
-        // header carries it once and the rows drop their second line (item 14).
-        const reasons = w.steps.filter((st) => st.status === 'blocked').map((st) => st.blockedReason ?? '')
-        const shared = reasons.length > 0 && reasons.every((r) => r === reasons[0]) ? shortReason(reasons[0]) : null
         return (
           <section key={w.wave.wave} className="phase">
             <h2>{`${waveNames[wi]} · ${w.dates}`}</h2>
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} activePeople={activePeople} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} activePeople={activePeople} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
             })}
           </section>
         )
@@ -224,12 +220,11 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle }: {
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason, snapshot, mapping, operatorId, firstEnforce, activePeople, groups, decision, onDecide }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, snapshot, mapping, operatorId, firstEnforce, activePeople, groups, decision, onDecide }: {
   step: Step
   isNext: boolean
   open: boolean
   onToggle: () => void
-  hideReason?: boolean
   schedule: PlanComputed['schedule']
   tenantName: string
   nameOf: (id: string) => string
@@ -257,7 +252,9 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
           <span className="who">{whoLineOf(step.population, nameOf, step.gapShort ?? step.gap ?? null)}</span>
           <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{whenLine(step)}</span>
         </span>
-        {step.status === 'blocked' && step.blockedReason && !hideReason && !heldByReadiness(step) && <span className="plan-row-reason">{fillText(PP.blocked.after, { stepTitle: shortReason(step.blockedReason) })}</span>}
+        {/* The one binding reason, already in a pages.plan.blocked shape (the
+            engine fills those); a readiness hold reads in the date column instead. */}
+        {step.status === 'blocked' && step.blockedReason && !heldByReadiness(step) && <span className="plan-row-reason">{step.blockedReason}</span>}
       </div>
       {open && (
         <ContentStep
@@ -273,11 +270,6 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
       )}
     </>
   )
-}
-
-/** The short form of a blocked reason for a row and a wave header (item 14): "emergency access". */
-function shortReason(reason: string): string {
-  return reason.replace(/^after: /, '').replace(/^Sort out /, '').replace(/ before anything else$/, '')
 }
 
 

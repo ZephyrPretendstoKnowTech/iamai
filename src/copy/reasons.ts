@@ -2,6 +2,8 @@
 // Findings page shows under "Why not fully". Built here, not in the engine, so
 // every branch (0, 1, all, none) is explicit and lint-checked.
 import { count, list } from './statements.ts'
+import { pages } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 export const REASON = {
   /** People the goal expects that no enabled policy includes. */
@@ -32,14 +34,15 @@ export const NOT_ASSESSED = {
 
 /**
  * The one binding reason a blocked row shows (target-state §8.5, prompt 46
- * item 16): at most twelve words, in one of three shapes. The rest of the
- * reasons stay on the step, under More.
+ * item 16): at most twelve words, in one of the three pages.plan.blocked shapes.
+ * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string } }).blocked
 export const BLOCKED_REASON = {
-  after: (stepTitle: string): string => `after: ${stepTitle}`,
-  reaches: (measure: string, threshold: string, now: string): string => `when ${measure} reaches ${threshold} (now ${now})`,
-  exist: (n: number, thing: string, now: number): string => `when ${count(n, thing)} exist${n === 1 ? 's' : ''} (now ${now})`,
+  after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
+  reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
+  exist: (n: number, thing: string, now: number): string => fillText(BLOCKED.count, { n, thing: count(n, thing).replace(/^\d+ /, ''), have: now }),
 }
 
 /** The measure a readiness threshold is stated against, by family. */
