@@ -1129,7 +1129,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   const score = (s: Step): number => {
     // The escape hatch comes before everything: nothing else is safe to start
-    // while a recovery is unverified (validation-rules.md §2).
+    // while a recovery is unverified (validation-rules.md §2). The foundations
+    // lead Preparation: emergency access, then the exclusions group, then the
+    // other validation blockers.
+    if (s.id === bgStepId) return -6000
+    if (s.id === geStepId) return -5999
     const blockerIndex = validationSteps.findIndex((v) => v.id === s.id)
     if (blockerIndex >= 0) return -5000 + blockerIndex
     // The ladder is the plan for a tenant that cannot hold a policy: its own

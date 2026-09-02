@@ -1,6 +1,7 @@
 // roadmap-v2.md §7 — the property assertions, run over every synthetic tenant.
 // These are the specification for rings, sequencing, populations and step
 // content; docs/qa/roadmap-v2-baseline.md records how they failed first.
+import { isEmergencyAccess } from '../blockerSteps.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures } from './index.ts'
@@ -312,11 +313,12 @@ test('mid: service accounts surface before the legacy-auth block', () => {
 
 test('messy: conflicts are detected and ordered first', () => {
   const { steps } = runFixture(byName('messy'))
-  // Validation blockers lead the whole plan (validation-rules.md §2); the
-  // tenant's own conflicts lead everything after them.
+  // The foundations and the validation blockers lead the whole plan
+  // (validation-rules.md §2); the tenant's own conflicts lead everything after them.
+  const leads = (s: Step): boolean => s.id.startsWith('s-blocker-') || isEmergencyAccess(s)
   const open = steps.filter((s) => s.status !== 'done')
-  assert.ok(open.every((s, i) => !s.id.startsWith('s-blocker-') || open.slice(0, i).every((p) => p.id.startsWith('s-blocker-'))), 'blockers come first, together')
-  const first = open.filter((s) => !s.id.startsWith('s-blocker-')).slice(0, 3)
+  assert.ok(open.every((s, i) => !leads(s) || open.slice(0, i).every(leads)), 'the foundations and blockers come first, together')
+  const first = open.filter((s) => !leads(s)).slice(0, 3)
   assert.ok(first.some((s) => /security defaults/i.test(s.title)), 'security defaults conflict comes first after the blockers')
   assert.ok(steps.some((s) => /per-user/i.test(s.title)), 'per-user MFA is named')
 })
