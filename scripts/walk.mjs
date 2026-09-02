@@ -55,7 +55,7 @@ const ABSENT_STEP_IDS = new Set(absentStepIds().filter((id) => !isFloorGoal(id))
 const ABSENT_TITLES = new Set(contentSteps.filter((s) => ABSENT_STEP_IDS.has(s.id)).map((s) => s.title))
 const CATALOGUE_TITLES = new Map(goalsData.goals.map((g) => [g.id, g.name]))
 const ABSENT_GOAL_NAMES = new Set([...ABSENT_STEP_IDS].flatMap((id) => (CATALOGUE_TITLES.has(id) ? [CATALOGUE_TITLES.get(id)] : [])))
-const FORBIDDEN_PHRASES = ['an account IAMAI could not name', '168h', 'undefined', '[object Object]', 'NaN']
+const FORBIDDEN_PHRASES = ['an account IAMAI could not name', 'an unnamed account', '168h', 'undefined', '[object Object]', 'NaN']
 
 const CANDIDATES = [
   process.env.CHROME,

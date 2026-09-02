@@ -5,6 +5,13 @@
 // Policy A and Policy B. A step whose goal the baseline does not hold has no
 // policy and renders no portal block (its content is exempt).
 //
+// The baseline's policies carry the author's own objects (its exclusions group,
+// its service-accounts group, its countries location, its trusted network) as
+// placeholder ids with a token each. Every token resolves to the tenant's own
+// object where the mapping names one (a saved decision included), and to the
+// name the plan proposes for it where the tenant has none yet — never to an
+// unnamed thing.
+//
 // Pure: no DOM, no network.
 import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
 import { policyFacts } from '../../coverage/facts.ts'
@@ -14,6 +21,9 @@ import { hoursInWords } from '../../coverage/verdict.ts'
 import { portalLines, portalLinesAB } from '../../roadmap/portalLines.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import { shared } from '../../content/content.ts'
+import { proposedObjectNames } from '../../coverage/naming.ts'
+import { tenantCountryLocation } from '../../mapping/countries.ts'
+import type { StepVarContext } from './stepVars.ts'
 
 type PinnedPolicy = { id: string | null; displayName: string; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
 const POLICIES = pinned.policies as unknown as PinnedPolicy[]
@@ -23,37 +33,80 @@ export type PortalNames = {
   nameOf: (id: string) => string
   policyName: string
   strengthName?: string | null
+  /** The tenant's own objects behind the baseline's tokens, where the mapping names them. */
   exclusionsGroupId?: string | null
   serviceAccountsGroupId?: string | null
+  allowedCountriesLocationId?: string | null
+  trustedLocationIds?: string[]
+  /** The names the plan proposes for the objects the tenant lacks, so a token never renders unnamed. */
+  proposed?: { exclusionsGroup?: string | null; serviceAccountsGroup?: string | null; allowedCountries?: string | null; trustedLocation?: string | null } | null
+}
+
+/**
+ * The portal names for a step, from its variable context: the mapping's
+ * objects (a saved decision applied), the tenant's countries location when one
+ * matches the allowed list, and the plan's proposed names for the rest.
+ */
+export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>, fallbackTitle: string): PortalNames {
+  const m = ctx.mapping
+  const proposed = proposedObjectNames(ctx.naming ?? null)
+  return {
+    nameOf: ctx.nameOf,
+    policyName: String(ex.policyName ?? fallbackTitle),
+    strengthName: typeof ex.strengthName === 'string' ? ex.strengthName : null,
+    exclusionsGroupId: m.records?.['__globalExclusion']?.resolvedId ?? null,
+    serviceAccountsGroupId: m.serviceAccountsGroupId ?? null,
+    allowedCountriesLocationId: tenantCountryLocation(ctx.snapshot, m.allowedCountries ?? [])?.id ?? null,
+    trustedLocationIds: m.trustedLocationIds ?? [],
+    proposed: { exclusionsGroup: proposed.exclusionsGroup.name, serviceAccountsGroup: proposed.serviceAccountsGroup.name, allowedCountries: proposed.allowedCountries.name, trustedLocation: proposed.trustedLocation.name },
+  }
+}
+
+/** What each placeholder token resolves to: the tenant's object, else the proposed name, else nothing. */
+function tokenNames(names: PortalNames): Record<string, string | null> {
+  const p = names.proposed ?? {}
+  const one = (id: string | null | undefined, fallback: string | null | undefined): string | null => (id ? names.nameOf(id) : (fallback ?? null))
+  const trusted = names.trustedLocationIds ?? []
+  return {
+    exclusionsGroup: one(names.exclusionsGroupId, p.exclusionsGroup),
+    serviceAccountsGroup: one(names.serviceAccountsGroupId, p.serviceAccountsGroup),
+    allowedCountries: one(names.allowedCountriesLocationId, p.allowedCountries),
+    trustedLocation: trusted.length > 0 ? trusted.map((id) => names.nameOf(id)).join(', ') : (p.trustedLocation ?? null),
+  }
 }
 
 function contextFor(p: PinnedPolicy, names: PortalNames): PortalContext {
   const ph = p.placeholders ?? {}
-  let exclusionsGroupId: string | null = names.exclusionsGroupId ?? null
-  let serviceAccountsGroupId: string | null = names.serviceAccountsGroupId ?? null
+  const tokens = tokenNames(names)
+  // The author's ids (lowercased, as the facts carry them), each with the name
+  // its token resolves to; the exclusions and service-accounts ids are the
+  // author's where the policy carries them, else the tenant's own (a body the
+  // engine built already holds the tenant's objects).
+  const byId = new Map<string, string>()
+  let exclusionsGroupId: string | null = names.exclusionsGroupId?.toLowerCase() ?? null
+  let serviceAccountsGroupId: string | null = names.serviceAccountsGroupId?.toLowerCase() ?? null
   for (const [id, token] of Object.entries(ph)) {
+    const name = tokens[token]
+    if (name) byId.set(id.toLowerCase(), name)
     if (token === 'exclusionsGroup') exclusionsGroupId = id.toLowerCase()
     if (token === 'serviceAccountsGroup') serviceAccountsGroupId = id.toLowerCase()
   }
+  const nameOf = (id: string): string => byId.get(id.toLowerCase()) ?? names.nameOf(id)
   const strengthName = names.strengthName ?? (p.grantControls as { authenticationStrength?: { displayName?: string } } | null)?.authenticationStrength?.displayName ?? null
+  const exclusionsGroup = tokens.exclusionsGroup ?? (exclusionsGroupId ? nameOf(exclusionsGroupId) : 'the exclusions group')
   return {
     policyName: names.policyName,
-    nameOf: names.nameOf,
+    nameOf,
     strengthName,
     portalRoot: shared.portalRoot as string,
     portalOpen: (shared.portalOpen as string).replace('{policy}', names.policyName),
     reportOnlyLine: shared.reportOnlyLine as string,
-    exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', exclusionsGroupId ? names.nameOf(exclusionsGroupId) : 'the exclusions group'),
+    exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', exclusionsGroup),
     exclusionsGroupId,
     serviceAccountsGroupId,
   }
 }
 
-/**
- * The portal lines for a goal's step, from its mapped baseline policy. Returns
- * null when the baseline does not hold the goal (no policy to render).
- */
-/** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
 /**
  * The sign-in frequency the goal's baseline policy wants, in words ("4 hours",
  * "weekly"), for the content lines that name {wanted}; null when the mapped
@@ -71,6 +124,7 @@ export function sessionWantedForGoal(goalId: string): string | null {
   return null
 }
 
+/** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
 export function strengthForGoal(goalId: string): string | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
   for (const p of mapped as PinnedPolicy[]) {
@@ -98,6 +152,10 @@ export function stepPortalLinesFromBody(json: string, names: PortalNames): strin
   return lines.length > 0 ? lines : null
 }
 
+/**
+ * The portal lines for a goal's step, from its mapped baseline policy. Returns
+ * null when the baseline does not hold the goal (no policy to render).
+ */
 export function stepPortalLines(goalId: string, names: PortalNames): string[] | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
   if (mapped.length === 0) return null

@@ -80,7 +80,7 @@ import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
-import { proposedGroupName, proposedLocationName, proposedStrengthName } from '../coverage/naming.ts'
+import { proposedGroupName, proposedObjectNames, proposedStrengthName } from '../coverage/naming.ts'
 import { NAMING as STEP_NAMING } from '../copy/steps.ts'
 import { NAMED_BELOW } from './comms.ts'
 import { registrationWindow } from './campaign.ts'
@@ -763,8 +763,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Every object the plan asks for carries a proposed name, in the tenant's own
     // convention (prompt 43 item 4). The copy's example name stays as the shape;
     // this adds the one IAMAI would actually use here.
-    const proposed = proposedGroupName('Exclusion', 'Break-glass', naming)
-    steps.push(prereq(geStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
+    const proposed = proposedObjectNames(naming).exclusionsGroup
+    steps.push({ ...prereq(geStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit), naming: { proposed: proposed.name, fromBaseline: null } })
   }
   const locMissing =
     canUseConditionalAccess &&
@@ -774,8 +774,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const locStepId = PREREQ_STEP_ID.trustedLocation
   if (locMissing) {
     const p = PREREQ.trustedLocation
-    const proposed = proposedLocationName('Trusted', 'Head office', naming)
-    steps.push(prereq(locStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
+    const proposed = proposedObjectNames(naming).trustedLocation
+    steps.push({ ...prereq(locStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit), naming: { proposed: proposed.name, fromBaseline: null } })
   }
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
@@ -789,15 +789,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'enforced' && r.status !== 'not-applicable')
   if (countriesMissing) {
     const p = PREREQ.allowedCountries
-    const proposed = proposedLocationName('Allowed', 'Countries', naming)
-    steps.push(prereq(countriesStepId, p.title, p.why, [...p.how(mapping.allowedCountries.map(countryName)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
+    const proposed = proposedObjectNames(naming).allowedCountries
+    steps.push({ ...prereq(countriesStepId, p.title, p.why, [...p.how(mapping.allowedCountries.map(countryName)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit), naming: { proposed: proposed.name, fromBaseline: null } })
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
   if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
     const p = PREREQ.serviceAccountsGroup
-    const proposed = proposedGroupName('Exception', 'Service accounts', naming)
-    steps.push(prereq(saStepId, p.title, p.why, [...p.how(mapping.serviceAccountUserIds.map(nameOf)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit))
+    const proposed = proposedObjectNames(naming).serviceAccountsGroup
+    steps.push({ ...prereq(saStepId, p.title, p.why, [...p.how(mapping.serviceAccountUserIds.map(nameOf)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit), naming: { proposed: proposed.name, fromBaseline: null } })
   }
 
   // Wave 0: the accounts nobody signs in to (target-state §8.1, prompt 46

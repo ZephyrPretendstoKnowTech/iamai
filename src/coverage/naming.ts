@@ -69,6 +69,22 @@ export function proposedStrengthName(what: string, naming: NamingConvention): Pr
   return proposedName({ prefix: 'CA', rest: ['Strength', what], collapsed: what }, naming)
 }
 
+/**
+ * The names the plan proposes for the objects it asks the tenant to create
+ * (the exclusions group, the service-accounts group, the trusted network, the
+ * countries location), in the tenant's convention. One source for the
+ * prerequisite steps that create them and for the portal lines that name them
+ * before they exist.
+ */
+export function proposedObjectNames(naming: NamingConvention): { exclusionsGroup: ProposedName; serviceAccountsGroup: ProposedName; trustedLocation: ProposedName; allowedCountries: ProposedName } {
+  return {
+    exclusionsGroup: proposedGroupName('Exclusion', 'Break-glass', naming),
+    serviceAccountsGroup: proposedGroupName('Exception', 'Service accounts', naming),
+    trustedLocation: proposedLocationName('Trusted', 'Head office', naming),
+    allowedCountries: proposedLocationName('Allowed', 'Countries', naming),
+  }
+}
+
 export function stepTitle(goalName: string): string {
   return goalName.charAt(0).toUpperCase() + goalName.slice(1)
 }

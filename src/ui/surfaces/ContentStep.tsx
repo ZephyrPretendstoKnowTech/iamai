@@ -13,7 +13,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, missingVars, PICKER_FALLBACK_KEYS, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepPortalLines, stepPortalLinesFromBody } from './stepPortal.ts'
+import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
@@ -84,9 +84,9 @@ export function ContentStep({
   const who = cs.who || {}
   const d = cs.decision
   const w = cs.whatToDo || {}
-  // The exclusions group and the service-accounts group the mapping names (a
-  // saved decision included), so every exclusions line names the group.
-  const portalNames = { nameOf: ctx.nameOf, policyName: String(ex.policyName ?? cs.title), strengthName: (ex as { strengthName?: string }).strengthName ?? null, exclusionsGroupId: ctx.mapping.records?.['__globalExclusion']?.resolvedId ?? null, serviceAccountsGroupId: ctx.mapping.serviceAccountsGroupId ?? null }
+  // The tenant's objects behind the baseline's placeholders (a saved decision
+  // included), or the names the plan proposes for them, so every line is a name.
+  const portalNames = portalNamesFor(ctx, ex, String(cs.title))
   // The baseline's policy through the translator; a floor step (Microsoft
   // recommended, not in this baseline) renders Microsoft's template the engine
   // resolved for this tenant, through the same translator.
