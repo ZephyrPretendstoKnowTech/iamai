@@ -529,15 +529,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const proposed = proposedObjectNames(naming).exclusionsGroup
     steps.push({ ...prereq(geStepId), naming: { proposed: proposed.name, fromBaseline: null } })
   }
-  const locMissing =
-    canUseConditionalAccess &&
-    mapping.wizardAnswered.trustedLocations === true &&
-    mapping.trustedLocationIds.length === 0 &&
-    templateNeeds.has('{trustedLocations}')
+  // The trusted network is a step on every plan, never removed: Ready with its
+  // create instructions while the tenant has no IP named location, In place once
+  // one exists (the picker says which of them are the team's own).
   const locStepId = PREREQ_STEP_ID.trustedLocation
-  if (locMissing) {
+  if (canUseConditionalAccess) {
+    const ipLocations = (snapshot.config.namedLocations?.rows ?? []).filter((l) => String((l as { '@odata.type'?: string })['@odata.type'] ?? '').includes('ipNamedLocation'))
     const proposed = proposedObjectNames(naming).trustedLocation
-    steps.push({ ...prereq(locStepId), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(locStepId), naming: { proposed: proposed.name, fromBaseline: null }, status: ipLocations.length > 0 ? 'done' : 'ready' })
   }
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
@@ -778,7 +777,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // Named dependencies (prompt 12 §B).
     if (status !== 'done') {
-      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId)) blockByStep(locStepId, 'trusted-location')
+      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done')) blockByStep(locStepId, 'trusted-location')
       if (goal.id === 'geo-restriction') {
         if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
       }
