@@ -162,7 +162,9 @@ try {
       'var _k = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) { var b = window.__lastBlob; window.__dl.push({ name: this.download, size: b ? b.size : 0, blob: b }); return; } return _k.call(this); };',
   })
   await send('Page.navigate', { url: `${BASE}#code=abc&client_info=def&state=ghi` })
-  await sleep(1500)
+  // The first frame on a cold dev server takes longer than a fixed wait on CI (e1fc8ab):
+  // wait for the header's first render, which is what the recorded hash is keyed to.
+  await waitFor('window.__firstFrameHash !== undefined', 15000)
   check('Sign-in: an auth response in the fragment is intact when the first frame renders', (await evaluate('window.__firstFrameHash')) === '#code=abc&client_info=def&state=ghi', String(await evaluate('window.__firstFrameHash')))
   check('Sign-in: once auth has settled the page lands on Plan', await waitFor(`location.hash === '#/plan'`))
 
