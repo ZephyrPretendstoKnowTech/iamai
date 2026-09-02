@@ -81,7 +81,7 @@ export function PrintPlan({
   const waveTitle = (w: Schedule['waves'][number]) => waveLabelByNumber.get(w.wave) ?? ''
   // The finish date comes from src/derive (prompt 47 item 7): the last date
   // the calendar sets, with the steps a readiness threshold still holds.
-  const finish = planFinish(steps)
+  const finish = planFinish(steps, schedule.cleanup?.end ?? null)
 
   // Page 1 is the posture summary an MSP hands a client (prompt 50 item 8,
   // target-state §7): in place / to do / doesn't apply by goal name, the plan's

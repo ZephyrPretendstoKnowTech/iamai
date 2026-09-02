@@ -63,6 +63,7 @@ import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.t
 import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
+import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { DATE_NOTE } from '../copy/steps.ts'
 const QUESTION_STEPS: [string, string, string][] = [
   ['mailDevices', 'Set up an SMTP relay for the devices that send mail', 'Printers and apps that send mail by Authenticated SMTP break when legacy auth is blocked; an SMTP relay or a per-device exception keeps them working.'],
@@ -1639,6 +1640,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   })
   schedule.rhythm = rhythm
   schedule.policyCount = policyCountFor(snapshot, steps, input.coverage.organisation)
+  // Cleanup (target-state §5, §9): dated after the last enforcement window, one
+  // working day per row; the header's finish date includes it (derive/finish.ts).
+  schedule.cleanup = cleanupPhaseFor({
+    after: schedule.targetEnd,
+    rhythm,
+    emergencyAccountIds: mapping.breakGlassUserIds,
+    emergencyAccounts: mapping.breakGlassUserIds.map(nameOf),
+    emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => userById.get(id)?.userPrincipalName ?? nameOf(id)),
+    organisation: input.coverage.organisation,
+  })
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
   for (const s of steps) {
     // Comms per ring, dated (§4.11); the step's own announcement is the first ring's.

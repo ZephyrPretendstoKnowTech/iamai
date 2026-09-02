@@ -108,6 +108,8 @@ export type Schedule = {
   policyCount: PolicyCount | null
   /** The tenant's working pattern (scheduling-and-onboarding.md §2.1); filled by the generator. */
   rhythm?: TenantRhythm | null
+  /** The Cleanup phase, dated after the last enforcement window (§9); filled by the generator; null when it has nothing to say. */
+  cleanup?: import('./cleanupPhase.ts').CleanupPhase | null
 }
 
 /**

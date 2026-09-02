@@ -1,7 +1,10 @@
 // The finish date (prompt 47 Part 2 item 7): the last enforcement date among
 // the steps nothing but the calendar holds, plus the steps a readiness
 // threshold holds, counted with the threshold that holds them. "finishes Sep
-// 20 · 3 device steps wait for device readiness" is this, rendered. Pure.
+// 20 · 3 device steps wait for device readiness" is this, rendered. The
+// header's finish is the end of the last phase, Cleanup included (target-state
+// §9): when the calendar dates an enforcement, a dated Cleanup ends the plan.
+// Pure.
 import { READINESS_MEASURE } from '../copy/reasons.ts'
 import type { Step } from '../roadmap/types.ts'
 
@@ -20,7 +23,7 @@ export function heldByReadiness(step: Step): boolean {
 
 const lastRingEnd = (s: Step): string | null => s.rings.at(-1)?.plannedEnd ?? null
 
-export function planFinish(steps: Step[]): PlanFinish {
+export function planFinish(steps: Step[], cleanupEnd: string | null = null): PlanFinish {
   let finish: string | null = null
   const waiting = new Map<string, { measure: string; count: number; family: Step['readiness']['family'] }>()
   for (const s of steps) {
@@ -35,6 +38,9 @@ export function planFinish(steps: Step[]): PlanFinish {
     const end = lastRingEnd(s)
     if (end && (finish === null || end > finish)) finish = end
   }
+  // Cleanup follows the last enforcement; it ends a plan the calendar dates, and
+  // never dates a plan whose enforcement is still held.
+  if (finish !== null && cleanupEnd !== null && cleanupEnd > finish) finish = cleanupEnd
   const list = [...waiting.values()]
   return { finish, waiting: list, waitingCount: list.reduce((n, w) => n + w.count, 0) }
 }

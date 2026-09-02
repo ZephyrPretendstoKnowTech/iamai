@@ -1,5 +1,5 @@
 {
- "fingerprint": "0ece8b31e9aa6bf5",
+ "fingerprint": "35df74af320826c3",
  "surfaces": [
   {
    "name": "Header",
@@ -1880,7 +1880,8 @@
     "Phase 1 · <date> → <date>",
     "Phase 2 · <date> → <date>",
     "Phase 3 · <date> → <date>",
-    "Phase 4 · <date> → <date>"
+    "Phase 4 · <date> → <date>",
+    "Cleanup · <date> → <date>"
    ],
    "tabs": [],
    "buttons": [],
@@ -1905,7 +1906,7 @@
     "About What set the plan length"
    ],
    "sentences": [
-    "19 steps · 2 in place · finishes <date> · 5 weeks",
+    "20 steps · 2 in place · finishes <date> · 6 weeks",
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands."
    ],
    "titles": [
@@ -1913,7 +1914,6 @@
     "Fix the allowed-countries list before it is used",
     "Address Problematic Accounts",
     "Create or Correct Exclusions Group",
-    "Break-glass sign-in drill",
     "Create and Enforce the MFA Registration Campaign",
     "Block Authentication Transfer",
     "Block Legacy Authentication",
@@ -1925,21 +1925,23 @@
     "Block Unsupported Device Platforms",
     "Require MFA to Register a Device",
     "Limit How Long Sessions Last",
-    "Require Token Protection on Windows"
+    "Require Token Protection on Windows",
+    "Alert on Emergency Account Sign-ins",
+    "Run the Emergency Access Drill"
    ],
    "nav": [],
    "primary": [],
    "tables": [],
    "occurrences": {
-    "19 steps · 2 in place · finishes <date> · 5 weeks": 1,
+    "20 steps · 2 in place · finishes <date> · 6 weeks": 1,
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1
    },
    "occurrencesAll": {
-    "19 steps · 2 in place · finishes <date> · 5 weeks": 1,
+    "20 steps · 2 in place · finishes <date> · 6 weeks": 1,
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1
    },
    "wordCounts": {
-    "headings": 30,
+    "headings": 35,
     "tabs": 0,
     "buttons": 0,
     "options": 0,
@@ -1951,7 +1953,7 @@
     "summaries": 11,
     "tips": 6,
     "sentences": 31,
-    "total": 83
+    "total": 88
    },
    "unnamedControls": [],
    "rows": [
@@ -1984,12 +1986,6 @@
      "text": "ReadyCreate or Correct Exclusions Groupnobody affectednow",
      "sentences": 1,
      "words": 6
-    },
-    {
-     "selector": ".plan-row",
-     "text": "ReadyBreak-glass sign-in drillnobody affectednow",
-     "sentences": 1,
-     "words": 4
     },
     {
      "selector": ".plan-row",
@@ -2084,6 +2080,24 @@
     {
      "selector": ".plan-row",
      "text": "BlockedRequire Token Protection on Windows4 people29 Sept 2026",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": ".phase",
+     "text": "Cleanup · <date> → <date>",
+     "sentences": 1,
+     "words": 5
+    },
+    {
+     "selector": ".plan-row",
+     "text": "ReadyAlert on Emergency Account Sign-insBreak-glass 01Oct 5, 2026",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": ".plan-row",
+     "text": "ReadyRun the Emergency Access DrillBreak-glass 01Oct 6, 2026",
      "sentences": 1,
      "words": 8
     }

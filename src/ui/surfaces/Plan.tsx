@@ -10,8 +10,10 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { PLAN as C } from '../../copy/plan.ts'
 import { SHELL } from '../../copy/pages.ts'
-import { pages } from '../../content/content.ts'
-import { fillText } from '../../content/render.ts'
+import { cleanup as cleanupContent, pages, phases } from '../../content/content.ts'
+import { fillText, missingVars } from '../../content/render.ts'
+import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
+import { DRILL_STEP_ID } from '../../roadmap/generate.ts'
 import { scanAge } from '../../derive/scanAge.ts'
 import { todayView } from '../../derive/today.ts'
 import { waveLabels } from '../../derive/phases.ts'
@@ -83,9 +85,16 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const operatorId = scan.snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
   const firstEnforce = c.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const activePeople = todayView(scan.snapshot, scan.snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
-  const finish = planFinish(c.steps)
+  // Cleanup (§5): one row each, dated after the last enforcement; the drill row
+  // is the recurring drill step, moved out of Preparation into Cleanup, so it
+  // counts once. The finish is the end of the last phase, Cleanup included (§9).
+  const cleanupPhase = c.schedule.cleanup ?? null
+  const drillStep = c.steps.find((s) => s.id === DRILL_STEP_ID) ?? null
+  const cleanupHoldsDrill = cleanupPhase?.rows.some((r) => r.kind === 'drill') === true && drillStep !== null
+  const cleanupExtra = cleanupPhase ? cleanupPhase.rows.filter((r) => !(r.kind === 'drill' && cleanupHoldsDrill)).length : 0
+  const finish = planFinish(c.steps, cleanupPhase?.end ?? null)
   const inPlace = doneSteps(c.steps).length
-  const total = trackableSteps(c.steps).length
+  const total = trackableSteps(c.steps).length + cleanupExtra
   const waiting = FINISH.waiting(finish.waiting)
   // Weeks derive from the finish date, not the last blocked wave (item 15).
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(c.schedule.start)) / (7 * 86_400_000))) : c.schedule.weeks
@@ -102,7 +111,8 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const byId = new Map(c.steps.map((s) => [s.id, s]))
   // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
   // its wave, marked Skipped, so it can be found and put back (prompt 49.1 item 10).
-  const inWave = (st: Step): boolean => st.status !== 'done'
+  // The drill sits in Cleanup when Cleanup renders it (§5).
+  const inWave = (st: Step): boolean => st.status !== 'done' && !(cleanupHoldsDrill && st.id === DRILL_STEP_ID)
   const waveRows = c.schedule.waves
     .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && inWave(st)) }))
     .filter((w) => w.steps.length > 0)
@@ -142,8 +152,76 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         )
       })}
 
+      {cleanupPhase && (
+        <section className="phase">
+          <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(cleanupPhase.start), end: absoluteDate(cleanupPhase.end) })}</h2>
+          {cleanupPhase.rows.map((r) => (
+            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} drillStep={r.kind === 'drill' ? drillStep : null} alertingDone={data.mapping?.breakGlassAnswers?.signInMonitoring === true} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} />
+          ))}
+        </section>
+      )}
+
       <PlanFooter computed={c} nameOf={nameOf} />
     </section>
+  )
+}
+
+/** A Cleanup row (§5): the content title, one status word, who it touches, its day; opens in place. */
+function CleanupRow({ phase, row, drillStep, alertingDone, nameOf, open, onToggle }: {
+  phase: CleanupPhase
+  row: CleanupPhase['rows'][number]
+  drillStep: Step | null
+  alertingDone: boolean
+  nameOf: (id: string) => string
+  open: boolean
+  onToggle: () => void
+}) {
+  const entry = (cleanupContent as Record<string, { title: string; why: string; whatToDo: string[]; doneWhen: string[] }>)[row.kind]
+  if (!entry) return null
+  // The drill carries the recurring step's own detection; alerting the recorded
+  // fact (prompt 49 item 5); the rest are Ready while they have something to say.
+  const status = drillStep ? statusOf(drillStep) : alertingDone && row.kind === 'alerting' ? { word: 'In place', tone: 'ok' as const } : { word: 'Ready', tone: 'ok' as const }
+  const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
+  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null)
+  const ex: Record<string, unknown> = { ...row.lists, ...(phase.convention ? { convention: phase.convention } : {}) }
+  const whole = (line: string): boolean => missingVars(line, ex).length === 0
+  const doneWhen = entry.doneWhen.filter(whole)
+  return (
+    <>
+      <div className="plan-row" tabIndex={0} onClick={onToggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}>
+        <span className="plan-row-main">
+          <Status tone={status.tone}>{status.word}</Status>
+          <span className="step-title">{entry.title}</span>
+          <span className="who">{who}</span>
+          <span className="when">{absoluteDate(row.day)}</span>
+        </span>
+      </div>
+      {open && (
+        <div className="step-body">
+          <p className="line">
+            <span className="step-title">{entry.title}</span> <Status tone={status.tone}>{status.word}</Status>
+          </p>
+          <h3>Why</h3>
+          <p>{fillText(entry.why, ex)}</p>
+          <h3>What to do</h3>
+          <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
+          {doneWhen.length > 0 && (
+            <>
+              <h3>Done when</h3>
+              <ul className="sections">{doneWhen.map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ul>
+            </>
+          )}
+          <p className="actions no-print">
+            <Button variant="secondary" onClick={() => { window.location.hash = '#/connect' }}>
+              Scan to update the plan
+            </Button>
+            <Button variant="tertiary" onClick={onToggle}>
+              Close
+            </Button>
+          </p>
+        </div>
+      )}
+    </>
   )
 }
 
