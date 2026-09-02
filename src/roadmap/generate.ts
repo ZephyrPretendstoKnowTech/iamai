@@ -979,7 +979,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind: 'verify',
       goalId: 'mfa-all-users',
       status: verifyDone ? 'done' : 'ready',
-      population: population(campaignIds(snapshot, snapshot.asOf, mapping), popIndex),
+      population: population(campaignIds(viability, snapshot, mapping), popIndex),
       readiness: verifyReadiness,
       forManager: MANAGER.verify(toSetUp),
     })

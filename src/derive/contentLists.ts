@@ -53,7 +53,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   // The campaign's population (derive/population.ts): the plan's active people
   // minus the emergency and shared-device accounts (prompt 48.1 item 2).
   const bg = new Set(mapping.breakGlassUserIds)
-  const campaign = new Set(campaignIds(snapshot, now, mapping))
+  const campaign = new Set(campaignIds(viability, snapshot, mapping))
   const active = viability.filter((v) => campaign.has(v.userId))
   const names = (ids: readonly string[]): string[] => ids.map(nameOf)
   const scen = snapshot.scenarioEvidence ?? null
