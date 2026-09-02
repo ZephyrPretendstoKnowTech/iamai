@@ -112,7 +112,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     const checkpoint = makeCheckpoint({ snapshot, coverage, summary, exclusionGroups, breakGlassIds: data.mapping.breakGlassUserIds })
     const baselineSource = { kind: 'github' as const, owner: baselineIndex.owner, repo: baselineIndex.repo, commit: baselineIndex.commit ?? '' }
     const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, startedAt: data.startedAt ?? undefined })
-    exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(file, null, 2), 'application/json', REDACTED)
+    // The person's own working state, to load back on this tenant: names in full (the card says so).
+    exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(file, null, 2), 'application/json', unredactedFrom('plan-file'))
   }
 
   const loadPlan = async (files: FileList | null): Promise<void> => {

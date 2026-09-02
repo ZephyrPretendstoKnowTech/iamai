@@ -29,8 +29,11 @@ import { app } from '../content/content.ts'
  * - `print-document` — the print layout. Printing exists to put the plan in
  *   front of the person doing the work, and a redacted printout would be
  *   useless for that; the print card states what the document contains.
+ * - `plan-file` — the Export tab's plan-file card. The file is the person's own
+ *   working state, saved to load back on the same tenant (the loader's tenant
+ *   check needs the real id); the card says what it holds and that names are in full.
  */
-export type UnredactedSurface = 'grounding-bundle' | 'print-document'
+export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file'
 
 export type Disposition = { redact: true } | { redact: false; surface: UnredactedSurface }
 

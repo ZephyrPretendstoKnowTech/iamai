@@ -300,17 +300,26 @@ try {
   await sleep(200)
   check('Export: Print or save as PDF prints the document', printed && (await evaluate(`window.__printed >= 1`)))
   check('Export: the print document renders its cover', /Conditional Access rollout plan/.test(await evaluate(`(document.querySelector('.print-plan .print-cover h1') || {}).textContent || ''`)))
+  // Read while the print DOM is up: Load a plan file (below) lands on the plan and unmounts it.
+  const printText = await evaluate(`(document.querySelector('.print-plan') || {}).textContent || ''`)
+  const printHits = PRINT_FORBID.filter((f) => printText.includes(f))
+  check('Export: the print document carries no forbidden placeholder or step vocabulary', printHits.length === 0, printHits.join('; '))
+  // The rebuilt print shows the step content, not the old pre-48 body (item 3).
+  check('Export: the print renders the step body, not the old fields', /Who this touches/.test(printText) && !/Proposed name:|What the last 30 days say/.test(printText), `${(printText.match(/Proposed name:|What the last 30 days say/) ?? ['no old field'])[0]}; ${printText.replace(/\s+/g, ' ').slice(0, 220)}`)
+  // Item 4: the print DOM lives only while printing; afterprint tears it down.
+  await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
+  await sleep(200)
+  check('Export: the print DOM is gone once printing ends', (await evaluate(`document.querySelector('.print-plan') === null`)))
   const nBefore = await evaluate(`window.__dl.length`)
   await clickExact('Save plan file')
   await sleep(450)
   check('Export: Save plan file produces bytes', await evaluate(`window.__dl.length > ${nBefore} && window.__dl[window.__dl.length - 1].size > 0`))
   const planJson = await evaluate(`(async () => { const d = window.__dl[window.__dl.length - 1]; return d && d.blob ? await d.blob.text() : null })()`)
   check('Export: the saved plan carries its steps', typeof planJson === 'string' && /"steps"\s*:/.test(planJson))
-  // The saved bytes parse back to a plan with its steps (v3 carries no hand-ticked
-  // state — IAMAI never asks the user to maintain state it can detect). Identifier
-  // redaction rewrites the tenant id, so a live reload into the same tenant is
-  // refused by the tenant guard by design (planTenant.test); the format round-trip
-  // is what matters, and Load a plan file runs the import path.
+  // The saved bytes parse back to a plan with its steps. The plan file is the
+  // person's own working state and leaves unredacted, so a reload into the same
+  // tenant passes the tenant guard; the demo section below saves and loads one
+  // and asserts the plan re-renders the same.
   const reparsed = typeof planJson === 'string' ? JSON.parse(planJson) : null
   check('Export: the plan file round-trips (parses back with its steps)', !!reparsed && Array.isArray(reparsed.steps) && reparsed.steps.length >= 3)
   if (typeof planJson === 'string') {
@@ -327,15 +336,6 @@ try {
     `(async () => { const bad = ${JSON.stringify(FORBID_EVERYWHERE)}; const out = []; for (const d of window.__dl) { if (!d.blob) continue; const t = await d.blob.text(); const isJson = /\\.json$/.test(d.name); for (const f of bad) { if (f === 'urn:user:' && isJson) continue; if (t.includes(f)) out.push(d.name + ': ' + f) } } return out })()`,
   )
   check('Export: no downloaded artifact carries a forbidden placeholder', artifactHits.length === 0, artifactHits.join('; '))
-  const printText = await evaluate(`(document.querySelector('.print-plan') || {}).textContent || ''`)
-  const printHits = PRINT_FORBID.filter((f) => printText.includes(f))
-  check('Export: the print document carries no forbidden placeholder or step vocabulary', printHits.length === 0, printHits.join('; '))
-  // The rebuilt print shows the step content, not the old pre-48 body (item 3).
-  check('Export: the print renders the step body, not the old fields', /Who this touches/.test(printText) && !/Proposed name:|What the last 30 days say/.test(printText))
-  // Item 4: the print DOM lives only while printing; afterprint tears it down.
-  await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
-  await sleep(200)
-  check('Export: the print DOM is gone once printing ends', (await evaluate(`document.querySelector('.print-plan') === null`)))
 
   // The header (target-state §2): wordmark, tenant, tabs, Scan to update the plan with the scan's age, theme, Account.
   await go('plan')
@@ -511,6 +511,104 @@ try {
     }
   }
   check('Demo: two steps open and show their detail', demoOpened >= 2)
+
+  // Save plan file, then Load a plan file, on the same tenant: the plan file is
+  // the person's own working state, unredacted, so what was decided, dated and
+  // skipped before the save renders again after the load.
+  let openNote = ''
+  const openRow = async (re) => {
+    await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 6000)
+    const i = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].findIndex((r) => ${re}.test(r.textContent) && r.closest('.plan-footer') === null)`)
+    const n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
+    if (i < 0) {
+      openNote = `no row matching ${re} among ${n} at ${await evaluate('location.hash')}: ${await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => e.textContent.trim()).slice(0, 6).join(' | ')`)}`
+      return false
+    }
+    await evaluate(`document.querySelectorAll('main.page .plan-row')[${i}].click()`)
+    const opened = await waitFor(`document.querySelector('main.page .step-body') !== null`, 4000)
+    if (!opened) openNote = `row ${i} of ${n} did not open at ${await evaluate('location.hash')}`
+    return opened
+  }
+  const mainText = () => evaluate(`(document.querySelector('main.page') || document.body).innerText`)
+  const planRecord = () =>
+    evaluate(
+      `(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const tx = db.transaction('plan'); const v = await new Promise((r) => { const q = tx.objectStore('plan').get('demo-sample-tenant'); q.onsuccess = () => r(q.result) }); db.close(); if (!v || typeof v !== 'object') return null; const d = v.decisions ?? v; return JSON.stringify({ skips: d.skips ?? null, startDate: d.startDate ?? null, stepDecisions: d.stepDecisions ?? null }) })()`,
+    )
+  // A decision: the service-accounts picker's Save.
+  await demoGo('plan')
+  await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  let decided = false
+  let decideNote = ''
+  if (await openRow('/Service Accounts Group/')) {
+    decideNote = await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('|')`)
+    decided = await clickText('/^Save$/', 'main.page .step-body .decision')
+    await sleep(400)
+  }
+  check('Demo: a picker decision is saved', decided, decideNote || openNote)
+  // A skip: Block the Admin Portals for Non-Admins, from its More.
+  await demoGo('plan')
+  let skipped = false
+  let skipNote = ''
+  if (await openRow('/Block the Admin Portals/')) {
+    await evaluate(`(() => { const d = document.querySelector('main.page .step-body details.more'); if (d) d.open = true })()`)
+    await sleep(150)
+    if (await clickText('/^Put this step back$/', 'main.page .step-body')) {
+      await sleep(400)
+      await demoGo('plan')
+      await openRow('/Block the Admin Portals/')
+      await evaluate(`(() => { const d = document.querySelector('main.page .step-body details.more'); if (d) d.open = true })()`)
+      await sleep(150)
+    }
+    skipNote = await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('|')`)
+    skipped = await clickText('/^Skip this step$/', 'main.page .step-body')
+    await sleep(400)
+  }
+  check('Demo: a step is skipped', skipped && (await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Block the Admin Portals/.test(r.textContent) && /Skipped/.test(r.textContent))`, 4000)), skipNote || openNote)
+  // A start date, in the plan settings.
+  await demoGo('plan')
+  await clickText('/^Plan settings$/')
+  await sleep(200)
+  const dateSet = await evaluate(`(() => { const el = document.querySelector('main.page input[type=date]'); if (!el) return false; const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(el, '2026-10-05'); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); return true })()`)
+  await sleep(400)
+  // Close the settings so the page reads as it will after the reload.
+  await clickText('/^Close$/')
+  await sleep(200)
+  check('Demo: the plan start is set', dateSet, await evaluate(`(() => { const el = document.querySelector('main.page input[type=date]'); return el ? 'value=' + el.value + ' label=' + ((el.closest('label') || {}).textContent || '').trim().slice(0, 40) + ' hash=' + location.hash : 'no date input' })()`))
+  const recordBefore = await planRecord()
+  check(
+    'Demo: the record holds the decision, the skip and the start',
+    typeof recordBefore === 'string' && /"stepDecisions":\{[^}]*"s-prereq-service-accounts-group"/.test(recordBefore) && /"skips":\{[^}]*"s-goal-admin-portals-protected"/.test(recordBefore) && /"startDate":"2026-10-05/.test(recordBefore),
+    String(recordBefore).slice(0, 200),
+  )
+  await demoGo('plan')
+  await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  const planTextBefore = await mainText()
+  await demoGo('export')
+  await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
+  const dlBefore = await evaluate(`window.__dl.length`)
+  await clickExact('Save plan file')
+  await sleep(450)
+  const demoPlanJson = await evaluate(`(async () => { const d = window.__dl[window.__dl.length - 1]; return window.__dl.length > ${dlBefore} && d && d.blob ? await d.blob.text() : null })()`)
+  check(
+    'Demo: Save plan file carries the tenant id, the decision, the skip and the start',
+    typeof demoPlanJson === 'string' && /"id":\s*"demo-sample-tenant"/.test(demoPlanJson) && /"s-prereq-service-accounts-group"/.test(demoPlanJson) && /"s-goal-admin-portals-protected"/.test(demoPlanJson) && /2026-10-05/.test(demoPlanJson),
+  )
+  const alertsBefore = await evaluate(`window.__alerts.length`)
+  const loaded =
+    typeof demoPlanJson === 'string' &&
+    (await evaluate(`(() => { const input = document.querySelector('main.page input[type=file]'); if (!input) return false; const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(demoPlanJson)}], 'plan.json', { type: 'application/json' })); input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true })()`))
+  check(
+    'Demo: Load a plan file takes the saved file back, with no tenant refusal',
+    loaded && (await waitFor(`location.hash === '#/plan'`, 6000)) && (await evaluate(`window.__alerts.length`)) === alertsBefore,
+    String(await evaluate(`window.__alerts.slice(-1)[0] || ''`)).slice(0, 120),
+  )
+  await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  await sleep(500)
+  const recordAfter = await planRecord()
+  const planTextAfter = await mainText()
+  const firstDiff = (a, b) => { const i = [...a].findIndex((ch, k) => ch !== b[k]); return i < 0 ? '' : `at ${i}: "${a.slice(Math.max(0, i - 40), i + 60).replace(/\s+/g, ' ')}" vs "${b.slice(Math.max(0, i - 40), i + 60).replace(/\s+/g, ' ')}"` }
+  check('Demo: the loaded plan re-renders with the same decisions, start date and skips', recordAfter === recordBefore, recordAfter === recordBefore ? '' : firstDiff(String(recordBefore), String(recordAfter)))
+  check('Demo: the loaded plan renders the same rows as before the save', planTextAfter === planTextBefore, planTextAfter === planTextBefore ? '' : firstDiff(planTextBefore, planTextAfter))
 
   // Today renders over the sample people.
   await demoGo('today')
