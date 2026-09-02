@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { LONG_PLAN_WEEKS, overrunFor } from './overrun.ts'
 import { buildSchedule } from './schedule.ts'
 import type { ScheduleOptions } from './schedule.ts'
-import { allFixtures } from './fixtures/index.ts'
+import { HUGE, allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import type { Step } from './types.ts'
 
@@ -19,7 +19,9 @@ const clone = (steps: Step[]): Step[] => steps.map((s) => ({ ...s, rings: s.ring
 
 /** A plan over the bound: a real one where a fixture has it, else the mid plan behind a long freeze. */
 function overBound(): { steps: Step[]; start: string; active: number; options: ScheduleOptions; weeks: number } {
+  // huge is built only with HUGE=1 (prune A); without it the search falls through to large and mid.
   for (const name of ['huge', 'large', 'mid']) {
+    if (name === 'huge' && !HUGE) continue
     const r = runFixture(fixture(name))
     if (r.schedule.weeks > LONG_PLAN_WEEKS) {
       return { steps: r.steps, start: r.schedule.start, active: r.schedule.activeUsers, options: { rhythm: r.schedule.rhythm ?? null, registrationDays: r.schedule.verification.workingDays }, weeks: r.schedule.weeks }

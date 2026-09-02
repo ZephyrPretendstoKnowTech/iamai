@@ -62,6 +62,10 @@ export function scenarioRows(name: string, ids: string[], svcIds: string[]): Sto
       // 8 — a shared-device-only account (Teams device apps only).
       row({ userId: sharedId(ids), appId: 'cc15fd57-2c6c-4117-a88c-83b1d56b4bbe', appDisplayName: 'Microsoft Teams Services' }),
       row({ userId: sharedId(ids), appId: '87749df4-7ccf-48f8-aa87-704bad0e0e16', appDisplayName: 'Microsoft Teams - Device Admin Agent' }),
+      // 15 — high user risk on the mixed-licence tenant (half its seats are P2, so the
+      // user-risk step exists): the one P2 scenario that fires without the huge fixture (prune A).
+      row({ userId: u(6), riskLevelAggregated: 'high' }),
+      row({ userId: u(7), riskLevelAggregated: 'high' }),
     ]
   }
   if (name === 'large') {
