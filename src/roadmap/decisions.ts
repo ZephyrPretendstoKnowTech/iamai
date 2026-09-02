@@ -58,6 +58,7 @@ export const DECISION_STEPS = {
   serviceAccounts: PREREQ_STEP_ID.serviceAccountsGroup,
   sharedDevices: 's-shared-devices',
   campaign: 's-verify-mfa',
+  adminsGroup: 's-goal-admin-portals-protected',
 } as const
 
 /**

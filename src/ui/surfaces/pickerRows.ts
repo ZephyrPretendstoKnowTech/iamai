@@ -15,6 +15,7 @@ import { suggestCountries, countryName } from '../../mapping/countries.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS } from '../../roadmap/decisions.ts'
+import { adminUserIds, ROLE_TEMPLATES } from '../../roles.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { engine, shared } from '../../content/content.ts'
 
@@ -26,8 +27,8 @@ export type PickerContext = {
   groups?: GroupMembers
 }
 
-/** The picker's variables: `<key>` holds the rows, `<key>Ids` the ids behind them, `<key>Ticked` the ids ticked before a decision. */
-export type PickerVars = Record<string, string[]>
+/** The picker's variables: `<key>` holds the rows, `<key>Ids` the ids behind them, `<key>Ticked` the ids ticked before a decision; `pickerKey` names the key, so a picker never reads another step's list. */
+export type PickerVars = Record<string, string[] | string>
 
 const lc = (s: string): string => s.toLowerCase()
 /** The separator between a row's segments, as content.json writes its pickerRow shapes. */
@@ -46,7 +47,7 @@ function row(template: string, values: Record<string, unknown>): string {
 }
 
 function vars(key: string, rows: string[], ids: string[], ticked: string[]): PickerVars {
-  return { [key]: rows, [`${key}Ids`]: ids, [`${key}Ticked`]: ticked }
+  return { pickerKey: key, [key]: rows, [`${key}Ids`]: ids, [`${key}Ticked`]: ticked }
 }
 
 /** The mapping's own ids where it holds any (the plan's current value), else everything nominated. */
@@ -103,13 +104,18 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
   }
 
   // Allowed countries: every country the sign-in records or a usage location
-  // name, most people first, plus any the plan already allows. Sign-ins per
-  // country are not collected, so that segment of the row is left out.
+  // name, most people first, plus any the plan already allows; the people and
+  // the sign-ins seen from each (a snapshot that never counted sign-ins leaves
+  // that segment out).
   if (stepId === DECISION_STEPS.countries) {
-    const seen = suggestCountries(snapshot).countries
+    const suggested = suggestCountries(snapshot)
+    const seen = suggested.countries
     const allowed = mapping.allowedCountries.map((c) => c.toUpperCase())
     const ids = [...new Set([...seen.map((c) => c.code), ...allowed])]
-    const rows = ids.map((code) => row(template, { country: countryName(code), people: seen.find((c) => c.code === code)?.users }))
+    const rows = ids.map((code) => {
+      const c = seen.find((x) => x.code === code)
+      return row(template, { country: countryName(code), people: c?.users, signIns: suggested.hasSignInCounts ? (c?.signIns ?? 0) : undefined })
+    })
     const signedInFrom = seen.filter((c) => c.users > 0).map((c) => c.code)
     return vars('countriesWithCounts', rows, ids, tickedFrom(allowed, signedInFrom.length > 0 ? signedInFrom : ids))
   }
@@ -150,6 +156,24 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     const ids = users.map((u) => u.id)
     const rows = users.map((u) => row(template, { name: nameOf(u.id), signals: sharedDeviceSignals(u, snapshot).map((s) => words[s] ?? s).join('; ') || undefined }))
     return vars('devicesWithSignals', rows, ids, ids)
+  }
+
+  // The admins group: every group the plan loaded whose members hold an admin
+  // role, the one holding the most admins first and ticked; the roles its
+  // members hold, by name. Groups only: no account is a row here.
+  if (stepId === DECISION_STEPS.adminsGroup) {
+    const admins = adminUserIds(snapshot.roles)
+    const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
+    const candidates = [...(ctx.groups ?? [])]
+      .map(([id, g]) => ({ id, g, adminMembers: g.memberIds.filter((m) => admins.has(m)) }))
+      .filter((c) => c.adminMembers.length > 0)
+      .sort((a, b) => b.adminMembers.length - a.adminMembers.length || (a.g.displayName ?? nameOf(a.id)).localeCompare(b.g.displayName ?? nameOf(b.id)))
+    const ids = candidates.map((c) => c.id)
+    const rows = candidates.map((c) => {
+      const held = [...new Set(c.adminMembers.flatMap((m) => snapshot.roles.active[m] ?? []).map(roleName))].sort()
+      return row(template, { name: c.g.displayName ?? nameOf(c.id), memberCount: c.g.memberCount, rolesHeld: held.length > 0 ? held.join(', ') : undefined })
+    })
+    return vars('adminGroups', rows, ids, ids.slice(0, 1))
   }
 
   return null

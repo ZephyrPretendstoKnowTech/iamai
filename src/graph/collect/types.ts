@@ -149,6 +149,8 @@ export type EvidenceAggregates = {
   byProtocol: Record<string, number>
   /** country → distinct users seen from it */
   byCountry: Record<string, number>
+  /** country → sign-ins from it; absent on snapshots taken before it was counted */
+  signInsByCountry?: Record<string, number>
   /** Interactive sign-ins per UTC weekday and hour (Sunday first, 168 buckets), for the tenant's rhythm. */
   byWeekdayHour?: number[]
 }
