@@ -7,7 +7,8 @@
 // and only when they have content.
 import { useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
-import { content, stepById } from '../../content/content.ts'
+import { content } from '../../content/content.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -18,17 +19,6 @@ import { statusOf } from './statusWord.ts'
 
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
-
-// A few roadmap ids differ from the content step id: the emergency-access step is
-// s-blocker-break-glass (goalId validation-breakGlass) but content keys it
-// s-prereq-break-glass, and the merged goals render under the merge step's id.
-const CONTENT_ALIAS: Record<string, string> = {
-  'validation-breakGlass': 's-prereq-break-glass',
-  'validation-exclusionGroup': 's-prereq-exclusion-group',
-  'all-users-no-persistence': 'session-lifetime',
-  'byod-session-controls': 'unmanaged-browser',
-  'block-downloads-unmanaged': 'unmanaged-browser',
-}
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
 const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}/g)].map((m) => m[1])
@@ -56,10 +46,8 @@ export function ContentStep({
 }) {
   const [tab, setTab] = useState<DoTab>('portal')
   const [copied, setCopied] = useState<string | null>(null)
-  // The content step: a foundation step's id already matches (s-prereq-…); a
-  // policy step's content id is its goal id (step.id is s-goal-<goalId>); a few
-  // ids are aliased.
-  const cs = (stepById[step.id] ?? stepById[step.goalId] ?? stepById[CONTENT_ALIAS[step.goalId]] ?? stepById[CONTENT_ALIAS[step.id]]) as Record<string, any> | undefined
+  // The content step (resolved the same way the plan row resolves its title).
+  const cs = contentStepFor(step) as Record<string, any> | undefined
   const status = statusOf(step)
   const ex = stepVars(step, ctx) as Ex
   const copy = (id: string, text: string): void => {

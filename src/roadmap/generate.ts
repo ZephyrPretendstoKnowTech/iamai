@@ -24,7 +24,8 @@ import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
 import { DEFAULT_REVERT_PERCENT } from './watch.ts'
 import { SAFE } from '../copy/timing.ts'
-import { MANAGER, MANAGER_BY_GOAL, plainTitleFor } from '../copy/plain.ts'
+import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
+import { contentTitle } from '../content/stepTitle.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingQuestion, MappingState } from '../mapping/types.ts'
@@ -1261,7 +1262,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         .map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`),
       stateReason: '',
       denies: impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location',
-      plainTitle: plainTitleFor(goal.id, stepTitle(goal.name)),
+      plainTitle: stepTitle(goal.name),
       forManager:
         MANAGER_BY_GOAL[goal.id]?.() ??
         (readiness.family === 'mfa' || readiness.family === 'guest'
@@ -1668,6 +1669,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     eaStep.exitCriteria = eaStep.exitCriteria.filter((x) => !EMERGENCY_DONE_WHEN.includes(x))
   }
 
+  // The one title, from content.json, on the row, the body and the
+  // communications alike (walk-51 item 1). Set before the state reasons so a
+  // "waits on <step>" line names the same title the plan shows.
+  for (const s of steps) s.plainTitle = contentTitle(s)
   annotateStateReasons(steps)
   // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a
   // plan cannot fix by itself surface as Housekeeping.

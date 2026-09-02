@@ -7,7 +7,6 @@ import { runFixture } from './fixtures/run.ts'
 import { stepIdForGoal } from './generate.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
 import { nobodyAffected, noticeDaysFor } from './timing.ts'
-import { PLAIN_TITLES } from '../copy/plain.ts'
 
 test('thin evidence never produces Safe today, and every step says the single reason', () => {
   const run = runFixture(fixture('hostile'))
@@ -112,22 +111,14 @@ test('a handle-with-care user in scope forces at least five working days of noti
   f.mapping.highCareUserIds = []
 })
 
-test('every goal has a plain-language title and steps carry it beside the technical name', () => {
+// Prompt 52, walk-51 item 1: the plain-title table was deleted; a step's title
+// is its content.json title (the same on the row and in the body), and its
+// manager note stands beside it.
+test('every step carries its content title and a manager note', () => {
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) {
-      assert.ok(s.plainTitle.length > 0, `${s.id} plain title`)
+      assert.ok(s.plainTitle.length > 0, `${s.id} title`)
       assert.ok(s.forManager.length > 0, `${s.id} manager note`)
-      if (s.kind === 'create' || s.kind === 'adjust') assert.ok(PLAIN_TITLES[s.goalId] !== undefined, `${s.goalId} has a plain title`)
     }
   }
-  assert.ok(Object.keys(PLAIN_TITLES).length >= 26)
-})
-
-// Prompt 47 item 9: a plain title fits a header line, so nine words at most.
-test('every plain title is at most nine words', () => {
-  for (const [goalId, title] of Object.entries(PLAIN_TITLES)) {
-    const words = title.trim().split(/\s+/).length
-    assert.ok(words <= 9, `${goalId}: "${title}" is ${words} words`)
-  }
-  assert.equal(PLAIN_TITLES['pim-activation-reauth'], 'Ask for MFA when an admin role is activated')
 })

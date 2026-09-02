@@ -1,5 +1,5 @@
 {
- "fingerprint": "ba97adf213055521",
+ "fingerprint": "94c65a4e596711e8",
  "surfaces": [
   {
    "name": "Header",
@@ -1908,26 +1908,25 @@
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands."
    ],
    "titles": [
-    "Sort out emergency access before anything else",
+    "Create or Correct Emergency Access Accounts",
     "Fix the allowed-countries list before it is used",
-    "Decide on 1 dormant account",
-    "Create the policy exclusions group",
+    "Address Problematic Accounts",
+    "Create or Correct Exclusions Group",
     "Break-glass sign-in drill",
-    "Run the MFA verification campaign",
-    "Stop attackers adding their own MFA method",
-    "Stop sign-ins being handed to another device",
-    "Turn off old sign-in methods that skip MFA",
-    "Stop the device-code sign-in trick",
-    "Keep admin sessions short",
-    "Give admins a sign-in method that cannot be phished",
-    "Keep non-admins out of the admin portals",
-    "Stop sign-ins from countries you don't work in",
-    "Ask for MFA before a device can be registered",
-    "Block devices Entra cannot identify",
-    "Sign everyone out when the browser closes",
-    "Stop downloads to devices you do not manage",
-    "Limit what personal devices can do in the browser",
-    "Stop a stolen session token from being reused"
+    "Create and Enforce the MFA Registration Campaign",
+    "Protect Sign-in Method Registration",
+    "Block Authentication Transfer",
+    "Block Legacy Authentication",
+    "Block Device Code Sign-in",
+    "Shorten Admin Sessions",
+    "Require Phishing-Resistant MFA for Admins",
+    "Block the Admin Portals for Non-Admins",
+    "Block Sign-ins From Countries Not Allowed",
+    "Require MFA to Register a Device",
+    "Block Unsupported Device Platforms",
+    "Limit How Long Sessions Last",
+    "Limit Unmanaged Devices in the Browser",
+    "Require Token Protection on Windows"
    ],
    "nav": [],
    "primary": [],
@@ -1965,9 +1964,9 @@
     },
     {
      "selector": ".plan-row",
-     "text": "ReadynextSort out emergency access before anything elsenobody affectednow",
+     "text": "ReadynextCreate or Correct Emergency Access Accountsnobody affectednow",
      "sentences": 1,
-     "words": 8
+     "words": 7
     },
     {
      "selector": ".plan-row",
@@ -1977,13 +1976,13 @@
     },
     {
      "selector": ".plan-row",
-     "text": "ReadyDecide on 1 dormant accountBreak-glass 01now",
+     "text": "ReadyAddress Problematic AccountsBreak-glass 01now",
      "sentences": 1,
-     "words": 6
+     "words": 4
     },
     {
      "selector": ".plan-row",
-     "text": "ReadyCreate the policy exclusions groupnobody affectednow",
+     "text": "ReadyCreate or Correct Exclusions Groupnobody affectednow",
      "sentences": 1,
      "words": 6
     },
@@ -1995,9 +1994,9 @@
     },
     {
      "selector": ".plan-row",
-     "text": "ReadyRun the MFA verification campaign4 peoplenow",
+     "text": "ReadyCreate and Enforce the MFA Registration Campaign4 peoplenow",
      "sentences": 1,
-     "words": 6
+     "words": 8
     },
     {
      "selector": ".phase",
@@ -2007,57 +2006,57 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedStop attackers adding their own MFA method3 peoplewhen MFA readiness reaches 90% (now 33%)",
-     "sentences": 1,
-     "words": 14
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedStop sign-ins being handed to another device4 people8 Sept 2026",
-     "sentences": 1,
-     "words": 10
-    },
-    {
-     "selector": ".plan-row",
-     "text": "Report-onlyTurn off old sign-in methods that skip MFA4 people · report-only, not enforced9 Sept 2026",
-     "sentences": 1,
-     "words": 15
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedStop the device-code sign-in trick4 people8 Sept 2026",
-     "sentences": 1,
-     "words": 8
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedKeep admin sessions shortAlex Morgan8 Sept 2026",
-     "sentences": 1,
-     "words": 7
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedGive admins a sign-in method that cannot be phishedAlex Morgan8 Sept 2026",
-     "sentences": 1,
-     "words": 12
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedKeep non-admins out of the admin portals4 peoplewhen MFA readiness reaches 90% (now 25%)",
-     "sentences": 1,
-     "words": 14
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedStop sign-ins from countries you don't work in4 people8 Sept 2026",
+     "text": "BlockedProtect Sign-in Method Registration3 peoplewhen MFA readiness reaches 90% (now 33%)",
      "sentences": 1,
      "words": 11
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedAsk for MFA before a device can be registered4 peoplewhen MFA readiness reaches 90% (now 25%)",
+     "text": "BlockedBlock Authentication Transfer4 people8 Sept 2026",
      "sentences": 1,
-     "words": 16
+     "words": 6
+    },
+    {
+     "selector": ".plan-row",
+     "text": "Report-onlyBlock Legacy Authentication4 people · report-only, not enforced9 Sept 2026",
+     "sentences": 1,
+     "words": 10
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedBlock Device Code Sign-in4 people8 Sept 2026",
+     "sentences": 1,
+     "words": 7
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedShorten Admin SessionsAlex Morgan8 Sept 2026",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedRequire Phishing-Resistant MFA for AdminsAlex Morgan8 Sept 2026",
+     "sentences": 1,
+     "words": 8
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedBlock the Admin Portals for Non-Admins4 peoplewhen MFA readiness reaches 90% (now 25%)",
+     "sentences": 1,
+     "words": 13
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedBlock Sign-ins From Countries Not Allowed4 people8 Sept 2026",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedRequire MFA to Register a Device4 peoplewhen MFA readiness reaches 90% (now 25%)",
+     "sentences": 1,
+     "words": 13
     },
     {
      "selector": ".phase",
@@ -2067,9 +2066,9 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedBlock devices Entra cannot identify4 peoplewhen device readiness reaches 80% (now 25%)",
+     "text": "BlockedBlock Unsupported Device Platforms4 peoplewhen device readiness reaches 80% (now 25%)",
      "sentences": 1,
-     "words": 12
+     "words": 11
     },
     {
      "selector": ".phase",
@@ -2079,27 +2078,27 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedSign everyone out when the browser closes4 people22 Sept 2026",
+     "text": "BlockedLimit How Long Sessions Last4 people22 Sept 2026",
      "sentences": 1,
-     "words": 10
+     "words": 8
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedStop downloads to devices you do not manage4 people22 Sept 2026",
+     "text": "BlockedLimit Unmanaged Devices in the Browser4 people22 Sept 2026",
      "sentences": 1,
-     "words": 11
+     "words": 9
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedLimit what personal devices can do in the browser4 people22 Sept 2026",
+     "text": "BlockedLimit Unmanaged Devices in the Browser4 people22 Sept 2026",
      "sentences": 1,
-     "words": 12
+     "words": 9
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedStop a stolen session token from being reused4 people22 Sept 2026",
+     "text": "BlockedRequire Token Protection on Windows4 people22 Sept 2026",
      "sentences": 1,
-     "words": 11
+     "words": 8
     }
    ],
    "forbidHits": [],
@@ -2204,8 +2203,8 @@
     "Nothing in the plan waits on these."
    ],
    "titles": [
-    "Make sure everyone can prove who they are",
-    "Make guests prove who they are too"
+    "Require MFA for Everyone",
+    "Require MFA for Guests"
    ],
    "nav": [],
    "primary": [],
@@ -2255,15 +2254,15 @@
    "rows": [
     {
      "selector": ".plan-row",
-     "text": "In placeMake sure everyone can prove who they are",
+     "text": "In placeRequire MFA for Everyone",
      "sentences": 1,
-     "words": 9
+     "words": 5
     },
     {
      "selector": ".plan-row",
-     "text": "In placeMake guests prove who they are too",
+     "text": "In placeRequire MFA for Guests",
      "sentences": 1,
-     "words": 8
+     "words": 5
     }
    ],
    "forbidHits": [],
