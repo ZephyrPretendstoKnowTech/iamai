@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
-import { initAuth } from '../graph/msal.ts'
+import { initAuth } from '../graph/auth.ts'
 import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache } from '../graph/collect/cache.ts'
@@ -12,10 +12,13 @@ import { Connect } from './surfaces/Connect.tsx'
 import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import type { BaselineResult } from './baseline.ts'
 import { Plan } from './surfaces/Plan.tsx'
-import { Export } from './surfaces/Export.tsx'
-import { How } from './surfaces/How.tsx'
 import { Today } from './surfaces/Today.tsx'
-import { Inventory } from './surfaces/Inventory.tsx'
+// The surfaces a first visit does not open arrive on demand (prompt 53 queue
+// item 8): Export carries the print and every exporter, Inventory its tables,
+// How its endpoint tables. Plan, Today and Connect stay in the first chunk.
+const Export = lazy(() => import('./surfaces/Export.tsx').then((m) => ({ default: m.Export })))
+const How = lazy(() => import('./surfaces/How.tsx').then((m) => ({ default: m.How })))
+const Inventory = lazy(() => import('./surfaces/Inventory.tsx').then((m) => ({ default: m.Inventory })))
 import { TODAY } from '../copy/today.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 
@@ -71,8 +74,13 @@ export function App() {
   }, [lastScan])
   useEffect(() => {
     if (DEMO) {
+      // Two demo loads can be in flight (day one, then week two on a quick
+      // Re-scan); only the latest may land, or the earlier one finishing last
+      // would leave day one's plan under week two's banner.
+      let stale = false
       void import('./demo.ts').then(async ({ demoTenant, DEMO_TENANT_ID }) => {
         const d = demoTenant(demoWeek2)
+        if (stale) return
         // Seed the Setup answers, or the Roadmap has nothing to compute from and
         // renders empty: the demo would show a stranger a blank page, which is
         // worse than not offering it. Written under the demo tenant id, so it
@@ -99,13 +107,16 @@ export function App() {
         // The sample org's own name; the banner, not the tenant name, tells a
         // visitor it is sample data (prompt 50 item 12).
         setTenantName('Contoso Pty Ltd')
+        if (stale) return
         setLastScan({ snapshot: d.snapshot, at: d.snapshot.asOf })
         // The demo derives through the product's pinned baseline and goal map
         // (walk-51 item 9); the fixture's package is that same one.
         setBaseline(await loadPinnedBaseline())
         setReady(true)
       })
-      return
+      return () => {
+        stale = true
+      }
     }
     if (MOCK) {
       // The dev-only contract walk and failure-path checks run against a
@@ -279,7 +290,9 @@ export function App() {
               route === 'today' ? (
                 <Today snapshot={lastScan.snapshot} tenantId={account.tenantId} />
               ) : (
-                <Inventory snapshot={lastScan.snapshot} />
+                <Suspense fallback={<section className="surface"><p className="reason">{SHELL.loading}</p></section>}>
+                  <Inventory snapshot={lastScan.snapshot} />
+                </Suspense>
               )
             ) : (
               <section className="surface">
@@ -290,8 +303,16 @@ export function App() {
               </section>
             ))}
           {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
-          {route === 'export' && <Export scan={lastScan} baseline={baseline} account={account} />}
-          {route === 'how' && <How />}
+          {route === 'export' && (
+            <Suspense fallback={<section className="surface"><p className="reason">{SHELL.loading}</p></section>}>
+              <Export scan={lastScan} baseline={baseline} account={account} />
+            </Suspense>
+          )}
+          {route === 'how' && (
+            <Suspense fallback={<section className="surface"><p className="reason">{SHELL.loading}</p></section>}>
+              <How />
+            </Suspense>
+          )}
           {DEV_PANEL && account && (
             <Suspense fallback={null}>
               <DevSpikes tenantId={account.tenantId} />

@@ -347,7 +347,9 @@ for (const f of fixtures) {
       const b = back.steps[i] as unknown as Record<string, unknown>
       assert.equal(b.id, s.id)
       assert.deepEqual(b.population, s.population, `${s.id}: population preserved`)
-      if (ringsOf(s).length > 0) assert.deepEqual(b.rings, ringsOf(s), `${s.id}: rings preserved`)
+      // The rings' numbers and dates travel; their criteria prose does not (prompt 53 queue item 7: the file carries no v2 prose).
+      const datesOf = (rings: RingLike[]) => rings.map((r) => ({ plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount }))
+      if (ringsOf(s).length > 0) assert.deepEqual(datesOf(b.rings as RingLike[]), datesOf(ringsOf(s)), `${s.id}: rings preserved`)
     }
   })
 
@@ -468,7 +470,8 @@ test('owner travels with the plan file; a per-step date no longer moves the sche
   const saved = back.steps.find((s) => s.id === moved.id)!
   assert.equal(saved.owner, 'Identity team')
   assert.equal(saved.scheduledDate, later)
-  assert.deepEqual(saved.rings, moved.rings)
+  // The rings' dates travel; their criteria prose does not (prompt 53 queue item 7).
+  assert.deepEqual(saved.rings.map((r) => [r.plannedStart, r.plannedEnd]), moved.rings.map((r) => [r.plannedStart, r.plannedEnd]))
 })
 
 // Prompt 47 item 6: a wave holds at least one step that reaches somebody. A

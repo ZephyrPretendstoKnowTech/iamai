@@ -48,6 +48,7 @@ export function ContentStep({
   onScan,
   decision = null,
   onDecide,
+  printing = false,
 }: {
   step: Step
   ctx: StepVarContext
@@ -59,6 +60,8 @@ export function ContentStep({
   decision?: StepDecision | null
   /** The picker's Save: the ticked ids or the chosen option become the plan's decision. */
   onDecide?: (decision: { picked?: string[]; option?: string }) => void
+  /** Printing: More stands open, so every step prints in full (§7). */
+  printing?: boolean
 }) {
   const [tab, setTab] = useState<DoTab>('portal')
   const [copied, setCopied] = useState<string | null>(null)
@@ -222,7 +225,7 @@ export function ContentStep({
         </>
       )}
 
-      <More cs={cs} ex={ex} step={step} onSkip={onSkip} onUnskip={onUnskip} copy={copy} copied={copied} />
+      <More cs={cs} ex={ex} step={step} onSkip={onSkip} onUnskip={onUnskip} copy={copy} copied={copied} open={printing === true} />
 
       <p className="actions no-print">
         {cs.scanControl && onScan && (
@@ -341,13 +344,13 @@ function Decision({ d, ex, saved, onDecide }: { d: Record<string, any>; ex: Ex; 
   )
 }
 
-function More({ cs, ex, step, onSkip, onUnskip, copy, copied }: { cs: Record<string, any>; ex: Ex; step: Step; onSkip: (r: string) => void; onUnskip: () => void; copy: (id: string, t: string) => void; copied: string | null }) {
+function More({ cs, ex, step, onSkip, onUnskip, copy, copied, open = false }: { cs: Record<string, any>; ex: Ex; step: Step; onSkip: (r: string) => void; onUnskip: () => void; copy: (id: string, t: string) => void; copied: string | null; open?: boolean }) {
   const more = cs.more || {}
   const risks = (more.risks || []) as { text: string; applies?: string }[]
   const applies = risks.filter((r) => r.applies && truthy(ex[r.applies]))
   const rest = risks.filter((r) => !(r.applies && truthy(ex[r.applies])))
   return (
-    <details className="more">
+    <details className="more" open={open || undefined}>
       <summary>More</summary>
       {risks.length > 0 && (
         <>

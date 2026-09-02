@@ -220,6 +220,22 @@ export type Step = {
   tickable?: { text: string; key: 'credentialStorage' | 'signInMonitoring'; done: boolean }[]
 }
 
+/**
+ * What an export says about a step (prompt 53 queue item 7): the content file's
+ * title, why and done-when lines filled with the tenant's values, the
+ * translator's What to do — what the screen says, never the v2 engine's prose.
+ * Built by src/ui/surfaces/stepExport.ts; the exporters take it as a function.
+ */
+export type ExportStep = {
+  title: string
+  why: string
+  whatToDo: string[]
+  doneWhen: string[]
+  ifWrong: string | null
+  dates: string | null
+}
+export type StepView = (step: Step) => ExportStep
+
 export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; day: string; date: string; time: string; reason: string; outOfHours: boolean }
 export type StepEvents = { announce: StepEvent | null; remind: StepEvent | null; remindMorning: StepEvent | null; enforce: StepEvent; noticeDays: number }
 

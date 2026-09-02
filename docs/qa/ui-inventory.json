@@ -1,5 +1,5 @@
 {
- "fingerprint": "af5dac5a6696d59f",
+ "fingerprint": "e144c0c5290953df",
  "surfaces": [
   {
    "name": "Header",
@@ -440,7 +440,7 @@
    "sentences": [
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
     "Baseline: synthetic baseline (1 policy) · change",
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1"
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 3 → Sep 2"
    ],
    "titles": [],
    "nav": [],
@@ -451,12 +451,12 @@
    "occurrences": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
     "Baseline: synthetic baseline (1 policy) · change": 1,
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1": 1
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 3 → Sep 2": 1
    },
    "occurrencesAll": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
     "Baseline: synthetic baseline (1 policy) · change": 1,
-    "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1": 1
+    "Scan complete · 5 people · 3 policies · sign-ins Aug 3 → Sep 2": 1
    },
    "wordCounts": {
     "headings": 3,
@@ -531,7 +531,7 @@
    "sentences": [
     "Where each person stands before anything is enforced.",
     "The plan waits on these numbers.",
-    "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1"
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 3 → Sep 2"
    ],
    "titles": [],
    "nav": [],
@@ -545,13 +545,13 @@
    "occurrences": {
     "Where each person stands before anything is enforced.": 1,
     "The plan waits on these numbers.": 1,
-    "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1": 1,
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 3 → Sep 2": 1,
     "Everything the scan read →": 1
    },
    "occurrencesAll": {
     "Where each person stands before anything is enforced.": 1,
     "The plan waits on these numbers.": 1,
-    "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1": 1,
+    "4 active people of 5 enabled · 1 admin · sign-ins Aug 3 → Sep 2": 1,
     "Everything the scan read →": 1
    },
    "wordCounts": {

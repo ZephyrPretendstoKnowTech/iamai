@@ -213,7 +213,8 @@ test('plan file v2: a v1 file loads as an equivalent v2 plan; nothing it had is 
     assert.deepEqual(s.rings, [])
     assert.equal(s.owner, null)
     assert.equal(s.tracking, null)
-    assert.ok(s.whatChanges.length > 0)
+    // The file carries no v2 prose since prompt 53 (fileStep): the field exists, empty.
+    assert.equal(typeof s.whatChanges, 'string')
   }
   assert.deepEqual(plan.mappings, v2.mappings)
   assert.equal(upgradePlanFile(v2 as PlanFile), v2)

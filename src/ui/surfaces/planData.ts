@@ -97,21 +97,39 @@ export function usePlanData(
   const [loaded, setLoaded] = useState(false)
   const [groups, setGroups] = useState<GroupMembers>(new Map())
   const [groupsLoaded, setGroupsLoaded] = useState(false)
+  // The snapshot each load was made for: the plan computes only when the
+  // mapping and the groups belong to the snapshot on screen, so a scan (or the
+  // demo's week two) never renders the new snapshot with the previous mapping —
+  // not even for one render (the walk caught the old exclusions step flashing).
+  const [mappingFor, setMappingFor] = useState<TenantSnapshot | null>(null)
+  const [groupsFor, setGroupsFor] = useState<TenantSnapshot | null>(null)
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
     if (!snapshot) return
+    // A new snapshot (a scan, the demo's week two) reloads the mapping and the
+    // decisions before the plan computes again: a plan never renders from the
+    // new snapshot and the previous mapping (the walk caught the old exclusions
+    // step flashing on week two while the record was still loading).
+    setLoaded(false)
+    let cancelled = false
     void Promise.all([loadMappingState(snapshot.tenantId), loadPlanRecord<LegacyOrDecisions>(snapshot.tenantId)]).then(([m, p]) => {
+      if (cancelled) return
       setMapping(m)
       // Read the record once for its decisions, in whatever shape it was written;
       // a pre-50.1 blob is reduced to its skips here and rewritten on the next save.
       setSaved(decisionsOf(p as never, planId))
+      setMappingFor(snapshot)
       setLoaded(true)
     })
+    return () => {
+      cancelled = true
+    }
   }, [snapshot, planId])
 
   useEffect(() => {
-    if (!snapshot) return
+    if (!snapshot || !mapping || mappingFor !== snapshot) return
+    setGroupsLoaded(false)
     let cancelled = false
     const ids = new Set<string>()
     for (const raw of snapshot.config.caPolicies?.rows ?? []) {
@@ -119,6 +137,13 @@ export function usePlanData(
       for (const g of users?.includeGroups ?? []) ids.add(g)
       for (const g of users?.excludeGroups ?? []) ids.add(g)
     }
+    // The plan's own groups too — the exclusions group and the service-accounts
+    // group the mapping names — whether or not a policy references them yet:
+    // the checks on the exclusions group read its members, and without them the
+    // week-two demo kept a "correct the group" step for a group already right.
+    const ge = mapping.records['__globalExclusion']?.resolvedId
+    if (ge) ids.add(ge)
+    if (mapping.serviceAccountsGroupId) ids.add(mapping.serviceAccountsGroupId)
     void (async () => {
       const map: GroupMembers = new Map()
       for (const id of ids) {
@@ -131,13 +156,14 @@ export function usePlanData(
       }
       if (!cancelled) {
         setGroups(map)
+        setGroupsFor(snapshot)
         setGroupsLoaded(true)
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [snapshot])
+  }, [snapshot, mapping, mappingFor])
 
   const startDate = saved?.startDate ?? (snapshot ? nextWorkingDay(new Date().toISOString()) : null)
   const band: SizeBand | null = saved?.band && BANDS[saved.band] ? saved.band : null
@@ -145,6 +171,7 @@ export function usePlanData(
 
   const computed = useMemo<PlanComputed | null>(() => {
     if (!snapshot || !baseline || !mapping || !groupsLoaded || !loaded || !startDate) return null
+    if (mappingFor !== snapshot || groupsFor !== snapshot) return null
     const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
     const questions = buildQuestions(baseline.pkg)
     const coverage = computeCoverage({
@@ -186,7 +213,7 @@ export function usePlanData(
     refreshBlockerImpact(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot, baseline, mapping, groupsLoaded, loaded, groups, saved, planId, version, startDate, band, freeze])
+  }, [snapshot, baseline, mapping, groupsLoaded, loaded, groups, saved, planId, version, startDate, band, freeze, mappingFor, groupsFor])
 
   // Persist the decisions only, so a Skip and the start/freeze survive a reload;
   // the plan itself is regenerated, never stored. Writing here also completes the

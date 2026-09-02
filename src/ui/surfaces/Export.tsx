@@ -29,6 +29,9 @@ import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
+import { stepExportView } from './stepExport.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { todayView } from '../../derive/today.ts'
 
 // The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
 // source (the copy lint forbids one as punctuation).
@@ -149,7 +152,14 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   }
 
   const csvTables = [todayTable(snapshot, new Set(data.mapping?.serviceAccountUserIds ?? [])), ...inventoryTables(snapshot)]
-  const pack = promptPack({ tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: steps.find((s) => s.comms)?.comms ?? null })
+  // Every export speaks from the content-driven step (prompt 53 queue item 7):
+  // the same variables the Plan builds for a step, then the same view.
+  const operatorId = snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
+  const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
+  const activePeople = todayView(snapshot, snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
+  const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, activePeople })
+  const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s))
+  const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: steps.find((s) => s.comms)?.comms ?? null })
 
   return (
     <section className="surface export">
@@ -167,7 +177,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={C.calendar.title}>
           <p className="reason">{C.calendar.line}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, DEFAULT_REVERT_PERCENT), 'text/calendar', REDACTED)}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, DEFAULT_REVERT_PERCENT, view), 'text/calendar', REDACTED)}>
               {C.calendar.button}
             </Button>
           </p>
@@ -225,7 +235,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
             <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {C.grounding.redactedLabel}
           </label>
           <p className="actions no-print">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
               {C.grounding.download}
             </Button>
           </p>
@@ -245,6 +255,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           scanAt={scan.at}
           coverage={coverage}
           goalMap={c.goalMap}
+          stepCtx={stepCtx}
         />
       )}
     </section>
