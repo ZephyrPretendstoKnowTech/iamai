@@ -252,7 +252,9 @@ const extractIn = (rootExpr, excludeSel = '') => `(() => {
   for (const p of [...root.querySelectorAll('p')].filter(vis)) {
     const t = txt(p)
     if (!/:$/.test(t)) continue
-    const n = p.nextElementSibling
+    // A lead may name the thing on one line (the group and its count) before what is listed under it.
+    let n = p.nextElementSibling
+    while (n && n.matches('p') && !/:$/.test(txt(n)) && !/^(No |Nobody |None )/.test(txt(n)) && n.nextElementSibling && n.nextElementSibling.matches('ul, ol, .names-group')) n = n.nextElementSibling
     if (!n || !n.matches('ul, ol, .names-group, .picker, .decision, p, div')) danglingLeads.push(t)
     else if (n.matches('p') && !/^(No |Nobody |None )/.test(txt(n))) danglingLeads.push(t)
   }
