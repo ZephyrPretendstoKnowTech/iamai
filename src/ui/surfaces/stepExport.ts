@@ -14,7 +14,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepPortalLines, stepPortalLinesFromBody } from './stepPortal.ts'
+import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
 
 export type { ExportStep }
 
@@ -30,7 +30,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
     return { title: step.plainTitle || step.title, why: '', whatToDo: [], doneWhen: [], ifWrong: null, dates: null }
   }
   const ex = stepVars(step, ctx)
-  const names = { nameOf: ctx.nameOf, policyName: String(ex.policyName ?? cs.title), strengthName: (ex as { strengthName?: string }).strengthName ?? null }
+  const names = portalNamesFor(ctx, ex, String(cs.title))
   const portal = cs.kind === 'policy' ? (stepPortalLines(step.goalId, names) ?? (step.floor && step.action.json ? stepPortalLinesFromBody(step.action.json, names) : null)) : null
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   const lines: string[] = []

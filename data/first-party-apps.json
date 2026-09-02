@@ -15,6 +15,8 @@
     { "appId": "04b07795-8ddb-461a-bbee-02f9e1bf7b46", "displayName": "Microsoft Azure CLI", "category": "dev-tool", "inOffice365Bundle": false, "role": "technician tool" },
     { "appId": "1950a258-227b-4e31-a9cf-717495945fc2", "displayName": "Microsoft Azure PowerShell", "category": "dev-tool", "inOffice365Bundle": false, "role": "technician tool" },
     { "appId": "797f4846-ba00-4fd7-ba43-dac1f8f63013", "displayName": "Windows Azure Service Management API", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "fd642066-7bfc-4b65-9463-6a08841c12f0", "displayName": "Microsoft Purview Platform", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "ba9ff945-a723-4ab5-a977-bd8c9044fe61", "displayName": "My Staff", "category": "platform", "inOffice365Bundle": false },
     { "appId": "a0c73c16-a7e3-4564-9a95-2bdf47383716", "displayName": "Microsoft Exchange Online Remote PowerShell", "category": "admin-tool", "inOffice365Bundle": false },
     { "appId": "00000009-0000-0000-c000-000000000000", "displayName": "Power BI Service", "category": "office", "inOffice365Bundle": false },
     { "appId": "0000000a-0000-0000-c000-000000000000", "displayName": "Microsoft Intune", "category": "device-management", "inOffice365Bundle": false },

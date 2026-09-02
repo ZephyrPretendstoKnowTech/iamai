@@ -19,6 +19,7 @@ import { contentLists } from '../../derive/contentLists.ts'
 import { pickerVars } from './pickerRows.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
+import type { NamingConvention } from '../../coverage/naming.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { EXIT_MIN_DAYS_OBSERVED } from '../../roadmap/constants.ts'
 
@@ -40,6 +41,8 @@ export type StepVarContext = {
   activePeople?: number
   /** The groups the plan loaded, for the exclusions-group picker's rows. */
   groups?: GroupMembers
+  /** The tenant's naming convention (coverage.organisation.naming): the portal lines name the objects the plan proposes before they exist. */
+  naming?: NamingConvention
 }
 
 /** The long form, in the display time zone, only when the instant is real. */
