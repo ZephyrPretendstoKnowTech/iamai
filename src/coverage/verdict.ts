@@ -27,12 +27,25 @@ export function verdictOf(status: GoalStatus): Verdict {
   }
 }
 
-/** "expire every 168 hours" -> "expire every 168h"; "sign-in every 4 hours at most" -> "4h". */
+// Durations in words, never "168h" (walk-51 item 17, §8.4): the contract forbids
+// the hour abbreviation, so a session gap reads "sessions expire weekly, baseline
+// wants 4 hours".
+function hoursInWords(hours: number): string {
+  if (hours % 168 === 0) return hours === 168 ? 'weekly' : `${hours / 24} days`
+  if (hours % 24 === 0) return hours === 24 ? 'daily' : `${hours / 24} days`
+  return `${hours} hours`
+}
 const compactHours = (s: string): string =>
   s
-    .replace(/sign-in every (\d+) hours at most/g, '$1h')
-    .replace(/every (\d+) hours/g, 'every $1h')
-    .replace(/(\d+) hours/g, '$1h')
+    .replace(/sign-in every (\d+) hours at most/g, (_, h: string) => hoursInWords(Number(h)))
+    .replace(/expire every (\d+) hours/g, (_, h: string) => {
+      const w = hoursInWords(Number(h))
+      return w.endsWith('hours') ? `expire every ${w}` : `expire ${w}`
+    })
+    .replace(/every (\d+) hours/g, (_, h: string) => {
+      const w = hoursInWords(Number(h))
+      return w.endsWith('hours') ? `every ${w}` : w
+    })
 
 /**
  * The gap, as the clause a plan row shows after the who-line. Four branches,
