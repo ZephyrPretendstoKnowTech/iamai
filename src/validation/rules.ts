@@ -73,6 +73,14 @@ export type RuleEval = {
   /** Plain language naming the object and the fact; null when the rule passes with nothing to say. */
   finding?: string | null
   fix?: ValidationAction | null
+  /**
+   * The structured values the matching content checkFixes template names for
+   * this rule (prompt 52, walk-51 item 14): e.g. `{ policies }` for
+   * excluded-everywhere, `{ device, otherAccount }` for shared-authenticator.
+   * The account name is resolved from the result's `target`, so a rule whose
+   * template needs only `{name}` sets nothing here.
+   */
+  values?: Record<string, unknown>
 }
 
 export type RuleResult = RuleEval & {
@@ -152,7 +160,7 @@ export function missingNeeds(rule: { needs: NeedKey[] }, ctx: ValidationContext)
 }
 
 const PASS: RuleEval = { outcome: 'pass', finding: null, fix: null }
-const fail = (finding: string, fix: ValidationAction | null = null): RuleEval => ({ outcome: 'fail', finding, fix })
+const fail = (finding: string, fix: ValidationAction | null = null, values?: Record<string, unknown>): RuleEval => ({ outcome: 'fail', finding, fix, values })
 const unknown = (finding: string, fix: ValidationAction | null = null): RuleEval => ({ outcome: 'unknown', finding, fix })
 const pass = (finding: string | null = null): RuleEval => ({ outcome: 'pass', finding, fix: null })
 
@@ -275,7 +283,7 @@ const bgInitialDomain: ValidationRule = {
     const initial = initialDomain(ctx.snapshot)
     if (initial === null) return unknown(F.bgNoInitialDomain, A.userProfile(id))
     if (upn === null) return unknown(F.bgNoInitialDomain, A.userProfile(id))
-    return upn.toLowerCase().endsWith(`@${initial.toLowerCase()}`) ? PASS : fail(F.bgCustomDomain(upn, initial), A.pickAnother)
+    return upn.toLowerCase().endsWith(`@${initial.toLowerCase()}`) ? PASS : fail(F.bgCustomDomain(upn, initial), A.pickAnother, { onmicrosoftDomain: initial })
   },
 }
 
@@ -306,7 +314,7 @@ const bgExcluded: ValidationRule = {
       if (groups.some((g) => !known.has(g))) unverifiable.push(p.displayName ?? '(unnamed)')
       else missing.push(p.displayName ?? '(unnamed)')
     }
-    if (missing.length > 0) return fail(F.bgNotExcluded(missing), A.policies)
+    if (missing.length > 0) return fail(F.bgNotExcluded(missing), A.policies, { policies: missing })
     // A group nobody read cannot prove the exclusion either way; on a blocker
     // that holds the plan exactly as a failure does (design §1).
     if (unverifiable.length > 0) return unknown(F.bgExclusionUnverified(unverifiable), A.policies)
@@ -324,7 +332,7 @@ const bgExcludedFromReportOnly: ValidationRule = {
     const missing = reportOnlyPolicies(ctx)
       .filter((p) => !excludedFrom(p, id, memberOf))
       .map((p) => p.displayName ?? '(unnamed)')
-    return missing.length === 0 ? PASS : fail(F.bgNotExcludedReportOnly(missing), A.policies)
+    return missing.length === 0 ? PASS : fail(F.bgNotExcludedReportOnly(missing), A.policies, { policies: missing })
   },
 }
 
@@ -338,7 +346,7 @@ const bgMicrosoftManaged: ValidationRule = {
     if (managed.length === 0) return PASS
     const memberOf = new Set(ctx.groupMembers.filter((g) => g.memberIds.includes(id)).map((g) => g.groupId))
     const missing = managed.filter((p) => !excludedFrom(p, id, memberOf)).map((p) => p.displayName ?? '(unnamed)')
-    return missing.length === 0 ? pass(F.bgManagedExcluded(managed.length)) : fail(F.bgManagedMissing(missing), A.policies)
+    return missing.length === 0 ? pass(F.bgManagedExcluded(managed.length)) : fail(F.bgManagedMissing(missing), A.policies, { policies: missing })
   },
 }
 
@@ -349,7 +357,7 @@ const bgNotInDynamicScope: ValidationRule = {
   needs: ['groupMembers'],
   evaluate: (id, ctx) => {
     const hit = ctx.groupMembers.find((g) => Boolean(g.membershipRule) && g.memberIds.includes(id))
-    return hit ? fail(F.bgDynamic(hit.displayName ?? hit.groupId, hit.membershipRule as string), A.group(hit.groupId)) : PASS
+    return hit ? fail(F.bgDynamic(hit.displayName ?? hit.groupId, hit.membershipRule as string), A.group(hit.groupId), { group: hit.displayName ?? hit.groupId }) : PASS
   },
 }
 
@@ -380,7 +388,7 @@ const bgSeparateDevices: ValidationRule = {
       for (const m of other) {
         if (m.kind !== 'microsoftAuthenticator' || !m.displayName || !mine.has(m.displayName)) continue
         const who = ctx.snapshot.users.filter((u) => u.id === otherId).map((u) => u.displayName ?? u.userPrincipalName ?? otherId)
-        return fail(F.bgSharedDevice(m.displayName, who.length > 0 ? who : [otherId]), A.userMethods(id))
+        return fail(F.bgSharedDevice(m.displayName, who.length > 0 ? who : [otherId]), A.userMethods(id), { device: m.displayName, otherAccount: who[0] ?? otherId })
       }
     }
     return PASS
@@ -393,14 +401,14 @@ const bgNotPersonal: ValidationRule = {
   severity: 'blocker',
   needs: ['users'],
   evaluate: (id, ctx) => {
-    if (ctx.operatorUserId !== null && ctx.operatorUserId === id) return fail(F.bgPersonalOperator, A.pickAnother)
+    if (ctx.operatorUserId !== null && ctx.operatorUserId === id) return fail(F.bgPersonalOperator, A.pickAnother, { attribute: 'your own account' })
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]), A.pickAnother)
     const facts: string[] = []
     if (u.department) facts.push(`department ${u.department}`)
     if (u.jobTitle) facts.push(`job title ${u.jobTitle}`)
     if (u.officeLocation) facts.push(`office ${u.officeLocation}`)
-    return facts.length > 0 ? fail(F.bgPersonal(facts), A.userProfile(id)) : PASS
+    return facts.length > 0 ? fail(F.bgPersonal(facts), A.userProfile(id), { attribute: facts.join(', ') }) : PASS
   },
 }
 
@@ -436,7 +444,7 @@ const bgMethodDiversity: ValidationRule = {
     const lists = perAccount as string[][]
     if (lists.some((k) => k.length !== 1)) return PASS
     const only = lists[0][0]
-    return lists.every((k) => k[0] === only) ? fail(F.bgSameMethodType(only)) : PASS
+    return lists.every((k) => k[0] === only) ? fail(F.bgSameMethodType(only), null, { method: only }) : PASS
   },
 }
 
@@ -469,7 +477,7 @@ const bgNoLicenceNeeded: ValidationRule = {
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
     const enabled = u.assignedPlans.filter((p) => p.capabilityStatus === 'Enabled')
     const mailbox = enabled.some((p) => MAILBOX_PLANS.has(p.servicePlanId))
-    return mailbox ? fail(F.bgLicensed(enabled.length), A.userProfile(id)) : PASS
+    return mailbox ? fail(F.bgLicensed(enabled.length), A.userProfile(id), { licence: 'a licence with a mailbox' }) : PASS
   },
 }
 
@@ -583,7 +591,7 @@ const xgMembersApproved: ValidationRule<GroupTarget> = {
     if (entry.sampled) return unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]), A.group(entry.groupId))
     const approved = new Set([...ctx.breakGlassIds, ...ctx.approvedExclusionIds])
     const extra = entry.memberIds.filter((id) => !approved.has(id))
-    return extra.length === 0 ? PASS : fail(F.xgUnapproved(extra.map((id) => nameOf(ctx, id))), A.group(entry.groupId))
+    return extra.length === 0 ? PASS : fail(F.xgUnapproved(extra.map((id) => nameOf(ctx, id))), A.group(entry.groupId), { extraMembers: extra.map((id) => nameOf(ctx, id)) })
   },
 }
 
@@ -596,7 +604,7 @@ const xgNoExtraAdmins: ValidationRule<GroupTarget> = {
     if (!entry) return groupUnknown()
     const bg = new Set(ctx.breakGlassIds)
     const admins = entry.memberIds.filter((id) => !bg.has(id) && (ctx.snapshot.roles.active[id] ?? []).length > 0)
-    return admins.length === 0 ? PASS : fail(F.xgAdmins(admins.map((id) => nameOf(ctx, id))), A.group(entry.groupId))
+    return admins.length === 0 ? PASS : fail(F.xgAdmins(admins.map((id) => nameOf(ctx, id))), A.group(entry.groupId), { name: admins.map((id) => nameOf(ctx, id)).join(', '), role: 'an administrator role' })
   },
 }
 
@@ -620,9 +628,10 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
     if (!entry) return groupUnknown()
     const live = livePolicies(ctx)
     if (live.length === 0) return PASS
-    const excluded = live.filter((p) => (p.conditions?.users?.excludeGroups ?? []).includes(entry.groupId)).length
+    const excludes = (p: (typeof live)[number]): boolean => (p.conditions?.users?.excludeGroups ?? []).includes(entry.groupId)
+    const excluded = live.filter(excludes).length
     if (excluded === 0 || excluded === live.length) return PASS
-    return fail(F.xgInconsistent(excluded, live.length), A.roadmap)
+    return fail(F.xgInconsistent(excluded, live.length), A.roadmap, { policies: live.filter((p) => !excludes(p)).map((p) => p.displayName ?? '(unnamed)') })
   },
 }
 
@@ -636,7 +645,7 @@ const xgSizeReasonable: ValidationRule<GroupTarget> = {
     const allowed = Math.max(ctx.breakGlassIds.length, 1)
     return entry.memberCount <= allowed
       ? pass(F.xgMembers(entry.memberCount, entry.sampled))
-      : fail(F.xgSize(entry.memberCount, ctx.breakGlassIds.length), A.group(entry.groupId))
+      : fail(F.xgSize(entry.memberCount, ctx.breakGlassIds.length), A.group(entry.groupId), { memberCount: entry.memberCount, emergencyCount: ctx.breakGlassIds.length })
   },
 }
 

@@ -116,6 +116,12 @@ export type Step = {
   readiness: Readiness
   evidence: Evidence
   action: Action
+  /**
+   * A check step's failing checks and counts (prompt 52, walk-51 item 14),
+   * routed from the validation rules through the content checkFixes templates.
+   * Null on steps that carry no checks.
+   */
+  checks?: import('../validation/checkFixes.ts').StepChecks | null
   exitCriteria: string[]
   rollback: string
   history: StepHistoryEntry[]

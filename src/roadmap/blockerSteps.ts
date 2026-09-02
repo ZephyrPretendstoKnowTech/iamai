@@ -14,6 +14,7 @@ import { ruleText } from '../validation/rules.ts'
 import type { RuleResult, RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
+import { stepChecks } from '../validation/checkFixes.ts'
 import type { Step } from './types.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
 
@@ -120,6 +121,7 @@ export function blockerSteps(reports: SubjectReport[], heldSteps: number): Step[
       readiness: { family: 'other', percent: null, lines: [] },
       evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
       action: { kind: 'check', summary: actions, json: null, portalSteps: actions, powershell: null },
+      checks: stepChecks(report),
       exitCriteria: [BLOCKER_STEP.exit(n), ...doneWhen],
       // A check step changes no policy, so there is nothing to undo (prompt 48.1 item 11).
       rollback: BLOCKER_STEP.nothingToUndo,

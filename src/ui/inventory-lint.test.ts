@@ -211,6 +211,12 @@ const RULE8_WAIVED: Waiver[] = [
   // cannot be shortened without editing content.json. A content-vs-contract length
   // conflict, recorded in docs/reports/52.md.
   { id: '52-opener-intro', match: 'IAMAI reads a Microsoft Entra tenant, compares it' },
+  // Prompt 52, walk-51 item 14: two content.json lines the emergency-access step
+  // now renders run past 25 words and cannot be shortened without editing content
+  // — a permanent-global-admin fix that names the account and both what to set
+  // and why, and a create step that spells out where to store the passphrase.
+  { id: '52-bg-permanent-ga', match: 'assign Global Administrator permanently and actively' },
+  { id: '52-bg-passphrase-storage', match: 'Store it offline in two places' },
 ]
 test(`rule 8: no user-facing sentence runs past ${MAX_WORDS} words`, () => {
   const found = surfaces.flatMap((s) =>
@@ -229,7 +235,14 @@ const TRUNCATED_ID = /\b[0-9a-f]{8}[…]|\b[0-9a-f]{8}\.\.\./i
 // The tenant id is printed in the header's tooltip. Not the instance T9 caught
 // (that one needs a real directory), but the same defect: an id where a person
 // reads. 37 §9 removes it.
-const RULE9_WAIVED: Waiver[] = []
+const RULE9_WAIVED: Waiver[] = [
+  // Prompt 52, walk-51 item 14: the emergency-access step's locked-out path tells
+  // the operator the tenant id to give Microsoft support — the one id that is
+  // meant to be read and copied, not resolved to a name (content.json
+  // s-prereq-break-glass.lockedOut). "an id in parentheses only when it matters"
+  // (CLAUDE.md): a support call is when it matters.
+  { id: '52-support-tenant-id', match: 'they will ask for the tenant id' },
+]
 
 test('rule 9: no user-facing string carries an id, whole or truncated', () => {
   const found = surfaces.flatMap((s) =>

@@ -24,6 +24,7 @@ type DoTab = 'portal' | 'json' | 'ps'
 // s-prereq-break-glass, and the merged goals render under the merge step's id.
 const CONTENT_ALIAS: Record<string, string> = {
   'validation-breakGlass': 's-prereq-break-glass',
+  'validation-exclusionGroup': 's-prereq-exclusion-group',
   'all-users-no-persistence': 'session-lifetime',
   'byod-session-controls': 'unmanaged-browser',
   'block-downloads-unmanaged': 'unmanaged-browser',
@@ -84,6 +85,7 @@ export function ContentStep({
         <span className="step-title">{cs.title}</span> <Status tone={status.tone}>{status.word}</Status>
       </p>
       {cs.changeLine && <p className="reason"><T s={cs.changeLine} ex={ex} /></p>}
+      {cs.partner && <p className="reason partner"><T s={cs.partner} ex={ex} /></p>}
 
       <h3>Why</h3>
       <p>
@@ -106,6 +108,19 @@ export function ContentStep({
 
       <h3>What to do</h3>
       {w.lead && <p><T s={w.lead} ex={ex} /></p>}
+      {/* A check step (emergency access, exclusions group): one numbered fix line
+          per failing check, filled from that check's values (walk-51 item 14). */}
+      {Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && w.checkFixes && (
+        <ol className="sections">
+          {(ex.failingChecks as [string, Record<string, unknown>][]).map(([key, vals], i) =>
+            (w.checkFixes as Record<string, string>)[key] ? <li key={i}>{fillText((w.checkFixes as Record<string, string>)[key], { ...(ex as Record<string, unknown>), ...vals })}</li> : null,
+          )}
+        </ol>
+      )}
+      {/* The create instructions, when fewer than two accounts exist. */}
+      {truthy(ex.needsCreate) && Array.isArray(w.create) && (
+        <ol className="sections">{(w.create as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
+      )}
       {portal ? (
         <>
           <div className="tabs no-print" role="tablist">
