@@ -223,6 +223,8 @@ export type GoalResult = {
   reasons: Reason[]
   candidates: CandidateContribution[]
   floorRaised: { from: string; to: string; by: string } | null
+  /** For a not-applicable goal: the applicability facet that switched it off, and why (a licence, or no sign-in activity). */
+  applicability?: { facet: string; reason: string }
 }
 
 export type AssumedExclusions = {

@@ -10,7 +10,6 @@ import { REDACTED, exportDownload } from '../exportGuard.ts'
 import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
 import type { PlanComputed } from './planData.ts'
-import { goalInMap } from '../../roadmap/goalMap.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
 
@@ -23,10 +22,8 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
   // the reason as given and a way back; the engine's own not-applicable goals follow.
   const said = computed.steps.filter((s) => typeof s.doesntApply === 'string' && s.doesntApply.length > 0)
   const inPlace = computed.steps.filter((s) => s.status === 'done')
-  // Doesn't apply here and Not licensed are separate footer groups (§5), over
-  // the goals this baseline holds: an absent goal never renders (walk-51 item 9).
-  const held = computed.coverage.results.filter((r) => goalInMap(computed.goalMap, r.goal.id))
-  const notApply = held.filter((r) => r.status === 'not-applicable')
+  // Doesn't apply here holds the person's answers only; a goal a licence switched
+  // off is a Not licensed row (derive/notLicensed.ts).
   // The licence ladder as rows (prompt 52 Part 3): the content step's title and
   // the licence it needs, one sentence under the group, never a tier's benefits.
   const notLicensed = notLicensedRows(computed.coverage, computed.goalMap)
@@ -50,9 +47,9 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
           ))}
         </details>
       )}
-      {notApply.length + said.length > 0 && (
+      {said.length > 0 && (
         <details>
-          <summary>{fillText(F.doesntApply, { n: notApply.length + said.length })}</summary>
+          <summary>{fillText(F.doesntApply, { n: said.length })}</summary>
           <ul className="sections">
             {said.map((s) => (
               <li key={s.id}>
@@ -61,9 +58,6 @@ export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComp
                   {app.plan.putBack}
                 </Button>
               </li>
-            ))}
-            {notApply.map((r) => (
-              <li key={r.goal.id}>{clean(r.statement)}</li>
             ))}
           </ul>
         </details>

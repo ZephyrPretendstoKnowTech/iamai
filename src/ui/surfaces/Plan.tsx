@@ -24,6 +24,7 @@ import { Button, InfoTip, Status, PageTip } from '../components/index.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
+import { rowWhen } from './rowWhen.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -166,7 +167,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+              return <Row key={s.id} step={s} isNext={isNext} waveStart={w.wave.start} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
             })}
           </section>
         )
@@ -178,7 +179,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
       {floorRows.length > 0 && (
         <section className="phase floor">
           {floorRows.map((s) => (
-            <Row key={s.id} step={s} isNext={false} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+            <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
           ))}
         </section>
       )}
@@ -227,9 +228,11 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle }: {
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide }: {
+function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide }: {
   step: Step
   isNext: boolean
+  /** The wave's start, the date a blocked step without one of its own reads. */
+  waveStart: string | null
   open: boolean
   onToggle: () => void
   schedule: PlanComputed['schedule']
@@ -259,7 +262,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, signa
           {isNext && <span className="next-mark" aria-label={PP.next}>{PP.next}</span>}
           <span className="step-title">{contentTitle(step)}</span>
           <span className="who">{whoLineOf(step.population, nameOf, step.gapShort ?? step.gap ?? null)}</span>
-          <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{whenLine(step)}</span>
+          <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{rowWhen(step, waveStart)}</span>
         </span>
         {/* The one binding reason, already in a pages.plan.blocked shape (the
             engine fills those); a readiness hold reads in the date column instead. */}
@@ -283,20 +286,6 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, signa
 }
 
 
-function whenLine(step: Step): string {
-  // A step a readiness threshold holds has no enforcement date; its date column
-  // reads the reason in the 46 shape instead (prompt 50.1 item 4). The blocker
-  // already carries it: "when MFA readiness reaches 90% (now 40%)".
-  if (heldByReadiness(step)) {
-    const b = step.blockers.find((x) => x.kind === 'readiness' && typeof x.binding === 'string' && /readiness reaches/.test(x.binding))
-    if (b && typeof b.binding === 'string') return b.binding
-  }
-  if (step.kind === 'prerequisite' || step.kind === 'check') return PP.now
-  // One short format everywhere (walk-51 item 5): the event's instant through
-  // absoluteDate, never the event's own local label ("9 Sept 2026").
-  const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? null
-  return at ? absoluteDate(at) : PP.now
-}
 
 function Settings({ data, onClose }: { data: ReturnType<typeof usePlanData>; onClose: () => void }) {
   // pages.plan.settings in full, and nothing else: the change freeze (from and

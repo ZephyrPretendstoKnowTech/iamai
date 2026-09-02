@@ -15,17 +15,18 @@ test('the demo (P1) lists its P2 goals as Not licensed rows, from content', () =
   const r = runFixture(fixture('demo'))
   const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
   const ids = rows.map((x) => x.goalId).sort()
-  assert.deepEqual(ids, ['pim-activation-reauth', 'sign-in-risk', 'sign-in-risk-medium', 'user-risk', 'user-risk-medium'])
+  // The workload goal joins as a licence-facet row (no Workload Identities Premium licence).
+  assert.deepEqual(ids, ['pim-activation-reauth', 'sign-in-risk', 'sign-in-risk-medium', 'user-risk', 'user-risk-medium', 'workload-identity-block'])
   for (const row of rows) {
     const cs = stepById[row.goalId]
     assert.equal(row.title, cs.title, `${row.goalId}: the content step's title`)
-    assert.equal(row.licence, cs.licence, `${row.goalId}: the content step names the licence`)
-    assert.equal(row.text, `${cs.title}: needs a licence this tenant does not hold: ${cs.licence}`)
+    if (cs.licence) assert.equal(row.licence, cs.licence, `${row.goalId}: the content step names the licence`)
+    assert.equal(row.text, `${cs.title}: needs a licence this tenant does not hold: ${row.licence}`)
     assert.doesNotMatch(row.text, /unlock|upgrade|benefit/i, 'never a tier\'s benefits')
   }
-  assert.equal(notLicensedSummary(rows.length), 'Not licensed (5)')
+  assert.equal(notLicensedSummary(rows.length), 'Not licensed (6)')
   assert.equal(notLicensedNote(), (pages.plan as { footer: { notLicensedNote: string } }).footer.notLicensedNote)
-  assert.equal(notLicensedPrintLine(rows.length), '5 baseline controls need a licence the tenant does not hold; nothing in the plan waits on them.')
+  assert.equal(notLicensedPrintLine(rows.length), '6 baseline controls need a licence the tenant does not hold; nothing in the plan waits on them.')
 })
 
 test('a goal the baseline does not hold never appears, whatever its licence', () => {

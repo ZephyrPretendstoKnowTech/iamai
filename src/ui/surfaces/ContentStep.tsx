@@ -437,10 +437,8 @@ function More({ cs, ex, step, onSkip, onUnskip, onDoesntApply, copy, copied, ope
       )}
       {asking && step.status !== 'skipped' && (
         <div className="decision">
-          <label className="rows">
-            <span>{fillText(SHARED.doesntApplyPrompt, { tenant: String(ex.tenant ?? '') })}</span>
-            <input type="text" required value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
-          </label>
+          <p className="reason">{fillText(SHARED.doesntApplyPrompt, { tenant: String(ex.tenant ?? '') })}</p>
+          <input type="text" required aria-label={fillText(SHARED.doesntApplyPrompt, { tenant: String(ex.tenant ?? '') })} value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
           <Button variant="secondary" disabled={reason.trim().length === 0} onClick={() => { if (reason.trim().length > 0) onDoesntApply?.(reason.trim()) }}>Save</Button>
         </div>
       )}

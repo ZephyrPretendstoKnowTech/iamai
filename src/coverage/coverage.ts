@@ -255,7 +255,7 @@ function evaluateGoal(
   if (goal.applicability !== null) {
     const facet = facets[goal.applicability as keyof typeof facets]
     if (facet && !facet.on) {
-      return { ...base, status: 'not-applicable', statement: notApplicableStatement(goal.name, facet.reason) }
+      return { ...base, status: 'not-applicable', statement: notApplicableStatement(goal.name, facet.reason), applicability: { facet: String(goal.applicability), reason: facet.reason } }
     }
   }
 
