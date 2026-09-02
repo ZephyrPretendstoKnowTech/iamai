@@ -121,7 +121,15 @@ const go = async (hash) => {
 const waitFor = async (expr, ms = 15000) => {
   const t0 = Date.now()
   while (Date.now() - t0 < ms) {
-    if ((await evaluate(expr)) === true) return true
+    // A poll that lands mid-navigation (the demo entry is a full page load, so
+    // document.body is null for a moment) means "not yet", never a failed walk.
+    let hit = false
+    try {
+      hit = (await evaluate(expr)) === true
+    } catch {
+      hit = false
+    }
+    if (hit) return true
     await sleep(100)
   }
   return false
