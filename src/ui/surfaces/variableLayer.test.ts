@@ -12,6 +12,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { setDisplayTimeZone, absoluteDate, longDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
+import { strengthForGoal } from './stepPortal.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { todayView } from '../../derive/today.ts'
 import { content } from '../../content/content.ts'
@@ -112,4 +113,29 @@ test('the short and long date forms name the same day, one short format everywhe
   assert.equal(ex.enforce, absoluteDate(policy.events!.enforce.at), 'the enforce date is the one short format')
   assert.equal(ex.reportOnly, absoluteDate(run.schedule.reportOnlyAt[policy.id]), 'report-only is filled and in the short format')
   assert.doesNotMatch(ex.enforce, /Sept/, 'not the en-AU "29 Sept 2026" second format')
+})
+
+// Prompt 52, walk-51 item 18: the guests step fills the authentication strength
+// its baseline policy requires (the walk found {strengthName} empty). The
+// service-provider partner line names {partners}; contentLists does not fill it
+// (the content re-uses {n} for three different counts), so ContentStep drops
+// the line rather than render a hole — item 2's suppression, the design's other
+// branch, is the resolution there.
+test('the guests step fills its strength; the partner line is whole or dropped', () => {
+  assert.ok(strengthForGoal('guests-mfa'), 'the guests strength derives from the baseline')
+  const guestsContent = content.steps.find((s) => s.id === 'guests-mfa') as { who: { evidence: string[] }; decision: { help: string } }
+  let checked = false
+  for (const f of allFixtures()) {
+    const run = runFixture(f)
+    const guests = run.steps.find((s) => s.goalId === 'guests-mfa')
+    if (!guests) continue
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: f.snapshot.asOf }
+    const ex = stepVars(guests, ctx) as Record<string, unknown>
+    assert.equal(ex.strengthName, strengthForGoal('guests-mfa'), `${f.name}: strengthName is filled`)
+    assert.equal(missingVars(guestsContent.decision.help, ex).length, 0, `${f.name}: the decision help has no hole`)
+    checked = true
+  }
+  assert.ok(checked, 'a fixture carries the guests step')
+  const partnerLine = guestsContent.who.evidence.find((l) => l.includes('{partners}'))!
+  assert.ok(missingVars(partnerLine, { n: 3, from: 'Aug 1' }).includes('partners'), 'the partner line drops when partners is not derived')
 })

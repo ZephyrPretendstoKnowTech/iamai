@@ -14,6 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
+import { strengthForGoal } from './stepPortal.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { EXIT_MIN_DAYS_OBSERVED } from '../../roadmap/constants.ts'
@@ -107,6 +108,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     v.policyNameA = step.naming?.proposed
     v.policyNameB = step.naming?.proposed
   }
+
+  // The authentication strength the goal's baseline policy requires, for the
+  // who and decision lines that name it (walk-51 item 18).
+  const strength = strengthForGoal(step.goalId)
+  if (strength) v.strengthName = strength
 
   // Existing coverage: whether a policy already delivers the goal (drives the
   // {existingCoverage} line's presence).
