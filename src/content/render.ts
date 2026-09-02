@@ -86,7 +86,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
  */
 export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts', 'countriesWithCounts', 'locationsWithMatches', 'accountsWithSignals', 'devicesWithSignals', 'adminsList']
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
-export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'adminGroups']
+export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'adminGroups', 'strengths']
 
 const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName'])
 
@@ -122,7 +122,7 @@ const SINGULAR: Record<string, string> = {
   people: 'person', admins: 'admin', guests: 'guest', users: 'user', accounts: 'account', policies: 'policy',
   members: 'member', devices: 'device', methods: 'method', days: 'day', weeks: 'week', keys: 'key',
   checks: 'check', steps: 'step', tenants: 'tenant', locations: 'location', countries: 'country', roles: 'role', groups: 'group',
-  'sign-ins': 'sign-in', files: 'file', pages: 'page', records: 'record', sections: 'section', rings: 'ring', windows: 'window', prerequisites: 'prerequisite',
+  'sign-ins': 'sign-in', files: 'file', pages: 'page', records: 'record', sections: 'section', rings: 'ring', windows: 'window', prerequisites: 'prerequisite', results: 'result',
 }
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chip } from './Chip.tsx'
 import { Icon } from './Icon.tsx'
 import { Button } from './Button.tsx'
-import { COMPONENTS } from '../../copy/components.ts'
+import { app } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 
-const T = COMPONENTS.picker
+const T = app.picker
 
 export type PickerOption = {
   id: string
@@ -14,8 +15,10 @@ export type PickerOption = {
   why?: string // "why suggested" line
 }
 
-// Typeahead multi-select over tenant objects. Empty query shows ranked
-// suggestions; the list stays open until Esc, click-outside, or Done.
+// Typeahead multi-select over tenant objects: every decision picker. Empty, the
+// list shows the nominations with their signal text; typing filters every object
+// of the kind (the caller filters); chips are the selection. The list stays open
+// until Escape, a click outside, or Done.
 export function Picker({
   selected,
   options,
@@ -39,6 +42,7 @@ export function Picker({
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
+  const listId = useMemo(() => `picker-list-${Math.random().toString(36).slice(2, 8)}`, [])
 
   useEffect(() => {
     onSearch?.(query)
@@ -83,6 +87,9 @@ export function Picker({
           value={query}
           aria-label={placeholder}
           aria-expanded={open}
+          aria-controls={listId}
+          role="combobox"
+          aria-autocomplete="list"
           onFocus={() => {
             setOpen(true)
             setFocused(0)
@@ -115,7 +122,7 @@ export function Picker({
         />
       </div>
       {open && (
-        <div className="picker-list" role="listbox">
+        <div className="picker-list" role="listbox" id={listId}>
           {loading && <div className="picker-footer">{T.searching}</div>}
           {list.length === 0 && !loading && <div className="picker-footer">{query ? T.noMatches : T.typeToSearch}</div>}
           {list.map((o, i) => (
@@ -137,7 +144,7 @@ export function Picker({
             </button>
           ))}
           <div className="picker-footer">
-            <span>{query.trim().length === 0 ? T.suggestions : T.results(list.length)}</span>
+            <span>{query.trim().length === 0 ? T.suggestions : fillText(T.results, { n: list.length })}</span>
             <Button size="sm" variant="tertiary" onClick={() => setOpen(false)}>
               {T.done}
             </Button>

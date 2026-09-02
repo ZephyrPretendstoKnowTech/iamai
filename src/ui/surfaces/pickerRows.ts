@@ -206,3 +206,65 @@ export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecis
   if (care.length > 0) out[DECISION_STEPS.campaign] = { picked: care, at }
   return out
 }
+
+/** One object a picker can hold: the id behind a chip, its name, its UPN or count, and, for a nomination, the signal text. */
+export type PickerObject = { id: string; name: string; secondary?: string; why?: string }
+
+/** The kind of thing a picker chooses, from the step and its content source. */
+export type PickerKind = 'accounts' | 'groups' | 'locations' | 'countries' | 'strengths' | 'other'
+export function pickerKind(stepId: string, source: string | null): PickerKind {
+  if (DECISION_STEPS.emergency.has(stepId) || stepId === DECISION_STEPS.serviceAccounts || stepId === DECISION_STEPS.sharedDevices || stepId === DECISION_STEPS.campaign) return 'accounts'
+  if (DECISION_STEPS.exclusions.has(stepId) || stepId === DECISION_STEPS.adminsGroup || source === 'groups' || source === 'adminGroups') return 'groups'
+  if (stepId === DECISION_STEPS.trustedLocation) return 'locations'
+  if (stepId === DECISION_STEPS.countries) return 'countries'
+  if (source === 'strengths') return 'strengths'
+  return 'other'
+}
+
+/**
+ * Every object of the picker's kind in the tenant, to type against: accounts by
+ * name and UPN, the groups the plan knows, the named locations, the countries
+ * seen or allowed, the authentication strengths. The exclusions group is never
+ * a candidate for the admins group.
+ */
+export function pickerUniverse(stepId: string, source: string | null, ctx: PickerContext): PickerObject[] {
+  const { snapshot, mapping, nameOf } = ctx
+  const kind = pickerKind(stepId, source)
+  if (kind === 'accounts') return snapshot.users.map((u) => ({ id: u.id, name: nameOf(u.id), secondary: u.userPrincipalName ?? undefined }))
+  if (kind === 'groups') {
+    const known = new Map<string, string>()
+    for (const [id] of ctx.groups ?? []) known.set(lc(id), id)
+    for (const p of snapshot.config.caPolicies?.rows ?? []) for (const id of [...policyGroups(p).include, ...policyGroups(p).exclude]) if (!known.has(lc(id))) known.set(lc(id), id)
+    const exclusions = stepId === DECISION_STEPS.adminsGroup ? lc(mapping.records['__globalExclusion']?.resolvedId ?? '') : ''
+    return [...known.values()]
+      .filter((id) => exclusions === '' || lc(id) !== exclusions)
+      .map((id) => {
+        const g = ctx.groups?.get(id)
+        return { id, name: g?.displayName ?? nameOf(id), secondary: g ? `${g.memberCount} members` : undefined }
+      })
+  }
+  if (kind === 'locations') {
+    return (snapshot.config.namedLocations?.rows ?? [])
+      .map((raw) => raw as { id?: string; displayName?: string })
+      .filter((l) => typeof l.id === 'string')
+      .map((l) => ({ id: l.id as string, name: l.displayName ?? nameOf(l.id as string) }))
+  }
+  if (kind === 'countries') {
+    const codes = [...new Set([...suggestCountries(snapshot).countries.map((c) => c.code), ...mapping.allowedCountries.map((c) => c.toUpperCase())])]
+    return codes.map((code) => ({ id: code, name: countryName(code), secondary: code }))
+  }
+  if (kind === 'strengths') {
+    return (snapshot.config.authStrengths?.rows ?? [])
+      .map((raw) => raw as { id?: string; displayName?: string })
+      .filter((s) => typeof s.id === 'string')
+      .map((s) => ({ id: s.id as string, name: s.displayName ?? (s.id as string) }))
+  }
+  return []
+}
+
+/** The objects whose name or UPN contains the query, case-insensitively; an empty query matches none (the picker shows its nominations then). */
+export function filterPickerObjects(objects: readonly PickerObject[], query: string): PickerObject[] {
+  const q = query.trim().toLowerCase()
+  if (q.length === 0) return []
+  return objects.filter((o) => o.name.toLowerCase().includes(q) || (o.secondary ?? '').toLowerCase().includes(q))
+}

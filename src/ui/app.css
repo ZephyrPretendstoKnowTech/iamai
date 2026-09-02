@@ -808,6 +808,66 @@ footer.app a {
   padding: 12px 0;
   margin: 12px 0;
 }
+.surface .picker .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.surface .picker input[type='search'] {
+  flex: 1;
+  min-width: 0;
+}
+.picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.chip-select {
+  cursor: pointer;
+  border: 1px solid var(--rule);
+  background: transparent;
+  padding: 2px 8px;
+}
+.picker-list {
+  margin-top: 4px;
+  border: 1px solid var(--rule);
+  background: var(--bg);
+  max-height: 260px;
+  overflow: auto;
+}
+.picker-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--t-2);
+  cursor: pointer;
+}
+.picker-option.focused {
+  background: var(--bg-inset);
+}
+.picker-option-secondary {
+  color: var(--ink-2);
+}
+.picker-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  color: var(--ink-2);
+  font-size: var(--t-2);
+}
 .surface .picker label {
   display: flex;
   gap: 8px;
