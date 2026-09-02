@@ -16,6 +16,9 @@ import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { sessionWantedForGoal, strengthForGoal } from './stepPortal.ts'
 import { contentLists } from '../../derive/contentLists.ts'
+import { pickerVars } from './pickerRows.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
+import type { GroupMembers } from '../../coverage/population.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { EXIT_MIN_DAYS_OBSERVED } from '../../roadmap/constants.ts'
 
@@ -35,6 +38,8 @@ export type StepVarContext = {
   reportOnlyAt?: string | null
   /** The one active-people count (Today's denominator), so every step's summary line agrees (walk-51 item 8). */
   activePeople?: number
+  /** The groups the plan loaded, for the exclusions-group picker's rows. */
+  groups?: GroupMembers
 }
 
 /** The long form, in the display time zone, only when the instant is real. */
@@ -100,6 +105,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
     // The report-only observation window a policy done-when line names.
     reportOnlyDays: EXIT_MIN_DAYS_OBSERVED,
+    // The start of the sign-in window the scan read ("since {from}").
+    from: short(ctx.snapshot.sources.signInEvidence?.coveredWindow?.from),
   }
 
   // A campaign has no enforcement date of its own; its enrol-by and the first
@@ -134,6 +141,12 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // the data exists): the campaign buckets, the lockout-scenario people, and the
   // emergency/service/admin id sets. A step reads only the keys it uses.
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, operatorId: ctx.operatorId }))
+
+  // The step's own picker rows (prune B): the emergency, exclusions-group,
+  // countries, trusted-network, service-accounts and shared-devices pickers,
+  // from the detections the plan runs, in the content file's row shape.
+  const pickerRow = (contentStepFor(step) as { decision?: { pickerRow?: string } } | undefined)?.decision?.pickerRow
+  if (typeof pickerRow === 'string') Object.assign(v, pickerVars(step.id, pickerRow, { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups }) ?? {})
 
   // The emergency-access and exclusions-group steps (walk-51 item 14): the
   // failing checks routed through the content checkFixes, the counts for the

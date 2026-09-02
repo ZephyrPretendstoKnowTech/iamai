@@ -157,7 +157,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const operatorId = snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const activePeople = todayView(snapshot, snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
-  const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, activePeople })
+  const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, activePeople, groups: data.groups })
   const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s))
   const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: steps.find((s) => s.comms)?.comms ?? null })
 
