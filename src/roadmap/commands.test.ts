@@ -8,6 +8,7 @@
 // This sweeps every PowerShell string the app can render, not just the ones
 // added by prompt 43 — the rule is about what reaches the user, not about who
 // wrote it.
+import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -30,12 +31,13 @@ test('the service-principal commands are one line each and use only documented c
 })
 
 test('every PowerShell string a step can render is a single line', () => {
-  // From the generated plans, which is what a user actually sees.
+  // From the generated plans, which is what a user actually sees: the PowerShell
+  // tab renders the JSON tab's body (stepPowerShell.ts).
   const offenders: string[] = []
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) {
-      const ps = s.action.powershell
-      if (!ps) continue
+      if (!s.action.json) continue
+      const ps = powershellFor(JSON.parse(s.action.json), s.kind === 'adjust' ? (s.tracking?.policyId ?? null) : null)
       for (const line of ps.split('\n')) {
         const t = line.trim()
         if (t === '' || t.startsWith('#')) continue

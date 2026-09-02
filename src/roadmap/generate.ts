@@ -304,11 +304,7 @@ export function buildCreateAction(
   body.description = `${tag}${typeof baselinePolicy.description === 'string' && baselinePolicy.description ? ' ' + baselinePolicy.description : ''}`
   // The JSON strips any object that does not exist yet, so a download never carries a placeholder.
   const json = JSON.stringify(stripUnresolvedForJson(body, opts.unresolved), null, 2)
-  const fileName = `${stepId}.json`
-  const powershell = opts.adjust
-    ? `Invoke-MgGraphRequest -Method PATCH -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${opts.adjust.policyId}' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
-    : `Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
-  return { kind: opts.adjust ? 'adjust' : 'create', summary: [], json, portalSteps: [], powershell }
+  return { kind: opts.adjust ? 'adjust' : 'create', summary: [], json, portalSteps: [] }
 }
 
 export { proposedPolicyName } from '../coverage/naming.ts'
@@ -357,8 +353,7 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
   const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
   const roleList = cur && Array.isArray(cur.includeRoles) && cur.includeRoles.length > 0 ? roleListSummary(cur.includeRoles.map(String)) : null
   const excludeRoles = cur && Array.isArray(cur.excludeRoles) && cur.excludeRoles.length > 0 ? roleListSummary(cur.excludeRoles.map(String)) : null
-  const powershell = full.powershell ? full.powershell.replace(/-Method POST/, '-Method PATCH') : null
-  return { kind: 'adjust', summary: [], json, portalSteps: [], powershell, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
+  return { kind: 'adjust', summary: [], json, portalSteps: [], roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
 }
 
 // ---- generation ----
@@ -441,7 +436,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 },
     readiness: { family: 'other', percent: null, lines: [] },
     evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
-    action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [], powershell: null },
+    action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [] },
     history: [],
     skipReason: null,
     deliveredBy: [],
@@ -760,7 +755,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         summary: [],
         json: null,
         portalSteps: [],
-        powershell: null,
       }
     } else if (result.status === 'absent') {
       kind = 'create'
@@ -800,7 +794,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             result,
             existingRaw,
           )
-        : { kind: 'adjust', summary: [], json: null, portalSteps: [], powershell: null }
+        : { kind: 'adjust', summary: [], json: null, portalSteps: [] }
     }
 
 

@@ -140,7 +140,7 @@ export function fileStep(s: Step): Step {
     operatorNote: null,
     readiness: { ...s.readiness, lines: [] },
     evidence: { ...s.evidence, lines: [] },
-    action: { ...s.action, summary: [], portalSteps: [], powershell: null },
+    action: { ...s.action, summary: [], portalSteps: [] },
   }
 }
 

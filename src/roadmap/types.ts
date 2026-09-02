@@ -42,7 +42,6 @@ export type Action = {
   summary: string[] // adjust: the exact field changes in words; others: what to do
   json: string | null // the policy body to create (report-only, tagged)
   portalSteps: string[] // Entra admin center click path, portal vocabulary
-  powershell: string | null
   /** The roles a collapsed "All N directory roles" stands for (ux-review-05 §6). */
   roleList?: { summary: string; names: string[] } | null
   /** For a change to an existing policy: current value → new value, field by field (roadmap-v2.md §4). */

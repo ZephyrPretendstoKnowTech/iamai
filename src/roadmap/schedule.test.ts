@@ -37,7 +37,7 @@ function step(over: Partial<Step> & { id: string }): Step {
     population: { total: ids.length, active: ids.length, admins: 0, guests: 0, ids },
     readiness: { family: 'mfa', percent: 100, lines: [] },
     evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
-    action: { kind: 'create', summary: [], json: null, portalSteps: [], powershell: null },
+    action: { kind: 'create', summary: [], json: null, portalSteps: [] },
     history: [],
     skipReason: null,
     deliveredBy: [],
