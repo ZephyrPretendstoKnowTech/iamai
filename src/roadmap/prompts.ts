@@ -7,7 +7,7 @@ import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import type { Step, StepView } from './types.ts'
-import { redactDeep as redactDeepShared, redactText as redactTextShared, tenantVocabulary } from '../redactSnapshot.ts'
+import { redactDeep as redactDeepShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
 
 export type PromptKind = 'announcement' | 'reminder' | 'helpDesk' | 'manager' | 'changeRecord' | 'executive' | 'wholePlan'
@@ -72,7 +72,7 @@ export function stepContext(step: Step, view?: StepView): string {
     const v = view(step)
     return `${v.title}. ${v.why} Takes effect: ${when}. What to do: ${v.whatToDo.join(' | ') || 'nothing'}. Done when: ${v.doneWhen.join(' | ') || 'the next scan confirms it'}.`
   }
-  return `${step.whatChanges} Affects: ${step.populationBasis || 'nobody'}. Takes effect: ${when}. What people must do: ${step.helpDesk?.whatToSay[0] ?? 'nothing'}.`
+  return `${step.plainTitle || step.title}. ${step.why} Takes effect: ${when}.`
 }
 
 export type PackItem = { title: string; prompt: string }
@@ -81,7 +81,7 @@ export type PackItem = { title: string; prompt: string }
 export function promptPack(args: { view?: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string }): PackItem[] {
   const { tenant } = args
   const firstStep = args.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done') ?? args.steps[0]
-  const stepText = firstStep && args.view ? stepContext(firstStep, args.view) : firstStep ? `${firstStep.plainTitle} (${firstStep.title}). ${firstStep.whatChanges} ${firstStep.why} How to verify: ${firstStep.verify?.where.join(' ') ?? ''} Rollback: ${firstStep.rollback}` : ''
+  const stepText = firstStep && args.view ? stepContext(firstStep, args.view) : firstStep ? `${firstStep.plainTitle} (${firstStep.title}). ${firstStep.why} Rollback: ${firstStep.rollback}` : ''
   const withFacts = (head: string, label: string, body: string) => [head, dataBlock(label, body), PROMPTS.noInvent].join('\n\n')
   return [
     { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement ?? '') },
@@ -134,7 +134,6 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
       id: s.id,
       kind: s.kind,
       status: s.status,
-      safeToday: s.safeToday,
       events: s.events,
       rings: s.rings.map((r) => ({ plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })),
       tracking: s.tracking ? { state: s.tracking.state, enforcedAt: s.tracking.enforcedAt, evidenceQuality: s.tracking.evidenceQuality } : null,
@@ -145,15 +144,9 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
           ...data,
           title: s.title,
           plainTitle: s.plainTitle,
-          whatChanges: s.whatChanges,
           why: s.why,
-          population: s.populationBasis,
-          impact: s.impact,
-          verdict: s.safeVerdict.sentence,
+          population: s.population.active,
           rings: s.rings.map((r) => ({ name: r.name, plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })),
-          failureModes: s.failureModes,
-          verify: s.verify,
-          exitCriteria: s.exitCriteria,
           rollback: s.rollback,
           forManager: s.forManager,
         }

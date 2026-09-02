@@ -60,3 +60,6 @@ export function bandForActiveUsers(active: number): SizeBand {
 export const SEVERITY_BLOCK = 3
 export const SEVERITY_STRENGTH_OR_DEVICE = 2
 export const SEVERITY_DEFAULT = 1
+
+/** Below this many people, an announcement names them rather than counting them. */
+export const NAMED_BELOW = 10

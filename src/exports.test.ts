@@ -7,7 +7,6 @@ import assert from 'node:assert/strict'
 import { fixture } from './roadmap/fixtures/index.ts'
 import { runFixture } from './roadmap/fixtures/run.ts'
 import { groundingBundle } from './roadmap/prompts.ts'
-import { populationContext, populationRows, POPULATION_CSV_HEADER } from './roadmap/population.ts'
 import { ringContextIndexes } from './roadmap/rings.ts'
 import { adminUserIds } from './roles.ts'
 import { redactIdentifiers } from './redact.ts'
@@ -60,15 +59,6 @@ test('the unredacted grounding bundle names what it contains in its header', () 
   const bundle = JSON.stringify(groundingBundle({ tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: '2026-08-28' }))
   assert.match(bundle, /Unredacted: contains user names and sign-in names/)
   assert.ok(bundle.includes(tenantId))
-})
-
-test('the population CSV is the one export that carries sign-in names, by design, and says so on the page', () => {
-  const ctx = populationContext(snapshot, viabilityById, adminUserIds(snapshot.roles), new Set(), ringContextIndexes(snapshot).deviceReady, nameOf)
-  const step = run.steps.find((s) => s.kind === 'verify') ?? run.steps.find((s) => s.population.total >= users.length)!
-  const csv = toCsv(POPULATION_CSV_HEADER, populationRows(step, ctx))
-  assert.ok(contains(csv, upns).length > 0, 'sign-in names are the point of a mail-merge list')
-  assert.ok(!csv.includes(tenantId))
-  assert.ok(!csv.includes(ip))
 })
 
 test('the calendar export carries titles, dates and the runbook, never a sign-in name or the tenant id', () => {

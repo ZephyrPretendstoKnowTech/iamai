@@ -22,14 +22,14 @@ const PHISHING_RESISTANT = new Set([
  */
 export function canDenyAccess(step: Step): boolean {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.kind === 'check') return false
-  if (step.denies !== undefined) return step.denies
   if (step.action.json) {
     try {
       const body = JSON.parse(step.action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }
       const grant = body.grantControls
       if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
       if (body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined)) return true
-      return false
+      // A change step carries only the sections it changes, so a body with no
+      // control says nothing: the goal family decides.
     } catch {
       // fall through to the family
     }

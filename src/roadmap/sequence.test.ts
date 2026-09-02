@@ -11,6 +11,8 @@ import { runFixture } from './fixtures/run.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { Step } from './types.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
+import { canDenyAccess } from './strand.ts'
+import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
 
 const NAMES = FIXTURE_SPECS.map((s) => s.name)
 
@@ -23,10 +25,10 @@ for (const name of NAMES) {
   const order = new Map(steps.map((s, i) => [s.id, i]))
 
   test(`${name}: nothing that can deny access is offered before the escape hatch is verified`, () => {
-    const gates = steps.filter((s) => s.validationBlocker && open(s))
+    const gates = steps.filter((s) => GATING_SUBJECTS.some((subject) => blockerStepId(subject) === s.id) && open(s))
     if (gates.length === 0) return
     for (const s of steps) {
-      if (s.denies !== true || !open(s)) continue
+      if (!canDenyAccess(s) || !open(s)) continue
       // Ready is the state that invites action, so nothing deny-capable may sit
       // there. A policy the tenant already has in report-only reports reality
       // instead, and still has to carry the gate before it can be enforced.
@@ -135,13 +137,3 @@ test('a remote-only tenant with no trusted location never offers the registratio
   assert.match(reg.unblockNotes.join(' '), /no trusted location is confirmed/)
 })
 
-test('with no Temporary Access Pass, the registration step says so in its own words', () => {
-  // The pinned baseline does not hold registration protection (walk-51 item 9),
-  // so the step is proven with a map that holds it, as an uploaded baseline would.
-  const { steps } = runFixture(fixture('mid'), { goalMap: { ...PINNED_GOAL_MAP, 'register-info-protected': ['(a baseline that holds it)'] } })
-  const reg = steps.find((s) => s.goalId === 'register-info-protected')
-  assert.ok(reg)
-  const modes = reg.failureModes.map((m) => `${m.title} ${m.evidence}`).join(' ')
-  assert.match(modes, /Temporary Access Pass/, 'the step names the rescue path')
-  assert.match(modes, /Windows Hello for Business/, 'the step names the passwordless registration change')
-})

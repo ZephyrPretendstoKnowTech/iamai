@@ -28,7 +28,6 @@ import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
-import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
 import { nextWorkingDay } from '../../roadmap/schedule.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
@@ -217,7 +216,6 @@ export function usePlanData(
     applySkips(steps, saved?.skips ?? null)
     applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null)
     annotateStateReasons(steps)
-    refreshBlockerImpact(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, saved, planId, version, startDate, band, freeze, mappingFor, groupsFor])

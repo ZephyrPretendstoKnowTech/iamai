@@ -15,17 +15,13 @@ import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
-import { heldBy, isNonPerson, notActiveUsers } from '../derive/sets.ts'
+import { isNonPerson, notActiveUsers } from '../derive/sets.ts'
 import { accountVerdict } from './strand.ts'
 import { policyCountFor } from './policyCount.ts'
-import { describePopulation, populationContext } from './population.ts'
-import { failureModesFor, helpDeskFor, verifyFor } from './content.ts'
-import { ROLLBACK_V2, WHAT_CHANGES } from '../copy/stepContent.ts'
+import { ROLLBACK_V2 } from '../copy/stepContent.ts'
 import { NAMING } from '../copy/schedule.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
-import { DEFAULT_REVERT_PERCENT } from './watch.ts'
-import { SAFE } from '../copy/timing.ts'
 import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
@@ -42,14 +38,11 @@ import { collidingGuestIds } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { ACTION, CARE, COMMS, EMERGENCY_DONE_WHEN, EVIDENCE, EXIT, IMPACT, PORTAL_WORDS, PREREQ, ROLLBACK, TEMPLATE_LABEL, UNBLOCK, stepTitle } from '../copy/steps.ts'
+import { ACTION, COMMS, EMERGENCY_DONE_WHEN, EVIDENCE, PORTAL_WORDS, PREREQ, ROLLBACK, TEMPLATE_LABEL, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import { detectHighCare } from '../derive/highCare.ts'
 import { checksNotRun } from '../validation/report.ts'
 import {
   BREAK_GLASS_DRILL_DAYS,
-  EXIT_MIN_DAYS_OBSERVED,
-  EXIT_MIN_SIGNINS_ABSOLUTE,
-  EXIT_SIGNINS_PER_ACTIVE_USER,
   READINESS_THRESHOLD_ADMINS_PERCENT,
   READINESS_THRESHOLD_DEVICES_PERCENT,
   READINESS_THRESHOLD_MFA_PERCENT,
@@ -78,16 +71,13 @@ import type { SizeBand } from './constants.ts'
 import { ADJUST, BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
-import { scoreResult } from './score.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
-import { proposedGroupName, proposedObjectNames, proposedStrengthName } from '../coverage/naming.ts'
+import { proposedGroupName, proposedObjectNames } from '../coverage/naming.ts'
 import { NAMING as STEP_NAMING } from '../copy/steps.ts'
-import { NAMED_BELOW } from './comms.ts'
+import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
-import { SETUP_QUESTIONS } from '../copy/setup.ts'
 import { ladderSteps } from './ladder.ts'
 import { GATING_SUBJECTS, attachWarnings, blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
-import { BLOCKER_STEP } from '../copy/validation.ts'
 import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
@@ -163,7 +153,7 @@ function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): P
 /**
  * The audience a step announcement is written for (prompt 41 §4).
  *
- * Mirrors audiencesFor in comms.ts deliberately: NAMED_BELOW is the same
+ * NAMED_BELOW is the same
  * threshold, so the greeting on the step and the audience label on the comms
  * plan cannot disagree about whether these are named people or a crowd.
  */
@@ -613,15 +603,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const exclusionGroupIds = [mapping.records['__globalExclusion']?.resolvedId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
   for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
-  const prereq = (id: string, title: string, why: string, summary: string[], exit: string[]): Step => ({
+  const prereq = (id: string, title: string, why: string, summary: string[]): Step => ({
     id,
     goalId: id.replace(/^s-/, ''),
     phase: 0,
     kind: 'prerequisite',
     title,
     why,
-    whyAttribution: null,
-    whyLink: null,
     status: 'ready',
     blockedBy: [],
     blockers: [],
@@ -630,15 +618,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     readiness: { family: 'other', percent: null, lines: [] },
     evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
     action: { kind: 'prerequisite', summary, json: null, portalSteps: [], powershell: null },
-    exitCriteria: exit,
     rollback: ROLLBACK.prerequisite,
     history: [],
     skipReason: null,
     deliveredBy: [],
-    stateReason: '',
     ...EXTRAS,
-    impact: IMPACT.prerequisite,
-    whatChanges: WHAT_CHANGES.prerequisite,
     plainTitle: title,
     forManager: MANAGER.prerequisite(),
   })
@@ -744,7 +728,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const setupStepId = 's-setup-questions'
   if (missingSetup.length > 0) {
     const p = PREREQ.setupQuestions
-    steps.push(prereq(setupStepId, p.title(missingSetup.length), p.why, p.how(missingSetup.map((q) => q.title)), p.exit))
+    steps.push(prereq(setupStepId, p.title(missingSetup.length), p.why, p.how(missingSetup.map((q) => q.title))))
   }
 
   // Setup's confirmed break-glass accounts feed generation (ux-review-04 §5):
@@ -754,7 +738,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (bgMissing) {
     const p = PREREQ.breakGlass
     // The two facts nobody can read are done-when lines here (prompt 46 item 21).
-    steps.push(prereq(bgStepId, p.title, p.why, p.how, [...p.exit, ...EMERGENCY_DONE_WHEN]))
+    steps.push(prereq(bgStepId, p.title, p.why, p.how))
   }
   const geMissing = canUseConditionalAccess && mapping.records['__globalExclusion']?.doesNotExist === true
   const geStepId = PREREQ_STEP_ID.exclusionsGroup
@@ -764,7 +748,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // convention (prompt 43 item 4). The copy's example name stays as the shape;
     // this adds the one IAMAI would actually use here.
     const proposed = proposedObjectNames(naming).exclusionsGroup
-    steps.push({ ...prereq(geStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(geStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)]), naming: { proposed: proposed.name, fromBaseline: null } })
   }
   const locMissing =
     canUseConditionalAccess &&
@@ -775,7 +759,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (locMissing) {
     const p = PREREQ.trustedLocation
     const proposed = proposedObjectNames(naming).trustedLocation
-    steps.push({ ...prereq(locStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(locStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)]), naming: { proposed: proposed.name, fromBaseline: null } })
   }
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
@@ -790,14 +774,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (countriesMissing) {
     const p = PREREQ.allowedCountries
     const proposed = proposedObjectNames(naming).allowedCountries
-    steps.push({ ...prereq(countriesStepId, p.title, p.why, [...p.how(mapping.allowedCountries.map(countryName)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(countriesStepId, p.title, p.why, [...p.how(mapping.allowedCountries.map(countryName)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)]), naming: { proposed: proposed.name, fromBaseline: null } })
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
   if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
     const p = PREREQ.serviceAccountsGroup
     const proposed = proposedObjectNames(naming).serviceAccountsGroup
-    steps.push({ ...prereq(saStepId, p.title, p.why, [...p.how(mapping.serviceAccountUserIds.map(nameOf)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)], p.exit), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(saStepId, p.title, p.why, [...p.how(mapping.serviceAccountUserIds.map(nameOf)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)]), naming: { proposed: proposed.name, fromBaseline: null } })
   }
 
   // Wave 0: the accounts nobody signs in to (target-state §8.1, prompt 46
@@ -809,12 +793,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (dormant.length > 0) {
     const p = PREREQ.dormantAccounts
     const names = dormant.map((u) => nameOf(u.id))
-    const s = prereq('s-check-dormant-accounts', p.title(dormant.length), p.why, p.how(names), p.exit)
+    const s = prereq('s-check-dormant-accounts', p.title(dormant.length), p.why, p.how(names))
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     // The dormant step is the one place never-signed-in accounts are a population (§8.1): it names them, though none are active.
     s.population = { total: dormant.length, active: 0, admins: 0, guests: 0, ids: dormant.map((u) => u.id), activeIds: dormant.map((u) => u.id), inScope: dormant.length }
-    s.populationNames = names
     steps.push(s)
   }
 
@@ -822,9 +805,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (canUseConditionalAccess && sharedDevices.length > 0) {
     const p = PREREQ.sharedDevices
     const names_ = sharedDevices.map((u) => nameOf(u.id))
-    const step = prereq('s-shared-devices', p.title, p.why, p.how(names_), p.exit)
+    const step = prereq('s-shared-devices', p.title, p.why, p.how(names_))
     step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id), activeIds: sharedDevices.map((u) => u.id), inScope: sharedDevices.length }
-    step.populationNames = names_
     steps.push(step)
   }
 
@@ -834,7 +816,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const qa = mapping.questionAnswers ?? {}
   for (const [id, title, why] of QUESTION_STEPS) {
     if ((qa[id] ?? '').trim().length === 0) continue
-    steps.push(prereq(`s-question-${id}`, title, why, [`You listed: ${qa[id].trim().replace(/\n+/g, ', ')}.`], ['The carve-out exists and the affected policies exclude it.']))
+    steps.push(prereq(`s-question-${id}`, title, why, [`You listed: ${qa[id].trim().replace(/\n+/g, ', ')}.`]))
   }
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
@@ -842,14 +824,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // turning them off is never the advice: the ladder asks for them instead.
   if (secDefaults?.isEnabled === true && canUseConditionalAccess) {
     const p = PREREQ.securityDefaults
-    steps.push(prereq('s-prereq-security-defaults', p.title, p.why, p.how, p.exit))
+    steps.push(prereq('s-prereq-security-defaults', p.title, p.why, p.how))
   }
   // Per-user MFA still on (migration not complete): a conflict named up front (roadmap-v2.md §7, messy).
   const methodsPolicy = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
   if (methodsPolicy?.policyMigrationState && methodsPolicy.policyMigrationState !== 'migrationComplete') {
     const p = PREREQ.perUserMfa
     const mfaPolicies = input.coverage.results.filter((r) => goalFamily(r.goal.id) === 'mfa' && r.status !== 'not-applicable' && r.status !== 'licence-limited').length
-    steps.push(prereq('s-prereq-per-user-mfa', p.title, p.why, p.how(mfaPolicies), p.exit))
+    steps.push(prereq('s-prereq-per-user-mfa', p.title, p.why, p.how(mfaPolicies)))
   }
 
   // ---- The free-tier ladder (SPEC §12): the plan spine when no policy can exist ----
@@ -885,7 +867,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const gate = canUseConditionalAccess ? gateReason(validationReports) : null
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
-  const validationSteps = blockerSteps(validationReports, 0)
+  const validationSteps = blockerSteps(validationReports)
   steps.push(...validationSteps)
 
   // What each template placeholder is worth in this tenant (prompt 46 item
@@ -955,7 +937,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const rawWhy = doc?.intent ?? goal.tldr ?? goal.description
     const whyUrl = rawWhy.match(/https?:\/\/[^\s)]+/)?.[0] ?? null
     const why = whyUrl ? rawWhy.replace(whyUrl, '').replace(/[\s:;,.]+$/, '').replace(/\.\s*:?$/, '') + '.' : rawWhy
-    const whyAttribution = doc?.intent && input.baselineAuthor ? input.baselineAuthor : null
 
     const blockedBy: string[] = []
     const blockers: Blocker[] = []
@@ -1058,10 +1039,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         if (proposed.note) action.summary.push(proposed.note)
         namingNote = proposed
         const personas = createdWithinStepKeys(source.policy, mapping).filter((c) => c.group === 'personaGroups')
-        for (const p of personas) {
-          // The baseline names the group by id; the plan names it in the tenant's convention (ux-review-06 §4).
-          action.summary.push(ACTION.createsGroup(proposedGroupName('Pilot', goal.shortName, naming).name))
-        }
+        // The baseline names the group by id; the plan names it in the tenant's convention (ux-review-06 §4).
+        personas.forEach(() => action.summary.push(ACTION.createsGroup(proposedGroupName('Pilot', goal.shortName, naming).name)))
       } else {
         // No baseline policy stands for this goal: the goal's own template is
         // the body, with the tenant's objects filled in where they exist and a
@@ -1145,7 +1124,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       for (const b of blockers) {
         if (b.kind === 'step') {
           const dep = steps.find((s) => s.id === b.stepId)
-          sentences.push(dep?.validationBlocker ? BLOCKED.readiness(b.label) : BLOCKED.step(dep?.title ?? b.stepId))
+          sentences.push(GATING_SUBJECTS.some((subject) => blockerStepId(subject) === b.stepId) ? BLOCKED.readiness(b.label) : BLOCKED.step(dep?.title ?? b.stepId))
         }
         if (b.kind === 'readiness') sentences.push(BLOCKED.readiness(b.label))
         if (b.kind === 'evidence') sentences.push(BLOCKED.evidence)
@@ -1153,19 +1132,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       unblockNotes.splice(0, unblockNotes.length, ...sentences)
     }
 
-    // ---- Redesign extras ----
-    const care = popIds.filter((id) => highCareIds.has(id))
-    const careNotes: string[] = []
-    let careReady = true
-    for (const id of care) {
-      const v = viabilityById.get(id)
-      const ok = v !== undefined && (v.mfa === 'verified' || v.mfa === 'likelyViable')
-      if (!ok) {
-        careReady = false
-        careNotes.push(v?.mfa === 'none' ? CARE.noMethod(nameOf(id)) : CARE.unverified(nameOf(id)))
-      }
-    }
-    if (care.length > 0) careNotes.unshift(CARE.order(care.length))
 
     const includesOperator = operatorId !== null && popIds.includes(operatorId)
     // The strand simulator decides (roadmap-v2.md §7): the same check the
@@ -1180,10 +1146,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       unblockNotes.push(BLOCKED.readiness(label))
     }
 
-    const zeroUsage =
-      readiness.family === 'block' &&
-      (evidence.status === 'ok' || evidence.status === 'partial') &&
-      evidence.affectedUserIds.length === 0
     if (!readyActiveCache.has(whoKey))
       readyActiveCache.set(
         whoKey,
@@ -1194,17 +1156,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       )
     const notReadyActive = pop.active - (readyActiveCache.get(whoKey) ?? 0)
 
-    let impact: string
-    if (status === 'done') impact = IMPACT.done
-    else if (readiness.family === 'block')
-      impact = zeroUsage ? IMPACT.blockZero : IMPACT.blockSome(evidence.affectedUserIds.length)
-    else if (kind === 'adjust') {
-      const affectedIds = new Set(result.reasons.flatMap((r) => r.userIds))
-      const affectedAdmins = [...affectedIds].filter((id) => (snapshot.roles.active[id] ?? []).length > 0).length
-      impact = IMPACT.adjust(affectedIds.size, affectedAdmins)
-    } else if (readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'admin')
-      impact = notReadyActive > 0 ? IMPACT.mfaNotReady(notReadyActive, pop.active) : IMPACT.mfaAllReady(pop.active)
-    else impact = IMPACT.inScope(pop.active)
 
     // Announcements by goal family (prompt 13 §8); nobody affected → no template.
     const evidenceUsable = evidence.status === 'ok' || evidence.status === 'partial'
@@ -1253,28 +1204,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // "Done when" bullets only for criteria that apply to the step kind
     // (prompt 17 §4): a create step observes in report-only, then enforces;
     // an adjust step to an enforced policy just has to land cleanly.
-    const existingReportOnly = kind === 'adjust' && result.candidates.some((c) => c.contribution === 'reportOnly')
-    const exitCriteria =
-      status === 'done'
-        ? [EXIT.staysEnforced]
-        : kind === 'adjust' && !existingReportOnly
-          ? [EXIT.adjustApplied, EXIT.adjustNoRegression, ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []), ...(includesOperator ? [EXIT.operatorStrong] : [])]
-          : [
-              EXIT.reportOnlyDays(EXIT_MIN_DAYS_OBSERVED),
-              EXIT.signIns(EXIT_SIGNINS_PER_ACTIVE_USER, EXIT_MIN_SIGNINS_ABSOLUTE),
-              EXIT.zeroFailures,
-              ...(care.length > 0 ? [EXIT.careVerified(care.length)] : []),
-              ...(includesOperator ? [EXIT.operatorStrong] : []),
-              EXIT.watch(DEFAULT_REVERT_PERCENT),
-            ]
 
-    const score = scoreResult(result, snapshot, viability, {
-      prerequisites: blockedBy.length,
-      newObjects: source ? createdWithinStepKeys(source.policy, mapping).length : 0,
-      evidenceClean: zeroUsage || evidence.reportOnly?.meetsExitCriterion === true,
-      affectedByBlock: evidenceUsable && readiness.family === 'block' ? evidence.affectedUserIds.length : null,
-      precomputed: { popIds, activeIn: pop.active, tenantActive: popIndex.active.size, readiness },
-    })
 
     steps.push({
       id: stepId,
@@ -1284,8 +1214,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...(floor ? { floor: true } : {}),
       title: stepTitle(goal.name),
       why,
-      whyAttribution,
-      whyLink: whyUrl,
       status,
       blockedBy,
       blockers,
@@ -1294,7 +1222,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       readiness,
       evidence,
       action,
-      exitCriteria,
       rollback: kind === 'adjust' ? ROLLBACK_V2.adjust : ROLLBACK_V2.create,
       history: [],
       skipReason: null,
@@ -1303,15 +1230,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // closes, on the step so the plan row can show it (prompt 46 item 9).
       gap: activeGap(result, pop.active, popIndex.active),
       gapShort: activeGapShort(result, pop.active, popIndex.active),
-      impact,
-      safeToday: false, // decided once every step exists (prerequisites, break-glass, operator, evidence): see safeTodayFor
-      highCare: { userIds: care, ready: careReady, notes: careNotes },
       comms,
       learn: goal.learnUrl ? { url: goal.learnUrl, tldr: goal.tldr ?? '', cis: goal.cis ?? [] } : null,
       includesOperator,
       operatorSafe,
       operatorNote,
-      operatorWhatIf: null,
       // The goal's own coverage, not a broad all-users match that belongs to
       // another goal (walk-51 item 15): prefer the policies scoped to this goal.
       deliveredBy: (() => {
@@ -1319,8 +1242,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const own = strong.filter((c) => c.ownScope)
         return (own.length > 0 ? own : strong).map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`)
       })(),
-      stateReason: '',
-      denies: impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location',
       plainTitle: stepTitle(goal.name),
       forManager:
         MANAGER_BY_GOAL[goal.id]?.() ??
@@ -1339,14 +1260,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                   : sessionOnly || /session/i.test(goal.name)
                     ? MANAGER.session(pop.active)
                     : MANAGER.other()),
-      rollbackBody: kind === 'adjust' && existingRaw ? JSON.stringify(existingRaw, null, 2) : null,
-      whatChanges:
-        status === 'done' ? WHAT_CHANGES.done : kind === 'adjust' ? WHAT_CHANGES.adjust(existing?.policyName ?? stepTitle(goal.name), action.changes?.length ?? adjustSections.size) : WHAT_CHANGES.createPlain(goal.id, readiness.family),
       naming:
         kind === 'create' && status !== 'done'
           ? { proposed: namingNote?.name ?? proposedPolicyName(goal, naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
           : null,
-      score,
     })
   }
 
@@ -1376,7 +1293,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         p.title,
         p.why,
         p.how({ unproven: campaignUnproven.map(nameOf), noMethod: campaignNoMethod.map(nameOf) }, careList, departments.size),
-        p.exit(READINESS_THRESHOLD_MFA_PERCENT),
       ),
       phase: 2,
       kind: 'verify',
@@ -1386,9 +1302,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       population: population(viability.map((v) => v.userId).filter((id) => !excluded.has(id)), popIndex),
       readiness: verifyReadiness,
       comms: COMMS.verify(tenantName),
-      impact: IMPACT.verifyCampaign(toSetUp),
-      // The step's own count, not the tenant-wide unproven count (prompt 49 item 2).
-      whatChanges: WHAT_CHANGES.verify(campaignUnproven.length + campaignNoMethod.length),
       plainTitle: p.title,
       forManager: MANAGER.verify(toSetUp),
     })
@@ -1410,9 +1323,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       return Array.isArray(m) && m.length > 0 && m.every((x) => x.kind === 'phone' || x.kind === 'email' || x.kind === 'password')
     })
     steps.push({
-      ...prereq('s-recurring-break-glass-drill', p.title, p.why(BREAK_GLASS_DRILL_DAYS), p.how, p.exit(BREAK_GLASS_DRILL_DAYS)),
-      impact: phoneOnly.length > 0 ? p.weakMethod(phoneOnly.map(nameOf)) : IMPACT.prerequisite,
-      whatChanges: WHAT_CHANGES.recurring,
+      ...prereq('s-recurring-break-glass-drill', p.title, p.why(BREAK_GLASS_DRILL_DAYS), p.how),
       plainTitle: p.title,
       forManager: MANAGER.prerequisite(),
       kind: 'recurring',
@@ -1514,8 +1425,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
   }
 
-  // ---- Ordering: phase, then safe-today first, then risk score; steps that
-  // touch handle-with-care users go last within their phase ----
+  // ---- Ordering: phase, then risk score ----
   const stepSeverity = (s: Step): number => {
     if (/^block/i.test(s.title)) return SEVERITY_BLOCK
     if (/phishing|device|protection/i.test(s.title)) return SEVERITY_STRENGTH_OR_DEVICE
@@ -1532,97 +1442,25 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (rung !== undefined) return -3000 + rung
     // Conflicts the tenant already has (security defaults, per-user MFA) come before everything (roadmap-v2.md §7, messy).
     if (s.id === 's-prereq-security-defaults' || s.id === 's-prereq-per-user-mfa') return -2000
-    if (s.safeToday) return -1000
     const sev = s.kind === 'prerequisite' || s.kind === 'recurring' || s.kind === 'check' ? 0 : stepSeverity(s)
-    const care = s.highCare.userIds.length > 0 ? 100_000 : 0
-    return care + s.population.active * sev - (s.readiness.percent ?? 0)
+    return s.population.active * sev - (s.readiness.percent ?? 0)
   }
   steps.sort((a, b) => a.phase - b.phase || score(a) - score(b) || a.id.localeCompare(b.id))
+  // A step never sits ahead of a step it waits on, whatever the risk order says:
+  // the first pending step whose dependencies are all placed goes next.
+  const placed = new Set<string>()
+  const pending = [...steps]
+  steps.length = 0
+  while (pending.length > 0) {
+    const i = pending.findIndex((s) => s.blockedBy.every((id) => placed.has(id) || !pending.some((p) => p.id === id)))
+    const [next] = pending.splice(i < 0 ? 0 : i, 1)
+    steps.push(next)
+    placed.add(next.id)
+  }
 
-  // ---- Populations at scale (roadmap-v2.md §3): basis, names or cohorts, the riskiest ----
   const indexes = contentIndexes
-  const popCtx = populationContext(snapshot, viabilityById, popIndex.admins, highCareIds, indexes.deviceReady, nameOf)
-  for (const s of steps) {
-    const view = describePopulation(s, popCtx, { cohorts: false })
-    s.populationView = view
-    s.populationBasis = view.basis
-    s.populationNames = view.named.map((n) => n.name)
-  }
 
-  // ---- What could go wrong, help desk (roadmap-v2.md §4) ----
-  const policyNameOf = (s: Step): string => s.naming?.proposed ?? s.deliveredBy[0]?.replace(/ \([^)]*\)$/, '') ?? s.title
-  const contentCtx = {
-    snapshot,
-    viability: viabilityById,
-    adminIds: popIndex.admins,
-    breakGlassIds: new Set(mapping.breakGlassUserIds),
-    serviceAccountIds: new Set(mapping.serviceAccountUserIds),
-    deviceReady: indexes.deviceReady,
-    allowedCountries: mapping.allowedCountries,
-    policyName: policyNameOf,
-    guestIds: popIndex.guests,
-    tapEnabled,
-    trustedLocations: trustedLocationCount,
-  }
-  for (const s of steps) {
-    s.failureModes = failureModesFor(s, contentCtx)
-    s.helpDesk = helpDeskFor(s)
-  }
 
-  // ---- Safe today (scheduling-and-onboarding.md §2.4): every condition, and the single reason when one fails ----
-  const evidenceSrc = snapshot.sources.signInEvidence
-  const evidenceOk = evidenceSrc?.status === 'ok' || evidenceSrc?.status === 'partial'
-  const coveredDays = evidenceSrc?.coveredWindow ? Math.floor((Date.parse(evidenceSrc.coveredWindow.to) - Date.parse(evidenceSrc.coveredWindow.from)) / 86_400_000) : 0
-  const totalSignIns = snapshot.evidenceAggregates?.total ?? 0
-  const byId = new Map(steps.map((x) => [x.id, x]))
-  const bgStepOpen = steps.some((x) => (x.id === bgStepId || x.id === DRILL_STEP_ID) && x.status !== 'done' && x.status !== 'skipped')
-  const outsideCountries = Object.entries(snapshot.evidenceAggregates?.byCountry ?? {}).filter(([c]) => c && !mapping.allowedCountries.includes(c)).reduce((n, [, u]) => n + u, 0)
-  const affectedCache = new WeakMap<string[], Map<string, number>>()
-  const memoAffected = (ids: string[], key: string, compute: () => number): number => {
-    let m = affectedCache.get(ids)
-    if (!m) affectedCache.set(ids, (m = new Map()))
-    if (!m.has(key)) m.set(key, compute())
-    return m.get(key) as number
-  }
-  for (const s of steps) {
-    const verdict = safeTodayFor(s)
-    s.safeToday = verdict.safe
-    s.safeVerdict = verdict
-  }
-  function safeTodayFor(s: Step): Step['safeVerdict'] {
-    const notYet = (reason: string) => ({ safe: false, reason, sentence: SAFE.verdictNotYet(reason) })
-    if (s.status === 'done') return notYet(SAFE.reasons.done)
-    if (s.kind !== 'create' && s.kind !== 'adjust') return notYet(SAFE.reasons.kind)
-    for (const b of s.blockedBy) {
-      const dep = byId.get(b)
-      if (dep && dep.status !== 'done' && dep.status !== 'skipped') return notYet(SAFE.reasons.prerequisites(dep.plainTitle || dep.title))
-    }
-    if (s.blockers.some((b) => b.kind === 'setup')) return notYet(SAFE.reasons.prerequisites(SETUP_QUESTIONS.stepTitle))
-    if (bgStepOpen) return notYet(SAFE.reasons.breakGlass)
-    if (s.includesOperator && s.operatorSafe === false) return notYet(SAFE.reasons.operator)
-    if (!evidenceOk) return notYet(SAFE.reasons.evidenceNone)
-    if (coveredDays < SAFE_MIN_EVIDENCE_DAYS) return notYet(SAFE.reasons.evidenceWindow(coveredDays, SAFE_MIN_EVIDENCE_DAYS))
-    if (totalSignIns < SAFE_MIN_SIGNINS) {
-      const scopeWithEvidence = s.population.ids.filter((id) => popIndex.active.has(id) && snapshot.signInEvidence[id] !== undefined).length
-      if (scopeWithEvidence < s.population.active) return notYet(SAFE.reasons.evidenceCoverage(totalSignIns, SAFE_MIN_SIGNINS))
-    }
-    const family = s.readiness.family
-    const threshold = family === 'mfa' || family === 'guest' ? READINESS_THRESHOLD_MFA_PERCENT : family === 'admin' ? READINESS_THRESHOLD_ADMINS_PERCENT : family === 'device' ? READINESS_THRESHOLD_DEVICES_PERCENT : null
-    if (threshold !== null && s.readiness.percent !== null && s.readiness.percent < threshold) return notYet(SAFE.reasons.readiness(s.readiness.percent, threshold))
-    let affected = 0
-    if (family === 'block' || family === 'risk') affected = s.evidence.affectedUserIds.length
-    else if (family === 'location') affected = outsideCountries
-    else if (family === 'mfa' || family === 'guest' || family === 'admin') {
-      affected = memoAffected(s.population.ids, family, () => s.population.ids.filter((id) => {
-        const v = viabilityById.get(id)
-        return v !== undefined && v.activity === 'active' && !(v.mfa === 'verified' || (family === 'admin' ? v.methodTiers.includes('phishingResistant') : v.mfa === 'likelyViable'))
-      }).length)
-      if (affected > 0) return notYet(SAFE.reasons.notReady(affected))
-    } else if (family === 'device') affected = s.population.ids.filter((id) => popIndex.active.has(id) && !contentIndexes.deviceReady.has(id)).length
-    else affected = s.population.active // a session control prompts everyone active
-    if (affected > 0) return notYet(SAFE.reasons.affected(affected))
-    return { safe: true, reason: '', sentence: SAFE.cardSentence }
-  }
 
   // ---- Rings (roadmap-v2.md §1): proposed from readiness data, dated by the schedule ----
   const startIso = input.startDate ?? nextWorkingDay(snapshot.asOf)
@@ -1669,11 +1507,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (s.comms?.includes('{DATE}')) {
       const template = s.comms
       const firstDate = s.rings[0]?.plannedStart ?? waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso
-      s.ringComms = s.rings.map((r) => ({ ring: r.name, date: absoluteDate(r.plannedStart), text: template.replaceAll('{DATE}', absoluteDate(r.plannedStart)) }))
       s.comms = template.replaceAll('{DATE}', absoluteDate(firstDate))
     }
-    // A step that brought its own verification keeps it (the free-tier ladder).
-    if (s.verify === null) s.verify = verifyFor(s, contentCtx, s.rings[0]?.name ?? null)
     s.events = eventsFor(s, { rhythm, timeZone: mapping.displayTimeZone ?? 'UTC' })
   }
 
@@ -1714,16 +1549,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (host) attachWarnings(report, host)
   }
 
-  // What the escape hatch is actually holding, now that the goal steps exist.
-  if (gate !== null) {
-    // The blocked steps this gate is holding — a named subset of the one
-    // blocked set, not a fourth count of its own (prompt 40 §9).
-    const held = heldBy(steps, gate.stepId).length
-    for (const report of validationReports) {
-      const step = steps.find((s) => s.id === blockerStepId(report.subject))
-      if (step) step.impact = BLOCKER_STEP.impact(report.blocking.length, GATING_SUBJECTS.includes(report.subject) ? held : 0)
-    }
-  }
 
   // The two recorded-by-hand emergency-access facts are tickable Done-when lines,
   // stored in the plan file and read back by the checks (prompt 49 item 5).
@@ -1734,8 +1559,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       { text: EMERGENCY_DONE_WHEN[0], key: 'credentialStorage', done: answers.credentialStorage === true },
       { text: EMERGENCY_DONE_WHEN[1], key: 'signInMonitoring', done: answers.signInMonitoring === true },
     ]
-    // These two live only as tick lines now, never doubled in the plain done-when list.
-    eaStep.exitCriteria = eaStep.exitCriteria.filter((x) => !EMERGENCY_DONE_WHEN.includes(x))
   }
 
   // The one title, from content.json, on the row, the body and the

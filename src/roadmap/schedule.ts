@@ -193,7 +193,6 @@ export function batchClassOf(step: Step): BatchClass {
   if (family === 'device' || family === 'location') return 'deviceSession'
   return 'other'
 }
-const HIGH_DISRUPTION = 4
 const OVERLAP_SHARE = 0.5
 
 export function addDays(iso: string, days: number): string {
@@ -301,21 +300,13 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
       if (countries) add(s, { stepId: countries.id, kind: 'hard', reason: DEPENDENCY.namedLocation })
     }
   }
-  // Soft: the same people prompted by two steps in the same week; two high-disruption steps for the same people.
+  // Soft: the same people prompted by two steps of different classes in the same week.
   const enforcement = work.filter(isEnforcement)
   for (let i = 0; i < enforcement.length; i++) {
     for (let j = 0; j < i; j++) {
       const a = enforcement[i]
       const b = enforcement[j]
       if (overlapShare(a.population.ids, b.population.ids) <= OVERLAP_SHARE) continue
-      const bothHigh = (a.score?.disruption ?? 0) >= HIGH_DISRUPTION && (b.score?.disruption ?? 0) >= HIGH_DISRUPTION
-      // The zero class (below) is exempt here too: a high-disruption change the
-      // records show reaches nobody disrupts nobody, so two of them in a week
-      // are no interruption at all. Before this (prompt 47 item 6) the four
-      // risk policies on a tenant with no flagged sign-in chained a week apart
-      // into four waves of their own.
-      const eitherZero = batchClassOf(a) === 'zero' || batchClassOf(b) === 'zero'
-      if (bothHigh && !eitherZero) add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.highDisruption(b.title) })
       // Two changes enforced in the SAME change window prompt people once, not
       // twice, so the same-people rule does not separate them. It protects
       // people from repeated interruption; changes made together in one
@@ -326,15 +317,14 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
       // the plan serialised into one step per soak period. Ten session and
       // device controls became ten weeks. The protection is kept between
       // classes, where a method prompt and a device prompt really are two
-      // different interruptions, and between two high-disruption changes
-      // whatever their class.
+      // different interruptions.
       //
       // And a change the records show affects nobody (the zero class) interrupts
       // nobody, so it cannot be the second interruption in anyone's week: the
       // rule does not fire on it in either direction (prompt 46 Part 4). Before
       // this, "Guests need MFA" on a tenant with no guests held the device and
       // session changes back a full soak each.
-      else if (promptsPeople(a) && promptsPeople(b) && batchClassOf(a) !== batchClassOf(b) && batchClassOf(a) !== 'zero' && batchClassOf(b) !== 'zero')
+      if (promptsPeople(a) && promptsPeople(b) && batchClassOf(a) !== batchClassOf(b) && batchClassOf(a) !== 'zero' && batchClassOf(b) !== 'zero')
         add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.samePeople(b.title) })
     }
   }
@@ -495,7 +485,7 @@ export function buildSchedule(
     const dayBeforeFreeze = (iso: string): boolean => freeze !== null && !inFreeze(iso) && inFreeze(addWorkingDays(iso, 1, rhythmCtx))
     // An enforcement event is a change day: every step that starts that day
     // shares one change window. The cap limits change days per week.
-    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, batch: BatchClass = 'other', exempt = false): string => {
+    const shift = (iso: string, note: { kind: ConstraintKind; ref: string | null }, batch: BatchClass = 'other'): string => {
       let cursor = toEnforcementDay(iso)
       for (let guard = 0; guard < 400; guard++) {
         if (inFreeze(cursor) || dayBeforeFreeze(cursor)) {
@@ -505,12 +495,6 @@ export function buildSchedule(
         }
         const week = weekKey(cursor)
         const day = cursor.slice(0, 10)
-        // A safe-today step is not a supervised change: its evidence already
-        // shows nobody affected, it needs no announcement, and it is enforced
-        // as soon as that evidence holds. It consumed no slot already; it must
-        // not be DELAYED by one either, which is what being subject to the cap
-        // amounted to (prompt 42, cap item 3).
-        if (exempt) return cursor
         const key = `${day}|${batch}`
         const inWeek = eventsInWeek.get(week) ?? new Set<string>()
         const onDay = eventsOnDay.get(day) ?? new Set<string>()
@@ -581,10 +565,10 @@ export function buildSchedule(
       const batch = batchClassOf(s)
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
         const windows: { start: string; end: string }[] = []
-        let cursor = shift(from, reason, batch, s.safeToday)
+        let cursor = shift(from, reason, batch)
         const start = cursor
         for (const [i, soak] of soaks.entries()) {
-          if (i > 0) cursor = shift(cursor, reason, batch, s.safeToday)
+          if (i > 0) cursor = shift(cursor, reason, batch)
           const end = addDays(cursor, soak)
           windows.push({ start: cursor, end })
           cursor = end
@@ -614,18 +598,14 @@ export function buildSchedule(
       // Every ring start opens (or joins) an event of this step's class. A
       // step whose class is already running that day adds nothing to the count,
       // which is what "the cap counts events, not steps" means (prompt 41 §5).
-      // A safe-today step consumes no slot at all (§7): it is enforced as soon
-      // as its evidence holds and needs no supervised window.
-      if (!s.safeToday) {
-        for (const w of candidate.windows) {
-          const week = weekKey(w.start)
-          const day = w.start.slice(0, 10)
-          const key = `${day}|${batch}`
-          if (!eventsInWeek.has(week)) eventsInWeek.set(week, new Set())
-          eventsInWeek.get(week)!.add(key)
-          if (!eventsOnDay.has(day)) eventsOnDay.set(day, new Set())
-          eventsOnDay.get(day)!.add(key)
-        }
+      for (const w of candidate.windows) {
+        const week = weekKey(w.start)
+        const day = w.start.slice(0, 10)
+        const key = `${day}|${batch}`
+        if (!eventsInWeek.has(week)) eventsInWeek.set(week, new Set())
+        eventsInWeek.get(week)!.add(key)
+        if (!eventsOnDay.has(day)) eventsOnDay.set(day, new Set())
+        eventsOnDay.get(day)!.add(key)
       }
       if (rings) {
         for (const [i, w] of candidate.windows.entries()) {
@@ -672,7 +652,7 @@ export function buildSchedule(
   {
     const byEvent = new Map<string, string[]>()
     for (const s of steps) {
-      if (!isEnforcement(s) || s.safeToday) continue
+      if (!isEnforcement(s)) continue
       const at = placed.get(s.id)?.start
       if (!at) continue
       const key = `${at.slice(0, 10)}|${batchClassOf(s)}`

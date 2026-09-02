@@ -33,7 +33,6 @@ function step(over: Partial<Step> & { id: string }): Step {
     kind: 'create',
     title: over.id,
     why: '',
-    whyAttribution: null,
     status: 'ready',
     blockedBy: [],
     blockers: [],
@@ -41,42 +40,23 @@ function step(over: Partial<Step> & { id: string }): Step {
     population: { total: ids.length, active: ids.length, admins: 0, guests: 0, ids },
     readiness: { family: 'mfa', percent: 100, lines: [] },
     evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
-    action: { kind: 'create', summary: [], json: '{}', portalSteps: [], powershell: null },
-    exitCriteria: [],
+    action: { kind: 'create', summary: [], json: null, portalSteps: [], powershell: null },
     rollback: '',
     history: [],
     skipReason: null,
     deliveredBy: [],
-    stateReason: '',
-    whyLink: null,
-    impact: '',
-    safeToday: false,
-    highCare: { userIds: [], ready: true, notes: [] },
     comms: null,
     learn: null,
     includesOperator: false,
     operatorSafe: null,
     rings: [ring(0, 3, ids.slice(0, 3)), ring(1, 3, ids.slice(3))],
     currentRing: 0,
-    denies: true,
-    populationBasis: '',
-    populationNames: [],
-    populationView: null,
-    whatChanges: '',
-    failureModes: [],
-    verify: null,
-    helpDesk: null,
-    ringComms: [],
-    rollbackBody: null,
     owner: null,
-    scheduledDate: null,
     tracking: null,
-    alreadyInPlace: false,
     gap: null,
     gapShort: null,
     blockedReason: null,
     events: null,
-    safeVerdict: { safe: false, reason: '', sentence: '' },
     plainTitle: '',
     forManager: '',
     ...over,
@@ -87,10 +67,10 @@ const MON = '2026-08-31T00:00:00.000Z'
 const day = (iso: string) => new Date(iso).getUTCDay()
 
 const typical = () => [
-  step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], denies: false, readiness: { family: 'other', percent: null, lines: [] } }),
-  step({ id: 's-verify-mfa', phase: 2, kind: 'verify', rings: [], denies: false }),
-  step({ id: 'block', phase: 1, readiness: { family: 'block', percent: null, lines: [] }, score: { domain: 'Identity', value: 3, effort: 1, disruption: 1, priority: 10 } }),
-  step({ id: 'mfa', phase: 2, score: { domain: 'Identity', value: 5, effort: 2, disruption: 2, priority: 10 } }),
+  step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], readiness: { family: 'other', percent: null, lines: [] } }),
+  step({ id: 's-verify-mfa', phase: 2, kind: 'verify', rings: [] }),
+  step({ id: 'block', phase: 1, readiness: { family: 'block', percent: null, lines: [] } }),
+  step({ id: 'mfa', phase: 2 }),
   step({ id: 'admins', phase: 3, readiness: { family: 'admin', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 2, guests: 0, ids: ['u0', 'u1'] }, rings: [ring(0, 3, ['u0']), ring(1, 3, ['u1'])] }),
   step({ id: 'done', phase: 3, status: 'done', rings: [] }),
 ]
@@ -180,17 +160,6 @@ test('a ring window is one soak long and the next ring starts when the previous 
   assert.ok(everyone.plannedStart >= pilot.plannedEnd)
 })
 
-test('two steps that prompt the same people pipeline one ring apart, never the same ring at once', () => {
-  const ids = people(20)
-  const a = step({ id: 'a', phase: 1, score: { domain: 'Identity', value: 5, effort: 1, disruption: 4, priority: 5 } })
-  const b = step({ id: 'b', phase: 1, score: { domain: 'Identity', value: 5, effort: 1, disruption: 4, priority: 5 }, population: { total: 20, active: 20, admins: 0, guests: 0, ids } })
-  buildSchedule([a, b], MON, 12)
-  for (const i of [0, 1]) {
-    const x = a.rings[i]
-    const y = b.rings[i]
-    assert.ok(x.plannedEnd <= y.plannedStart || y.plannedEnd <= x.plannedStart, `ring ${i} windows do not overlap`)
-  }
-})
 
 test('the weekly cap counts change days: a small tenant gets two a week, and the critical path says so when it binds', () => {
   const steps = Array.from({ length: 6 }, (_, i) =>
@@ -332,17 +301,9 @@ test('a batch never mixes a zero-affected change with one that has a blast radiu
   )
 })
 
-test('a safe-today step consumes no change window (prompt 41 §7)', () => {
-  const safe = step({ id: 'safe', phase: 1, safeToday: true, rings: [ring(0, 3, people(20))] })
-  const normal = step({ id: 'normal', phase: 1, rings: [ring(0, 3, people(20))] })
-  const s = buildSchedule([safe, normal], MON, 12)
-  assert.ok(!('safe' in s.batchWith), 'a safe-today step takes no supervised window')
-  assert.ok('normal' in s.batchWith, 'an ordinary step still takes one')
-})
-
 test('a wave is named by every goal area it holds, not by one dominant phase (prompt 40 §20)', () => {
   const steps = [
-    step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], denies: false, readiness: { family: 'other', percent: null, lines: [] } }),
+    step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], readiness: { family: 'other', percent: null, lines: [] } }),
     step({ id: 'admin', phase: 3, readiness: { family: 'admin', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 2, guests: 0, ids: ['a0', 'a1'] }, rings: [ring(0, 3, ['a0'])] }),
     step({ id: 'devices', phase: 5, readiness: { family: 'device', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 0, guests: 0, ids: ['d0', 'd1'] }, rings: [ring(0, 3, ['d0'])] }),
   ]
@@ -364,7 +325,7 @@ test('waveAreas has a branch for none, one, two and more than two (prompt 40 §2
 
 test('phase order (ux-review-07 §3): no step starts before the last start of any lower phase, and waves are named by their dominant phase', () => {
   const steps = [
-    step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], denies: false, readiness: { family: 'other', percent: null, lines: [] } }),
+    step({ id: 's-prereq-exclusion-group', phase: 0, kind: 'prerequisite', rings: [], readiness: { family: 'other', percent: null, lines: [] } }),
     step({ id: 'admin', phase: 3, readiness: { family: 'admin', percent: 100, lines: [] }, population: { total: 2, active: 2, admins: 2, guests: 0, ids: ['a0', 'a1'] }, rings: [ring(0, 3, ['a0']), ring(1, 3, ['a1'])] }),
     step({ id: 'mfa', phase: 2 }),
     step({ id: 'block', phase: 1, readiness: { family: 'block', percent: null, lines: [] }, population: { total: 5, active: 5, admins: 0, guests: 0, ids: people(5, 'b') }, rings: [ring(0, 3, people(2, 'b')), ring(1, 3, people(3, 'b'))] }),

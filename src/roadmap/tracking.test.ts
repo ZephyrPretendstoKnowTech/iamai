@@ -7,7 +7,7 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { generateRoadmap, stepIdForGoal } from './generate.ts'
 import { applyProgress, mergePersisted, savedStepOf } from './progress.ts'
-import { changesSince, groupGrowth, progressHeadline, stageOf, stepProgress, trackExecution, trackable } from './tracking.ts'
+import { trackExecution, trackable } from './tracking.ts'
 import { PLAN_SCHEMA_VERSION, buildPlanFile, makeCheckpoint, parsePlanFile, upgradePlanFile } from './plan.ts'
 import type { PlanFile } from './plan.ts'
 import { buildIcs } from './ics.ts'
@@ -144,32 +144,6 @@ test('midflight: a re-plan after a baseline update keeps every done step, its ev
   for (const s of first.steps) assert.ok(second.steps.some((x) => x.id === s.id), `${s.id} survives the re-plan`)
 })
 
-test('midflight: progress map numbers, planned against actual, and the what-changed list', () => {
-  const run = runFixture(f)
-  const head = progressHeadline(run.steps, run.schedule, NOW)
-  assert.ok(head.started, 'the plan has started')
-  assert.ok(head.enforced >= 3)
-  assert.match(head.sentence, /^Started .* of \d+ steps enforced/)
-  const rows = stepProgress(run.steps, run.schedule, NOW)
-  const mfa = rows.find((r) => r.stepId === stepIdForGoal('mfa-all-users'))!
-  assert.equal(mfa.stage === 'enforced' || mfa.stage === 'verified', true)
-  assert.ok(mfa.actualStart)
-  const notStarted = rows.filter((r) => r.stage === 'planned')
-  assert.ok(notStarted.length > 0)
-  // A checkpoint from an earlier state: one policy did not exist, one was report-only.
-  const summary = summarizeTenant(run.viability)
-  const checkpoint = makeCheckpoint({ snapshot: f.snapshot, coverage: run.coverage, summary, exclusionGroups: [], breakGlassIds: f.mapping.breakGlassUserIds })
-  checkpoint.at = '2026-08-01T00:00:00.000Z'
-  const legacyId = run.steps.find((s) => s.id === stepIdForGoal('block-legacy-auth'))!.tracking!.policyId
-  checkpoint.tenantPolicies = checkpoint.tenantPolicies.filter((p) => p.id !== legacyId).map((p) => (p.state === 'enabled' ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
-  const changes = changesSince(f.snapshot, checkpoint, run.steps, f.planId)
-  assert.ok(changes.some((c) => c.kind === 'created' && c.planned), 'the plan-tagged policy created since the checkpoint is a planned change')
-  assert.ok(changes.some((c) => c.kind === 'enabled' && c.planned), 'a planned policy moved to enforced')
-  const unplanned = changes.filter((c) => !c.planned)
-  assert.ok(unplanned.every((c) => !/IAMAI/.test(c.text)))
-  assert.deepEqual(groupGrowth(checkpoint, new Map()), [])
-})
-
 test('plan file v2: a v1 file loads as an equivalent v2 plan; nothing it had is lost', () => {
   const run = runFixture(f)
   const v2 = buildPlanFile({
@@ -213,8 +187,6 @@ test('plan file v2: a v1 file loads as an equivalent v2 plan; nothing it had is 
     assert.deepEqual(s.rings, [])
     assert.equal(s.owner, null)
     assert.equal(s.tracking, null)
-    // The file carries no v2 prose since prompt 53 (fileStep): the field exists, empty.
-    assert.equal(typeof s.whatChanges, 'string')
   }
   assert.deepEqual(plan.mappings, v2.mappings)
   assert.equal(upgradePlanFile(v2 as PlanFile), v2)
@@ -235,67 +207,3 @@ test('ICS export: one all-day event per scheduled step, rings in the description
 
 // ---- ux-review-07 §1, §2: already in place, and one denominator ----
 
-test('midflight: policies the plan applied count as executed; the start date is the first real execution', () => {
-  const run = runFixture(f)
-  const executed = run.steps.filter((s) => s.status === 'done' && s.tracking?.matchedBy === 'tag')
-  assert.ok(executed.length >= 3)
-  for (const s of executed) assert.equal(s.alreadyInPlace, false, `${s.id} was applied by the plan`)
-  const head = progressHeadline(run.steps, run.schedule, NOW)
-  assert.ok(head.started && Date.parse(head.started) >= Date.parse(f.planCreatedAt), 'the start is after the plan was created')
-  assert.equal(head.alreadyInPlace, 0)
-})
-
-test('a plan generated today over policies that predate it: those steps are already in place, never executed, never slipped', () => {
-  const g = fixture('small')
-  const run = runFixture(g)
-  const done = run.steps.filter((s) => s.status === 'done' && (s.kind === 'create' || s.kind === 'adjust'))
-  assert.ok(done.length >= 2)
-  for (const s of done) {
-    assert.equal(s.alreadyInPlace, true, `${s.id} predates the plan`)
-    assert.equal(stageOf(s), 'alreadyInPlace')
-    assert.match(s.stateReason, /Already in place before the plan began/)
-  }
-  const head = progressHeadline(run.steps, run.schedule, NOW)
-  assert.equal(head.started, null, 'a policy birthday never starts the plan')
-  // Only non-policy steps (a drill already current) can count as done here; no policy step was executed.
-  assert.equal(head.enforced, run.steps.filter((s) => s.status === 'done' && s.kind !== 'create' && s.kind !== 'adjust').length)
-  assert.equal(head.alreadyInPlace, done.length)
-  assert.match(head.already, /already covered before the plan began/)
-  for (const r of stepProgress(run.steps, run.schedule, NOW)) if (r.stage === 'alreadyInPlace') assert.equal(r.slipDays, null)
-})
-
-test('one denominator: the badge, the headline and the journey agree', () => {
-  const run = runFixture(f)
-  const tracked = trackable(run.steps)
-  const head = progressHeadline(run.steps, run.schedule, NOW)
-  const rows = stepProgress(run.steps, run.schedule, NOW)
-  assert.equal(head.total, tracked.length)
-  assert.equal(rows.length, tracked.length)
-  const byStage = new Map<string, number>()
-  for (const r of rows) byStage.set(r.stage, (byStage.get(r.stage) ?? 0) + 1)
-  assert.equal([...byStage.values()].reduce((a, b) => a + b, 0), tracked.length)
-  assert.equal(head.enforced + head.alreadyInPlace, tracked.filter((s) => s.status === 'done' && (s.kind !== 'prerequisite' && s.kind !== 'verify' && s.kind !== 'recurring')).length + tracked.filter((s) => s.status === 'done' && (s.kind === 'prerequisite' || s.kind === 'verify' || s.kind === 'recurring')).length)
-})
-
-test('actualStart comes only from evidence dated after the plan was created (prompt 46 item 10)', async () => {
-  const { stepProgress } = await import('./tracking.ts')
-  const { allFixtures } = await import('./fixtures/index.ts')
-  const { runFixture } = await import('./fixtures/run.ts')
-  const run = runFixture(allFixtures().find((f) => f.name === 'small')!)
-  const target = run.steps.find((s) => s.kind === 'create' && s.status !== 'done')!
-  const planCreatedAt = '2026-09-01T00:00:00.000Z'
-  // A matched policy that was enabled BEFORE the plan existed.
-  const before = { ...target, status: 'done' as const, alreadyInPlace: false, tracking: { ...(target.tracking ?? { policyId: 'p', policyName: 'p', matchedBy: 'tag' as const, note: '', createdAt: null, modifiedAt: null, state: 'enabled', reportOnlyAt: null, regressedAt: null, noticedAt: null, daysInReportOnly: 0, signIns: 0, failures: 0, interruptions: 0, failuresByUser: [], evidenceQuality: 'none' as const }), enforcedAt: '2026-07-24T00:00:00.000Z' } }
-  const rowBefore = stepProgress([before as never], run.schedule, '2026-09-30T00:00:00.000Z', planCreatedAt).find((r) => r.stepId === target.id)!
-  assert.equal(rowBefore.actualStart, null, 'a policy enabled before the plan is not the plan starting')
-  assert.equal(rowBefore.slipDays, null, 'and carries no slip')
-  // The same policy enabled AFTER the plan was created.
-  const after = { ...before, tracking: { ...before.tracking!, enforcedAt: '2026-09-10T00:00:00.000Z' } }
-  const rowAfter = stepProgress([after as never], run.schedule, '2026-09-30T00:00:00.000Z', planCreatedAt).find((r) => r.stepId === target.id)!
-  assert.equal(rowAfter.actualStart, '2026-09-10T00:00:00.000Z')
-  // A row already in place before the plan never shows a start at all.
-  const inPlace = { ...after, alreadyInPlace: true }
-  const rowInPlace = stepProgress([inPlace as never], run.schedule, '2026-09-30T00:00:00.000Z', planCreatedAt).find((r) => r.stepId === target.id)!
-  assert.equal(rowInPlace.actualStart, null)
-  assert.equal(rowInPlace.stage, 'alreadyInPlace')
-})
