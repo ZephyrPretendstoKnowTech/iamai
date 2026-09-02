@@ -21,6 +21,8 @@ import { BLOCKED_REASON } from '../copy/reasons.ts'
 export const GATING_SUBJECTS: RuleSubject[] = ['breakGlass', 'exclusionGroup']
 
 export function blockerStepId(subject: RuleSubject): string {
+  // The exclusions group's checks live on its own prerequisite step, which every plan has.
+  if (subject === 'exclusionGroup') return 's-prereq-exclusion-group'
   return `s-blocker-${subject.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`
 }
 
@@ -77,7 +79,7 @@ function checkActions(report: SubjectReport): { actions: string[]; doneWhen: str
 export function blockerSteps(reports: SubjectReport[]): Step[] {
   const out: Step[] = []
   for (const report of reports) {
-    if (report.blocking.length === 0) continue
+    if (report.blocking.length === 0 || report.subject === 'exclusionGroup') continue
     const subject = report.subject
     const name = SUBJECT[subject] ?? subject
     const n = report.blocking.length
