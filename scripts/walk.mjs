@@ -112,7 +112,7 @@ const chrome = spawn(CHROME, [
   `--user-data-dir=${profile}`, `--remote-debugging-port=${CDP_PORT}`, '--window-size=1280,1400', 'about:blank',
 ], { stdio: 'ignore' })
 let targets = []
-for (let i = 0; i < 120 && targets.length === 0; i++) {
+for (let i = 0; i < 300 && targets.length === 0; i++) {
   try {
     targets = await (await fetch(`http://localhost:${CDP_PORT}/json/list`)).json()
   } catch {
@@ -120,6 +120,12 @@ for (let i = 0; i < 120 && targets.length === 0; i++) {
   }
 }
 const page = targets.find((t) => t.type === 'page')
+if (!page) {
+  console.error('walk: Chrome exposed no page target within 60 s (a slow runner, or a Chrome that could not start)')
+  chrome.kill()
+  vite.kill()
+  process.exit(2)
+}
 const ws = new WebSocket(page.webSocketDebuggerUrl)
 await new Promise((r) => (ws.onopen = r))
 let id = 0
