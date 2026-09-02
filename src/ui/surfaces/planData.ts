@@ -90,6 +90,8 @@ export type PlanData = {
   /** The display time zone the plan stores (null: the browser's). */
   timeZone: string | null
   setTimeZone: (tz: string | null) => void
+  /** Doesn't apply here: record the person's reason for a step (null puts it back). In the mapping, so in the plan file. */
+  setNotApplicable: (stepId: string, reason: string | null) => void
 }
 
 /** Today's date in the display zone (never UTC), as YYYY-MM-DD. */
@@ -326,6 +328,16 @@ export function usePlanData(
     setTimeZone: (tz) => {
       if (!mapping) return
       const next = { ...mapping, displayTimeZone: tz }
+      setMapping(next)
+      void saveMappingState(next)
+      bump()
+    },
+    setNotApplicable: (stepId, reason) => {
+      if (!mapping) return
+      const notApplicable = { ...(mapping.notApplicable ?? {}) }
+      if (reason && reason.trim().length > 0) notApplicable[stepId] = reason.trim()
+      else delete notApplicable[stepId]
+      const next = { ...mapping, notApplicable }
       setMapping(next)
       void saveMappingState(next)
       bump()

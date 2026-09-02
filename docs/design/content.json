@@ -519,6 +519,7 @@
         "needsScan": "Nothing to plan until the first scan.",
         "scanLink": "Scan the tenant",
         "constraintTip": "What set the plan length",
+        "putBack": "Put this step back",
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
         "footerJson": "JSON"
       },

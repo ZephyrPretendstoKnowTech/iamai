@@ -73,7 +73,7 @@ import { proposedObjectNames } from '../coverage/naming.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
-import { blockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
+import { EMERGENCY_ACCESS_STEP_IDS, blockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
@@ -466,6 +466,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
   const naming = input.coverage.organisation.naming
+  // Doesn't apply here: the person's answer, in the mapping and the plan file.
+  // Never a foundation: emergency access and the exclusions group stay.
+  const notApplicable = mapping.notApplicable ?? {}
+  const doesntApply = (id: string): boolean => typeof notApplicable[id] === 'string' && notApplicable[id].trim().length > 0 && !EMERGENCY_ACCESS_STEP_IDS.has(id)
   // A baseline reference the tenant does not resolve is left out of the policy
   // body, and the body says so: the Preparation step that creates the object, by
   // the reference's kind (the countries policy's location is the allowed-countries
@@ -838,7 +842,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // Named dependencies (prompt 12 §B).
     if (status !== 'done') {
-      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done')) blockByStep(locStepId, 'trusted-location')
+      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
       if (goal.id === 'geo-restriction') {
         if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
       }
@@ -1069,7 +1073,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // A reason, not a dependency edge: the campaign sits in a later phase, and
     // pointing a phase 0 step at it would order the plan against itself.
     if (withoutMethod > 0) blockLate(registrationStep, 'registration-coverage', BLOCKED_REASON.reaches('people without a method', '0', String(withoutMethod)))
-    if (trustedLocationCount === 0) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
+    if (trustedLocationCount === 0 && !doesntApply(locStepId)) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
   // 2. No country block before the operator's own recent countries are in the
@@ -1161,6 +1165,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // (target-state §9). Never by the size of the tenant.
   const toSetUpIds = viability.filter((v) => rolloutBucket(v) === 'noMethod' || rolloutBucket(v) === 'unproven').map((v) => v.userId)
   const registration = registrationWindow(toSetUpIds)
+  // A step the person said does not apply here leaves its phase for the footer:
+  // it takes no slot and nothing waits on it.
+  for (const s of steps) {
+    if (!doesntApply(s.id)) continue
+    s.doesntApply = notApplicable[s.id].trim()
+    s.skipReason = s.doesntApply
+    s.status = 'skipped'
+  }
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
     rhythm,

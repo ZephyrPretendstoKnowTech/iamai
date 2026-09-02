@@ -7,6 +7,7 @@
 // and only when they have content.
 import { useState, useMemo } from 'react'
 import type { Step } from '../../roadmap/types.ts'
+import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -34,6 +35,14 @@ const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}
 /** Under every copy box (Tell your people, For the help desk, For your manager): paste it into your own assistant. */
 const ADAPT_LINE = String((content.shared as Record<string, unknown>).adaptLine)
 
+/** Doesn't apply here is offered on a content step flagged for it, never on a foundation, never on a policy step whose subject exists. */
+function offersDoesntApply(cs: Record<string, any>, step: Step): boolean {
+  if (cs.doesntApply !== true || isEmergencyAccess(step)) return false
+  if (cs.kind === 'policy' && step.population.total > 0) return false
+  return true
+}
+const SHARED = content.shared as Record<string, string>
+
 function T({ s, ex }: { s: unknown; ex: Ex }) {
   if (s === null || s === undefined) return null
   return <>{fillText(s, ex as Record<string, unknown>)}</>
@@ -52,6 +61,7 @@ export function ContentStep({
   ctx,
   onSkip,
   onUnskip,
+  onDoesntApply,
   onClose,
   onScan,
   decision = null,
@@ -62,6 +72,8 @@ export function ContentStep({
   ctx: StepVarContext
   onSkip: (reason: string) => void
   onUnskip: () => void
+  /** Doesn't apply here, with the person's one-line reason (content steps flagged doesntApply). */
+  onDoesntApply?: (reason: string) => void
   onClose: () => void
   onScan?: () => void
   /** This step's saved decision, when one was made (prompt 52 Part 3). */
@@ -245,7 +257,7 @@ export function ContentStep({
         </>
       )}
 
-      <More cs={cs} ex={ex} step={step} onSkip={onSkip} onUnskip={onUnskip} copy={copy} copied={copied} open={printing === true} />
+      <More cs={cs} ex={ex} step={step} onSkip={onSkip} onUnskip={onUnskip} onDoesntApply={onDoesntApply} copy={copy} copied={copied} open={printing === true} />
 
       <p className="actions no-print">
         {cs.scanControl && onScan && (
@@ -378,8 +390,10 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   )
 }
 
-function More({ cs, ex, step, onSkip, onUnskip, copy, copied, open = false }: { cs: Record<string, any>; ex: Ex; step: Step; onSkip: (r: string) => void; onUnskip: () => void; copy: (id: string, t: string) => void; copied: string | null; open?: boolean }) {
+function More({ cs, ex, step, onSkip, onUnskip, onDoesntApply, copy, copied, open = false }: { cs: Record<string, any>; ex: Ex; step: Step; onSkip: (r: string) => void; onUnskip: () => void; onDoesntApply?: (reason: string) => void; copy: (id: string, t: string) => void; copied: string | null; open?: boolean }) {
   const more = cs.more || {}
+  const [asking, setAsking] = useState(false)
+  const [reason, setReason] = useState('')
   const risks = (more.risks || []) as { text: string; applies?: string }[]
   const applies = risks.filter((r) => r.applies && truthy(ex[r.applies]))
   const rest = risks.filter((r) => !(r.applies && truthy(ex[r.applies])))
@@ -411,10 +425,26 @@ function More({ cs, ex, step, onSkip, onUnskip, copy, copied, open = false }: { 
           <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}
-      {cs.skip && step.status !== 'skipped' && (
-        <p className="actions"><Button variant="tertiary" onClick={() => onSkip('Not needed for this tenant')}>Skip this step</Button></p>
+      {/* Skip, and beside it Doesn't apply here on the content steps flagged for it:
+          never a foundation (emergency access, the exclusions group), never a policy
+          step whose subject exists. Pressing it asks one line, required, that goes
+          on the plan; the step then leaves its phase for the footer. */}
+      {step.status !== 'skipped' && (
+        <p className="actions">
+          {cs.skip && <Button variant="tertiary" onClick={() => onSkip('Not needed for this tenant')}>Skip this step</Button>}
+          {offersDoesntApply(cs, step) && onDoesntApply && !asking && <Button variant="tertiary" onClick={() => setAsking(true)}>{SHARED.doesntApplyControl}</Button>}
+        </p>
       )}
-      {step.status === 'skipped' && <p className="actions"><Button variant="tertiary" onClick={onUnskip}>Put this step back</Button></p>}
+      {asking && step.status !== 'skipped' && (
+        <div className="decision">
+          <label className="rows">
+            <span>{fillText(SHARED.doesntApplyPrompt, { tenant: String(ex.tenant ?? '') })}</span>
+            <input type="text" required value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
+          </label>
+          <Button variant="secondary" disabled={reason.trim().length === 0} onClick={() => { if (reason.trim().length > 0) onDoesntApply?.(reason.trim()) }}>Save</Button>
+        </div>
+      )}
+      {step.status === 'skipped' && <p className="actions"><Button variant="tertiary" onClick={onUnskip}>{app.plan.putBack}</Button></p>}
     </details>
   )
 }

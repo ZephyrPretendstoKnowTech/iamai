@@ -2,6 +2,7 @@
 // Phase 2, … in date order, then Cleanup — names fall apart when one tenant is
 // 10% of the way there and another 60%. The labels come from content.phases; the
 // wave-name table is gone. Pure.
+import type { Step } from '../roadmap/types.ts'
 import { phases } from '../content/content.ts'
 
 /** Preparation for the foundation wave (phase 0), else the next sequential Phase number. */
@@ -12,3 +13,8 @@ export function waveLabels<T extends { phase: number }>(waves: T[]): string[] {
 
 /** The Cleanup phase label. */
 export const cleanupLabel = phases.last
+
+/** A step renders in its wave unless it is In place, a floor step, or one the person said does not apply here (the footer holds those). */
+export function inWave(step: Step): boolean {
+  return step.status !== 'done' && !step.floor && !step.doesntApply
+}
