@@ -292,6 +292,11 @@ export function buildFixture(spec: Spec): Fixture {
     if (shared) {
       shared.displayName = 'Boardroom'
       shared.skuIds = ['295a8eb0-f78d-45c7-8b5b-1eed5ed02dff']
+      // A room has Authenticator approval and nothing stronger, and its evidence
+      // says so (walk-51 item 11: the fixture had a passkey beside notification
+      // evidence — a contradiction on the Today table, patched here, not in the product).
+      setReg(shared.id, { methodsRegistered: ['microsoftAuthenticatorPush'], isPasswordlessCapable: false })
+      authMethods[shared.id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }]
     }
     // Week two: three of the unproven are now proven (prompt 50 Part 4 item 14).
     if (spec.week2) {

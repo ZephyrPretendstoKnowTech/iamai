@@ -8,13 +8,20 @@ import { todayView } from '../../derive/today.ts'
 import type { TodayRow, TodayState } from '../../derive/today.ts'
 import { TODAY as C } from '../../copy/today.ts'
 import { pages } from '../../content/content.ts'
-import { TODAY_LINE, TODAY_TILE, METHOD_TIER, MFA_STATE, ACTIVITY_STATE } from '../../copy/definitions.ts'
+import { fillText } from '../../content/render.ts'
+import { TODAY_LINE, METHOD_TIER, MFA_STATE, ACTIVITY_STATE } from '../../copy/definitions.ts'
 import { absoluteDate, monthDayRange, relative } from '../../copy/dates.ts'
 import { friendlyMethod } from '../format.ts'
 import { DataTable, InfoTip, Status, Tile, Tiles } from '../components/index.ts'
 import type { Column, StatusTone } from '../components/index.ts'
 
-type ShowKey = keyof typeof C.showOptions
+// The Show list is pages.today.show (walk-51 item 10), in the six-state model
+// the table uses: All, the six states, Admins, Guests — keyed by position, so
+// the content file's words are the options and this maps each to its filter.
+const SHOW_KEYS = ['all', 'proven', 'likely', 'neverPrompted', 'possiblyBroken', 'noMethod', 'notActive', 'admins', 'guests'] as const
+type ShowKey = (typeof SHOW_KEYS)[number]
+type TodayCopy = { show: string[]; tiles: Record<'proven' | 'unproven' | 'noMethod' | 'notActive', { label: string; value: string; heldBy: string | null; tip: string }> }
+const T = pages.today as unknown as TodayCopy
 
 const TONE: Record<TodayState, StatusTone> = { proven: 'ok', likely: 'wait', neverPrompted: 'wait', possiblyBroken: 'stop', noMethod: 'stop', notActive: 'idle' }
 
@@ -58,17 +65,20 @@ function shows(r: TodayRow, key: ShowKey): boolean {
   switch (key) {
     case 'all':
       return true
-    case 'proven':
-    case 'unproven':
-    case 'noMethod':
-      return r.bucket === key
-    case 'notActive':
-      return r.state === 'notActive'
     case 'admins':
       return r.viability.isAdmin
-    default:
+    case 'guests':
       return r.user.userType === 'guest'
+    default:
+      return r.state === key
   }
+}
+
+/** A tile's value from its content string: "{n} · {pct} of active"; the count alone when nobody is active. */
+function tileValue(key: keyof TodayCopy['tiles'], n: number, active: number): string {
+  const t = T.tiles[key]
+  if (!/\{pct\}/.test(t.value) || active > 0) return fillText(t.value, { n: n.toLocaleString('en'), pct: active > 0 ? `${Math.round((n / active) * 100)}%` : '' })
+  return n.toLocaleString('en')
 }
 
 export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenantId: string }) {
@@ -131,20 +141,21 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
         {C.line(counts, window_, !window_ && source?.status === 'disabled' ? source.reason : null)}
         <InfoTip title={TODAY_LINE.active.title} text={TODAY_LINE.active.text} />
       </p>
+      {/* The four tiles from pages.today.tiles: the value, the label, the "held by" line
+          naming the step that moves the number, and the definition (walk-51 item 10). */}
       <Tiles>
-        <Tile value={C.share(tiles.proven, tiles.active)} label={C.tiles.proven} tip={TODAY_TILE.proven} />
-        <Tile value={C.share(tiles.unproven, tiles.active)} label={C.tiles.unproven} tip={TODAY_TILE.unproven} />
-        <Tile value={C.share(tiles.noMethod, tiles.active)} label={C.tiles.noMethod} tip={TODAY_TILE.noMethod} />
-        <Tile value={tiles.notActive.toLocaleString('en')} label={C.tiles.notActive} tip={TODAY_TILE.notActive} />
+        {(['proven', 'unproven', 'noMethod', 'notActive'] as const).map((k) => (
+          <Tile key={k} value={tileValue(k, tiles[k], tiles.active)} label={T.tiles[k].label} sub={T.tiles[k].heldBy ?? undefined} tip={{ title: T.tiles[k].label, text: T.tiles[k].tip }} />
+        ))}
       </Tiles>
       <div className="toolbar no-print">
         <input type="search" placeholder={C.search} aria-label={C.search} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
         <label>
           {C.show}{' '}
           <select value={show} onChange={(e) => setShow(e.currentTarget.value as ShowKey)}>
-            {(Object.keys(C.showOptions) as ShowKey[]).map((k) => (
+            {SHOW_KEYS.map((k, i) => (
               <option key={k} value={k}>
-                {C.showOptions[k]}
+                {T.show[i]}
               </option>
             ))}
           </select>
