@@ -83,7 +83,10 @@ function systemTheme(): string {
 
 // The demo keeps its own theme key, so it never reads or writes the real theme
 // choice, and leaving the demo restores whatever was there before (prompt 50 item 13).
-const THEME_KEY = isDemo() ? 'iamai-theme-demo' : 'iamai-theme'
+// One theme preference across the home page, the demo and the signed-in app
+// (walk-51 item 19): the theme is a per-viewer UI choice, not tenant data, so it
+// shares the home page's key rather than the demo keeping its own.
+const THEME_KEY = 'iamai-theme'
 
 function useTheme(): [string, () => void] {
   const [theme, setTheme] = useState<string>(() => {
