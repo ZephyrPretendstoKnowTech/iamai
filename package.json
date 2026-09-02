@@ -21,7 +21,8 @@
     "layout-audit": "node scripts/layout-audit.mjs",
     "screens": "node scripts/screens.mjs",
     "render-review": "node scripts/render-review.mjs",
-    "translator-dump": "node scripts/translator-dump.ts"
+    "translator-dump": "node scripts/translator-dump.ts",
+    "walk": "node scripts/walk.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.19.0",

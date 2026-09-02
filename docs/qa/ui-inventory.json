@@ -1,5 +1,5 @@
 {
- "fingerprint": "aac213f1b004ad62",
+ "fingerprint": "61bc0950845a9610",
  "surfaces": [
   {
    "name": "Header",
@@ -2015,31 +2015,31 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedBlock Authentication Transfer4 people8 Sept 2026",
+     "text": "BlockedBlock Authentication Transfer4 peopleSep 8, 2026",
      "sentences": 1,
      "words": 6
     },
     {
      "selector": ".plan-row",
-     "text": "Report-onlyBlock Legacy Authentication4 people · report-only, not enforced8 Sept 2026",
+     "text": "Report-onlyBlock Legacy Authentication4 people · report-only, not enforcedSep 8, 2026",
      "sentences": 1,
      "words": 10
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedBlock Device Code Sign-in4 people8 Sept 2026",
+     "text": "BlockedBlock Device Code Sign-in4 peopleSep 8, 2026",
      "sentences": 1,
      "words": 7
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedShorten Admin SessionsAlex Morgan9 Sept 2026",
+     "text": "BlockedShorten Admin SessionsAlex MorganSep 9, 2026",
      "sentences": 1,
      "words": 6
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedRequire Phishing-Resistant MFA for AdminsAlex Morgan9 Sept 2026",
+     "text": "BlockedRequire Phishing-Resistant MFA for AdminsAlex MorganSep 9, 2026",
      "sentences": 1,
      "words": 8
     },
@@ -2057,7 +2057,7 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedBlock Sign-ins From Countries Not Allowed4 people15 Sept 2026",
+     "text": "BlockedBlock Sign-ins From Countries Not Allowed4 peopleSep 15, 2026",
      "sentences": 1,
      "words": 9
     },
@@ -2087,13 +2087,13 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedLimit How Long Sessions Last4 people29 Sept 2026",
+     "text": "BlockedLimit How Long Sessions Last4 peopleSep 29, 2026",
      "sentences": 1,
      "words": 8
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedRequire Token Protection on Windows4 people29 Sept 2026",
+     "text": "BlockedRequire Token Protection on Windows4 peopleSep 29, 2026",
      "sentences": 1,
      "words": 8
     },
@@ -2436,6 +2436,12 @@
    "unnamedControls": [],
    "rows": [
     {
+     "selector": ".names",
+     "text": "Break-glass 01",
+     "sentences": 1,
+     "words": 2
+    },
+    {
      "selector": ".decision",
      "text": "Emergency access accountsSave",
      "sentences": 1,
@@ -2471,7 +2477,6 @@
    ],
    "tips": [],
    "sentences": [
-    "Also possible",
     "A dynamic group rule re-evaluates on its own, so an account outside a policy today can be inside it tomorrow.",
     "Microsoft-managed policies start in report-only and are turned on by Microsoft, no less than thirty days later.",
     "A mailbox on an emergency account is somewhere to phish and somewhere for mail to sit unread."
@@ -2502,8 +2507,8 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 56,
-    "total": 61
+    "sentences": 54,
+    "total": 59
    },
    "unnamedControls": [],
    "rows": [],

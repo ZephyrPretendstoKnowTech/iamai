@@ -5,3 +5,5 @@ docs/spikes/raw/
 docs/qa/night/
 
 fixtures/private/
+# The overnight walk harness output (prompt 53 Unit 0): captures and screenshots, never committed.
+walk/

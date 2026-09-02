@@ -30,7 +30,7 @@ export function verdictOf(status: GoalStatus): Verdict {
 // Durations in words, never "168h" (walk-51 item 17, §8.4): the contract forbids
 // the hour abbreviation, so a session gap reads "sessions expire weekly, baseline
 // wants 4 hours".
-function hoursInWords(hours: number): string {
+export function hoursInWords(hours: number): string {
   if (hours % 168 === 0) return hours === 168 ? 'weekly' : `${hours / 24} days`
   if (hours % 24 === 0) return hours === 24 ? 'daily' : `${hours / 24} days`
   return `${hours} hours`

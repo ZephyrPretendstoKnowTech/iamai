@@ -303,8 +303,10 @@ function whenLine(step: Step): string {
     if (b && typeof b.binding === 'string') return b.binding
   }
   if (step.kind === 'prerequisite' || step.kind === 'check' || step.kind === 'recurring') return C.who.now
-  const at = step.events?.enforce.date ?? (step.rings[0]?.plannedStart ? absoluteDate(step.rings[0].plannedStart) : null)
-  return at ?? C.who.now
+  // One short format everywhere (walk-51 item 5): the event's instant through
+  // absoluteDate, never the event's own local label ("9 Sept 2026").
+  const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? null
+  return at ? absoluteDate(at) : C.who.now
 }
 
 function Settings({ data, effectiveStart, onClose }: { data: ReturnType<typeof usePlanData>; effectiveStart: string; onClose: () => void }) {

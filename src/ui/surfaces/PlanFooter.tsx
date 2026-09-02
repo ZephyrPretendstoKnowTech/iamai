@@ -24,11 +24,13 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
   const notLicensed = notLicensedRows(computed.coverage, computed.goalMap)
   const clean = (s: string): string => s.replace(/\*\*/g, '').replace(/\*/g, '')
   const org = computed.coverage.organisation
+  // Housekeeping (§5): a policy not in the baseline, a name off the convention,
+  // a static-rule violation on the tenant's own policies. Baseline policies not
+  // assessed are Cleanup rows, and problems with the baseline package are
+  // reported on How IAMAI works, never in a plan.
   const housekeeping: { text: string; json?: string | null }[] = []
   for (const p of org.notInBaseline) housekeeping.push({ text: C.footer.notInBaseline(p.name, p.state) })
-  for (const n of org.notAssessed) housekeeping.push({ text: C.footer.notAssessed(n.name), json: n.json })
   for (const v of computed.staticViolations) housekeeping.push({ text: v.text })
-  if (computed.coverage.couldNotEvaluate.length > 0) for (const c of computed.coverage.couldNotEvaluate) housekeeping.push({ text: `${c.name}: ${c.reason}` })
 
   return (
     <div className="plan-footer">

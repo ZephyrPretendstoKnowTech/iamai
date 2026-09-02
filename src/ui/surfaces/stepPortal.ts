@@ -10,6 +10,7 @@ import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned
 import { policyFacts } from '../../coverage/facts.ts'
 import type { CaPolicy } from '../../baseline/types.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
+import { hoursInWords } from '../../coverage/verdict.ts'
 import { portalLines, portalLinesAB } from '../../roadmap/portalLines.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import { shared } from '../../content/content.ts'
@@ -53,6 +54,23 @@ function contextFor(p: PinnedPolicy, names: PortalNames): PortalContext {
  * null when the baseline does not hold the goal (no policy to render).
  */
 /** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
+/**
+ * The sign-in frequency the goal's baseline policy wants, in words ("4 hours",
+ * "weekly"), for the content lines that name {wanted}; null when the mapped
+ * policy sets none (walk of f3d140b: the manager note read "expire after and").
+ */
+export function sessionWantedForGoal(goalId: string): string | null {
+  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+  for (const p of mapped) {
+    const sc = (p.sessionControls ?? null) as { signInFrequency?: { isEnabled?: boolean; value?: number; type?: string } } | null
+    const f = sc?.signInFrequency
+    if (!f || f.isEnabled === false || typeof f.value !== 'number') continue
+    const hours = /^day/i.test(String(f.type ?? '')) ? f.value * 24 : f.value
+    return hoursInWords(hours)
+  }
+  return null
+}
+
 export function strengthForGoal(goalId: string): string | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
   for (const p of mapped as PinnedPolicy[]) {

@@ -14,7 +14,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
-import { strengthForGoal } from './stepPortal.ts'
+import { sessionWantedForGoal, strengthForGoal } from './stepPortal.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { EXIT_MIN_DAYS_OBSERVED } from '../../roadmap/constants.ts'
@@ -81,7 +81,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     firstEnforce: short(enforce?.at),
     firstEnforceLong: long(enforce?.at),
     announce: short(announce?.at),
-    reportOnly: short(ctx.reportOnlyAt),
+    // A policy already in report-only has its date from the scan (tracking), not
+    // from the schedule, which only dates the policies the plan creates.
+    reportOnly: short(ctx.reportOnlyAt ?? step.tracking?.reportOnlyAt),
     // The proposed policy name, in the tenant's convention.
     policyName: step.naming?.proposed,
     proposedName: step.naming?.proposed,
@@ -90,7 +92,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     operatorSignIns: ctx.operatorId ? operatorSignIns(ctx.snapshot, ctx.operatorId) : undefined,
     // Everyone under 25, else the riskiest — the engine's own populationNames.
     people: pop.active,
-    n: pop.active,
+    // A check step's subject is the accounts it checks, active or not (the
+    // dormant accounts are by definition not active); every other step counts
+    // the active people it touches.
+    n: step.kind === 'check' ? pop.total : pop.active,
     // The step's readiness, as the percentage the content line names.
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
     // The report-only observation window a policy done-when line names.
@@ -117,6 +122,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // who and decision lines that name it (walk-51 item 18).
   const strength = strengthForGoal(step.goalId)
   if (strength) v.strengthName = strength
+  // The session frequency the baseline wants, for the lines that name {wanted}.
+  const wanted = sessionWantedForGoal(step.goalId)
+  if (wanted) v.wanted = wanted
 
   // Existing coverage: whether a policy already delivers the goal (drives the
   // {existingCoverage} line's presence).

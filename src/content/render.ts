@@ -90,7 +90,14 @@ export function missingVars(text: unknown, ex: Ex): string[] {
   const out: string[] = []
   for (const m of text.matchAll(/\{(?:list:)?([a-zA-Z0-9_]+)\}/g)) {
     const key = m[1]
-    if (SHARED_REF_KEYS.has(key)) continue
+    if (SHARED_REF_KEYS.has(key)) {
+      // A shared reference ({datesNew}, {policyIfWrong}…) expands to a shared
+      // string with variables of its own; a hole in that string is a hole in
+      // this line (the walk found "Announce · Report-only from · Enforce").
+      const shared = (S as Record<string, unknown>)[key]
+      if (typeof shared === 'string' && key !== 'signature' && key !== 'strengthName') out.push(...missingVars(shared, ex))
+      continue
+    }
     const v = (ex as Record<string, unknown>)?.[key]
     const present = Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && String(v).length > 0
     if (!present) out.push(key)
