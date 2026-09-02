@@ -15,6 +15,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { contentLists } from '../../derive/contentLists.ts'
+import { initialDomain } from '../../validation/rules.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -96,6 +97,31 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // the data exists): the campaign buckets, the lockout-scenario people, and the
   // emergency/service/admin id sets. A step reads only the keys it uses.
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now }))
+
+  // The emergency-access and exclusions-group steps (walk-51 item 14): the
+  // failing checks routed through the content checkFixes, the counts for the
+  // "{failing} of {total}" line, the operator's own account and the tenant id
+  // from the session, and the values the create instructions name.
+  if (step.checks) {
+    v.failing = step.checks.failing
+    v.total = step.checks.total
+    v.failingChecks = step.checks.items.map((it) => {
+      const vals: Record<string, unknown> = { ...it.values }
+      if (it.subject === 'breakGlass' && it.target && vals.name === undefined) vals.name = ctx.nameOf(it.target)
+      return [it.fix, vals]
+    })
+    // Fewer than two accounts pass the count check: the create instructions show.
+    v.needsCreate = step.checks.items.some((it) => it.fix === 'second-account')
+    // The policies that do not yet exclude the exclusions group (who line), from
+    // the excluded-everywhere checks' own values.
+    const notExcluding = [...new Set(step.checks.items.filter((it) => it.fix === 'excluded-everywhere').flatMap((it) => (Array.isArray(it.values.policies) ? (it.values.policies as string[]) : [])))]
+    if (notExcluding.length > 0) v.policiesNotExcluding = notExcluding
+    v.operator = ctx.operatorId ? ctx.nameOf(ctx.operatorId) : undefined
+    v.tenantId = ctx.snapshot.tenantId
+    v.onmicrosoftDomain = initialDomain(ctx.snapshot) ?? undefined
+    // A suggested name for a new emergency account (display-name and create).
+    v.exampleName = 'Emergency Access'
+  }
 
   return v
 }
