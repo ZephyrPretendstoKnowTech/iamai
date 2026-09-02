@@ -58,7 +58,8 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   const run = runFixture(f)
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: run.input.operatorUserId ?? null })
-  const tv = todayView(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds))
+  // Today less the emergency accounts: they are outside the campaign (48.1 item 2).
+  const tv = todayView(f.snapshot, f.snapshot.asOf, new Set([...f.mapping.serviceAccountUserIds, ...f.mapping.breakGlassUserIds]))
   assert.equal(cl.noMethod.length, tv.tiles.noMethod, 'no-method matches Today')
   assert.equal(cl.unproven.length, tv.tiles.unproven, 'registered-unproven matches Today')
   assert.ok(cl.noMethod.length > 0 && cl.unproven.length > 0, 'the demo has people in these buckets')
