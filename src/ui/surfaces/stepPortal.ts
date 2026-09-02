@@ -52,6 +52,16 @@ function contextFor(p: PinnedPolicy, names: PortalNames): PortalContext {
  * The portal lines for a goal's step, from its mapped baseline policy. Returns
  * null when the baseline does not hold the goal (no policy to render).
  */
+/** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
+export function strengthForGoal(goalId: string): string | null {
+  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+  for (const p of mapped as PinnedPolicy[]) {
+    const s = (p.grantControls as { authenticationStrength?: { displayName?: string } } | null)?.authenticationStrength?.displayName
+    if (typeof s === 'string' && s.length > 0) return s
+  }
+  return null
+}
+
 export function stepPortalLines(goalId: string, names: PortalNames): string[] | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
   if (mapped.length === 0) return null
