@@ -178,7 +178,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
       {open && (
         <ContentStep
           step={step}
-          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce }}
+          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onClose={onToggle}
