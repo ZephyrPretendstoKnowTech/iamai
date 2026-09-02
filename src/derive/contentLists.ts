@@ -49,7 +49,11 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const { snapshot, mapping, nameOf, now } = ctx
   const svc = new Set(mapping.serviceAccountUserIds)
   const viability = buildViabilityInputs(snapshot, now, svc).map(scoreMfaViability)
-  const active = viability.filter((v) => v.enabled && v.activity === 'active')
+  // The emergency accounts are never in the campaign or its special-care list
+  // (prompt 48.1 item 2): they are excluded from every policy, so nothing the
+  // campaign proves applies to them.
+  const bg = new Set(mapping.breakGlassUserIds)
+  const active = viability.filter((v) => v.enabled && v.activity === 'active' && !bg.has(v.userId))
   const names = (ids: readonly string[]): string[] => ids.map(nameOf)
   const scen = snapshot.scenarioEvidence ?? null
 
@@ -70,7 +74,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const careIds: string[] = []
   const seen = new Set<string>()
   const addCare = (id: string): void => {
-    if (id && !seen.has(id) && byId.has(id)) {
+    if (id && !seen.has(id) && byId.has(id) && !bg.has(id)) {
       seen.add(id)
       careIds.push(id)
     }
