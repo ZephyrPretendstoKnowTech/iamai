@@ -155,11 +155,11 @@ function SignedOut() {
         <a href={demoUrl()}>{(O.links as string[])[1]}</a>
       </p>
       {/* The blind spots the tenant's records cannot show (target-state §3): a
-          raised, open-by-default disclosure. Its body is caveat prose, not the
+          raised disclosure, closed by default. Its body is caveat prose, not the
           page's flow, so it renders outside the inventory's prose blocks — the
           same way the permissions caveats sit outside the budget by being
           closed. The summary is captured; the copy is one file (content.json). */}
-      <details className="limits" open>
+      <details className="limits">
         <summary>{O.cantCatchSummary as string}</summary>
         <div className="limits-intro">{O.cantCatchIntro as string}</div>
         <div className="limits-list">
