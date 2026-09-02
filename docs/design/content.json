@@ -173,7 +173,7 @@
       "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy."
     },
     "tenant": {
-      "h1": "Connect a tenant",
+      "h1": "{tenant}",
       "scanLine": "Scan complete · {people} people · {policies} policies · sign-ins {from} → {to}",
       "open": "Open the plan →",
       "tip": "Everything the scan found is inside the plan's steps, where you can confirm or change it."

@@ -4,7 +4,8 @@
 // permissions and how to remove them; the IAMAI limitations panel. Signed in:
 // who is signed in, the baseline explained in place with the author's site and
 // the "updated by its author" line, and the scan, run from here. Scanning: the
-// progress line and Stop. Scanned: the one-line result and Open the plan.
+// progress line and Stop. Scanned: the tenant's name, the one-line result, Open
+// the plan, the tip, and Scan tenant again, run in place.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { authReady, signIn, signOut } from '../../graph/auth.ts'
@@ -38,11 +39,6 @@ function splitControl(line: string): [string, string] {
   const parts = line.split(' · ')
   const label = parts.pop() ?? ''
   return [parts.join(' · '), label]
-}
-
-/** The "what it is" sentence of baselineWhat (target-state §3's baseline line). */
-function baselineWhatLine(): string {
-  return (CN.baselineWhat as string).split('. ')[0] + '.'
 }
 
 export function Connect(props: {
@@ -230,7 +226,7 @@ function SignedIn({
   const [signedInText, signOutLabel] = splitControl(fillText(CN.signedIn as string, { tenant: tenantName ?? account.username, upn: account.username }))
   return (
     <>
-      <h1>{CN.h1 as string}</h1>
+      <h1>{scanned ? fillText(TN.h1 as string, { tenant: tenantName ?? account.username }) : (CN.h1 as string)}</h1>
       <p className="line">
         {signedInText}
         {!scanning && (
@@ -242,7 +238,7 @@ function SignedIn({
           </>
         )}
       </p>
-      <BaselineLine baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} explain={!scanned} />
+      <BaselineLine baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} tenant={tenantName ?? account.username} />
       {scanning && <ScanProgress runner={runner} />}
       {!scanning && runner.state === 'failed' && runner.error && <Callout kind="danger">{fillText(C.failed, { why: runner.error })}</Callout>}
       {!scanning && !scanned && (
@@ -274,7 +270,11 @@ function SignedIn({
           <DeniedSections denied={denied} all={all} />
           <p className="actions">
             <LinkButton href={PLAN_HREF}>{TN.open as string}</LinkButton>
+            <Button variant="secondary" onClick={() => void runner.start()}>
+              {CN.scanButton as string}
+            </Button>
           </p>
+          <p className="tip">{TN.tip as string}</p>
         </>
       )}
       <ScanDevTools tenantId={account.tenantId} runner={runner} snapshot={snapshot} />
@@ -288,7 +288,8 @@ function SignedIn({
 }
 
 /**
- * "Baseline: <label> (46 policies) · change", the three explanation lines, and —
+ * "Baseline: <label> (46 policies) · change", the three explanation lines (what
+ * the baseline is, its aim, how IAMAI uses it), and —
  * when the author's repository is ahead of the pin — the "updated by its author"
  * line with its review list (prompt 52 Part 1). The default loads itself when
  * nothing is saved; change opens a picker with two choices.
@@ -298,14 +299,14 @@ function BaselineLine({
   restoreError,
   onBaseline,
   locked,
-  explain,
+  tenant,
 }: {
   baseline: BaselineResult | null
   restoreError: string | null
   onBaseline: (r: BaselineResult) => void
   locked: boolean
-  /** The baseline explanation and the "updated by its author" line render only before the first scan (target-state §3: scanned is a transition screen). */
-  explain: boolean
+  /** The tenant's name, for the line that says what the baseline is compared with. */
+  tenant: string
 }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -364,11 +365,11 @@ function BaselineLine({
       </p>
       {error && <p className="reason">{fillText(C.baselineFailed, { why: error })}</p>}
       {!error && !baseline && restoreError && <p className="reason">{C.restoreFailed}</p>}
-      {explain && !locked && !busy && baseline && (
+      {!locked && !busy && baseline && (
         <>
-          <p className="reason">{baselineWhatLine()}</p>
+          <p className="reason">{CN.baselineWhat as string}</p>
           <p className="reason">{CN.baselineGoal as string}</p>
-          <p className="reason">{CN.baselineHow as string}</p>
+          <p className="reason">{fillText(CN.baselineHow as string, { tenant })}</p>
           <BaselineUpdated />
         </>
       )}

@@ -53,8 +53,12 @@ export function useScanRunner(
     return () => clearInterval(t)
   }, [state])
 
+  // Two starts before the state has settled (StrictMode's doubled effect, a
+  // second click) run one scan, never two.
+  const startingRef = useRef(false)
   const start = async () => {
-    if (state === 'running' || state === 'paused') return
+    if (startingRef.current || state === 'running' || state === 'paused') return
+    startingRef.current = true
     stoppedRef.current = false
     setState('running')
     onRunningChange(true)
@@ -100,6 +104,7 @@ export function useScanRunner(
         setState('failed')
       }
     } finally {
+      startingRef.current = false
       onRunningChange(false)
     }
   }
