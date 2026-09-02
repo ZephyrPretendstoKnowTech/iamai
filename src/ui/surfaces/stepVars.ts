@@ -156,9 +156,24 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // failing checks routed through the content checkFixes, the counts for the
   // "{failing} of {total}" line, the operator's own account and the tenant id
   // from the session, and the values the create instructions name.
-  // The exclusions group's create instructions show while no group is recognised
-  // (its checks need a group to check, so they cannot say so).
-  if (DECISION_STEPS.exclusions.has(step.id)) v.needsCreate = (ctx.mapping.records['__globalExclusion']?.resolvedId ?? null) === null
+  // The exclusions group: the recognised group's own line (name, members, how
+  // many policies exclude it) and its members; the create instructions show
+  // while no group is recognised (its checks need a group to check).
+  if (DECISION_STEPS.exclusions.has(step.id)) {
+    const record = ctx.mapping.records['__globalExclusion'] ?? null
+    const id = record?.resolvedId ?? null
+    v.needsCreate = id === null
+    if (id !== null) {
+      const g = ctx.groups?.get(id) ?? [...(ctx.groups ?? [])].find(([k]) => k.toLowerCase() === id.toLowerCase())?.[1] ?? null
+      const policies = ctx.snapshot.config.caPolicies?.rows ?? []
+      const excludes = (p: unknown): boolean => ((p as { conditions?: { users?: { excludeGroups?: string[] } } }).conditions?.users?.excludeGroups ?? []).some((x) => x.toLowerCase() === id.toLowerCase())
+      v.exclusionsGroup = g?.displayName ?? record?.resolvedName ?? ctx.nameOf(id)
+      v.memberCount = g?.memberCount ?? 0
+      v.excludedFrom = policies.filter(excludes).length
+      v.policyCount = policies.length
+      v.members = (g?.memberIds ?? []).map(ctx.nameOf)
+    }
+  }
   if (step.checks) {
     v.failing = step.checks.failing
     v.total = step.checks.total
