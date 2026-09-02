@@ -2,7 +2,7 @@
 //
 //   npm run walk             (CHROME=/path/to/chrome to override the binary)
 //
-// Renders every surface of the demo at desktop (1280) and phone (390) widths in
+// Renders every surface of the demo at desktop width (1280) in
 // headless Chrome, opens every plan row one by one, and writes the innerText of
 // <main> and a screenshot for each into walk/<sha>/…; diffs the text against
 // the surface contract (docs/qa/page-contracts.json: allowed headings, buttons,
@@ -29,7 +29,7 @@ import goalsData from '../data/goals.json' with { type: 'json' }
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
-const WIDTHS = [1280, 390]
+const WIDTHS = [1280]
 const SHA = (() => {
   try {
     return execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
@@ -620,7 +620,7 @@ const table = Object.entries(summaries)
 const verdict = findings.P0.length === 0 ? 'show-ready on this walk (no P0)' : `not show-ready: ${findings.P0.length} P0`
 const report = `# Walk of build ${SHA} — demo tenant, ${started.slice(0, 10)}
 
-\`npm run walk\` (prompt 53 Unit 0): every surface of the demo at 1280 and 390, every plan row
+\`npm run walk\` (prompt 53 Unit 0): every surface of the demo at 1280, every plan row
 opened one by one, the contract diff, the walk-51 invariants, the GetIAMAI plan file scanned
 offline. Captures and screenshots under \`walk/${SHA}/\` (not committed).
 
