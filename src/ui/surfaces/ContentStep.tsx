@@ -8,10 +8,10 @@
 import { useState, useMemo } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
-import { app, content } from '../../content/content.ts'
+import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
-import { Picker } from '../components/index.ts'
+import { Picker, PageTip } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import { powershellFor } from './stepPowerShell.ts'
@@ -31,6 +31,9 @@ const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeo
 const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}/g)].map((m) => m[1])
 
 /** A content string, filled with the tenant's values. */
+/** Under every copy box (Tell your people, For the help desk, For your manager): paste it into your own assistant. */
+const ADAPT_LINE = String((content.shared as Record<string, unknown>).adaptLine)
+
 function T({ s, ex }: { s: unknown; ex: Ex }) {
   if (s === null || s === undefined) return null
   return <>{fillText(s, ex as Record<string, unknown>)}</>
@@ -110,6 +113,7 @@ export function ContentStep({
       <p className="line">
         <span className="step-title">{cs.title}</span> <Status tone={status.tone}>{status.word}</Status>
       </p>
+      <PageTip page="step" text={String(pages.stepTip)} />
       <Line s={cs.changeLine} ex={ex} cls="reason" />
       <Line s={cs.partner} ex={ex} cls="reason partner" />
 
@@ -237,6 +241,7 @@ export function ContentStep({
             <p><T s={cs.comms.body} ex={ex} /></p>
             <p><T s={cs.comms.signature} ex={ex} /></p>
           </div>
+          <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}
 
@@ -395,6 +400,7 @@ function More({ cs, ex, step, onSkip, onUnskip, copy, copied, open = false }: { 
         <>
           <h3>For the help desk</h3>
           <ul className="sections">{(more.helpDesk as unknown[]).filter((x) => whole(x, ex)).map((x, i) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
+          <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}
       {more.manager && whole(more.manager, ex) && (
@@ -402,6 +408,7 @@ function More({ cs, ex, step, onSkip, onUnskip, copy, copied, open = false }: { 
           <h3>For your manager</h3>
           <p className="reason"><T s={more.manager} ex={ex} /></p>
           <p className="actions"><Button variant="secondary" onClick={() => copy('manager', fillText(more.manager, ex as Record<string, unknown>))}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
+          <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}
       {cs.skip && step.status !== 'skipped' && (

@@ -24,7 +24,7 @@ import { saveMappingState } from '../../mapping/store.ts'
 import { REDACTED, exportClipboard, exportDownload, exportPrint, unredactedFrom } from '../exportGuard.ts'
 import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
-import { Button, Callout, Card } from '../components/index.ts'
+import { Button, Callout, Card, PageTip } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { stepExportView } from './stepExport.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -166,6 +166,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   return (
     <section className="surface export">
       <h1>{P.h1}</h1>
+      <PageTip page="export" text={(pages.export as Record<string, string>).tip} />
       <div className="export-grid">
         <Card className="export-card" title={P.cards.print[0]}>
           <p className="reason">{P.cards.print[1]}</p>

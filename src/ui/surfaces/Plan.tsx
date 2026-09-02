@@ -20,7 +20,7 @@ import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
-import { Button, InfoTip, Status } from '../components/index.ts'
+import { Button, InfoTip, Status, PageTip } from '../components/index.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
@@ -133,6 +133,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         <InfoTip title={app.plan.constraintTip} text={lengthTip} />
       </p>
       <p className="line">{line2}</p>
+      <PageTip page="plan" text={P.tip} />
       {/* The start (§5), in this order: the Start date field (default: the next working
           day in the display zone), Start the plan under it, which locks the date shown,
           then Plan settings. */}

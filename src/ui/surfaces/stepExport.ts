@@ -90,3 +90,19 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   if (comms) for (const k of ['salutation', 'body', 'signature']) add(comms[k])
   return out
 }
+
+/** The step's copy boxes as the screen renders them: Tell your people, For the help desk, For your manager, each followed by the adapt line. */
+export function copyBoxes(step: Step, ctx: StepVarContext): { kind: 'comms' | 'helpDesk' | 'manager'; text: string; after: string }[] {
+  const cs = contentStepFor(step) as Record<string, any> | undefined
+  if (!cs) return []
+  const ex = stepVars(step, ctx) as Record<string, unknown>
+  const after = String((content.shared as Record<string, unknown>).adaptLine)
+  const out: { kind: 'comms' | 'helpDesk' | 'manager'; text: string; after: string }[] = []
+  const comms = (cs.comms ?? null) as Record<string, unknown> | null
+  if (comms) out.push({ kind: 'comms', text: ['salutation', 'body', 'signature'].map((k) => fillText(comms[k], ex)).join('\n\n'), after })
+  const more = (cs.more ?? {}) as Record<string, unknown>
+  const helpDesk = (Array.isArray(more.helpDesk) ? more.helpDesk : []).filter((x) => whole(x, ex))
+  if (helpDesk.length > 0) out.push({ kind: 'helpDesk', text: helpDesk.map((x) => fillText(x, ex)).join('\n'), after })
+  if (typeof more.manager === 'string' && whole(more.manager, ex)) out.push({ kind: 'manager', text: fillText(more.manager, ex), after })
+  return out
+}
