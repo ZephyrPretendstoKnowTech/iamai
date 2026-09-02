@@ -359,7 +359,7 @@ try {
   await sleep(1500)
   check('Unlicensed tenant: the plan renders from configuration and directory data', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
   t = await text()
-  check('Unlicensed tenant: the plan footer names what does not apply', /Doesn't apply here \(\d+\)/.test(t))
+  check('Unlicensed tenant: the plan footer names what is not licensed', /Not licensed \(\d+\)/.test(t))
   await send('Page.navigate', { url: `${BASE}&licence=free#/today` })
   await sleep(1500)
   t = await text()
