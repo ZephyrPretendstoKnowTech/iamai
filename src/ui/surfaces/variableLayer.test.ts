@@ -3,6 +3,8 @@
 // no-hole guarantee is checked on the demo and GetIAMAI campaign step, whose
 // who-line and done-when lines the walk found rendering "1 guests · readiness ,
 // the plan waits for 90% until ." with {readiness} and {enrollBy} empty.
+import { sharedDeviceIds } from '../../derive/sharedDevices.ts'
+import { activePeopleIds, campaignIds } from '../../derive/population.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures } from '../../roadmap/fixtures/index.ts'
@@ -58,8 +60,8 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   const run = runFixture(f)
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: run.input.operatorUserId ?? null })
-  // Today less the emergency accounts: they are outside the campaign (48.1 item 2).
-  const tv = todayView(f.snapshot, f.snapshot.asOf, new Set([...f.mapping.serviceAccountUserIds, ...f.mapping.breakGlassUserIds]))
+  // Today less the emergency and shared-device accounts: they are outside the campaign (48.1 item 2).
+  const tv = todayView(f.snapshot, f.snapshot.asOf, new Set([...f.mapping.serviceAccountUserIds, ...f.mapping.breakGlassUserIds, ...sharedDeviceIds(f.snapshot)]))
   assert.equal(cl.noMethod.length, tv.tiles.noMethod, 'no-method matches Today')
   assert.equal(cl.unproven.length, tv.tiles.unproven, 'registered-unproven matches Today')
   assert.ok(cl.noMethod.length > 0 && cl.unproven.length > 0, 'the demo has people in these buckets')
@@ -159,9 +161,12 @@ test('one readiness per family and one active-people count, on the demo and GetI
     }
     const camp = run.steps.find((s) => s.id === 's-verify-mfa')
     if (camp) {
-      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: f.snapshot.asOf, activePeople: tv.tiles.active }
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: f.snapshot.asOf }
       const ex = stepVars(camp, ctx) as Record<string, unknown>
-      assert.equal(ex.active, tv.tiles.active, `${f.name}: the campaign summary uses Today's active count`)
+      // One population per step: the campaign counts the plan's active people
+      // minus the emergency and shared-device accounts; Today's tile is the plan's.
+      assert.equal(ex.active, campaignIds(f.snapshot, f.snapshot.asOf, f.mapping).length, `${f.name}: the campaign's lead counts its own population`)
+      assert.equal(tv.tiles.active, activePeopleIds(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds)).length, `${f.name}: Today's active tile is the plan's active people`)
     }
   }
 })

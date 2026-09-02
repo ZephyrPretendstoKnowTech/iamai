@@ -1585,7 +1585,7 @@
           "holdouts": "{n} people past the enrol-by date with nothing done; review each; they are locked out when the policy enforces:"
         },
         "overlap": "Each person appears once, in the first list that applies to them, top to bottom; an admin with no method is in the no-method list with the admin instructions.",
-        "adminsNote": "Admins: {list:admins}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key."
+        "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key."
       },
       "decision": {
         "label": "People who need special care",
@@ -1964,7 +1964,7 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
-          "If no admins group exists: Entra admin center → Entra ID → Groups → New group → Security, assigned; name it {adminsGroupProposed}; add every admin: {list:admins}",
+          "If no admins group exists: Entra admin center → Entra ID → Groups → New group → Security, assigned; name it {adminsGroupProposed}; add every admin: {list:adminNames}",
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. Exclude → Groups: {exclusionsGroup}, {adminsGroup}. Exclude → Guest or external users → Service provider users.",

@@ -6,6 +6,7 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { rolloutBucket, scoreMfaViability, sortViability } from '../scoring/mfaViability.ts'
 import type { MethodTier, MfaViability, RolloutBucket } from '../scoring/mfaViability.ts'
 import { enabledUsers, peopleCounts } from './sets.ts'
+import { activePeopleIds } from './population.ts'
 import type { PeopleCounts } from './sets.ts'
 
 export type TodayState = 'proven' | 'likely' | 'neverPrompted' | 'possiblyBroken' | 'noMethod' | 'notActive'
@@ -66,9 +67,11 @@ export function todayView(snapshot: TenantSnapshot, now: string, confirmedServic
     if (!user) continue
     rows.push({ user, viability: v, state: stateOf(v), bucket: rolloutBucket(v), strongest: v.strongestMethod, evidence: evidenceOf(v, user) })
   }
+  // The active people are the plan's (derive/population.ts): one denominator.
+  const activeIds = new Set(activePeopleIds(snapshot, now, confirmedServiceAccountIds))
   const tiles = { proven: 0, unproven: 0, noMethod: 0, notActive: 0, active: 0 }
   for (const r of rows) {
-    if (r.bucket) {
+    if (r.bucket && activeIds.has(r.user.id)) {
       tiles.active += 1
       tiles[r.bucket] += 1
     } else tiles.notActive += 1

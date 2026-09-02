@@ -24,9 +24,8 @@ const V2 = ['soak', "the ring's", 'this ring', 'Ring plan', 'Exit criteria', 'Do
 const f = fixture('demo')
 const run = runFixture(f)
 const nameOf = (id: string): string => run.input.names!.label(id)
-const activePeople = todayView(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds)).tiles.active
 const firstEnforce = run.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
-const ctx = (s: (typeof run.steps)[number]): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, firstEnforce, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, activePeople })
+const ctx = (s: (typeof run.steps)[number]): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, firstEnforce, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null })
 const view = (s: (typeof run.steps)[number]) => stepExportView(s, ctx(s))
 
 /**

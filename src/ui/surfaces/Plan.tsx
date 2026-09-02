@@ -14,7 +14,6 @@ import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { scanAge, scanAgeWords } from '../../derive/scanAge.ts'
-import { todayView } from '../../derive/today.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
@@ -88,7 +87,6 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   // The plan's first enforcement date (a campaign's enrol-by), for the step
   // variables; the operator's own account is resolved above, once.
   const firstEnforce = c.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
-  const activePeople = todayView(scan.snapshot, scan.snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
   // Cleanup (§5): one row each, dated after the last enforcement; the drill is a
   // Cleanup row and nothing else, so it counts once. The finish is the end of
   // the last phase, Cleanup included (§9).
@@ -159,7 +157,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} activePeople={activePeople} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
             })}
           </section>
         )
@@ -171,7 +169,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
       {floorRows.length > 0 && (
         <section className="phase floor">
           {floorRows.map((s) => (
-            <Row key={s.id} step={s} isNext={false} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} activePeople={activePeople} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+            <Row key={s.id} step={s} isNext={false} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
           ))}
         </section>
       )}
@@ -220,7 +218,7 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle }: {
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, snapshot, mapping, operatorId, firstEnforce, activePeople, groups, decision, onDecide }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -236,7 +234,6 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
   mapping: MappingState | null
   operatorId: string | null
   firstEnforce: string | null
-  activePeople: number
   groups: GroupMembers
   decision: StepDecision | null
   onDecide: (decision: { picked?: string[]; option?: string }) => void
@@ -259,7 +256,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
       {open && (
         <ContentStep
           step={step}
-          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, activePeople, groups, naming: computed.coverage.organisation.naming }}
+          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, groups, naming: computed.coverage.organisation.naming }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onClose={onToggle}
