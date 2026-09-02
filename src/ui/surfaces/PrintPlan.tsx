@@ -4,7 +4,6 @@ import { Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
-import type { DangerArea } from '../../roadmap/dangers.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
 import { PRINT as C } from '../../copy/steps.ts'
 import { waveLabels } from '../../derive/phases.ts'
@@ -14,7 +13,6 @@ import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
-import { statusOf } from './statusWord.ts'
 import { RingMark } from '../components/Ring.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
@@ -40,7 +38,6 @@ export function PrintPlan({
   steps,
   schedule,
   verificationNote,
-  dangers,
   scanAt,
   coverage,
   goalMap,
@@ -58,7 +55,6 @@ export function PrintPlan({
   /** Who the verification window is for, already worded (ux-review-06 §24). */
   verificationNote: string
   schedule: Schedule
-  dangers: DangerArea[]
   /** The scan the plan reads, so page 1 can date the posture. */
   scanAt: string
   /** The goal verdicts, so page 1 can name what does not apply. */
@@ -157,25 +153,6 @@ export function PrintPlan({
             {progress.projection && <p>{progress.projection}</p>}
             {progress.already && <p>{progress.already}</p>}
           </div>
-        )}
-        {dangers.length > 0 && (
-          <>
-            <h3>{ROADMAP.tabs.danger}</h3>
-            <ul>
-              {dangers.map((d, i) => (
-                <li key={i}>
-                  <strong>{d.title}</strong>: {d.detail}
-                  <ul>
-                    {d.people.map((p, j) => (
-                      <li key={j}>
-                        {p.name}: {p.need}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          </>
         )}
         {comms.length > 0 && (
           <>

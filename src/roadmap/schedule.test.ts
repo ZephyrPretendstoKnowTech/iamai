@@ -14,9 +14,7 @@ function ring(index: number, soakDays: number, ids: string[]): Ring {
   return {
     index,
     name: index === 0 ? 'Pilot' : 'Everyone',
-    targeting: { kind: index === 0 ? 'group' : 'all', groupName: null, memberCount: ids.length, suggestedMemberIds: ids, filter: null, departments: [], advice: '' },
-    entryCriteria: [],
-    exitCriteria: [],
+    targeting: { kind: index === 0 ? 'group' : 'all', groupName: null, memberCount: ids.length, suggestedMemberIds: ids, filter: null, departments: [] },
     soakDays,
     plannedStart: '',
     plannedEnd: '',

@@ -10,6 +10,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { statusOf } from './statusWord.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
+import { stepExportView } from './stepExport.ts'
 
 const WORDS = new Set(['In place', 'Ready', 'Blocked', 'Scheduled', 'Report-only', 'Enforced', 'Skipped'])
 
@@ -34,7 +35,7 @@ test('the print finish and the ICS read the same rings the plan does', () => {
   // planFinish never dates a step past the schedule target.
   if (finish.finish) assert.ok(finish.finish <= r.schedule.targetEnd)
   // The ICS emits an entry per scheduled step, from its rings — the same rows the plan shows.
-  const ics = buildIcs(r.steps, 'Tenant', r.input.planId)
+  const ics = buildIcs(r.steps, 'Tenant', r.input.planId, (s) => stepExportView(s, { snapshot: r.input.snapshot, mapping: r.input.mapping, nameOf: (id) => r.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: r.input.snapshot.asOf }))
   const scheduled = r.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped' && s.rings.length > 0).length
   assert.equal((ics.match(/BEGIN:VEVENT/g) ?? []).length, scheduled, 'one calendar entry per scheduled step')
 })

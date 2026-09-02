@@ -19,9 +19,7 @@ import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan
 import { decisionsOf } from '../../roadmap/progress.ts'
 import type { PlanDecisions } from '../../roadmap/progress.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
-import { findDangerAreas } from '../../roadmap/dangers.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
-import { DEFAULT_REVERT_PERCENT } from '../../roadmap/watch.ts'
 import { savePlanRecord } from '../../graph/collect/cache.ts'
 import { saveMappingState } from '../../mapping/store.ts'
 import { REDACTED, exportClipboard, exportDownload, exportPrint, unredactedFrom } from '../exportGuard.ts'
@@ -92,7 +90,6 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const tenantName = (snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const planId = `plan-${snapshot.tenantId.slice(0, 8)}`
   const operator = { userId: account.localAccountId, userPrincipalName: account.username }
-  const dangers = findDangerAreas({ snapshot, viability, highCareUserIds: data.mapping?.highCareUserIds ?? [], operatorUserId: operator.userId, breakGlassUserIds: data.mapping?.breakGlassUserIds ?? [] })
   const rollout = summarizeTenant(viability).rollout
   const copy = (id: string, text: string): void => {
     void exportClipboard(text, REDACTED).then((ok) => {
@@ -177,7 +174,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={C.calendar.title}>
           <p className="reason">{C.calendar.line}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, DEFAULT_REVERT_PERCENT, view), 'text/calendar', REDACTED)}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view), 'text/calendar', REDACTED)}>
               {C.calendar.button}
             </Button>
           </p>
@@ -251,7 +248,6 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           steps={steps}
           schedule={schedule}
           verificationNote={rollout.toSetUp > 0 ? `${rollout.toSetUp} of ${rollout.active} active people still to set up.` : 'Everyone active is ready.'}
-          dangers={dangers}
           scanAt={scan.at}
           coverage={coverage}
           goalMap={c.goalMap}

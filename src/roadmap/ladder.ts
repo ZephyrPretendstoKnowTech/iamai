@@ -119,60 +119,33 @@ export function ladderFacts(snapshot: TenantSnapshot, mapping: MappingState): Fa
   }
 }
 
-type Verdict = { done: boolean; impact: string; evidence: string[] }
+type Verdict = { done: boolean; evidence: string[] }
 
 /**
- * Per item: the impact sentence from this tenant's numbers, and whether the
- * tenant already answers it. A Done verdict always carries the evidence that
- * satisfied it, so no step reads Done without saying why.
+ * Per item: whether the tenant already answers it. A Done verdict always
+ * carries the evidence that satisfied it, so no step reads Done without
+ * saying why.
  */
 function verdictFor(itemId: string, f: Facts): Verdict {
-  const not = (impact: string): Verdict => ({ done: false, impact, evidence: [] })
+  const not: Verdict = { done: false, evidence: [] }
+  const done = (evidence: string): Verdict => ({ done: true, evidence: [evidence] })
   switch (itemId) {
     case 'security-defaults':
-      if (f.securityDefaults === null) return not(LADDER_IMPACT.securityDefaultsUnknown)
-      return f.securityDefaults
-        ? { done: true, impact: LADDER_IMPACT.securityDefaultsOn(f.enabledUsers), evidence: ['security defaults, which this tenant has on'] }
-        : not(LADDER_IMPACT.securityDefaultsOff(f.enabledUsers, f.adminIds.length))
+      return f.securityDefaults === true ? done('security defaults, which this tenant has on') : not
     case 'break-glass-accounts':
-      return f.breakGlassNames.length >= BREAK_GLASS_TARGET
-        ? { done: true, impact: LADDER_IMPACT.breakGlassDone(names(f.breakGlassNames)), evidence: [`the break-glass accounts confirmed in Setup: ${names(f.breakGlassNames).join(', ')}`] }
-        : not(LADDER_IMPACT.breakGlassMissing(f.breakGlassNames.length))
-    case 'legacy-auth-inventory':
-      return not(LADDER_IMPACT.legacyAuth)
-    case 'app-passwords':
-      return not(LADDER_IMPACT.appPasswords)
+      return f.breakGlassNames.length >= BREAK_GLASS_TARGET ? done(`the break-glass accounts confirmed in Setup: ${names(f.breakGlassNames).join(', ')}`) : not
     case 'per-user-mfa-cleanup':
-      if (f.migrationState === null) return not(LADDER_IMPACT.perUserMfaUnknown)
-      return f.migrationState === 'migrationComplete'
-        ? { done: true, impact: LADDER_IMPACT.perUserMfaMigrated, evidence: ['an authentication methods migration this tenant reports as complete'] }
-        : not(LADDER_IMPACT.perUserMfaOpen(f.migrationState === 'preMigration' ? 'not started' : 'in progress'))
+      return f.migrationState === 'migrationComplete' ? done('an authentication methods migration this tenant reports as complete') : not
     case 'admin-accounts-separate':
-      if (f.adminIds.length === 0) return not(LADDER_IMPACT.adminsNone)
-      return f.adminsWithMailbox.length === 0
-        ? { done: true, impact: LADDER_IMPACT.adminsSeparate(f.adminIds.length), evidence: ['directory roles held only by accounts with no mailbox licence'] }
-        : not(LADDER_IMPACT.adminsMixed(f.adminsWithMailbox.length, f.adminIds.length, names(f.adminsWithMailbox)))
+      return f.adminIds.length > 0 && f.adminsWithMailbox.length === 0 ? done('directory roles held only by accounts with no mailbox licence') : not
     case 'global-admin-count':
-      if (f.globalAdmins > GLOBAL_ADMIN_MAX) return not(LADDER_IMPACT.globalAdminsMany(f.globalAdmins, names(f.globalAdminNames)))
-      if (f.globalAdmins < GLOBAL_ADMIN_MIN) return not(LADDER_IMPACT.globalAdminsFew(f.globalAdmins))
-      return {
-        done: true,
-        impact: LADDER_IMPACT.globalAdminsOk(f.globalAdmins, names(f.globalAdminNames)),
-        evidence: [`the ${f.globalAdmins} accounts holding Global Administrator, inside the two to four Microsoft recommends`],
-      }
+      return f.globalAdmins >= GLOBAL_ADMIN_MIN && f.globalAdmins <= GLOBAL_ADMIN_MAX ? done(`the ${f.globalAdmins} accounts holding Global Administrator, inside the two to four Microsoft recommends`) : not
     case 'guest-review':
-      return f.guests === 0
-        ? { done: true, impact: LADDER_IMPACT.guestsClean, evidence: ['a directory with no guest accounts and no unaccepted invitations'] }
-        : not(LADDER_IMPACT.guests(f.guests, f.pendingInvites, names(f.guestNames)))
-    case 'stale-accounts':
-      return not(f.unlicensedEnabled > 0 ? LADDER_IMPACT.staleUnlicensed(f.unlicensedEnabled, f.enabledUsers) : LADDER_IMPACT.staleNone)
+      return f.guests === 0 ? done('a directory with no guest accounts and no unaccepted invitations') : not
     case 'authenticator-over-sms':
-      if (!f.methodsReadable) return not(LADDER_IMPACT.methodsUnknown)
-      return f.weakMethodsOn.length === 0
-        ? { done: true, impact: LADDER_IMPACT.methodsWeakOff, evidence: ['an authentication methods policy with text message and voice call off'] }
-        : not(LADDER_IMPACT.methodsWeakOn(f.weakMethodsOn, f.authenticatorOn))
+      return f.methodsReadable && f.weakMethodsOn.length === 0 ? done('an authentication methods policy with text message and voice call off') : not
     default:
-      return not('')
+      return not
   }
 }
 

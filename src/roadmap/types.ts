@@ -78,15 +78,12 @@ export type RingTargeting = {
   /** Departments the ring draws from (how two rings are compared above the filter threshold). */
   departments: string[]
   /** One sentence of targeting advice for this ring. */
-  advice: string
 }
 
 export type Ring = {
   index: number
   name: string
   targeting: RingTargeting
-  entryCriteria: string[]
-  exitCriteria: string[]
   soakDays: number
   plannedStart: string
   plannedEnd: string
@@ -216,11 +213,3 @@ export type StepTracking = {
 }
 
 /** Where the warning comes from: a Microsoft page, or an explicit field-practice label (audit-program §6). */
-export type FailureMode = {
-  title: string
-  applies: 'yes' | 'no' | 'unknown'
-  evidence: string
-  citation?: import('../copy/validation.ts').Citation
-}
-export type Verify = { where: string[]; filter: string | null; good: string }
-export type HelpDesk = { callsAbout: string[]; whatToSay: string[] }

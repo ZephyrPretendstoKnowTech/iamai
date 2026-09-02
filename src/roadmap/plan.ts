@@ -141,7 +141,6 @@ export function fileStep(s: Step): Step {
     operatorNote: null,
     readiness: { ...s.readiness, lines: [] },
     evidence: { ...s.evidence, lines: [] },
-    rings: s.rings.map((r) => ({ ...r, entryCriteria: [], exitCriteria: [], targeting: { ...r.targeting, advice: '' } })),
     action: { ...s.action, summary: [], portalSteps: [], powershell: null },
   }
 }
