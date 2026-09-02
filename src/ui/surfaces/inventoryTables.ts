@@ -157,32 +157,16 @@ export function inventoryTables(snapshot: TenantSnapshot): InventoryTable[] {
 
 // Today, as CSV (the same four columns the Today table shows).
 import { todayView } from '../../derive/today.ts'
-import { MFA_STATE, METHOD_TIER } from '../../copy/definitions.ts'
+import { METHOD_TIER } from '../../copy/definitions.ts'
+import { todayEvidenceText, todayStateWord } from './todayCells.ts'
 export function todayTable(snapshot: TenantSnapshot, serviceAccountIds: ReadonlySet<string> = new Set()): InventoryTable {
+  // The same cells the Today table renders (todayCells.ts): a row's CSV equals its screen.
   const view = todayView(snapshot, snapshot.asOf, serviceAccountIds)
-  const stateWord = (r: (typeof view.rows)[number]): string => {
-    switch (r.state) {
-      case 'proven': return MFA_STATE.verified.title
-      case 'likely': return MFA_STATE.likelyViable.title
-      case 'neverPrompted': return MFA_STATE.notChallenged.title
-      case 'possiblyBroken': return MFA_STATE.unverified.title
-      case 'noMethod': return MFA_STATE.none.title
-      default: return 'Not active'
-    }
-  }
-  const evidence = (r: (typeof view.rows)[number]): string => {
-    const e = r.evidence
-    if (e.kind === 'mfa') return `MFA via ${e.method}`
-    if (e.kind === 'neverSignedIn') return 'no sign-in on record'
-    if (e.kind === 'inactive') return `inactive since ${absoluteDate(e.since)}`
-    if (e.kind === 'noMethod') return 'no method registered'
-    return e.reasons.join('; ')
-  }
   return {
     id: 'today',
     label: 'Today',
     csvName: 'iamai-today.csv',
     header: ['Person', 'State', 'Strongest method', 'Evidence'],
-    rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, stateWord(r), METHOD_TIER[r.strongest]?.title ?? r.strongest, evidence(r)]),
+    rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, todayStateWord(r.state), METHOD_TIER[r.strongest]?.title ?? r.strongest, todayEvidenceText(r)]),
   }
 }

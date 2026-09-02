@@ -1,0 +1,79 @@
+// Today as CSV says what the Today table says; the PowerShell tab renders the
+// JSON tab's body; the How page's check rows carry no forbidden string.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { todayView } from '../../derive/today.ts'
+import { todayTable } from './inventoryTables.ts'
+import { todayEvidenceText, todayStateWord } from './todayCells.ts'
+import { powershellFor } from './stepPowerShell.ts'
+import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
+import { stepVars } from './stepVars.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
+import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
+import { SUBJECT } from '../../copy/validation.ts'
+
+const FIXTURES = ['demo', 'getiamai'] as const
+
+test('Today as CSV writes the state word and the evidence line the Today table renders', () => {
+  for (const name of FIXTURES) {
+    const f = fixture(name)
+    const svc = new Set(f.mapping.serviceAccountUserIds)
+    const view = todayView(f.snapshot, f.snapshot.asOf, svc)
+    const table = todayTable(f.snapshot, svc)
+    assert.equal(table.rows.length, view.rows.length, `${name}: one CSV row per table row`)
+    view.rows.forEach((r, i) => {
+      assert.equal(table.rows[i][1], todayStateWord(r.state), `${name} row ${i}: the state word`)
+      assert.equal(table.rows[i][3], todayEvidenceText(r), `${name} row ${i}: the evidence line`)
+    })
+  }
+})
+
+test('for every policy step, the three Do it tabs differ and the PowerShell carries the JSON tab\'s displayName', () => {
+  let seen = 0
+  for (const name of FIXTURES) {
+    const f = fixture(name)
+    const r = runFixture(f)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    for (const s of r.steps) {
+      const cs = contentStepFor(s) as { kind?: string; title?: string } | undefined
+      if (cs?.kind !== 'policy' || !s.action.json) continue
+      const ex = stepVars(s, ctx)
+      const names = portalNamesFor(ctx, ex, String(cs.title))
+      const portal = stepPortalLines(s.goalId, names) ?? (s.floor ? stepPortalLinesFromBody(s.action.json, names) : null)
+      if (!portal || portal.length === 0) continue
+      const body = JSON.parse(s.action.json) as { displayName?: string }
+      const jsonTab = JSON.stringify(body, null, 2)
+      const ps = powershellFor(body, s.kind === 'adjust' ? (s.tracking?.policyId ?? null) : null)
+      const portalTab = portal.join('\n')
+      assert.notEqual(portalTab, jsonTab, `${name} ${s.id}: portal and JSON differ`)
+      assert.notEqual(jsonTab, ps, `${name} ${s.id}: JSON and PowerShell differ`)
+      assert.notEqual(portalTab, ps, `${name} ${s.id}: portal and PowerShell differ`)
+      assert.match(ps, /^Connect-MgGraph -Scopes Policy\.ReadWrite\.ConditionalAccess\n/, `${name} ${s.id}: connects with the one write scope`)
+      if (typeof body.displayName === 'string') assert.ok(ps.includes(body.displayName), `${name} ${s.id}: the PowerShell carries the JSON tab's displayName`)
+      if (s.kind === 'adjust') assert.ok(s.tracking?.policyId && ps.includes(`-ConditionalAccessPolicyId '${s.tracking.policyId}'`), `${name} ${s.id}: an adjust updates the policy it names`)
+      else assert.match(ps, /New-MgIdentityConditionalAccessPolicy -BodyParameter \$body/, `${name} ${s.id}: a create is New-`)
+      seen++
+    }
+  }
+  assert.ok(seen >= 10, `policy steps checked (${seen})`)
+  // Two bodies are two labelled blocks.
+  const two = powershellFor([{ displayName: 'A' }, { displayName: 'B' }])
+  assert.match(two, /# Policy A\n\$bodyA = @'/)
+  assert.match(two, /# Policy B\n\$bodyB = @'/)
+})
+
+test('the How page\'s check rows carry no forbidden-everywhere string', () => {
+  const forbid = (JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')) as { forbidEverywhere?: string[] }).forbidEverywhere ?? []
+  assert.ok(forbid.length > 0)
+  const hits: string[] = []
+  for (const r of REGISTRY) {
+    const text = [SUBJECT[r.subject] ?? r.subject, ruleText(r.id).what, ruleText(r.id).why, JSON.stringify(citationFor(r.id) ?? '')].join(' ')
+    for (const f of forbid) if (text.includes(f)) hits.push(`${r.id}: ${f}`)
+  }
+  assert.deepEqual(hits, [])
+  assert.equal(ruleText('pilot.hasMembers').why, 'An empty first group proves nothing and delays every group behind it.')
+})

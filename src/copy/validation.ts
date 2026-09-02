@@ -284,7 +284,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   'cty.unknownCountries': { what: 'Sign-ins from unknown countries are not silently allowed.', why: 'Addresses that resolve to no country then pass a policy meant to name every country it allows.' },
   'cty.seenCountriesIncluded': { what: 'Countries with sign-in history are either allowed or deliberately left out.', why: 'A country people actually work from, left off the list, is a lockout on the first day.' },
   // ---- pilot group ----
-  'pilot.hasMembers': { what: 'The pilot group has at least one member.', why: 'An empty first ring proves nothing and delays every ring behind it.' },
+  'pilot.hasMembers': { what: 'The pilot group has at least one member.', why: 'An empty first group proves nothing and delays every group behind it.' },
   'pilot.noBreakGlass': { what: 'No emergency access account is in the pilot.', why: 'The escape hatch must never be inside the group a change is being tested on.' },
   'pilot.spread': { what: 'Members come from more than one department.', why: 'One department shares one set of applications, so a single-department pilot proves less than it looks.' },
   'pilot.hasAdmin': { what: 'At least one administrator is in the pilot.', why: 'Admin sign-ins hit paths ordinary accounts never reach.' },

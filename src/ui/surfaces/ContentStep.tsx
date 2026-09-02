@@ -14,6 +14,7 @@ import { fillText, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../conte
 import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
+import { powershellFor } from './stepPowerShell.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
@@ -170,7 +171,7 @@ export function ContentStep({
           </div>
           {tab === 'portal' && <ol className="sections">{portal.map((l, i) => <li key={i}>{l}</li>)}</ol>}
           {tab === 'json' && <pre className="mono">{JSON.stringify(policyJson(step), null, 2)}</pre>}
-          {tab === 'ps' && <pre className="mono">{portal.join('\n')}</pre>}
+          {tab === 'ps' && <pre className="mono">{powershellFor(policyJson(step), step.kind === 'adjust' ? (step.tracking?.policyId ?? null) : null)}</pre>}
           <p className="actions">
             <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, JSON.stringify(policyJson(step), null, 2), 'application/json', REDACTED)}>
               Download JSON

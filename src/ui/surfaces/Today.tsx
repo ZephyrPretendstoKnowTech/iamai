@@ -11,20 +11,17 @@ import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { TODAY_LINE, METHOD_TIER, MFA_STATE, ACTIVITY_STATE } from '../../copy/definitions.ts'
 import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
-import { friendlyMethod } from '../format.ts'
+import { SHOW_KEYS, todayEvidenceText, todayStateWord } from './todayCells.ts'
+import type { ShowKey } from './todayCells.ts'
 import { DataTable, InfoTip, Status, Tile, Tiles } from '../components/index.ts'
 import type { Column, StatusTone } from '../components/index.ts'
 
 // The Show list is pages.today.show (walk-51 item 10), in the six-state model
 // the table uses: All, the six states, Admins, Guests — keyed by position, so
 // the content file's words are the options and this maps each to its filter.
-const SHOW_KEYS = ['all', 'proven', 'likely', 'neverPrompted', 'possiblyBroken', 'noMethod', 'notActive', 'admins', 'guests'] as const
-type ShowKey = (typeof SHOW_KEYS)[number]
 type TodayCopy = { h1: string; inventory: string; columns: string[]; show: string[]; tiles: Record<'proven' | 'unproven' | 'noMethod' | 'notActive', { label: string; value: string; heldBy: string | null; tip: string }> }
 const T = pages.today as unknown as TodayCopy
 const C = app.today
-/** The state's word, from the Show list (the six states sit at positions 1 to 6). */
-const stateWord = (state: TodayState): string => T.show[SHOW_KEYS.indexOf(state)]
 
 const TONE: Record<TodayState, StatusTone> = { proven: 'ok', likely: 'wait', neverPrompted: 'wait', possiblyBroken: 'stop', noMethod: 'stop', notActive: 'idle' }
 
@@ -46,23 +43,6 @@ function stateTip(state: TodayState): string {
   }
 }
 
-function evidenceText(r: TodayRow): string {
-  const e = r.evidence
-  switch (e.kind) {
-    case 'mfa': {
-      const name = friendlyMethod(e.method)
-      return name ? fillText(C.mfaVia, { method: name, when: relative(e.at) }) : fillText(C.mfaCompleted, { when: relative(e.at) })
-    }
-    case 'neverSignedIn':
-      return C.neverSignedIn
-    case 'inactive':
-      return fillText(C.inactiveSince, { date: absoluteDate(e.since) })
-    case 'noMethod':
-      return C.noMethodEvidence
-    default:
-      return e.reasons.join('; ')
-  }
-}
 
 function shows(r: TodayRow, key: ShowKey): boolean {
   switch (key) {
@@ -118,10 +98,10 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
       key: 'state',
       header: T.columns[1],
       sortValue: (r) => SHOW_KEYS.indexOf(r.state),
-      csv: (r) => stateWord(r.state),
+      csv: (r) => todayStateWord(r.state),
       render: (r) => (
         <Status tone={TONE[r.state]} title={stateTip(r.state)}>
-          {stateWord(r.state)}
+          {todayStateWord(r.state)}
         </Status>
       ),
     },
@@ -132,7 +112,7 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
       csv: (r) => METHOD_TIER[r.strongest].title,
       render: (r) => <span title={METHOD_TIER[r.strongest].text}>{METHOD_TIER[r.strongest].title}</span>,
     },
-    { key: 'evidence', header: T.columns[3], csv: (r) => evidenceText(r), render: (r) => evidenceText(r) },
+    { key: 'evidence', header: T.columns[3], csv: (r) => todayEvidenceText(r), render: (r) => todayEvidenceText(r) },
   ]
 
   const { tiles, counts } = view

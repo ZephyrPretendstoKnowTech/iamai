@@ -2,6 +2,7 @@
 // template is the goal it claims to be, renders Do it from the same renderer a
 // baseline policy would, and every placeholder either resolves from the
 // assumptions or names the Wave 0 step that creates the missing object.
+import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 import { test } from 'node:test'
 import { PINNED_GOAL_MAP, goalInMap } from './goalMap.ts'
 import { isFloorGoal } from './floor.ts'
@@ -28,7 +29,7 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
   assert.ok(action.json, 'json produced')
   assert.doesNotMatch(action.json!, /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the JSON')
   assert.doesNotMatch(action.json!, /"excludeGroups"/, 'the array emptied by stripping loses its key')
-  assert.doesNotMatch(action.powershell ?? '', /__IAMAI_|Replace the placeholders/, 'no placeholder token or advisory in the PowerShell')
+  assert.doesNotMatch(powershellFor(JSON.parse(action.json!)), /__IAMAI_|Replace the placeholders|ref-exclusions/, 'no placeholder token or advisory in the PowerShell')
 })
 
 test('item 12: every goal × implementation renders Do it from the template with a grant or session control', () => {
@@ -45,7 +46,7 @@ test('item 12: every goal × implementation renders Do it from the template with
       assert.ok(grants + sessions >= 1, `${goal.id}: at least one grant or session control`)
       assert.equal(parsed.state, 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only`)
       assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
-      assert.match(action.powershell ?? '', /Invoke-MgGraphRequest -Method POST/, `${goal.id}: PowerShell`)
+      assert.match(powershellFor(parsed), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
     }
   }
 })
