@@ -38,8 +38,8 @@ docs and keeps the walk green. Same repo, same history, no re-consent.
    into `docs/design/target-state.md` (or just archive it; §2 is history).
 3. `git mv docs/prompts docs/reports docs/qa/*.md docs/design/<all but target-state.md,
    content.json> archive/`. Claude Code stops finding and reading them.
-4. Prompt A below makes `npm test` ~4× faster. Until then, the inner loop is one file:
-   `node --test src/roadmap/foo.test.ts`.
+4. Tests run once per task, before the push; `npx tsc --noEmit` (seconds) is the only
+   check during work. Prompt A also makes that one run ~4× faster.
 5. Run A and B in parallel worktrees (`git worktree add ../iamai-a prune-a`); they touch
    different files. Headless: `claude -p "$(cat A.md)" --dangerously-skip-permissions`.
 6. No `/effort high` for deletions. No reports. Commit messages only.
@@ -58,8 +58,8 @@ docs and keeps the walk green. Same repo, same history, no re-consent.
 > `npm run smoke`. (3) Delete `src/ui/surfaces/Step.tsx`. (4) `npm test` becomes
 > `node --test --test-isolation=none 'src/**/*.test.ts'`; `src/roadmap/fixtures/run.ts`
 > memoises each fixture's derivation per process; the `huge` fixture runs only with
-> `HUGE=1`. Target: under 40 s. (5) `npm run walk` drops the 390 pass. Commit per step,
-> `npm test` green, push, open a PR to `night-1`.
+> `HUGE=1`. Target: under 40 s. (5) `npm run walk` drops the 390 pass. Commit per step; `npm test` once at
+> the end, then push.
 
 ### B — decisions change the plan (parallel, ~60 min)
 
@@ -74,7 +74,8 @@ docs and keeps the walk green. Same repo, same history, no re-consent.
 > `Decision` falls back to the key list at `src/content/render.ts:277`. (3) One test on the
 > demo fixture: save two emergency ids → the create instructions are gone; save a group →
 > every policy step's exclusions line names it. Missing content keys: add them, say so in
-> the commit. Commit per step, the relevant test file green, `npm run walk` green, push, PR.
+> the commit. Commit per step; `npm test` and
+> `npm run walk` once at the end, then push.
 
 ### C — delete the twins (after A and B merge, ~90 min)
 
@@ -95,7 +96,8 @@ docs and keeps the walk green. Same repo, same history, no re-consent.
 > what the engine still imports moves the string into `content.json` or dies with its
 > caller. (5) `timing.ts` date labels and `events.enforce.date/day/time`; rows and phases
 > read one instant through `absoluteDate` in the display zone. (6) The recurring drill step
-> (`DRILL_STEP_ID`); Cleanup has the drill. After each: `npm test`, `npm run walk`. Push, PR.
+> (`DRILL_STEP_ID`); Cleanup has the drill. `npx tsc --noEmit` after each deletion;
+> `npm test` and `npm run walk` once at the end, then push.
 
 What is left after C is the product: collectors → snapshot → coverage + checks → steps
 (population, status, one reason, dates) → content words → six surfaces → exports. Every
