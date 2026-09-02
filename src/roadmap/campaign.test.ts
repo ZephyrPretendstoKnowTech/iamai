@@ -11,7 +11,6 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from './generate.ts'
 import { emptyMappingState } from '../mapping/types.ts'
-import { buildQuestions } from '../mapping/questions.ts'
 import { scheduleRationale } from '../copy/statements.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 
@@ -34,7 +33,6 @@ function plan(snapshot: TenantSnapshot) {
     baseline: baseline.pkg,
     baselineAuthor: null,
     mapping: emptyMappingState(snapshot.tenantId),
-    questions: buildQuestions(baseline.pkg),
     viability,
     strengths,
   })

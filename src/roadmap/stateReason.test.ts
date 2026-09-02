@@ -15,7 +15,6 @@ import { applyProgress, mergePersisted, skipStep } from './progress.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { buildQuestions } from '../mapping/questions.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 
 function plan(snapshot: TenantSnapshot, mapping: MappingState) {
@@ -37,7 +36,6 @@ function plan(snapshot: TenantSnapshot, mapping: MappingState) {
     baseline: baseline.pkg,
     baselineAuthor: null,
     mapping,
-    questions: buildQuestions(baseline.pkg),
     viability,
     strengths,
   })

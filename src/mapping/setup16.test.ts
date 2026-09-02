@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import { detectServiceAccounts } from './serviceAccounts.ts'
 import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, suggestCountries, tenantCountryLocation } from './countries.ts'
-import { activeWizardQuestions, applyWizardAnswers, wizardQuestionCounts } from './wizard.ts'
+import { askedAnswers } from './wizard.ts'
 import { emptyMappingState } from './types.ts'
 
 function user(id: string, over: Partial<UserRow> = {}): UserRow {
@@ -74,8 +74,8 @@ test('service accounts: excluded ids and guests never surface; the question hide
   assert.equal(detectServiceAccounts(snap, ['svc-1']).length, 0)
   const state = emptyMappingState('t')
   state.serviceAccountRejectedIds = ['svc-1']
-  assert.ok(!activeWizardQuestions(null, { snapshot: snap, state }).some((q) => q.id === 'serviceAccounts'))
-  assert.ok(activeWizardQuestions(null, { snapshot: snap, state: emptyMappingState('t') }).some((q) => q.id === 'serviceAccounts'))
+  assert.ok(!askedAnswers(snap, state).includes('serviceAccounts'))
+  assert.ok(askedAnswers(snap, emptyMappingState('t')).includes('serviceAccounts'))
 })
 
 test('countries: sign-in countries first by distinct users, then usage locations; flags when no sign-in location exists', () => {
@@ -98,55 +98,4 @@ test('countries: sign-in countries first by distinct users, then usage locations
   assert.equal(countryName('AU'), 'Australia')
 })
 
-test('countries: the allowlist geo ref resolves to a matching tenant location, else is created in phase 0', () => {
-  const pkg = {
-    policies: [
-      {
-        displayName: 'Geo allow',
-        conditions: { locations: { includeLocations: ['All'], excludeLocations: ['loc-ref'] } },
-        grantControls: { builtInControls: ['block'] },
-      },
-    ],
-    origins: {},
-    report: { considered: 0, parsed: 0, skipped: [], errors: [], duplicates: [], warnings: [] },
-    references: [{ id: 'loc-ref', kind: 'namedLocation', portability: 'tenantSpecific', uses: [{ policyName: 'Geo allow', side: 'exclude' }] }],
-    groupSignatures: [],
-    variantSets: [],
-    docs: [],
-  } as never
-  assert.equal(isCountryLocationRef('loc-ref', (pkg as { policies: never[] }).policies), true)
-  assert.equal(isAllowlistGeoPolicy((pkg as { policies: never[] }).policies[0]), true)
-  const withLoc = snapshot([], {
-    config: {
-      namedLocations: { status: 'ok', reason: null, rows: [{ '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'loc-t', displayName: 'Allowed', countriesAndRegions: ['nz', 'AU'] }] },
-    } as unknown as TenantSnapshot['config'],
-  })
-  assert.equal(tenantCountryLocation(withLoc, ['AU', 'NZ'])?.id, 'loc-t')
-  assert.equal(tenantCountryLocation(withLoc, ['AU']), null)
-
-  const state = emptyMappingState('t')
-  state.allowedCountries = ['AU', 'NZ']
-  state.wizardAnswered.countries = true
-  const resolved = applyWizardAnswers(state, pkg, withLoc)
-  assert.equal(resolved.records['loc-ref'].resolvedId, 'loc-t')
-  const created = applyWizardAnswers(state, pkg, snapshot([]))
-  assert.equal(created.records['loc-ref'].resolvedId, null)
-  assert.equal(created.records['loc-ref'].doesNotExist, true)
-})
-
 // Prompt 19 §A2: the Baseline promise and the Setup list share one function.
-test('question counts follow the rendered list and split required from optional', () => {
-  const noScan = wizardQuestionCounts(null)
-  // Seven answers since prompt 46 item 19: handle-with-care and frameworks are no longer asked.
-  assert.equal(noScan.total, 7)
-  assert.equal(noScan.required, 7, 'every shown question is required (prompt 26)')
-
-  const plain = snapshot([user('alice')])
-  const withScan = wizardQuestionCounts(null, { snapshot: plain, state: emptyMappingState('t') })
-  assert.equal(withScan.total, activeWizardQuestions(null, { snapshot: plain, state: emptyMappingState('t') }).length)
-  assert.equal(withScan.total, 5, 'service accounts and trusted locations are hidden when the tenant has neither')
-  assert.equal(withScan.required, withScan.total)
-
-  const confirmed = { ...emptyMappingState('t'), serviceAccountUserIds: ['svc'] }
-  assert.equal(wizardQuestionCounts(null, { snapshot: plain, state: confirmed }).total, 6, "service accounts return; trusted locations stay hidden without named locations")
-})

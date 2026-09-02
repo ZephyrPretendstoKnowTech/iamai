@@ -130,7 +130,6 @@ function build(args: {
     },
     baselineAuthor: { author: 'Author', url: 'https://example.test' },
     mapping: args.mapping ?? emptyMappingState('t'),
-    questions: [],
     viability: viabilityRows(args.ready ?? 10),
     strengths,
   }
@@ -178,36 +177,6 @@ test('2: absent goal with mapped references → create step JSON has mapped ids,
   assert.doesNotMatch(step.action.json!, /old-group-id/)
   assert.match(step.action.json!, /enabledForReportingButNotEnforced/)
   assert.ok(step.action.json!.includes(`[IAMAI:${PLAN}:${step.id}]`))
-})
-
-test('3: unresolved reference → step blocked by the phase-0 prerequisite', () => {
-  const baseline = mkPolicy({
-    displayName: 'Baseline MFA All',
-    conditions: {
-      users: { includeUsers: ['All'], excludeGroups: ['mystery-group'] },
-      applications: { includeApplications: ['All'] },
-      clientAppTypes: ['all'],
-    },
-  })
-  const { input } = build({ baselinePolicies: [baseline] })
-  input.questions = [
-    {
-      key: 'mystery-group',
-      group: 'globalExclusion',
-      reference: { id: 'mystery-group', kind: 'group', portability: 'tenantSpecific', uses: [] },
-      usage: [],
-      evidence: null,
-    },
-  ]
-  const steps = generateRoadmap(input).steps
-  const step = stepFor(steps, 'mfa-all-users')
-  assert.equal(step.status, 'blocked')
-  // Every blocker is a phase 0 prerequisite; the unresolved reference is one of
-  // them, and a step that can deny access is also held by the escape hatch
-  // until emergency access validates (validation-rules.md §2).
-  const prereqs = step.blockedBy.map((id) => steps.find((s) => s.id === id))
-  assert.ok(prereqs.length > 0 && prereqs.every((p) => p !== undefined && p.phase === 0 && p.kind === 'prerequisite'))
-  assert.ok(prereqs.some((p) => p !== undefined && !p.id.startsWith('s-blocker-')), 'the unresolved reference blocks it')
 })
 
 test('4: partial weaker-control → adjust step with the exact field change', () => {
@@ -299,24 +268,7 @@ test('9: valid break-glass answers → no create-break-glass step; drill depends
   assert.match(drill.readiness.lines[0], /User 1/)
 })
 
-test('10: missing required answer → dependent step blocked with the question named', () => {
-  const baseline = mkPolicy({
-    displayName: 'Baseline MFA All',
-    conditions: { users: { includeUsers: ['All'], excludeGroups: ['mystery-group'] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] },
-  })
-  const { input } = build({ baselinePolicies: [baseline] })
-  input.questions = [
-    { key: 'mystery-group', group: 'globalExclusion', reference: { id: 'mystery-group', kind: 'group', portability: 'tenantSpecific', uses: [] }, usage: [], evidence: null },
-  ]
-  const step = stepFor(generateRoadmap(input).steps, 'mfa-all-users')
-  assert.equal(step.status, 'blocked')
-  // Causes are conditions now, so they complete the "Blocked until …" frame
-  // both places print them in (prompt 40 §11).
-  assert.match(step.unblockNotes[0], /the tenant answer(s)? (is|are) in place/)
-  assert.equal(step.blockers[0].kind, 'setup')
-})
-
-test('11: geo policy: allowlist style chosen by data, NoExclusions dropped, blocked until Countries (question 3) is answered', () => {
+test('11: geo policy: allowlist style chosen by data, NoExclusions dropped', () => {
   const geo = (displayName: string, locations: { includeLocations: string[]; excludeLocations: string[] }) =>
     mkPolicy({
       displayName,
@@ -329,8 +281,6 @@ test('11: geo policy: allowlist style chosen by data, NoExclusions dropped, bloc
   const { input } = build({ baselinePolicies: [noEx, block, allow] })
   const steps = generateRoadmap(input).steps
   const step = stepFor(steps, 'geo-restriction')
-  assert.equal(step.status, 'blocked')
-  assert.ok(step.blockers.some((b) => b.kind === 'setup' && b.questionNumber === 3))
   // Allowlist style: everywhere except the allowed location, block.
   const json = JSON.parse(step.action.json ?? '{}') as { conditions: { locations: { includeLocations: string[]; excludeLocations: string[] } } }
   assert.deepEqual(json.conditions.locations, { includeLocations: ['All'], excludeLocations: ['loc-allowed'] })

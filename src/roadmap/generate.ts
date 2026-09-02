@@ -26,9 +26,7 @@ import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import type { MappingQuestion, MappingState } from '../mapping/types.ts'
-import { activeWizardQuestions } from '../mapping/wizard.ts'
-import type { WizardQuestionId } from '../mapping/wizard.ts'
+import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds, learnRoleNames, roleListSummary } from '../roles.ts'
 import { proposedPolicyName } from '../coverage/naming.ts'
@@ -36,7 +34,7 @@ import { rolloutBucket, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { collidingGuestIds } from '../names.ts'
 import { coversAdminSet, roleLabel } from '../roles.ts'
-import { countryName, isAllowlistGeoPolicy, isCountryLocationRef, tenantCountryLocation } from '../mapping/countries.ts'
+import { countryName, isAllowlistGeoPolicy, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { ACTION, COMMS, EMERGENCY_DONE_WHEN, EVIDENCE, PORTAL_WORDS, PREREQ, ROLLBACK, TEMPLATE_LABEL, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import { detectHighCare } from '../derive/highCare.ts'
@@ -72,7 +70,7 @@ import { ADJUST, BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
-import { proposedGroupName, proposedObjectNames } from '../coverage/naming.ts'
+import { proposedObjectNames } from '../coverage/naming.ts'
 import { NAMING as STEP_NAMING } from '../copy/steps.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
@@ -93,7 +91,6 @@ export type RoadmapInput = {
   baseline: BaselinePackage
   baselineAuthor: { author: string; url: string } | null
   mapping: MappingState
-  questions: MappingQuestion[]
   viability: MfaViability[]
   strengths: StrengthLookup
   startDate?: string
@@ -314,23 +311,6 @@ function stripUnresolvedForJson(policy: RawPolicy, placeholders: Placeholders): 
   return { body, omitted: [...omitted.values()] }
 }
 
-function unmappedKeysUsedBy(policy: RawPolicy, questions: MappingQuestion[], mapping: MappingState): string[] {
-  const text = JSON.stringify(policy)
-  return questions
-    .filter((q) => {
-      const r = mapping.records[q.key]
-      const answered = r !== undefined && (r.resolvedId !== null || r.doesNotExist)
-      return !answered && text.includes(q.key)
-    })
-    .map((q) => q.key)
-}
-
-function createdWithinStepKeys(policy: RawPolicy, mapping: MappingState): { key: string; group: string }[] {
-  const text = JSON.stringify(policy)
-  return Object.values(mapping.records)
-    .filter((r) => r.doesNotExist && !r.placeholder.startsWith('__') && text.includes(r.placeholder))
-    .map((r) => ({ key: r.placeholder, group: r.group }))
-}
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const TOKEN_RE = /^__IAMAI_UNRESOLVED_(\d+)_(.+)__$/
@@ -542,7 +522,7 @@ function adjustSummary(result: GoalResult): string[] {
 export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Role names travel with the scan ($expand=roleDefinition); learn them before any label is built.
   learnRoleNames(input.snapshot.config.roleAssignments?.rows ?? [])
-  const { snapshot, mapping, questions, viability, planId } = input
+  const { snapshot, mapping, viability, planId } = input
   // Detection only (prompt 46 item 19): admins, the emergency-access accounts,
   // confirmed service accounts, and active people with no method. A list saved
   // by an older Setup is not read.
@@ -628,42 +608,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   })
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
-  const activeQuestions = activeWizardQuestions(input.baseline, { snapshot, state: mapping })
-  const missingSetup = activeQuestions.filter((q) => q.required && mapping.wizardAnswered[q.id] !== true)
-  const questionNumber = (id: WizardQuestionId): number => activeQuestions.findIndex((q) => q.id === id) + 1
-  const questionNote = (id: WizardQuestionId): string => {
-    const q = activeQuestions.find((x) => x.id === id)
-    return q ? UNBLOCK.question(questionNumber(id), q.title, q.question.replace(/\?$/, '').toLowerCase()) : UNBLOCK.setup
-  }
-  // Unresolved baseline references name the assumption and its state (prompt 48.1 item 8), never a GUID or a Setup question.
-  const placeholders: Placeholders = new Map()
-  const ROLE_QUESTION: Partial<Record<MappingQuestion['group'], WizardQuestionId>> = {
-    breakGlass: 'breakGlass',
-    globalExclusion: 'globalExclusion',
-    exclusionGroups: 'globalExclusion',
-    namedLocations: 'trustedLocations',
-  }
-  const ROLE_LABEL: Record<MappingQuestion['group'], string> = {
-    breakGlass: 'your break-glass account',
-    globalExclusion: 'your exclusions group',
-    exclusionGroups: 'your exclusions group',
-    personaGroups: 'the pilot group this step creates',
-    namedLocations: 'your trusted location',
-    customStrengths: 'your authentication strength',
-    servicePrincipals: 'the app',
-    placeholders: 'the referenced object',
-  }
-  for (const q of questions) {
-    const r = mapping.records[q.key]
-    if (r && r.resolvedId !== null) continue
-    const country = q.group === 'namedLocations' && isCountryLocationRef(q.key, input.baseline.policies)
-    const qid = country ? 'countries' : ROLE_QUESTION[q.group]
-    const n = qid ? questionNumber(qid) : 0
-    const role = country ? 'your allowed countries' : ROLE_LABEL[q.group]
-    // Setup is gone (prompt 48.1 item 8): an unresolved object is created by the Wave 0 step.
-    const label = n > 0 ? `${role} (created by the step above)` : role
-    placeholders.set(q.key, { label, token: unresolvedToken(n, q.group) })
-  }
   const naming = input.coverage.organisation.naming
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
@@ -725,11 +669,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     for (const p of placeholdersIn(r.goal.implementations[0].template)) templateNeeds.add(p)
   }
 
-  const setupStepId = 's-setup-questions'
-  if (missingSetup.length > 0) {
-    const p = PREREQ.setupQuestions
-    steps.push(prereq(setupStepId, p.title(missingSetup.length), p.why, p.how(missingSetup.map((q) => q.title))))
-  }
 
   // Setup's confirmed break-glass accounts feed generation (ux-review-04 §5):
   // with accounts picked, nothing is created, whatever an older record says.
@@ -754,7 +693,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     canUseConditionalAccess &&
     mapping.wizardAnswered.trustedLocations === true &&
     mapping.trustedLocationIds.length === 0 &&
-    (questions.some((q) => q.group === 'namedLocations') || templateNeeds.has('{trustedLocations}'))
+    templateNeeds.has('{trustedLocations}')
   const locStepId = PREREQ_STEP_ID.trustedLocation
   if (locMissing) {
     const p = PREREQ.trustedLocation
@@ -947,65 +886,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       blockers.push({ kind: 'step', stepId: id, label })
       unblockNotes.push(label)
     }
-    // One blocker per Setup question (several can apply); the setup step is
-    // referenced only when it exists.
-    const blockBySetup = (qid: WizardQuestionId): void => {
-      // A question answered by any means is answered, including "Doesn't exist
-      // yet" (prompt 40 §10). That answer leaves the reference unresolved by
-      // design, and the unresolved reference was being read back as an
-      // unanswered question — so eleven step cards said "waiting on Setup
-      // question 2" while Setup showed it answered (review-08 B5). Where the
-      // answer creates something, createdWithinStepKeys below blocks on the
-      // prerequisite step that creates it, named.
-      if (mapping.wizardAnswered[qid] === true) return
-      const n = questionNumber(qid)
-      if (n === 0 || blockers.some((b) => b.kind === 'setup' && b.questionNumber === n)) return
-      if (steps.some((s) => s.id === setupStepId) && !blockedBy.includes(setupStepId)) blockedBy.push(setupStepId)
-      // The label is a clause in a comma-separated list of causes, so it has to
-      // survive being read mid-sentence. questionNote() is a whole sentence with
-      // its own colon ("Setup question 2 (Exclusion group): which group holds
-      // the policy exclusions"), and joining it produced the run-on the review
-      // caught (T7). The full form stays in unblockNotes, where it is printed
-      // on its own and reads correctly.
-      blockers.push({ kind: 'setup', questionNumber: n, label: BLOCKED.setup([n]) })
-      unblockNotes.push(questionNote(qid))
-    }
-    // Baseline references no answer resolves: block by the question that owns
-    // them (breakGlass/exclusions/locations); other groups auto-resolve.
-    const blockUnmapped = (policy: RawPolicy): void => {
-      for (const key of unmappedKeysUsedBy(policy, questions, mapping)) {
-        const group = questions.find((q) => q.key === key)?.group
-        const qid = group === 'namedLocations' && isCountryLocationRef(key, input.baseline.policies) ? 'countries' : group ? ROLE_QUESTION[group] : undefined
-        if (qid && activeQuestions.some((q) => q.id === qid)) blockBySetup(qid)
-      }
-      for (const created of createdWithinStepKeys(policy, mapping)) {
-        if (created.group === 'personaGroups') continue // created inside this step
-        const pid =
-          created.group === 'breakGlass'
-            ? bgStepId
-            : created.group === 'namedLocations'
-              ? isCountryLocationRef(created.key, input.baseline.policies)
-                ? countriesStepId
-                : locStepId
-              : created.group === 'exclusionGroups' && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null
-                ? saStepId
-                : geStepId
-        if (steps.some((s) => s.id === pid)) blockByStep(pid, UNBLOCK.createObject)
-      }
-    }
     // A template placeholder the tenant has no object for yet: the step waits
-    // on the Wave 0 step that creates it, or on the Setup question that says
-    // whether it exists at all.
+    // on the Wave 0 step that creates it.
     const blockPlaceholder = (p: TemplatePlaceholder): void => {
       if (p === '{namePrefix}' || p === '{coreAdminRoles}') return
       const prereqId = PLACEHOLDER_STEP[p]
-      if (steps.some((s) => s.id === prereqId)) {
-        blockByStep(prereqId, UNBLOCK.createObject)
-        return
-      }
-      const qid: WizardQuestionId | null =
-        p === '{breakGlass}' ? 'breakGlass' : p === '{exclusionsGroup}' ? 'globalExclusion' : p === '{trustedLocations}' ? 'trustedLocations' : p === '{allowedCountriesLocation}' ? 'countries' : null
-      if (qid !== null) blockBySetup(qid)
+      if (steps.some((s) => s.id === prereqId)) blockByStep(prereqId, UNBLOCK.createObject)
     }
     let action: Action
     let kind: Step['kind']
@@ -1030,17 +916,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     } else if (result.status === 'absent') {
       kind = 'create'
       if (source) {
-        blockUnmapped(source.policy)
         const proposed = uniqueName(goal)
-        action = buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
-          placeholders,
-          displayName: proposed.name,
-        })
+        action = buildCreateAction(source.policy, mapping, planId, stepId, input.names, { displayName: proposed.name })
         if (proposed.note) action.summary.push(proposed.note)
         namingNote = proposed
-        const personas = createdWithinStepKeys(source.policy, mapping).filter((c) => c.group === 'personaGroups')
-        // The baseline names the group by id; the plan names it in the tenant's convention (ux-review-06 §4).
-        personas.forEach(() => action.summary.push(ACTION.createsGroup(proposedGroupName('Pilot', goal.shortName, naming).name)))
       } else {
         // No baseline policy stands for this goal: the goal's own template is
         // the body, with the tenant's objects filled in where they exist and a
@@ -1050,7 +929,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         for (const p of resolved.unresolved) blockPlaceholder(p)
         const proposed = uniqueName(goal)
         action = buildCreateAction(resolved.body, mapping, planId, stepId, input.names, {
-          placeholders: new Map([...placeholders, ...templatePlaceholders]),
+          placeholders: templatePlaceholders,
           displayName: proposed.name,
         })
         action.summary.push(ACTION.fromTemplate)
@@ -1066,13 +945,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         result.candidates.find((c) => c.contribution === 'reportOnly') ??
         result.candidates.find((c) => c.contribution !== 'disabled') ??
         null
-      if (source) blockUnmapped(source.policy)
       const existingId = existing?.policyId ?? null
       existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       action = source
         ? adjustAction(
             buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
-              placeholders,
               displayName: existing?.policyName ?? proposedPolicyName(goal, naming),
               adjust: existing ? { policyId: existing.policyId, state: existing.state } : undefined,
             }),
@@ -1088,8 +965,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (status !== 'done') {
       if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId)) blockByStep(locStepId, BLOCKER.trustedLocation)
       if (goal.id === 'geo-restriction') {
-        if (mapping.wizardAnswered.countries !== true) blockBySetup('countries')
-        else if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, UNBLOCK.createObject)
+        if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, UNBLOCK.createObject)
       }
     }
 
@@ -1119,8 +995,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Precise blocked sentences (prompt 13 §9): one per cause group.
     if (status === 'blocked') {
       const sentences: string[] = []
-      const qNumbers = [...new Set(blockers.filter((b) => b.kind === 'setup').map((b) => (b as { questionNumber: number }).questionNumber))].sort((a, b) => a - b)
-      if (qNumbers.length > 0) sentences.push(BLOCKED.setup(qNumbers))
       for (const b of blockers) {
         if (b.kind === 'step') {
           const dep = steps.find((s) => s.id === b.stepId)

@@ -11,9 +11,7 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from '../roadmap/generate.ts'
 import { emptyMappingState } from '../mapping/types.ts'
-import { buildQuestions } from '../mapping/questions.ts'
 import { buildNameDirectory } from '../names.ts'
-import { wizardQuestionCounts } from '../mapping/wizard.ts'
 
 const snapshot = fixtureSnapshot()
 const baseline = fixtureBaseline()
@@ -46,7 +44,6 @@ const { steps } = generateRoadmap({
   baseline: baseline.pkg,
   baselineAuthor: null,
   mapping,
-  questions: buildQuestions(baseline.pkg),
   viability,
   strengths,
   operatorUserId: null,
@@ -79,15 +76,6 @@ test('percentages: the MFA-ready share reads the same on Findings and on the all
   assert.ok(allUsers, 'the all-users MFA step exists')
   assert.equal(allUsers.readiness.percent, readyPct)
   assert.ok(readyPct >= 0 && readyPct <= 100)
-})
-
-test('question count: the Baseline promise equals the Setup list', () => {
-  const counts = wizardQuestionCounts(baseline.pkg, { snapshot, state: mapping })
-  // Seven answers since prompt 46 item 19; no service-account candidates in the fixture, so six are shown.
-  assert.equal(counts.total, 6, 'no service-account candidates in the fixture, so 6 of the 7 questions')
-  assert.equal(counts.required, 6, 'every shown question is required')
-  const setupStep = steps.find((s) => s.kind === 'prerequisite' && /setup question/i.test(s.title))
-  if (setupStep) assert.match(setupStep.title, /\b6\b/, 'the Setup prerequisite step counts the same required questions')
 })
 
 // ---- prompt 31 §3.13-14: the comms plan and the log agree with the steps; nothing is done, safe or verified without evidence ----

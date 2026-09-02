@@ -11,8 +11,6 @@
 // derived afresh and not memoised.
 import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
-import { buildQuestions } from '../../mapping/questions.ts'
-import { activeWizardQuestions } from '../../mapping/wizard.ts'
 import { toCoverageMapping } from '../../mapping/store.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
@@ -56,7 +54,6 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
   const t0 = performance.now()
   const { snapshot } = f
   const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
-  const questions = buildQuestions(f.baseline)
   const coverage = computeCoverage({
     snapshot,
     tenantPolicies: snapshot.config.caPolicies?.rows ?? [],
@@ -64,7 +61,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
     baselineUnusable: f.baseline.report.warnings,
     strengths,
     groupMembers: f.groups,
-    mapping: toCoverageMapping(f.mapping, questions, activeWizardQuestions(f.baseline, { snapshot, state: f.mapping })),
+    mapping: toCoverageMapping(f.mapping, snapshot),
     facetOverrides: f.mapping.facetOverrides,
     goalMap: over.goalMap,
   })
@@ -79,7 +76,6 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
     baseline: f.baseline,
     baselineAuthor: { author: 'Fixture author', url: 'https://example.test/baseline' },
     mapping: f.mapping,
-    questions,
     viability,
     strengths,
     startDate: '2026-08-31',

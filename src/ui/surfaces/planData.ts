@@ -16,8 +16,6 @@ import type { SizeBand } from '../../roadmap/constants.ts'
 import { BANDS } from '../../roadmap/constants.ts'
 import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
-import { buildQuestions } from '../../mapping/questions.ts'
-import { activeWizardQuestions } from '../../mapping/wizard.ts'
 import { loadMappingState, saveMappingState, toCoverageMapping } from '../../mapping/store.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
@@ -179,7 +177,6 @@ export function usePlanData(
     if (mappingFor !== snapshot || groupsFor !== snapshot) return null
     const mapping = applied
     const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
-    const questions = buildQuestions(baseline.pkg)
     const coverage = computeCoverage({
       snapshot,
       tenantPolicies: snapshot.config.caPolicies?.rows ?? [],
@@ -187,7 +184,7 @@ export function usePlanData(
       baselineUnusable: baseline.pkg.report.warnings,
       strengths,
       groupMembers: groups,
-      mapping: toCoverageMapping(mapping, questions, activeWizardQuestions(baseline.pkg, { snapshot, state: mapping })),
+      mapping: toCoverageMapping(mapping, snapshot),
       facetOverrides: mapping.facetOverrides,
       goalMap: baseline.goalMap,
     })
@@ -200,7 +197,6 @@ export function usePlanData(
       baseline: baseline.pkg,
       baselineAuthor: baselineIndex.author !== undefined ? { author: baselineIndex.author, url: baselineIndex.authorUrl ?? '#' } : null,
       mapping,
-      questions,
       viability,
       strengths,
       startDate,

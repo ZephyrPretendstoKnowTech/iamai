@@ -14,8 +14,7 @@ import { scoreMfaViability } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from '../roadmap/generate.ts'
 import { readinessFor } from '../roadmap/readiness.ts'
 import { emptyMappingState } from '../mapping/types.ts'
-import { buildQuestions } from '../mapping/questions.ts'
-import { suggestForWizard } from '../mapping/wizardSuggest.ts'
+import { suggestGroups } from '../mapping/wizard.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 
 const BG_GROUP = 'g-breakglass-exclusion'
@@ -67,10 +66,10 @@ test('answering Setup never lowers coverage for an exclusion the answers justify
   assert.doesNotMatch(ex.detail, /assumed/, 'confirmed answers carry no "assumed" note')
 })
 
-test('Setup question 2 suggests the break-glass-only group first, with the evidence line', () => {
+test('the exclusions group: the break-glass-only group is suggested first', () => {
   const { snapshot, groups } = tenantWithExclusionGroup()
   const g = groups.get(BG_GROUP)!
-  const out = suggestForWizard('globalExclusion', {
+  const out = suggestGroups('globalExclusion', {
     snapshot,
     tenantPolicies: snapshot.config.caPolicies?.rows ?? [],
     knownGroups: [{ tenantId: snapshot.tenantId, groupId: BG_GROUP, displayName: g.displayName ?? null, membershipRule: null, memberCount: 1, memberIds: g.memberIds, sampled: false, asOf: snapshot.asOf }],
@@ -79,7 +78,6 @@ test('Setup question 2 suggests the break-glass-only group first, with the evide
   assert.ok(out.length > 0, 'a suggestion is offered')
   assert.equal(out[0].id, BG_GROUP)
   assert.equal(out[0].rank, 0)
-  assert.equal(out[0].why, 'only member is Break-glass 01, your confirmed emergency access account')
 })
 
 test('one admin population: Findings, step populations, readiness and the admin catalogue agree', () => {
@@ -96,7 +94,7 @@ test('one admin population: Findings, step populations, readiness and the admin 
   assert.ok(adminGoal)
   assert.equal(adminGoal.expectedCount, admins.size, 'Findings counts the same admins')
   assert.equal(resolvePopulation({ kind: 'coreAdmins' }, s).ids.size, admins.size)
-  const { steps } = generateRoadmap({ planId: 'p', coverage: report, snapshot: s, baseline: baseline.pkg, baselineAuthor: null, mapping: emptyMappingState(s.tenantId), questions: buildQuestions(baseline.pkg), viability, strengths })
+  const { steps } = generateRoadmap({ planId: 'p', coverage: report, snapshot: s, baseline: baseline.pkg, baselineAuthor: null, mapping: emptyMappingState(s.tenantId), viability, strengths })
   const allUsers = steps.find((x) => x.goalId === 'mfa-all-users')
   assert.ok(allUsers)
   assert.equal(allUsers.population.admins, admins.size, 'step populations count the same admins')

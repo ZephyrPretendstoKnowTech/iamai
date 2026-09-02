@@ -15,8 +15,6 @@ import { summarizeTenant } from '../scoring/mfaViability.ts'
 import { syntheticBaseline } from './fixtures/index.ts'
 import { computeCoverage } from '../coverage/coverage.ts'
 import { buildStrengthLookup } from '../coverage/strength.ts'
-import { buildQuestions } from '../mapping/questions.ts'
-import { activeWizardQuestions } from '../mapping/wizard.ts'
 import { toCoverageMapping } from '../mapping/store.ts'
 
 const NOW = '2026-08-28T10:00:00.000Z'
@@ -117,7 +115,6 @@ test('midflight: a re-plan after a baseline update keeps every done step, its ev
     } as (typeof updated.policies)[number],
   ]
   const strengths = buildStrengthLookup(f.snapshot.config.authStrengths?.rows ?? [])
-  const questions = buildQuestions(updated)
   const coverage = computeCoverage({
     snapshot: f.snapshot,
     tenantPolicies: f.snapshot.config.caPolicies.rows,
@@ -125,9 +122,9 @@ test('midflight: a re-plan after a baseline update keeps every done step, its ev
     baselineUnusable: [],
     strengths,
     groupMembers: f.groups,
-    mapping: toCoverageMapping(f.mapping, questions, activeWizardQuestions(f.baseline, { snapshot: f.snapshot, state: f.mapping })),
+    mapping: toCoverageMapping(f.mapping, f.snapshot),
   })
-  const second = generateRoadmap({ ...first.input, coverage, baseline: updated, questions })
+  const second = generateRoadmap({ ...first.input, coverage, baseline: updated })
   mergePersisted(second.steps, persisted)
   applyProgress(second.steps, f.snapshot, coverage, f.planId, NOW)
   for (const d of done) {
