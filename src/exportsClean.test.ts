@@ -49,7 +49,7 @@ function hits(text: string, { json = false } = {}): string[] {
 }
 
 test('the calendar speaks from the content-driven step and carries no forbidden vocabulary', () => {
-  const ics = buildIcs(run.steps, 'Contoso Pty Ltd', f.planId, 5, view)
+  const ics = buildIcs(run.steps, 'Contoso Pty Ltd', f.planId, view)
   assert.deepEqual(hits(ics), [], 'no forbidden string in the calendar')
   assert.match(ics, /SUMMARY:Require MFA for Everyone|SUMMARY:Block Legacy Authentication|SUMMARY:Shorten Admin Sessions/, 'entries carry the content titles')
   assert.match(ics, /Done when:/, 'entries carry the done-when lines')

@@ -12,6 +12,7 @@ import { adminUserIds } from './roles.ts'
 import { redactIdentifiers } from './redact.ts'
 import { toCsv } from './ui/format.ts'
 import { buildIcs } from './roadmap/ics.ts'
+import { stepExportView } from './ui/surfaces/stepExport.ts'
 
 const f = fixture('small')
 const run = runFixture(f)
@@ -62,7 +63,7 @@ test('the unredacted grounding bundle names what it contains in its header', () 
 })
 
 test('the calendar export carries titles, dates and the runbook, never a sign-in name or the tenant id', () => {
-  const ics = buildIcs(run.steps, 'Fixture small', f.planId, 5)
+  const ics = buildIcs(run.steps, 'Fixture small', f.planId, (s) => stepExportView(s, { snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: null, now: snapshot.asOf }))
   assert.deepEqual(contains(ics, upns), [])
   assert.ok(!ics.includes(tenantId))
 })

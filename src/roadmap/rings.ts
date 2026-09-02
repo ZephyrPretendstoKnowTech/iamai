@@ -6,8 +6,6 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NamingConvention } from '../coverage/naming.ts'
 import { proposedGroupName } from '../coverage/naming.ts'
 import { RINGS } from '../copy/rings.ts'
-import { absoluteDate } from '../copy/dates.ts'
-import { OBSERVATION_DAYS } from './constants.ts'
 import type { Ring, RingTargeting, Step } from './types.ts'
 import { canDenyAccess } from './strand.ts'
 
@@ -39,8 +37,6 @@ const LONG_SOAK_DAYS = 10
 /** Over this many affected people the plan proposes a filter, not a member list (§1, §3). */
 export const FILTER_THRESHOLD = 500
 const IT_DEPARTMENT = /^(it|i\.t\.|information technology|technology|ict|infrastructure|it services|it department)$/i
-const RING_SUCCESS_PERCENT = 95
-const ANNOUNCE_DAYS_BEFORE = 3
 
 export function ringBandFor(activeUsers: number, longSoak = true): RingBand {
   const band = RING_BANDS.find((b) => activeUsers <= b.maxActive) ?? RING_BANDS[RING_BANDS.length - 1]
@@ -166,18 +162,11 @@ const rule = (departments: string[]): string =>
     : `(user.accountEnabled -eq true) and (${departments.map((d) => `user.department -eq "${d.replace(/"/g, '')}"`).join(' or ')})`
 
 // Steps that share a population (all users, members, admins, guests) share
-// the same member partition; only names, criteria and dates differ per step.
+// the same member partition; only names and dates differ per step.
 const partitionCache = new WeakMap<string[], { name: string; who: string | null; ids: string[]; kind: RingTargeting['kind']; departments: string[] }[]>()
 
-const memoCache = new WeakMap<string[], Map<string, number>>()
-function memo(ids: string[], key: string, compute: () => number): number {
-  let m = memoCache.get(ids)
-  if (!m) memoCache.set(ids, (m = new Map()))
-  if (!m.has(key)) m.set(key, compute())
-  return m.get(key) as number
-}
 
-/** Propose the rings for one step: names, targeting, criteria; dates come from the scheduler. */
+/** Propose the rings for one step: names and targeting; dates come from the scheduler. */
 export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   if (!ringable(step)) return []
   const band = ringBandFor(ctx.activeUsers)
@@ -217,17 +206,6 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   partitionCache.set(step.population.ids, drafts)
   }
 
-  const family = step.readiness.family
-  // Ring member arrays are shared across steps of one audience: count once per array.
-  const readyCount = (ids: string[]): number =>
-    memo(ids, `ready:${family === 'device' ? 'device' : 'mfa'}`, () =>
-      ids.filter((id) => {
-        const v = ctx.viability.get(id)
-        if (family === 'device') return ctx.deviceReady.has(id)
-        return v !== undefined && (v.mfa === 'verified' || v.mfa === 'likelyViable')
-      }).length,
-    )
-  const departmentsCount = (ids: string[]): number => memo(ids, 'departments', () => departmentsOf(ids, ctx).size)
 
   return drafts.map((d, index) => {
     const n = d.ids.length
@@ -239,46 +217,12 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
       suggestedMemberIds: useFilter ? [] : d.ids,
       filter: useFilter && d.kind === 'group' ? rule(index === 0 ? ['IT', ...d.departments].filter((x, i, a) => a.indexOf(x) === i) : d.departments) : null,
       departments: d.departments,
-      advice:
-        n === 0
-          ? RINGS.emptyRing
-          : d.kind === 'all'
-            ? RINGS.everyoneTargeting(n)
-            : useFilter
-              ? RINGS.filterAdvice(n)
-              : departmentsCount(d.ids) > 1
-                ? RINGS.membersSpread(n, departmentsCount(d.ids))
-                : RINGS.members(n),
     }
-    const ready = readyCount(d.ids)
-    const entryCriteria: string[] = []
-    if (d.kind === 'group') entryCriteria.push(RINGS.groupExists(targeting.groupName ?? name, n))
-    if (index === 0) {
-      if (step.kind === 'create') entryCriteria.push(RINGS.reportOnlyClean(OBSERVATION_DAYS, n))
-      entryCriteria.push(RINGS.breakGlassOut)
-    } else {
-      entryCriteria.push(RINGS.previousSoaked(drafts[index - 1].name, band.soakDays))
-      entryCriteria.push(RINGS.announcementSent(ANNOUNCE_DAYS_BEFORE))
-    }
-    if (family === 'mfa' || family === 'admin' || family === 'guest') entryCriteria.push(RINGS.ringVerified(ready, n))
-    if (family === 'device') entryCriteria.push(RINGS.ringDevices(ready, n))
-    entryCriteria.push(RINGS.helpDeskBriefed(name))
-
-    const exitCriteria: string[] = [RINGS.signedIn(n, band.soakDays), RINGS.accessProblems(n)]
-    if (family === 'mfa' || family === 'admin' || family === 'guest') exitCriteria.push(RINGS.mfaSatisfied(RING_SUCCESS_PERCENT))
-    if (family === 'device') exitCriteria.push(RINGS.deviceSatisfied(RING_SUCCESS_PERCENT))
-    if (family === 'block' || family === 'location' || family === 'risk') exitCriteria.push(RINGS.blockReviewed)
-    if (/session/i.test(step.title)) exitCriteria.push(RINGS.sessionAccepted)
-    if (ctx.operatorId && d.ids.includes(ctx.operatorId)) exitCriteria.push(RINGS.operatorInRing)
-    const care = d.ids.filter((id) => ctx.highCareIds.has(id)).length
-    if (care > 0) exitCriteria.push(RINGS.careVerified(care))
 
     return {
       index,
       name,
       targeting,
-      entryCriteria,
-      exitCriteria,
       soakDays: band.soakDays,
       plannedStart: '',
       plannedEnd: '',
@@ -305,7 +249,3 @@ function addDaysIso(iso: string, days: number): string {
   return d.toISOString()
 }
 
-/** One line per ring for the step body and the plan file. */
-export function ringWindows(rings: Ring[]): string[] {
-  return rings.map((r) => RINGS.window(r.name, absoluteDate(r.plannedStart), absoluteDate(r.plannedEnd), r.soakDays))
-}

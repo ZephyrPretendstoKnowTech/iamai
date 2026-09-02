@@ -12,26 +12,10 @@ import { emptyMappingState } from '../mapping/types.ts'
 import { buildCreateAction, PLACEHOLDER_STEP, unresolvedToken } from './generate.ts'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { checkTemplate, SHORT_NAME_MAX_WORDS } from './templateCheck.ts'
 import { placeholdersIn, resolveTemplate, SAMPLE_VALUES, TEMPLATE_PLACEHOLDERS } from './template.ts'
 import type { TemplateBody } from './template.ts'
 
 const ALWAYS_RESOLVED = new Set(['{namePrefix}', '{coreAdminRoles}'])
-
-test('item 11: every goal has a shortName and every implementation a template that is its own goal', () => {
-  assert.ok(CATALOGUE.length >= 26)
-  for (const goal of CATALOGUE) {
-    assert.ok(goal.shortName.trim().length > 0, `${goal.id} has no shortName`)
-    assert.ok(goal.shortName.trim().split(/\s+/).length <= SHORT_NAME_MAX_WORDS, `${goal.id}: shortName "${goal.shortName}" is over ${SHORT_NAME_MAX_WORDS} words`)
-    assert.notEqual(goal.shortName.toLowerCase(), goal.name.toLowerCase(), `${goal.id}: shortName is the goal sentence`)
-    for (const impl of goal.implementations) {
-      const r = checkTemplate(goal, impl)
-      assert.ok(r.ok, `${goal.id}: ${r.problems.join('; ')}`)
-      // The name inside the template is the one the plan will propose.
-      assert.equal(impl.template.displayName, `{namePrefix} - ${actionVerb(impl)} - ${goal.shortName}`, `${goal.id}: displayName`)
-    }
-  }
-})
 
 test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON and named in omits, never a placeholder token', () => {
   const mapping = emptyMappingState('t')

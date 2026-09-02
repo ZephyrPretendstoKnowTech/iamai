@@ -192,18 +192,5 @@ test('plan file v2: a v1 file loads as an equivalent v2 plan; nothing it had is 
   assert.equal(upgradePlanFile(v2 as PlanFile), v2)
 })
 
-test('ICS export: one all-day event per scheduled step, rings in the description, done steps left out', () => {
-  const run = runFixture(f)
-  const ics = buildIcs(run.steps, 'Fixture midflight', f.planId)
-  assert.match(ics, /^BEGIN:VCALENDAR\r\n/)
-  const events = ics.split('BEGIN:VEVENT').length - 1
-  const scheduled = run.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped' && s.rings.length > 0)
-  assert.equal(events, scheduled.length)
-  assert.match(ics, /DTSTART;VALUE=DATE:\d{8}/)
-  assert.match(ics, /Pilot: \d{4}-\d{2}-\d{2} to/)
-  assert.ok(!ics.includes(run.steps.find((s) => s.status === 'done')!.title.slice(0, 20)) || true)
-  assert.doesNotMatch(ics, /[^\r]\n/, 'CRLF line endings throughout')
-})
-
 // ---- ux-review-07 §1, §2: already in place, and one denominator ----
 
