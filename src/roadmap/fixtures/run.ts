@@ -38,6 +38,7 @@ export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}): Fixtur
     groupMembers: f.groups,
     mapping: toCoverageMapping(f.mapping, questions, activeWizardQuestions(f.baseline, { snapshot, state: f.mapping })),
     facetOverrides: f.mapping.facetOverrides,
+    goalMap: over.goalMap,
   })
   // Confirmed service accounts are counted nowhere (target-state §8.1): they
   // leave the viability rows here, exactly as sets.activeUsers leaves them out.

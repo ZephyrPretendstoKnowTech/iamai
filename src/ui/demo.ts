@@ -68,6 +68,8 @@ function shiftDates<T>(value: T, offsetMs: number): T {
  * real tenant's keys, and every date shifted so it reads as of the day it is
  * viewed (prompt 50 item 9): the `demo` fixture is built at a fixed instant for
  * the property tests, and shifted here. `week2` advances to the tracking view.
+ * Its baseline is the product's pinned one (walk-51 item 9), so the demo plan
+ * holds exactly the goals the pinned goal map holds.
  */
 export function demoTenant(week2 = false): DemoTenant {
   const f = fixture(week2 ? 'demo-week2' : 'demo')

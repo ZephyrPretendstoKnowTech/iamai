@@ -33,6 +33,8 @@ import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NameDirectory } from '../../names.ts'
+import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
+import type { GoalMap } from '../../roadmap/goalMap.ts'
 
 // The persisted record holds decisions only (prompt 50.1 item 1): skips, the
 // start date, the freeze, the checkpoints. Steps, statuses, populations,
@@ -48,6 +50,8 @@ export type PlanComputed = {
   viability: MfaViability[]
   names: NameDirectory
   staticViolations: StaticViolation[]
+  /** The loaded baseline's goal map: the footer and the print page list only goals it holds (walk-51 item 9). */
+  goalMap: GoalMap
 }
 
 export type PlanData = {
@@ -142,6 +146,7 @@ export function usePlanData(
       groupMembers: groups,
       mapping: toCoverageMapping(mapping, questions, activeWizardQuestions(baseline.pkg, { snapshot, state: mapping })),
       facetOverrides: mapping.facetOverrides,
+      goalMap: baseline.goalMap,
     })
     const viability = buildViabilityInputs(snapshot, snapshot.asOf, new Set(mapping.serviceAccountUserIds)).map(scoreMfaViability)
     const names = buildNameDirectory(snapshot, groups)
@@ -161,6 +166,7 @@ export function usePlanData(
       names,
       groupMembers: groups,
       changeFreeze: freeze,
+      goalMap: baseline.goalMap,
     })
     const { steps, schedule } = result
     // The one decision a regeneration cannot know; everything else is derived.
@@ -168,7 +174,7 @@ export function usePlanData(
     applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null)
     annotateStateReasons(steps)
     refreshBlockerImpact(steps)
-    return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations }
+    return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, baseline, mapping, groupsLoaded, loaded, groups, saved, planId, version, startDate, band, freeze])
 

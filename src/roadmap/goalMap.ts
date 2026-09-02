@@ -23,6 +23,11 @@ export function policyKey(p: { id?: string | null; displayName: string }): strin
   return p.id ?? p.displayName
 }
 
+/** True when the baseline holds the goal: the map has a policy for it (walk-51 item 9). A goal it does not hold never renders. */
+export function goalInMap(map: GoalMap, goalId: string): boolean {
+  return (map[goalId] ?? []).length > 0
+}
+
 /** The policies a goal maps to, resolved from a package's policy set by key. */
 export function policiesForGoal<T extends { id?: string | null; displayName: string }>(map: GoalMap, policies: T[], goalId: string): T[] {
   const keys = map[goalId] ?? []

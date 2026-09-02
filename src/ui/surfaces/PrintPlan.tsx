@@ -18,6 +18,8 @@ import { populationLine } from '../../derive/whoLine.ts'
 import { statusOf } from './statusWord.ts'
 import { unknownsFor } from '../../roadmap/unknowns.ts'
 import { RingMark } from '../components/Ring.tsx'
+import { goalInMap } from '../../roadmap/goalMap.ts'
+import type { GoalMap } from '../../roadmap/goalMap.ts'
 
 // The step body prints the same content the on-screen step shows (prompt 49.1
 // item 3): the plan copy, populationLine, statusOf and the step's own data
@@ -47,6 +49,7 @@ export function PrintPlan({
   dangers,
   scanAt,
   coverage,
+  goalMap,
 }: {
   tenantName: string
   baselineLabel: string
@@ -65,6 +68,8 @@ export function PrintPlan({
   scanAt: string
   /** The goal verdicts, so page 1 can name what does not apply. */
   coverage: CoverageReport
+  /** The baseline's goal map: page 1 names only goals the baseline holds (walk-51 item 9). */
+  goalMap: GoalMap
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
@@ -83,7 +88,8 @@ export function PrintPlan({
   // one-line header, and no pace, baseline pin or pace sentence.
   const inPlaceNames = done.map((s) => s.plainTitle || s.title)
   const toDoNames = steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').map((s) => s.plainTitle || s.title)
-  const doesntApplyNames = coverage.results.filter((r) => r.status === 'not-applicable' || r.status === 'licence-limited').map((r) => r.goal.shortName || r.goal.name)
+  // Over the goals the baseline holds: an absent goal never renders (walk-51 item 9).
+  const doesntApplyNames = coverage.results.filter((r) => goalInMap(goalMap, r.goal.id) && (r.status === 'not-applicable' || r.status === 'licence-limited')).map((r) => r.goal.shortName || r.goal.name)
   const inPlaceCount = doneSteps(steps).length
   const totalCount = trackableSteps(steps).length
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(schedule.start)) / (7 * 86_400_000))) : schedule.weeks

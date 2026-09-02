@@ -3,6 +3,7 @@
 // baseline policy would, and every placeholder either resolves from the
 // assumptions or names the Wave 0 step that creates the missing object.
 import { test } from 'node:test'
+import { PINNED_GOAL_MAP, goalInMap } from './goalMap.ts'
 import assert from 'node:assert/strict'
 import { CATALOGUE } from '../coverage/coverage.ts'
 import { actionVerb, proposedPolicyName } from '../coverage/naming.ts'
@@ -96,7 +97,10 @@ test('item 12: with no baseline at all, every create step still carries a body, 
   assert.ok(f)
   const r = runFixture({ ...f, baseline: { ...f.baseline, policies: [], docs: [] } })
   const creates = r.steps.filter((s) => s.goalId && s.kind === 'create' && s.status !== 'done')
-  assert.ok(creates.length >= 10, `expected many create steps, got ${creates.length}`)
+  // The plan holds the pinned map's goals (walk-51 item 9): every create step is
+  // one of them, and every held goal small does not enforce gets one.
+  assert.ok(creates.length >= 8, `expected a create step per held goal small lacks, got ${creates.length}`)
+  for (const s of creates) assert.ok(goalInMap(PINNED_GOAL_MAP, s.goalId), `${s.id}: a create step for a goal the baseline does not hold`)
   for (const s of creates) {
     assert.ok(s.action.json, `${s.id}: has a body`)
     assert.equal(s.action.summary.some((l) => /No baseline policy matches/.test(l)), false, `${s.id}: no "create a policy that meets the floor" hand-off`)

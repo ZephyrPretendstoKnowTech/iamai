@@ -9,7 +9,7 @@ import { BackToTop, Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
 import type { ShellState } from './shell/AppShell.tsx'
 import { Connect } from './surfaces/Connect.tsx'
-import { restoreBaseline } from './baseline.ts'
+import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import type { BaselineResult } from './baseline.ts'
 import { Plan } from './surfaces/Plan.tsx'
 import { Export } from './surfaces/Export.tsx'
@@ -100,7 +100,9 @@ export function App() {
         // visitor it is sample data (prompt 50 item 12).
         setTenantName('Contoso Pty Ltd')
         setLastScan({ snapshot: d.snapshot, at: d.snapshot.asOf })
-        setBaseline({ source: 'sample baseline', pkg: d.baseline } as BaselineResult)
+        // The demo derives through the product's pinned baseline and goal map
+        // (walk-51 item 9); the fixture's package is that same one.
+        setBaseline(await loadPinnedBaseline())
         setReady(true)
       })
       return

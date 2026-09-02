@@ -244,6 +244,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           dangers={dangers}
           scanAt={scan.at}
           coverage={coverage}
+          goalMap={c.goalMap}
         />
       )}
     </section>

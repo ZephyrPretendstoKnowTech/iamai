@@ -1,5 +1,5 @@
 {
- "fingerprint": "9b532ce94181d276",
+ "fingerprint": "3b0703229eaa5b1c",
  "surfaces": [
   {
    "name": "Header",
@@ -1879,7 +1879,8 @@
     "Preparation · <date> → <date>",
     "Phase 1 · <date> → <date>",
     "Phase 2 · <date> → <date>",
-    "Phase 3 · <date> → <date>"
+    "Phase 3 · <date> → <date>",
+    "Phase 4 · <date> → <date>"
    ],
    "tabs": [],
    "buttons": [],
@@ -1897,14 +1898,14 @@
    "empty": [],
    "summaries": [
     "Already in place (2)",
-    "Doesn't apply here (5)",
+    "Doesn't apply here (3)",
     "Not licensed (5)"
    ],
    "tips": [
     "About What set the plan length"
    ],
    "sentences": [
-    "22 steps · 2 in place · finishes <date> · 4 weeks",
+    "19 steps · 2 in place · finishes <date> · 5 weeks",
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands."
    ],
    "titles": [
@@ -1914,7 +1915,6 @@
     "Create or Correct Exclusions Group",
     "Break-glass sign-in drill",
     "Create and Enforce the MFA Registration Campaign",
-    "Protect Sign-in Method Registration",
     "Block Authentication Transfer",
     "Block Legacy Authentication",
     "Block Device Code Sign-in",
@@ -1922,25 +1922,24 @@
     "Require Phishing-Resistant MFA for Admins",
     "Block the Admin Portals for Non-Admins",
     "Block Sign-ins From Countries Not Allowed",
-    "Require MFA to Register a Device",
     "Block Unsupported Device Platforms",
+    "Require MFA to Register a Device",
     "Limit How Long Sessions Last",
-    "Limit Unmanaged Devices in the Browser",
     "Require Token Protection on Windows"
    ],
    "nav": [],
    "primary": [],
    "tables": [],
    "occurrences": {
-    "22 steps · 2 in place · finishes <date> · 4 weeks": 1,
+    "19 steps · 2 in place · finishes <date> · 5 weeks": 1,
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1
    },
    "occurrencesAll": {
-    "22 steps · 2 in place · finishes <date> · 4 weeks": 1,
+    "19 steps · 2 in place · finishes <date> · 5 weeks": 1,
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1
    },
    "wordCounts": {
-    "headings": 24,
+    "headings": 30,
     "tabs": 0,
     "buttons": 0,
     "options": 0,
@@ -1952,7 +1951,7 @@
     "summaries": 11,
     "tips": 6,
     "sentences": 31,
-    "total": 77
+    "total": 83
    },
    "unnamedControls": [],
    "rows": [
@@ -2006,19 +2005,13 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedProtect Sign-in Method Registration3 peoplewhen MFA readiness reaches 90% (now 25%)",
-     "sentences": 1,
-     "words": 11
-    },
-    {
-     "selector": ".plan-row",
      "text": "BlockedBlock Authentication Transfer4 people8 Sept 2026",
      "sentences": 1,
      "words": 6
     },
     {
      "selector": ".plan-row",
-     "text": "Report-onlyBlock Legacy Authentication4 people · report-only, not enforced9 Sept 2026",
+     "text": "Report-onlyBlock Legacy Authentication4 people · report-only, not enforced8 Sept 2026",
      "sentences": 1,
      "words": 10
     },
@@ -2030,13 +2023,13 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedShorten Admin SessionsAlex Morgan8 Sept 2026",
+     "text": "BlockedShorten Admin SessionsAlex Morgan9 Sept 2026",
      "sentences": 1,
      "words": 6
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedRequire Phishing-Resistant MFA for AdminsAlex Morgan8 Sept 2026",
+     "text": "BlockedRequire Phishing-Resistant MFA for AdminsAlex Morgan9 Sept 2026",
      "sentences": 1,
      "words": 8
     },
@@ -2047,22 +2040,16 @@
      "words": 13
     },
     {
-     "selector": ".plan-row",
-     "text": "BlockedBlock Sign-ins From Countries Not Allowed4 people8 Sept 2026",
-     "sentences": 1,
-     "words": 9
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedRequire MFA to Register a Device4 peoplewhen MFA readiness reaches 90% (now 25%)",
-     "sentences": 1,
-     "words": 13
-    },
-    {
      "selector": ".phase",
      "text": "Phase 2 · <date> → <date>",
      "sentences": 1,
      "words": 6
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedBlock Sign-ins From Countries Not Allowed4 people15 Sept 2026",
+     "sentences": 1,
+     "words": 9
     },
     {
      "selector": ".plan-row",
@@ -2078,25 +2065,25 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedLimit How Long Sessions Last4 people22 Sept 2026",
+     "text": "BlockedRequire MFA to Register a Device4 peoplewhen MFA readiness reaches 90% (now 25%)",
+     "sentences": 1,
+     "words": 13
+    },
+    {
+     "selector": ".phase",
+     "text": "Phase 4 · <date> → <date>",
+     "sentences": 1,
+     "words": 6
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedLimit How Long Sessions Last4 people29 Sept 2026",
      "sentences": 1,
      "words": 8
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedLimit Unmanaged Devices in the Browser4 people22 Sept 2026",
-     "sentences": 1,
-     "words": 9
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedLimit Unmanaged Devices in the Browser4 people22 Sept 2026",
-     "sentences": 1,
-     "words": 9
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedRequire Token Protection on Windows4 people22 Sept 2026",
+     "text": "BlockedRequire Token Protection on Windows4 people29 Sept 2026",
      "sentences": 1,
      "words": 8
     }
@@ -2185,14 +2172,12 @@
    "empty": [],
    "summaries": [
     "Already in place (2)",
-    "Doesn't apply here (5)",
+    "Doesn't apply here (3)",
     "Not licensed (5)"
    ],
    "tips": [],
    "sentences": [
     "Office apps require a compliant or joined device: does not apply (no Intune licence).",
-    "Mobile access requires approved or protected apps: does not apply (no Intune licence).",
-    "Azure management requires strong auth: does not apply (no sign-in activity for Azure management).",
     "Service principals restricted: does not apply (no Workload Identities Premium licence).",
     "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).",
     "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.",
@@ -2211,8 +2196,6 @@
    "tables": [],
    "occurrences": {
     "Office apps require a compliant or joined device: does not apply (no Intune licence).": 1,
-    "Mobile access requires approved or protected apps: does not apply (no Intune licence).": 1,
-    "Azure management requires strong auth: does not apply (no sign-in activity for Azure management).": 1,
     "Service principals restricted: does not apply (no Workload Identities Premium licence).": 1,
     "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).": 1,
     "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.": 1,
@@ -2224,8 +2207,6 @@
    },
    "occurrencesAll": {
     "Office apps require a compliant or joined device: does not apply (no Intune licence).": 1,
-    "Mobile access requires approved or protected apps: does not apply (no Intune licence).": 1,
-    "Azure management requires strong auth: does not apply (no sign-in activity for Azure management).": 1,
     "Service principals restricted: does not apply (no Workload Identities Premium licence).": 1,
     "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).": 1,
     "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.": 1,
@@ -2247,8 +2228,8 @@
     "empty": 0,
     "summaries": 11,
     "tips": 0,
-    "sentences": 161,
-    "total": 174
+    "sentences": 134,
+    "total": 147
    },
    "unnamedControls": [],
    "rows": [
@@ -2268,8 +2249,8 @@
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
-    "sentences": 11,
-    "words": 161
+    "sentences": 9,
+    "words": 134
    },
    "contract": "plan.footer",
    "state": "scanned",

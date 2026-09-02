@@ -8,6 +8,8 @@ import { placeholdersIn, resolveTemplate } from './template.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
+import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
+import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
@@ -116,6 +118,13 @@ export type RoadmapInput = {
    * plan file that still carries those is read and the values ignored.
    */
   changeFreeze?: ChangeFreeze | null
+  /**
+   * The goal map of the loaded baseline (walk-51 item 9): which goals it holds
+   * and the policy that stands for each, decided at pin time (goalMap.ts). A
+   * goal the map does not hold never renders. Absent means the pinned map — the
+   * product's, the demo's and the fixtures' baseline alike.
+   */
+  goalMap?: GoalMap
 }
 
 export type RoadmapResult = {
@@ -694,6 +703,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // The baseline policy that stands for each goal is decided once, here, so
   // the prerequisites know which template placeholders the plan will need.
   const baselineFactsList = input.baseline.policies.map((p) => ({
+    key: policyKey(p),
     policy: p as unknown as RawPolicy,
     facts: policyFacts(p, input.strengths),
   }))
@@ -703,9 +713,22 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const impl = goal.implementations[0]
     return baselineFactsList.filter((b) => matchesSignature(b.facts, impl.signature)).filter((b) => !/no[-_ ]?exclusions?/i.test(b.facts.name))
   }
+  // The goal map decides what renders (walk-51 item 9, goalMap.ts): a goal the
+  // baseline does not hold never renders, in the demo and the product alike, and
+  // the policy that stands for a held goal is the map's, decided at pin time,
+  // never a render-time match. The signature match above remains only as the
+  // fallback for a package that does not carry the mapped policy — the
+  // synthetic test fixtures, which stand in for the pinned baseline.
+  const goalMap = input.goalMap ?? PINNED_GOAL_MAP
+  const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
+  const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
+  const sourcesFor = (goal: Goal): typeof baselineFactsList => {
+    const mapped = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((b): b is (typeof baselineFactsList)[number] => b !== undefined)
+    return mapped.length > 0 ? mapped : baselineMatchesFor(goal)
+  }
   const templateNeeds = new Set<TemplatePlaceholder>()
   for (const r of input.coverage.results) {
-    if (r.status !== 'absent' || baselineMatchesFor(r.goal).length > 0) continue
+    if (r.status !== 'absent' || !inBaseline(r.goal) || sourcesFor(r.goal).length > 0) continue
     for (const p of placeholdersIn(r.goal.implementations[0].template)) templateNeeds.add(p)
   }
 
@@ -878,13 +901,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   for (const result of input.coverage.results) {
     if (result.status === 'not-applicable' || result.status === 'licence-limited' || result.status === 'unknown') continue
     const goal = result.goal
+    // A goal this baseline does not hold has no step: the catalogue keeps intent
+    // only, and the plan renders the baseline (walk-51 item 9).
+    if (!inBaseline(goal)) continue
     const impl = goal.implementations[0]
     const stepId = idFor('goal', goal.id)
 
-    // Style variants are decided by data, never by a question (prompt 16 §4):
-    // the geo policy is always the allowlist style, and "NoExclusions"
-    // variants are never considered.
-    const matches = baselineMatchesFor(goal)
+    // The map's policy stands for the goal; among several (a Policy A/B pair),
+    // the geo policy is always the allowlist style, and "NoExclusions" variants
+    // are never considered (prompt 16 §4).
+    const matches = sourcesFor(goal)
     let source = matches.find((m) => goal.id === 'geo-restriction' && isAllowlistGeoPolicy(m.policy as never)) ?? matches[0] ?? null
     for (const [, chosen] of Object.entries(mapping.variantChoices)) {
       const hit = matches.find((m) => m.facts.name === chosen)

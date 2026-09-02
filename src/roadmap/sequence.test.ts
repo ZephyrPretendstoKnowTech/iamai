@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { FIXTURE_SPECS, buildFixture, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { Step } from './types.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
 
@@ -135,7 +136,9 @@ test('a remote-only tenant with no trusted location never offers the registratio
 })
 
 test('with no Temporary Access Pass, the registration step says so in its own words', () => {
-  const { steps } = runFixture(fixture('mid'))
+  // The pinned baseline does not hold registration protection (walk-51 item 9),
+  // so the step is proven with a map that holds it, as an uploaded baseline would.
+  const { steps } = runFixture(fixture('mid'), { goalMap: { ...PINNED_GOAL_MAP, 'register-info-protected': ['(a baseline that holds it)'] } })
   const reg = steps.find((s) => s.goalId === 'register-info-protected')
   assert.ok(reg)
   const modes = reg.failureModes.map((m) => `${m.title} ${m.evidence}`).join(' ')

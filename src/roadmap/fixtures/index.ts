@@ -11,6 +11,7 @@ import { emptyMappingState } from '../../mapping/types.ts'
 import { emptyCapabilities } from '../../licensing/capabilities.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { stepIdForGoal } from '../generate.ts'
+import { pinnedPackage } from '../../baseline/pinned.ts'
 
 export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile' | 'demo' | 'demo-week2'
 
@@ -432,7 +433,11 @@ export function buildFixture(spec: Spec): Fixture {
   groups.set(exclusionGroup, { memberIds: exclusionMembers, memberCount: exclusionMembers.length, sampled: false, displayName: 'Core - Exclusions' })
   // midflight's tagged policies were applied by the plan, so the plan predates them; every other plan is generated now.
   const planCreatedAt = spec.midflight ? daysAgo(60) : NOW
-  return { name: spec.name, snapshot, baseline: syntheticBaseline(seed), mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect }
+  // The demo derives through the same baseline as the product (walk-51 item 9):
+  // the pinned package, never a synthetic one of its own. Every other fixture
+  // keeps the synthetic baseline as a stand-in, filtered by the pinned goal map.
+  const baseline = spec.demo ? pinnedPackage() : syntheticBaseline(seed)
+  return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect }
 }
 
 /** A baseline with one policy per catalogue family, so every family produces steps. */
@@ -485,7 +490,10 @@ export const FIXTURE_SPECS: Spec[] = [
   // (above 3,000 the ring shape is unchanged), two high-disruption steps that
   // cannot share a window. Fourteen weeks is what that computes to.
   { name: 'huge', users: 25000, admins: 300, licence: 'p2', policies: 120, multiGeo: true, expect: { rings: 4, weeksAtMost: 14, namesListed: false, policyCapWarning: true } },
-  { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 20, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 2, weeksAtMost: 8, namesListed: false, policyCapWarning: true } },
+  // 24 disabled extras (was 20): with the plan holding only the pinned map's goals
+  // (walk-51 item 9) it adds 8 policies, and messy has to land above the
+  // 40-policy line to keep proving the consolidation warning.
+  { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 24, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 2, weeksAtMost: 8, namesListed: false, policyCapWarning: true } },
   { name: 'midflight', users: 60, admins: 3, licence: 'p1', policies: 6, midflight: true, expect: { rings: 2, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
   // 36 active people and no sign-in evidence at all: nothing is in the zero
   // class, so MFA, device and session changes chain a soak apart; 34 days.
