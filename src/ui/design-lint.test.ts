@@ -13,8 +13,7 @@
 //
 // styles.css and src/ui/pages/** are on a legacy allow-list until prompt 49;
 // the last test asserts that list is empty once the contract's enforceAll is
-// true. scripts/lint-mutations.mjs proves each of the five checks fails on an
-// injected violation (DESIGN_LINT_EXTRA names the injected file).
+// true.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
