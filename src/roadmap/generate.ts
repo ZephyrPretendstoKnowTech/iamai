@@ -534,9 +534,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // one exists (the picker says which of them are the team's own).
   const locStepId = PREREQ_STEP_ID.trustedLocation
   if (canUseConditionalAccess) {
-    const ipLocations = (snapshot.config.namedLocations?.rows ?? []).filter((l) => String((l as { '@odata.type'?: string })['@odata.type'] ?? '').includes('ipNamedLocation'))
+    const ipLocations = (snapshot.config.namedLocations?.rows ?? [])
+      .map((l) => l as { id?: string; displayName?: string; '@odata.type'?: string })
+      .filter((l) => String(l['@odata.type'] ?? '').includes('ipNamedLocation'))
     const proposed = proposedObjectNames(naming).trustedLocation
-    steps.push({ ...prereq(locStepId), naming: { proposed: proposed.name, fromBaseline: null }, status: ipLocations.length > 0 ? 'done' : 'ready' })
+    // In place names the locations that make it so: the evidence a done step carries.
+    steps.push({
+      ...prereq(locStepId),
+      naming: { proposed: proposed.name, fromBaseline: null },
+      status: ipLocations.length > 0 ? 'done' : 'ready',
+      deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
+    })
   }
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
