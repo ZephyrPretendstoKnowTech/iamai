@@ -415,18 +415,6 @@ try {
   check('Forget: every store is empty for the tenant afterwards', after === 0, `rows=${after}`)
   check('Forget: no MSAL account remains in session storage', (await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\.windows|microsoftonline/.test(k)).length`)) === 0)
 
-  // The feedback channel shows the message before anything opens (prompt 34 part 2).
-  await go('plan')
-  await sleep(1200)
-  check(
-    'Feedback: the footer link opens the panel',
-    (await clickText('/feedback@getiamai.com/', 'footer.app')) && (await waitFor(`/What the email will contain/.test(document.body.innerText)`)),
-  )
-  t = await text()
-  check('Feedback: the message shows the page, version and browser', /Page: #\/plan/.test(t) && /Version:/.test(t) && /Browser:/.test(t))
-  check('Feedback: nothing is sent automatically', /Nothing is sent from here/.test(t))
-  check('Feedback: the scan summary is opt-in and not attached by default', !/Users in the directory/.test(t))
-
   // The rule registry renders itself (validation-rules.md 5).
   await go('checks')
   t = await text()

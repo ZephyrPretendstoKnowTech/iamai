@@ -555,7 +555,7 @@ export function renderPages(): string {
   )
   sec(
     'Footer, How IAMAI works, step tip',
-    p(P.footer.readOnly + ' · ' + (P.footer.links as string[]).join(' · '), {}) +
+    p((P.footer.links as { text: string }[]).map((l) => l.text).join(' | '), {}) +
       h('How IAMAI works — reworded lines') +
       ul([P.how.exclusionsCheckReworded, P.how.groupSearchReworded, P.how.packageProblem], { policy: 'IAC - AGENT - BLOCK - HighRiskAgent' }) +
       p('Needs column now names the step: ' + Object.values(P.how.needsByStep).join(', '), {}) +

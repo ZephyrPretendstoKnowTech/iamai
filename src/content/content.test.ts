@@ -83,7 +83,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // progress, the print cover, the export alerts): read by the product, never by the review page.
 const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.shared.engine.')
 const isStructural = (p: string): boolean =>
-  /\.id$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.(url|cis)$/.test(p) || /\.whatToDoReference\b/.test(p)
+  /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.(url|cis)$/.test(p) || /\.whatToDoReference\b/.test(p)
 
 test('no orphan content string: every non-structural key renders, or is a known example-suppressed / app-only variant', () => {
   const body = reviewBody()

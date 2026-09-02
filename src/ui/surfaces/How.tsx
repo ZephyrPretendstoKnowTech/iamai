@@ -13,10 +13,21 @@ import { ROLE_FOR_SCOPE } from '../../graph/collect/roles.ts'
 import { SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { PACKAGE } from '../../copy/inventory.ts'
 import { app, pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { absoluteDate } from '../../copy/dates.ts'
+import { REPO_URL } from '../shell/AppShell.tsx'
 import { Chip, DataTable } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 
 const C = app.how
+const SHELL = app.shell
+
+/**
+ * The commit and day this bundle was built (prompt 40 §24), under Limits: a
+ * stale bundle and a fresh one look identical without it.
+ */
+const BUILD_COMMIT = typeof __BUILD_COMMIT__ === 'string' ? __BUILD_COMMIT__ : 'dev'
+const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
 const READS = app.how
 
 const SEVERITY_CHIP: Record<RuleSeverity, ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral' }
@@ -105,6 +116,15 @@ export function How() {
           <li key={i}>{l}</li>
         ))}
       </ul>
+      <p className="reason">
+        {BUILD_COMMIT === 'dev' ? (
+          fillText(SHELL.footerBuildLocal, { date: absoluteDate(`${BUILD_DATE}T12:00:00.000Z`) })
+        ) : (
+          <a href={`${REPO_URL}/commit/${BUILD_COMMIT}`} target="_blank" rel="noopener noreferrer" title={SHELL.footerBuildTitle}>
+            {fillText(SHELL.footerBuild, { commit: BUILD_COMMIT, date: absoluteDate(`${BUILD_DATE}T12:00:00.000Z`) })}
+          </a>
+        )}
+      </p>
       <p className="reason">{(pages.how as Record<string, string>).noAi}</p>
     </section>
   )

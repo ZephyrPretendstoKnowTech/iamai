@@ -339,11 +339,10 @@
       "tip": "Save the plan file to keep the plan; the sign-in session lasts about a day and the plan does not depend on it."
     },
     "footer": {
-      "readOnly": "Read-only",
       "links": [
-        "feedback@getiamai.com",
-        "All IAMAI tools",
-        "GitHub"
+        { "text": "IAMAI Home", "href": "https://getiamai.com/" },
+        { "text": "Follow me on LinkedIn", "href": "https://www.linkedin.com/in/lachlanrobinette/" },
+        { "text": "GitHub", "href": "https://github.com/ZephyrPretendstoKnowTech/iamai" }
       ]
     },
     "how": {
