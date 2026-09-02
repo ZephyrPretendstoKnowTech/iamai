@@ -26,10 +26,10 @@ test('every failing check renders a complete fix line on the demo and GetIAMAI s
   let passesSeen = 0
   for (const f of fixtures) {
     const run = runFixture(f)
-    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => run.input.names.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf }
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf }
     for (const step of run.steps) {
       if (!step.checks) continue
-      const cs = stepById[CONTENT_ID[step.goalId]] as { whatToDo: { checkFixes: Record<string, string> } } | undefined
+      const cs = stepById[CONTENT_ID[step.goalId]] as unknown as { whatToDo: { checkFixes: Record<string, string> } } | undefined
       assert.ok(cs, `${f.name}: content step for ${step.goalId}`)
       const checkFixes = cs!.whatToDo.checkFixes
       const ex = stepVars(step, ctx) as Record<string, unknown>

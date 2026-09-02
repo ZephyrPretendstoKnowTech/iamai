@@ -1,40 +1,8 @@
-// Plain-language titles for every goal (scheduling-and-onboarding.md §3.1)
-// and the three sentences for a manager (§3.3). The technical name stays as
-// the subtitle; the plain title leads wherever a user first meets the goal.
+// The three sentences for a manager (scheduling-and-onboarding.md §3.3). The
+// plain-title table that used to live here was deleted (prompt 52, walk-51 item
+// 1): a step's one title comes from content.json (src/content/stepTitle.ts), on
+// the row, the body and the communications alike.
 import { count } from './statements.ts'
-
-export const PLAIN_TITLES: Record<string, string> = {
-  'mfa-all-users': 'Make sure everyone can prove who they are',
-  'admins-phishing-resistant': 'Give admins a sign-in method that cannot be phished',
-  'admin-portals-protected': 'Keep non-admins out of the admin portals',
-  'guests-mfa': 'Make guests prove who they are too',
-  'register-info-protected': 'Stop attackers adding their own MFA method',
-  'block-legacy-auth': 'Turn off old sign-in methods that skip MFA',
-  'block-device-code': 'Stop the device-code sign-in trick',
-  'block-auth-transfer': 'Stop sign-ins being handed to another device',
-  'geo-restriction': "Stop sign-ins from countries you don't work in",
-  'admin-session': 'Keep admin sessions short',
-  'byod-session-controls': 'Limit what personal devices can do in the browser',
-  'require-managed-device': 'Require a company-managed device for company data',
-  'block-unsupported-platforms': 'Block devices Entra cannot identify',
-  'mobile-app-protection': 'Only allow protected apps on phones',
-  'sign-in-risk': 'Challenge sign-ins that look risky',
-  'user-risk': 'Reset the password of anyone marked high-risk',
-  'azure-management-mfa': 'Protect the Azure management tools with strong sign-in',
-  'device-registration-mfa': 'Ask for MFA before a device can be registered',
-  'token-protection': 'Stop a stolen session token from being reused',
-  'workload-identity-block': 'Keep automation accounts to the places they belong',
-  'all-users-no-persistence': 'Sign everyone out when the browser closes',
-  'pim-activation-reauth': 'Ask for MFA when an admin role is activated',
-  'intune-enrollment-reauth': 'Ask for MFA before a device is enrolled',
-  'block-downloads-unmanaged': 'Stop downloads to devices you do not manage',
-  'sign-in-risk-medium': 'Challenge moderately risky sign-ins',
-  'user-risk-medium': 'Reset the password of anyone marked medium-risk',
-}
-
-export function plainTitleFor(goalId: string, technical: string): string {
-  return PLAIN_TITLES[goalId] ?? technical
-}
 
 /** Three sentences: the risk closed, the cost to the people who use the system, what happens if it is not done. */
 export const MANAGER = {

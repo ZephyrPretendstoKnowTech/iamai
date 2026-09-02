@@ -23,6 +23,7 @@ import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
+import { contentTitle } from '../../content/stepTitle.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
 
@@ -162,7 +163,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
         <span className="plan-row-main">
           <Status tone={status.tone}>{status.word}</Status>
           {isNext && <span className="next-mark" aria-label={C.next}>{C.next}</span>}
-          <span className="step-title">{step.plainTitle || step.title}</span>
+          <span className="step-title">{contentTitle(step)}</span>
           <span className="who">{whoLineOf(step.population, nameOf, step.gapShort ?? step.gap ?? null)}</span>
           <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{whenLine(step)}</span>
         </span>
