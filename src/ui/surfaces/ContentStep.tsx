@@ -10,7 +10,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText, missingVars, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
+import { fillText, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
@@ -34,7 +34,6 @@ function T({ s, ex }: { s: unknown; ex: Ex }) {
 }
 
 /** True when a content line has every variable it names — no hole (walk-51 item 2). */
-const whole = (s: unknown, ex: Ex): boolean => typeof s !== 'string' || missingVars(s, ex as Record<string, unknown>).length === 0
 
 /** A content line as a paragraph, rendered only when it has no hole. */
 function Line({ s, ex, cls }: { s: unknown; ex: Ex; cls?: string }) {

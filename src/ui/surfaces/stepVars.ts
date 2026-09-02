@@ -13,6 +13,8 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
+import { list } from '../../copy/statements.ts'
+import { countryName } from '../../mapping/countries.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { sessionWantedForGoal, strengthForGoal } from './stepPortal.ts'
 import { contentLists } from '../../derive/contentLists.ts'
@@ -108,8 +110,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
     // The report-only observation window a policy done-when line names.
     reportOnlyDays: EXIT_MIN_DAYS_OBSERVED,
-    // The start of the sign-in window the scan read ("since {from}").
+    // The start of the sign-in window the scan read ("since {from}"): the
+    // evidence window's start, on every step that names it.
     from: short(ctx.snapshot.sources.signInEvidence?.coveredWindow?.from),
+    // The allowed countries, by name, for the countries policy's why and its lines.
+    countries: ctx.mapping.allowedCountries.length > 0 ? list(ctx.mapping.allowedCountries.map(countryName)) : undefined,
   }
 
   // A campaign has no enforcement date of its own; its enrol-by and the first

@@ -11,14 +11,12 @@
 import type { ExportStep, Step } from '../../roadmap/types.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText, missingVars } from '../../content/render.ts'
+import { fillText, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
 
 export type { ExportStep }
-
-const whole = (s: unknown, ex: Record<string, unknown>): boolean => typeof s !== 'string' || missingVars(s, ex).length === 0
 
 /** The step as the screen says it, for an export. */
 export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
@@ -49,4 +47,46 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
     ifWrong: cs.ifWrong && whole(cs.ifWrong, ex) ? fillText(cs.ifWrong, ex) : null,
     dates: cs.dates && whole(cs.dates, ex) ? fillText(cs.dates, ex) : null,
   }
+}
+
+/**
+ * Every line the step body renders on screen, filled, for the tests that read
+ * rendered text without a DOM: the why, the who lines, the decision's words,
+ * What to do, Done when, If wrong, the dates, More and the Tell your people box.
+ * The gate is the screen's: a line renders only when it is whole.
+ */
+export function stepLines(step: Step, ctx: StepVarContext): string[] {
+  const cs = contentStepFor(step) as Record<string, any> | undefined
+  if (!cs) return [step.plainTitle || step.title]
+  const ex = stepVars(step, ctx) as Record<string, unknown>
+  const out: string[] = []
+  const add = (line: unknown, vals: Record<string, unknown> = ex): void => {
+    if (typeof line === 'string' && whole(line, vals)) out.push(fillText(line, vals))
+  }
+  const view = stepExportView(step, ctx)
+  out.push(view.title, view.why, ...view.whatToDo, ...view.doneWhen)
+  if (view.ifWrong) out.push(view.ifWrong)
+  if (view.dates) out.push(view.dates)
+  add(cs.changeLine)
+  add(cs.partner)
+  const who = (cs.who ?? {}) as Record<string, unknown>
+  for (const [k, v] of Object.entries(who)) {
+    if (k === 'groups' || k === 'timeline' || k === 'overlap') continue
+    for (const line of Array.isArray(v) ? v : [v]) add(line)
+  }
+  const d = (cs.decision ?? {}) as Record<string, unknown>
+  add(d.label)
+  add(d.help)
+  for (const o of Array.isArray(d.options) ? d.options : []) add(o)
+  const w = (cs.whatToDo ?? {}) as Record<string, unknown>
+  if (ex.needsCreate && Array.isArray(w.create)) for (const l of w.create) add(l)
+  const fixes = (w.checkFixes ?? {}) as Record<string, string>
+  for (const [key, vals] of (Array.isArray(ex.failingChecks) ? ex.failingChecks : []) as [string, Record<string, unknown>][]) add(fixes[key], { ...ex, ...vals })
+  const more = (cs.more ?? {}) as Record<string, unknown>
+  for (const r of Array.isArray(more.risks) ? (more.risks as { text?: string }[]) : []) add(r.text)
+  for (const l of Array.isArray(more.helpDesk) ? more.helpDesk : []) add(l)
+  add(more.manager)
+  const comms = (cs.comms ?? null) as Record<string, unknown> | null
+  if (comms) for (const k of ['salutation', 'body', 'signature']) add(comms[k])
+  return out
 }

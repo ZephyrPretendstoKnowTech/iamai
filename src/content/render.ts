@@ -109,10 +109,21 @@ export function missingVars(text: unknown, ex: Ex): string[] {
       continue
     }
     const v = (ex as Record<string, unknown>)?.[key]
-    const present = Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && String(v).length > 0
-    if (!present) out.push(key)
+    if (!filled(v)) out.push(key)
   }
   return out
+}
+
+/** A value fills a variable when it is not '', null or undefined, and, for a list, has an item and every item is filled. */
+function filled(v: unknown): boolean {
+  if (v === undefined || v === null) return false
+  if (Array.isArray(v)) return v.length > 0 && v.every(filled)
+  return String(v).length > 0
+}
+
+/** A line renders only when every variable it names is filled: no line renders around a hole. */
+export function whole(text: unknown, ex: Ex): boolean {
+  return typeof text !== 'string' || missingVars(text, ex).length === 0
 }
 
 // "1 guests" reads as one guest (walk-51 item 2). After the count is filled, a
