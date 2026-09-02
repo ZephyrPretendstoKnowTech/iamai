@@ -13,12 +13,26 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
+import { stateOf } from './today.ts'
+import type { TodayState } from './today.ts'
 
 export type ListContext = {
   snapshot: TenantSnapshot
   mapping: MappingState
   nameOf: (id: string) => string
   now: string
+  /** The operator's own account, so the special-care picker can include "you". */
+  operatorId?: string | null
+}
+
+// The state word for the special-care picker, in the six-state model (Today §4).
+const STATE_WORD: Record<TodayState, string> = {
+  proven: 'Proven',
+  likely: 'Likely works',
+  neverPrompted: 'Never prompted',
+  possiblyBroken: 'Possibly broken',
+  noMethod: 'No method',
+  notActive: 'Not active',
 }
 
 const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
@@ -46,6 +60,25 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const unproven = active.filter((v) => rolloutBucket(v) === 'unproven')
   const bucketName = (rows: MfaViability[]): string[] => rows.map((v) => nameOf(v.userId))
 
+  // The special-care picker (the campaign's decision): admins, anyone with no
+  // method, anyone with text or call only, and the operator — each with the Today
+  // state that says why. One entry per person, in that order (walk-51 item 3).
+  const byId = new Map(viability.map((v) => [v.userId, v]))
+  const admins = new Set(adminUserIds(snapshot.roles))
+  const careIds: string[] = []
+  const seen = new Set<string>()
+  const addCare = (id: string): void => {
+    if (id && !seen.has(id) && byId.has(id)) {
+      seen.add(id)
+      careIds.push(id)
+    }
+  }
+  for (const v of active) if (admins.has(v.userId)) addCare(v.userId)
+  for (const v of noMethod) addCare(v.userId)
+  for (const v of smsOnly) addCare(v.userId)
+  if (ctx.operatorId) addCare(ctx.operatorId)
+  const specialCare = careIds.map((id) => `${nameOf(id)} · ${STATE_WORD[stateOf(byId.get(id) as MfaViability)]}`)
+
   return {
     // Campaign buckets (mfaViability over collected methods + sign-ins).
     noMethod: bucketName(noMethod),
@@ -68,6 +101,8 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     admins: names([...adminUserIds(snapshot.roles)]),
     coreAdminRoles: [...CORE_ADMIN_ROLE_IDS].map(roleName),
     eligible: names(Object.keys(snapshot.roles.eligible)),
+    // The special-care picker rows ("name · state").
+    specialCare,
   }
 }
 

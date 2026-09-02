@@ -100,6 +100,20 @@ export function ContentStep({
       {evidenceLines(who, ex).filter((line) => whole(line, ex)).map((line, i) => (
         <p key={i} className="reason"><T s={line} ex={ex} /></p>
       ))}
+      {/* The campaign's people lists: each bucket with its members, only where the
+          bucket has people (walk-51 item 3). */}
+      {who.groups && Object.entries(who.groups as Record<string, unknown>).map(([gk, gl]) => {
+        const items = (ex[gk] as string[]) || []
+        if (items.length === 0) return null
+        return (
+          <div key={gk} className="names-group">
+            <p className="reason"><T s={gl} ex={{ ...(ex as Record<string, unknown>), n: items.length }} /></p>
+            <ol className="names">{items.map((nm, i) => <li key={i}>{nm}</li>)}</ol>
+          </div>
+        )
+      })}
+      {who.groups && who.overlap && <Line s={who.overlap} ex={ex} cls="sub" />}
+      {who.groups && who.adminsNote && truthy(ex.admins) && <p className="reason"><T s={who.adminsNote} ex={ex} /></p>}
 
       {d && <Decision d={d} ex={ex} />}
 
@@ -221,7 +235,15 @@ function Decision({ d, ex }: { d: Record<string, any>; ex: Ex }) {
       {d.help && <p className="reason"><T s={d.help} ex={ex} /></p>}
       <div className="decision">
         <div className="dlabel">{d.label}</div>
-        {d.pickerRow && <div className="picker"><label><input type="checkbox" defaultChecked readOnly /> <T s={d.pickerRow} ex={ex} /></label></div>}
+        {/* One row per person the picker's source names (walk-51 item 3): the
+            source holds the rendered "name · state" rows. No source, no picker. */}
+        {d.pickerRow && Array.isArray(ex[d.pickerSource]) && (ex[d.pickerSource] as string[]).length > 0 && (
+          <div className="picker">
+            {(ex[d.pickerSource] as string[]).map((row, i) => (
+              <label key={i}><input type="checkbox" defaultChecked readOnly /> {row}</label>
+            ))}
+          </div>
+        )}
         {Array.isArray(d.options) && <div className="picker">{(d.options as string[]).map((o, i) => <label key={i}><input type="radio" name={d.label} readOnly /> <T s={o} ex={ex} /></label>)}</div>}
         <Button variant="secondary" onClick={() => undefined}>{d.save || 'Save'}</Button>
       </div>

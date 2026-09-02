@@ -32,7 +32,7 @@ export type TodayView = {
   tiles: { proven: number; unproven: number; noMethod: number; notActive: number; active: number }
 }
 
-function stateOf(v: MfaViability): TodayState {
+export function stateOf(v: MfaViability): TodayState {
   if (v.activity !== 'active') return 'notActive'
   switch (v.mfa) {
     case 'verified':

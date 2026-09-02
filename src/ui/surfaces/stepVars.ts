@@ -109,7 +109,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The list variables, derived from what the scan collected (never gated when
   // the data exists): the campaign buckets, the lockout-scenario people, and the
   // emergency/service/admin id sets. A step reads only the keys it uses.
-  Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now }))
+  Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, operatorId: ctx.operatorId }))
 
   // The emergency-access and exclusions-group steps (walk-51 item 14): the
   // failing checks routed through the content checkFixes, the counts for the
