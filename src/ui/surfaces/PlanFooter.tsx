@@ -11,13 +11,17 @@ import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
 import type { PlanComputed } from './planData.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
 import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
 
-type FooterWords = { inPlace: string; doesntApply: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
+type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
 const F = (pages.plan as { footer: FooterWords }).footer
 
-export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameOf: (id: string) => string }) {
+export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComputed; nameOf: (id: string) => string; onPutBack: (stepId: string) => void }) {
   void nameOf
+  // The steps the person said do not apply here (mapping.notApplicable), with
+  // the reason as given and a way back; the engine's own not-applicable goals follow.
+  const said = computed.steps.filter((s) => typeof s.doesntApply === 'string' && s.doesntApply.length > 0)
   const inPlace = computed.steps.filter((s) => s.status === 'done')
   // Doesn't apply here and Not licensed are separate footer groups (§5), over
   // the goals this baseline holds: an absent goal never renders (walk-51 item 9).
@@ -46,10 +50,18 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
           ))}
         </details>
       )}
-      {notApply.length > 0 && (
+      {notApply.length + said.length > 0 && (
         <details>
-          <summary>{fillText(F.doesntApply, { n: notApply.length })}</summary>
+          <summary>{fillText(F.doesntApply, { n: notApply.length + said.length })}</summary>
           <ul className="sections">
+            {said.map((s) => (
+              <li key={s.id}>
+                {fillText(F.doesntApplyRow, { stepTitle: contentTitle(s), reason: s.doesntApply })}{' '}
+                <Button variant="tertiary" onClick={() => onPutBack(s.id)}>
+                  {app.plan.putBack}
+                </Button>
+              </li>
+            ))}
             {notApply.map((r) => (
               <li key={r.goal.id}>{clean(r.statement)}</li>
             ))}

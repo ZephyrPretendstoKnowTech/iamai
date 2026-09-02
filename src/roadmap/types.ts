@@ -119,6 +119,8 @@ export type Step = {
   checks?: import('../validation/checkFixes.ts').StepChecks | null
   history: StepHistoryEntry[]
   skipReason: string | null
+  /** The person's reason this step does not apply here (mapping.notApplicable): the step sits in the footer's Doesn't apply here group. */
+  doesntApply?: string | null
   /**
    * The gap a partly-in-place or below-baseline goal leaves, as the clause a
    * plan row shows: "sessions expire every 168h, baseline wants 4h". Null when

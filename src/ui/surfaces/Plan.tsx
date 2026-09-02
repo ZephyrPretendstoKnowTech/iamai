@@ -14,7 +14,7 @@ import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { scanAge, scanAgeWords } from '../../derive/scanAge.ts'
-import { waveLabels } from '../../derive/phases.ts'
+import { inWave, waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -94,7 +94,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const cleanupExtra = cleanupPhase ? cleanupPhase.rows.length : 0
   const finish = planFinish(c.steps, cleanupPhase?.end ?? null)
   const inPlace = doneSteps(c.steps).length
-  const total = trackableSteps(c.steps).length + cleanupExtra
+  const total = trackableSteps(c.steps.filter((s) => !s.doesntApply)).length + cleanupExtra
   const waiting = FINISH.waiting(finish.waiting)
   // Weeks derive from the finish date, not the last blocked wave (item 15).
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(c.schedule.start)) / (7 * 86_400_000))) : c.schedule.weeks
@@ -117,7 +117,6 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   // The drill sits in Cleanup when Cleanup renders it (§5). A floor step (target-state
   // §13: Microsoft recommended, not in this baseline) sits in its own group after
   // the phases, grouped as not the author's.
-  const inWave = (st: Step): boolean => st.status !== 'done' && !st.floor
   const floorRows = c.steps.filter((st) => st.floor && st.status !== 'done')
   const waveRows = c.schedule.waves
     .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && inWave(st)) }))
@@ -167,7 +166,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
             })}
           </section>
         )
@@ -179,7 +178,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
       {floorRows.length > 0 && (
         <section className="phase floor">
           {floorRows.map((s) => (
-            <Row key={s.id} step={s} isNext={false} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+            <Row key={s.id} step={s} isNext={false} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
           ))}
         </section>
       )}
@@ -193,7 +192,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         </section>
       )}
 
-      <PlanFooter computed={c} nameOf={nameOf} />
+      <PlanFooter computed={c} nameOf={nameOf} onPutBack={(id) => data.setNotApplicable(id, null)} />
     </section>
   )
 }
@@ -228,7 +227,7 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle }: {
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -240,6 +239,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, signa
   signature: string
   onSkip: (stepId: string, reason: string) => void
   onUnskip: (stepId: string) => void
+  onDoesntApply: (stepId: string, reason: string | null) => void
   onTick: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   computed: PlanComputed
   snapshot: TenantSnapshot
@@ -271,6 +271,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, signa
           ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature, operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, groups, naming: computed.coverage.organisation.naming }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
+          onDoesntApply={(reason) => onDoesntApply(step.id, reason)}
           onClose={onToggle}
           onScan={() => { window.location.hash = '#/connect' }}
           decision={decision}
