@@ -27,6 +27,7 @@ import { generateRoadmap } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
+import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
 import { nextWorkingDay } from '../../roadmap/schedule.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
@@ -129,6 +130,7 @@ export function usePlanData(
 
   useEffect(() => {
     if (!snapshot || !mapping || mappingFor !== snapshot) return
+    const decided = applyStepDecisions(mapping, saved?.stepDecisions ?? null)
     setGroupsLoaded(false)
     let cancelled = false
     const ids = new Set<string>()
@@ -141,9 +143,9 @@ export function usePlanData(
     // group the mapping names — whether or not a policy references them yet:
     // the checks on the exclusions group read its members, and without them the
     // week-two demo kept a "correct the group" step for a group already right.
-    const ge = mapping.records['__globalExclusion']?.resolvedId
+    const ge = decided.records['__globalExclusion']?.resolvedId
     if (ge) ids.add(ge)
-    if (mapping.serviceAccountsGroupId) ids.add(mapping.serviceAccountsGroupId)
+    if (decided.serviceAccountsGroupId) ids.add(decided.serviceAccountsGroupId)
     void (async () => {
       const map: GroupMembers = new Map()
       for (const id of ids) {
@@ -163,15 +165,20 @@ export function usePlanData(
     return () => {
       cancelled = true
     }
-  }, [snapshot, mapping, mappingFor])
+  }, [snapshot, mapping, mappingFor, saved])
 
+  // Every saved step decision applied to the stored mapping (target-state §6.4):
+  // the plan, its checks and its variables derive from this, never from the
+  // stored record alone, so a Save changes the plan on the next render.
+  const applied = useMemo<MappingState | null>(() => (mapping ? applyStepDecisions(mapping, saved?.stepDecisions ?? null) : null), [mapping, saved])
   const startDate = saved?.startDate ?? (snapshot ? nextWorkingDay(new Date().toISOString()) : null)
   const band: SizeBand | null = saved?.band && BANDS[saved.band] ? saved.band : null
   const freeze = saved?.freeze ?? null
 
   const computed = useMemo<PlanComputed | null>(() => {
-    if (!snapshot || !baseline || !mapping || !groupsLoaded || !loaded || !startDate) return null
+    if (!snapshot || !baseline || !applied || !groupsLoaded || !loaded || !startDate) return null
     if (mappingFor !== snapshot || groupsFor !== snapshot) return null
+    const mapping = applied
     const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
     const questions = buildQuestions(baseline.pkg)
     const coverage = computeCoverage({
@@ -213,7 +220,7 @@ export function usePlanData(
     refreshBlockerImpact(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot, baseline, mapping, groupsLoaded, loaded, groups, saved, planId, version, startDate, band, freeze, mappingFor, groupsFor])
+  }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, saved, planId, version, startDate, band, freeze, mappingFor, groupsFor])
 
   // Persist the decisions only, so a Skip and the start/freeze survive a reload;
   // the plan itself is regenerated, never stored. Writing here also completes the
@@ -244,7 +251,9 @@ export function usePlanData(
   return {
     ready: loaded && groupsLoaded,
     computed,
-    mapping,
+    // The mapping the plan derives from: the stored record with every step
+    // decision applied, so a step's variables agree with the plan around it.
+    mapping: applied,
     startDate,
     band,
     freeze,
