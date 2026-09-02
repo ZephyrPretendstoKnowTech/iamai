@@ -25,7 +25,7 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
     conditions: { users: { includeUsers: ['All'], excludeGroups: ['ref-exclusions'] } },
     grantControls: { operator: 'OR', builtInControls: ['mfa'] },
   }
-  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', { unresolved: new Set(['ref-exclusions']) })
+  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', { unresolved: new Map([['ref-exclusions', null]]) })
   assert.ok(action.json, 'json produced')
   assert.doesNotMatch(action.json!, /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the JSON')
   assert.doesNotMatch(action.json!, /"excludeGroups"/, 'the array emptied by stripping loses its key')

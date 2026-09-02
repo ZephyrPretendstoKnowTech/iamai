@@ -46,7 +46,12 @@ export type Action = {
   roleList?: { summary: string; names: string[] } | null
   /** For a change to an existing policy: current value → new value, field by field (roadmap-v2.md §4). */
   changes?: { field: string; from: string; to: string }[]
-  /** Objects a downloaded JSON leaves out because they do not exist yet (prompt 49.1 item 1); the caption above the tabs names them. */
+  /**
+   * Objects the body names that the tenant does not have yet: the token or id
+   * left out of the JSON, and the Preparation step that creates it (null when no
+   * step does). The JSON and PowerShell tabs wait on these; nothing is dropped silently.
+   */
+  missing?: { token: string; stepId: string | null }[]
 }
 
 /**
