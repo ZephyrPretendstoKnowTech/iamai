@@ -102,7 +102,7 @@ test('design 2: no box-shadow except the focus ring; no gradient, filter, text-s
   assert.deepEqual(hits, [])
 })
 
-test('design 3: border-radius at most 4px, or 8px on a .wave / .export-card panel, except 50% on .status::before', () => {
+test('design 3: border-radius at most 4px, or 8px on a .wave / .export-card panel, except 50% on .status::before and a 999px pill on a picker chip', () => {
   const { rules } = sources()
   const hits: string[] = []
   for (const r of rules) {
@@ -110,6 +110,8 @@ test('design 3: border-radius at most 4px, or 8px on a .wave / .export-card pane
       const v = m[1].trim()
       if (v === '0' || v === 'var(--radius)') continue
       if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector))) continue
+      // A picker's chip is a pill (the accent tint, the name, a separate ×).
+      if (v === '999px' && /\.chip-(select|remove)/.test(r.selector)) continue
       const px = v.match(/^(\d+(?:\.\d+)?)px$/)
       if (px && Number(px[1]) <= 4) continue
       // The two surface-depth panels (prompt 49.1 item 12) may round to 8px.
