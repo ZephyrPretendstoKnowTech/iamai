@@ -24,7 +24,7 @@
       "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
       "Name: Core - Block - Admin portals for non-admins",
       "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group. Also exclude Guest or external users (all types).",
-      "Target resources → Resources → Select resources → Microsoft Admin Portals, an account IAMAI could not name, Windows Azure Service Management API, an account IAMAI could not name, an account IAMAI could not name",
+      "Target resources → Resources → Select resources → Microsoft Admin Portals, Windows Cloud Login, Windows Azure Service Management API, an unnamed account, an unnamed account",
       "Grant → Block access",
       "Enable policy: Report-only → Create"
     ]
@@ -84,7 +84,7 @@
       "Name: Core - Block - Countries not allowed",
       "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
       "Target resources → Resources → All resources",
-      "Conditions → Locations → Include: Any location; Exclude: an account IAMAI could not name",
+      "Conditions → Locations → Include: Any location; Exclude: an unnamed account",
       "Grant → Block access",
       "Enable policy: Report-only → Create"
     ]
@@ -138,7 +138,7 @@
       "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
       "Name: Core - Session - Token protection",
       "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
-      "Target resources → Resources → Select resources → Office 365 Exchange Online, Office 365 SharePoint Online, an account IAMAI could not name, an account IAMAI could not name, Microsoft Teams Services",
+      "Target resources → Resources → Select resources → Office 365 Exchange Online, Office 365 SharePoint Online, Windows 365, Azure Virtual Desktop, Microsoft Teams Services",
       "Conditions → Client apps → Mobile apps and desktop clients",
       "Conditions → Device platforms → Include: Windows",
       "Conditions → Filter for devices → Exclude devices matching: device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"",
@@ -150,7 +150,7 @@
     "steps": [
       "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
       "Name: Core - Block - Entra Connect sync outside its address",
-      "Users or workload identities → Workload identities → Select service principals → an account IAMAI could not name",
+      "Users or workload identities → Workload identities → Select service principals → an unnamed account",
       "Conditions → Locations → Include: Any location; Exclude: the trusted network",
       "Grant → Block access",
       "Enable policy: Report-only → Create"

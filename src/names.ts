@@ -8,7 +8,10 @@ import type { TenantSnapshot } from './graph/collect/types.ts'
 import type { GroupMembers } from './coverage/population.ts'
 
 /** Shown where a name is genuinely unknown. Never an id (CLAUDE.md: names, never IDs). */
-export const UNNAMED = 'an account IAMAI could not name'
+// Not "an account IAMAI could not name" (walk-51 item 4): most ids resolve
+// through the first-party table and the tenant directory; the rare id that does
+// not is an unnamed account, said plainly, never as a phrase about IAMAI.
+export const UNNAMED = 'an unnamed account'
 
 /** Guest ids whose display name is shared by another account (prompt 49 item 1): they carry a (guest) marker. */
 export function collidingGuestIds(users: { id: string; displayName: string | null; userType: 'member' | 'guest' }[]): Set<string> {

@@ -29,6 +29,10 @@
     { "appId": "372140e0-b3b7-4226-8ef9-d57986796201", "displayName": "Azure Windows VM Sign-In", "category": "platform", "inOffice365Bundle": false, "role": "server sign-in" },
     { "appId": "a4a365df-50f1-4397-bc59-1a1564b8bb9c", "displayName": "Microsoft Remote Desktop", "category": "platform", "inOffice365Bundle": false, "role": "server sign-in" },
     { "appId": "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe", "displayName": "Microsoft Teams Services", "category": "office", "inOffice365Bundle": true, "role": "device sign-in" },
-    { "appId": "87749df4-7ccf-48f8-aa87-704bad0e0e16", "displayName": "Microsoft Teams - Device Admin Agent", "category": "office", "inOffice365Bundle": false, "role": "device sign-in" }
+    { "appId": "87749df4-7ccf-48f8-aa87-704bad0e0e16", "displayName": "Microsoft Teams - Device Admin Agent", "category": "office", "inOffice365Bundle": false, "role": "device sign-in" },
+    { "appId": "9cdead84-a844-4324-93f2-b2e6bb768d07", "displayName": "Azure Virtual Desktop", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "0af06dc6-e4b5-4f28-818e-e78e62d137a5", "displayName": "Windows 365", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "708861da-226e-4d65-a57a-24128df64524", "displayName": "Windows Cloud Login", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "00000002-0000-0000-c000-000000000000", "displayName": "Windows Azure Active Directory", "category": "platform", "inOffice365Bundle": false }
   ]
 }
