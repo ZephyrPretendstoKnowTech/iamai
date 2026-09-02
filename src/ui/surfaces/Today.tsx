@@ -13,7 +13,7 @@ import { TODAY_LINE, METHOD_TIER, MFA_STATE, ACTIVITY_STATE } from '../../copy/d
 import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
 import { SHOW_KEYS, todayEvidenceText, todayStateWord } from './todayCells.ts'
 import type { ShowKey } from './todayCells.ts'
-import { DataTable, InfoTip, Status, Tile, Tiles } from '../components/index.ts'
+import { DataTable, InfoTip, Status, Tile, Tiles, PageTip } from '../components/index.ts'
 import type { Column, StatusTone } from '../components/index.ts'
 
 // The Show list is pages.today.show (walk-51 item 10), in the six-state model
@@ -124,6 +124,7 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
         {todayLine(counts, window_, !window_ && source?.status === 'disabled' ? source.reason : null)}
         <InfoTip title={TODAY_LINE.active.title} text={TODAY_LINE.active.text} />
       </p>
+      <PageTip page="today" text={(pages.today as Record<string, string>).tip} />
       {/* The four tiles from pages.today.tiles: the value, the label, the "held by" line
           naming the step that moves the number, and the definition (walk-51 item 10). */}
       <Tiles>
