@@ -5,16 +5,21 @@ import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { stepIdForGoal } from './generate.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
-import { nobodyAffected, noticeDaysFor } from './timing.ts'
+import { localHour, nobodyAffected, noticeDaysFor } from './timing.ts'
 
-test('every policy step carries announce, remind and enforce with a day, a local time and a reason', () => {
+// The fixtures' display zone (fixtures/index.ts); each event is one instant.
+const ZONE = 'Australia/Sydney'
+const dayIn = (iso: string): string => new Intl.DateTimeFormat('en-AU', { timeZone: ZONE, weekday: 'long' }).format(new Date(iso))
+const hourIn = (iso: string): number => localHour(iso, ZONE)
+
+test('every policy step carries announce, remind and enforce as one instant each, with a reason', () => {
   const run = runFixture(fixture('mid'))
   const dated = run.steps.filter((s) => s.events)
   assert.ok(dated.length > 5)
   for (const s of dated) {
     const e = s.events!
-    assert.ok(['Tuesday', 'Wednesday', 'Thursday'].includes(e.enforce.day), `${s.id} enforces on a Tuesday, Wednesday or Thursday (${e.enforce.day})`)
-    assert.match(e.enforce.time, /^\d\d:\d\d$/)
+    assert.ok(['Tuesday', 'Wednesday', 'Thursday'].includes(dayIn(e.enforce.at)), `${s.id} enforces on a Tuesday, Wednesday or Thursday (${dayIn(e.enforce.at)})`)
+    assert.match(e.enforce.at, /^\d{4}-\d\d-\d\dT/)
     assert.ok(e.enforce.reason.length > 0)
     {
       assert.ok(e.announce, `${s.id} has an announcement`)
@@ -30,26 +35,26 @@ test('every policy step carries announce, remind and enforce with a day, a local
       // behaviour S4 reported.
       const rhythm = run.schedule.rhythm
       const usable = rhythm != null && rhythm.status === 'ok' && rhythm.workingDays.length > 0
-      const announceDay = WEEKDAY_NAMES.indexOf(e.announce!.day)
+      const announceDay = WEEKDAY_NAMES.indexOf(dayIn(e.announce!.at))
       if (usable) {
-        assert.ok(rhythm!.workingDays.includes(announceDay), `${s.id} announces on ${e.announce!.day}, which is not a working day here`)
+        assert.ok(rhythm!.workingDays.includes(announceDay), `${s.id} announces on ${dayIn(e.announce!.at)}, which is not a working day here`)
         // Early in the working day, and never in its last two hours. It used
         // to be the QUIETEST working hour, which is when fewest people are
         // signed in and so the worst time to send something you want read; on
         // a tenant whose quiet hour sits late it produced 18:00 announcements
         // (review-09 finding 11, prompt 42 §12).
-        const announceHour = Number(e.announce!.time.slice(0, 2))
+        const announceHour = hourIn(e.announce!.at)
         assert.ok(
           announceHour >= rhythm!.workingHours.start && announceHour <= Math.max(rhythm!.workingHours.start, rhythm!.workingHours.end - 2),
-          `${s.id} announces at ${e.announce!.time}, outside the readable part of a ${rhythm!.workingHours.start} to ${rhythm!.workingHours.end} day`,
+          `${s.id} announces at ${announceHour}:00, outside the readable part of a ${rhythm!.workingHours.start} to ${rhythm!.workingHours.end} day`,
         )
       } else {
-        assert.ok(['Monday', 'Tuesday', 'Wednesday', 'Thursday'].includes(e.announce!.day), 'announcements go out Monday to Thursday')
-        assert.equal(e.announce!.time, '09:30')
+        assert.ok(['Monday', 'Tuesday', 'Wednesday', 'Thursday'].includes(dayIn(e.announce!.at)), 'announcements go out Monday to Thursday')
+        assert.equal(hourIn(e.announce!.at), 9)
       }
       assert.ok(e.announce!.reason.length > 0, 'the announcement says which day was chosen and why')
       assert.equal(e.noticeDays, noticeDaysFor(s))
-      assert.ok(['Tuesday', 'Wednesday', 'Thursday'].includes(e.enforce.day), `${s.id} enforces on ${e.enforce.day}`)
+      assert.ok(['Tuesday', 'Wednesday', 'Thursday'].includes(dayIn(e.enforce.at)), `${s.id} enforces on ${dayIn(e.enforce.at)}`)
     }
   }
   // The enforcement hour is anchored on the tenant's peak and then spread, so
@@ -57,10 +62,10 @@ test('every policy step carries announce, remind and enforce with a day, a local
   // finding 10, prompt 42 §12). What is asserted is the window and the spread,
   // not one hour: pinning the hour would pin the defect.
   const withPeak = dated[0]
-  const hour = Number(withPeak.events!.enforce.time.slice(0, 2))
-  assert.ok(hour >= 9 && hour <= 15, `enforcement lands inside the working day, got ${withPeak.events!.enforce.time}`)
+  const hour = hourIn(withPeak.events!.enforce.at)
+  assert.ok(hour >= 9 && hour <= 15, `enforcement lands inside the working day, got ${hour}:00`)
   assert.match(withPeak.events!.enforce.reason, /One hour after the busiest hour/)
-  const hours = new Set(dated.map((s) => s.events!.enforce.time))
+  const hours = new Set(dated.map((s) => hourIn(s.events!.enforce.at)))
   assert.ok(hours.size > 1, `enforcement times vary across the plan: ${[...hours].join(', ')}`)
 })
 

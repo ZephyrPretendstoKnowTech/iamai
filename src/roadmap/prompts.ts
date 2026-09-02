@@ -4,6 +4,7 @@
 // "do not invent facts" instruction, the prompt pack, and the grounding
 // bundle, redacted by default. Pure.
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
+import { absoluteDate } from '../copy/dates.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import type { Step, StepView } from './types.ts'
@@ -66,7 +67,7 @@ export function promptFor(kind: PromptKind, tenant: string, context: string, dra
 }
 
 export function stepContext(step: Step, view?: StepView): string {
-  const when = step.events?.enforce ? `${step.events.enforce.day} ${step.events.enforce.date}, ${step.events.enforce.time}` : 'not yet dated'
+  const when = step.events?.enforce ? absoluteDate(step.events.enforce.at) : 'not yet dated'
   if (view) {
     // What the step says on screen (prompt 53 queue item 7), never the engine's own prose.
     const v = view(step)

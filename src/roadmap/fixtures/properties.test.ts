@@ -7,6 +7,7 @@ import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
 import { canDenyAccess, wouldStrand } from '../strand.ts'
+import { localHour } from '../timing.ts'
 import { buildPlanFile } from '../plan.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
 import type { Step } from '../types.ts'
@@ -153,15 +154,16 @@ for (const f of fixtures) {
     // announcements went out at 18:00, the last minute of the working day
     // (review-09 findings 10 and 11).
     {
-      const enforceHours = new Set<string>()
+      const zone = run.input.mapping.displayTimeZone ?? 'UTC'
+      const enforceHours = new Set<number>()
       for (const st of steps) {
         const e = st.events
         if (!e) continue
-        enforceHours.add(e.enforce.time)
+        enforceHours.add(localHour(e.enforce.at, zone))
         for (const m of [e.announce, e.remind]) {
           if (!m) continue
-          const hour = Number(m.time.slice(0, 2))
-          assert.ok(hour >= 8 && hour <= 12, `a message at ${m.time} is early enough in the day to be read`)
+          const hour = localHour(m.at, zone)
+          assert.ok(hour >= 8 && hour <= 12, `a message at ${hour}:00 is early enough in the day to be read`)
         }
       }
       if (steps.filter((st) => st.events).length >= 6) {
