@@ -14,7 +14,10 @@ import { waitingOnSetup as waitingOnSetupQ } from '../derive/sets.ts'
 import { promptsPeople } from './strand.ts'
 import { addWorkingDays, nobodyAffected, toEnforcementDay as enforcementDay } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
-import { CRITICAL, DEPENDENCY } from '../copy/schedule.ts'
+import { engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+
+const CRITICAL = engine.critical
 import { absoluteDate } from '../copy/dates.ts'
 import type { Step } from './types.ts'
 
@@ -54,14 +57,6 @@ export type Derivation = {
   relaxed: string[]
 }
 
-export type PolicyCount = {
-  existing: number
-  added: number
-  cap: number
-  statement: string
-  warning: string | null
-  consolidation: string[]
-}
 
 export type ChangeFreeze = { from: string; to: string }
 
@@ -105,7 +100,6 @@ export type Schedule = {
   enforcementCap: number
   freeze: ChangeFreeze | null
   /** Filled by the generator, which holds the tenant's policies. */
-  policyCount: PolicyCount | null
   /** The tenant's working pattern (scheduling-and-onboarding.md §2.1); filled by the generator. */
   rhythm?: TenantRhythm | null
   /** The Cleanup phase, dated after the last enforcement window (§9); filled by the generator; null when it has nothing to say. */
@@ -285,19 +279,19 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
   for (const s of work) {
     for (const b of s.blockedBy) {
       const blocker = byId.get(b)
-      if (blocker && isWork(blocker)) add(s, { stepId: b, kind: 'hard', reason: DEPENDENCY.blockedBy(blocker.title) })
+      if (blocker && isWork(blocker)) add(s, { stepId: b, kind: 'hard', reason: 'blocked-by' })
     }
     if (!isEnforcement(s)) continue
     const family = s.readiness.family
-    if (exclusion) add(s, { stepId: exclusion.id, kind: 'hard', reason: DEPENDENCY.exclusionGroup })
+    if (exclusion) add(s, { stepId: exclusion.id, kind: 'hard', reason: 'exclusion-group' })
     if (family === 'block' || family === 'location' || family === 'risk') {
-      if (breakGlass) add(s, { stepId: breakGlass.id, kind: 'hard', reason: DEPENDENCY.breakGlass })
-      if (drill) add(s, { stepId: drill.id, kind: 'hard', reason: DEPENDENCY.breakGlassDrill })
+      if (breakGlass) add(s, { stepId: breakGlass.id, kind: 'hard', reason: 'break-glass' })
+      if (drill) add(s, { stepId: drill.id, kind: 'hard', reason: 'break-glass-drill' })
     }
-    if ((family === 'mfa' || family === 'guest') && verify) add(s, { stepId: verify.id, kind: 'hard', reason: DEPENDENCY.registration })
+    if ((family === 'mfa' || family === 'guest') && verify) add(s, { stepId: verify.id, kind: 'hard', reason: 'registration' })
     if (family === 'location') {
-      if (location) add(s, { stepId: location.id, kind: 'hard', reason: DEPENDENCY.namedLocation })
-      if (countries) add(s, { stepId: countries.id, kind: 'hard', reason: DEPENDENCY.namedLocation })
+      if (location) add(s, { stepId: location.id, kind: 'hard', reason: 'named-location' })
+      if (countries) add(s, { stepId: countries.id, kind: 'hard', reason: 'named-location' })
     }
   }
   // Soft: the same people prompted by two steps of different classes in the same week.
@@ -325,7 +319,7 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
       // this, "Guests need MFA" on a tenant with no guests held the device and
       // session changes back a full soak each.
       if (promptsPeople(a) && promptsPeople(b) && batchClassOf(a) !== batchClassOf(b) && batchClassOf(a) !== 'zero' && batchClassOf(b) !== 'zero')
-        add(a, { stepId: b.id, kind: 'soft', reason: DEPENDENCY.samePeople(b.title) })
+        add(a, { stepId: b.id, kind: 'soft', reason: 'same-people' })
     }
   }
   return graph
@@ -559,7 +553,7 @@ export function buildSchedule(
       // Soft rules (§2): the same ring of two steps for the same people never
       // overlaps, so steps pipeline one ring apart; a pilot is never prompted by
       // two policies in the same window, and neither is anyone else.
-      const soft = deps.filter((d) => d.kind === 'soft' && !(relaxSamePeople && d.reason.startsWith('cannot prompt')))
+      const soft = deps.filter((d) => d.kind === 'soft' && !(relaxSamePeople && d.reason === 'same-people'))
       const rings = s.rings.length > 0 ? s.rings : null
       const soaks = rings ? rings.map((r) => r.soakDays) : [s.readiness.family === 'other' ? 1 : ringBand.soakDays]
       const batch = batchClassOf(s)
@@ -633,15 +627,14 @@ export function buildSchedule(
   const shortSoak = ringBandFor(activeUsers, false).soakDays
   if (Date.parse(endOf(result)) > limit && longestSoak > shortSoak) {
     for (const s of steps) for (const r of s.rings) r.soakDays = Math.min(r.soakDays, shortSoak)
-    relaxed.push(CRITICAL.shorterSoak(longestSoak, shortSoak))
+    relaxed.push('shorter-soak')
     result = attempt(false)
   }
   if (Date.parse(endOf(result)) > limit) {
     const strict = endOf(result)
     const loose = attempt(true)
     if (endOf(loose) < strict) {
-      const samePeople = steps.filter((s) => (graph[s.id] ?? []).some((d) => d.kind === 'soft' && d.reason.startsWith('cannot prompt'))).length
-      relaxed.push(CRITICAL.relaxed(samePeople, expectedDays / 7))
+      relaxed.push('same-people-relaxed')
       result = loose
     }
   }
@@ -737,7 +730,6 @@ export function buildSchedule(
     derivation: derive(steps, placed, verification, observation, totalDays, relaxed, cap, freeze, verifyStep),
     enforcementCap: cap,
     freeze,
-    policyCount: null,
   }
 }
 
@@ -759,7 +751,7 @@ function derive(
   if (enforcement.length === 0) {
     if (verifyStep && !verification.complete) {
       return {
-        criticalPath: CRITICAL.sentence(weeks, CRITICAL.verificationOnly(verifyStep.population.total, Math.max(1, Math.round(verification.days / 7)))),
+        criticalPath: fillText(CRITICAL.sentence, { weeks, reason: fillText(CRITICAL.verificationOnly, { people: verifyStep.population.total, weeks: Math.max(1, Math.round(verification.days / 7)) }) }),
         constraint: 'verification',
         chain: [verifyStep.id],
         relaxed,
@@ -767,7 +759,7 @@ function derive(
     }
     const prereqs = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length
     return prereqs > 0
-      ? { criticalPath: CRITICAL.sentence(weeks, CRITICAL.prerequisites(prereqs)), constraint: 'prerequisites', chain: [], relaxed }
+      ? { criticalPath: fillText(CRITICAL.sentence, { weeks, reason: fillText(CRITICAL.prerequisites, { n: prereqs }) }), constraint: 'prerequisites', chain: [], relaxed }
       : { criticalPath: CRITICAL.sentenceDone, constraint: 'none', chain: [], relaxed }
   }
   const last = enforcement.reduce((m, s) => (placed.get(s.id)!.end > placed.get(m.id)!.end ? s : m))
@@ -781,36 +773,36 @@ function derive(
     case 'verification': {
       const v = verifyStep ?? (p.reason.ref ? byId.get(p.reason.ref) ?? null : null)
       if (v) chain.unshift(v.id)
-      reason = CRITICAL.verification(v?.population.total ?? 0, Math.max(1, Math.round(verification.days / 7)), last.title, rings, soak)
+      reason = fillText(CRITICAL.verification, { people: v?.population.total ?? 0, weeks: Math.max(1, Math.round(verification.days / 7)), step: last.title, rings, soak })
       break
     }
     case 'dependency': {
       const dep = p.reason.ref ? byId.get(p.reason.ref) : undefined
       if (dep) chain.unshift(dep.id)
-      reason = CRITICAL.chain(last.title, dep?.title ?? '', rings, soak)
+      reason = fillText(CRITICAL.chain, { step: last.title, waitsFor: dep?.title ?? '', rings, soak })
       break
     }
     case 'soft': {
       const other = p.reason.ref ? byId.get(p.reason.ref) : undefined
       if (other) chain.unshift(other.id)
-      reason = CRITICAL.soft(last.title, other?.title ?? '')
+      reason = fillText(CRITICAL.soft, { step: last.title, other: other?.title ?? '' })
       break
     }
     case 'cap':
-      reason = CRITICAL.cap(cap, last.title)
+      reason = fillText(CRITICAL.cap, { n: cap, step: last.title })
       break
     case 'freeze':
-      reason = CRITICAL.freeze(freeze ? absoluteDate(freeze.to) : '', last.title)
+      reason = fillText(CRITICAL.freeze, { to: freeze ? absoluteDate(freeze.to) : '', step: last.title })
       break
     case 'phase': {
       const other = p.reason.ref ? byId.get(p.reason.ref) : undefined
       if (other) chain.unshift(other.id)
-      reason = CRITICAL.phase(last.title, other?.title ?? '')
+      reason = fillText(CRITICAL.phase, { step: last.title, other: other?.title ?? '' })
       break
     }
     default:
       constraint = 'rings'
-      reason = CRITICAL.rings(last.title, rings, soak, last.kind === 'create' ? observation.days : 0)
+      reason = last.kind === 'create' && observation.days > 0 ? fillText(CRITICAL.ringsObserved, { step: last.title, observation: observation.days, rings, soak }) : fillText(CRITICAL.rings, { step: last.title, rings, soak })
   }
-  return { criticalPath: CRITICAL.sentence(weeks, reason), constraint, chain, relaxed }
+  return { criticalPath: fillText(CRITICAL.sentence, { weeks, reason }), constraint, chain, relaxed }
 }

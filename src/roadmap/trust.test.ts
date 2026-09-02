@@ -59,7 +59,6 @@ function userFacing(s: Step): { where: string; text: string }[] {
     ...s.evidence.lines.map((t) => ({ where: 'evidence', text: t })),
     ...s.unblockNotes.map((t) => ({ where: 'unblockNotes', text: t })),
     ...s.blockers.map((b) => ({ where: 'blockers', text: b.label })),
-    { where: 'rollback', text: s.rollback },
     { where: 'naming', text: s.naming?.proposed ?? '' },
   ]
 }

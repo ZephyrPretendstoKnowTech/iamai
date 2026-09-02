@@ -5,7 +5,8 @@
 // Housekeeping lines with the policy name; the templates are already corrected,
 // so they never trip their own rule. Pure.
 import { appsWithRole, APP_ROLE } from '../derive/evidence.ts'
-import { STATIC_RULE } from '../copy/scenarios2.ts'
+import { engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 export type PolicySource = 'tenant' | 'baseline' | 'template'
 export type StaticViolation = { policyName: string; source: PolicySource; text: string }
@@ -68,19 +69,19 @@ export function violationsOf(p: Raw, source: PolicySource, opts: { technicianToo
       // The block covers the sign-in flow, not the user action, so it can catch registration.
     }
     const missing = [...DEPENDENCY_APP_IDS].filter((id) => !excludeApps.has(id))
-    if (missing.length > 0) out.push({ policyName: name, source, text: STATIC_RULE.blockDependency(name) })
+    if (missing.length > 0) out.push({ policyName: name, source, text: fillText(engine.staticRules.blockDependency, { policy: name }) })
   }
 
   // App protection must target unmanaged devices only.
   if (grant.includes('compliantApplication')) {
     const filter = ((p.conditions as Raw)?.devices as Raw | undefined)?.deviceFilter as Raw | undefined
     const rule = typeof filter?.rule === 'string' ? filter.rule : ''
-    if (!/isCompliant\s*-ne\s*True|trustType\s*-ne/i.test(rule)) out.push({ policyName: name, source, text: STATIC_RULE.appProtectionManaged(name) })
+    if (!/isCompliant\s*-ne\s*True|trustType\s*-ne/i.test(rule)) out.push({ policyName: name, source, text: fillText(engine.staticRules.appProtectionManaged, { policy: name }) })
   }
 
   // 3 — a compliance policy over all resources gets the Autopilot line when technician sign-ins came off compliance.
   if (grant.includes('compliantDevice') && (allResources || includeApps.some((a) => a.toLowerCase() === 'office365')) && opts.technicianToolsOffCompliance) {
-    out.push({ policyName: name, source, text: STATIC_RULE.autopilot(name) })
+    out.push({ policyName: name, source, text: fillText(engine.staticRules.autopilot, { policy: name }) })
   }
 
   void sessionKeys

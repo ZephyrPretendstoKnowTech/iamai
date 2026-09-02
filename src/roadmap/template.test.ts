@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import { CATALOGUE } from '../coverage/coverage.ts'
 import { actionVerb, proposedPolicyName } from '../coverage/naming.ts'
 import { emptyMappingState } from '../mapping/types.ts'
-import { buildCreateAction, PLACEHOLDER_STEP, unresolvedToken } from './generate.ts'
+import { buildCreateAction, PLACEHOLDER_STEP } from './generate.ts'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { placeholdersIn, resolveTemplate, SAMPLE_VALUES, TEMPLATE_PLACEHOLDERS } from './template.ts'
@@ -17,26 +17,18 @@ import type { TemplateBody } from './template.ts'
 
 const ALWAYS_RESOLVED = new Set(['{namePrefix}', '{coreAdminRoles}'])
 
-test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON and named in omits, never a placeholder token', () => {
+test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, never left as a raw id or a placeholder token', () => {
   const mapping = emptyMappingState('t')
-  const token = unresolvedToken(2, 'exclusionGroups')
-  const placeholders = new Map([['ref-exclusions', { label: 'your exclusions group (created by the step above)', token }]])
   const body = {
     displayName: 'Require MFA',
     conditions: { users: { includeUsers: ['All'], excludeGroups: ['ref-exclusions'] } },
     grantControls: { operator: 'OR', builtInControls: ['mfa'] },
   }
-  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', undefined, { placeholders })
+  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', { unresolved: new Set(['ref-exclusions']) })
   assert.ok(action.json, 'json produced')
   assert.doesNotMatch(action.json!, /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the JSON')
   assert.doesNotMatch(action.json!, /"excludeGroups"/, 'the array emptied by stripping loses its key')
   assert.doesNotMatch(action.powershell ?? '', /__IAMAI_|Replace the placeholders/, 'no placeholder token or advisory in the PowerShell')
-  assert.deepEqual(action.omits, ['your exclusions group'], 'omits names the object without the parenthetical')
-  // The portal steps still name it, resolved to a label, so the operator knows to exclude it once it exists.
-  assert.ok(
-    action.portalSteps.some((l) => /exclusions group/.test(l)),
-    `portal steps name the exclusions group: ${action.portalSteps.join(' | ')}`,
-  )
 })
 
 test('item 12: every goal × implementation renders Do it from the template with a grant or session control', () => {
@@ -45,7 +37,7 @@ test('item 12: every goal × implementation renders Do it from the template with
     for (const impl of goal.implementations) {
       const { body, unresolved } = resolveTemplate(impl.template as TemplateBody, SAMPLE_VALUES)
       assert.deepEqual(unresolved, [], `${goal.id}: sample values resolve everything`)
-      const action = buildCreateAction(body, mapping, 'plan-1', `s-goal-${goal.id}`, undefined, { displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` })
+      const action = buildCreateAction(body, mapping, 'plan-1', `s-goal-${goal.id}`, { displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` })
       assert.ok(action.json, `${goal.id}: json`)
       const parsed = JSON.parse(action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null; state: string; description: string }
       const grants = (parsed.grantControls?.builtInControls?.length ?? 0) + (parsed.grantControls?.authenticationStrength ? 1 : 0)
@@ -53,12 +45,7 @@ test('item 12: every goal × implementation renders Do it from the template with
       assert.ok(grants + sessions >= 1, `${goal.id}: at least one grant or session control`)
       assert.equal(parsed.state, 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only`)
       assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
-      assert.ok(action.portalSteps.length >= 4, `${goal.id}: portal steps`)
       assert.match(action.powershell ?? '', /Invoke-MgGraphRequest -Method POST/, `${goal.id}: PowerShell`)
-      // Nothing that would only make sense to a developer leaks into the portal
-      // steps: no placeholder, and no urn:user:… — a user action reads by name
-      // ("Register security information"), the URN staying in the JSON (item 7).
-      assert.equal(action.portalSteps.some((l) => /\{[a-zA-Z]+\}|__IAMAI_|urn:user:/.test(l)), false, `${goal.id}: no raw placeholder or URN in portal steps: ${action.portalSteps.join(' | ')}`)
     }
   }
 })

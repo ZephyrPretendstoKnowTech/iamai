@@ -48,7 +48,6 @@ export type Action = {
   /** For a change to an existing policy: current value → new value, field by field (roadmap-v2.md §4). */
   changes?: { field: string; from: string; to: string }[]
   /** Objects a downloaded JSON leaves out because they do not exist yet (prompt 49.1 item 1); the caption above the tabs names them. */
-  omits?: string[]
 }
 
 /**
@@ -114,7 +113,6 @@ export type Step = {
    * Null on steps that carry no checks.
    */
   checks?: import('../validation/checkFixes.ts').StepChecks | null
-  rollback: string
   history: StepHistoryEntry[]
   skipReason: string | null
   /**
@@ -169,7 +167,6 @@ export type Step = {
   /** One-off notes on the Dates section (item 7): a device certificate prompt, a block's session-refresh timing. */
   dateNotes?: string[]
   /** The two recorded-by-hand emergency-access facts, ticked by hand and stored in the plan file (prompt 49 item 5). */
-  tickable?: { text: string; key: 'credentialStorage' | 'signInMonitoring'; done: boolean }[]
 }
 
 /**

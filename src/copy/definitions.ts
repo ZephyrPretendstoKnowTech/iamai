@@ -1,7 +1,6 @@
 // Definitions behind every state, tile, and chip a user sees: written for a
 // novice. Every number on screen has an InfoTip that reads from here.
 
-import { TERMS } from './terms.ts'
 import { EVIDENCE_WINDOW_DAYS } from '../graph/collect/constants.ts'
 
 /** Every headline percentage names its population and, where one applies, its window (ux-review-04 §1). */
@@ -17,34 +16,34 @@ export const NOT_PEOPLE = 'Shared mailboxes and other accounts that are not peop
 
 export type Definition = { title: string; text: string }
 
-// Titles come from the terminology dictionary (ux-review-03 §A8).
+// The titles are the final user-facing words for each state (ux-review-03 §A8); enum values never change, only these words do.
 export const MFA_STATE = {
-  verified: { title: TERMS.mfaState.verified, text: 'Completed MFA in the collected sign-in records: proven, not assumed.' },
+  verified: { title: 'Verified', text: 'Completed MFA in the collected sign-in records: proven, not assumed.' },
   likelyViable: {
-    title: TERMS.mfaState.likelyViable,
+    title: 'Looks healthy',
     text: 'A current Authenticator app, a recent registration, or a recently active Windows Hello device suggests MFA would succeed if required.',
   },
   notChallenged: {
-    title: TERMS.mfaState.notChallenged,
+    title: 'Never prompted',
     text: 'Signed in during the collected window, but nothing ever required MFA of them: enforcement is their first real test.',
   },
-  unverified: { title: TERMS.mfaState.unverified, text: 'A method is registered but nothing shows it working. Verify before enforcing.' },
-  none: { title: TERMS.mfaState.none, text: 'No MFA-capable method registered. Email and security questions do not count.' },
+  unverified: { title: 'Possibly broken', text: 'A method is registered but nothing shows it working. Verify before enforcing.' },
+  none: { title: 'No method', text: 'No MFA-capable method registered. Email and security questions do not count.' },
 } as const satisfies Record<string, Definition>
 
 export const ACTIVITY_STATE = {
-  active: { title: TERMS.activity.active, text: 'A successful sign-in within the last 90 days.' },
-  dormant: { title: TERMS.activity.dormant, text: 'No successful sign-in for more than 90 days: planned separately, never counted as an MFA success.' },
-  neverSignedIn: { title: TERMS.activity.neverSignedIn, text: 'No successful sign-in on record; the account creation date is shown instead.' },
+  active: { title: 'Active', text: 'A successful sign-in within the last 90 days.' },
+  dormant: { title: 'Inactive 90+ days', text: 'No successful sign-in for more than 90 days: planned separately, never counted as an MFA success.' },
+  neverSignedIn: { title: 'Never signed in', text: 'No successful sign-in on record; the account creation date is shown instead.' },
 } as const satisfies Record<string, Definition>
 
 export const METHOD_TIER = {
-  phishingResistant: { title: TERMS.methodTier.phishingResistant, text: 'Passkeys / FIDO2 security keys, Windows Hello for Business, or certificates.' },
-  passwordless: { title: TERMS.methodTier.passwordless, text: 'Microsoft Authenticator passwordless phone sign-in.' },
-  push: { title: TERMS.methodTier.push, text: 'Microsoft Authenticator push approval.' },
-  otp: { title: TERMS.methodTier.otp, text: 'Software or hardware one-time passcodes.' },
-  smsVoice: { title: TERMS.methodTier.smsVoice, text: 'Phone-based methods only: they work, but they are the weakest tier.' },
-  none: { title: TERMS.methodTier.none, text: 'No MFA-capable method registered.' },
+  phishingResistant: { title: 'Phishing-resistant', text: 'Passkeys / FIDO2 security keys, Windows Hello for Business, or certificates.' },
+  passwordless: { title: 'Passwordless', text: 'Microsoft Authenticator passwordless phone sign-in.' },
+  push: { title: 'App notification', text: 'Microsoft Authenticator push approval.' },
+  otp: { title: 'One-time code', text: 'Software or hardware one-time passcodes.' },
+  smsVoice: { title: 'Text or call', text: 'Phone-based methods only: they work, but they are the weakest tier.' },
+  none: { title: 'None', text: 'No MFA-capable method registered.' },
 } as const satisfies Record<string, Definition>
 
 export const GOAL_STATUS = {

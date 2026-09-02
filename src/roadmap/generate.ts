@@ -17,13 +17,12 @@ import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
 import { isNonPerson, notActiveUsers } from '../derive/sets.ts'
 import { accountVerdict } from './strand.ts'
-import { policyCountFor } from './policyCount.ts'
-import { ROLLBACK_V2 } from '../copy/stepContent.ts'
-import { NAMING } from '../copy/schedule.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
 import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
+import { engine, stepById } from '../content/content.ts'
+import { unresolvedReferences } from '../baseline/index.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
@@ -33,10 +32,8 @@ import { proposedPolicyName } from '../coverage/naming.ts'
 import { rolloutBucket, summarizeTenant } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { collidingGuestIds } from '../names.ts'
-import { coversAdminSet, roleLabel } from '../roles.ts'
-import { countryName, isAllowlistGeoPolicy, tenantCountryLocation } from '../mapping/countries.ts'
+import { isAllowlistGeoPolicy, tenantCountryLocation } from '../mapping/countries.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { ACTION, COMMS, EMERGENCY_DONE_WHEN, EVIDENCE, PORTAL_WORDS, PREREQ, ROLLBACK, TEMPLATE_LABEL, UNBLOCK, stepTitle } from '../copy/steps.ts'
 import { detectHighCare } from '../derive/highCare.ts'
 import { checksNotRun } from '../validation/report.ts'
 import {
@@ -56,26 +53,26 @@ import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { isFloorGoal } from './floor.ts'
-import { DATE_NOTE } from '../copy/steps.ts'
-const QUESTION_STEPS: [string, string, string][] = [
-  ['mailDevices', 'Set up an SMTP relay for the devices that send mail', 'Printers and apps that send mail by Authenticated SMTP break when legacy auth is blocked; an SMTP relay or a per-device exception keeps them working.'],
-  ['travel', 'Add a travel notice and exclusion', 'People who work abroad hit the country block; a short-lived exclusion and a notice keep them working while they travel.'],
-  ['partner', 'Exclude the partner or MSP accounts', 'Service-provider accounts sign in from another tenant; excluding "Service provider users" keeps their access while the policies enforce.'],
-]
+/** The three questions the operator can answer (prompt 48 item 10); a title lives in content.json, under shared.engine.carveOuts. */
+const CARVE_OUT_IDS = ['mailDevices', 'travel', 'partner'] as const
+
+/** Step titles are the goal name as an imperative: the kind is a chip, never a prefix. */
+function stepTitle(goalName: string): string {
+  return goalName.charAt(0).toUpperCase() + goalName.slice(1)
+}
+
 import { buildSchedule, nextWorkingDay } from './schedule.ts'
 import type { ChangeFreeze, Schedule } from './schedule.ts'
 import type { Action, Blocker, Readiness, Step, StepPopulation, StepStatus } from './types.ts'
 import type { SizeBand } from './constants.ts'
-import { ADJUST, BLOCKED, BLOCKER, OPERATOR } from '../copy/steps.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
 import { proposedObjectNames } from '../coverage/naming.ts'
-import { NAMING as STEP_NAMING } from '../copy/steps.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
-import { GATING_SUBJECTS, attachWarnings, blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
+import { attachWarnings, blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
 import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
@@ -220,24 +217,13 @@ export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}
   '{serviceAccountsGroup}': PREREQ_STEP_ID.serviceAccountsGroup,
 }
 
-/**
- * Internal marker for a baseline reference no assumption has resolved yet: never
- * a GUID, and never rendered. The JSON strips it (a downloaded artifact omits
- * the clause); the portal steps resolve it to a plain label. The `__IAMAI`
- * prefix is a tripwire — `forbidEverywhere` fails the build if one ever leaks.
- */
-export function unresolvedToken(questionNumber: number, role: string): string {
-  return `__IAMAI_UNRESOLVED_${questionNumber}_${role.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}__`
-}
 
-export type Placeholders = Map<string, { label: string; token: string }>
 
-function replaceReferences(policy: RawPolicy, mapping: MappingState, placeholders: Placeholders = new Map()): RawPolicy {
+function replaceReferences(policy: RawPolicy, mapping: MappingState): RawPolicy {
   const resolved = new Map<string, string>()
   for (const r of Object.values(mapping.records)) {
     if (r.resolvedId !== null && !r.placeholder.startsWith('__')) resolved.set(r.placeholder, r.resolvedId)
   }
-  for (const [id, p] of placeholders) if (!resolved.has(id)) resolved.set(id, p.token)
   const g = mapping.records['__globalExclusion']
   const walk = (v: unknown): unknown => {
     if (Array.isArray(v)) return v.map(walk)
@@ -269,28 +255,13 @@ function replaceReferences(policy: RawPolicy, mapping: MappingState, placeholder
  * plain labels omitted, for the caption above the Do-it tabs. The portal steps
  * keep the reference (resolved to a label), so only the JSON changes.
  */
-function stripUnresolvedForJson(policy: RawPolicy, placeholders: Placeholders): { body: RawPolicy; omitted: string[] } {
-  const labelOf = new Map<string, string>()
-  for (const p of placeholders.values()) labelOf.set(p.token, p.label)
-  const cleanLabel = (l: string): string => l.replace(/\s*\(created by the step above\)\s*$/, '')
-  const omitted = new Map<string, string>()
-  const labelForUnresolved = (s: string): string | null => {
-    if (labelOf.has(s)) return cleanLabel(labelOf.get(s)!)
-    if (/^\{[A-Za-z]+\}$/.test(s)) return cleanLabel(TEMPLATE_LABEL[s as keyof typeof TEMPLATE_LABEL] ?? 'the object this step creates')
-    if (/^__IAMAI_/.test(s)) return 'the object this step creates'
-    return null
-  }
+function stripUnresolvedForJson(policy: RawPolicy, unresolvedIds: ReadonlySet<string> = new Set()): RawPolicy {
+  const unresolved = (s: string): boolean => unresolvedIds.has(s) || /^\{[A-Za-z]+\}$/.test(s) || /^__IAMAI_/.test(s)
   const walk = (v: unknown): unknown => {
     if (Array.isArray(v)) {
       const kept: unknown[] = []
       for (const x of v) {
-        if (typeof x === 'string') {
-          const label = labelForUnresolved(x)
-          if (label) {
-            omitted.set(x, label)
-            continue
-          }
-        }
+        if (typeof x === 'string' && unresolved(x)) continue
         kept.push(walk(x))
       }
       return kept
@@ -307,131 +278,37 @@ function stripUnresolvedForJson(policy: RawPolicy, placeholders: Placeholders): 
     }
     return v
   }
-  const body = walk(structuredClone(policy)) as RawPolicy
-  return { body, omitted: [...omitted.values()] }
+  return walk(structuredClone(policy)) as RawPolicy
 }
 
 
-const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const TOKEN_RE = /^__IAMAI_UNRESOLVED_(\d+)_(.+)__$/
 
-export function portalSteps(policy: RawPolicy, names?: NameDirectory, placeholders: Placeholders = new Map()): string[] {
-  const one = (x: unknown, role = false): string => {
-    if (typeof x !== 'string') return String(x)
-    const p = placeholders.get(x)
-    if (p) return p.label
-    const t = TOKEN_RE.exec(x)
-    if (t) return [...placeholders.values()].find((v) => v.token === x)?.label ?? 'an object the plan creates'
-    if (role) return roleLabel(x)
-    const name = names?.nameOf(x) ?? null
-    if (name) return name
-    if (GUID_RE.test(x)) return 'an object not in this tenant'
-    return names ? names.label(x) : x
-  }
-  const label = (v: unknown, role = false): string => {
-    if (!Array.isArray(v) || v.length === 0) return ''
-    return [...new Set(v.map((x) => one(x, role)))].join(', ')
-  }
-  const roles = (v: unknown): string => {
-    if (!Array.isArray(v) || v.length === 0) return ''
-    return coversAdminSet(v.map(String)) ? `All admin roles (${v.length})` : label(v, true)
-  }
-  const c = (policy.conditions ?? {}) as RawPolicy
-  const users = (c.users ?? {}) as RawPolicy
-  const apps = (c.applications ?? {}) as RawPolicy
-  const g = (policy.grantControls ?? null) as RawPolicy | null
-  const s = (policy.sessionControls ?? null) as RawPolicy | null
-
-  const lines = [
-    'Entra admin center → Protection → Conditional Access → Policies → New policy',
-    `Name: ${String(policy.displayName ?? '')}`,
-  ]
-  const inc =
-    label(users.includeUsers) ||
-    (roles(users.includeRoles) && `Directory roles: ${roles(users.includeRoles)}`) ||
-    (label(users.includeGroups) && `Groups: ${label(users.includeGroups)}`)
-  lines.push(
-    `Users → Include: ${inc || 'as exported'}${label(users.excludeGroups) ? `; Exclude groups: ${label(users.excludeGroups)}` : ''}${label(users.excludeUsers) ? `; Exclude users: ${label(users.excludeUsers)}` : ''}`,
-  )
-  const appInc = label(apps.includeApplications)
-  const actions = PORTAL_WORDS.userActions(apps.includeUserActions)
-  lines.push(
-    actions
-      ? `Target resources → User actions: ${actions}`
-      : `Target resources → Cloud apps → Include: ${appInc === 'All users' || appInc === 'All' ? 'All resources' : appInc || 'as exported'}`,
-  )
-  const clientApps = PORTAL_WORDS.clientApps(c.clientAppTypes)
-  if (clientApps && clientApps !== PORTAL_WORDS.clientApps(['all'])) {
-    lines.push(`Conditions → Client apps: ${clientApps}`)
-  }
-  const platforms = (c.platforms ?? null) as RawPolicy | null
-  if (platforms)
-    lines.push(
-      `Conditions → Device platforms → Include: ${PORTAL_WORDS.platforms(platforms.includePlatforms)}${PORTAL_WORDS.platforms(platforms.excludePlatforms) ? `; Exclude: ${PORTAL_WORDS.platforms(platforms.excludePlatforms)}` : ''}`,
-    )
-  const locations = (c.locations ?? null) as RawPolicy | null
-  if (locations)
-    lines.push(
-      `Conditions → Locations → Include: ${PORTAL_WORDS.locations(locations.includeLocations, label)}${PORTAL_WORDS.locations(locations.excludeLocations, label) ? `; Exclude: ${PORTAL_WORDS.locations(locations.excludeLocations, label)}` : ''}`,
-    )
-  if (label(c.signInRiskLevels)) lines.push(`Conditions → Sign-in risk: ${label(c.signInRiskLevels)}`)
-  if (label(c.userRiskLevels)) lines.push(`Conditions → User risk: ${label(c.userRiskLevels)}`)
-  const flows = (c.authenticationFlows ?? null) as RawPolicy | null
-  if (flows?.transferMethods) lines.push(`Conditions → Authentication flows: ${String(flows.transferMethods)}`)
-  if (g) {
-    const controls = PORTAL_WORDS.grant(g.builtInControls)
-    const strength = (g.authenticationStrength ?? null) as RawPolicy | null
-    const grantBits = [
-      controls.toLowerCase().includes('block') ? 'Block access' : null,
-      controls && !controls.toLowerCase().includes('block') ? `Require: ${controls}` : null,
-      strength ? `Require authentication strength: ${names?.label(String(strength.id ?? '')) ?? String(strength.displayName ?? strength.id ?? '')}` : null,
-    ].filter(Boolean)
-    lines.push(`Grant → ${grantBits.join('; ')}${g.operator === 'AND' ? ' (Require all)' : ''}`)
-  }
-  if (s) {
-    const sif = (s.signInFrequency ?? null) as RawPolicy | null
-    const pb = (s.persistentBrowser ?? null) as RawPolicy | null
-    const bits = [
-      sif?.isEnabled === true ? `Sign-in frequency: ${String(sif.value)} ${String(sif.type)}` : null,
-      pb?.isEnabled === true ? `Persistent browser session: ${String(pb.mode)}` : null,
-    ].filter(Boolean)
-    if (bits.length > 0) lines.push(`Session → ${bits.join('; ')}`)
-  }
-  lines.push('Enable policy: Report-only → Create')
-  return lines
-}
 
 export function buildCreateAction(
   baselinePolicy: RawPolicy,
   mapping: MappingState,
   planId: string,
   stepId: string,
-  names?: NameDirectory,
-  opts: { placeholders?: Placeholders; displayName?: string; adjust?: { policyId: string; state: string } } = {},
+  opts: { displayName?: string; adjust?: { policyId: string; state: string }; unresolved?: ReadonlySet<string> } = {},
 ): Action {
-  const body = replaceReferences(baselinePolicy, mapping, opts.placeholders)
+  const body = replaceReferences(baselinePolicy, mapping)
   delete body.id
   delete body.createdDateTime
   delete body.modifiedDateTime
+  // The pinned baseline's own placeholder map names the author's objects; it is not a policy field.
+  delete body.placeholders
   // A new policy starts in report-only; an adjusted one keeps its current state.
   body.state = opts.adjust ? opts.adjust.state : 'enabledForReportingButNotEnforced'
   if (opts.displayName) body.displayName = opts.displayName
   const tag = `[IAMAI:${planId}:${stepId}]`
   body.description = `${tag}${typeof baselinePolicy.description === 'string' && baselinePolicy.description ? ' ' + baselinePolicy.description : ''}`
-  // The portal steps keep the reference (resolved to a label); the JSON strips
-  // any object that does not exist yet, so a download never carries a placeholder.
-  const steps = portalSteps(body, names, opts.placeholders)
-  const { body: jsonBody, omitted } = stripUnresolvedForJson(body, opts.placeholders ?? new Map())
-  const json = JSON.stringify(jsonBody, null, 2)
+  // The JSON strips any object that does not exist yet, so a download never carries a placeholder.
+  const json = JSON.stringify(stripUnresolvedForJson(body, opts.unresolved), null, 2)
   const fileName = `${stepId}.json`
-  if (opts.adjust) {
-    steps[0] = `Entra admin center → Protection → Conditional Access → Policies → open "${String(body.displayName ?? '')}"`
-    steps[steps.length - 1] = 'Save (the policy keeps its current state)'
-  }
   const powershell = opts.adjust
     ? `Invoke-MgGraphRequest -Method PATCH -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${opts.adjust.policyId}' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
     : `Invoke-MgGraphRequest -Method POST -Uri 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies' -ContentType 'application/json' -Body (Get-Content .\\${fileName} -Raw)`
-  return { kind: opts.adjust ? 'adjust' : 'create', summary: [ACTION.createReportOnly], json, portalSteps: steps, powershell, omits: omitted.length > 0 ? omitted : undefined }
+  return { kind: opts.adjust ? 'adjust' : 'create', summary: [], json, portalSteps: [], powershell }
 }
 
 export { proposedPolicyName } from '../coverage/naming.ts'
@@ -449,9 +326,8 @@ const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], 'gr
   'report-only': 'state',
 }
 
-function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | null, names?: NameDirectory): Action {
-  const summary = adjustSummary(result)
-  if (!full.json) return { ...full, kind: 'adjust', summary }
+function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | null): Action {
+  if (!full.json) return { ...full, kind: 'adjust' }
   const body = JSON.parse(full.json) as RawPolicy
   const sections = new Set(result.reasons.filter((r) => !r.expected).map((r) => CHANGED_SECTION[r.kind]).filter(Boolean))
   if (result.floorRaised) sections.add('grantControls')
@@ -478,43 +354,11 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
   if (sections.has('applications')) changes.push({ field: 'Target resources', from: show(exConditions.applications), to: show(conditions.applications) })
   if (sections.has('state')) changes.push({ field: 'State', from: show(ex.state), to: '"enabled"' })
 
-  const label = (v: unknown): string => (Array.isArray(v) && v.length > 0 ? [...new Set(v.map((x) => (names ? names.label(String(x)) : String(x))))].join(', ') : '')
   const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
   const roleList = cur && Array.isArray(cur.includeRoles) && cur.includeRoles.length > 0 ? roleListSummary(cur.includeRoles.map(String)) : null
-  const currentInclude = cur ? [label(cur.includeUsers), label(cur.includeGroups), roleList?.summary ?? ''].filter(Boolean).join('; ') : ''
   const excludeRoles = cur && Array.isArray(cur.excludeRoles) && cur.excludeRoles.length > 0 ? roleListSummary(cur.excludeRoles.map(String)) : null
-  const currentExclude = cur ? [label(cur.excludeUsers), label(cur.excludeGroups), excludeRoles?.summary ?? ''].filter(Boolean).join('; ') : ''
-  const portal = [
-    full.portalSteps[0],
-    ...(currentInclude ? [ADJUST.currentInclude(currentInclude)] : []),
-    ...(currentExclude ? [ADJUST.currentExclude(currentExclude)] : []),
-    ...full.portalSteps.slice(1, -1).filter((line) => {
-      if (/^Users →/.test(line)) return sections.has('users')
-      if (/^Target resources →/.test(line)) return sections.has('applications')
-      if (/^Grant →|^Grant controls/.test(line)) return sections.has('grantControls')
-      if (/^Session/.test(line)) return sections.has('sessionControls')
-      if (/^Conditions →/.test(line)) return false
-      return true
-    }),
-    full.portalSteps[full.portalSteps.length - 1],
-  ].filter((s): s is string => typeof s === 'string')
   const powershell = full.powershell ? full.powershell.replace(/-Method POST/, '-Method PATCH') : null
-  return { kind: 'adjust', summary: [...summary, ADJUST.onlyFields], json, portalSteps: portal, powershell, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes, omits: full.omits }
-}
-
-function adjustSummary(result: GoalResult): string[] {
-  const out: string[] = []
-  for (const r of result.reasons) {
-    if (r.kind === 'weaker-control') out.push(ACTION.raiseGrant(r.detail))
-    if (r.kind === 'session-weaker') out.push(ACTION.tightenSession(r.detail))
-    if (r.kind === 'excluded' && !r.expected) out.push(ACTION.reviewExclusion(r.detail))
-    if (r.kind === 'not-targeted') out.push(ACTION.extendScope(r.userIds.length))
-    if (r.kind === 'apps-narrower') out.push(ACTION.broadenApps)
-    if (r.kind === 'report-only') out.push(ACTION.moveToEnforced)
-  }
-  if (result.floorRaised) out.push(ACTION.floorRaised(result.floorRaised.to, result.floorRaised.by))
-  if (out.length === 0) out.push(ACTION.bringToFloor)
-  return out
+  return { kind: 'adjust', summary: [], json, portalSteps: [], powershell, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
 }
 
 // ---- generation ----
@@ -583,13 +427,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const exclusionGroupIds = [mapping.records['__globalExclusion']?.resolvedId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
   for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
-  const prereq = (id: string, title: string, why: string, summary: string[]): Step => ({
+  const prereq = (id: string, title?: string): Step => ({
     id,
     goalId: id.replace(/^s-/, ''),
     phase: 0,
     kind: 'prerequisite',
-    title,
-    why,
+    title: title ?? stepById[id]?.title ?? id,
+    why: '',
     status: 'ready',
     blockedBy: [],
     blockers: [],
@@ -597,18 +441,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 },
     readiness: { family: 'other', percent: null, lines: [] },
     evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
-    action: { kind: 'prerequisite', summary, json: null, portalSteps: [], powershell: null },
-    rollback: ROLLBACK.prerequisite,
+    action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [], powershell: null },
     history: [],
     skipReason: null,
     deliveredBy: [],
     ...EXTRAS,
-    plainTitle: title,
+    plainTitle: title ?? stepById[id]?.title ?? id,
     forManager: MANAGER.prerequisite(),
   })
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
   const naming = input.coverage.organisation.naming
+  // A baseline reference the tenant does not resolve is stripped from every policy body a person downloads (prompt 49.1 item 1).
+  const unresolvedIds = new Set(unresolvedReferences(input.baseline.references).map((r) => r.id).filter((id) => mapping.records[id]?.resolvedId == null))
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
   /** The tenant-convention name, suffixed when a policy of that name already exists; the note explains. */
@@ -622,7 +467,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     while (existingNames.has(`${base} (${n})`.toLowerCase()) || proposedTaken.has(`${base} (${n})`.toLowerCase())) n += 1
     const name = `${base} (${n})`
     proposedTaken.add(name.toLowerCase())
-    return { name, note: NAMING.collision(name, base) }
+    return { name, note: null }
   }
 
   // Without Entra ID P1 no Conditional Access policy can exist, so the objects
@@ -675,19 +520,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const bgMissing = mapping.records['__breakGlassMissing']?.doesNotExist === true && mapping.breakGlassUserIds.length === 0
   const bgStepId = BREAK_GLASS_STEP_ID
   if (bgMissing) {
-    const p = PREREQ.breakGlass
-    // The two facts nobody can read are done-when lines here (prompt 46 item 21).
-    steps.push(prereq(bgStepId, p.title, p.why, p.how))
+    steps.push(prereq(bgStepId))
   }
   const geMissing = canUseConditionalAccess && mapping.records['__globalExclusion']?.doesNotExist === true
   const geStepId = PREREQ_STEP_ID.exclusionsGroup
   if (geMissing) {
-    const p = PREREQ.globalExclusion
     // Every object the plan asks for carries a proposed name, in the tenant's own
     // convention (prompt 43 item 4). The copy's example name stays as the shape;
     // this adds the one IAMAI would actually use here.
     const proposed = proposedObjectNames(naming).exclusionsGroup
-    steps.push({ ...prereq(geStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)]), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(geStepId), naming: { proposed: proposed.name, fromBaseline: null } })
   }
   const locMissing =
     canUseConditionalAccess &&
@@ -696,9 +538,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     templateNeeds.has('{trustedLocations}')
   const locStepId = PREREQ_STEP_ID.trustedLocation
   if (locMissing) {
-    const p = PREREQ.trustedLocation
     const proposed = proposedObjectNames(naming).trustedLocation
-    steps.push({ ...prereq(locStepId, p.title, p.why, [...p.how, STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)]), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(locStepId), naming: { proposed: proposed.name, fromBaseline: null } })
   }
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
@@ -711,16 +552,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     tenantCountryLocation(snapshot, mapping.allowedCountries) === null &&
     input.coverage.results.some((r) => r.goal.id === 'geo-restriction' && r.status !== 'enforced' && r.status !== 'not-applicable')
   if (countriesMissing) {
-    const p = PREREQ.allowedCountries
     const proposed = proposedObjectNames(naming).allowedCountries
-    steps.push({ ...prereq(countriesStepId, p.title, p.why, [...p.how(mapping.allowedCountries.map(countryName)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)]), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(countriesStepId), naming: { proposed: proposed.name, fromBaseline: null } })
   }
   // Confirmed service accounts with no group holding them (prompt 16 §3).
   const saStepId = PREREQ_STEP_ID.serviceAccountsGroup
   if (canUseConditionalAccess && mapping.serviceAccountUserIds.length > 0 && mapping.serviceAccountsGroupId === null) {
-    const p = PREREQ.serviceAccountsGroup
     const proposed = proposedObjectNames(naming).serviceAccountsGroup
-    steps.push({ ...prereq(saStepId, p.title, p.why, [...p.how(mapping.serviceAccountUserIds.map(nameOf)), STEP_NAMING.proposed(proposed.name, proposed.matchesTenant)]), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({ ...prereq(saStepId), naming: { proposed: proposed.name, fromBaseline: null } })
   }
 
   // Wave 0: the accounts nobody signs in to (target-state §8.1, prompt 46
@@ -730,9 +569,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // is somebody to decide on; done when the count reaches 0 on re-scan.
   const dormant = notActiveUsers(snapshot, snapshot.asOf, new Set(mapping.serviceAccountUserIds))
   if (dormant.length > 0) {
-    const p = PREREQ.dormantAccounts
-    const names = dormant.map((u) => nameOf(u.id))
-    const s = prereq('s-check-dormant-accounts', p.title(dormant.length), p.why, p.how(names))
+    const s = prereq('s-check-dormant-accounts')
     s.kind = 'check'
     s.action = { ...s.action, kind: 'check' }
     // The dormant step is the one place never-signed-in accounts are a population (§8.1): it names them, though none are active.
@@ -742,9 +579,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // Shared devices, their own policy (prompt 48 item 4).
   if (canUseConditionalAccess && sharedDevices.length > 0) {
-    const p = PREREQ.sharedDevices
-    const names_ = sharedDevices.map((u) => nameOf(u.id))
-    const step = prereq('s-shared-devices', p.title, p.why, p.how(names_))
+    const step = prereq('s-shared-devices')
     step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id), activeIds: sharedDevices.map((u) => u.id), inScope: sharedDevices.length }
     steps.push(step)
   }
@@ -753,24 +588,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // answer adds a carve-out step. Unanswered, the plan proceeds on the evidence
   // and the affected step carries the can't-see line.
   const qa = mapping.questionAnswers ?? {}
-  for (const [id, title, why] of QUESTION_STEPS) {
+  for (const id of CARVE_OUT_IDS) {
     if ((qa[id] ?? '').trim().length === 0) continue
-    steps.push(prereq(`s-question-${id}`, title, why, [`You listed: ${qa[id].trim().replace(/\n+/g, ', ')}.`]))
+    steps.push(prereq(`s-question-${id}`, engine.carveOuts[id]?.title))
   }
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
   // Nothing can take security defaults' place without Conditional Access, so
   // turning them off is never the advice: the ladder asks for them instead.
   if (secDefaults?.isEnabled === true && canUseConditionalAccess) {
-    const p = PREREQ.securityDefaults
-    steps.push(prereq('s-prereq-security-defaults', p.title, p.why, p.how))
+    steps.push(prereq('s-prereq-security-defaults'))
   }
   // Per-user MFA still on (migration not complete): a conflict named up front (roadmap-v2.md §7, messy).
   const methodsPolicy = (snapshot.config.authMethodsPolicy?.rows?.[0] ?? null) as { policyMigrationState?: string } | null
   if (methodsPolicy?.policyMigrationState && methodsPolicy.policyMigrationState !== 'migrationComplete') {
-    const p = PREREQ.perUserMfa
-    const mfaPolicies = input.coverage.results.filter((r) => goalFamily(r.goal.id) === 'mfa' && r.status !== 'not-applicable' && r.status !== 'licence-limited').length
-    steps.push(prereq('s-prereq-per-user-mfa', p.title, p.why, p.how(mfaPolicies)))
+    steps.push(prereq('s-prereq-per-user-mfa'))
   }
 
   // ---- The free-tier ladder (SPEC §12): the plan spine when no policy can exist ----
@@ -821,10 +653,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     '{allowedCountriesLocation}': tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null,
     '{coreAdminRoles}': [...CORE_ADMIN_ROLE_IDS],
   }
-  // Named in the portal steps while the object does not exist yet.
-  const templatePlaceholders: Placeholders = new Map(
-    (Object.keys(PLACEHOLDER_STEP) as (keyof typeof PLACEHOLDER_STEP)[]).map((p) => [p, { label: TEMPLATE_LABEL[p], token: p }]),
-  )
 
   // ---- Goal steps ----
 
@@ -865,12 +693,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // measure; say that rather than promising a measurement (prompt 19 §B).
     const evidence =
       result.status === 'enforced' && matchedPolicyId === null && measuredEvidence.reportOnly === null
-        ? { ...measuredEvidence, lines: [EVIDENCE.alreadyEnforced] }
+        ? measuredEvidence
         : measuredEvidence
-    if (readiness.family === 'block' && evidence.affectedUserIds.length > 0) {
-      const svc = mapping.serviceAccountUserIds.filter((id) => evidence.affectedUserIds.includes(id))
-      if (svc.length > 0) evidence.lines.push(EVIDENCE.serviceAccounts(svc.map(nameOf)))
-    }
 
     const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined
     const rawWhy = doc?.intent ?? goal.tldr ?? goal.description
@@ -884,14 +708,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (blockedBy.includes(id)) return
       blockedBy.push(id)
       blockers.push({ kind: 'step', stepId: id, label })
-      unblockNotes.push(label)
     }
     // A template placeholder the tenant has no object for yet: the step waits
     // on the Wave 0 step that creates it.
     const blockPlaceholder = (p: TemplatePlaceholder): void => {
       if (p === '{namePrefix}' || p === '{coreAdminRoles}') return
       const prereqId = PLACEHOLDER_STEP[p]
-      if (steps.some((s) => s.id === prereqId)) blockByStep(prereqId, UNBLOCK.createObject)
+      if (steps.some((s) => s.id === prereqId)) blockByStep(prereqId, 'create-object')
     }
     let action: Action
     let kind: Step['kind']
@@ -908,7 +731,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       status = 'done'
       action = {
         kind: 'create',
-        summary: [ACTION.alreadyDelivered],
+        summary: [],
         json: null,
         portalSteps: [],
         powershell: null,
@@ -917,8 +740,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'create'
       if (source) {
         const proposed = uniqueName(goal)
-        action = buildCreateAction(source.policy, mapping, planId, stepId, input.names, { displayName: proposed.name })
-        if (proposed.note) action.summary.push(proposed.note)
+        action = buildCreateAction(source.policy, mapping, planId, stepId, { displayName: proposed.name, unresolved: unresolvedIds })
         namingNote = proposed
       } else {
         // No baseline policy stands for this goal: the goal's own template is
@@ -928,12 +750,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const resolved = resolveTemplate(impl.template as TemplateBody, templateValues)
         for (const p of resolved.unresolved) blockPlaceholder(p)
         const proposed = uniqueName(goal)
-        action = buildCreateAction(resolved.body, mapping, planId, stepId, input.names, {
-          placeholders: templatePlaceholders,
-          displayName: proposed.name,
-        })
-        action.summary.push(ACTION.fromTemplate)
-        if (proposed.note) action.summary.push(proposed.note)
+        action = buildCreateAction(resolved.body, mapping, planId, stepId, { displayName: proposed.name, unresolved: unresolvedIds })
         namingNote = proposed
       }
     } else {
@@ -949,23 +766,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       action = source
         ? adjustAction(
-            buildCreateAction(source.policy, mapping, planId, stepId, input.names, {
+            buildCreateAction(source.policy, mapping, planId, stepId, {
+              unresolved: unresolvedIds,
               displayName: existing?.policyName ?? proposedPolicyName(goal, naming),
               adjust: existing ? { policyId: existing.policyId, state: existing.state } : undefined,
             }),
             result,
             existingRaw,
-            input.names,
           )
-        : { kind: 'adjust', summary: adjustSummary(result), json: null, portalSteps: [], powershell: null }
+        : { kind: 'adjust', summary: [], json: null, portalSteps: [], powershell: null }
     }
 
 
     // Named dependencies (prompt 12 §B).
     if (status !== 'done') {
-      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId)) blockByStep(locStepId, BLOCKER.trustedLocation)
+      if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId)) blockByStep(locStepId, 'trusted-location')
       if (goal.id === 'geo-restriction') {
-        if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, UNBLOCK.createObject)
+        if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
       }
     }
 
@@ -981,29 +798,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               : null
       if (threshold !== null && readiness.percent !== null && readiness.percent < threshold) {
         status = 'blocked'
-        const label =
-          readiness.family === 'device' ? BLOCKER.deviceReadiness(readiness.percent, threshold) : UNBLOCK.readiness(readiness.percent, readiness.family, threshold)
-        blockers.push({ kind: 'readiness', label, binding: BLOCKED_REASON.reaches(READINESS_MEASURE[readiness.family] ?? 'readiness', `${threshold}%`, `${readiness.percent}%`) })
-        unblockNotes.push(label)
+        blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(READINESS_MEASURE[readiness.family] ?? 'readiness', `${threshold}%`, `${readiness.percent}%`) })
       }
       // Nothing that can deny access is offered while the way back in is
       // unverified (validation-rules.md §2).
       const deniesAccess = impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location'
       if (deniesAccess && gate !== null) blockByStep(gate.stepId, gate.label)
       if (blockedBy.length > 0) status = 'blocked'
-    }
-    // Precise blocked sentences (prompt 13 §9): one per cause group.
-    if (status === 'blocked') {
-      const sentences: string[] = []
-      for (const b of blockers) {
-        if (b.kind === 'step') {
-          const dep = steps.find((s) => s.id === b.stepId)
-          sentences.push(GATING_SUBJECTS.some((subject) => blockerStepId(subject) === b.stepId) ? BLOCKED.readiness(b.label) : BLOCKED.step(dep?.title ?? b.stepId))
-        }
-        if (b.kind === 'readiness') sentences.push(BLOCKED.readiness(b.label))
-        if (b.kind === 'evidence') sentences.push(BLOCKED.evidence)
-      }
-      unblockNotes.splice(0, unblockNotes.length, ...sentences)
     }
 
 
@@ -1015,9 +816,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded
     if (opVerdict?.stranded && status !== 'done') {
       status = 'blocked'
-      const label = BLOCKER.operator(opVerdict.reason)
-      blockers.push({ kind: 'readiness', label, binding: BLOCKED_REASON.exist(1, 'safe way in for the signed-in account', 0) })
-      unblockNotes.push(BLOCKED.readiness(label))
+      blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.exist(1, 'safe way in for the signed-in account', 0) })
     }
 
     if (!readyActiveCache.has(whoKey))
@@ -1069,11 +868,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Operator evidence sentence (prompt 13 §7) — never a promise. A count is
     // only claimed where the records actually measured this goal (block usage
     // or a tagged report-only policy); otherwise the note says so.
-    const opEvidence = operatorId !== null ? snapshot.signInEvidence[operatorId] : undefined
-    const measured = evidenceUsable && (readiness.family === 'block' || evidence.reportOnly !== null)
-    const operatorNote = includesOperator && result.status !== 'enforced'
-      ? OPERATOR.inScope(measured ? (evidence.affectedUserIds.includes(operatorId!) ? 'some' : 0) : null, opEvidence?.signInCount ?? null, evidenceUsable)
-      : null
 
     // "Done when" bullets only for criteria that apply to the step kind
     // (prompt 17 §4): a create step observes in report-only, then enforces;
@@ -1096,7 +890,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       readiness,
       evidence,
       action,
-      rollback: kind === 'adjust' ? ROLLBACK_V2.adjust : ROLLBACK_V2.create,
       history: [],
       skipReason: null,
       ...EXTRAS,
@@ -1108,7 +901,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       learn: goal.learnUrl ? { url: goal.learnUrl, tldr: goal.tldr ?? '', cis: goal.cis ?? [] } : null,
       includesOperator,
       operatorSafe,
-      operatorNote,
       // The goal's own coverage, not a broad all-users match that belongs to
       // another goal (walk-51 item 15): prefer the policies scoped to this goal.
       deliveredBy: (() => {
@@ -1146,13 +938,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (mfaGoal) {
     // The campaign works the active people only, named (prompt 48.1 item 2):
     // never the dormant accounts, never break-glass (it has its own drill).
-    const bg = new Set(mapping.breakGlassUserIds)
-    const campaignUnproven = viability.filter((v) => rolloutBucket(v) === 'unproven' && !bg.has(v.userId)).map((v) => v.userId)
-    const campaignNoMethod = viability.filter((v) => rolloutBucket(v) === 'noMethod' && !bg.has(v.userId)).map((v) => v.userId)
-    const departments = new Set(snapshot.users.map((u) => u.department).filter(Boolean))
     // Break-glass is never in the campaign (prompt 48.1 item 2): it has its own drill.
-    const careList = [...highCareIds].filter((id) => !bg.has(id)).map(nameOf)
-    const p = PREREQ.verifyMfa
     // Verification complete on this scan → the campaign is done and the
     // scheduler skips its window (prompt 18 §1).
     const verifyReadiness = readinessCache.get('mfa') ?? readinessFor('mfa-all-users', viability.map((v) => v.userId), viability, snapshot)
@@ -1162,21 +948,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const toSetUp = summarizeTenant(viability).rollout.toSetUp
     const verifyDone = toSetUp === 0
     steps.push({
-      ...prereq(
-        's-verify-mfa',
-        p.title,
-        p.why,
-        p.how({ unproven: campaignUnproven.map(nameOf), noMethod: campaignNoMethod.map(nameOf) }, careList, departments.size),
-      ),
+      ...prereq('s-verify-mfa'),
       phase: 2,
       kind: 'verify',
-      rollback: ROLLBACK.verify,
       goalId: 'mfa-all-users',
       status: verifyDone ? 'done' : 'ready',
       population: population(viability.map((v) => v.userId).filter((id) => !excluded.has(id)), popIndex),
       readiness: verifyReadiness,
-      comms: COMMS.verify(tenantName),
-      plainTitle: p.title,
       forManager: MANAGER.verify(toSetUp),
     })
   }
@@ -1191,23 +969,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         Date.parse(snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn) > BREAK_GLASS_DRILL_DAYS * 86_400_000
       )
     })
-    const p = PREREQ.breakGlassDrill
     const phoneOnly = bgIds.filter((id) => {
       const m = snapshot.authMethods[id]
       return Array.isArray(m) && m.length > 0 && m.every((x) => x.kind === 'phone' || x.kind === 'email' || x.kind === 'password')
     })
     steps.push({
-      ...prereq('s-recurring-break-glass-drill', p.title, p.why(BREAK_GLASS_DRILL_DAYS), p.how),
-      plainTitle: p.title,
+      ...prereq('s-recurring-break-glass-drill'),
       forManager: MANAGER.prerequisite(),
       kind: 'recurring',
-      rollback: ROLLBACK.recurring,
       goalId: 'recurring:break-glass',
       population: population(bgIds, popIndex),
       readiness: {
         family: 'other',
         percent: null,
-        lines: [...(stale.length > 0 ? [p.overdue(stale.map(nameOf))] : [p.allDrilled]), ...(phoneOnly.length > 0 ? [p.weakMethod(phoneOnly.map(nameOf))] : [])],
+        lines: [],
       },
       status: stale.length > 0 || phoneOnly.length > 0 ? 'ready' : 'done',
     })
@@ -1250,7 +1025,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (dependsOn && !s.blockedBy.includes(dependsOn)) s.blockedBy.push(dependsOn)
     if (!s.blockers.some((b) => b.kind === 'readiness' && b.label === label)) {
       s.blockers.push({ kind: 'readiness', label, ...(binding ? { binding } : {}) })
-      s.unblockNotes.push(BLOCKED.readiness(label))
     }
     s.status = 'blocked'
   }
@@ -1261,12 +1035,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // have one (steps/security-info-registration.md).
   const registrationStep = steps.find((s) => s.goalId === 'register-info-protected')
   if (registrationStep) {
-    if (tapEnabled === false) blockLate(registrationStep, BLOCKER.registrationNoTap, BLOCKED_REASON.exist(1, 'Temporary Access Pass policy', 0))
+    if (tapEnabled === false) blockLate(registrationStep, 'registration-no-tap', BLOCKED_REASON.exist(1, 'Temporary Access Pass policy', 0))
     const withoutMethod = viability.filter((v) => v.activity === 'active' && v.mfa === 'none').length
     // A reason, not a dependency edge: the campaign sits in a later phase, and
     // pointing a phase 0 step at it would order the plan against itself.
-    if (withoutMethod > 0) blockLate(registrationStep, BLOCKER.registrationCoverage(withoutMethod), BLOCKED_REASON.reaches('people without a method', '0', String(withoutMethod)))
-    if (trustedLocationCount === 0) blockLate(registrationStep, BLOCKER.registrationNoTrustedLocation, BLOCKED_REASON.exist(1, 'trusted location', 0))
+    if (withoutMethod > 0) blockLate(registrationStep, 'registration-coverage', BLOCKED_REASON.reaches('people without a method', '0', String(withoutMethod)))
+    if (trustedLocationCount === 0) blockLate(registrationStep, 'registration-no-trusted-location', BLOCKED_REASON.exist(1, 'trusted location', 0))
   }
 
   // 2. No country block before the operator's own recent countries are in the
@@ -1274,7 +1048,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const countriesReport = validationReports.find((r) => r.subject === 'allowedCountries')
   if (countriesReport && countriesReport.blocking.length > 0) {
     for (const s of steps) {
-      if (s.readiness.family === 'location') blockLate(s, BLOCKER.countriesUnsafe, null, blockerStepId('allowedCountries'))
+      if (s.readiness.family === 'location') blockLate(s, 'countries-unsafe', null, blockerStepId('allowedCountries'))
     }
   }
 
@@ -1284,7 +1058,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (secDefaultsStep) {
     for (const s of steps) {
       if (s.kind !== 'create' && s.kind !== 'adjust') continue
-      blockLate(s, BLOCKER.securityDefaultsFirst, null, secDefaultsStep.id)
+      blockLate(s, 'security-defaults-first', null, secDefaultsStep.id)
     }
   }
 
@@ -1295,7 +1069,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const impl = input.coverage.results.find((r) => r.goal.id === s.goalId)?.goal.implementations[0]
     const floor = impl?.floor
     if (floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined) {
-      blockLate(s, BLOCKER.sessionLoop, BLOCKED_REASON.exist(1, 'MFA grant on this policy', 0))
+      blockLate(s, 'session-loop', BLOCKED_REASON.exist(1, 'MFA grant on this policy', 0))
     }
   }
 
@@ -1364,7 +1138,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     registrationDays: registration.workingDays,
   })
   schedule.rhythm = rhythm
-  schedule.policyCount = policyCountFor(snapshot, steps, input.coverage.organisation)
   // Cleanup (target-state §5, §9): dated after the last enforcement window, one
   // working day per row; the header's finish date includes it (derive/finish.ts).
   schedule.cleanup = cleanupPhaseFor({
@@ -1407,11 +1180,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ]
     }
     s2.cantSee = cantSeeFor(s2, ctx)
-    // Date side-lines (item 7), once each on Dates.
-    const notes: string[] = []
-    if (s2.readiness.family === 'device' && enforceDate) notes.push(DATE_NOTE.certificate(enforceDate))
-    if (s2.readiness.family === 'block') notes.push(DATE_NOTE.sessionRefresh)
-    s2.dateNotes = notes
   }
 
   // A subject with only recommendations attaches them to the step that already
@@ -1424,16 +1192,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
 
 
-  // The two recorded-by-hand emergency-access facts are tickable Done-when lines,
-  // stored in the plan file and read back by the checks (prompt 49 item 5).
-  const answers = mapping.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
-  const eaStep = steps.find((st) => st.id === blockerStepId('breakGlass')) ?? steps.find((st) => st.id === BREAK_GLASS_STEP_ID) ?? steps.find((st) => st.id === DRILL_STEP_ID)
-  if (eaStep) {
-    eaStep.tickable = [
-      { text: EMERGENCY_DONE_WHEN[0], key: 'credentialStorage', done: answers.credentialStorage === true },
-      { text: EMERGENCY_DONE_WHEN[1], key: 'signInMonitoring', done: answers.signInMonitoring === true },
-    ]
-  }
 
   // The one title, from content.json, on the row, the body and the
   // communications alike (walk-51 item 1). Set before the state reasons so a

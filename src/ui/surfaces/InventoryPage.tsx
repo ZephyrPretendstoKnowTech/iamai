@@ -18,7 +18,6 @@ import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { INVENTORY as C, combinationName, methodName, migrationName, protocolName, trustTypeName } from '../../copy/inventory.ts'
-import { SETUP_PAGE } from '../../copy/setup.ts'
 import { app } from '../../content/content.ts'
 
 const LICENSING = app.inventory
@@ -740,7 +739,7 @@ function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnT
       />
       <DataTable
         caption={A.facets}
-        rows={Object.entries(facets).map(([facet, f]) => ({ facet, name: SETUP_PAGE.workloadNames[facet] ?? facet, on: f.on, reason: f.reason }))}
+        rows={Object.entries(facets).map(([facet, f]) => ({ facet, name: app.inventory.workloadNames[facet] ?? facet, on: f.on, reason: f.reason }))}
         rowKey={(r) => r.facet}
         csvName="iamai-workloads.csv"
         columns={[

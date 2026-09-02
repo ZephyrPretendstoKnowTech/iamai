@@ -81,7 +81,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // like the structural keys; a separate test proves no product renderer reads it.
 // pages.app holds the words the app chrome and the surfaces show (the header, the scan
 // progress, the print cover, the export alerts): read by the product, never by the review page.
-const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.')
+const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.shared.engine.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.(url|cis)$/.test(p) || /\.whatToDoReference\b/.test(p)
 

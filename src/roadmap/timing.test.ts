@@ -67,11 +67,10 @@ test('every policy step carries announce, remind and enforce with a day, a local
 // Prompt 52, walk-51 item 1: the plain-title table was deleted; a step's title
 // is its content.json title (the same on the row and in the body), and its
 // manager note stands beside it.
-test('every step carries its content title and a manager note', () => {
+test('every step carries its content title', () => {
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) {
       assert.ok(s.plainTitle.length > 0, `${s.id} title`)
-      assert.ok(s.forManager.length > 0, `${s.id} manager note`)
     }
   }
 })

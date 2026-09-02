@@ -64,6 +64,19 @@ export type AppWords = {
   export: Record<string, string>
   print: Record<string, string> & { cover: Record<string, string>; posture: Record<string, string>; timelineColumns: Record<string, string> }
   how: Record<string, string> & { limitsList: string[]; lanes: Record<string, string>; columns: Record<string, string> }
-  inventory: { caps: Record<string, string> }
+  inventory: { caps: Record<string, string>; workloadNames: Record<string, string> }
 }
 export const app = content.pages.app as unknown as AppWords
+
+/** The engine's own words (shared.engine): the plan-length sentence, the tracking notes, the housekeeping lines, the picker signal words. */
+export type EngineWords = {
+  critical: Record<string, string>
+  tracking: Record<string, string> & { regression: Record<string, string> }
+  skip: { cannotSkip: string; unskip: string }
+  planFile: { revisionCreated: string; revisionImported: string }
+  staticRules: Record<string, string>
+  serviceSignals: Record<string, string>
+  emergencySignals: Record<string, string>
+  carveOuts: Record<string, { title: string }>
+}
+export const engine = shared.engine as unknown as EngineWords

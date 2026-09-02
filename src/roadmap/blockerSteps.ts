@@ -53,9 +53,8 @@ export const EMERGENCY_ACCESS_STEP_IDS: ReadonlySet<string> = new Set([
 /** One checklist line: the fact found, then what clears it. */
 function checklistLine(r: RuleResult, label: string | null): string {
   const what = ruleText(r.id).what
-  const where = r.fix ? ` (${r.fix.label})` : ''
   const who = label ? `${label}: ` : ''
-  return `${who}${r.finding ?? what} → ${what}${where}`
+  return `${who}${r.finding ?? what} → ${what}`
 }
 
 /**
@@ -74,7 +73,7 @@ function checkActions(report: SubjectReport): { actions: string[]; doneWhen: str
       continue
     }
     const make = RULE_ACTION[r.id]
-    actions.push(make ? make(r.finding ?? null) : fallbackAction(ruleText(r.id).what, r.fix?.label ?? null))
+    actions.push(make ? make(r.finding ?? null) : fallbackAction(ruleText(r.id).what, null))
   }
   return { actions: [...new Set(actions)], doneWhen: [...new Set(doneWhen)] }
 }
@@ -118,8 +117,6 @@ export function blockerSteps(reports: SubjectReport[]): Step[] {
       evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
       action: { kind: 'check', summary: actions, json: null, portalSteps: actions, powershell: null },
       checks: stepChecks(report),
-      // A check step changes no policy, so there is nothing to undo (prompt 48.1 item 11).
-      rollback: BLOCKER_STEP.nothingToUndo,
       history: [],
       skipReason: null,
       gap: null,

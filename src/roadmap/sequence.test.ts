@@ -134,6 +134,6 @@ test('a remote-only tenant with no trusted location never offers the registratio
   const reg = steps.find((s) => s.goalId === 'register-info-protected')
   if (!reg) return
   assert.equal(reg.status, 'blocked')
-  assert.match(reg.unblockNotes.join(' '), /no trusted location is confirmed/)
+  assert.ok(reg.blockers.some((b) => b.label === 'registration-no-trusted-location'), 'the registration policy waits for a trusted location')
 })
 
