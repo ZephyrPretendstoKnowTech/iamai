@@ -16,8 +16,6 @@ export type ValidationInputs = {
   state: MappingState
   groupMembers?: GroupFacts[]
   viability?: MfaViability[]
-  /** The tenant policies the plan touches, lower-cased ids (see ValidationContext). */
-  planPolicyIds?: Set<string> | null
 }
 
 /** The signed-in operator, from the /me section the scan already reads. */
@@ -38,7 +36,6 @@ export function buildContext(i: ValidationInputs): ValidationContext {
     serviceAccountIds: i.state.serviceAccountUserIds,
     approvedExclusionIds: [...i.state.breakGlassUserIds, ...i.state.serviceAccountUserIds],
     viability: i.viability ?? [],
-    planPolicyIds: i.planPolicyIds ?? null,
     answers,
   }
 }

@@ -522,20 +522,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(prereq(bgStepId))
   }
   // The exclusions group is a step on every plan, never removed: In place when
-  // the recognised group is excluded from every policy the plan touches (the
-  // tenant's policies its goals map to), otherwise Ready, listing the policies
+  // the recognised group is excluded from every enabled or report-only policy,
+  // otherwise Ready, listing the policies
   // that do not exclude it (its checks, attached below) and carrying the create
   // instructions while no group is recognised. Every object the plan asks for
   // carries a proposed name in the tenant's own convention (prompt 43 item 4).
   const geStepId = PREREQ_STEP_ID.exclusionsGroup
   const recognisedGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
-  // The tenant policies the plan touches: its goals' matched policies. The
-  // exclusion-group rule checks those, and its verdict is this step's status.
-  const touchedPolicyIds = new Set(
-    input.coverage.results
-      .filter((r) => (inBaseline(r.goal) || isFloorGoal(r.goal.id)) && r.status !== 'not-applicable' && r.status !== 'licence-limited')
-      .flatMap((r) => r.candidates.map((c) => c.policyId.toLowerCase())),
-  )
   if (canUseConditionalAccess) {
     const proposed = proposedObjectNames(naming).exclusionsGroup
     steps.push({ ...prereq(geStepId), naming: { proposed: proposed.name, fromBaseline: null } })
@@ -636,7 +629,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Every must-fix check that has not passed becomes a Phase 0 step, and the
   // two subjects a recovery depends on hold every step that can deny access.
   const groupFacts = [...(input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
-  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability, planPolicyIds: touchedPolicyIds })
+  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability })
   const validationReports: SubjectReport[] = [breakGlassReport(validationCtx)]
   const exclusionGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
   if (exclusionGroupId !== null) {
@@ -652,8 +645,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   if (mapping.serviceAccountUserIds.length > 0) validationReports.push(reportFor('serviceAccount', [''], validationCtx))
   // The exclusions group's checks sit on its own step. In place when the
-  // recognised group is excluded from every policy the plan touches (the rule's
-  // verdict); a step already In place holds nothing, and while no group is
+  // recognised group is excluded from every enabled or report-only policy (the
+  // rule's verdict); a step already In place holds nothing, and while no group is
   // recognised the step that creates it holds everything that can deny access.
   const geReport = validationReports.find((r) => r.subject === 'exclusionGroup')
   const geStep = steps.find((s) => s.id === geStepId)

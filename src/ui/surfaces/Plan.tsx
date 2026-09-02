@@ -22,7 +22,7 @@ import { FINISH } from '../../copy/statements.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { Button, InfoTip, Status } from '../components/index.ts'
-import { usePlanData } from './planData.ts'
+import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
@@ -46,7 +46,8 @@ function planStepFromHash(): string | null {
 }
 
 export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null; account: AccountInfo | null }) {
-  const data = usePlanData(scan, baseline)
+  const operatorId = operatorIdOf(scan?.snapshot ?? null, account)
+  const data = usePlanData(scan, baseline, operatorId)
   const [open, setOpen] = useState<string | null>(planStepFromHash)
   const [showSettings, setShowSettings] = useState(false)
   useEffect(() => {
@@ -84,9 +85,8 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
 
   const tenantName = (scan.snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const nameOf = (id: string): string => c.names.label(id)
-  // The operator's own account (their {operator} evidence line) and the plan's
-  // first enforcement date (a campaign's enrol-by), for the step variables.
-  const operatorId = scan.snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
+  // The plan's first enforcement date (a campaign's enrol-by), for the step
+  // variables; the operator's own account is resolved above, once.
   const firstEnforce = c.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const activePeople = todayView(scan.snapshot, scan.snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
   // Cleanup (§5): one row each, dated after the last enforcement; the drill is a

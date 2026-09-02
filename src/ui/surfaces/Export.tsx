@@ -11,7 +11,7 @@ import type { SizeBand } from '../../roadmap/constants.ts'
 import { BANDS } from '../../roadmap/constants.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { usePlanData } from './planData.ts'
+import { operatorIdOf, usePlanData } from './planData.ts'
 import { inventoryTables, todayTable } from './inventoryTables.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
@@ -42,7 +42,8 @@ const A = app.export
 const S = app.shell
 
 export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null; account: AccountInfo | null }) {
-  const data = usePlanData(scan, baseline)
+  const operatorId = operatorIdOf(scan?.snapshot ?? null, account)
+  const data = usePlanData(scan, baseline, operatorId)
   const [copied, setCopied] = useState<string | null>(null)
   const [showPrompts, setShowPrompts] = useState(false)
   const [bundleRedacted, setBundleRedacted] = useState(true)
@@ -157,7 +158,6 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const csvTables = [todayTable(snapshot, new Set(data.mapping?.serviceAccountUserIds ?? [])), ...inventoryTables(snapshot)]
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
   // the same variables the Plan builds for a step, then the same view.
-  const operatorId = snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const activePeople = todayView(snapshot, snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
   const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, activePeople, groups: data.groups, naming: coverage.organisation.naming })

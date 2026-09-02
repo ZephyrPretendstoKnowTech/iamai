@@ -26,6 +26,7 @@ import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
+import { defaultDecisions } from './pickerRows.ts'
 import { nextWorkingDay } from '../../roadmap/schedule.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
@@ -84,9 +85,16 @@ export type PlanData = {
   onDecide: (stepId: string, decision: { picked?: string[]; option?: string }) => void
 }
 
+/** The operator's own account in the directory: their evidence line, and the special-care default. */
+export function operatorIdOf(snapshot: TenantSnapshot | null, account: { username: string } | null): string | null {
+  if (!snapshot || !account) return null
+  return snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
+}
+
 export function usePlanData(
   scan: { snapshot: TenantSnapshot; at: string } | null,
   baseline: BaselineResult | null,
+  operatorId: string | null,
 ): PlanData {
   const snapshot = scan?.snapshot ?? null
   const planId = snapshot ? `plan-${snapshot.tenantId.slice(0, 8)}` : ''
@@ -127,7 +135,9 @@ export function usePlanData(
 
   useEffect(() => {
     if (!snapshot || !mapping || mappingFor !== snapshot) return
-    const decided = applyStepDecisions(mapping, saved?.stepDecisions ?? null)
+    // The defaults here read the policies' groups only (the loaded groups are what
+    // this effect produces); every policy-referenced group is loaded regardless.
+    const decided = applyStepDecisions(applyStepDecisions(mapping, defaultDecisions({ snapshot, mapping, nameOf: (id) => id, operatorId, now: snapshot.asOf }), 'detected'), saved?.stepDecisions ?? null)
     setGroupsLoaded(false)
     let cancelled = false
     const ids = new Set<string>()
@@ -162,12 +172,18 @@ export function usePlanData(
     return () => {
       cancelled = true
     }
-  }, [snapshot, mapping, mappingFor, saved])
+  }, [snapshot, mapping, mappingFor, saved, operatorId])
 
-  // Every saved step decision applied to the stored mapping (target-state §6.4):
-  // the plan, its checks and its variables derive from this, never from the
-  // stored record alone, so a Save changes the plan on the next render.
-  const applied = useMemo<MappingState | null>(() => (mapping ? applyStepDecisions(mapping, saved?.stepDecisions ?? null) : null), [mapping, saved])
+  // Every picker's detected default, then every saved step decision, applied to
+  // the stored mapping (target-state §6.4): the plan, its checks and its
+  // variables derive from this, never from the stored record alone. The default
+  // is the plan's decision until the person changes it; a Save only overrides.
+  const applied = useMemo<MappingState | null>(() => {
+    if (!mapping || !snapshot) return null
+    const nameOf = (id: string): string => groups.get(id)?.displayName ?? id
+    const defaults = defaultDecisions({ snapshot, mapping, nameOf, groups, operatorId, now: snapshot.asOf })
+    return applyStepDecisions(applyStepDecisions(mapping, defaults, 'detected'), saved?.stepDecisions ?? null)
+  }, [mapping, saved, snapshot, groups, operatorId])
   const startDate = saved?.startDate ?? (snapshot ? nextWorkingDay(new Date().toISOString()) : null)
   const band: SizeBand | null = saved?.band && BANDS[saved.band] ? saved.band : null
   const freeze = saved?.freeze ?? null
