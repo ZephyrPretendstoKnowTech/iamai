@@ -299,6 +299,18 @@ function diffContract(label, c, d) {
   for (const s of d.longSentences) add('P1', `${label}: sentence over ${RULES.sentenceMaxWords} words: "${s.slice(0, 90)}…"`)
 }
 
+/** The people a row or a lead names: a leading count, nobody affected as 0, or the names listed (two at most); null when it names none. */
+function countOf(text) {
+  const t = (text || '').trim()
+  const m = /^(\d+)\b/.exec(t)
+  if (m) return Number(m[1])
+  if (/^nobody affected/i.test(t)) return 0
+  const head = t.split(' · ')[0]
+  if (!head || /^(No |None |Nobody |Everyone|All |The )/.test(head)) return null
+  const names = head.split(/, | and /)
+  return names.length <= 2 ? names.length : null
+}
+
 /** The invariants over one capture's text. */
 function checkText(label, text, { emails = false } = {}) {
   const hole = holeIn(text)
@@ -324,11 +336,11 @@ const noteReadiness = (kind, value) => {
   if (!readiness.has(kind)) readiness.set(kind, new Set())
   readiness.get(kind).add(value)
 }
-const collect = (text) => {
+const collect = (text, { population = true } = {}) => {
   for (const m of text.matchAll(/\b(MFA|admin|device|guest)\s+readiness\s+(\d{1,3})%/gi)) noteReadiness(m[1].toLowerCase(), m[2])
   for (const m of text.matchAll(/\b(MFA|admin|device|guest)\s+readiness\s+reaches\s+\d{1,3}%\s*\(now\s+(\d{1,3})%\)/gi)) noteReadiness(m[1].toLowerCase(), m[2])
   for (const m of text.matchAll(/(?<![A-Za-z]\s)\breadiness\s+(\d{1,3})%/gi)) noteReadiness('mfa', m[1])
-  for (const m of text.matchAll(/\b(\d+) active people\b/g)) populationsOf(currentFixture).add(m[1])
+  if (population) for (const m of text.matchAll(/\b(\d+) active people\b/g)) populationsOf(currentFixture).add(m[1])
 }
 
 const learnLinks = new Set()
@@ -410,6 +422,13 @@ async function walkFixture(fx) {
         }
         await settle()
         const bodyText = await evaluate(`(document.querySelector('main.page .step-body') || {}).innerText || ''`)
+        // One population per step: the row's who-line count is the lead's count.
+        const rowWho = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
+        const bodyLines = bodyText.split('\n').map((x) => x.trim()).filter(Boolean)
+        const leadAt = bodyLines.indexOf('Who this touches')
+        const rowCount = countOf(rowWho)
+        const leadCount = leadAt >= 0 ? countOf(bodyLines[leadAt + 1] || '') : null
+        if (rowCount !== null && leadCount !== null && rowCount !== leadCount) add('P0', `${slabel}: the row says ${rowCount} and the step's lead says ${leadCount} (one population per step)`)
         const bodyTitle = await evaluate(`(document.querySelector('main.page .step-body .step-title') || {}).textContent || ''`)
         if (/Exclusions Group/i.test(bodyTitle)) exclusionBody = bodyText
         const safe = title.replace(/[^\w-]+/g, '-').slice(0, 60)
@@ -420,7 +439,8 @@ async function walkFixture(fx) {
         const outsideEmail = emailText ? bodyText.replace(emailText, '') : bodyText
         checkText(slabel, outsideEmail)
         checkText(`${slabel} (email)`, emailText, { emails: true })
-        collect(bodyText)
+        // A step body's counts are its own population (one population per step), checked against its row above.
+        collect(bodyText, { population: false })
         const sc = contractById['plan.step']
         const sd = await evaluate(extractIn(`document.querySelector('main.page .step-body')`, sc?.reach?.exclude ?? ''))
         if (sd) {
