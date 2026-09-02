@@ -11,13 +11,14 @@ import { content } from './content.ts'
 const C = content as unknown as Record<string, any>
 const S = C.shared
 
-// The translator dump (docs/design/translator-output.json), when Part 2 has
-// written it: a policy step's What-to-do comes from it; until then the review
-// page falls back to whatToDoReference with a note. render-review.py reads the
-// same file. The app never calls renderStep — ContentStep renders a policy
-// step's What-to-do from the baseline policy (stepPortal.ts) — so this stays
-// empty in the browser bundle and is populated only for the Node review render.
-const TRANSLATED: Record<string, any> = {}
+// The translator dump (docs/design/translator-output.json, prompt 52 Part 2): a
+// policy step's What-to-do in the review render comes from it — the product's
+// own portal-line translation over the pinned goalMap — so the review page and
+// the app cannot drift. render-review.py reads the same file. The app never
+// calls renderStep (ContentStep renders a policy step from the baseline via
+// stepPortal.ts), so tree-shaking keeps this out of the browser bundle.
+import translatorOutput from '../../docs/design/translator-output.json' with { type: 'json' }
+const TRANSLATED = translatorOutput as unknown as Record<string, { steps: string[] }>
 
 export function esc(s: unknown): string {
   return String(s)

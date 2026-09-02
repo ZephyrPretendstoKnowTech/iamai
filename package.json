@@ -20,7 +20,8 @@
     "lint-mutations": "node scripts/lint-mutations.mjs",
     "layout-audit": "node scripts/layout-audit.mjs",
     "screens": "node scripts/screens.mjs",
-    "render-review": "node scripts/render-review.mjs"
+    "render-review": "node scripts/render-review.mjs",
+    "translator-dump": "node scripts/translator-dump.ts"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.19.0",

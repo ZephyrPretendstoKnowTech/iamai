@@ -1,0 +1,238 @@
+{
+  "mfa-all-users": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - MFA for all users",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Grant → Require multifactor authentication",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "admins-phishing-resistant": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - Phishing-resistant MFA for admins",
+      "Users → Include: Directory roles → Global Administrator, Global Reader, Privileged Role Administrator, Privileged Authentication Administrator, Security Administrator, Security Operator, Security Reader, Compliance Administrator, Compliance Data Administrator, Cloud App Security Administrator, Authentication Administrator, Authentication Policy Administrator, Conditional Access Administrator, Hybrid Identity Administrator, Identity Governance Administrator, External Identity Provider Administrator, Application Administrator, Cloud Application Administrator, Application Developer, User Administrator, Groups Administrator, Password Administrator, Helpdesk Administrator, License Administrator, Guest Inviter, Intune Administrator, Cloud Device Administrator, Windows 365 Administrator, Windows Update Deployment Administrator, Exchange Administrator, SharePoint Administrator, Teams Administrator, Fabric Administrator, Dynamics 365 Administrator, Power Platform Administrator, Directory Readers, Directory Writers, Domain Name Administrator, Billing Administrator, Reports Reader, Global Secure Access Administrator, Network Administrator, Lifecycle Workflows Administrator, Agent ID Administrator, AI Reader, Entra Backup Administrator. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Grant → Require authentication strength: Modern MFA + TAP",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "admin-portals-protected": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Block - Admin portals for non-admins",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group. Also exclude Guest or external users (all types).",
+      "Target resources → Resources → Select resources → Microsoft Admin Portals, an account IAMAI could not name, Windows Azure Service Management API, an account IAMAI could not name, an account IAMAI could not name",
+      "Grant → Block access",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "guests-mfa": {
+    "steps": [
+      "Policy A — Core - Require - MFA for guests and external users: Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - MFA for guests and external users",
+      "Users → Include: Guest or external users → B2B collaboration guest users, Other external users. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Grant → Require multifactor authentication",
+      "Enable policy: Report-only → Create",
+      "Policy B — Core - Require - MFA for guests and external users: Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - MFA for guests and external users",
+      "Users → Include: Guest or external users → Local guest users, B2B collaboration member users, B2B direct connect users, Service provider users. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Grant → Require authentication strength: Modern MFA + TAP",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "block-legacy-auth": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Block - Legacy authentication",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Client apps → Exchange ActiveSync clients, Other clients",
+      "Grant → Block access",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "block-device-code": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Block - Device code flow",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Authentication flows → Device code flow",
+      "Grant → Block access",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "block-auth-transfer": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Block - Authentication transfer",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Authentication flows → Authentication transfer",
+      "Grant → Block access",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "geo-restriction": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Block - Countries not allowed",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Locations → Include: Any location; Exclude: an account IAMAI could not name",
+      "Grant → Block access",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "admin-session": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Session - Admin session lifetime",
+      "Users → Include: Directory roles → Global Administrator, Global Reader, Privileged Role Administrator, Privileged Authentication Administrator, Security Administrator, Security Operator, Security Reader, Compliance Administrator, Compliance Data Administrator, Cloud App Security Administrator, Authentication Administrator, Authentication Policy Administrator, Conditional Access Administrator, Hybrid Identity Administrator, Identity Governance Administrator, External Identity Provider Administrator, Application Administrator, Cloud Application Administrator, Application Developer, User Administrator, Groups Administrator, Password Administrator, Helpdesk Administrator, License Administrator, Guest Inviter, Intune Administrator, Cloud Device Administrator, Windows 365 Administrator, Windows Update Deployment Administrator, Exchange Administrator, SharePoint Administrator, Teams Administrator, Fabric Administrator, Dynamics 365 Administrator, Power Platform Administrator, Directory Readers, Directory Writers, Domain Name Administrator, Billing Administrator, Reports Reader, Global Secure Access Administrator, Network Administrator, Lifecycle Workflows Administrator, Agent ID Administrator, AI Reader, Entra Backup Administrator. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Client apps → Browser",
+      "Session → Sign-in frequency → Periodic reauthentication → 4 hours",
+      "Session → Persistent browser session → Never persistent",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "require-managed-device": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - Compliant device for Office 365",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group. Also exclude the service accounts group Core - Exception - Service accounts.",
+      "Target resources → Resources → All resources",
+      "Conditions → Locations → Include: Any location; Exclude: All trusted locations",
+      "Grant → Require device to be marked as compliant, Require Microsoft Entra hybrid joined device; Require one of the selected controls",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "block-unsupported-platforms": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Block - Unsupported platforms",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Device platforms → Include: All users; Exclude: Android, iOS, Windows, macOS",
+      "Grant → Block access",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "device-registration-mfa": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - MFA for device registration",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group. Also exclude the service accounts group Service Accounts.",
+      "Target resources → User actions → Register or join devices",
+      "Grant → Require authentication strength: Multifactor authentication",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "token-protection": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Session - Token protection",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → Select resources → Office 365 Exchange Online, Office 365 SharePoint Online, an account IAMAI could not name, an account IAMAI could not name, Microsoft Teams Services",
+      "Conditions → Client apps → Mobile apps and desktop clients",
+      "Conditions → Device platforms → Include: Windows",
+      "Conditions → Filter for devices → Exclude devices matching: device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\"",
+      "Session → Require token protection for sign-in sessions",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "workload-identity-block": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Block - Entra Connect sync outside its address",
+      "Users or workload identities → Workload identities → Select service principals → an account IAMAI could not name",
+      "Conditions → Locations → Include: Any location; Exclude: the trusted network",
+      "Grant → Block access",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "session-lifetime": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Session - Non-persistent browser sessions",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Client apps → Browser",
+      "Session → Sign-in frequency → Periodic reauthentication → 12 hours",
+      "Session → Persistent browser session → Never persistent",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "pim-activation-reauth": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - MFA at every role activation",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Authentication context → c1",
+      "Grant → Require authentication strength: Modern MFA + TAP",
+      "Session → Sign-in frequency → Every time",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "intune-enrollment-reauth": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - Fresh sign-in for Intune enrollment",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: the exclusions group. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → Select resources → Microsoft Intune Enrollment",
+      "Session → Sign-in frequency → Every time",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "sign-in-risk": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - Sign-in risk",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Sign-in risk → High",
+      "Grant → Require authentication strength: Modern MFA + TAP",
+      "Session → Sign-in frequency → Every time",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "user-risk": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - High user risk",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: the exclusions group. Never exclude the emergency accounts directly; they are members of this group. Also exclude the service accounts group Service Accounts.",
+      "Target resources → Resources → All resources",
+      "Conditions → User risk → High",
+      "Grant → Require authentication strength: Modern MFA + TAP",
+      "Session → Sign-in frequency → Every time",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "sign-in-risk-medium": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - Medium sign-in risk",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group.",
+      "Target resources → Resources → All resources",
+      "Conditions → Sign-in risk → Medium",
+      "Grant → Require multifactor authentication",
+      "Enable policy: Report-only → Create"
+    ]
+  },
+  "user-risk-medium": {
+    "steps": [
+      "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
+      "Name: Core - Require - Password change for medium-risk users",
+      "Users → Include: All users, Guest or external users → all types. Users → Exclude → Groups: Breakglass Exclusion. Never exclude the emergency accounts directly; they are members of this group. Also exclude the service accounts group Service Accounts. Also exclude Guest or external users (all types).",
+      "Target resources → Resources → All resources",
+      "Conditions → User risk → Medium",
+      "Grant → Require authentication strength: Modern MFA + TAP, Require password change; Require all the selected controls",
+      "Enable policy: Report-only → Create"
+    ]
+  }
+}
