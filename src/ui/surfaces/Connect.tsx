@@ -11,14 +11,14 @@ import { authReady, signIn, signOut } from '../../graph/auth.ts'
 import { isPrivilegeDenial } from '../../graph/collect/roles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
-import { CONNECT as C } from '../../copy/connect.ts'
-import { pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { demoUrl } from '../demo.ts'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
 import { absoluteDate, monthDay } from '../../copy/dates.ts'
 import { Button, Callout, LinkButton } from '../components/index.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
+const C = app.connect
 import { PINNED_BASELINE, baselineChanges, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
 import type { BaselineChange, BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
@@ -244,7 +244,7 @@ function SignedIn({
       </p>
       <BaselineLine baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} explain={!scanned} />
       {scanning && <ScanProgress runner={runner} />}
-      {!scanning && runner.state === 'failed' && runner.error && <Callout kind="danger">{C.failed(runner.error)}</Callout>}
+      {!scanning && runner.state === 'failed' && runner.error && <Callout kind="danger">{fillText(C.failed, { why: runner.error })}</Callout>}
       {!scanning && !scanned && (
         <>
           <p className="actions">
@@ -315,7 +315,7 @@ function BaselineLine({
   const loadPinned = async () => {
     if (loadingRef.current) return
     loadingRef.current = true
-    setBusy(C.baselineLoading(PINNED_BASELINE.label))
+    setBusy(fillText(C.baselineLoading, { source: PINNED_BASELINE.label }))
     setError(null)
     try {
       onBaseline(await loadPinnedBaseline())
@@ -328,7 +328,7 @@ function BaselineLine({
   }
   const loadUpload = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
-    setBusy(C.readingFiles(fileList.length))
+    setBusy(fillText(C.readingFiles, { n: fileList.length }))
     setError(null)
     try {
       const files: BaselineFile[] = await Promise.all([...fileList].map(async (f) => ({ path: f.name, text: await f.text() })))
@@ -362,7 +362,7 @@ function BaselineLine({
           </>
         )}
       </p>
-      {error && <p className="reason">{C.baselineFailed(error)}</p>}
+      {error && <p className="reason">{fillText(C.baselineFailed, { why: error })}</p>}
       {!error && !baseline && restoreError && <p className="reason">{C.restoreFailed}</p>}
       {explain && !locked && !busy && baseline && (
         <>

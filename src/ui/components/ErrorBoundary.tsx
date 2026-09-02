@@ -4,7 +4,10 @@
 // is in memory by reloading at Connect.
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
-import { SHELL } from '../../copy/pages.ts'
+import { app } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+
+const SHELL = app.shell
 import { redactIdentifiers } from '../../redact.ts'
 import { REDACTED, exportDownload } from '../exportGuard.ts'
 import { Button } from './Button.tsx'
@@ -58,7 +61,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {SHELL.errorStartOver}
           </Button>
         </p>
-        <p className="reason">{SHELL.errorDetail(this.state.error.message)}</p>
+        <p className="reason">{fillText(SHELL.errorDetail, { message: this.state.error.message })}</p>
       </section>
     )
   }

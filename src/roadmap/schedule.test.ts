@@ -5,7 +5,6 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { batchClassOf, buildSchedule, dependencyGraph, nextMonday, observationDaysFor, toEnforcementDay } from './schedule.ts'
 import { bandForActiveUsers } from './constants.ts'
-import { ROADMAP as C } from '../copy/pages.ts'
 import type { Ring, Step } from './types.ts'
 
 const people = (n: number, prefix = 'u'): string[] => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
@@ -312,13 +311,6 @@ test('a wave is named by every goal area it holds, not by one dominant phase (pr
   if (withBoth) assert.deepEqual(withBoth.phases, [3, 5], 'the wave records both areas it holds')
   // Every wave records at least the phase it is ordered by, whatever it holds.
   for (const w of s.waves) assert.ok(w.phases.length > 0 && w.phases.includes(w.phase), `wave ${w.wave} records its own phase`)
-})
-
-test('waveAreas has a branch for none, one, two and more than two (prompt 40 §20)', () => {
-  assert.equal(C.waveAreas([]), 'No goals')
-  assert.equal(C.waveAreas(['Devices']), 'Devices')
-  assert.equal(C.waveAreas(['Devices', 'Sessions']), 'Devices and Sessions')
-  assert.equal(C.waveAreas(['Devices', 'Sessions', 'Advanced', 'Admin hardening']), 'Devices, Sessions and 2 more')
 })
 
 test('phase order (ux-review-07 §3): no step starts before the last start of any lower phase, and waves are named by their dominant phase', () => {

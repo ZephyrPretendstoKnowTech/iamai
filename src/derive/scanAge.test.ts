@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { scanAge } from './scanAge.ts'
-import { SHELL } from '../copy/pages.ts'
+import { rescanLabel } from './scanAge.ts'
 
 const now = Date.parse('2026-08-30T12:00:00.000Z')
 
@@ -13,7 +13,7 @@ test('the age is whole hours and days, never negative, never NaN', () => {
 })
 
 test('the header words: just now, hours under two days, days after', () => {
-  assert.equal(SHELL.rescanScanned(scanAge('2026-08-30T11:30:00.000Z', now)), 'Scan to update the plan · scanned just now')
-  assert.equal(SHELL.rescanScanned(scanAge('2026-08-29T12:00:00.000Z', now)), 'Scan to update the plan · scanned 24h ago')
-  assert.equal(SHELL.rescanScanned(scanAge('2026-08-27T12:00:00.000Z', now)), 'Scan to update the plan · scanned 3d ago')
+  assert.equal(rescanLabel(scanAge('2026-08-30T11:30:00.000Z', now)), 'Scan to update the plan · scanned just now')
+  assert.equal(rescanLabel(scanAge('2026-08-29T12:00:00.000Z', now)), 'Scan to update the plan · scanned 24h ago')
+  assert.equal(rescanLabel(scanAge('2026-08-27T12:00:00.000Z', now)), 'Scan to update the plan · scanned 3d ago')
 })

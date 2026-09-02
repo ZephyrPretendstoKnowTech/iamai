@@ -16,7 +16,7 @@
 // source and fails if any new call site reaches a browser export API directly.
 import { redactIdentifiers } from '../redact.ts'
 import { isDemo } from './demo.ts'
-import { SHELL } from '../copy/pages.ts'
+import { app } from '../content/content.ts'
 
 /**
  * The surfaces allowed to export without redaction. Each value names a place in
@@ -50,7 +50,7 @@ export function exportDownload(name: string, content: string, type: string, d: D
   // sample plan that looks like a real one is the one way demo mode could do
   // harm: somebody forwards it, and the next person acts on a tenant that does
   // not exist. The line goes at the top, where it is read first.
-  const body = isDemo() ? `${SHELL.demoWatermark}
+  const body = isDemo() ? `${app.shell.demoWatermark}
 
 ${apply(content, d)}` : apply(content, d)
   const url = URL.createObjectURL(new Blob([body], { type }))

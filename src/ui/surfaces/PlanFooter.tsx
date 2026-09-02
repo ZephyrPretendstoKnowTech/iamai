@@ -4,13 +4,17 @@
 // convention, policies not assessed, static-rule violations, and checks that
 // could not run). This is what Findings becomes.
 import type { Step } from '../../roadmap/types.ts'
-import { PLAN as C } from '../../copy/plan.ts'
+import { app, pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 import { REDACTED, exportDownload } from '../exportGuard.ts'
 import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
 import type { PlanComputed } from './planData.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
+
+type FooterWords = { inPlace: string; doesntApply: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
+const F = (pages.plan as { footer: FooterWords }).footer
 
 export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameOf: (id: string) => string }) {
   void nameOf
@@ -29,14 +33,14 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
   // assessed are Cleanup rows, and problems with the baseline package are
   // reported on How IAMAI works, never in a plan.
   const housekeeping: { text: string; json?: string | null }[] = []
-  for (const p of org.notInBaseline) housekeeping.push({ text: C.footer.notInBaseline(p.name, p.state) })
+  for (const p of org.notInBaseline) housekeeping.push({ text: fillText(F.notInBaseline, { policy: `${p.name} (${p.state})`, verdict: F.notInBaselineKeep }) })
   for (const v of computed.staticViolations) housekeeping.push({ text: v.text })
 
   return (
     <div className="plan-footer">
       {inPlace.length > 0 && (
         <details>
-          <summary>{C.footer.inPlace(inPlace.length)}</summary>
+          <summary>{fillText(F.inPlace, { n: inPlace.length })}</summary>
           {inPlace.map((s) => (
             <FooterRow key={s.id} step={s} />
           ))}
@@ -44,7 +48,7 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
       )}
       {notApply.length > 0 && (
         <details>
-          <summary>{C.footer.doesNotApply(notApply.length)}</summary>
+          <summary>{fillText(F.doesntApply, { n: notApply.length })}</summary>
           <ul className="sections">
             {notApply.map((r) => (
               <li key={r.goal.id}>{clean(r.statement)}</li>
@@ -65,7 +69,7 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
       )}
       {housekeeping.length > 0 && (
         <details>
-          <summary>{C.footer.housekeeping(housekeeping.length)}</summary>
+          <summary>{fillText(F.housekeeping, { n: housekeeping.length })}</summary>
           <ul className="sections">
             {housekeeping.map((h, i) => (
               <li key={i}>
@@ -74,7 +78,7 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
                 <>
                   {' '}
                   <Button variant="tertiary" onClick={() => exportDownload('policy.json', h.json!, 'application/json', REDACTED)}>
-                    {C.footer.json}
+                    {app.plan.footerJson}
                   </Button>
                 </>
               )}

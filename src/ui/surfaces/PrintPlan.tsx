@@ -5,10 +5,7 @@ import { createPortal } from 'react-dom'
 import type { Step } from '../../roadmap/types.ts'
 import type { Schedule } from '../../roadmap/schedule.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
-import { PRINT as C } from '../../copy/steps.ts'
 import { waveLabels } from '../../derive/phases.ts'
-import { PLAN } from '../../copy/plan.ts'
-import { ROADMAP } from '../../copy/pages.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -17,7 +14,8 @@ import { RingMark } from '../components/Ring.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
-import { phases } from '../../content/content.ts'
+import { app, phases } from '../../content/content.ts'
+import { headerLine1 } from '../../derive/planHeader.ts'
 import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
@@ -27,14 +25,13 @@ import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.
 // prompt 53 queue item 7: every step in full, the same content, with More open);
 // the print stylesheet hides the controls and tabs. Cleanup prints its rows too.
 const noop = (): void => undefined
+const C = app.print
 
 export function PrintPlan({
   tenantName,
   baselineLabel,
   operator,
   baselinePin = null,
-  progress = null,
-  comms = [],
   steps,
   schedule,
   verificationNote,
@@ -47,10 +44,6 @@ export function PrintPlan({
   baselineLabel: string
   operator: string
   baselinePin?: string | null
-  /** The Progress headline: state, projection, already covered (ux-review-07 §31). */
-  progress?: { state: string; projection: string; already: string } | null
-  /** What will be sent and when (comms-and-bridges.md §1.3). */
-  comms?: { at: string; audience: string; channels: string; subject: string; steps: string[] }[]
   steps: Step[]
   /** Who the verification window is for, already worded (ux-review-06 §24). */
   verificationNote: string
@@ -88,19 +81,18 @@ export function PrintPlan({
   const inPlaceCount = doneSteps(steps).length
   const totalCount = trackableSteps(steps).length
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(schedule.start)) / (7 * 86_400_000))) : schedule.weeks
-  const headerLine = finish.finish
-    ? PLAN.header(totalCount, inPlaceCount, `finishes ${absoluteDate(finish.finish)}`, weeks, FINISH.waiting(finish.waiting))
-    : PLAN.header(totalCount, inPlaceCount, PLAN.cannotFinish(FINISH.waiting(finish.waiting)), weeks, '')
+  // The same header line the Plan shows (derive/planHeader.ts), without the anchored start.
+  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint: FINISH.waiting(finish.waiting), startedFrom: null })
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
   // shows only this document, on every route.
   return createPortal(
     <div className="print-plan">
-      <div className="print-running">{C.runningHeader(tenantName, today)}</div>
+      <div className="print-running">{fillText(C.runningHeader, { tenant: tenantName, date: today })}</div>
 
       <section className="print-cover">
         <RingMark size={56} />
-        <h1>{C.title(tenantName)}</h1>
+        <h1>{fillText(C.title, { tenant: tenantName })}</h1>
         <dl>
           <dt>{C.cover.tenant}</dt>
           <dd>{tenantName}</dd>
@@ -117,17 +109,17 @@ export function PrintPlan({
         <p className="print-statement">{headerLine}</p>
         <div className="print-posture">
           <p>
-            <strong>{C.posture.inPlace(inPlaceNames.length)}</strong> {inPlaceNames.length > 0 ? inPlaceNames.join(', ') : C.posture.noneYet}
+            <strong>{fillText(C.posture.inPlace, { n: inPlaceNames.length })}</strong> {inPlaceNames.length > 0 ? inPlaceNames.join(', ') : C.posture.noneYet}
           </p>
           <p>
-            <strong>{C.posture.toDo(toDoNames.length)}</strong> {toDoNames.join(', ')}
+            <strong>{fillText(C.posture.toDo, { n: toDoNames.length })}</strong> {toDoNames.join(', ')}
           </p>
           <p>
-            <strong>{C.posture.doesntApply(doesntApplyNames.length)}</strong> {doesntApplyNames.length > 0 ? doesntApplyNames.join(', ') : C.posture.none}
+            <strong>{fillText(C.posture.doesntApply, { n: doesntApplyNames.length })}</strong> {doesntApplyNames.length > 0 ? doesntApplyNames.join(', ') : C.posture.none}
           </p>
           {notLicensedCount > 0 && <p>{notLicensedPrintLine(notLicensedCount)}</p>}
         </div>
-        <p className="muted">{C.cover.prepared(operator)}</p>
+        <p className="muted">{fillText(C.cover.prepared, { by: operator })}</p>
         <p className="print-statement">{C.cover.readOnly}</p>
         {/* Whoever reads this on paper can still say it is wrong (prompt 34 §5). */}
         <p className="muted">{C.cover.feedback}</p>
@@ -146,39 +138,6 @@ export function PrintPlan({
 
       <section className="print-page">
         <h2>{C.summary}</h2>
-        {progress && (
-          <div className="print-progress">
-            <h3>{C.progress}</h3>
-            <p>{progress.state}</p>
-            {progress.projection && <p>{progress.projection}</p>}
-            {progress.already && <p>{progress.already}</p>}
-          </div>
-        )}
-        {comms.length > 0 && (
-          <>
-            <h3>{C.comms}</h3>
-            <table className="datatable">
-              <thead>
-                <tr>
-                  <th scope="col">{C.commsColumns.date}</th>
-                  <th scope="col">{C.commsColumns.audience}</th>
-                  <th scope="col">{C.commsColumns.subject}</th>
-                  <th scope="col">{C.commsColumns.steps}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comms.map((r, i) => (
-                  <tr key={i}>
-                    <td>{absoluteDate(r.at)}</td>
-                    <td>{r.audience}</td>
-                    <td>{r.subject}</td>
-                    <td>{r.steps.join('; ')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
         <h3>{C.timeline}</h3>
         <table className="datatable">
           <thead>
@@ -198,16 +157,16 @@ export function PrintPlan({
                 </tr>
                 {w.wave === 0 && schedule.verification.days > 0 && (
                   <tr key="verification">
-                    <td>{ROADMAP.verificationWindow(schedule.verification.days)}</td>
+                    <td>{fillText(C.verificationWindow, { days: schedule.verification.days })}</td>
                     <td>{dateRange(schedule.verification.start, schedule.verification.end)}</td>
                     <td>{verificationNote}</td>
                   </tr>
                 )}
                 {w.wave === 0 && schedule.observation.days > 0 && (
                   <tr key="observation">
-                    <td>{ROADMAP.observation(schedule.observation.days)}</td>
+                    <td>{fillText(C.observation, { days: schedule.observation.days })}</td>
                     <td>{dateRange(schedule.observation.start, schedule.observation.end)}</td>
-                    <td>{ROADMAP.observationText}</td>
+                    <td>{C.observationText}</td>
                   </tr>
                 )}
               </Fragment>

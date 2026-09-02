@@ -17,7 +17,13 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { ROADMAP } from '../copy/pages.ts'
+import { app } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+
+const ROADMAP = {
+  planFromAnotherTenant: (planTenant: string, current: string): string => fillText(app.export.planFromAnotherTenant, { planTenant: planTenant || app.export.anotherTenant, current: current || app.export.differentTenant, madeFor: planTenant || app.export.madeFor }),
+  planTenantUnknown: (current: string): string => fillText(app.export.planTenantUnknown, { current: current || app.export.thisTenant }),
+}
 
 const PAGE = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
 

@@ -9,14 +9,12 @@ import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
-import { PLAN as C } from '../../copy/plan.ts'
-import { SHELL } from '../../copy/pages.ts'
-import { pages, phases } from '../../content/content.ts'
+import { app, pages, phases } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { DRILL_STEP_ID } from '../../roadmap/generate.ts'
-import { scanAge } from '../../derive/scanAge.ts'
+import { scanAge, scanAgeWords } from '../../derive/scanAge.ts'
 import { todayView } from '../../derive/today.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
@@ -33,6 +31,10 @@ import { ContentStep } from './ContentStep.tsx'
 import { contentTitle } from '../../content/stepTitle.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
+
+type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; startNote: string; freezeFrom: string; freezeTo: string; close: string }; blocked: { after: string } }
+const PP = pages.plan as unknown as PlanPage
+const S = app.shell
 
 // The plan only renders once a mapping is loaded (usePlanData returns computed
 // only then), so this fallback is never the live value; it keeps ContentStep's
@@ -64,9 +66,9 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   if (!scan || !account) {
     return (
       <section className="surface">
-        <h1>{C.title}</h1>
+        <h1>{PP.h1}</h1>
         <p>
-          {account ? C.needsScan : SHELL.scanNeedsConnect} <a href="#/connect">{account ? C.scanLink : SHELL.connectLink}</a>
+          {account ? app.plan.needsScan : S.scanNeedsConnect} <a href="#/connect">{account ? app.plan.scanLink : S.connectLink}</a>
         </p>
       </section>
     )
@@ -75,8 +77,8 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   if (!c) {
     return (
       <section className="surface">
-        <h1>{C.title}</h1>
-        <p className="reason">{SHELL.loading}</p>
+        <h1>{PP.h1}</h1>
+        <p className="reason">{S.loading}</p>
       </section>
     )
   }
@@ -104,7 +106,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const P = pages.plan as Record<string, string>
   const weeksText = `${weeks} week${weeks === 1 ? '' : 's'}`
   const age = scanAge(scan.at)
-  const ageText = age.hours < 1 ? 'just now' : age.hours < 48 ? `${age.hours}h ago` : `${age.days}d ago`
+  const ageText = scanAgeWords(age)
   // Until Start the plan is pressed (or a date is set in Plan settings), every
   // visit proposes dates from today and the header says so in one small line;
   // once started, the anchored start is on the line and a scan never moves it (§5, §9).
@@ -132,7 +134,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
       <h1>{P.h1}</h1>
       <p className="line">
         {line1}
-        <InfoTip title={C.constraintTip} text={lengthTip} />
+        <InfoTip title={app.plan.constraintTip} text={lengthTip} />
       </p>
       <p className="line">{line2}</p>
       {data.startedFrom === null && (
@@ -148,7 +150,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
 
       <p className="line no-print">
         <a href="#/plan" onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>
-          {C.settings}
+          {PP.settingsLink}
         </a>
       </p>
       {showSettings && <Settings data={data} effectiveStart={c.schedule.start} onClose={() => setShowSettings(false)} />}
@@ -255,12 +257,12 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
       <div className="plan-row" tabIndex={0} onClick={onToggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}>
         <span className="plan-row-main">
           <Status tone={status.tone}>{status.word}</Status>
-          {isNext && <span className="next-mark" aria-label={C.next}>{C.next}</span>}
+          {isNext && <span className="next-mark" aria-label={PP.next}>{PP.next}</span>}
           <span className="step-title">{contentTitle(step)}</span>
           <span className="who">{whoLineOf(step.population, nameOf, step.gapShort ?? step.gap ?? null)}</span>
           <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{whenLine(step)}</span>
         </span>
-        {step.status === 'blocked' && step.blockedReason && !hideReason && !heldByReadiness(step) && <span className="plan-row-reason">{C.afterShort(shortReason(step.blockedReason))}</span>}
+        {step.status === 'blocked' && step.blockedReason && !hideReason && !heldByReadiness(step) && <span className="plan-row-reason">{fillText(PP.blocked.after, { stepTitle: shortReason(step.blockedReason) })}</span>}
       </div>
       {open && (
         <ContentStep
@@ -292,19 +294,19 @@ function whenLine(step: Step): string {
     const b = step.blockers.find((x) => x.kind === 'readiness' && typeof x.binding === 'string' && /readiness reaches/.test(x.binding))
     if (b && typeof b.binding === 'string') return b.binding
   }
-  if (step.kind === 'prerequisite' || step.kind === 'check' || step.kind === 'recurring') return C.who.now
+  if (step.kind === 'prerequisite' || step.kind === 'check' || step.kind === 'recurring') return PP.now
   // One short format everywhere (walk-51 item 5): the event's instant through
   // absoluteDate, never the event's own local label ("9 Sept 2026").
   const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? null
-  return at ? absoluteDate(at) : C.who.now
+  return at ? absoluteDate(at) : PP.now
 }
 
 function Settings({ data, effectiveStart, onClose }: { data: ReturnType<typeof usePlanData>; effectiveStart: string; onClose: () => void }) {
   return (
     <div className="plan-settings">
-      <h3>{C.settingsTitle}</h3>
+      <h3>{PP.settings.h3}</h3>
       <label className="rows">
-        <span>{C.startDate}</span>
+        <span>{PP.settings.start}</span>
         {/* The input shows the plan's effective start (the clamped working day),
             and stores noon UTC to match the default, so re-entering the value
             shown changes nothing (prompt 49.1 item 11). Clearing the field resets
@@ -312,16 +314,16 @@ function Settings({ data, effectiveStart, onClose }: { data: ReturnType<typeof u
             only Close, so the reset is the field's own clear, not a new button. */}
         <input type="date" value={effectiveStart.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
       </label>
-      <p className="reason">{C.resetStart}</p>
+      <p className="reason">{PP.settings.startNote}</p>
       <label className="rows">
-        <span>{C.freezeFrom}</span>
+        <span>{PP.settings.freezeFrom}</span>
         <input type="date" value={(data.freeze?.from ?? '').slice(0, 10)} onChange={(e) => data.setFreeze(e.currentTarget.value ? { from: new Date(e.currentTarget.value).toISOString(), to: data.freeze?.to ?? new Date(e.currentTarget.value).toISOString() } : null)} />
-        <span>{C.freezeTo}</span>
+        <span>{PP.settings.freezeTo}</span>
         <input type="date" value={(data.freeze?.to ?? '').slice(0, 10)} onChange={(e) => data.freeze && e.currentTarget.value && data.setFreeze({ from: data.freeze.from, to: new Date(e.currentTarget.value).toISOString() })} />
       </label>
       <p className="actions">
         <Button variant="secondary" onClick={onClose}>
-          {C.close}
+          {PP.settings.close}
         </Button>
       </p>
     </div>

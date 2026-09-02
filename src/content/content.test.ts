@@ -79,6 +79,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // these lines, and the review page swaps them for the translation wherever the
 // goal is mapped. It is documentation, not rendered content, so it is set aside
 // like the structural keys; a separate test proves no product renderer reads it.
+// pages.app holds the words the app chrome and the surfaces show (the header, the scan
+// progress, the print cover, the export alerts): read by the product, never by the review page.
+const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.(url|cis)$/.test(p) || /\.whatToDoReference\b/.test(p)
 
@@ -105,7 +108,7 @@ test('no orphan content string: every non-structural key renders, or is a known 
   walk(content, '')
   const miss: string[] = []
   for (const [path, s] of leaves) {
-    if (isStructural(path)) continue
+    if (isStructural(path) || isAppOnly(path)) continue
     const frags = s.split(/\{[^}]*\}/).map((f) => f.replace(/\s+/g, ' ').trim()).filter((f) => f.length >= 12)
     if (frags.length === 0) continue // a string that is entirely variables
     if (frags.some((f) => body.includes(f) || body.includes(escHtml(f)))) continue

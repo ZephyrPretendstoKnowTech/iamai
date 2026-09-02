@@ -19,7 +19,6 @@ import { Today } from './surfaces/Today.tsx'
 const Export = lazy(() => import('./surfaces/Export.tsx').then((m) => ({ default: m.Export })))
 const How = lazy(() => import('./surfaces/How.tsx').then((m) => ({ default: m.How })))
 const Inventory = lazy(() => import('./surfaces/Inventory.tsx').then((m) => ({ default: m.Inventory })))
-import { TODAY } from '../copy/today.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 
 // Dev-only modules. The lazy import is itself inside an import.meta.env.DEV
@@ -30,7 +29,7 @@ import { INVENTORY } from '../copy/inventory.ts'
 const DevSpikes = import.meta.env.DEV
   ? lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m.DevSpikes })))
   : () => null
-import { SHELL } from '../copy/pages.ts'
+import { app, pages } from '../content/content.ts'
 import { isDemo } from './demo.ts'
 import { saveMappingState } from '../mapping/store.ts'
 import { probeStorage } from '../graph/collect/cache.ts'
@@ -254,15 +253,15 @@ export function App() {
       demoWeek2={demoWeek2}
     >
       {!ready ? (
-        SHELL.loading
+        app.shell.loading
       ) : (
         <ErrorBoundary key={route} route={route}>
           {authError && (
             <p className="error">
-              {SHELL.signInError} {authError}
+              {app.shell.signInError} {authError}
             </p>
           )}
-          {storageWarning && <Callout kind="warning" title={SHELL.storageBlocked}>{storageWarning}</Callout>}
+          {storageWarning && <Callout kind="warning" title={app.shell.storageBlocked}>{storageWarning}</Callout>}
           {route === 'connect' && (
             <Connect
               account={account}
@@ -290,26 +289,26 @@ export function App() {
               route === 'today' ? (
                 <Today snapshot={lastScan.snapshot} tenantId={account.tenantId} />
               ) : (
-                <Suspense fallback={<section className="surface"><p className="reason">{SHELL.loading}</p></section>}>
+                <Suspense fallback={<section className="surface"><p className="reason">{app.shell.loading}</p></section>}>
                   <Inventory snapshot={lastScan.snapshot} />
                 </Suspense>
               )
             ) : (
               <section className="surface">
-                <h1>{route === 'inventory' ? INVENTORY.heading : TODAY.title}</h1>
+                <h1>{route === 'inventory' ? INVENTORY.heading : (pages.today as { h1: string }).h1}</h1>
                 <p>
-                  {account ? TODAY.needsScan : SHELL.scanNeedsConnect} <a href="#/connect">{account ? TODAY.scanLink : SHELL.connectLink}</a>
+                  {account ? app.today.needsScan : app.shell.scanNeedsConnect} <a href="#/connect">{account ? app.today.scanLink : app.shell.connectLink}</a>
                 </p>
               </section>
             ))}
           {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
           {route === 'export' && (
-            <Suspense fallback={<section className="surface"><p className="reason">{SHELL.loading}</p></section>}>
+            <Suspense fallback={<section className="surface"><p className="reason">{app.shell.loading}</p></section>}>
               <Export scan={lastScan} baseline={baseline} account={account} />
             </Suspense>
           )}
           {route === 'how' && (
-            <Suspense fallback={<section className="surface"><p className="reason">{SHELL.loading}</p></section>}>
+            <Suspense fallback={<section className="surface"><p className="reason">{app.shell.loading}</p></section>}>
               <How />
             </Suspense>
           )}

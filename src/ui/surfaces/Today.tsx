@@ -5,12 +5,12 @@ import { useEffect, useMemo, useState } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { loadMappingState } from '../../mapping/store.ts'
 import { todayView } from '../../derive/today.ts'
+import { todayLine } from '../../derive/todayLine.ts'
 import type { TodayRow, TodayState } from '../../derive/today.ts'
-import { TODAY as C } from '../../copy/today.ts'
-import { pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { TODAY_LINE, METHOD_TIER, MFA_STATE, ACTIVITY_STATE } from '../../copy/definitions.ts'
-import { absoluteDate, monthDayRange, relative } from '../../copy/dates.ts'
+import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
 import { friendlyMethod } from '../format.ts'
 import { DataTable, InfoTip, Status, Tile, Tiles } from '../components/index.ts'
 import type { Column, StatusTone } from '../components/index.ts'
@@ -20,8 +20,11 @@ import type { Column, StatusTone } from '../components/index.ts'
 // the content file's words are the options and this maps each to its filter.
 const SHOW_KEYS = ['all', 'proven', 'likely', 'neverPrompted', 'possiblyBroken', 'noMethod', 'notActive', 'admins', 'guests'] as const
 type ShowKey = (typeof SHOW_KEYS)[number]
-type TodayCopy = { show: string[]; tiles: Record<'proven' | 'unproven' | 'noMethod' | 'notActive', { label: string; value: string; heldBy: string | null; tip: string }> }
+type TodayCopy = { h1: string; inventory: string; columns: string[]; show: string[]; tiles: Record<'proven' | 'unproven' | 'noMethod' | 'notActive', { label: string; value: string; heldBy: string | null; tip: string }> }
 const T = pages.today as unknown as TodayCopy
+const C = app.today
+/** The state's word, from the Show list (the six states sit at positions 1 to 6). */
+const stateWord = (state: TodayState): string => T.show[SHOW_KEYS.indexOf(state)]
 
 const TONE: Record<TodayState, StatusTone> = { proven: 'ok', likely: 'wait', neverPrompted: 'wait', possiblyBroken: 'stop', noMethod: 'stop', notActive: 'idle' }
 
@@ -48,12 +51,12 @@ function evidenceText(r: TodayRow): string {
   switch (e.kind) {
     case 'mfa': {
       const name = friendlyMethod(e.method)
-      return name ? C.mfaVia(name, relative(e.at)) : C.mfaCompleted(relative(e.at))
+      return name ? fillText(C.mfaVia, { method: name, when: relative(e.at) }) : fillText(C.mfaCompleted, { when: relative(e.at) })
     }
     case 'neverSignedIn':
       return C.neverSignedIn
     case 'inactive':
-      return C.inactiveSince(absoluteDate(e.since))
+      return fillText(C.inactiveSince, { date: absoluteDate(e.since) })
     case 'noMethod':
       return C.noMethodEvidence
     default:
@@ -90,7 +93,7 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
   const [query, setQuery] = useState('')
   const [show, setShow] = useState<ShowKey>('all')
   const source = snapshot.sources.signInEvidence
-  const window_ = source?.coveredWindow ? monthDayRange(source.coveredWindow.from, source.coveredWindow.to) : null
+  const window_ = source?.coveredWindow ? { from: monthDay(source.coveredWindow.from), to: monthDay(source.coveredWindow.to) } : null
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return view.rows.filter((r) => shows(r, show) && (!q || `${r.user.displayName ?? ''} ${r.user.userPrincipalName ?? ''}`.toLowerCase().includes(q)))
@@ -99,7 +102,7 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
   const columns: Column<TodayRow>[] = [
     {
       key: 'person',
-      header: C.columns.person,
+      header: T.columns[0],
       sortValue: (r) => (r.user.displayName ?? r.user.userPrincipalName ?? '').toLowerCase(),
       csv: (r) => r.user.displayName ?? r.user.userPrincipalName ?? '',
       render: (r) => (
@@ -110,35 +113,35 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
         </>
       ),
     },
-    { key: 'upn', header: C.columns.signInAddress, hidden: true, render: () => null, csv: (r) => r.user.userPrincipalName ?? '' },
+    { key: 'upn', header: C.signInAddress, hidden: true, render: () => null, csv: (r) => r.user.userPrincipalName ?? '' },
     {
       key: 'state',
-      header: C.columns.state,
-      sortValue: (r) => Object.keys(C.state).indexOf(r.state),
-      csv: (r) => C.state[r.state],
+      header: T.columns[1],
+      sortValue: (r) => SHOW_KEYS.indexOf(r.state),
+      csv: (r) => stateWord(r.state),
       render: (r) => (
         <Status tone={TONE[r.state]} title={stateTip(r.state)}>
-          {C.state[r.state]}
+          {stateWord(r.state)}
         </Status>
       ),
     },
     {
       key: 'method',
-      header: C.columns.method,
+      header: T.columns[2],
       sortValue: (r) => Object.keys(METHOD_TIER).indexOf(r.strongest),
       csv: (r) => METHOD_TIER[r.strongest].title,
       render: (r) => <span title={METHOD_TIER[r.strongest].text}>{METHOD_TIER[r.strongest].title}</span>,
     },
-    { key: 'evidence', header: C.columns.evidence, csv: (r) => evidenceText(r), render: (r) => evidenceText(r) },
+    { key: 'evidence', header: T.columns[3], csv: (r) => evidenceText(r), render: (r) => evidenceText(r) },
   ]
 
   const { tiles, counts } = view
   return (
     <section className="surface today">
-      <h1>{C.title}</h1>
+      <h1>{T.h1}</h1>
       <p className="lede">{(pages.today as Record<string, string>).purpose}</p>
       <p className="line">
-        {C.line(counts, window_, !window_ && source?.status === 'disabled' ? source.reason : null)}
+        {todayLine(counts, window_, !window_ && source?.status === 'disabled' ? source.reason : null)}
         <InfoTip title={TODAY_LINE.active.title} text={TODAY_LINE.active.text} />
       </p>
       {/* The four tiles from pages.today.tiles: the value, the label, the "held by" line
@@ -151,7 +154,7 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
       <div className="toolbar no-print">
         <input type="search" placeholder={C.search} aria-label={C.search} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
         <label>
-          {C.show}{' '}
+          {C.showLabel}{' '}
           <select value={show} onChange={(e) => setShow(e.currentTarget.value as ShowKey)}>
             {SHOW_KEYS.map((k, i) => (
               <option key={k} value={k}>
@@ -163,7 +166,7 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
       </div>
       <DataTable rows={rows} columns={columns} rowKey={(r) => r.user.id} csvName="iamai-today.csv" empty={C.noMatch} />
       <p className="footer-link">
-        <a href="#/inventory">{C.everything}</a>
+        <a href="#/inventory">{T.inventory}</a>
       </p>
     </section>
   )
