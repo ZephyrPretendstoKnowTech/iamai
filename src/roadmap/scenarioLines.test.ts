@@ -46,11 +46,14 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
   const unproven = (r: ReturnType<typeof runFixture>): number => (r.steps.find((s) => s.kind === 'verify')?.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')?.people.length ?? 0
   const inPlace = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'done').length
   const reportOnly = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'in-report-only').length
-  const exclusionStep = (r: ReturnType<typeof runFixture>): boolean => r.steps.some((s) => s.id === 's-prereq-exclusion-group')
+  const exclusionStep = (r: ReturnType<typeof runFixture>) => r.steps.find((s) => s.id === 's-prereq-exclusion-group')
   assert.equal(unproven(week2), unproven(day1) - 3, 'three of the unproven are proven in week two')
   assert.equal(inPlace(week2), inPlace(day1) + 1, 'the admins phishing-resistant policy is enforced by week two, so one more step is in place')
   assert.equal(reportOnly(week2), 2, 'two Wave 1 policies are in report-only in week two')
-  assert.ok(exclusionStep(day1) && !exclusionStep(week2), 'the exclusions group is created by week two, so its prerequisite is satisfied')
+  // The step is on every plan: day one has no group, so it carries the create
+  // instructions (no checks); by week two the group exists and the step checks it.
+  assert.ok(exclusionStep(day1) && !exclusionStep(day1)!.checks, 'day one: no exclusions group is recognised')
+  assert.ok(exclusionStep(week2)?.checks, 'week two: the group exists and the step checks it')
 })
 
 const EVIDENCE_KINDS = [

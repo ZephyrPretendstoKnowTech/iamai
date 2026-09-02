@@ -99,6 +99,8 @@ export type ValidationContext = {
   serviceAccountIds: string[]
   approvedExclusionIds: string[]
   viability: MfaViability[]
+  /** The tenant policies the plan touches (its goals' matched policies), lower-cased ids; null means every live policy. */
+  planPolicyIds?: Set<string> | null
   /** The two facts no tenant exposes, answered once in Setup. */
   answers: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
 }
@@ -206,6 +208,7 @@ export function initialDomain(snapshot: TenantSnapshot): string | null {
 
 /** Every enabled or report-only policy; a disabled policy denies nothing. */
 type PolicyShape = {
+  id?: string
   displayName?: string
   state?: string
   conditions?: { users?: { excludeUsers?: string[]; excludeGroups?: string[] } }
@@ -623,12 +626,13 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
   needs: ['caPolicies'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    const live = livePolicies(ctx)
+    // The policies the plan touches, or every live policy when no plan says which.
+    const live = livePolicies(ctx).filter((p) => !ctx.planPolicyIds || (typeof p.id === 'string' && ctx.planPolicyIds.has(p.id.toLowerCase())))
     if (live.length === 0) return PASS
-    const excludes = (p: (typeof live)[number]): boolean => (p.conditions?.users?.excludeGroups ?? []).includes(entry.groupId)
-    const excluded = live.filter(excludes).length
-    if (excluded === 0 || excluded === live.length) return PASS
-    return fail(F.xgInconsistent(excluded, live.length), { policies: live.filter((p) => !excludes(p)).map((p) => p.displayName ?? '(unnamed)') })
+    const excludes = (p: (typeof live)[number]): boolean => (p.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === entry.groupId.toLowerCase())
+    const missing = live.filter((p) => !excludes(p))
+    if (missing.length === 0) return PASS
+    return fail(F.xgInconsistent(live.length - missing.length, live.length), { policies: missing.map((p) => p.displayName ?? '(unnamed)') })
   },
 }
 
