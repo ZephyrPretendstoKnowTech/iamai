@@ -81,7 +81,15 @@ export function ContentStep({
   const who = cs.who || {}
   const d = cs.decision
   const w = cs.whatToDo || {}
-  const portal = cs.kind === 'policy' ? stepPortalLines(step.goalId, { nameOf: ctx.nameOf, policyName: String(ex.policyName ?? cs.title), strengthName: (ex as { strengthName?: string }).strengthName ?? null }) : null
+  const portalLines = cs.kind === 'policy' ? stepPortalLines(step.goalId, { nameOf: ctx.nameOf, policyName: String(ex.policyName ?? cs.title), strengthName: (ex as { strengthName?: string }).strengthName ?? null }) : null
+  // A goal the baseline holds no policy for has no portal lines; an empty list is
+  // not a What to do (the shared-devices step rendered an empty section).
+  const portal = portalLines && portalLines.length > 0 ? portalLines : null
+  const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
+  const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
+  // §8.7: a section with no content is not rendered. A step with nothing to do
+  // is a missing content key, logged by the walk, never an empty heading.
+  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || hasSteps
 
   return (
     <div className="step-body">
@@ -99,13 +107,14 @@ export function ContentStep({
             Learn →
           </a>
         )}
+        {learn.url && learn.cis && ' '}
         {learn.cis && <span className="chip">CIS {learn.cis}</span>}
       </p>
 
-      <h3>Who this touches</h3>
-      <Line s={who.lead} ex={ex} cls="line" />
+      {whoHasContent(who, ex) && <h3>Who this touches</h3>}
+      {whoLead(who, ex) && <Line s={who.lead} ex={ex} cls="line" />}
       {evidenceLines(who, ex).filter((line) => whole(line, ex)).map((line, i) => (
-        <p key={i} className="reason"><T s={line} ex={ex} /></p>
+        <WhoLine key={i} line={line} ex={ex} />
       ))}
       {/* The campaign's people lists: each bucket with its members, only where the
           bucket has people (walk-51 item 3). */}
@@ -124,8 +133,8 @@ export function ContentStep({
 
       {d && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} />}
 
-      <h3>What to do</h3>
-      {w.lead && <p><T s={w.lead} ex={ex} /></p>}
+      {hasWhatToDo && <h3>What to do</h3>}
+      {hasWhatToDo && w.lead && <p><T s={w.lead} ex={ex} /></p>}
       {/* A check step (emergency access, exclusions group): one numbered fix line
           per failing check, filled from that check's values (walk-51 item 14). */}
       {Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && w.checkFixes && (
@@ -158,7 +167,7 @@ export function ContentStep({
           </p>
         </>
       ) : (
-        Array.isArray(w.steps) && <ol className="sections">{(w.steps as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
+        hasSteps && <ol className="sections">{(w.steps as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
       )}
 
       {cs.dates && whole(cs.dates, ex) && (
@@ -225,6 +234,47 @@ export function ContentStep({
   )
 }
 
+/**
+ * A lead that ends in a colon promises what follows it. It renders only when
+ * something does: an evidence line, a none-branch line, a group list, or a list
+ * the lead itself carries (the walk found "…with who signs in from each:" over
+ * nothing on the countries step).
+ */
+function whoLead(who: Record<string, any>, ex: Ex): boolean {
+  const lead = who.lead
+  if (typeof lead !== 'string' || !whole(lead, ex)) return false
+  if (!/:\s*$/.test(lead)) return true
+  if (evidenceLines(who, ex).some((line) => whole(line, ex))) return true
+  if (who.groups && Object.keys(who.groups as Record<string, unknown>).some((gk) => Array.isArray(ex[gk]) && (ex[gk] as unknown[]).length > 0)) return true
+  return false
+}
+
+/**
+ * One who-line. A line that ends in a list of names — `{list:accounts}` alone,
+ * or prose ending in `: {list:accounts}` — renders the names as a list, one per
+ * row, never inline (§6.3, §6.5); the prose before it stays a line.
+ */
+function WhoLine({ line, ex }: { line: string; ex: Ex }) {
+  const m = /^(.*?)\s*\{list:([a-zA-Z0-9_]+)\}\s*$/.exec(line)
+  const items = m ? ex[m[2]] : undefined
+  if (!m || !Array.isArray(items) || items.length === 0) return <p className="reason"><T s={line} ex={ex} /></p>
+  const lead = m[1].trim()
+  return (
+    <div className="names-group">
+      {lead && <p className="reason"><T s={lead} ex={ex} /></p>}
+      <ol className="names">{(items as unknown[]).map((nm, i) => <li key={i}>{String(nm)}</li>)}</ol>
+    </div>
+  )
+}
+
+/** §8.7: the Who heading renders only when a lead, a line or a group renders under it. */
+function whoHasContent(who: Record<string, any>, ex: Ex): boolean {
+  if (whoLead(who, ex)) return true
+  if (evidenceLines(who, ex).some((line) => whole(line, ex))) return true
+  if (who.groups && Object.keys(who.groups as Record<string, unknown>).some((gk) => Array.isArray(ex[gk]) && (ex[gk] as unknown[]).length > 0)) return true
+  return false
+}
+
 /** The who-line evidence lines that apply to this tenant (render.ts renderStep gating). */
 function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
   const out: string[] = []
@@ -270,7 +320,7 @@ function Decision({ d, ex, saved, onDecide }: { d: Record<string, any>; ex: Ex; 
   // .decision row (which the contract measures against the row budget).
   return (
     <>
-      {d.help && <p className="reason"><T s={d.help} ex={ex} /></p>}
+      <Line s={d.help} ex={ex} cls="reason" />
       <div className="decision">
         <div className="dlabel">{d.label}</div>
         {rows.length > 0 && (
@@ -298,17 +348,20 @@ function More({ cs, ex, step, onSkip, onUnskip, copy, copied }: { cs: Record<str
       {risks.length > 0 && (
         <>
           <h3>What could go wrong</h3>
-          <ul className="sections">{applies.map((r, i) => <li key={i}><T s={r.text} ex={ex} /> <span className="chip">applies here</span></li>)}</ul>
-          {rest.length > 0 && <><p className="sub">Also possible</p><ul className="sections">{rest.map((r, i) => <li key={i}><T s={r.text} ex={ex} /></li>)}</ul></>}
+          {/* The items that apply here first, marked; the rest under Also possible.
+              When none applies the rest stand under the heading, never an empty list. */}
+          {applies.length > 0 && <ul className="sections">{applies.map((r, i) => <li key={i}><T s={r.text} ex={ex} /> <span className="chip">applies here</span></li>)}</ul>}
+          {rest.length > 0 && applies.length > 0 && <p className="sub">Also possible</p>}
+          {rest.length > 0 && <ul className="sections">{rest.map((r, i) => <li key={i}><T s={r.text} ex={ex} /></li>)}</ul>}
         </>
       )}
-      {more.helpDesk && (
+      {Array.isArray(more.helpDesk) && (more.helpDesk as unknown[]).filter((x) => whole(x, ex)).length > 0 && (
         <>
           <h3>For the help desk</h3>
-          <ul className="sections">{(more.helpDesk as unknown[]).map((x, i) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
+          <ul className="sections">{(more.helpDesk as unknown[]).filter((x) => whole(x, ex)).map((x, i) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
         </>
       )}
-      {more.manager && (
+      {more.manager && whole(more.manager, ex) && (
         <>
           <h3>For your manager</h3>
           <p className="reason"><T s={more.manager} ex={ex} /></p>

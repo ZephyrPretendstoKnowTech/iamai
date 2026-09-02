@@ -2,17 +2,24 @@
 #
 #   getiamai.com/           the home page (hand-written, home/)
 #   getiamai.com/rollout/   the planner (the Vite bundle)
+#   getiamai.com/next/      the preview: the night-1 branch's home and planner
+#                           (getiamai.com/next/rollout/), prompt 53 Unit 0b
 #
 # One repository, one workflow, one domain. TOOL_PATH names the folder and is
 # the single constant: vite.config.ts derives its base and outDir from it, and
 # scripts/assemble-site.mjs reads the same value when it lays out dist/.
 # Routing is hash-based and the baseline index fetches by absolute URL, so
 # nothing else changes with the path.
+#
+# The artifact is always main at the root, and night-1 under /next/ when that
+# branch exists — whichever branch was pushed. A step proves the root is
+# byte-identical to a main-only build before the preview is laid beside it, so a
+# night-1 push can never change the live site.
 name: deploy-pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, night-1]
   workflow_dispatch:
 
 permissions:
@@ -29,18 +36,60 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: main/package-lock.json
       - run: npm ci
+        working-directory: main
       - run: npm test
+        working-directory: main
       - run: npm run build:site
+        working-directory: main
         env:
           TOOL_PATH: ${{ vars.TOOL_PATH || 'rollout' }}
+      # The root as a main-only build would publish it: every file's hash, taken
+      # before the preview is added and compared after.
+      - name: Fingerprint the main build
+        run: cd main/dist && find . -type f -not -path './next/*' | sort | xargs sha256sum > "$RUNNER_TEMP/main-build.sha256"
+      - name: Is there a night-1 branch?
+        id: night
+        working-directory: main
+        run: |
+          if git ls-remote --exit-code --heads origin night-1 > /dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.night.outputs.exists == 'true'
+        with:
+          ref: night-1
+          path: next
+      - run: npm ci
+        if: steps.night.outputs.exists == 'true'
+        working-directory: next
+      # The preview's planner lives at /next/<tool>/ and its home page at /next/,
+      # so the same TOOL_PATH constant carries the prefix: the bundle's base and
+      # the home page's links both come out under /next/.
+      - run: npm run build:site
+        if: steps.night.outputs.exists == 'true'
+        working-directory: next
+        env:
+          TOOL_PATH: next/${{ vars.TOOL_PATH || 'rollout' }}
+      - name: Lay the preview beside the root
+        if: steps.night.outputs.exists == 'true'
+        run: |
+          mkdir -p main/dist/next
+          cp -R next/dist/next/. main/dist/next/
+          for f in next/dist/*; do
+            case "$(basename "$f")" in next|CNAME) ;; *) cp -R "$f" main/dist/next/ ;; esac
+          done
+      - name: The root is byte-identical to the main-only build
+        run: cd main/dist && find . -type f -not -path './next/*' | sort | xargs sha256sum | diff - "$RUNNER_TEMP/main-build.sha256"
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: main/dist
   deploy:
     needs: build
     runs-on: ubuntu-latest

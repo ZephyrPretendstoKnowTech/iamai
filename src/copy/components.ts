@@ -2,7 +2,6 @@
 import { count } from './statements.ts'
 
 export const COMPONENTS = {
-  backToTop: 'Back to top',
   picker: {
     placeholder: 'Search…',
     remove: 'Remove',

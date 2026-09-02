@@ -13,8 +13,10 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
+import { notActiveUsers } from './sets.ts'
 import { stateOf } from './today.ts'
 import type { TodayState } from './today.ts'
+import { absoluteDate } from '../copy/dates.ts'
 
 export type ListContext = {
   snapshot: TenantSnapshot
@@ -78,6 +80,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   for (const v of smsOnly) addCare(v.userId)
   if (ctx.operatorId) addCare(ctx.operatorId)
   const specialCare = careIds.map((id) => `${nameOf(id)} · ${STATE_WORD[stateOf(byId.get(id) as MfaViability)]}`)
+  const dormant = notActiveUsers(snapshot, now, svc)
   // The ids behind the rows, in the same order, so a tick is a decision about an
   // account (prompt 52 Part 3): the picker reads `<source>Ids` beside `<source>`.
   const specialCareIds = [...careIds]
@@ -107,6 +110,11 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // The special-care picker rows ("name · state"), and their ids.
     specialCare,
     specialCareIds,
+    // The dormant accounts (no sign-in for 90 days, or none on record) with their
+    // state, for the problematic-accounts check (walk of f3d140b): the state is
+    // the last sign-in date, or the content example's own "no sign-in on record".
+    accountsWithState: dormant.map((u) => `${nameOf(u.id)} · ${u.lastSuccessfulSignIn ? absoluteDate(u.lastSuccessfulSignIn) : 'no sign-in on record'}`),
+    accountsWithStateIds: dormant.map((u) => u.id),
   }
 }
 

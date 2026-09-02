@@ -5,7 +5,7 @@ import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache } from '../graph/collect/cache.ts'
 import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
-import { BackToTop, Callout, ErrorBoundary } from './components/index.ts'
+import { Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
 import type { ShellState } from './shell/AppShell.tsx'
 import { Connect } from './surfaces/Connect.tsx'
@@ -299,7 +299,6 @@ export function App() {
           )}
         </ErrorBoundary>
       )}
-      <BackToTop />
     </AppShell>
   )
 }
