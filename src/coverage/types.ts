@@ -171,6 +171,13 @@ export type CandidateContribution = {
   state: PolicyFacts['state']
   contribution: 'strong' | 'weak' | 'reportOnly' | 'disabled'
   caveats: string[]
+  /**
+   * The policy targets this goal's own scope, not a broader all-users match
+   * that belongs to another goal (walk-51 item 15): the guests goal's existing
+   * coverage names "Guests MFA", not the all-users MFA policy that also happens
+   * to cover them.
+   */
+  ownScope: boolean
 }
 
 export type GoalStatus =
