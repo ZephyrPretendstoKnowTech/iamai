@@ -7,7 +7,7 @@ import type { BaselineFile, BaselineIndex, BaselinePackage } from '../baseline/i
 import { PINNED, pinnedFiles, pinnedPackage } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP, goalMapFor } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
-import { CONNECT } from '../copy/connect.ts'
+import { app } from '../content/content.ts'
 
 export type BaselineResult = {
   source: string
@@ -105,5 +105,5 @@ export async function restoreBaseline(origin: BaselineResult['origin']): Promise
 export function loadUploadedBaseline(files: BaselineFile[]): BaselineResult {
   const pkg = loadBaseline(files)
   // An uploaded baseline has no stored map: built once here, with the pin-time rule.
-  return { source: CONNECT.uploadedSource, pkg, fetchFailures: 0, origin: { kind: 'upload', files }, goalMap: goalMapFor(pkg.policies, new Map()).map }
+  return { source: app.connect.uploadedSource, pkg, fetchFailures: 0, origin: { kind: 'upload', files }, goalMap: goalMapFor(pkg.policies, new Map()).map }
 }

@@ -9,13 +9,13 @@ import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { clearAuthCache, signOut } from '../../graph/auth.ts'
-import { SHELL } from '../../copy/pages.ts'
-import { pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { app, pages } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demo.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { FeedbackPanel } from '../FeedbackPanel.tsx'
 import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/dates.ts'
-import { scanAge } from '../../derive/scanAge.ts'
+import { rescanLabel, scanAge } from '../../derive/scanAge.ts'
 import { Button, Callout, InfoTip, LinkButton } from '../components/index.ts'
 import { RingMark } from '../components/Ring.tsx'
 import { PLAN_HREF, STEP_LINK, resolveHash } from './routes.ts'
@@ -107,6 +107,8 @@ function useTheme(): [string, () => void] {
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
 }
 
+const SHELL = app.shell
+
 function Tab({ href, active, enabled, children }: { href: string; active: boolean; enabled: boolean; children: ReactNode }) {
   if (!enabled) {
     return (
@@ -142,7 +144,7 @@ function AccountMenu({ account }: { account: AccountInfo }) {
   }, [open])
   return (
     <div className="menu" ref={ref}>
-      <Button variant="tertiary" aria-haspopup="menu" aria-expanded={open} title={SHELL.accountTooltip(account.username)} onClick={() => setOpen((o) => !o)}>
+      <Button variant="tertiary" aria-haspopup="menu" aria-expanded={open} title={fillText(SHELL.accountTooltip, { username: account.username })} onClick={() => setOpen((o) => !o)}>
         {SHELL.account}
       </Button>
       {open && (
@@ -208,7 +210,7 @@ export function AppShell({
       <header className="app">
         <a className="wordmark" href={tabsOn ? PLAN_HREF : '#/connect'}>
           <RingMark size={18} />
-          {SHELL.wordmark}
+          {(pages.home as { planner: { name: string } }).planner.name}
         </a>
         {signedIn && <span className="tenant">{tenantName ?? account.username}</span>}
         {signedIn && (
@@ -233,7 +235,7 @@ export function AppShell({
                 else window.location.hash = RESCAN_HREF
               }}
             >
-              {SHELL.rescanScanned(scanAge(scannedAt))}
+              {rescanLabel(scanAge(scannedAt))}
             </Button>
           )}
           <Button variant="tertiary" onClick={toggleTheme} title={SHELL.themeTooltip}>
@@ -244,13 +246,13 @@ export function AppShell({
       </header>
       {isDemo() && (
         <p className="demo-banner" role="status">
-          {SHELL.demoBanner(demoWeek2)} · <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
+          {demoWeek2 ? SHELL.demoBannerWeek2 : SHELL.demoBanner} · <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
         </p>
       )}
       <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
         {signedIn && (
           <div className="print-only muted">
-            {SHELL.printHeader(tenantName ?? account.username, absoluteDate(new Date().toISOString()), account.username)}
+            {fillText(SHELL.printHeader, { tenant: tenantName ?? account.username, date: absoluteDate(new Date().toISOString()), by: account.username })}
           </div>
         )}
         {children}
@@ -272,7 +274,7 @@ const BUILD_COMMIT = typeof __BUILD_COMMIT__ === 'string' ? __BUILD_COMMIT__ : '
 const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
 
 export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null } = {}) {
-  const buildLabel = SHELL.footerBuild(BUILD_COMMIT, absoluteDate(`${BUILD_DATE}T12:00:00.000Z`))
+  const buildLabel = BUILD_COMMIT === 'dev' ? fillText(SHELL.footerBuildLocal, { date: absoluteDate(`${BUILD_DATE}T12:00:00.000Z`) }) : fillText(SHELL.footerBuild, { commit: BUILD_COMMIT, date: absoluteDate(`${BUILD_DATE}T12:00:00.000Z`) })
   // Read-only and the three links, dot-separated, on every page (target-state
   // §3, prompt 52 Part 1): the feedback channel, all IAMAI tools, the source.
   const footer = pages.footer as { readOnly: string; links: string[] }
@@ -341,7 +343,7 @@ export function StepFrame({
       {next && (
         <p className="step-next">
           <span className="no-print">
-            <LinkButton href={`#/${next}`}>{SHELL.next(nextLabel ?? next)}</LinkButton>
+            <LinkButton href={`#/${next}`}>{fillText(SHELL.next, { label: nextLabel ?? next })}</LinkButton>
           </span>
         </p>
       )}
@@ -358,12 +360,12 @@ export function ScanAge({ at, baseline }: { at: string; baseline?: string | null
   return (
     <>
       <p className="reason">
-        {SHELL.basedOn(whenAt(at))} <a className="no-print" href={RESCAN_HREF}>{SHELL.rescan}</a>
-        {baseline && <> · {SHELL.baselineLoaded(baseline)}</>}
+        {fillText(SHELL.basedOn, { when: whenAt(at) })} <a className="no-print" href={RESCAN_HREF}>{SHELL.rescan}</a>
+        {baseline && <> · {fillText(SHELL.baselineLoaded, { source: baseline })}</>}
         <InfoTip title={SHELL.scanAgeTip} text={SHELL.evidenceAgeNote} />
       </p>
       {days >= STALE_SCAN_DAYS && (
-        <Callout kind="warning" title={SHELL.scanStale(days)}>
+        <Callout kind="warning" title={fillText(SHELL.scanStale, { days })}>
           <a href={RESCAN_HREF}>{SHELL.scanStaleAction}</a>
         </Callout>
       )}

@@ -3,8 +3,9 @@
 // their words: an expired session pauses with Sign in again; a slow sign-in
 // service says so. The section list and the diagnostics bundle are developer
 // tools, under ?dev=1 only.
-import { CONNECT } from '../../copy/connect.ts'
-import { SCAN } from '../../copy/pages.ts'
+import { app } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { lowerFirst } from '../../copy/statements.ts'
 import { ACCESS } from '../../copy/access.ts'
 import { isPrivilegeDenial, rolesForSource } from '../../graph/collect/roles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -15,7 +16,13 @@ import { Button, Callout, ProgressBar } from '../components/index.ts'
 import type { ScanRunner } from './useScanRunner.ts'
 
 const DEV = import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
+const CONNECT = app.connect
+const SCAN = app.scan
 const TOTAL_SECTIONS = Object.keys(SCAN.sections).length
+
+/** A section label mid-sentence: "Conditional Access policies" keeps its capitals, "People" becomes "people". */
+const laneWords = (label: string): string => (/^[A-Z][a-z]+ [A-Z]/.test(label) ? label : lowerFirst(label))
+const readingLine = (labels: string[]): string => (labels.length === 0 ? CONNECT.finishing : fillText(labels.length > 1 ? CONNECT.readingSections : CONNECT.readingSection, { section: laneWords(labels[0]), n: labels.length - 1 }))
 
 export function ScanProgress({ runner }: { runner: ScanRunner }) {
   const { sections, laneB, startedAt, nowTick } = runner
@@ -29,15 +36,15 @@ export function ScanProgress({ runner }: { runner: ScanRunner }) {
     signIns && signIns.status === 'started' && inProgress.length === 0
       ? laneB === null
         ? CONNECT.waitingSignIns
-        : CONNECT.readingSignIns(laneB.pages, laneB.rows)
-      : CONNECT.reading(inProgress)
+        : fillText(CONNECT.readingSignIns, { pages: laneB.pages, rows: laneB.rows })
+      : readingLine(inProgress)
   const elapsed = startedAt !== null ? elapsedLabel(startedAt, nowTick) : null
   return (
     <>
       <ProgressBar percent={signIns && signIns.status === 'started' && finished >= total ? null : percent} caption={lane} />
       <p className="reason">
         {lane}
-        {elapsed && ` · ${CONNECT.elapsed(elapsed)}`}
+        {elapsed && ` · ${fillText(CONNECT.elapsed, { elapsed })}`}
       </p>
       {runner.state === 'paused' && (
         <Callout kind="warning">
@@ -96,14 +103,14 @@ export function ScanDevTools({ tenantId, runner, snapshot }: { tenantId: string;
               {s.status === 'started'
                 ? `${SCAN.sections[s.source] ?? s.source}: ${SCAN.reading}`
                 : s.rows !== undefined
-                  ? SCAN.found(SCAN.sections[s.source] ?? s.source, s.rows)
+                  ? fillText(SCAN.found, { label: SCAN.sections[s.source] ?? s.source, n: s.rows.toLocaleString('en') })
                   : `${SCAN.sections[s.source] ?? s.source}: ${statusLabel(s.status, s.reason)}`}
               {s.reason && <span className="muted"> ({s.reason})</span>}
               {isPrivilegeDenial(s.reason) && <div className="reason">{ACCESS.needsRole(rolesForSource(s.source).least)}</div>}
               {s.ms !== undefined && <span className="muted"> · {s.ms} ms</span>}
             </li>
           ))}
-          {runner.laneB?.oldest && <li>{SCAN.signInsBar(runner.laneB.rows, absoluteDate(runner.laneB.oldest))}</li>}
+          {runner.laneB?.oldest && <li>{fillText(SCAN.signInsBarCovered, { rows: runner.laneB.rows, oldest: absoluteDate(runner.laneB.oldest) })}</li>}
         </ul>
         <Button variant="tertiary" onClick={() => void downloadScanDiagnostics(tenantId, snapshot, rows)}>
           {CONNECT.diagnostics}

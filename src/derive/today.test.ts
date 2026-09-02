@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { bigFixtureSnapshot } from '../testing/bigFixture.ts'
 import { todayView } from './today.ts'
-import { TODAY } from '../copy/today.ts'
+import { todayLine } from './todayLine.ts'
 
 test('every enabled person is one row in one state, and the tiles partition them', () => {
   for (const snapshot of [fixtureSnapshot(), bigFixtureSnapshot()]) {
@@ -23,10 +23,8 @@ test('every enabled person is one row in one state, and the tiles partition them
   }
 })
 
-test('the header line has branches for nobody enabled, one admin, no admins and no records', () => {
-  assert.equal(TODAY.line({ active: 4, enabled: 12, admins: 2 }, 'Jul 30 → Aug 29', null), '4 active people of 12 enabled · 2 admins · sign-ins Jul 30 → Aug 29')
-  assert.equal(TODAY.line({ active: 1, enabled: 1, admins: 1 }, null, null), '1 active person of 1 enabled · 1 admin · no sign-in records')
-  assert.equal(TODAY.line({ active: 0, enabled: 0, admins: 0 }, null, 'needs Entra ID P1 or P2'), 'no enabled people · no admins · no sign-in records (needs Entra ID P1 or P2)')
-  assert.equal(TODAY.share(3, 4), '3 · 75%')
-  assert.equal(TODAY.share(0, 0), '0')
+test('the header line has branches for nobody enabled, one admin, and no records', () => {
+  assert.equal(todayLine({ active: 4, enabled: 12, admins: 2 }, { from: 'Jul 30', to: 'Aug 29' }, null), '4 active people of 12 enabled · 2 admins · sign-ins Jul 30 → Aug 29')
+  assert.equal(todayLine({ active: 1, enabled: 1, admins: 1 }, null, null), '1 active person of 1 enabled · 1 admin · no sign-in records')
+  assert.equal(todayLine({ active: 0, enabled: 0, admins: 0 }, null, 'needs Entra ID P1 or P2'), 'no enabled people · 0 admins · no sign-in records (needs Entra ID P1 or P2)')
 })

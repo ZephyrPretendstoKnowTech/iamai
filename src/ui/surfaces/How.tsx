@@ -8,15 +8,16 @@ import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
 import type { RuleSubject, RuleSeverity } from '../../validation/rules.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
-import { READS } from '../../copy/pages.ts'
 import { ACCESS } from '../../copy/access.ts'
 import { ROLE_FOR_SCOPE } from '../../graph/collect/roles.ts'
 import { SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { PACKAGE } from '../../copy/inventory.ts'
-import { HOW as C } from '../../copy/how.ts'
-import { pages } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { Chip, DataTable } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
+
+const C = app.how
+const READS = app.how
 
 const SEVERITY_CHIP: Record<RuleSeverity, ChipStatus> = { blocker: 'blocked', warning: 'warning', note: 'neutral' }
 
@@ -27,7 +28,7 @@ export function How() {
 
   return (
     <section className="surface page-wide how">
-      <h1>{C.title}</h1>
+      <h1>{C.h1}</h1>
 
       <h2>{C.permissions}</h2>
       <DataTable

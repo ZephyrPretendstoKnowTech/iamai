@@ -9,7 +9,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { PRODUCT } from './copy/product.ts'
+
+const PRODUCT = (pages.home as { planner: { name: string } }).planner
 import { pages } from './content/content.ts'
 import { renderHomeHtml, renderHomeTheme } from '../scripts/build-home.ts'
 

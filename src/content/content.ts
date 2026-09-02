@@ -53,3 +53,17 @@ export const stepById: Record<string, ContentStep> = Object.fromEntries(steps.ma
 export const cleanup = content.cleanup
 export const phases = content.phases
 export const pages = content.pages
+
+/** The words the app chrome and the surfaces show (pages.app): the header, the scan progress, the print cover, the export alerts. */
+export type AppWords = {
+  shell: Record<string, string> & { tabs: { today: string; plan: string; export: string } }
+  scan: { reading: string; found: string; signInsBar: string; signInsBarCovered: string; evidenceStatus: Record<string, string>; sections: Record<string, string> }
+  connect: Record<string, string>
+  plan: Record<string, string>
+  today: Record<string, string>
+  export: Record<string, string>
+  print: Record<string, string> & { cover: Record<string, string>; posture: Record<string, string>; timelineColumns: Record<string, string> }
+  how: Record<string, string> & { limitsList: string[]; lanes: Record<string, string>; columns: Record<string, string> }
+  inventory: { caps: Record<string, string> }
+}
+export const app = content.pages.app as unknown as AppWords

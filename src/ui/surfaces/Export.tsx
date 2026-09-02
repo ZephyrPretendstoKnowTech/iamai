@@ -9,9 +9,8 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { SizeBand } from '../../roadmap/constants.ts'
 import { BANDS } from '../../roadmap/constants.ts'
-import { EXPORT as C } from '../../copy/export.ts'
-import { ROADMAP } from '../../copy/pages.ts'
-import { SHELL } from '../../copy/pages.ts'
+import { app, pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 import { usePlanData } from './planData.ts'
 import { inventoryTables, todayTable } from './inventoryTables.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
@@ -34,6 +33,13 @@ import { todayView } from '../../derive/today.ts'
 // The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
 // source (the copy lint forbids one as punctuation).
 const DASH = String.fromCharCode(0x2014)
+
+// The six cards from pages.export.cards: each a title, one line, and its buttons joined by ' · '.
+type ExportPage = { h1: string; cards: Record<'print' | 'calendar' | 'planFile' | 'csv' | 'prompts' | 'bundle', [string, string, string]> }
+const P = pages.export as unknown as ExportPage
+const buttons = (card: keyof ExportPage['cards']): string[] => P.cards[card][2].split(' · ')
+const A = app.export
+const S = app.shell
 
 export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null; account: AccountInfo | null }) {
   const data = usePlanData(scan, baseline)
@@ -69,9 +75,9 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   if (!scan || !account || !snapshot) {
     return (
       <section className="surface">
-        <h1>{C.title}</h1>
+        <h1>{P.h1}</h1>
         <p>
-          {SHELL.scanNeedsConnect} <a href="#/connect">{SHELL.connectLink}</a>
+          {S.scanNeedsConnect} <a href="#/connect">{S.connectLink}</a>
         </p>
       </section>
     )
@@ -79,8 +85,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   if (!c) {
     return (
       <section className="surface">
-        <h1>{C.title}</h1>
-        <p className="reason">{SHELL.loading}</p>
+        <h1>{P.h1}</h1>
+        <p className="reason">{S.loading}</p>
       </section>
     )
   }
@@ -116,17 +122,17 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const loadPlanInner = async (files: FileList): Promise<void> => {
     const { plan, error } = parsePlanFile(await files[0].text())
     if (!plan) {
-      window.alert?.(error ?? ROADMAP.couldNotRead)
+      window.alert?.(error ?? A.couldNotRead)
       return
     }
     // The tenant check runs before anything is persisted (planTenant.test.ts).
     const planTenantId = plan.tenant?.id || plan.mappings?.tenantId || ''
     if (!planTenantId) {
-      window.alert?.(ROADMAP.planTenantUnknown(tenantName))
+      window.alert?.(fillText(A.planTenantUnknown, { current: tenantName || A.thisTenant }))
       return
     }
     if (planTenantId !== snapshot.tenantId) {
-      window.alert?.(ROADMAP.planFromAnotherTenant(plan.tenant?.name ?? '', tenantName))
+      window.alert?.(fillText(A.planFromAnotherTenant, { planTenant: plan.tenant?.name || A.anotherTenant, current: tenantName || A.differentTenant, madeFor: plan.tenant?.name || A.madeFor }))
       return
     }
     // Take the decisions and regenerate: a 50.1 file carries a decisions block;
@@ -160,80 +166,80 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
 
   return (
     <section className="surface export">
-      <h1>{C.title}</h1>
+      <h1>{P.h1}</h1>
       <div className="export-grid">
-        <Card className="export-card" title={C.pdf.title}>
-          <p className="reason">{C.pdf.line}</p>
+        <Card className="export-card" title={P.cards.print[0]}>
+          <p className="reason">{P.cards.print[1]}</p>
           <p className="actions no-print">
             <Button variant="primary" onClick={() => setPrinting(true)}>
-              {C.pdf.button}
+              {buttons('print')[0]}
             </Button>
           </p>
         </Card>
 
-        <Card className="export-card" title={C.calendar.title}>
-          <p className="reason">{C.calendar.line}</p>
+        <Card className="export-card" title={P.cards.calendar[0]}>
+          <p className="reason">{P.cards.calendar[1]}</p>
           <p className="actions">
             <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view), 'text/calendar', REDACTED)}>
-              {C.calendar.button}
+              {buttons('calendar')[0]}
             </Button>
           </p>
         </Card>
 
-        <Card className="export-card" title={C.planFile.title}>
-          <p className="reason">{C.planFile.line}</p>
+        <Card className="export-card" title={P.cards.planFile[0]}>
+          <p className="reason">{P.cards.planFile[1]}</p>
           <p className="actions no-print">
             <Button variant="secondary" onClick={savePlan}>
-              {C.planFile.save}
+              {buttons('planFile')[0]}
             </Button>
             <Button variant="tertiary" onClick={() => fileInput.current?.click()}>
-              {C.planFile.load}
+              {buttons('planFile')[1]}
             </Button>
             <input ref={fileInput} type="file" accept=".json" hidden aria-hidden onChange={(e) => void loadPlan(e.currentTarget.files)} />
           </p>
         </Card>
 
-        <Card className="export-card" title={C.csv.title}>
-          <p className="reason">{C.csv.line}</p>
+        <Card className="export-card" title={P.cards.csv[0]}>
+          <p className="reason">{P.cards.csv[1]}</p>
           <p className="actions">
             {csvTables.map((t) => (
               <Button key={t.id} variant="tertiary" onClick={() => exportDownload(t.csvName, toCsv(t.header, t.rows), 'text/csv', REDACTED)}>
-                {t.id === 'today' ? C.csv.today : C.csv.tab(t.label)}
+                {t.id === 'today' ? buttons('csv')[0] : fillText(A.csvTab, { label: t.label })}
               </Button>
             ))}
           </p>
         </Card>
 
-        <Card className="export-card" title={C.prompts.title}>
-          <p className="reason">{C.prompts.line}</p>
+        <Card className="export-card" title={P.cards.prompts[0]}>
+          <p className="reason">{P.cards.prompts[1]}</p>
           <p className="actions">
             <Button variant="secondary" onClick={() => exportDownload(`iamai-prompts-${snapshot.tenantId.slice(0, 8)}.md`, promptPackMarkdown(pack, tenantName), 'text/markdown', REDACTED)}>
-              {C.prompts.download}
+              {buttons('prompts')[0]}
             </Button>
           </p>
           <details onToggle={(e) => setShowPrompts(e.currentTarget.open)}>
-            <summary>{C.prompts.see}</summary>
+            <summary>{buttons('prompts')[1]}</summary>
             {showPrompts &&
               pack.map((item, i) => (
                 <p key={i} className="reason">
                   {item.title}{' '}
                   <Button variant="tertiary" onClick={() => copy(`p${i}`, item.prompt)}>
-                    {copied === `p${i}` ? 'Copied' : C.prompts.copy}
+                    {copied === `p${i}` ? A.copied : A.promptCopy}
                   </Button>
                 </p>
               ))}
           </details>
         </Card>
 
-        <Card className="export-card" title={C.grounding.title}>
-          <p className="reason">{C.grounding.line}</p>
+        <Card className="export-card" title={P.cards.bundle[0]}>
+          <p className="reason">{P.cards.bundle[1]}</p>
           <Callout kind="warning">{GROUNDING.warning}</Callout>
           <label className="rows no-print">
-            <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {C.grounding.redactedLabel}
+            <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {A.redactedLabel}
           </label>
           <p className="actions no-print">
             <Button variant="secondary" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
-              {C.grounding.download}
+              {buttons('bundle')[0]}
             </Button>
           </p>
         </Card>

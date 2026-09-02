@@ -122,7 +122,7 @@ const SINGULAR: Record<string, string> = {
   people: 'person', admins: 'admin', guests: 'guest', users: 'user', accounts: 'account', policies: 'policy',
   members: 'member', devices: 'device', methods: 'method', days: 'day', weeks: 'week', keys: 'key',
   checks: 'check', steps: 'step', tenants: 'tenant', locations: 'location', countries: 'country', roles: 'role', groups: 'group',
-  'sign-ins': 'sign-in',
+  'sign-ins': 'sign-in', files: 'file', pages: 'page', records: 'record', sections: 'section',
 }
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one

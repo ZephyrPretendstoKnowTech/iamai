@@ -18,8 +18,10 @@ import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { INVENTORY as C, combinationName, methodName, migrationName, protocolName, trustTypeName } from '../../copy/inventory.ts'
-import { LICENSING } from '../../copy/pages.ts'
 import { SETUP_PAGE } from '../../copy/setup.ts'
+import { app } from '../../content/content.ts'
+
+const LICENSING = app.inventory
 import { ACTIVITY_STATE, METHOD_TIER, MFA_STATE, TILE } from '../../copy/definitions.ts'
 import { absoluteDate, relative } from '../format.ts'
 import { Button, Chip, DataTable, EmptyState, InfoTip, Tabs } from '../components/index.ts'
