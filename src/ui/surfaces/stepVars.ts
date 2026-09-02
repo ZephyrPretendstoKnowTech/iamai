@@ -27,6 +27,8 @@ export type StepVarContext = {
   operatorId: string | null
   /** As-of time for the campaign buckets (usually snapshot.asOf). */
   now: string
+  /** The plan's first enforcement date (ISO): the campaign's enrol-by and firstEnforce. */
+  firstEnforce?: string | null
 }
 
 /** A long, spelled-out date: "Tuesday, September 8". */
@@ -80,6 +82,17 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // Everyone under 25, else the riskiest — the engine's own populationNames.
     people: pop.active,
     n: pop.active,
+    // The step's readiness, as the percentage the content line names.
+    readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
+  }
+
+  // A campaign has no enforcement date of its own; its enrol-by and the first
+  // policy's enforcement are the plan's first enforcement date (walk-51 item 2,
+  // target-state §9).
+  if (!enforce && ctx.firstEnforce) {
+    v.firstEnforce = absoluteDate(ctx.firstEnforce)
+    v.firstEnforceLong = longDate(ctx.firstEnforce)
+    v.enrollBy = absoluteDate(ctx.firstEnforce)
   }
 
   // The two-policy (merged) goals carry A/B names.

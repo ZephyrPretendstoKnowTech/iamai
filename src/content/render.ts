@@ -72,7 +72,49 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
   let out = String(text)
   out = out.replace(/\{list:([a-zA-Z0-9_]+)\}/g, subList)
   out = out.replace(/\{([a-zA-Z0-9_]+)\}/g, sub)
+  out = pluralise(out)
   return out.replace(/\s{2,}/g, ' ').replace(/\s+([.;:,])/g, '$1').trim()
+}
+
+// The names fillText resolves from shared references rather than the step's own
+// values, so a line using one is not treated as having a hole (walk-51 item 2).
+const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName'])
+
+/**
+ * The variables a content line names that `ex` does not fill (walk-51 item 2). A
+ * line with any is a hole — a missing variable rendered around — and the caller
+ * drops it. Shared references and `{n}` at zero are not holes.
+ */
+export function missingVars(text: unknown, ex: Ex): string[] {
+  if (typeof text !== 'string') return []
+  const out: string[] = []
+  for (const m of text.matchAll(/\{(?:list:)?([a-zA-Z0-9_]+)\}/g)) {
+    const key = m[1]
+    if (SHARED_REF_KEYS.has(key)) continue
+    const v = (ex as Record<string, unknown>)?.[key]
+    const present = Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && String(v).length > 0
+    if (!present) out.push(key)
+  }
+  return out
+}
+
+// "1 guests" reads as one guest (walk-51 item 2). After the count is filled, a
+// count of exactly one singularises the noun that follows it. Only a curated set
+// of nouns, so "1 status" is never mistaken for a plural.
+const SINGULAR: Record<string, string> = {
+  people: 'person', admins: 'admin', guests: 'guest', users: 'user', accounts: 'account', policies: 'policy',
+  members: 'member', devices: 'device', methods: 'method', days: 'day', weeks: 'week', keys: 'key',
+  checks: 'check', steps: 'step', tenants: 'tenant', locations: 'location', countries: 'country', roles: 'role', groups: 'group',
+}
+function pluralise(text: string): string {
+  // The noun a count governs is the word after it, or the word after one
+  // adjective ("1 active people" → "1 active person").
+  return text.replace(/(?<![\d,.])\b1 ([A-Za-z]+)( [A-Za-z]+)?/g, (m, w1: string, w2?: string) => {
+    if (SINGULAR[w1]) return `1 ${SINGULAR[w1]}${w2 ?? ''}`
+    const n2 = w2?.trim()
+    if (n2 && SINGULAR[n2]) return `1 ${w1} ${SINGULAR[n2]}`
+    return m
+  })
 }
 
 export function fill(text: unknown, ex: Ex, depth = 0): string {
