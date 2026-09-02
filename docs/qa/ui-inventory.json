@@ -1,5 +1,5 @@
 {
- "fingerprint": "99b81e02dd3aa0df",
+ "fingerprint": "efa30233c44dcbad",
  "surfaces": [
   {
    "name": "Header",
@@ -58,6 +58,108 @@
    "contract": "shell",
    "state": "scanned",
    "route": "/plan"
+  },
+  {
+   "name": "The opener (signed out)",
+   "note": "contract connect.signedOut",
+   "headings": [
+    "Plan the journey to your Conditional Access baseline.",
+    "Built for",
+    "What it catches"
+   ],
+   "tabs": [],
+   "buttons": [
+    "Sign in with Microsoft"
+   ],
+   "options": [],
+   "links": [
+    "How IAMAI works →",
+    "See it with sample data →"
+   ],
+   "chips": [],
+   "columns": [],
+   "tiles": [],
+   "empty": [],
+   "summaries": [
+    "What IAMAI asks for, and how to remove it",
+    "IAMAI limitations"
+   ],
+   "tips": [],
+   "sentences": [
+    "IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to close the gaps without locking anyone out.",
+    "It is read-only and runs in this browser.",
+    "The person doing security at a small MSP or a small business, on their own, who has to get this done in a few weeks.",
+    "An admin whose only sign-in method is a text message, about to be required to use a passkey.",
+    "An emergency access account inside the policy it exists to survive.",
+    "A country rule that blocks the person who wrote it.",
+    "A service account that a legacy-authentication block stops at 2 a.m.",
+    "A meeting-room device that a session rule signs out every hour.",
+    "Sign in with a Global Administrator or Global Reader account.",
+    "Entra ID P1 adds sign-in evidence; the plan works without it."
+   ],
+   "titles": [],
+   "nav": [],
+   "primary": [
+    "Sign in with Microsoft"
+   ],
+   "tables": [],
+   "occurrences": {
+    "IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to close the gaps without locking anyone out.": 1,
+    "It is read-only and runs in this browser.": 1,
+    "The person doing security at a small MSP or a small business, on their own, who has to get this done in a few weeks.": 1,
+    "An admin whose only sign-in method is a text message, about to be required to use a passkey.": 1,
+    "An emergency access account inside the policy it exists to survive.": 1,
+    "A country rule that blocks the person who wrote it.": 1,
+    "A service account that a legacy-authentication block stops at 2 a.m.": 1,
+    "A meeting-room device that a session rule signs out every hour.": 1,
+    "Sign in with a Global Administrator or Global Reader account.": 1,
+    "Entra ID P1 adds sign-in evidence; the plan works without it.": 1
+   },
+   "occurrencesAll": {
+    "IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to close the gaps without locking anyone out.": 1,
+    "It is read-only and runs in this browser.": 1,
+    "The person doing security at a small MSP or a small business, on their own, who has to get this done in a few weeks.": 1,
+    "An admin whose only sign-in method is a text message, about to be required to use a passkey.": 1,
+    "An emergency access account inside the policy it exists to survive.": 1,
+    "A country rule that blocks the person who wrote it.": 1,
+    "A service account that a legacy-authentication block stops at 2 a.m.": 1,
+    "A meeting-room device that a session rule signs out every hour.": 1,
+    "Sign in with a Global Administrator or Global Reader account.": 1,
+    "Entra ID P1 adds sign-in evidence; the plan works without it.": 1
+   },
+   "wordCounts": {
+    "headings": 13,
+    "tabs": 0,
+    "buttons": 4,
+    "options": 0,
+    "links": 10,
+    "chips": 0,
+    "columns": 0,
+    "tiles": 0,
+    "empty": 0,
+    "summaries": 11,
+    "tips": 0,
+    "sentences": 142,
+    "total": 180
+   },
+   "unnamedControls": [],
+   "rows": [
+    {
+     "selector": ".tip",
+     "text": "Sign in with a Global Administrator or Global Reader account. Entra ID P1 adds sign-in evidence; the plan works without it.",
+     "sentences": 2,
+     "words": 21
+    }
+   ],
+   "forbidHits": [],
+   "forbidEverywhereHits": [],
+   "pageProse": {
+    "sentences": 8,
+    "words": 121
+   },
+   "contract": "connect.signedOut",
+   "state": "signedOut",
+   "route": "/connect"
   },
   {
    "name": "The opener / permissions expanded",
@@ -193,7 +295,10 @@
    "tips": [],
    "sentences": [
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
-    "Baseline: synthetic baseline (1 policy) · change",
+    "Baseline: synthetic baseline (1 policies) · change",
+    "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech.",
+    "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
+    "IAMAI compares what each policy is for with what {tenant} has, and plans the difference.",
     "About ten minutes.",
     "Reads the tenant into this browser; nothing is sent anywhere."
    ],
@@ -205,12 +310,18 @@
    "tables": [],
    "occurrences": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policy) · change": 1,
+    "Baseline: synthetic baseline (1 policies) · change": 1,
+    "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech.": 1,
+    "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.": 1,
+    "IAMAI compares what each policy is for with what {tenant} has, and plans the difference.": 1,
     "Reads the tenant into this browser; nothing is sent anywhere.": 1
    },
    "occurrencesAll": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policy) · change": 1,
+    "Baseline: synthetic baseline (1 policies) · change": 1,
+    "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech.": 1,
+    "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.": 1,
+    "IAMAI compares what each policy is for with what {tenant} has, and plans the difference.": 1,
     "Reads the tenant into this browser; nothing is sent anywhere.": 1
    },
    "wordCounts": {
@@ -225,16 +336,16 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 31,
-    "total": 43
+    "sentences": 88,
+    "total": 100
    },
    "unnamedControls": [],
    "rows": [],
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
-    "sentences": 4,
-    "words": 31
+    "sentences": 7,
+    "words": 88
    },
    "contract": "connect.noScan",
    "state": "noScan",
@@ -260,7 +371,7 @@
    "tips": [],
    "sentences": [
     "Signed in to Contoso Pty Ltd as alex@example.com",
-    "Baseline: synthetic baseline (1 policy)",
+    "Baseline: synthetic baseline (1 policies)",
     "Reading people · 1s elapsed"
    ],
    "titles": [],
@@ -269,12 +380,12 @@
    "tables": [],
    "occurrences": {
     "Signed in to Contoso Pty Ltd as alex@example.com": 1,
-    "Baseline: synthetic baseline (1 policy)": 1,
+    "Baseline: synthetic baseline (1 policies)": 1,
     "Reading people · 1s elapsed": 1
    },
    "occurrencesAll": {
     "Signed in to Contoso Pty Ltd as alex@example.com": 1,
-    "Baseline: synthetic baseline (1 policy)": 1,
+    "Baseline: synthetic baseline (1 policies)": 1,
     "Reading people · 1s elapsed": 1
    },
    "wordCounts": {
@@ -328,7 +439,7 @@
    "tips": [],
    "sentences": [
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
-    "Baseline: synthetic baseline (1 policy) · change",
+    "Baseline: synthetic baseline (1 policies) · change",
     "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1"
    ],
    "titles": [],
@@ -339,12 +450,12 @@
    "tables": [],
    "occurrences": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policy) · change": 1,
+    "Baseline: synthetic baseline (1 policies) · change": 1,
     "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1": 1
    },
    "occurrencesAll": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policy) · change": 1,
+    "Baseline: synthetic baseline (1 policies) · change": 1,
     "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1": 1
    },
    "wordCounts": {
@@ -418,6 +529,8 @@
     "About Not active"
    ],
    "sentences": [
+    "Where each person stands before anything is enforced.",
+    "The plan waits on these numbers.",
     "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1"
    ],
    "titles": [],
@@ -430,10 +543,14 @@
     }
    ],
    "occurrences": {
+    "Where each person stands before anything is enforced.": 1,
+    "The plan waits on these numbers.": 1,
     "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1": 1,
     "Everything the scan read →": 1
    },
    "occurrencesAll": {
+    "Where each person stands before anything is enforced.": 1,
+    "The plan waits on these numbers.": 1,
     "4 active people of 5 enabled · 1 admin · sign-ins Aug 2 → Sep 1": 1,
     "Everything the scan read →": 1
    },
@@ -449,8 +566,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 15,
-    "sentences": 16,
-    "total": 61
+    "sentences": 30,
+    "total": 75
    },
    "unnamedControls": [],
    "rows": [
@@ -494,8 +611,8 @@
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
-    "sentences": 1,
-    "words": 16
+    "sentences": 3,
+    "words": 30
    },
    "contract": "today",
    "state": "scanned",
@@ -2569,7 +2686,9 @@
     "Without Entra ID P1 there is no impact analysis; the plan is licence, then security defaults, then Conditional Access.",
     "Sign-in history shows behaviour under today's policy; it cannot see who would register MFA when first prompted.",
     "There is no server: no scheduled re-scans, no alerts, no state shared across devices.",
-    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it."
+    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it.",
+    "No AI runs in these tools.",
+    "Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round."
    ],
    "titles": [],
    "nav": [],
@@ -2633,7 +2752,9 @@
     "Without Entra ID P1 there is no impact analysis; the plan is licence, then security defaults, then Conditional Access.": 1,
     "Sign-in history shows behaviour under today's policy; it cannot see who would register MFA when first prompted.": 1,
     "There is no server: no scheduled re-scans, no alerts, no state shared across devices.": 1,
-    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it.": 1
+    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it.": 1,
+    "No AI runs in these tools.": 1,
+    "Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round.": 1
    },
    "occurrencesAll": {
     "Every check IAMAI runs, generated from the rules the code runs from.": 1,
@@ -2644,7 +2765,9 @@
     "Without Entra ID P1 there is no impact analysis; the plan is licence, then security defaults, then Conditional Access.": 1,
     "Sign-in history shows behaviour under today's policy; it cannot see who would register MFA when first prompted.": 1,
     "There is no server: no scheduled re-scans, no alerts, no state shared across devices.": 1,
-    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it.": 1
+    "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it.": 1,
+    "No AI runs in these tools.": 1,
+    "Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round.": 1
    },
    "wordCounts": {
     "headings": 12,
@@ -2658,8 +2781,8 @@
     "empty": 0,
     "summaries": 0,
     "tips": 0,
-    "sentences": 134,
-    "total": 238
+    "sentences": 163,
+    "total": 267
    },
    "unnamedControls": [],
    "rows": [
@@ -3213,8 +3336,8 @@
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
-    "sentences": 14,
-    "words": 134
+    "sentences": 16,
+    "words": 163
    },
    "contract": "how",
    "state": "scanned",

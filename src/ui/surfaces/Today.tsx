@@ -7,6 +7,7 @@ import { loadMappingState } from '../../mapping/store.ts'
 import { todayView } from '../../derive/today.ts'
 import type { TodayRow, TodayState } from '../../derive/today.ts'
 import { TODAY as C } from '../../copy/today.ts'
+import { pages } from '../../content/content.ts'
 import { TODAY_LINE, TODAY_TILE, METHOD_TIER, MFA_STATE, ACTIVITY_STATE } from '../../copy/definitions.ts'
 import { absoluteDate, monthDayRange, relative } from '../../copy/dates.ts'
 import { friendlyMethod } from '../format.ts'
@@ -125,6 +126,7 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
   return (
     <section className="surface today">
       <h1>{C.title}</h1>
+      <p className="lede">{(pages.today as Record<string, string>).purpose}</p>
       <p className="line">
         {C.line(counts, window_, !window_ && source?.status === 'disabled' ? source.reason : null)}
         <InfoTip title={TODAY_LINE.active.title} text={TODAY_LINE.active.text} />

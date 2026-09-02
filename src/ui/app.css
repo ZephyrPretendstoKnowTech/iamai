@@ -748,6 +748,60 @@ footer.app a {
 .surface details.permissions ol {
   max-width: none;
 }
+/* The IAMAI limitations panel (target-state §3): an open-by-default disclosure
+   of the blind spots the records cannot show. §8.6 keeps the raised surface for
+   phases and export entries only (design-lint 6), so this separates by a
+   hairline border, not --bg-raised. Its body is caveat prose kept out of the
+   page's flow, so items are .limit blocks, not list prose. */
+.surface details.limits {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 24px 0;
+}
+.surface details.limits > summary {
+  font-weight: 500;
+  cursor: default;
+}
+.surface details.limits .limits-intro {
+  color: var(--ink-2);
+  margin: 8px 0 4px;
+}
+.surface details.limits .limits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.surface details.limits .limit {
+  padding-left: 16px;
+  position: relative;
+  color: var(--ink);
+}
+.surface details.limits .limit::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--ink-2);
+}
+/* The page tip (target-state §8.8): quiet, at the page column. */
+.surface .tip {
+  margin: 24px 0 0;
+  color: var(--ink-2);
+  font-size: var(--t-2);
+}
+/* The baseline "updated by its author" review list (target-state §3): one row
+   per changed policy, a hairline between. */
+.surface .found {
+  margin: 8px 0;
+}
+.surface .found .frow {
+  border-bottom: 1px solid var(--rule);
+  padding: 6px 0;
+}
+.surface .found .frow:last-child {
+  border-bottom: 0;
+}
 .surface .picker {
   border-top: 1px solid var(--rule);
   border-bottom: 1px solid var(--rule);

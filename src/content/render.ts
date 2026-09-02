@@ -11,6 +11,14 @@ import { content } from './content.ts'
 const C = content as unknown as Record<string, any>
 const S = C.shared
 
+// The translator dump (docs/design/translator-output.json), when Part 2 has
+// written it: a policy step's What-to-do comes from it; until then the review
+// page falls back to whatToDoReference with a note. render-review.py reads the
+// same file. The app never calls renderStep — ContentStep renders a policy
+// step's What-to-do from the baseline policy (stepPortal.ts) — so this stays
+// empty in the browser bundle and is populated only for the Node review render.
+const TRANSLATED: Record<string, any> = {}
+
 export function esc(s: unknown): string {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -94,6 +102,7 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     emergencyAccounts: ['Breakglass', 'Emergency Access 2'],
     policy: ex && ex.policyName !== undefined ? ex.policyName : '',
     tenant: 'GetIAMAI',
+    from: 'Aug 1',
   }
   const subList = (_m: string, key: string): string => {
     let items = ctx[key] !== undefined ? ctx[key] : defaults[key]
@@ -251,7 +260,15 @@ export function renderStep(st: Record<string, any>): string {
     parts.push(btn(d.save || 'Save') + '</div>')
   }
   // What to do
-  const w = st.whatToDo || {}
+  let w = st.whatToDo || {}
+  if (kind === 'policy') {
+    const tr = TRANSLATED[st.id]
+    if (tr) w = { lead: (st.whatToDoReference || {}).lead, steps: tr.steps || tr }
+    else {
+      w = st.whatToDoReference || {}
+      parts.push("<p class=\"annot\">Note: reviewer's rendering; the product generates this section from the baseline policy. Run npm run translator-dump to show the product's version here.</p>")
+    }
+  }
   parts.push(h('What to do'))
   if (w.lead) parts.push(p(w.lead, ex))
   if (w.steps) parts.push(ol(w.steps, ex))
@@ -355,6 +372,31 @@ export function renderPages(): string {
   const sec = (title: string, body: string): void => {
     out.push(`<section class="page"><h3>${esc(title)}</h3>${body}</section>`)
   }
+  const H = P.home
+  if (H) {
+    const hpl = H.planner
+    out.push(
+      '<section class="page"><h3>Home page — getiamai.com</h3>' +
+        `<h2 class="h1">${esc(H.h1)}</h2>` +
+        p(H.intro, {}) +
+        h(H.toolsLabel) +
+        `<div class="card"><b>${esc(hpl.name)}</b> <span class="chip">${esc(hpl.label)}</span><p class="sub">${esc(hpl.descriptor)}</p><p>${esc(hpl.body)}</p>` +
+        btn(hpl.open, true) +
+        btn(hpl.demo) +
+        '</div>' +
+        h(H.howLabel) +
+        ul(H.how, {}) +
+        h(H.aboutLabel) +
+        p(H.about, {}) +
+        '<p>' +
+        (H.aboutLinks as string[]).map((l) => `<a>${esc(l)}</a>`).join(' &nbsp;·&nbsp; ') +
+        '</p>' +
+        `<p class="sub">${esc(H.footer)} &nbsp;·&nbsp; ` +
+        (H.footerLinks as string[]).map((l) => `<a>${esc(l)}</a>`).join(' &nbsp;·&nbsp; ') +
+        '</p>' +
+        `<p class="sub">Meta description: ${esc(H.metaDescription)}</p></section>`,
+    )
+  }
   const o = P.opener
   sec(
     'The opener (signed out)',
@@ -369,6 +411,10 @@ export function renderPages(): string {
       '<p>' +
       (o.links as string[]).map((l) => `<a>${esc(l)}</a>`).join(' &nbsp;·&nbsp; ') +
       '</p>' +
+      `<details class="limits" open><summary>${esc(o.cantCatchSummary)}</summary>` +
+      p(o.cantCatchIntro, {}) +
+      ul(o.cantCatch, {}) +
+      '</details>' +
       `<div class="tip">${esc(o.tip)}<span class="q">?</span></div>`,
   )
   const cn = P.connectNoScan
@@ -378,23 +424,25 @@ export function renderPages(): string {
       p(cn.signedIn, exT) +
       p(cn.baselineLine, exT) +
       p(cn.baselineWhat, exT) +
+      p(cn.baselineGoal, exT) +
       p(cn.baselineHow, exT) +
       btn(cn.scanButton, true) +
       p(cn.scanNote, {}) +
-      p(cn.baselineUpdated, { date: 'Aug 28, 2026', n: 3 }, 'sub') +
-      p(cn.baselineUpdatedNote, {}, 'sub') +
+      p(cn.baselineUpdated, { date: 'Aug 28, 2026', n: 3 }) +
+      p("Note: the line above renders only when the author's repository is ahead of the pinned version.", {}, 'annot') +
       `<p class="sub">While scanning: <span class="progress">${fill(cn.scanning, { lane: 'Reading sign-in records', done: 3, total: 8 })}</span> ${btn(cn.stop)}</p>`,
   )
   const t = P.tenant
-  const found = t.found
-  const rows = [fill(found.emergency, exT), fill(found.exclusions, exT), fill(found.trustedNone, exT), fill(found.countries, exT), fill(found.serviceAccountsNone, exT), fill(found.sharedDevicesNone, exT), fill(found.window, exT), fill(found.timezone, exT)]
-  sec('The tenant page (scanned)', `<h2 class="h1">${esc(t.h1)}</h2>` + p(t.scanLine, exT) + h(t.foundLabel) + '<div class="found">' + rows.map((r) => `<div class="frow"><p>${r}</p></div>`).join('') + '</div>' + btn(t.open, true) + `<div class="tip">${esc(t.tip)}<span class="q">?</span></div>`)
+  sec('Connect (scanned)', `<h2 class="h1">${esc(t.h1)}</h2>` + p(t.scanLine, exT) + btn(t.open, true) + `<div class="tip">${esc(t.tip)}<span class="q">?</span></div>`)
   const pl = P.plan
   const s = pl.settings
   sec(
     'Plan header, settings, blocked reasons, footer',
     `<h2 class="h1">${esc(pl.h1)}</h2>` +
       p(pl.line1, exT) +
+      btn(pl.startControl, true) +
+      p(pl.startNote, exT, 'sub') +
+      p('After starting: ' + fill(pl.line1Started, { ...exT, done: 4, start: 'Mon Sep 7' }), exT, 'sub') +
       p(pl.line2, exT) +
       `<p class="sub">If it cannot finish: ${fill(pl.line1CannotFinish, exT)}</p><p class="sub">Length tooltip: ${fill(pl.lengthTip, exT)}</p>` +
       `<p class="sub">Phase heading: <b>${fill(C.phases.heading, exT)}</b> — first phase <b>${esc(C.phases.first)}</b>, last <b>${esc(C.phases.last)}</b></p>` +
@@ -450,6 +498,7 @@ export function renderPages(): string {
       h('How IAMAI works — reworded lines') +
       ul([P.how.exclusionsCheckReworded, P.how.groupSearchReworded, P.how.packageProblem], { policy: 'IAC - AGENT - BLOCK - HighRiskAgent' }) +
       p('Needs column now names the step: ' + Object.values(P.how.needsByStep).join(', '), {}) +
+      p('Under Limits: ' + P.how.noAi, {}) +
       h('Tip on every step') +
       p(P.stepTip, {}),
   )

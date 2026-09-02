@@ -205,6 +205,12 @@ const RULE8_WAIVED: Waiver[] = [
   // docs/reports/51.md for the reviewer.
   { id: '51-locked-out-portal-path', match: 'Policies → open' },
   { id: '51-locked-out-powershell', match: 'If the portal itself is blocked' },
+  // Prompt 52: the opener intro's first sentence (content.json pages.opener.intro)
+  // is 27 words — two over. It is authored copy in a file this run cannot edit, and
+  // the sentence is the page's one-paragraph description (target-state §3); it
+  // cannot be shortened without editing content.json. A content-vs-contract length
+  // conflict, recorded in docs/reports/52.md.
+  { id: '52-opener-intro', match: 'IAMAI reads a Microsoft Entra tenant, compares it' },
 ]
 test(`rule 8: no user-facing sentence runs past ${MAX_WORDS} words`, () => {
   const found = surfaces.flatMap((s) =>

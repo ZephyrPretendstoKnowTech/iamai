@@ -148,7 +148,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (signed out): the heading, the three lines and Sign in', /Connect a tenant/.test(t) && /Global Administrator or Global Reader/.test(t) && /Sign in with Microsoft/.test(t))
+  check('Connect (signed out): the opener heading, Built for, What it catches and Sign in', /Plan the journey to your Conditional Access baseline/.test(t) && /Built for/.test(t) && /What it catches/.test(t) && /Global Administrator or Global Reader/.test(t) && /Sign in with Microsoft/.test(t))
 
   // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
@@ -183,7 +183,7 @@ try {
   await sleep(600)
   t = await text()
   check('Connect: signed in as the operator', /Signed in to Contoso Pty Ltd as alex@example\.com/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
-  check('Connect: the baseline line names the baseline and its policy count', /Baseline: synthetic baseline \(1 policy\)/.test(t), (t.match(/Baseline:[^\n]*/) ?? [''])[0])
+  check('Connect: the baseline line names the baseline and its policy count', /Baseline: synthetic baseline \(1 polic(y|ies)\)/.test(t), (t.match(/Baseline:[^\n]*/) ?? [''])[0])
   check('Connect (scanned): the one-line result and Open the plan', /Scan complete · 5 people · 3 policies · sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/.test(t) && /Open the plan →/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
   check('Connect (scanned): the baseline picker opens with two choices', (await clickText('/^change$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /how to make one →/.test(document.body.innerText)`)))
   // Today: where things are now, over active people (target-state §4).
@@ -392,7 +392,7 @@ try {
   await sleep(1200)
   check(
     'Feedback: the footer link opens the panel',
-    (await clickText('/Something wrong or unclear/', 'footer.app')) && (await waitFor(`/What the email will contain/.test(document.body.innerText)`)),
+    (await clickText('/feedback@getiamai.com/', 'footer.app')) && (await waitFor(`/What the email will contain/.test(document.body.innerText)`)),
   )
   t = await text()
   check('Feedback: the message shows the page, version and browser', /Page: #\/plan/.test(t) && /Version:/.test(t) && /Browser:/.test(t))

@@ -10,6 +10,7 @@ import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { clearAuthCache, signOut } from '../../graph/msal.ts'
 import { SHELL } from '../../copy/pages.ts'
+import { pages } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demo.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { FeedbackPanel } from '../FeedbackPanel.tsx'
@@ -270,24 +271,18 @@ const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
 
 export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null } = {}) {
   const buildLabel = SHELL.footerBuild(BUILD_COMMIT, absoluteDate(`${BUILD_DATE}T12:00:00.000Z`))
+  // Read-only and the three links, dot-separated, on every page (target-state
+  // §3, prompt 52 Part 1): the feedback channel, all IAMAI tools, the source.
+  const footer = pages.footer as { readOnly: string; links: string[] }
   return (
     <footer className="app">
-      <span>{SHELL.footerLeft}</span>
+      <span>{footer.readOnly}</span>
       <span className="footer-links">
-        {/* Quiet, on every page (prompt 34 §2). */}
-        <FeedbackPanel snapshot={snapshot} />
-        <a href={HOME_URL}>{SHELL.footerHome}</a>
-        <span>
-          {SHELL.footerFollow}{' '}
-          <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer">
-            <strong>{SHELL.footerAuthor}</strong>
-          </a>
-        </span>
+        {/* Quiet, on every page (prompt 34 §2). Its label is the feedback address. */}
+        <FeedbackPanel snapshot={snapshot} label={footer.links[0]} />
+        <a href={HOME_URL}>{footer.links[1]}</a>
         <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-          {SHELL.footerGithub}
-        </a>
-        <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
-          {SHELL.footerSource}
+          {footer.links[2]}
         </a>
         {BUILD_COMMIT === 'dev' ? (
           <span className="footer-build">{buildLabel}</span>

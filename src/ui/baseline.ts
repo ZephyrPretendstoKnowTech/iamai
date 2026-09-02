@@ -65,6 +65,30 @@ export async function checkAuthorHead(fetchImpl: typeof fetch = fetch): Promise<
   }
 }
 
+export type BaselineChange = { policy: string; change: string }
+
+/**
+ * The policy files that changed between the pinned commit and the author's head,
+ * from the GitHub compare API (prompt 52 Part 1) — the data behind
+ * pages.connectNoScan.baselineUpdated and its baselineUpdatedRow review list.
+ * The compare returns the changed file list, so no policy content is fetched.
+ * A network failure returns an empty list; Connect shows the update only when
+ * the list is non-empty, so the count and rows are always real.
+ */
+export async function baselineChanges(head: string, fetchImpl: typeof fetch = fetch): Promise<BaselineChange[]> {
+  const word: Record<string, string> = { added: 'added', modified: 'updated', changed: 'updated', removed: 'removed', renamed: 'renamed' }
+  try {
+    const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/compare/${PINNED.commit}...${head}`, { headers: { Accept: 'application/vnd.github+json' } })
+    if (!res.ok) return []
+    const body = (await res.json()) as { files?: { filename: string; status: string }[] }
+    return (body.files ?? [])
+      .filter((f) => /\.json$/i.test(f.filename) && !/\b(index|readme)\b/i.test(f.filename))
+      .map((f) => ({ policy: (f.filename.split('/').pop() ?? f.filename).replace(/\.json$/i, ''), change: word[f.status] ?? f.status }))
+  } catch {
+    return []
+  }
+}
+
 /** Restore a saved baseline from its stored files; the pinned one is refetched only when no files were kept. */
 export async function restoreBaseline(origin: BaselineResult['origin']): Promise<BaselineResult> {
   if (origin.kind === 'upload') return loadUploadedBaseline(origin.files)

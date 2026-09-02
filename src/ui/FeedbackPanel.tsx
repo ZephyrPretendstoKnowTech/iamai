@@ -12,14 +12,14 @@ import { REPO_URL } from './shell/AppShell.tsx'
 
 const VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
 
-export function FeedbackPanel({ snapshot }: { snapshot: TenantSnapshot | null }) {
+export function FeedbackPanel({ snapshot, label }: { snapshot: TenantSnapshot | null; label?: string }) {
   const [open, setOpen] = useState(false)
   const [include, setInclude] = useState(false)
 
   if (!open) {
     return (
       <button type="button" className="link-quiet" onClick={() => setOpen(true)}>
-        {C.link}
+        {label ?? C.link}
       </button>
     )
   }
