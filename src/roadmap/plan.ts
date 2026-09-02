@@ -6,7 +6,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
-import type { PlanDecisions } from './decisions.ts'
+import type { PlanDecisions, StepDecision } from './decisions.ts'
 import { PROGRESS } from '../copy/progress.ts'
 
 export const PLAN_SCHEMA_VERSION = 2
@@ -130,6 +130,8 @@ export function buildPlanFile(args: {
   schedule?: { startDate: string; band?: string; pace?: string; owner?: string; freeze?: { from: string; to: string } | null }
   revision?: number
   revisions?: PlanFile['revisions']
+  /** Every picker's saved decision (prompt 52 Part 3); round-trips through the decisions block. */
+  stepDecisions?: Record<string, StepDecision>
 }): PlanFile {
   const org = (args.snapshot.config.organization?.rows?.[0] ?? {}) as {
     displayName?: string
@@ -171,6 +173,7 @@ export function buildPlanFile(args: {
       ...(args.schedule?.band ? { band: args.schedule.band as PlanDecisions['band'] } : {}),
       freeze: args.schedule?.freeze ?? null,
       checkpoints: trimCheckpoints(args.checkpoints),
+      stepDecisions: args.stepDecisions ?? {},
     },
     checkpoints: trimCheckpoints(args.checkpoints),
     ...(args.schedule ? { schedule: args.schedule } : {}),

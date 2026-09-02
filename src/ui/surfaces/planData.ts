@@ -26,7 +26,7 @@ import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
-import type { PlanDecisions } from '../../roadmap/progress.ts'
+import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { refreshBlockerImpact } from '../../roadmap/blockerSteps.ts'
 import { nextWorkingDay } from '../../roadmap/schedule.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
@@ -74,6 +74,10 @@ export type PlanData = {
   /** Tick a recorded-by-hand emergency-access fact (prompt 49 item 5); stored in the mapping and the plan file. */
   tickAnswer: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   groups: GroupMembers
+  /** Every picker's saved decision, by step id (prompt 52 Part 3): in the plan record and the plan file. */
+  stepDecisions: Record<string, StepDecision>
+  /** A picker's Save: record the decision and regenerate the plan around it. */
+  onDecide: (stepId: string, decision: { picked?: string[]; option?: string }) => void
 }
 
 export function usePlanData(
@@ -193,8 +197,9 @@ export function usePlanData(
       freeze: saved.freeze ?? null,
       checkpoints: saved.checkpoints ?? [],
       planCreatedAt: saved.planCreatedAt ?? new Date().toISOString(),
+      stepDecisions: saved.stepDecisions ?? {},
     }
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, band: decisions.band, freeze: decisions.freeze })
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions })
     if (key === lastPersist.current) return
     lastPersist.current = key
     void savePlanRecord(snapshot.tenantId, decisions)
@@ -252,6 +257,16 @@ export function usePlanData(
       const next = { ...mapping, breakGlassAnswers: { ...prev, [key]: done } }
       setMapping(next)
       void saveMappingState(next)
+      bump()
+    },
+    stepDecisions: saved?.stepDecisions ?? {},
+    onDecide: (stepId, decision) => {
+      // The decision is the plan's (target-state §6.4): recorded, then the plan
+      // regenerates around it; the next scan verifies it.
+      setSaved((p) => {
+        const base = p ?? { planId, skips: {}, checkpoints: [] }
+        return { ...base, stepDecisions: { ...(base.stepDecisions ?? {}), [stepId]: { ...decision, at: new Date().toISOString() } } }
+      })
       bump()
     },
   }
