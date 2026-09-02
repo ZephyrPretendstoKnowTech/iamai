@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Chip } from './Chip.tsx'
 import { Icon } from './Icon.tsx'
 import { Button } from './Button.tsx'
 import { app } from '../../content/content.ts'
@@ -59,7 +58,10 @@ export function Picker({
   }, [open])
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected])
-  const list = (query.trim().length === 0 ? suggestions : options).filter((o) => !selectedIds.has(o.id)).slice(0, 8)
+  const empty = query.trim().length === 0
+  const list = (empty ? suggestions : options).filter((o) => !selectedIds.has(o.id)).slice(0, 8)
+  // Empty and nothing nominated remains: just the field, no header, no Done.
+  const showList = open && (!empty || loading || list.length > 0)
 
   const pick = (o: PickerOption): void => {
     onChange(single ? [o] : [...selected, o])
@@ -73,20 +75,23 @@ export function Picker({
       {selected.length > 0 && (
         <div className="picker-chips">
           {selected.map((s) => (
-            <button key={s.id} type="button" className="chip chip-select chip-selected" title={T.remove} onClick={() => remove(s.id)}>
-              {s.name} <Icon name="close" size={12} />
-            </button>
+            <span key={s.id} className="chip-select">
+              <span className="chip-name">{s.name}</span>
+              <button type="button" className="chip-remove" aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => remove(s.id)}>
+                <Icon name="close" size={12} />
+              </button>
+            </span>
           ))}
         </div>
       )}
-      <div className="row" style={{ flexWrap: 'nowrap' }}>
-        <Icon name="search" className="muted" />
+      <div className="picker-search">
+        <Icon name="search" className="picker-search-icon" />
         <input
           type="search"
           placeholder={placeholder}
           value={query}
           aria-label={placeholder}
-          aria-expanded={open}
+          aria-expanded={showList}
           aria-controls={listId}
           role="combobox"
           aria-autocomplete="list"
@@ -108,6 +113,7 @@ export function Picker({
             }
             if (e.key === 'ArrowDown') {
               e.preventDefault()
+              setOpen(true)
               setFocused((f) => Math.min(f + 1, list.length - 1))
             }
             if (e.key === 'ArrowUp') {
@@ -121,10 +127,11 @@ export function Picker({
           }}
         />
       </div>
-      {open && (
+      {showList && (
         <div className="picker-list" role="listbox" id={listId}>
+          {empty && list.length > 0 && <div className="picker-heading">{T.suggestions}</div>}
           {loading && <div className="picker-footer">{T.searching}</div>}
-          {list.length === 0 && !loading && <div className="picker-footer">{query ? T.noMatches : T.typeToSearch}</div>}
+          {list.length === 0 && !loading && <div className="picker-footer">{T.noMatches}</div>}
           {list.map((o, i) => (
             <button
               key={o.id}
@@ -135,22 +142,19 @@ export function Picker({
               onMouseEnter={() => setFocused(i)}
               onClick={() => pick(o)}
             >
-              <span>
-                <span>{o.name}</span>
-                {o.secondary && <div className="picker-option-secondary">{o.secondary}</div>}
-                {o.why && <div className="picker-option-secondary">{o.why}</div>}
-              </span>
-              {o.badge && <Chip status="neutral">{o.badge}</Chip>}
+              <span className="picker-option-name">{o.name}</span>
+              {(o.why ?? o.secondary) && <span className="picker-option-secondary">{o.why ?? o.secondary}</span>}
             </button>
           ))}
           <div className="picker-footer">
-            <span>{query.trim().length === 0 ? T.suggestions : fillText(T.results, { n: list.length })}</span>
             <Button size="sm" variant="tertiary" onClick={() => setOpen(false)}>
               {T.done}
             </Button>
+            {!empty && <span className="picker-count">{fillText(T.results, { n: list.length })}</span>}
           </div>
         </div>
       )}
     </div>
   )
+
 }

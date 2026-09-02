@@ -808,40 +808,74 @@ footer.app a {
   padding: 12px 0;
   margin: 12px 0;
 }
-.surface .picker .row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
-.surface .picker input[type='search'] {
-  flex: 1;
-  min-width: 0;
-}
 .picker-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
+/* A chip is a pill in the accent tint: the name, then a separate × that removes. */
 .chip-select {
-  cursor: pointer;
-  border: 1px solid var(--rule);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: var(--t-2);
+  line-height: var(--lh-body);
+}
+.chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
   background: transparent;
-  padding: 2px 8px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.chip-remove:hover {
+  background: var(--bg);
+}
+.picker-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.picker-search-icon {
+  position: absolute;
+  left: 8px;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.surface .picker input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding-left: 30px;
 }
 .picker-list {
   margin-top: 4px;
   border: 1px solid var(--rule);
   background: var(--bg);
-  max-height: 260px;
+  max-height: 280px;
   overflow: auto;
+}
+.picker-heading {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  font-size: var(--t-2);
 }
 .picker-option {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   width: 100%;
   text-align: left;
   padding: 6px 8px;
@@ -851,8 +885,10 @@ footer.app a {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--t-2);
+  line-height: var(--lh-body);
   cursor: pointer;
 }
+.picker-option:hover,
 .picker-option.focused {
   background: var(--bg-inset);
 }
@@ -867,6 +903,10 @@ footer.app a {
   padding: 4px 8px;
   color: var(--ink-2);
   font-size: var(--t-2);
+}
+.picker-count {
+  margin-left: auto;
+  color: var(--ink-2);
 }
 .surface .picker label {
   display: flex;
@@ -1055,6 +1095,27 @@ footer.app a {
   padding: 16px;
   margin: 0 0 16px;
   max-width: 32rem;
+}
+/* Each control on its own line; a label never wraps mid-word. */
+.plan-settings label.rows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 0;
+}
+.plan-settings .rows > * {
+  border-bottom: 0;
+  padding: 0;
+}
+.plan-settings .rows > span {
+  white-space: nowrap;
+}
+.plan-settings .rows > select,
+.plan-settings .rows > input[type='text'] {
+  flex: 1;
+  min-width: 0;
 }
 .plan-footer {
   margin-top: 32px;

@@ -22,6 +22,8 @@ export type Palette = {
   rule: string
   ruleStrong: string
   accent: string
+  /** The accent at a tint, for a chip pill; accent text stays AA on it. */
+  accentTint: string
   onAccent: string
   ok: string
   wait: string
@@ -40,6 +42,7 @@ export const LIGHT: Palette = {
   rule: '#E3DFD6',
   ruleStrong: '#C9C4B8',
   accent: '#0B5B57',
+  accentTint: '#E1EDEB',
   onAccent: '#FBF9F5',
   ok: '#2F6B4F',
   wait: '#8A5A0B',
@@ -58,6 +61,7 @@ export const DARK: Palette = {
   rule: '#2C3036',
   ruleStrong: '#3D4249',
   accent: '#5FB8B0',
+  accentTint: '#1B302F',
   onAccent: '#0F1214',
   ok: '#7BC9A0',
   wait: '#E0B25C',
@@ -137,6 +141,7 @@ const VAR_NAMES: Record<keyof Palette, string> = {
   rule: '--rule',
   ruleStrong: '--rule-strong',
   accent: '--accent',
+  accentTint: '--accent-tint',
   onAccent: '--on-accent',
   ok: '--ok',
   wait: '--wait',
