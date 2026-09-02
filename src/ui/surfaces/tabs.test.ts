@@ -19,6 +19,11 @@ import { jsonOffered, missingObjects } from './stepJson.ts'
 import { copyBoxes, stepLines } from './stepExport.ts'
 import { content } from '../../content/content.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
+import { rowWhen } from './rowWhen.ts'
+import { notLicensedRows } from '../../derive/notLicensed.ts'
+import { PINNED_GOAL_MAP, goalInMap } from '../../roadmap/goalMap.ts'
+import { pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 
 const FIXTURES = ['demo', 'getiamai'] as const
 
@@ -135,4 +140,59 @@ test('every copy box on both fixtures is followed by the adapt line, and it appe
   }
   walk(content, '')
   assert.deepEqual(hits, ['.shared.adaptLine'])
+})
+
+// A partly covered goal's step names the tenant's policy as the one to change,
+// and its row reads Blocked · <date> or Ready · now, never Blocked · now.
+test('GetIAMAI: with a Windows-only token-protection policy on, the step names that policy and its blocked row carries a date', () => {
+  const f = fixture('getiamai')
+  const exclusions = f.mapping.records['__globalExclusion']?.resolvedId
+  const policy = {
+    id: 'p-token', displayName: 'Core - Require - Token Protection (Windows)', state: 'enabled', createdDateTime: '2026-01-10T00:00:00Z',
+    conditions: { users: { includeUsers: ['All'], excludeUsers: [...f.mapping.breakGlassUserIds], excludeGroups: exclusions ? [exclusions] : [] }, applications: { includeApplications: ['00000002-0000-0ff1-ce00-000000000000', '00000003-0000-0ff1-ce00-000000000000'] }, platforms: { includePlatforms: ['windows'] }, clientAppTypes: ['mobileAppsAndDesktopClients'] },
+    grantControls: null, sessionControls: { secureSignInSession: { isEnabled: true } },
+  }
+  const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [...(ca.rows ?? []), policy] } } }
+  const r = runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>)
+  const cov = r.coverage.results.find((x) => x.goal.id === 'token-protection')!
+  assert.equal(cov.status, 'partial', 'the goal is partly covered')
+  const step = r.steps.find((s) => s.id === 's-goal-token-protection')!
+  assert.equal(step.kind, 'adjust')
+  const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const ex = stepVars(step, ctx)
+  assert.equal(ex.policyName, 'Core - Require - Token Protection (Windows)', 'Name: is the tenant\'s policy')
+  const lines = stepPortalLines(step.goalId, portalNamesFor(ctx, ex, 'Require Token Protection')) ?? []
+  assert.ok(lines.some((l) => l.includes('Core - Require - Token Protection (Windows)')), 'the portal lines name it')
+  assert.ok(!lines.some((l) => /Name: Require Token Protection/.test(l)), 'never the step title')
+  const now = (pages.plan as { now: string }).now
+  const wave = r.schedule.waves.find((w) => w.stepIds.includes(step.id)) ?? null
+  const when = rowWhen(step, wave?.start ?? null)
+  if (step.status === 'blocked') assert.notEqual(when, now, 'Blocked · <date>, never Blocked · now')
+  else assert.equal(when, now, 'Ready · now')
+  // A blocked step with no date of its own reads its wave's start.
+  assert.equal(rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'), rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'))
+  assert.notEqual(rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'), now)
+  assert.equal(rowWhen({ ...step, status: 'ready', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'), now, 'Ready · now')
+})
+
+// The footer's Doesn't-apply group holds the person's answers only; a goal a
+// licence facet switched off is a Not licensed row, with the licence it needs.
+test('GetIAMAI: the prompt renders in full, the Doesn\'t-apply group holds only answers, and the licence rows sit under Not licensed', () => {
+  const f = fixture('getiamai')
+  const r = runFixture(f)
+  const shared = content.shared as Record<string, string>
+  const prompt = fillText(shared.doesntApplyPrompt, { tenant: 'GetIAMAI' })
+  assert.equal(prompt, shared.doesntApplyPrompt.replace('{tenant}', 'GetIAMAI'), 'the prompt in full, the tenant filled')
+  assert.ok(!/\{[a-zA-Z]+\}/.test(prompt))
+  assert.deepEqual(r.steps.filter((s) => s.doesntApply).map((s) => s.id), [], 'no answers: the group is empty')
+  // Over the goals this baseline holds: an absent goal never renders (walk-51 item 9).
+  const licenceGoals = r.coverage.results.filter((x) => x.status === 'not-applicable' && x.applicability && / licence$/.test(x.applicability.reason) && goalInMap(PINNED_GOAL_MAP, x.goal.id)).map((x) => x.goal.id)
+  assert.ok(licenceGoals.length >= 1, `licence-facet goals the baseline holds (${licenceGoals.join(', ')})`)
+  const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
+  for (const id of licenceGoals) {
+    const row = rows.find((x) => x.goalId === id)
+    assert.ok(row, `${id} is a Not licensed row`)
+    assert.ok(/Intune|Workload/.test(row!.licence), `${id}: the licence (${row!.licence})`)
+  }
 })

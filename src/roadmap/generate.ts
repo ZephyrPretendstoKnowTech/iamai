@@ -988,10 +988,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                   : sessionOnly || /session/i.test(goal.name)
                     ? MANAGER.session(pop.active)
                     : MANAGER.other()),
+      // A step that changes the tenant's own policy names that policy, never the
+      // step's title; a step that creates one names the proposed name.
       naming:
         kind === 'create' && status !== 'done'
           ? { proposed: namingNote?.name ?? proposedPolicyName(goal, naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
-          : null,
+          : kind === 'adjust' && existing && status !== 'done'
+            ? { proposed: existing.policyName, fromBaseline: source?.facts.name ?? null, note: null }
+            : null,
     })
   }
 

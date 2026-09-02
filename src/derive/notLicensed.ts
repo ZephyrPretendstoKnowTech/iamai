@@ -28,10 +28,15 @@ export function notLicensedRows(coverage: CoverageReport, goalMap: GoalMap): Not
   const P = footer()
   const out: NotLicensedRow[] = []
   for (const r of coverage.results) {
-    if (r.status !== 'licence-limited' || !goalInMap(goalMap, r.goal.id)) continue
+    if (!goalInMap(goalMap, r.goal.id)) continue
+    // A goal a licence facet switched off (no Intune licence, no Workload
+    // Identities Premium licence) is a licence row too: the licence is the one
+    // the facet's own reason names.
+    const facetLicence = r.status === 'not-applicable' && r.applicability && / licence$/.test(r.applicability.reason) ? r.applicability.reason.replace(/^no /, '').replace(/ licence$/, '') : null
+    if (r.status !== 'licence-limited' && facetLicence === null) continue
     const cs = stepById[r.goal.id] ?? stepById[CONTENT_ALIAS[r.goal.id]]
     const title = cs?.title ?? r.goal.name
-    const licence = cs?.licence ?? tierName(r.goal.implementations[0]?.tier ?? '')
+    const licence = cs?.licence ?? facetLicence ?? tierName(r.goal.implementations[0]?.tier ?? '')
     out.push({ goalId: r.goal.id, title, licence, text: fillText(P.notLicensedRow, { stepTitle: title, licence }) })
   }
   return out
