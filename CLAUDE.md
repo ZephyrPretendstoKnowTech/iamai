@@ -11,6 +11,7 @@ surfaces (Today, Plan, Export) plus Connect, How, Inventory. Words come from
 - The pinned baseline wins: policy steps render from `baselines/*.pinned.json` through the translator.
 
 ## How to work
+- Before editing: open the files the task names, once. No repository survey, no reading tests or archive/. Grep only for a symbol a named file references.
 - One root cause per session. Fix it at the source; if a fact has two sources, delete one.
 - Words: reuse a `content.json` key. Missing key → add it, say so in the commit message.
 - While working: `npx tsc --noEmit` only. Tests once, before the push: `npm test`.
