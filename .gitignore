@@ -3,3 +3,5 @@ dist/
 .DS_Store
 docs/spikes/raw/
 docs/qa/night/
+
+fixtures/private/
