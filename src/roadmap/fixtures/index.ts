@@ -510,8 +510,11 @@ export const FIXTURE_SPECS: Spec[] = [
   { name: 'demo-week2', users: 34, admins: 3, licence: 'p1', policies: 5, serviceAccounts: 2, hybrid: true, intuneShare: 0.5, demo: true, week2: true, expect: { rings: 1, weeksAtMost: 5, namesListed: false, policyCapWarning: false } },
 ]
 
+/** The 25,000-user fixture costs a second per derivation, so it is built only with HUGE=1 (prune A). */
+export const HUGE: boolean = typeof process !== 'undefined' && process.env?.HUGE === '1'
+
 export function allFixtures(): Fixture[] {
-  return FIXTURE_SPECS.map(buildFixture)
+  return FIXTURE_SPECS.filter((s) => s.name !== 'huge' || HUGE).map(buildFixture)
 }
 
 export function fixture(name: FixtureName): Fixture {

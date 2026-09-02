@@ -4,7 +4,7 @@
 // holiday.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, weekdayHourBuckets } from './fixtures/index.ts'
+import { HUGE, fixture, weekdayHourBuckets } from './fixtures/index.ts'
 import { MIN_SIGNINS_FOR_RHYTHM, localiseBuckets, tenantRhythm } from './rhythm.ts'
 import { toEnforcementDay, weekdayOf, workingDaysBefore } from './timing.ts'
 
@@ -28,7 +28,7 @@ test('an office-hours tenant: Monday to Friday, a morning band, a Monday peak, n
   assert.match(r.sentence, /Monday to Friday, 0[789]:00 to 1[6-9]:00 \(Australia\/Sydney\)\. The busiest hour is Monday 09:00/)
 })
 
-test('a 24/7 tenant reads as flat and falls back to the calendar defaults with a note', () => {
+test('a 24/7 tenant reads as flat and falls back to the calendar defaults with a note', { skip: !HUGE && 'the 25,000-user fixture is built only with HUGE=1' }, () => {
   const f = fixture('huge')
   const r = tenantRhythm(f.snapshot, 'Australia/Sydney')
   assert.equal(r.status, 'flat')

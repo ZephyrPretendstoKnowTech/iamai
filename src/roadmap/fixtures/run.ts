@@ -1,5 +1,14 @@
 // Runs the same engine wiring the Roadmap page uses over a fixture, so the
 // property tests exercise exactly what a user would see.
+//
+// Each fixture's derivation is memoised per process (prune A): the test files
+// share one process (--test-isolation=none) and most of them derive every
+// fixture, so after the first file a derivation is a lookup. The key is the
+// fixture's content, never its identity, so a test that edits a mapping or a
+// snapshot in place and derives again gets a fresh derivation; and every call
+// returns its own copy of the steps, schedule and housekeeping, so a skip
+// applied to one derivation never reaches another. A call with overrides is
+// derived afresh and not memoised.
 import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { buildQuestions } from '../../mapping/questions.ts'
@@ -24,7 +33,26 @@ export type FixtureRun = ReturnType<typeof generateRoadmap> & {
   roadmapMs: number
 }
 
+const memo = new Map<string, { key: string; run: FixtureRun }>()
+
+/** Everything the derivation reads, serialised: a fixture edited in place gets a new key. */
+function keyOf(f: Fixture): string {
+  return [f.planId, f.planCreatedAt, f.operatorId, JSON.stringify(f.mapping), JSON.stringify([...f.groups]), JSON.stringify(f.baseline), JSON.stringify(f.snapshot)].join('\u0000')
+}
+
 export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}): FixtureRun {
+  if (Object.keys(over).length > 0) return derive(f, over)
+  const key = keyOf(f)
+  let hit = memo.get(f.name)
+  if (!hit || hit.key !== key) {
+    hit = { key, run: derive(f, over) }
+    memo.set(f.name, hit)
+  }
+  const { steps, schedule, housekeeping } = structuredClone({ steps: hit.run.steps, schedule: hit.run.schedule, housekeeping: hit.run.housekeeping })
+  return { ...hit.run, steps, schedule, housekeeping }
+}
+
+function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
   const t0 = performance.now()
   const { snapshot } = f
   const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
