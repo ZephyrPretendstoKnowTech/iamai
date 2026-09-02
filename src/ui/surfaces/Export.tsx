@@ -111,7 +111,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     const exclusionGroups = [...data.groups.entries()].map(([groupId, g]) => ({ groupId, memberCount: g.memberCount, memberIds: g.memberIds }))
     const checkpoint = makeCheckpoint({ snapshot, coverage, summary, exclusionGroups, breakGlassIds: data.mapping.breakGlassUserIds })
     const baselineSource = { kind: 'github' as const, owner: baselineIndex.owner, repo: baselineIndex.repo, commit: baselineIndex.commit ?? '' }
-    const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, startedAt: data.startedAt ?? undefined })
+    const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, startedAt: data.startedAt ?? undefined, signature: data.signature })
     // The person's own working state, to load back on this tenant: names in full (the card says so).
     exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(file, null, 2), 'application/json', unredactedFrom('plan-file'))
   }
@@ -159,7 +159,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
   // the same variables the Plan builds for a step, then the same view.
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
-  const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, groups: data.groups, naming: coverage.organisation.naming })
+  const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: data.signature, operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, groups: data.groups, naming: coverage.organisation.naming })
   const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s))
   const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: steps.find((s) => s.comms)?.comms ?? null })
 

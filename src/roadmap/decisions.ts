@@ -41,6 +41,8 @@ export type PlanDecisions = {
   planCreatedAt?: string
   /** Every picker's saved decision, by step id (prompt 52 Part 3). */
   stepDecisions?: Record<string, StepDecision>
+  /** The name every Tell your people box signs with (Plan settings); in the plan file. */
+  signature?: string
 }
 
 /**

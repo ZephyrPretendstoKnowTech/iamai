@@ -2,14 +2,14 @@
 // exists: two header lines, the phases as rows, the footer. Clicking a row opens
 // the step under it. Nothing sits above the plan but its two header lines; every
 // decision the plan needs is made in the step that needs it (§5, §6.4).
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
-import { app, pages, phases } from '../../content/content.ts'
+import { app, engine, pages, phases } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
@@ -30,7 +30,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
 
-type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; startNote: string; freezeFrom: string; freezeTo: string; close: string }; blocked: { after: string } }
+type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; startNote: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }; blocked: { after: string } }
 const PP = pages.plan as unknown as PlanPage
 const S = app.shell
 
@@ -108,7 +108,8 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const line1 = headerLine1({ steps: total, inPlace, finish: finish.finish, weeks: weeksText, constraint: waiting, startedFrom: data.startedFrom })
   const start = startControl()
   const line2 = fillText(P.line2, { tenant: tenantName, age: ageText })
-  const lengthTip = fillText(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.criticalPath })
+  // Filled once: one because, one full stop; the clause names steps by their content titles.
+  const lengthTip = c.schedule.derivation.reason ? fillText(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.reason }) : engine.critical.sentenceDone
 
   const byId = new Map(c.steps.map((s) => [s.id, s]))
   // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
@@ -132,6 +133,14 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         <InfoTip title={app.plan.constraintTip} text={lengthTip} />
       </p>
       <p className="line">{line2}</p>
+      {/* The start (§5), in this order: the Start date field (default: the next working
+          day in the display zone), Start the plan under it, which locks the date shown,
+          then Plan settings. */}
+      <label className="rows no-print">
+        <span>{PP.settings.start}</span>
+        <input type="date" value={c.schedule.start.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
+      </label>
+      <p className="line reason no-print">{PP.settings.startNote}</p>
       {data.startedFrom === null && (
         <>
           <p className="actions no-print">
@@ -148,7 +157,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
           {PP.settingsLink}
         </a>
       </p>
-      {showSettings && <Settings data={data} effectiveStart={c.schedule.start} onClose={() => setShowSettings(false)} />}
+      {showSettings && <Settings data={data} onClose={() => setShowSettings(false)} />}
 
       {waveRows.map((w, wi) => {
         return (
@@ -157,7 +166,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
             })}
           </section>
         )
@@ -169,7 +178,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
       {floorRows.length > 0 && (
         <section className="phase floor">
           {floorRows.map((s) => (
-            <Row key={s.id} step={s} isNext={false} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+            <Row key={s.id} step={s} isNext={false} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
           ))}
         </section>
       )}
@@ -218,7 +227,7 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle }: {
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -226,6 +235,8 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
   schedule: PlanComputed['schedule']
   tenantName: string
   nameOf: (id: string) => string
+  /** The name the Tell your people boxes sign with (Plan settings). */
+  signature: string
   onSkip: (stepId: string, reason: string) => void
   onUnskip: (stepId: string) => void
   onTick: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
@@ -256,7 +267,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
       {open && (
         <ContentStep
           step={step}
-          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, groups, naming: computed.coverage.organisation.naming }}
+          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature, operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, groups, naming: computed.coverage.organisation.naming }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onClose={onToggle}
@@ -285,25 +296,46 @@ function whenLine(step: Step): string {
   return at ? absoluteDate(at) : PP.now
 }
 
-function Settings({ data, effectiveStart, onClose }: { data: ReturnType<typeof usePlanData>; effectiveStart: string; onClose: () => void }) {
+function Settings({ data, onClose }: { data: ReturnType<typeof usePlanData>; onClose: () => void }) {
+  // pages.plan.settings in full, and nothing else: the change freeze (from and
+  // to on one line, its note under it), the display time zone the plan stores,
+  // the signature every Tell your people box signs with, Close. The start date
+  // is in the header, above Start the plan.
+  const zones = useMemo<string[]>(() => {
+    try {
+      return (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
+    } catch {
+      return []
+    }
+  }, [])
+  const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const zone = data.timeZone ?? ''
+  const options = zone && !zones.includes(zone) ? [zone, ...zones] : zones
   return (
     <div className="plan-settings">
       <h3>{PP.settings.h3}</h3>
       <label className="rows">
-        <span>{PP.settings.start}</span>
-        {/* The input shows the plan's effective start (the clamped working day),
-            and stores noon UTC to match the default, so re-entering the value
-            shown changes nothing (prompt 49.1 item 11). Clearing the field resets
-            to the default (the next working day): the plan.settings contract lists
-            only Close, so the reset is the field's own clear, not a new button. */}
-        <input type="date" value={effectiveStart.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
-      </label>
-      <p className="reason">{PP.settings.startNote}</p>
-      <label className="rows">
+        <span>{PP.settings.freeze}</span>
         <span>{PP.settings.freezeFrom}</span>
         <input type="date" value={(data.freeze?.from ?? '').slice(0, 10)} onChange={(e) => data.setFreeze(e.currentTarget.value ? { from: new Date(e.currentTarget.value).toISOString(), to: data.freeze?.to ?? new Date(e.currentTarget.value).toISOString() } : null)} />
         <span>{PP.settings.freezeTo}</span>
         <input type="date" value={(data.freeze?.to ?? '').slice(0, 10)} onChange={(e) => data.freeze && e.currentTarget.value && data.setFreeze({ from: data.freeze.from, to: new Date(e.currentTarget.value).toISOString() })} />
+      </label>
+      <p className="reason">{PP.settings.freezeNote}</p>
+      <label className="rows">
+        <span>{PP.settings.timezone}</span>
+        <select value={zone} onChange={(e) => data.setTimeZone(e.currentTarget.value || null)}>
+          <option value="">{browserZone}</option>
+          {options.map((z) => (
+            <option key={z} value={z}>
+              {z}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="rows">
+        <span>{PP.settings.signature}</span>
+        <input type="text" value={data.signature} onChange={(e) => data.setSignature(e.currentTarget.value)} />
       </label>
       <p className="actions">
         <Button variant="secondary" onClick={onClose}>
