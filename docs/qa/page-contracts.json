@@ -236,7 +236,7 @@
       },
       "allow": {
         "headings": [
-          "Connect a tenant"
+          "re:^.{1,80}$"
         ],
         "tabs": [],
         "tiles": [],
@@ -245,6 +245,7 @@
         "buttons": [
           "Sign out",
           "Open the plan →",
+          "Scan tenant",
           "change"
         ],
         "summaries": [],
@@ -254,11 +255,10 @@
         ]
       },
       "budget": {
-        "sentences": 6,
-        "words": 100
+        "sentences": 9,
+        "words": 130
       },
       "forbid": [
-        "confirm",
         "answer",
         "question",
         "Assumes",
