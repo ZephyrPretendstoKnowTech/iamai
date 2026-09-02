@@ -84,6 +84,11 @@ when its findings are gone from the next walk. Updated at every unit boundary.
   the never-signed-in branch and the plain short date for the other; no new prose.
 - The in-app GetIAMAI walk is not possible tonight (§6); the demo is walked in full and the plan
   file is scanned offline.
+- The first night-1 push failed CI twice for reasons outside the product: the `github-pages`
+  environment's branch policy allowed only `main`, so the preview deploy was refused — `night-1`
+  was added to the policy (Settings → Environments → github-pages; reversible); and the runner's
+  Chrome took longer than the smoke's 20-second wait for a page target — every harness now waits
+  60 s and fails with a plain message instead of a TypeError.
 
 ## 4. Test assertions changed
 
