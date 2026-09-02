@@ -394,6 +394,16 @@
     },
     "app": {
       "$comment": "Words the app chrome and the surfaces show that no step or review page renders: the header, the scan progress, the print cover, the export alerts. Read by src/content/content.ts `app`; the review page never renders them.",
+      "picker": {
+        "placeholder": "Search…",
+        "remove": "Remove",
+        "searching": "Searching…",
+        "noMatches": "No matches",
+        "typeToSearch": "Type to search",
+        "suggestions": "Suggestions",
+        "results": "{n} results",
+        "done": "Done"
+      },
       "shell": {
         "lightTheme": "Light theme",
         "darkTheme": "Dark theme",

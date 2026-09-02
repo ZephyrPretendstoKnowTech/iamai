@@ -211,7 +211,7 @@ const extractIn = (rootExpr, excludeSel = '') => `(() => {
   const allButtons = [...root.querySelectorAll('button, a.btn, a.button-like, [role=button]')].filter(vis).filter((e) => !e.classList.contains('infotip-btn') && !isTab(e) && e.tagName !== 'TH')
   const buttons = uniq(allButtons.filter((e) => !e.closest('.setup-question, .workload-card, .picker, .decision') && !inRepeater(e)).map(txt))
   const links = uniq([...root.querySelectorAll('a[href]')].filter(vis).filter((e) => !e.classList.contains('btn') && !isTab(e) && !inRepeater(e)).map(txt))
-  const chips = uniq([...root.querySelectorAll('.chip')].filter(vis).filter((e) => !inRepeater(e)).map(txt))
+  const chips = uniq([...root.querySelectorAll('.chip')].filter(vis).filter((e) => !inRepeater(e) && !e.closest('.picker')).map(txt))
   const summaries = uniq([...root.querySelectorAll('summary')].filter((e) => !skipped(e)).map(txt))
   const claimed = new Set([...headings, ...buttons, ...links, ...chips, ...tabs, ...summaries])
   const BLOCK = 'p, li, .sub, .reason, .advisor, .muted, .callout'

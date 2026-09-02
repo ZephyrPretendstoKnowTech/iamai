@@ -5,12 +5,15 @@
 // baseline wins. This is the React port of src/content/render.ts renderStep, with
 // the live controls the review page has no need of. Sections render in §6 order,
 // and only when they have content.
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, missingVars, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
+import { Picker } from '../components/index.ts'
+import type { PickerOption } from '../components/index.ts'
+import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
@@ -140,7 +143,7 @@ export function ContentStep({
       {who.groups && who.overlap && <Line s={who.overlap} ex={ex} cls="sub" />}
       {who.groups && who.adminsNote && truthy(ex.adminNames) && <p className="reason"><T s={who.adminsNote} ex={ex} /></p>}
 
-      {d && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} />}
+      {d && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
 
       {hasWhatToDo && <h3>What to do</h3>}
       {hasWhatToDo && w.lead && <p><T s={w.lead} ex={ex} /></p>}
@@ -311,35 +314,40 @@ function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
   return out
 }
 
-function Decision({ d, ex, saved, onDecide }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: { picked?: string[]; option?: string }) => void }) {
-  // One row per thing the picker's source names (walk-51 item 3): the source
-  // holds the rendered rows, its Ids twin the ids behind them, so a tick is a
-  // decision about an account, not a string. A picker with no source reads the
-  // key its own rows were built under (pickerKey), never another step's list.
-  // No rows, no picker. The Ticked twin (the plan's current value, else
-  // everything nominated) starts ticked; a saved decision replaces that.
-  const keys: string[] = d.pickerSource ? [d.pickerSource] : typeof ex.pickerKey === 'string' ? [ex.pickerKey] : []
+function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: { picked?: string[]; option?: string }) => void; stepId: string; ctx: StepVarContext }) {
+  // The typeahead (target-state §6.4): empty, it lists the objects the scan
+  // nominated with their signal text, ticked by default as chips; typing filters
+  // every object of the kind in the tenant by name and UPN; the chips are the
+  // selection, and Save writes their ids exactly as the ticks did. A picker with
+  // no source reads the key its own rows were built under (pickerKey), never
+  // another step's list. Nothing nominated and nothing to type against: no picker.
+  const source: string | null = typeof d.pickerSource === 'string' ? d.pickerSource : null
+  const keys: string[] = source ? [source] : typeof ex.pickerKey === 'string' ? [ex.pickerKey] : []
   const key = d.pickerRow ? (keys.find((k) => Array.isArray(ex[k]) && (ex[k] as unknown[]).length > 0) ?? null) : null
   const rows: string[] = key ? (ex[key] as string[]) : []
   const idsOf = key ? ex[`${key}Ids`] : undefined
   const ids: string[] = Array.isArray(idsOf) && (idsOf as string[]).length === rows.length ? (idsOf as string[]) : rows
-  // A group or a location is one choice (radio); every other picker ticks many.
-  const single = !d.multi && SINGLE_CHOICE_SOURCES.includes(String(d.pickerSource ?? key ?? ''))
+  // A group, a location or a strength is one choice: one chip.
+  const single = !d.multi && SINGLE_CHOICE_SOURCES.includes(String(source ?? key ?? ''))
+  const universe = useMemo(() => (d.pickerRow ? pickerUniverse(stepId, source, { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups }) : []), [d.pickerRow, stepId, source, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
+  const byId = useMemo(() => new Map(universe.map((o) => [o.id, o])), [universe])
+  const nominated: PickerOption[] = ids.map((id, i) => {
+    const known = byId.get(id)
+    const name = known?.name ?? rows[i].split(' · ')[0]
+    const why = rows[i].startsWith(name) ? rows[i].slice(name.length).replace(/^\s*·\s*/, '') : rows[i]
+    return { id, name, secondary: known?.secondary, why: why || undefined }
+  })
+  const optionOf = (id: string): PickerOption => nominated.find((n) => n.id === id) ?? byId.get(id) ?? { id, name: ctx.nameOf(id) }
   const tickedOf = key ? ex[`${key}Ticked`] : undefined
   const initial: string[] = saved?.picked ?? (Array.isArray(tickedOf) ? (tickedOf as string[]) : single ? ids.slice(0, 1) : ids)
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(initial))
+  const [chips, setChips] = useState<PickerOption[]>(() => initial.map(optionOf))
+  const [query, setQuery] = useState('')
+  const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
+  const hasPicker = rows.length > 0 || universe.length > 0
   // An option with a variable the scan cannot fill is not offered (walk-51 item 2).
   const options: string[] = (Array.isArray(d.options) ? (d.options as string[]) : []).filter((o) => whole(o, ex))
   const [option, setOption] = useState<string | null>(saved?.option ?? null)
-  const toggle = (id: string): void =>
-    setPicked((prev) => {
-      if (single) return new Set([id])
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  const save = (): void => onDecide?.({ ...(rows.length > 0 ? { picked: ids.filter((id) => picked.has(id)) } : {}), ...(option !== null ? { option } : {}) })
+  const save = (): void => onDecide?.({ ...(hasPicker ? { picked: chips.map((c) => c.id) } : {}), ...(option !== null ? { option } : {}) })
   // The help is explanatory prose and renders in the flow, not inside the
   // .decision row (which the contract measures against the row budget).
   return (
@@ -347,13 +355,7 @@ function Decision({ d, ex, saved, onDecide }: { d: Record<string, any>; ex: Ex; 
       <Line s={d.help} ex={ex} cls="reason" />
       <div className="decision">
         <div className="dlabel">{d.label}</div>
-        {rows.length > 0 && (
-          <div className="picker">
-            {rows.map((row, i) => (
-              <label key={i}><input type={single ? 'radio' : 'checkbox'} name={single ? d.label : undefined} checked={picked.has(ids[i])} onChange={() => toggle(ids[i])} /> {row}</label>
-            ))}
-          </div>
-        )}
+        {hasPicker && <Picker selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
         {options.length > 0 && <div className="picker">{options.map((o, i) => <label key={i}><input type="radio" name={`${d.label}-option`} checked={option === o} onChange={() => setOption(o)} /> <T s={o} ex={ex} /></label>)}</div>}
         <Button variant="secondary" onClick={save}>{d.save || 'Save'}</Button>
       </div>

@@ -67,6 +67,7 @@ export type AppWords = {
   print: Record<string, string> & { cover: Record<string, string>; posture: Record<string, string>; timelineColumns: Record<string, string> }
   how: Record<string, string> & { limitsList: string[]; lanes: Record<string, string>; columns: Record<string, string> }
   inventory: { caps: Record<string, string>; workloadNames: Record<string, string> }
+  picker: { placeholder: string; remove: string; searching: string; noMatches: string; typeToSearch: string; suggestions: string; results: string; done: string }
 }
 export const app = content.pages.app as unknown as AppWords
 
