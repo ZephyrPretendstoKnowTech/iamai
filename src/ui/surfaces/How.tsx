@@ -14,6 +14,7 @@ import { ROLE_FOR_SCOPE } from '../../graph/collect/roles.ts'
 import { SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { PACKAGE } from '../../copy/inventory.ts'
 import { HOW as C } from '../../copy/how.ts'
+import { pages } from '../../content/content.ts'
 import { Chip, DataTable } from '../components/index.ts'
 import type { ChipStatus } from '../components/index.ts'
 
@@ -103,6 +104,7 @@ export function How() {
           <li key={i}>{l}</li>
         ))}
       </ul>
+      <p className="reason">{(pages.how as Record<string, string>).noAi}</p>
     </section>
   )
 }

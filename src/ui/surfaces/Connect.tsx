@@ -1,7 +1,9 @@
-// Connect (prompt 47 Part 4, target-state §3): one component, four states.
-// Signed out: what is needed, what is read, what never happens; Sign in; the
-// permissions and how to remove them. Signed in: who is signed in, the
-// baseline line with its picker, and the scan, run from here. Scanning: the
+// Connect (prompt 47 Part 4, target-state §3): one component, four states, now
+// rendered from docs/design/content.json (prompt 52 Part 1). Signed out: the
+// opener — what it is, who it is built for, what it catches; Sign in; the
+// permissions and how to remove them; the IAMAI limitations panel. Signed in:
+// who is signed in, the baseline explained in place with the author's site and
+// the "updated by its author" line, and the scan, run from here. Scanning: the
 // progress line and Stop. Scanned: the one-line result and Open the plan.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
@@ -10,21 +12,38 @@ import { isPrivilegeDenial } from '../../graph/collect/roles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
 import { CONNECT as C } from '../../copy/connect.ts'
+import { pages } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 import { demoUrl } from '../demo.ts'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
-import { monthDayRange } from '../../copy/dates.ts'
+import { absoluteDate, monthDay } from '../../copy/dates.ts'
 import { Button, Callout, LinkButton } from '../components/index.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
-import { PINNED_BASELINE, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
-import type { BaselineResult } from '../baseline.ts'
+import { PINNED_BASELINE, baselineChanges, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
+import type { BaselineChange, BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
 import { DeniedSections, ScanDevTools, ScanProgress } from '../scan/ScanProgress.tsx'
 import { deniedSources, useScanRunner } from '../scan/useScanRunner.ts'
 import type { SectionRow } from '../scan/useScanRunner.ts'
 
-/** Until prompt 49 lands How IAMAI works, the footer link opens the reads page and the package section keeps its own page. */
 const HOW_HREF = '#/how'
 const PACKAGE_HREF = '#/how#package'
+
+const O = pages.opener as Record<string, unknown>
+const CN = pages.connectNoScan as Record<string, unknown>
+const TN = pages.tenant as Record<string, unknown>
+
+/** Split a filled line on its last " · ", so a trailing control word (Sign out, change) becomes a button. */
+function splitControl(line: string): [string, string] {
+  const parts = line.split(' · ')
+  const label = parts.pop() ?? ''
+  return [parts.join(' · '), label]
+}
+
+/** The "what it is" sentence of baselineWhat (target-state §3's baseline line). */
+function baselineWhatLine(): string {
+  return (CN.baselineWhat as string).split('. ')[0] + '.'
+}
 
 export function Connect(props: {
   account: AccountInfo | null
@@ -36,26 +55,19 @@ export function Connect(props: {
   frozen: Record<string, SectionRow> | null
   onRunningChange: (running: boolean) => void
   onComplete: (snapshot: TenantSnapshot, at: string) => void
-  /** The header's Re-scan asked for a scan as soon as this page mounts. */
   autoScan: boolean
   onAutoScanConsumed: () => void
 }) {
   const { account } = props
-  return (
-    <section className="surface connect">
-      <h1>{C.title}</h1>
-      {account ? <SignedIn {...props} account={account} /> : <SignedOut />}
-    </section>
-  )
+  return <section className="surface connect">{account ? <SignedIn {...props} account={account} /> : <SignedOut />}</section>
 }
 
 function SignedOut() {
   // The redirect takes seconds to start; the button must not look inert.
   const [opening, setOpening] = useState(false)
-  // MSAL is warming: initialising and fetching the authority metadata. Until it
-  // is ready, the button carries a spinner but stays clickable; a click made now
-  // is queued and fires the moment it is ready, so the first click always lands
-  // (prompt 50.1 item 7). It used to race MSAL and do nothing until the second.
+  // MSAL is warming: until it is ready the button carries a spinner but stays
+  // clickable; a click made now is queued and fires the moment it is ready, so
+  // the first click always lands (prompt 50.1 item 7).
   const [signInReady, setSignInReady] = useState(false)
   const firing = useRef(false)
   useEffect(() => {
@@ -82,9 +94,13 @@ function SignedOut() {
   const rows = scopeRows().filter((r) => !SIGN_IN_SCOPES.includes(r.scope) && r.usedBy.length > 0)
   return (
     <>
-      <p className="lede">{C.lede}</p>
+      <h1>{O.h1 as string}</h1>
+      <p className="lede">{O.intro as string}</p>
+      <h2>{O.builtForLabel as string}</h2>
+      <p>{O.builtFor as string}</p>
+      <h2>{O.catchesLabel as string}</h2>
       <ul>
-        {C.need.map((line) => (
+        {(O.catches as string[]).map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
@@ -94,57 +110,71 @@ function SignedOut() {
           loading={opening}
           busy={!signInReady}
           onClick={() => {
-            // Record the intent; the effect fires sign-in as soon as MSAL is
-            // ready (immediately, if it already is). A click while warming is
-            // not lost.
             setOpening(true)
           }}
         >
-          {C.signIn}
+          {O.signIn as string}
         </Button>
       </p>
       <details className="permissions" onToggle={(e) => setPermissionsOpen(e.currentTarget.open)}>
-        <summary>{C.permissionsSummary}</summary>
+        <summary>{O.permissionsSummary as string}</summary>
         {permissionsOpen && (
           <>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{PERMISSIONS.columns.permission}</th>
-                <th>{PERMISSIONS.columns.reads}</th>
-                <th>{PERMISSIONS.columns.without}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.scope}>
-                  <td>
-                    <code>{r.scope}</code>
-                  </td>
-                  <td>{r.reads}</td>
-                  <td>{r.without}</td>
-                </tr>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{PERMISSIONS.columns.permission}</th>
+                    <th>{PERMISSIONS.columns.reads}</th>
+                    <th>{PERMISSIONS.columns.without}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.scope}>
+                      <td>
+                        <code>{r.scope}</code>
+                      </td>
+                      <td>{r.reads}</td>
+                      <td>{r.without}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p>{O.permissionsNote as string}</p>
+            <h3>{O.removingLabel as string}</h3>
+            <ol>
+              {(O.removing as string[]).map((line) => (
+                <li key={line}>{line}</li>
               ))}
-            </tbody>
-          </table>
-        </div>
-        <p>{C.signInScopes}</p>
-        <h3>{C.removalTitle}</h3>
-        <ol>
-          {PERMISSIONS.removal.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ol>
+            </ol>
           </>
         )}
       </details>
       <p className="footer-link">
-        <a href={HOW_HREF}>{C.how}</a>
+        <a href={HOW_HREF}>{(O.links as string[])[0]}</a>
       </p>
       <p className="footer-link">
-        <a href={demoUrl()}>{C.sampleData}</a>
+        <a href={demoUrl()}>{(O.links as string[])[1]}</a>
       </p>
+      {/* The blind spots the tenant's records cannot show (target-state §3): a
+          raised, open-by-default disclosure. Its body is caveat prose, not the
+          page's flow, so it renders outside the inventory's prose blocks — the
+          same way the permissions caveats sit outside the budget by being
+          closed. The summary is captured; the copy is one file (content.json). */}
+      <details className="limits" open>
+        <summary>{O.cantCatchSummary as string}</summary>
+        <div className="limits-intro">{O.cantCatchIntro as string}</div>
+        <div className="limits-list">
+          {(O.cantCatch as string[]).map((line) => (
+            <div className="limit" key={line}>
+              {line}
+            </div>
+          ))}
+        </div>
+      </details>
+      <p className="tip">{O.tip as string}</p>
     </>
   )
 }
@@ -191,27 +221,28 @@ function SignedIn({
     onAutoScanConsumed()
     hadScanRef.current = lastScan !== null
     void runner.start()
-    // Runs once per request from the header; the runner's own guard stops a second start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoScan])
   const snapshot = lastScan?.snapshot ?? null
   const scanned = !scanning && snapshot !== null
   const { denied, all } = deniedSources(runner.sections, snapshot, isPrivilegeDenial)
   const window_ = snapshot?.sources.signInEvidence?.coveredWindow ?? null
+  const [signedInText, signOutLabel] = splitControl(fillText(CN.signedIn as string, { tenant: tenantName ?? account.username, upn: account.username }))
   return (
     <>
+      <h1>{CN.h1 as string}</h1>
       <p className="line">
-        {C.signedInTo} <strong>{tenantName ?? account.username}</strong> {C.as} {account.username}
+        {signedInText}
         {!scanning && (
           <>
             {' · '}
             <Button variant="tertiary" onClick={() => void signOut()}>
-              {C.signOut}
+              {signOutLabel}
             </Button>
           </>
         )}
       </p>
-      <BaselineLine baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} />
+      <BaselineLine baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} explain={!scanned} />
       {scanning && <ScanProgress runner={runner} />}
       {!scanning && runner.state === 'failed' && runner.error && <Callout kind="danger">{C.failed(runner.error)}</Callout>}
       {!scanning && !scanned && (
@@ -224,27 +255,32 @@ function SignedIn({
                 void runner.start()
               }}
             >
-              {C.scan}
+              {CN.scanButton as string}
             </Button>
           </p>
-          <p className="reason">{C.scanNote}</p>
+          <p className="reason">{CN.scanNote as string}</p>
         </>
       )}
       {scanned && snapshot && (
         <>
           <p className="line">
-            {C.complete(snapshot.users.length, snapshot.config.caPolicies?.rows.length ?? 0, window_ ? monthDayRange(window_.from, window_.to) : null)}
+            {fillText(TN.scanLine as string, {
+              people: snapshot.users.length,
+              policies: snapshot.config.caPolicies?.rows.length ?? 0,
+              from: window_ ? monthDay(window_.from) : '',
+              to: window_ ? monthDay(window_.to) : '',
+            })}
           </p>
           <DeniedSections denied={denied} all={all} />
           <p className="actions">
-            <LinkButton href={PLAN_HREF}>{C.openPlan}</LinkButton>
+            <LinkButton href={PLAN_HREF}>{TN.open as string}</LinkButton>
           </p>
         </>
       )}
       <ScanDevTools tenantId={account.tenantId} runner={runner} snapshot={snapshot} />
       {!scanning && (
         <p className="footer-link">
-          <a href={HOW_HREF}>{C.how}</a>
+          <a href={HOW_HREF}>{(O.links as string[])[0]}</a>
         </p>
       )}
     </>
@@ -252,19 +288,24 @@ function SignedIn({
 }
 
 /**
- * "Baseline: <the label> (46 policies) · change". The default
- * loads itself when nothing is saved; change opens a picker with two choices.
+ * "Baseline: <label> (46 policies) · change", the three explanation lines, and —
+ * when the author's repository is ahead of the pin — the "updated by its author"
+ * line with its review list (prompt 52 Part 1). The default loads itself when
+ * nothing is saved; change opens a picker with two choices.
  */
 function BaselineLine({
   baseline,
   restoreError,
   onBaseline,
   locked,
+  explain,
 }: {
   baseline: BaselineResult | null
   restoreError: string | null
   onBaseline: (r: BaselineResult) => void
   locked: boolean
+  /** The baseline explanation and the "updated by its author" line render only before the first scan (target-state §3: scanned is a transition screen). */
+  explain: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -306,21 +347,31 @@ function BaselineLine({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseline, restoreError])
 
+  const [baselineText, changeLabel] = baseline ? splitControl(fillText(CN.baselineLine as string, { baselineName: baseline.source, policyCount: baseline.pkg.policies.length })) : ['', 'change']
+
   return (
     <>
       <p className="line">
-        {busy ?? (baseline ? C.baseline(baseline.source, baseline.pkg.policies.length) : C.baselineNone)}
+        {busy ?? (baseline ? baselineText : C.baselineNone)}
         {!locked && !busy && (
           <>
             {' · '}
             <Button variant="tertiary" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-              {C.change}
+              {changeLabel}
             </Button>
           </>
         )}
       </p>
       {error && <p className="reason">{C.baselineFailed(error)}</p>}
       {!error && !baseline && restoreError && <p className="reason">{C.restoreFailed}</p>}
+      {explain && !locked && !busy && baseline && (
+        <>
+          <p className="reason">{baselineWhatLine()}</p>
+          <p className="reason">{CN.baselineGoal as string}</p>
+          <p className="reason">{CN.baselineHow as string}</p>
+          <BaselineUpdated />
+        </>
+      )}
       {open && !locked && (
         <div className="picker" role="group" aria-label={C.pickerLabel}>
           <Button
@@ -337,6 +388,54 @@ function BaselineLine({
             <input type="file" accept=".json" multiple aria-label={C.uploadLabel} onChange={(e) => void loadUpload(e.currentTarget.files)} disabled={busy !== null} />
           </label>
           <a href={PACKAGE_HREF}>{C.howToMakeOne}</a>
+        </div>
+      )}
+    </>
+  )
+}
+
+/**
+ * The "Baseline updated by its author" line and its review list, shown only when
+ * the author's head differs from the pin and the changed-policy list is known
+ * (prompt 52 Part 1). The one runtime network call and its compare both fail
+ * closed, so the line never appears without real changes behind it.
+ */
+function BaselineUpdated() {
+  const [date, setDate] = useState<string | null>(null)
+  const [changes, setChanges] = useState<BaselineChange[]>([])
+  const [reviewing, setReviewing] = useState(false)
+  useEffect(() => {
+    let live = true
+    void checkAuthorHead().then(async (head) => {
+      if (!live || !head.updated || !head.head) return
+      const list = await baselineChanges(head.head)
+      if (!live || list.length === 0) return
+      setChanges(list)
+      setDate(head.date ? absoluteDate(head.date) : null)
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+  if (changes.length === 0 || !date) return null
+  const [updatedText, reviewLabel] = splitControl(fillText(CN.baselineUpdated as string, { date, n: changes.length }))
+  return (
+    <>
+      <p className="reason">
+        {updatedText}
+        {' · '}
+        <Button variant="tertiary" aria-expanded={reviewing} onClick={() => setReviewing((r) => !r)}>
+          {reviewLabel}
+        </Button>
+      </p>
+      <p className="sub">{CN.baselineUpdatedNote as string}</p>
+      {reviewing && (
+        <div className="found">
+          {changes.map((c) => (
+            <div className="frow" key={c.policy}>
+              {fillText(CN.baselineUpdatedRow as string, { policy: c.policy, change: c.change })}
+            </div>
+          ))}
         </div>
       )}
     </>

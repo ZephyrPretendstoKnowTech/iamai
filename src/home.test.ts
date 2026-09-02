@@ -1,20 +1,24 @@
-// The home page and the tool folder (prompt 35 §1, §2).
+// The home page and the tool folder (prompt 35 §1, §2; prompt 52 Part 1).
 //
-// The layout is assembled by scripts/assemble-site.mjs at build time, so these
-// hold the inputs to it: the template keeps the markers the script substitutes,
-// the tool data has the fields the cards need, and the tool path appears in
-// exactly one place rather than being spelled out around the repo.
+// The page is generated from docs/design/content.json (pages.home) by
+// scripts/build-home.ts, the way the theme file is generated from the tokens.
+// These lock the committed files to their generators — so the words the owner
+// reviews in content.json and the words the home page shows cannot drift — and
+// hold the structural invariants the page keeps whatever the copy says.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { PRODUCT } from './copy/product.ts'
-import { renderHomeTheme } from '../scripts/build-home.ts'
+import { pages } from './content/content.ts'
+import { renderHomeHtml, renderHomeTheme } from '../scripts/build-home.ts'
 
 const home = 'home'
-const html = readFileSync(join(home, 'index.html'), 'utf8')
+const lf = (s: string): string => s.replace(/\r\n/g, '\n')
+const html = lf(readFileSync(join(home, 'index.html'), 'utf8'))
 const css = readFileSync(join(home, 'home.css'), 'utf8')
 const theme = readFileSync(join(home, 'theme.css'), 'utf8')
+const H = pages.home as Record<string, unknown>
 const tools = JSON.parse(readFileSync(join(home, 'tools.json'), 'utf8')) as {
   name: string
   description: string
@@ -22,14 +26,20 @@ const tools = JSON.parse(readFileSync(join(home, 'tools.json'), 'utf8')) as {
   path: string | null
 }[]
 
-test('the template keeps the markers the build substitutes', () => {
-  assert.ok(html.includes('<!-- tools -->'), 'the tool rows have somewhere to go')
+// Every sentence the home page shows is a string in content.json: the page is
+// its generator's output, and the generator reads only pages.home.
+test('home/index.html is generated from pages.home, and is current', () => {
+  assert.equal(html, lf(renderHomeHtml()), 'run node scripts/build-home.ts')
+})
+
+test('the template keeps the tool-path placeholder for the build to substitute', () => {
+  assert.ok(html.includes('{{TOOL_PATH}}'), 'the planner hrefs are substituted rather than written out')
   assert.ok(theme.includes('{{TOOL_PATH}}'), 'the font path is substituted rather than written out')
 })
 
 // Prompt 47.1 Part 3: the home wears the planner's tokens, written by the build.
 test('home/theme.css is the planner\'s tokens, and is current', () => {
-  assert.equal(theme.replace(/\r\n/g, '\n'), renderHomeTheme().replace(/\r\n/g, '\n'), 'run node scripts/build-home.ts')
+  assert.equal(lf(theme), lf(renderHomeTheme()), 'run node scripts/build-home.ts')
   assert.match(html, /<link rel="stylesheet" href="\/theme\.css" \/>/)
   assert.doesNotMatch(css, /@font-face/, 'the fonts come from the token file')
 })
@@ -60,27 +70,39 @@ test('every tool has what a card needs', () => {
   }
 })
 
-test('the planner is the first card, and points at the tool folder', () => {
+test('the planner is the first tool, and its name lives in one place', () => {
   const first = tools[0]
-  // The name lives in one place (prompt 47.1 Part 4).
   assert.equal(first.name, PRODUCT.name)
-  // An empty path means "this repository's tool", which the build resolves to
-  // TOOL_PATH; anything else is a sibling folder.
+  // An empty path means "this repository's tool", which the build resolves to TOOL_PATH.
   assert.equal(first.path, '')
 })
 
-test('the home page says the three things every tool promises', () => {
-  assert.match(html, /Read-only/)
-  // The claim used to be absolute and is not any more (audit egress-05): the
-  // tools' own export features move data when the user asks. What the page
-  // promises now is that nothing moves on its own.
-  assert.match(html, /Nothing is sent automatically/i)
-  assert.match(html, /source is public/i)
+// The home page shows the planner from pages.home.planner (prompt 52 Part 1):
+// its name, the Preview label, the descriptor, the body, and the two actions.
+test('the home page shows the planner entry from content', () => {
+  const pl = H.planner as Record<string, string>
+  assert.match(html, /class="pill">Preview</)
+  for (const key of ['name', 'descriptor', 'body', 'open', 'demo'] as const) {
+    assert.ok(html.includes(pl[key]), `the planner ${key} is on the page`)
+  }
+  assert.equal(pl.name, PRODUCT.name)
 })
 
-test('the page carries its title, description and a shareable image', () => {
-  assert.match(html, /<title>IAMAI — tools for Microsoft Entra identity work<\/title>/)
-  assert.match(html, /<meta\s+name="description"/)
+test('the home page shows the intro, the three sections and the footer from content', () => {
+  assert.ok(html.includes(H.h1 as string), 'the headline is content.h1')
+  assert.ok(html.includes(H.intro as string), 'the lede is content.intro')
+  assert.ok(html.includes(H.about as string), 'About is content.about')
+  for (const line of H.how as string[]) {
+    // The source bullet carries a link inside it; match the sentence up to the link.
+    assert.ok(html.includes(line.split('github.com/')[0].trim().slice(0, 40)), 'each How line is from content')
+  }
+  assert.ok(html.includes(H.footer as string), 'the footer line is content.footer')
+  for (const l of H.footerLinks as string[]) assert.ok(html.includes(`>${l}</a>`), `footer link ${l}`)
+})
+
+test('the page carries its title, description and a shareable image, all from content', () => {
+  assert.match(html, new RegExp(`<title>${(H.metaTitle as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</title>`))
+  assert.ok(html.includes(H.metaDescription as string), 'the meta description is content.metaDescription')
   assert.match(html, /og:image/)
   assert.ok(readdirSync(home).includes('og.png'), 'the OpenGraph image ships with the page')
 })
@@ -93,18 +115,13 @@ test('the home page loads nothing from anywhere else', () => {
   assert.doesNotMatch(css, /@import/i, 'no imported stylesheet')
 })
 
-test('the home page is one column: no cards, no boxes, the three sections in order', () => {
-  assert.doesNotMatch(css, /tool-card/, 'no card')
+test('the home page is one column: the sections in order', () => {
   for (const m of css.matchAll(/border-radius:\s*([^;]+);/g)) assert.ok(['var(--radius)', '50%', '0'].includes(m[1].trim()), `radius ${m[1]} is beyond the token`)
-  const order = ['Know what a change will do before you make it.', '>Tools<', '>How these work<', '>About<']
+  const order = [H.h1 as string, `>${H.toolsLabel}<`, `>${H.howLabel}<`, `>${H.aboutLabel}<`]
   let at = -1
   for (const s of order) {
     const i = html.indexOf(s)
     assert.ok(i > at, `${s} comes in order`)
     at = i
   }
-  const lede = html.match(/<p class="lede">([\s\S]*?)<\/p>/)?.[1].replace(/\s+/g, ' ').trim() ?? ''
-  assert.ok(lede.split(' ').length <= 40, `the lede is ${lede.split(' ').length} words`)
-  const about = html.match(/<h2 id="about-heading">About<\/h2>\s*<p>([\s\S]*?)<\/p>/)?.[1].replace(/\s+/g, ' ').trim() ?? ''
-  assert.ok(about.split(' ').length <= 60, `About is ${about.split(' ').length} words`)
 })
