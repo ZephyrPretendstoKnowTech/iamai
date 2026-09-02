@@ -161,8 +161,19 @@ export function ContentStep({
         </>
       )}
 
-      <h3>Done when</h3>
-      <ul className="sections">{(cs.doneWhen || []).filter((x: unknown) => whole(x, ex)).map((x: unknown, i: number) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
+      {(() => {
+        // Expand the shared policy/change done-when placeholders, then drop any
+        // line with a hole; the heading appears only if a line survives (§8.7).
+        const shared = content.shared as Record<string, string[]>
+        const dw = (cs.doneWhen || []).flatMap((x: unknown) => (x === '{policyDoneWhen}' ? shared.policyDoneWhen : x === '{changeDoneWhen}' ? shared.changeDoneWhen : [x])).filter((x: unknown) => whole(x, ex))
+        if (dw.length === 0) return null
+        return (
+          <>
+            <h3>Done when</h3>
+            <ul className="sections">{dw.map((x: unknown, i: number) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
+          </>
+        )
+      })()}
 
       {cs.ifWrong && whole(cs.ifWrong, ex) && (
         <>
@@ -184,7 +195,7 @@ export function ContentStep({
             <Button variant="secondary" onClick={() => copy('comms', commsText(cs.comms, ex))}>
               {copied === 'comms' ? 'Copied' : 'Copy'}
             </Button>
-            <p>{cs.comms.salutation}</p>
+            <p><T s={cs.comms.salutation} ex={ex} /></p>
             <p><T s={cs.comms.body} ex={ex} /></p>
             <p><T s={cs.comms.signature} ex={ex} /></p>
           </div>
@@ -288,7 +299,7 @@ function More({ cs, ex, step, onSkip, onUnskip, copy, copied }: { cs: Record<str
 }
 
 function commsText(comms: Record<string, any>, ex: Ex): string {
-  return [comms.salutation, fillText(comms.body, ex as Record<string, unknown>), fillText(comms.signature, ex as Record<string, unknown>)].join('\n\n')
+  return [fillText(comms.salutation, ex as Record<string, unknown>), fillText(comms.body, ex as Record<string, unknown>), fillText(comms.signature, ex as Record<string, unknown>)].join('\n\n')
 }
 
 function policyJson(step: Step): unknown {

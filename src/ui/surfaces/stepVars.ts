@@ -16,6 +16,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { initialDomain } from '../../validation/rules.ts'
+import { EXIT_MIN_DAYS_OBSERVED } from '../../roadmap/constants.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -84,6 +85,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     n: pop.active,
     // The step's readiness, as the percentage the content line names.
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
+    // The report-only observation window a policy done-when line names.
+    reportOnlyDays: EXIT_MIN_DAYS_OBSERVED,
   }
 
   // A campaign has no enforcement date of its own; its enrol-by and the first

@@ -13,6 +13,7 @@ import { fillText, missingVars } from '../../content/render.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { todayView } from '../../derive/today.ts'
+import { content } from '../../content/content.ts'
 
 test('a count of one singularises the noun that follows it', () => {
   assert.equal(fillText('{guests} guests', { guests: 1 }), '1 guest')
@@ -63,4 +64,29 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   for (const row of cl.specialCare) {
     assert.match(row, /\S · \S/, `"${row}" has a name and a state, not an empty "·"`)
   }
+})
+
+// Prompt 52, walk-51 item 6: a policy step's done-when comes from
+// shared.policyDoneWhen; the walk found token-protection showing a "Done when"
+// heading with nothing under it. Expanded and filled, the section has content.
+test('a policy step expands its done-when from the shared lines, no empty section', () => {
+  const f = allFixtures().find((x) => x.name === 'demo')!
+  const run = runFixture(f)
+  const tp = run.steps.find((s) => s.goalId === 'token-protection')!
+  const cs = contentStepFor(tp) as { doneWhen: string[] }
+  assert.deepEqual(cs.doneWhen, ['{policyDoneWhen}'], 'token-protection defers to the shared policy lines')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: run.input.operatorUserId ?? null, now: f.snapshot.asOf }
+  const ex = stepVars(tp, ctx) as Record<string, unknown>
+  const shared = content.shared as Record<string, string[]>
+  const dw = cs.doneWhen.flatMap((x) => (x === '{policyDoneWhen}' ? shared.policyDoneWhen : [x])).filter((l) => missingVars(l, ex).length === 0)
+  assert.ok(dw.length >= 2, `the shared policy done-when lines render (${dw.length})`)
+  assert.ok(dw.some((l) => l.includes('report-only for')), 'the report-only line fills reportOnlyDays')
+})
+
+// Prompt 52, walk-51 item 7: a per-person email fills the first name or falls
+// back to "Hi," — the walk found a literal {firstName} in the token-protection
+// email, which ContentStep rendered raw rather than through the fill engine.
+test('an email salutation fills the name or falls back to Hi,', () => {
+  assert.equal(fillText('Hi {firstName},', {}), 'Hi,')
+  assert.equal(fillText('Hi {firstName},', { firstName: 'Sam' }), 'Hi Sam,')
 })
