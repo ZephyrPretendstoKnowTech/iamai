@@ -12,7 +12,6 @@
 // setting at all, the step says so and the instructions say where to look.
 // Pure: no DOM, no network.
 import ladderData from '../../data/free-tier-ladder.json' with { type: 'json' }
-import { LADDER, LADDER_IMPACT, LADDER_STEPS } from '../copy/ladder.ts'
 import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
@@ -67,10 +66,9 @@ function nameOf(u: UserRow): string {
   return u.displayName ?? u.userPrincipalName ?? u.id
 }
 
-/** Up to NAME_LIMIT names, then a count; never an id (CLAUDE.md: names, never ids). */
+/** Up to NAME_LIMIT names; never an id (CLAUDE.md: names, never ids). */
 function names(all: string[]): string[] {
-  if (all.length <= NAME_LIMIT) return all
-  return [...all.slice(0, NAME_LIMIT), LADDER_IMPACT.andMore(all.length - NAME_LIMIT)]
+  return all.slice(0, NAME_LIMIT)
 }
 
 const METHOD_LABEL: Record<string, string> = {
@@ -172,8 +170,6 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
       order.set(covered, index)
       return
     }
-    const copy = LADDER_STEPS[item.id]
-    if (!copy) return
     const v = verdictFor(item.id, f)
     const id = ladderStepId(item.id)
     order.set(id, index)
@@ -183,8 +179,8 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
       goalId: item.goalId ?? item.id,
       phase: 0,
       kind: 'prerequisite',
-      title: copy.title,
-      why: copy.why,
+      title: item.name,
+      why: item.description,
       status: v.done ? 'done' : 'ready',
       blockedBy: [],
       blockers: [],
@@ -192,16 +188,15 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
       population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 },
       readiness: { family: 'other', percent: null, lines: [] },
       evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
-      action: { kind: 'prerequisite', summary: copy.how, json: null, portalSteps: [], powershell: null },
-      rollback: LADDER.rollback,
+      action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [], powershell: null },
       history: [],
       skipReason: null,
       gap: null,
       blockedReason: null,
       deliveredBy: v.evidence,
-      plainTitle: copy.plainTitle,
-      forManager: copy.forManager,
-      learn: { url: copy.learn, tldr: item.description, cis: [] },
+      plainTitle: item.name,
+      forManager: '',
+      learn: null,
     })
   })
 

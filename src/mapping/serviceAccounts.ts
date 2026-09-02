@@ -1,7 +1,8 @@
 // Service-account detection (ux-review-03 §A5): candidates from data the
 // scan already holds, each with the evidence that put it there. Pure.
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
-import { SETUP_PAGE } from '../copy/setup.ts'
+import { engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 const NAME_PATTERN = /\b(?:svc|service|printer|scanner|copier|smtp|relay|fax|kiosk|noreply|no-reply|automation)\b/i
 
@@ -29,7 +30,7 @@ export type ServiceAccountCandidate = {
 }
 
 export function detectServiceAccounts(snapshot: TenantSnapshot, excludeIds: Iterable<string> = []): ServiceAccountCandidate[] {
-  const E = SETUP_PAGE.serviceEvidence
+  const E = engine.serviceSignals
   const skip = new Set(excludeIds)
   const legacy = new Set(snapshot.evidenceUsage?.legacyAuth.userIds ?? [])
   const hasEvidence = snapshot.sources.signInEvidence?.status === 'ok' || snapshot.sources.signInEvidence?.status === 'partial'
@@ -38,7 +39,7 @@ export function detectServiceAccounts(snapshot: TenantSnapshot, excludeIds: Iter
     if (skip.has(u.id) || u.userType === 'guest' || u.accountEnabled === false) continue
     const evidence: string[] = []
     const nameHit = NAME_PATTERN.exec(u.displayName ?? '') ?? NAME_PATTERN.exec((u.userPrincipalName ?? '').split('@')[0] ?? '')
-    if (nameHit) evidence.push(E.name(nameHit[0].toLowerCase()))
+    if (nameHit) evidence.push(fillText(E.name, { hit: nameHit[0].toLowerCase() }))
 
     const methods = snapshot.authMethods[u.id]
     if (Array.isArray(methods) && !methods.some((m) => MFA_KINDS.has(m.kind))) evidence.push(E.noMethod)

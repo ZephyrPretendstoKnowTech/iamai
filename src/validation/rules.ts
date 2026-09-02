@@ -21,8 +21,6 @@
 // Pure: no DOM, no network. Runs in Node tests, in the worker and in the UI.
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import type { AuthMethodSummary, MfaViability } from '../scoring/mfaViability.ts'
-import type { ValidationAction } from '../mapping/types.ts'
-import { VALIDATION_ACTION as A } from '../copy/setup.ts'
 import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../copy/validation.ts'
 import type { Citation } from '../copy/validation.ts'
 import { absoluteDate } from '../copy/dates.ts'
@@ -72,7 +70,6 @@ export type RuleEval = {
   outcome: RuleOutcome
   /** Plain language naming the object and the fact; null when the rule passes with nothing to say. */
   finding?: string | null
-  fix?: ValidationAction | null
   /**
    * The structured values the matching content checkFixes template names for
    * this rule (prompt 52, walk-51 item 14): e.g. `{ policies }` for
@@ -159,10 +156,10 @@ export function missingNeeds(rule: { needs: NeedKey[] }, ctx: ValidationContext)
   return out
 }
 
-const PASS: RuleEval = { outcome: 'pass', finding: null, fix: null }
-const fail = (finding: string, fix: ValidationAction | null = null, values?: Record<string, unknown>): RuleEval => ({ outcome: 'fail', finding, fix, values })
-const unknown = (finding: string, fix: ValidationAction | null = null): RuleEval => ({ outcome: 'unknown', finding, fix })
-const pass = (finding: string | null = null): RuleEval => ({ outcome: 'pass', finding, fix: null })
+const PASS: RuleEval = { outcome: 'pass', finding: null }
+const fail = (finding: string, values?: Record<string, unknown>): RuleEval => ({ outcome: 'fail', finding, values })
+const unknown = (finding: string): RuleEval => ({ outcome: 'unknown', finding })
+const pass = (finding: string | null = null): RuleEval => ({ outcome: 'pass', finding })
 
 // ---- shared facts ----------------------------------------------------------
 
@@ -248,7 +245,7 @@ const bgCount: ValidationRule = {
   severity: 'blocker',
   needs: [],
   evaluate: (_id, ctx) =>
-    ctx.breakGlassIds.length >= 2 ? pass(F.bgCountOk(ctx.breakGlassIds.length)) : fail(F.bgCount(ctx.breakGlassIds.length), A.addAnother),
+    ctx.breakGlassIds.length >= 2 ? pass(F.bgCountOk(ctx.breakGlassIds.length)) : fail(F.bgCount(ctx.breakGlassIds.length)),
 }
 
 const bgPermanentGa: ValidationRule = {
@@ -260,8 +257,8 @@ const bgPermanentGa: ValidationRule = {
     const active = ctx.snapshot.roles.active[id] ?? []
     const eligible = ctx.snapshot.roles.eligible[id] ?? []
     if (active.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE)) return PASS
-    if (eligible.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE)) return fail(F.bgEligibleOnly, A.roles)
-    return fail(F.bgNoGa, A.roles)
+    if (eligible.some((r) => r.toLowerCase() === GLOBAL_ADMIN_ROLE)) return fail(F.bgEligibleOnly)
+    return fail(F.bgNoGa)
   },
 }
 
@@ -270,7 +267,7 @@ const bgCloudOnly: ValidationRule = {
   subject: 'breakGlass',
   severity: 'blocker',
   needs: ['users'],
-  evaluate: (id, ctx) => (userOf(ctx, id)?.onPremisesSyncEnabled === true ? fail(F.bgSynced, A.pickAnother) : PASS),
+  evaluate: (id, ctx) => (userOf(ctx, id)?.onPremisesSyncEnabled === true ? fail(F.bgSynced) : PASS),
 }
 
 const bgInitialDomain: ValidationRule = {
@@ -281,9 +278,9 @@ const bgInitialDomain: ValidationRule = {
   evaluate: (id, ctx) => {
     const upn = userOf(ctx, id)?.userPrincipalName ?? null
     const initial = initialDomain(ctx.snapshot)
-    if (initial === null) return unknown(F.bgNoInitialDomain, A.userProfile(id))
-    if (upn === null) return unknown(F.bgNoInitialDomain, A.userProfile(id))
-    return upn.toLowerCase().endsWith(`@${initial.toLowerCase()}`) ? PASS : fail(F.bgCustomDomain(upn, initial), A.pickAnother, { onmicrosoftDomain: initial })
+    if (initial === null) return unknown(F.bgNoInitialDomain)
+    if (upn === null) return unknown(F.bgNoInitialDomain)
+    return upn.toLowerCase().endsWith(`@${initial.toLowerCase()}`) ? PASS : fail(F.bgCustomDomain(upn, initial), { onmicrosoftDomain: initial })
   },
 }
 
@@ -292,7 +289,7 @@ const bgEnabled: ValidationRule = {
   subject: 'breakGlass',
   severity: 'blocker',
   needs: ['users'],
-  evaluate: (id, ctx) => (userOf(ctx, id)?.accountEnabled === false ? fail(F.bgDisabled, A.userProfile(id)) : PASS),
+  evaluate: (id, ctx) => (userOf(ctx, id)?.accountEnabled === false ? fail(F.bgDisabled) : PASS),
 }
 
 const bgExcluded: ValidationRule = {
@@ -314,10 +311,10 @@ const bgExcluded: ValidationRule = {
       if (groups.some((g) => !known.has(g))) unverifiable.push(p.displayName ?? '(unnamed)')
       else missing.push(p.displayName ?? '(unnamed)')
     }
-    if (missing.length > 0) return fail(F.bgNotExcluded(missing), A.policies, { policies: missing })
+    if (missing.length > 0) return fail(F.bgNotExcluded(missing), { policies: missing })
     // A group nobody read cannot prove the exclusion either way; on a blocker
     // that holds the plan exactly as a failure does (design §1).
-    if (unverifiable.length > 0) return unknown(F.bgExclusionUnverified(unverifiable), A.policies)
+    if (unverifiable.length > 0) return unknown(F.bgExclusionUnverified(unverifiable))
     return PASS
   },
 }
@@ -332,7 +329,7 @@ const bgExcludedFromReportOnly: ValidationRule = {
     const missing = reportOnlyPolicies(ctx)
       .filter((p) => !excludedFrom(p, id, memberOf))
       .map((p) => p.displayName ?? '(unnamed)')
-    return missing.length === 0 ? PASS : fail(F.bgNotExcludedReportOnly(missing), A.policies, { policies: missing })
+    return missing.length === 0 ? PASS : fail(F.bgNotExcludedReportOnly(missing), { policies: missing })
   },
 }
 
@@ -346,7 +343,7 @@ const bgMicrosoftManaged: ValidationRule = {
     if (managed.length === 0) return PASS
     const memberOf = new Set(ctx.groupMembers.filter((g) => g.memberIds.includes(id)).map((g) => g.groupId))
     const missing = managed.filter((p) => !excludedFrom(p, id, memberOf)).map((p) => p.displayName ?? '(unnamed)')
-    return missing.length === 0 ? pass(F.bgManagedExcluded(managed.length)) : fail(F.bgManagedMissing(missing), A.policies, { policies: missing })
+    return missing.length === 0 ? pass(F.bgManagedExcluded(managed.length)) : fail(F.bgManagedMissing(missing), { policies: missing })
   },
 }
 
@@ -357,7 +354,7 @@ const bgNotInDynamicScope: ValidationRule = {
   needs: ['groupMembers'],
   evaluate: (id, ctx) => {
     const hit = ctx.groupMembers.find((g) => Boolean(g.membershipRule) && g.memberIds.includes(id))
-    return hit ? fail(F.bgDynamic(hit.displayName ?? hit.groupId, hit.membershipRule as string), A.group(hit.groupId), { group: hit.displayName ?? hit.groupId }) : PASS
+    return hit ? fail(F.bgDynamic(hit.displayName ?? hit.groupId, hit.membershipRule as string), { group: hit.displayName ?? hit.groupId }) : PASS
   },
 }
 
@@ -368,8 +365,8 @@ const bgHasMfaMethod: ValidationRule = {
   needs: ['authMethods'],
   evaluate: (id, ctx) => {
     const methods = methodsOf(ctx, id)
-    if (methods === undefined || methods === 'unknown') return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]), A.userMethods(id))
-    return mfaKinds(methods).length > 0 ? PASS : fail(F.bgNoMfaMethod, A.userMethods(id))
+    if (methods === undefined || methods === 'unknown') return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
+    return mfaKinds(methods).length > 0 ? PASS : fail(F.bgNoMfaMethod)
   },
 }
 
@@ -380,7 +377,7 @@ const bgSeparateDevices: ValidationRule = {
   needs: ['authMethods'],
   evaluate: (id, ctx) => {
     const methods = methodsOf(ctx, id)
-    if (methods === undefined || methods === 'unknown') return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]), A.userMethods(id))
+    if (methods === undefined || methods === 'unknown') return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
     const mine = new Set(methods.filter((m) => m.kind === 'microsoftAuthenticator' && m.displayName).map((m) => m.displayName as string))
     if (mine.size === 0) return PASS
     for (const [otherId, other] of Object.entries(ctx.snapshot.authMethods)) {
@@ -388,7 +385,7 @@ const bgSeparateDevices: ValidationRule = {
       for (const m of other) {
         if (m.kind !== 'microsoftAuthenticator' || !m.displayName || !mine.has(m.displayName)) continue
         const who = ctx.snapshot.users.filter((u) => u.id === otherId).map((u) => u.displayName ?? u.userPrincipalName ?? otherId)
-        return fail(F.bgSharedDevice(m.displayName, who.length > 0 ? who : [otherId]), A.userMethods(id), { device: m.displayName, otherAccount: who[0] ?? otherId })
+        return fail(F.bgSharedDevice(m.displayName, who.length > 0 ? who : [otherId]), { device: m.displayName, otherAccount: who[0] ?? otherId })
       }
     }
     return PASS
@@ -401,14 +398,14 @@ const bgNotPersonal: ValidationRule = {
   severity: 'blocker',
   needs: ['users'],
   evaluate: (id, ctx) => {
-    if (ctx.operatorUserId !== null && ctx.operatorUserId === id) return fail(F.bgPersonalOperator, A.pickAnother, { attribute: 'your own account' })
+    if (ctx.operatorUserId !== null && ctx.operatorUserId === id) return fail(F.bgPersonalOperator, { attribute: 'your own account' })
     const u = userOf(ctx, id)
-    if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]), A.pickAnother)
+    if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
     const facts: string[] = []
     if (u.department) facts.push(`department ${u.department}`)
     if (u.jobTitle) facts.push(`job title ${u.jobTitle}`)
     if (u.officeLocation) facts.push(`office ${u.officeLocation}`)
-    return facts.length > 0 ? fail(F.bgPersonal(facts), A.userProfile(id), { attribute: facts.join(', ') }) : PASS
+    return facts.length > 0 ? fail(F.bgPersonal(facts), { attribute: facts.join(', ') }) : PASS
   },
 }
 
@@ -421,11 +418,11 @@ const bgPhishingResistant: ValidationRule = {
   needs: ['authMethods'],
   evaluate: (id, ctx) => {
     const methods = methodsOf(ctx, id)
-    if (methods === undefined || methods === 'unknown') return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]), A.userMethods(id))
+    if (methods === undefined || methods === 'unknown') return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
     const kinds = mfaKinds(methods)
     if (kinds.some((k) => PHISHING_RESISTANT.has(k))) return PASS
-    if (kinds.length > 0 && kinds.every((k) => k === 'phone')) return fail(F.bgSmsOnly, A.userMethods(id))
-    return fail(F.bgNoPhishingResistant, A.userMethods(id))
+    if (kinds.length > 0 && kinds.every((k) => k === 'phone')) return fail(F.bgSmsOnly)
+    return fail(F.bgNoPhishingResistant)
   },
 }
 
@@ -444,7 +441,7 @@ const bgMethodDiversity: ValidationRule = {
     const lists = perAccount as string[][]
     if (lists.some((k) => k.length !== 1)) return PASS
     const only = lists[0][0]
-    return lists.every((k) => k[0] === only) ? fail(F.bgSameMethodType(only), null, { method: only }) : PASS
+    return lists.every((k) => k[0] === only) ? fail(F.bgSameMethodType(only), { method: only }) : PASS
   },
 }
 
@@ -463,7 +460,7 @@ const bgPerUserMfaOff: ValidationRule = {
     if (!section || section.status !== 'ok') return unknown(UNKNOWN.needs([NEED_LABEL.authMethodsPolicy]))
     const row = (section.rows[0] ?? null) as { policyMigrationState?: string } | null
     if (!row?.policyMigrationState) return unknown(UNKNOWN.readWithout(NEED_LABEL.authMethodsPolicy, 'migration state'))
-    return row.policyMigrationState === 'migrationComplete' ? PASS : fail(F.bgPerUserMfa, A.roles)
+    return row.policyMigrationState === 'migrationComplete' ? PASS : fail(F.bgPerUserMfa)
   },
 }
 
@@ -477,7 +474,7 @@ const bgNoLicenceNeeded: ValidationRule = {
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
     const enabled = u.assignedPlans.filter((p) => p.capabilityStatus === 'Enabled')
     const mailbox = enabled.some((p) => MAILBOX_PLANS.has(p.servicePlanId))
-    return mailbox ? fail(F.bgLicensed(enabled.length), A.userProfile(id), { licence: 'a licence with a mailbox' }) : PASS
+    return mailbox ? fail(F.bgLicensed(enabled.length), { licence: 'a licence with a mailbox' }) : PASS
   },
 }
 
@@ -489,10 +486,10 @@ const bgDrilled: ValidationRule = {
   evaluate: (id, ctx) => {
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
-    if (u.lastSuccessfulSignIn === null) return fail(F.bgNeverSignedIn, A.drill)
+    if (u.lastSuccessfulSignIn === null) return fail(F.bgNeverSignedIn)
     const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn)) / 86_400_000)
     return days > BREAK_GLASS_DRILL_DAYS
-      ? fail(F.bgDrillDue(absoluteDate(u.lastSuccessfulSignIn), BREAK_GLASS_DRILL_DAYS), A.drill)
+      ? fail(F.bgDrillDue(absoluteDate(u.lastSuccessfulSignIn), BREAK_GLASS_DRILL_DAYS))
       : pass(F.bgDrilled(absoluteDate(u.lastSuccessfulSignIn), BREAK_GLASS_DRILL_DAYS))
   },
 }
@@ -525,7 +522,7 @@ const bgNameIdentifiesPurpose: ValidationRule = {
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
     const name = `${u.displayName ?? ''} ${u.userPrincipalName ?? ''}`
-    return PURPOSE_NAME.test(name) ? PASS : fail(F.bgName(u.displayName ?? u.userPrincipalName ?? id), A.userProfile(id))
+    return PURPOSE_NAME.test(name) ? PASS : fail(F.bgName(u.displayName ?? u.userPrincipalName ?? id))
   },
 }
 
@@ -588,10 +585,10 @@ const xgMembersApproved: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    if (entry.sampled) return unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]), A.group(entry.groupId))
+    if (entry.sampled) return unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]))
     const approved = new Set([...ctx.breakGlassIds, ...ctx.approvedExclusionIds])
     const extra = entry.memberIds.filter((id) => !approved.has(id))
-    return extra.length === 0 ? PASS : fail(F.xgUnapproved(extra.map((id) => nameOf(ctx, id))), A.group(entry.groupId), { extraMembers: extra.map((id) => nameOf(ctx, id)) })
+    return extra.length === 0 ? PASS : fail(F.xgUnapproved(extra.map((id) => nameOf(ctx, id))), { extraMembers: extra.map((id) => nameOf(ctx, id)) })
   },
 }
 
@@ -604,7 +601,7 @@ const xgNoExtraAdmins: ValidationRule<GroupTarget> = {
     if (!entry) return groupUnknown()
     const bg = new Set(ctx.breakGlassIds)
     const admins = entry.memberIds.filter((id) => !bg.has(id) && (ctx.snapshot.roles.active[id] ?? []).length > 0)
-    return admins.length === 0 ? PASS : fail(F.xgAdmins(admins.map((id) => nameOf(ctx, id))), A.group(entry.groupId), { name: admins.map((id) => nameOf(ctx, id)).join(', '), role: 'an administrator role' })
+    return admins.length === 0 ? PASS : fail(F.xgAdmins(admins.map((id) => nameOf(ctx, id))), { name: admins.map((id) => nameOf(ctx, id)).join(', '), role: 'an administrator role' })
   },
 }
 
@@ -615,7 +612,7 @@ const xgNotDynamic: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry) => {
     if (!entry) return groupUnknown()
-    return !entry.membershipRule ? PASS : fail(F.xgDynamic(entry.membershipRule), A.group(entry.groupId))
+    return !entry.membershipRule ? PASS : fail(F.xgDynamic(entry.membershipRule))
   },
 }
 
@@ -631,7 +628,7 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
     const excludes = (p: (typeof live)[number]): boolean => (p.conditions?.users?.excludeGroups ?? []).includes(entry.groupId)
     const excluded = live.filter(excludes).length
     if (excluded === 0 || excluded === live.length) return PASS
-    return fail(F.xgInconsistent(excluded, live.length), A.roadmap, { policies: live.filter((p) => !excludes(p)).map((p) => p.displayName ?? '(unnamed)') })
+    return fail(F.xgInconsistent(excluded, live.length), { policies: live.filter((p) => !excludes(p)).map((p) => p.displayName ?? '(unnamed)') })
   },
 }
 
@@ -645,7 +642,7 @@ const xgSizeReasonable: ValidationRule<GroupTarget> = {
     const allowed = Math.max(ctx.breakGlassIds.length, 1)
     return entry.memberCount <= allowed
       ? pass(F.xgMembers(entry.memberCount, entry.sampled))
-      : fail(F.xgSize(entry.memberCount, ctx.breakGlassIds.length), A.group(entry.groupId), { memberCount: entry.memberCount, emergencyCount: ctx.breakGlassIds.length })
+      : fail(F.xgSize(entry.memberCount, ctx.breakGlassIds.length), { memberCount: entry.memberCount, emergencyCount: ctx.breakGlassIds.length })
   },
 }
 
@@ -656,7 +653,7 @@ const xgNotMailEnabled: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry) => {
     if (!entry) return groupUnknown()
-    return entry.mailEnabled === true ? fail(F.xgMailEnabled, A.group(entry.groupId)) : PASS
+    return entry.mailEnabled === true ? fail(F.xgMailEnabled) : PASS
   },
 }
 
@@ -674,9 +671,9 @@ const locNotWholeInternet: ValidationRule<LocationTarget> = {
   severity: 'blocker',
   needs: ['namedLocations'],
   evaluate: (loc) => {
-    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]), A.namedLocations)
+    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
     const bad = cidrs(loc).find((c) => c === '0.0.0.0/0' || c === '::/0')
-    return bad ? fail(F.locWholeInternet(bad), A.namedLocations) : PASS
+    return bad ? fail(F.locWholeInternet(bad)) : PASS
   },
 }
 
@@ -686,13 +683,13 @@ const locNotTooWide: ValidationRule<LocationTarget> = {
   severity: 'blocker',
   needs: ['namedLocations'],
   evaluate: (loc) => {
-    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]), A.namedLocations)
+    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
     const wide = cidrs(loc).find((c) => {
       if (c === '0.0.0.0/0' || c === '::/0') return false
       const prefix = Number(c.split('/')[1])
       return Number.isFinite(prefix) && prefix < 16
     })
-    return wide ? fail(F.locTooWide(wide), A.namedLocations) : PASS
+    return wide ? fail(F.locTooWide(wide)) : PASS
   },
 }
 
@@ -702,8 +699,8 @@ const locIsTrusted: ValidationRule<LocationTarget> = {
   severity: 'blocker',
   needs: ['namedLocations'],
   evaluate: (loc) => {
-    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]), A.namedLocations)
-    return loc.isTrusted === true ? PASS : fail(F.locNotTrusted, A.namedLocations)
+    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
+    return loc.isTrusted === true ? PASS : fail(F.locNotTrusted)
   },
 }
 
@@ -713,11 +710,11 @@ const locRedundancy: ValidationRule<LocationTarget> = {
   severity: 'warning',
   needs: ['namedLocations'],
   evaluate: (loc) => {
-    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]), A.namedLocations)
+    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
     const list = cidrs(loc)
     if (list.length !== 1) return PASS
     const prefix = Number(list[0].split('/')[1])
-    return list[0].includes('/') && Number.isFinite(prefix) && prefix < 32 ? PASS : fail(F.locSingle(list[0]), A.namedLocations)
+    return list[0].includes('/') && Number.isFinite(prefix) && prefix < 32 ? PASS : fail(F.locSingle(list[0]))
   },
 }
 
@@ -727,11 +724,11 @@ const locSeenInSignIns: ValidationRule<LocationTarget> = {
   severity: 'warning',
   needs: ['namedLocations', 'signInEvidence'],
   evaluate: (loc, ctx) => {
-    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]), A.namedLocations)
+    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
     // IAMAI keeps no addresses from sign-in records, by design: what it can say
     // is whether the window holds sign-ins at all to compare against.
     const total = ctx.snapshot.evidenceAggregates?.total ?? 0
-    if (total === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]), A.namedLocations)
+    if (total === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
     return pass()
   },
 }
@@ -766,8 +763,8 @@ const ctyUnknownCountries: ValidationRule<LocationTarget & { includeUnknownCount
   severity: 'warning',
   needs: ['namedLocations'],
   evaluate: (loc) => {
-    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]), A.namedLocations)
-    return loc.includeUnknownCountriesAndRegions === true ? fail(F.ctyUnknown, A.namedLocations) : PASS
+    if (!loc) return unknown(UNKNOWN.needs([NEED_LABEL.namedLocations]))
+    return loc.includeUnknownCountriesAndRegions === true ? fail(F.ctyUnknown) : PASS
   },
 }
 
@@ -793,7 +790,7 @@ const pilotHasMembers: ValidationRule<GroupTarget> = {
   needs: ['groupMembers'],
   evaluate: (entry) => {
     if (!entry) return groupUnknown()
-    return entry.memberCount > 0 ? PASS : fail(F.pilotEmpty, A.group(entry.groupId))
+    return entry.memberCount > 0 ? PASS : fail(F.pilotEmpty)
   },
 }
 
@@ -805,7 +802,7 @@ const pilotNoBreakGlass: ValidationRule<GroupTarget> = {
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
     const inside = entry.memberIds.filter((id) => ctx.breakGlassIds.includes(id))
-    return inside.length === 0 ? PASS : fail(F.pilotBreakGlass(inside.map((id) => nameOf(ctx, id))), A.group(entry.groupId))
+    return inside.length === 0 ? PASS : fail(F.pilotBreakGlass(inside.map((id) => nameOf(ctx, id))))
   },
 }
 
@@ -818,7 +815,7 @@ const pilotSpread: ValidationRule<GroupTarget> = {
     if (!entry) return groupUnknown()
     const depts = new Set(entry.memberIds.map((id) => userOf(ctx, id)?.department ?? '').filter(Boolean))
     if (depts.size !== 1) return PASS
-    return fail(F.pilotOneDepartment([...depts][0]), A.group(entry.groupId))
+    return fail(F.pilotOneDepartment([...depts][0]))
   },
 }
 
@@ -830,7 +827,7 @@ const pilotHasAdmin: ValidationRule<GroupTarget> = {
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
     const admins = entry.memberIds.filter((id) => (ctx.snapshot.roles.active[id] ?? []).length > 0)
-    return admins.length > 0 ? PASS : fail(F.pilotNoAdmin, A.group(entry.groupId))
+    return admins.length > 0 ? PASS : fail(F.pilotNoAdmin)
   },
 }
 
@@ -842,9 +839,9 @@ const pilotMembersReady: ValidationRule<GroupTarget> = {
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
     const by = new Map(ctx.viability.map((v) => [v.userId, v]))
-    if (by.size === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]), A.group(entry.groupId))
+    if (by.size === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
     const notReady = entry.memberIds.filter((id) => by.get(id)?.mfa !== 'verified')
-    return notReady.length === 0 ? PASS : fail(F.pilotNotReady(notReady.map((id) => nameOf(ctx, id))), A.group(entry.groupId))
+    return notReady.length === 0 ? PASS : fail(F.pilotNotReady(notReady.map((id) => nameOf(ctx, id))))
   },
 }
 
@@ -867,7 +864,7 @@ const pilotPasskeyEnabled: ValidationRule<GroupTarget> = {
     if (!entry) return groupUnknown()
     const state = methodTargeted(ctx, 'Fido2', entry.groupId)
     if (state === 'ok') return PASS
-    return fail(state === 'off' ? F.pilotMethodOff('Passkeys and security keys') : F.pilotMethodUntargeted('Passkeys and security keys'), A.methods)
+    return fail(state === 'off' ? F.pilotMethodOff('Passkeys and security keys') : F.pilotMethodUntargeted('Passkeys and security keys'))
   },
 }
 
@@ -880,7 +877,7 @@ const pilotTapEnabled: ValidationRule<GroupTarget> = {
     if (!entry) return groupUnknown()
     const state = methodTargeted(ctx, 'TemporaryAccessPass', entry.groupId)
     if (state === 'ok') return PASS
-    return fail(state === 'off' ? F.pilotMethodOff('Temporary Access Pass') : F.pilotMethodUntargeted('Temporary Access Pass'), A.methods)
+    return fail(state === 'off' ? F.pilotMethodOff('Temporary Access Pass') : F.pilotMethodUntargeted('Temporary Access Pass'))
   },
 }
 
@@ -894,7 +891,7 @@ const svcNoInteractive: ValidationRule = {
   evaluate: (_t, ctx) => {
     if (!sourceUsable(ctx, 'signInEvidence')) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
     const seen = ctx.serviceAccountIds.filter((id) => (ctx.snapshot.signInEvidence[id]?.signInCount ?? 0) > 0)
-    return seen.length === 0 ? PASS : fail(F.svcInteractive(seen.map((id) => nameOf(ctx, id))), A.userProfile(seen[0]))
+    return seen.length === 0 ? PASS : fail(F.svcInteractive(seen.map((id) => nameOf(ctx, id))))
   },
 }
 
@@ -905,7 +902,7 @@ const svcNoAdminRole: ValidationRule = {
   needs: ['roles'],
   evaluate: (_t, ctx) => {
     const admins = ctx.serviceAccountIds.filter((id) => (ctx.snapshot.roles.active[id] ?? []).length > 0)
-    return admins.length === 0 ? PASS : fail(F.svcAdmin(admins.map((id) => nameOf(ctx, id))), A.roles)
+    return admins.length === 0 ? PASS : fail(F.svcAdmin(admins.map((id) => nameOf(ctx, id))))
   },
 }
 
@@ -918,7 +915,7 @@ const svcExcludedFromBlocks: ValidationRule = {
     const legacy = new Set(ctx.snapshot.evidenceUsage?.legacyAuth.userIds ?? [])
     if (legacy.size === 0) return PASS
     const caught = ctx.serviceAccountIds.filter((id) => legacy.has(id))
-    return caught.length === 0 ? PASS : fail(F.svcUnexcluded(caught.map((id) => nameOf(ctx, id))), A.roadmap)
+    return caught.length === 0 ? PASS : fail(F.svcUnexcluded(caught.map((id) => nameOf(ctx, id))))
   },
 }
 
@@ -931,7 +928,7 @@ const strExists: ValidationRule<StrengthTarget> = {
   subject: 'authStrength',
   severity: 'blocker',
   needs: ['authStrengths'],
-  evaluate: (t) => (t.tenant && Array.isArray(t.tenant.allowedCombinations) ? PASS : fail(F.strMissing, A.namedLocations)),
+  evaluate: (t) => (t.tenant && Array.isArray(t.tenant.allowedCombinations) ? PASS : fail(F.strMissing)),
 }
 
 const strAchievable: ValidationRule<StrengthTarget> = {
@@ -948,7 +945,7 @@ const strAchievable: ValidationRule<StrengthTarget> = {
     const by = new Map(ctx.viability.map((v) => [v.userId, v]))
     if (by.size === 0) return unknown(UNKNOWN.needs([NEED_LABEL.authMethods]))
     const anyone = t.population.some((id) => (by.get(id)?.methodTiers ?? []).includes('phishingResistant'))
-    return anyone ? PASS : fail(F.strUnachievable(combos), A.userMethods(t.population[0]))
+    return anyone ? PASS : fail(F.strUnachievable(combos))
   },
 }
 

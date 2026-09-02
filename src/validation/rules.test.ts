@@ -567,7 +567,7 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
   for (const s of denying) {
     assert.equal(s.status, 'blocked', `${s.id} is offered while the way back in is unverified`)
     assert.ok(s.blockedBy.includes(gate.id), `${s.id} does not name the emergency-access step`)
-    assert.match(s.unblockNotes.join(' '), /emergency access/i, `${s.id}: the blocked reason names the subject`)
+    assert.match(s.blockedReason ?? '', /emergency access/i, `${s.id}: the blocked reason names the subject`)
   }
 })
 

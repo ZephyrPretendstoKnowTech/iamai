@@ -39,6 +39,78 @@
     "sharedDeviceSignals": {
       "licence": "Teams Rooms or shared-device licence",
       "deviceOnly": "signs in only from a Teams device"
+    },
+    "engine": {
+      "$comment": "Words the engine writes into facts a surface or a file reads: the plan-length sentence, the housekeeping lines, the picker signal words, the tracking notes. Read by src/content/content.ts `engine`; the review page never renders them.",
+      "critical": {
+        "sentence": "The plan is {weeks} weeks because {reason}; everything else fits inside it.",
+        "sentenceDone": "Nothing is left to schedule.",
+        "verificationOnly": "MFA registration for {people} people takes {weeks} weeks and nothing is enforced yet",
+        "verification": "MFA registration for {people} people takes {weeks} weeks, then {step} rolls through {rings} rings of {soak} days each",
+        "chain": "{step} waits for {waitsFor}, then rolls through {rings} rings of {soak} days each",
+        "rings": "{step} rolls through {rings} rings of {soak} days each",
+        "ringsObserved": "{step} observes in report-only for {observation} days and then rolls through {rings} rings of {soak} days each",
+        "cap": "only {n} change windows a week fit this size of tenant, and the last of them goes to {step}",
+        "freeze": "the change freeze ends on {to} and {step} starts after it",
+        "phase": "{step} follows {other}, which starts first",
+        "soft": "two changes prompt the same people, so {step} cannot run in the same window as {other}",
+        "prerequisites": "{n} prerequisites take the first days"
+      },
+      "tracking": {
+        "matchedByTag": "matched by its plan tag",
+        "matchedByFingerprint": "this policy already existed and covers this step",
+        "reportOnlyFound": "policy in report-only since {date}",
+        "enforced": "policy enforced on {date}",
+        "enforcedByOther": "{name} already enforces this",
+        "soak": "{days} days in report-only, {signIns} sign-ins, {failures} failing or interrupted",
+        "readyToEnforce": "report-only evidence meets the exit criterion",
+        "regression": {
+          "disabled": "{name} was disabled after {since}; the goal is open again",
+          "deleted": "{name} was deleted after {since}; the goal is open again",
+          "weakened": "{name} was weakened after {since}; it no longer meets the baseline",
+          "narrowed": "{name} covers fewer people than it did on {since}",
+          "goal": "changed since {since}: the goal is {what} again"
+        }
+      },
+      "skip": {
+        "cannotSkip": "This one cannot be skipped: emergency access is what makes every other change reversible.",
+        "unskip": "Put it back in the plan"
+      },
+      "planFile": {
+        "revisionCreated": "plan created",
+        "revisionImported": "imported from a version 1 plan file"
+      },
+      "staticRules": {
+        "blockDependency": "{policy} blocks every resource but excludes none of the sign-in dependencies. Registration and enrolment break; exclude those four apps first.",
+        "appProtectionManaged": "{policy} requires an approved app but does not target unmanaged devices only, so scope it to personal devices.",
+        "autopilot": "{policy} requires a compliant device over all resources, so new-device enrolment stops. Add the Autopilot carve-out."
+      },
+      "serviceSignals": {
+        "name": "name contains \"{hit}\"",
+        "noMethod": "no MFA method registered",
+        "neverInteractive": "never signed in interactively",
+        "legacyOnly": "uses legacy authentication",
+        "exchangeOnly": "Exchange-only licence",
+        "noProfile": "no department or job title"
+      },
+      "emergencySignals": {
+        "name": "named like an emergency account",
+        "onmicrosoft": "signs in with the onmicrosoft.com address",
+        "globalAdmin": "Global Administrator",
+        "excludedEverywhere": "excluded from every policy",
+        "noLicence": "no licence"
+      },
+      "carveOuts": {
+        "mailDevices": {
+          "title": "Set up an SMTP relay for the devices that send mail"
+        },
+        "travel": {
+          "title": "Add a travel notice and exclusion"
+        },
+        "partner": {
+          "title": "Exclude the partner or MSP accounts"
+        }
+      }
     }
   },
   "phases": {
@@ -541,6 +613,16 @@
           "globalSecureAccess": "Global Secure Access",
           "defenderForCloudApps": "Defender for Cloud Apps",
           "purviewInsiderRisk": "Purview Insider Risk"
+        },
+        "workloadNames": {
+          "avd": "Azure Virtual Desktop",
+          "copilot": "Microsoft 365 Copilot",
+          "azureDevOps": "Azure DevOps",
+          "intune": "Intune",
+          "sharepoint": "SharePoint",
+          "workload": "Workload identities",
+          "agents": "AI agents",
+          "azureManagement": "Azure management"
         }
       }
     }

@@ -3,7 +3,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { trackExecution } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
-import { SKIP } from '../copy/skip.ts'
+import { engine } from '../content/content.ts'
 import type { Step, StepStatus } from './types.ts'
 import type { PlanDecisions, SkipDecision, StepDecision } from './decisions.ts'
 
@@ -142,7 +142,7 @@ export function applySkips(steps: Step[], skips: Record<string, SkipDecision> | 
 // group ahead of the policies referencing it. That is not an untidy plan, it is
 // a tenant nobody can get back into (prompt 44 item 6).
 export function skipStep(step: Step, reason: string): { ok: boolean; error?: string } {
-  if (isEmergencyAccess(step)) return { ok: false, error: SKIP.cannotSkip }
+  if (isEmergencyAccess(step)) return { ok: false, error: engine.skip.cannotSkip }
   const r = reason.trim()
   if (r.length === 0) return { ok: false, error: 'a reason is required to skip a step' }
   if (/risk\s*accept/i.test(r)) {
@@ -164,7 +164,7 @@ export function skipStep(step: Step, reason: string): { ok: boolean; error?: str
  */
 export function unskipStep(step: Step): { ok: boolean; error?: string } {
   if (step.status !== 'skipped') return { ok: false, error: 'that step is not skipped' }
-  step.history.push({ at: new Date().toISOString(), from: 'skipped', to: 'blocked', note: SKIP.unskip })
+  step.history.push({ at: new Date().toISOString(), from: 'skipped', to: 'blocked', note: engine.skip.unskip })
   step.status = 'blocked'
   step.skipReason = null
   return { ok: true }

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { LADDER_ITEMS, GLOBAL_ADMIN_ROLE_ID, ladderFacts, ladderStepId, ladderSteps } from './ladder.ts'
-import { LADDER_STEPS } from '../copy/ladder.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
@@ -19,20 +18,12 @@ function withConfig(base: TenantSnapshot, key: string, rows: unknown[], status: 
 
 const mapping = (over: Partial<MappingState> = {}): MappingState => ({ ...emptyMappingState('tenant-under-test'), ...over })
 
-test('every ladder item in the data file has copy, and the copy has no extras', () => {
-  const dataIds = LADDER_ITEMS.map((i) => i.id).sort()
-  const copyIds = Object.keys(LADDER_STEPS).sort()
-  assert.deepEqual(copyIds, dataIds, 'the ladder data and the ladder copy name the same items')
-})
-
-test('every ladder step carries instructions, an exit criterion, a plain title and a manager sentence', () => {
+test('every ladder step carries the data file\'s name as its title, in phase 0', () => {
   const { steps } = ladderSteps(freeSnapshot(), mapping(), [])
   assert.equal(steps.length, LADDER_ITEMS.length)
   for (const s of steps) {
-    assert.ok(s.action.summary.length >= 3, `${s.id}: exact instructions`)
-    assert.ok(s.plainTitle.length > 0 && s.plainTitle !== s.title, `${s.id}: a plain title`)
-    assert.ok(s.forManager.length > 0, `${s.id}: a manager sentence`)
-    assert.ok(s.learn?.url.startsWith('https://learn.microsoft.com/'), `${s.id}: a Learn link`)
+    assert.ok(s.title.length > 0, `${s.id}: a title`)
+    assert.equal(s.plainTitle, s.title)
     assert.equal(s.phase, 0)
   }
 })

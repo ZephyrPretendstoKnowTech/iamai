@@ -7,7 +7,10 @@ import type { CoverageReport } from '../coverage/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicy } from './generate.ts'
-import { TRACK } from '../copy/progress.ts'
+import { engine } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
+
+const TRACK = engine.tracking
 import type { Step, StepStatus, StepTracking } from './types.ts'
 
 type PolicyRow = { id?: string; displayName?: string; state?: string; createdDateTime?: string; modifiedDateTime?: string; conditions?: { users?: { includeUsers?: string[]; includeGroups?: string[] } } }
@@ -116,19 +119,19 @@ export function trackExecution(
     if (wasDone) {
       const prev = previousPolicy ? rows(snapshot).find((p) => p.id === previousPolicy) ?? null : null
       if (previousPolicy && !prev) {
-        reopen(step, TRACK.regression.deleted(previousName, sinceText), now, 'create')
+        reopen(step, fillText(TRACK.regression.deleted, { name: previousName, since: sinceText }), now, 'create')
         step.tracking = null
         continue
       }
       if (prev && prev.state === 'disabled') {
-        reopen(step, TRACK.regression.disabled(prev.displayName ?? previousName, sinceText), now, 'adjust')
+        reopen(step, fillText(TRACK.regression.disabled, { name: prev.displayName ?? previousName, since: sinceText }), now, 'adjust')
       } else if (goalStatus === 'absent') {
-        reopen(step, TRACK.regression.goal(sinceText, 'missing'), now, 'create')
+        reopen(step, fillText(TRACK.regression.goal, { since: sinceText, what: 'missing' }), now, 'create')
       } else if (goalStatus === 'below-baseline') {
-        reopen(step, TRACK.regression.weakened(prev?.displayName ?? previousName, sinceText), now, 'adjust')
+        reopen(step, fillText(TRACK.regression.weakened, { name: prev?.displayName ?? previousName, since: sinceText }), now, 'adjust')
       } else if (goalStatus === 'partial') {
         const narrowed = (result?.reasons ?? []).some((r) => !r.expected && (r.kind === 'not-targeted' || r.kind === 'excluded'))
-        reopen(step, narrowed ? TRACK.regression.narrowed(prev?.displayName ?? previousName, sinceText) : TRACK.regression.goal(sinceText, 'partly in place'), now, 'adjust')
+        reopen(step, narrowed ? fillText(TRACK.regression.narrowed, { name: prev?.displayName ?? previousName, since: sinceText }) : fillText(TRACK.regression.goal, { since: sinceText, what: 'partly in place' }), now, 'adjust')
       }
       if (step.status !== 'done') {
         if (step.tracking) step.tracking = { ...step.tracking, state: prev?.state ?? 'deleted', regressedAt: now }
@@ -138,7 +141,7 @@ export function trackExecution(
 
     if (!match) {
       if (result?.verdict === 'inPlace') {
-        advance(step, 'done', TRACK.enforcedByOther(result?.candidates.find((c) => c.contribution === 'strong')?.policyName ?? 'an existing policy'), now)
+        advance(step, 'done', fillText(TRACK.enforcedByOther, { name: result?.candidates.find((c) => c.contribution === 'strong')?.policyName ?? 'an existing policy' }), now)
       }
       continue
     }
@@ -190,19 +193,19 @@ export function trackExecution(
       // counted 11 in place against 6. An enabled policy behind a partly goal
       // is a change step whose object already exists, never a finished one.
       if (result?.verdict === 'inPlace') {
-        advance(step, 'done', `${TRACK.enforced(absoluteDate(tracking.enforcedAt ?? now))}; ${tracking.note}`, now)
+        advance(step, 'done', `${fillText(TRACK.enforced, { date: absoluteDate(tracking.enforcedAt ?? now) })}; ${tracking.note}`, now)
       } else {
       }
       continue
     }
     if (state === 'enabledForReportingButNotEnforced') {
-      advance(step, 'in-report-only', `${TRACK.reportOnlyFound(absoluteDate(createdAt ?? now))}; ${tracking.note}`, now)
+      advance(step, 'in-report-only', `${fillText(TRACK.reportOnlyFound, { date: absoluteDate(createdAt ?? now) })}; ${tracking.note}`, now)
       if (step.evidence.reportOnly?.meetsExitCriterion) {
-        advance(step, 'ready-to-enforce', `${TRACK.readyToEnforce}: ${TRACK.soak(evidence.daysInReportOnly, evidence.signIns, evidence.failures + evidence.interruptions)}`, now)
+        advance(step, 'ready-to-enforce', `${TRACK.readyToEnforce}: ${fillText(TRACK.soak, { days: evidence.daysInReportOnly, signIns: evidence.signIns, failures: evidence.failures + evidence.interruptions })}`, now)
       }
       continue
     }
-    if (goalStatus === 'enforced') advance(step, 'done', TRACK.enforcedByOther(policy.displayName ?? step.title), now)
+    if (goalStatus === 'enforced') advance(step, 'done', fillText(TRACK.enforcedByOther, { name: policy.displayName ?? step.title }), now)
   }
   return steps
 }

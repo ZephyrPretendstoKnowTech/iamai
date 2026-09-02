@@ -1,6 +1,7 @@
 // The one binding reason a blocked step shows (target-state §8.5). Pure; runs
 // after progress has been applied so it describes the final status.
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
+import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
 import {
   READINESS_THRESHOLD_ADMINS_PERCENT,
   READINESS_THRESHOLD_DEVICES_PERCENT,
@@ -24,6 +25,9 @@ function thresholdFor(family: Step['readiness']['family']): number | null {
  */
 export function blockedReasonFor(step: Step, stepById: Map<string, Step>): string {
   const titleOf = (dep: Step): string => dep.plainTitle || dep.title
+  // A validation gate first: the way back in comes before anything else.
+  const gate = step.blockers.find((b): b is Extract<Blocker, { kind: 'step' }> => b.kind === 'step' && GATING_SUBJECTS.some((subject) => blockerStepId(subject) === b.stepId))
+  if (gate && stepById.get(gate.stepId)) return BLOCKED_REASON.after(titleOf(stepById.get(gate.stepId)!))
   const stepBlocker = step.blockers.find((b): b is Extract<Blocker, { kind: 'step' }> => b.kind === 'step')
   if (stepBlocker) return BLOCKED_REASON.after(stepById.get(stepBlocker.stepId) ? titleOf(stepById.get(stepBlocker.stepId)!) : stepBlocker.stepId)
   const waitedOn = step.blockedBy.map((id) => stepById.get(id)).find((dep): dep is Step => dep !== undefined && dep.status !== 'done' && dep.status !== 'skipped')

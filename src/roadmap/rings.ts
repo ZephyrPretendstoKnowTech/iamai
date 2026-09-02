@@ -5,7 +5,6 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NamingConvention } from '../coverage/naming.ts'
 import { proposedGroupName } from '../coverage/naming.ts'
-import { RINGS } from '../copy/rings.ts'
 import type { Ring, RingTargeting, Step } from './types.ts'
 import { canDenyAccess } from './strand.ts'
 
@@ -187,22 +186,21 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   if (!cached) {
   if (band.pilot > 0) {
     const pilotIds = take(pickPilot(remaining, Math.min(band.pilot, total), ctx))
-    drafts.push({ name: RINGS.pilot, who: null, ids: pilotIds, kind: 'group', departments: [] })
+    drafts.push({ name: 'pilot', who: null, ids: pilotIds, kind: 'group', departments: [] })
   }
   if (band.rings >= 3) {
     const it = [...remaining].filter((id) => isIt(ctx.departmentOf.get(id)))
     const itSet = new Set(it)
     const extra = spreadByDepartment(remaining, ctx, Math.round(total * band.ring1Share), (id) => itSet.has(id))
     const itNames = [...new Set(it.map((id) => ctx.departmentOf.get(id) as string))]
-    drafts.push({ name: RINGS.ring(1, RINGS.itAndEarly), who: RINGS.itAndEarly, ids: take([...it, ...extra]), kind: 'group', departments: itNames })
+    drafts.push({ name: 'ring-1', who: null, ids: take([...it, ...extra]), kind: 'group', departments: itNames })
   }
   if (band.rings >= 4) {
     const depts = [...departmentsOf([...remaining], ctx).entries()].sort((a, b) => b[1].length - a[1].length).slice(0, band.ring2Departments)
     const names = depts.map(([d]) => d)
-    const who = names.length === 2 ? RINGS.and(names[0], names[1]) : names[0] ?? RINGS.otherDepartments
-    drafts.push({ name: RINGS.ring(2, who), who, ids: take(depts.flatMap(([, ids]) => ids)), kind: 'group', departments: names })
+    drafts.push({ name: 'ring-2', who: null, ids: take(depts.flatMap(([, ids]) => ids)), kind: 'group', departments: names })
   }
-  drafts.push({ name: RINGS.everyone, who: null, ids: take([...remaining]), kind: 'all', departments: [] })
+  drafts.push({ name: 'everyone', who: null, ids: take([...remaining]), kind: 'all', departments: [] })
   partitionCache.set(step.population.ids, drafts)
   }
 

@@ -58,11 +58,6 @@ test('on every fixture the plan has no Setup step, and the emergency-access step
   for (const f of allFixtures()) {
     const r = runFixture(f)
     assert.equal(r.steps.some((s) => s.id === 's-setup-questions'), false, `${f.name}: nothing is asked before the plan exists`)
-    const bg = r.steps.find((s) => s.id === BREAK_GLASS_STEP_ID)
-    if (bg) {
-      assert.ok(bg.tickable?.some((t) => /passphrase/.test(t.text)), `${f.name}: passphrase done-when line`)
-      assert.ok(bg.tickable?.some((t) => /raises an alert/.test(t.text)), `${f.name}: sign-in alert done-when line`)
-    }
     // "Answer it in Setup" has no producer (item 22); a check a failed read kept
     // from running is one housekeeping line, never a reason or a recommendation.
     assert.equal(r.steps.some((s) => [...s.unblockNotes, ...s.action.summary].some((t) => /Answer it in Setup/.test(t))), false, `${f.name}: no Setup link`)

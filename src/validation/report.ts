@@ -66,7 +66,6 @@ export function toValidationResult(results: RuleResult[], checkedAt = new Date()
     checkedAt,
     passed: toFix === 0,
     findings: shown.map((r) => r.finding as string),
-    actions: shown.map((r) => r.fix ?? null),
     toFix,
     unknown,
     recommended,

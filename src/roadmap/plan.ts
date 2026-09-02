@@ -7,7 +7,7 @@ import { emptyMappingState } from '../mapping/types.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
 import type { PlanDecisions, StepDecision } from './decisions.ts'
-import { PROGRESS } from '../copy/progress.ts'
+import { engine } from '../content/content.ts'
 
 export const PLAN_SCHEMA_VERSION = 2
 
@@ -133,7 +133,6 @@ export function fileStep(s: Step): Step {
     ...s,
     comms: null,
     forManager: '',
-    rollback: '',
     unblockNotes: [],
     cantSee: [],
     dateNotes: [],
@@ -207,7 +206,7 @@ export function buildPlanFile(args: {
     checkpoints: trimCheckpoints(args.checkpoints),
     ...(args.schedule ? { schedule: args.schedule } : {}),
     revision: args.revision ?? 1,
-    revisions: args.revisions ?? [{ revision: 1, at: new Date().toISOString(), note: PROGRESS.revisionNote.created }],
+    revisions: args.revisions ?? [{ revision: 1, at: new Date().toISOString(), note: engine.planFile.revisionCreated }],
     baselinePin: args.baselineSource.kind === 'github' ? args.baselineSource.commit : null,
   }
 }
@@ -250,7 +249,7 @@ export function upgradePlanFile(parsed: PlanFile): PlanFile {
     schemaVersion: PLAN_SCHEMA_VERSION,
     steps: base.steps.map((s) => upgradeStep(s)),
     revision: typeof parsed.revision === 'number' ? parsed.revision : 1,
-    revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [{ revision: 1, at, note: PROGRESS.revisionNote.imported }],
+    revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [{ revision: 1, at, note: engine.planFile.revisionImported }],
     baselinePin: parsed.baselinePin ?? (base.baseline.source.kind === 'github' ? base.baseline.source.commit : null),
   }
 }

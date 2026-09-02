@@ -11,13 +11,12 @@ import type { TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { detectEmergencyAccess, emergencySignals } from '../../mapping/emergencyAccess.ts'
-import { EMERGENCY_SIGNAL } from '../../copy/setup.ts'
 import { suggestCountries, countryName } from '../../mapping/countries.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { fillText, missingVars } from '../../content/render.ts'
-import { shared } from '../../content/content.ts'
+import { engine, shared } from '../../content/content.ts'
 
 export type PickerContext = {
   snapshot: TenantSnapshot
@@ -79,7 +78,7 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     const rows = ids.map((id) => {
       const u = userOf(id)
       const signals = candidates.find((c) => c.id === id)?.signals ?? (u ? emergencySignals(u, snapshot, policies) : [])
-      return row(template, { name: nameOf(id), upn: u?.userPrincipalName ?? undefined, signals: signals.map((s) => EMERGENCY_SIGNAL[s] ?? s).join(', ') || undefined })
+      return row(template, { name: nameOf(id), upn: u?.userPrincipalName ?? undefined, signals: signals.map((s) => engine.emergencySignals[s] ?? s).join(', ') || undefined })
     })
     return vars('emergencyCandidates', rows, ids, tickedFrom(mapping.breakGlassUserIds, ids))
   }

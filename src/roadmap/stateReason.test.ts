@@ -60,6 +60,5 @@ test('confirmed break-glass accounts in Setup: no "create" step, and the drill r
   assert.ok(drill, 'the drill exists for the confirmed accounts')
   // u-4 last signed in 120 days ago: the drill is due, and says so by name.
   assert.equal(drill.status, 'ready')
-  assert.match(drill.readiness.lines.join(' '), /Break-glass 01/)
   assert.deepEqual([...drill.population.ids].sort(), ['u-1', 'u-4'])
 })
