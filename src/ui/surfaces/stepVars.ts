@@ -17,6 +17,7 @@ import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { sessionWantedForGoal, strengthForGoal } from './stepPortal.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { pickerVars } from './pickerRows.ts'
+import { DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
@@ -155,6 +156,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // failing checks routed through the content checkFixes, the counts for the
   // "{failing} of {total}" line, the operator's own account and the tenant id
   // from the session, and the values the create instructions name.
+  // The exclusions group's create instructions show while no group is recognised
+  // (its checks need a group to check, so they cannot say so).
+  if (DECISION_STEPS.exclusions.has(step.id)) v.needsCreate = (ctx.mapping.records['__globalExclusion']?.resolvedId ?? null) === null
   if (step.checks) {
     v.failing = step.checks.failing
     v.total = step.checks.total

@@ -72,6 +72,7 @@ import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
 import { blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
+import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
@@ -520,14 +521,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (bgMissing) {
     steps.push(prereq(bgStepId))
   }
-  const geMissing = canUseConditionalAccess && mapping.records['__globalExclusion']?.doesNotExist === true
+  // The exclusions group is a step on every plan, never removed: In place when
+  // the recognised group is excluded from every policy the plan touches (the
+  // tenant's policies its goals map to), otherwise Ready, listing the policies
+  // that do not exclude it (its checks, attached below) and carrying the create
+  // instructions while no group is recognised. Every object the plan asks for
+  // carries a proposed name in the tenant's own convention (prompt 43 item 4).
   const geStepId = PREREQ_STEP_ID.exclusionsGroup
-  if (geMissing) {
-    // Every object the plan asks for carries a proposed name, in the tenant's own
-    // convention (prompt 43 item 4). The copy's example name stays as the shape;
-    // this adds the one IAMAI would actually use here.
+  const recognisedGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
+  if (canUseConditionalAccess) {
+    const touched = new Set(
+      input.coverage.results
+        .filter((r) => (inBaseline(r.goal) || isFloorGoal(r.goal.id)) && r.status !== 'not-applicable' && r.status !== 'licence-limited')
+        .flatMap((r) => r.candidates.map((c) => c.policyId)),
+    )
+    const excludesGroup = (policyId: string): boolean => {
+      const raw = (snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === policyId) as { conditions?: { users?: { excludeGroups?: string[] } } } | undefined
+      return (raw?.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === (recognisedGroupId ?? '').toLowerCase())
+    }
+    const inPlace = recognisedGroupId !== null && [...touched].every(excludesGroup)
     const proposed = proposedObjectNames(naming).exclusionsGroup
-    steps.push({ ...prereq(geStepId), naming: { proposed: proposed.name, fromBaseline: null } })
+    steps.push({
+      ...prereq(geStepId),
+      naming: { proposed: proposed.name, fromBaseline: null },
+      status: inPlace ? 'done' : 'ready',
+      deliveredBy: inPlace && recognisedGroupId !== null ? [recognisedGroupId] : [],
+    })
   }
   // The trusted network is a step on every plan, never removed: Ready with its
   // create instructions while the tenant has no IP named location, In place once
@@ -640,7 +659,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     validationReports.push(reportFor('allowedCountries', [tenantCountryLocation(snapshot, mapping.allowedCountries)], validationCtx))
   }
   if (mapping.serviceAccountUserIds.length > 0) validationReports.push(reportFor('serviceAccount', [''], validationCtx))
-  const gate = canUseConditionalAccess ? gateReason(validationReports) : null
+  // The exclusions group's checks sit on its own step; a step already In place holds nothing.
+  const geReport = validationReports.find((r) => r.subject === 'exclusionGroup')
+  const geStep = steps.find((s) => s.id === geStepId)
+  if (geStep && geReport) geStep.checks = stepChecks(geReport)
+  let gate = canUseConditionalAccess ? gateReason(validationReports) : null
+  if (gate !== null && steps.find((s) => s.id === gate?.stepId)?.status === 'done') gate = null
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
   const validationSteps = blockerSteps(validationReports)
