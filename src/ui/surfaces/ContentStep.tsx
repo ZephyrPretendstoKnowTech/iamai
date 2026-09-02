@@ -13,7 +13,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepPortalLines } from './stepPortal.ts'
+import { stepPortalLines, stepPortalLinesFromBody } from './stepPortal.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
@@ -81,7 +81,11 @@ export function ContentStep({
   const who = cs.who || {}
   const d = cs.decision
   const w = cs.whatToDo || {}
-  const portalLines = cs.kind === 'policy' ? stepPortalLines(step.goalId, { nameOf: ctx.nameOf, policyName: String(ex.policyName ?? cs.title), strengthName: (ex as { strengthName?: string }).strengthName ?? null }) : null
+  const portalNames = { nameOf: ctx.nameOf, policyName: String(ex.policyName ?? cs.title), strengthName: (ex as { strengthName?: string }).strengthName ?? null }
+  // The baseline's policy through the translator; a floor step (Microsoft
+  // recommended, not in this baseline) renders Microsoft's template the engine
+  // resolved for this tenant, through the same translator.
+  const portalLines = cs.kind === 'policy' ? (stepPortalLines(step.goalId, portalNames) ?? (step.floor && step.action.json ? stepPortalLinesFromBody(step.action.json, portalNames) : null)) : null
   // A goal the baseline holds no policy for has no portal lines; an empty list is
   // not a What to do (the shared-devices step rendered an empty section).
   const portal = portalLines && portalLines.length > 0 ? portalLines : null

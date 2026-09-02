@@ -80,6 +80,24 @@ export function strengthForGoal(goalId: string): string | null {
   return null
 }
 
+/**
+ * The portal lines for a policy body the engine built — the floor's step, whose
+ * goal the baseline does not hold, renders Microsoft's template (resolved with
+ * the tenant's objects) through the same translator as a baseline policy. The
+ * exclusions read as the exclusions group, never the emergency accounts by name.
+ */
+export function stepPortalLinesFromBody(json: string, names: PortalNames): string[] | null {
+  let body: Record<string, unknown>
+  try {
+    body = JSON.parse(json) as Record<string, unknown>
+  } catch {
+    return null
+  }
+  const p: PinnedPolicy = { id: null, displayName: String(body.displayName ?? names.policyName), conditions: body.conditions ?? null, grantControls: body.grantControls ?? null, sessionControls: body.sessionControls ?? null, placeholders: {} }
+  const lines = portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names))
+  return lines.length > 0 ? lines : null
+}
+
 export function stepPortalLines(goalId: string, names: PortalNames): string[] | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
   if (mapped.length === 0) return null

@@ -205,6 +205,8 @@ export type Step = {
   forManager: string
   /** A rung of the free-tier ladder (SPEC §12): the plan itself, never groundwork for a policy. */
   ladder?: boolean
+  /** Microsoft recommended, not in this baseline (target-state §13, floor.ts): rendered from Microsoft's template because the active baseline lacks the goal. */
+  floor?: boolean
   /** A must-fix validation subject (validation-rules.md §2); leads every surface. */
   validationBlocker?: boolean
   // ---- prompt 48: the lockout-scenario lines from this tenant's evidence ----

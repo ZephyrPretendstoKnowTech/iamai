@@ -21,6 +21,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { absentStepIds } from '../src/roadmap/baselineScope.ts'
+import { isFloorGoal } from '../src/roadmap/floor.ts'
 import { steps as contentSteps } from '../src/content/content.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
 
@@ -46,7 +47,9 @@ const contractById = Object.fromEntries((contracts.surfaces ?? []).map((c) => [c
 // The titles and goal names that must never appear as a plan row: the content
 // steps absent from the pinned baseline, and the catalogue names of the goals
 // the pinned map does not hold.
-const ABSENT_STEP_IDS = new Set(absentStepIds())
+// The floor (target-state §13) renders registration protection and the legacy block
+// from Microsoft's templates when the baseline lacks them; they are not absent.
+const ABSENT_STEP_IDS = new Set(absentStepIds().filter((id) => !isFloorGoal(id)))
 const ABSENT_TITLES = new Set(contentSteps.filter((s) => ABSENT_STEP_IDS.has(s.id)).map((s) => s.title))
 const CATALOGUE_TITLES = new Map(goalsData.goals.map((g) => [g.id, g.name]))
 const ABSENT_GOAL_NAMES = new Set([...ABSENT_STEP_IDS].flatMap((id) => (CATALOGUE_TITLES.has(id) ? [CATALOGUE_TITLES.get(id)] : [])))

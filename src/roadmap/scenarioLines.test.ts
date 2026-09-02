@@ -6,7 +6,6 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { PINNED_GOAL_MAP } from './goalMap.ts'
 
 // Prompt 50 item 10: at least twelve of the twenty-two lockout scenarios fire on
 // the demo, and the property test names which — so the demo keeps showing them.
@@ -19,8 +18,7 @@ const DEMO_SCENARIOS = [
   'gdap', // 11
   'guests', // 6
   'legacyClient', // 1/7/21
-  // noMethodRemote (14) is hosted by register-info-protected, which the pinned
-  // baseline does not hold (walk-51 item 9); it returns with the floor.
+  'noMethodRemote', // 14 — hosted by register-info-protected, the floor's step (target-state §13)
   'passwordNotTyped', // 12
   'ropc', // 19
   'servers', // 16
@@ -73,24 +71,13 @@ const EVIDENCE_KINDS = [
   'noMethodRemote',
 ]
 
-// A scenario whose only host goal the pinned baseline does not hold cannot fire
-// on a fixture (walk-51 item 9: absent goals never render); it is proven with a
-// map that holds the goal, as an uploaded baseline holding it would.
-const HOSTED_BY_ABSENT_GOAL: Record<string, string> = { noMethodRemote: 'register-info-protected' }
-
+// noMethodRemote is hosted by register-info-protected, which the pinned baseline
+// does not hold; the floor (target-state §13) renders that step from Microsoft's
+// template, so the scenario fires on the fixtures again.
 test('every evidence-derived scenario line fires on at least one fixture', () => {
   const seen = new Set<string>()
   for (const f of allFixtures()) for (const s of runFixture(f).steps) for (const l of s.scenarioLines ?? []) seen.add(l.kind)
-  for (const kind of EVIDENCE_KINDS) {
-    if (HOSTED_BY_ABSENT_GOAL[kind]) continue
-    assert.ok(seen.has(kind), `${kind} fires on no fixture`)
-  }
-  for (const [kind, goalId] of Object.entries(HOSTED_BY_ABSENT_GOAL)) {
-    assert.ok(!seen.has(kind), `${kind} fires although ${goalId} is absent from the pinned baseline`)
-    const withGoal = new Set<string>()
-    for (const f of allFixtures()) for (const s of runFixture(f, { goalMap: { ...PINNED_GOAL_MAP, [goalId]: ['(a baseline that holds it)'] } }).steps) for (const l of s.scenarioLines ?? []) withGoal.add(l.kind)
-    assert.ok(withGoal.has(kind), `${kind} fires on no fixture even with ${goalId} held`)
-  }
+  for (const kind of EVIDENCE_KINDS) assert.ok(seen.has(kind), `${kind} fires on no fixture`)
 })
 
 test('a line names real people (or a real count) — no empty scenario line', () => {
