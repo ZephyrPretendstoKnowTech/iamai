@@ -18,7 +18,9 @@ const REQUEST_HOSTS = new Set(['graph.microsoft.com', 'login.microsoftonline.com
 // getiamai.com is the site's own origin: the home page links to itself and
 // declares its OpenGraph URL and image there. A social scraper fetches the
 // image; the page never does.
-const LINK_HOSTS = new Set(['learn.microsoft.com', 'entra.microsoft.com', 'aka.ms', 'github.com', 'www.linkedin.com', 'example.test', 'react.dev', 'www.w3.org', 'localhost', 'getiamai.com', 'www.getiamai.com'])
+// whatismyip.com is where the trusted-network step's instructions (content.json)
+// send a person to read the office's public address; the app never fetches it.
+const LINK_HOSTS = new Set(['learn.microsoft.com', 'entra.microsoft.com', 'aka.ms', 'github.com', 'www.linkedin.com', 'example.test', 'react.dev', 'www.w3.org', 'localhost', 'getiamai.com', 'www.getiamai.com', 'whatismyip.com'])
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
