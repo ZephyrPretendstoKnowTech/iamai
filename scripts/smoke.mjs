@@ -369,7 +369,9 @@ try {
   await sleep(1500)
   check('Unlicensed tenant: the plan still generates', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
   t = await text()
-  check('Unlicensed tenant: the ladder steps are the plan', /Switch on the free protection|Keep two emergency accounts/.test(await text()))
+  // The ladder steps carry the data file's names as their titles (prune C).
+  const ladderNames = JSON.parse(readFileSync('data/free-tier-ladder.json', 'utf8')).items.map((i) => i.name)
+  check('Unlicensed tenant: the ladder steps are the plan', ladderNames.filter((n) => t.includes(n)).length >= 2, ladderNames.filter((n) => t.includes(n)).join(' | '))
   t = await text()
   check('Unlicensed tenant: nothing asks for objects a policy would reference', !/Create a trusted named location|Create the exclusions group/.test(t))
   check(

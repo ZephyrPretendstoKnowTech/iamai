@@ -3,7 +3,7 @@
 // their words: an expired session pauses with Sign in again; a slow sign-in
 // service says so. The section list and the diagnostics bundle are developer
 // tools, under ?dev=1 only.
-import { app } from '../../content/content.ts'
+import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { lowerFirst } from '../../copy/statements.ts'
 import { ACCESS } from '../../copy/access.ts'
@@ -57,7 +57,7 @@ export function ScanProgress({ runner }: { runner: ScanRunner }) {
       {runner.state === 'running' && runner.slow && <Callout kind="warning">{CONNECT.slow}</Callout>}
       <p className="actions">
         <Button variant="secondary" onClick={runner.stop}>
-          {CONNECT.stop}
+          {(pages.connectNoScan as { stop: string }).stop}
         </Button>
       </p>
     </>
