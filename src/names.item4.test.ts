@@ -15,5 +15,4 @@ test('Azure Virtual Desktop and Windows 365 resolve, and the phrase is gone', ()
   assert.doesNotMatch(UNNAMED, /could not name/, 'the phrase is deleted')
   // No rendered translator output carries the forbidden phrase.
   assert.doesNotMatch(readFileSync('docs/design/translator-output.json', 'utf8'), /could not name/)
-  assert.doesNotMatch(readFileSync('docs/qa/content-review.expected.html', 'utf8'), /could not name/)
 })

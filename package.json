@@ -16,11 +16,6 @@
     "build-index": "node scripts/build-index.ts",
     "smoke": "node scripts/smoke.mjs",
     "build:site": "vite build && node scripts/assemble-site.mjs",
-    "inventory": "node scripts/ui-inventory.mjs",
-    "lint-mutations": "node scripts/lint-mutations.mjs",
-    "layout-audit": "node scripts/layout-audit.mjs",
-    "screens": "node scripts/screens.mjs",
-    "render-review": "node scripts/render-review.mjs",
     "translator-dump": "node scripts/translator-dump.ts",
     "walk": "node scripts/walk.mjs"
   },

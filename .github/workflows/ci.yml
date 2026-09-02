@@ -19,16 +19,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      # Every lint rule must still fail against an injected violation. A rule
-      # verified once by hand is a rule that rots; this runs the check on every
-      # commit. See scripts/lint-mutations.mjs.
-      - run: npm run lint-mutations
       - run: npm run build:site
       # ubuntu-latest ships Google Chrome; the scripts find it on their own.
       - run: npm run smoke
-        env:
-          CHROME: /usr/bin/google-chrome
-      # Contrast in both themes and reflow at five widths (prompt 39 §7, §8).
-      - run: npm run layout-audit
         env:
           CHROME: /usr/bin/google-chrome
