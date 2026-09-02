@@ -33,6 +33,8 @@ export type StepVarContext = {
   firstEnforce?: string | null
   /** This step's report-only creation date (ISO), for a policy step's dates line. */
   reportOnlyAt?: string | null
+  /** The one active-people count (Today's denominator), so every step's summary line agrees (walk-51 item 8). */
+  activePeople?: number
 }
 
 /** The long form, in the display time zone, only when the instant is real. */
@@ -62,7 +64,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   const v: Record<string, unknown> = {
     tenant: orgName(ctx.snapshot),
     tenantName: orgName(ctx.snapshot),
-    active: pop.active,
+    // The summary line's active count is the one denominator (Today's), the same
+    // on every step; the step's own scope stays in `n`/`inScope` (§8.1, item 8).
+    active: ctx.activePeople ?? pop.active,
     admins: pop.admins,
     guests: pop.guests,
     total: pop.total,

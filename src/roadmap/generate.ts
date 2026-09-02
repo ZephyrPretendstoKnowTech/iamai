@@ -568,6 +568,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const expectedCache = new Map<string, string[]>()
   const populationCache = new Map<string, StepPopulation>()
   const readinessCache = new Map<string, Readiness>()
+  // One readiness per family, over that family's canonical population (walk-51
+  // item 8): the same number on every step of a kind, and on the campaign — all
+  // people for MFA and devices, admins for admin, guests for guest. The goal
+  // loop keys the cache by family, so these seeds are what every step of the
+  // family reads; a family without a seed (block, risk, location) is usage, not
+  // a readiness percentage, and its first goal fills the cache.
+  {
+    const allActive = viability.map((v) => v.userId)
+    const adminIds = [...adminUserIds(snapshot.roles)]
+    const guestIds = snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)
+    readinessCache.set('mfa', readinessFor('mfa-all-users', allActive, viability, snapshot))
+    readinessCache.set('device', readinessFor('require-managed-device', allActive, viability, snapshot))
+    readinessCache.set('admin', readinessFor('admins-phishing-resistant', adminIds, viability, snapshot))
+    readinessCache.set('guest', readinessFor('guests-mfa', guestIds, viability, snapshot))
+  }
   const readyActiveCache = new Map<string, number>()
   // Everyone the proposed policies exclude is out of every step's population:
   // break-glass accounts, confirmed service accounts, and the members of the
@@ -881,7 +896,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const popIds = expectedCache.get(whoKey) ?? []
     if (!populationCache.has(whoKey)) populationCache.set(whoKey, population(popIds, popIndex))
     const pop = { ...(populationCache.get(whoKey) as StepPopulation) }
-    const readinessKey = `${goalFamily(goal.id)}|${whoKey}`
+    const readinessKey = goalFamily(goal.id)
     if (!readinessCache.has(readinessKey)) readinessCache.set(readinessKey, readinessFor(goal.id, popIds, rowsFor(popIds), snapshot))
     const readiness = { ...(readinessCache.get(readinessKey) as Readiness), lines: [...(readinessCache.get(readinessKey) as Readiness).lines] }
     const matchedPolicyId = findTaggedPolicy(snapshot, planId, stepId)
@@ -1305,7 +1320,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const p = PREREQ.verifyMfa
     // Verification complete on this scan → the campaign is done and the
     // scheduler skips its window (prompt 18 §1).
-    const verifyReadiness = readinessFor('mfa-all-users', viability.map((v) => v.userId), viability, snapshot)
+    const verifyReadiness = readinessCache.get('mfa') ?? readinessFor('mfa-all-users', viability.map((v) => v.userId), viability, snapshot)
     // Required whenever anyone enabled still has to be set up (ux-review-04 §2):
     // the Overview sentence, the blocked-step reasons and the pace all read
     // from this one number.

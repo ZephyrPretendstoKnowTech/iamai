@@ -123,7 +123,7 @@ test('the short and long date forms name the same day, one short format everywhe
 // branch, is the resolution there.
 test('the guests step fills its strength; the partner line is whole or dropped', () => {
   assert.ok(strengthForGoal('guests-mfa'), 'the guests strength derives from the baseline')
-  const guestsContent = content.steps.find((s) => s.id === 'guests-mfa') as { who: { evidence: string[] }; decision: { help: string } }
+  const guestsContent = content.steps.find((s) => s.id === "guests-mfa") as unknown as { who: { evidence: string[] }; decision: { help: string } }
   let checked = false
   for (const f of allFixtures()) {
     const run = runFixture(f)
@@ -138,4 +138,29 @@ test('the guests step fills its strength; the partner line is whole or dropped',
   assert.ok(checked, 'a fixture carries the guests step')
   const partnerLine = guestsContent.who.evidence.find((l) => l.includes('{partners}'))!
   assert.ok(missingVars(partnerLine, { n: 3, from: 'Aug 1' }).includes('partners'), 'the partner line drops when partners is not derived')
+})
+
+// Prompt 52, walk-51 item 8: one readiness value per family and one active-people
+// count on every step, matching Today — the walk found rows at "now 34%" and
+// "now 37%" for MFA, and Today at 33 active while the campaign said 30. Checked
+// on the demo and GetIAMAI (item 8/17: GetIAMAI beside the demo in the fixtures).
+test('one readiness per family and one active-people count, on the demo and GetIAMAI', () => {
+  for (const f of allFixtures().filter((x) => x.name === 'demo' || x.name === 'getiamai')) {
+    const run = runFixture(f)
+    const tv = todayView(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds))
+    const byFamily: Record<string, Set<number>> = {}
+    for (const s of run.steps) {
+      const r = s.readiness
+      if (r && r.percent != null) (byFamily[r.family] ??= new Set()).add(r.percent)
+    }
+    for (const [family, set] of Object.entries(byFamily)) {
+      assert.equal(set.size, 1, `${f.name}: ${family} readiness is one value, got ${[...set].join(', ')}`)
+    }
+    const camp = run.steps.find((s) => s.id === 's-verify-mfa')
+    if (camp) {
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: f.snapshot.asOf, activePeople: tv.tiles.active }
+      const ex = stepVars(camp, ctx) as Record<string, unknown>
+      assert.equal(ex.active, tv.tiles.active, `${f.name}: the campaign summary uses Today's active count`)
+    }
+  }
 })

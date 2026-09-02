@@ -1,5 +1,5 @@
 {
- "fingerprint": "32249e469f870deb",
+ "fingerprint": "4d89a953fa366bea",
  "surfaces": [
   {
    "name": "Header",
@@ -2006,7 +2006,7 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedProtect Sign-in Method Registration3 peoplewhen MFA readiness reaches 90% (now 33%)",
+     "text": "BlockedProtect Sign-in Method Registration3 peoplewhen MFA readiness reaches 90% (now 25%)",
      "sentences": 1,
      "words": 11
     },
