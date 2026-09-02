@@ -73,9 +73,50 @@ when its findings are gone from the next walk. Updated at every unit boundary.
   when the map describes the loaded package — that fallback had picked the risky-users block the
   owner ruled out.
 
+- **Unit 4 — the demo is the show.** The walk now runs the three-minute path's last stop: after
+  day one it presses the header's Scan to update the plan, waits for the week-two banner, and
+  walks the plan and Today again at both widths, checking that the exclusions-group step is gone.
+  That found two product faults, both fixed: (1) the plan hook computed the new snapshot with the
+  previous mapping for a render (the load is asynchronous), so the old exclusions step flashed on
+  week two — the plan now computes only from a mapping and group members loaded for the snapshot
+  on screen; (2) the plan loaded members only for the groups the tenant's policies reference, so
+  the mapping's own exclusions group (created by the plan, not yet excluded by a policy) had no
+  members and the checks engine kept a "Create or Correct Exclusions Group" step for a group
+  already right — the plan now loads the mapping's exclusions and service-accounts groups too. A
+  quick second Re-scan could also let an earlier demo load land last (day one's plan under week
+  two's banner); the demo effect now discards stale loads. Fixture junk: none new beyond the
+  Boardroom room (Unit 1).
+- **Unit 7 — print and export** (test: `src/exportsClean.test.ts`). Every export speaks from
+  the content-driven step (`src/ui/surfaces/stepExport.ts`: the content title, why, the
+  translator's What to do, the done-when lines, the dates, if-it-goes-wrong): the calendar
+  entry's description, the prompt pack's step text, the grounding bundle's steps (data beside the
+  content lines; the engine's finding statements stay out) and the plan file, whose saved steps
+  keep every number, date, status and policy body and have the v2 prose fields emptied
+  (`fileStep`); a step without a content entry (a free-tier ladder rung) exports its title and
+  nothing of the engine's prose, as the screen shows nothing for it. The print renders every
+  step through the same `ContentStep` the screen uses, with More open, and prints the Cleanup
+  phase's rows; page 1 is per §7 (in place / to do / doesn't apply, and the Not-licensed count and
+  sentence). The plan-file round trip is tested in `stepDecisions.test.ts` and `startPlan.test.ts`
+  (decisions) and `plan.test.ts` (steps, answers, checkpoints); the calendar in `exports.test.ts`
+  and `exportsClean.test.ts`. The smoke's print check now holds the print to the `plan.step`
+  forbid list (More's own headings allowed) as well as forbid-everywhere.
+- **Unit 8 — performance.** The plan derives under 200 ms for every fixture, demo and GetIAMAI
+  included — asserted per fixture by `properties.test.ts` (best of three, 500 ms for huge). The
+  walk now measures the demo's first load on a "Fast 3G" profile (1.6 Mbit/s, 150 ms) against the
+  production bundle served statically with gzip, from navigation to the first plan row: **2.7 s**
+  against the 2 s target (P1, §2). The sign-in library (61 kB gzipped) and the Export, How and
+  Inventory surfaces now load on demand (`src/graph/auth.ts`, `React.lazy`), which took the first
+  chunk from 363 kB to 98 kB gzipped; the remaining 161 kB gzipped chunk is the engine, the
+  content file, the pinned baseline and the goal catalogue, all needed for any plan. Nothing
+  re-derives on scroll: the plan is a memo over the snapshot, mapping, groups and decisions, and
+  the page has no scroll listener (Back to top was removed). See §6 for the levers left.
+
 ## 2. The last walk's remaining findings
 
-`docs/reports/walk-<sha>.md` for the latest sha: **0 P0**, 2 P1, 20 P2.
+`docs/reports/walk-<sha>.md` for the latest sha: **0 P0**, 3 P1, 37 P2 (the P2s doubled because
+the walk now covers week two as well as day one).
+
+- P1: the demo's first load on a throttled connection is 2.7 s to the first plan row (Unit 8).
 
 - P1: two Learn links in `content.json` answer 404 —
   `https://learn.microsoft.com/entra/identity/users/users-inactive` (the problematic-accounts
@@ -83,7 +124,7 @@ when its findings are gone from the next walk. Updated at every unit boundary.
   (the admins phishing-resistant step). Content, not editable here.
 - P2 (contract questions, see §6): the copy box and the decision are contract repeaters, so an
   email body and a picker's people rows are measured as rows against the 2-sentence / 30-word
-  row budget on eight steps.
+  row budget on eight steps (day one and week two).
 - P2 (the private plan file): three saved steps for goals the baseline does not hold (the file
   predates item 9; the next save drops them); the saved steps' v2 fields (rings, exit criteria,
   what-changes, failure modes, help desk, comms) carry old vocabulary that no v3 surface renders
@@ -105,6 +146,11 @@ when its findings are gone from the next walk. Updated at every unit boundary.
   the never-signed-in branch and the plain short date for the other; no new prose.
 - The in-app GetIAMAI walk is not possible tonight (§6); the demo is walked in full and the plan
   file is scanned offline.
+- The first-load figure through the dev server (hundreds of unbundled modules at 150 ms each,
+  no plan within 30 s) says nothing about a visitor and was discarded; the measurement builds the
+  production bundle and serves it statically with gzip, as GitHub Pages does.
+- The four preloaded font faces (about 90 kB) share the throttled link with the first chunk;
+  changing font loading changes the first paint, which is a design call (§6), so they stay.
 - The first night-1 push failed CI twice for reasons outside the product: the `github-pages`
   environment's branch policy allowed only `main`, so the preview deploy was refused — `night-1`
   was added to the policy (Settings → Environments → github-pages; reversible); and the runner's
@@ -129,10 +175,21 @@ when its findings are gone from the next walk. Updated at every unit boundary.
 - `src/roadmap/template.test.ts` item 12 — old: every create step is a goal the pinned map holds;
   new: or a floor goal, flagged. Reason: the floor.
 
+- `src/roadmap/tracking.test.ts` "a v1 file loads as an equivalent v2 plan" — old: a loaded v1
+  step's what-changes line is non-empty; new: the field exists (a string). Reason: the plan file
+  no longer carries the v2 prose (Unit 7), so an upgrade has nothing to restore into it.
+- `src/roadmap/fixtures/properties.test.ts` "the plan file round-trips with every number
+  preserved" — old: the rings deep-equal; new: the rings' dates and member counts equal. Reason:
+  the ring criteria prose does not travel (Unit 7); the numbers do.
+- `src/roadmap/fixtures/properties.test.ts` "owner travels with the plan file" — old: the moved
+  step's rings deep-equal; new: their dates equal. Reason: as above.
+- `scripts/smoke.mjs` "the print document carries no forbidden placeholder" — new: the print is
+  also held to the `plan.step` forbid list, minus More's own headings. Reason: Unit 7.
+
 Added: `src/ui/surfaces/night1.test.ts` (shared-reference holes, the report-only date from the
 scan, `{wanted}` in words, the dormant accounts list and count, the Show list's order, the
-Boardroom room's consistency), `src/roadmap/floor.test.ts`. The inventory was regenerated after
-each UI change (fingerprint only; no rule waived).
+Boardroom room's consistency), `src/roadmap/floor.test.ts`, `src/exportsClean.test.ts`. The
+inventory was regenerated after each UI change (fingerprint only; no rule waived).
 
 ## 5. Content keys the reviewer must write
 
@@ -160,8 +217,18 @@ each UI change (fingerprint only; no rule waived).
   five people cannot fit. Either a `rowBudget` on `plan.step`, or those two selectors are not
   rows.
 - **`Back to top`** — removed tonight; if it is wanted, the shell contract needs it.
+- **The 2 s first load.** At 2.7 s on Fast 3G the levers left are design or content calls: the
+  four preloaded font faces (~90 kB on the same link), the content file in the first chunk
+  (~35 kB gzipped; splitting it per surface changes how it is loaded), and the goal catalogue's
+  descriptions (~10 kB gzipped). None is taken tonight.
+- **Cleanup rows in the exports.** The calendar, the prompt pack and the bundle export steps; the
+  Cleanup rows are not steps and are not exported (they print). Whether a Cleanup row should be a
+  calendar entry is open.
 
 ## 7. Resume plan
 
-Queue, in order: (1) done; (2) nothing of 52 remains; (3) the floor — done; (4) the demo is the show; (5)
-theme — done in 52; (6) Cleanup — done in 52; (7) print and export; (8) performance; (9) P2s.
+Queue, in order: (1) done; (2) nothing of 52 remains; (3) the floor — done; (4) the demo is the
+show — done; (5) theme — done in 52; (6) Cleanup — done in 52; (7) print and export — done; (8)
+performance — measured, the 2 s target is a design call (§6); (9) P2s — every P2 in the last walk
+is a contract question or the private plan file's age (§2), none fixable here. The queue is empty;
+the last walk is clean of P0.

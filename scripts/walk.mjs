@@ -17,8 +17,10 @@
 // uses. Exit code 1 when a P0 remains, so a unit is done only when its findings
 // are gone from the next walk.
 import { execSync, spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:http'
+import { gzipSync } from 'node:zlib'
+import { extname, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { absentStepIds } from '../src/roadmap/baselineScope.ts'
 import { isFloorGoal } from '../src/roadmap/floor.ts'
@@ -307,11 +309,16 @@ function checkText(label, text, { emails = false } = {}) {
 }
 
 // Readiness and population values collected across surfaces, checked at the end.
-const readiness = new Map() // kind -> Set(values)
-const populations = new Set()
+// Per fixture (day one and week two legitimately differ): kind -> Set(values).
+const readinessBy = new Map()
+const populationsBy = new Map()
+let currentFixture = 'demo'
+const readinessOf = (name) => { if (!readinessBy.has(name)) readinessBy.set(name, new Map()); return readinessBy.get(name) }
+const populationsOf = (name) => { if (!populationsBy.has(name)) populationsBy.set(name, new Set()); return populationsBy.get(name) }
 // A readiness value is a "now" — "device readiness 30%", "(now 30%)" — never
 // the threshold a line names ("reaches 80%", "waits for 90%").
 const noteReadiness = (kind, value) => {
+  const readiness = readinessOf(currentFixture)
   if (!readiness.has(kind)) readiness.set(kind, new Set())
   readiness.get(kind).add(value)
 }
@@ -319,7 +326,7 @@ const collect = (text) => {
   for (const m of text.matchAll(/\b(MFA|admin|device|guest)\s+readiness\s+(\d{1,3})%/gi)) noteReadiness(m[1].toLowerCase(), m[2])
   for (const m of text.matchAll(/\b(MFA|admin|device|guest)\s+readiness\s+reaches\s+\d{1,3}%\s*\(now\s+(\d{1,3})%\)/gi)) noteReadiness(m[1].toLowerCase(), m[2])
   for (const m of text.matchAll(/(?<![A-Za-z]\s)\breadiness\s+(\d{1,3})%/gi)) noteReadiness('mfa', m[1])
-  for (const m of text.matchAll(/\b(\d+) active people\b/g)) populations.add(m[1])
+  for (const m of text.matchAll(/\b(\d+) active people\b/g)) populationsOf(currentFixture).add(m[1])
 }
 
 const learnLinks = new Set()
@@ -327,6 +334,22 @@ const learnLinks = new Set()
 // ---- the walk of one fixture ----
 async function walkFixture(fx) {
   const dir = join(OUT, fx.name)
+  // The demo's week two: the header's Scan to update the plan flips the demo to
+  // its week-two snapshot (App.tsx demoWeek2), then the plan is walked again.
+  // The demo's Scan to update the plan toggles week two on and off, and a hash
+  // navigation keeps the page alive, so entering is idempotent: click only
+  // while the banner does not already say week 2.
+  const ensureWeek2 = async () => {
+    if (!fx.week2) return
+    // The demo must have finished loading (rows on the page) before the control is used.
+    await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+    if (await evaluate(`/week 2/i.test(document.body.innerText)`)) return
+    const clicked = await clickText('button, a', /Scan to update the plan/, 'header.app')
+    if (!clicked) add('P0', `${fx.name}: the header offers no Scan to update the plan`)
+    const week2 = await waitFor(`/week 2/i.test(document.body.innerText)`, 10000)
+    if (!week2) add('P0', `${fx.name}: Scan to update the plan does not advance the demo to week two`)
+    await sleep(800)
+  }
   mkdirSync(dir, { recursive: true })
   const summary = []
   const routeContract = { connect: 'connect.scanned', today: 'today', plan: 'plan', export: 'export', how: 'how' }
@@ -335,10 +358,11 @@ async function walkFixture(fx) {
     await setWidth(width)
     const wdir = join(dir, String(width))
     mkdirSync(wdir, { recursive: true })
-    for (const route of ['plan', 'today', 'export', 'how', 'connect']) {
+    for (const route of fx.routes ?? ['plan', 'today', 'export', 'how', 'connect']) {
       const label = `${fx.name} @${width} /${route}`
       await send('Page.navigate', { url: `${fx.base}#/${route}` })
       await sleep(600)
+      await ensureWeek2()
       if (route === 'plan') await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
       await settle()
       const text = await mainText()
@@ -372,6 +396,8 @@ async function walkFixture(fx) {
         const slabel = `${fx.name} @${width} step "${title}"`
         await send('Page.navigate', { url: `${fx.base}#/plan` })
         await sleep(300)
+        await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
+        await ensureWeek2()
         await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
         await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; r.scrollIntoView({ block: 'center' }); r.click() })()`)
         const opened = await waitFor(`document.querySelector('main.page .step-body') !== null`, 4000)
@@ -427,6 +453,7 @@ async function walkFixture(fx) {
       await send('Page.navigate', { url: `${fx.base}#/plan` })
       await sleep(300)
       await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+      await ensureWeek2()
       await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
       await sleep(200)
       const fc = contractById['plan.footer']
@@ -442,6 +469,8 @@ async function walkFixture(fx) {
     }
   }
   for (const t of rowTitles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name}: plan row "${t}" is a goal the baseline does not hold`)
+  // Week two (queue item 4): the re-scan recognised the exclusions group, so its step is gone.
+  if (fx.week2 && rowTitles.some((t) => /Exclusions Group/i.test(t))) add('P0', `${fx.name}: the exclusions-group step still renders in week two, although the re-scan recognised the group`)
   return summary
 }
 
@@ -493,19 +522,79 @@ function scanPlanFile() {
   return { present: true, steps: steps.length, savedAt: redact(plan.createdAt ?? '') }
 }
 
-// ---- run ----
+// ---- the first load, throttled (queue item 8) ----
+//
+// Measured against the production bundle, served statically from dist/ (the
+// dev server hands out hundreds of unbundled modules and says nothing about
+// what a visitor gets), on a "Fast 3G" profile: 1.6 Mbit/s down, 150 ms round
+// trip; from navigation to the first plan row on screen; over 2 s is a P1.
 const started = new Date().toISOString()
-const fixtures = [{ name: 'demo', base: `http://localhost:${PORT}/rollout/?demo=1` }]
+let firstLoadMs = null
+{
+  const STATIC_PORT = PORT + 1
+  let built = existsSync('dist/rollout/index.html')
+  if (!built) {
+    try {
+      execSync('npx vite build', { stdio: 'ignore', env: { ...process.env, TOOL_PATH: 'rollout' } })
+      built = existsSync('dist/rollout/index.html')
+    } catch {
+      built = false
+    }
+  }
+  if (!built) add('P2', 'demo: the production bundle could not be built here, so the throttled first load was not measured')
+  else {
+    const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain' }
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? '/', 'http://localhost')
+      let file = join('dist', decodeURIComponent(url.pathname))
+      try {
+        if (statSync(file).isDirectory()) file = join(file, 'index.html')
+      } catch {
+        res.statusCode = 404
+        res.end()
+        return
+      }
+      res.setHeader('Content-Type', MIME[extname(file)] ?? 'application/octet-stream')
+      // GitHub Pages compresses text; so does this server, or the figure is the wire size of an uncompressed bundle.
+      const body = readFileSync(file)
+      if (/gzip/.test(String(req.headers['accept-encoding'] ?? '')) && /\.(html|js|css|json|svg|txt|webmanifest)$/.test(file)) {
+        res.setHeader('Content-Encoding', 'gzip')
+        res.end(gzipSync(body))
+        return
+      }
+      res.end(body)
+    })
+    await new Promise((r) => server.listen(STATIC_PORT, r))
+    await send('Network.enable')
+    await send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 })
+    const t0 = Date.now()
+    await send('Page.navigate', { url: `http://localhost:${STATIC_PORT}/rollout/?demo=1#/plan` })
+    const ok = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 30000)
+    firstLoadMs = ok ? Date.now() - t0 : null
+    await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
+    await send('Network.disable')
+    server.close()
+    if (firstLoadMs === null) add('P1', 'demo: the first load did not show a plan row within 30 s on a throttled connection (production bundle)')
+    else if (firstLoadMs > 2000) add('P1', `demo: the first load took ${(firstLoadMs / 1000).toFixed(1)} s to the first plan row on a throttled connection (production bundle; over 2 s)`)
+    log(`first load, throttled (production bundle): ${firstLoadMs === null ? 'no plan within 30 s' : `${firstLoadMs} ms`}`)
+  }
+}
+const fixtures = [
+  { name: 'demo', base: `http://localhost:${PORT}/rollout/?demo=1` },
+  // The three-minute path's last stop: Scan to update the plan → week two (queue item 4).
+  { name: 'demo-week2', base: `http://localhost:${PORT}/rollout/?demo=1`, week2: true, routes: ['plan', 'today'] },
+]
 const summaries = {}
 for (const fx of fixtures) {
   log(`walking ${fx.name}`)
+  currentFixture = fx.name
   summaries[fx.name] = await walkFixture(fx)
 }
 const planFile = scanPlanFile()
 
 // Cross-surface invariants.
-for (const [kind, values] of readiness) if (values.size > 1) add('P0', `demo: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and Today (one readiness per kind)`)
-if (populations.size > 1) add('P0', `demo: the active-people count reads ${[...populations].join(' and ')} across surfaces (one population)`)
+for (const [name, readiness] of readinessBy) for (const [kind, values] of readiness) if (values.size > 1) add('P0', `${name}: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and Today (one readiness per kind)`)
+for (const [name, populations] of populationsBy) if (populations.size > 1) add('P0', `${name}: the active-people count reads ${[...populations].join(' and ')} across surfaces (one population)`)
 for (const e of consoleErrors.filter((x) => !/favicon|microsoftonline|net::|ERR_/.test(x))) add('P0', `demo: console error: ${e.slice(0, 160)}`)
 
 // Learn links: every one resolves.
@@ -558,11 +647,11 @@ ${planFile.present
 |---|---|---|---|---|
 ${table}
 
-Readiness values seen: ${[...readiness].map(([k, v]) => `${k} ${[...v].map((x) => `${x}%`).join('/')}`).join(' · ') || 'none'}. Active-people counts seen: ${[...populations].join('/') || 'none'}. Learn links checked: ${learnLinks.size}.
+First load of the demo on a throttled connection (Fast 3G, the production bundle served statically): ${firstLoadMs === null ? 'not measured' : `${(firstLoadMs / 1000).toFixed(1)} s`} to the first plan row. Readiness values seen: ${[...readinessBy].map(([name, r]) => `${name}: ${[...r].map(([k, v]) => `${k} ${[...v].map((x) => `${x}%`).join('/')}`).join(' · ')}`).join('; ') || 'none'}. Active-people counts seen: ${[...populationsBy].map(([name, p]) => `${name} ${[...p].join('/')}`).join('; ') || 'none'}. Learn links checked: ${learnLinks.size}.
 `
 mkdirSync('docs/reports', { recursive: true })
 writeFileSync(REPORT, report)
-writeFileSync(join(OUT, 'findings.json'), JSON.stringify({ sha: SHA, started, findings, readiness: Object.fromEntries([...readiness].map(([k, v]) => [k, [...v]])), populations: [...populations] }, null, 2))
+writeFileSync(join(OUT, 'findings.json'), JSON.stringify({ sha: SHA, started, findings, readiness: Object.fromEntries([...readinessBy].map(([n, r]) => [n, Object.fromEntries([...r].map(([k, v]) => [k, [...v]]))])), populations: Object.fromEntries([...populationsBy].map(([n, p]) => [n, [...p]])) }, null, 2))
 log(`wrote ${REPORT}: ${findings.P0.length} P0, ${findings.P1.length} P1, ${findings.P2.length} P2`)
 
 chrome.kill()

@@ -12,7 +12,15 @@ import { setTimeout as sleep } from 'node:timers/promises'
 
 // No rendered surface and no downloaded artifact may carry a forbidEverywhere
 // string (prompt 49.1 item 1): a placeholder token, a Setup mention, a raw URN.
-const FORBID_EVERYWHERE = JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')).forbidEverywhere ?? []
+const CONTRACTS = JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8'))
+const FORBID_EVERYWHERE = CONTRACTS.forbidEverywhere ?? []
+// Every export and the print speak from the content-driven step (prompt 53 queue
+// item 7), so the plan.step contract's forbid list holds for them too.
+const STEP_FORBID = (CONTRACTS.surfaces ?? []).find((c) => c.id === 'plan.step')?.forbid ?? []
+// The print shows every step in full, More open, so More's own headings are not
+// forbidden there (plan.step.more allows them).
+const MORE_HEADINGS = (CONTRACTS.surfaces ?? []).find((c) => c.id === 'plan.step.more')?.allow?.headings ?? []
+const PRINT_FORBID = [...FORBID_EVERYWHERE, ...STEP_FORBID.filter((f) => !MORE_HEADINGS.includes(f))]
 
 const PORT = Number(process.env.SMOKE_PORT ?? 5199)
 const CDP_PORT = Number(process.env.SMOKE_CDP_PORT ?? 9444)
@@ -310,8 +318,8 @@ try {
   )
   check('Export: no downloaded artifact carries a forbidden placeholder', artifactHits.length === 0, artifactHits.join('; '))
   const printText = await evaluate(`(document.querySelector('.print-plan') || {}).textContent || ''`)
-  const printHits = FORBID_EVERYWHERE.filter((f) => printText.includes(f))
-  check('Export: the print document carries no forbidden placeholder', printHits.length === 0, printHits.join('; '))
+  const printHits = PRINT_FORBID.filter((f) => printText.includes(f))
+  check('Export: the print document carries no forbidden placeholder or step vocabulary', printHits.length === 0, printHits.join('; '))
   // The rebuilt print shows the step content, not the old pre-48 body (item 3).
   check('Export: the print renders the step body, not the old fields', /Who this touches/.test(printText) && !/Proposed name:|What the last 30 days say/.test(printText))
   // Item 4: the print DOM lives only while printing; afterprint tears it down.

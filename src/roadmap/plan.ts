@@ -119,6 +119,43 @@ export function trimCheckpoints(checkpoints: Checkpoint[]): Checkpoint[] {
   return [checkpoints[0], ...checkpoints.slice(-20)]
 }
 
+/**
+ * A step as the plan file keeps it (prompt 53 queue item 7): every number, date,
+ * status, id and the policy body, with the v2 engine's prose fields emptied —
+ * what-changes, exit criteria, failure modes, the help desk, comms, the ring
+ * criteria, the engine's portal steps — because no v3 surface renders them and
+ * their vocabulary is the contract's forbidden list. The file still reads on its
+ * own (title, status, dates, who) and loads back exactly as before: only the
+ * decisions block is trusted on load.
+ */
+export function fileStep(s: Step): Step {
+  return {
+    ...s,
+    whatChanges: '',
+    impact: '',
+    failureModes: [],
+    helpDesk: null,
+    comms: null,
+    ringComms: [],
+    forManager: '',
+    verify: null,
+    exitCriteria: [],
+    rollback: '',
+    rollbackBody: null,
+    unblockNotes: [],
+    stateReason: '',
+    cantSee: [],
+    dateNotes: [],
+    scenarioLines: [],
+    operatorNote: null,
+    operatorWhatIf: null,
+    readiness: { ...s.readiness, lines: [] },
+    evidence: { ...s.evidence, lines: [] },
+    rings: s.rings.map((r) => ({ ...r, entryCriteria: [], exitCriteria: [], targeting: { ...r.targeting, advice: '' } })),
+    action: { ...s.action, summary: [], portalSteps: [], powershell: null },
+  }
+}
+
 export function buildPlanFile(args: {
   planId: string
   snapshot: TenantSnapshot
@@ -144,7 +181,7 @@ export function buildPlanFile(args: {
     _readme: [
       `IAMAI plan file for ${org.displayName ?? args.snapshot.tenantId} (plan ${args.planId}), schema ${PLAN_SCHEMA_VERSION}, generated ${generated}.`,
       `Baseline: ${args.baselineSource.kind === 'github' ? `${args.baselineSource.owner}/${args.baselineSource.repo} at ${args.baselineSource.commit}` : args.baselineSource.fileName}.`,
-      'Format: steps (with rings, evidence, history and dates), the Setup answers (mappings), checkpoints from each save, and the revision record. Load it back in IAMAI on any machine; nothing here is needed by the tenant.',
+      'Format: steps (with rings, evidence, history and dates), the mappings, the decisions, checkpoints from each save, and the revision record. Load it back in IAMAI on any machine; nothing here is needed by the tenant.',
       'IAMAI reads the tenant and never writes to it.',
     ],
     schemaVersion: PLAN_SCHEMA_VERSION,
@@ -165,7 +202,7 @@ export function buildPlanFile(args: {
       })),
     },
     mappings: args.mapping,
-    steps: args.steps,
+    steps: args.steps.map(fileStep),
     decisions: {
       planId: args.planId,
       skips: Object.fromEntries(

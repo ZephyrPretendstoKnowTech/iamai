@@ -7,7 +7,7 @@
 // progress line and Stop. Scanned: the one-line result and Open the plan.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
-import { authReady, signIn, signOut } from '../../graph/msal.ts'
+import { authReady, signIn, signOut } from '../../graph/auth.ts'
 import { isPrivilegeDenial } from '../../graph/collect/roles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'

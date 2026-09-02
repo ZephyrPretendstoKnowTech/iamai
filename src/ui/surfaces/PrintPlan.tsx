@@ -14,28 +14,21 @@ import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
-import { populationLine } from '../../derive/whoLine.ts'
 import { statusOf } from './statusWord.ts'
-import { unknownsFor } from '../../roadmap/unknowns.ts'
 import { RingMark } from '../components/Ring.tsx'
+import { ContentStep } from './ContentStep.tsx'
+import type { StepVarContext } from './stepVars.ts'
+import { CleanupBody } from './CleanupStep.tsx'
+import { phases } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
 
-// The step body prints the same content the on-screen step shows (prompt 49.1
-// item 3): the plan copy, populationLine, statusOf and the step's own data
-// fields, first-open then More, without the tabs, checkboxes or the raw JSON a
-// person cannot execute from paper. Kept in step with Step.tsx.
-const S = PLAN.step
-const DATE_LINE_TITLES = new Set(['Report-only prompts for a certificate', 'Existing tokens keep working'])
-const shortDate = (iso: string): string => new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(iso))
-const citationUrl = (modes: Step['failureModes']): string | null => {
-  for (const m of modes) {
-    const c = m.citation
-    if (c && typeof c === 'object' && 'url' in c) return c.url
-  }
-  return null
-}
+// The step body prints through the one renderer the screen uses (ContentStep,
+// prompt 53 queue item 7: every step in full, the same content, with More open);
+// the print stylesheet hides the controls and tabs. Cleanup prints its rows too.
+const noop = (): void => undefined
 
 export function PrintPlan({
   tenantName,
@@ -51,6 +44,7 @@ export function PrintPlan({
   scanAt,
   coverage,
   goalMap,
+  stepCtx,
 }: {
   tenantName: string
   baselineLabel: string
@@ -71,6 +65,8 @@ export function PrintPlan({
   coverage: CoverageReport
   /** The baseline's goal map: page 1 names only goals the baseline holds (walk-51 item 9). */
   goalMap: GoalMap
+  /** The step's variables for the content renderer, as the Plan builds them. */
+  stepCtx: (step: Step) => StepVarContext
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
@@ -148,6 +144,7 @@ export function PrintPlan({
           {waves.map((w) => (
             <li key={w.wave}>{waveTitle(w)}</li>
           ))}
+          {schedule.cleanup && <li>{phases.last}</li>}
         </ol>
       </section>
 
@@ -249,167 +246,25 @@ export function PrintPlan({
           {w.stepIds.map((id) => {
             const s = byId.get(id)
             if (!s) return null
-            return <PrintStep key={s.id} step={s} steps={steps} schedule={schedule} />
+            return (
+              <article key={s.id} className="print-step">
+                <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
+              </article>
+            )
           })}
         </section>
       ))}
+      {schedule.cleanup && (
+        <section className="print-page">
+          <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
+          {schedule.cleanup.rows.map((r) => (
+            <article key={r.kind} className="print-step">
+              <CleanupBody phase={schedule.cleanup!} row={r} status={{ word: 'Ready', tone: 'ok' }} />
+            </article>
+          ))}
+        </section>
+      )}
     </div>,
     document.body,
-  )
-}
-
-// One step in full: the first-open sections, then the More sections, the same
-// content Step.tsx renders, as static print markup (prompt 49.1 item 3).
-function PrintStep({ step, steps, schedule }: { step: Step; steps: Step[]; schedule: Schedule }) {
-  const s = step
-  const catalogue = s.failureModes.filter((f) => !DATE_LINE_TITLES.has(f.title))
-  const unknowns = unknownsFor(s)
-  const dependents = steps.filter((x) => x.blockedBy.includes(s.id) && x.status !== 'done' && x.status !== 'skipped')
-  const learn = citationUrl(catalogue)
-  return (
-    <article className="print-step">
-      <h3 className="print-step-title">
-        {s.plainTitle || s.title} <span className="muted">· {statusOf(s).word}</span>
-      </h3>
-      <p>{s.whatChanges}</p>
-
-      <h4>{S.why}</h4>
-      <p>
-        {s.why}
-        {s.learn && <span className="muted"> {S.learn} {s.learn.url}</span>}
-        {s.learn?.cis.map((c) => <span key={c} className="muted"> {S.cis(c)}</span>)}
-      </p>
-
-      <h4>{S.whoTouches}</h4>
-      <p>{populationLine(s.population)}</p>
-      {(s.scenarioLines ?? []).length > 0 && (
-        <ul>
-          {s.scenarioLines!.map((l, i) => (
-            <li key={i}>{l.text}</li>
-          ))}
-        </ul>
-      )}
-      {s.includesOperator && s.operatorNote && <p>{s.operatorNote}</p>}
-
-      <h4>{S.doIt}</h4>
-      {s.action.omits && s.action.omits.length > 0 && <p className="muted">{S.omitsJson(s.action.omits)}</p>}
-      {s.action.portalSteps.length > 0 ? (
-        <ol>
-          {s.action.portalSteps.map((l, i) => (
-            <li key={i}>{l}</li>
-          ))}
-        </ol>
-      ) : (
-        <ul>
-          {s.action.summary.map((l, i) => (
-            <li key={i}>{l}</li>
-          ))}
-        </ul>
-      )}
-
-      <h4>{S.dates}</h4>
-      {s.events ? (
-        <p>{S.datesLine(s.events.announce?.date ?? '—', schedule.reportOnlyAt[s.id] ? shortDate(schedule.reportOnlyAt[s.id]) : '—', s.events.enforce.date)}</p>
-      ) : (
-        <p>{PLAN.who.now}</p>
-      )}
-      {s.rings.length > 1 && <p className="muted">{s.rings.map((r) => S.ring(r.name, shortDate(r.plannedStart), r.targeting.memberCount)).join(' · ')}</p>}
-      {(s.dateNotes ?? []).map((n, i) => (
-        <p key={i} className="muted">
-          {n}
-        </p>
-      ))}
-
-      <h4>{S.doneWhen}</h4>
-      <ul>
-        {s.exitCriteria.slice(0, 3).map((x, i) => (
-          <li key={i}>{x}</li>
-        ))}
-        {(s.tickable ?? []).map((t) => (
-          <li key={t.key}>{t.done ? '☑' : '☐'} {t.text}</li>
-        ))}
-      </ul>
-
-      <h4>{S.ifWrong}</h4>
-      <p>{s.rollback}</p>
-
-      {s.comms && (
-        <>
-          <h4>{S.tellPeople}</h4>
-          <p className="print-comms">{s.comms}</p>
-        </>
-      )}
-
-      <h4>{S.couldGoWrong}</h4>
-      <ul>
-        {catalogue.map((f, i) => (
-          <li key={i}>
-            {f.title}
-            {f.applies === 'yes' && <span className="muted"> ({S.appliesHere})</span>}
-          </li>
-        ))}
-        {learn && <li className="muted">{S.learn} {learn}</li>}
-      </ul>
-
-      <h4>{S.prerequisites}</h4>
-      {s.blockedBy.length > 0 || s.unblockNotes.length > 0 ? (
-        <ul>
-          {s.unblockNotes.map((n, i) => (
-            <li key={i}>{n}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>{S.noPrerequisites}</p>
-      )}
-
-      <h4>{S.waitsOnThis}</h4>
-      {dependents.length > 0 ? (
-        <ul>
-          {dependents.map((d) => (
-            <li key={d.id}>{d.plainTitle || d.title}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>{S.nothingWaits}</p>
-      )}
-
-      <h4>{S.exitCriteria}</h4>
-      <ul>
-        {s.exitCriteria.map((x, i) => (
-          <li key={i}>{x}</li>
-        ))}
-        {s.rings.flatMap((r) => r.exitCriteria).map((x, i) => (
-          <li key={`r${i}`}>{x}</li>
-        ))}
-      </ul>
-
-      {s.helpDesk && (
-        <>
-          <h4>{S.forHelpDesk}</h4>
-          <ul>
-            {s.helpDesk.whatToSay.map((x, i) => (
-              <li key={i}>{x}</li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <h4>{S.forManager}</h4>
-      <p>{s.forManager}</p>
-
-      {(s.cantSee ?? []).length > 0 && (
-        <>
-          <h4>{S.cantSee}</h4>
-          <ul>
-            {s.cantSee!.map((x, i) => (
-              <li key={i}>{x}</li>
-            ))}
-            {unknowns.map((u) => (
-              <li key={u.id}>{u.cannotSee}</li>
-            ))}
-          </ul>
-        </>
-      )}
-    </article>
   )
 }

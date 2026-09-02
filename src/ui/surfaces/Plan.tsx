@@ -10,8 +10,9 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { PLAN as C } from '../../copy/plan.ts'
 import { SHELL } from '../../copy/pages.ts'
-import { cleanup as cleanupContent, pages, phases } from '../../content/content.ts'
-import { fillText, missingVars } from '../../content/render.ts'
+import { pages, phases } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { DRILL_STEP_ID } from '../../roadmap/generate.ts'
 import { scanAge } from '../../derive/scanAge.ts'
@@ -203,16 +204,13 @@ function CleanupRow({ phase, row, drillStep, alertingDone, nameOf, open, onToggl
   open: boolean
   onToggle: () => void
 }) {
-  const entry = (cleanupContent as Record<string, { title: string; why: string; whatToDo: string[]; doneWhen: string[] }>)[row.kind]
+  const entry = cleanupEntry(row.kind)
   if (!entry) return null
   // The drill carries the recurring step's own detection; alerting the recorded
   // fact (prompt 49 item 5); the rest are Ready while they have something to say.
   const status = drillStep ? statusOf(drillStep) : alertingDone && row.kind === 'alerting' ? { word: 'In place', tone: 'ok' as const } : { word: 'Ready', tone: 'ok' as const }
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
   const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null)
-  const ex: Record<string, unknown> = { ...row.lists, ...(phase.convention ? { convention: phase.convention } : {}) }
-  const whole = (line: string): boolean => missingVars(line, ex).length === 0
-  const doneWhen = entry.doneWhen.filter(whole)
   return (
     <>
       <div className="plan-row" tabIndex={0} onClick={onToggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}>
@@ -223,31 +221,7 @@ function CleanupRow({ phase, row, drillStep, alertingDone, nameOf, open, onToggl
           <span className="when">{absoluteDate(row.day)}</span>
         </span>
       </div>
-      {open && (
-        <div className="step-body">
-          <p className="line">
-            <span className="step-title">{entry.title}</span> <Status tone={status.tone}>{status.word}</Status>
-          </p>
-          <h3>Why</h3>
-          <p>{fillText(entry.why, ex)}</p>
-          <h3>What to do</h3>
-          <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
-          {doneWhen.length > 0 && (
-            <>
-              <h3>Done when</h3>
-              <ul className="sections">{doneWhen.map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ul>
-            </>
-          )}
-          <p className="actions no-print">
-            <Button variant="secondary" onClick={() => { window.location.hash = '#/connect' }}>
-              Scan to update the plan
-            </Button>
-            <Button variant="tertiary" onClick={onToggle}>
-              Close
-            </Button>
-          </p>
-        </div>
-      )}
+      {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => { window.location.hash = '#/connect' }} onClose={onToggle} />}
     </>
   )
 }

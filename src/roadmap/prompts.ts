@@ -6,7 +6,7 @@
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
-import type { Step } from './types.ts'
+import type { Step, StepView } from './types.ts'
 import { redactDeep as redactDeepShared, redactText as redactTextShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
 
@@ -65,18 +65,23 @@ export function promptFor(kind: PromptKind, tenant: string, context: string, dra
   ].join('\n\n')
 }
 
-export function stepContext(step: Step): string {
+export function stepContext(step: Step, view?: StepView): string {
   const when = step.events?.enforce ? `${step.events.enforce.day} ${step.events.enforce.date}, ${step.events.enforce.time}` : 'not yet dated'
+  if (view) {
+    // What the step says on screen (prompt 53 queue item 7), never the engine's own prose.
+    const v = view(step)
+    return `${v.title}. ${v.why} Takes effect: ${when}. What to do: ${v.whatToDo.join(' | ') || 'nothing'}. Done when: ${v.doneWhen.join(' | ') || 'the next scan confirms it'}.`
+  }
   return `${step.whatChanges} Affects: ${step.populationBasis || 'nobody'}. Takes effect: ${when}. What people must do: ${step.helpDesk?.whatToSay[0] ?? 'nothing'}.`
 }
 
 export type PackItem = { title: string; prompt: string }
 
 /** The prompt pack (§2.2), pre-filled from the current plan. */
-export function promptPack(args: { tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string }): PackItem[] {
+export function promptPack(args: { view?: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string }): PackItem[] {
   const { tenant } = args
   const firstStep = args.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done') ?? args.steps[0]
-  const stepText = firstStep ? `${firstStep.plainTitle} (${firstStep.title}). ${firstStep.whatChanges} ${firstStep.why} How to verify: ${firstStep.verify?.where.join(' ') ?? ''} Rollback: ${firstStep.rollback}` : ''
+  const stepText = firstStep && args.view ? stepContext(firstStep, args.view) : firstStep ? `${firstStep.plainTitle} (${firstStep.title}). ${firstStep.whatChanges} ${firstStep.why} How to verify: ${firstStep.verify?.where.join(' ') ?? ''} Rollback: ${firstStep.rollback}` : ''
   const withFacts = (head: string, label: string, body: string) => [head, dataBlock(label, body), PROMPTS.noInvent].join('\n\n')
   return [
     { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement ?? '') },
@@ -103,7 +108,7 @@ export function promptPackMarkdown(items: PackItem[], tenant: string): string {
 // which is why the "redacted" bundle still carried policy names, group names,
 // departments and named-location CIDRs (audit redact-02, redact-03, redact-07).
 
-export function groundingBundle(args: { tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string }): Record<string, unknown> {
+export function groundingBundle(args: { view?: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string }): Record<string, unknown> {
   const { snapshot } = args
   // Every name the tenant contains, not just its users.
   const vocabulary = args.redacted ? tenantVocabulary(snapshot) : new Map<string, string>()
@@ -117,28 +122,42 @@ export function groundingBundle(args: { tenant: string; snapshot: TenantSnapshot
     signInEvidence: snapshot.sources.signInEvidence?.status ?? 'unknown',
     registrationMfaCapable: snapshot.registrationDetails.filter((r) => r.isMfaCapable).length,
   }
-  const findings = args.coverage.results.map((r) => ({ goal: r.goal.id, name: r.goal.name, status: r.status, statement: r.statement.replace(/\*\*/g, '') }))
-  const steps = args.steps.map((s) => ({
-    id: s.id,
-    title: s.title,
-    plainTitle: s.plainTitle,
-    kind: s.kind,
-    status: s.status,
-    whatChanges: s.whatChanges,
-    why: s.why,
-    population: s.populationBasis,
-    impact: s.impact,
-    safeToday: s.safeToday,
-    verdict: s.safeVerdict.sentence,
-    events: s.events,
-    rings: s.rings.map((r) => ({ name: r.name, plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })),
-    failureModes: s.failureModes,
-    verify: s.verify,
-    exitCriteria: s.exitCriteria,
-    rollback: s.rollback,
-    forManager: s.forManager,
-    tracking: s.tracking ? { state: s.tracking.state, enforcedAt: s.tracking.enforcedAt, evidenceQuality: s.tracking.evidenceQuality } : null,
-  }))
+  // With a view the findings are data (goal, status); the engine's statement
+  // prose stays out of a content-era bundle (prompt 53 queue item 7).
+  const findings = args.coverage.results.map((r) => (args.view ? { goal: r.goal.id, name: r.goal.name, status: r.status } : { goal: r.goal.id, name: r.goal.name, status: r.status, statement: r.statement.replace(/\*\*/g, '') }))
+  // With a view, each step is what the screen says (prompt 53 queue item 7):
+  // the content title, why, what to do and done when, beside the data another
+  // tool needs (status, dates, tracking); without one, the engine's own fields.
+  const steps = args.steps.map((s) => {
+    const v = args.view ? args.view(s) : null
+    const data = {
+      id: s.id,
+      kind: s.kind,
+      status: s.status,
+      safeToday: s.safeToday,
+      events: s.events,
+      rings: s.rings.map((r) => ({ plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })),
+      tracking: s.tracking ? { state: s.tracking.state, enforcedAt: s.tracking.enforcedAt, evidenceQuality: s.tracking.evidenceQuality } : null,
+    }
+    return v
+      ? { ...data, title: v.title, why: v.why, whatToDo: v.whatToDo, doneWhen: v.doneWhen, dates: v.dates, ifWrong: v.ifWrong, population: s.population.active }
+      : {
+          ...data,
+          title: s.title,
+          plainTitle: s.plainTitle,
+          whatChanges: s.whatChanges,
+          why: s.why,
+          population: s.populationBasis,
+          impact: s.impact,
+          verdict: s.safeVerdict.sentence,
+          rings: s.rings.map((r) => ({ name: r.name, plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })),
+          failureModes: s.failureModes,
+          verify: s.verify,
+          exitCriteria: s.exitCriteria,
+          rollback: s.rollback,
+          forManager: s.forManager,
+        }
+  })
   const bundle = {
     _readme: GROUNDING.header(args.redacted ? '[the tenant]' : args.tenant, args.redacted, args.generated),
     tenant: args.redacted ? { name: '[the tenant]' } : { name: args.tenant, id: snapshot.tenantId },
