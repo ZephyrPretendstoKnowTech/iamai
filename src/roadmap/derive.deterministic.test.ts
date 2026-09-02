@@ -12,7 +12,7 @@ import type { Step } from './types.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 
 const projectSteps = (steps: Step[]): unknown =>
-  steps.map((s) => ({ id: s.id, kind: s.kind, status: s.status, phase: s.phase, blockedReason: s.blockedReason ?? null, title: s.title, gap: s.gap ?? null, when: s.events?.enforce?.date ?? null }))
+  steps.map((s) => ({ id: s.id, kind: s.kind, status: s.status, phase: s.phase, blockedReason: s.blockedReason ?? null, title: s.title, gap: s.gap ?? null, when: s.events?.enforce.at ?? null }))
 
 const project = (run: FixtureRun): unknown => ({
   steps: projectSteps(run.steps),

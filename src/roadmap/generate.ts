@@ -1164,7 +1164,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const noMethodActive = viability.filter((v) => v.activity === 'active' && !v.mfaCapable && !excluded.has(v.userId)).map((v) => v.userId)
   const scenarioBase = scenarioContext({ snapshot, nameOf, noMethodActive })
   for (const s2 of steps) {
-    const enforceDate = s2.events?.enforce.date ?? (s2.rings[0]?.plannedStart ? absoluteDate(s2.rings[0].plannedStart) : null)
+    const enforceDate = s2.events ? absoluteDate(s2.events.enforce.at) : s2.rings[0]?.plannedStart ? absoluteDate(s2.rings[0].plannedStart) : null
     const ctx = { ...scenarioBase, enforceDate }
     s2.scenarioLines = scenarioLinesFor(s2, ctx)
     // The campaign names its registered-but-unproven and no-method active people (prompt 48.1 item 6).
@@ -1172,7 +1172,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const bgSet = new Set(mapping.breakGlassUserIds)
       const unproven = viability.filter((v) => rolloutBucket(v) === 'unproven' && !bgSet.has(v.userId)).map((v) => v.userId)
       const noMethod = viability.filter((v) => rolloutBucket(v) === 'noMethod' && !bgSet.has(v.userId)).map((v) => v.userId)
-      const date = s2.events?.enforce.date ?? absoluteDate(schedule.targetEnd)
+      const date = absoluteDate(s2.events?.enforce.at ?? schedule.targetEnd)
       s2.scenarioLines = [
         ...(unproven.length > 0 ? [{ kind: 'campaignUnproven', text: SCENARIO.campaignUnproven(unproven.map(nameOf), date), people: unproven, count: unproven.length }] : []),
         ...(noMethod.length > 0 ? [{ kind: 'campaignNoMethod', text: SCENARIO.campaignNoMethod(noMethod.map(nameOf), date), people: noMethod, count: noMethod.length }] : []),

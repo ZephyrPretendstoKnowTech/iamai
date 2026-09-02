@@ -185,7 +185,7 @@ export type ExportStep = {
 }
 export type StepView = (step: Step) => ExportStep
 
-export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; day: string; date: string; time: string; reason: string; outOfHours: boolean }
+export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; reason: string; outOfHours: boolean }
 export type StepEvents = { announce: StepEvent | null; remind: StepEvent | null; remindMorning: StepEvent | null; enforce: StepEvent; noticeDays: number }
 
 export type StepTracking = {

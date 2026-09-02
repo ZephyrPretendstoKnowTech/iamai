@@ -94,7 +94,6 @@ function atLocalHour(iso: string, hour: number, timeZone: string): string {
 
 // Intl formatters are costly to build; one per zone is enough.
 const offsetFormatters = new Map<string, Intl.DateTimeFormat>()
-const labelFormatters = new Map<string, Intl.DateTimeFormat>()
 function offsetMinutes(timeZone: string, at: Date): number {
   try {
     let f = offsetFormatters.get(timeZone)
@@ -107,24 +106,16 @@ function offsetMinutes(timeZone: string, at: Date): number {
   }
 }
 
-export function localLabel(iso: string, timeZone: string): { day: string; date: string; time: string } {
-  try {
-    let f = labelFormatters.get(timeZone)
-    if (!f) labelFormatters.set(timeZone, (f = new Intl.DateTimeFormat('en-AU', { timeZone, weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })))
-    const parts = f.formatToParts(new Date(iso))
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
-    return { day: get('weekday'), date: `${get('day')} ${get('month')} ${get('year')}`, time: `${get('hour')}:${get('minute')}` }
-  } catch {
-    const d = new Date(iso)
-    return { day: WEEKDAY_NAMES[weekdayOf(iso)], date: iso.slice(0, 10), time: `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
-  }
+/** The hour of the day an instant falls in, in the display zone. */
+export function localHour(iso: string, timeZone: string): number {
+  const at = new Date(iso)
+  return new Date(at.getTime() + offsetMinutes(timeZone, at) * 60_000).getUTCHours()
 }
 
 function event(at: string, reason: string, ctx: TimingContext, kind: StepEvent['kind']): StepEvent {
-  const l = localLabel(at, ctx.timeZone)
-  const hour = Number(l.time.slice(0, 2))
+  const hour = localHour(at, ctx.timeZone)
   const outOfHours = ctx.rhythm.status === 'ok' ? hour < ctx.rhythm.workingHours.start || hour >= ctx.rhythm.workingHours.end : hour < 8 || hour >= 18
-  return { kind, at, day: l.day, date: l.date, time: l.time, reason, outOfHours }
+  return { kind, at, reason, outOfHours }
 }
 
 /**
