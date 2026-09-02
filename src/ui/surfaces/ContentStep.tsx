@@ -10,7 +10,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText, missingVars, PICKER_FALLBACK_KEYS, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
+import { fillText, missingVars, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
@@ -308,10 +308,10 @@ function Decision({ d, ex, saved, onDecide }: { d: Record<string, any>; ex: Ex; 
   // One row per thing the picker's source names (walk-51 item 3): the source
   // holds the rendered rows, its Ids twin the ids behind them, so a tick is a
   // decision about an account, not a string. A picker with no source reads the
-  // first fallback key the step fills, the same list the review renderer uses.
+  // key its own rows were built under (pickerKey), never another step's list.
   // No rows, no picker. The Ticked twin (the plan's current value, else
   // everything nominated) starts ticked; a saved decision replaces that.
-  const keys: string[] = d.pickerSource ? [d.pickerSource] : PICKER_FALLBACK_KEYS
+  const keys: string[] = d.pickerSource ? [d.pickerSource] : typeof ex.pickerKey === 'string' ? [ex.pickerKey] : []
   const key = d.pickerRow ? (keys.find((k) => Array.isArray(ex[k]) && (ex[k] as unknown[]).length > 0) ?? null) : null
   const rows: string[] = key ? (ex[key] as string[]) : []
   const idsOf = key ? ex[`${key}Ids`] : undefined

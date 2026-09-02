@@ -86,7 +86,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
  */
 export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts', 'countriesWithCounts', 'locationsWithMatches', 'accountsWithSignals', 'devicesWithSignals', 'adminsList']
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
-export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations']
+export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'adminGroups']
 
 const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName'])
 

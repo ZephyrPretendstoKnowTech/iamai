@@ -1,5 +1,5 @@
 // Allowed-countries suggestions (ux-review-03 §A4): countries seen in the
-// sign-in records (distinct users) plus every usageLocation. Pure.
+// sign-in records (distinct users and sign-ins) plus every usageLocation. Pure.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 
 export type CountrySuggestion = {
@@ -8,30 +8,38 @@ export type CountrySuggestion = {
   users: number
   /** Users whose usageLocation is this country. */
   usageLocationUsers: number
+  /** Sign-ins seen from it (0 when only usageLocation, or when the snapshot never counted them). */
+  signIns: number
 }
 
 export type CountrySuggestions = {
   countries: CountrySuggestion[]
   /** False when no sign-in records carried a location: usageLocation only. */
   hasSignInLocations: boolean
+  /** False when the snapshot predates the per-country sign-in count. */
+  hasSignInCounts: boolean
 }
 
 export function suggestCountries(snapshot: TenantSnapshot): CountrySuggestions {
   const byCode = new Map<string, CountrySuggestion>()
   const get = (code: string): CountrySuggestion => {
     const key = code.toUpperCase()
-    return byCode.get(key) ?? byCode.set(key, { code: key, users: 0, usageLocationUsers: 0 }).get(key)!
+    return byCode.get(key) ?? byCode.set(key, { code: key, users: 0, usageLocationUsers: 0, signIns: 0 }).get(key)!
   }
   const seen = snapshot.evidenceAggregates?.byCountry ?? {}
   for (const [code, users] of Object.entries(seen)) {
     if (/^[A-Za-z]{2}$/.test(code)) get(code).users += users
+  }
+  const counted = snapshot.evidenceAggregates?.signInsByCountry ?? null
+  for (const [code, n] of Object.entries(counted ?? {})) {
+    if (/^[A-Za-z]{2}$/.test(code)) get(code).signIns += n
   }
   for (const u of snapshot.users) {
     if (u.userType === 'guest' || !u.usageLocation || !/^[A-Za-z]{2}$/.test(u.usageLocation)) continue
     get(u.usageLocation).usageLocationUsers += 1
   }
   const countries = [...byCode.values()].sort((a, b) => b.users - a.users || b.usageLocationUsers - a.usageLocationUsers || a.code.localeCompare(b.code))
-  return { countries, hasSignInLocations: countries.some((c) => c.users > 0) }
+  return { countries, hasSignInLocations: countries.some((c) => c.users > 0), hasSignInCounts: counted !== null }
 }
 
 let displayNames: Intl.DisplayNames | null | undefined

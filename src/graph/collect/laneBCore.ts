@@ -154,6 +154,7 @@ export function deriveAggregates(rows: Iterable<StoredSignIn>): EvidenceAggregat
   const byClientApp: Record<string, number> = {}
   const byProtocol: Record<string, number> = {}
   const byCountryUsers: Record<string, Set<string>> = {}
+  const signInsByCountry: Record<string, number> = {}
   const users = new Set<string>()
   const byWeekdayHour = Array.from({ length: 168 }, () => 0)
   let total = 0
@@ -167,9 +168,10 @@ export function deriveAggregates(rows: Iterable<StoredSignIn>): EvidenceAggregat
     const proto = row.authenticationProtocol || 'none'
     byProtocol[proto] = (byProtocol[proto] ?? 0) + 1
     if (row.country && row.userId) (byCountryUsers[row.country] ??= new Set()).add(row.userId)
+    if (row.country) signInsByCountry[row.country] = (signInsByCountry[row.country] ?? 0) + 1
   }
   const byCountry = Object.fromEntries(Object.entries(byCountryUsers).map(([c, s]) => [c, s.size]))
-  return { total, distinctUsers: users.size, byClientApp, byProtocol, byCountry, byWeekdayHour }
+  return { total, distinctUsers: users.size, byClientApp, byProtocol, byCountry, signInsByCountry, byWeekdayHour }
 }
 
 // Graph reports "Exchange ActiveSync" (with a space) in clientAppUsed; the
