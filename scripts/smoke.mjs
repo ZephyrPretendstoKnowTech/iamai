@@ -346,7 +346,9 @@ try {
   await sleep(1500)
   t = await text()
   check('Unlicensed tenant: Today says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(/[^\n]*sign-in records[^\n]*/) ?? [''])[0])
-  check('Unlicensed tenant: nobody is Proven without records', !/\bProven\b/.test(t))
+  // The Show list carries the content file's state names, "Proven" included (walk-51 item 10),
+  // so the check reads the table's state chips, not the page text.
+  check('Unlicensed tenant: nobody is Proven without records', !(await evaluate(`[...document.querySelectorAll('main.page td .status, main.page td .chip')].some((e) => /^Proven$/.test((e.textContent || '').trim()))`)))
   await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
   await sleep(1500)
   check('Unlicensed tenant: the plan still generates', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))

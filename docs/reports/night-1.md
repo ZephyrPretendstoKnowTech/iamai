@@ -51,6 +51,12 @@ when its findings are gone from the next walk. Updated at every unit boundary.
     `plan.footer` contract forbids ("not assessed", "re-export", "SDK", "Graph REST").
   - `Back to top` is removed: no contract allows the control on any surface and the inventory
     never saw it (it appears only after a screen of scrolling, which the captures never do).
+  - walk-51 item 10: Today's Show list is `pages.today.show` (All, the six states the table
+    uses, Admins, Guests), keyed by position to its filter; the four tiles render from
+    `pages.today.tiles` — the value ("{n} · {pct} of active"), the label, the "held by …" line
+    naming the step that moves the number, and the definition as the tip.
+  - walk-51 item 11: the Boardroom room in the demo fixture has Authenticator approval and
+    nothing stronger, so its method and its evidence agree (the fixture had given it a passkey).
 
 ## 2. The last walk's remaining findings
 
@@ -92,9 +98,15 @@ when its findings are gone from the next walk. Updated at every unit boundary.
 
 ## 4. Test assertions changed
 
-None changed; added: `src/ui/surfaces/night1.test.ts` (shared-reference holes, the report-only
-date from the scan, `{wanted}` in words, the dormant accounts list and count). The inventory was
-regenerated after each UI change (fingerprint only; no rule waived).
+- `scripts/smoke.mjs` "Unlicensed tenant: nobody is Proven without records" — old: the whole
+  Today page text carries no "Proven"; new: no table state chip reads "Proven". Reason: the Show
+  list now carries the content file's state names, "Proven" among them; the assertion's subject
+  (no person proven without records) is unchanged.
+
+Added: `src/ui/surfaces/night1.test.ts` (shared-reference holes, the report-only date from the
+scan, `{wanted}` in words, the dormant accounts list and count, the Show list's order, the
+Boardroom room's consistency). The inventory was regenerated after each UI change (fingerprint
+only; no rule waived).
 
 ## 5. Content keys the reviewer must write
 
@@ -121,6 +133,5 @@ regenerated after each UI change (fingerprint only; no rule waived).
 
 ## 7. Resume plan
 
-Queue, in order: (1) walk-51 P1s 10 (Today's Show list and the tiles' "held by" lines) and 11
-(the Boardroom fixture); (2) nothing of 52 remains; (3) the floor; (4) the demo is the show; (5)
+Queue, in order: (1) done — walk-51 has no open item; (2) nothing of 52 remains; (3) the floor; (4) the demo is the show; (5)
 theme — done in 52; (6) Cleanup — done in 52; (7) print and export; (8) performance; (9) P2s.

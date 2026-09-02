@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { missingVars } from '../../content/render.ts'
-import { shared } from '../../content/content.ts'
+import { pages, shared } from '../../content/content.ts'
 import { sessionWantedForGoal } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
@@ -57,4 +57,26 @@ test('the problematic-accounts check lists the dormant accounts with their state
   assert.equal(ex.n, step.population.total, 'the lead counts the accounts checked, not the active ones (none are)')
   for (const row of rows) assert.match(row, / · (no sign-in on record|[A-Z][a-z]{2} \d{1,2}, \d{4})$/, 'name · state')
   assert.equal((ex.accountsWithStateIds as string[]).length, rows.length)
+})
+
+test("Today's Show list is the content file's, in the six-state order the table uses (walk-51 item 10)", () => {
+  const show = (pages.today as { show: string[] }).show
+  // The surface maps each option to a filter by position; a change to this list
+  // is a change to that mapping, so the order is pinned here.
+  assert.deepEqual(show, ['All', 'Proven', 'Likely works', 'Never prompted', 'Possibly broken', 'No method', 'Not active', 'Admins', 'Guests'])
+  const tiles = (pages.today as { tiles: Record<string, { label: string; value: string; heldBy: string | null; tip: string }> }).tiles
+  assert.deepEqual(Object.keys(tiles), ['proven', 'unproven', 'noMethod', 'notActive'])
+  assert.equal(tiles.proven.heldBy, null, 'proven is held by nothing')
+  for (const k of ['unproven', 'noMethod', 'notActive']) assert.match(tiles[k].heldBy ?? '', /^held by /, `${k} names the step that moves it`)
+})
+
+test("the Boardroom room's method and evidence agree (walk-51 item 11: the fixture, not the product)", async () => {
+  const { todayView } = await import('../../derive/today.ts')
+  const f = fixture('demo')
+  const v = todayView(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds))
+  const room = v.rows.find((r) => r.user.displayName === 'Boardroom')
+  assert.ok(room, 'the demo has the Boardroom room')
+  assert.notEqual(room.strongest, 'phishingResistant', 'a room holds no passkey')
+  assert.equal(room.evidence.kind, 'mfa')
+  if (room.evidence.kind === 'mfa') assert.match(room.evidence.method, /notification/i, 'its evidence is the Authenticator approval it has')
 })
