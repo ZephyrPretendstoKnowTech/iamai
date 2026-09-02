@@ -94,15 +94,21 @@ test('a step that creates a pilot group names it in the tenant convention, not b
 test('one population per step: header, readiness line and admin count agree', () => {
   const { steps, snapshot } = plan()
   const admins = adminUserIds(snapshot.roles)
+  // One readiness denominator per family (walk-51 item 8): the readiness line
+  // measures the family's population, the same on every step of the kind.
+  const denomByFamily: Record<string, Set<number>> = {}
   for (const s of steps) {
     const ids = new Set(s.population.ids)
-    // The header's active count is the readiness line's active count.
     const m = s.readiness.lines.join(' ').match(/of (\d+) active users? ready/)
-    if (m) assert.equal(Number(m[1]), s.population.active, `${s.id}: readiness says ${m[1]} active, population says ${s.population.active}`)
+    if (m) (denomByFamily[s.readiness.family] ??= new Set()).add(Number(m[1]))
+    // The impact's in-scope count is the step's own population, not the family.
     const inScope = s.impact.match(/^(\d+) active users? in scope/) ?? s.impact.match(/All (\d+) active users?/)
     if (inScope) assert.equal(Number(inScope[1]), s.population.active, `${s.id}: impact says ${inScope[1]}, population says ${s.population.active}`)
     // Admin and guest counts are subsets of the same id set.
     assert.equal(s.population.admins, [...ids].filter((id) => admins.has(id)).length, `${s.id}: admin count`)
     assert.equal(s.population.guests, snapshot.users.filter((u) => ids.has(u.id) && u.userType === 'guest').length, `${s.id}: guest count`)
+  }
+  for (const [family, set] of Object.entries(denomByFamily)) {
+    assert.equal(set.size, 1, `${family}: the readiness denominator is one value, got ${[...set].join(', ')}`)
   }
 })

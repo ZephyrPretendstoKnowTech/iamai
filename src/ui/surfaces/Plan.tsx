@@ -12,6 +12,7 @@ import { SHELL } from '../../copy/pages.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { scanAge } from '../../derive/scanAge.ts'
+import { todayView } from '../../derive/today.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -80,6 +81,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   // first enforcement date (a campaign's enrol-by), for the step variables.
   const operatorId = scan.snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
   const firstEnforce = c.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
+  const activePeople = todayView(scan.snapshot, scan.snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
   const finish = planFinish(c.steps)
   const inPlace = doneSteps(c.steps).length
   const total = trackableSteps(c.steps).length
@@ -133,7 +135,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} activePeople={activePeople} />
             })}
           </section>
         )
@@ -144,7 +146,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason, snapshot, mapping, operatorId, firstEnforce }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason, snapshot, mapping, operatorId, firstEnforce, activePeople }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -161,6 +163,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
   mapping: MappingState | null
   operatorId: string | null
   firstEnforce: string | null
+  activePeople: number
 }) {
   const status = statusOf(step)
   return (
@@ -178,7 +181,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
       {open && (
         <ContentStep
           step={step}
-          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null }}
+          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, activePeople }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onClose={onToggle}
