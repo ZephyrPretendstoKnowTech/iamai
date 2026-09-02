@@ -273,7 +273,7 @@ export function renderStep(st: Record<string, any>): string {
     }
     if (who.overlap) parts.push(p(who.overlap, ex, 'sub'))
     if (who.adminsNote) {
-      const e2 = { ...ex, admins: ex.admins ?? ex.adminsList ?? [] }
+      const e2 = { ...ex, adminNames: ex.adminNames ?? ex.admins ?? ex.adminsList ?? [] }
       parts.push(p(who.adminsNote, e2, 'evidence'))
     }
   }

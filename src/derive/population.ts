@@ -5,6 +5,11 @@
 // reads this object, so two figures for one quantity on one screen is a failing
 // test (agreement, renderedNumbers). Pure.
 import type { Step } from '../roadmap/types.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
+import { rolloutBucket, scoreMfaViability } from '../scoring/mfaViability.ts'
+import { enabledUsers } from './sets.ts'
+import { sharedDeviceIds } from './sharedDevices.ts'
 import { affectedIds } from './whoLine.ts'
 
 export type StepPopulationView = {
@@ -29,4 +34,22 @@ export function stepPopulation(step: Step): StepPopulationView {
     enabledCovered: Math.max(p.inScope ?? ids.length, ids.length),
     names: ids,
   }
+}
+
+/**
+ * The plan's active people, Today's denominator: enabled, not a service account,
+ * signed in within the window. Today's tiles and the campaign read this.
+ */
+export function activePeopleIds(snapshot: TenantSnapshot, now: string, serviceAccountIds: ReadonlySet<string> = new Set()): string[] {
+  const enabled = new Set(enabledUsers(snapshot, serviceAccountIds).map((u) => u.id))
+  return buildViabilityInputs(snapshot, now, serviceAccountIds)
+    .map(scoreMfaViability)
+    .filter((v) => enabled.has(v.userId) && rolloutBucket(v) !== null)
+    .map((v) => v.userId)
+}
+
+/** The campaign's population: the plan's active people minus the emergency and shared-device accounts. */
+export function campaignIds(snapshot: TenantSnapshot, now: string, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }): string[] {
+  const out = new Set([...mapping.breakGlassUserIds, ...sharedDeviceIds(snapshot)])
+  return activePeopleIds(snapshot, now, new Set(mapping.serviceAccountUserIds)).filter((id) => !out.has(id))
 }

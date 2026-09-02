@@ -14,6 +14,7 @@ import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { notActiveUsers } from './sets.ts'
+import { campaignIds } from './population.ts'
 import { stateOf } from './today.ts'
 import type { TodayState } from './today.ts'
 import { absoluteDate } from '../copy/dates.ts'
@@ -49,11 +50,11 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const { snapshot, mapping, nameOf, now } = ctx
   const svc = new Set(mapping.serviceAccountUserIds)
   const viability = buildViabilityInputs(snapshot, now, svc).map(scoreMfaViability)
-  // The emergency accounts are never in the campaign or its special-care list
-  // (prompt 48.1 item 2): they are excluded from every policy, so nothing the
-  // campaign proves applies to them.
+  // The campaign's population (derive/population.ts): the plan's active people
+  // minus the emergency and shared-device accounts (prompt 48.1 item 2).
   const bg = new Set(mapping.breakGlassUserIds)
-  const active = viability.filter((v) => v.enabled && v.activity === 'active' && !bg.has(v.userId))
+  const campaign = new Set(campaignIds(snapshot, now, mapping))
+  const active = viability.filter((v) => campaign.has(v.userId))
   const names = (ids: readonly string[]): string[] => ids.map(nameOf)
   const scen = snapshot.scenarioEvidence ?? null
 
@@ -108,7 +109,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     emergencyAccounts: names(mapping.breakGlassUserIds),
     emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => upnOf(snapshot, id) ?? nameOf(id)),
     serviceAccounts: names(mapping.serviceAccountUserIds),
-    admins: names([...adminUserIds(snapshot.roles)]),
+    adminNames: names([...adminUserIds(snapshot.roles)]),
     coreAdminRoles: [...CORE_ADMIN_ROLE_IDS].map(roleName),
     eligible: names(Object.keys(snapshot.roles.eligible)),
     // The special-care picker rows ("name · state"), and their ids.

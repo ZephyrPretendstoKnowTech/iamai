@@ -28,7 +28,6 @@ import { Button, Callout, Card } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { stepExportView } from './stepExport.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { todayView } from '../../derive/today.ts'
 
 // The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
 // source (the copy lint forbids one as punctuation).
@@ -159,8 +158,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
   // the same variables the Plan builds for a step, then the same view.
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
-  const activePeople = todayView(snapshot, snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
-  const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, activePeople, groups: data.groups, naming: coverage.organisation.naming })
+  const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, groups: data.groups, naming: coverage.organisation.naming })
   const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s))
   const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: steps.find((s) => s.comms)?.comms ?? null })
 

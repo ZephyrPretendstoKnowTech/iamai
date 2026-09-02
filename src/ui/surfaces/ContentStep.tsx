@@ -138,7 +138,7 @@ export function ContentStep({
         )
       })}
       {who.groups && who.overlap && <Line s={who.overlap} ex={ex} cls="sub" />}
-      {who.groups && who.adminsNote && truthy(ex.admins) && <p className="reason"><T s={who.adminsNote} ex={ex} /></p>}
+      {who.groups && who.adminsNote && truthy(ex.adminNames) && <p className="reason"><T s={who.adminsNote} ex={ex} /></p>}
 
       {d && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} />}
 

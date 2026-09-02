@@ -15,6 +15,7 @@ import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
+import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers } from '../derive/sets.ts'
 import { accountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
@@ -978,7 +979,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind: 'verify',
       goalId: 'mfa-all-users',
       status: verifyDone ? 'done' : 'ready',
-      population: population(viability.map((v) => v.userId).filter((id) => !excluded.has(id)), popIndex),
+      population: population(campaignIds(snapshot, snapshot.asOf, mapping), popIndex),
       readiness: verifyReadiness,
       forManager: MANAGER.verify(toSetUp),
     })

@@ -16,6 +16,7 @@ import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { sessionWantedForGoal, strengthForGoal } from './stepPortal.ts'
 import { contentLists } from '../../derive/contentLists.ts'
+import { stepPopulation } from '../../derive/population.ts'
 import { pickerVars } from './pickerRows.ts'
 import { DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -39,7 +40,6 @@ export type StepVarContext = {
   /** This step's report-only creation date (ISO), for a policy step's dates line. */
   reportOnlyAt?: string | null
   /** The one active-people count (Today's denominator), so every step's summary line agrees (walk-51 item 8). */
-  activePeople?: number
   /** The groups the plan loaded, for the exclusions-group picker's rows. */
   groups?: GroupMembers
   /** The tenant's naming convention (coverage.organisation.naming): the portal lines name the objects the plan proposes before they exist. */
@@ -67,20 +67,21 @@ function orgName(snapshot: TenantSnapshot): string {
  */
 export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
   const pop = step.population
+  // The one population per step (derive/population.ts): the row's who-line, the
+  // lead's counts and the names all read it.
+  const view = stepPopulation(step)
   const ev = step.events
   const enforce = ev?.enforce
   const announce = ev?.announce
   const v: Record<string, unknown> = {
     tenant: orgName(ctx.snapshot),
     tenantName: orgName(ctx.snapshot),
-    // The summary line's active count is the one denominator (Today's), the same
-    // on every step; the step's own scope stays in `n`/`inScope` (§8.1, item 8).
-    active: ctx.activePeople ?? pop.active,
-    admins: pop.admins,
-    guests: pop.guests,
+    active: view.active,
+    admins: view.admins,
+    guests: view.guests,
     total: pop.total,
-    inScope: pop.inScope ?? pop.total,
-    adminCount: pop.admins,
+    inScope: view.enabledCovered,
+    adminCount: view.admins,
     memberCount: pop.total,
     signature: ctx.signature,
     // Dates: one short format everywhere (absoluteDate), the long form only for
@@ -99,12 +100,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     existingName: step.naming?.fromBaseline ?? undefined,
     // The operator's own sign-in count, when the operator is in scope.
     operatorSignIns: ctx.operatorId ? operatorSignIns(ctx.snapshot, ctx.operatorId) : undefined,
-    // Everyone under 25, else the riskiest — the engine's own populationNames.
-    people: pop.active,
-    // A check step's subject is the accounts it checks, active or not (the
-    // dormant accounts are by definition not active); every other step counts
-    // the active people it touches.
-    n: step.kind === 'check' ? pop.total : pop.active,
+    people: view.active,
+    // The step's people: the active ones it touches, or, for a check step, the
+    // accounts it checks (the dormant accounts are by definition not active).
+    n: view.active,
     // The step's readiness, as the percentage the content line names.
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
     // The report-only observation window a policy done-when line names.
