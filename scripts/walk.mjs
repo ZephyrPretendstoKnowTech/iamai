@@ -299,16 +299,18 @@ function diffContract(label, c, d) {
   for (const s of d.longSentences) add('P1', `${label}: sentence over ${RULES.sentenceMaxWords} words: "${s.slice(0, 90)}…"`)
 }
 
-/** The people a row or a lead names: a leading count, nobody affected as 0, or the names listed (two at most); null when it names none. */
-function countOf(text) {
+/** The people a row or a lead counts: a leading number; a row may also read nobody affected (0) or two short names; null otherwise. */
+function countOf(text, { names = false } = {}) {
   const t = (text || '').trim()
   const m = /^(\d+)\b/.exec(t)
   if (m) return Number(m[1])
+  if (!names) return null
   if (/^nobody affected/i.test(t)) return 0
+  // A row names people only when two or fewer fit in 28 characters; a sentence is not a name list.
   const head = t.split(' · ')[0]
-  if (!head || /^(No |None |Nobody |Everyone|All |The )/.test(head)) return null
-  const names = head.split(/, | and /)
-  return names.length <= 2 ? names.length : null
+  if (!head || /[:.]$/.test(head) || head.length > 28) return null
+  const parts = head.split(/, | and /)
+  return parts.length <= 2 ? parts.length : null
 }
 
 /** The invariants over one capture's text. */
@@ -426,7 +428,7 @@ async function walkFixture(fx) {
         const rowWho = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
         const bodyLines = bodyText.split('\n').map((x) => x.trim()).filter(Boolean)
         const leadAt = bodyLines.indexOf('Who this touches')
-        const rowCount = countOf(rowWho)
+        const rowCount = countOf(rowWho, { names: true })
         const leadCount = leadAt >= 0 ? countOf(bodyLines[leadAt + 1] || '') : null
         if (rowCount !== null && leadCount !== null && rowCount !== leadCount) add('P0', `${slabel}: the row says ${rowCount} and the step's lead says ${leadCount} (one population per step)`)
         const bodyTitle = await evaluate(`(document.querySelector('main.page .step-body .step-title') || {}).textContent || ''`)
