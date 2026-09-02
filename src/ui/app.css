@@ -790,6 +790,11 @@ footer.app a {
   color: var(--ink-2);
   font-size: var(--t-2);
 }
+/* A page tip is its own block, with the paragraph spacing above and below. */
+.surface .page-tip {
+  display: block;
+  margin: 12px 0;
+}
 /* The baseline "updated by its author" review list (target-state §3): one row
    per changed policy, a hairline between. */
 .surface .found {

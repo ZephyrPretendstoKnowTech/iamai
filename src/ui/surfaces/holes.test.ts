@@ -1,6 +1,6 @@
 // No line renders around a hole (render.ts whole()): on the demo and GetIAMAI,
-// every line a step renders, and every picker row, is whole — no dangling comma
-// or preposition, no unfilled variable.
+// every line a step renders, and every picker row, is whole — no dangling comma,
+// no unfilled variable; a line may end in a preposition's object.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -10,7 +10,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { whole } from '../../content/render.ts'
 
-const HOLE = / ,|,,|,\.|\bfrom\.$|\bfrom is\b|\{[a-zA-Z:]+\}/
+const HOLE = / ,|,,|,\.|\bfrom is\b|\{[a-zA-Z:]+\}/
 
 test('whole() treats an empty value, an empty list and a list with an empty item as missing', () => {
   assert.equal(whole('{a} and {list:b}', { a: 'x', b: ['y'] }), true)
