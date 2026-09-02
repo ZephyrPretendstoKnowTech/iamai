@@ -251,7 +251,7 @@ test('7: regression after done → re-opened with a dated note (missing policy: 
   assert.match(step.history.at(-1)?.note ?? '', /changed since .*missing again/)
 })
 
-test('9: valid break-glass answers → no create-break-glass step; drill depends on their last sign-in', () => {
+test('9: valid break-glass answers → the emergency-access step stands by its checks; drill depends on their last sign-in', () => {
   const mapping = emptyMappingState('t')
   // Every shown question is required now (prompt 26): answer them all so only the break-glass branch is under test.
   for (const id of ['breakGlass', 'globalExclusion', 'countries', 'highCare', 'trustedLocations', 'serviceAccounts', 'timeZone', 'frameworks', 'applicability']) mapping.wizardAnswered[id] = true
@@ -260,7 +260,8 @@ test('9: valid break-glass answers → no create-break-glass step; drill depends
   snapshot.users[1].lastSuccessfulSignIn = '2026-01-01T00:00:00Z' // u1 stale
   const { input } = build({ baselinePolicies: [mkPolicy({ displayName: 'Baseline MFA All' })], mapping, snapshot })
   const steps = generateRoadmap(input).steps
-  assert.ok(!steps.some((s) => s.id === 's-prereq-break-glass'))
+  // Emergency access is a foundation: the step stands on every plan, In place or Ready by its checks.
+  assert.ok(steps.some((s) => s.id === 's-prereq-break-glass'))
   assert.ok(!steps.some((s) => s.id === 's-setup-questions'))
   // The drill is a Cleanup row now, never a step.
   assert.ok(!steps.some((s) => s.id.includes('drill')))

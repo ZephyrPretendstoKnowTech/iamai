@@ -18,6 +18,12 @@ import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './step
 
 export type { ExportStep }
 
+/** The step's Dates line: a change to an existing policy announces and changes (shared.datesChange); a new policy has its own line. */
+export function datesLineFor(step: Step, cs: Record<string, unknown>): string | null {
+  if (step.kind === 'adjust') return '{datesChange}'
+  return typeof cs.dates === 'string' ? cs.dates : null
+}
+
 /** The step as the screen says it, for an export. */
 export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
@@ -45,7 +51,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
     whatToDo: lines,
     doneWhen,
     ifWrong: cs.ifWrong && whole(cs.ifWrong, ex) ? fillText(cs.ifWrong, ex) : null,
-    dates: cs.dates && whole(cs.dates, ex) ? fillText(cs.dates, ex) : null,
+    dates: whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
   }
 }
 

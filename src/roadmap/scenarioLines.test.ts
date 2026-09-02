@@ -48,7 +48,9 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
   const reportOnly = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'in-report-only').length
   const exclusionStep = (r: ReturnType<typeof runFixture>) => r.steps.find((s) => s.id === 's-prereq-exclusion-group')
   assert.equal(unproven(week2), unproven(day1) - 3, 'three of the unproven are proven in week two')
-  assert.equal(inPlace(week2), inPlace(day1) + 1, 'the admins phishing-resistant policy is enforced by week two, so one more step is in place')
+  // By week two the admins phishing-resistant policy is enforced and the second
+  // emergency account is excluded from the MFA policy: two more steps are in place.
+  assert.equal(inPlace(week2), inPlace(day1) + 2, 'the admins phishing-resistant policy is enforced and emergency access is In place by week two')
   assert.equal(reportOnly(week2), 2, 'two Wave 1 policies are in report-only in week two')
   // The step is on every plan: day one has no group, so it carries the create
   // instructions (no checks); by week two the group exists and the step checks it.

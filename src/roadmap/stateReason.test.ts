@@ -55,6 +55,6 @@ test('confirmed break-glass accounts in Setup: no "create" step, and the drill r
 
   const confirmed = { ...stale, breakGlassUserIds: ['u-4', 'u-1'] }
   const withAccounts = plan(s, confirmed).steps
-  assert.ok(!withAccounts.some((x) => x.id === 's-prereq-break-glass'), 'confirmed accounts remove the create step')
+  assert.ok(withAccounts.some((x) => x.id === 's-prereq-break-glass'), 'confirmed accounts keep the step: emergency access is a foundation')
   assert.ok(!withAccounts.some((x) => x.id.includes('drill')), 'the drill is a Cleanup row, not a step')
 })

@@ -26,7 +26,8 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
   const lines: string[] = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IAMAI//Conditional Access rollout plan//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${escape(`${tenantName} Conditional Access rollout`)}`]
   for (const s of steps) {
     if (s.status === 'done' || s.status === 'skipped') continue
-    const start = s.rings[0]?.plannedStart ?? null
+    // A change to an existing policy has no ring: its enforcement instant is its day.
+    const start = s.rings[0]?.plannedStart ?? s.events?.enforce.at ?? null
     const end = s.rings.at(-1)?.plannedEnd ?? start
     if (!start || !end) continue
     const endExclusive = new Date(Date.parse(end) + 86_400_000).toISOString()

@@ -99,6 +99,8 @@ export type Schedule = {
   graph: Record<string, Dependency[]>
   /** Report-only creation date per create step (the enforcement rings start later). */
   reportOnlyAt: Record<string, string>
+  /** The placed start per step, the date a step with no ring of its own (a change to an existing policy) enforces on. */
+  startAt: Record<string, string>
   derivation: Derivation
   enforcementCap: number
   freeze: ChangeFreeze | null
@@ -728,6 +730,7 @@ export function buildSchedule(
     waitingOnSetupQuestions,
     graph,
     reportOnlyAt,
+    startAt: Object.fromEntries([...placed.entries()].map(([id, p]) => [id, p.start])),
     derivation: derive(steps, placed, verification, observation, totalDays, relaxed, cap, freeze, verifyStep),
     enforcementCap: cap,
     freeze,
