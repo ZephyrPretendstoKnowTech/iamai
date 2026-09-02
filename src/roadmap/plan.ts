@@ -222,7 +222,10 @@ export function buildPlanFile(args: {
 
 export function parsePlanFile(text: string): { plan: PlanFile | null; error: string | null } {
   try {
-    const parsed = JSON.parse(text) as PlanFile
+    // A file saved in demo mode opens with the sample-data line (exportGuard):
+    // the plan is the JSON object after it.
+    const start = text.indexOf('{')
+    const parsed = JSON.parse(start > 0 ? text.slice(start) : text) as PlanFile
     if (typeof parsed.schemaVersion !== 'number' || !Array.isArray(parsed.steps)) {
       return { plan: null, error: 'not a plan file (missing schemaVersion or steps)' }
     }

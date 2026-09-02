@@ -309,7 +309,7 @@
         ],
         "planFile": [
           "Plan file",
-          "Everything, to load back on any machine: steps, evidence, decisions and checkpoints.",
+          "Everything, to load back on any machine: steps, evidence, decisions and checkpoints. Names in full: it is your own working state.",
           "Save plan file · Load a plan file"
         ],
         "csv": [
