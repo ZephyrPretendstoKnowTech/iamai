@@ -53,6 +53,8 @@ export const stepById: Record<string, ContentStep> = Object.fromEntries(steps.ma
 export const cleanup = content.cleanup
 export const phases = content.phases
 export const pages = content.pages
+/** The product's name and descriptor (pages.home.planner): the wordmark and the page title. */
+export const planner = (content.pages.home as { planner: { name: string; descriptor: string } }).planner
 
 /** The words the app chrome and the surfaces show (pages.app): the header, the scan progress, the print cover, the export alerts. */
 export type AppWords = {

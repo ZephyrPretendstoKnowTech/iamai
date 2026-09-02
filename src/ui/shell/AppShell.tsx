@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 import { forgetTenant } from '../../graph/collect/cache.ts'
 import { clearAuthCache, signOut } from '../../graph/auth.ts'
 import { fillText } from '../../content/render.ts'
-import { app, pages } from '../../content/content.ts'
+import { app, pages, planner } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demo.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { FeedbackPanel } from '../FeedbackPanel.tsx'
@@ -210,7 +210,7 @@ export function AppShell({
       <header className="app">
         <a className="wordmark" href={tabsOn ? PLAN_HREF : '#/connect'}>
           <RingMark size={18} />
-          {(pages.home as { planner: { name: string } }).planner.name}
+          {planner.name}
         </a>
         {signedIn && <span className="tenant">{tenantName ?? account.username}</span>}
         {signedIn && (

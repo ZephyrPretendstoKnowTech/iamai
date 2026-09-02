@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { PRODUCT } from './src/copy/product.ts'
+import { planner } from './src/content/content.ts'
 import { buildHome } from './scripts/build-home.ts'
 
 // Dev-only: lets the spike harness save raw result JSON to docs/spikes/raw/.
@@ -40,13 +40,13 @@ function spikeCapture(): Plugin {
   }
 }
 
-// The page title, from the one PRODUCT constant (prompt 47.1 Part 4): the name
+// The page title, from content.json's pages.home.planner (prompt 47.1 Part 4): the name
 // and the descriptor, joined the way a browser tab expects.
 function productTitle(): Plugin {
   return {
     name: 'product-title',
     transformIndexHtml(html) {
-      return html.replace('__PRODUCT_TITLE__', `${PRODUCT.name} — ${PRODUCT.descriptor}`)
+      return html.replace('__PRODUCT_TITLE__', `${planner.name} — ${planner.descriptor}`)
     },
   }
 }
