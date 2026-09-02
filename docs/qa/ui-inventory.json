@@ -1,5 +1,5 @@
 {
- "fingerprint": "db1fe5fc0b9a46ee",
+ "fingerprint": "47cc374f2b5de999",
  "surfaces": [
   {
    "name": "Header",
@@ -2428,9 +2428,9 @@
    "rows": [
     {
      "selector": ".decision",
-     "text": "Emergency access accounts · ·Save",
+     "text": "Emergency access accountsSave",
      "sentences": 1,
-     "words": 5
+     "words": 3
     }
    ],
    "forbidHits": [],
