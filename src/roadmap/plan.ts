@@ -144,6 +144,13 @@ export function fileStep(s: Step): Step {
   }
 }
 
+/** The answers without the wizard's provenance map, which is derived again on every load. */
+function withoutProvenance(mapping: MappingState): MappingState {
+  const out = { ...mapping }
+  delete out.assumed
+  return out
+}
+
 export function buildPlanFile(args: {
   planId: string
   snapshot: TenantSnapshot
@@ -189,7 +196,9 @@ export function buildPlanFile(args: {
         chosenPolicyName,
       })),
     },
-    mappings: args.mapping,
+    // The answers, without the wizard's provenance bookkeeping (`assumed`): the file
+    // carries decisions and facts, and that map is derived again on every load.
+    mappings: withoutProvenance(args.mapping),
     steps: args.steps.map(fileStep),
     decisions: {
       planId: args.planId,
