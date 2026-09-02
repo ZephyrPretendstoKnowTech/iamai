@@ -18,6 +18,7 @@ import { scanAge } from '../../derive/scanAge.ts'
 import { todayView } from '../../derive/today.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
+import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
@@ -102,9 +103,11 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const weeksText = `${weeks} week${weeks === 1 ? '' : 's'}`
   const age = scanAge(scan.at)
   const ageText = age.hours < 1 ? 'just now' : age.hours < 48 ? `${age.hours}h ago` : `${age.days}d ago`
-  const line1 = finish.finish
-    ? fillText(P.line1, { steps: total, inPlace, finish: absoluteDate(finish.finish), weeks: weeksText })
-    : fillText(P.line1CannotFinish, { steps: total, inPlace, weeks: weeksText, constraint: waiting })
+  // Until Start the plan is pressed (or a date is set in Plan settings), every
+  // visit proposes dates from today and the header says so in one small line;
+  // once started, the anchored start is on the line and a scan never moves it (§5, §9).
+  const line1 = headerLine1({ steps: total, inPlace, finish: finish.finish, weeks: weeksText, constraint: waiting, startedFrom: data.startedFrom })
+  const start = startControl()
   const line2 = fillText(P.line2, { tenant: tenantName, age: ageText })
   const lengthTip = fillText(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.criticalPath })
 
@@ -127,6 +130,16 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         <InfoTip title={C.constraintTip} text={lengthTip} />
       </p>
       <p className="line">{line2}</p>
+      {data.startedFrom === null && (
+        <>
+          <p className="actions no-print">
+            <Button variant="primary" onClick={() => data.startPlan(c.schedule.start)}>
+              {start.label}
+            </Button>
+          </p>
+          <p className="line reason">{start.note}</p>
+        </>
+      )}
 
       <p className="line no-print">
         <a href="#/plan" onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>

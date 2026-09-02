@@ -25,7 +25,10 @@ export type StepDecision = { picked?: string[]; option?: string; at: string }
 export type PlanDecisions = {
   planId: string
   skips: Record<string, SkipDecision>
+  /** The anchored start (target-state §5, §9): set by Start the plan or Plan settings; a scan never moves it. */
   startDate?: string
+  /** When Start the plan was pressed; absent while the dates are proposals. */
+  startedAt?: string
   band?: SizeBand
   freeze?: ChangeFreeze | null
   /** The change record shared with the Roadmap page; opaque here. */

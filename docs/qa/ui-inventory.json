@@ -1,5 +1,5 @@
 {
- "fingerprint": "ada9ef0d243f9535",
+ "fingerprint": "aac213f1b004ad62",
  "surfaces": [
   {
    "name": "Header",
@@ -1884,7 +1884,9 @@
     "Cleanup · <date> → <date>"
    ],
    "tabs": [],
-   "buttons": [],
+   "buttons": [
+    "Start the plan"
+   ],
    "options": [],
    "links": [
     "Plan settings"
@@ -1907,7 +1909,9 @@
    ],
    "sentences": [
     "20 steps · 2 in place · finishes <date> · 6 weeks",
-    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands."
+    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.",
+    "Starting locks the dates.",
+    "Until then, every visit proposes dates from today."
    ],
    "titles": [
     "Create or Correct Emergency Access Accounts",
@@ -1929,21 +1933,31 @@
     "Alert on Emergency Account Sign-ins",
     "Run the Emergency Access Drill"
    ],
-   "nav": [],
-   "primary": [],
+   "nav": [
+    {
+     "label": "Start the plan",
+     "at": "top",
+     "inFooterSlot": false
+    }
+   ],
+   "primary": [
+    "Start the plan"
+   ],
    "tables": [],
    "occurrences": {
     "20 steps · 2 in place · finishes <date> · 6 weeks": 1,
-    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1
+    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1,
+    "Until then, every visit proposes dates from today.": 1
    },
    "occurrencesAll": {
     "20 steps · 2 in place · finishes <date> · 6 weeks": 1,
-    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1
+    "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1,
+    "Until then, every visit proposes dates from today.": 1
    },
    "wordCounts": {
     "headings": 35,
     "tabs": 0,
-    "buttons": 0,
+    "buttons": 3,
     "options": 0,
     "links": 2,
     "chips": 3,
@@ -1952,8 +1966,8 @@
     "empty": 0,
     "summaries": 11,
     "tips": 6,
-    "sentences": 31,
-    "total": 88
+    "sentences": 43,
+    "total": 103
    },
    "unnamedControls": [],
    "rows": [
@@ -2105,8 +2119,8 @@
    "forbidHits": [],
    "forbidEverywhereHits": [],
    "pageProse": {
-    "sentences": 2,
-    "words": 31
+    "sentences": 4,
+    "words": 43
    },
    "contract": "plan",
    "state": "scanned",

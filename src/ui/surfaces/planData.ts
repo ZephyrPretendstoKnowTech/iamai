@@ -65,6 +65,12 @@ export type PlanData = {
   saveMapping: (next: MappingState) => void
   /** Set the plan start; null clears the override and restores the default (prompt 49.1 item 11). */
   setStart: (iso: string | null) => void
+  /** The anchored start (ISO) once the plan is started or a date is set; null while every visit proposes dates from today. */
+  startedFrom: string | null
+  /** When Start the plan was pressed, if it was. */
+  startedAt: string | null
+  /** Start the plan (target-state §5): lock the proposed dates by anchoring the start; a scan never moves it. */
+  startPlan: (effectiveStart: string) => void
   setBand: (b: SizeBand | null) => void
   setFreeze: (f: ChangeFreeze | null) => void
   /** Skip a step, persisted so a re-scan and reload keep it (prompt 49.1 item 10). */
@@ -199,7 +205,8 @@ export function usePlanData(
       planCreatedAt: saved.planCreatedAt ?? new Date().toISOString(),
       stepDecisions: saved.stepDecisions ?? {},
     }
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions })
+    if (saved.startedAt) decisions.startedAt = saved.startedAt
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions })
     if (key === lastPersist.current) return
     lastPersist.current = key
     void savePlanRecord(snapshot.tenantId, decisions)
@@ -221,7 +228,17 @@ export function usePlanData(
       bump()
     },
     setStart: (iso) => {
-      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), startDate: iso ?? undefined }))
+      // A date set here anchors the start (a deliberate re-plan, §5); clearing
+      // it returns the plan to proposals from today, and it is no longer started.
+      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), startDate: iso ?? undefined, ...(iso === null ? { startedAt: undefined } : {}) }))
+      bump()
+    },
+    // Started means Start the plan was pressed: a start date alone is an anchor
+    // (Plan settings, or any saved plan file carries one) and is not a start.
+    startedFrom: saved?.startedAt ? (saved.startDate ?? null) : null,
+    startedAt: saved?.startedAt ?? null,
+    startPlan: (effectiveStart) => {
+      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), startDate: effectiveStart, startedAt: new Date().toISOString() }))
       bump()
     },
     setBand: (b) => {
