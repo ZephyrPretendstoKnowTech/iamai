@@ -156,10 +156,10 @@ export function noticeDaysFor(step: Step): number {
 }
 
 /** The three dates for a step, from its first ring's enforcement date. */
-export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
+export function eventsFor(step: Step, ctx: TimingContext, placedStart: string | null = null): StepEvents | null {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return null
   if (step.status === 'done' || step.status === 'skipped') return null
-  const enforceDay = step.rings[0]?.plannedStart ?? null
+  const enforceDay = step.rings[0]?.plannedStart ?? placedStart ?? null
   if (!enforceDay) return null
   // The slot varies within the hours the change may land in (prompt 42 §12).
   // Every enforcement in every week was Tuesday or Wednesday at 12:00 for

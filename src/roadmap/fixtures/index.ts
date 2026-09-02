@@ -209,7 +209,9 @@ export function buildFixture(spec: Spec): Fixture {
   for (const [k, id] of bgIds.entries()) {
     users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${seed}.onmicrosoft.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
     registrationDetails.push({ id, userPrincipalName: `bg${k + 1}@${seed}.example.com`, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: !spec.breakGlassSmsOnly, methodsRegistered: spec.breakGlassSmsOnly ? ['mobilePhone'] : ['fido2SecurityKey'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: true, userType: 'member' })
-    authMethods[id] = spec.breakGlassSmsOnly ? [{ kind: 'phone', phoneType: 'mobile' }] : [{ kind: 'fido2' }]
+    // The demo's two accounts use two method kinds, so what its emergency-access
+    // step has left to fix is the one exclusion below, not method diversity.
+    authMethods[id] = spec.breakGlassSmsOnly ? [{ kind: 'phone', phoneType: 'mobile' }] : spec.demo && k === 1 ? [{ kind: 'windowsHelloForBusiness' }] : [{ kind: 'fido2' }]
     rolesActive[id] = [GA]
   }
   // Service accounts: legacy-auth users with no MFA.
@@ -335,7 +337,12 @@ export function buildFixture(spec: Spec): Fixture {
     // policy, report-only on day one, is now enforced, so its step moves into
     // place and the header's in-place count rises.
     const state = spec.week2 && t[3] === 'admins-phishing-resistant' ? 'enabled' : base
-    policies.push(policy(n, n < templates.length ? t[0] : `Core - Extra ${n} - ${t[0].split(' - ').slice(1).join(' - ')}`, state, t[2], n < templates.length ? t[3] : undefined))
+    // The demo, day one: the MFA policy excludes the first emergency account by
+    // name and not the group, so the second account sits inside it and the
+    // emergency-access step has one check to fix; by week two the group is
+    // excluded and the step is In place.
+    const body = spec.demo && !spec.week2 && n === 0 ? { ...t[2], conditions: { ...(t[2].conditions as Record<string, unknown>), users: { includeUsers: ['All'], excludeUsers: [bgIds[0]] } } } : t[2]
+    policies.push(policy(n, n < templates.length ? t[0] : `Core - Extra ${n} - ${t[0].split(' - ').slice(1).join(' - ')}`, state, body, n < templates.length ? t[3] : undefined))
   }
   for (let n = 0; n < (spec.disabledPolicies ?? 0); n++) policies.push(policy(500 + n, `Old - Disabled ${n}`, 'disabled', templates[n % templates.length][2]))
   for (let n = 0; n < (spec.reportOnlyPolicies ?? 0); n++) policies.push(policy(600 + n, `Test - Report only ${n}`, 'enabledForReportingButNotEnforced', templates[n % templates.length][2]))

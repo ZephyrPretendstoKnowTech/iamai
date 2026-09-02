@@ -553,11 +553,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // Setup's confirmed break-glass accounts feed generation (ux-review-04 §5):
   // with accounts picked, nothing is created, whatever an older record says.
-  const bgMissing = mapping.records['__breakGlassMissing']?.doesNotExist === true && mapping.breakGlassUserIds.length === 0
+  // Emergency access is a foundation, like the exclusions group and the trusted
+  // network: on every plan, In place when every bg.* check passes, Ready
+  // otherwise, never removed by a pick or a detection. Its checks attach below.
   const bgStepId = BREAK_GLASS_STEP_ID
-  if (bgMissing) {
-    steps.push(prereq(bgStepId))
-  }
+  if (canUseConditionalAccess) steps.push(prereq(bgStepId))
   // The exclusions group is a step on every plan, never removed: In place when
   // the recognised group is excluded from every enabled or report-only policy,
   // otherwise Ready, listing the policies
@@ -695,7 +695,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       geStep.deliveredBy = [recognisedGroupId]
     }
   }
+  const bgReport = validationReports.find((r) => r.subject === 'breakGlass')
+  const bgStep = steps.find((s) => s.id === bgStepId)
+  if (bgStep && bgReport) {
+    bgStep.checks = stepChecks(bgReport)
+    const results = bgReport.targets.flatMap((t) => t.results)
+    if (mapping.breakGlassUserIds.length > 0 && results.length > 0 && results.every((r) => r.outcome === 'pass')) {
+      bgStep.status = 'done'
+      bgStep.deliveredBy = [...mapping.breakGlassUserIds]
+    }
+  }
   let gate = canUseConditionalAccess ? gateReason(validationReports) : null
+  if (gate === null && bgStep && bgStep.status !== 'done') gate = gateFor('breakGlass')
   if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
   if (gate !== null && steps.find((s) => s.id === gate?.stepId)?.status === 'done') gate = null
   // The step has to exist before the goal loop so a held step can name it; the
@@ -1201,7 +1212,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const firstDate = s.rings[0]?.plannedStart ?? waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso
       s.comms = template.replaceAll('{DATE}', absoluteDate(firstDate))
     }
-    s.events = eventsFor(s, { rhythm, timeZone: mapping.displayTimeZone ?? 'UTC' })
+    // A change to an existing policy has no ring of its own: its dates come from where the schedule placed it.
+    s.events = eventsFor(s, { rhythm, timeZone: mapping.displayTimeZone ?? 'UTC' }, s.kind === 'adjust' ? (schedule.startAt[s.id] ?? null) : null)
   }
 
   // The lockout-scenario lines, once every step has its enforce date (prompt 48

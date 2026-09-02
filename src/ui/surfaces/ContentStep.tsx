@@ -17,6 +17,7 @@ import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { jsonOffered, missingObjects } from './stepJson.ts'
+import { datesLineFor } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -208,10 +209,10 @@ export function ContentStep({
         hasSteps && <ol className="sections">{(w.steps as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
       )}
 
-      {cs.dates && whole(cs.dates, ex) && (
+      {datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
         <>
           <h3>Dates</h3>
-          <p className="line"><T s={cs.dates} ex={ex} /></p>
+          <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
         </>
       )}
 
