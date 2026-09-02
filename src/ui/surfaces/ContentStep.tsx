@@ -8,13 +8,15 @@
 import { useState, useMemo } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
-import { content } from '../../content/content.ts'
+import { app, content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import { powershellFor } from './stepPowerShell.ts'
+import { jsonOffered, missingObjects } from './stepJson.ts'
+import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
@@ -170,13 +172,21 @@ export function ContentStep({
             ))}
           </div>
           {tab === 'portal' && <ol className="sections">{portal.map((l, i) => <li key={i}>{l}</li>)}</ol>}
-          {tab === 'json' && <pre className="mono">{JSON.stringify(policyJson(step), null, 2)}</pre>}
-          {tab === 'ps' && <pre className="mono">{powershellFor(policyJson(step), step.kind === 'adjust' ? (step.tracking?.policyId ?? null) : null)}</pre>}
-          <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, JSON.stringify(policyJson(step), null, 2), 'application/json', REDACTED)}>
-              Download JSON
-            </Button>
-          </p>
+          {/* The JSON and PowerShell tabs render only when every object the body
+              names exists in the tenant; otherwise one line names the Preparation
+              step that creates it, and Download JSON is not offered. */}
+          {(tab === 'json' || tab === 'ps') && !jsonOffered(step) && (
+            <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
+          )}
+          {tab === 'json' && jsonOffered(step) && <pre className="mono">{JSON.stringify(policyJson(step), null, 2)}</pre>}
+          {tab === 'ps' && jsonOffered(step) && <pre className="mono">{powershellFor(policyJson(step), step.kind === 'adjust' ? (step.tracking?.policyId ?? null) : null)}</pre>}
+          {jsonOffered(step) && (
+            <p className="actions">
+              <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, JSON.stringify(policyJson(step), null, 2), 'application/json', REDACTED)}>
+                Download JSON
+              </Button>
+            </p>
+          )}
         </>
       ) : (
         hasSteps && <ol className="sections">{(w.steps as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>

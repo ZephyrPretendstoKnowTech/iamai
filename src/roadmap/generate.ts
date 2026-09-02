@@ -1,6 +1,7 @@
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
+import type { ReferenceKind } from '../baseline/types.ts'
 import { docFor } from '../baseline/index.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
@@ -219,6 +220,18 @@ export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}
 
 
 
+/** The tenant's own ids for baseline reference ids a goal resolves itself (the countries location). */
+function replaceIds(policy: RawPolicy, ids: ReadonlyMap<string, string>): RawPolicy {
+  if (ids.size === 0) return policy
+  const walk = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(walk)
+    if (typeof v === 'string') return ids.get(v) ?? v
+    if (v !== null && typeof v === 'object') return Object.fromEntries(Object.entries(v as RawPolicy).map(([k, val]) => [k, walk(val)]))
+    return v
+  }
+  return walk(policy) as RawPolicy
+}
+
 function replaceReferences(policy: RawPolicy, mapping: MappingState): RawPolicy {
   const resolved = new Map<string, string>()
   for (const r of Object.values(mapping.records)) {
@@ -251,17 +264,22 @@ function replaceReferences(policy: RawPolicy, mapping: MappingState): RawPolicy 
  * Strip references no object resolves yet from a policy body so a downloaded
  * artifact never carries a placeholder (prompt 49.1 item 1). An unresolved entry
  * is a placeholder token or a {template} slot; it is dropped from its array, and
- * an array that held only unresolved entries is dropped with its key. Returns the
- * plain labels omitted, for the caption above the Do-it tabs. The portal steps
- * keep the reference (resolved to a label), so only the JSON changes.
+ * an array that held only unresolved entries is dropped with its key. Nothing is
+ * dropped silently: every entry left out comes back in `missing`, with the
+ * Preparation step that creates it, and the JSON and PowerShell tabs wait on
+ * those. The portal steps keep the reference (resolved to a label).
  */
-function stripUnresolvedForJson(policy: RawPolicy, unresolvedIds: ReadonlySet<string> = new Set()): RawPolicy {
-  const unresolved = (s: string): boolean => unresolvedIds.has(s) || /^\{[A-Za-z]+\}$/.test(s) || /^__IAMAI_/.test(s)
+function stripUnresolvedForJson(policy: RawPolicy, unresolvedSteps: ReadonlyMap<string, string | null> = new Map()): { policy: RawPolicy; missing: { token: string; stepId: string | null }[] } {
+  const unresolved = (s: string): boolean => unresolvedSteps.has(s) || /^\{[A-Za-z]+\}$/.test(s) || /^__IAMAI_/.test(s)
+  const missing: { token: string; stepId: string | null }[] = []
   const walk = (v: unknown): unknown => {
     if (Array.isArray(v)) {
       const kept: unknown[] = []
       for (const x of v) {
-        if (typeof x === 'string' && unresolved(x)) continue
+        if (typeof x === 'string' && unresolved(x)) {
+          if (!missing.some((m) => m.token === x)) missing.push({ token: x, stepId: unresolvedSteps.get(x) ?? PLACEHOLDER_STEP[x as keyof typeof PLACEHOLDER_STEP] ?? null })
+          continue
+        }
         kept.push(walk(x))
       }
       return kept
@@ -278,7 +296,7 @@ function stripUnresolvedForJson(policy: RawPolicy, unresolvedIds: ReadonlySet<st
     }
     return v
   }
-  return walk(structuredClone(policy)) as RawPolicy
+  return { policy: walk(structuredClone(policy)) as RawPolicy, missing }
 }
 
 
@@ -289,9 +307,9 @@ export function buildCreateAction(
   mapping: MappingState,
   planId: string,
   stepId: string,
-  opts: { displayName?: string; adjust?: { policyId: string; state: string }; unresolved?: ReadonlySet<string> } = {},
+  opts: { displayName?: string; adjust?: { policyId: string; state: string }; unresolved?: ReadonlyMap<string, string | null>; resolveIds?: ReadonlyMap<string, string> } = {},
 ): Action {
-  const body = replaceReferences(baselinePolicy, mapping)
+  const body = replaceIds(replaceReferences(baselinePolicy, mapping), opts.resolveIds ?? new Map())
   delete body.id
   delete body.createdDateTime
   delete body.modifiedDateTime
@@ -303,8 +321,9 @@ export function buildCreateAction(
   const tag = `[IAMAI:${planId}:${stepId}]`
   body.description = `${tag}${typeof baselinePolicy.description === 'string' && baselinePolicy.description ? ' ' + baselinePolicy.description : ''}`
   // The JSON strips any object that does not exist yet, so a download never carries a placeholder.
-  const json = JSON.stringify(stripUnresolvedForJson(body, opts.unresolved), null, 2)
-  return { kind: opts.adjust ? 'adjust' : 'create', summary: [], json, portalSteps: [] }
+  const stripped = stripUnresolvedForJson(body, opts.unresolved)
+  const json = JSON.stringify(stripped.policy, null, 2)
+  return { kind: opts.adjust ? 'adjust' : 'create', summary: [], json, portalSteps: [], missing: stripped.missing }
 }
 
 export { proposedPolicyName } from '../coverage/naming.ts'
@@ -353,7 +372,7 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
   const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
   const roleList = cur && Array.isArray(cur.includeRoles) && cur.includeRoles.length > 0 ? roleListSummary(cur.includeRoles.map(String)) : null
   const excludeRoles = cur && Array.isArray(cur.excludeRoles) && cur.excludeRoles.length > 0 ? roleListSummary(cur.excludeRoles.map(String)) : null
-  return { kind: 'adjust', summary: [], json, portalSteps: [], roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
+  return { kind: 'adjust', summary: [], json, portalSteps: [], missing: full.missing, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
 }
 
 // ---- generation ----
@@ -447,8 +466,26 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
   // ---- Phase 0, collapsed: only what genuinely needs a human ----
   const naming = input.coverage.organisation.naming
-  // A baseline reference the tenant does not resolve is stripped from every policy body a person downloads (prompt 49.1 item 1).
-  const unresolvedIds = new Set(unresolvedReferences(input.baseline.references).map((r) => r.id).filter((id) => mapping.records[id]?.resolvedId == null))
+  // A baseline reference the tenant does not resolve is left out of the policy
+  // body, and the body says so: the Preparation step that creates the object, by
+  // the reference's kind (the countries policy's location is the allowed-countries
+  // step's, any other location the trusted network's). The countries location the
+  // tenant already has stands in for the baseline's on the countries policy.
+  const unresolvedRefs = unresolvedReferences(input.baseline.references).filter((r) => mapping.records[r.id]?.resolvedId == null)
+  const stepForReference = (kind: ReferenceKind, goalId: string): string | null =>
+    kind === 'group' ? PREREQ_STEP_ID.exclusionsGroup : kind === 'namedLocation' ? (goalId === 'geo-restriction' ? PREREQ_STEP_ID.allowedCountries : PREREQ_STEP_ID.trustedLocation) : kind === 'authenticationStrength' ? 's-prereq-auth-strength' : null
+  const unresolvedFor = (goalId: string): Map<string, string | null> => new Map(unresolvedRefs.map((r) => [r.id, stepForReference(r.kind, goalId)]))
+  const countriesLocationId = tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null
+  // A group the baseline only ever excludes is its exclusions group: the tenant's recognised one stands in for it.
+  const exclusionsGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
+  const resolveFor = (goalId: string): Map<string, string> => {
+    const pairs: [string, string][] = []
+    for (const r of unresolvedRefs) {
+      if (r.kind === 'group' && exclusionsGroupId && r.uses.length > 0 && r.uses.every((u) => u.side === 'exclude')) pairs.push([r.id, exclusionsGroupId])
+      if (r.kind === 'namedLocation' && goalId === 'geo-restriction' && countriesLocationId) pairs.push([r.id, countriesLocationId])
+    }
+    return new Map(pairs)
+  }
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
   /** The tenant-convention name, suffixed when a policy of that name already exists; the note explains. */
@@ -760,7 +797,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'create'
       if (source) {
         const proposed = uniqueName(goal)
-        action = buildCreateAction(source.policy, mapping, planId, stepId, { displayName: proposed.name, unresolved: unresolvedIds })
+        action = buildCreateAction(source.policy, mapping, planId, stepId, { displayName: proposed.name, unresolved: unresolvedFor(goal.id), resolveIds: resolveFor(goal.id) })
         namingNote = proposed
       } else {
         // No baseline policy stands for this goal: the goal's own template is
@@ -770,7 +807,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const resolved = resolveTemplate(impl.template as TemplateBody, templateValues)
         for (const p of resolved.unresolved) blockPlaceholder(p)
         const proposed = uniqueName(goal)
-        action = buildCreateAction(resolved.body, mapping, planId, stepId, { displayName: proposed.name, unresolved: unresolvedIds })
+        action = buildCreateAction(resolved.body, mapping, planId, stepId, { displayName: proposed.name, unresolved: unresolvedFor(goal.id), resolveIds: resolveFor(goal.id) })
         namingNote = proposed
       }
     } else {
@@ -787,7 +824,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       action = source
         ? adjustAction(
             buildCreateAction(source.policy, mapping, planId, stepId, {
-              unresolved: unresolvedIds,
+              unresolved: unresolvedFor(goal.id),
+              resolveIds: resolveFor(goal.id),
               displayName: existing?.policyName ?? proposedPolicyName(goal, naming),
               adjust: existing ? { policyId: existing.policyId, state: existing.state } : undefined,
             }),

@@ -15,6 +15,8 @@ import type { StepVarContext } from './stepVars.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
 import { SUBJECT } from '../../copy/validation.ts'
+import { jsonOffered, missingObjects } from './stepJson.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 
 const FIXTURES = ['demo', 'getiamai'] as const
 
@@ -76,4 +78,29 @@ test('the How page\'s check rows carry no forbidden-everywhere string', () => {
   }
   assert.deepEqual(hits, [])
   assert.equal(ruleText('pilot.hasMembers').why, 'An empty first group proves nothing and delays every group behind it.')
+})
+
+// A policy step's JSON waits on every object the body names; the translator
+// never drops one silently. GetIAMAI's countries policy names the baseline's
+// location; with no such location in the tenant it offers no JSON and names the
+// step that creates one; with the tenant's own countries location, its JSON
+// carries excludeLocations with that id.
+test('GetIAMAI: the countries block waits on the allowed-countries location, then carries it', () => {
+  const f = fixture('getiamai')
+  const geo = (r: ReturnType<typeof runFixture>) => r.steps.find((s) => s.id === 's-goal-geo-restriction')!
+  const without = geo(runFixture(f))
+  assert.ok(without.action.json, 'the body exists')
+  assert.equal(jsonOffered(without), false, 'no JSON is offered while the location is missing')
+  const names = missingObjects(without).map((m) => m.title)
+  assert.ok(names.includes('Create or Correct Allowed Countries Location'), `names the step that creates it (${names.join(', ')})`)
+  assert.ok(!JSON.parse(without.action.json!).conditions?.locations?.excludeLocations, 'the missing location is not in the JSON')
+  // The tenant's own countries location, matching the allowed list.
+  const location = { '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'loc-au', displayName: 'Allowed countries', countriesAndRegions: ['AU'], includeUnknownCountriesAndRegions: false }
+  const named = f.snapshot.config.namedLocations ?? { status: 'ok', reason: null, rows: [] }
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, namedLocations: { ...named, rows: [...(named.rows ?? []), location] } } }
+  assert.deepEqual(f.mapping.allowedCountries, ['AU'])
+  const withLocation = geo(runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>))
+  assert.equal(jsonOffered(withLocation), true, 'the JSON is offered once the location exists')
+  assert.deepEqual(JSON.parse(withLocation.action.json!).conditions.locations.excludeLocations, ['loc-au'])
+  assert.ok(!missingObjects(withLocation).some((m) => m.stepId === 's-prereq-allowed-countries'))
 })
