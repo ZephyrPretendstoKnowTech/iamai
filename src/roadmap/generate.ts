@@ -64,6 +64,7 @@ import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
+import { isFloorGoal } from './floor.ts'
 import { DATE_NOTE } from '../copy/steps.ts'
 const QUESTION_STEPS: [string, string, string][] = [
   ['mailDevices', 'Set up an SMTP relay for the devices that send mail', 'Printers and apps that send mail by Authenticated SMTP break when legacy auth is blocked; an SMTP relay or a per-device exception keeps them working.'],
@@ -723,13 +724,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const goalMap = input.goalMap ?? PINNED_GOAL_MAP
   const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
   const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
+  // The map describes this package when its keys resolve in it (the pinned
+  // baseline); then a goal the map does not hold has no source at all — the
+  // floor's step renders Microsoft's template, never a signature match that the
+  // pin-time rule rejected (the risky-users block for registration). Only a
+  // package the map does not describe (a synthetic fixture) falls back to matching.
+  const mapDescribesPackage = Object.values(goalMap).flat().some((k) => factsByKey.has(k))
   const sourcesFor = (goal: Goal): typeof baselineFactsList => {
     const mapped = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((b): b is (typeof baselineFactsList)[number] => b !== undefined)
-    return mapped.length > 0 ? mapped : baselineMatchesFor(goal)
+    if (mapped.length > 0) return mapped
+    return mapDescribesPackage ? [] : baselineMatchesFor(goal)
   }
   const templateNeeds = new Set<TemplatePlaceholder>()
   for (const r of input.coverage.results) {
-    if (r.status !== 'absent' || !inBaseline(r.goal) || sourcesFor(r.goal).length > 0) continue
+    if (r.status !== 'absent' || (!inBaseline(r.goal) && !isFloorGoal(r.goal.id)) || sourcesFor(r.goal).length > 0) continue
     for (const p of placeholdersIn(r.goal.implementations[0].template)) templateNeeds.add(p)
   }
 
@@ -903,8 +911,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (result.status === 'not-applicable' || result.status === 'licence-limited' || result.status === 'unknown') continue
     const goal = result.goal
     // A goal this baseline does not hold has no step: the catalogue keeps intent
-    // only, and the plan renders the baseline (walk-51 item 9).
-    if (!inBaseline(goal)) continue
+    // only, and the plan renders the baseline (walk-51 item 9) — except the floor
+    // (target-state §13): registration protection and the legacy-authentication
+    // block render from Microsoft's own template when the baseline lacks them,
+    // flagged as not the author's.
+    const floor = !inBaseline(goal)
+    if (floor && !isFloorGoal(goal.id)) continue
     const impl = goal.implementations[0]
     const stepId = idFor('goal', goal.id)
 
@@ -1269,6 +1281,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       goalId: goal.id,
       phase: Math.max(1, goal.phase),
       kind,
+      ...(floor ? { floor: true } : {}),
       title: stepTitle(goal.name),
       why,
       whyAttribution,

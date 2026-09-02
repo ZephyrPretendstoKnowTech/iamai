@@ -1,5 +1,5 @@
 {
- "fingerprint": "517c5d5687eb7687",
+ "fingerprint": "af5dac5a6696d59f",
  "surfaces": [
   {
    "name": "Header",
@@ -1880,7 +1880,6 @@
     "Phase 1 · <date> → <date>",
     "Phase 2 · <date> → <date>",
     "Phase 3 · <date> → <date>",
-    "Phase 4 · <date> → <date>",
     "Cleanup · <date> → <date>"
    ],
    "tabs": [],
@@ -1908,7 +1907,7 @@
     "About What set the plan length"
    ],
    "sentences": [
-    "20 steps · 2 in place · finishes <date> · 6 weeks",
+    "21 steps · 2 in place · finishes <date> · 5 weeks",
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.",
     "Starting locks the dates.",
     "Until then, every visit proposes dates from today."
@@ -1926,10 +1925,11 @@
     "Require Phishing-Resistant MFA for Admins",
     "Block the Admin Portals for Non-Admins",
     "Block Sign-ins From Countries Not Allowed",
-    "Block Unsupported Device Platforms",
     "Require MFA to Register a Device",
+    "Block Unsupported Device Platforms",
     "Limit How Long Sessions Last",
     "Require Token Protection on Windows",
+    "Protect Sign-in Method Registration",
     "Alert on Emergency Account Sign-ins",
     "Run the Emergency Access Drill"
    ],
@@ -1945,17 +1945,17 @@
    ],
    "tables": [],
    "occurrences": {
-    "20 steps · 2 in place · finishes <date> · 6 weeks": 1,
+    "21 steps · 2 in place · finishes <date> · 5 weeks": 1,
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1,
     "Until then, every visit proposes dates from today.": 1
    },
    "occurrencesAll": {
-    "20 steps · 2 in place · finishes <date> · 6 weeks": 1,
+    "21 steps · 2 in place · finishes <date> · 5 weeks": 1,
     "Built from what IAMAI found on Contoso Pty Ltd, scanned just now · Today shows where each person stands.": 1,
     "Until then, every visit proposes dates from today.": 1
    },
    "wordCounts": {
-    "headings": 35,
+    "headings": 29,
     "tabs": 0,
     "buttons": 3,
     "options": 0,
@@ -1967,7 +1967,7 @@
     "summaries": 11,
     "tips": 6,
     "sentences": 43,
-    "total": 103
+    "total": 97
    },
    "unnamedControls": [],
    "rows": [
@@ -2021,7 +2021,7 @@
     },
     {
      "selector": ".plan-row",
-     "text": "Report-onlyBlock Legacy Authentication4 people · report-only, not enforcedSep 8, 2026",
+     "text": "Report-onlyBlock Legacy Authentication4 people · report-only, not enforcedSep 9, 2026",
      "sentences": 1,
      "words": 10
     },
@@ -2033,13 +2033,13 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedShorten Admin SessionsAlex MorganSep 9, 2026",
+     "text": "BlockedShorten Admin SessionsAlex MorganSep 8, 2026",
      "sentences": 1,
      "words": 6
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedRequire Phishing-Resistant MFA for AdminsAlex MorganSep 9, 2026",
+     "text": "BlockedRequire Phishing-Resistant MFA for AdminsAlex MorganSep 8, 2026",
      "sentences": 1,
      "words": 8
     },
@@ -2050,16 +2050,22 @@
      "words": 13
     },
     {
+     "selector": ".plan-row",
+     "text": "BlockedBlock Sign-ins From Countries Not Allowed4 peopleSep 8, 2026",
+     "sentences": 1,
+     "words": 9
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedRequire MFA to Register a Device4 peoplewhen MFA readiness reaches 90% (now 25%)",
+     "sentences": 1,
+     "words": 13
+    },
+    {
      "selector": ".phase",
      "text": "Phase 2 · <date> → <date>",
      "sentences": 1,
      "words": 6
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedBlock Sign-ins From Countries Not Allowed4 peopleSep 15, 2026",
-     "sentences": 1,
-     "words": 9
     },
     {
      "selector": ".plan-row",
@@ -2075,27 +2081,21 @@
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedRequire MFA to Register a Device4 peoplewhen MFA readiness reaches 90% (now 25%)",
-     "sentences": 1,
-     "words": 13
-    },
-    {
-     "selector": ".phase",
-     "text": "Phase 4 · <date> → <date>",
-     "sentences": 1,
-     "words": 6
-    },
-    {
-     "selector": ".plan-row",
-     "text": "BlockedLimit How Long Sessions Last4 peopleSep 29, 2026",
+     "text": "BlockedLimit How Long Sessions Last4 peopleSep 22, 2026",
      "sentences": 1,
      "words": 8
     },
     {
      "selector": ".plan-row",
-     "text": "BlockedRequire Token Protection on Windows4 peopleSep 29, 2026",
+     "text": "BlockedRequire Token Protection on Windows4 peopleSep 22, 2026",
      "sentences": 1,
      "words": 8
+    },
+    {
+     "selector": ".plan-row",
+     "text": "BlockedProtect Sign-in Method Registration3 peoplewhen MFA readiness reaches 90% (now 25%)",
+     "sentences": 1,
+     "words": 11
     },
     {
      "selector": ".phase",
@@ -2105,13 +2105,13 @@
     },
     {
      "selector": ".plan-row",
-     "text": "ReadyAlert on Emergency Account Sign-insBreak-glass 01Oct 5, 2026",
+     "text": "ReadyAlert on Emergency Account Sign-insBreak-glass 01Sep 28, 2026",
      "sentences": 1,
      "words": 8
     },
     {
      "selector": ".plan-row",
-     "text": "ReadyRun the Emergency Access DrillBreak-glass 01Oct 6, 2026",
+     "text": "ReadyRun the Emergency Access DrillBreak-glass 01Sep 29, 2026",
      "sentences": 1,
      "words": 8
     }

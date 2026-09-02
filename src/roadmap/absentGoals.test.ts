@@ -10,17 +10,23 @@ import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { PINNED_GOAL_MAP, goalInMap } from './goalMap.ts'
 import { PINNED, pinnedPackage } from '../baseline/pinned.ts'
+import { isFloorGoal } from './floor.ts'
 
-// The four goals the reviewer saw rendered on the demo (walk-51 item 9) and the
-// fifth the pinned map does not hold; none may produce a step.
-const ABSENT = ['register-info-protected', 'byod-session-controls', 'mobile-app-protection', 'block-downloads-unmanaged', 'azure-management-mfa']
+// The goals the pinned map does not hold. Registration protection is one of them
+// and renders anyway, flagged as the floor (target-state §13, prompt 53 queue
+// item 3); the rest never produce a step.
+const ABSENT = ['byod-session-controls', 'mobile-app-protection', 'block-downloads-unmanaged', 'azure-management-mfa']
 
-test('no fixture renders a goal the pinned goal map does not hold', () => {
+test('no fixture renders a goal the pinned goal map does not hold, except the floor, flagged', () => {
   for (const f of allFixtures()) {
     const { steps } = runFixture(f)
     for (const s of steps) {
       if (!s.id.startsWith('s-goal-')) continue
-      assert.ok(goalInMap(PINNED_GOAL_MAP, s.goalId), `${f.name}: ${s.id} renders a goal the baseline does not hold`)
+      if (goalInMap(PINNED_GOAL_MAP, s.goalId)) {
+        assert.ok(!s.floor, `${f.name}: ${s.id} is held by the baseline and is not the floor`)
+        continue
+      }
+      assert.ok(isFloorGoal(s.goalId) && s.floor === true, `${f.name}: ${s.id} renders a goal the baseline does not hold`)
     }
     for (const g of ABSENT) assert.equal(steps.find((s) => s.goalId === g), undefined, `${f.name}: ${g} is absent from the baseline and must not render`)
   }
@@ -51,9 +57,13 @@ test("the map's policy stands for a held goal, never a signature match", () => {
   }
 })
 
-test('an explicit goal map narrows the plan to the goals it holds', () => {
+test('an explicit goal map narrows the plan to the goals it holds, plus the floor it lacks', () => {
   const narrow = { 'mfa-all-users': PINNED_GOAL_MAP['mfa-all-users'], 'block-legacy-auth': PINNED_GOAL_MAP['block-legacy-auth'] }
   const { steps } = runFixture(fixture('mid'), { goalMap: narrow })
   const goalSteps = steps.filter((s) => s.id.startsWith('s-goal-')).map((s) => s.goalId).sort()
-  assert.deepEqual(goalSteps, ['block-legacy-auth', 'mfa-all-users'])
+  // Registration protection is the floor's (target-state §13): rendered because
+  // this map lacks it, flagged; the legacy block is held, so it is the author's.
+  assert.deepEqual(goalSteps, ['block-legacy-auth', 'mfa-all-users', 'register-info-protected'])
+  assert.equal(steps.find((s) => s.goalId === 'register-info-protected')?.floor, true)
+  assert.ok(!steps.find((s) => s.goalId === 'block-legacy-auth')?.floor)
 })

@@ -114,8 +114,11 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const byId = new Map(c.steps.map((s) => [s.id, s]))
   // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
   // its wave, marked Skipped, so it can be found and put back (prompt 49.1 item 10).
-  // The drill sits in Cleanup when Cleanup renders it (§5).
-  const inWave = (st: Step): boolean => st.status !== 'done' && !(cleanupHoldsDrill && st.id === DRILL_STEP_ID)
+  // The drill sits in Cleanup when Cleanup renders it (§5). A floor step (target-state
+  // §13: Microsoft recommended, not in this baseline) sits in its own group after
+  // the phases, grouped as not the author's.
+  const inWave = (st: Step): boolean => st.status !== 'done' && !(cleanupHoldsDrill && st.id === DRILL_STEP_ID) && !st.floor
+  const floorRows = c.steps.filter((st) => st.floor && st.status !== 'done')
   const waveRows = c.schedule.waves
     .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && inWave(st)) }))
     .filter((w) => w.steps.length > 0)
@@ -164,6 +167,17 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
           </section>
         )
       })}
+
+      {/* The floor (target-state §13): the recommended controls this baseline lacks,
+          from Microsoft's templates. The group's label is pages.plan.footer.recommended*,
+          which content.json does not carry yet (logged), so the group renders unlabelled. */}
+      {floorRows.length > 0 && (
+        <section className="phase floor">
+          {floorRows.map((s) => (
+            <Row key={s.id} step={s} isNext={false} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} activePeople={activePeople} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+          ))}
+        </section>
+      )}
 
       {cleanupPhase && (
         <section className="phase">

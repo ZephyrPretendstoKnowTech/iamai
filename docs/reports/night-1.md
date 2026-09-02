@@ -58,6 +58,21 @@ when its findings are gone from the next walk. Updated at every unit boundary.
   - walk-51 item 11: the Boardroom room in the demo fixture has Authenticator approval and
     nothing stronger, so its method and its evidence agree (the fixture had given it a passkey).
 
+- **Unit 3 — the floor** (target-state §13, decided Sep 1; test: `src/roadmap/floor.test.ts`).
+  `src/roadmap/floor.ts` names the set: registration protection and the legacy-authentication
+  block (emergency access is the Preparation check on every plan). A floor goal the active
+  baseline lacks renders anyway, flagged `floor`, from the catalogue template — Microsoft's own
+  template for the control ("Securing security info registration"; "Block legacy
+  authentication") — resolved with the tenant's objects and rendered through the same portal-line
+  translator as a baseline policy (`stepPortalLinesFromBody`); exclusions read as the exclusions
+  group, never an account by name. The Plan renders floor rows in their own group after the
+  numbered phases, before Cleanup; the group's label is `pages.plan.footer.recommended*`, which
+  content.json does not carry, so the group renders unlabelled (§5). A goal the baseline holds is
+  never the floor. On the pinned baseline this adds one row, Require MFA to register security
+  info; the engine no longer falls back to a signature match for a goal the map does not hold
+  when the map describes the loaded package — that fallback had picked the risky-users block the
+  owner ruled out.
+
 ## 2. The last walk's remaining findings
 
 `docs/reports/walk-<sha>.md` for the latest sha: **0 P0**, 2 P1, 20 P2.
@@ -103,10 +118,21 @@ when its findings are gone from the next walk. Updated at every unit boundary.
   list now carries the content file's state names, "Proven" among them; the assertion's subject
   (no person proven without records) is unchanged.
 
+- `src/roadmap/absentGoals.test.ts` "no fixture renders a goal the pinned goal map does not
+  hold" — old: no step for any unmapped goal, registration protection among the five named; new:
+  an unmapped goal renders only as the floor, flagged, and registration protection leaves the
+  never-renders list. "an explicit goal map narrows the plan" — old: two goal steps; new: the two
+  plus the floor's registration step, flagged. Reason: the floor (target-state §13).
+- `src/roadmap/scenarioLines.test.ts` — old: `noMethodRemote` must fire on no fixture and only
+  with a map holding registration; new: it fires on the fixtures again and is back in the demo
+  list. Reason: the floor renders its host step.
+- `src/roadmap/template.test.ts` item 12 — old: every create step is a goal the pinned map holds;
+  new: or a floor goal, flagged. Reason: the floor.
+
 Added: `src/ui/surfaces/night1.test.ts` (shared-reference holes, the report-only date from the
 scan, `{wanted}` in words, the dormant accounts list and count, the Show list's order, the
-Boardroom room's consistency). The inventory was regenerated after each UI change (fingerprint
-only; no rule waived).
+Boardroom room's consistency), `src/roadmap/floor.test.ts`. The inventory was regenerated after
+each UI change (fingerprint only; no rule waived).
 
 ## 5. Content keys the reviewer must write
 
@@ -116,6 +142,10 @@ only; no rule waived).
   floor supplies a policy).
 - `steps[s-check-dormant-accounts].learn.url` and `steps[admins-phishing-resistant].learn.url`
   answer 404 (§2).
+- `pages.plan.footer.recommended*` — the floor group's label ("Microsoft recommended, not in this
+  baseline") and, if wanted, a line under it. Renders as the group's heading on the Plan once
+  written; until then the group is unlabelled. Note the `plan` contract's headings allow only
+  Plan, Preparation, Phase N and Cleanup, so the heading also needs a contract entry.
 
 ## 6. Questions for the reviewer
 
@@ -133,5 +163,5 @@ only; no rule waived).
 
 ## 7. Resume plan
 
-Queue, in order: (1) done — walk-51 has no open item; (2) nothing of 52 remains; (3) the floor; (4) the demo is the show; (5)
+Queue, in order: (1) done; (2) nothing of 52 remains; (3) the floor — done; (4) the demo is the show; (5)
 theme — done in 52; (6) Cleanup — done in 52; (7) print and export; (8) performance; (9) P2s.
