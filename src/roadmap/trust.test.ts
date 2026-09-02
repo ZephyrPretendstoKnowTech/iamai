@@ -54,17 +54,13 @@ function userFacing(s: Step): { where: string; text: string }[] {
   return [
     { where: 'title', text: s.title },
     { where: 'why', text: s.why },
-    { where: 'impact', text: s.impact },
-    { where: 'stateReason', text: s.stateReason },
     { where: 'comms', text: s.comms ?? '' },
     ...s.action.summary.map((t) => ({ where: 'action.summary', text: t })),
     ...s.action.portalSteps.map((t) => ({ where: 'portalSteps', text: t })),
-    ...s.exitCriteria.map((t) => ({ where: 'exitCriteria', text: t })),
     ...s.readiness.lines.map((t) => ({ where: 'readiness', text: t })),
     ...s.evidence.lines.map((t) => ({ where: 'evidence', text: t })),
     ...s.unblockNotes.map((t) => ({ where: 'unblockNotes', text: t })),
     ...s.blockers.map((b) => ({ where: 'blockers', text: b.label })),
-    ...s.highCare.notes.map((t) => ({ where: 'highCare', text: t })),
     { where: 'rollback', text: s.rollback },
     { where: 'naming', text: s.naming?.proposed ?? '' },
   ]
@@ -101,9 +97,6 @@ test('one population per step: header, readiness line and admin count agree', ()
     const ids = new Set(s.population.ids)
     const m = s.readiness.lines.join(' ').match(/of (\d+) active users? ready/)
     if (m) (denomByFamily[s.readiness.family] ??= new Set()).add(Number(m[1]))
-    // The impact's in-scope count is the step's own population, not the family.
-    const inScope = s.impact.match(/^(\d+) active users? in scope/) ?? s.impact.match(/All (\d+) active users?/)
-    if (inScope) assert.equal(Number(inScope[1]), s.population.active, `${s.id}: impact says ${inScope[1]}, population says ${s.population.active}`)
     // Admin and guest counts are subsets of the same id set.
     assert.equal(s.population.admins, [...ids].filter((id) => admins.has(id)).length, `${s.id}: admin count`)
     assert.equal(s.population.guests, snapshot.users.filter((u) => ids.has(u.id) && u.userType === 'guest').length, `${s.id}: guest count`)

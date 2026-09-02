@@ -12,6 +12,8 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { FIELD_PRACTICE, RULE_TEXT } from '../copy/validation.ts'
+import { canDenyAccess } from '../roadmap/strand.ts'
+import { blockerStepId } from '../roadmap/blockerSteps.ts'
 
 // ---- the regression test (design §6) ---------------------------------------
 
@@ -558,10 +560,9 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
   broken.mapping.breakGlassUserIds = [f.mapping.breakGlassUserIds[0]]
   broken.snapshot.roles.active[f.mapping.breakGlassUserIds[0]] = []
   const { steps } = runFixture(broken)
-  const gate = steps.find((s) => s.validationBlocker)
+  const gate = steps.find((s) => s.id === blockerStepId('breakGlass'))
   assert.ok(gate, 'the plan carries the emergency-access step')
-  assert.match(gate.impact, /must-fix check/)
-  const denying = steps.filter((s) => s.denies === true && s.status !== 'done' && s.status !== 'skipped')
+  const denying = steps.filter((s) => canDenyAccess(s) && s.status !== 'done' && s.status !== 'skipped')
   assert.ok(denying.length > 0, 'the fixture has steps that can deny access')
   for (const s of denying) {
     assert.equal(s.status, 'blocked', `${s.id} is offered while the way back in is unverified`)
@@ -572,6 +573,6 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
 
 test('a healthy tenant carries no blocker step, and its deny-capable steps are offered', () => {
   const { steps } = runFixture(fixture('small'))
-  assert.equal(steps.some((s) => s.validationBlocker), false)
-  assert.ok(steps.some((s) => s.denies === true && s.status !== 'blocked'), 'nothing is held on a tenant with a working escape hatch')
+  assert.equal(steps.some((s) => s.id.startsWith('s-blocker-')), false)
+  assert.ok(steps.some((s) => canDenyAccess(s) && s.status !== 'blocked'), 'nothing is held on a tenant with a working escape hatch')
 })

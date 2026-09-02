@@ -8,8 +8,7 @@
 // enforcement is offered while the escape hatch is unverified.
 //
 // Pure: no DOM, no network.
-import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, HOUSEKEEPING_ONLY_RULES, RULE_ACTION, SEVERITY, SUBJECT, SUBJECT_PLAIN, SUBJECT_WHERE, fallbackAction } from '../copy/validation.ts'
-import { heldBy } from '../derive/sets.ts'
+import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, HOUSEKEEPING_ONLY_RULES, RULE_ACTION, SEVERITY, SUBJECT, SUBJECT_PLAIN, fallbackAction } from '../copy/validation.ts'
 import { ruleText } from '../validation/rules.ts'
 import type { RuleResult, RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
@@ -91,18 +90,17 @@ function linesFor(report: SubjectReport, results: RuleResult[]): string[] {
  * A step per blocking subject. `heldSteps` is how many deny-capable steps this
  * subject is holding, so the impact sentence says what waits on it.
  */
-export function blockerSteps(reports: SubjectReport[], heldSteps: number): Step[] {
+export function blockerSteps(reports: SubjectReport[]): Step[] {
   const out: Step[] = []
   for (const report of reports) {
     if (report.blocking.length === 0) continue
     const subject = report.subject
     const name = SUBJECT[subject] ?? subject
     const n = report.blocking.length
-    const held = GATING_SUBJECTS.includes(subject) ? heldSteps : 0
     // The Do it is numbered imperative actions (prompt 48.1 item 9), not the old
     // finding-to-rule checklist. Attestations become Done-when lines; recommended
     // fixes wait under More; could-not-run checks are Housekeeping only.
-    const { actions, doneWhen } = checkActions(report)
+    const { actions } = checkActions(report)
     out.push({
       ...STEP_EXTRAS,
       id: blockerStepId(subject),
@@ -111,8 +109,6 @@ export function blockerSteps(reports: SubjectReport[], heldSteps: number): Step[
       kind: 'prerequisite',
       title: name,
       why: BLOCKER_STEP.why(name, n),
-      whyAttribution: null,
-      whyLink: null,
       status: 'ready',
       blockedBy: [],
       blockers: [],
@@ -122,29 +118,14 @@ export function blockerSteps(reports: SubjectReport[], heldSteps: number): Step[
       evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
       action: { kind: 'check', summary: actions, json: null, portalSteps: actions, powershell: null },
       checks: stepChecks(report),
-      exitCriteria: [BLOCKER_STEP.exit(n), ...doneWhen],
       // A check step changes no policy, so there is nothing to undo (prompt 48.1 item 11).
       rollback: BLOCKER_STEP.nothingToUndo,
       history: [],
       skipReason: null,
       gap: null,
       deliveredBy: [],
-      stateReason: '',
-      impact: BLOCKER_STEP.impact(n, held),
-      validationBlocker: true,
-      whatChanges: BLOCKER_STEP.whatChanges,
       plainTitle: SUBJECT_PLAIN[subject] ?? name,
       forManager: BLOCKER_STEP.forManager(name),
-      verify: {
-        // A check that could not run offers no path of its own; the subject's
-        // own screen is always where it is settled.
-        where: (() => {
-          const paths = [...new Set(report.blocking.map((r) => r.fix?.label).filter((x): x is string => typeof x === 'string'))]
-          return paths.length > 0 ? paths : [SUBJECT_WHERE[subject] ?? name]
-        })(),
-        filter: null,
-        good: BLOCKER_STEP.exit(n),
-      },
     })
   }
   return out
@@ -159,8 +140,6 @@ export function attachWarnings(report: SubjectReport, host: Step): void {
   if (report.warnings.length === 0) return
   const lines = linesFor(report, report.warnings)
   host.action.summary = [...host.action.summary, BLOCKER_STEP.recommended, ...lines]
-  const first = report.warnings[0].finding ?? lines[0]
-  host.impact = `${host.impact} ${BLOCKER_STEP.alsoRecommended(report.warnings.length, first)}`.trim()
 }
 
 /** The cause a held step carries: the gating step, in the blocked-reason shape (target-state §8.5). */
@@ -176,21 +155,3 @@ export function gateReason(reports: SubjectReport[]): { stepId: string; label: s
 
 export const SEVERITY_LABEL = SEVERITY
 
-/**
- * Recompute what each validation-blocker step is holding, once statuses are
- * final.
- *
- * The count is baked into `impact` when the step is built, which is before
- * `mergePersisted` and `applyProgress` have moved anything. On the live site
- * that gap showed as "14 steps that can deny access are held" beside a tile
- * reading "13 steps blocked" (review-08 A9). Both now count the same set, at
- * the same moment.
- */
-export function refreshBlockerImpact(steps: Step[]): void {
-  for (const step of steps) {
-    if (!step.validationBlocker) continue
-    const held = GATING_SUBJECTS.some((s) => blockerStepId(s) === step.id) ? heldBy(steps, step.id).length : 0
-    const open = step.exitCriteria.length > 0 ? step.exitCriteria.length - 1 : 0
-    step.impact = BLOCKER_STEP.impact(open, held)
-  }
-}

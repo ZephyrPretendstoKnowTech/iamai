@@ -13,9 +13,6 @@ import type { Step, StepEvent, StepEvents } from './types.ts'
  * working day, as a courtesy; otherwise 2 / 5 / 10 by disruption.
  */
 export const NOTICE_WORKING_DAYS = { none: 1, low: 2, medium: 5, high: 10 } as const
-export const CARE_MINIMUM_NOTICE = 5
-const HIGH_DISRUPTION = 4
-const MEDIUM_DISRUPTION = 3
 const ANNOUNCE_HOUR = 9.5
 const DEFAULT_ENFORCE_HOUR = 10
 /** No change lands before this hour, whatever the tenant's rhythm says. */
@@ -164,18 +161,15 @@ export function nobodyAffected(step: Step): boolean {
 
 export function noticeDaysFor(step: Step): number {
   if (nobodyAffected(step)) return NOTICE_WORKING_DAYS.none
-  const disruption = step.score?.disruption ?? 1
-  const base = disruption >= HIGH_DISRUPTION ? NOTICE_WORKING_DAYS.high : disruption >= MEDIUM_DISRUPTION ? NOTICE_WORKING_DAYS.medium : NOTICE_WORKING_DAYS.low
-  return step.highCare.userIds.length > 0 ? Math.max(base, CARE_MINIMUM_NOTICE) : base
+  return NOTICE_WORKING_DAYS.medium
 }
 
 /** The three dates for a step, from its first ring's enforcement date. */
 export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.kind === 'check') return null
   if (step.status === 'done' || step.status === 'skipped') return null
-  const enforceDay = step.scheduledDate ?? step.rings[0]?.plannedStart ?? null
+  const enforceDay = step.rings[0]?.plannedStart ?? null
   if (!enforceDay) return null
-  const high = (step.score?.disruption ?? 1) >= HIGH_DISRUPTION
   // The slot varies within the hours the change may land in (prompt 42 §12).
   // Every enforcement in every week was Tuesday or Wednesday at 12:00 for
   // eleven weeks (review-09 finding 10): one hour after the peak, and the peak
@@ -187,16 +181,12 @@ export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
   const baseHour = ctx.rhythm.status === 'ok' && ctx.rhythm.peak ? (ctx.rhythm.peak.hour + 1) % 24 : DEFAULT_ENFORCE_HOUR
   const peakHour = spreadHour(baseHour, step.id, ctx)
   const enforceAt = atLocalHour(enforceDay, peakHour, ctx.timeZone)
-  const enforceReason = step.safeToday
-    ? EVENT.reason.enforceSafeToday
-    : ctx.rhythm.status === 'ok' && ctx.rhythm.peak
-      ? EVENT.reason.enforcePeak(`${WEEKDAY_NAMES[ctx.rhythm.peak.weekday]} ${hourLabel(ctx.rhythm.peak.hour)}`)
-      : EVENT.reason.enforceDefault
+  const enforceReason = ctx.rhythm.status === 'ok' && ctx.rhythm.peak ? EVENT.reason.enforcePeak(`${WEEKDAY_NAMES[ctx.rhythm.peak.weekday]} ${hourLabel(ctx.rhythm.peak.hour)}`) : EVENT.reason.enforceDefault
   const enforce = event(enforceAt, enforceReason, ctx, 'enforce')
 
   // Notice is a constant of the change, never a setting (target-state §9): one
-  // working day as a courtesy when the records show nobody affected, which a
-  // safe-today step always is; otherwise 2 / 5 / 10 by disruption. Announce at
+  // working day as a courtesy when the records show nobody affected; otherwise
+  // five working days. Announce at
   // 09:30 on a Monday to Thursday the tenant works: a Friday note is read on
   // Monday, and 09:30 is early enough to be read and acted on the same day.
   const courtesy = nobodyAffected(step)
@@ -214,13 +204,13 @@ export function eventsFor(step: Step, ctx: TimingContext): StepEvents | null {
   const chosenDay = WEEKDAY_NAMES[weekdayOf(announceDay)]
   const announceReason = [
     usable ? EVENT.reason.announceOn(chosenDay, announceTime) : `${EVENT.reason.announceDefaultDay(chosenDay, announceTime)} ${EVENT.reason.announceNoRhythm}`,
-    courtesy ? EVENT.reason.announceCourtesy : step.highCare.userIds.length > 0 ? EVENT.reason.announceCare : EVENT.reason.announceNotice(noticeDays),
+    courtesy ? EVENT.reason.announceCourtesy : EVENT.reason.announceNotice(noticeDays),
   ].join(' ')
   const announce = event(atLocalHour(announceDay, announceHour, ctx.timeZone), announceReason, ctx, 'announce')
   // The reminder is the working day before. With one working day of notice
   // that is the announcement itself, so there is no second message.
   const remindDay = workingDaysBefore(enforceDay, 1, ctx)
   const remind = remindDay.slice(0, 10) === announceDay.slice(0, 10) ? null : event(atLocalHour(remindDay, announceHour, ctx.timeZone), EVENT.reason.remindDayBefore, ctx, 'remind')
-  const remindMorning = high ? event(atLocalHour(enforceDay, Math.max(7, peakHour - 2), ctx.timeZone), EVENT.reason.remindMorningOf, ctx, 'remind') : null
+  const remindMorning = null
   return { announce, remind, remindMorning, enforce, noticeDays }
 }

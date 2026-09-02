@@ -36,8 +36,6 @@ test('every blocked step on every fixture carries one binding reason, in shape, 
       if (!SHAPES.some((re) => re.test(reason))) failures.push(`${f.name}/${s.id}: "${reason}" is in none of the three shapes`)
       if (words(reason) > BLOCKED_REASON_MAX_WORDS) failures.push(`${f.name}/${s.id}: "${reason}" is ${words(reason)} words`)
       if (/named cause/.test(reason)) failures.push(`${f.name}/${s.id}: a producer left its cause unnamed`)
-      // The row shows the binding reason; the full list is still on the step.
-      assert.equal(s.stateReason, reason, `${s.id}: stateReason is the binding reason`)
       assert.ok(s.blockers.length + s.blockedBy.length > 0, `${s.id}: the causes are still on the step`)
     }
   }
@@ -48,7 +46,7 @@ test('every blocked step on every fixture carries one binding reason, in shape, 
 test('"is not sorted yet" is gone', () => {
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) {
-      const text = [s.stateReason, s.blockedReason ?? '', ...s.unblockNotes, ...s.blockers.map((b) => b.label)].join(' ')
+      const text = [s.blockedReason ?? '', ...s.unblockNotes, ...s.blockers.map((b) => b.label)].join(' ')
       assert.doesNotMatch(text, /is not sorted yet/, `${f.name}/${s.id}`)
     }
   }

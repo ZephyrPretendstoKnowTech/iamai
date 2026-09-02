@@ -58,7 +58,6 @@ test('someone to set up: the campaign is a live step, the pace includes it, the 
   assert.ok(p.schedule.verification.days > 0, 'the pace includes the campaign window')
   assert.doesNotMatch(p.rationale, /no verification campaign needed/)
   assert.match(p.rationale, /verification campaign/)
-  assert.match(p.verify.impact, new RegExp(`${p.rollout.toSetUp} enabled users?`), 'the campaign impact counts the same people')
 })
 
 test('everyone proven: the campaign is done, the pace skips it, and the Overview says so', () => {

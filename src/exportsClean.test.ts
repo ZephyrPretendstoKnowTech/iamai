@@ -95,8 +95,6 @@ test('the plan file keeps every number, date and body and none of the v2 prose',
     assert.deepEqual(s.population, live.population, `${s.id}: the population travels`)
     assert.deepEqual(s.rings.map((r) => [r.plannedStart, r.plannedEnd]), live.rings.map((r) => [r.plannedStart, r.plannedEnd]), `${s.id}: the ring dates travel`)
     assert.equal(s.action.json, live.action.json, `${s.id}: the policy body travels`)
-    assert.equal(s.exitCriteria.length, 0)
-    assert.equal(s.whatChanges, '')
     assert.deepEqual(s.action.portalSteps, [])
   }
   // fileStep is idempotent: a step already filed files the same.

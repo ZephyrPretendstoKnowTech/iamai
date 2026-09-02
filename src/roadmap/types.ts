@@ -1,5 +1,4 @@
 // Roadmap types (roadmap.md §1, §3–§5). Pure types only.
-import type { GoalScore } from '../scoring/priority.ts'
 
 /** `check`: a decision the operator makes about accounts, done when the count reaches 0 on re-scan (prompt 46 item 8). */
 export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforce' | 'recurring' | 'check'
@@ -65,7 +64,6 @@ export type Blocker =
 
 export type StepHistoryEntry ={ at: string; from: StepStatus; to: StepStatus; note: string | null }
 
-export type PopulationView = import('./population.ts').PopulationView
 
 // ---- rings (roadmap-v2.md §1) ----
 export type RingTargeting = {
@@ -104,9 +102,6 @@ export type Step = {
   kind: StepKind
   title: string
   why: string
-  whyAttribution: { author: string; url: string } | null
-  /** A reference the baseline author pasted into the intent, shown as a named link (ux-review-05 §18). */
-  whyLink: string | null
   status: StepStatus
   blockedBy: string[]
   /** Named causes (prompt 12 §B): a step, a Setup question, a readiness threshold, or evidence. */
@@ -122,7 +117,6 @@ export type Step = {
    * Null on steps that carry no checks.
    */
   checks?: import('../validation/checkFixes.ts').StepChecks | null
-  exitCriteria: string[]
   rollback: string
   history: StepHistoryEntry[]
   skipReason: string | null
@@ -136,20 +130,12 @@ export type Step = {
   gapShort: string | null
   /** Policies that already deliver the goal (name and state), the evidence a Done step cites (ux-review-04 §5). */
   deliveredBy: string[]
-  /** One line: why the step is in its current state; filled by annotateStateReasons. */
-  stateReason: string
   /**
    * The one binding reason while blocked (target-state §8.5): at most twelve
    * words, in one of three shapes; null otherwise. The full list is `blockers`.
    */
   blockedReason: string | null
   // ---- 2026-08-27 redesign ----
-  /** One sentence: what this changes for THIS tenant, in numbers. */
-  impact: string
-  /** Zero observed usage + ready → promoted to the "safe today" lane. */
-  safeToday: boolean
-  /** Handle-with-care users this step touches; enforcement gates on ready. */
-  highCare: { userIds: string[]; ready: boolean; notes: string[] }
   /** Paste-ready end-user announcement, personalized for this tenant. */
   comms: string | null
   learn: { url: string; tldr: string; cis: string[] } | null
@@ -158,57 +144,26 @@ export type Step = {
   // ---- prompt 13 ----
   /** Evidence sentence for the operator's own account, when in scope. */
   operatorNote?: string | null
-  /** What-If result for the operator, when available. */
-  operatorWhatIf?: string | null
   /** Proposed policy name in the tenant's convention, and the baseline's original. */
   naming?: { proposed: string; fromBaseline: string | null; note?: string | null } | null
   // ---- prompt 17 ----
-  /** Security value, effort, disruption, priority; null for prerequisite and recurring steps. */
-  score?: GoalScore | null
   // ---- roadmap v2 ----
   /** Ordered rollout rings; one entry (or none) for steps that cannot deny access. */
   rings: Ring[]
   currentRing: number
-  /** Whether enforcing this step can deny or interrupt access (grant, block, session), from the goal's floor. */
-  denies?: boolean
-  /** "N of M enabled users (P%), of whom K ..." (roadmap-v2.md §3). */
-  populationBasis: string
-  /** Everyone under 25 people; the ten riskiest above. */
-  populationNames: string[]
-  populationView: PopulationView | null
-  // ---- step content (roadmap-v2.md §4) ----
-  /** One sentence a non-technical manager understands. */
-  whatChanges: string
-  failureModes: FailureMode[]
-  verify: Verify | null
-  helpDesk: HelpDesk | null
-  /** The announcement per ring, dated. */
-  ringComms: { ring: string; date: string; text: string }[]
-  /** The previous policy body for a change step, to restore byte for byte. */
-  rollbackBody: string | null
   /** Reserved for an enterprise tier (SPEC §11a): never rendered or asked for. */
   owner: string | null
-  /** An operator-set start date; the schedule moves the step and its dependants to it. */
-  scheduledDate: string | null
   /** What actually happened, from evidence (roadmap-v2.md §5); null until a policy matches. */
   tracking: StepTracking | null
-  /** Satisfied by a policy whose evidence predates the plan: not executed by the plan, never a slip (ux-review-07 §1). */
-  alreadyInPlace: boolean
   // ---- prompt 28 ----
   /** Announce, remind, enforce: local day, date, time and reason (scheduling-and-onboarding.md §2.2). */
   events: StepEvents | null
-  /** One line at the top of the card: safe to enforce today, or the single reason it is not. */
-  safeVerdict: { safe: boolean; reason: string; sentence: string }
   /** The plain-language title; `title` stays the technical name (§3.1). */
   plainTitle: string
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
   forManager: string
-  /** A rung of the free-tier ladder (SPEC §12): the plan itself, never groundwork for a policy. */
-  ladder?: boolean
   /** Microsoft recommended, not in this baseline (target-state §13, floor.ts): rendered from Microsoft's template because the active baseline lacks the goal. */
   floor?: boolean
-  /** A must-fix validation subject (validation-rules.md §2); leads every surface. */
-  validationBlocker?: boolean
   // ---- prompt 48: the lockout-scenario lines from this tenant's evidence ----
   /** Named lines built from the derivations that fired (docs/design/lockout-scenarios.md). */
   scenarioLines?: import('./scenarioLines.ts').ScenarioLine[]

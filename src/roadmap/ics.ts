@@ -26,7 +26,7 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, watc
   const lines: string[] = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IAMAI//Conditional Access rollout plan//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${escape(`${tenantName} Conditional Access rollout`)}`]
   for (const s of steps) {
     if (s.status === 'done' || s.status === 'skipped') continue
-    const start = s.scheduledDate ?? s.rings[0]?.plannedStart ?? null
+    const start = s.rings[0]?.plannedStart ?? null
     const end = s.rings.at(-1)?.plannedEnd ?? start
     if (!start || !end) continue
     const endExclusive = new Date(Date.parse(end) + 86_400_000).toISOString()
@@ -44,10 +44,8 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, watc
     const description = (v
       ? [v.why, v.dates ?? '', v.whatToDo.length > 0 ? `What to do: ${v.whatToDo.join(' | ')}` : '', v.doneWhen.length > 0 ? `Done when: ${v.doneWhen.join(' | ')}` : '', v.ifWrong ?? '']
       : [
-          s.whatChanges,
           ...s.rings.map((r) => `${r.name}: ${r.plannedStart.slice(0, 10)} to ${r.plannedEnd.slice(0, 10)}`),
           s.action.portalSteps.length > 0 ? `Portal: ${s.action.portalSteps.join(' | ')}` : '',
-          s.exitCriteria.length > 0 ? `Done when: ${s.exitCriteria.join(' | ')}` : '',
           `Rollback: ${s.rollback}`,
           `Watch: more than ${watchThresholdPercent}% of the affected people failing in 72 hours means back to report-only.`,
         ]

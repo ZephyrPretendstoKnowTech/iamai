@@ -30,11 +30,8 @@ test('every ladder step carries instructions, an exit criterion, a plain title a
   assert.equal(steps.length, LADDER_ITEMS.length)
   for (const s of steps) {
     assert.ok(s.action.summary.length >= 3, `${s.id}: exact instructions`)
-    assert.ok(s.exitCriteria.length >= 1, `${s.id}: an exit criterion`)
     assert.ok(s.plainTitle.length > 0 && s.plainTitle !== s.title, `${s.id}: a plain title`)
     assert.ok(s.forManager.length > 0, `${s.id}: a manager sentence`)
-    assert.ok(s.whatChanges.length > 0, `${s.id}: what changes for people`)
-    assert.ok(s.impact.length > 0, `${s.id}: a per-tenant impact`)
     assert.ok(s.learn?.url.startsWith('https://learn.microsoft.com/'), `${s.id}: a Learn link`)
     assert.equal(s.phase, 0)
   }
@@ -57,7 +54,6 @@ test('security defaults: on is done, off is a step, unreadable is neither claime
   assert.equal(find(on)?.status, 'done')
   assert.equal(find(off)?.status, 'ready')
   assert.equal(find(unknown)?.status, 'ready')
-  assert.match(find(unknown)?.impact ?? '', /could not be read/)
 })
 
 test('Global Administrator count: Microsoft\'s two to four is the verdict, and the holders are named', () => {
@@ -67,10 +63,6 @@ test('Global Administrator count: Microsoft\'s two to four is the verdict, and t
   assert.equal(at(3)?.status, 'done')
   assert.equal(at(1)?.status, 'ready')
   assert.equal(at(9)?.status, 'ready')
-  assert.match(at(9)?.impact ?? '', /keep the number under five/)
-  // Names, never ids (CLAUDE.md).
-  assert.doesNotMatch(at(3)?.impact ?? '', /[0-9a-f]{8}-[0-9a-f]{4}/i)
-  assert.match(at(3)?.impact ?? '', new RegExp(base.users[0].displayName ?? ''))
 })
 
 test('guests: none is done, some are named', () => {
@@ -80,16 +72,13 @@ test('guests: none is done, some are named', () => {
   assert.equal(step(noGuests)?.status, 'done')
   const some = step(base)
   assert.equal(some?.status, 'ready')
-  assert.match(some?.impact ?? '', /guest account/)
 })
 
 test('what Graph does not expose is said plainly, never guessed', () => {
   const { steps } = ladderSteps(freeSnapshot(), mapping(), [])
   const appPasswords = steps.find((s) => s.id === ladderStepId('app-passwords'))
-  assert.match(appPasswords?.impact ?? '', /IAMAI does not read/)
   assert.equal(appPasswords?.status, 'ready')
   const legacy = steps.find((s) => s.id === ladderStepId('legacy-auth-inventory'))
-  assert.match(legacy?.impact ?? '', /no sign-in records/)
 })
 
 test('a phase 0 step that already covers a ladder item takes its place, and its position', () => {
@@ -117,17 +106,6 @@ test('a free tenant gets the ladder as its plan, in ladder order, and no Conditi
   // Objects that exist only to be referenced by a policy have nothing to serve.
   for (const id of ['s-prereq-exclusion-group', 's-prereq-trusted-location', 's-prereq-allowed-countries', 's-prereq-security-defaults']) {
     assert.equal(steps.some((s) => s.id === id), false, `${id} is not asked for without Conditional Access`)
-  }
-})
-
-test('a rung verifies itself in the portal, and is never described as groundwork for a policy', () => {
-  const { steps } = runFixture(fixture('micro'))
-  for (const s of steps.filter((x) => x.ladder)) {
-    assert.ok(s.verify, `${s.id}: a verification`)
-    assert.ok(s.verify?.where.some((w) => w.length > 0), `${s.id}: where to look`)
-    // A free tenant has no Conditional Access objects to point at.
-    assert.doesNotMatch(`${s.verify?.where.join(' ')} ${s.verify?.good}`, /Conditional Access|Named locations, under/, `${s.id}: no policy-shaped verification`)
-    assert.doesNotMatch(s.stateReason, /later steps need/, `${s.id}: the ladder is the plan, not groundwork`)
   }
 })
 

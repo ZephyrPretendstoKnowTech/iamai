@@ -5,40 +5,25 @@ import type { Step } from './types.ts'
 
 export type StepExtras = Pick<
   Step,
-  | 'impact' | 'safeToday' | 'highCare' | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' | 'populationBasis' | 'populationNames' | 'populationView'
-  | 'whatChanges' | 'failureModes' | 'verify' | 'helpDesk' | 'ringComms' | 'rollbackBody' | 'owner' | 'scheduledDate' | 'tracking' | 'alreadyInPlace'
-  | 'events' | 'safeVerdict' | 'plainTitle' | 'forManager' | 'gap' | 'gapShort' | 'blockedReason'
+  | 'comms' | 'learn' | 'includesOperator' | 'operatorSafe' | 'rings' | 'currentRing' 
+  | 'owner' | 'tracking' 
+  | 'events' | 'plainTitle' | 'forManager' | 'gap' | 'gapShort' | 'blockedReason'
   | 'scenarioLines' | 'cantSee' | 'dateNotes'
 >
 
 export const STEP_EXTRAS: StepExtras = {
-  impact: '',
-  safeToday: false,
-  highCare: { userIds: [], ready: true, notes: [] },
   comms: null,
   learn: null,
   includesOperator: false,
   operatorSafe: null,
   rings: [],
   currentRing: 0,
-  populationBasis: '',
-  populationNames: [],
-  populationView: null,
-  whatChanges: '',
-  failureModes: [],
-  verify: null,
-  helpDesk: null,
-  ringComms: [],
-  rollbackBody: null,
   owner: null,
-  scheduledDate: null,
   tracking: null,
-  alreadyInPlace: false,
   gap: null,
   gapShort: null,
   blockedReason: null,
   events: null,
-  safeVerdict: { safe: false, reason: '', sentence: '' },
   plainTitle: '',
   forManager: '',
   scenarioLines: [],

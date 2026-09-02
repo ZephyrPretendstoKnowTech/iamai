@@ -24,7 +24,6 @@ export type SavedStep = {
   history: Step['history']
   skipReason: string | null
   owner?: string | null
-  scheduledDate?: string | null
   /** Evidence and actual ring dates survive a re-plan (roadmap-v2.md §5). */
   tracking?: Step['tracking']
   ringActuals?: { actualStart: string | null; actualEnd: string | null }[]
@@ -37,7 +36,6 @@ export function savedStepOf(step: Step): SavedStep {
     history: step.history,
     skipReason: step.skipReason,
     owner: step.owner,
-    scheduledDate: step.scheduledDate,
     tracking: step.tracking,
     ringActuals: step.rings.map((r) => ({ actualStart: r.actualStart, actualEnd: r.actualEnd })),
     currentRing: step.currentRing,
@@ -52,7 +50,6 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
     step.history = s.history
     step.skipReason = s.skipReason
     step.owner = s.owner ?? null
-    step.scheduledDate = s.scheduledDate ?? null
     step.tracking = s.tracking ?? null
     if (s.ringActuals) for (const [i, r] of step.rings.entries()) if (s.ringActuals[i]) Object.assign(r, s.ringActuals[i])
     if (typeof s.currentRing === 'number') step.currentRing = Math.min(s.currentRing, Math.max(0, step.rings.length - 1))
@@ -67,7 +64,7 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
 // Detection on every scan (roadmap-v2.md §5) lives in tracking.ts; this
 // keeps the entry point the page and the tests call.
 export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string, planCreatedAt: string | null = null): Step[] {
-  return trackExecution(steps, snapshot, coverage, planId, now, planCreatedAt)
+  return trackExecution(steps, snapshot, coverage, planId, now)
 }
 
 // ---- Decisions-only record (prompt 50.1 item 1) ----
