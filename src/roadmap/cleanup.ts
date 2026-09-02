@@ -21,8 +21,10 @@ export type CleanupRow = {
 }
 
 export type CleanupInputs = {
-  /** Emergency-access account names/UPNs; alerting and the drill act on these. */
+  /** Emergency-access account names; the drill acts on these. */
   emergencyAccounts: string[]
+  /** The same accounts as sign-in names, for the alert rule; the names stand in when absent. */
+  emergencyAccountUpns?: string[]
   /** Proposed renames, already formatted for the reader; empty when the tenant follows its convention. */
   renames: string[]
   /** Groups of policy names this plan superseded and can merge; empty when nothing overlaps. */
@@ -34,7 +36,7 @@ export type CleanupInputs = {
 // The order Cleanup renders in (§5): alerting, drill, naming, consolidation,
 // not-assessed. Each entry names its content key and whether it is present.
 const ORDER: { kind: CleanupKind; present: (i: CleanupInputs) => boolean; lists: (i: CleanupInputs) => Record<string, string[]> }[] = [
-  { kind: 'alerting', present: (i) => i.emergencyAccounts.length > 0, lists: (i) => ({ emergencyAccountUpns: i.emergencyAccounts }) },
+  { kind: 'alerting', present: (i) => i.emergencyAccounts.length > 0, lists: (i) => ({ emergencyAccountUpns: i.emergencyAccountUpns && i.emergencyAccountUpns.length === i.emergencyAccounts.length ? i.emergencyAccountUpns : i.emergencyAccounts }) },
   { kind: 'drill', present: (i) => i.emergencyAccounts.length > 0, lists: (i) => ({ emergencyAccounts: i.emergencyAccounts }) },
   { kind: 'naming', present: (i) => i.renames.length > 0, lists: (i) => ({ renames: i.renames }) },
   { kind: 'consolidation', present: (i) => i.overlaps.length > 0, lists: (i) => ({ overlaps: i.overlaps }) },
