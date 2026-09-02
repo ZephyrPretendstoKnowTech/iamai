@@ -10,6 +10,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { fillText, missingVars } from '../../content/render.ts'
+import { setDisplayTimeZone, absoluteDate, longDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { todayView } from '../../derive/today.ts'
@@ -89,4 +90,26 @@ test('a policy step expands its done-when from the shared lines, no empty sectio
 test('an email salutation fills the name or falls back to Hi,', () => {
   assert.equal(fillText('Hi {firstName},', {}), 'Hi,')
   assert.equal(fillText('Hi {firstName},', { firstName: 'Sam' }), 'Hi Sam,')
+})
+
+// Prompt 52, walk-51 item 5: one short date format everywhere, the long form
+// only in emails, both from the same instant. The walk found the email a day
+// behind the row (a time-zone off-by-one) and three short formats on one page.
+test('the short and long date forms name the same day, one short format everywhere', () => {
+  setDisplayTimeZone('America/Denver')
+  const iso = '2026-09-29T04:00:00.000Z' // late on Sep 28 in Denver, Sep 29 in UTC
+  const shortForm = absoluteDate(iso)
+  const longForm = longDate(iso)
+  assert.equal(shortForm.match(/\d+/)?.[0], longForm.match(/\d+/)?.[0], `short "${shortForm}" and long "${longForm}" name the same day`)
+  setDisplayTimeZone(null)
+
+  const f = allFixtures().find((x) => x.name === 'demo')!
+  const run = runFixture(f)
+  const policy = run.steps.find((s) => s.events?.enforce && run.schedule.reportOnlyAt[s.id])!
+  assert.ok(policy, 'a policy step with an enforcement date and a report-only date')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[policy.id] }
+  const ex = stepVars(policy, ctx) as Record<string, string>
+  assert.equal(ex.enforce, absoluteDate(policy.events!.enforce.at), 'the enforce date is the one short format')
+  assert.equal(ex.reportOnly, absoluteDate(run.schedule.reportOnlyAt[policy.id]), 'report-only is filled and in the short format')
+  assert.doesNotMatch(ex.enforce, /Sept/, 'not the en-AU "29 Sept 2026" second format')
 })

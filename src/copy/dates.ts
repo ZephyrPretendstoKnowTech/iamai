@@ -22,6 +22,15 @@ export function absoluteDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: displayTimeZone }).format(new Date(iso))
 }
 
+/**
+ * "Monday, September 28" in the display time zone: the long form, for emails
+ * only (walk-51 item 5). In the display time zone like every other date here, so
+ * it never falls a day either side of the short form from the same instant.
+ */
+export function longDate(iso: string): string {
+  return new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric', timeZone: displayTimeZone }).format(new Date(iso))
+}
+
 /** "Jul 30": a day inside a range whose year is obvious. */
 export function monthDay(iso: string): string {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: displayTimeZone }).format(new Date(iso))

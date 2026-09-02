@@ -12,7 +12,7 @@
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
-import { absoluteDate } from '../../copy/dates.ts'
+import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { initialDomain } from '../../validation/rules.ts'
@@ -30,16 +30,17 @@ export type StepVarContext = {
   now: string
   /** The plan's first enforcement date (ISO): the campaign's enrol-by and firstEnforce. */
   firstEnforce?: string | null
+  /** This step's report-only creation date (ISO), for a policy step's dates line. */
+  reportOnlyAt?: string | null
 }
 
-/** A long, spelled-out date: "Tuesday, September 8". */
-function longDate(iso: string | null | undefined): string | undefined {
-  if (!iso) return undefined
-  try {
-    return new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(iso))
-  } catch {
-    return undefined
-  }
+/** The long form, in the display time zone, only when the instant is real. */
+function long(iso: string | null | undefined): string | undefined {
+  return iso ? longDate(iso) : undefined
+}
+/** The short form, one format everywhere (walk-51 item 5). */
+function short(iso: string | null | undefined): string | undefined {
+  return iso ? absoluteDate(iso) : undefined
 }
 
 function orgName(snapshot: TenantSnapshot): string {
@@ -68,12 +69,14 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     adminCount: pop.admins,
     memberCount: pop.total,
     signature: ctx.signature,
-    // Dates: the engine's per-step events, as the day and the spelled-out form.
-    enforce: enforce?.date,
-    enforceLong: longDate(enforce?.at),
-    firstEnforce: enforce?.date,
-    firstEnforceLong: longDate(enforce?.at),
-    announce: announce?.date,
+    // Dates: one short format everywhere (absoluteDate), the long form only for
+    // emails (longDate), both from the same instant in the display time zone.
+    enforce: short(enforce?.at),
+    enforceLong: long(enforce?.at),
+    firstEnforce: short(enforce?.at),
+    firstEnforceLong: long(enforce?.at),
+    announce: short(announce?.at),
+    reportOnly: short(ctx.reportOnlyAt),
     // The proposed policy name, in the tenant's convention.
     policyName: step.naming?.proposed,
     proposedName: step.naming?.proposed,
