@@ -113,8 +113,10 @@ when its findings are gone from the next walk. Updated at every unit boundary.
 
 ## 2. The last walk's remaining findings
 
-`docs/reports/walk-<sha>.md` for the latest sha: **0 P0**, 3 P1, 37 P2 (the P2s doubled because
-the walk now covers week two as well as day one).
+`docs/reports/walk-0888887.md` (the final walk, at the last pushed build): **0 P0**, 3 P1, 37 P2
+(the P2s doubled because the walk now covers week two as well as day one). Earlier walks of the
+night are `walk-f3d140b.md` (the first, 166 P0), `walk-7199f2e.md`, `walk-b660c21.md` and
+`walk-e817e2b.md`.
 
 - P1: the demo's first load on a throttled connection is 2.7 s to the first plan row (Unit 8).
 
@@ -151,6 +153,9 @@ the walk now covers week two as well as day one).
   production bundle and serves it statically with gzip, as GitHub Pages does.
 - The four preloaded font faces (about 90 kB) share the throttled link with the first chunk;
   changing font loading changes the first paint, which is a design call (§6), so they stay.
+- The Units 4/7/8 push failed CI once in the smoke: on the runner the demo's plan was a chunk
+  away when the smoke read `main.page` (the surfaces load on demand since Unit 8) and it read
+  null; the smoke now waits for the plan's rows first. Green on the next push.
 - The first night-1 push failed CI twice for reasons outside the product: the `github-pages`
   environment's branch policy allowed only `main`, so the preview deploy was refused — `night-1`
   was added to the policy (Settings → Environments → github-pages; reversible); and the runner's
@@ -226,6 +231,9 @@ inventory was regenerated after each UI change (fingerprint only; no rule waived
   calendar entry is open.
 
 ## 7. Resume plan
+
+`night-1` is at the commit that carries this report; `ci` and `deploy-pages` are green on it and
+the preview is at `getiamai.com/next/rollout/` (`/next/` for its home page). Main is untouched.
 
 Queue, in order: (1) done; (2) nothing of 52 remains; (3) the floor — done; (4) the demo is the
 show — done; (5) theme — done in 52; (6) Cleanup — done in 52; (7) print and export — done; (8)
