@@ -113,11 +113,12 @@ is fixed only in prose.
 
 ---
 
-## 5. Open
+## 5. The floor
 
-Whether IAMAI carries a small "Microsoft recommended, not in this baseline" set (registration
-protection, the legacy-authentication block, emergency access) rendered when a baseline lacks
-them, labelled as not the author's. Target-state §13.0; the owner's call.
+IAMAI carries a small "Microsoft recommended, not in this baseline" set (registration
+protection, the legacy-authentication block, emergency access), sourced from Microsoft's own
+Conditional Access templates, rendered when a baseline lacks them and labelled as not the
+author's. Decided Sep 1; builds in 53.
 
 ## 6. Later — logged, not scheduled
 

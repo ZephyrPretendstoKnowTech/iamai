@@ -82,3 +82,11 @@ on what the page says. Run `npm test && npm run smoke` before pushing, not
 - Pure logic (adapter, intents, engine) has no DOM or network imports so it runs in Node tests and in the worker.
 - Tests use small authored fixtures, never copied third-party policy files.
 - When adding a Graph call, record its scope, licence gate, and beta/v1.0 status in `SPEC.md` §4.
+
+## Standing orders (all sessions)
+- You write no product prose. Every sentence comes from docs/design/content.json; a missing string is logged, never written.
+- docs/design/ and docs/qa/page-contracts.json are the reviewer's; never edit them. The contract is the maximum a surface may render.
+- The baseline wins: policy steps render from the pinned baseline through the translator; the catalogue keeps intent only.
+- Exclusions go through the exclusions group, never the emergency accounts by name.
+- Resume from the latest docs/reports/<prompt>.md; never re-scope work the report already scoped.
+- Do not end a turn at a checkpoint. End only when the prompt's done-gate is green, a stop condition applies, or the session dies (then commit WIP with a note in the report).

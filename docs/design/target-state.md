@@ -633,10 +633,6 @@ complete" is not done.
 
 Still awaiting the owner's yes or no. Nothing here is built, approximated or partially built.
 
-0. A "Microsoft recommended, not in this baseline" set: registration protection, the
-   legacy-authentication block and emergency access rendered when the active baseline lacks
-   them, labelled as not the author's. Raised Sep 1 when Jon Hope's head dropped office-only
-   registration, leaving a P1 tenant on that baseline with no control on method registration.
 
 1. A since-last-scan line on the Plan header and on Today.
 2. Today tiles linking to the steps they hold (the tiles name the steps; whether they link is open).
@@ -645,6 +641,11 @@ Still awaiting the owner's yes or no. Nothing here is built, approximated or par
 5. A posture line at the top of the Plan for the executive read.
 6. Today marking emergency and device accounts in the table.
 7. The How page: permissions table as a link; endpoint tables to the README; steps linking to their checks.
+
+Decided Sep 1 (evening): the plan carries a "Microsoft recommended, not in this baseline" set —
+registration protection, the legacy-authentication block, emergency access — rendered when the
+active baseline lacks them, grouped and labelled as not the author's, sourced from Microsoft's
+own Conditional Access templates. Builds in 53.
 
 Decided since version 2 and now in this document: phases unnamed; `For your manager` on policy
 steps only; the download and browser-limit goals as one step with two policies (and the two
