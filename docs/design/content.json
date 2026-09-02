@@ -1105,7 +1105,7 @@
       },
       "decision": {
         "label": "Trusted network",
-        "help": "Tick the locations that are your own offices or VPN exits. Untick anything nobody signs in through.",
+        "help": "Tick the locations that are your own offices or VPN exits. Untick anything nobody signs in from that location.",
         "pickerRow": "{name} · {ranges} · {matches} sign-ins matched",
         "save": "Save"
       },
