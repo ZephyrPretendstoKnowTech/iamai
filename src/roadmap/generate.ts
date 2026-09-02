@@ -1272,9 +1272,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       operatorSafe,
       operatorNote,
       operatorWhatIf: null,
-      deliveredBy: result.candidates
-        .filter((c) => c.contribution === 'strong')
-        .map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`),
+      // The goal's own coverage, not a broad all-users match that belongs to
+      // another goal (walk-51 item 15): prefer the policies scoped to this goal.
+      deliveredBy: (() => {
+        const strong = result.candidates.filter((c) => c.contribution === 'strong')
+        const own = strong.filter((c) => c.ownScope)
+        return (own.length > 0 ? own : strong).map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`)
+      })(),
       stateReason: '',
       denies: impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location',
       plainTitle: stepTitle(goal.name),

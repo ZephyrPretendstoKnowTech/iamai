@@ -329,7 +329,10 @@ function evaluateGoal(
         })
       }
     }
-    contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats })
+    // A policy that targets all users is a broad match for a narrower goal (its
+    // own scope belongs to mfa-all-users), so it is not this goal's own coverage.
+    const ownScope = impl.expectedWho.kind === 'all' || !c.who.all
+    contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope })
   }
 
   for (const id of enforced) {
@@ -453,6 +456,8 @@ function evaluateStructural(
             ? 'weak'
             : 'disabled',
     caveats: [],
+    // Workload-identity goals have no broader all-users match to displace.
+    ownScope: true,
   }))
   base.candidates = contributions
   const status = contributions.some((c) => c.contribution === 'strong')
