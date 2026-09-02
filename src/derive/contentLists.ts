@@ -78,6 +78,9 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   for (const v of smsOnly) addCare(v.userId)
   if (ctx.operatorId) addCare(ctx.operatorId)
   const specialCare = careIds.map((id) => `${nameOf(id)} · ${STATE_WORD[stateOf(byId.get(id) as MfaViability)]}`)
+  // The ids behind the rows, in the same order, so a tick is a decision about an
+  // account (prompt 52 Part 3): the picker reads `<source>Ids` beside `<source>`.
+  const specialCareIds = [...careIds]
 
   return {
     // Campaign buckets (mfaViability over collected methods + sign-ins).
@@ -101,8 +104,9 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     admins: names([...adminUserIds(snapshot.roles)]),
     coreAdminRoles: [...CORE_ADMIN_ROLE_IDS].map(roleName),
     eligible: names(Object.keys(snapshot.roles.eligible)),
-    // The special-care picker rows ("name · state").
+    // The special-care picker rows ("name · state"), and their ids.
     specialCare,
+    specialCareIds,
   }
 }
 

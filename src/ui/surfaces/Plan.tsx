@@ -7,6 +7,7 @@ import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
+import type { StepDecision } from '../../roadmap/decisions.ts'
 import { PLAN as C } from '../../copy/plan.ts'
 import { SHELL } from '../../copy/pages.ts'
 import { pages } from '../../content/content.ts'
@@ -135,7 +136,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} activePeople={activePeople} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} activePeople={activePeople} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
             })}
           </section>
         )
@@ -146,7 +147,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason, snapshot, mapping, operatorId, firstEnforce, activePeople }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason, snapshot, mapping, operatorId, firstEnforce, activePeople, decision, onDecide }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -164,6 +165,8 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
   operatorId: string | null
   firstEnforce: string | null
   activePeople: number
+  decision: StepDecision | null
+  onDecide: (decision: { picked?: string[]; option?: string }) => void
 }) {
   const status = statusOf(step)
   return (
@@ -186,6 +189,8 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
           onUnskip={() => onUnskip(step.id)}
           onClose={onToggle}
           onScan={() => { window.location.hash = '#/connect' }}
+          decision={decision}
+          onDecide={onDecide}
         />
       )}
     </>

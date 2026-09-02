@@ -5,9 +5,9 @@ import { trackExecution } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { SKIP } from '../copy/skip.ts'
 import type { Step, StepStatus } from './types.ts'
-import type { PlanDecisions, SkipDecision } from './decisions.ts'
+import type { PlanDecisions, SkipDecision, StepDecision } from './decisions.ts'
 
-export type { PlanDecisions, SkipDecision } from './decisions.ts'
+export type { PlanDecisions, SkipDecision, StepDecision } from './decisions.ts'
 
 const RANK: Record<StepStatus, number> = {
   blocked: 0,
@@ -96,6 +96,13 @@ export function decisionsOf(
   for (const [id, s] of Object.entries(rec?.steps ?? {})) {
     if (s.status === 'skipped' && !skips[id]) skips[id] = { reason: s.skipReason ?? '', at: s.history?.at(-1)?.at ?? '' }
   }
+  // A picker's decision travels as written; a record from before the pickers
+  // were live has none.
+  const stepDecisions: Record<string, StepDecision> = {}
+  for (const [id, d] of Object.entries(rec?.stepDecisions ?? {})) {
+    if (!d || typeof d !== 'object') continue
+    stepDecisions[id] = { ...(Array.isArray(d.picked) ? { picked: d.picked.map(String) } : {}), ...(typeof d.option === 'string' ? { option: d.option } : {}), at: String(d.at ?? '') }
+  }
   return {
     planId: rec?.planId ?? planId,
     skips,
@@ -104,6 +111,7 @@ export function decisionsOf(
     freeze: rec?.freeze ?? null,
     checkpoints: rec?.checkpoints ?? [],
     planCreatedAt: rec?.planCreatedAt,
+    stepDecisions,
   }
 }
 

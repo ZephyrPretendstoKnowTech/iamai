@@ -9,6 +9,13 @@ import type { ChangeFreeze } from './schedule.ts'
 export type SkipDecision = { reason: string; at: string }
 
 /**
+ * A decision made in a step's picker (target-state §6.4): the rows ticked, by
+ * id, or the option chosen, and when. Saved from the step, carried by the plan
+ * file, and read back on load; the plan regenerates around it.
+ */
+export type StepDecision = { picked?: string[]; option?: string; at: string }
+
+/**
  * Everything the plan record persists. Nothing here can be re-derived from a
  * scan: which steps were skipped and why, the start date and freeze the operator
  * chose, the checkpoints, and when the plan came into existence. Steps, statuses,
@@ -25,4 +32,6 @@ export type PlanDecisions = {
   checkpoints?: unknown[]
   /** When the plan came into existence, so tracking can tell already-in-place from executed. */
   planCreatedAt?: string
+  /** Every picker's saved decision, by step id (prompt 52 Part 3). */
+  stepDecisions?: Record<string, StepDecision>
 }

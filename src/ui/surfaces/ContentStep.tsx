@@ -7,6 +7,7 @@
 // and only when they have content.
 import { useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
+import type { StepDecision } from '../../roadmap/decisions.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, missingVars } from '../../content/render.ts'
@@ -45,6 +46,8 @@ export function ContentStep({
   onUnskip,
   onClose,
   onScan,
+  decision = null,
+  onDecide,
 }: {
   step: Step
   ctx: StepVarContext
@@ -52,6 +55,10 @@ export function ContentStep({
   onUnskip: () => void
   onClose: () => void
   onScan?: () => void
+  /** This step's saved decision, when one was made (prompt 52 Part 3). */
+  decision?: StepDecision | null
+  /** The picker's Save: the ticked ids or the chosen option become the plan's decision. */
+  onDecide?: (decision: { picked?: string[]; option?: string }) => void
 }) {
   const [tab, setTab] = useState<DoTab>('portal')
   const [copied, setCopied] = useState<string | null>(null)
@@ -115,7 +122,7 @@ export function ContentStep({
       {who.groups && who.overlap && <Line s={who.overlap} ex={ex} cls="sub" />}
       {who.groups && who.adminsNote && truthy(ex.admins) && <p className="reason"><T s={who.adminsNote} ex={ex} /></p>}
 
-      {d && <Decision d={d} ex={ex} />}
+      {d && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} />}
 
       <h3>What to do</h3>
       {w.lead && <p><T s={w.lead} ex={ex} /></p>}
@@ -238,7 +245,27 @@ function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
   return out
 }
 
-function Decision({ d, ex }: { d: Record<string, any>; ex: Ex }) {
+function Decision({ d, ex, saved, onDecide }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: { picked?: string[]; option?: string }) => void }) {
+  // One row per person the picker's source names (walk-51 item 3): the source
+  // holds the rendered "name · state" rows, and its Ids twin the ids behind
+  // them, so a tick is a decision about an account, not a string. No source,
+  // no picker. Everything IAMAI nominated starts ticked (target-state §6.4:
+  // pre-filled from the scan); a saved decision replaces that.
+  const rows: string[] = d.pickerRow && d.pickerSource && Array.isArray(ex[d.pickerSource]) ? (ex[d.pickerSource] as string[]) : []
+  const idsOf = ex[`${d.pickerSource}Ids`]
+  const ids: string[] = Array.isArray(idsOf) && (idsOf as string[]).length === rows.length ? (idsOf as string[]) : rows
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(saved?.picked ?? ids))
+  // An option with a variable the scan cannot fill is not offered (walk-51 item 2).
+  const options: string[] = (Array.isArray(d.options) ? (d.options as string[]) : []).filter((o) => whole(o, ex))
+  const [option, setOption] = useState<string | null>(saved?.option ?? null)
+  const toggle = (id: string): void =>
+    setPicked((prev) => {
+      const next = new Set(d.multi ? prev : [])
+      if (prev.has(id) && d.multi) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const save = (): void => onDecide?.({ ...(rows.length > 0 ? { picked: ids.filter((id) => picked.has(id)) } : {}), ...(option !== null ? { option } : {}) })
   // The help is explanatory prose and renders in the flow, not inside the
   // .decision row (which the contract measures against the row budget).
   return (
@@ -246,17 +273,15 @@ function Decision({ d, ex }: { d: Record<string, any>; ex: Ex }) {
       {d.help && <p className="reason"><T s={d.help} ex={ex} /></p>}
       <div className="decision">
         <div className="dlabel">{d.label}</div>
-        {/* One row per person the picker's source names (walk-51 item 3): the
-            source holds the rendered "name · state" rows. No source, no picker. */}
-        {d.pickerRow && Array.isArray(ex[d.pickerSource]) && (ex[d.pickerSource] as string[]).length > 0 && (
+        {rows.length > 0 && (
           <div className="picker">
-            {(ex[d.pickerSource] as string[]).map((row, i) => (
-              <label key={i}><input type="checkbox" defaultChecked readOnly /> {row}</label>
+            {rows.map((row, i) => (
+              <label key={i}><input type={d.multi ? 'checkbox' : 'radio'} name={d.multi ? undefined : d.label} checked={picked.has(ids[i])} onChange={() => toggle(ids[i])} /> {row}</label>
             ))}
           </div>
         )}
-        {Array.isArray(d.options) && <div className="picker">{(d.options as string[]).map((o, i) => <label key={i}><input type="radio" name={d.label} readOnly /> <T s={o} ex={ex} /></label>)}</div>}
-        <Button variant="secondary" onClick={() => undefined}>{d.save || 'Save'}</Button>
+        {options.length > 0 && <div className="picker">{options.map((o, i) => <label key={i}><input type="radio" name={`${d.label}-option`} checked={option === o} onChange={() => setOption(o)} /> <T s={o} ex={ex} /></label>)}</div>}
+        <Button variant="secondary" onClick={save}>{d.save || 'Save'}</Button>
       </div>
     </>
   )
