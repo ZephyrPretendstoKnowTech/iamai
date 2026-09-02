@@ -28,6 +28,7 @@ import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { defaultDecisions } from './pickerRows.ts'
 import { nextWorkingDay } from '../../roadmap/schedule.ts'
+import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
@@ -83,6 +84,21 @@ export type PlanData = {
   stepDecisions: Record<string, StepDecision>
   /** A picker's Save: record the decision and regenerate the plan around it. */
   onDecide: (stepId: string, decision: { picked?: string[]; option?: string }) => void
+  /** The name every Tell your people box signs with (Plan settings); in the plan file. */
+  signature: string
+  setSignature: (signature: string) => void
+  /** The display time zone the plan stores (null: the browser's). */
+  timeZone: string | null
+  setTimeZone: (tz: string | null) => void
+}
+
+/** Today's date in the display zone (never UTC), as YYYY-MM-DD. */
+function todayIn(zone: string | null): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: zone ?? undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  } catch {
+    return new Date().toISOString().slice(0, 10)
+  }
 }
 
 /** The operator's own account in the directory: their evidence line, and the special-care default. */
@@ -184,7 +200,12 @@ export function usePlanData(
     const defaults = defaultDecisions({ snapshot, mapping, nameOf, groups, operatorId, now: snapshot.asOf })
     return applyStepDecisions(applyStepDecisions(mapping, defaults, 'detected'), saved?.stepDecisions ?? null)
   }, [mapping, saved, snapshot, groups, operatorId])
-  const startDate = saved?.startDate ?? (snapshot ? nextWorkingDay(new Date().toISOString()) : null)
+  // The default start is the next working day after today in the display zone.
+  const startDate = saved?.startDate ?? (snapshot ? nextWorkingDay(`${todayIn(mapping?.displayTimeZone ?? null)}T12:00:00.000Z`) : null)
+  // Every date the pages format reads the stored zone.
+  useEffect(() => {
+    setDisplayTimeZone(mapping?.displayTimeZone ?? null)
+  }, [mapping])
   const band: SizeBand | null = saved?.band && BANDS[saved.band] ? saved.band : null
   const freeze = saved?.freeze ?? null
 
@@ -248,9 +269,10 @@ export function usePlanData(
       checkpoints: saved.checkpoints ?? [],
       planCreatedAt: saved.planCreatedAt ?? new Date().toISOString(),
       stepDecisions: saved.stepDecisions ?? {},
+      ...(saved.signature ? { signature: saved.signature } : {}),
     }
     if (saved.startedAt) decisions.startedAt = saved.startedAt
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions })
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, signature: decisions.signature })
     if (key === lastPersist.current) return
     lastPersist.current = key
     void savePlanRecord(snapshot.tenantId, decisions)
@@ -293,6 +315,19 @@ export function usePlanData(
     },
     setFreeze: (f) => {
       setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), freeze: f }))
+      bump()
+    },
+    signature: saved?.signature ?? 'IT',
+    setSignature: (signature) => {
+      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), signature }))
+      bump()
+    },
+    timeZone: mapping?.displayTimeZone ?? null,
+    setTimeZone: (tz) => {
+      if (!mapping) return
+      const next = { ...mapping, displayTimeZone: tz }
+      setMapping(next)
+      void saveMappingState(next)
       bump()
     },
     onSkip: (stepId, reason) => {

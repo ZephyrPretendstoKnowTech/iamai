@@ -110,6 +110,7 @@ export function decisionsOf(
     checkpoints: rec?.checkpoints ?? [],
     planCreatedAt: rec?.planCreatedAt,
     stepDecisions,
+    ...(typeof (rec as { signature?: unknown } | null)?.signature === 'string' ? { signature: (rec as { signature: string }).signature } : {}),
   }
 }
 

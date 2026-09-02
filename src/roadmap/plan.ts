@@ -164,6 +164,8 @@ export function buildPlanFile(args: {
   revisions?: PlanFile['revisions']
   /** Every picker's saved decision (prompt 52 Part 3); round-trips through the decisions block. */
   stepDecisions?: Record<string, StepDecision>
+  /** The name the Tell your people boxes sign with (Plan settings). */
+  signature?: string
   /** When Start the plan was pressed (prompt 52 Part 5); the start date above is then anchored. */
   startedAt?: string
 }): PlanFile {
@@ -211,6 +213,7 @@ export function buildPlanFile(args: {
       freeze: args.schedule?.freeze ?? null,
       checkpoints: trimCheckpoints(args.checkpoints),
       stepDecisions: args.stepDecisions ?? {},
+      ...(args.signature ? { signature: args.signature } : {}),
     },
     checkpoints: trimCheckpoints(args.checkpoints),
     ...(args.schedule ? { schedule: args.schedule } : {}),

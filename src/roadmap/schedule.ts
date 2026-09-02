@@ -14,6 +14,7 @@ import { waitingOnSetup as waitingOnSetupQ } from '../derive/sets.ts'
 import { promptsPeople } from './strand.ts'
 import { addWorkingDays, nobodyAffected, toEnforcementDay as enforcementDay } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
+import { contentTitle } from '../content/stepTitle.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
@@ -50,6 +51,8 @@ export type ConstraintKind = 'none' | 'verification' | 'dependency' | 'rings' | 
 export type Derivation = {
   /** The one sentence for the Overview (§2). */
   criticalPath: string
+  /** The clause after "because": what sets the length, naming steps by their content titles; empty when nothing is left to schedule. */
+  reason: string
   constraint: ConstraintKind
   /** Step ids on the critical path, first to last. */
   chain: string[]
@@ -748,17 +751,20 @@ function derive(
   const enforcement = steps.filter((s) => isEnforcement(s) && placed.has(s.id))
   if (enforcement.length === 0) {
     if (verifyStep && !verification.complete) {
+      const only = fillText(CRITICAL.verificationOnly, { people: verifyStep.population.total, weeks: Math.max(1, Math.round(verification.days / 7)) })
       return {
-        criticalPath: fillText(CRITICAL.sentence, { weeks, reason: fillText(CRITICAL.verificationOnly, { people: verifyStep.population.total, weeks: Math.max(1, Math.round(verification.days / 7)) }) }),
+        criticalPath: fillText(CRITICAL.sentence, { weeks, reason: only }),
+        reason: only,
         constraint: 'verification',
         chain: [verifyStep.id],
         relaxed,
       }
     }
     const prereqs = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length
+    const first = fillText(CRITICAL.prerequisites, { n: prereqs })
     return prereqs > 0
-      ? { criticalPath: fillText(CRITICAL.sentence, { weeks, reason: fillText(CRITICAL.prerequisites, { n: prereqs }) }), constraint: 'prerequisites', chain: [], relaxed }
-      : { criticalPath: CRITICAL.sentenceDone, constraint: 'none', chain: [], relaxed }
+      ? { criticalPath: fillText(CRITICAL.sentence, { weeks, reason: first }), reason: first, constraint: 'prerequisites', chain: [], relaxed }
+      : { criticalPath: CRITICAL.sentenceDone, reason: '', constraint: 'none', chain: [], relaxed }
   }
   const last = enforcement.reduce((m, s) => (placed.get(s.id)!.end > placed.get(m.id)!.end ? s : m))
   const p = placed.get(last.id)!
@@ -771,36 +777,36 @@ function derive(
     case 'verification': {
       const v = verifyStep ?? (p.reason.ref ? byId.get(p.reason.ref) ?? null : null)
       if (v) chain.unshift(v.id)
-      reason = fillText(CRITICAL.verification, { people: v?.population.total ?? 0, weeks: Math.max(1, Math.round(verification.days / 7)), step: last.title, rings, soak })
+      reason = fillText(CRITICAL.verification, { people: v?.population.total ?? 0, weeks: Math.max(1, Math.round(verification.days / 7)), step: contentTitle(last), rings, soak })
       break
     }
     case 'dependency': {
       const dep = p.reason.ref ? byId.get(p.reason.ref) : undefined
       if (dep) chain.unshift(dep.id)
-      reason = fillText(CRITICAL.chain, { step: last.title, waitsFor: dep?.title ?? '', rings, soak })
+      reason = fillText(CRITICAL.chain, { step: contentTitle(last), waitsFor: dep ? contentTitle(dep) : '', rings, soak })
       break
     }
     case 'soft': {
       const other = p.reason.ref ? byId.get(p.reason.ref) : undefined
       if (other) chain.unshift(other.id)
-      reason = fillText(CRITICAL.soft, { step: last.title, other: other?.title ?? '' })
+      reason = fillText(CRITICAL.soft, { step: contentTitle(last), other: other ? contentTitle(other) : '' })
       break
     }
     case 'cap':
-      reason = fillText(CRITICAL.cap, { n: cap, step: last.title })
+      reason = fillText(CRITICAL.cap, { n: cap, step: contentTitle(last) })
       break
     case 'freeze':
-      reason = fillText(CRITICAL.freeze, { to: freeze ? absoluteDate(freeze.to) : '', step: last.title })
+      reason = fillText(CRITICAL.freeze, { to: freeze ? absoluteDate(freeze.to) : '', step: contentTitle(last) })
       break
     case 'phase': {
       const other = p.reason.ref ? byId.get(p.reason.ref) : undefined
       if (other) chain.unshift(other.id)
-      reason = fillText(CRITICAL.phase, { step: last.title, other: other?.title ?? '' })
+      reason = fillText(CRITICAL.phase, { step: contentTitle(last), other: other ? contentTitle(other) : '' })
       break
     }
     default:
       constraint = 'rings'
-      reason = last.kind === 'create' && observation.days > 0 ? fillText(CRITICAL.ringsObserved, { step: last.title, observation: observation.days, rings, soak }) : fillText(CRITICAL.rings, { step: last.title, rings, soak })
+      reason = last.kind === 'create' && observation.days > 0 ? fillText(CRITICAL.ringsObserved, { step: contentTitle(last), observation: observation.days, rings, soak }) : fillText(CRITICAL.rings, { step: contentTitle(last), rings, soak })
   }
-  return { criticalPath: fillText(CRITICAL.sentence, { weeks, reason }), constraint, chain, relaxed }
+  return { criticalPath: fillText(CRITICAL.sentence, { weeks, reason }), reason, constraint, chain, relaxed }
 }
