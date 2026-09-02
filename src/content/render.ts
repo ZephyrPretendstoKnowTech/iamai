@@ -78,6 +78,16 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
 
 // The names fillText resolves from shared references rather than the step's own
 // values, so a line using one is not treated as having a hole (walk-51 item 2).
+/**
+ * A picker with no pickerSource reads the first of these keys the step's values
+ * fill (the emergency, countries, trusted-network, service-accounts and
+ * shared-devices pickers); the product's Decision and this review renderer share
+ * the list, so a row appears in both or in neither.
+ */
+export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts', 'countriesWithCounts', 'locationsWithMatches', 'accountsWithSignals', 'devicesWithSignals', 'adminsList']
+/** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
+export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations']
+
 const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName'])
 
 /**
@@ -112,11 +122,12 @@ const SINGULAR: Record<string, string> = {
   people: 'person', admins: 'admin', guests: 'guest', users: 'user', accounts: 'account', policies: 'policy',
   members: 'member', devices: 'device', methods: 'method', days: 'day', weeks: 'week', keys: 'key',
   checks: 'check', steps: 'step', tenants: 'tenant', locations: 'location', countries: 'country', roles: 'role', groups: 'group',
+  'sign-ins': 'sign-in',
 }
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one
   // adjective ("1 active people" → "1 active person").
-  return text.replace(/(?<![\d,.])\b1 ([A-Za-z]+)( [A-Za-z]+)?/g, (m, w1: string, w2?: string) => {
+  return text.replace(/(?<![\d,.])\b1 ([A-Za-z-]+)( [A-Za-z-]+)?/g, (m, w1: string, w2?: string) => {
     if (SINGULAR[w1]) return `1 ${SINGULAR[w1]}${w2 ?? ''}`
     const n2 = w2?.trim()
     if (n2 && SINGULAR[n2]) return `1 ${w1} ${SINGULAR[n2]}`
@@ -281,7 +292,7 @@ export function renderStep(st: Record<string, any>): string {
     }
     if (d.pickerRow) {
       let rows: unknown[] = []
-      const keys = d.pickerSource ? [d.pickerSource] : ['emergencyAccounts', 'countriesWithCounts', 'locationsWithMatches', 'accountsWithSignals', 'devicesWithSignals', 'adminsList']
+      const keys = d.pickerSource ? [d.pickerSource] : PICKER_FALLBACK_KEYS
       for (const key of keys) {
         if (truthy(ex[key])) {
           rows = ex[key]
@@ -289,7 +300,7 @@ export function renderStep(st: Record<string, any>): string {
         }
       }
       if (rows.length) {
-        const kindIn = d.multi || !['groups', 'countryLocations'].includes(d.pickerSource) ? 'checkbox' : 'radio'
+        const kindIn = d.multi || !SINGLE_CHOICE_SOURCES.includes(d.pickerSource) ? 'checkbox' : 'radio'
         parts.push('<div class="picker">' + rows.map((r, i) => `<label><input type="${kindIn}" ${i === 0 || d.multi ? 'checked' : ''} disabled> <var class="v">${esc(r)}</var></label>`).join('') + '</div>')
       } else {
         parts.push(`<div class="picker"><label><input type="checkbox" disabled> ${fill(d.pickerRow, ex)}</label></div>`)

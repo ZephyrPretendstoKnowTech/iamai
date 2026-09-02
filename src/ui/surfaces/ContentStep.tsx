@@ -10,7 +10,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText, missingVars } from '../../content/render.ts'
+import { fillText, missingVars, PICKER_FALLBACK_KEYS, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody } from './stepPortal.ts'
@@ -84,7 +84,9 @@ export function ContentStep({
   const who = cs.who || {}
   const d = cs.decision
   const w = cs.whatToDo || {}
-  const portalNames = { nameOf: ctx.nameOf, policyName: String(ex.policyName ?? cs.title), strengthName: (ex as { strengthName?: string }).strengthName ?? null }
+  // The exclusions group and the service-accounts group the mapping names (a
+  // saved decision included), so every exclusions line names the group.
+  const portalNames = { nameOf: ctx.nameOf, policyName: String(ex.policyName ?? cs.title), strengthName: (ex as { strengthName?: string }).strengthName ?? null, exclusionsGroupId: ctx.mapping.records?.['__globalExclusion']?.resolvedId ?? null, serviceAccountsGroupId: ctx.mapping.serviceAccountsGroupId ?? null }
   // The baseline's policy through the translator; a floor step (Microsoft
   // recommended, not in this baseline) renders Microsoft's template the engine
   // resolved for this tenant, through the same translator.
@@ -303,22 +305,30 @@ function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
 }
 
 function Decision({ d, ex, saved, onDecide }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: { picked?: string[]; option?: string }) => void }) {
-  // One row per person the picker's source names (walk-51 item 3): the source
-  // holds the rendered "name · state" rows, and its Ids twin the ids behind
-  // them, so a tick is a decision about an account, not a string. No source,
-  // no picker. Everything IAMAI nominated starts ticked (target-state §6.4:
-  // pre-filled from the scan); a saved decision replaces that.
-  const rows: string[] = d.pickerRow && d.pickerSource && Array.isArray(ex[d.pickerSource]) ? (ex[d.pickerSource] as string[]) : []
-  const idsOf = ex[`${d.pickerSource}Ids`]
+  // One row per thing the picker's source names (walk-51 item 3): the source
+  // holds the rendered rows, its Ids twin the ids behind them, so a tick is a
+  // decision about an account, not a string. A picker with no source reads the
+  // first fallback key the step fills, the same list the review renderer uses.
+  // No rows, no picker. The Ticked twin (the plan's current value, else
+  // everything nominated) starts ticked; a saved decision replaces that.
+  const keys: string[] = d.pickerSource ? [d.pickerSource] : PICKER_FALLBACK_KEYS
+  const key = d.pickerRow ? (keys.find((k) => Array.isArray(ex[k]) && (ex[k] as unknown[]).length > 0) ?? null) : null
+  const rows: string[] = key ? (ex[key] as string[]) : []
+  const idsOf = key ? ex[`${key}Ids`] : undefined
   const ids: string[] = Array.isArray(idsOf) && (idsOf as string[]).length === rows.length ? (idsOf as string[]) : rows
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(saved?.picked ?? ids))
+  // A group or a location is one choice (radio); every other picker ticks many.
+  const single = !d.multi && SINGLE_CHOICE_SOURCES.includes(String(d.pickerSource ?? key ?? ''))
+  const tickedOf = key ? ex[`${key}Ticked`] : undefined
+  const initial: string[] = saved?.picked ?? (Array.isArray(tickedOf) ? (tickedOf as string[]) : single ? ids.slice(0, 1) : ids)
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(initial))
   // An option with a variable the scan cannot fill is not offered (walk-51 item 2).
   const options: string[] = (Array.isArray(d.options) ? (d.options as string[]) : []).filter((o) => whole(o, ex))
   const [option, setOption] = useState<string | null>(saved?.option ?? null)
   const toggle = (id: string): void =>
     setPicked((prev) => {
-      const next = new Set(d.multi ? prev : [])
-      if (prev.has(id) && d.multi) next.delete(id)
+      if (single) return new Set([id])
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
@@ -333,7 +343,7 @@ function Decision({ d, ex, saved, onDecide }: { d: Record<string, any>; ex: Ex; 
         {rows.length > 0 && (
           <div className="picker">
             {rows.map((row, i) => (
-              <label key={i}><input type={d.multi ? 'checkbox' : 'radio'} name={d.multi ? undefined : d.label} checked={picked.has(ids[i])} onChange={() => toggle(ids[i])} /> {row}</label>
+              <label key={i}><input type={single ? 'radio' : 'checkbox'} name={single ? d.label : undefined} checked={picked.has(ids[i])} onChange={() => toggle(ids[i])} /> {row}</label>
             ))}
           </div>
         )}

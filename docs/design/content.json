@@ -35,7 +35,11 @@
       "Microsoft Authenticator for Android": "de1e552d-db1d-4423-a619-566b625cdc84",
       "Microsoft Authenticator for iOS": "90a3ccdf-635c-4729-a248-9b709135078f"
     },
-    "licenceRule": "Where a control needs a licence {tenant} does not hold, the step uses the nearest control it does hold and says so; the licensed version is listed under Not licensed."
+    "licenceRule": "Where a control needs a licence {tenant} does not hold, the step uses the nearest control it does hold and says so; the licensed version is listed under Not licensed.",
+    "sharedDeviceSignals": {
+      "licence": "Teams Rooms or shared-device licence",
+      "deviceOnly": "signs in only from a Teams device"
+    }
   },
   "phases": {
     "first": "Preparation",
@@ -504,7 +508,10 @@
             }
           ]
         ],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "emergencyCandidates": [
+          "Breakglass · breakglass@getiamai.onmicrosoft.com · named like an emergency account, signs in with the onmicrosoft.com address, Global Administrator, no licence"
+        ]
       },
       "partner": "Done together with Create or Correct Exclusions Group: these accounts are the members of that group, and the group is what every policy excludes."
     },
@@ -956,7 +963,7 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "devicesWithSignals": [
-          "Boardroom · Teams Rooms licence; no department; signs in from one device"
+          "Boardroom · Teams Rooms or shared-device licence; signs in only from a Teams device"
         ],
         "policyName": "Core - Allow - Shared devices",
         "sharedDevices": [
