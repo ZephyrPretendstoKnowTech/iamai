@@ -10,7 +10,6 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from './generate.ts'
 import { emptyMappingState } from '../mapping/types.ts'
-import { buildQuestions } from '../mapping/questions.ts'
 import { buildNameDirectory } from '../names.ts'
 import { adminUserIds } from '../roles.ts'
 import type { Step } from './types.ts'
@@ -40,7 +39,6 @@ function plan(): { steps: Step[]; snapshot: ReturnType<typeof fixtureSnapshot> }
     baseline: baseline.pkg,
     baselineAuthor: null,
     mapping,
-    questions: buildQuestions(baseline.pkg),
     viability,
     strengths,
     operatorUserId: 'u-1',

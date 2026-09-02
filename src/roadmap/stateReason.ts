@@ -28,13 +28,6 @@ export function blockedReasonFor(step: Step, stepById: Map<string, Step>): strin
   if (stepBlocker) return BLOCKED_REASON.after(stepById.get(stepBlocker.stepId) ? titleOf(stepById.get(stepBlocker.stepId)!) : stepBlocker.stepId)
   const waitedOn = step.blockedBy.map((id) => stepById.get(id)).find((dep): dep is Step => dep !== undefined && dep.status !== 'done' && dep.status !== 'skipped')
   if (waitedOn) return BLOCKED_REASON.after(titleOf(waitedOn))
-  const setup = step.blockers.filter((b) => b.kind === 'setup')
-  if (setup.length > 0) {
-    const setupStep = stepById.get('s-setup-questions')
-    if (setupStep) return BLOCKED_REASON.after(titleOf(setupStep))
-    const questions = new Set(setup.map((b) => (b as { questionNumber: number }).questionNumber)).size
-    return BLOCKED_REASON.exist(questions, 'Setup answer', 0)
-  }
   const bound = step.blockers.find((b) => typeof b.binding === 'string' && b.binding.length > 0)
   if (bound?.binding) return bound.binding
   const threshold = thresholdFor(step.readiness.family)

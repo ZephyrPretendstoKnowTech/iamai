@@ -13,7 +13,6 @@ import { mergePersisted, skipStep } from './progress.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { PLAN_SCHEMA_VERSION, buildPlanFile, makeCheckpoint, parsePlanFile } from './plan.ts'
 import { emptyMappingState } from '../mapping/types.ts'
-import { buildQuestions } from '../mapping/questions.ts'
 
 const snapshot = fixtureSnapshot()
 const baseline = fixtureBaseline()
@@ -35,7 +34,6 @@ const generate = (mapping = emptyMappingState(snapshot.tenantId)) =>
     baseline: baseline.pkg,
     baselineAuthor: null,
     mapping,
-    questions: buildQuestions(baseline.pkg),
     viability,
     strengths,
     operatorUserId: 'u-1',

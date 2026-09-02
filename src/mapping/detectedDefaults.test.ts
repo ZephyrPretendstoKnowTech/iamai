@@ -5,29 +5,19 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureBaseline, fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { emptyMappingState } from './types.ts'
-import { QUESTION_SCHEMA } from './questionSchema.ts'
-import { activeWizardQuestions, applyDetectedDefaults, wizardProgress } from './wizard.ts'
+import { answersComplete, applyDetectedDefaults, askedAnswers } from './wizard.ts'
 import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { BREAK_GLASS_STEP_ID } from '../roadmap/generate.ts'
 
-test('the seven answers, and no others: handle-with-care and frameworks are not questions', () => {
-  assert.deepEqual(
-    QUESTION_SCHEMA.map((q) => q.id),
-    ['breakGlass', 'globalExclusion', 'countries', 'trustedLocations', 'serviceAccounts', 'timeZone', 'applicability'],
-  )
-})
-
 test('after detection every active question is answered and the progress is complete', () => {
   const snapshot = fixtureSnapshot()
   const pkg = fixtureBaseline().pkg
-  const state = applyDetectedDefaults(emptyMappingState(snapshot.tenantId), pkg, snapshot, { knownGroups: [], defaultTimeZone: 'Australia/Sydney' })
-  const active = activeWizardQuestions(pkg, { snapshot, state })
-  const progress = wizardProgress(state, active)
-  assert.equal(progress.requiredMissing, 0, `unanswered: ${active.filter((q) => state.wizardAnswered[q.id] !== true).map((q) => q.id).join(', ')}`)
-  assert.equal(progress.complete, true)
+  const state = applyDetectedDefaults(emptyMappingState(snapshot.tenantId), snapshot, { knownGroups: [], defaultTimeZone: 'Australia/Sydney' })
+  const active = askedAnswers(snapshot, state)
+  assert.equal(answersComplete(snapshot, state), true, `unanswered: ${active.filter((q) => state.wizardAnswered[q] !== true).join(', ')}`)
   assert.equal(state.displayTimeZone, 'Australia/Sydney')
-  for (const q of active) assert.ok(state.assumed?.[q.id] === 'detected' || state.assumed?.[q.id] === 'noneFound', `${q.id} says where it came from`)
+  for (const q of active) assert.ok(state.assumed?.[q] === 'detected' || state.assumed?.[q] === 'noneFound', `${q} says where it came from`)
   // Countries come from where people sign in; the fixture signs in from Australia.
   assert.ok(state.allowedCountries.length > 0)
 })
@@ -35,9 +25,9 @@ test('after detection every active question is answered and the progress is comp
 test('a person’s answer is never overwritten; a detected one is recomputed', () => {
   const snapshot = fixtureSnapshot()
   const pkg = fixtureBaseline().pkg
-  const first = applyDetectedDefaults(emptyMappingState(snapshot.tenantId), pkg, snapshot, { knownGroups: [] })
+  const first = applyDetectedDefaults(emptyMappingState(snapshot.tenantId), snapshot, { knownGroups: [] })
   const edited = { ...first, allowedCountries: ['NZ'], wizardAnswered: { ...first.wizardAnswered, countries: true }, assumed: { ...first.assumed, countries: 'confirmed' as const } }
-  const again = applyDetectedDefaults(edited, pkg, snapshot, { knownGroups: [] })
+  const again = applyDetectedDefaults(edited, snapshot, { knownGroups: [] })
   assert.deepEqual(again.allowedCountries, ['NZ'], 'the confirmed answer stands')
   assert.equal(again.assumed?.countries, 'confirmed')
   assert.equal(again.assumed?.breakGlass, first.assumed?.breakGlass, 'detected answers are recomputed to the same result')
@@ -57,7 +47,7 @@ test('no emergency-access candidate: the assumption reads none found and Wave 0 
     if (p.conditions?.users) p.conditions.users.excludeUsers = []
   }
   const pkg = fixtureBaseline().pkg
-  const state = applyDetectedDefaults(emptyMappingState(snapshot.tenantId), pkg, snapshot, { knownGroups: [] })
+  const state = applyDetectedDefaults(emptyMappingState(snapshot.tenantId), snapshot, { knownGroups: [] })
   assert.deepEqual(state.breakGlassUserIds, [])
   assert.equal(state.assumed?.breakGlass, 'noneFound')
   assert.equal(state.records['__breakGlassMissing']?.doesNotExist, true)
