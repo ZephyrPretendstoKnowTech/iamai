@@ -132,6 +132,8 @@ export function buildPlanFile(args: {
   revisions?: PlanFile['revisions']
   /** Every picker's saved decision (prompt 52 Part 3); round-trips through the decisions block. */
   stepDecisions?: Record<string, StepDecision>
+  /** When Start the plan was pressed (prompt 52 Part 5); the start date above is then anchored. */
+  startedAt?: string
 }): PlanFile {
   const org = (args.snapshot.config.organization?.rows?.[0] ?? {}) as {
     displayName?: string
@@ -170,6 +172,7 @@ export function buildPlanFile(args: {
         args.steps.filter((s) => s.status === 'skipped').map((s) => [s.id, { reason: s.skipReason ?? '', at: s.history.find((h) => h.to === 'skipped')?.at ?? generated }]),
       ),
       ...(args.schedule?.startDate ? { startDate: args.schedule.startDate } : {}),
+      ...(args.startedAt ? { startedAt: args.startedAt } : {}),
       ...(args.schedule?.band ? { band: args.schedule.band as PlanDecisions['band'] } : {}),
       freeze: args.schedule?.freeze ?? null,
       checkpoints: trimCheckpoints(args.checkpoints),

@@ -107,6 +107,7 @@ export function decisionsOf(
     planId: rec?.planId ?? planId,
     skips,
     startDate: rec?.startDate,
+    ...(typeof rec?.startedAt === 'string' ? { startedAt: rec.startedAt } : {}),
     band: rec?.band,
     freeze: rec?.freeze ?? null,
     checkpoints: rec?.checkpoints ?? [],
