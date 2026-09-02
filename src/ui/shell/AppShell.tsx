@@ -13,7 +13,6 @@ import { fillText } from '../../content/render.ts'
 import { app, pages, planner } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demo.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { FeedbackPanel } from '../FeedbackPanel.tsx'
 import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/dates.ts'
 import { rescanLabel, scanAge } from '../../derive/scanAge.ts'
 import { Button, Callout, InfoTip, LinkButton } from '../components/index.ts'
@@ -30,11 +29,7 @@ const RESCAN_HREF = '#/connect'
 // Pages whose main content is a table read better with the wider cap.
 const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'how'])
 
-export const LINKEDIN_URL = 'https://www.linkedin.com/in/lachlanrobinette/'
-export const GITHUB_URL = 'https://github.com/ZephyrPretendstoKnowTech'
 export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
-/** The home page this tool sits under (prompt 35 §3). */
-export const HOME_URL = 'https://getiamai.com/'
 
 /** Where the shell is (target-state §2): it decides the tabs, Re-scan, and where an empty hash lands. */
 export type ShellState = 'signedOut' | 'noScan' | 'scanning' | 'scanned'
@@ -257,50 +252,25 @@ export function AppShell({
         )}
         {children}
       </main>
-      <Footer snapshot={snapshot ?? null} />
+      <Footer />
     </div>
   )
 }
 
-/**
- * The commit and day this bundle was built (prompt 40 §24).
- *
- * Seven consecutive red CI runs went unnoticed across prompts 36 to 39, and a
- * reviewer looking at the live site had no way to tell whether they were seeing
- * the deploy they expected. A stale bundle and a fresh one look identical
- * without this.
- */
-const BUILD_COMMIT = typeof __BUILD_COMMIT__ === 'string' ? __BUILD_COMMIT__ : 'dev'
-const BUILD_DATE = typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : ''
-
-export function Footer({ snapshot = null }: { snapshot?: TenantSnapshot | null } = {}) {
-  const buildLabel = BUILD_COMMIT === 'dev' ? fillText(SHELL.footerBuildLocal, { date: absoluteDate(`${BUILD_DATE}T12:00:00.000Z`) }) : fillText(SHELL.footerBuild, { commit: BUILD_COMMIT, date: absoluteDate(`${BUILD_DATE}T12:00:00.000Z`) })
-  // Read-only and the three links, dot-separated, on every page (target-state
-  // §3, prompt 52 Part 1): the feedback channel, all IAMAI tools, the source.
-  const footer = pages.footer as { readOnly: string; links: string[] }
+/** The three links, separated by |, on every page (target-state §3): the home page, the author, the source. */
+export function Footer() {
+  const footer = pages.footer as { links: { text: string; href: string }[] }
   return (
     <footer className="app">
-      <span>{footer.readOnly}</span>
       <span className="footer-links">
-        {/* Quiet, on every page (prompt 34 §2). Its label is the feedback address. */}
-        <FeedbackPanel snapshot={snapshot} label={footer.links[0]} />
-        <a href={HOME_URL}>{footer.links[1]}</a>
-        <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-          {footer.links[2]}
-        </a>
-        {BUILD_COMMIT === 'dev' ? (
-          <span className="footer-build">{buildLabel}</span>
-        ) : (
-          <a
-            className="footer-build"
-            href={`${REPO_URL}/commit/${BUILD_COMMIT}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={SHELL.footerBuildTitle}
-          >
-            {buildLabel}
-          </a>
-        )}
+        {footer.links.map((l, i) => (
+          <span key={l.href}>
+            {i > 0 && ' | '}
+            <a href={l.href} target="_blank" rel="noopener noreferrer">
+              {l.text}
+            </a>
+          </span>
+        ))}
       </span>
     </footer>
   )
