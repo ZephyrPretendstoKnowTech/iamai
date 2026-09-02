@@ -354,6 +354,7 @@ async function walkFixture(fx) {
   const summary = []
   const routeContract = { connect: 'connect.scanned', today: 'today', plan: 'plan', export: 'export', how: 'how' }
   let rowTitles = []
+  let exclusionBody = null
   for (const width of WIDTHS) {
     await setWidth(width)
     const wdir = join(dir, String(width))
@@ -408,6 +409,7 @@ async function walkFixture(fx) {
         await settle()
         const bodyText = await evaluate(`(document.querySelector('main.page .step-body') || {}).innerText || ''`)
         const bodyTitle = await evaluate(`(document.querySelector('main.page .step-body .step-title') || {}).textContent || ''`)
+        if (/Exclusions Group/i.test(bodyTitle)) exclusionBody = bodyText
         const safe = title.replace(/[^\w-]+/g, '-').slice(0, 60)
         writeFileSync(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.txt`), bodyText)
         await shot(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.png`))
@@ -469,8 +471,11 @@ async function walkFixture(fx) {
     }
   }
   for (const t of rowTitles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name}: plan row "${t}" is a goal the baseline does not hold`)
-  // Week two (queue item 4): the re-scan recognised the exclusions group, so its step is gone.
-  if (fx.week2 && rowTitles.some((t) => /Exclusions Group/i.test(t))) add('P0', `${fx.name}: the exclusions-group step still renders in week two, although the re-scan recognised the group`)
+  // The exclusions-group step is on every plan (In place in the footer, or Ready in
+  // Preparation). On the demo it is Ready both days; week two's re-scan recognised the
+  // group, so the step must check it rather than still offer the create instructions.
+  if (fx.name.startsWith('demo') && !rowTitles.some((t) => /Exclusions Group/i.test(t))) add('P0', `${fx.name}: the exclusions-group step is missing; it is on every plan`)
+  if (fx.week2 && exclusionBody !== null && /No exclusions group recognised|New group/.test(exclusionBody)) add('P0', `${fx.name}: the exclusions-group step still offers to create the group in week two, although the re-scan recognised it`)
   return summary
 }
 
