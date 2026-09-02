@@ -2,9 +2,11 @@
 // Part 4): the pinned index, loaded at its commit; an uploaded package; and
 // the restore of either on reload.
 import baselineIndex from '../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
-import pinnedBaseline from '../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
 import { loadBaseline } from '../baseline/index.ts'
 import type { BaselineFile, BaselineIndex, BaselinePackage } from '../baseline/index.ts'
+import { PINNED, pinnedFiles, pinnedPackage } from '../baseline/pinned.ts'
+import { PINNED_GOAL_MAP, goalMapFor } from '../roadmap/goalMap.ts'
+import type { GoalMap } from '../roadmap/goalMap.ts'
 import { CONNECT } from '../copy/connect.ts'
 
 export type BaselineResult = {
@@ -13,32 +15,34 @@ export type BaselineResult = {
   fetchFailures: number
   /** How to restore it on reload (prompt 14 §6). The pinned baseline keeps its fetched files so a reload restores it without the network. */
   origin: { kind: 'github'; owner: string; repo: string; commit: string; files?: BaselineFile[] } | { kind: 'upload'; files: BaselineFile[] }
+  /**
+   * The goal map of this baseline (walk-51 item 9): which goals it holds and the
+   * policy that stands for each. The pinned baseline's is stored in pinned.json;
+   * an uploaded package has no stored map, so it is built once at load with the
+   * pin-time rule (goalMap.ts). Absent means the pinned map.
+   */
+  goalMap?: GoalMap
 }
 
 export const PINNED_BASELINE = baselineIndex as BaselineIndex
 
-type PinnedPolicy = { id: string | null; displayName: string; state: string | null; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
-type PinnedBaseline = { commit: string; generatedAt: string; policies: PinnedPolicy[]; stripped: string[]; goalMap?: Record<string, string[]> }
-export const PINNED = pinnedBaseline as unknown as PinnedBaseline
-
-/** The pinned policies as baseline files, so loadBaseline builds the package with no network (prompt 51 decision 1). */
-function pinnedFiles(): BaselineFile[] {
-  return PINNED.policies.map((p, i) => ({ path: `Policies/${(p.displayName || p.id || `policy-${i}`).replace(/[^\w-]+/g, '-')}.json`, text: JSON.stringify(p) }))
-}
+export { PINNED }
 
 /**
  * Load the bundled, pinned baseline — IAMAI's own snapshot in our schema,
  * read from baselines/*.pinned.json, no network (prompt 51 decision 1). The only
  * runtime network call is checkAuthorHead, which drives the "Baseline updated" line.
+ * The package is the one src/baseline/pinned.ts builds, shared with the demo.
  */
 export async function loadPinnedBaseline(onProgress?: (done: number, total: number) => void): Promise<BaselineResult> {
   const files = pinnedFiles()
   onProgress?.(files.length, files.length)
   return {
     source: PINNED_BASELINE.label,
-    pkg: loadBaseline(files),
+    pkg: pinnedPackage(),
     fetchFailures: 0,
     origin: { kind: 'github', owner: PINNED_BASELINE.owner, repo: PINNED_BASELINE.repo, commit: PINNED.commit, files },
+    goalMap: PINNED_GOAL_MAP,
   }
 }
 
@@ -93,11 +97,13 @@ export async function baselineChanges(head: string, fetchImpl: typeof fetch = fe
 export async function restoreBaseline(origin: BaselineResult['origin']): Promise<BaselineResult> {
   if (origin.kind === 'upload') return loadUploadedBaseline(origin.files)
   if (origin.files && origin.files.length > 0) {
-    return { source: PINNED_BASELINE.label, pkg: loadBaseline(origin.files), fetchFailures: 0, origin }
+    return { source: PINNED_BASELINE.label, pkg: loadBaseline(origin.files), fetchFailures: 0, origin, goalMap: PINNED_GOAL_MAP }
   }
   return loadPinnedBaseline()
 }
 
 export function loadUploadedBaseline(files: BaselineFile[]): BaselineResult {
-  return { source: CONNECT.uploadedSource, pkg: loadBaseline(files), fetchFailures: 0, origin: { kind: 'upload', files } }
+  const pkg = loadBaseline(files)
+  // An uploaded baseline has no stored map: built once here, with the pin-time rule.
+  return { source: CONNECT.uploadedSource, pkg, fetchFailures: 0, origin: { kind: 'upload', files }, goalMap: goalMapFor(pkg.policies, new Map()).map }
 }

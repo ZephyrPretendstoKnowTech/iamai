@@ -78,7 +78,10 @@ test('a high-disruption step claims its own message and the weekly bulletin refe
 test('a week with only named-audience steps produces no broadcast; named people get individual notes at the earliest notice', () => {
   const { ctx, steps } = ctxFor('small')
   const admins = steps.filter((s) => s.events?.enforce && s.population.total > 0 && s.population.total < 10 && s.readiness.family !== 'admin' && !s.safeToday)
-  const named = admins.length > 0 ? admins : steps.filter((s) => s.events?.enforce && !s.safeToday).slice(0, 1).map((s) => ({ ...s, population: { ...s.population, ids: s.population.ids.slice(0, 3), total: 3 }, readiness: { ...s.readiness, family: 'mfa' as const } }))
+  // With absent goals gone (walk-51 item 9), the small fixture has no sub-ten
+  // enforcing step outside the admin family, so the fallback names three people
+  // from a step whose scope is not all admins (all admins is its own audience).
+  const named = admins.length > 0 ? admins : steps.filter((s) => s.events?.enforce && !s.safeToday && !s.population.ids.every((id) => ctx.adminIds.has(id))).slice(0, 1).map((s) => ({ ...s, population: { ...s.population, ids: s.population.ids.filter((id) => !ctx.adminIds.has(id)).slice(0, 3), total: 3 }, readiness: { ...s.readiness, family: 'mfa' as const } }))
   const bulletins = bulletinsFor(named, ctx)
   assert.equal(bulletins.filter((b) => b.kind === 'bulletin' || b.kind === 'solo').length, 0, 'no broadcast')
   assert.ok(bulletins.length > 0 && bulletins.every((b) => b.kind === 'individual'))

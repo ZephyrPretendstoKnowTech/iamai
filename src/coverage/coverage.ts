@@ -3,6 +3,8 @@ import goalsData from '../../data/goals.json' with { type: 'json' }
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
 import { matchesSignature, raiseFloor } from './classify.ts'
+import { PINNED_GOAL_MAP, policyKey } from '../roadmap/goalMap.ts'
+import type { GoalMap } from '../roadmap/goalMap.ts'
 import { policyFacts } from './facts.ts'
 import type { StrengthLookup } from './strength.ts'
 import { satisfiesFloor } from './strength.ts'
@@ -92,6 +94,14 @@ export type CoverageInput = {
   facetOverrides?: FacetOverrides
   /** Confirmed mapping (prompt 06); until then assumed exclusions are used. */
   mapping?: { breakGlassUsers?: string[]; exclusionGroups?: Record<string, string>; confirmed?: boolean }
+  /**
+   * The baseline's goal map (walk-51 item 9, goalMap.ts): for a goal it holds,
+   * the map's policy is the one evaluated against — its floor, its name in a
+   * statement — never the strongest signature match. A declared Policy A/B pair
+   * evaluates against A, the decided default; B is offered by the step, not
+   * demanded by the row (walk-51 item 16). Absent means the pinned map.
+   */
+  goalMap?: GoalMap
 }
 
 export function computeCoverage(input: CoverageInput): CoverageReport {
@@ -116,14 +126,22 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const facets = detectFacets(snapshot, input.facetOverrides ?? {})
 
   // Catalogue goals present in the baseline (or always evaluated) + ad-hoc
-  // goals for unmatched baseline policies.
+  // goals for unmatched baseline policies. The signature match says which
+  // baseline policies a goal assesses (so nothing it covers is "not assessed");
+  // the goal map says which one policy a held goal is evaluated against.
   const matchedBaseline = new Set<string>()
+  const goalMap = input.goalMap ?? PINNED_GOAL_MAP
+  const factsByKey = new Map<string, PolicyFacts>()
+  input.baselinePolicies.forEach((p, i) => factsByKey.set(policyKey(p as { id?: string | null; displayName: string }), baselineFacts[i]))
   const goals: { goal: Goal; baselineMatches: PolicyFacts[] }[] = CATALOGUE.map((goal) => {
-    const baselineMatches = baselineFacts.filter((f) =>
+    const signatureMatches = baselineFacts.filter((f) =>
       goal.implementations.some((impl) => matchesSignature(f, impl.signature)),
     )
-    for (const b of baselineMatches) matchedBaseline.add(b.name)
-    return { goal, baselineMatches }
+    for (const b of signatureMatches) matchedBaseline.add(b.name)
+    // The map's policies, in order (A first), when the package carries them;
+    // else the signature matches (an upload with no map, a synthetic fixture).
+    const mapped = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((f): f is PolicyFacts => f !== undefined)
+    return { goal, baselineMatches: mapped.length > 0 ? mapped.slice(0, 1) : signatureMatches }
   })
   // Baseline policies no catalogue goal matches are not goals, findings or
   // steps (prompt 46 item 14, target-state §5 footer). They are listed as not

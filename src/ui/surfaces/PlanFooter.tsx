@@ -9,13 +9,16 @@ import { REDACTED, exportDownload } from '../exportGuard.ts'
 import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
 import type { PlanComputed } from './planData.ts'
+import { goalInMap } from '../../roadmap/goalMap.ts'
 
 export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameOf: (id: string) => string }) {
   void nameOf
   const inPlace = computed.steps.filter((s) => s.status === 'done')
-  // Doesn't apply here and Not licensed are separate footer groups (§5).
-  const notApply = computed.coverage.results.filter((r) => r.status === 'not-applicable')
-  const notLicensed = computed.coverage.results.filter((r) => r.status === 'licence-limited')
+  // Doesn't apply here and Not licensed are separate footer groups (§5), over
+  // the goals this baseline holds: an absent goal never renders (walk-51 item 9).
+  const held = computed.coverage.results.filter((r) => goalInMap(computed.goalMap, r.goal.id))
+  const notApply = held.filter((r) => r.status === 'not-applicable')
+  const notLicensed = held.filter((r) => r.status === 'licence-limited')
   const clean = (s: string): string => s.replace(/\*\*/g, '').replace(/\*/g, '')
   const org = computed.coverage.organisation
   const housekeeping: { text: string; json?: string | null }[] = []
