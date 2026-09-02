@@ -15,6 +15,8 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { shared } from '../../content/content.ts'
 import { UNNAMED } from '../../names.ts'
 import { stepVars } from './stepVars.ts'
+import { defaultDecisions } from './pickerRows.ts'
+import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
 
@@ -115,4 +117,44 @@ test('saving a group names it on every policy step; before that, the proposed gr
   // The picker on whichever exclusions step remains (correct the group) starts on the saved group.
   const remaining = r2.steps.find((s) => DECISION_STEPS.exclusions.has(s.id))
   if (remaining) assert.deepEqual(stepVars(remaining, ctxFor(f, r2, decided)).groupsTicked, [gid])
+})
+
+// The plan's decision is the picker's pre-ticked default until the person
+// changes it: the first render, with every detected default applied, equals
+// the render after a Save on every picker that changed nothing.
+test('GetIAMAI: the first render equals the render after a no-change Save on every picker', () => {
+  const f = fixture('getiamai')
+  const r0 = runFixture(f)
+  const nameOf = (id: string): string => r0.input.names!.label(id)
+  const defaults = defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, operatorId: f.operatorId, now: f.snapshot.asOf })
+  assert.ok(Object.keys(defaults).length >= 3, `the fixture detects defaults (${Object.keys(defaults).join(', ')})`)
+  const first = applyStepDecisions(f.mapping, defaults, 'detected')
+  const r1 = run(f, first)
+  const ctxOf = (r: FixtureRun, mapping: MappingState): StepVarContext => ({ ...ctxFor(f, r, mapping), operatorId: f.operatorId })
+  const render = (r: FixtureRun, mapping: MappingState) => {
+    const ctx = ctxOf(r, mapping)
+    return r.steps.map((step) => {
+      const ex = stepVars(step, ctx) as Record<string, unknown>
+      const cs = contentStepFor(step) as { kind?: string; title?: string } | undefined
+      const lines = cs?.kind === 'policy' ? stepPortalLines(step.goalId, portalNamesFor(ctx, ex, String(cs.title))) : null
+      return { id: step.id, status: step.status, checks: step.checks ? `${step.checks.failing}/${step.checks.total}` : null, blockedBy: step.blockedBy, ex, lines }
+    })
+  }
+  const before = render(r1, first)
+  // A no-change Save on every picker: what the first render ticks, saved as is.
+  const saved: Record<string, StepDecision> = {}
+  const ctx1 = ctxOf(r1, first)
+  for (const step of r1.steps) {
+    const cs = contentStepFor(step) as { decision?: { pickerRow?: string; pickerSource?: string } } | undefined
+    if (typeof cs?.decision?.pickerRow !== 'string') continue
+    const ex = stepVars(step, ctx1) as Record<string, unknown>
+    const key = cs.decision.pickerSource ?? (typeof ex.pickerKey === 'string' ? ex.pickerKey : null)
+    if (!key) continue
+    const ticked = ex[`${key}Ticked`] ?? ex[`${key}Ids`]
+    if (Array.isArray(ticked) && ticked.length > 0) saved[step.id] = { picked: ticked as string[], at: AT }
+  }
+  assert.ok(Object.keys(saved).length >= 3, `the pickers had something to save (${Object.keys(saved).join(', ')})`)
+  const second = applyStepDecisions(first, saved)
+  const r2 = run(f, second)
+  assert.deepEqual(render(r2, second), before)
 })

@@ -258,7 +258,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'A rule that adds members adds exclusions, without anybody deciding to.',
   },
   'xg.usedConsistently': {
-    what: 'The group is excluded from every policy the plan touches.',
+    what: 'The group is excluded from every enabled or report-only policy.',
     why: 'A group excluded from some policies and not others protects nobody reliably and hides which is which.',
   },
   'xg.sizeReasonable': {
@@ -351,7 +351,7 @@ export const FINDING = {
   xgUnapproved: (names: string[]): string => `${list(names)} ${names.length === 1 ? 'is' : 'are'} in the group without being an emergency account or an approved exclusion`,
   xgAdmins: (names: string[]): string => `${list(names)} hold admin roles: exclusion removes their protection`,
   xgDynamic: (rule: string): string => `dynamic membership rule (${rule}): membership can change without anybody reviewing it`,
-  xgInconsistent: (from: number, total: number): string => `excluded from ${from} of ${total} policies the plan touches`,
+  xgInconsistent: (from: number, total: number): string => `excluded from ${from} of ${total} enabled or report-only policies`,
   xgSize: (members: number, breakGlass: number): string => `${count(members, 'member')} for ${count(breakGlass, 'emergency access account')}`,
   xgMailEnabled: 'the group is mail-enabled',
   xgMembers: (n: number, sampled: boolean): string => `${count(n, 'member')}${sampled ? ', estimated' : ''}`,

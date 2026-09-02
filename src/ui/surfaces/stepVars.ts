@@ -174,7 +174,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
       v.members = (g?.memberIds ?? []).map(ctx.nameOf)
     }
   }
-  if (step.checks) {
+  // A check step with nothing checked (no target the scan could read) shows no count.
+  if (step.checks && step.checks.total > 0) {
     v.failing = step.checks.failing
     v.total = step.checks.total
     v.failingChecks = step.checks.items.map((it) => {

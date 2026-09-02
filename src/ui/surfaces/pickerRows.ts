@@ -15,6 +15,8 @@ import { suggestCountries, countryName } from '../../mapping/countries.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS } from '../../roadmap/decisions.ts'
+import type { StepDecision } from '../../roadmap/decisions.ts'
+import { contentLists } from '../../derive/contentLists.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../../roles.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { engine, shared } from '../../content/content.ts'
@@ -177,4 +179,30 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
   }
 
   return null
+}
+
+export type DefaultsContext = PickerContext & { operatorId: string | null; now: string }
+
+/**
+ * Every picker's pre-ticked default as a decision: the detected emergency
+ * accounts, exclusions group, allowed countries, trusted network, service
+ * accounts and special care. The derivation applies these as if saved, so the
+ * step, its checks and every portal line read them on first open; a Save only
+ * overrides. The shared-devices picker has no mapping field and is not here.
+ */
+export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecision> {
+  const at = ctx.snapshot.asOf
+  const out: Record<string, StepDecision> = {}
+  const pick = (stepId: string, key: string): void => {
+    const ticked = pickerVars(stepId, '', ctx)?.[`${key}Ticked`]
+    if (Array.isArray(ticked) && ticked.length > 0) out[stepId] = { picked: ticked, at }
+  }
+  for (const id of DECISION_STEPS.emergency) pick(id, 'emergencyCandidates')
+  for (const id of DECISION_STEPS.exclusions) pick(id, 'groups')
+  pick(DECISION_STEPS.countries, 'countriesWithCounts')
+  pick(DECISION_STEPS.trustedLocation, 'locationsWithMatches')
+  pick(DECISION_STEPS.serviceAccounts, 'accountsWithSignals')
+  const care = contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, operatorId: ctx.operatorId }).specialCareIds
+  if (care.length > 0) out[DECISION_STEPS.campaign] = { picked: care, at }
+  return out
 }

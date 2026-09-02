@@ -295,7 +295,7 @@ const CASES: Record<string, Case> = {
   'xg.usedConsistently': {
     target: (b) => exclusionGroup(b),
     unknown: 'target',
-    // Healthy: every live policy excludes the group (the rule checks the policies the plan touches, or every live one).
+    // Healthy: every enabled or report-only policy excludes the group.
     pass: (b) => {
       const g = exclusionGroup(b)
       for (const p of b.snapshot.config.caPolicies.rows as { conditions?: { users?: { excludeGroups?: string[] } } }[]) {
@@ -585,4 +585,19 @@ test('a healthy tenant carries no blocker step, and its deny-capable steps are o
   const { steps } = runFixture(fixture('small'))
   assert.equal(steps.some((s) => s.id.startsWith('s-blocker-')), false)
   assert.ok(steps.some((s) => canDenyAccess(s) && s.status !== 'blocked'), 'nothing is held on a tenant with a working escape hatch')
+})
+
+// The fix line names every policy that does not exclude the group, a report-only
+// one included: it becomes enforcing without a second look at its exclusions.
+test('xg.usedConsistently lists every policy that does not exclude the group, report-only ones included', () => {
+  const b = base()
+  const g = exclusionGroup(b)
+  b.snapshot.config.caPolicies.rows = [
+    { id: 'p-a', displayName: 'Policy A', state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [g.groupId] } } },
+    { id: 'p-b', displayName: 'Policy B', state: 'enabled', conditions: { users: { includeUsers: ['All'] } } },
+    { id: 'p-c', displayName: 'Defender test', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] } } },
+  ]
+  const r = run('xg.usedConsistently', g, b)
+  assert.equal(r.outcome, 'fail')
+  assert.deepEqual((r as { values?: { policies?: string[] } }).values?.policies, ['Policy B', 'Defender test'])
 })

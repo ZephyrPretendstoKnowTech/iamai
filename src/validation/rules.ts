@@ -99,8 +99,6 @@ export type ValidationContext = {
   serviceAccountIds: string[]
   approvedExclusionIds: string[]
   viability: MfaViability[]
-  /** The tenant policies the plan touches (its goals' matched policies), lower-cased ids; null means every live policy. */
-  planPolicyIds?: Set<string> | null
   /** The two facts no tenant exposes, answered once in Setup. */
   answers: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
 }
@@ -208,7 +206,6 @@ export function initialDomain(snapshot: TenantSnapshot): string | null {
 
 /** Every enabled or report-only policy; a disabled policy denies nothing. */
 type PolicyShape = {
-  id?: string
   displayName?: string
   state?: string
   conditions?: { users?: { excludeUsers?: string[]; excludeGroups?: string[] } }
@@ -626,8 +623,9 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
   needs: ['caPolicies'],
   evaluate: (entry, ctx) => {
     if (!entry) return groupUnknown()
-    // The policies the plan touches, or every live policy when no plan says which.
-    const live = livePolicies(ctx).filter((p) => !ctx.planPolicyIds || (typeof p.id === 'string' && ctx.planPolicyIds.has(p.id.toLowerCase())))
+    // Every enabled or report-only policy: a report-only one becomes enforcing
+    // without a second look at its exclusions.
+    const live = livePolicies(ctx)
     if (live.length === 0) return PASS
     const excludes = (p: (typeof live)[number]): boolean => (p.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === entry.groupId.toLowerCase())
     const missing = live.filter((p) => !excludes(p))

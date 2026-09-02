@@ -70,13 +70,18 @@ export const DECISION_STEPS = {
  * question answer for that step. A decision marks its question answered, so no
  * step waits on it. The mapping passed in is not mutated; the plan derives from
  * the result on every regeneration, and the next scan verifies it.
+ *
+ * A picker's pre-ticked default is the plan's decision until the person changes
+ * it: the derivation applies every detected default through here first, marked
+ * `detected`, and the saved decisions after, so a Save only overrides.
  */
-export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<string, StepDecision> | null | undefined): MappingState {
+export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<string, StepDecision> | null | undefined, provenance: 'detected' | 'confirmed' = 'confirmed'): MappingState {
   if (!stepDecisions || Object.keys(stepDecisions).length === 0) return mapping
   const next: MappingState = { ...mapping, records: { ...mapping.records }, wizardAnswered: { ...mapping.wizardAnswered }, assumed: { ...(mapping.assumed ?? {}) }, questionAnswers: { ...(mapping.questionAnswers ?? {}) } }
+  const recordProvenance = provenance === 'detected' ? 'auto' : 'confirmed'
   const answered = (q: string): void => {
     next.wizardAnswered[q] = true
-    next.assumed![q] = 'confirmed'
+    next.assumed![q] = provenance
   }
   for (const [stepId, d] of Object.entries(stepDecisions)) {
     if (!d) continue
@@ -87,11 +92,11 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       next.breakGlassUserIds = picked
       answered('breakGlass')
       const missing = next.records['__breakGlassMissing']
-      if (missing) next.records['__breakGlassMissing'] = { ...missing, doesNotExist: picked.length === 0, provenance: 'confirmed' }
+      if (missing) next.records['__breakGlassMissing'] = { ...missing, doesNotExist: picked.length === 0, provenance: recordProvenance }
     } else if (DECISION_STEPS.exclusions.has(stepId)) {
       const id = picked[0] ?? null
       const prev: MappingRecord = next.records['__globalExclusion'] ?? { placeholder: '__globalExclusion', kind: 'group', group: 'globalExclusion', resolvedId: null, resolvedName: null, provenance: 'confirmed', doesNotExist: true, validation: null }
-      next.records['__globalExclusion'] = { ...prev, resolvedId: id, resolvedName: id === prev.resolvedId ? prev.resolvedName : null, provenance: 'confirmed', doesNotExist: id === null, validation: null }
+      next.records['__globalExclusion'] = { ...prev, resolvedId: id, resolvedName: id === prev.resolvedId ? prev.resolvedName : null, provenance: recordProvenance, doesNotExist: id === null, validation: null }
       answered('globalExclusion')
     } else if (stepId === DECISION_STEPS.countries) {
       next.allowedCountries = picked.map((c) => c.toUpperCase())
