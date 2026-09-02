@@ -10,7 +10,7 @@
 // Pure: no DOM, no network.
 import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, HOUSEKEEPING_ONLY_RULES, RULE_ACTION, SEVERITY, SUBJECT, SUBJECT_PLAIN, fallbackAction } from '../copy/validation.ts'
 import { ruleText } from '../validation/rules.ts'
-import type { RuleResult, RuleSubject } from '../validation/rules.ts'
+import type { RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
@@ -45,17 +45,9 @@ export function isEmergencyAccess(step: { id: string; goalId?: string }): boolea
 export const EMERGENCY_ACCESS_STEP_IDS: ReadonlySet<string> = new Set([
   's-prereq-break-glass',
   's-prereq-exclusion-group',
-  's-recurring-break-glass-drill',
   's-ladder-break-glass-accounts',
   ...GATING_SUBJECTS.map(blockerStepId),
 ])
-
-/** One checklist line: the fact found, then what clears it. */
-function checklistLine(r: RuleResult, label: string | null): string {
-  const what = ruleText(r.id).what
-  const who = label ? `${label}: ` : ''
-  return `${who}${r.finding ?? what} → ${what}`
-}
 
 /**
  * A check step's Do it (prompt 48.1 item 9): the failing must-fix checks as
@@ -76,13 +68,6 @@ function checkActions(report: SubjectReport): { actions: string[]; doneWhen: str
     actions.push(make ? make(r.finding ?? null) : fallbackAction(ruleText(r.id).what, null))
   }
   return { actions: [...new Set(actions)], doneWhen: [...new Set(doneWhen)] }
-}
-
-function linesFor(report: SubjectReport, results: RuleResult[]): string[] {
-  const labelOf = new Map<RuleResult, string | null>()
-  const multi = report.targets.length > 1
-  for (const t of report.targets) for (const r of t.results) labelOf.set(r, multi ? t.label : null)
-  return results.map((r) => checklistLine(r, labelOf.get(r) ?? null))
 }
 
 /**
@@ -126,17 +111,6 @@ export function blockerSteps(reports: SubjectReport[]): Step[] {
     })
   }
   return out
-}
-
-/**
- * A subject with warnings and no blockers earns no step of its own; its
- * recommended fixes are attached to the step that already covers the same
- * object, so they appear in the plan rather than only in Setup (design §2).
- */
-export function attachWarnings(report: SubjectReport, host: Step): void {
-  if (report.warnings.length === 0) return
-  const lines = linesFor(report, report.warnings)
-  host.action.summary = [...host.action.summary, BLOCKER_STEP.recommended, ...lines]
 }
 
 /** The cause a held step carries: the gating step, in the blocked-reason shape (target-state §8.5). */

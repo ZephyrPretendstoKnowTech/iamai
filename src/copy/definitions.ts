@@ -71,7 +71,6 @@ export const STEP_KIND = {
   adjust: { title: 'Change', text: 'An existing policy that needs its scope or controls changed to meet the baseline.' },
   verify: { title: 'Verify', text: 'A campaign to prove people can complete MFA before anything is enforced.' },
   enforce: { title: 'Enforce', text: 'Switch a policy from report-only to on, once its evidence is clean.' },
-  recurring: { title: 'Recurring', text: 'A check that repeats on a schedule, such as the break-glass sign-in drill.' },
   check: { title: 'Check', text: 'A decision about accounts, done when the count reaches zero on the next scan.' },
 } as const satisfies Record<string, Definition>
 

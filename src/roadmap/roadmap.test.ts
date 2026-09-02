@@ -262,9 +262,8 @@ test('9: valid break-glass answers → no create-break-glass step; drill depends
   const steps = generateRoadmap(input).steps
   assert.ok(!steps.some((s) => s.id === 's-prereq-break-glass'))
   assert.ok(!steps.some((s) => s.id === 's-setup-questions'))
-  const drill = steps.find((s) => s.id === 's-recurring-break-glass-drill')
-  assert.ok(drill)
-  assert.equal(drill.status, 'ready')
+  // The drill is a Cleanup row now, never a step.
+  assert.ok(!steps.some((s) => s.id.includes('drill')))
 })
 
 test('11: geo policy: allowlist style chosen by data, NoExclusions dropped', () => {

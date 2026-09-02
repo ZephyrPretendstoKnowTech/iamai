@@ -1,7 +1,7 @@
 // Roadmap types (roadmap.md §1, §3–§5). Pure types only.
 
 /** `check`: a decision the operator makes about accounts, done when the count reaches 0 on re-scan (prompt 46 item 8). */
-export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforce' | 'recurring' | 'check'
+export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforce' | 'check'
 
 export type StepStatus = 'done' | 'ready' | 'blocked' | 'in-report-only' | 'ready-to-enforce' | 'skipped'
 

@@ -15,7 +15,7 @@ test('a pre-50.1 record: only the skip is kept; the plan renders from the snapsh
   // A create/adjust step the snapshot does NOT have in place, and a step that can
   // be skipped. The first is where a stale cache would lie.
   const notInPlace = fresh.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.status !== 'skipped')
-  const skippable = fresh.steps.find((s) => s.status !== 'done' && s.kind !== 'recurring' && !isEmergencyAccess(s) && s.id !== notInPlace?.id)
+  const skippable = fresh.steps.find((s) => s.status !== 'done' && !isEmergencyAccess(s) && s.id !== notInPlace?.id)
   assert.ok(notInPlace && skippable, 'the fixture has a not-in-place step and a skippable one')
 
   // A record as an older build wrote it: the full per-step blob, claiming the

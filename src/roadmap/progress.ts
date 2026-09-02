@@ -56,7 +56,7 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
     if (s.status === 'skipped') step.status = 'skipped'
     // Recurring steps are re-evaluated every scan (a drill can become overdue
     // again); a saved "done" must not pin them.
-    else if (step.kind !== 'recurring' && RANK[s.status] > RANK[step.status]) step.status = s.status
+    else if (RANK[s.status] > RANK[step.status]) step.status = s.status
   }
   return steps
 }

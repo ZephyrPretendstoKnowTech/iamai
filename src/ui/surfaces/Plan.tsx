@@ -13,7 +13,6 @@ import { app, pages, phases } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { DRILL_STEP_ID } from '../../roadmap/generate.ts'
 import { scanAge, scanAgeWords } from '../../derive/scanAge.ts'
 import { todayView } from '../../derive/today.ts'
 import { waveLabels } from '../../derive/phases.ts'
@@ -90,13 +89,11 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   const operatorId = scan.snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
   const firstEnforce = c.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const activePeople = todayView(scan.snapshot, scan.snapshot.asOf, new Set(data.mapping?.serviceAccountUserIds ?? [])).tiles.active
-  // Cleanup (§5): one row each, dated after the last enforcement; the drill row
-  // is the recurring drill step, moved out of Preparation into Cleanup, so it
-  // counts once. The finish is the end of the last phase, Cleanup included (§9).
+  // Cleanup (§5): one row each, dated after the last enforcement; the drill is a
+  // Cleanup row and nothing else, so it counts once. The finish is the end of
+  // the last phase, Cleanup included (§9).
   const cleanupPhase = c.schedule.cleanup ?? null
-  const drillStep = c.steps.find((s) => s.id === DRILL_STEP_ID) ?? null
-  const cleanupHoldsDrill = cleanupPhase?.rows.some((r) => r.kind === 'drill') === true && drillStep !== null
-  const cleanupExtra = cleanupPhase ? cleanupPhase.rows.filter((r) => !(r.kind === 'drill' && cleanupHoldsDrill)).length : 0
+  const cleanupExtra = cleanupPhase ? cleanupPhase.rows.length : 0
   const finish = planFinish(c.steps, cleanupPhase?.end ?? null)
   const inPlace = doneSteps(c.steps).length
   const total = trackableSteps(c.steps).length + cleanupExtra
@@ -121,7 +118,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   // The drill sits in Cleanup when Cleanup renders it (§5). A floor step (target-state
   // §13: Microsoft recommended, not in this baseline) sits in its own group after
   // the phases, grouped as not the author's.
-  const inWave = (st: Step): boolean => st.status !== 'done' && !(cleanupHoldsDrill && st.id === DRILL_STEP_ID) && !st.floor
+  const inWave = (st: Step): boolean => st.status !== 'done' && !st.floor
   const floorRows = c.steps.filter((st) => st.floor && st.status !== 'done')
   const waveRows = c.schedule.waves
     .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && inWave(st)) }))
@@ -187,7 +184,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         <section className="phase">
           <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(cleanupPhase.start), end: absoluteDate(cleanupPhase.end) })}</h2>
           {cleanupPhase.rows.map((r) => (
-            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} drillStep={r.kind === 'drill' ? drillStep : null} alertingDone={data.mapping?.breakGlassAnswers?.signInMonitoring === true} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} />
+            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} alertingDone={data.mapping?.breakGlassAnswers?.signInMonitoring === true} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} />
           ))}
         </section>
       )}
@@ -198,10 +195,9 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
 }
 
 /** A Cleanup row (§5): the content title, one status word, who it touches, its day; opens in place. */
-function CleanupRow({ phase, row, drillStep, alertingDone, nameOf, open, onToggle }: {
+function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
-  drillStep: Step | null
   alertingDone: boolean
   nameOf: (id: string) => string
   open: boolean
@@ -209,9 +205,8 @@ function CleanupRow({ phase, row, drillStep, alertingDone, nameOf, open, onToggl
 }) {
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
-  // The drill carries the recurring step's own detection; alerting the recorded
-  // fact (prompt 49 item 5); the rest are Ready while they have something to say.
-  const status = drillStep ? statusOf(drillStep) : alertingDone && row.kind === 'alerting' ? { word: 'In place', tone: 'ok' as const } : { word: 'Ready', tone: 'ok' as const }
+  // Alerting is the recorded fact (prompt 49 item 5); the rest are Ready while they have something to say.
+  const status = alertingDone && row.kind === 'alerting' ? { word: 'In place', tone: 'ok' as const } : { word: 'Ready', tone: 'ok' as const }
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
   const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null)
   return (
@@ -294,7 +289,7 @@ function whenLine(step: Step): string {
     const b = step.blockers.find((x) => x.kind === 'readiness' && typeof x.binding === 'string' && /readiness reaches/.test(x.binding))
     if (b && typeof b.binding === 'string') return b.binding
   }
-  if (step.kind === 'prerequisite' || step.kind === 'check' || step.kind === 'recurring') return PP.now
+  if (step.kind === 'prerequisite' || step.kind === 'check') return PP.now
   // One short format everywhere (walk-51 item 5): the event's instant through
   // absoluteDate, never the event's own local label ("9 Sept 2026").
   const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? null

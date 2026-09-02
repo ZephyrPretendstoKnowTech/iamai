@@ -46,7 +46,7 @@ test('round trip: steps, Setup answers and checkpoints survive save, forget, loa
   // Emergency access is refused, and everything else is not (prompt 44 item 6).
   const emergency = steps.find((s) => isEmergencyAccess(s) && s.status !== 'done')
   if (emergency) assert.equal(skipStep(emergency, 'Not this quarter').ok, false, 'emergency access cannot be skipped')
-  const skippable = steps.find((s) => s.status !== 'done' && s.kind !== 'recurring' && !isEmergencyAccess(s))
+  const skippable = steps.find((s) => s.status !== 'done' && !isEmergencyAccess(s))
   assert.ok(skippable)
   assert.equal(skipStep(skippable, 'Not this quarter').ok, true)
   const checkpoint = makeCheckpoint({ snapshot, coverage, summary: summarizeTenant(viability), exclusionGroups: [], breakGlassIds: ['u-4'] })
