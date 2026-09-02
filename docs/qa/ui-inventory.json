@@ -1,5 +1,5 @@
 {
- "fingerprint": "94c65a4e596711e8",
+ "fingerprint": "db1fe5fc0b9a46ee",
  "surfaces": [
   {
    "name": "Header",
@@ -295,7 +295,7 @@
    "tips": [],
    "sentences": [
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
-    "Baseline: synthetic baseline (1 policies) · change",
+    "Baseline: synthetic baseline (1 policy) · change",
     "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech.",
     "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
     "IAMAI compares what each policy is for with what {tenant} has, and plans the difference.",
@@ -310,7 +310,7 @@
    "tables": [],
    "occurrences": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policies) · change": 1,
+    "Baseline: synthetic baseline (1 policy) · change": 1,
     "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech.": 1,
     "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.": 1,
     "IAMAI compares what each policy is for with what {tenant} has, and plans the difference.": 1,
@@ -318,7 +318,7 @@
    },
    "occurrencesAll": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policies) · change": 1,
+    "Baseline: synthetic baseline (1 policy) · change": 1,
     "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech.": 1,
     "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.": 1,
     "IAMAI compares what each policy is for with what {tenant} has, and plans the difference.": 1,
@@ -371,7 +371,7 @@
    "tips": [],
    "sentences": [
     "Signed in to Contoso Pty Ltd as alex@example.com",
-    "Baseline: synthetic baseline (1 policies)",
+    "Baseline: synthetic baseline (1 policy)",
     "Reading people · 1s elapsed"
    ],
    "titles": [],
@@ -380,12 +380,12 @@
    "tables": [],
    "occurrences": {
     "Signed in to Contoso Pty Ltd as alex@example.com": 1,
-    "Baseline: synthetic baseline (1 policies)": 1,
+    "Baseline: synthetic baseline (1 policy)": 1,
     "Reading people · 1s elapsed": 1
    },
    "occurrencesAll": {
     "Signed in to Contoso Pty Ltd as alex@example.com": 1,
-    "Baseline: synthetic baseline (1 policies)": 1,
+    "Baseline: synthetic baseline (1 policy)": 1,
     "Reading people · 1s elapsed": 1
    },
    "wordCounts": {
@@ -439,7 +439,7 @@
    "tips": [],
    "sentences": [
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out",
-    "Baseline: synthetic baseline (1 policies) · change",
+    "Baseline: synthetic baseline (1 policy) · change",
     "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1"
    ],
    "titles": [],
@@ -450,12 +450,12 @@
    "tables": [],
    "occurrences": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policies) · change": 1,
+    "Baseline: synthetic baseline (1 policy) · change": 1,
     "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1": 1
    },
    "occurrencesAll": {
     "Signed in to Contoso Pty Ltd as alex@example.com · Sign out": 1,
-    "Baseline: synthetic baseline (1 policies) · change": 1,
+    "Baseline: synthetic baseline (1 policy) · change": 1,
     "Scan complete · 5 people · 3 policies · sign-ins Aug 2 → Sep 1": 1
    },
    "wordCounts": {
@@ -2311,7 +2311,7 @@
     "Learn →",
     "The emergency access accounts, and every policy that must exclude them:",
     "Break-glass 01",
-    "Your own account,, is not one of these and must not be.",
+    "Your own account, Alex Morgan, is not one of these and must not be.",
     "Tick every account that exists only for this purpose; two are needed.",
     "IAMAI nominated these from their names, roles and exclusions.",
     "Create the rest below.",
@@ -2350,7 +2350,7 @@
     "Done together with Create or Correct Exclusions Group: these accounts are the members of that group, and the group is what every policy excludes.": 1,
     "Emergency access accounts are how you keep access to Contoso Pty Ltd if a change goes wrong.": 1,
     "The emergency access accounts, and every policy that must exclude them:": 1,
-    "Your own account,, is not one of these and must not be.": 1,
+    "Your own account, Alex Morgan, is not one of these and must not be.": 1,
     "Tick every account that exists only for this purpose; two are needed.": 1,
     "IAMAI nominated these from their names, roles and exclusions.": 1,
     "Fix each failing check, top to bottom.": 1,
@@ -2382,7 +2382,7 @@
     "Done together with Create or Correct Exclusions Group: these accounts are the members of that group, and the group is what every policy excludes.": 1,
     "Emergency access accounts are how you keep access to Contoso Pty Ltd if a change goes wrong.": 1,
     "The emergency access accounts, and every policy that must exclude them:": 1,
-    "Your own account,, is not one of these and must not be.": 1,
+    "Your own account, Alex Morgan, is not one of these and must not be.": 1,
     "Tick every account that exists only for this purpose; two are needed.": 1,
     "IAMAI nominated these from their names, roles and exclusions.": 1,
     "Fix each failing check, top to bottom.": 1,
@@ -2421,8 +2421,8 @@
     "empty": 0,
     "summaries": 1,
     "tips": 0,
-    "sentences": 429,
-    "total": 454
+    "sentences": 431,
+    "total": 456
    },
    "unnamedControls": [],
    "rows": [

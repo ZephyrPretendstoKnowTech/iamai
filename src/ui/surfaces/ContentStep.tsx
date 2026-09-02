@@ -9,7 +9,7 @@ import { useState } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText } from '../../content/render.ts'
+import { fillText, missingVars } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines } from './stepPortal.ts'
@@ -27,6 +27,15 @@ const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}
 function T({ s, ex }: { s: unknown; ex: Ex }) {
   if (s === null || s === undefined) return null
   return <>{fillText(s, ex as Record<string, unknown>)}</>
+}
+
+/** True when a content line has every variable it names — no hole (walk-51 item 2). */
+const whole = (s: unknown, ex: Ex): boolean => typeof s !== 'string' || missingVars(s, ex as Record<string, unknown>).length === 0
+
+/** A content line as a paragraph, rendered only when it has no hole. */
+function Line({ s, ex, cls }: { s: unknown; ex: Ex; cls?: string }) {
+  if (s === null || s === undefined || !whole(s, ex)) return null
+  return <p className={cls}><T s={s} ex={ex} /></p>
 }
 
 export function ContentStep({
@@ -72,8 +81,8 @@ export function ContentStep({
       <p className="line">
         <span className="step-title">{cs.title}</span> <Status tone={status.tone}>{status.word}</Status>
       </p>
-      {cs.changeLine && <p className="reason"><T s={cs.changeLine} ex={ex} /></p>}
-      {cs.partner && <p className="reason partner"><T s={cs.partner} ex={ex} /></p>}
+      <Line s={cs.changeLine} ex={ex} cls="reason" />
+      <Line s={cs.partner} ex={ex} cls="reason partner" />
 
       <h3>Why</h3>
       <p>
@@ -87,8 +96,8 @@ export function ContentStep({
       </p>
 
       <h3>Who this touches</h3>
-      {who.lead && <p className="line"><T s={who.lead} ex={ex} /></p>}
-      {evidenceLines(who, ex).map((line, i) => (
+      <Line s={who.lead} ex={ex} cls="line" />
+      {evidenceLines(who, ex).filter((line) => whole(line, ex)).map((line, i) => (
         <p key={i} className="reason"><T s={line} ex={ex} /></p>
       ))}
 
@@ -131,7 +140,7 @@ export function ContentStep({
         Array.isArray(w.steps) && <ol className="sections">{(w.steps as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
       )}
 
-      {cs.dates && (
+      {cs.dates && whole(cs.dates, ex) && (
         <>
           <h3>Dates</h3>
           <p className="line"><T s={cs.dates} ex={ex} /></p>
@@ -139,9 +148,9 @@ export function ContentStep({
       )}
 
       <h3>Done when</h3>
-      <ul className="sections">{(cs.doneWhen || []).map((x: unknown, i: number) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
+      <ul className="sections">{(cs.doneWhen || []).filter((x: unknown) => whole(x, ex)).map((x: unknown, i: number) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
 
-      {cs.ifWrong && (
+      {cs.ifWrong && whole(cs.ifWrong, ex) && (
         <>
           <h3>If it goes wrong</h3>
           <p className="line"><T s={cs.ifWrong} ex={ex} /></p>

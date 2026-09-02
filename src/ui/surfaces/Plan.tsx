@@ -76,6 +76,10 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
 
   const tenantName = (scan.snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const nameOf = (id: string): string => c.names.label(id)
+  // The operator's own account (their {operator} evidence line) and the plan's
+  // first enforcement date (a campaign's enrol-by), for the step variables.
+  const operatorId = scan.snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
+  const firstEnforce = c.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const finish = planFinish(c.steps)
   const inPlace = doneSteps(c.steps).length
   const total = trackableSteps(c.steps).length
@@ -129,7 +133,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} snapshot={scan.snapshot} mapping={data.mapping} />
+              return <Row key={s.id} step={s} isNext={isNext} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} onSkip={data.onSkip} onUnskip={data.onUnskip} onTick={data.tickAnswer} computed={c} hideReason={shared !== null} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} />
             })}
           </section>
         )
@@ -140,7 +144,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
   )
 }
 
-function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason, snapshot, mapping }: {
+function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSkip, onUnskip, onTick, computed, hideReason, snapshot, mapping, operatorId, firstEnforce }: {
   step: Step
   isNext: boolean
   open: boolean
@@ -155,6 +159,8 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
   computed: PlanComputed
   snapshot: TenantSnapshot
   mapping: MappingState | null
+  operatorId: string | null
+  firstEnforce: string | null
 }) {
   const status = statusOf(step)
   return (
@@ -172,7 +178,7 @@ function Row({ step, isNext, open, onToggle, schedule, tenantName, nameOf, onSki
       {open && (
         <ContentStep
           step={step}
-          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId: null, now: snapshot.asOf }}
+          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature: 'IT', operatorId, now: snapshot.asOf, firstEnforce }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onClose={onToggle}
