@@ -271,7 +271,6 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
   }
   const exclusion = steps.find((s) => s.id === 's-prereq-exclusion-group' && isWork(s))
   const breakGlass = steps.find((s) => s.id === 's-prereq-break-glass' && isWork(s))
-  const drill = steps.find((s) => s.id === 's-recurring-break-glass-drill' && isWork(s))
   const verify = steps.find((s) => s.kind === 'verify' && isWork(s))
   const location = steps.find((s) => s.id === 's-prereq-trusted-location' && isWork(s))
   const countries = steps.find((s) => s.id === 's-prereq-allowed-countries' && isWork(s))
@@ -286,7 +285,6 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
     if (exclusion) add(s, { stepId: exclusion.id, kind: 'hard', reason: 'exclusion-group' })
     if (family === 'block' || family === 'location' || family === 'risk') {
       if (breakGlass) add(s, { stepId: breakGlass.id, kind: 'hard', reason: 'break-glass' })
-      if (drill) add(s, { stepId: drill.id, kind: 'hard', reason: 'break-glass-drill' })
     }
     if ((family === 'mfa' || family === 'guest') && verify) add(s, { stepId: verify.id, kind: 'hard', reason: 'registration' })
     if (family === 'location') {
@@ -467,10 +465,10 @@ export function buildSchedule(
     const ringWindows = new Map<string, { start: string; end: string }[]>()
     const firstStartByPhase = new Map<number, string>()
     const firstStepByPhase = new Map<number, string>()
-    // Prerequisites and the recurring check finish inside day 0; the campaign ends with its window.
+    // Prerequisites finish inside day 0; the campaign ends with its window.
     for (const s of steps) {
       if (!isWork(s)) continue
-      if (s.kind === 'prerequisite' || s.kind === 'recurring' || s.kind === 'check') placed.set(s.id, { start: day0, end: day0End, reason: { kind: 'prerequisites', ref: null } })
+      if (s.kind === 'prerequisite' || s.kind === 'check') placed.set(s.id, { start: day0, end: day0End, reason: { kind: 'prerequisites', ref: null } })
       if (s.kind === 'verify') placed.set(s.id, { start: verification.start, end: verification.end, reason: { kind: 'verification', ref: null } })
     }
     const inFreeze = (iso: string): boolean => freeze !== null && iso >= freeze.from && iso <= freeze.to

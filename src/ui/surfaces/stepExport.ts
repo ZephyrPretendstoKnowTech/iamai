@@ -24,9 +24,8 @@ const whole = (s: unknown, ex: Record<string, unknown>): boolean => typeof s !==
 export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   if (!cs) {
-    // No content entry (the free-tier ladder, the recurring drill outside
-    // Cleanup): the screen renders no body for it, so the export carries its
-    // title and nothing of the engine's prose.
+    // No content entry (the free-tier ladder): the screen renders no body for
+    // it, so the export carries its title and nothing of the engine's prose.
     return { title: step.plainTitle || step.title, why: '', whatToDo: [], doneWhen: [], ifWrong: null, dates: null }
   }
   const ex = stepVars(step, ctx)

@@ -24,8 +24,8 @@ test('the pinned baseline lacks registration protection, so the floor renders it
   const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')
   assert.ok(legacy)
   assert.ok(!legacy.floor, 'a goal the baseline holds is never the floor')
-  // Emergency access is the Preparation check step on every plan.
-  assert.ok(r.steps.some((s) => /break-glass|emergency/.test(s.id)), 'emergency access is present')
+  // With the accounts confirmed, emergency access is the Cleanup drill row.
+  assert.ok(r.schedule.cleanup?.rows.some((row) => row.kind === 'drill'), 'the break-glass drill is a Cleanup row')
 })
 
 test('the floor set is exactly the two policy goals; nothing else absent renders', () => {

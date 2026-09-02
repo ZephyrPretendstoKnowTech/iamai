@@ -29,7 +29,7 @@ for (const name of ['demo', 'demo-week2', 'getiamai', 'mid', 'midflight', 'hosti
 test('deterministic: a decisions round-trip re-derives the same plan, and the skip survives', () => {
   const f = fixture('demo')
   const run = runFixture(f)
-  const skippable = run.steps.find((s) => s.status !== 'done' && s.status !== 'skipped' && s.kind !== 'recurring' && !/break-glass|emergency|exclusion/i.test(s.id))
+  const skippable = run.steps.find((s) => s.status !== 'done' && s.status !== 'skipped' && !/break-glass|emergency|exclusion/i.test(s.id))
   assert.ok(skippable, 'the fixture has a skippable step')
   // A persist-shaped record read once for its decisions, as a load does.
   const record = { planId: f.planId, skips: { [skippable.id]: { reason: 'not us', at: '2026-09-01T00:00:00.000Z' } }, checkpoints: [], planCreatedAt: f.planCreatedAt }

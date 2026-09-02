@@ -37,7 +37,6 @@ import { absoluteDate } from '../copy/dates.ts'
 import { detectHighCare } from '../derive/highCare.ts'
 import { checksNotRun } from '../validation/report.ts'
 import {
-  BREAK_GLASS_DRILL_DAYS,
   READINESS_THRESHOLD_ADMINS_PERCENT,
   READINESS_THRESHOLD_DEVICES_PERCENT,
   READINESS_THRESHOLD_MFA_PERCENT,
@@ -72,7 +71,7 @@ import { proposedObjectNames } from '../coverage/naming.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
-import { attachWarnings, blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
+import { blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
 import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
@@ -130,7 +129,6 @@ function idFor(prefix: string, key: string): string {
 export function stepIdForGoal(goalId: string): string {
   return idFor('goal', goalId)
 }
-export const DRILL_STEP_ID = 's-recurring-break-glass-drill'
 export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
 /** Nominating the emergency access accounts. Exported so the skip guard can name it. */
 export const BREAK_GLASS_STEP_ID = 's-prereq-break-glass'
@@ -959,35 +957,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     })
   }
 
-  // ---- Recurring: break-glass drill ----
-  const bgIds = mapping.breakGlassUserIds
-  if (bgIds.length > 0) {
-    const stale = bgIds.filter((id) => {
-      const u = snapshot.users.find((x) => x.id === id)
-      return (
-        !u?.lastSuccessfulSignIn ||
-        Date.parse(snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn) > BREAK_GLASS_DRILL_DAYS * 86_400_000
-      )
-    })
-    const phoneOnly = bgIds.filter((id) => {
-      const m = snapshot.authMethods[id]
-      return Array.isArray(m) && m.length > 0 && m.every((x) => x.kind === 'phone' || x.kind === 'email' || x.kind === 'password')
-    })
-    steps.push({
-      ...prereq('s-recurring-break-glass-drill'),
-      forManager: MANAGER.prerequisite(),
-      kind: 'recurring',
-      goalId: 'recurring:break-glass',
-      population: population(bgIds, popIndex),
-      readiness: {
-        family: 'other',
-        percent: null,
-        lines: [],
-      },
-      status: stale.length > 0 || phoneOnly.length > 0 ? 'ready' : 'done',
-    })
-  }
-
   // Readiness-blocked MFA/guest steps wait for the verification campaign: the
   // dependency is named so the scheduler places them after it.
   const verifyStep = steps.find((s) => s.id === 's-verify-mfa')
@@ -1090,7 +1059,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (rung !== undefined) return -3000 + rung
     // Conflicts the tenant already has (security defaults, per-user MFA) come before everything (roadmap-v2.md §7, messy).
     if (s.id === 's-prereq-security-defaults' || s.id === 's-prereq-per-user-mfa') return -2000
-    const sev = s.kind === 'prerequisite' || s.kind === 'recurring' || s.kind === 'check' ? 0 : stepSeverity(s)
+    const sev = s.kind === 'prerequisite' || s.kind === 'check' ? 0 : stepSeverity(s)
     return s.population.active * sev - (s.readiness.percent ?? 0)
   }
   steps.sort((a, b) => a.phase - b.phase || score(a) - score(b) || a.id.localeCompare(b.id))
@@ -1180,15 +1149,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ]
     }
     s2.cantSee = cantSeeFor(s2, ctx)
-  }
-
-  // A subject with only recommendations attaches them to the step that already
-  // covers the same object, rather than adding one nobody has to act on.
-  const WARNING_HOST: Partial<Record<string, string>> = { breakGlass: DRILL_STEP_ID, exclusionGroup: EXCLUSION_GROUP_STEP_ID }
-  for (const report of validationReports) {
-    if (report.blocking.length > 0 || report.warnings.length === 0) continue
-    const host = steps.find((s) => s.id === WARNING_HOST[report.subject])
-    if (host) attachWarnings(report, host)
   }
 
 

@@ -21,7 +21,7 @@ const PHISHING_RESISTANT = new Set([
  * when there is no body.
  */
 export function canDenyAccess(step: Step): boolean {
-  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'recurring' || step.kind === 'check') return false
+  if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return false
   if (step.action.json) {
     try {
       const body = JSON.parse(step.action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }

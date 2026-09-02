@@ -43,8 +43,8 @@ export function ringBandFor(activeUsers: number, longSoak = true): RingBand {
 }
 
 /**
- * Steps that can deny access get rings. Prerequisites, verification and
- * recurring steps get none, and neither does a step already done or skipped:
+ * Steps that can deny access get rings. Prerequisites and verification get
+ * none, and neither does a step already done or skipped:
  * a ring plan is a proposal for a rollout that has not happened yet, and
  * inventing one for work already delivered would describe a rollout nobody ran.
  *
