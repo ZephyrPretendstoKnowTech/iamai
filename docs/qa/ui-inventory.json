@@ -1,5 +1,5 @@
 {
- "fingerprint": "35df74af320826c3",
+ "fingerprint": "ada9ef0d243f9535",
  "surfaces": [
   {
    "name": "Header",
@@ -2194,11 +2194,11 @@
     "Office apps require a compliant or joined device: does not apply (no Intune licence).",
     "Service principals restricted: does not apply (no Workload Identities Premium licence).",
     "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).",
-    "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.",
-    "High-risk users must change password: needs a licence this tenant does not hold: Entra ID P2.",
-    "Activating a privileged role asks for MFA every time: needs a licence this tenant does not hold: Entra ID P2.",
-    "Medium-risk sign-ins require MFA: needs a licence this tenant does not hold: Entra ID P2.",
-    "Medium-risk users must change their password: needs a licence this tenant does not hold: Entra ID P2.",
+    "Challenge High-Risk Sign-ins: needs a licence this tenant does not hold: Microsoft Entra ID P2",
+    "Remediate High-Risk Users: needs a licence this tenant does not hold: Microsoft Entra ID P2",
+    "Require MFA at Every Role Activation: needs a licence this tenant does not hold: Microsoft Entra ID P2",
+    "Challenge Medium-Risk Sign-ins: needs a licence this tenant does not hold: Microsoft Entra ID P2",
+    "Reset Passwords for Medium-Risk Users: needs a licence this tenant does not hold: Microsoft Entra ID P2",
     "Nothing in the plan waits on these."
    ],
    "titles": [
@@ -2212,22 +2212,22 @@
     "Office apps require a compliant or joined device: does not apply (no Intune licence).": 1,
     "Service principals restricted: does not apply (no Workload Identities Premium licence).": 1,
     "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).": 1,
-    "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.": 1,
-    "High-risk users must change password: needs a licence this tenant does not hold: Entra ID P2.": 1,
-    "Activating a privileged role asks for MFA every time: needs a licence this tenant does not hold: Entra ID P2.": 1,
-    "Medium-risk sign-ins require MFA: needs a licence this tenant does not hold: Entra ID P2.": 1,
-    "Medium-risk users must change their password: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Challenge High-Risk Sign-ins: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
+    "Remediate High-Risk Users: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
+    "Require MFA at Every Role Activation: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
+    "Challenge Medium-Risk Sign-ins: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
+    "Reset Passwords for Medium-Risk Users: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
     "Nothing in the plan waits on these.": 1
    },
    "occurrencesAll": {
     "Office apps require a compliant or joined device: does not apply (no Intune licence).": 1,
     "Service principals restricted: does not apply (no Workload Identities Premium licence).": 1,
     "Enrolling a device in Intune asks for MFA every time: does not apply (no Intune licence).": 1,
-    "Risky sign-ins get MFA or are blocked: needs a licence this tenant does not hold: Entra ID P2.": 1,
-    "High-risk users must change password: needs a licence this tenant does not hold: Entra ID P2.": 1,
-    "Activating a privileged role asks for MFA every time: needs a licence this tenant does not hold: Entra ID P2.": 1,
-    "Medium-risk sign-ins require MFA: needs a licence this tenant does not hold: Entra ID P2.": 1,
-    "Medium-risk users must change their password: needs a licence this tenant does not hold: Entra ID P2.": 1,
+    "Challenge High-Risk Sign-ins: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
+    "Remediate High-Risk Users: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
+    "Require MFA at Every Role Activation: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
+    "Challenge Medium-Risk Sign-ins: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
+    "Reset Passwords for Medium-Risk Users: needs a licence this tenant does not hold: Microsoft Entra ID P2": 1,
     "Nothing in the plan waits on these.": 1
    },
    "wordCounts": {
@@ -2242,8 +2242,8 @@
     "empty": 0,
     "summaries": 11,
     "tips": 0,
-    "sentences": 134,
-    "total": 147
+    "sentences": 128,
+    "total": 141
    },
    "unnamedControls": [],
    "rows": [
@@ -2264,7 +2264,7 @@
    "forbidEverywhereHits": [],
    "pageProse": {
     "sentences": 9,
-    "words": 134
+    "words": 128
    },
    "contract": "plan.footer",
    "state": "scanned",

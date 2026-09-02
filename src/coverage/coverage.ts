@@ -42,6 +42,10 @@ import {
 } from '../copy/statements.ts'
 
 const TIER_NAME: Record<string, string> = { p1: 'Entra ID P1', p2: 'Entra ID P2', intune: 'Intune', workloadId: 'Workload Identities Premium', gsa: 'Global Secure Access', mcas: 'Defender for Cloud Apps', free: 'Entra ID Free' }
+/** The licence a catalogue tier needs, by name; the Not licensed rows fall back to it where the content step names none. */
+export function tierName(tier: string): string {
+  return TIER_NAME[tier] ?? tier
+}
 export const CATALOGUE: Goal[] = goalsData.goals as unknown as Goal[]
 
 const TIER_CAPABILITY: Record<string, keyof TenantSnapshot['capabilities'] | null> = {

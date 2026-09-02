@@ -10,6 +10,7 @@ import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
 import type { PlanComputed } from './planData.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
+import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
 
 export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameOf: (id: string) => string }) {
   void nameOf
@@ -18,7 +19,9 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
   // the goals this baseline holds: an absent goal never renders (walk-51 item 9).
   const held = computed.coverage.results.filter((r) => goalInMap(computed.goalMap, r.goal.id))
   const notApply = held.filter((r) => r.status === 'not-applicable')
-  const notLicensed = held.filter((r) => r.status === 'licence-limited')
+  // The licence ladder as rows (prompt 52 Part 3): the content step's title and
+  // the licence it needs, one sentence under the group, never a tier's benefits.
+  const notLicensed = notLicensedRows(computed.coverage, computed.goalMap)
   const clean = (s: string): string => s.replace(/\*\*/g, '').replace(/\*/g, '')
   const org = computed.coverage.organisation
   const housekeeping: { text: string; json?: string | null }[] = []
@@ -49,13 +52,13 @@ export function PlanFooter({ computed, nameOf }: { computed: PlanComputed; nameO
       )}
       {notLicensed.length > 0 && (
         <details>
-          <summary>{`Not licensed (${notLicensed.length})`}</summary>
+          <summary>{notLicensedSummary(notLicensed.length)}</summary>
           <ul className="sections">
             {notLicensed.map((r) => (
-              <li key={r.goal.id}>{clean(r.statement)}</li>
+              <li key={r.goalId}>{r.text}</li>
             ))}
           </ul>
-          <p className="reason">Nothing in the plan waits on these.</p>
+          <p className="reason">{notLicensedNote()}</p>
         </details>
       )}
       {housekeeping.length > 0 && (
