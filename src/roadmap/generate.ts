@@ -71,7 +71,7 @@ import { proposedObjectNames } from '../coverage/naming.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
-import { blockerStepId, blockerSteps, gateReason } from './blockerSteps.ts'
+import { blockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
@@ -529,24 +529,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // carries a proposed name in the tenant's own convention (prompt 43 item 4).
   const geStepId = PREREQ_STEP_ID.exclusionsGroup
   const recognisedGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
+  // The tenant policies the plan touches: its goals' matched policies. The
+  // exclusion-group rule checks those, and its verdict is this step's status.
+  const touchedPolicyIds = new Set(
+    input.coverage.results
+      .filter((r) => (inBaseline(r.goal) || isFloorGoal(r.goal.id)) && r.status !== 'not-applicable' && r.status !== 'licence-limited')
+      .flatMap((r) => r.candidates.map((c) => c.policyId.toLowerCase())),
+  )
   if (canUseConditionalAccess) {
-    const touched = new Set(
-      input.coverage.results
-        .filter((r) => (inBaseline(r.goal) || isFloorGoal(r.goal.id)) && r.status !== 'not-applicable' && r.status !== 'licence-limited')
-        .flatMap((r) => r.candidates.map((c) => c.policyId)),
-    )
-    const excludesGroup = (policyId: string): boolean => {
-      const raw = (snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === policyId) as { conditions?: { users?: { excludeGroups?: string[] } } } | undefined
-      return (raw?.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === (recognisedGroupId ?? '').toLowerCase())
-    }
-    const inPlace = recognisedGroupId !== null && [...touched].every(excludesGroup)
     const proposed = proposedObjectNames(naming).exclusionsGroup
-    steps.push({
-      ...prereq(geStepId),
-      naming: { proposed: proposed.name, fromBaseline: null },
-      status: inPlace ? 'done' : 'ready',
-      deliveredBy: inPlace && recognisedGroupId !== null ? [recognisedGroupId] : [],
-    })
+    steps.push({ ...prereq(geStepId), naming: { proposed: proposed.name, fromBaseline: null } })
   }
   // The trusted network is a step on every plan, never removed: Ready with its
   // create instructions while the tenant has no IP named location, In place once
@@ -644,7 +636,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Every must-fix check that has not passed becomes a Phase 0 step, and the
   // two subjects a recovery depends on hold every step that can deny access.
   const groupFacts = [...(input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
-  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability })
+  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability, planPolicyIds: touchedPolicyIds })
   const validationReports: SubjectReport[] = [breakGlassReport(validationCtx)]
   const exclusionGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
   if (exclusionGroupId !== null) {
@@ -659,11 +651,22 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     validationReports.push(reportFor('allowedCountries', [tenantCountryLocation(snapshot, mapping.allowedCountries)], validationCtx))
   }
   if (mapping.serviceAccountUserIds.length > 0) validationReports.push(reportFor('serviceAccount', [''], validationCtx))
-  // The exclusions group's checks sit on its own step; a step already In place holds nothing.
+  // The exclusions group's checks sit on its own step. In place when the
+  // recognised group is excluded from every policy the plan touches (the rule's
+  // verdict); a step already In place holds nothing, and while no group is
+  // recognised the step that creates it holds everything that can deny access.
   const geReport = validationReports.find((r) => r.subject === 'exclusionGroup')
   const geStep = steps.find((s) => s.id === geStepId)
-  if (geStep && geReport) geStep.checks = stepChecks(geReport)
+  if (geStep && geReport) {
+    geStep.checks = stepChecks(geReport)
+    const everywhere = geReport.targets.flatMap((t) => t.results).find((r) => r.id === 'xg.usedConsistently')
+    if (recognisedGroupId !== null && everywhere?.outcome === 'pass') {
+      geStep.status = 'done'
+      geStep.deliveredBy = [recognisedGroupId]
+    }
+  }
   let gate = canUseConditionalAccess ? gateReason(validationReports) : null
+  if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
   if (gate !== null && steps.find((s) => s.id === gate?.stepId)?.status === 'done') gate = null
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.

@@ -295,6 +295,16 @@ const CASES: Record<string, Case> = {
   'xg.usedConsistently': {
     target: (b) => exclusionGroup(b),
     unknown: 'target',
+    // Healthy: every live policy excludes the group (the rule checks the policies the plan touches, or every live one).
+    pass: (b) => {
+      const g = exclusionGroup(b)
+      for (const p of b.snapshot.config.caPolicies.rows as { conditions?: { users?: { excludeGroups?: string[] } } }[]) {
+        p.conditions ??= {}
+        p.conditions.users ??= {}
+        p.conditions.users.excludeGroups = [...new Set([...(p.conditions.users.excludeGroups ?? []), g.groupId])]
+      }
+      return g
+    },
     fail: (b) => {
       const g = exclusionGroup(b)
       b.snapshot.config.caPolicies.rows = [

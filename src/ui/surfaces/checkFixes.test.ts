@@ -15,6 +15,7 @@ import { stepById } from '../../content/content.ts'
 const CONTENT_ID: Record<string, string> = {
   'validation-breakGlass': 's-prereq-break-glass',
   'validation-exclusionGroup': 's-prereq-exclusion-group',
+  'prereq-exclusion-group': 's-prereq-exclusion-group',
 }
 // Variables the fill engine resolves from shared references, not from the step.
 const SHARED_REFS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName'])

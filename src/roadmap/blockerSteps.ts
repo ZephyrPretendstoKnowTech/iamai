@@ -119,11 +119,14 @@ export function blockerSteps(reports: SubjectReport[]): Step[] {
 export function gateReason(reports: SubjectReport[]): { stepId: string; label: string } | null {
   for (const subject of GATING_SUBJECTS) {
     const report = reports.find((r) => r.subject === subject)
-    if (report && report.blocking.length > 0) {
-      return { stepId: blockerStepId(subject), label: BLOCKED_REASON.after(SUBJECT_PLAIN[subject] ?? SUBJECT[subject] ?? subject) }
-    }
+    if (report && report.blocking.length > 0) return gateFor(subject)
   }
   return null
+}
+
+/** The gate a subject's step is, in the blocked-reason shape. */
+export function gateFor(subject: RuleSubject): { stepId: string; label: string } {
+  return { stepId: blockerStepId(subject), label: BLOCKED_REASON.after(SUBJECT_PLAIN[subject] ?? SUBJECT[subject] ?? subject) }
 }
 
 export const SEVERITY_LABEL = SEVERITY

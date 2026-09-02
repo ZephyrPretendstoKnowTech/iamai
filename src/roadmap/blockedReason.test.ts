@@ -14,7 +14,8 @@ test('the three shapes', () => {
   assert.equal(BLOCKED_REASON.after('Create the exclusion group'), 'after: Create the exclusion group')
   assert.equal(BLOCKED_REASON.reaches('MFA readiness', '90%', '60%'), 'when MFA readiness reaches 90% (now 60%)')
   assert.equal(BLOCKED_REASON.exist(2, 'emergency-access account', 0), 'when 2 emergency-access accounts exist (now 0)')
-  assert.equal(BLOCKED_REASON.exist(1, 'trusted location', 0), 'when 1 trusted location exists (now 0)')
+  // The pages.plan.blocked count shape, as written.
+  assert.equal(BLOCKED_REASON.exist(1, 'trusted location', 0), 'when 1 trusted location exist (now 0)')
 })
 
 test('every blocked step on every fixture carries one binding reason, in shape, within twelve words', () => {
