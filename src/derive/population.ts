@@ -8,6 +8,7 @@ import type { Step } from '../roadmap/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { rolloutBucket, scoreMfaViability } from '../scoring/mfaViability.ts'
+import type { MfaViability } from '../scoring/mfaViability.ts'
 import { enabledUsers } from './sets.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { affectedIds } from './whoLine.ts'
@@ -36,20 +37,35 @@ export function stepPopulation(step: Step): StepPopulationView {
   }
 }
 
-/**
- * The plan's active people, Today's denominator: enabled, not a service account,
- * signed in within the window. Today's tiles and the campaign read this.
- */
-export function activePeopleIds(snapshot: TenantSnapshot, now: string, serviceAccountIds: ReadonlySet<string> = new Set()): string[] {
-  const enabled = new Set(enabledUsers(snapshot, serviceAccountIds).map((u) => u.id))
-  return buildViabilityInputs(snapshot, now, serviceAccountIds)
-    .map(scoreMfaViability)
-    .filter((v) => enabled.has(v.userId) && rolloutBucket(v) !== null)
-    .map((v) => v.userId)
+/** One of the plan's active people: enabled, signed in within the window (the rollout has a bucket for them). */
+export function isActivePerson(v: MfaViability): boolean {
+  return rolloutBucket(v) !== null
 }
 
+/** The active people among a scored set: enabled person accounts (Today's rows) with a rollout bucket. */
+export function activeAmong(viability: readonly MfaViability[], snapshot: TenantSnapshot, serviceAccountIds: ReadonlySet<string>): string[] {
+  const enabled = new Set(enabledUsers(snapshot, serviceAccountIds).map((u) => u.id))
+  return viability.filter((v) => enabled.has(v.userId) && isActivePerson(v)).map((v) => v.userId)
+}
+
+/**
+ * The plan's active people, Today's denominator: enabled, not a service account,
+ * signed in within the window. Today's tiles read this.
+ */
+export function activePeopleIds(snapshot: TenantSnapshot, now: string, serviceAccountIds: ReadonlySet<string> = new Set()): string[] {
+  return activeAmong(buildViabilityInputs(snapshot, now, serviceAccountIds).map(scoreMfaViability), snapshot, serviceAccountIds)
+}
+
+type CampaignMapping = { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }
+
 /** The campaign's population: the plan's active people minus the emergency and shared-device accounts. */
-export function campaignIds(snapshot: TenantSnapshot, now: string, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }): string[] {
+export function campaignIds(viability: readonly MfaViability[], snapshot: TenantSnapshot, mapping: CampaignMapping): string[] {
   const out = new Set([...mapping.breakGlassUserIds, ...sharedDeviceIds(snapshot)])
-  return activePeopleIds(snapshot, now, new Set(mapping.serviceAccountUserIds)).filter((id) => !out.has(id))
+  return activeAmong(viability, snapshot, new Set(mapping.serviceAccountUserIds)).filter((id) => !out.has(id))
+}
+
+/** The campaign's population from the snapshot alone (Today, tests). */
+export function campaignIdsFor(snapshot: TenantSnapshot, now: string, mapping: CampaignMapping): string[] {
+  const svc = new Set(mapping.serviceAccountUserIds)
+  return campaignIds(buildViabilityInputs(snapshot, now, svc).map(scoreMfaViability), snapshot, mapping)
 }

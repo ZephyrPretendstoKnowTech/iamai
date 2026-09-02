@@ -4,7 +4,7 @@
 // who-line and done-when lines the walk found rendering "1 guests · readiness ,
 // the plan waits for 90% until ." with {readiness} and {enrollBy} empty.
 import { sharedDeviceIds } from '../../derive/sharedDevices.ts'
-import { activePeopleIds, campaignIds } from '../../derive/population.ts'
+import { activePeopleIds, campaignIdsFor } from '../../derive/population.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures } from '../../roadmap/fixtures/index.ts'
@@ -165,7 +165,7 @@ test('one readiness per family and one active-people count, on the demo and GetI
       const ex = stepVars(camp, ctx) as Record<string, unknown>
       // One population per step: the campaign counts the plan's active people
       // minus the emergency and shared-device accounts; Today's tile is the plan's.
-      assert.equal(ex.active, campaignIds(f.snapshot, f.snapshot.asOf, f.mapping).length, `${f.name}: the campaign's lead counts its own population`)
+      assert.equal(ex.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${f.name}: the campaign's lead counts its own population`)
       assert.equal(tv.tiles.active, activePeopleIds(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds)).length, `${f.name}: Today's active tile is the plan's active people`)
     }
   }

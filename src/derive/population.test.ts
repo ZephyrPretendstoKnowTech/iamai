@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { activePeopleIds, campaignIds, stepPopulation } from './population.ts'
+import { activePeopleIds, campaignIdsFor, stepPopulation } from './population.ts'
 import { whoLine, populationLine, affectedIds } from './whoLine.ts'
 import { todayView } from './today.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
@@ -54,7 +54,7 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
     const svc = new Set(f.mapping.serviceAccountUserIds)
     assert.equal(todayView(f.snapshot, f.snapshot.asOf, svc).tiles.active, activePeopleIds(f.snapshot, f.snapshot.asOf, svc).length, `${name}: Today's active tile is the plan's active people`)
     const campaign = r.steps.find((s) => s.kind === 'verify')
-    if (campaign) assert.deepEqual([...affectedIds(campaign.population)].sort(), campaignIds(f.snapshot, f.snapshot.asOf, f.mapping).sort(), `${name}: the campaign's population`)
+    if (campaign) assert.deepEqual([...affectedIds(campaign.population)].sort(), campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).sort(), `${name}: the campaign's population`)
   }
   // {guests} pluralises like {n}.
   assert.equal(fillText('{guests} guests', { guests: 1 }), '1 guest')
