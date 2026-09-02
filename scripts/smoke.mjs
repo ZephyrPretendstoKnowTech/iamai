@@ -537,7 +537,12 @@ try {
   await demoGo('plan')
   await waitFor(`/Sample data/.test(document.body.innerText)`)
   await sleep(400)
-  const planBody = () => evaluate(`document.querySelector('main.page').innerText`)
+  // The plan may still be a chunk away on a slow runner (the surfaces load on
+  // demand since prompt 53): wait for its rows, and never read a missing main.
+  const planBody = async () => {
+    await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+    return evaluate(`(document.querySelector('main.page') || document.body).innerText`)
+  }
   const headerOf = (body) => (body.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
   const inPlaceOf = (body) => Number((body.match(/(\d+) in place/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
