@@ -89,6 +89,11 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
       groups: set(users.excludeGroups),
       users: new Set([...set(users.excludeUsers)].filter((u) => !/^GuestsOrExternalUsers$/i.test(u))),
       guests: has(set(users.excludeUsers), 'GuestsOrExternalUsers') || users.excludeGuestsOrExternalUsers != null,
+      guestTypes: (() => {
+        const ex = (users.excludeGuestsOrExternalUsers ?? null) as Record<string, unknown> | null
+        if (ex === null) return has(set(users.excludeUsers), 'GuestsOrExternalUsers') ? [] : null
+        return typeof ex.guestOrExternalUserTypes === 'string' ? ex.guestOrExternalUserTypes.split(',').map((t) => t.trim()).filter((t) => t.length > 0) : []
+      })(),
     },
     apps: {
       all: has(includeApps, 'All'),

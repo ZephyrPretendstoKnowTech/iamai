@@ -104,7 +104,13 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   if (ctx.adminsGroupId != null && f.whoNot.groups.has(ctx.adminsGroupId)) parts.push(`Also exclude the admins group ${ctx.nameOf(ctx.adminsGroupId)}.`)
   const sharedExcluded = (ctx.sharedDeviceIds ?? []).filter((id) => f.whoNot.users.has(id))
   if (sharedExcluded.length > 0) parts.push(`Also exclude the shared-device accounts ${names(sharedExcluded, ctx)}.`)
-  if (f.whoNot.guests) parts.push('Also exclude Guest or external users (all types).')
+  // An exclude of every guest type reads as all types; one that names the types
+  // names them in the portal's words (the partner answer excludes Service provider users).
+  if (f.whoNot.guests) {
+    const types = f.whoNot.guestTypes ?? []
+    const all = types.length === 0 || Object.keys(GUEST_TYPE_LABEL).every((t) => types.some((x) => lc(x) === t))
+    parts.push(all ? 'Also exclude Guest or external users (all types).' : `Also exclude Guest or external users → ${types.map((t) => GUEST_TYPE_LABEL[lc(t)] ?? t).join(', ')}.`)
+  }
   return parts.join(' ')
 }
 
@@ -135,7 +141,9 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
   if (clientApps.length > 0) out.push(`Conditions → Client apps → ${clientApps.map((c) => CLIENT_APP_LABEL[c] ?? c).join(', ')}`)
   if (f.flows.size > 0) out.push(`Conditions → Authentication flows → ${[...f.flows].map((t) => FLOW_LABEL[lc(t)] ?? t).join(', ')}`)
   if (f.platforms && (f.platforms.include.size > 0 || f.platforms.exclude.size > 0)) {
-    const inc = f.platforms.include.size > 0 ? platformList(f.platforms.include, ctx) : 'Any device'
+    // Graph's `all` is the portal's Any device, never a name.
+    const named = new Set([...f.platforms.include].filter((p) => !/^all$/i.test(p)))
+    const inc = named.size > 0 ? platformList(named, ctx) : 'Any device'
     const exc = f.platforms.exclude.size > 0 ? `; Exclude: ${platformList(f.platforms.exclude, ctx)}` : ''
     out.push(`Conditions → Device platforms → Include: ${inc}${exc}`)
   }
@@ -233,9 +241,14 @@ export function portalLinesAB(
   b: { facts: PolicyFacts; ctx: PortalContext },
   labels: { a: string; b: string },
 ): string[] {
-  const block = (label: string, one: { facts: PolicyFacts; ctx: PortalContext }): string[] => {
-    const [root, ...rest] = portalLines(one.facts, one.ctx)
-    return [`Policy ${label} — ${one.ctx.policyName}: ${root}`, ...rest]
+  return labelledBlocks({ lines: portalLines(a.facts, a.ctx), name: a.ctx.policyName }, { lines: portalLines(b.facts, b.ctx), name: b.ctx.policyName }, labels)
+}
+
+/** Two policies' lines as Policy A and Policy B blocks, each labelled with its name on its root line (the one shape, whoever built the lines). */
+export function labelledBlocks(a: { lines: string[]; name: string }, b: { lines: string[]; name: string }, labels: { a: string; b: string }): string[] {
+  const block = (label: string, one: { lines: string[]; name: string }): string[] => {
+    const [root, ...rest] = one.lines
+    return [`Policy ${label} — ${one.name}: ${root}`, ...rest]
   }
-  return [...block('A', a), ...block('B', b)]
+  return [...block(labels.a, a), ...block(labels.b, b)]
 }

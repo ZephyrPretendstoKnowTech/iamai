@@ -27,8 +27,9 @@ import type { NamingConvention } from '../../coverage/naming.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
-import { engine } from '../../content/content.ts'
+import { engine, shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -119,6 +120,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     from: short(ctx.snapshot.sources.signInEvidence?.coveredWindow?.from),
     // The allowed countries, by name, for the countries policy's why and its lines.
     countries: ctx.mapping.allowedCountries.length > 0 ? list(ctx.mapping.allowedCountries.map(countryName)) : undefined,
+    // Service-provider (GDAP) sign-ins and the partner tenants they came from,
+    // for the partner question on the guests policy: absent while there are
+    // none, so the question is not asked of a tenant with no partner.
+    spSignIns: (ctx.snapshot.scenarioEvidence?.serviceProviderSignIns.count ?? 0) > 0 ? ctx.snapshot.scenarioEvidence?.serviceProviderSignIns.count : undefined,
+    partners: (ctx.snapshot.scenarioEvidence?.serviceProviderSignIns.count ?? 0) > 0 ? ctx.snapshot.scenarioEvidence?.serviceProviderSignIns.homeTenants : undefined,
   }
 
   // A policy already in report-only: the two gates with today's numbers, for
@@ -164,6 +170,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // the data exists): the campaign buckets, the lockout-scenario people, and the
   // emergency/service/admin id sets. A step reads only the keys it uses.
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, operatorId: ctx.operatorId }))
+  // The stored answers in words (E1), for the steps an answer adds; and the
+  // device decision's lines (E2): who signs in from a phone or an unjoined
+  // computer, one device line per person for the campaign, and the one
+  // sentence its email adds.
+  Object.assign(v, answerVars(ctx, v))
 
   // The step's own picker rows (prune B): the emergency, exclusions-group,
   // countries, trusted-network, service-accounts and shared-devices pickers,
@@ -216,6 +227,44 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   }
 
   return v
+}
+
+type DevicePlanWords = { phone: Record<string, string>; computer: Record<string, string>; personLine: string; phoneWord: string; computerWord: string; sentence: string; sentencePhones: string }
+
+/**
+ * The answers as words (answers.ts): the person's own answer with ids resolved
+ * to names, for the steps an answer adds; who signs in from a phone or an
+ * unjoined computer; and, once the device decision is made, one device line per
+ * person and the campaign email's sentence (shared.devicePlan).
+ */
+function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<string, unknown> {
+  const m = ctx.mapping
+  const out: Record<string, unknown> = {}
+  const travel = answerOf(m, QUESTION_STEP.travel, 'question')
+  if (travel) out.travelAnswer = travel.picked.reduce((t, c) => t.replace(c, countryName(c)), travel.text)
+  const partner = answerOf(m, QUESTION_STEP.partner, 'question')
+  if (partner) out.partnerAnswer = partner.text
+  const mail = answerOf(m, QUESTION_STEP.mailDevices, 'decision')
+  if (mail) {
+    out.mailDevicesAnswer = mail.picked.reduce((t, id) => t.replace(id, ctx.nameOf(id)), mail.text)
+    out.mailDevices = mail.picked.map(ctx.nameOf)
+  }
+  const ev = ctx.snapshot.scenarioEvidence
+  const phones = ev?.phoneSignIns?.people ?? []
+  const unjoined = ev?.unjoinedComputers?.people ?? []
+  out.phoneUsers = phones.map(ctx.nameOf)
+  out.unjoinedUsers = unjoined.map(ctx.nameOf)
+  const plan = devicePlanOf(m)
+  if (plan) {
+    const W = shared.devicePlan as DevicePlanWords
+    const phoneWords = fillText(W.phone[plan.phones], v)
+    const computerWords = plan.computers ? fillText(W.computer[plan.computers], v) : null
+    const lines: string[] = phones.map((id) => fillText(W.personLine, { name: ctx.nameOf(id), device: W.phoneWord, instruction: phoneWords }))
+    if (computerWords) for (const id of unjoined) lines.push(fillText(W.personLine, { name: ctx.nameOf(id), device: W.computerWord, instruction: computerWords }))
+    out.deviceLines = lines
+    out.deviceSentence = computerWords ? fillText(W.sentence, { phones: phoneWords, computers: computerWords }) : fillText(W.sentencePhones, { phones: phoneWords })
+  }
+  return out
 }
 
 function operatorSignIns(snapshot: TenantSnapshot, operatorId: string): number | undefined {

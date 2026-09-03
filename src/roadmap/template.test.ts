@@ -25,7 +25,7 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
     conditions: { users: { includeUsers: ['All'], excludeGroups: ['ref-exclusions'] } },
     grantControls: { operator: 'OR', builtInControls: ['mfa'] },
   }
-  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', { unresolved: new Map([['ref-exclusions', null]]) })
+  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', 'x', { unresolved: new Map([['ref-exclusions', null]]) })
   assert.ok(action.json, 'json produced')
   assert.doesNotMatch(action.json!, /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the JSON')
   assert.doesNotMatch(action.json!, /"excludeGroups"/, 'the array emptied by stripping loses its key')
@@ -38,7 +38,7 @@ test('item 12: every goal × implementation renders Do it from the template with
     for (const impl of goal.implementations) {
       const { body, unresolved } = resolveTemplate(impl.template as TemplateBody, SAMPLE_VALUES)
       assert.deepEqual(unresolved, [], `${goal.id}: sample values resolve everything`)
-      const action = buildCreateAction(body, mapping, 'plan-1', `s-goal-${goal.id}`, { displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` })
+      const action = buildCreateAction(body, mapping, 'plan-1', `s-goal-${goal.id}`, goal.id, { displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` })
       assert.ok(action.json, `${goal.id}: json`)
       const parsed = JSON.parse(action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null; state: string; description: string }
       const grants = (parsed.grantControls?.builtInControls?.length ?? 0) + (parsed.grantControls?.authenticationStrength ? 1 : 0)

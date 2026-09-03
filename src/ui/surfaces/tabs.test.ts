@@ -21,6 +21,8 @@ import { content } from '../../content/content.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { rowWhen } from './rowWhen.ts'
 import { notLicensedRows } from '../../derive/notLicensed.ts'
+import { DEVICE_GOALS } from '../../roadmap/deviations.ts'
+import { stepById } from '../../content/content.ts'
 import { PINNED_GOAL_MAP, goalInMap } from '../../roadmap/goalMap.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -191,7 +193,8 @@ test('GetIAMAI: the prompt renders in full, the Doesn\'t-apply group holds only 
   assert.ok(licenceGoals.length >= 1, `licence-facet goals the baseline holds (${licenceGoals.join(', ')})`)
   const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
   for (const id of licenceGoals) {
-    const row = rows.find((x) => x.goalId === id)
+    // The device goals share one Not licensed line (E2), named by their content titles.
+    const row = rows.find((x) => x.goalId === id) ?? (DEVICE_GOALS.has(id) ? rows.find((x) => x.goalId === 'devices' && x.text.includes(String(stepById[id]?.title))) : undefined)
     assert.ok(row, `${id} is a Not licensed row`)
     assert.ok(/Intune|Workload/.test(row!.licence), `${id}: the licence (${row!.licence})`)
   }

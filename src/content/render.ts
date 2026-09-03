@@ -317,7 +317,10 @@ export function renderStep(st: Record<string, any>): string {
         parts.push(`<div class="picker"><label><input type="checkbox" disabled> ${fill(d.pickerRow, ex)}</label></div>`)
       }
     }
-    if (d.options) parts.push('<div class="picker">' + (d.options as string[]).map((o) => `<label><input type="radio" disabled> ${fill(o, ex)}</label>`).join('') + '</div>')
+    // An effect line per option (one line for every option but the first, or one
+    // per option): the product shows the one whose answer applied; the review shows them all.
+    const effects = (e: unknown): string => (Array.isArray(e) ? e : [e]).filter((x): x is string => typeof x === 'string' && x.length > 0).map((x) => p(x, ex, 'dhelp')).join('')
+    if (d.options) parts.push('<div class="picker">' + (d.options as string[]).map((o) => `<label><input type="radio" disabled> ${fill(o, ex)}</label>`).join('') + '</div>' + effects(d.effect))
     if (d.question) {
       const q = d.question
       parts.push(
@@ -326,9 +329,11 @@ export function renderStep(st: Record<string, any>): string {
           '<div class="picker">' +
           (q.options as string[]).map((o) => `<label><input type="radio" disabled> ${fill(o, ex)}</label>`).join('') +
           '</div>' +
-          p(q.effect, ex, 'dhelp'),
+          effects(q.effect),
       )
     }
+    // The strict toggle (the device decision's Block phones): off by default.
+    if (d.strict) parts.push(`<div class="dlabel">${esc(d.strict.label)}</div>` + p(d.strict.help, ex, 'dhelp') + `<div class="picker"><label><input type="checkbox" disabled> ${fill(d.strict.option, ex)}</label></div>`)
     parts.push(btn(d.save || 'Save') + '</div>')
   }
   // What to do

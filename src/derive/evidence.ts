@@ -40,6 +40,10 @@ export type ScenarioEvidence = {
   guestsSeen: Derived
   /** Accounts whose only sign-ins are to Teams device apps. */
   sharedDeviceOnly: Derived
+  /** Phone sign-ins (iOS, Android), by person and app: the device decision is asked when any exist (E2). Absent on snapshots from before it. */
+  phoneSignIns?: Derived
+  /** Computer sign-ins from devices neither joined, registered, compliant nor managed, by person and app (E2). Absent on snapshots from before it. */
+  unjoinedComputers?: Derived
 }
 
 type App = { appId: string; displayName: string; role?: string }
@@ -59,6 +63,7 @@ const appName = (row: StoredSignIn): string => row.appDisplayName || APP_BY_ID.g
 const isFirstParty = (row: StoredSignIn): boolean => APP_BY_ID.has((row.appId ?? '').toLowerCase())
 /** Rows written before schema 7 carry none of the device labels; nothing device-based fires on them. */
 const hasDeviceLabels = (row: StoredSignIn): boolean => row.os !== undefined
+import { isPhoneOs } from './platforms.ts'
 
 const LEGACY_LABEL: [RegExp, string][] = [
   [/authenticated smtp|^smtp$/i, 'Authenticated SMTP'],
@@ -199,6 +204,26 @@ export function emptyPlatform(rows: Iterable<StoredSignIn>): Derived {
   return acc.out()
 }
 
+const COMPUTER_OS = new Set(['Windows', 'macOS', 'Linux', 'ChromeOS'])
+
+/** Phone sign-ins (iOS, Android), by person and app (E2: the device decision is asked when any exist). */
+export function phoneSignIns(rows: Iterable<StoredSignIn>): Derived {
+  const acc = new Acc()
+  for (const row of rows) if (hasDeviceLabels(row) && isPhoneOs(row.os)) acc.hit(row, appName(row))
+  return acc.out()
+}
+
+/** Computer sign-ins from devices neither joined, registered, compliant nor managed, by person and app (E2). */
+export function unjoinedComputers(rows: Iterable<StoredSignIn>): Derived {
+  const acc = new Acc()
+  for (const row of rows) {
+    if (!hasDeviceLabels(row) || !COMPUTER_OS.has(row.os ?? '')) continue
+    if (row.isCompliant === true || row.isManaged === true || (row.trustType ?? 'none') !== 'none') continue
+    acc.hit(row, appName(row))
+  }
+  return acc.out()
+}
+
 export function serviceProviderSignIns(rows: Iterable<StoredSignIn>): Derived & { homeTenants: number } {
   const acc = new Acc()
   const tenants = new Set<string>()
@@ -265,6 +290,8 @@ export function deriveScenarioEvidence(rowsIn: Iterable<StoredSignIn>, compliant
     trustedLocationMatches: trustedLocationMatches(rows),
     guestsSeen: guestsSeen(rows),
     sharedDeviceOnly: sharedDeviceOnly(rows),
+    phoneSignIns: phoneSignIns(rows),
+    unjoinedComputers: unjoinedComputers(rows),
   }
 }
 
@@ -284,5 +311,7 @@ export function emptyScenarioEvidence(): ScenarioEvidence {
     trustedLocationMatches: { total: 0, byLocation: {}, trusted: [] },
     guestsSeen: empty(),
     sharedDeviceOnly: empty(),
+    phoneSignIns: empty(),
+    unjoinedComputers: empty(),
   }
 }

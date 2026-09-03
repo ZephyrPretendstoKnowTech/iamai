@@ -58,24 +58,24 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[5].whatToDo.steps[3]',
   '.steps[6].who.none',
   '.steps[10].who.match',
-  '.steps[12].who.groups.noMethod',
-  '.steps[12].who.groups.insufficient',
-  '.steps[12].who.groups.pushOnly',
-  '.steps[12].who.groups.possiblyBroken',
-  '.steps[12].who.groups.holdouts',
-  '.steps[12].who.adminsNote',
-  '.steps[13].who.evidence[1]',
-  '.steps[14].who.evidence[1]',
-  '.steps[15].who.evidence[0]',
-  '.steps[16].who.evidence[1]',
-  '.steps[17].who.evidence[0]',
-  '.steps[18].who.evidence[0]',
-  '.steps[21].who.evidence[2]',
-  '.steps[33].who.evidence[0]',
-  '.steps[34].who.evidence[1]',
-  '.steps[35].who.evidence[0]',
-  '.steps[36].who.evidence[0]',
+  '.steps[16].who.groups.noMethod',
+  '.steps[16].who.groups.insufficient',
+  '.steps[16].who.groups.pushOnly',
+  '.steps[16].who.groups.possiblyBroken',
+  '.steps[16].who.groups.holdouts',
+  '.steps[16].who.adminsNote',
+  '.steps[17].who.evidence[1]',
+  '.steps[18].who.evidence[1]',
+  '.steps[19].who.evidence[0]',
+  '.steps[20].who.evidence[1]',
+  '.steps[21].who.evidence[0]',
+  '.steps[22].who.evidence[0]',
+  '.steps[25].who.evidence[2]',
   '.steps[37].who.evidence[0]',
+  '.steps[38].who.evidence[1]',
+  '.steps[39].who.evidence[0]',
+  '.steps[40].who.evidence[0]',
+  '.steps[41].who.evidence[0]',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52
@@ -85,7 +85,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // like the structural keys; a separate test proves no product renderer reads it.
 // pages.app holds the words the app chrome and the surfaces show (the header, the scan
 // progress, the print cover, the export alerts): read by the product, never by the review page.
-const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.shared.engine.')
+// shared.deviation and shared.devicePlan are words the engine writes into a
+// step's facts from a stored answer (stepPortal.ts, stepVars.ts), and the
+// footer's shared device line is the Not licensed group's (derive/notLicensed.ts):
+// read by the product, never by the review page.
+const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.(url|cis)$/.test(p) || /\.whatToDoReference\b/.test(p)
 

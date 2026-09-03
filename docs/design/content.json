@@ -4,6 +4,27 @@
   "shared": {
     "signatureDefault": "IT",
     "adaptLine": "Paste this into your own assistant to match your voice.",
+    "deviation": {
+      "line": "{line} · your choice; the baseline's version: {baseline}",
+      "none": "no such condition"
+    },
+    "devicePlan": {
+      "phone": {
+        "enrol": "enrol it in Intune with the Company Portal app before {firstEnforce}",
+        "apps": "use Outlook and Teams for work; nothing to enrol",
+        "none": "no company data on it; work from your computer"
+      },
+      "computer": {
+        "enrol": "sign in to your work computer this week so we can confirm it is enrolled",
+        "hybrid": "domain-joined computers are already covered",
+        "unmanaged": "nothing changes for computers"
+      },
+      "personLine": "{name} · {device}: {instruction}",
+      "phoneWord": "phone",
+      "computerWord": "computer",
+      "sentence": "On your phone, {phones}; on your computer, {computers}.",
+      "sentencePhones": "On your phone, {phones}."
+    },
     "scanControl": "Scan to update the plan",
     "doesntApplyControl": "Doesn't apply here",
     "doesntApplyPrompt": "Why does this not apply to {tenant}? One line; it goes on the plan.",
@@ -105,17 +126,6 @@
         "globalAdmin": "Global Administrator",
         "excludedEverywhere": "excluded from every policy",
         "noLicence": "no licence"
-      },
-      "carveOuts": {
-        "mailDevices": {
-          "title": "Set up an SMTP relay for the devices that send mail"
-        },
-        "travel": {
-          "title": "Add a travel notice and exclusion"
-        },
-        "partner": {
-          "title": "Exclude the partner or MSP accounts"
-        }
       }
     }
   },
@@ -225,6 +235,7 @@
         "notLicensed": "Not licensed ({n})",
         "notLicensedRow": "{stepTitle}: needs a licence this tenant does not hold: {licence}",
         "notLicensedNote": "Nothing in the plan waits on these.",
+        "notLicensedDevices": "{steps}: need an Intune Plan 1 licence this tenant does not hold; no device policy is offered and nothing asks how devices are managed",
         "housekeeping": "Housekeeping ({n})",
         "notInBaseline": "{policy}: not in the baseline · {verdict}",
         "notInBaselineKeep": "fine to keep",
@@ -1028,7 +1039,11 @@
             "Occasionally: I will add a country before each trip",
             "Regularly: add: {travelCountries}"
           ],
-          "effect": "Answering adds the countries now, and the countries step's email tells people how to arrange a trip."
+          "effect": [
+            "",
+            "The plan carries a travel step; the countries policy's email tells people to say before a trip.",
+            "The countries are on the allowed list now, and the plan carries a travel step; the countries policy's email tells people to say before a trip."
+          ]
         },
         "location": {
           "label": "Which named location is the allowed list",
@@ -1587,6 +1602,238 @@
       "partner": "Do this before the registration campaign, so you have done what you are about to ask others to do."
     },
     {
+      "id": "s-prereq-device-plan",
+      "kind": "check",
+      "title": "Decide How Devices Are Managed",
+      "changeLine": null,
+      "why": "A device policy can only ask for what the business has decided: a phone that is enrolled, an app that keeps the data, or no company data on phones; and computers that are enrolled, domain-joined, or not managed.",
+      "learn": {
+        "cis": "4.1",
+        "url": "https://learn.microsoft.com/mem/intune/fundamentals/deployment-guide-enrollment"
+      },
+      "who": {
+        "lead": "{n} people signed in from a phone or from a computer that is not joined since {from}.",
+        "phones": "Phones: {list:phoneUsers}",
+        "computers": "Computers neither joined nor enrolled: {list:unjoinedUsers}"
+      },
+      "decision": {
+        "label": "Phones",
+        "help": "Until you decide, phones are out of the compliant-device policy, and the device steps wait on this one.",
+        "options": [
+          "Enrol phones in Intune",
+          "Protect the apps only",
+          "No company data on phones"
+        ],
+        "effect": [
+          "Phones stay in the compliant-device policy: a phone that is not enrolled by the enforce date is blocked.",
+          "Phones leave the compliant-device policy; the app-protection policy covers them where the baseline holds one.",
+          "Phones leave the compliant-device policy; people use their computer for work."
+        ],
+        "question": {
+          "label": "Computers",
+          "text": "How are computers managed?",
+          "options": [
+            "Enrol in Intune",
+            "Hybrid-joined is enough",
+            "Not managed"
+          ],
+          "effect": [
+            "Device readiness counts compliant computers.",
+            "Device readiness counts hybrid-joined computers as managed.",
+            "Computers leave the compliant-device policy; with phones out too, the device steps do not apply here."
+          ]
+        },
+        "strict": {
+          "label": "Block phones",
+          "help": "Off: a phone is left out of the policy. On: a phone that is not enrolled is blocked.",
+          "option": "Block phones that are not enrolled"
+        },
+        "save": "Save"
+      },
+      "whatToDo": {
+        "lead": null,
+        "steps": []
+      },
+      "dates": null,
+      "doneWhen": [
+        "Both halves are answered; Require a Managed Device for Office 365 shows the platforms it covers beside the baseline's version."
+      ],
+      "ifWrong": null,
+      "comms": null,
+      "doesntApply": false,
+      "skip": false,
+      "scanControl": false,
+      "more": {
+        "risks": [
+          {
+            "text": "A phone left out of the policy still reads company mail; nothing on it is managed.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": null,
+        "manager": "Phones and computers are managed the way the business chose; the device policies ask only for that.",
+        "waits": "Require a Managed Device for Office 365 and Require a Fresh Sign-in for Intune Enrollment wait on this."
+      },
+      "example": {
+        "tenant": "GetIAMAI",
+        "n": 2,
+        "from": "Aug 1",
+        "phoneUsers": [
+          "Kaladin Stormblessed"
+        ],
+        "unjoinedUsers": [
+          "Shallan Davar"
+        ]
+      }
+    },
+    {
+      "id": "s-question-travel",
+      "kind": "check",
+      "title": "Add a Travel Notice and Exclusion",
+      "changeLine": null,
+      "why": "Somebody who travels signs in from outside the allowed countries, and the countries policy blocks that sign-in unless the trip was arranged first.",
+      "learn": {
+        "cis": null,
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
+      },
+      "who": {
+        "lead": "You said: {travelAnswer}"
+      },
+      "decision": null,
+      "whatToDo": {
+        "lead": null,
+        "steps": [
+          "Send the countries policy's email: it tells people to say before a trip.",
+          "For each trip, add the country to the allowed list for its dates on Create or Correct Allowed Countries Location; never a user exclusion.",
+          "Log each trip with its dates, so the country comes off the list when it ends."
+        ]
+      },
+      "dates": null,
+      "doneWhen": [
+        "The countries policy's email has gone out and the trip log exists."
+      ],
+      "ifWrong": null,
+      "comms": null,
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": false,
+      "more": {
+        "risks": [
+          {
+            "text": "A trip nobody logged: the traveller is blocked until the country is added.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "Blocked abroad: add the country to the allowed list for the trip's dates; the block lifts when the token refreshes."
+        ],
+        "manager": null,
+        "waits": null
+      },
+      "example": {
+        "tenant": "GetIAMAI",
+        "travelAnswer": "Regularly: add: New Zealand"
+      }
+    },
+    {
+      "id": "s-question-partner",
+      "kind": "check",
+      "title": "Exclude the Partner or MSP Accounts",
+      "changeLine": null,
+      "why": "An IT partner administers this tenant through delegated access; a policy aimed at external users cuts them off unless the Service provider type is excluded.",
+      "learn": {
+        "cis": null,
+        "url": "https://learn.microsoft.com/partner-center/customers/gdap-introduction"
+      },
+      "who": {
+        "lead": "You said: {partnerAnswer}"
+      },
+      "decision": null,
+      "whatToDo": {
+        "lead": null,
+        "steps": [
+          "Require MFA for Guests and Block Sign-ins From Countries Not Allowed now carry the Service provider exclusion in their What to do, beside the baseline's version; create them as shown.",
+          "Their own tenant's MFA is what protects the partner's people here: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → the partner → Inbound access → Trust settings → Trust multifactor authentication: On."
+        ]
+      },
+      "dates": null,
+      "doneWhen": [
+        "Both policies exclude the Service provider type on the next scan."
+      ],
+      "ifWrong": null,
+      "comms": null,
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "A partner whose own tenant does not require MFA signs in here with a password alone.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": null,
+        "manager": null,
+        "waits": null
+      },
+      "example": {
+        "tenant": "GetIAMAI",
+        "partnerAnswer": "Exclude service providers (they use their own tenant's MFA)"
+      }
+    },
+    {
+      "id": "s-question-mail-devices",
+      "kind": "check",
+      "title": "Set Up an SMTP Relay for Mail-Sending Devices",
+      "changeLine": null,
+      "why": "A printer or application that sends mail by SMTP AUTH stops when legacy authentication is blocked; the service-accounts group carries it until a relay replaces the password.",
+      "learn": {
+        "cis": null,
+        "url": "https://learn.microsoft.com/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365"
+      },
+      "who": {
+        "lead": "You said: {mailDevicesAnswer}",
+        "devices": "Devices: {list:mailDevices}"
+      },
+      "decision": null,
+      "whatToDo": {
+        "lead": null,
+        "steps": [
+          "Create or Correct Service Accounts Group carries these accounts; create it as shown, and Block Legacy Authentication leaves them alone.",
+          "Move each device to SMTP AUTH with OAuth, or to a connector in Exchange Online (Exchange admin center → Mail flow → Connectors → From your organization's email server), then take its account out of the group."
+        ]
+      },
+      "dates": null,
+      "doneWhen": [
+        "Every mail-sending device sends through OAuth or a connector, and the service-accounts group holds none of them."
+      ],
+      "ifWrong": null,
+      "comms": null,
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "A device that stays in the service-accounts group keeps a password that never expires and skips every policy.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "Scan-to-email stopped: check the device is still in the service-accounts group, then move it to a connector."
+        ],
+        "manager": null,
+        "waits": null
+      },
+      "example": {
+        "tenant": "GetIAMAI",
+        "mailDevicesAnswer": "Yes: add: MFP Reception; the service-accounts group carries them",
+        "mailDevices": [
+          "MFP Reception"
+        ]
+      }
+    },
+    {
       "id": "s-verify-mfa",
       "kind": "campaign",
       "title": "Create and Enforce the MFA Registration Campaign",
@@ -1608,7 +1855,8 @@
           "holdouts": "{n} people past the enrol-by date with nothing done; review each; they are locked out when the policy enforces:"
         },
         "overlap": "Each person appears once, in the first list that applies to them, top to bottom; an admin with no method is in the no-method list with the admin instructions.",
-        "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key."
+        "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key.",
+        "devices": "Devices, from Decide How Devices Are Managed, one line per person: {list:deviceLines}"
       },
       "decision": {
         "label": "People who need special care",
@@ -1644,6 +1892,7 @@
         "salutation": "Hi everyone,",
         "body": "From {firstEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next two weeks. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "signature": "{signature}",
+        "extra": "{deviceSentence}",
         "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together."
       },
       "doesntApply": false,
@@ -1698,6 +1947,11 @@
         "firstEnforce": "Tue Sep 8",
         "firstEnforceLong": "Tuesday, September 8",
         "holdouts": [],
+        "deviceLines": [
+          "Kaladin Stormblessed · phone: use Outlook and Teams for work; nothing to enrol",
+          "Shallan Davar · computer: domain-joined computers are already covered"
+        ],
+        "deviceSentence": "On your phone, use Outlook and Teams for work; nothing to enrol; on your computer, domain-joined computers are already covered.",
         "specialCare": [
           "Lachlan Robinette · admin, phishing-resistant, proven",
           "Kaladin Stormblessed · admin, phishing-resistant, proven",
@@ -2025,12 +2279,12 @@
         "multi": true,
         "question": {
           "label": "Partner or MSP access",
-          "text": "{n} service-provider sign-ins since {from} from {list:partnerTenantsList}. Should this policy prompt them too?",
+          "text": "{spSignIns} service-provider sign-ins since {from} from {partners} partner tenants. Should this policy prompt them too?",
           "options": [
             "Prompt them like any guest",
             "Exclude service providers (they use their own tenant's MFA)"
           ],
-          "effect": "Excluding adds the Service provider type to the policy's exclusions."
+          "effect": "Excluding adds the Service provider type to the exclusions of this policy and the countries policy; both show it beside the baseline's version."
         }
       },
       "dates": "{datesNew}",
@@ -2232,6 +2486,7 @@
           "None",
           "Yes: add: {devices}; the service-accounts group carries them"
         ],
+        "effect": "The devices are in the service-accounts group now; the legacy block leaves that group alone, and the group's step creates it where none exists.",
         "save": "Save"
       },
       "dates": "{datesNew}",
@@ -2440,15 +2695,7 @@
           "{existingCoverage}"
         ]
       },
-      "decision": {
-        "label": "Partner or MSP access",
-        "help": "{n} service-provider sign-ins since {from} from {list:partnerTenants}, {location}. Should they be blocked by country like everyone else?",
-        "options": [
-          "Block them like everyone else",
-          "Exclude service providers"
-        ],
-        "save": "Save"
-      },
+      "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",

@@ -98,7 +98,9 @@ export function decisionsOf(
   const stepDecisions: Record<string, StepDecision> = {}
   for (const [id, d] of Object.entries(rec?.stepDecisions ?? {})) {
     if (!d || typeof d !== 'object') continue
-    stepDecisions[id] = { ...(Array.isArray(d.picked) ? { picked: d.picked.map(String) } : {}), ...(typeof d.option === 'string' ? { option: d.option } : {}), at: String(d.at ?? '') }
+    // A question's answers travel too (E1): the record is what makes a stored answer apply after a reload.
+    const answers = Object.fromEntries(Object.entries(d.answers ?? {}).filter((e): e is [string, string] => typeof e[1] === 'string'))
+    stepDecisions[id] = { ...(Array.isArray(d.picked) ? { picked: d.picked.map(String) } : {}), ...(typeof d.option === 'string' ? { option: d.option } : {}), ...(Object.keys(answers).length > 0 ? { answers } : {}), at: String(d.at ?? '') }
   }
   // The scan that first saw each step's policy in report-only: an observation
   // only the record holds (tracking.ts reportOnlySince).
