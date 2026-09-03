@@ -1632,7 +1632,7 @@
       },
       "who": {
         "lead": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90% until {enrollBy}.",
-        "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
+        "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {firstEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
         "groups": {
           "noMethod": "{n} people with no method; issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
           "insufficient": "{n} people whose only method is text or call; register a passkey in Microsoft Authenticator, then remove the phone number:",
@@ -1677,7 +1677,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {mfaEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next {enrolWindowDays} days. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "body": "From {firstEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next two weeks. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "signature": "{signature}",
         "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together."
       },
@@ -1730,9 +1730,8 @@
           "Breakglass · see the emergency-access step"
         ],
         "enrollBy": "Fri Sep 4",
-        "mfaEnforce": "Tue Sep 8",
-        "mfaEnforceLong": "Tuesday, September 8",
-        "enrolWindowDays": 14,
+        "firstEnforce": "Tue Sep 8",
+        "firstEnforceLong": "Tuesday, September 8",
         "holdouts": [],
         "specialCare": [
           "Lachlan Robinette · admin, phishing-resistant, proven",
@@ -2783,7 +2782,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, {tenant} mail, files and Teams open only on a company-managed device. Sign in to your work computer with your work account this week so we can confirm it is set up. Personal devices {personalDevicesClause}.",
+        "body": "From {enforceLong}, {tenant} mail, files and Teams open only on a company-managed device. Sign in to your work computer with your work account this week so we can confirm it is set up. Personal devices can still use the browser with limits.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -2833,7 +2832,6 @@
         "policyName": "Core - Require - Compliant device for Office 365",
         "enforce": "Tue Sep 22",
         "enforceLong": "Tuesday, September 22",
-        "personalDevicesClause": "can still use the browser with the limits from Limit Unmanaged Devices in the Browser",
         "signature": "IT",
         "existingPolicies": [],
         "from": "Aug 1"
