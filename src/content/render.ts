@@ -528,26 +528,25 @@ export function renderPages(): string {
     out.push(
       '<section class="page"><h3>Home page — getiamai.com</h3>' +
         `<h2 class="h1">${esc(H.h1)}</h2>` +
-        p(H.intro, {}) +
+        p(H.siteLine, {}) +
         h(H.toolsLabel) +
-        `<div class="card"><b>${esc(hpl.name)}</b> <span class="chip">${esc(hpl.label)}</span><p class="sub">${esc(hpl.descriptor)}</p><p>${esc(hpl.body)}</p>` +
-        h(hpl.builtForLabel) +
-        p(hpl.builtFor, {}) +
+        // The tool card (docs/design/home-mockup.html): name and pill, tag line, the beats, the catches collapsible, the two actions, the meta line.
+        `<div class="card"><b>${esc(hpl.name)}</b> <span class="chip">${esc(hpl.label)}</span><p class="sub">${esc(hpl.descriptor)}</p>` +
+        ul((hpl.beats as { verb: string; text: string }[]).map((b) => `${b.verb} ${b.text}`), {}) +
         h(hpl.catchesLabel) +
         ul(hpl.catches, {}) +
         btn(hpl.open, true) +
         btn(hpl.demo) +
+        `<p class="sub">${esc(hpl.meta.baseline)} · ${esc(hpl.meta.role)} · <a>${esc(hpl.meta.code)}</a></p>` +
         '</div>' +
         h(H.howLabel) +
-        ul(H.how, {}) +
+        (H.how as { title: string; body: string; link?: string }[]).map((c) => `<div class="card"><b>${esc(c.title)}</b>${p(c.body, {})}${c.link ? `<p><a>${esc(c.link)}</a></p>` : ''}</div>`).join('') +
         h(H.aboutLabel) +
         p(H.about, {}) +
         '<p>' +
-        (H.aboutLinks as string[]).map((l) => `<a>${esc(l)}</a>`).join(' &nbsp;·&nbsp; ') +
+        (H.aboutLinks as { text: string }[]).map((l) => btn(l.text)).join(' ') +
         '</p>' +
-        `<p class="sub">${esc(H.footer)} &nbsp;·&nbsp; ` +
-        (H.footerLinks as string[]).map((l) => `<a>${esc(l)}</a>`).join(' &nbsp;·&nbsp; ') +
-        '</p>' +
+        `<p class="sub">${esc(H.brand)}</p>` +
         `<p class="sub">Meta description: ${esc(H.metaDescription)}</p></section>`,
     )
   }

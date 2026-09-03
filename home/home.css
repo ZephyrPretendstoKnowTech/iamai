@@ -1,7 +1,10 @@
-/* The home page on the planner's tokens (prompt 47.1 Part 3). Every value is a
-   variable from home/theme.css, which scripts/build-home.ts writes from
-   src/ui/tokens.ts; the design lint reads this file. One 760px column,
-   hairlines and whitespace, no cards, no boxes. */
+/* The home page on the planner's tokens (prompt 47.1 Part 3; docs/design/home-mockup.html).
+   Every value is a variable from home/theme.css, which scripts/build-home.ts writes from
+   src/ui/tokens.ts; the design lint reads this file. One 760px column: the hero, the Tools
+   grid of cards (one column with one tool, two from the second), How these work as two
+   small cards, About, and the app's footer. The header's text control, the three button
+   weights and the footer are the app's rules (src/ui/app.css) on the same tokens;
+   home.test.ts holds them equal. */
 
 * {
   box-sizing: border-box;
@@ -32,21 +35,12 @@ body {
 }
 
 h1,
-h2 {
+h2,
+h3 {
   font-family: var(--font-serif);
   font-weight: 400;
   line-height: var(--lh-heading);
   color: var(--ink);
-}
-h1 {
-  font-size: var(--t-6);
-  margin: 8px 0 12px;
-}
-h2 {
-  font-size: var(--t-5);
-  margin: 40px 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--rule);
 }
 p,
 ul {
@@ -58,9 +52,6 @@ ul {
 }
 li {
   margin: 0 0 6px;
-}
-strong {
-  font-weight: 500;
 }
 a {
   color: var(--accent);
@@ -100,22 +91,21 @@ header.app .right {
   display: flex;
   align-items: center;
   gap: 12px;
+  white-space: nowrap;
 }
-.btn {
+/* The theme and Account controls: text in the header's colour, no button face. */
+header.app .right .text-control {
   font: inherit;
-  font-family: var(--font-sans);
-  font-size: var(--t-3);
-  height: var(--control);
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
   color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
 }
-.btn:hover {
+header.app .right .text-control:hover,
+header.app .right .text-control:focus-visible {
   color: var(--ink);
 }
 
@@ -128,96 +118,201 @@ main.page {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.lede {
+
+/* The hero: the headline and the site line. */
+.hero h1 {
+  font-size: var(--t-6);
+  margin: 8px 0 8px;
+}
+.hero .site-line {
   color: var(--ink-2);
-  margin-bottom: 20px;
+  margin: 0 0 22px;
 }
 
-/* Tools: the planner entry, from pages.home.planner (prompt 52 Part 1). Name and
-   its Preview pill, the descriptor, the body, and the two actions. Separated by
-   a hairline like the sections around it, not a raised box. */
-.rows > * {
-  border-bottom: 1px solid var(--rule);
-  padding: 12px 0;
-}
-.tool-card p {
-  margin: 0;
-  max-width: none;
-}
-.tool-card .tool-name {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.tool-card .tool-name a {
-  color: var(--ink);
-  font-weight: 500;
-}
-.tool-card .descriptor {
+/* A section label between the hero and each grid. */
+h2.section {
+  font-size: var(--t-4);
   color: var(--ink-2);
-  margin-top: 2px;
+  margin: 28px 0 10px;
 }
-.tool-card .tool-desc {
-  color: var(--ink-2);
-  margin-top: 6px;
+
+/* The grids: one column, two from the second tool on (and always for How these work). */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
 }
-.tool-card .tool-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 10px;
+.grid.two {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
-/* The Preview pill: a quiet chip beside the name, at the shared 4px radius. */
-.pill {
-  font-size: var(--t-2);
-  color: var(--ink-2);
+
+/* The card: one raised box per tool, per How, and for About. */
+.card {
+  background: var(--bg-raised);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
-  padding: 0 8px;
-  line-height: 1.5;
+  padding: 18px 20px;
+  min-width: 0;
+}
+.card h3 {
+  font-size: var(--t-5);
+  font-weight: 500;
+  line-height: 1.2;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.card.small h3 {
+  font-size: var(--t-4);
+}
+.card p {
+  color: var(--ink-2);
+  margin: 6px 0 0;
+  max-width: none;
+}
+.card.small p {
+  margin-top: 4px;
+}
+/* The status pill beside the name. */
+.pill {
+  font-family: var(--font-sans);
+  font-size: var(--t-1);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-tint);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+}
+.card .tag {
+  color: var(--ink-2);
+  margin: 2px 0 10px;
+}
+/* Reads / Compares / Writes. */
+.card .beats {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: none;
+}
+.card .beats li {
+  margin: 0;
+  padding: 3px 0;
+  color: var(--ink-2);
+}
+.card .beats b {
+  color: var(--ink);
+  font-weight: 500;
+  display: inline-block;
+  width: 76px;
+}
+/* What it catches: closed until opened. */
+.card details.catches {
+  margin-top: 10px;
+}
+.card details.catches summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: var(--t-2);
+  list-style: none;
+}
+.card details.catches summary::-webkit-details-marker {
+  display: none;
+}
+.card .catch {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  max-width: none;
+}
+.card .catch li {
+  margin: 0;
+  padding: 2px 0;
+}
+.card .actions {
+  margin: 14px 0 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.card .meta {
+  margin-top: 12px;
+  font-size: var(--t-1);
+  color: var(--ink-3);
+}
+.card .meta a {
+  color: var(--ink-3);
+}
+.lnk {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-/* Status: a 7px dot in the status colour, then the word. The only place --ok, --wait and --idle are used. */
-.status {
+/* The three button weights the app uses (src/ui/app.css): primary filled accent, secondary outlined accent, tertiary muted. */
+.btn {
+  font: inherit;
+  font-family: var(--font-sans);
+  font-size: var(--t-3);
+  font-weight: 500;
+  line-height: 1;
+  height: var(--control);
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: var(--t-2);
-  color: var(--ink-2);
+  text-decoration: none;
   white-space: nowrap;
 }
-.status::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--idle);
-  flex: none;
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
-.status.status-ok::before {
-  background: var(--ok);
+.btn-primary:hover,
+.btn-primary:active,
+.btn-primary:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
 }
-.status.status-wait::before {
-  background: var(--wait);
+.btn-secondary {
+  color: var(--accent);
+  background: transparent;
+  border-color: var(--accent);
 }
-.status.status-idle::before {
-  background: var(--idle);
+.btn-secondary:hover,
+.btn-secondary:active {
+  color: var(--accent);
+  background: var(--accent-tint);
+}
+.btn-tertiary {
+  color: var(--ink-2);
+  background: var(--bg-inset);
+  border-color: var(--rule-strong);
+}
+.btn-tertiary:hover,
+.btn-tertiary:active {
+  color: var(--ink);
 }
 
-.links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-/* The footer the planner uses. */
+/* The footer the planner uses (AppShell's Footer). */
 footer.app {
   width: 100%;
   max-width: calc(var(--table) + 2 * var(--pad));
   margin: 0 auto;
   padding: 16px var(--pad) 32px;
   color: var(--ink-2);
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
@@ -225,12 +320,6 @@ footer.app {
 }
 footer.app a {
   color: var(--ink-2);
-}
-footer.app .footer-links {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  row-gap: 4px;
 }
 
 @media (max-width: 700px) {
@@ -240,34 +329,12 @@ footer.app .footer-links {
     gap: 8px 16px;
     padding: 8px var(--pad);
   }
-  .tool-row {
+  .grid.two {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .tool-row .status {
-    grid-column: 1;
-    grid-row: auto;
-    margin-top: 6px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none;
   }
-}
-
-/* Built for and What it catches, moved here from Connect (docs/design/connect-mockup.html). */
-.tool-card .tool-sub {
-  margin-top: 10px;
-  font-size: var(--t-2);
-  font-weight: 500;
-  color: var(--ink);
-}
-.tool-card .tool-list {
-  margin: 4px 0 0;
-  padding-left: 18px;
-  color: var(--ink-2);
-  max-width: none;
-}
-.tool-card .tool-list li {
-  margin: 2px 0;
 }
