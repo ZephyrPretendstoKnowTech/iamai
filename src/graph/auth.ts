@@ -20,6 +20,11 @@ export async function signIn(): Promise<void> {
   return (await lib()).signIn()
 }
 
+/** A Graph token (see msal.ts): Connect reads its roles before the first Graph call. */
+export async function getGraphToken(mode: 'redirect' | 'popup' | 'silent' = 'redirect'): Promise<string> {
+  return (await lib()).getGraphToken(mode)
+}
+
 /** The account picker, for a role the signed-in account lacks. */
 export async function signInAnother(): Promise<void> {
   return (await lib()).signInAnother()

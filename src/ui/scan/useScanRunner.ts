@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { startScan } from '../../graph/collect/runScan.ts'
 import type { ScanHandle, TokenSource } from '../../graph/collect/runScan.ts'
-import { coreGaps } from '../../graph/collect/coreSections.ts'
+import { coreGaps, unreadSources } from '../../graph/collect/coreSections.ts'
 import type { CoreGap } from '../../graph/collect/coreSections.ts'
 import { RoleGapError } from '../../graph/collect/tokenRoles.ts'
 import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
@@ -23,6 +23,8 @@ export type ScanRunner = {
   error: string | null
   /** The core sections the last scan could not read (coreSections.ts): a scan with gaps is done, and no plan is built or stored from it. */
   gaps: CoreGap[]
+  /** Every section the last scan could not read, for the gaps tile's rows; empty unless the scan ended with gaps. */
+  unread: string[]
   /** The token's roles read none of the core sections: the scan did not start (tokenRoles.ts). */
   roleGap: RoleGap | null
   startedAt: number | null
@@ -53,6 +55,7 @@ export function useScanRunner(
 ): ScanRunner {
   const [state, setState] = useState<ScanState>(frozen ? 'running' : finished ? 'done' : 'idle')
   const [gaps, setGaps] = useState<CoreGap[]>(() => (finished ? coreGaps(finished) : []))
+  const [unread, setUnread] = useState<string[]>(() => (finished ? unreadSources(finished) : []))
   const [roleGap, setRoleGap] = useState<RoleGap | null>(null)
   const handleRef = useRef<ScanHandle | null>(null)
   const stoppedRef = useRef(false)
@@ -82,6 +85,7 @@ export function useScanRunner(
     setSections({})
     setError(null)
     setGaps([])
+    setUnread([])
     setRoleGap(null)
     setLaneB(null)
     setSlow(false)
@@ -115,6 +119,7 @@ export function useScanRunner(
       // its record stay as they were.
       const found = coreGaps(result)
       setGaps(found)
+      setUnread(found.length > 0 ? unreadSources(result) : [])
       setState('done')
       if (found.length === 0) onComplete(result, new Date().toISOString())
     } catch (e) {
@@ -149,22 +154,5 @@ export function useScanRunner(
     })
   }
 
-  return { state, sections, laneB, slow, error, gaps, roleGap, startedAt, nowTick, start, stop, signInAgain }
-}
-
-/**
- * Sections Microsoft Graph refused for the signed-in account, from the live
- * scan events and from the saved scan, so the advice is there on the walk
- * back as well as while the scan runs.
- */
-export function deniedSources(sections: Record<string, SectionRow>, snapshot: TenantSnapshot | null, isDenial: (reason: string | null | undefined) => boolean): { denied: string[]; all: boolean } {
-  const live = Object.values(sections)
-  const settled = live.filter((s) => s.status !== 'started')
-  const bySource = new Map<string, string>()
-  for (const s of live) if (isDenial(s.reason)) bySource.set(s.source, s.reason as string)
-  for (const [key, v] of Object.entries(snapshot?.sources ?? {})) if (isDenial(v?.reason)) bySource.set(key, v.reason as string)
-  for (const [key, v] of Object.entries(snapshot?.config ?? {})) if (isDenial(v?.reason)) bySource.set(`config:${key}`, v?.reason as string)
-  const denied = [...bySource.keys()]
-  const known = settled.length > 0 ? settled.length : Object.keys(snapshot?.sources ?? {}).length + Object.keys(snapshot?.config ?? {}).length
-  return { denied, all: denied.length > 0 && known > 0 && denied.length === known }
+  return { state, sections, laneB, slow, error, gaps, unread, roleGap, startedAt, nowTick, start, stop, signInAgain }
 }

@@ -567,23 +567,65 @@ export function renderPages(): string {
       '</details>' +
       `<div class="tip">${esc(o.tip)}<span class="q">?</span></div>`,
   )
-  const cn = P.connectNoScan
+  const cx = P.connect
+  const tileHtml = (n: number, title: string, state: string, body: string): string => `<section class="step-tile"><span class="n">${n}</span><h2>${esc(title)} <span class="state">${esc(state)}</span></h2>${body}</section>`
+  const acts = (...labels: string[]): string => `<p class="actions">${labels.map((l) => btn(l)).join(' ')}</p>`
+  const li = (...html: string[]): string => `<ul>${html.map((h) => `<li>${h}</li>`).join('')}</ul>`
+  const sub = (...html: string[]): string => `<p class="sub">${html.join(' ')}</p>`
   sec(
-    'Connect (signed in, no scan)',
-    `<h2 class="h1">${esc(cn.h1)}</h2>` +
-      p(cn.signedIn, exT) +
-      p(cn.baselineLine, exT) +
-      p(cn.baselineWhat, exT) +
-      p(cn.baselineGoal, exT) +
-      p(cn.baselineHow, exT) +
-      btn(cn.scanButton, true) +
-      p(cn.scanNote, {}) +
-      p(cn.baselineUpdated, { date: 'Aug 28, 2026', n: 3 }) +
-      p("Note: the line above renders only when the author's repository is ahead of the pinned version.", {}, 'annot') +
-      `<p class="sub">While scanning: <span class="progress">${fill(cn.scanning, { lane: 'Reading sign-in records', done: 3, total: 8 })}</span> ${btn(cn.stop)}</p>`,
+    'Connect (signed in): the four tiles',
+    `<h2 class="h1">${esc(cx.h1)}</h2>` +
+      tileHtml(1, cx.account.title, exT.tenant, p(cx.account.line, { upn: exT.upn, role: 'Global Administrator' }) + p(cx.account.note, {}, 'sub') + acts(cx.account.signInAnother, cx.account.signOut)) +
+      tileHtml(
+        2,
+        cx.baseline.title,
+        fill(cx.baseline.state, exT),
+        p(cx.baseline.what, {}) +
+          p(cx.baseline.goal, {}) +
+          `<details open><summary>${fill(cx.baseline.updated, { date: 'Sep 3, 2026', n: 3 })}</summary>` +
+          li(
+            `${esc(cx.baseline.diff.added)} · IAC - INTUNE - GRANT - Device Registration · ${fill(cx.baseline.diffStep, { step: 'Require MFA to Register a Device' })}`,
+            `${esc(cx.baseline.diff.removed)} · IAC - OLD - BLOCK · ${esc(cx.baseline.diffNoStep)}`,
+            `${esc(cx.baseline.diff.changed)} · IAC - GLOBAL - GRANT - MFA - AllAdmins · ${fill(cx.baseline.diffStep, { step: 'Require Phishing-Resistant MFA for Admins' })}`,
+          ) +
+          '</details>' +
+          sub(fill(cx.baseline.loading, { source: exT.baselineName }), '·', esc(cx.baseline.none)) +
+          acts(cx.baseline.change) +
+          sub(btn(cx.baseline.howToMakeOne)),
+      ) +
+      tileHtml(
+        3,
+        cx.next.title,
+        '',
+        li(`<b>${esc(cx.next.reads)}</b> ${fill(cx.next.readsLine, exT)}`, `<b>${esc(cx.next.compares)}</b> ${fill(cx.next.comparesLine, exT)}`, `<b>${esc(cx.next.writes)}</b> ${esc(cx.next.writesLine)}`) +
+          p(cx.next.readOnly, {}, 'sub') +
+          `<details open><summary>${esc(cx.next.limitsSummary)}</summary>` +
+          ul(cx.next.limits, {}) +
+          sub(esc(cx.next.limitsMore), `<a>${esc(cx.next.limitsLink)}</a>`) +
+          '</details>',
+      ) +
+      tileHtml(
+        4,
+        cx.scan.title,
+        fill(cx.scan.complete.state, { age: '2 minutes ago' }),
+        li(`<b>${exT.people}</b> ${esc(cx.scan.complete.people)}`, `<b>${exT.policies}</b> ${esc(cx.scan.complete.policies)}`, `<b>${fill(cx.scan.complete.window, exT)}</b> ${esc(cx.scan.complete.signIns)}`, `<b>${esc(cx.scan.complete.licences.p2)}</b> ${esc(cx.scan.complete.licence)}`) +
+          sub(esc(cx.scan.complete.notRead), esc(cx.scan.complete.signIns), '·', esc(cx.scan.complete.licences.p1), '·', esc(cx.scan.complete.licences.free)) +
+          acts(cx.scan.complete.open, cx.scan.complete.again),
+      ) +
+      tileHtml(
+        4,
+        cx.scan.title,
+        cx.scan.gaps.state,
+        p(cx.scan.gaps.lead, { n: 3 }) +
+          p(cx.scan.gaps.leadFirst, { n: 3 }, 'sub') +
+          li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Named locations · ${esc(cx.scan.gaps.notRead)}`) +
+          sub(fill(cx.scan.gaps.ask, { role: 'Global Reader' }), `<a>${esc(cx.scan.gaps.learn.label)}</a>`) +
+          acts(cx.account.signInAnother, cx.scan.complete.again, fill(cx.scan.gaps.openLast, { date: 'Sep 2' })),
+      ) +
+      tileHtml(4, cx.scan.title, cx.scan.role.state, p(cx.scan.role.lead, { upn: exT.upn, sections: 'Conditional Access policies, people and sign-in records' }) + li(`${esc(cx.scan.role.row)} · ${fill(cx.scan.role.ask, { role: 'Global Reader' })}`) + acts(cx.account.signInAnother)) +
+      tileHtml(4, cx.scan.title, cx.scan.ready.state, p(cx.scan.ready.note, {}) + acts(cx.scan.ready.start)) +
+      tileHtml(4, cx.scan.title, fill(cx.scan.scanning.state, { lane: 'reading sign-in records', elapsed: '8s' }), acts(cx.scan.scanning.stop)),
   )
-  const t = P.tenant
-  sec('Connect (scanned)', `<h2 class="h1">${esc(t.h1)}</h2>` + p(t.scanLine, { ...exT, signIns: fill(t.signIns, exT) }) + p(t.scanLine, { ...exT, signIns: t.signInsNotRead }, 'sub') + btn(t.open, true) + `<div class="tip">${esc(t.tip)}<span class="q">?</span></div>`)
   const pl = P.plan
   const s = pl.settings
   sec(

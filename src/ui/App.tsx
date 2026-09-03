@@ -5,6 +5,7 @@ import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
 import type { TokenSource } from '../graph/collect/runScan.ts'
+import { GLOBAL_ADMINISTRATOR } from '../graph/collect/tokenRoles.ts'
 import { planIdFor } from '../roadmap/generate.ts'
 import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
 import { Callout, ErrorBoundary } from './components/index.ts'
@@ -158,7 +159,7 @@ export function App() {
       // The dev-only contract walk and failure-path checks run against a
       // calibrated synthetic tenant (test support); the demo (?demo=1) is what
       // loads the demo fixture through the same App snapshot-setting path.
-      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts'), import('../testing/gapsFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }, { gapsSnapshot, noRolesToken }]) => {
+      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts'), import('../testing/gapsFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }, { gapsSnapshot, noRolesToken, tokenWithRoles }]) => {
         const params = new URLSearchParams(window.location.search)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
@@ -184,9 +185,9 @@ export function App() {
           snapshot.signInEvidence = {}
           snapshot.evidenceAggregates = null
         }
-        // ?roles=none: the signed-in token holds the User role and nothing else;
-        // the scan must not start, and Connect names the role to ask for.
-        if (params.get('roles') === 'none') setMockToken(() => async () => noRolesToken())
+        // The mock's token: a Global Administrator, or with ?roles=none the User
+        // role and nothing else, so the scan must not start and Connect says so.
+        setMockToken(() => async () => (params.get('roles') === 'none' ? noRolesToken() : tokenWithRoles([GLOBAL_ADMINISTRATOR])))
         // ?policies=0: a tenant with no Conditional Access policies at all (prompt 31 §4.19).
         if (params.get('policies') === '0') snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [] }
         // ?state=<signedOut|noScan|scanning|scanned>: which state the synthetic

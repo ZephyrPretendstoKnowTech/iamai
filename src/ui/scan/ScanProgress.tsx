@@ -1,16 +1,15 @@
-// What a running scan shows (prompt 47 Part 4, target-state §3): one progress
-// bar with the current lane in plain words, and Stop. The failure paths keep
-// their words: an expired session pauses with Sign in again; a slow sign-in
-// service says so. The section list and the diagnostics bundle are developer
-// tools, under ?dev=1 only.
-import { app, pages } from '../../content/content.ts'
+// What a running scan shows inside Connect's Scan tile (docs/design/connect-mockup.html):
+// the lane in plain words for the tile's state line, one bar, and the failure
+// paths that keep their words: an expired session pauses with Sign in again; a
+// slow sign-in service says so. The section list and the diagnostics bundle are
+// developer tools, under ?dev=1 only.
+import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { lowerFirst } from '../../copy/statements.ts'
 import { ACCESS } from '../../copy/access.ts'
 import { isPrivilegeDenial, rolesForSource } from '../../graph/collect/roles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { elapsedLabel } from '../format.ts'
 import { downloadScanDiagnostics } from '../diagnosticsDownload.ts'
 import { Button, Callout, ProgressBar } from '../components/index.ts'
 import type { ScanRunner } from './useScanRunner.ts'
@@ -24,28 +23,26 @@ const TOTAL_SECTIONS = Object.keys(SCAN.sections).length
 const laneWords = (label: string): string => (/^[A-Z][a-z]+ [A-Z]/.test(label) ? label : lowerFirst(label))
 const readingLine = (labels: string[]): string => (labels.length === 0 ? CONNECT.finishing : fillText(labels.length > 1 ? CONNECT.readingSections : CONNECT.readingSection, { section: laneWords(labels[0]), n: labels.length - 1 }))
 
-export function ScanProgress({ runner }: { runner: ScanRunner }) {
-  const { sections, laneB, startedAt, nowTick } = runner
+/** The lane in plain words ("Reading people", "Reading sign-in records, 3 pages · 120 records", "Finishing up"), and how far along. */
+export function laneOf(runner: ScanRunner): { lane: string; percent: number | null } {
+  const { sections, laneB } = runner
   const list = Object.values(sections).filter((s) => s.source !== 'signInEvidence')
   const finished = list.filter((s) => s.status !== 'started').length
   const total = TOTAL_SECTIONS - 1
   const percent = Math.min(100, Math.round((finished / total) * 100))
   const inProgress = list.filter((s) => s.status === 'started').map((s) => SCAN.sections[s.source] ?? s.source)
   const signIns = sections['signInEvidence']
-  const lane =
-    signIns && signIns.status === 'started' && inProgress.length === 0
-      ? laneB === null
-        ? CONNECT.waitingSignIns
-        : fillText(CONNECT.readingSignIns, { pages: laneB.pages, rows: laneB.rows })
-      : readingLine(inProgress)
-  const elapsed = startedAt !== null ? elapsedLabel(startedAt, nowTick) : null
+  const onSignIns = signIns !== undefined && signIns.status === 'started' && inProgress.length === 0
+  const lane = onSignIns ? (laneB === null ? CONNECT.waitingSignIns : fillText(CONNECT.readingSignIns, { pages: laneB.pages, rows: laneB.rows })) : readingLine(inProgress)
+  return { lane, percent: onSignIns && finished >= total ? null : percent }
+}
+
+/** The bar, and the pause and slow notices; the tile carries the line and Stop. */
+export function ScanBar({ runner }: { runner: ScanRunner }) {
+  const { lane, percent } = laneOf(runner)
   return (
     <>
-      <ProgressBar percent={signIns && signIns.status === 'started' && finished >= total ? null : percent} caption={lane} />
-      <p className="reason">
-        {lane}
-        {elapsed && ` · ${fillText(CONNECT.elapsed, { elapsed })}`}
-      </p>
+      <ProgressBar percent={percent} caption={lane} />
       {runner.state === 'paused' && (
         <Callout kind="warning">
           {CONNECT.paused}{' '}
@@ -55,40 +52,11 @@ export function ScanProgress({ runner }: { runner: ScanRunner }) {
         </Callout>
       )}
       {runner.state === 'running' && runner.slow && <Callout kind="warning">{CONNECT.slow}</Callout>}
-      <p className="actions">
-        <Button variant="secondary" onClick={runner.stop}>
-          {(pages.connectNoScan as { stop: string }).stop}
-        </Button>
-      </p>
     </>
   )
 }
 
-/** Graph refused some sections for the signed-in account: name the role to ask for (pre-share-blockers). */
-export function DeniedSections({ denied, all }: { denied: string[]; all: boolean }) {
-  if (denied.length === 0) return null
-  return (
-    <Callout kind="warning" title={ACCESS.deniedTitle}>
-      <p>{all ? ACCESS.deniedAll : ACCESS.denied(denied.length)}</p>
-      <p>{ACCESS.askFor}</p>
-      <ul className="sections">
-        {denied.map((source) => (
-          <li key={source}>
-            <em>{SCAN.sections[source] ?? source}</em>: {ACCESS.roleFor(rolesForSource(source).least)}
-          </li>
-        ))}
-      </ul>
-      <p>
-        {ACCESS.partial}{' '}
-        <a href={ACCESS.learnUrl} target="_blank" rel="noopener noreferrer">
-          {ACCESS.learnLabel}
-        </a>
-      </p>
-    </Callout>
-  )
-}
-
-/** Developer tools (?dev=1): the section list with timings, and the diagnostics bundle. */
+/** Developer tools (?dev=1): the section list with timings, and the diagnostics bundle. The per-scope role map stays here, for diagnostics. */
 export function ScanDevTools({ tenantId, runner, snapshot }: { tenantId: string; runner: ScanRunner; snapshot: TenantSnapshot | null }) {
   if (!DEV) return null
   const rows = Object.values(runner.sections)
