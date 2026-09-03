@@ -21,7 +21,7 @@ import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { buildNameDirectory } from '../../names.ts'
-import { generateRoadmap } from '../../roadmap/generate.ts'
+import { generateRoadmap, planIdFor } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
 import { reportOnlySeenOf } from '../../roadmap/tracking.ts'
@@ -117,7 +117,7 @@ export function usePlanData(
   operatorId: string | null,
 ): PlanData {
   const snapshot = scan?.snapshot ?? null
-  const planId = snapshot ? `plan-${snapshot.tenantId.slice(0, 8)}` : ''
+  const planId = snapshot ? planIdFor(snapshot.tenantId) : ''
   const [mapping, setMapping] = useState<MappingState | null>(null)
   const [saved, setSaved] = useState<PlanDecisions | null>(null)
   const [loaded, setLoaded] = useState(false)

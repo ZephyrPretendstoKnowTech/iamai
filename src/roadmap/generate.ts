@@ -1250,6 +1250,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   return { steps, schedule, housekeeping: { checksNotRun: checksNotRun(validationReports), staticViolations: violations } }
 }
 
+/** The plan's id for a tenant, the one rule (the page, the export and the demo agree): the policies the plan creates carry it in their tag. */
+export function planIdFor(tenantId: string): string {
+  return `plan-${tenantId.slice(0, 8)}`
+}
+
 export function findTaggedPolicy(snapshot: TenantSnapshot, planId: string, stepId: string): string | null {
   const tag = `[IAMAI:${planId}:${stepId}]`
   for (const raw of snapshot.config.caPolicies?.rows ?? []) {

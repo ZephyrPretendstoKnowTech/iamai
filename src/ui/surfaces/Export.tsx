@@ -17,6 +17,7 @@ import { buildIcs } from '../../roadmap/ics.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
 import { decisionsOf } from '../../roadmap/progress.ts'
 import type { PlanDecisions } from '../../roadmap/progress.ts'
+import { planIdFor } from '../../roadmap/generate.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
 import { savePlanRecord } from '../../graph/collect/cache.ts'
@@ -94,7 +95,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const { steps, schedule, coverage, viability, names } = c
   const nameOf = (id: string): string => names.label(id)
   const tenantName = (snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
-  const planId = `plan-${snapshot.tenantId.slice(0, 8)}`
+  const planId = planIdFor(snapshot.tenantId)
   const operator = { userId: account.localAccountId, userPrincipalName: account.username }
   const rollout = summarizeTenant(viability).rollout
   const copy = (id: string, text: string): void => {
