@@ -714,7 +714,6 @@
       "changeLine": null,
       "why": "Emergency access accounts are how you keep access to {tenant} if a change goes wrong.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
       "who": {
@@ -849,7 +848,6 @@
       "changeLine": null,
       "why": "One group, excluded from every policy in the plan, is the single auditable way back in when a policy goes wrong in {tenant}.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
       "who": {
@@ -947,7 +945,6 @@
       "changeLine": null,
       "why": "Nobody has signed in to these accounts for 90 days, or ever; whoever signs in first registers the MFA method, and that may not be the owner.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/users/users-inactive"
       },
       "who": {
@@ -1007,7 +1004,6 @@
       "changeLine": null,
       "why": "The countries policy blocks sign-ins from everywhere except this list, so the list has to be right before the policy exists.",
       "learn": {
-        "cis": "6.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
       "who": {
@@ -1103,7 +1099,6 @@
       "changeLine": null,
       "why": "Some baseline policies relax inside the network your team usually signs in from, and that network has to be named before they can.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
       },
       "who": {
@@ -1180,7 +1175,6 @@
       "changeLine": null,
       "why": "Service accounts cannot answer an MFA prompt, so the policies that would break them exclude this one group instead of a list nobody maintains.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity"
       },
       "who": {
@@ -1247,7 +1241,6 @@
       "changeLine": null,
       "why": "Teams Rooms, panels and shared phones cannot answer an MFA prompt or a registration request, so a rule written for people signs them out.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/microsoftteams/rooms/conditional-access-and-compliance-for-devices"
       },
       "who": {
@@ -1324,7 +1317,6 @@
       "changeLine": null,
       "why": "Security defaults and Conditional Access cannot both be on, and {tenant} holds the licence for Conditional Access.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "who": {
@@ -1374,7 +1366,6 @@
       "changeLine": null,
       "why": "The old per-user MFA setting prompts on its own terms and can block the recovery sign-in that Conditional Access would allow.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage"
       },
       "who": {
@@ -1423,7 +1414,6 @@
       "changeLine": null,
       "why": "A passkey registered under the wrong settings is refused later by the strength the baseline requires, and has to be rebuilt.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
       },
       "who": {
@@ -1490,7 +1480,6 @@
       "changeLine": null,
       "why": "The baseline's admin, guest, risk and role-activation policies all point at one custom authentication strength; the policy cannot be created until the strength exists.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
       },
       "who": {
@@ -1548,7 +1537,6 @@
       "changeLine": null,
       "why": "Your account makes every change, so the admin policies reach it first; set up your passkey the way the baseline will require, so it never has to be redone.",
       "learn": {
-        "cis": "6.5",
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
       },
       "who": {
@@ -1593,7 +1581,6 @@
       "changeLine": null,
       "why": "Enforcement should change nothing for anyone; that is only true once every active person has a passkey, or at least a method, that has been seen to work.",
       "learn": {
-        "cis": "6.3",
         "url": "https://learn.microsoft.com/entra/identity/authentication/howto-registration-mfa-sspr-combined"
       },
       "who": {
@@ -1715,7 +1702,6 @@
       "changeLine": null,
       "why": "A stolen or guessed password on its own is how most accounts are taken over.",
       "learn": {
-        "cis": "6.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-mfa-strength"
       },
       "who": {
@@ -1805,7 +1791,6 @@
       "changeLine": null,
       "why": "A code or an approval can be tricked out of an admin by a convincing page; a passkey cannot be used on the wrong site.",
       "learn": {
-        "cis": "6.5",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phishing-resistant-mfa"
       },
       "who": {
@@ -1914,7 +1899,6 @@
       "changeLine": null,
       "why": "A standard account has no business in an admin portal; blocking it there removes a whole class of accidental and stolen-password changes.",
       "learn": {
-        "cis": "6.5",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-old-require-mfa-admin"
       },
       "who": {
@@ -2004,7 +1988,6 @@
       "changeLine": null,
       "why": "A partner's password hygiene is not yours to control; the prompt at your door is.",
       "learn": {
-        "cis": "6.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-mfa-strength"
       },
       "who": {
@@ -2124,7 +2107,6 @@
       "changeLine": null,
       "why": "An attacker with a password adds their own method and keeps the account; the baseline allows registration only from the trusted network.",
       "learn": {
-        "cis": "6.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-security-info-registration"
       },
       "who": {
@@ -2214,7 +2196,6 @@
       "changeLine": null,
       "why": "Legacy protocols skip MFA entirely, so they are the door attackers try first.",
       "learn": {
-        "cis": "4.8",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-auth"
       },
       "who": {
@@ -2301,7 +2282,6 @@
       "changeLine": null,
       "why": "Device code sign-in is how a phishing message gets a person to sign the attacker in; almost nothing legitimate needs it.",
       "learn": {
-        "cis": "4.8",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },
       "who": {
@@ -2365,7 +2345,6 @@
       "changeLine": null,
       "why": "Authentication transfer moves a session to a second device without a new sign-in, which is exactly what an attacker with a screenshot wants.",
       "learn": {
-        "cis": "4.8",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },
       "who": {
@@ -2428,7 +2407,6 @@
       "changeLine": null,
       "why": "Most automated attacks come from places the business never operates in, and a password that only works from {countries} is worth much less.",
       "learn": {
-        "cis": "6.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
       "who": {
@@ -2526,7 +2504,6 @@
       "changeLine": null,
       "why": "A stolen admin session is worth as long as it lasts; {wanted} is long enough to work and short enough to limit the damage.",
       "learn": {
-        "cis": "4.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
       "who": {
@@ -2631,7 +2608,6 @@
       "changeLine": null,
       "why": "A copy of a file on a personal laptop cannot be protected or wiped; keeping it in the browser keeps it in your hands.",
       "learn": {
-        "cis": "3.3",
         "url": "https://learn.microsoft.com/sharepoint/control-access-from-unmanaged-devices"
       },
       "who": {
@@ -2721,7 +2697,6 @@
       "changeLine": null,
       "why": "Company data on a device you manage can be protected, updated and wiped; on any other device, outside the office, it cannot.",
       "learn": {
-        "cis": "4.1",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-compliance"
       },
       "who": {
@@ -2819,7 +2794,6 @@
       "changeLine": null,
       "why": "A platform Entra cannot identify is one it cannot check, and that is where the device rules leak.",
       "learn": {
-        "cis": "4.1",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions"
       },
       "who": {
@@ -2887,7 +2861,6 @@
       "changeLine": null,
       "why": "A protected app keeps company data inside the app and can wipe it without touching the phone; any other app can copy it anywhere.",
       "learn": {
-        "cis": "4.1",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-approved-app-or-app-protection"
       },
       "who": {
@@ -2966,7 +2939,6 @@
       "changeLine": null,
       "why": "Azure management is where a leaked password becomes a deleted resource group or a new admin.",
       "learn": {
-        "cis": "6.5",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-old-require-mfa-azure-mgmt"
       },
       "who": {
@@ -3031,7 +3003,6 @@
       "changeLine": null,
       "why": "A device an attacker registers with a stolen password becomes a trusted device; MFA at registration stops that.",
       "learn": {
-        "cis": "6.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-registration"
       },
       "who": {
@@ -3094,7 +3065,6 @@
       "changeLine": null,
       "why": "A stolen token copied to another machine is useless once it is bound to the original device.",
       "learn": {
-        "cis": "4.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-token-protection"
       },
       "who": {
@@ -3175,7 +3145,6 @@
       "changeLine": null,
       "why": "The sync service principal's secret works from anywhere unless it is tied to the server that uses it.",
       "learn": {
-        "cis": "5.4",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity"
       },
       "who": {
@@ -3239,7 +3208,6 @@
       "changeLine": null,
       "why": "A browser left signed in on a shared or personal machine is a signed-in attacker later; on a device you do not manage, every app is.",
       "learn": {
-        "cis": "4.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
       "who": {
@@ -3337,7 +3305,6 @@
       "changeLine": null,
       "why": "Role activation is the moment an account becomes powerful; a fresh prompt there is cheap and stops a hijacked session activating anything.",
       "learn": {
-        "cis": "5.4",
         "url": "https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings"
       },
       "who": {
@@ -3413,7 +3380,6 @@
       "changeLine": null,
       "why": "Enrollment makes a device trusted; it should never ride on a session someone else could be holding, so it asks for a fresh sign-in every time.",
       "learn": {
-        "cis": "4.1",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-session-lifetime"
       },
       "who": {
@@ -3475,7 +3441,6 @@
       "changeLine": null,
       "why": "Microsoft sees leaked-credential lists and impossible travel before you do; this lets that signal act.",
       "learn": {
-        "cis": "13.1",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
       "who": {
@@ -3545,7 +3510,6 @@
       "changeLine": null,
       "why": "A high-risk user is one whose password has probably leaked; a forced change closes it without waiting for a ticket.",
       "learn": {
-        "cis": "13.1",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
       "who": {
@@ -3615,7 +3579,6 @@
       "changeLine": null,
       "why": "Medium risk is where most real attacks land: a new country, a new device, a password that appears on a list.",
       "learn": {
-        "cis": "6.3",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
       "who": {
@@ -3678,7 +3641,6 @@
       "changeLine": null,
       "why": "Waiting for a risk to become high is waiting for the attacker to succeed.",
       "learn": {
-        "cis": "5.2",
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
       "who": {
