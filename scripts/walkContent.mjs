@@ -13,6 +13,11 @@
 import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
+const MONTH = '(January|February|March|April|May|June|July|August|September|October|November|December)'
+// A hard date: a month name with a day or a year beside it, or a bare year. A
+// variable ({enforceLong}) is not one; the example blocks are not content.
+const HARD_DATE = new RegExp(`\\b${MONTH}\\s+\\d{1,2}(,\\s*\\d{4})?\\b|\\b${MONTH}\\s+(19|20)\\d{2}\\b|\\b(19|20)\\d{2}\\b`)
+
 /** Every string under a node, with its path; `example` blocks and comments are skipped. */
 export function strings(node, path = '', out = []) {
   if (typeof node === 'string') out.push([path, node])
@@ -74,6 +79,13 @@ export function contentFindings(content, pinned = null) {
   // C2: every step and every Cleanup row has a Learn link.
   for (const s of steps) if (!s.learn?.url) add('P0', `content ${s.id}: no Learn link (C2)`)
   for (const [k, c] of Object.entries(cleanup)) if (!c.learn?.url) add('P0', `content cleanup.${k}: no Learn link (C2)`)
+
+  // C3: no hard date and no preview claim in content that is not a variable.
+  for (const [path, s] of strings({ steps, cleanup, shared: content.shared, pages: content.pages, phases: content.phases })) {
+    const m = HARD_DATE.exec(s)
+    if (m) add('P0', `content ${path}: a hard date "${m[0]}" (C3: no date that is not a variable)`)
+    if (/\bpreview\b/i.test(s) && s !== 'Preview') add('P0', `content ${path}: a preview claim "${s.slice(0, 60)}" (C3)`)
+  }
 
   // The per-item acceptance table.
   for (const a of ACCEPTANCE) {
