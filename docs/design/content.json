@@ -1645,7 +1645,6 @@
       "changeLine": null,
       "why": "A device policy can only ask for what the business has decided: a phone that is enrolled, an app that keeps the data, or no company data on phones; and computers that are enrolled, domain-joined, or not managed.",
       "learn": {
-        "cis": "4.1",
         "url": "https://learn.microsoft.com/mem/intune/fundamentals/deployment-guide-enrollment"
       },
       "who": {
@@ -1730,7 +1729,6 @@
       "changeLine": null,
       "why": "Somebody who travels signs in from outside the allowed countries, and the countries policy blocks that sign-in unless the trip was arranged first.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
       "who": {
@@ -1779,7 +1777,6 @@
       "changeLine": null,
       "why": "An IT partner administers this tenant through delegated access; a policy aimed at external users cuts them off unless the Service provider type is excluded.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/partner-center/customers/gdap-introduction"
       },
       "who": {
@@ -1825,7 +1822,6 @@
       "changeLine": null,
       "why": "A printer or application that sends mail by SMTP AUTH stops when legacy authentication is blocked; the service-accounts group carries it until a relay replaces the password.",
       "learn": {
-        "cis": null,
         "url": "https://learn.microsoft.com/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365"
       },
       "who": {
