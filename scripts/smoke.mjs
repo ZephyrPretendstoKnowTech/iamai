@@ -350,7 +350,7 @@ try {
   await go('plan')
   await waitFor(`/\\bsteps\\b/.test(document.body.innerText)`)
   t = await evaluate(`document.querySelector('header.app').innerText`)
-  check('Header: the tenant name, both tabs and the controls', /Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && !/Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: the three tabs and the controls, no tenant tab (the tenant is on Connect)', !/Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Export/.test(t) && !/Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
   check('Header: Scan to update the plan carries the scan age', /Scan to update the plan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
@@ -501,7 +501,7 @@ try {
   const demoDay1Header = (demoText.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
   check('Demo: the banner says nothing is from a real tenant and offers to leave', /Sample data . nothing here is from a real tenant/.test(demoText) && /Leave the demo/.test(demoText))
   check('Demo: the plan header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |nothing is dated)/.test(demoText), demoDay1Header)
-  check('Demo: the header names the sample org', /Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)))
+  check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // Item 4: a readiness-held step renders as a Blocked row whose date column
   // reads the reason in the 46 shape, not a date.
   const whenCols = await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => e.textContent.trim()).join(' | ')`)

@@ -527,7 +527,7 @@ async function walkFixture(fx) {
           const badge = { complete: 'done', gaps: 'wait', role: 'stop' }[want]
           if (badge && !new RegExp('\\b' + badge + '\\b').test(t4.cls)) add('P0', `${label}: tile 4's number badge does not carry the ${want} state colour (class ${badge}); it has "${t4.cls}"`)
           if (!badge && /\b(done|wait|stop)\b/.test(t4.cls)) add('P0', `${label}: tile 4 in the ${want} state carries a state colour (${t4.cls})`)
-          const OTHER = { complete: [/\bpeople\b/, /^Open the plan →$/], gaps: [/no plan built/, /^Open the last full plan/], role: [/holds none of the roles that read/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/About ten minutes/, /^Scan tenant$/] }
+          const OTHER = { complete: [/\d+ people/, /^Open the plan →$/], gaps: [/no plan built/, /^Open the last full plan/], role: [/holds none of the roles that read/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/About ten minutes/, /^Scan tenant$/] }
           for (const [k, res] of Object.entries(OTHER)) {
             if (k === want) continue
             for (const re of res) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 in the ${want} state carries the ${k} state's ${re}`)

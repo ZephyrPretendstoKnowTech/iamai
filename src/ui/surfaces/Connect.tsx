@@ -187,7 +187,12 @@ function Tile({ n, title, state, tone, stateTone, children }: { n: number; title
       <span className="n">{n}</span>
       <h2>
         {title}
-        {state && <span className={`state${stateTone ? ` ${stateTone}` : ''}`}>{state}</span>}
+        {state && (
+          <>
+            {' '}
+            <span className={`state${stateTone ? ` ${stateTone}` : ''}`}>{state}</span>
+          </>
+        )}
       </h2>
       {children}
     </section>
@@ -526,8 +531,8 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked }: { baseline
         <details>
           <summary>{t2.update.summary}</summary>
           <ul className="diff">
-            {t2.update.rows.map((r) => (
-              <li key={r.policy}>
+            {t2.update.rows.map((r, i) => (
+              <li key={`${i}-${r.policy}`}>
                 <span className="tag">{r.tag}</span>
                 <span>{r.policy}</span>
                 <span className="steps">{r.step}</span>
@@ -536,9 +541,10 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked }: { baseline
           </ul>
         </details>
       )}
-      {!locked && !busy && (
+      {!busy && (
         <div className="actions">
-          <Button variant="secondary" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          {/* Held while a scan runs: the baseline it reads against must not change under it. */}
+          <Button variant="secondary" aria-expanded={open} disabled={locked} onClick={() => setOpen((o) => !o)}>
             {t2.actions[0].label}
           </Button>
         </div>
