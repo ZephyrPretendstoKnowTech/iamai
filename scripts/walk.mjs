@@ -56,6 +56,8 @@ const ABSENT_TITLES = new Set(contentSteps.filter((s) => ABSENT_STEP_IDS.has(s.i
 const CATALOGUE_TITLES = new Map(goalsData.goals.map((g) => [g.id, g.name]))
 const ABSENT_GOAL_NAMES = new Set([...ABSENT_STEP_IDS].flatMap((id) => (CATALOGUE_TITLES.has(id) ? [CATALOGUE_TITLES.get(id)] : [])))
 const FORBIDDEN_PHRASES = ['an account IAMAI could not name', 'an unnamed account', '168h', 'undefined', '[object Object]', 'NaN']
+// The steps an answered question adds to the plan (generate.ts carve-outs): each has a content entry.
+const CARVE_OUT_IDS = ['s-question-travel', 's-question-partner', 's-question-mail-devices']
 
 const CANDIDATES = [
   process.env.CHROME,
@@ -372,6 +374,9 @@ async function walkFixture(fx) {
   let rowTitles = []
   let rowStatuses = []
   let rowWhens = []
+  let rowReasons = []
+  let rowTitlesAfter = []
+  let rowReasonsAfter = []
   let exclusionBody = null
   for (const width of WIDTHS) {
     await setWidth(width)
@@ -410,6 +415,7 @@ async function walkFixture(fx) {
       rowTitles = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
       rowStatuses = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.status') || {}).textContent || '').trim())`)
       rowWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.when') || {}).textContent || '').trim())`)
+      rowReasons = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim())`)
       const inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
       for (let i = 0; i < n; i++) {
         if (inFooter[i]) continue
@@ -454,6 +460,57 @@ async function walkFixture(fx) {
         const outsideEmail = emailText ? bodyText.replace(emailText, '') : bodyText
         checkText(slabel, outsideEmail)
         checkText(`${slabel} (email)`, emailText, { emails: true })
+        // Answers apply (E1) and the device decision (E2), on the demo. Week two
+        // carries the sample technician's stored answers (fixtures/index.ts
+        // decisions): New Zealand added to the allowed list, service providers
+        // excluded on the guests and countries policies, the reception printer
+        // in the service-accounts group; each question's effect line shows once
+        // it is true, and never before. The device decision is made here, through
+        // the step's own controls, so the rows before and after it are compared.
+        if (fx.name.startsWith('demo')) {
+          const week2 = fx.week2 === true
+          if (/Allowed Countries Location/.test(title)) {
+            if (week2 && !/New Zealand/.test(bodyText)) add('P0', `${slabel}: the travellers answer (Regularly: add: NZ) did not put New Zealand on the allowed list`)
+            if (week2 && !/on the allowed list now/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line is missing although its answer applied`)
+            if (!week2 && /on the allowed list now/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line shows before any answer`)
+          }
+          if (/^Require MFA for Guests$/.test(title) || /Countries Not Allowed/.test(title)) {
+            if (week2 && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the policy's What to do`)
+            if (week2 && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the service-provider exclusion is not shown beside the baseline's version`)
+            if (!week2 && /the baseline's version/.test(bodyText)) add('P0', `${slabel}: a deviation from the baseline shows before any answer`)
+          }
+          if (/^Block Legacy Authentication$/.test(title)) {
+            if (week2 && !/in the service-accounts group now/.test(bodyText)) add('P0', `${slabel}: the mail-sending devices answer's effect line is missing (the printer is in the service-accounts group)`)
+            if (!week2 && /in the service-accounts group now/.test(bodyText)) add('P0', `${slabel}: the mail-sending devices effect line shows before any answer`)
+          }
+          if (/Service Accounts Group/.test(title)) {
+            if (week2 && !/MFP Reception/.test(bodyText)) add('P0', `${slabel}: the mail-sending printer named on the legacy block is not in the service-accounts group's list`)
+            if (!week2 && /MFP Reception/.test(bodyText)) add('P0', `${slabel}: the printer is a service account before anyone named it`)
+          }
+          if (/Decide How Devices Are Managed/.test(title)) {
+            if (!/phones are out of/i.test(bodyText)) add('P0', `${slabel}: the step does not say the decision is open (phones out until decided)`)
+            if (/Phones leave the compliant-device policy/.test(bodyText)) add('P0', `${slabel}: the phones answer's effect line shows before any answer`)
+            if (week2) {
+              // Decide here: phones protected by their apps, computers hybrid-joined.
+              const a = await clickText('label', /^Protect the apps only$/, 'main.page .step-body')
+              const b = await clickText('label', /^Hybrid-joined is enough$/, 'main.page .step-body')
+              const c = a && b ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
+              if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
+              const applied = c ? await waitFor(`/Phones leave the compliant-device policy/.test((document.querySelector('main.page .step-body') || {}).innerText || '')`, 8000) : false
+              if (c && !applied) add('P0', `${slabel}: the phones answer's effect line does not show after Save`)
+            }
+          }
+          if (/Require a Managed Device for Office 365/.test(title)) {
+            if (week2 && !/Device platforms → Include: Any device; Exclude: Android, iOS/.test(bodyText)) add('P0', `${slabel}: the device decision (phones protected by their apps) did not scope phones out of the compliant-device policy`)
+            if (week2 && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the platform deviation is not shown beside the baseline's version`)
+            if (!week2 && /Device platforms/.test(bodyText)) add('P0', `${slabel}: a platform condition shows before the device decision`)
+          }
+          if (/MFA Registration Campaign/.test(title)) {
+            if (week2 && !/· phone: /.test(bodyText)) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
+            if (week2 && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
+            if (!week2 && /· phone: /.test(bodyText)) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
+          }
+        }
         // A step body's counts are its own population (one population per step), checked against its row above.
         collect(bodyText, { population: false })
         const sc = contractById['plan.step']
@@ -495,6 +552,9 @@ async function walkFixture(fx) {
       await ensureWeek2()
       await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
       await sleep(200)
+      // The rows as they stand after every step was opened (and, on week two, after the device decision was made on its step).
+      rowTitlesAfter = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
+      rowReasonsAfter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim())`)
       const fc = contractById['plan.footer']
       const fd = await evaluate(extractIn(`document.querySelector('main.page .plan-footer')`, ''))
       if (fd) {
@@ -524,6 +584,30 @@ async function walkFixture(fx) {
     if (!fx.week2 && !reportOnly.some((w) => /^ready \S.*\d{4}$/.test(w))) add('P0', `${fx.name}: no Report-only row reads ready <date> on week one`)
     if (fx.week2 && !reportOnly.includes('ready now')) add('P0', `${fx.name}: no Report-only row reads ready now in week two (the token protection policy's records are clean and complete)`)
     if (fx.week2 && !rowStatuses.includes('Enforced')) add('P0', `${fx.name}: no row reads Enforced in week two (the tenant turned the admins policy on)`)
+  }
+  // The device decision (E2): a Preparation row on the demo (phones and unjoined
+  // computers sign in; the tenant holds Intune). While it is open, the
+  // compliant-device and Intune-enrolment steps wait on it and nothing else does;
+  // once made on its step (week two, above), nothing waits on it. Answers apply
+  // (E1): each answered question's step is on the plan on week two and not before.
+  if (fx.name.startsWith('demo')) {
+    if (!rowTitles.some((t) => /Decide How Devices Are Managed/.test(t))) add('P0', `${fx.name}: no Preparation row decides how devices are managed, although phones and unjoined computers sign in and the tenant holds Intune`)
+    const reasonsOf = (titles, reasons, re) => titles.map((t, i) => (re.test(t) ? reasons[i] || '' : null)).filter((r) => r !== null)
+    const DEVICE_STEPS = [/Require a Managed Device/, /Intune Enrollment/]
+    for (const [i, t] of rowTitles.entries()) if (/Decide How Devices Are Managed/.test(rowReasons[i] || '') && !DEVICE_STEPS.some((re) => re.test(t)) && !/App Protection/.test(t)) add('P0', `${fx.name}: "${t}" waits on the device decision; only the device steps do`)
+    if (fx.week2) {
+      // The foundations are done on week two, so the wait on the decision is the binding reason a row shows.
+      for (const re of DEVICE_STEPS) {
+        if (!reasonsOf(rowTitles, rowReasons, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
+        if (reasonsOf(rowTitlesAfter, rowReasonsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
+      }
+    }
+    for (const id of CARVE_OUT_IDS) {
+      const t = contentSteps.find((s) => s.id === id)?.title
+      if (!t) add('P0', `content.json has no step ${id}: an answered question's step has no words`)
+      else if (fx.week2 && !rowTitles.includes(t)) add('P0', `${fx.name}: the answered question's step "${t}" is not on the plan`)
+      else if (!fx.week2 && rowTitles.includes(t)) add('P0', `${fx.name}: "${t}" is on the plan before its question was answered`)
+    }
   }
   return summary
 }

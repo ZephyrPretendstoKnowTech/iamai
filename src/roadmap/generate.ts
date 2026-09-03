@@ -203,6 +203,8 @@ export const PREREQ_STEP_ID = {
   trustedLocation: 's-prereq-trusted-location',
   allowedCountries: 's-prereq-allowed-countries',
   serviceAccountsGroup: 's-prereq-service-accounts-group',
+  /** The device decision (E2): how phones and computers are managed, before any device policy is offered. */
+  devicePlan: 's-prereq-device-plan',
 } as const
 
 /**

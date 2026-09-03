@@ -103,6 +103,9 @@ export function scenarioRows(name: string, ids: string[], svcIds: string[]): Sto
       row({ userId: u(11), authenticationDetails: [{ succeeded: true, authenticationMethod: 'Windows Hello for Business' }] }),
       // 17 — an empty-platform mobile sign-in.
       row({ userId: u(12), os: '', appDisplayName: 'Outlook Mobile' }),
+      // Phones (E2): two people read work mail on a phone, so the device decision is asked.
+      row({ userId: u(14), os: 'iOS', appDisplayName: 'Outlook Mobile', trustType: 'none', isCompliant: false, isManaged: false }),
+      row({ userId: u(15), os: 'Android', appDisplayName: 'Microsoft Teams', trustType: 'none', isCompliant: false, isManaged: false }),
       // 3 — a technician tool from a non-compliant device (Intune tenant).
       row({ userId: u(0), appId: '14d82eec-204b-4c2f-b7e8-296a70dab67e', appDisplayName: 'Microsoft Graph Command Line Tools', isCompliant: false, isManaged: false, trustType: 'none' }),
       // 16 — a server sign-in.
