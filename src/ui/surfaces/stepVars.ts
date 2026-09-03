@@ -25,7 +25,10 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
 import { initialDomain } from '../../validation/rules.ts'
-import { EXIT_MIN_DAYS_OBSERVED } from '../../roadmap/constants.ts'
+import { observationDaysFor } from '../../roadmap/schedule.ts'
+import { readyWhen } from '../../derive/readyWhen.ts'
+import { engine } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -95,7 +98,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     announce: short(announce?.at),
     // A policy already in report-only has its date from the scan (tracking), not
     // from the schedule, which only dates the policies the plan creates.
-    reportOnly: short(ctx.reportOnlyAt ?? step.tracking?.reportOnlyAt),
+    reportOnly: short(step.tracking?.reportOnlyAt ?? ctx.reportOnlyAt),
     // The proposed policy name, in the tenant's convention.
     policyName: step.naming?.proposed,
     proposedName: step.naming?.proposed,
@@ -108,13 +111,25 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     n: view.active,
     // The step's readiness, as the percentage the content line names.
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
-    // The report-only observation window a policy done-when line names.
-    reportOnlyDays: EXIT_MIN_DAYS_OBSERVED,
+    // The report-only observation window a policy done-when line names: this
+    // step's own (three days where the evidence shows nobody affected).
+    reportOnlyDays: observationDaysFor(step),
     // The start of the sign-in window the scan read ("since {from}"): the
     // evidence window's start, on every step that names it.
     from: short(ctx.snapshot.sources.signInEvidence?.coveredWindow?.from),
     // The allowed countries, by name, for the countries policy's why and its lines.
     countries: ctx.mapping.allowedCountries.length > 0 ? list(ctx.mapping.allowedCountries.map(countryName)) : undefined,
+  }
+
+  // A policy already in report-only: the two gates with today's numbers, for
+  // the tracked done-when lines (shared.policyDoneWhenTracked). The row's date
+  // column reads the same readyWhen, so the two can never disagree.
+  const ready = readyWhen(step)
+  if (ready) {
+    const TRACK = engine.tracking
+    v.readyOn = absoluteDate(ready.date)
+    v.timeGate = fillText(ready.kind === 'on' ? TRACK.readyOn : TRACK.readySince, { date: absoluteDate(ready.date) })
+    v.evidenceGate = ready.kind === 'now' ? fillText(TRACK.readyNow, { n: ready.days }) : fillText(TRACK.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days })
   }
 
   // A campaign has no enforcement date of its own; its enrol-by and the first

@@ -102,7 +102,7 @@ export function blockerSteps(reports: SubjectReport[]): Step[] {
       unblockNotes: [],
       population: { total: 0, active: 0, admins: 0, guests: 0, ids: [] },
       readiness: { family: 'other', percent: null, lines: [] },
-      evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
+      evidence: { status: 'none', lines: [], affectedUserIds: [] },
       action: { kind: 'check', summary: actions, json: null, portalSteps: actions },
       checks: stepChecks(report),
       history: [],

@@ -80,11 +80,12 @@ test('percentages: the MFA-ready share reads the same on Findings and on the all
 
 // ---- prompt 31 §3.13-14: the comms plan and the log agree with the steps; nothing is done, safe or verified without evidence ----
 import { trackable } from '../roadmap/tracking.ts'
+import { readyWhen } from '../derive/readyWhen.ts'
 import { adminUserIds } from '../roles.ts'
 
 test('nothing is done, safe or verified without naming the evidence', () => {
   for (const s of steps) {
     if (s.status === 'done') assert.ok((s.deliveredBy.length > 0 || s.tracking !== null || s.history.some((h) => h.to === 'done' && h.note)), `${s.id}: done names its evidence`)
-    if (s.status === 'ready-to-enforce') assert.ok(s.evidence.reportOnly?.meetsExitCriterion, `${s.id}: ready to enforce is backed by report-only results`)
+    if (s.status === 'ready-to-enforce') assert.ok(readyWhen(s) !== null && readyWhen(s)!.kind !== 'on', `${s.id}: ready to enforce is backed by one of the tracking's two gates`)
   }
 })

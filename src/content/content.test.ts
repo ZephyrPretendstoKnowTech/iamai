@@ -40,6 +40,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // directory-sync caveat (no synced account in the example).
   '.shared.portalOpen',
   '.shared.syncRoleNote',
+  // The two gates with today's numbers render only on a step whose policy the
+  // scan found in report-only (doneWhen.ts); the review's example steps are all new.
+  '.shared.policyDoneWhenTracked[0]',
+  '.shared.policyDoneWhenTracked[1]',
   '.pages.home.metaTitle',
   '.pages.connectNoScan.baselineUpdatedNote',
   '.pages.plan.gapSuffix.guests-mfa',

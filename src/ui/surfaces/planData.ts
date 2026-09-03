@@ -24,6 +24,7 @@ import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
+import { reportOnlySeenOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { defaultDecisions } from './pickerRows.ts'
@@ -248,9 +249,10 @@ export function usePlanData(
       goalMap: baseline.goalMap,
     })
     const { steps, schedule } = result
-    // The one decision a regeneration cannot know; everything else is derived.
+    // The one decision a regeneration cannot know, and the one observation (the
+    // scan that first saw each policy in report-only); everything else is derived.
     applySkips(steps, saved?.skips ?? null)
-    applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null)
+    applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null, saved?.reportOnlySeen ?? null)
     annotateStateReasons(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -272,10 +274,13 @@ export function usePlanData(
       checkpoints: saved.checkpoints ?? [],
       planCreatedAt: saved.planCreatedAt ?? new Date().toISOString(),
       stepDecisions: saved.stepDecisions ?? {},
+      // The scan that first saw each policy in report-only, from this plan's
+      // tracking: the one observation the next scan cannot make again.
+      reportOnlySeen: reportOnlySeenOf(computed.steps),
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
     if (saved.startedAt) decisions.startedAt = saved.startedAt
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, signature: decisions.signature })
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, reportOnlySeen: decisions.reportOnlySeen, signature: decisions.signature })
     if (key === lastPersist.current) return
     lastPersist.current = key
     void savePlanRecord(snapshot.tenantId, decisions)

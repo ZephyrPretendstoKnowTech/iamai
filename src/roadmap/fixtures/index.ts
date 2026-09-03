@@ -351,17 +351,21 @@ export function buildFixture(spec: Spec): Fixture {
   const week2Results: PolicyAppliedResult[] = []
   if (spec.week2) {
     const body = { conditions: { users: { includeUsers: ['All'], excludeGroups: [bgGroup] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
-    const advanced: [string, string, PolicyResultClass][] = [
-      ['token-protection', 'enabledForReportingButNotEnforced', 'reportOnlySuccess'],
-      ['block-auth-transfer', 'enabledForReportingButNotEnforced', 'reportOnlySuccess'],
+    // Two gates on a report-only policy (tracking.ts): token protection, created
+    // the day after week one's scan and evaluated for every person with no
+    // failures, is ready now on the evidence; auth transfer, created two days
+    // ago and seen for 24 people so far, waits for its observation window.
+    const advanced: [string, string, PolicyResultClass, number, string[]][] = [
+      ['token-protection', 'enabledForReportingButNotEnforced', 'reportOnlySuccess', 7, ids],
+      ['block-auth-transfer', 'enabledForReportingButNotEnforced', 'reportOnlySuccess', 2, ids.slice(0, 24)],
     ]
     const zero = { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: 0, enforcedFailure: 0, enforcedSuccess: 0 } as const
     const noIds = { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] } as Record<PolicyResultClass, string[]>
-    for (const [goalId, state, cls] of advanced) {
+    for (const [goalId, state, cls, days, seenIds] of advanced) {
       const pid = guid(seed, 2_200_000 + policies.length)
       const name = `Core - Require - ${goalId}`
-      policies.push({ id: pid, displayName: name, state, description: `[IAMAI:${planId}:${stepIdForGoal(goalId)}]`, createdDateTime: daysAgo(7), modifiedDateTime: daysAgo(2), ...body })
-      week2Results.push({ policyId: pid, displayName: name, counts: { ...zero, [cls]: 24 }, affectedUserIds: { ...noIds, [cls]: ids.slice(0, 24) } })
+      policies.push({ id: pid, displayName: name, state, description: `[IAMAI:${planId}:${stepIdForGoal(goalId)}]`, createdDateTime: daysAgo(days), modifiedDateTime: daysAgo(days), ...body })
+      week2Results.push({ policyId: pid, displayName: name, counts: { ...zero, [cls]: seenIds.length }, affectedUserIds: { ...noIds, [cls]: seenIds }, firstReportOnlyAt: daysAgo(days) })
     }
   }
 

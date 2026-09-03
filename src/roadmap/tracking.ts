@@ -1,12 +1,16 @@
 // Execution tracking (roadmap-v2.md §5): what actually happened, from
 // evidence. Policies match a step by plan tag first, then by intent
-// fingerprint; dates come from the policy; soak evidence from sign-in
-// records; regressions reopen done steps with a dated note. The user is
-// never asked whether a step is done. Pure.
+// fingerprint; dates come from the policy; a report-only policy's readiness
+// to enforce from two gates over the sign-in records; regressions reopen done
+// steps with a dated note. The user is never asked whether a step is done, or
+// to mark anything ready. Pure.
 import type { CoverageReport } from '../coverage/types.ts'
-import type { TenantSnapshot } from '../graph/collect/types.ts'
+import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicy } from './generate.ts'
+import { observationDaysFor } from './schedule.ts'
+import { affectedIds } from '../derive/whoLine.ts'
+import { readyWhen } from '../derive/readyWhen.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
@@ -23,6 +27,10 @@ const RANK: Record<StepStatus, number> = { blocked: 0, ready: 0, 'in-report-only
  */
 
 const MIN_SIGNINS_TO_JUDGE = 20
+const DAY = 86_400_000
+const REPORT_ONLY = 'enabledForReportingButNotEnforced'
+
+const daysBetween = (from: string, to: string): number => Math.max(0, Math.floor((Date.parse(to) - Date.parse(from)) / DAY))
 
 function advance(step: Step, to: StepStatus, note: string, at: string): void {
   if (step.status === 'skipped') return
@@ -65,43 +73,87 @@ export function matchPolicy(step: Step, snapshot: TenantSnapshot, coverage: Cove
   return policy ? { policy, matchedBy: 'fingerprint' } : null
 }
 
-function soak(snapshot: TenantSnapshot, policyId: string, createdAt: string | null): Pick<StepTracking, 'daysInReportOnly' | 'signIns' | 'failures' | 'interruptions' | 'failuresByUser' | 'evidenceQuality'> {
-  const pr = snapshot.evidencePolicyResults.find((p) => p.policyId === policyId)
+/**
+ * In report-only since: the earlier of the scan that first saw the policy in
+ * report-only (the plan record's observation; this scan when there is none) and
+ * the first sign-in record that shows it evaluated in report-only. A record with
+ * a report-only result is the scan seeing the policy in report-only on that day.
+ */
+function reportOnlySince(pr: PolicyAppliedResult | undefined, seen: string | undefined, asOf: string): string {
+  const dates = [seen ?? asOf, pr?.firstReportOnlyAt ?? null].filter((x): x is string => typeof x === 'string' && !Number.isNaN(Date.parse(x)))
+  return dates.reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a))
+}
+
+/**
+ * The records' verdict on a policy, and the two gates on one in report-only
+ * (constants.ts OBSERVATION_DAYS): the time gate, ready on `since` plus the
+ * step's observation window; the evidence gate, ready now when the records since
+ * `since` show zero failures and every active person in scope at least once.
+ * Whichever comes first. `since` is null for a policy not in report-only.
+ */
+function gates(step: Step, snapshot: TenantSnapshot, pr: PolicyAppliedResult | undefined, since: string | null): Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 'seenInScope' | 'activeInScope' | 'signIns' | 'failures' | 'failuresByUser' | 'evidenceQuality'> {
   const covered = snapshot.sources.signInEvidence?.coveredWindow ?? null
-  const windowDays = covered ? Math.floor((Date.parse(covered.to) - Date.parse(covered.from)) / 86_400_000) : 0
-  const sinceCreated = covered && createdAt ? Math.max(0, Math.floor((Date.parse(covered.to) - Date.parse(createdAt)) / 86_400_000)) : windowDays
-  const daysInReportOnly = Math.min(windowDays, sinceCreated)
-  if (!pr) return { daysInReportOnly, signIns: 0, failures: 0, interruptions: 0, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
+  const active = affectedIds(step.population)
+  const daysInReportOnly = since ? daysBetween(since, snapshot.asOf) : 0
+  const readyOn = since ? new Date(Date.parse(since) + observationDaysFor(step) * DAY).toISOString() : null
+  if (!pr) return { daysInReportOnly, readyOn, readyNow: false, seenInScope: 0, activeInScope: active.length, signIns: 0, failures: 0, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
   const c = pr.counts
   const signIns = c.reportOnlyFailure + c.reportOnlyInterrupted + c.reportOnlySuccess + c.enforcedFailure + c.enforcedSuccess
+  // Failing or interrupted records since `since`: by day where the snapshot
+  // carries days; the window's totals where it does not (or there is no since).
+  const sinceDay = since ? since.slice(0, 10) : null
+  const failures =
+    pr.byDay && sinceDay
+      ? Object.entries(pr.byDay).reduce((n, [day, d]) => (day >= sinceDay ? n + d.failures : n), 0)
+      : c.reportOnlyFailure + c.reportOnlyInterrupted + c.enforcedFailure
   const byUser = new Map<string, number>()
   for (const id of [...pr.affectedUserIds.reportOnlyFailure, ...pr.affectedUserIds.reportOnlyInterrupted, ...pr.affectedUserIds.enforcedFailure]) byUser.set(id, (byUser.get(id) ?? 0) + 1)
+  // A record of this policy for a person is that person seen; a report-only
+  // record exists only while the policy is in report-only.
+  const seen = new Set(Object.values(pr.affectedUserIds).flat())
+  const seenInScope = active.filter((id) => seen.has(id)).length
   return {
     daysInReportOnly,
+    readyOn,
+    readyNow: since !== null && signIns > 0 && failures === 0 && seenInScope === active.length,
+    seenInScope,
+    activeInScope: active.length,
     signIns,
-    failures: c.reportOnlyFailure + c.enforcedFailure,
-    interruptions: c.reportOnlyInterrupted,
+    failures,
     failuresByUser: [...byUser.entries()].map(([userId, n]) => ({ userId, count: n })).sort((a, b) => b.count - a.count),
     evidenceQuality: signIns >= MIN_SIGNINS_TO_JUDGE ? 'enough' : signIns > 0 ? 'thin' : 'none',
   }
 }
 
-/**
- * Detection on every scan. Statuses move forward on evidence; a done step
- * whose policy was disabled, deleted, weakened or narrowed reopens with a
- * dated note. `now` is injectable for tests.
- */
 /** Every step the plan tracks: everything not skipped. The one denominator (ux-review-07 §2). */
 export function trackable(steps: Step[]): Step[] {
   return steps.filter((s) => s.status !== 'skipped')
 }
 
+/**
+ * The observation the plan record keeps (PlanDecisions.reportOnlySeen): for
+ * every step whose policy is in report-only, the date it has been since. Steps
+ * whose policy left report-only drop out, so a return starts the clock again.
+ */
+export function reportOnlySeenOf(steps: Step[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const s of steps) if (s.tracking?.state === REPORT_ONLY && s.tracking.reportOnlyAt) out[s.id] = s.tracking.reportOnlyAt
+  return out
+}
+
+/**
+ * Detection on every scan. Statuses move forward on evidence; a done step
+ * whose policy was disabled, deleted, weakened or narrowed reopens with a
+ * dated note. `now` is injectable for tests; `seen` is the plan record's
+ * observation of when each step's policy was first seen in report-only.
+ */
 export function trackExecution(
   steps: Step[],
   snapshot: TenantSnapshot,
   coverage: CoverageReport,
   planId: string,
   now: string = new Date().toISOString(),
+  seen: Record<string, string> = {},
 ): Step[] {
   const resultByGoal = new Map(coverage.results.map((r) => [r.goal.id, r]))
   for (const step of steps) {
@@ -149,7 +201,9 @@ export function trackExecution(
     const createdAt = policy.createdDateTime ?? null
     const modifiedAt = policy.modifiedDateTime ?? null
     const state = policy.state ?? 'unknown'
-    const evidence = soak(snapshot, policy.id ?? '', createdAt)
+    const pr = snapshot.evidencePolicyResults.find((p) => p.policyId === policy.id)
+    const reportOnlyAt = state === REPORT_ONLY ? reportOnlySince(pr, seen[step.id], snapshot.asOf) : null
+    const evidence = gates(step, snapshot, pr, reportOnlyAt)
     const includesAll = (policy.conditions?.users?.includeUsers ?? []).some((u) => /^(All|GuestsOrExternalUsers)$/i.test(u))
     const tracking: StepTracking = {
       policyId: policy.id ?? '',
@@ -159,10 +213,10 @@ export function trackExecution(
       createdAt,
       modifiedAt,
       state,
-      reportOnlyAt: createdAt,
+      reportOnlyAt,
       enforcedAt: state === 'enabled' ? (modifiedAt ?? createdAt) : step.tracking?.enforcedAt ?? null,
       regressedAt: null,
-      noticedAt: step.tracking?.noticedAt ?? now,
+      noticedAt: snapshot.asOf,
       ...evidence,
     }
     step.tracking = tracking
@@ -194,15 +248,15 @@ export function trackExecution(
       // is a change step whose object already exists, never a finished one.
       if (result?.verdict === 'inPlace') {
         advance(step, 'done', `${fillText(TRACK.enforced, { date: absoluteDate(tracking.enforcedAt ?? now) })}; ${tracking.note}`, now)
-      } else {
       }
       continue
     }
-    if (state === 'enabledForReportingButNotEnforced') {
-      advance(step, 'in-report-only', `${fillText(TRACK.reportOnlyFound, { date: absoluteDate(createdAt ?? now) })}; ${tracking.note}`, now)
-      if (step.evidence.reportOnly?.meetsExitCriterion) {
-        advance(step, 'ready-to-enforce', `${TRACK.readyToEnforce}: ${fillText(TRACK.soak, { days: evidence.daysInReportOnly, signIns: evidence.signIns, failures: evidence.failures + evidence.interruptions })}`, now)
-      }
+    if (state === REPORT_ONLY && reportOnlyAt) {
+      advance(step, 'in-report-only', `${fillText(TRACK.reportOnlyFound, { date: absoluteDate(reportOnlyAt) })}; ${tracking.note}`, now)
+      // Ready to enforce by whichever gate came first; the note says which.
+      const ready = readyWhen(step)
+      if (ready?.kind === 'now') advance(step, 'ready-to-enforce', fillText(TRACK.readyNow, { n: ready.days }), now)
+      else if (ready?.kind === 'since') advance(step, 'ready-to-enforce', fillText(TRACK.readySince, { date: absoluteDate(ready.date) }), now)
       continue
     }
     if (goalStatus === 'enforced') advance(step, 'done', fillText(TRACK.enforcedByOther, { name: policy.displayName ?? step.title }), now)

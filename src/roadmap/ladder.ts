@@ -187,7 +187,7 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
       unblockNotes: [],
       population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 },
       readiness: { family: 'other', percent: null, lines: [] },
-      evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
+      evidence: { status: 'none', lines: [], affectedUserIds: [] },
       action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [] },
       history: [],
       skipReason: null,

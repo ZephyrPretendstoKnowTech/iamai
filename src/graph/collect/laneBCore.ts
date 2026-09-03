@@ -285,7 +285,7 @@ const CLASSES: PolicyResultClass[] = [
 
 // Per-policy applied results across the covered window.
 export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyAppliedResult[] {
-  const byPolicy = new Map<string, { displayName: string | null; sets: Record<PolicyResultClass, Set<string>>; counts: Record<PolicyResultClass, number>; byDay: Map<string, { failures: number; users: Set<string> }> }>()
+  const byPolicy = new Map<string, { displayName: string | null; sets: Record<PolicyResultClass, Set<string>>; counts: Record<PolicyResultClass, number>; byDay: Map<string, { failures: number; users: Set<string> }>; firstReportOnly: string | null }>()
   for (const row of rows) {
     for (const applied of row.appliedConditionalAccessPolicies ?? []) {
       const cls = applied.result ? RESULT_CLASS[applied.result] : undefined
@@ -297,11 +297,15 @@ export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyApplied
           sets: Object.fromEntries(CLASSES.map((c) => [c, new Set<string>()])) as Record<PolicyResultClass, Set<string>>,
           counts: Object.fromEntries(CLASSES.map((c) => [c, 0])) as Record<PolicyResultClass, number>,
           byDay: new Map(),
+          firstReportOnly: null,
         }
         byPolicy.set(applied.id, entry)
       }
       entry.counts[cls] += 1
       if (row.userId) entry.sets[cls].add(row.userId)
+      // A report-only result on a record dates the policy in report-only on that
+      // day; the earliest one is where the readiness clock starts (tracking.ts).
+      if (cls.startsWith('reportOnly') && (entry.firstReportOnly === null || row.createdDateTime < entry.firstReportOnly)) entry.firstReportOnly = row.createdDateTime
       if (cls === 'enforcedFailure' || cls === 'reportOnlyFailure' || cls === 'reportOnlyInterrupted') {
         const day = row.createdDateTime.slice(0, 10)
         const d = entry.byDay.get(day) ?? { failures: 0, users: new Set<string>() }
@@ -319,6 +323,7 @@ export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyApplied
       counts: e.counts,
       affectedUserIds: Object.fromEntries(CLASSES.map((c) => [c, [...e.sets[c]]])) as Record<PolicyResultClass, string[]>,
       byDay: Object.fromEntries([...e.byDay.entries()].map(([day, d]) => [day, { failures: d.failures, userIds: [...d.users] }])),
+      firstReportOnlyAt: e.firstReportOnly,
     }))
     .sort((a, b) => {
       const total = (r: PolicyAppliedResult) => CLASSES.reduce((n, c) => n + r.counts[c], 0)

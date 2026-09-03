@@ -454,7 +454,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     unblockNotes: [],
     population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 },
     readiness: { family: 'other', percent: null, lines: [] },
-    evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
+    evidence: { status: 'none', lines: [], affectedUserIds: [] },
     action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [] },
     history: [],
     skipReason: null,
@@ -761,13 +761,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (!readinessCache.has(readinessKey)) readinessCache.set(readinessKey, readinessFor(goal.id, popIds, rowsFor(popIds), snapshot))
     const readiness = { ...(readinessCache.get(readinessKey) as Readiness), lines: [...(readinessCache.get(readinessKey) as Readiness).lines] }
     const matchedPolicyId = findTaggedPolicy(snapshot, planId, stepId)
-    const measuredEvidence = evidenceFor(goal.id, snapshot, pop.active, matchedPolicyId)
-    // A goal an existing policy already enforces has nothing in report-only to
-    // measure; say that rather than promising a measurement (prompt 19 §B).
-    const evidence =
-      result.status === 'enforced' && matchedPolicyId === null && measuredEvidence.reportOnly === null
-        ? measuredEvidence
-        : measuredEvidence
+    const evidence = evidenceFor(goal.id, snapshot, matchedPolicyId)
 
     const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined
     const rawWhy = doc?.intent ?? goal.tldr ?? goal.description

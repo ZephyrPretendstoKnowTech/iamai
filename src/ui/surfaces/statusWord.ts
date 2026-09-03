@@ -1,6 +1,6 @@
 // The one status word and its tone for a step (target-state §8.3): In place ·
-// Ready · Blocked · Scheduled · Report-only · Enforced · Skipped. The verb
-// lives in the title, so this is a state, never an action. Pure.
+// Ready · Blocked · Report-only · Enforced · Skipped. The verb lives in the
+// title, so this is a state, never an action. Pure.
 import type { Step } from '../../roadmap/types.ts'
 import type { StatusTone } from '../components/index.ts'
 
@@ -17,9 +17,11 @@ export function statusOf(step: Step): StatusView {
       // --wait. --stop is reserved for Skipped and a step that would strand the operator.
       return { word: 'Blocked', tone: step.operatorSafe === false ? 'stop' : 'wait' }
     case 'in-report-only':
-      return { word: 'Report-only', tone: 'wait' }
     case 'ready-to-enforce':
-      return { word: 'Scheduled', tone: 'wait' }
+      // Both read Report-only: the policy is still in report-only either way.
+      // Whether it is ready to enforce, and when, is the row's date column
+      // (rowWhen.ts), from the tracking's two gates.
+      return { word: 'Report-only', tone: 'wait' }
     case 'skipped':
       return { word: 'Skipped', tone: 'stop' }
   }

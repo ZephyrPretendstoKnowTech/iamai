@@ -184,6 +184,8 @@ export type PolicyAppliedResult = {
   affectedUserIds: Record<PolicyResultClass, string[]>
   /** Failures (enforced or report-only) per UTC day with the users behind them, for the post-enforcement watch. */
   byDay?: Record<string, { failures: number; userIds: string[] }>
+  /** The earliest record that shows the policy evaluated in report-only: the first day the records saw it in report-only. */
+  firstReportOnlyAt?: string | null
 }
 
 // Lane B derived table: users whose most recent sign-in in the window failed

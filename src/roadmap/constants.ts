@@ -3,11 +3,6 @@ export const READINESS_THRESHOLD_MFA_PERCENT = 90
 export const READINESS_THRESHOLD_ADMINS_PERCENT = 100
 export const READINESS_THRESHOLD_DEVICES_PERCENT = 80
 
-export const EXIT_MIN_DAYS_OBSERVED = 7
-export const EXIT_MIN_SIGNINS_ABSOLUTE = 500
-export const EXIT_SIGNINS_PER_ACTIVE_USER = 1
-export const EXIT_MAX_FAILURES = 0
-
 export const BREAK_GLASS_DRILL_DAYS = 90
 
 // The plan's length follows the number of active people (target-state §9).
@@ -45,6 +40,11 @@ export const REGISTRATION_MAX_WORKING_DAYS = 20
  *
  * What a short window cannot see is stated as a named unknown the user can
  * close in one click, rather than waited out. See UNKNOWNS in copy/timing.ts.
+ *
+ * The same window is the time gate on a policy already in report-only
+ * (tracking.ts): ready on the day it has been in report-only this long, or
+ * sooner when the records since that day show zero failures and every active
+ * person in scope seen.
  */
 export const OBSERVATION_DAYS = 7
 
