@@ -1191,3 +1191,10 @@ footer.app a {
   flex-wrap: wrap;
   gap: 8px;
 }
+/* An option that needs a value: its words around the picker that supplies it. */
+.surface .option-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

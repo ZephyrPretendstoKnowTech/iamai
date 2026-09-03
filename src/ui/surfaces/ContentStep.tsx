@@ -8,13 +8,17 @@
 import { useState, useMemo } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
-import type { StepDecision } from '../../roadmap/decisions.ts'
+import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Picker, PageTip } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
+import type { PickerObject } from './pickerRows.ts'
+import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
+import type { QuestionOption } from './stepQuestion.ts'
+import { answerKey } from '../../roadmap/decisions.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { jsonOffered, missingObjects } from './stepJson.ts'
 import { datesLineFor } from './stepExport.ts'
@@ -79,8 +83,8 @@ export function ContentStep({
   onScan?: () => void
   /** This step's saved decision, when one was made (prompt 52 Part 3). */
   decision?: StepDecision | null
-  /** The picker's Save: the ticked ids or the chosen option become the plan's decision. */
-  onDecide?: (decision: { picked?: string[]; option?: string }) => void
+  /** The picker's Save: the ticked ids, the chosen option and the question's answer become the plan's decision. */
+  onDecide?: (decision: StepDecisionInput) => void
   /** Printing: More stands open, so every step prints in full (§7). */
   printing?: boolean
 }) {
@@ -342,7 +346,7 @@ function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
   return out
 }
 
-function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: { picked?: string[]; option?: string }) => void; stepId: string; ctx: StepVarContext }) {
+function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
   // The typeahead (target-state §6.4): empty, it lists the objects the scan
   // nominated with their signal text, ticked by default as chips; typing filters
   // every object of the kind in the tenant by name and UPN; the chips are the
@@ -357,7 +361,8 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   const ids: string[] = Array.isArray(idsOf) && (idsOf as string[]).length === rows.length ? (idsOf as string[]) : rows
   // A group, a location or a strength is one choice: one chip.
   const single = !d.multi && SINGLE_CHOICE_SOURCES.includes(String(source ?? key ?? ''))
-  const universe = useMemo(() => (d.pickerRow ? pickerUniverse(stepId, source, { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups }) : []), [d.pickerRow, stepId, source, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
+  const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups }
+  const universe = useMemo(() => (d.pickerRow ? pickerUniverse(stepId, source, pickerCtx) : []), [d.pickerRow, stepId, source, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
   const byId = useMemo(() => new Map(universe.map((o) => [o.id, o])), [universe])
   const nominated: PickerOption[] = ids.map((id, i) => {
     const known = byId.get(id)
@@ -372,10 +377,23 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   const [query, setQuery] = useState('')
   const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
   const hasPicker = rows.length > 0 || universe.length > 0
-  // An option with a variable the scan cannot fill is not offered (walk-51 item 2).
-  const options: string[] = (Array.isArray(d.options) ? (d.options as string[]) : []).filter((o) => whole(o, ex))
+  // The decision's own options, and its question under the picker: a whole
+  // option is a radio; one that needs a value the scan cannot fill (the travel
+  // countries, the mail-sending devices) is a picker of the step's kind, accounts
+  // otherwise, and its chips are the answer. The question's answer persists as
+  // questionAnswers[stepId:label] (decisions.ts).
+  const options = optionsOf(d.options, ex)
+  const question = questionFor(d, ex)
+  const needsValue = options.some((o) => o.needs !== null) || (question?.options.some((o) => o.needs !== null) ?? false)
+  const valueUniverse = useMemo(() => (needsValue ? pickerUniverse(stepId, valueSource(stepId), pickerCtx) : []), [needsValue, stepId, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
   const [option, setOption] = useState<string | null>(saved?.option ?? null)
-  const save = (): void => onDecide?.({ ...(hasPicker ? { picked: chips.map((c) => c.id) } : {}), ...(option !== null ? { option } : {}) })
+  const [answer, setAnswer] = useState<string | null>(question ? (saved?.answers?.[question.label] ?? null) : null)
+  const save = (): void =>
+    onDecide?.({
+      ...(hasPicker ? { picked: chips.map((c) => c.id) } : {}),
+      ...(option !== null ? { option } : {}),
+      ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
+    })
   // The help is explanatory prose and renders in the flow, not inside the
   // .decision row (which the contract measures against the row budget).
   return (
@@ -384,10 +402,51 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
       <div className="decision">
         <div className="dlabel">{d.label}</div>
         {hasPicker && <Picker selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
-        {options.length > 0 && <div className="picker">{options.map((o, i) => <label key={i}><input type="radio" name={`${d.label}-option`} checked={option === o} onChange={() => setOption(o)} /> <T s={o} ex={ex} /></label>)}</div>}
+        {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} options={options} answer={option} onAnswer={setOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />}
+        {question && (
+          <>
+            <div className="dlabel">{question.label}</div>
+            <p className="reason"><T s={question.text} ex={ex} /></p>
+            <Options name={answerKey(stepId, question.label)} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />
+          </>
+        )}
         <Button variant="secondary" onClick={save}>{d.save || 'Save'}</Button>
       </div>
     </>
+  )
+}
+
+/** Options as radios; the one that needs a value as a picker, its chips the answer in the option's own words. */
+function Options({ name, options, answer, onAnswer, ex, universe, nameOf }: { name: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string }) {
+  const parts = answerParts(answer, options)
+  const valued = options.find((o) => o.needs !== null) ?? null
+  const [chips, setChips] = useState<PickerOption[]>(() => (parts?.option.needs ? parts.picked.map((id) => universe.find((u) => u.id === id) ?? { id, name: nameOf(id) }) : []))
+  const [query, setQuery] = useState('')
+  const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
+  const pick = (next: PickerOption[]): void => {
+    setChips(next)
+    if (valued) onAnswer(next.length > 0 ? answerText(valued, next.map((c) => c.id)) : null)
+  }
+  return (
+    <div className="picker">
+      {options.map((o, i) => {
+        if (o.needs === null) {
+          return (
+            <label key={i}>
+              <input type="radio" name={name} checked={parts?.option === o} onChange={() => onAnswer(answerText(o))} /> <T s={o.text} ex={ex} />
+            </label>
+          )
+        }
+        const [before, after] = o.text.split(/\{(?:list:)?[a-zA-Z0-9_]+\}/)
+        return (
+          <div key={i} className="option-value">
+            {before && <span className="reason">{fillText(before, ex as Record<string, unknown>)}</span>}
+            <Picker selected={chips} options={results} suggestions={[]} onChange={pick} onSearch={setQuery} />
+            {after && <span className="reason">{fillText(after, ex as Record<string, unknown>)}</span>}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

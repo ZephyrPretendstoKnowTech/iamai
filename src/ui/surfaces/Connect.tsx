@@ -23,6 +23,7 @@ const C = app.connect
 import { PINNED_BASELINE, baselineChanges, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
 import type { BaselineChange, BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
+import { afterScanHref } from '../shell/routes.ts'
 import { DeniedSections, ScanDevTools, ScanProgress } from '../scan/ScanProgress.tsx'
 import { deniedSources, useScanRunner } from '../scan/useScanRunner.ts'
 import type { SectionRow } from '../scan/useScanRunner.ts'
@@ -51,6 +52,8 @@ export function Connect(props: {
   frozen: Record<string, SectionRow> | null
   onRunningChange: (running: boolean) => void
   onComplete: (snapshot: TenantSnapshot, at: string) => void
+  /** Where the scan lands when it finishes: the step that asked for it, or the Plan. */
+  returnTo: string | null
   autoScan: boolean
   onAutoScanConsumed: () => void
 }) {
@@ -185,6 +188,7 @@ function SignedIn({
   frozen,
   onRunningChange,
   onComplete,
+  returnTo,
   autoScan,
   onAutoScanConsumed,
 }: {
@@ -197,18 +201,22 @@ function SignedIn({
   frozen: Record<string, SectionRow> | null
   onRunningChange: (running: boolean) => void
   onComplete: (snapshot: TenantSnapshot, at: string) => void
+  /** Where the scan lands when it finishes: the step that asked for it, or the Plan. */
+  returnTo: string | null
   autoScan: boolean
   onAutoScanConsumed: () => void
 }) {
   // A re-scan returns to the plan when it finishes (target-state §2); a first
   // scan stays here and offers it.
   const hadScanRef = useRef(lastScan !== null)
+  const returnToRef = useRef(returnTo)
+  returnToRef.current = returnTo
   const runner = useScanRunner(account.tenantId, {
     frozen,
     onRunningChange,
     onComplete: (snapshot, at) => {
       onComplete(snapshot, at)
-      if (hadScanRef.current) window.location.hash = PLAN_HREF
+      if (hadScanRef.current) window.location.hash = afterScanHref(returnToRef.current)
     },
   })
   const scanning = runner.state === 'running' || runner.state === 'paused'

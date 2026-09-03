@@ -213,7 +213,7 @@ export type PickerObject = { id: string; name: string; secondary?: string; why?:
 /** The kind of thing a picker chooses, from the step and its content source. */
 export type PickerKind = 'accounts' | 'groups' | 'locations' | 'countries' | 'strengths' | 'other'
 export function pickerKind(stepId: string, source: string | null): PickerKind {
-  if (DECISION_STEPS.emergency.has(stepId) || stepId === DECISION_STEPS.serviceAccounts || stepId === DECISION_STEPS.sharedDevices || stepId === DECISION_STEPS.campaign) return 'accounts'
+  if (DECISION_STEPS.emergency.has(stepId) || stepId === DECISION_STEPS.serviceAccounts || stepId === DECISION_STEPS.sharedDevices || stepId === DECISION_STEPS.campaign || source === 'accounts') return 'accounts'
   if (DECISION_STEPS.exclusions.has(stepId) || stepId === DECISION_STEPS.adminsGroup || source === 'groups' || source === 'adminGroups') return 'groups'
   if (stepId === DECISION_STEPS.trustedLocation) return 'locations'
   if (stepId === DECISION_STEPS.countries) return 'countries'
