@@ -37,6 +37,8 @@ export function todayEvidenceText(r: TodayRow): string {
       return C.neverSignedIn
     case 'inactive':
       return fillText(C.inactiveSince, { date: absoluteDate(e.since) })
+    case 'signedInNow':
+      return C.signedInNow
     case 'noMethod':
       return C.noMethodEvidence
     default:

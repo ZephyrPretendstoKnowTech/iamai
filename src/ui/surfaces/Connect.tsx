@@ -22,8 +22,9 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
-import { stepIdForGoal } from '../../roadmap/stepIds.ts'
+import { policyLabel, stepsChangedBy } from '../../derive/baselineDiff.ts'
+import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
+import type { ScanRecord } from '../scan/scanRecord.ts'
 import { roleName } from '../../roles.ts'
 import { demoUrl, isDemo } from '../demoMode.ts'
 // The sample tenant's four facts, computed from the demo fixture through the
@@ -47,7 +48,13 @@ import { operatorIdOf, usePlanData } from './planData.ts'
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
 
-type BaselineProps = { baseline: BaselineResult | null; baselineRestoreError: string | null; onBaseline: (r: BaselineResult) => void }
+type BaselineProps = {
+  baseline: BaselineResult | null
+  baselineRestoreError: string | null
+  onBaseline: (r: BaselineResult) => void
+  /** Test support (dev builds, ?author=1): an author update in place of the network check. */
+  authorUpdate?: BaselineUpdate | null
+}
 
 export function Connect(
   props: BaselineProps & {
@@ -55,7 +62,7 @@ export function Connect(
     tenantName: string | null
     /** A sign-in that returned an error, classified (graph/authError.ts); tile 1 shows it. */
     authError: SignInError | null
-    lastScan: { snapshot: TenantSnapshot; at: string } | null
+    lastScan: ScanRecord | null
     frozen: Record<string, SectionRow> | null
     /** A scan that just finished with gaps (the mock only). */
     finished: TenantSnapshot | null
@@ -76,7 +83,7 @@ export function Connect(
     <section className="surface connect">
       <h1>{W.h1}</h1>
       <p className="lede">{W.intro}</p>
-      {account ? <SignedIn {...props} account={account} /> : <SignedOut error={props.authError} baseline={props.baseline} baselineRestoreError={props.baselineRestoreError} onBaseline={props.onBaseline} />}
+      {account ? <SignedIn {...props} account={account} /> : <SignedOut error={props.authError} baseline={props.baseline} baselineRestoreError={props.baselineRestoreError} onBaseline={props.onBaseline} authorUpdate={props.authorUpdate} />}
     </section>
   )
 }
@@ -234,7 +241,7 @@ function PlanTileView({ tile, actions }: { tile: PlanTile; actions: ReactNode })
  * states from the MSAL error code), the baseline, what happens next for your
  * tenant, and what the sample tenant produced.
  */
-function SignedOut({ error, baseline, baselineRestoreError, onBaseline }: BaselineProps & { error: SignInError | null }) {
+function SignedOut({ error, baseline, baselineRestoreError, onBaseline, authorUpdate }: BaselineProps & { error: SignInError | null }) {
   // The redirect takes seconds to start; the button must not look inert.
   const [opening, setOpening] = useState(false)
   // MSAL is warming: until it is ready the button carries a spinner but stays
@@ -287,7 +294,7 @@ function SignedOut({ error, baseline, baselineRestoreError, onBaseline }: Baseli
           <p className="quiet">{t1.permissions.removal}</p>
         </details>
       </Tile>
-      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={false} />
+      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={false} authorUpdate={authorUpdate} />
       <ScanTileView tile={t3} upn={null} actions={null} />
       <PlanTileView
         tile={t4}
@@ -307,6 +314,7 @@ function SignedIn({
   baseline,
   baselineRestoreError,
   onBaseline,
+  authorUpdate,
   lastScan,
   frozen,
   finished,
@@ -320,7 +328,7 @@ function SignedIn({
 }: BaselineProps & {
   account: AccountInfo
   tenantName: string | null
-  lastScan: { snapshot: TenantSnapshot; at: string } | null
+  lastScan: ScanRecord | null
   frozen: Record<string, SectionRow> | null
   finished: TenantSnapshot | null
   getToken?: TokenSource
@@ -405,7 +413,7 @@ function SignedIn({
   const computed = plan.computed
   const planInput: PlanInput =
     scanInput.kind === 'complete' && lastScan
-      ? { kind: 'ready', snapshot: lastScan.snapshot, at: lastScan.at, counts: computed ? (({ steps, inPlace }) => ({ steps, done: inPlace }))(planCounts(computed.steps, computed.schedule.cleanup ?? null)) : null }
+      ? { kind: 'ready', snapshot: lastScan.snapshot, at: lastScan.at, previous: lastScan.previous ?? null, counts: computed ? (({ steps, inPlace }) => ({ steps, done: inPlace }))(planCounts(computed.steps, computed.schedule.cleanup ?? null)) : null }
       : scanInput.kind === 'gaps' && lastScan
         ? { kind: 'last', at: lastScan.at }
         : { kind: 'waiting' }
@@ -439,7 +447,7 @@ function SignedIn({
           <Act action={t1.actions[1]} onClick={() => void signOut()} />
         </div>
       </Tile>
-      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} />
+      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} authorUpdate={authorUpdate} />
       <ScanTileView
         tile={t3}
         upn={upn}
@@ -463,9 +471,13 @@ function SignedIn({
  * one runtime network call and its compare both fail closed, so the line never
  * appears without real changes behind it.
  */
-function useAuthorUpdate(): BaselineUpdate | null {
+function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdate | null {
   const [update, setUpdate] = useState<BaselineUpdate | null>(null)
   useEffect(() => {
+    if (mock) {
+      setUpdate(mock)
+      return
+    }
     let live = true
     void checkAuthorHead().then(async (head) => {
       if (!live || !head.updated || !head.head || !head.date) return
@@ -476,7 +488,7 @@ function useAuthorUpdate(): BaselineUpdate | null {
     return () => {
       live = false
     }
-  }, [])
+  }, [mock])
   return update
 }
 
@@ -486,12 +498,12 @@ function useAuthorUpdate(): BaselineUpdate | null {
  * policy · the step that changes), and Change baseline, which opens the picker
  * with two choices. The default loads itself when nothing is saved.
  */
-function BaselineTile({ baseline, restoreError, onBaseline, locked }: { baseline: BaselineResult | null; restoreError: string | null; onBaseline: (r: BaselineResult) => void; locked: boolean }) {
+function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate }: { baseline: BaselineResult | null; restoreError: string | null; onBaseline: (r: BaselineResult) => void; locked: boolean; authorUpdate?: BaselineUpdate | null }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadingRef = useRef(false)
-  const update = useAuthorUpdate()
+  const update = useAuthorUpdate(authorUpdate)
 
   const loadPinned = async () => {
     if (loadingRef.current) return
@@ -528,13 +540,13 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked }: { baseline
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseline, restoreError])
 
-  // The step a changed policy stands for, through the baseline's goal map.
-  const stepFor = (policy: string): string | null => {
-    const map = baseline?.goalMap ?? {}
-    const goalId = Object.keys(map).find((g) => map[g].includes(policy))
-    return goalId ? (contentStepFor({ id: stepIdForGoal(goalId), goalId })?.title ?? null) : null
-  }
-  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: baseline?.pkg.policies.length ?? 0, loading: busy, update, stepFor })
+  // A changed file names a package policy; the steps it stands behind come
+  // through the baseline's goal map (derive/baselineDiff.ts). Absent means the pinned map.
+  const policies = baseline?.pkg.policies ?? []
+  const goalMap = baseline?.goalMap ?? PINNED_GOAL_MAP
+  const labelFor = (file: string): string => policyLabel(file, policies)
+  const stepsFor = (file: string): string[] => stepsChangedBy(file, policies, goalMap)
+  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, loading: busy, update, labelFor, stepsFor })
   return (
     <Tile n={2} title={t2.title} state={t2.state} tone={t2.tone}>
       {t2.paragraphs.map((text) => (
@@ -548,9 +560,15 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked }: { baseline
           <ul className="diff">
             {t2.update.rows.map((r, i) => (
               <li key={`${i}-${r.policy}`}>
-                <span className="tag">{r.tag}</span>
-                <span>{r.policy}</span>
-                <span className="steps">{r.step}</span>
+                <div className="change">
+                  <span className="tag">{r.tag}</span>
+                  <span className="policy">{r.policy}</span>
+                </div>
+                <ul className="steps">
+                  {r.steps.map((s) => (
+                    <li key={s}>{s}</li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>

@@ -301,6 +301,8 @@
             "p1": "P1",
             "free": "Free"
           },
+          "dropValue": "{before} → {now}",
+          "dropSince": "{label} since {date}",
           "steps": "steps · {done} done",
           "open": "Open the plan →"
         },
@@ -707,6 +709,7 @@
         "mfaCompleted": "MFA completed {when}",
         "neverSignedIn": "no sign-in on record",
         "inactiveSince": "inactive since {date}",
+        "signedInNow": "signed in now",
         "noMethodEvidence": "no MFA-capable method registered",
         "noMatch": "Nobody matches.",
         "needsScan": "Nothing to show until the first scan.",
@@ -2164,6 +2167,7 @@
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
           "{n} people registered but never seen to complete MFA: their first prompt is enforcement: {list:unproven}",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
+          "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
         ]
       },
@@ -2254,6 +2258,8 @@
           "{adminsWithoutCount} admins have no phishing-resistant method; register before {enforce}.",
           "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
           "Roles held through Privileged Identity Management are in scope only while activated.",
+          "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
+          "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
         ]
       },
@@ -2358,6 +2364,8 @@
           "{n} non-admins opened an admin portal since {from}; they are blocked from {enforce}: {list:nonAdminPortalUsers}",
           "Nobody outside the admins group opened an admin portal since {from}.",
           "{n} people without a directory role signed in to Azure since {from}; they are blocked from {enforce}: {list:azureNonAdmins}",
+          "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
+          "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
         ]
       },
@@ -2989,6 +2997,8 @@
           "Today: {current}, and sessions persist. The baseline wants {wanted} and never persistent.",
           "Apps these sessions cover, with sign-ins since {from}: {list:appsCovered}",
           "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
+          "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
+          "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
         ]
       },

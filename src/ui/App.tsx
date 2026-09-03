@@ -14,6 +14,9 @@ import { Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
 import type { ShellState } from './shell/AppShell.tsx'
 import { Connect } from './surfaces/Connect.tsx'
+import type { BaselineUpdate } from './scan/connectView.ts'
+import { previousOf } from './scan/scanRecord.ts'
+import type { ScanRecord } from './scan/scanRecord.ts'
 import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import type { BaselineResult } from './baseline.ts'
 import { Plan } from './surfaces/Plan.tsx'
@@ -66,7 +69,14 @@ export function App() {
   const [baseline, setBaseline] = useState<BaselineResult | null>(null)
   const [baselineRestoreError, setBaselineRestoreError] = useState<string | null>(null)
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
-  const [lastScan, setLastScan] = useState<{ snapshot: TenantSnapshot; at: string } | null>(null)
+  // The stored scan, with the scan before it in three numbers (scan/scanRecord.ts).
+  const [lastScan, setLastScan] = useState<ScanRecord | null>(null)
+  // Test support (dev builds, ?author=1): an author update over the pinned package, no network.
+  const [mockAuthorUpdate, setMockAuthorUpdate] = useState<BaselineUpdate | null>(null)
+  useEffect(() => {
+    if (!import.meta.env.DEV || new URLSearchParams(window.location.search).get('author') !== '1') return
+    void import('../testing/authorUpdate.ts').then((m) => setMockAuthorUpdate(m.mockAuthorUpdate()))
+  }, [])
   const [scanRunning, setScanRunning] = useState(false)
   // A step's Scan to update the plan: Connect starts the scan as soon as it
   // mounts, and returns to the step when it finishes (target-state §2).
@@ -175,6 +185,16 @@ export function App() {
         const params = new URLSearchParams(window.location.search)
         if (params.get('crash') === '1') setMockCrash(true)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
+        // ?operatorDormant=1: the signed-in account's directory sign-in is stale
+        // (Graph's activity lags); it is signed in now all the same (derive/operator.ts).
+        if (params.get('operatorDormant') === '1') {
+          const me = snapshot.users.find((u) => u.id === 'u-1')
+          if (me) me.lastSuccessfulSignIn = new Date(Date.parse(snapshot.asOf) - 200 * 86_400_000).toISOString()
+          // No sign-in records of their own either: Today's evidence reads "signed in now".
+          delete snapshot.signInEvidence['u-1']
+        }
+        // ?previous=1: the scan before this one read three times the people and policies, a day earlier.
+        const previous = params.get('previous') === '1' ? { at: new Date(Date.parse(snapshot.asOf) - 86_400_000).toISOString(), people: snapshot.users.length * 3, policies: (snapshot.config.caPolicies?.rows.length ?? 0) * 3 } : null
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
         if (params.get('licence') === 'free') {
           for (const k of Object.keys(snapshot.capabilities) as (keyof typeof snapshot.capabilities)[]) snapshot.capabilities[k] = { enabled: false, seats: 0, consumed: 0 }
@@ -240,7 +260,7 @@ export function App() {
           setLastScan({ snapshot, at: snapshot.asOf })
           setFinishedScan(gapsSnapshot())
         } else if (state === 'scanned') {
-          setLastScan({ snapshot, at: snapshot.asOf })
+          setLastScan({ snapshot, at: snapshot.asOf, previous })
         }
         setReady(true)
       })
@@ -254,8 +274,8 @@ export function App() {
           // Restore the last scan so nobody re-scans just to look around. Where
           // the app lands depends on it (target-state §2: a scanned tenant
           // lands on Plan), so the shell waits for the record before drawing.
-          const stored = await loadSnapshotRecord<{ snapshot: TenantSnapshot; at: string }>(a.tenantId).catch(() => null)
-          if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
+          const stored = await loadSnapshotRecord<ScanRecord>(a.tenantId).catch(() => null)
+          if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at, previous: stored.previous ?? null })
           // A blocked store shows as a plain sentence, never as a silently empty app.
           void probeStorage().catch((e: unknown) => setStorageWarning(e instanceof Error ? e.message : String(e)))
           // The loaded baseline comes back too (prompt 14 §6): pinned index by
@@ -327,10 +347,13 @@ export function App() {
               getToken={mockToken ?? undefined}
               onRunningChange={setScanRunning}
               onComplete={(snapshot, at) => {
-                setLastScan({ snapshot, at })
-                if (account) void saveSnapshotRecord(account.tenantId, { snapshot, at })
+                // The scan before this one stays as three numbers, so the Plan tile can say when a count dropped.
+                const record: ScanRecord = { snapshot, at, previous: previousOf(lastScan) }
+                setLastScan(record)
+                if (account) void saveSnapshotRecord(account.tenantId, record)
                 setScanReturnTo(null)
               }}
+              authorUpdate={mockAuthorUpdate}
               returnTo={scanReturnTo}
               autoScan={rescanRequested}
               onAutoScanConsumed={() => setRescanRequested(false)}

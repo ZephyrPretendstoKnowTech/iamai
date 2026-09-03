@@ -93,12 +93,15 @@ export async function baselineChanges(head: string, fetchImpl: typeof fetch = fe
   }
 }
 
-/** Restore a saved baseline from its stored files; the pinned one is refetched only when no files were kept. */
+/**
+ * Restore a saved baseline: an upload from its stored files; the author's
+ * baseline from pinned.json, never from a file list a record kept (a record
+ * from before the pin carried the repository's files and rebuilt a package
+ * with more policies than the pin holds, so the tile's count differed signed
+ * in from signed out). One count, from the pinned package.
+ */
 export async function restoreBaseline(origin: BaselineResult['origin']): Promise<BaselineResult> {
   if (origin.kind === 'upload') return loadUploadedBaseline(origin.files)
-  if (origin.files && origin.files.length > 0) {
-    return { source: PINNED_BASELINE.label, pkg: loadBaseline(origin.files), fetchFailures: 0, origin, goalMap: PINNED_GOAL_MAP }
-  }
   return loadPinnedBaseline()
 }
 
