@@ -109,7 +109,7 @@ test('every rule says what it checks and why it matters, for the reference page'
 
 // ---- the harness -----------------------------------------------------------
 
-type Base = { snapshot: TenantSnapshot; state: MappingState; groups: GroupFacts[]; viability: MfaViability[] }
+type Base = { snapshot: TenantSnapshot; state: MappingState; groups: GroupFacts[]; viability: MfaViability[]; drillDates: string[] }
 
 function base(): Base {
   const f = fixture('small')
@@ -118,11 +118,13 @@ function base(): Base {
     state: structuredClone(f.mapping),
     groups: [...f.groups.entries()].map(([groupId, g]) => structuredClone({ groupId, ...g })),
     viability: [],
+    // The healthy tenant's emergency accounts signed in ten days ago, on a recorded drill (E3).
+    drillDates: [...new Set(f.mapping.breakGlassUserIds.map((id) => f.snapshot.users.find((u) => u.id === id)?.lastSuccessfulSignIn).filter((d): d is string => typeof d === 'string'))],
   }
 }
 
 function ctxOf(b: Base): ValidationContext {
-  return buildContext({ snapshot: b.snapshot, state: b.state, groupMembers: b.groups, viability: b.viability })
+  return buildContext({ snapshot: b.snapshot, state: b.state, groupMembers: b.groups, viability: b.viability, drillDates: b.drillDates })
 }
 
 function run(ruleId: string, target: unknown, b: Base): RuleResult {
@@ -264,7 +266,8 @@ const CASES: Record<string, Case> = {
   // printing it was the date bookkeeping the review removed. The state worth a
   // line is the account having actually been used, so that is what the
   // "says something" case sets up.
-  'bg.lastSignIn': { target: bgId, fail: (b) => { userAt(b, bgId(b)).lastSuccessfulSignIn = '2026-06-03T02:00:00.000Z' } },
+  // A sign-in inside the drill window that no recorded drill matches (E3): the step asks who and why.
+  'bg.lastSignIn': { target: bgId, fail: (b) => { userAt(b, bgId(b)).lastSuccessfulSignIn = '2026-08-03T02:00:00.000Z'; b.drillDates = [] } },
   'bg.signInCountries': {
     target: bgId,
     fail: (b) => { b.snapshot.signInEvidence[bgId(b)] = { ...(b.snapshot.signInEvidence[bgId(b)] ?? {}), signInCount: 2, countries: ['AU'] } as never },

@@ -53,6 +53,7 @@ import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
+import type { CleanupRecord } from './cleanupDone.ts'
 import { isFloorGoal } from './floor.ts'
 import { answeredCarveOuts, devicePlanOf, deviceScopeOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
@@ -113,6 +114,12 @@ export type RoadmapInput = {
    * product's, the demo's and the fixtures' baseline alike.
    */
   goalMap?: GoalMap
+  /**
+   * What the plan's checkpoints record about Cleanup (E3, cleanupDone.ts): each
+   * row's completion date, and every drill date, which exempts the matching
+   * emergency sign-ins from the recent-sign-in check.
+   */
+  cleanupRecord?: CleanupRecord
 }
 
 export type RoadmapResult = {
@@ -677,7 +684,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Every must-fix check that has not passed becomes a Phase 0 step, and the
   // two subjects a recovery depends on hold every step that can deny access.
   const groupFacts = [...(input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
-  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability })
+  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability, drillDates: input.cleanupRecord?.drills ?? [] })
   const validationReports: SubjectReport[] = [breakGlassReport(validationCtx)]
   const exclusionGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
   if (exclusionGroupId !== null) {
@@ -1219,6 +1226,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   schedule.rhythm = rhythm
   // Cleanup (target-state §5, §9): dated after the last enforcement window, one
   // working day per row; the header's finish date includes it (derive/finish.ts).
+  // The consolidation row exists whenever a step's existingCoverage line rendered
+  // (E3): the policies a step found already covering its goal, which the
+  // baseline's version supersedes once enforced. A done step cites its
+  // policies as what makes it In place, not as overlap.
   schedule.cleanup = cleanupPhaseFor({
     after: schedule.targetEnd,
     rhythm,
@@ -1226,6 +1237,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     emergencyAccounts: mapping.breakGlassUserIds.map(nameOf),
     emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => userById.get(id)?.userPrincipalName ?? nameOf(id)),
     organisation: input.coverage.organisation,
+    superseded: supersededPolicies(steps),
+    done: input.cleanupRecord?.done ?? {},
   })
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
   for (const s of steps) {
@@ -1274,6 +1287,22 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // plan cannot fix by itself surface as Housekeeping.
   const violations = staticViolations(snapshot.config.caPolicies?.rows ?? [], { technicianToolsOffCompliance: (snapshot.scenarioEvidence?.technicianToolsOffCompliance.count ?? 0) > 0 })
   return { steps, schedule, housekeeping: { checksNotRun: checksNotRun(validationReports), staticViolations: violations } }
+}
+
+/**
+ * The policies the plan's steps found already covering their goal (the step's
+ * existingCoverage line names them), which the consolidation row retires once
+ * the baseline's version is enforced: a policy step still to do, with something
+ * delivering its goal today. A done step's policies are what makes it In place.
+ */
+export function supersededPolicies(steps: readonly Step[]): string[] {
+  const out: string[] = []
+  for (const s of steps) {
+    if (s.status === 'done' || s.status === 'skipped' || (s.kind !== 'create' && s.kind !== 'adjust') || s.deliveredBy.length === 0) continue
+    const names = s.deliveredBy.join(', ')
+    if (!out.includes(names)) out.push(names)
+  }
+  return out
 }
 
 /** The plan's id for a tenant, the one rule (the page, the export and the demo agree): the policies the plan creates carry it in their tag. */

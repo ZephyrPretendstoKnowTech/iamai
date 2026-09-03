@@ -16,6 +16,8 @@ export type ValidationInputs = {
   state: MappingState
   groupMembers?: GroupFacts[]
   viability?: MfaViability[]
+  /** The recorded emergency access drills (plan checkpoints, cleanupDone.ts). */
+  drillDates?: string[]
 }
 
 /** The signed-in operator, from the /me section the scan already reads. */
@@ -37,6 +39,7 @@ export function buildContext(i: ValidationInputs): ValidationContext {
     approvedExclusionIds: [...i.state.breakGlassUserIds, ...i.state.serviceAccountUserIds],
     viability: i.viability ?? [],
     answers,
+    drillDates: i.drillDates ?? [],
   }
 }
 

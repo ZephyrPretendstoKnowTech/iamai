@@ -11,7 +11,8 @@ import type { GroupMembers } from '../../coverage/population.ts'
 import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { app, engine, pages, phases } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
+import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
+import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { scanAge, scanAgeWords } from '../../derive/scanAge.ts'
 import { inWave, waveLabels } from '../../derive/phases.ts'
@@ -190,7 +191,7 @@ export function Plan({ scan, baseline, account, onScan }: {
         <section className="phase">
           <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(cleanupPhase.start), end: absoluteDate(cleanupPhase.end) })}</h2>
           {cleanupPhase.rows.map((r) => (
-            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} alertingDone={data.mapping?.breakGlassAnswers?.signInMonitoring === true} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} onScan={onScan} />
+            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} alertingDone={data.mapping?.breakGlassAnswers?.signInMonitoring === true} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} />
           ))}
         </section>
       )}
@@ -206,8 +207,8 @@ export function Plan({ scan, baseline, account, onScan }: {
   )
 }
 
-/** A Cleanup row (§5): the content title, one status word, who it touches, its day; opens in place. */
-function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan }: {
+/** A Cleanup row (§5): the content title, one status word, who it touches, its day (or the day it was marked done); opens in place. */
+function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
   alertingDone: boolean
@@ -215,11 +216,16 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan }
   open: boolean
   onToggle: () => void
   onScan?: (returnTo: string) => void
+  onDone: (date: string) => void
+  notes: NotAssessedNotes
+  onNote: (policy: string, reason: string | null) => void
+  tenant: string
 }) {
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
-  // Alerting is the recorded fact (prompt 49 item 5); the rest are Ready while they have something to say.
-  const status = alertingDone && row.kind === 'alerting' ? { word: 'In place', tone: 'ok' as const } : { word: 'Ready', tone: 'ok' as const }
+  // A row marked done is In place from its recorded date (E3); alerting is also
+  // the recorded fact (prompt 49 item 5); the rest are Ready while they have something to say.
+  const status = row.done || (alertingDone && row.kind === 'alerting') ? { word: 'In place', tone: 'ok' as const } : { word: 'Ready', tone: 'ok' as const }
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
   const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null)
   return (
@@ -229,10 +235,10 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan }
           <Status tone={status.tone}>{status.word}</Status>
           <span className="step-title">{entry.title}</span>
           <span className="who">{who}</span>
-          <span className="when">{absoluteDate(row.day)}</span>
+          <span className="when">{cleanupWhen(row)}</span>
         </span>
       </div>
-      {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} />}
+      {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
     </>
   )
 }

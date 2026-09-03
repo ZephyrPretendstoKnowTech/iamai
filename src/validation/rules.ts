@@ -23,8 +23,9 @@ import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 import type { AuthMethodSummary, MfaViability } from '../scoring/mfaViability.ts'
 import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../copy/validation.ts'
 import type { Citation } from '../copy/validation.ts'
-import { absoluteDate } from '../copy/dates.ts'
+import { absoluteDate, relative } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
+import { isRecordedDrill } from '../roadmap/cleanupDone.ts'
 
 // ---- the model -------------------------------------------------------------
 
@@ -101,6 +102,8 @@ export type ValidationContext = {
   viability: MfaViability[]
   /** The two facts no tenant exposes, answered once in Setup. */
   answers: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
+  /** Every emergency access drill the plan recorded (the Cleanup drill row's Done): a sign-in on one of these days is the drill. */
+  drillDates: string[]
 }
 
 export type ValidationRule<S = string> = {
@@ -531,18 +534,26 @@ const bgNameIdentifiesPurpose: ValidationRule = {
 const bgLastSignIn: ValidationRule = {
   id: 'bg.lastSignIn',
   subject: 'breakGlass',
-  severity: 'note',
+  severity: 'warning',
   needs: ['users'],
   // R10: a break-glass account that has never signed in is the expected case,
   // and printing that as a note is bookkeeping. A break-glass account that HAS
-  // signed in is worth a line, because somebody used the escape hatch.
+  // signed in is worth a line, because somebody used the escape hatch: a sign-in
+  // on a recorded drill's day is the drill (E3, the Cleanup drill row's Done
+  // records the date); any other sign-in inside the drill window is a question
+  // the step asks (confirm who signed in and why), until a drill moves the last
+  // sign-in on to a recorded day.
   //
   // It also removes the contradiction the review caught: this rule reads the
   // directory's all-time last sign-in while the two below read the evidence
   // window, so "last signed in in June" sat beside "never seen".
   evaluate: (id, ctx) => {
     const at = userOf(ctx, id)?.lastSuccessfulSignIn ?? null
-    return at === null ? pass() : pass(F.bgLastSignIn(absoluteDate(at)))
+    if (at === null) return pass()
+    if (isRecordedDrill(at, ctx.drillDates)) return pass(F.bgLastSignInDrill(absoluteDate(at)))
+    const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(at)) / 86_400_000)
+    if (days <= BREAK_GLASS_DRILL_DAYS) return fail(F.bgLastSignInUnrecorded(absoluteDate(at)), { ago: relative(at, Date.parse(ctx.snapshot.asOf)) })
+    return pass(F.bgLastSignIn(absoluteDate(at)))
   },
 }
 

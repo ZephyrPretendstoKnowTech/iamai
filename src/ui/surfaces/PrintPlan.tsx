@@ -14,6 +14,7 @@ import { RingMark } from '../components/Ring.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
+import type { NotAssessedNotes } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import { fillText } from '../../content/render.ts'
@@ -39,6 +40,7 @@ export function PrintPlan({
   coverage,
   goalMap,
   stepCtx,
+  notes = {},
 }: {
   tenantName: string
   baselineLabel: string
@@ -56,6 +58,8 @@ export function PrintPlan({
   goalMap: GoalMap
   /** The step's variables for the content renderer, as the Plan builds them. */
   stepCtx: (step: Step) => StepVarContext
+  /** The not-assessed Cleanup row's notes (does not apply, with the reason), as the Plan shows them. */
+  notes?: NotAssessedNotes
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
@@ -195,7 +199,7 @@ export function PrintPlan({
           <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
           {schedule.cleanup.rows.map((r) => (
             <article key={r.kind} className="print-step">
-              <CleanupBody phase={schedule.cleanup!} row={r} status={{ word: 'Ready', tone: 'ok' }} />
+              <CleanupBody phase={schedule.cleanup!} row={r} status={r.done ? { word: 'In place', tone: 'ok' } : { word: 'Ready', tone: 'ok' }} notes={notes} />
             </article>
           ))}
         </section>

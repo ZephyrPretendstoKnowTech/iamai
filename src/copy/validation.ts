@@ -343,6 +343,8 @@ export const FINDING = {
   bgSignInMonitoring: 'nothing alerts when an emergency account signs in',
   bgName: (name: string): string => `the name "${name}" does not say what the account is for`,
   bgLastSignIn: (date: string): string => `last signed in ${date}`,
+  bgLastSignInDrill: (date: string): string => `signed in ${date}, a recorded drill`,
+  bgLastSignInUnrecorded: (date: string): string => `signed in ${date}, not a recorded drill: confirm who signed in and why`,
   bgNeverSeen: 'no sign-in for this account in the evidence window',
   bgCountries: (countries: string[]): string => `signed in from ${list(countries)} in the evidence window`,
   bgMfaSeen: 'has completed MFA in the evidence window',

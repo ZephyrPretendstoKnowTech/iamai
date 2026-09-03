@@ -15,6 +15,7 @@ import { operatorIdOf, usePlanData } from './planData.ts'
 import { inventoryTables, todayTable } from './inventoryTables.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
+import type { Checkpoint } from '../../roadmap/plan.ts'
 import { decisionsOf } from '../../roadmap/progress.ts'
 import type { PlanDecisions } from '../../roadmap/progress.ts'
 import { planIdFor } from '../../roadmap/generate.ts'
@@ -112,7 +113,8 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     const exclusionGroups = [...data.groups.entries()].map(([groupId, g]) => ({ groupId, memberCount: g.memberCount, memberIds: g.memberIds }))
     const checkpoint = makeCheckpoint({ snapshot, coverage, summary, exclusionGroups, breakGlassIds: data.mapping.breakGlassUserIds })
     const baselineSource = { kind: 'github' as const, owner: baselineIndex.owner, repo: baselineIndex.repo, commit: baselineIndex.commit ?? '' }
-    const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, startedAt: data.startedAt ?? undefined, signature: data.signature })
+    // The saved checkpoints travel (each Cleanup row's Done is one, E3), then this save's own.
+    const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, startedAt: data.startedAt ?? undefined, signature: data.signature })
     // The person's own working state, to load back on this tenant: names in full (the card says so).
     exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(file, null, 2), 'application/json', unredactedFrom('plan-file'))
   }
@@ -259,6 +261,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           coverage={coverage}
           goalMap={c.goalMap}
           stepCtx={stepCtx}
+          notes={data.mapping?.notAssessedNotes ?? {}}
         />
       )}
     </section>
