@@ -739,7 +739,7 @@
       },
       "decision": {
         "label": "Emergency access accounts",
-        "help": "Tick every account that exists only for this purpose; two are needed. IAMAI nominated these from their names, roles and exclusions. Create the rest below.",
+        "help": "Add every account that exists only for this purpose; two are needed. IAMAI nominated these from names, roles and exclusions.",
         "pickerRow": "{name} · {upn} · {signals}",
         "save": "Save",
         "multi": true
@@ -873,7 +873,7 @@
       },
       "decision": {
         "label": "Exclusions group",
-        "help": "Pick the one group every policy excludes. IAMAI recognised the ticked group because policies already exclude it and its members are the emergency accounts.",
+        "help": "The one group every policy excludes. IAMAI recognised this one from the exclusions already in place.",
         "pickerSource": "groups",
         "pickerRow": "{name} · {memberCount} members · excluded from {excludedFrom} of {policyCount} policies",
         "save": "Save"
@@ -1028,7 +1028,7 @@
       },
       "decision": {
         "label": "Allowed countries",
-        "help": "Ticked: every country with sign-ins since {from}. Untick a country nobody should work from; add one people will travel to.",
+        "help": "Every country with sign-ins since {from}. Remove one nobody should work from; add one people travel to.",
         "pickerRow": "{country} · {people} people · {signIns} sign-ins",
         "save": "Save",
         "question": {
@@ -1124,7 +1124,7 @@
       },
       "decision": {
         "label": "Trusted network",
-        "help": "Tick the locations that are your own offices or VPN exits. Untick anything nobody signs in from that location.",
+        "help": "Your offices and VPN exits. Remove anything nobody signs in from that location.",
         "pickerRow": "{name} · {ranges} · {matches} sign-ins matched",
         "save": "Save"
       },
@@ -1135,7 +1135,7 @@
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
           "Add each address as a range: {list:ranges} Never 0.0.0.0/0; nothing wider than /16, and a single office is usually /32 or a /24.",
-          "Tick \"Mark as trusted location\". Save."
+          "Select \"Mark as trusted location\". Save."
         ],
         "correct": [
           "Entra admin center → Entra ID → Conditional Access → Named locations → open {existingName}.",
@@ -1178,7 +1178,7 @@
         "existingName": "Head office",
         "fixes": [
           "Remove the range 0.0.0.0/0",
-          "Tick Mark as trusted location"
+          "Select Mark as trusted location"
         ],
         "from": "Aug 1"
       }
@@ -1199,7 +1199,7 @@
       },
       "decision": {
         "label": "Service accounts",
-        "help": "Tick only accounts that no person signs in with. An account with an interactive sign-in in the records is a person, whatever it is called.",
+        "help": "Only accounts no person signs in with. An interactive sign-in in the records makes it a person, whatever it is called.",
         "pickerRow": "{name} · {signals}",
         "save": "Save"
       },
@@ -1268,7 +1268,7 @@
       },
       "decision": {
         "label": "Shared devices",
-        "help": "Tick the accounts that belong to a room, a panel or a shared phone. These are excluded from every people policy and get this one.",
+        "help": "Accounts that belong to a room, a panel or a shared phone.",
         "pickerRow": "{name} · {signals}",
         "save": "Save"
       },
@@ -1441,7 +1441,7 @@
         "steps": [
           "Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable: On; Target: All users.",
           "Allow self-service set up: Yes. Enforce attestation: Yes.",
-          "Restrict specific keys: Allow. Tick Microsoft Authenticator (Microsoft adds both app identifiers), or add them by hand with + Add AAGUID: Authenticator for Android {aaguidAndroid}; Authenticator for iOS {aaguidIos}.",
+          "Restrict specific keys: Allow. Select Microsoft Authenticator (Microsoft adds both app identifiers), or add them by hand with + Add AAGUID: Authenticator for Android {aaguidAndroid}; Authenticator for iOS {aaguidIos}.",
           "Add the identifier of every hardware key already registered in {tenant}, listed above, and of any key model you will buy for the emergency accounts. A key model missing from this list cannot register or sign in.",
           "Save. Then Microsoft Authenticator → Enable: On, All users, so passkeys in the app can be registered.",
           "Temporary Access Pass → Enable: On, All users; one-time use; 1 hour. This is how a person with no method registers their first passkey."
@@ -1504,7 +1504,7 @@
       },
       "decision": {
         "label": "Authentication strength",
-        "help": "IAMAI ticked the strength whose allowed combinations match the baseline's. Pick another only if you keep an equivalent one under a different name.",
+        "help": "The strength whose combinations match the baseline's.",
         "pickerSource": "strengths",
         "pickerRow": "{name} · {combinations}",
         "save": "Save"
@@ -1514,7 +1514,7 @@
         "steps": [
           "Entra admin center → Entra ID → Conditional Access → Authentication strengths → New authentication strength.",
           "Name: {strengthName}. Description: the baseline's phishing-resistant strength with a one-time pass for first sign-ins.",
-          "Tick exactly: Windows Hello for Business · Passkeys (FIDO2) · Certificate-based authentication (multifactor) · Temporary Access Pass (one-time) · Temporary Access Pass (multi-use). Nothing else.",
+          "Select exactly: Windows Hello for Business · Passkeys (FIDO2) · Certificate-based authentication (multifactor) · Temporary Access Pass (one-time) · Temporary Access Pass (multi-use). Nothing else.",
           "Next → Create. The policies that reference it are created in later steps."
         ]
       },
@@ -1614,14 +1614,14 @@
       },
       "decision": {
         "label": "People who need special care",
-        "help": "Ticked: admins, anyone with no method, anyone with text or call only, and you. These get the in-person instructions; everyone else gets the email.",
+        "help": "Admins, anyone with no method, anyone with text or call only, and your own account. These get the in-person instructions.",
         "pickerSource": "specialCare",
         "pickerRow": "{name} · {state}",
         "save": "Save",
         "multi": true
       },
       "whatToDo": {
-        "lead": "For the people ticked above (in person):",
+        "lead": "For the people chosen above (in person):",
         "steps": [
           "Book ten minutes. Open https://aka.ms/mfasetup with them signed in.",
           "No method: issue a Temporary Access Pass (Users → the person → Authentication methods → Add → Temporary Access Pass), read it to them by phone, then Add sign-in method → Passkey → in Microsoft Authenticator. Admins: a hardware security key as well.",
@@ -1926,7 +1926,7 @@
       },
       "decision": {
         "label": "Admins group",
-        "help": "The group every admin belongs to; it is excluded from this block. IAMAI ticked the group whose members hold the admin roles. Create one below if none exists.",
+        "help": "The group every admin belongs to; it is excluded from this block.",
         "pickerSource": "adminGroups",
         "pickerRow": "{name} · {memberCount} members · {rolesHeld}",
         "save": "Save"
@@ -2016,7 +2016,7 @@
       },
       "decision": {
         "label": "Partner tier",
-        "help": "The baseline requires plain MFA of every guest, and its {strengthName} strength of formal partners whose home tenant MFA you trust. Tick the partner tenants that get the stronger tier, if any.",
+        "help": "Partner tenants whose home MFA you trust; they get the stronger tier.",
         "pickerSource": "partnerTenants",
         "pickerRow": "{tenantName} · {n} guests · MFA trust {trust}",
         "save": "Save",
@@ -2099,15 +2099,15 @@
         "from": "Aug 1"
       },
       "whatToDoReference": {
-        "lead": "Policy A, every guest: and Policy B only for the partner tenants ticked above.",
+        "lead": "Policy A, every guest: and Policy B only for the partner tenants chosen above.",
         "steps": [
-          "Cross-tenant trust first, if you ticked a partner: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → Organizational settings → the partner → Inbound access → Trust settings → Trust multifactor authentication from Microsoft Entra tenants: On.",
+          "Cross-tenant trust first, if you chose a partner: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → Organizational settings → the partner → Inbound access → Trust settings → Trust multifactor authentication from Microsoft Entra tenants: On.",
           "Policy A: {policyName}: {portalRoot}",
           "Users → Include: Guest or external users → all types{serviceProviderClause}. {exclusionsLine}",
           "Target resources → Resources → All resources",
           "Grant → Require multifactor authentication",
           "{reportOnlyLine}",
-          "Policy B: {policyNameB} (only if a partner is ticked): {portalRoot}",
+          "Policy B: {policyNameB} (only if a partner is chosen): {portalRoot}",
           "Users → Include: Guest or external users → B2B collaboration guest users, B2B collaboration member users → Selected external tenants: {list:partnerTenantsList}. {exclusionsLine}",
           "Target resources → Resources → All resources",
           "Grant → Require authentication strength: {strengthName}",
