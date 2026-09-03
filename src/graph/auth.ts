@@ -20,6 +20,11 @@ export async function signIn(): Promise<void> {
   return (await lib()).signIn()
 }
 
+/** The account picker, for a role the signed-in account lacks. */
+export async function signInAnother(): Promise<void> {
+  return (await lib()).signInAnother()
+}
+
 export async function signOut(): Promise<void> {
   return (await lib()).signOut()
 }

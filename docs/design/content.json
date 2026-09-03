@@ -558,8 +558,9 @@
         "gapsLine": "Scan finished with gaps · no plan built · {covering} reads every section",
         "gapsRow": "{section}: {reason} · ask for {roles}",
         "gapsNotRead": "not read",
-        "gapsKept": "The {date} plan and its record are unchanged.",
-        "roleGap": "{upn} holds none of the roles that read {sections}. Ask for {roles}; {covering} reads everything IAMAI needs and writes nothing. The scan has not started."
+        "roleGap": "{upn} holds none of the roles that read {sections}. Ask for {roles}, or {covering} (reads everything IAMAI needs, writes nothing).",
+        "signInAnother": "Sign in with another account",
+        "openLastFull": "Open the last full plan ({date})"
       },
       "plan": {
         "needsScan": "Nothing to plan until the first scan.",

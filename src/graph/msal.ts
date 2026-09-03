@@ -29,7 +29,8 @@ export function initAuth(): Promise<AccountInfo | null> {
       msal.setActiveAccount(result.account)
       return result.account
     }
-    const existing = msal.getAllAccounts()[0] ?? null
+    // The account chosen last (setActiveAccount persists it) before any other in the cache.
+    const existing = msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null
     if (existing) msal.setActiveAccount(existing)
     return existing
   })()
@@ -66,6 +67,16 @@ export async function signIn(): Promise<void> {
   // so a queued early click navigates the moment it can (prompt 50.1 item 7).
   await authReady()
   return msal.loginRedirect({ scopes: GRAPH_SCOPES })
+}
+
+/**
+ * Sign in as a different account, for a role the signed-in one lacks: the
+ * account picker, then the redirect back; the chosen account becomes the active
+ * one (initAuth), so the token the next scan reads is its.
+ */
+export async function signInAnother(): Promise<void> {
+  await authReady()
+  return msal.loginRedirect({ scopes: GRAPH_SCOPES, prompt: 'select_account' })
 }
 
 export async function signOut(): Promise<void> {
