@@ -2927,6 +2927,12 @@
         ]
       },
       "decision": null,
+      "whatToDo": {
+        "lead": "The Conditional Access policies only tell SharePoint and Exchange to apply a restriction; the restriction itself is set once in SharePoint. Do that first.",
+        "before": [
+          "SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save. Exchange Online follows this setting for Outlook on the web."
+        ]
+      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
@@ -2981,9 +2987,8 @@
         "from": "Aug 1"
       },
       "whatToDoReference": {
-        "lead": "The Conditional Access policies only tell SharePoint and Exchange to apply a restriction; the restriction itself is set once in SharePoint. Do that first.",
+        "lead": null,
         "steps": [
-          "SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save. Exchange Online follows this setting for Outlook on the web.",
           "Policy A: {policyNameA}: {portalRoot}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → Select resources → Office 365",
@@ -3019,6 +3024,12 @@
         ]
       },
       "decision": null,
+      "whatToDo": {
+        "lead": null,
+        "before": [
+          "Before this policy: Intune → Devices → Compliance → Compliance policy settings → Mark devices with no compliance policy assigned as: Not compliant; and set a grace period of 3 days on the Mark device non-compliant action in each compliance policy."
+        ]
+      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
@@ -3085,7 +3096,6 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
-          "Before this policy: Intune → Devices → Compliance → Compliance policy settings → Mark devices with no compliance policy assigned as: Not compliant; and set a grace period of 3 days on the Mark device non-compliant action in each compliance policy.",
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude the service accounts group {serviceAccountsGroup}.",
@@ -3332,6 +3342,12 @@
         ]
       },
       "decision": null,
+      "whatToDo": {
+        "lead": null,
+        "before": [
+          "Entra admin center → Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices: No (this policy replaces it)."
+        ]
+      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -3368,7 +3384,6 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
-          "Entra admin center → Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices: No (this policy replaces it).",
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
@@ -3853,6 +3868,13 @@
         ]
       },
       "decision": null,
+      "whatToDo": {
+        "lead": null,
+        "before": [
+          "Hybrid tenants: enable password writeback in Entra Connect, or the change fails.",
+          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required."
+        ]
+      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
@@ -3893,8 +3915,6 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
-          "Hybrid tenants: enable password writeback in Entra Connect, or the change fails.",
-          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required.",
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
@@ -3988,6 +4008,13 @@
         ]
       },
       "decision": null,
+      "whatToDo": {
+        "lead": null,
+        "before": [
+          "Hybrid tenants: enable password writeback in Entra Connect, or the change fails.",
+          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required."
+        ]
+      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
@@ -4023,8 +4050,6 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
-          "Hybrid tenants: enable password writeback in Entra Connect, or the change fails.",
-          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required.",
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude Guest or external users (all types).",

@@ -341,10 +341,16 @@ export function renderStep(st: Record<string, any>): string {
   // What to do
   let w = st.whatToDo || {}
   if (kind === 'policy') {
+    // A policy step's own whatToDo carries a lead and the "before" lines (a
+    // setting to change before the policy is created), which the product keeps
+    // above the translator's portal lines; the review renders them the same way.
+    const own = st.whatToDo || {}
+    const before: string[] = Array.isArray(own.before) ? own.before : []
     const tr = TRANSLATED[st.id]
-    if (tr) w = { lead: (st.whatToDoReference || {}).lead, steps: tr.steps || tr }
+    if (tr) w = { lead: own.lead ?? (st.whatToDoReference || {}).lead, steps: [...before, ...(tr.steps || tr)] }
     else {
-      w = st.whatToDoReference || {}
+      const ref = st.whatToDoReference || {}
+      w = { ...ref, lead: own.lead ?? ref.lead, steps: [...before, ...(ref.steps || [])] }
       parts.push("<p class=\"annot\">Note: reviewer's rendering; the product generates this section from the baseline policy. Run npm run translator-dump to show the product's version here.</p>")
     }
   }
