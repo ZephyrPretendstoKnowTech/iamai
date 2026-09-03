@@ -67,7 +67,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           {policies.map((p) => (
             <div key={p} className="option-value">
               <span className="reason">{p}</span>
-              <input type="text" aria-label={fillText(A.notAssessedPrompt, { policy: p, tenant })} placeholder={fillText(A.notAssessedPrompt, { policy: p, tenant })} value={drafts[p] ?? notes[p] ?? ''} onChange={(e) => setDrafts((d) => ({ ...d, [p]: e.currentTarget.value }))} />
+              <input type="text" aria-label={fillText(A.notAssessedPrompt, { policy: p, tenant })} placeholder={fillText(A.notAssessedPrompt, { policy: p, tenant })} value={drafts[p] ?? notes[p] ?? ''} onChange={(e) => { const v = e.currentTarget.value; setDrafts((d) => ({ ...d, [p]: v })) }} />
               <Button variant="secondary" onClick={() => onNote(p, (drafts[p] ?? notes[p] ?? '').trim() || null)}>{A.notAssessedSave}</Button>
             </div>
           ))}
