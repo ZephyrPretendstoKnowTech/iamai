@@ -399,6 +399,7 @@ async function walkFixture(fx) {
   let rowTitlesAfter = []
   let rowReasonsAfter = []
   let exclusionBody = null
+  let sawExistingCoverage = false
   for (const width of WIDTHS) {
     await setWidth(width)
     const wdir = join(dir, String(width))
@@ -553,6 +554,29 @@ async function walkFixture(fx) {
             if (!week2 && /· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
           }
         }
+        // Cleanup completion (E3), on the demo. The emergency accounts signed in
+        // inside the drill window with no drill recorded, so the emergency-access
+        // step asks who and why; a step that found existing coverage is noted for
+        // the consolidation row; the drill row's Done records today and the row
+        // reads done <date>; the not-assessed row takes a note per policy.
+        if (fx.name.startsWith('demo')) {
+          if (/Emergency Access Accounts/.test(title) && !/signed in \d+ days ago, not a recorded drill: confirm who signed in and why/.test(bodyText)) add('P0', `${slabel}: an emergency account signed in inside the drill window with no drill recorded, and the step does not ask who signed in and why`)
+          if (/already covers this with/.test(bodyText)) sawExistingCoverage = true
+          if (/Emergency Access Drill/.test(title)) {
+            const pressed = await clickText('button', /^Done$/, 'main.page .step-body .decision')
+            if (!pressed) add('P0', `${slabel}: no Done control on the Cleanup row`)
+            else {
+              const shown = await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Emergency Access Drill/.test((r.querySelector('.step-title') || {}).textContent || '') && /^done \\S.*\\d{4}$/.test((r.querySelector('.when') || {}).textContent || ''))`, 8000)
+              if (!shown) add('P0', `${slabel}: Done did not put "done <date>" on the row`)
+            }
+          }
+          if (/Did Not Assess/.test(title)) {
+            const typed = await evaluate(`(() => { const i = document.querySelector('main.page .step-body .decision input[type=text]'); if (!i) return false; const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, 'not used here'); i.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
+            const saved = typed ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
+            if (!typed || !saved) add('P0', `${slabel}: the not-assessed row takes no per-policy note (input ${typed}, Save ${saved})`)
+            else if (!(await waitFor(`/: does not apply: not used here/.test((document.querySelector('main.page .step-body') || {}).innerText || '')`, 8000))) add('P0', `${slabel}: the note did not render as "<policy>: does not apply: <reason>"`)
+          }
+        }
         // A translator-rendered step keeps its content's "before" lines above the
         // portal lines (the merge follow-up): on the step, each line is present and
         // sits before the portal root line.
@@ -641,6 +665,8 @@ async function walkFixture(fx) {
   // Preparation). On the demo it is Ready both days; week two's re-scan recognised the
   // group, so the step must check it rather than still offer the create instructions.
   if (fx.name.startsWith('demo') && !rowTitles.some((t) => /Exclusions Group/i.test(t))) add('P0', `${fx.name}: the exclusions-group step is missing; it is on every plan`)
+  // The consolidation row exists whenever a step's existingCoverage line rendered, and only then (E3).
+  if (fx.name.startsWith('demo') && sawExistingCoverage !== rowTitlesAfter.some((t) => /Consolidate Overlapping Policies/.test(t))) add('P0', `${fx.name}: ${sawExistingCoverage ? 'a step found existing coverage but Cleanup has no Consolidate Overlapping Policies row' : 'Cleanup has a Consolidate Overlapping Policies row but no step found existing coverage'}`)
   if (fx.week2 && exclusionBody !== null && /No exclusions group recognised|New group/.test(exclusionBody)) add('P0', `${fx.name}: the exclusions-group step still offers to create the group in week two, although the re-scan recognised it`)
   // A policy in report-only (Report-only in the status column) says when it may
   // be enforced in the date column, from two gates. The demo's week one has one
