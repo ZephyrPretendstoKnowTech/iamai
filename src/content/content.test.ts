@@ -65,12 +65,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[16].who.groups.holdouts',
   '.steps[16].who.adminsNote',
   '.steps[17].who.evidence[1]',
-  '.steps[18].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
-  // three admin policies (15, 23, 33); the examples list none.
-  '.steps[18].who.evidence[2]',
+  // three admin policies (15, 23, 33); the examples list none. The lockout lists
+  // (E8) render through their count lines, so those are no longer suppressed.
+  '.steps[18].who.evidence[3]',
   '.steps[26].who.evidence[2]',
-  '.steps[36].who.evidence[1]',
+  '.steps[36].who.evidence[2]',
   '.steps[19].who.evidence[0]',
   // Azure sign-ins by people with no directory role (step-audit item 16); the example lists none.
   '.steps[19].who.evidence[2]',
@@ -82,8 +82,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[36].who.evidence[0]',
   '.steps[37].who.evidence[0]',
   '.steps[38].who.evidence[1]',
-  // People with only Authenticator approval, stopped by a risky sign-in (step-audit item 35); the example lists none.
-  '.steps[38].who.evidence[3]',
   '.steps[39].who.evidence[0]',
   '.steps[40].who.evidence[1]',
   '.steps[41].who.evidence[1]',
