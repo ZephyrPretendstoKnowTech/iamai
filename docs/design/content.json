@@ -1317,7 +1317,7 @@
         "trustedLocation": "Core - Trusted - Head office",
         "peoplePolicies": [
           "Require MFA for Everyone",
-          "End Browser Sessions When the Browser Closes"
+          "Limit How Long Sessions Last"
         ],
         "existingPolicies": [],
         "from": "Aug 1"
@@ -1533,7 +1533,7 @@
         "lead": null,
         "steps": [
           "Entra admin center → Entra ID → Conditional Access → Authentication strengths → New authentication strength.",
-          "Name: {strengthName}. Description: the baseline's phishing-resistant strength with a one-time pass for first sign-ins.",
+          "Name: {strengthName}. Description: the baseline's phishing-resistant strength with a Temporary Access Pass for first sign-ins.",
           "Select exactly: Windows Hello for Business · Passkeys (FIDO2) · Certificate-based authentication (multifactor) · Temporary Access Pass (one-time) · Temporary Access Pass (multi-use). Nothing else.",
           "Next → Create. The policies that reference it are created in later steps."
         ]
@@ -1542,7 +1542,7 @@
       "doneWhen": [
         "A strength named {strengthName} exists with exactly those five combinations, or an existing strength with the same combinations is selected above."
       ],
-      "ifWrong": null,
+      "ifWrong": "Delete the strength; no policy references it yet.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -1581,7 +1581,7 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a hardware security key, and on your phone a passkey in Microsoft Authenticator.",
+          "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a hardware security key (survives a lost phone) and a passkey in Microsoft Authenticator (everyday use).",
           "Sign out and sign in again with the passkey, so the record shows a phishing-resistant sign-in.",
           "If the passkey is refused, the method settings in Set Up Passkeys to Match the Baseline are not saved yet."
         ]
@@ -1596,7 +1596,12 @@
       "skip": false,
       "scanControl": true,
       "more": {
-        "risks": [],
+        "risks": [
+          {
+            "text": "A key registered on a shared machine, or left in the laptop, is not a second factor.",
+            "applies": "always"
+          }
+        ],
         "helpDesk": null,
         "manager": null,
         "waits": "Require Phishing-Resistant MFA for Admins waits on this."
@@ -1620,7 +1625,7 @@
       },
       "who": {
         "lead": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90% until {enrollBy}.",
-        "timeline": "Enrol by {enrollBy}. The first policy enforces on {firstEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
+        "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
         "groups": {
           "noMethod": "{n} people with no method; issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
           "insufficient": "{n} people whose only method is text or call; register a passkey in Microsoft Authenticator, then remove the phone number:",
@@ -1652,19 +1657,20 @@
         ],
         "generic": [
           "Send the email below to everyone else; send the admin note to the admins.",
+          "Turn on Entra's own nudge: Authentication methods → Registration campaign → Enabled, Target: All users, snooze limit 3; it asks people to set up Authenticator at sign-in.",
           "Scan to update the plan after each batch; the lists above shrink as people are seen."
         ]
       },
       "dates": null,
       "doneWhen": [
         "Readiness reaches 90% of active people with a passkey or a working method, or {enrollBy} has passed and every holdout is reviewed.",
-        "Every admin has a passkey and a security key registered."
+        "Every admin has a passkey or a security key registered."
       ],
       "ifWrong": null,
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {firstEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next two weeks. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "body": "From {mfaEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next {enrolWindowDays} days. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "signature": "{signature}",
         "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together."
       },
@@ -1717,8 +1723,9 @@
           "Breakglass · see the emergency-access step"
         ],
         "enrollBy": "Fri Sep 4",
-        "firstEnforce": "Tue Sep 8",
-        "firstEnforceLong": "Tuesday, September 8",
+        "mfaEnforce": "Tue Sep 8",
+        "mfaEnforceLong": "Tuesday, September 8",
+        "enrolWindowDays": 14,
         "holdouts": [],
         "specialCare": [
           "Lachlan Robinette · admin, phishing-resistant, proven",
@@ -1742,7 +1749,7 @@
       "who": {
         "lead": "{active} active people · {admins} admins · {guests} guests",
         "evidence": [
-          "The baseline's floor for everyone is the Multifactor authentication strength: a passkey, Authenticator approval or a security key all satisfy it. The campaign registers passkeys because Challenge High-Risk Sign-ins requires one the moment a sign-in looks wrong.",
+          "The baseline's floor for everyone is the Multifactor authentication strength: a passkey, Authenticator approval, a security key, and a text message or call, which is why the campaign removes phone numbers. The campaign registers passkeys because the admin and risk policies require one, and a passkey cannot be phished.",
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
           "{n} people registered but never seen to complete MFA: their first prompt is enforcement: {list:unproven}",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
@@ -1831,9 +1838,8 @@
       "who": {
         "lead": "{admins} people hold an admin role",
         "evidence": [
-          "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, End Browser Sessions When the Browser Closes).",
+          "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
           "{n} admins have no phishing-resistant method; register before {enforce}: {list:adminsWithout}",
-          "{n} admins are covered: {list:adminsWith}",
           "Roles held through Privileged Identity Management are in scope only while activated.",
           "{existingCoverage}"
         ]
@@ -1848,7 +1854,7 @@
       "comms": {
         "audience": "admins",
         "salutation": "Admins,",
-        "body": "From {enforceLong}, admin sign-ins at {tenant} need a passkey or a security key; app approvals and codes will not be accepted for admin work. Register one now: https://aka.ms/mfasetup → Add sign-in method → Passkey, or bring your key and we will register it together. Everyday work is unaffected.",
+        "body": "From {enforceLong}, sign-ins by your admin account at {tenant} need a passkey or a security key; app approvals and codes will not be accepted for admin work. Register one now: https://aka.ms/mfasetup → Add sign-in method → Passkey, or bring your key and we will register it together. Everyday work is unaffected.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -1881,10 +1887,6 @@
         "tenant": "GetIAMAI",
         "admins": 2,
         "adminsWithout": [],
-        "adminsWith": [
-          "Lachlan Robinette",
-          "Kaladin Stormblessed"
-        ],
         "coreAdminRoles": [
           "Global Administrator",
           "Privileged Role Administrator",
@@ -1941,6 +1943,7 @@
         "evidence": [
           "{n} non-admins opened an admin portal since {from}; they are blocked from {enforce}: {list:nonAdminPortalUsers}",
           "Nobody outside the admins group opened an admin portal since {from}.",
+          "{n} people without a directory role signed in to Azure since {from}; they are blocked from {enforce}: {list:azureNonAdmins}",
           "{existingCoverage}"
         ]
       },
@@ -1956,7 +1959,12 @@
         "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
-      "comms": null,
+      "comms": {
+        "audience": "affected",
+        "salutation": "Hello,",
+        "body": "From {enforceLong}, the Azure portal and command-line tools at {tenant} open only for the admins group. If you work in Azure, we will either add you to that group before then or leave Azure out of this rule; if Azure refuses you after that date, reply here.",
+        "signature": "{signature}"
+      },
       "doesntApply": false,
       "skip": true,
       "scanControl": true,
@@ -1968,6 +1976,10 @@
           },
           {
             "text": "A helpdesk person with a scoped role who is not in the group loses the portal they use.",
+            "applies": "always"
+          },
+          {
+            "text": "Anyone with an Azure RBAC role but no directory role, most developers, is blocked from the Azure portal and CLI; add them to the admins group or scope the Azure API out.",
             "applies": "always"
           }
         ],
@@ -1999,6 +2011,7 @@
         "adminsGroupProposed": "Core - Role - Admins",
         "n": 0,
         "nonAdminPortalUsers": [],
+        "azureNonAdmins": [],
         "exclusionsGroup": "Breakglass Exclusion",
         "enforce": "Tue Sep 8",
         "from": "Aug 1"
@@ -2010,7 +2023,7 @@
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. Exclude → Groups: {exclusionsGroup}, {adminsGroup}. Exclude → Guest or external users → Service provider users.",
-          "Target resources → Resources → Select resources → Microsoft Admin Portals, Windows Azure Service Management API, Microsoft Purview",
+          "Target resources → Resources → Select resources → Microsoft Admin Portals, Windows Azure Service Management API, Microsoft Purview Platform, Windows Cloud Login, My Staff",
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
@@ -2181,10 +2194,14 @@
           {
             "text": "The trusted location's address changes and registration from the office is blocked.",
             "applies": "always"
+          },
+          {
+            "text": "New starters register in the office, or with you over a screen-share.",
+            "applies": "always"
           }
         ],
         "helpDesk": [
-          "New phone away from the office: register it with them over a screen-share while they are on the VPN, or when they are next in.",
+          "New phone away from the office: register it with them over a screen-share, if your VPN exit is in the trusted network, or when they are next in.",
           "Do not add a user exclusion; add the office's new address to the trusted location if that is what changed."
         ],
         "manager": "An attacker with a stolen password can no longer add their own sign-in method and lock the real person out. Anyone already set up sees no change.",
@@ -2229,7 +2246,7 @@
       "kind": "policy",
       "title": "Block Legacy Authentication",
       "changeLine": null,
-      "why": "Legacy protocols skip MFA entirely, so they are the door attackers try first.",
+      "why": "Legacy protocols skip MFA; this also moves everyone off the built-in phone mail apps (ActiveSync), even with modern sign-in.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy"
       },
@@ -2272,7 +2289,7 @@
             "applies": "always"
           },
           {
-            "text": "A mailbox someone still reads on an old phone by IMAP or ActiveSync stops syncing.",
+            "text": "The built-in Mail app on iPhone or Android stops syncing until Outlook is installed.",
             "applies": "legacyUsersInScope"
           }
         ],
@@ -2345,7 +2362,8 @@
           }
         ],
         "helpDesk": [
-          "Scripts on device code sign-in need a workload identity or a managed identity."
+          "Scripts on device code sign-in need a workload identity or a managed identity.",
+          "An admin using az login on a box with no browser: sign in from a browser on your own device; device code is off."
         ],
         "manager": "A sign-in flow used almost only by phishing kits is turned off. Without this, one pasted code signs an attacker in.",
         "waits": null
