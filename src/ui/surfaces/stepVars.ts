@@ -166,8 +166,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   if (wantedLong) v.wantedLong = wantedLong
 
   // Existing coverage: whether a policy already delivers the goal (drives the
-  // {existingCoverage} line's presence).
-  v.existingPolicies = step.deliveredBy.length > 0 ? step.deliveredBy : []
+  // {existingCoverage} line's presence). A done step's policies are what makes
+  // it In place, not coverage this step's version supersedes; the line names
+  // what the consolidation row retires (generate.ts supersededPolicies).
+  v.existingPolicies = step.status !== 'done' && step.deliveredBy.length > 0 ? step.deliveredBy : []
 
   // The list variables, derived from what the scan collected (never gated when
   // the data exists): the campaign buckets, the lockout-scenario people, and the

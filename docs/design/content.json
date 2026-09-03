@@ -548,7 +548,14 @@
         "constraintTip": "What set the plan length",
         "putBack": "Put this step back",
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
-        "footerJson": "JSON"
+        "footerJson": "JSON",
+        "cleanupDoneOn": "Done on",
+        "cleanupDone": "Done",
+        "cleanupDoneRow": "done {date}",
+        "notAssessedLabel": "Does not apply here",
+        "notAssessedPrompt": "Why does {policy} not apply to {tenant}? One line; it goes in the plan file.",
+        "notAssessedRow": "{policy}: does not apply: {reason}",
+        "notAssessedSave": "Save"
       },
       "today": {
         "lineNoRecords": "no sign-in records",

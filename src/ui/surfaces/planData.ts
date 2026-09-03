@@ -37,6 +37,8 @@ import type { NameDirectory } from '../../names.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
+import type { CleanupKind } from '../../roadmap/cleanup.ts'
+import { cleanupRecord, withCleanupDone } from '../../roadmap/cleanupDone.ts'
 
 // The persisted record holds decisions only (prompt 50.1 item 1): skips, the
 // start date, the freeze, the checkpoints. Steps, statuses, populations,
@@ -94,6 +96,12 @@ export type PlanData = {
   setTimeZone: (tz: string | null) => void
   /** Doesn't apply here: record the person's reason for a step (null puts it back). In the mapping, so in the plan file. */
   setNotApplicable: (stepId: string, reason: string | null) => void
+  /** The plan's checkpoints as saved (the scan checkpoints a save writes, and each Cleanup row's Done); they travel in the plan file. */
+  checkpoints: unknown[]
+  /** A Cleanup row's Done (E3): record the date (YYYY-MM-DD) in the checkpoints and regenerate around it (the drill's date exempts its sign-in). */
+  markCleanupDone: (kind: CleanupKind, date: string) => void
+  /** The not-assessed Cleanup row's note for one baseline policy: does not apply, with the reason (null clears it). In the mapping, so in the plan file. */
+  setNotAssessedNote: (policy: string, reason: string | null) => void
 }
 
 /** Today's date in the display zone (never UTC), as YYYY-MM-DD. */
@@ -247,6 +255,8 @@ export function usePlanData(
       groupMembers: groups,
       changeFreeze: freeze,
       goalMap: baseline.goalMap,
+      // What the checkpoints record about Cleanup (E3): each row's Done, and the drill dates.
+      cleanupRecord: cleanupRecord(saved?.checkpoints ?? []),
     })
     const { steps, schedule } = result
     // The one decision a regeneration cannot know, and the one observation (the
@@ -280,7 +290,7 @@ export function usePlanData(
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
     if (saved.startedAt) decisions.startedAt = saved.startedAt
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, reportOnlySeen: decisions.reportOnlySeen, signature: decisions.signature })
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, reportOnlySeen: decisions.reportOnlySeen, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
     if (key === lastPersist.current) return
     lastPersist.current = key
     void savePlanRecord(snapshot.tenantId, decisions)
@@ -344,6 +354,24 @@ export function usePlanData(
       if (reason && reason.trim().length > 0) notApplicable[stepId] = reason.trim()
       else delete notApplicable[stepId]
       const next = { ...mapping, notApplicable }
+      setMapping(next)
+      void saveMappingState(next)
+      bump()
+    },
+    checkpoints: saved?.checkpoints ?? [],
+    markCleanupDone: (kind, date) => {
+      setSaved((p) => {
+        const base = p ?? { planId, skips: {}, checkpoints: [] }
+        return { ...base, checkpoints: withCleanupDone(base.checkpoints ?? [], kind, date, new Date().toISOString()) }
+      })
+      bump()
+    },
+    setNotAssessedNote: (policy, reason) => {
+      if (!mapping) return
+      const notAssessedNotes = { ...(mapping.notAssessedNotes ?? {}) }
+      if (reason && reason.trim().length > 0) notAssessedNotes[policy] = reason.trim()
+      else delete notAssessedNotes[policy]
+      const next = { ...mapping, notAssessedNotes }
       setMapping(next)
       void saveMappingState(next)
       bump()
