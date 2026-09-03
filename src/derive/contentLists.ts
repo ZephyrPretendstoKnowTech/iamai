@@ -90,6 +90,20 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   // account (prompt 52 Part 3): the picker reads `<source>Ids` beside `<source>`.
   const specialCareIds = [...careIds]
 
+  // The lockout lists (E8): who in a step's scope has no phishing-resistant
+  // method today, by name when three or fewer, as a count otherwise. The admins
+  // for the admin policy; the eligible role holders for the activation policy;
+  // everyone with only Authenticator approval (no passkey, no key) for the
+  // risk policy, which stops them rather than prompting.
+  const noPr = (v: MfaViability): boolean => !v.methodTiers.includes('phishingResistant')
+  const adminsWithoutRows = active.filter((v) => admins.has(v.userId) && noPr(v))
+  const eligibleRows = Object.keys(snapshot.roles.eligible ?? {}).map((id) => byId.get(id)).filter((v): v is MfaViability => v !== undefined && !bg.has(v.userId) && noPr(v))
+  const pushOnlyRows = active.filter((v) => v.methodTiers.includes('push') && noPr(v) && !v.methodTiers.includes('passwordless'))
+  const lockout = (rows: MfaViability[]): { names: string[]; count: number | undefined } => ({ names: rows.length <= NAMES_UP_TO ? bucketName(rows) : [], count: rows.length > NAMES_UP_TO ? rows.length : undefined })
+  const adminsWithoutL = lockout(adminsWithoutRows)
+  const eligibleWithoutL = lockout(eligibleRows)
+  const pushOnlyL = lockout(pushOnlyRows)
+
   return {
     // Campaign buckets (mfaViability over collected methods + sign-ins).
     noMethod: bucketName(noMethod),
@@ -125,7 +139,20 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // name them beside the step. The emergency accounts are not everyday accounts.
     adminsWithWorkload: adminsWithWorkloadOf(snapshot, bg).map(([id, apps]) => `${nameOf(id)} · ${apps.join(', ')}`),
     adminsWithWorkloadIds: adminsWithWorkloadOf(snapshot, bg).map(([id]) => id),
+    // The lockout lists (E8), by name when three or fewer; the count line stands in otherwise.
+    adminsWithout: adminsWithoutL.names,
+    eligibleWithout: eligibleWithoutL.names,
+    pushOnlyUsers: pushOnlyL.names,
+    ...(counts({ adminsWithoutCount: adminsWithoutL.count, eligibleWithoutCount: eligibleWithoutL.count, pushOnlyCount: pushOnlyL.count, pushOnlyTotal: pushOnlyRows.length > 0 ? pushOnlyRows.length : undefined }) as Record<string, string[]>),
   }
+}
+
+/** Names are listed up to this many; a longer list is a count (E8). */
+export const NAMES_UP_TO = 3
+
+/** The count variables that are filled, as the list record's shape allows (a number reads as a value; an absent one gates its line off). */
+function counts(values: Record<string, number | undefined>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined))
 }
 
 /** Each directory-role holder with mail or Teams sign-ins on the same account, with the apps seen (E6). */

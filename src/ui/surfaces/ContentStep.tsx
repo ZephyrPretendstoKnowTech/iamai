@@ -170,7 +170,8 @@ export function ContentStep({
       {who.groups && who.overlap && <Line s={who.overlap} ex={ex} cls="sub" />}
       {who.groups && who.adminsNote && truthy(ex.adminNames) && <p className="reason"><T s={who.adminsNote} ex={ex} /></p>}
 
-      {d && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+      {/* A decision with an `applies` key is offered only while its condition holds (the risk policy's first-enforcement rung, while anyone has only Authenticator approval). */}
+      {d && (typeof d.applies !== 'string' || truthy(ex[d.applies])) && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
 
       {hasWhatToDo && <h3>What to do</h3>}
       {hasWhatToDo && w.lead && <p><T s={w.lead} ex={ex} /></p>}

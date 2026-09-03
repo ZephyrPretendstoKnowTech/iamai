@@ -7,10 +7,14 @@
 // the step renders (stepPortal.ts) both pass the policy through here, so the
 // download and the screen can never disagree.
 //
-// A deviation narrows a policy or defers it; it never weakens a grant (the
-// tool helps with strictness and never requires it). Pure: no DOM, no network.
+// A deviation narrows a policy or defers it; it never weakens a grant for good
+// (the tool helps with strictness and never requires it): the risk policy's
+// first-enforcement rung (E8) defers the baseline's strength to plain MFA while
+// people still have only Authenticator approval, and the baseline's version
+// stays beside it on the step. Pure: no DOM, no network.
 import type { MappingState } from '../mapping/types.ts'
-import { COMPUTER_PLATFORMS, PHONE_PLATFORMS, devicePlanOf, deviceScopeOf, serviceProvidersExcluded } from './answers.ts'
+import { COMPUTER_PLATFORMS, PHONE_PLATFORMS, answerOf, devicePlanOf, deviceScopeOf, serviceProvidersExcluded } from './answers.ts'
+import { stepIdForGoal } from './stepIds.ts'
 
 type RawPolicy = Record<string, unknown>
 
@@ -24,6 +28,23 @@ export const APP_PROTECTION_GOAL = 'mobile-app-protection'
 export const INTUNE_ENROLMENT_GOAL = 'intune-enrollment-reauth'
 /** Every goal the device decision touches. */
 export const DEVICE_GOALS = new Set([COMPLIANT_DEVICE_GOAL, APP_PROTECTION_GOAL, INTUNE_ENROLMENT_GOAL])
+/** The goal whose first enforcement may be plain MFA (E8): the high-risk sign-in policy. */
+export const SIGN_IN_RISK_GOAL = 'sign-in-risk'
+
+/** True when the risk policy's first enforcement is the plain-MFA rung (the decision's second option). */
+export function plainMfaFirst(mapping: Pick<MappingState, 'questionAnswers'>): boolean {
+  const a = answerOf(mapping, stepIdForGoal(SIGN_IN_RISK_GOAL), 'decision')
+  return a !== null && a.index === 1
+}
+
+/** The policy's grant as plain multifactor authentication: the strength is deferred, not removed from the baseline. */
+function plainMfaGrant(body: RawPolicy): RawPolicy {
+  const grant = { ...((body.grantControls ?? {}) as RawPolicy) }
+  grant.operator = 'OR'
+  grant.builtInControls = ['mfa']
+  delete grant.authenticationStrength
+  return { ...body, grantControls: grant }
+}
 
 const SERVICE_PROVIDER = 'serviceProvider'
 
@@ -71,6 +92,7 @@ export function applyDeviations(body: RawPolicy, goalId: string, mapping: Pick<M
     const platforms = excludedPlatforms(mapping)
     if (platforms.length > 0) out = excludePlatforms(out, platforms)
   }
+  if (goalId === SIGN_IN_RISK_GOAL && plainMfaFirst(mapping)) out = plainMfaGrant(out)
   return out
 }
 

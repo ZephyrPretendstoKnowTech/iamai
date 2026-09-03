@@ -202,8 +202,17 @@ export function stepPortalLines(goalId: string, names: PortalNames): string[] | 
   return annotated(mapped[0] as PinnedPolicy)
 }
 
-/** The head of a portal line (its section), so a changed line finds the baseline's line for the same section. */
-const sectionOf = (line: string): string => line.split(' → ').slice(0, 2).join(' → ')
+/**
+ * The head of a portal line (its section), so a changed line finds the
+ * baseline's line for the same section: a condition by its kind (Conditions →
+ * Device platforms), a grant or session control by its heading alone (Grant →
+ * Require multifactor authentication stands in for Grant → Require
+ * authentication strength: …).
+ */
+const sectionOf = (line: string): string => {
+  const parts = line.split(' → ')
+  return /^(Grant|Session)$/.test(parts[0]) ? parts[0] : parts.slice(0, 2).join(' → ')
+}
 
 /**
  * The deviated lines, each one the deviation changed carrying the baseline's
