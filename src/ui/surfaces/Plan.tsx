@@ -17,9 +17,8 @@ import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { scanAge, scanAgeWords } from '../../derive/scanAge.ts'
 import { inWave, waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
-import { headerLine1, startControl } from '../../derive/planHeader.ts'
+import { headerLine1, planCounts, startControl } from '../../derive/planHeader.ts'
 import { FINISH } from '../../copy/statements.ts'
-import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { Button, InfoTip, Status, PageTip } from '../components/index.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
@@ -95,10 +94,9 @@ export function Plan({ scan, baseline, account, onScan }: {
   // Cleanup row and nothing else, so it counts once. The finish is the end of
   // the last phase, Cleanup included (§9).
   const cleanupPhase = c.schedule.cleanup ?? null
-  const cleanupExtra = cleanupPhase ? cleanupPhase.rows.length : 0
   const finish = planFinish(c.steps, cleanupPhase?.end ?? null)
-  const inPlace = doneSteps(c.steps).length
-  const total = trackableSteps(c.steps.filter((s) => !s.doesntApply)).length + cleanupExtra
+  // One count for the header and the print cover (derive/planHeader.ts): the steps and the Cleanup rows.
+  const { steps: total, inPlace } = planCounts(c.steps, cleanupPhase)
   const waiting = FINISH.waiting(finish.waiting)
   // Weeks derive from the finish date, not the last blocked wave (item 15).
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(c.schedule.start)) / (7 * 86_400_000))) : c.schedule.weeks

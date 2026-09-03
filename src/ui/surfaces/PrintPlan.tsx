@@ -9,14 +9,13 @@ import { waveLabels } from '../../derive/phases.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
-import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { RingMark } from '../components/Ring.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
-import { headerLine1 } from '../../derive/planHeader.ts'
+import { headerLine1, planCounts } from '../../derive/planHeader.ts'
 import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
@@ -82,8 +81,8 @@ export function PrintPlan({
   // Not licensed is its own count and sentence (§5), not a name in this list.
   const doesntApplyNames = coverage.results.filter((r) => goalInMap(goalMap, r.goal.id) && r.status === 'not-applicable').map((r) => r.goal.shortName || r.goal.name)
   const notLicensedCount = notLicensedRows(coverage, goalMap).length
-  const inPlaceCount = doneSteps(steps).length
-  const totalCount = trackableSteps(steps).length
+  // The header's own count (derive/planHeader.ts): the steps and the Cleanup rows, so the cover and the Plan agree.
+  const { steps: totalCount, inPlace: inPlaceCount } = planCounts(steps, schedule.cleanup)
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(schedule.start)) / (7 * 86_400_000))) : schedule.weeks
   // The same header line the Plan shows (derive/planHeader.ts), without the anchored start.
   const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint: FINISH.waiting(finish.waiting), startedFrom: null })

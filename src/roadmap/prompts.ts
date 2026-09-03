@@ -7,7 +7,7 @@ import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
-import type { Step, StepView } from './types.ts'
+import type { CleanupExport, Step, StepView } from './types.ts'
 import { redactDeep as redactDeepShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
 
@@ -78,12 +78,19 @@ export function stepContext(step: Step, view?: StepView): string {
 
 export type PackItem = { title: string; prompt: string }
 
-/** The prompt pack (§2.2), pre-filled from the current plan. */
-export function promptPack(args: { view?: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string }): PackItem[] {
+/** The Cleanup rows as one block of facts (E4): each row's title, its day, and what it says to do. */
+export function cleanupText(cleanup: CleanupExport[]): string {
+  return cleanup.map((c) => `${c.title} (${c.done ? `done ${absoluteDate(c.done)}` : absoluteDate(c.day)}). ${c.why} What to do: ${c.whatToDo.join(' | ') || 'nothing'}. Done when: ${c.doneWhen.join(' | ') || 'the next scan confirms it'}.`).join('\n')
+}
+
+/** The prompt pack (§2.2), pre-filled from the current plan; the Cleanup rows travel under their own label. */
+export function promptPack(args: { view?: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
   const { tenant } = args
   const firstStep = args.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done') ?? args.steps[0]
   const stepText = firstStep && args.view ? stepContext(firstStep, args.view) : firstStep ? `${firstStep.plainTitle} (${firstStep.title}). ${firstStep.why}` : ''
-  const withFacts = (head: string, label: string, body: string) => [head, dataBlock(label, body), PROMPTS.noInvent].join('\n\n')
+  const cleanup = args.cleanup ?? []
+  const withFacts = (head: string, label: string, body: string, extra: [string, string][] = []) => [head, dataBlock(label, body), ...extra.map(([l, b]) => dataBlock(l, b)), PROMPTS.noInvent].join('\n\n')
+  const planBlocks: [string, string][] = cleanup.length > 0 ? [[PROMPTS.cleanup, cleanupText(cleanup)]] : []
   return [
     { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement ?? '') },
     { title: PROMPTS.pack.mfaGuide(tenant).split(',')[0], prompt: [PROMPTS.pack.mfaGuide(tenant), PROMPTS.noInvent].join('\n\n') },
@@ -92,7 +99,7 @@ export function promptPack(args: { view?: StepView; tenant: string; steps: Step[
     { title: PROMPTS.pack.explain, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.step, stepText) },
     { title: PROMPTS.pack.pushback(tenant).split('.')[0], prompt: withFacts(PROMPTS.pack.pushback(tenant), PROMPTS.step, stepText) },
     { title: PROMPTS.pack.translate(args.language ?? PROMPTS.language).split(',')[0], prompt: withFacts(PROMPTS.pack.translate(args.language ?? PROMPTS.language), PROMPTS.draft, args.announcement ?? '') },
-    { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, args.planSummary) },
+    { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, args.planSummary, planBlocks) },
   ]
 }
 
@@ -109,7 +116,7 @@ export function promptPackMarkdown(items: PackItem[], tenant: string): string {
 // which is why the "redacted" bundle still carried policy names, group names,
 // departments and named-location CIDRs (audit redact-02, redact-03, redact-07).
 
-export function groundingBundle(args: { view?: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string }): Record<string, unknown> {
+export function groundingBundle(args: { view?: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[] }): Record<string, unknown> {
   const { snapshot } = args
   // Every name the tenant contains, not just its users.
   const vocabulary = args.redacted ? tenantVocabulary(snapshot) : new Map<string, string>()
@@ -128,21 +135,21 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
   const findings = args.coverage.results.map((r) => (args.view ? { goal: r.goal.id, name: r.goal.name, status: r.status } : { goal: r.goal.id, name: r.goal.name, status: r.status, statement: r.statement.replace(/\*\*/g, '') }))
   // With a view, each step is what the screen says (prompt 53 queue item 7):
   // the content title, why, what to do and done when, beside the data another
-  // tool needs (status, dates, tracking); without one, the engine's own fields.
+  // tool needs (status, the dates line, tracking) and none of the v2 engine's
+  // field names (rings, events); without one, the engine's own fields.
   const steps = args.steps.map((s) => {
     const v = args.view ? args.view(s) : null
     const data = {
       id: s.id,
       kind: s.kind,
       status: s.status,
-      events: s.events,
-      rings: s.rings.map((r) => ({ plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })),
       tracking: s.tracking ? { state: s.tracking.state, enforcedAt: s.tracking.enforcedAt, evidenceQuality: s.tracking.evidenceQuality } : null,
     }
     return v
       ? { ...data, title: v.title, why: v.why, whatToDo: v.whatToDo, doneWhen: v.doneWhen, dates: v.dates, ifWrong: v.ifWrong, population: s.population.active }
       : {
           ...data,
+          events: s.events,
           title: s.title,
           plainTitle: s.plainTitle,
           why: s.why,
@@ -155,7 +162,8 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
     _readme: GROUNDING.header(args.redacted ? '[the tenant]' : args.tenant, args.redacted, args.generated),
     tenant: args.redacted ? { name: '[the tenant]' } : { name: args.tenant, id: snapshot.tenantId },
     profile,
-    plan: { start: args.schedule.start, targetEnd: args.schedule.targetEnd, weeks: args.schedule.weeks, criticalPath: args.schedule.derivation.criticalPath, steps },
+    // The Cleanup rows under their own key (E4), as the screen says them.
+    plan: { start: args.schedule.start, targetEnd: args.schedule.targetEnd, weeks: args.schedule.weeks, criticalPath: args.schedule.derivation.criticalPath, steps, cleanup: args.cleanup ?? [] },
     findings,
   }
   return args.redacted ? redactDeepShared(bundle, vocabulary) : bundle

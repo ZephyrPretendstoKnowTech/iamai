@@ -29,6 +29,7 @@ import { absoluteDate, toCsv } from '../format.ts'
 import { Button, Callout, Card, PageTip } from '../components/index.ts'
 import { PrintPlan } from './PrintPlan.tsx'
 import { stepExportView } from './stepExport.ts'
+import { cleanupExportViews } from './cleanupExport.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 // The em dash in the saved-PDF name, built at runtime so no em-dash lives in the
@@ -164,7 +165,9 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: data.signature, operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, groups: data.groups, naming: coverage.organisation.naming })
   const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s))
-  const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: steps.find((s) => s.comms)?.comms ?? null })
+  // The Cleanup rows as the screen says them (E4): calendar entries, the pack's and the bundle's cleanup list.
+  const cleanupViews = cleanupExportViews(schedule.cleanup, data.mapping?.notAssessedNotes ?? {})
+  const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: steps.find((s) => s.comms)?.comms ?? null, cleanup: cleanupViews })
 
   return (
     <section className="surface export">
@@ -183,7 +186,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.calendar[0]}>
           <p className="reason">{P.cards.calendar[1]}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view), 'text/calendar', REDACTED)}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view, cleanupViews), 'text/calendar', REDACTED)}>
               {buttons('calendar')[0]}
             </Button>
           </p>
@@ -241,7 +244,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
             <input type="checkbox" checked={!bundleRedacted} onChange={(e) => setBundleRedacted(!e.currentTarget.checked)} /> {A.redactedLabel}
           </label>
           <p className="actions no-print">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()) }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-bundle-${snapshot.tenantId.slice(0, 8)}${bundleRedacted ? '-redacted' : ''}.json`, JSON.stringify(groundingBundle({ view, tenant: tenantName, snapshot, coverage, steps, schedule, redacted: bundleRedacted, generated: absoluteDate(new Date().toISOString()), cleanup: cleanupViews }), null, 2), 'application/json', bundleRedacted ? REDACTED : unredactedFrom('grounding-bundle'))}>
               {buttons('bundle')[0]}
             </Button>
           </p>
