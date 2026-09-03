@@ -24,12 +24,10 @@ test('a collapsed tip survives a reload, and the ? reopens it', () => {
   assert.equal(tipCollapsed('plan', null), false, 'no store: open')
 })
 
-test('every surface renders its tip once, from its own content key', () => {
+test('Today and Export render their tip once, from their own content key; the Plan and the step render none', () => {
   const surfaces: [string, string, string][] = [
-    ['src/ui/surfaces/Plan.tsx', 'plan', String((pages.plan as Record<string, unknown>).tip)],
     ['src/ui/surfaces/Today.tsx', 'today', String((pages.today as Record<string, unknown>).tip)],
     ['src/ui/surfaces/Export.tsx', 'export', String((pages.export as Record<string, unknown>).tip)],
-    ['src/ui/surfaces/ContentStep.tsx', 'step', String(pages.stepTip)],
   ]
   for (const [file, page, tip] of surfaces) {
     assert.ok(tip.length > 0, `${page}: the content file has a tip`)
@@ -37,4 +35,5 @@ test('every surface renders its tip once, from its own content key', () => {
     const renders = src.match(new RegExp(`<PageTip page="${page}"`, 'g')) ?? []
     assert.equal(renders.length, 1, `${file} renders its tip once`)
   }
+  for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/ContentStep.tsx']) assert.ok(!/<PageTip/.test(readFileSync(file, 'utf8')), `${file} renders no tip`)
 })
