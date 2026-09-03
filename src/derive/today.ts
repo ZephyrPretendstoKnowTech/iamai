@@ -7,6 +7,7 @@ import { rolloutBucket, scoreMfaViability, sortViability } from '../scoring/mfaV
 import type { MethodTier, MfaViability, RolloutBucket } from '../scoring/mfaViability.ts'
 import { enabledUsers, peopleCounts } from './sets.ts'
 import { activePeopleIds } from './population.ts'
+import { isOperator } from './operator.ts'
 import type { PeopleCounts } from './sets.ts'
 
 export type TodayState = 'proven' | 'likely' | 'neverPrompted' | 'possiblyBroken' | 'noMethod' | 'notActive'
@@ -29,6 +30,8 @@ export type TodayEvidence =
   | { kind: 'noMethod' }
   | { kind: 'neverSignedIn' }
   | { kind: 'inactive'; since: string }
+  /** The signed-in account, with no MFA evidence in the records: active by the scan itself. */
+  | { kind: 'signedInNow' }
 
 export type TodayRow = {
   user: UserRow
@@ -61,10 +64,12 @@ export function stateOf(v: MfaViability): TodayState {
   }
 }
 
-function evidenceOf(v: MfaViability, u: UserRow): TodayEvidence {
+function evidenceOf(v: MfaViability, u: UserRow, snapshot: TenantSnapshot): TodayEvidence {
   if (v.activity === 'neverSignedIn') return { kind: 'neverSignedIn' }
   if (v.activity === 'dormant') return u.lastSuccessfulSignIn ? { kind: 'inactive', since: u.lastSuccessfulSignIn } : { kind: 'neverSignedIn' }
   if (v.evidence) return { kind: 'mfa', method: v.evidence.method, at: v.evidence.at }
+  // The signed-in account is active by the scan itself (derive/operator.ts).
+  if (isOperator(snapshot, u.id)) return { kind: 'signedInNow' }
   if (v.mfa === 'none') return { kind: 'noMethod' }
   return { kind: 'reasons', reasons: v.reasons }
 }
@@ -76,7 +81,7 @@ export function todayView(snapshot: TenantSnapshot, now: string, confirmedServic
   for (const v of scored) {
     const user = enabled.get(v.userId)
     if (!user) continue
-    rows.push({ user, viability: v, state: stateOf(v), bucket: rolloutBucket(v), strongest: v.strongestMethod, evidence: evidenceOf(v, user) })
+    rows.push({ user, viability: v, state: stateOf(v), bucket: rolloutBucket(v), strongest: v.strongestMethod, evidence: evidenceOf(v, user, snapshot) })
   }
   // The line's admin count is the rows tagged Admin (E5): one number, one source.
   const counts = { ...peopleCounts(snapshot, now, confirmedServiceAccountIds), admins: rows.filter((r) => r.viability.isAdmin).length }

@@ -17,6 +17,8 @@ import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import type { DemoFacts } from '../demoFacts.ts'
+import { droppedByAThird } from './scanRecord.ts'
+import type { PreviousScan } from './scanRecord.ts'
 
 type Words = {
   h1: string
@@ -63,7 +65,7 @@ type Words = {
   }
   plan: {
     title: string
-    ready: { state: string; people: string; policies: string; signIns: string; window: string; notRead: string; licence: string; licences: { p2: string; p1: string; free: string }; steps: string; open: string }
+    ready: { state: string; people: string; policies: string; signIns: string; window: string; notRead: string; licence: string; licences: { p2: string; p1: string; free: string }; dropValue: string; dropSince: string; steps: string; open: string }
     last: { state: string; open: string }
     waiting: { state: string }
     sample: { lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksValue: string; weeksOne: string; open: string }
@@ -130,15 +132,33 @@ export function accountTile({ tenant, upn, role }: { tenant: string; upn: string
 }
 
 // ---- 2 Baseline ----
+/** The author's changes: each a changed file (its base name, from the compare) and the change word GitHub gave it. */
 export type BaselineUpdate = { date: string; changes: { policy: string; change: string }[] }
-export type BaselineTile = { n: 2; title: string; state: string; tone: Tone; paragraphs: string[]; update: { summary: string; rows: { tag: string; policy: string; step: string }[] } | null; actions: Action[] }
-export function baselineTile({ name, policyCount, loading, update, stepFor }: { name: string | null; policyCount: number; loading: string | null; update: BaselineUpdate | null; stepFor: (policy: string) => string | null }): BaselineTile {
+/** A review row: the change word, the policy as a person reads it, and under it the plan steps that change (one line each) or "no step changes". */
+export type BaselineTile = { n: 2; title: string; state: string; tone: Tone; paragraphs: string[]; update: { summary: string; rows: { tag: string; policy: string; steps: string[] }[] } | null; actions: Action[] }
+export function baselineTile({
+  name,
+  policyCount,
+  loading,
+  update,
+  labelFor,
+  stepsFor,
+}: {
+  name: string | null
+  policyCount: number
+  loading: string | null
+  update: BaselineUpdate | null
+  /** The policy a changed file names, as the package spells it (derive/baselineDiff.ts policyLabel). */
+  labelFor: (file: string) => string
+  /** The plan steps that policy stands behind, from the goal map (derive/baselineDiff.ts stepsChangedBy). */
+  stepsFor: (file: string) => string[]
+}): BaselineTile {
   const B = W.baseline
   const state = loading ? fillText(B.loading, { source: loading }) : name ? fillText(B.state, { baselineName: name, policyCount }) : B.none
   const tag = (change: string): string => (change === 'added' ? B.diff.added : change === 'removed' ? B.diff.removed : B.diff.changed)
   const rows = (update?.changes ?? []).map((c) => {
-    const step = stepFor(c.policy)
-    return { tag: tag(c.change), policy: c.policy, step: step ? fillText(B.diffStep, { step }) : B.diffNoStep }
+    const steps = stepsFor(c.policy)
+    return { tag: tag(c.change), policy: labelFor(c.policy), steps: steps.length > 0 ? steps.map((step) => fillText(B.diffStep, { step })) : [B.diffNoStep] }
   })
   return {
     n: 2,
@@ -235,8 +255,8 @@ export function scanTile(tenant: string, input: ScanInput): ScanTile {
 
 // ---- 4 Plan: ready, the last full plan, waiting for the scan, or the sample ----
 export type PlanInput =
-  /** A complete scan: the facts and Open the plan. The step counts arrive once the plan has computed. */
-  | { kind: 'ready'; snapshot: TenantSnapshot; at: string; counts: { steps: number; done: number } | null; now?: number }
+  /** A complete scan: the facts and Open the plan. The step counts arrive once the plan has computed; the previous scan's numbers show a drop. */
+  | { kind: 'ready'; snapshot: TenantSnapshot; at: string; counts: { steps: number; done: number } | null; previous?: PreviousScan | null; now?: number }
   /** A scan with gaps kept the last full plan. */
   | { kind: 'last'; at: string }
   /** Signed in, no plan yet: the scan has not run, is running, or ended with gaps and nothing before it. */
@@ -267,6 +287,13 @@ export function planTile(input: PlanInput): PlanTile {
     case 'ready': {
       const R = P.ready
       const w = input.snapshot.sources.signInEvidence?.coveredWindow ?? null
+      const people = input.snapshot.users.length
+      const policies = input.snapshot.config.caPolicies?.rows.length ?? 0
+      // A count that fell by more than a third since the previous scan reads
+      // "13 → 4 people since Sep 2": the tenant, or the account's reach, shrank.
+      const prev = input.previous ?? null
+      const fact = (now: number, before: number | undefined, label: string): { value: string; label: string } =>
+        prev && droppedByAThird(now, before) ? { value: fillText(R.dropValue, { before: String(before), now: String(now) }), label: fillText(R.dropSince, { label, date: monthDay(prev.at) }) } : { value: String(now), label }
       return {
         n: 4,
         kind: 'ready',
@@ -274,8 +301,8 @@ export function planTile(input: PlanInput): PlanTile {
         state: fillText(R.state, { age: scanAgeWords(input.at, input.now) }),
         tone: 'done',
         facts: [
-          { value: String(input.snapshot.users.length), label: R.people },
-          { value: String(input.snapshot.config.caPolicies?.rows.length ?? 0), label: R.policies },
+          fact(people, prev?.people, R.people),
+          fact(policies, prev?.policies, R.policies),
           { value: w ? fillText(R.window, { from: monthDay(w.from), to: monthDay(w.to) }) : R.notRead, label: R.signIns },
           { value: licenceWord(input.snapshot), label: R.licence },
           ...(input.counts ? [{ value: String(input.counts.steps), label: fillText(R.steps, { done: input.counts.done }) }] : []),
@@ -320,7 +347,7 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
   if ('note' in tile && tile.note) out.push(tile.note)
   if ('paragraphs' in tile) {
     out.push(...tile.paragraphs)
-    if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, r.step]))
+    if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, ...r.steps]))
   }
   if ('beats' in tile) {
     out.push(...tile.beats.flatMap((b) => [b.label, b.text]), tile.readOnly, tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)

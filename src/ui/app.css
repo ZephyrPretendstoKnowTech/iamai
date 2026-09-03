@@ -1419,12 +1419,15 @@ footer.app a {
   list-style: none;
   max-width: none;
 }
+/* A review row: the change word and the policy on one line, the steps that change under it, one each. */
 .step-tile .diff li {
-  display: flex;
-  gap: 10px;
   padding: 5px 0;
   font-size: var(--t-2);
   border-bottom: 1px solid var(--rule);
+}
+.step-tile .diff .change {
+  display: flex;
+  gap: 10px;
 }
 .step-tile .diff .tag {
   width: 64px;
@@ -1432,9 +1435,10 @@ footer.app a {
   color: var(--ink-3);
 }
 .step-tile .diff .steps {
+  margin: 2px 0 0 74px;
+  padding: 0;
+  list-style: none;
   color: var(--ink-3);
-  margin-left: auto;
-  text-align: right;
 }
 .step-tile details summary {
   cursor: pointer;
