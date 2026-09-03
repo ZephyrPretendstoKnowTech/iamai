@@ -132,8 +132,29 @@ export const ACCEPTANCE = [
   { item: '28', step: 'azure-management-mfa', path: 'comms.body', must: 'anything that manages Azure at {tenant}' },
   { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Devices → Device settings → Require Multifactor Authentication to register or join devices: No (this policy replaces it).' },
   { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Do not add device-state conditions to this policy; a first join has no device to check.' },
-  { item: '30', step: 'token-protection', path: 'more.risks', must: 'meeting-room devices (already outside this policy if Give Shared Devices Their Own Policy is done)' },
+  { item: '30', step: 'token-protection', path: 'more.risks', must: 'meeting-room devices (already outside this policy once Give Shared Devices Their Own Policy is in place)' },
   { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in, this is why.' },
+  // Per step, 31–38, and the Cleanup rows. 31 is C6's wording.
+  { item: '32', step: 'session-lifetime', path: 'comms.body', must: 'about once a working day; on a personal or unmanaged device it is every 9 hours' },
+  { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'they re-authenticate every 9 hours' },
+  { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Prompted every few minutes: the browser is not signed in to a registered device; sign in to the device account.', mustNot: 'check the device clock' },
+  { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'When several session policies apply, the shortest wins.' },
+  { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'asks for your passkey or security key each time', mustNot: 'confirm with MFA each time' },
+  { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them have no passkey or key yet: {list:eligibleWithout}' },
+  { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'PIM for Groups and Azure resource roles can use the same authentication context.' },
+  { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'People see two prompts when they set up a device: one to join, one to enrol.', mustNot: 'one extra prompt' },
+  { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'A person with only Authenticator approval is not prompted but stopped, until they get a Temporary Access Pass' },
+  { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: '{list:pushOnlyUsers}' },
+  { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Every risky sign-in in the report-only days was reviewed.' },
+  { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', must: 'Hybrid tenants: enable password writeback in Entra Connect, or the change fails.' },
+  { item: '36', step: 'user-risk', path: 'doneWhen', must: 'Every user rated at risk in the report-only days was reviewed.' },
+  { item: '37', step: 'sign-in-risk-medium', path: 'who.evidence', must: 'The second rung after Challenge High-Risk Sign-ins: medium risk gets plain MFA, high risk the phishing-resistant strength.' },
+  { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'Supersedes Remediate High-Risk Users once enforced; set that one to Off in Consolidate Overlapping Policies.' },
+  { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'Self-service password reset must be enabled or the change loops; {sspr}.' },
+  { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', must: 'enable password writeback in Entra Connect' },
+  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: "Log Analytics ingestion is billed; a small tenant's sign-in logs cost a few dollars a month." },
+  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: 'Defender XDR or your SIEM can take the same rule.' },
+  { item: 'cleanup', cleanup: 'notAssessed', path: 'why', must: '(device filters, authentication contexts, workload identities, agent policies)' },
 ]
 
 /** Every Learn URL the content carries (steps and cleanup rows), for the link check. */
@@ -155,7 +176,7 @@ function pinnedPolicyFor(pinned, goalId) {
  * The findings over one content file: [{ level, text }]. `pinned` is the pinned
  * baseline (its goalMap and policies) for the transcription checks.
  */
-export function contentFindings(content, pinned = null) {
+export function contentFindings(content, pinned = null, contracts = null) {
   const out = []
   const add = (level, text) => out.push({ level, text })
   const steps = content.steps ?? []
@@ -174,6 +195,20 @@ export function contentFindings(content, pinned = null) {
     const m = HARD_DATE.exec(s)
     if (m) add('P0', `content ${path}: a hard date "${m[0]}" (C3: no date that is not a variable)`)
     if (/\bpreview\b/i.test(s) && s !== 'Preview') add('P0', `content ${path}: a preview claim "${s.slice(0, 60)}" (C3)`)
+  }
+
+  // The page contract's forbidden strings, on the content before the walk renders
+  // it: forbidEverywhere on every string, the step and More surfaces' lists on
+  // what a step renders (the reviewer-only whatToDoReference is not on screen).
+  if (contracts) {
+    const surface = (id) => (contracts.surfaces ?? []).find((s) => s.id === id)?.forbid ?? []
+    const stepForbids = [...new Set([...surface('plan.step'), ...surface('plan.step.more')])]
+    for (const [path, s] of strings({ steps, cleanup, shared: content.shared, pages: content.pages })) {
+      for (const f of contracts.forbidEverywhere ?? []) if (s.includes(f)) add('P0', `content ${path}: forbidden-everywhere string "${f}"`)
+      // The engine's own words (shared.engine) and the pages render on the Plan page and the other surfaces, never inside a step.
+      if (/whatToDoReference/.test(path) || path.startsWith('pages') || path.startsWith('shared.engine')) continue
+      for (const f of stepForbids) if (s.includes(f)) add('P0', `content ${path}: forbidden string "${f}" (plan.step / plan.step.more forbid)`)
+    }
   }
 
   // C5: the typeahead has chips, so nothing on screen is ticked.
@@ -249,7 +284,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const file = args.find((a) => !a.startsWith('--')) ?? 'docs/design/content.json'
   const content = JSON.parse(readFileSync(file, 'utf8'))
   const pinned = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8'))
-  const findings = contentFindings(content, pinned)
+  const contracts = JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8'))
+  const findings = contentFindings(content, pinned, contracts)
   if (links) {
     for (const href of contentLearnUrls(content)) {
       const r = await probe(href)
