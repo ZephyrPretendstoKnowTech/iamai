@@ -112,6 +112,8 @@ export function How() {
         {C.limitsList.map((l, i) => (
           <li key={i}>{l}</li>
         ))}
+        {/* The last line: one of the two places the feedback address appears (the other is the error page). */}
+        <li key="feedback">{C.limitsFeedback}</li>
       </ul>
       <p className="reason">
         {BUILD_COMMIT === 'dev' ? (

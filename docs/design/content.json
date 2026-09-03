@@ -143,49 +143,74 @@
     "heading": "{name} · {start} → {end}"
   },
   "pages": {
-    "opener": {
-      "h1": "Plan the journey to your Conditional Access baseline.",
-      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to close the gaps without locking anyone out. It is read-only and runs in this browser.",
-      "builtForLabel": "Built for",
-      "builtFor": "The person doing security at a small MSP or a small business, on their own, who has to get this done in a few weeks.",
-      "catchesLabel": "What it catches",
-      "catches": [
-        "An admin whose only sign-in method is a text message, about to be required to use a passkey.",
-        "An emergency access account inside the policy it exists to survive.",
-        "A country rule that blocks the person who wrote it.",
-        "A service account that a legacy-authentication block stops at 2 a.m.",
-        "A meeting-room device that a session rule signs out every hour."
-      ],
-      "signIn": "Sign in with Microsoft",
-      "permissionsSummary": "What IAMAI asks for, and how to remove it",
-      "permissionsNote": "Plus the standard sign-in permissions.",
-      "removingLabel": "Removing it",
-      "removing": [
-        "Entra admin center → Entra ID → Enterprise applications.",
-        "Find IAMAI in the list.",
-        "Properties → Delete."
-      ],
-      "links": [
-        "How IAMAI works →",
-        "See it with sample data →"
-      ],
-      "tip": "Sign in with a Global Reader account: the least privilege that reads everything IAMAI needs, and it writes nothing. Entra ID P1 adds sign-in evidence; the plan works without it.",
-      "cantCatchSummary": "IAMAI limitations",
-      "cantCatch": [
-        "Devices that send mail without signing in: Direct Send printers, scanners and some applications. Nothing appears in the records, so a legacy-authentication block can stop one the plan never listed. Ask whoever manages printing and scan-to-email; the step asks before that block enforces.",
-        "Authentication that happens outside Entra: a federated domain, third-party MFA, applications against on-premises AD. Entra records the sign-in but not what the other system enforced. Check the domain list for federation and the other system's own console.",
-        "Anything on a longer cycle than the collected records: the quarterly invoice run, the yearly renewal job. It exists, it authenticates, and it has left no evidence yet. Where those exist, keep new blocks in report-only across a full business cycle.",
-        "Credentials saved on equipment nobody has touched in years: routers, NAS boxes, UPS cards, an old copier. They surface the day something blocks them; a walk through the comms room beats any report.",
-        "What a partner's own tenant enforces for their people. IAMAI sees their sign-ins here, never their controls; the guest steps ask how much to trust them."
-      ],
-      "cantCatchIntro": "IAMAI plans from what Microsoft records, and nothing else. Where something outside those records could change what a step does, the step says so and asks you before anything is enforced. What that covers, and how to check each yourself:"
-    },
     "connect": {
-      "h1": "Connect a tenant",
+      "h1": "Plan the journey to your Conditional Access baseline.",
+      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.",
+      "signIn": {
+        "title": "Sign in",
+        "state": "no tenant connected",
+        "signIn": "Sign in with Microsoft",
+        "demo": "Try it with sample data",
+        "workAccount": "Sign in with a work or school account",
+        "permissionsSummary": "What IAMAI asks for, and how to remove it",
+        "consentLead": "Microsoft's consent screen will list these {n}, in this order:",
+        "consent": [
+          {
+            "scope": "Directory.Read.All",
+            "name": "Read all users' basic profiles / Read directory data",
+            "reads": "People, groups, devices, licences, the tenant's name"
+          },
+          {
+            "scope": "Policy.Read.All",
+            "name": "Read your organization's policies",
+            "reads": "Conditional Access policies, named locations, strengths, cross-tenant settings"
+          },
+          {
+            "scope": "AuditLog.Read.All",
+            "name": "Read audit log data",
+            "reads": "Sign-in records for the last 30 days"
+          },
+          {
+            "scope": "RoleManagement.Read.Directory",
+            "name": "Read role management data for your company's directory",
+            "reads": "Who holds which role, and which through PIM"
+          },
+          {
+            "scope": "UserAuthenticationMethod.Read.All",
+            "name": "Read all users' authentication methods",
+            "reads": "Which kinds of sign-in method each account has, never the values"
+          },
+          {
+            "scope": "Reports.Read.All",
+            "name": "Read all usage reports",
+            "reads": "App sign-in counts, and when each application identity last signed in"
+          }
+        ],
+        "removal": "Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete. Nothing it read leaves this browser unless you export it.",
+        "errors": {
+          "consent": {
+            "state": "Microsoft asked for admin approval",
+            "lead": "This is the first sign-in for {domain}, and consent has to be granted once by a Global Administrator. Sign in with that account this one time, or send them this link; after that, Global Reader is enough.",
+            "thisTenant": "this tenant"
+          },
+          "personal": {
+            "state": "that is a personal Microsoft account",
+            "lead": "{account} is a personal account. IAMAI reads a Microsoft Entra tenant, so it needs a work or school account that belongs to one.",
+            "thatAccount": "That account"
+          },
+          "cancelled": {
+            "state": "sign-in was cancelled"
+          },
+          "failed": {
+            "state": "sign-in did not complete",
+            "lead": "Microsoft answered: {message}"
+          }
+        }
+      },
       "account": {
         "title": "Signed in",
         "line": "{upn} · {role}",
-        "note": "Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing.",
+        "note": "Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing. The first sign-in in a tenant needs an account that can grant consent (a Global Administrator, once); every sign-in after that can be Global Reader.",
         "signInAnother": "Sign in with another account",
         "signOut": "Sign out"
       },
@@ -225,7 +250,8 @@
           "A partner's own tenant enforces for their people; IAMAI sees their sign-ins here, never their controls."
         ],
         "limitsMore": "Permissions, every check it runs, and its limits in full:",
-        "limitsLink": "How IAMAI works →"
+        "limitsLink": "How IAMAI works →",
+        "yourTenant": "your tenant"
       },
       "scan": {
         "title": "Scan",
@@ -271,6 +297,16 @@
         "scanning": {
           "state": "{lane} · {elapsed}",
           "stop": "Stop"
+        },
+        "sample": {
+          "state": "after sign-in · about a minute for a small tenant",
+          "lead": "What the sample tenant produced:",
+          "people": "people",
+          "steps": "steps",
+          "inPlace": "already in place",
+          "weeks": "to finish",
+          "weeksValue": "{n} weeks",
+          "weeksOne": "{n} week"
         }
       }
     },
@@ -483,6 +519,16 @@
         "descriptor": "Conditional Access rollout planner",
         "label": "Preview",
         "body": "Reads the tenant's configuration and all the available sign-in evidence, compares it with a published baseline, and writes a dated plan: report-only before enforced, readiness before either, nobody locked out. Every step carries the portal clicks, the policy JSON, and the communications to send, timed to keep your people in the loop. Ships with Microsoft MVP Jon Hope's Defense in Depth baseline today; more baselines are coming, including the ability to load your own.",
+        "builtForLabel": "Built for",
+        "builtFor": "The person doing security at a small MSP or a small business, on their own, who has to get this done in a few weeks.",
+        "catchesLabel": "What it catches",
+        "catches": [
+          "An admin whose only sign-in method is a text message, about to be required to use a passkey.",
+          "An emergency access account inside the policy it exists to survive.",
+          "A country rule that blocks the person who wrote it.",
+          "A service account that a legacy-authentication block stops at 2 a.m.",
+          "A meeting-room device that a session rule signs out every hour."
+        ],
         "open": "Open the planner",
         "demo": "See it with sample data"
       },
@@ -495,8 +541,7 @@
       "about": "Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not.",
       "aboutLinks": [
         "LinkedIn",
-        "GitHub",
-        "feedback@getiamai.com"
+        "GitHub"
       ],
       "footer": "Read-only",
       "footerLinks": [
@@ -563,10 +608,10 @@
         "scanStale": "This scan is {days} days old. Numbers, names and sign-in evidence may have moved on.",
         "scanStaleAction": "Re-scan the tenant",
         "loading": "Loading…",
-        "signInError": "Sign-in error:",
         "storageBlocked": "Saved data is not available yet",
         "scanNeedsConnect": "The scan reads the tenant into a local record. Connect a tenant first.",
-        "connectLink": "Connect a tenant"
+        "connectLink": "Connect a tenant",
+        "errorSend": "Send the diagnostics to feedback@getiamai.com"
       },
       "scan": {
         "reading": "reading…",
@@ -685,7 +730,6 @@
           "baseline": "Baseline",
           "dates": "Plan dates",
           "prepared": "Prepared with IAMAI by {by}",
-          "feedback": "Something in this plan look wrong? feedback@getiamai.com",
           "readOnly": "IAMAI reads the tenant and never writes to it. Every change in this document is carried out by a person, in the portal, in the order given; every impact stated here is predicted from the scan and confirmed in report-only before enforcement."
         },
         "posture": {
@@ -735,7 +779,8 @@
           "permissions": "Permissions",
           "gate": "When it can fail",
           "why": "Why"
-        }
+        },
+        "limitsFeedback": "Something wrong or unclear? feedback@getiamai.com — I would rather hear about it than not."
       },
       "inventory": {
         "caps": {

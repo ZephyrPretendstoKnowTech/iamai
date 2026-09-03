@@ -55,7 +55,7 @@ export function renderHomeHtml(): string {
     h1: string
     intro: string
     toolsLabel: string
-    planner: { name: string; descriptor: string; label: string; body: string; open: string; demo: string }
+    planner: { name: string; descriptor: string; label: string; body: string; builtForLabel: string; builtFor: string; catchesLabel: string; catches: string[]; open: string; demo: string }
     howLabel: string
     how: string[]
     aboutLabel: string
@@ -120,6 +120,12 @@ export function renderHomeHtml(): string {
           <p class="tool-name"><a href="${PLANNER_HREF}">${esc(pl.name)}</a> <span class="pill">${esc(pl.label)}</span></p>
           <p class="descriptor">${esc(pl.descriptor)}</p>
           <p class="tool-desc">${esc(pl.body)}</p>
+          <p class="tool-sub">${esc(pl.builtForLabel)}</p>
+          <p class="tool-desc">${esc(pl.builtFor)}</p>
+          <p class="tool-sub">${esc(pl.catchesLabel)}</p>
+          <ul class="tool-list">
+            ${pl.catches.map((c) => `<li>${esc(c)}</li>`).join('\n            ')}
+          </ul>
           <p class="tool-actions">
             <a class="tool-open" href="${PLANNER_HREF}">${esc(pl.open)}</a>
             <a class="tool-demo" href="${DEMO_HREF}">${esc(pl.demo)}</a>

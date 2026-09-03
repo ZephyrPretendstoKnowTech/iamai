@@ -254,3 +254,20 @@ footer.app .footer-links {
     transition: none;
   }
 }
+
+/* Built for and What it catches, moved here from Connect (docs/design/connect-mockup.html). */
+.tool-card .tool-sub {
+  margin-top: 10px;
+  font-size: var(--t-2);
+  font-weight: 500;
+  color: var(--ink);
+}
+.tool-card .tool-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  max-width: none;
+}
+.tool-card .tool-list li {
+  margin: 2px 0;
+}

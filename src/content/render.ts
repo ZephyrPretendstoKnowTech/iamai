@@ -531,6 +531,10 @@ export function renderPages(): string {
         p(H.intro, {}) +
         h(H.toolsLabel) +
         `<div class="card"><b>${esc(hpl.name)}</b> <span class="chip">${esc(hpl.label)}</span><p class="sub">${esc(hpl.descriptor)}</p><p>${esc(hpl.body)}</p>` +
+        h(hpl.builtForLabel) +
+        p(hpl.builtFor, {}) +
+        h(hpl.catchesLabel) +
+        ul(hpl.catches, {}) +
         btn(hpl.open, true) +
         btn(hpl.demo) +
         '</div>' +
@@ -547,26 +551,6 @@ export function renderPages(): string {
         `<p class="sub">Meta description: ${esc(H.metaDescription)}</p></section>`,
     )
   }
-  const o = P.opener
-  sec(
-    'The opener (signed out)',
-    `<h2 class="h1">${esc(o.h1)}</h2>` +
-      p(o.intro, {}) +
-      h(o.builtForLabel) +
-      p(o.builtFor, {}) +
-      h(o.catchesLabel) +
-      ul(o.catches, {}) +
-      btn(o.signIn, true) +
-      `<details><summary>${esc(o.permissionsSummary)}</summary><p class="sub">(the six-row permissions table, unchanged)</p><p>${esc(o.permissionsNote)}</p>${h(o.removingLabel)}${ol(o.removing, {})}</details>` +
-      '<p>' +
-      (o.links as string[]).map((l) => `<a>${esc(l)}</a>`).join(' &nbsp;·&nbsp; ') +
-      '</p>' +
-      `<details class="limits" open><summary>${esc(o.cantCatchSummary)}</summary>` +
-      p(o.cantCatchIntro, {}) +
-      ul(o.cantCatch, {}) +
-      '</details>' +
-      `<div class="tip">${esc(o.tip)}<span class="q">?</span></div>`,
-  )
   const cx = P.connect
   const tileHtml = (n: number, title: string, state: string, body: string): string => `<section class="step-tile"><span class="n">${n}</span><h2>${esc(title)} <span class="state">${esc(state)}</span></h2>${body}</section>`
   const acts = (...labels: string[]): string => `<p class="actions">${labels.map((l) => btn(l)).join(' ')}</p>`
@@ -575,6 +559,7 @@ export function renderPages(): string {
   sec(
     'Connect (signed in): the four tiles',
     `<h2 class="h1">${esc(cx.h1)}</h2>` +
+      p(cx.intro, {}) +
       tileHtml(1, cx.account.title, exT.tenant, p(cx.account.line, { upn: exT.upn, role: 'Global Administrator' }) + p(cx.account.note, {}, 'sub') + acts(cx.account.signInAnother, cx.account.signOut)) +
       tileHtml(
         2,
@@ -625,6 +610,37 @@ export function renderPages(): string {
       tileHtml(4, cx.scan.title, cx.scan.role.state, p(cx.scan.role.lead, { upn: exT.upn, sections: 'Conditional Access policies, people and sign-in records' }) + li(`${esc(cx.scan.role.row)} · ${fill(cx.scan.role.ask, { role: 'Global Reader' })}`) + acts(cx.account.signInAnother)) +
       tileHtml(4, cx.scan.title, cx.scan.ready.state, p(cx.scan.ready.note, {}) + acts(cx.scan.ready.start)) +
       tileHtml(4, cx.scan.title, fill(cx.scan.scanning.state, { lane: 'reading sign-in records', elapsed: '8s' }), acts(cx.scan.scanning.stop)),
+  )
+  const si = cx.signIn
+  sec(
+    'Connect (signed out): the same four tiles',
+    `<h2 class="h1">${esc(cx.h1)}</h2>` +
+      p(cx.intro, {}) +
+      tileHtml(
+        1,
+        si.title,
+        si.state,
+        p(cx.account.note, {}, 'sub') +
+          acts(si.signIn, si.demo) +
+          `<details open><summary>${esc(si.permissionsSummary)}</summary>` +
+          p(si.consentLead, { n: si.consent.length }, 'sub') +
+          li(...si.consent.map((r: { scope: string; name: string; reads: string }) => `${esc(r.name)} · ${esc(r.reads)} <span class="sub">(${esc(r.scope)})</span>`)) +
+          p(si.removal, {}, 'sub') +
+          '</details>',
+      ) +
+      tileHtml(1, si.title, si.errors.consent.state, p(si.errors.consent.lead, { domain: 'contoso.com' }) + sub(esc(si.errors.consent.thisTenant)) + acts(si.signIn, si.demo)) +
+      tileHtml(1, si.title, si.errors.personal.state, p(si.errors.personal.lead, { account: 'someone@outlook.com' }) + sub(esc(si.errors.personal.thatAccount)) + acts(si.workAccount, si.demo)) +
+      tileHtml(1, si.title, si.errors.cancelled.state, acts(si.signIn, si.demo)) +
+      tileHtml(1, si.title, si.errors.failed.state, p(si.errors.failed.lead, { message: 'AADSTS90002: Tenant not found.' }) + acts(si.signIn, si.demo)) +
+      tileHtml(3, cx.next.title, '', li(`<b>${esc(cx.next.reads)}</b> ${fill(cx.next.readsLine, { tenant: cx.next.yourTenant })}`, `<b>${esc(cx.next.compares)}</b> ${fill(cx.next.comparesLine, { tenant: cx.next.yourTenant })}`)) +
+      tileHtml(
+        4,
+        cx.scan.title,
+        cx.scan.sample.state,
+        p(cx.scan.sample.lead, {}, 'sub') +
+          li(`<b>30</b> ${esc(cx.scan.sample.people)}`, `<b>27</b> ${esc(cx.scan.sample.steps)}`, `<b>5</b> ${esc(cx.scan.sample.inPlace)}`, `<b>${fill(cx.scan.sample.weeksValue, { n: 5 })}</b> ${esc(cx.scan.sample.weeks)}`, `<b>${fill(cx.scan.sample.weeksOne, { n: 1 })}</b> ${esc(cx.scan.sample.weeks)}`) +
+          acts(si.demo),
+      ),
   )
   const pl = P.plan
   const s = pl.settings

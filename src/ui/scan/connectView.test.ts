@@ -29,7 +29,7 @@ test('tile 1, Signed in: the tenant as the state, account · role, the Global Re
   assert.equal(t.state, tenant)
   assert.equal(t.tone, 'done')
   assert.equal(t.line, 'alex@example.com · Global Administrator')
-  assert.equal(t.note, 'Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing.')
+  assert.equal(t.note, 'Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing. The first sign-in in a tenant needs an account that can grant consent (a Global Administrator, once); every sign-in after that can be Global Reader.')
   assert.deepEqual(t.actions, [
     { label: 'Sign in with another account', weight: 'secondary' },
     { label: 'Sign out', weight: 'tertiary' },
@@ -96,6 +96,7 @@ const OWN: Record<ScanTile['kind'], string[]> = {
   role: ["can't read the tenant", 'Everything IAMAI needs, read-only'],
   scanning: ['Stop'],
   ready: ['Scan tenant', 'About ten minutes'],
+  sample: ['What the sample tenant produced', 'already in place'],
 }
 const onlyItsOwn = (t: ScanTile): void => {
   const text = tileStrings(t).join('\n')

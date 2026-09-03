@@ -6,6 +6,8 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
 import type { TokenSource } from '../graph/collect/runScan.ts'
 import { GLOBAL_ADMINISTRATOR } from '../graph/collect/tokenRoles.ts'
+import { authErrorOf, classifyAuthError } from '../graph/authError.ts'
+import type { SignInError } from '../graph/authError.ts'
 import { planIdFor } from '../roadmap/generate.ts'
 import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
 import { Callout, ErrorBoundary } from './components/index.ts'
@@ -53,7 +55,8 @@ const DEMO = isDemo()
 export function App() {
   const [account, setAccount] = useState<AccountInfo | null>(null)
   const [ready, setReady] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
+  // A sign-in that returned an error, classified (graph/authError.ts): Connect's first tile shows one of three states from it.
+  const [authError, setAuthError] = useState<SignInError | null>(null)
   const [tenantName, setTenantName] = useState<string | null>(null)
   const [baseline, setBaseline] = useState<BaselineResult | null>(null)
   const [baselineRestoreError, setBaselineRestoreError] = useState<string | null>(null)
@@ -159,7 +162,7 @@ export function App() {
       // The dev-only contract walk and failure-path checks run against a
       // calibrated synthetic tenant (test support); the demo (?demo=1) is what
       // loads the demo fixture through the same App snapshot-setting path.
-      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts'), import('../testing/gapsFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }, { gapsSnapshot, noRolesToken, tokenWithRoles }]) => {
+      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts'), import('../testing/gapsFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }, { gapsSnapshot, mockAuthError, noRolesToken, tokenWithRoles }]) => {
         const params = new URLSearchParams(window.location.search)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
@@ -197,6 +200,9 @@ export function App() {
         // and today's behaviour.
         const state = params.get('state') ?? 'scanned'
         if (state === 'signedOut') {
+          // ?auth=consent|personal|cancelled: tile 1 after a sign-in that did not succeed.
+          const auth = params.get('auth')
+          if (auth) setAuthError(classifyAuthError(mockAuthError(auth)))
           setReady(true)
           return
         }
@@ -256,7 +262,7 @@ export function App() {
           }
         }
       })
-      .catch((e: unknown) => setAuthError(e instanceof Error ? e.message : String(e)))
+      .catch((e: unknown) => setAuthError(classifyAuthError(authErrorOf(e))))
       .finally(() => setReady(true))
     // Re-runs only for the demo (demoWeek2 toggles); the real auth path runs once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -294,16 +300,12 @@ export function App() {
         app.shell.loading
       ) : (
         <ErrorBoundary key={route} route={route}>
-          {authError && (
-            <p className="error">
-              {app.shell.signInError} {authError}
-            </p>
-          )}
           {storageWarning && <Callout kind="warning" title={app.shell.storageBlocked}>{storageWarning}</Callout>}
           {route === 'connect' && (
             <Connect
               account={account}
               tenantName={tenantName}
+              authError={authError}
               baseline={baseline}
               baselineRestoreError={baselineRestoreError}
               onBaseline={(r) => {

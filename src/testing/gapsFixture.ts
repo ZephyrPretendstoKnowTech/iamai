@@ -47,6 +47,20 @@ export function noRolesToken(): string {
   return tokenWithRoleIds([USER_ROLE_ID])
 }
 
+/** A sign-in that did not succeed, as MSAL reports it: the code and Microsoft's message, for the three tile-1 states. */
+export function mockAuthError(kind: string): { code: string; message: string } {
+  switch (kind) {
+    case 'consent':
+      return { code: 'consent_required', message: "AADSTS65001: The user or administrator has not consented to use the application with ID '13f55900-8e9a-4aa3-82c1-e42a4448680f' named 'IAMAI Planner' for user 'alex@contoso.com'." }
+    case 'personal':
+      return { code: 'invalid_request', message: "AADSTS50020: User account 'someone@outlook.com' from identity provider 'live.com' does not exist in tenant 'organizations' and cannot access the application." }
+    case 'cancelled':
+      return { code: 'user_cancelled', message: 'User cancelled the flow.' }
+    default:
+      return { code: 'server_error', message: `AADSTS90002: Tenant not found (${kind}).` }
+  }
+}
+
 /** A token that carries no roles claim at all: it says nothing about roles. */
 export function tokenWithoutClaim(): string {
   return `${b64url('{"alg":"none"}')}.${b64url('{"aud":"https://graph.microsoft.com"}')}.signature`

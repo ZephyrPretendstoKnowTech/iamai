@@ -177,25 +177,23 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (signed out): the opener heading, Built for, What it catches and Sign in', /Plan the journey to your Conditional Access baseline/.test(t) && /Built for/.test(t) && /What it catches/.test(t) && /Sign in with a Global Reader account/.test(t) && /Sign in with Microsoft/.test(t))
+  check('Connect (signed out): the heading, the sign-in tile with the consent sentence, Sign in with Microsoft and Try it with sample data', /Plan the journey to your Conditional Access baseline/.test(t) && /Sign in\s+no tenant connected/.test(t) && /every sign-in after that can be Global Reader/.test(t) && /Sign in with Microsoft/.test(t) && /Try it with sample data/.test(t) && !/Built for|What it catches|Connect a tenant/.test(t))
 
   // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1000)
   check(
     'Connect: the permissions disclosure opens and lists the scopes',
-    (await clickText('/What IAMAI asks for/')) && (await waitFor(`/Policy.Read.All/.test(document.body.innerText)`)),
+    (await clickText('/What IAMAI asks for/')) && (await waitFor(`/Read your organization's policies/.test(document.body.innerText)`)),
   )
   t = await text()
-  check('Connect: six permission rows, three columns', (await evaluate(`document.querySelectorAll('details.permissions tbody tr').length`)) === 6 && /Permission\s+What IAMAI reads\s+Without it/.test(t))
-  check('Connect: the standard sign-in permissions are one line, not a table', /Plus the standard sign-in permissions\./.test(t) && !/openid/.test(t))
-  check('Connect: it gives the removal path and stops there', /Enterprise applications/.test(t) && /Properties → Delete/.test(t) && !/leaves nothing behind/.test(t))
+  check('Connect: one consent row per tenant scope in Microsoft\'s wording, no table, no sign-in scopes', (await evaluate(`document.querySelectorAll('details.permissions .tile-rows li').length`)) === 6 && (await evaluate(`document.querySelectorAll('details.permissions table').length`)) === 0 && !/openid/.test(t))
+  check('Connect: the collapsible ends with the removal line', /Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete\./.test(t) && !/leaves nothing behind/.test(t))
   // Prompt 46 item 23: Application.Read.All is gone, so every requested scope
   // has a collector behind it and the "requested, not yet used" group is absent.
   check('Connect: no requested scope sits unused', !/Requested, not yet used/.test(t) && !/Application\.Read\.All/.test(t) && !/Used for/.test(t))
   // Walk fixes (prompt 47.1 Part 2): the permission name on one line, the prose at the page column.
-  check('Connect: no permission name breaks mid-word', await evaluate(`[...document.querySelectorAll('details.permissions tbody td:first-child code')].every((c) => c.getClientRects().length === 1)`))
-  check('Connect: the prose reads at the page column, not the measure', (await evaluate(`Math.round(document.querySelector('.connect ul').getBoundingClientRect().width)`)) >= 700, String(await evaluate(`Math.round(document.querySelector('.connect ul').getBoundingClientRect().width)`)))
+  check('Connect: the tiles read at the page column, not the measure', (await evaluate(`Math.round(document.querySelector('main.page section.step-tile').getBoundingClientRect().width)`)) >= 700, String(await evaluate(`Math.round(document.querySelector('main.page section.step-tile').getBoundingClientRect().width)`)))
 
   await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
   await sleep(1200)
@@ -491,10 +489,10 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1500)
   const realBefore = await realKeys()
-  check('Demo: Connect offers the sample-data entry (item 12)', await waitFor(`/See it with sample data/.test(document.body.innerText)`))
+  check('Demo: Connect offers the sample-data entry (item 12)', await waitFor(`/Try it with sample data/.test(document.body.innerText)`))
   const demoErrBase = consoleErrors.length
   // Enter the demo by the link a visitor clicks, not by a crafted URL.
-  await clickText('/See it with sample data/')
+  await clickText('/Try it with sample data/')
   check('Demo: entering lands on the plan under the sample-data banner', await waitFor(`location.hash === '#/plan' && /Sample data/.test(document.body.innerText)`))
   await sleep(600)
   let demoText = await text()

@@ -60,6 +60,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <Button variant="primary" onClick={this.startOver}>
             {SHELL.errorStartOver}
           </Button>
+          {/* One of the two places the feedback address appears; the other is the last line of How IAMAI works' Limits. */}
+          <span className="muted">{SHELL.errorSend}</span>
         </p>
         <p className="reason">{fillText(SHELL.errorDetail, { message: this.state.error.message })}</p>
       </section>
