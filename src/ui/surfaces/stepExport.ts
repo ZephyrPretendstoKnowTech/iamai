@@ -39,6 +39,8 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   const lines: string[] = []
   if (typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
+  // The content's leading "before" lines stay above the portal lines, as on screen.
+  if (Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   const doneWhen = doneWhenTemplates(step, (cs.doneWhen ?? []) as unknown[])

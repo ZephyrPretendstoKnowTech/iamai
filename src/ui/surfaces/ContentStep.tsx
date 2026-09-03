@@ -123,9 +123,13 @@ export function ContentStep({
   const portal = portalLines && portalLines.length > 0 ? portalLines : null
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
+  // The content's leading "before" lines (a setting to change before the policy
+  // is created: the device-settings toggle, password writeback, the SharePoint
+  // access control) stay above the translator's portal lines, numbered with them.
+  const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
   // §8.7: a section with no content is not rendered. A step with nothing to do
   // is a missing content key, logged by the walk, never an empty heading.
-  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || hasSteps
+  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -192,7 +196,7 @@ export function ContentStep({
               </button>
             ))}
           </div>
-          {tab === 'portal' && <ol className="sections">{portal.map((l, i) => <li key={i}>{l}</li>)}</ol>}
+          {tab === 'portal' && <ol className="sections">{[...before, ...portal].map((l, i) => <li key={i}>{l}</li>)}</ol>}
           {/* The JSON and PowerShell tabs render only when every object the body
               names exists in the tenant; otherwise one line names the Preparation
               step that creates it, and Download JSON is not offered. */}
@@ -210,7 +214,7 @@ export function ContentStep({
           )}
         </>
       ) : (
-        hasSteps && <ol className="sections">{(w.steps as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
+        (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...(hasSteps ? (w.steps as unknown[]).map((l) => <T s={l} ex={ex} />) : [])].map((node, i) => <li key={i}>{node}</li>)}</ol>
       )}
 
       {datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
