@@ -18,6 +18,7 @@ import { campaignIds } from './population.ts'
 import { stateOf } from './today.ts'
 import type { TodayState } from './today.ts'
 import { absoluteDate } from '../copy/dates.ts'
+import { lockoutIds } from '../roadmap/lockout.ts'
 
 export type ListContext = {
   snapshot: TenantSnapshot
@@ -95,14 +96,14 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   // for the admin policy; the eligible role holders for the activation policy;
   // everyone with only Authenticator approval (no passkey, no key) for the
   // risk policy, which stops them rather than prompting.
-  const noPr = (v: MfaViability): boolean => !v.methodTiers.includes('phishingResistant')
-  const adminsWithoutRows = active.filter((v) => admins.has(v.userId) && noPr(v))
-  const eligibleRows = Object.keys(snapshot.roles.eligible ?? {}).map((id) => byId.get(id)).filter((v): v is MfaViability => v !== undefined && !bg.has(v.userId) && noPr(v))
-  const pushOnlyRows = active.filter((v) => v.methodTiers.includes('push') && noPr(v) && !v.methodTiers.includes('passwordless'))
-  const lockout = (rows: MfaViability[]): { names: string[]; count: number | undefined } => ({ names: rows.length <= NAMES_UP_TO ? bucketName(rows) : [], count: rows.length > NAMES_UP_TO ? rows.length : undefined })
-  const adminsWithoutL = lockout(adminsWithoutRows)
-  const eligibleWithoutL = lockout(eligibleRows)
-  const pushOnlyL = lockout(pushOnlyRows)
+  // One rule for the row's count and the step's names (roadmap/lockout.ts).
+  const lockout = (goalId: string): { names: string[]; count: number | undefined; total: number } => {
+    const ids = lockoutIds(goalId, viability, snapshot, bg)
+    return { names: ids.length <= NAMES_UP_TO ? names(ids) : [], count: ids.length > NAMES_UP_TO ? ids.length : undefined, total: ids.length }
+  }
+  const adminsWithoutL = lockout('admins-phishing-resistant')
+  const eligibleWithoutL = lockout('pim-activation-reauth')
+  const pushOnlyL = lockout('sign-in-risk')
 
   // The usage a block would stop (E9), by person, with the sign-in counts the
   // lines name: device code, authentication transfer, sign-ins with no platform
@@ -153,7 +154,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     adminsWithout: adminsWithoutL.names,
     eligibleWithout: eligibleWithoutL.names,
     pushOnlyUsers: pushOnlyL.names,
-    ...(counts({ adminsWithoutCount: adminsWithoutL.count, eligibleWithoutCount: eligibleWithoutL.count, pushOnlyCount: pushOnlyL.count, pushOnlyTotal: pushOnlyRows.length > 0 ? pushOnlyRows.length : undefined }) as Record<string, string[]>),
+    ...(counts({ adminsWithoutCount: adminsWithoutL.count, eligibleWithoutCount: eligibleWithoutL.count, pushOnlyCount: pushOnlyL.count, pushOnlyTotal: pushOnlyL.total > 0 ? pushOnlyL.total : undefined }) as Record<string, string[]>),
     // The usage a block would stop (E9).
     deviceCodeUsers: names(usage?.deviceCode.userIds ?? []),
     transferUsers: names(usage?.authTransfer.userIds ?? []),

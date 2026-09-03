@@ -11,6 +11,18 @@ import type { PeopleCounts } from './sets.ts'
 
 export type TodayState = 'proven' | 'likely' | 'neverPrompted' | 'possiblyBroken' | 'noMethod' | 'notActive'
 
+/** The Show list's keys, in the content file's order (pages.today.show): All, the six states, Admins, Guests. */
+export const SHOW_KEYS = ['all', 'proven', 'likely', 'neverPrompted', 'possiblyBroken', 'noMethod', 'notActive', 'admins', 'guests'] as const
+export type ShowKey = (typeof SHOW_KEYS)[number]
+
+/** The states each tile groups: a tile's label is those states in the table's own words. */
+export const TILE_STATES: Record<'proven' | 'unproven' | 'noMethod' | 'notActive', TodayState[]> = {
+  proven: ['proven'],
+  unproven: ['likely', 'neverPrompted', 'possiblyBroken'],
+  noMethod: ['noMethod'],
+  notActive: ['notActive'],
+}
+
 export type TodayEvidence =
   | { kind: 'mfa'; method: string; at: string }
   | { kind: 'reasons'; reasons: string[] }

@@ -18,6 +18,7 @@ const S = C.shared
 // calls renderStep (ContentStep renders a policy step from the baseline via
 // stepPortal.ts), so tree-shaking keeps this out of the browser bundle.
 import translatorOutput from '../../docs/design/translator-output.json' with { type: 'json' }
+import { SHOW_KEYS, TILE_STATES } from '../derive/today.ts'
 const TRANSLATED = translatorOutput as unknown as Record<string, { steps: string[] }>
 
 export function esc(s: unknown): string {
@@ -150,14 +151,44 @@ const SINGULAR: Record<string, string> = {
   checks: 'check', steps: 'step', tenants: 'tenant', locations: 'location', countries: 'country', roles: 'role', groups: 'group',
   'sign-ins': 'sign-in', files: 'file', pages: 'page', records: 'record', sections: 'section', rings: 'ring', windows: 'window', prerequisites: 'prerequisite', results: 'result',
 }
+// The verbs a count governs, plural → singular, for a count of one: "1 person
+// holds", "1 of them has". Present-tense verbs the content writes after a
+// count; a past tense ("signed in") is the same either way.
+const SINGULAR_VERB: Record<string, string> = {
+  hold: 'holds', have: 'has', use: 'uses', are: 'is', were: 'was', do: 'does', sign: 'signs', need: 'needs', own: 'owns', read: 'reads', work: 'works',
+  open: 'opens', keep: 'keeps', register: 'registers', appear: 'appears', remain: 'remains', carry: 'carries', wait: 'waits', share: 'shares', run: 'runs', belong: 'belongs', get: 'gets', see: 'sees', stay: 'stays',
+}
+// A whole word only: "sign" inside "sign-in" is a noun, not the verb.
+const VERB_RE = new RegExp(`(?<![\\w-])(${Object.keys(SINGULAR_VERB).join('|')})(?![\\w-])`, 'g')
+// The subject a count of one governs: "of them", a singular noun with one
+// adjective at most ("active person"), or one word; never the verb after it.
+const SUBJECT_RE = new RegExp(`(?<![\\d,.])\\b1 (?:of them|(?:[A-Za-z-]+ )?(?:${[...new Set(Object.values(SINGULAR))].join('|')})|[A-Za-z-]+)(?= )([^.;:]*)`, 'g')
+
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one
   // adjective ("1 active people" → "1 active person").
-  return text.replace(/(?<![\d,.])\b1 ([A-Za-z-]+)( [A-Za-z-]+)?/g, (m, w1: string, w2?: string) => {
+  const nouns = text.replace(/(?<![\d,.])\b1 ([A-Za-z-]+)( [A-Za-z-]+)?/g, (m, w1: string, w2?: string) => {
     if (SINGULAR[w1]) return `1 ${SINGULAR[w1]}${w2 ?? ''}`
     const n2 = w2?.trim()
     if (n2 && SINGULAR[n2]) return `1 ${w1} ${SINGULAR[n2]}`
     return m
+  })
+  // The verb a count of one governs: the first verb after the count, and one
+  // joined to it by "and", up to the end of the clause ("1 person holds a
+  // directory role and uses that same account").
+  return nouns.replace(SUBJECT_RE, (m, rest: string) => {
+    let first = true
+    const conjugated = rest.replace(VERB_RE, (v, _w, offset: number) => {
+      const before = rest.slice(0, offset)
+      // Only a verb directly after the subject, or joined to the first by "and".
+      const joined = / and $/.test(before)
+      if (first || joined) {
+        first = false
+        return SINGULAR_VERB[v] ?? v
+      }
+      return v
+    })
+    return m.slice(0, m.length - rest.length) + conjugated
   })
 }
 
@@ -429,8 +460,14 @@ export function renderStep(st: Record<string, any>): string {
   const cm = st.comms
   if (cm) {
     parts.push(h('Tell your people'))
-    const body = `<p>${esc(cm.salutation)}</p><p>${fill(cm.body, ex)}</p><p>${fill(cm.signature, ex)}</p>`
+    const extras = (e: unknown): string => (Array.isArray(e) ? e : e === undefined || e === null ? [] : [e]).map((l) => `<p>${fill(l, ex)}</p>`).join('')
+    const body = `<p>${esc(cm.salutation)}</p><p>${fill(cm.body, ex)}</p>${extras(cm.extra)}<p>${fill(cm.signature, ex)}</p>`
     parts.push(`<div class="copybox"><span class="copy">Copy</span>${body}</div>`)
+    // The second body, for a tenant where Require MFA for Everyone is already in place (the passkey version); the review shows both.
+    if (cm.bodyMfaInPlace) {
+      parts.push('<p class="annot">When Require MFA for Everyone is already in place:</p>')
+      parts.push(`<div class="copybox"><span class="copy">Copy</span><p>${esc(cm.salutation)}</p><p>${fill(cm.bodyMfaInPlace, ex)}</p>${extras(cm.extraMfaInPlace)}<p>${fill(cm.signature, ex)}</p></div>`)
+    }
     if (cm.adminBody) {
       parts.push(`<div class="copybox"><span class="copy">Copy</span><p>${esc('Admins,')}</p><p>${fill(cm.adminBody, ex)}</p><p>${fill(cm.signature, ex)}</p></div>`)
     }
@@ -578,8 +615,10 @@ export function renderPages(): string {
       `<div class="tip">${esc(pl.tip)}<span class="q">?</span></div>`,
   )
   const td = P.today
-  const tiles = Object.values(td.tiles)
-    .map((v: any) => `<div class="tile"><div class="tv">${fill(v.value, exT)}</div><div class="tl">${esc(v.label)}</div>` + (v.heldBy ? `<div class="held">${esc(v.heldBy)}</div>` : '') + `<div class="ttip">${esc(v.tip)}</div></div>`)
+  // A tile's label is the states it groups, in the table's own words (derive/today.ts TILE_STATES over pages.today.show).
+  const tileLabel = (k: string): string => (TILE_STATES[k as keyof typeof TILE_STATES] ?? []).map((s) => td.show[SHOW_KEYS.indexOf(s)]).join(' · ')
+  const tiles = Object.entries(td.tiles)
+    .map(([k, v]: [string, any]) => `<div class="tile"><div class="tv">${fill(v.value, exT)}</div><div class="tl">${esc(tileLabel(k))}</div>` + (v.heldBy ? `<div class="held">${esc(v.heldBy)}</div>` : '') + `<div class="ttip">${esc(v.tip)}</div></div>`)
     .join('')
   sec(
     'Today',

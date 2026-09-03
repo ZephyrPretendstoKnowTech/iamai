@@ -32,10 +32,6 @@ test('every state label has its definition in pages.today.states', () => {
   for (const k of SHOW_KEYS.slice(1, 7) as TodayState[]) assert.ok(states[todayStateWord(k)]?.length > 20, `${todayStateWord(k)} is defined`)
 })
 
-test('a started plan reads started <date> where the field was', () => {
-  assert.equal(fillText(app.plan.startedLine, { date: 'Sep 7, 2026' }), 'started Sep 7, 2026')
-})
-
 test('the Inventory policies table carries the exclusions by name, on screen and as CSV', () => {
   const f = fixture('demo')
   const policies = inventoryTables(f.snapshot, f.groups).find((t) => t.id === 'policies')!

@@ -22,7 +22,7 @@ import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { jsonOffered, missingObjects } from './stepJson.ts'
-import { datesLineFor, managerText, whoEvidenceLines } from './stepExport.ts'
+import { commsFor, datesLineFor, managerText, whoEvidenceLines } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -252,22 +252,27 @@ export function ContentStep({
         </>
       )}
 
-      {cs.comms && (
-        <>
-          <h3>Tell your people</h3>
-          <div className="copy-box">
-            <Button variant="secondary" onClick={() => copy('comms', commsText(cs.comms, ex))}>
-              {copied === 'comms' ? 'Copied' : 'Copy'}
-            </Button>
-            <p><T s={cs.comms.salutation} ex={ex} /></p>
-            <p><T s={cs.comms.body} ex={ex} /></p>
-            {/* One sentence a decision adds (the campaign's device sentence): only when its variable is filled. */}
-            <Line s={cs.comms.extra} ex={ex} />
-            <p><T s={cs.comms.signature} ex={ex} /></p>
-          </div>
-          <p className="reason adapt">{ADAPT_LINE}</p>
-        </>
-      )}
+      {(() => {
+        // The email as the exports say it (stepExport.ts commsFor): the body keyed on the tenant's state, the extra lines only when whole.
+        const comms = commsFor(cs, ex as Record<string, unknown>)
+        if (!comms) return null
+        const text = [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n')
+        return (
+          <>
+            <h3>Tell your people</h3>
+            <div className="copy-box">
+              <Button variant="secondary" onClick={() => copy('comms', text)}>
+                {copied === 'comms' ? 'Copied' : 'Copy'}
+              </Button>
+              <p>{comms.salutation}</p>
+              <p>{comms.body}</p>
+              {comms.extra.map((l, i) => <p key={i}>{l}</p>)}
+              <p>{comms.signature}</p>
+            </div>
+            <p className="reason adapt">{ADAPT_LINE}</p>
+          </>
+        )
+      })()}
 
       <More cs={cs} ex={ex} step={step} onSkip={onSkip} onUnskip={onUnskip} onDoesntApply={onDoesntApply} copy={copy} copied={copied} open={printing === true} />
 
@@ -515,12 +520,6 @@ function More({ cs, ex, step, onSkip, onUnskip, onDoesntApply, copy, copied, ope
       {step.status === 'skipped' && <p className="actions"><Button variant="tertiary" onClick={onUnskip}>{app.plan.putBack}</Button></p>}
     </details>
   )
-}
-
-function commsText(comms: Record<string, any>, ex: Ex): string {
-  const vals = ex as Record<string, unknown>
-  const extra = comms.extra && whole(comms.extra, ex) ? [fillText(comms.extra, vals)] : []
-  return [fillText(comms.salutation, vals), fillText(comms.body, vals), ...extra, fillText(comms.signature, vals)].join('\n\n')
 }
 
 function policyJson(step: Step): unknown {

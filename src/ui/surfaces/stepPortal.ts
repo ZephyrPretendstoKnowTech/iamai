@@ -150,6 +150,20 @@ export function sessionWantedLongForGoal(goalId: string): string | null {
   return hours % 24 === 0 ? `${hours / 24} days` : `${hours} hours`
 }
 
+// The combinations a phishing-resistant strength allows: a passkey or key,
+// Windows Hello, a certificate, and the Temporary Access Pass that bootstraps one.
+const PASSKEY_COMBINATIONS = new Set(['fido2', 'windowshelloforbusiness', 'x509certificatemultifactor', 'x509certificatesinglefactor', 'temporaryaccesspassonetime', 'temporaryaccesspassmultiuse'])
+
+/** True when the goal's mapped baseline policy requires a strength only a passkey (or key) satisfies: the policy needs a passkey. */
+export function needsPasskeyForGoal(goalId: string): boolean {
+  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+  for (const p of mapped as PinnedPolicy[]) {
+    const combos = (p.grantControls as { authenticationStrength?: { allowedCombinations?: string[] } } | null)?.authenticationStrength?.allowedCombinations
+    if (Array.isArray(combos) && combos.length > 0 && combos.every((c) => PASSKEY_COMBINATIONS.has(String(c).toLowerCase()))) return true
+  }
+  return false
+}
+
 /** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
 export function strengthForGoal(goalId: string): string | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)

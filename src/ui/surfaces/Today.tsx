@@ -11,7 +11,7 @@ import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { TODAY_LINE, METHOD_TIER } from '../../copy/definitions.ts'
 import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
-import { SHOW_KEYS, todayEvidenceText, todayStateWord } from './todayCells.ts'
+import { SHOW_KEYS, tileLabel, todayEvidenceText, todayStateWord } from './todayCells.ts'
 import type { ShowKey } from './todayCells.ts'
 import { DataTable, InfoTip, Status, Tile, Tiles, PageTip } from '../components/index.ts'
 import type { Column, StatusTone } from '../components/index.ts'
@@ -19,7 +19,7 @@ import type { Column, StatusTone } from '../components/index.ts'
 // The Show list is pages.today.show (walk-51 item 10), in the six-state model
 // the table uses: All, the six states, Admins, Guests — keyed by position, so
 // the content file's words are the options and this maps each to its filter.
-type TodayCopy = { h1: string; inventory: string; columns: string[]; show: string[]; states: Record<string, string>; tiles: Record<'proven' | 'unproven' | 'noMethod' | 'notActive', { label: string; value: string; heldBy: string | null; tip: string }> }
+type TodayCopy = { h1: string; inventory: string; columns: string[]; show: string[]; states: Record<string, string>; tiles: Record<'proven' | 'unproven' | 'noMethod' | 'notActive', { value: string; heldBy: string | null; tip: string }> }
 const T = pages.today as unknown as TodayCopy
 const C = app.today
 
@@ -112,11 +112,12 @@ export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenant
         <InfoTip title={TODAY_LINE.active.title} text={TODAY_LINE.active.text} />
       </p>
       <PageTip page="today" text={(pages.today as Record<string, string>).tip} />
-      {/* The four tiles from pages.today.tiles: the value, the label, the "held by" line
-          naming the step that moves the number, and the definition (walk-51 item 10). */}
+      {/* The four tiles from pages.today.tiles: the value, the label (the states the
+          tile groups, in the table's own words), the "held by" line naming the step
+          that moves the number, and the definition (walk-51 item 10). */}
       <Tiles>
         {(['proven', 'unproven', 'noMethod', 'notActive'] as const).map((k) => (
-          <Tile key={k} value={tileValue(k, tiles[k], tiles.active)} label={T.tiles[k].label} sub={T.tiles[k].heldBy ?? undefined} tip={{ title: T.tiles[k].label, text: T.tiles[k].tip }} />
+          <Tile key={k} value={tileValue(k, tiles[k], tiles.active)} label={tileLabel(k)} sub={T.tiles[k].heldBy ?? undefined} tip={{ title: tileLabel(k), text: T.tiles[k].tip }} />
         ))}
       </Tiles>
       <div className="toolbar no-print">

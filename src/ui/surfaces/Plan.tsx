@@ -25,6 +25,7 @@ import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
 import { rowWhen } from './rowWhen.ts'
+import { rowWho } from './rowWho.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
 import { planDates } from './stepVars.ts'
@@ -153,10 +154,8 @@ export function Plan({ scan, baseline, account, onScan }: {
           </p>
           <p className="line reason">{start.note}</p>
         </>
-      ) : (
-        // A started plan (E5): the date is locked, so the field and its note go; the start stands in their place.
-        <p className="line reason">{fillText(app.plan.startedLine, { date: absoluteDate(data.startedFrom) })}</p>
-      )}
+      ) : null}
+      {/* A started plan: the date is locked, so the field and its note go; the header line carries the start, once. */}
 
       <p className="line no-print">
         <a href="#/plan" onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>
@@ -279,7 +278,7 @@ function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, na
           <Status tone={status.tone}>{status.word}</Status>
           {isNext && <span className="next-mark" aria-label={PP.next}>{PP.next}</span>}
           <span className="step-title">{contentTitle(step)}</span>
-          <span className="who">{whoLineOf(step.population, nameOf, step.gapShort ?? step.gap ?? null)}</span>
+          <span className="who">{rowWho(step, nameOf)}</span>
           <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{rowWhen(step, waveStart)}</span>
         </span>
         {/* The one binding reason, already in a pages.plan.blocked shape (the

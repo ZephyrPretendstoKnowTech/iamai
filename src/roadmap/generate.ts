@@ -19,6 +19,7 @@ import { proposeRings, ringContextIndexes } from './rings.ts'
 import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
+import { LOCKOUT_GOALS, lockoutIds } from './lockout.ts'
 import { accountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
@@ -1042,6 +1043,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                   : sessionOnly || /session/i.test(goal.name)
                     ? MANAGER.session(pop.active)
                     : MANAGER.other()),
+      // A strength policy's lockout count: the people in scope with no phishing-resistant method today (lockout.ts).
+      ...(LOCKOUT_GOALS.has(goal.id) && status !== 'done' ? { lockout: lockoutIds(goal.id, viability, snapshot, excluded).length } : {}),
       // A step that changes the tenant's own policy names that policy, never the
       // step's title; a step that creates one names the proposed name.
       naming:

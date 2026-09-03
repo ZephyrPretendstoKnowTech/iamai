@@ -19,6 +19,7 @@ import { rowWhen } from './rowWhen.ts'
 import { rowWho } from './rowWho.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import { lockoutIds } from '../../roadmap/lockout.ts'
+import { whoLine } from '../../derive/whoLine.ts'
 import { longDate } from '../../copy/dates.ts'
 
 const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start) })
@@ -100,8 +101,11 @@ test("(6) a strength policy's row carries its lockout count in the who-column wh
   const without = lockoutIds('admins-phishing-resistant', r.viability, f.snapshot, new Set(f.mapping.breakGlassUserIds))
   assert.ok(without.length > 0)
   assert.equal(s.lockout, without.length)
-  const who = rowWho(s, (id) => r.input.names!.label(id))
-  assert.equal(who, `${s.population.active} people · ${without.length} without a passkey`)
+  const nameOf = (id: string): string => r.input.names!.label(id)
+  const who = rowWho(s, nameOf)
+  // The who-line, its gap clause when the row has one, then the lockout count.
+  assert.equal(who, `${whoLine(s.population, nameOf, s.gapShort ?? s.gap ?? null)} · ${without.length} without a passkey`)
+  assert.match(who, new RegExp(`^${s.population.active} people · .*${without.length} without a passkey$`))
   // Zero: no suffix. The block policies carry none.
   const block = r.steps.find((x) => x.goalId === 'block-legacy-auth')!
   assert.equal(block.lockout, undefined)

@@ -8,15 +8,21 @@ import { absoluteDate, relative } from '../../copy/dates.ts'
 import { friendlyMethod } from '../format.ts'
 
 // The Show list is pages.today.show, in the six-state model the table uses: All,
-// the six states, Admins, Guests — keyed by position.
-export const SHOW_KEYS = ['all', 'proven', 'likely', 'neverPrompted', 'possiblyBroken', 'noMethod', 'notActive', 'admins', 'guests'] as const
-export type ShowKey = (typeof SHOW_KEYS)[number]
+// the six states, Admins, Guests — keyed by position (derive/today.ts SHOW_KEYS).
+import { SHOW_KEYS, TILE_STATES } from '../../derive/today.ts'
+export { SHOW_KEYS } from '../../derive/today.ts'
+export type { ShowKey } from '../../derive/today.ts'
 const T = pages.today as unknown as { show: string[] }
 const C = app.today
 
 /** The state's word, from the Show list (the six states sit at positions 1 to 6). */
 export function todayStateWord(state: TodayState): string {
   return T.show[SHOW_KEYS.indexOf(state)]
+}
+
+/** A tile's label: the states it groups, in the table's own words, joined ("Likely works · Never prompted · Possibly broken"). */
+export function tileLabel(tile: keyof typeof TILE_STATES): string {
+  return TILE_STATES[tile].map(todayStateWord).join(' · ')
 }
 
 /** The evidence line: the MFA method and when, or why there is none. */
