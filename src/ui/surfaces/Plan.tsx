@@ -27,6 +27,7 @@ import { statusOf } from './statusWord.ts'
 import { rowWhen } from './rowWhen.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
+import { planDates } from './stepVars.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
@@ -87,9 +88,9 @@ export function Plan({ scan, baseline, account, onScan }: {
 
   const tenantName = (scan.snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const nameOf = (id: string): string => c.names.label(id)
-  // The plan's first enforcement date (a campaign's enrol-by), for the step
-  // variables; the operator's own account is resolved above, once.
-  const firstEnforce = c.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
+  // The plan-wide dates the step variables read (the campaign's enrol-by, the
+  // MFA enforcement day, the campaign's window); the operator's own account is resolved above, once.
+  const dates = planDates(c.steps, c.schedule.start)
   // Cleanup (§5): one row each, dated after the last enforcement; the drill is a
   // Cleanup row and nothing else, so it counts once. The finish is the end of
   // the last phase, Cleanup included (§9).
@@ -171,7 +172,7 @@ export function Plan({ scan, baseline, account, onScan }: {
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} waveStart={w.wave.start} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+              return <Row key={s.id} step={s} isNext={isNext} waveStart={w.wave.start} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
             })}
           </section>
         )
@@ -183,7 +184,7 @@ export function Plan({ scan, baseline, account, onScan }: {
       {floorRows.length > 0 && (
         <section className="phase floor">
           {floorRows.map((s) => (
-            <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+            <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
           ))}
         </section>
       )}
@@ -202,7 +203,7 @@ export function Plan({ scan, baseline, account, onScan }: {
         computed={c}
         nameOf={nameOf}
         onPutBack={(id) => data.setNotApplicable(id, null)}
-        renderRow={(s) => <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />}
+        renderRow={(s) => <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />}
       />
     </section>
   )
@@ -244,7 +245,7 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan, 
   )
 }
 
-function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide, onScan }: {
+function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, decision, onDecide, onScan }: {
   step: Step
   isNext: boolean
   /** The wave's start, the date a blocked step without one of its own reads. */
@@ -264,7 +265,7 @@ function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, na
   snapshot: TenantSnapshot
   mapping: MappingState | null
   operatorId: string | null
-  firstEnforce: string | null
+  dates: ReturnType<typeof planDates>
   groups: GroupMembers
   decision: StepDecision | null
   onDecide: (decision: StepDecisionInput) => void
@@ -289,7 +290,7 @@ function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, na
         <ContentStep
           key={snapshot.asOf}
           step={step}
-          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature, operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, groups, naming: computed.coverage.organisation.naming }}
+          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature, operatorId, now: snapshot.asOf, ...dates, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, groups, naming: computed.coverage.organisation.naming }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onDoesntApply={(reason) => onDoesntApply(step.id, reason)}

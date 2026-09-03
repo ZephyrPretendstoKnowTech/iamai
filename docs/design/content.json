@@ -10,7 +10,7 @@
     },
     "devicePlan": {
       "phone": {
-        "enrol": "enrol it in Intune with the Company Portal app before {firstEnforce}",
+        "enrol": "enrol it in Intune with the Company Portal app before {mfaEnforce}",
         "apps": "use Outlook and Teams for work; nothing to enrol",
         "none": "no company data on it; work from your computer"
       },
@@ -1613,7 +1613,7 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a hardware security key (survives a lost phone) and a passkey in Microsoft Authenticator (everyday use).",
+          "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone); either is phishing-resistant.",
           "Sign out and sign in again with the passkey, so the record shows a phishing-resistant sign-in.",
           "If the passkey is refused, the method settings in Set Up Passkeys to Match the Baseline are not saved yet."
         ]
@@ -1885,7 +1885,7 @@
       },
       "who": {
         "lead": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90% until {enrollBy}.",
-        "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {firstEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
+        "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
         "groups": {
           "noMethod": "{n} people with no method; issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
           "insufficient": "{n} people whose only method is text or call; register a passkey in Microsoft Authenticator, then remove the phone number:",
@@ -1910,7 +1910,7 @@
         "lead": "For the people chosen above (in person):",
         "steps": [
           "Book ten minutes. Open https://aka.ms/mfasetup with them signed in.",
-          "No method: issue a Temporary Access Pass (Users → the person → Authentication methods → Add → Temporary Access Pass), read it to them by phone, then Add sign-in method → Passkey → in Microsoft Authenticator. Admins: a hardware security key as well.",
+          "No method: issue a Temporary Access Pass (Users → the person → Authentication methods → Add → Temporary Access Pass), read it to them by phone, then Add sign-in method → Passkey → in Microsoft Authenticator. Admins: a passkey or a hardware security key; either is phishing-resistant.",
           "Text or call only: Add sign-in method → Passkey → in Microsoft Authenticator, then remove the phone number as a sign-in method.",
           "Authenticator approval only: Add sign-in method → Passkey → in Microsoft Authenticator; keep the approval as a fallback.",
           "Never seen or possibly broken: have them sign out and sign in once with the passkey; if it is refused, register it again.",
@@ -1931,7 +1931,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {firstEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next two weeks. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "body": "From {mfaEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next {enrolWindowDays} days. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "signature": "{signature}",
         "extra": "{deviceSentence}",
         "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together."
@@ -1985,8 +1985,6 @@
           "Breakglass · see the emergency-access step"
         ],
         "enrollBy": "Fri Sep 4",
-        "firstEnforce": "Tue Sep 8",
-        "firstEnforceLong": "Tuesday, September 8",
         "holdouts": [],
         "deviceIntro": "Devices, from Decide How Devices Are Managed, one line per person: on a phone, use Outlook and Teams for work; nothing to enrol; on a computer, domain-joined computers are already covered:",
         "deviceLines": [
@@ -2001,7 +1999,10 @@
         ],
         "adminCount": 2,
         "pushOnly": [],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "mfaEnforce": "Tue Sep 8",
+        "mfaEnforceLong": "Tuesday, September 8",
+        "enrolWindowDays": 14
       }
     },
     {
@@ -3051,7 +3052,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, {tenant} mail, files and Teams open only on a company-managed device. Sign in to your work computer with your work account this week so we can confirm it is set up. Personal devices can still use the browser with limits.",
+        "body": "From {enforceLong}, {tenant} mail, files and Teams open only on a company-managed device. Sign in to your work computer with your work account this week so we can confirm it is set up. Personal devices {personalDevicesClause}.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -3103,7 +3104,8 @@
         "enforceLong": "Tuesday, September 22",
         "signature": "IT",
         "existingPolicies": [],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "personalDevicesClause": "can still use the browser with the limits from Limit Unmanaged Devices in the Browser"
       },
       "whatToDoReference": {
         "lead": null,

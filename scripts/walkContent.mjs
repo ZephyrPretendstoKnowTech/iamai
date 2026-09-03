@@ -92,10 +92,14 @@ export const ACCEPTANCE = [
   // Per step, 11–20.
   { item: '11', step: 's-prereq-auth-strength', path: 'whatToDo.steps', must: 'with a Temporary Access Pass for first sign-ins', mustNot: 'with a one-time pass for first sign-ins' },
   { item: '11', step: 's-prereq-auth-strength', path: 'ifWrong', must: 'Delete the strength; no policy references it yet.' },
-  { item: '12', step: 's-ladder-operator-passkey', path: 'whatToDo.steps', must: 'Register a hardware security key (survives a lost phone) and a passkey in Microsoft Authenticator (everyday use).' },
+  // 12 says "or" (E7): a passkey or a security key is enough; either is phishing-resistant.
+  { item: '12', step: 's-ladder-operator-passkey', path: 'whatToDo.steps', must: 'Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone); either is phishing-resistant.', mustNot: 'security key (survives a lost phone) and a passkey' },
   { item: '12', step: 's-ladder-operator-passkey', path: 'more.risks', must: 'A key registered on a shared machine, or left in the laptop, is not a second factor.' },
-  // 13's date and window variables ({mfaEnforceLong}, {enrolWindowDays}) are the engine's, in the same commit as the engine fills them.
-  { item: '13', step: 's-verify-mfa', path: 'who.timeline', must: 'Require MFA for Everyone enforces on {firstEnforce}', mustNot: 'The first policy enforces' },
+  // 13's date and window are the engine's (E7): the day Require MFA for Everyone enforces, and the campaign's window.
+  { item: '13', step: 's-verify-mfa', path: 'who.timeline', must: 'Require MFA for Everyone enforces on {mfaEnforce}', mustNot: '{firstEnforce}' },
+  { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'From {mfaEnforceLong},', mustNot: '{firstEnforceLong}' },
+  { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'over the next {enrolWindowDays} days', mustNot: 'over the next two weeks' },
+  { item: '13', step: 's-verify-mfa', path: 'whatToDo.steps', must: 'Admins: a passkey or a hardware security key; either is phishing-resistant.', mustNot: 'a hardware security key as well' },
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Authentication methods → Registration campaign → Enabled, Target: All users, snooze limit 3' },
   { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Every admin has a passkey or a security key registered.', mustNot: 'a passkey and a security key' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'a security key, and a text message or call, which is why the campaign removes phone numbers', mustNot: 'requires one the moment a sign-in looks wrong' },
@@ -120,8 +124,8 @@ export const ACCEPTANCE = [
   { item: '23', step: 'admin-session', path: 'more.helpDesk', must: 'Prompts every few minutes: the browser is not signed in to a registered device; sign in to the device account.' },
   { item: '24', step: 'unmanaged-browser', path: 'who.evidence', must: 'Policy A: Windows browsers on unmanaged devices.' },
   { item: '24', step: 'unmanaged-browser', path: 'who.evidence', must: 'Policy B: other platforms outside the office.' },
-  // 25's clause is the engine's ({personalDevicesClause} from shared.engine.personalDevices, in the same commit as the engine fills it).
-  { item: '25', step: 'require-managed-device', path: 'comms.body', must: 'Personal devices can still use the browser with limits.' },
+  // 25's clause is the engine's (E7): {personalDevicesClause} from shared.engine.personalDevices.
+  { item: '25', step: 'require-managed-device', path: 'comms.body', must: 'Personal devices {personalDevicesClause}.', mustNot: 'can still use the browser with limits' },
   { item: '26', step: 'block-unsupported-platforms', path: 'why', must: 'Linux, and any platform Entra cannot identify, is blocked; that is where the device rules leak.' },
   { item: '26', step: 'block-unsupported-platforms', path: 'more.risks', must: '{certificatePrompt} This policy has one.', mustNot: 'this policy can prompt iOS and macOS users' },
   { item: '27', step: 'mobile-app-protection', path: 'why', must: 'App protection needs Intune Plan 1 (in Business Premium, E3, E5).' },
