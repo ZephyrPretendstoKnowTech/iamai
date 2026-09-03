@@ -59,6 +59,17 @@ const ABSENT_GOAL_NAMES = new Set([...ABSENT_STEP_IDS].flatMap((id) => (CATALOGU
 const FORBIDDEN_PHRASES = ['an account IAMAI could not name', 'an unnamed account', '168h', 'undefined', '[object Object]', 'NaN']
 // The steps an answered question adds to the plan (generate.ts carve-outs): each has a content entry.
 const CARVE_OUT_IDS = ['s-question-travel', 's-question-partner', 's-question-mail-devices']
+// The policy steps whose content carries a "before" line (a setting to change
+// before the policy exists) that the step keeps above the translator's portal
+// lines: the device-settings toggle, the Intune compliance settings, password
+// writeback, the SharePoint access control. Read from the content, so a content
+// file without the lines fails here before any step is opened.
+const BEFORE_STEP_IDS = ['device-registration-mfa', 'require-managed-device', 'user-risk', 'user-risk-medium', 'unmanaged-browser']
+const BEFORE_LINES = BEFORE_STEP_IDS.map((id) => {
+  const s = contentSteps.find((x) => x.id === id)
+  const lines = (s?.whatToDo?.before ?? []).filter((l) => typeof l === 'string')
+  return { id, title: s?.title ?? id, lines }
+})
 
 const CANDIDATES = [
   process.env.CHROME,
@@ -531,10 +542,27 @@ async function walkFixture(fx) {
             if (week2 && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the platform deviation is not shown beside the baseline's version`)
             if (!week2 && /Device platforms/.test(bodyText)) add('P0', `${slabel}: a platform condition shows before the device decision`)
           }
+          // The admin-sessions email says how long a session lasts (the merge
+          // follow-up: {wantedLong} was unfilled, and the email vanished whole).
+          if (/^Shorten Admin Sessions$/.test(title)) {
+            if (!/expire after (\d+ hours|an hour|a day|a week|\d+ days) and never persist/.test(emailText)) add('P0', `${slabel}: the admin email does not say how long sessions last (expire after {wantedLong})`)
+          }
           if (/MFA Registration Campaign/.test(title)) {
             if (week2 && !/· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
             if (week2 && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
             if (!week2 && /· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
+          }
+        }
+        // A translator-rendered step keeps its content's "before" lines above the
+        // portal lines (the merge follow-up): on the step, each line is present and
+        // sits before the portal root line.
+        for (const b of BEFORE_LINES) {
+          if (b.title !== title || b.lines.length === 0) continue
+          const root = bodyText.indexOf('Conditional Access → Policies → New policy')
+          for (const line of b.lines) {
+            const at = bodyText.indexOf(line.replace(/\{[a-zA-Z0-9_:]+\}/g, '').split(' ').slice(0, 6).join(' '))
+            if (at < 0) add('P0', `${slabel}: the before line "${line.slice(0, 60)}…" is not on the step above the portal lines`)
+            else if (root >= 0 && at > root) add('P0', `${slabel}: the before line "${line.slice(0, 60)}…" renders after the portal lines`)
           }
         }
         // A step body's counts are its own population (one population per step), checked against its row above.
@@ -778,6 +806,10 @@ const contentFile = JSON.parse(readFileSync('docs/design/content.json', 'utf8'))
 const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8'))
 for (const f of contentFindings(contentFile, pinnedFile, contracts)) add(f.level, f.text)
 for (const href of contentLearnUrls(contentFile)) learnLinks.add(href)
+
+// The before lines exist in the content for every step that carries one (the
+// step check above needs the row on the plan; this fails on the content alone).
+for (const b of BEFORE_LINES) if (b.lines.length === 0) add('P0', `content ${b.id}: no whatToDo.before line; the setting to change before the policy exists is not above its portal lines`)
 
 // Cross-surface invariants.
 for (const [name, readiness] of readinessBy) for (const [kind, values] of readiness) if (values.size > 1) add('P0', `${name}: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and Today (one readiness per kind)`)
