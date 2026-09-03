@@ -605,7 +605,7 @@ export function reviewBody(): string {
 
 export function renderCleanup(c: Record<string, any>): string {
   const parts = [`<div class="steprow"><span class="chip status">Ready</span><span class="title">${esc(c.title)}</span></div><div class="stepbody">`]
-  parts.push(h('Why') + p(c.why, {}))
+  parts.push(h('Why') + `<p>${fill(c.why, {})} <a class="learn" href="${esc(c.learn?.url || '')}">Learn →</a></p>`)
   parts.push(
     h('What to do') +
       ol(c.whatToDo, {

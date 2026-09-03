@@ -652,6 +652,9 @@
   "cleanup": {
     "alerting": {
       "title": "Alert on Emergency Account Sign-ins",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
+      },
       "why": "An emergency account should almost never sign in, so any sign-in is a drill or an incident, and both are worth knowing about.",
       "whatToDo": [
         "Entra admin center → Entra ID → Monitoring & health → Diagnostic settings → send SignInLogs to a Log Analytics workspace (or the SIEM you already use).",
@@ -664,6 +667,9 @@
     },
     "naming": {
       "title": "Rename Policies Off the Naming Convention",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
+      },
       "why": "One convention means the next person can read the policy list without opening each policy.",
       "whatToDo": [
         "Rename {list:renames}",
@@ -675,6 +681,9 @@
     },
     "consolidation": {
       "title": "Consolidate Overlapping Policies",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
+      },
       "why": "Two policies that grant the same control to the same people are two places for a later change to go wrong.",
       "whatToDo": [
         "Compare {list:overlaps} side by side; keep the one that matches the baseline and set the other to Off, then delete it after a week with no failures."
@@ -685,6 +694,9 @@
     },
     "notAssessed": {
       "title": "Review Baseline Policies IAMAI Did Not Assess",
+      "learn": {
+        "url": "https://github.com/Jhope188/ConditionalAccessPolicies"
+      },
       "why": "These baseline policies carry conditions IAMAI cannot compare, so their status is yours to judge.",
       "whatToDo": [
         "Open each and decide whether it applies: {list:policies}",
@@ -696,6 +708,9 @@
     },
     "drill": {
       "title": "Run the Emergency Access Drill",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
+      },
       "why": "A passphrase nobody has used in a year is found to be wrong at the worst moment.",
       "whatToDo": [
         "Sign in with each emergency account from a private browser window, on a device the policies do not trust, and confirm the alert fires.",
@@ -848,7 +863,7 @@
       "changeLine": null,
       "why": "One group, excluded from every policy in the plan, is the single auditable way back in when a policy goes wrong in {tenant}.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations"
       },
       "who": {
         "lead": "The group and its members:",
@@ -945,7 +960,7 @@
       "changeLine": null,
       "why": "Nobody has signed in to these accounts for 90 days, or ever; whoever signs in first registers the MFA method, and that may not be the owner.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/users/users-inactive"
+        "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
       "who": {
         "lead": "{n} enabled accounts with no sign-in for 90 days or none on record:",
@@ -1175,7 +1190,7 @@
       "changeLine": null,
       "why": "Service accounts cannot answer an MFA prompt, so the policies that would break them exclude this one group instead of a list nobody maintains.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity"
+        "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
       },
       "who": {
         "lead": "Accounts IAMAI nominated as service accounts, with the signals:",
@@ -1791,7 +1806,7 @@
       "changeLine": null,
       "why": "A code or an approval can be tricked out of an admin by a convincing page; a passkey cannot be used on the wrong site.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-admin-phishing-resistant-mfa"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa"
       },
       "who": {
         "lead": "{admins} people hold an admin role",
@@ -1899,7 +1914,7 @@
       "changeLine": null,
       "why": "A standard account has no business in an admin portal; blocking it there removes a whole class of accidental and stolen-password changes.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-old-require-mfa-admin"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals"
       },
       "who": {
         "lead": "{active} active people · {adminCount} admins in {adminsGroup}",
@@ -1988,7 +2003,7 @@
       "changeLine": null,
       "why": "A partner's password hygiene is not yours to control; the prompt at your door is.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-mfa-strength"
+        "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa"
       },
       "who": {
         "lead": "{guests} guests and external users signed in during the last 30 days",
@@ -2196,7 +2211,7 @@
       "changeLine": null,
       "why": "Legacy protocols skip MFA entirely, so they are the door attackers try first.",
       "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-legacy-auth"
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy"
       },
       "who": {
         "lead": "{active} active people",
