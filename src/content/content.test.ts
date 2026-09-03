@@ -45,7 +45,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.policyDoneWhenTracked[0]',
   '.shared.policyDoneWhenTracked[1]',
   '.pages.home.metaTitle',
-  '.pages.connectNoScan.baselineUpdatedNote',
   '.pages.plan.gapSuffix.guests-mfa',
   '.pages.today.activeTip',
   '.pages.today.columns[2]',
@@ -104,7 +103,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // read by the product, never by the review page.
 const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
 const isStructural = (p: string): boolean =>
-  /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p)
+  /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 
 test('no orphan content string: every non-structural key renders, or is a known example-suppressed / app-only variant', () => {
   const body = reviewBody()
