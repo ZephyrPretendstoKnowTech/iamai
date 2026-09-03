@@ -378,20 +378,24 @@ const learnLinks = new Set()
 // ---- the walk of one fixture ----
 async function walkFixture(fx) {
   const dir = join(OUT, fx.name)
-  // The demo's week two: the header's Scan to update the plan flips the demo to
-  // its week-two snapshot (App.tsx demoWeek2), then the plan is walked again.
-  // The demo's Scan to update the plan toggles week two on and off, and a hash
-  // navigation keeps the page alive, so entering is idempotent: click only
-  // while the banner does not already say week 2.
-  const ensureWeek2 = async () => {
+  // The demo's week two: Scan again on Connect's Scan tile flips the demo to
+  // its week-two snapshot (App.tsx demoWeek2; the header has no scan control),
+  // then the plan is walked again. Scan again toggles week two on and off, and
+  // a hash navigation keeps the page alive, so entering is idempotent: click
+  // only while the banner does not already say week 2, then come back to the route.
+  const ensureWeek2 = async (route) => {
     if (!fx.week2) return
-    // The demo must have finished loading (rows on the page) before the control is used.
-    await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
     if (await evaluate(`/week 2/i.test(document.body.innerText)`)) return
-    const clicked = await clickText('button, a', /Scan to update the plan/, 'header.app')
-    if (!clicked) add('P0', `${fx.name}: the header offers no Scan to update the plan`)
+    await evaluate(`location.hash = '#/connect'`)
+    const offered = await waitFor(`[...document.querySelectorAll('main.page section.step-tile button')].some((b) => /^Scan again$/.test((b.textContent || '').trim()))`, 15000)
+    if (!offered) {
+      add('P0', `${fx.name}: Connect's Scan tile offers no Scan again`)
+      return
+    }
+    await clickText('button', /^Scan again$/, 'main.page')
     const week2 = await waitFor(`/week 2/i.test(document.body.innerText)`, 10000)
-    if (!week2) add('P0', `${fx.name}: Scan to update the plan does not advance the demo to week two`)
+    if (!week2) add('P0', `${fx.name}: Scan again does not advance the demo to week two`)
+    await evaluate(`location.hash = ${JSON.stringify('#/' + route)}`)
     await sleep(800)
   }
   mkdirSync(dir, { recursive: true })
@@ -417,7 +421,7 @@ async function walkFixture(fx) {
       const label = `${fx.name} @${width} /${route}`
       await send('Page.navigate', { url: `${fx.base}#/${route}` })
       await sleep(600)
-      await ensureWeek2()
+      await ensureWeek2(route)
       if (route === 'plan') await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
       await settle()
       const text = await mainText()
@@ -432,6 +436,17 @@ async function walkFixture(fx) {
       diffContract(label, c, d)
       checkText(label, text)
       collect(text)
+      // The header carries no scan control and no scan age on any page, and no
+      // page but Connect says when the tenant was scanned: the tenant and the
+      // scan's age are Connect's tiles', from the one stored timestamp
+      // (docs/design/connect-mockup.html).
+      const header = await evaluate(`((document.querySelector('header.app') || {}).innerText || '').replace(/\\s+/g, ' ')`)
+      if (/scanned|Scan to update the plan|Re-scan/.test(header)) add('P0', `${label}: the header carries a scan control or the scan's age: "${header}"`)
+      if (route !== 'connect' && /\bscanned\b/i.test(text)) add('P0', `${label}: the page says scanned; only Connect shows when the tenant was scanned`)
+      if (route === 'plan') {
+        const lines = await evaluate(`[...document.querySelectorAll('main.page p.line')].map((p) => (p.textContent || '').replace(/\\s+/g, ' ').trim())`)
+        if (lines[1] !== 'Today shows where each person stands.') add('P0', `${label}: the Plan's second line reads "${lines[1]}"; Today shows where each person stands. (the tenant and the scan age are Connect's)`)
+      }
       const overflow = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
       if (overflow > 0) {
         const widest = await evaluate(`(() => { const w = document.documentElement.clientWidth; const els = [...document.querySelectorAll('main.page *')].filter((e) => e.getBoundingClientRect().right > w + 1); const e = els[0]; return e ? (e.className || e.tagName) + ' ' + Math.round(e.getBoundingClientRect().right - w) + 'px past the edge' : '' })()`)
@@ -553,88 +568,155 @@ async function walkFixture(fx) {
           if (!/built and maintained by Jon Hope/.test(t2.text) || !/Its aim is layered protection/.test(t2.text)) add('P0', `${label}: tile 2 lacks the approved baseline sentences`)
           expectBtn(t2, /^Change baseline$/, 'secondary', 'tile 2')
         }
-        // 3 What happens next
+        // 3 Scan: the beats, the read-only line and the limitations in both states,
+        // then exactly one of its states (docs/design/connect-mockup.html); the
+        // number badge carries the state colour; nothing of the other states, and
+        // nothing of the Plan tile's.
+        const SCAN_STATES = { complete: /^Scan complete · .+$/, gaps: /^Scan finished with gaps · no plan built$/, role: /^Scan not started · this account can't read the tenant$/, scanning: /^Scan .+ · \d+(m \d+)?s$/, ready: /^Scan not started$/, sample: /^Scan after sign-in · about a minute for a small tenant$/ }
+        const want = signedOut ? 'sample' : ({ roles: 'role', gaps: 'gaps', free: 'complete', scanning: 'scanning', ready: 'ready' }[fx.mock] ?? 'complete')
         if (t3) {
-          if (!/^What happens next$/.test(t3.h2)) add('P0', `${label}: tile 3 reads "${t3.h2}"`)
+          const seen = Object.entries(SCAN_STATES).filter(([, re]) => re.test(t3.h2)).map(([k]) => k)
+          if (seen.length !== 1 || seen[0] !== want) add('P0', `${label}: tile 3 reads "${t3.h2}"; Scan in the ${want} state`)
+          if (/What happens next/.test(t3.text)) add('P0', `${label}: tile 3 still reads What happens next`)
           for (const w of ['Reads', 'Compares', 'Writes']) if (!new RegExp('\\b' + w + '\\b').test(t3.text)) add('P0', `${label}: tile 3 lacks its ${w} line`)
           if (signedOut && !/Reads your tenant's policies, people, sign-in records and licences\./.test(t3.text)) add('P0', `${label}: signed out, tile 3 does not say "your tenant"`)
           if (!/Read-only\. It holds no permission that can create, change or delete anything\./.test(t3.text)) add('P0', `${label}: tile 3 lacks the read-only line`)
-          const limits = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /IAMAI limitations/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; const ps = d.querySelectorAll('p'); return { items: d.querySelectorAll('li').length, last: ((ps[ps.length - 1] || {}).textContent || '').replace(/\\s+/g, ' ').trim() } })()`)
+          const limits = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /IAMAI limitations/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; const ps = d.querySelectorAll('p'); const tile = d.closest('section.step-tile'); return { items: d.querySelectorAll('li').length, last: ((ps[ps.length - 1] || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: tile ? ((tile.querySelector('.n') || {}).textContent || '').trim() : '' } })()`)
           if (!limits) add('P0', `${label}: tile 3 has no IAMAI limitations collapsible`)
           else {
+            if (limits.n !== '3') add('P0', `${label}: the limitations collapsible sits in tile ${limits.n}; tile 3`)
             if (limits.items !== 5) add('P0', `${label}: the limitations list has ${limits.items} lines; five`)
             if (limits.last !== 'Permissions, every check it runs, and its limits in full: How IAMAI works →') add('P0', `${label}: the limitations' last line reads "${limits.last}"`)
           }
-        }
-        // 4 Scan: exactly one of its states, the one the fixture reaches; the
-        // number badge carries the state colour; nothing of the other states.
-        const STATES = { complete: /^Scan complete · /, gaps: /^Scan finished with gaps · no plan built$/, role: /^Scan not started · this account can't read the tenant$/, scanning: /^Scan .+ · \d+(m \d+)?s$/, ready: /^Scan not started$/, sample: /^Scan after sign-in · about a minute for a small tenant$/ }
-        const want = signedOut ? 'sample' : ({ roles: 'role', gaps: 'gaps', free: 'complete', scanning: 'scanning', ready: 'ready' }[fx.mock] ?? 'complete')
-        if (t4) {
-          const seen = Object.entries(STATES).filter(([, re]) => re.test(t4.h2)).map(([k]) => k)
-          if (seen.length !== 1 || seen[0] !== want) add('P0', `${label}: tile 4 reads "${t4.h2}"; the ${want} state`)
           const badge = { complete: 'done', gaps: 'wait', role: 'stop' }[want]
-          if (badge && !new RegExp('\\b' + badge + '\\b').test(t4.cls)) add('P0', `${label}: tile 4's number badge does not carry the ${want} state colour (class ${badge}); it has "${t4.cls}"`)
-          if (!badge && /\b(done|wait|stop)\b/.test(t4.cls)) add('P0', `${label}: tile 4 in the ${want} state carries a state colour (${t4.cls})`)
-          const OTHER = { complete: [/\d+ people \d+ policies/, /^Open the plan →$/], gaps: [/no plan built/, /^Open the last full plan/], role: [/holds none of the roles that read/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/About ten minutes/, /^Scan tenant$/], sample: [/What the sample tenant produced/, /already in place/] }
+          if (badge && !new RegExp('\\b' + badge + '\\b').test(t3.cls)) add('P0', `${label}: tile 3's number badge does not carry the ${want} state colour (class ${badge}); it has "${t3.cls}"`)
+          if (!badge && /\b(done|wait|stop)\b/.test(t3.cls)) add('P0', `${label}: tile 3 in the ${want} state carries a state colour (${t3.cls})`)
+          const OTHER = { complete: [/complete · /, /^Scan again$/], gaps: [/no plan built/, /Ask whoever administers/], role: [/holds none of the roles that read/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/About ten minutes/, /^Scan tenant$/], sample: [/about a minute for a small tenant/] }
           for (const [k, res] of Object.entries(OTHER)) {
             if (k === want) continue
-            for (const re of res) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 in the ${want} state carries the ${k} state's ${re}`)
+            // Scan again belongs to the complete and the gaps state both.
+            for (const re of res) if (!(k === 'complete' && want === 'gaps' && String(re) === String(/^Scan again$/)) && (re.test(t3.text) || t3.buttons.some((b) => re.test(b.t)))) add('P0', `${label}: tile 3 in the ${want} state carries the ${k} state's ${re}`)
           }
+          for (const re of [/Open the plan →/, /Open the last full plan/, /What the sample tenant produced/, /Open the sample plan/, /\d+ people \d+ policies/, /from the scan/]) if (re.test(t3.text) || t3.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 3 carries the Plan tile's ${re}`)
           if (want === 'complete') {
-            if (!/\d+ people/.test(t4.text) || !/\d+ policies/.test(t4.text) || !/sign-in records/.test(t4.text) || !/licence/.test(t4.text)) add('P0', `${label}: the complete tile lacks a fact (people, policies, sign-in records, licence): "${t4.text}"`)
-            if (/→\s*sign-in records/.test(t4.text) || /sign-in records\s*→/.test(t4.text)) add('P0', `${label}: the sign-in records fact renders an empty window`)
-            if (fx.mock === 'free' && !/not read sign-in records/.test(t4.text)) add('P0', `${label}: sign-ins were not read and the fact does not say so: "${t4.text}"`)
-            expectBtn(t4, /^Open the plan →$/, 'primary', 'the complete tile')
-            expectBtn(t4, /^Scan again$/, 'secondary', 'the complete tile')
-            if (t4.buttons.length !== 2) add('P0', `${label}: the complete tile has ${t4.buttons.length} buttons; two`)
+            expectBtn(t3, /^Scan again$/, 'secondary', 'the complete Scan tile')
+            if (t3.buttons.length !== 1) add('P0', `${label}: the complete Scan tile has ${t3.buttons.length} buttons; Scan again alone`)
           }
           if (want === 'gaps') {
             const rows = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
             if (!rows.some((r) => /^Conditional Access policies not read$/.test(r))) add('P0', `${label}: the policies section row is not marked not read: ${JSON.stringify(rows)}`)
             if (!rows.some((r) => /^Sign-in records not read$/.test(r))) add('P0', `${label}: the sign-in records row is not marked not read: ${JSON.stringify(rows)}`)
-            if (!/Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t4.text)) add('P0', `${label}: the gaps tile lacks the one ask for Global Reader`)
+            if (!/Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t3.text)) add('P0', `${label}: the gaps tile lacks the one ask for Global Reader`)
             if (!(await evaluate(`[...document.querySelectorAll('main.page section.step-tile a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || '') && /global-reader/.test(a.getAttribute('href') || ''))`))) add('P0', `${label}: the gaps tile lacks Microsoft's Global Reader link`)
-            expectBtn(t4, /^Sign in with another account$/, 'primary', 'the gaps tile')
-            expectBtn(t4, /^Scan again$/, 'secondary', 'the gaps tile')
-            expectBtn(t4, /^Open the last full plan \([A-Z][a-z]{2} \d+\)$/, 'tertiary', 'the gaps tile')
+            expectBtn(t3, /^Sign in with another account$/, 'primary', 'the gaps tile')
+            expectBtn(t3, /^Scan again$/, 'secondary', 'the gaps tile')
+            if (t3.buttons.length !== 2) add('P0', `${label}: the gaps tile has ${t3.buttons.length} buttons; Sign in with another account and Scan again`)
             const stored = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); const n = db.objectStoreNames.contains('snapshot') ? await new Promise((r) => { const q = db.transaction('snapshot').objectStore('snapshot').count(); q.onsuccess = () => r(q.result) }) : 0; db.close(); return n } catch { return -1 } })()`)
             if (stored !== 0) add('P0', `${label}: the scan with gaps left ${stored} snapshot record(s) in the store; it is never stored`)
-            await send('Page.navigate', { url: `${fx.base}#/plan` })
-            const kept = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 10000)
-            if (!kept) add('P0', `${label}: the last good plan is gone after a scan with gaps`)
           }
           if (want === 'role') {
-            if (!/holds none of the roles that read Conditional Access policies, people and sign-in records\./.test(t4.text)) add('P0', `${label}: the role tile does not name the account and the three sections: "${t4.text}"`)
+            if (!/holds none of the roles that read Conditional Access policies, people and sign-in records\./.test(t3.text)) add('P0', `${label}: the role tile does not name the account and the three sections: "${t3.text}"`)
             const rows = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
             if (rows.length !== 1 || !/^Everything IAMAI needs, read-only ask for Global Reader$/.test(rows[0])) add('P0', `${label}: the role tile's rows read ${JSON.stringify(rows)}; one row asking for Global Reader`)
-            expectBtn(t4, /^Sign in with another account$/, 'primary', 'the role tile')
-            if (t4.buttons.length !== 1) add('P0', `${label}: the role tile has ${t4.buttons.length} buttons; Sign in with another account alone`)
+            expectBtn(t3, /^Sign in with another account$/, 'primary', 'the role tile')
+            if (t3.buttons.length !== 1) add('P0', `${label}: the role tile has ${t3.buttons.length} buttons; Sign in with another account alone`)
             if (await evaluate(`document.querySelector('main.page .progress') !== null`)) add('P0', `${label}: the scan started although the token lacks the roles`)
           }
           if (want === 'scanning') {
             // One line (the section being read · elapsed), one bar, Stop: never the caption and the line both.
             if (!(await evaluate(`document.querySelector('main.page section.step-tile .progress') !== null`))) add('P0', `${label}: the scanning tile has no bar`)
             if (await evaluate(`document.querySelector('main.page section.step-tile .progress-caption') !== null`)) add('P0', `${label}: the scanning tile renders the bar's caption beside the state line; one line only`)
-            if (!/^Scan reading [a-z][^·]* · \d+(m \d+)?s$/.test(t4.h2)) add('P0', `${label}: the scanning line reads "${t4.h2}"; the section being read · elapsed`)
-            if (t4.paragraphs.some((p) => /elapsed|reading/i.test(p))) add('P0', `${label}: the scanning tile repeats the lane or the elapsed time in a paragraph: ${JSON.stringify(t4.paragraphs)}`)
-            expectBtn(t4, /^Stop$/, 'tertiary', 'the scanning tile')
-            if (t4.buttons.length !== 1) add('P0', `${label}: the scanning tile has ${t4.buttons.length} buttons; Stop alone`)
+            if (!/^Scan reading [a-z][^·]* · \d+(m \d+)?s$/.test(t3.h2)) add('P0', `${label}: the scanning line reads "${t3.h2}"; the section being read · elapsed`)
+            if (t3.paragraphs.some((p) => /elapsed|reading/i.test(p))) add('P0', `${label}: the scanning tile repeats the lane or the elapsed time in a paragraph: ${JSON.stringify(t3.paragraphs)}`)
+            expectBtn(t3, /^Stop$/, 'tertiary', 'the scanning tile')
+            if (t3.buttons.length !== 1) add('P0', `${label}: the scanning tile has ${t3.buttons.length} buttons; Stop alone`)
           }
           if (want === 'ready') {
-            expectBtn(t4, /^Scan tenant$/, 'primary', 'the ready tile')
-            if (!/About ten minutes\. Reads the tenant into this browser; nothing is sent anywhere\./.test(t4.text)) add('P0', `${label}: the ready tile lacks the ten-minute line`)
+            expectBtn(t3, /^Scan tenant$/, 'primary', 'the ready tile')
+            if (t3.buttons.length !== 1) add('P0', `${label}: the ready tile has ${t3.buttons.length} buttons; Scan tenant alone`)
+            if (!/About ten minutes\. Reads the tenant into this browser; nothing is sent anywhere\./.test(t3.text)) add('P0', `${label}: the ready tile lacks the ten-minute line`)
           }
-          if (want === 'sample') {
+          if (want === 'sample' && t3.buttons.length !== 0) add('P0', `${label}: the signed-out Scan tile has ${t3.buttons.length} buttons; none`)
+        }
+        // 4 Plan: the state that follows the scan. Ready with the facts (the step
+        // counts the way the Plan header counts them) after a complete scan, the
+        // last full plan after one with gaps, waiting otherwise; before sign-in,
+        // what the sample tenant produced. The scan's age is the one stored
+        // timestamp's: it renders once as the Scan tile's state, and the Plan
+        // tile's "from the scan" carries the same words; nothing says scanned.
+        const wantPlan = signedOut ? 'sample' : want === 'complete' ? 'ready' : want === 'gaps' ? 'last' : 'waiting'
+        const PLAN_STATES = { ready: /^Plan ready · from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
+        if (t4) {
+          if (!PLAN_STATES[wantPlan].test(t4.h2)) add('P0', `${label}: tile 4 reads "${t4.h2}"; Plan in the ${wantPlan} state`)
+          if (wantPlan === 'ready' && !/\bdone\b/.test(t4.cls)) add('P0', `${label}: the ready Plan tile's badge does not carry the accent (${t4.cls})`)
+          if (wantPlan !== 'ready' && /\b(done|wait|stop)\b/.test(t4.cls)) add('P0', `${label}: the ${wantPlan} Plan tile carries a state colour (${t4.cls})`)
+          const PLAN_OTHER = { ready: [/^Open the plan →$/, /\d+ people \d+ policies/, /from the scan/], last: [/^Open the last full plan/, /last full plan/], waiting: [], sample: [/What the sample tenant produced/, /already in place/, /^Open the sample plan$/] }
+          for (const [k, res] of Object.entries(PLAN_OTHER)) {
+            if (k === wantPlan) continue
+            for (const re of res) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 in the ${wantPlan} state carries the ${k} state's ${re}`)
+          }
+          for (const re of [/^Scan again$/, /^Scan tenant$/, /^Stop$/, /^Sign in with another account$/, /\bReads\b/, /IAMAI limitations/, /not read$/]) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 carries the Scan tile's ${re}`)
+          if (wantPlan === 'ready') {
+            // The step counts arrive when the plan has computed; the four scan facts are there from the start.
+            const counted = await waitFor(`/\\d+\\s*steps · \\d+ done/.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
+            if (!counted) add('P0', `${label}: the Plan tile never counted its steps`)
+            const facts = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .facts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
+            const labels = facts.map((f) => f.label)
+            if (labels.length !== 5 || labels.slice(0, 4).join(' · ') !== 'people · policies · sign-in records · licence' || !/^steps · \d+ done$/.test(labels[4])) add('P0', `${label}: the Plan tile's facts read ${JSON.stringify(facts)}; people · policies · sign-in records · licence · steps · N done`)
+            else {
+              if (!/^\d+$/.test(facts[0].value) || !/^\d+$/.test(facts[1].value) || !/^\d+$/.test(facts[4].value)) add('P0', `${label}: the Plan tile's counts are not numbers: ${JSON.stringify(facts)}`)
+              if (/→\s*$/.test(facts[2].value) || /^\s*→/.test(facts[2].value)) add('P0', `${label}: the sign-in records fact renders an empty window`)
+              if (fx.mock === 'free' && facts[2].value !== 'not read') add('P0', `${label}: sign-ins were not read and the fact does not say so: ${JSON.stringify(facts[2])}`)
+              const done = Number((labels[4].match(/\d+/) || ['0'])[0])
+              if (done > Number(facts[4].value)) add('P0', `${label}: more done than steps: ${JSON.stringify(facts[4])}`)
+              // One denominator (E4): the Plan header's counts, read now rather than
+              // from the Plan route's capture (the walk's own clicks there mark a
+              // Cleanup row done, so an earlier capture is stale by design).
+              if (planHeaderCounts) {
+                await evaluate(`location.hash = '#/plan'`)
+                const onPlan = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 15000)
+                const headerNow = onPlan ? await evaluate(`((document.querySelector('main.page p.line') || {}).textContent || '').replace(/\\s+/g, ' ')`) : ''
+                const hm = headerNow.match(/(\d+) steps · (\d+) (?:in place|done)/)
+                if (!hm) add('P0', `${label}: the Plan header could not be read for the count check: "${headerNow}"`)
+                else if (hm[1] !== facts[4].value || hm[2] !== String(done)) add('P0', `${label}: the Plan tile counts ${facts[4].value} steps · ${done} done; the Plan header ${hm[1]} · ${hm[2]}`)
+                await evaluate(`location.hash = '#/connect'`)
+                await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 15000)
+              }
+            }
+            expectBtn(t4, /^Open the plan →$/, 'primary', 'the Plan tile')
+            if (t4.buttons.length !== 1) add('P0', `${label}: the ready Plan tile has ${t4.buttons.length} buttons; Open the plan alone`)
+            const age = ((t3 ? t3.state : '').match(/^complete · (.+)$/) || [])[1]
+            if (!age) add('P0', `${label}: the Scan tile's state does not read complete · N ago: "${t3 ? t3.state : ''}"`)
+            else if (t4.state !== `ready · from the scan ${age}`) add('P0', `${label}: the Plan tile reads "${t4.state}"; ready · from the scan ${age}, the Scan tile's age`)
+            // The age is the formatter's words: "this minute" for a fresh scan, "57 minutes ago", "3 days ago".
+            const ageLines = (text.match(/\bcomplete · [^\n]+/g) || []).length
+            if (ageLines !== 1) add('P0', `${label}: the scan's age line renders ${ageLines} times; once, as the Scan tile's state`)
+          }
+          if (wantPlan === 'last') {
+            expectBtn(t4, /^Open the last full plan \([A-Z][a-z]{2} \d+\)$/, 'tertiary', 'the Plan tile')
+            if (t4.buttons.length !== 1) add('P0', `${label}: the last-full-plan tile has ${t4.buttons.length} buttons; Open the last full plan alone`)
+            const d = (t4.state.match(/^last full plan · (.+)$/) || [])[1]
+            if (d && !t4.buttons.some((b) => b.t === `Open the last full plan (${d})`)) add('P0', `${label}: the Plan tile's date and its button disagree: "${t4.state}" / ${JSON.stringify(t4.buttons.map((b) => b.t))}`)
+            if (/\d+ people/.test(t4.text)) add('P0', `${label}: the last-full-plan tile carries facts from a scan that built no plan`)
+          }
+          if (wantPlan === 'waiting' && (t4.buttons.length !== 0 || /\d+ people/.test(t4.text))) add('P0', `${label}: the waiting Plan tile carries buttons or facts: ${JSON.stringify(t4.buttons)} "${t4.text}"`)
+          if (wantPlan === 'sample') {
             const facts = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .facts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
             if (facts.map((f) => f.label).join(' · ') !== 'people · steps · already in place · to finish') add('P0', `${label}: the sample tile's facts read ${JSON.stringify(facts)}; people · steps · already in place · to finish`)
             else if (!facts.slice(0, 3).every((f) => /^\d+$/.test(f.value) && Number(f.value) > 0) || !/^\d+ weeks?$/.test(facts[3].value)) add('P0', `${label}: the sample tile's facts are not computed numbers: ${JSON.stringify(facts)}`)
             else if (Number(facts[2].value) > Number(facts[1].value)) add('P0', `${label}: more already in place than steps: ${JSON.stringify(facts)}`)
             if (!/What the sample tenant produced:/.test(t4.text)) add('P0', `${label}: the sample tile lacks its lead`)
-            expectBtn(t4, /^Try it with sample data$/, 'secondary', 'the sample tile')
-            if (t4.buttons.length !== 1) add('P0', `${label}: the sample tile has ${t4.buttons.length} buttons; Try it with sample data alone`)
+            expectBtn(t4, /^Open the sample plan$/, 'secondary', 'the sample tile')
+            if (t4.buttons.length !== 1) add('P0', `${label}: the sample tile has ${t4.buttons.length} buttons; Open the sample plan alone`)
           }
-          writeFileSync(join(wdir, 'connect-tiles.json'), JSON.stringify(tiles, null, 2))
+        }
+        if (/\bscanned\b/i.test(text)) add('P0', `${label}: Connect says "scanned"; the scan's age is the Scan tile's state line`)
+        writeFileSync(join(wdir, 'connect-tiles.json'), JSON.stringify(tiles, null, 2))
+        if (want === 'gaps') {
+          // The last good plan is kept after a scan with gaps (a navigation, so last).
+          await send('Page.navigate', { url: `${fx.base}#/plan` })
+          const kept = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 10000)
+          if (!kept) add('P0', `${label}: the last good plan is gone after a scan with gaps`)
         }
       }
       // The page tips: Today and Export keep theirs; the Plan has none.
@@ -733,8 +815,12 @@ async function walkFixture(fx) {
         await send('Page.navigate', { url: `${fx.base}#/plan` })
         await sleep(300)
         await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
-        await ensureWeek2()
-        await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
+        await ensureWeek2('plan')
+        const rowThere = await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
+        if (!rowThere) {
+          add('P0', `${slabel}: the row is not on the Plan`)
+          continue
+        }
         await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; r.scrollIntoView({ block: 'center' }); r.click() })()`)
         const opened = await waitFor(`document.querySelector('main.page .step-body') !== null`, 4000)
         if (!opened) {
@@ -1023,7 +1109,7 @@ async function walkFixture(fx) {
       await send('Page.navigate', { url: `${fx.base}#/plan` })
       await sleep(300)
       await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
-      await ensureWeek2()
+      await ensureWeek2('plan')
       await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
       await sleep(200)
       // The rows as they stand after every step was opened (and, on week two, after the device decision was made on its step).

@@ -14,7 +14,6 @@ import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { scanAge, scanAgeWords } from '../../derive/scanAge.ts'
 import { inWave, waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { headerLine1, planCounts, startControl } from '../../derive/planHeader.ts'
@@ -105,14 +104,13 @@ export function Plan({ scan, baseline, account, onScan }: {
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(c.schedule.start)) / (7 * 86_400_000))) : c.schedule.weeks
   const P = pages.plan as Record<string, string>
   const weeksText = `${weeks} week${weeks === 1 ? '' : 's'}`
-  const age = scanAge(scan.at)
-  const ageText = scanAgeWords(age)
   // Until Start the plan is pressed (or a date is set in Plan settings), every
   // visit proposes dates from today and the header says so in one small line;
   // once started, the anchored start is on the line and a scan never moves it (§5, §9).
   const line1 = headerLine1({ steps: total, inPlace, finish: finish.finish, weeks: weeksText, constraint: waiting, startedFrom: data.startedFrom })
   const start = startControl()
-  const line2 = fillText(P.line2, { tenant: tenantName, age: ageText })
+  // The tenant and the scan's age live on Connect, and nowhere else.
+  const line2 = P.line2
   // Filled once: one because, one full stop; the clause names steps by their content titles.
   const lengthTip = c.schedule.derivation.reason ? fillText(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.reason }) : engine.critical.sentenceDone
 

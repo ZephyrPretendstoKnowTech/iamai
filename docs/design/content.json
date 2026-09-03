@@ -232,8 +232,8 @@
         "change": "Change baseline",
         "howToMakeOne": "How to make one →"
       },
-      "next": {
-        "title": "What happens next",
+      "scan": {
+        "title": "Scan",
         "reads": "Reads",
         "readsLine": "{tenant}'s policies, people, sign-in records and licences.",
         "compares": "Compares",
@@ -251,24 +251,9 @@
         ],
         "limitsMore": "Permissions, every check it runs, and its limits in full:",
         "limitsLink": "How IAMAI works →",
-        "yourTenant": "your tenant"
-      },
-      "scan": {
-        "title": "Scan",
+        "yourTenant": "your tenant",
         "complete": {
           "state": "complete · {age}",
-          "people": "people",
-          "policies": "policies",
-          "signIns": "sign-in records",
-          "window": "{from} → {to}",
-          "notRead": "not read",
-          "licence": "licence",
-          "licences": {
-            "p2": "P2",
-            "p1": "P1",
-            "free": "Free"
-          },
-          "open": "Open the plan →",
           "again": "Scan again"
         },
         "gaps": {
@@ -280,8 +265,7 @@
           "learn": {
             "label": "Microsoft: Global Reader",
             "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-reader"
-          },
-          "openLast": "Open the last full plan ({date})"
+          }
         },
         "role": {
           "state": "not started · this account can't read the tenant",
@@ -299,14 +283,43 @@
           "stop": "Stop"
         },
         "sample": {
-          "state": "after sign-in · about a minute for a small tenant",
+          "state": "after sign-in · about a minute for a small tenant"
+        }
+      },
+      "plan": {
+        "title": "Plan",
+        "ready": {
+          "state": "ready · from the scan {age}",
+          "people": "people",
+          "policies": "policies",
+          "signIns": "sign-in records",
+          "window": "{from} → {to}",
+          "notRead": "not read",
+          "licence": "licence",
+          "licences": {
+            "p2": "P2",
+            "p1": "P1",
+            "free": "Free"
+          },
+          "steps": "steps · {done} done",
+          "open": "Open the plan →"
+        },
+        "last": {
+          "state": "last full plan · {date}",
+          "open": "Open the last full plan ({date})"
+        },
+        "waiting": {
+          "state": "after the scan"
+        },
+        "sample": {
           "lead": "What the sample tenant produced:",
           "people": "people",
           "steps": "steps",
           "inPlace": "already in place",
           "weeks": "to finish",
           "weeksValue": "{n} weeks",
-          "weeksOne": "{n} week"
+          "weeksOne": "{n} week",
+          "open": "Open the sample plan"
         }
       }
     },
@@ -315,7 +328,7 @@
       "line1": "{steps} steps · {inPlace} in place · finishes {finish} · {weeks}",
       "line1CannotFinish": "{steps} steps · {inPlace} in place · cannot finish until {blocker}",
       "lengthTip": "The plan is {weeks} because {constraint}.",
-      "line2": "Built from what IAMAI found on {tenant}, scanned {age} · Today shows where each person stands.",
+      "line2": "Today shows where each person stands.",
       "next": "next",
       "now": "now",
       "readyOn": "ready {date}",
@@ -575,10 +588,6 @@
           "export": "Export"
         },
         "tabsAfterScan": "after the first scan",
-        "rescanScanned": "Scan to update the plan · scanned {age}",
-        "justNow": "just now",
-        "hoursAgo": "{hours}h ago",
-        "daysAgo": "{days}d ago",
         "account": "Account",
         "accountTooltip": "Signed in as {username}",
         "signOut": "Sign out",
@@ -600,13 +609,7 @@
         "errorDetail": "Technical detail: {message}",
         "needs": "Needs:",
         "next": "Next: {label}",
-        "basedOn": "Based on the scan from {when}.",
-        "rescan": "Re-scan",
         "baselineLoaded": "Baseline: {source}",
-        "scanAgeTip": "Scan age",
-        "evidenceAgeNote": "Sign-in evidence covers the last 30 days; re-scan once the scan is more than 7 days old.",
-        "scanStale": "This scan is {days} days old. Numbers, names and sign-in evidence may have moved on.",
-        "scanStaleAction": "Re-scan the tenant",
         "loading": "Loading…",
         "storageBlocked": "Saved data is not available yet",
         "scanNeedsConnect": "The scan reads the tenant into a local record. Connect a tenant first.",

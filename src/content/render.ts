@@ -578,38 +578,43 @@ export function renderPages(): string {
           acts(cx.baseline.change) +
           sub(btn(cx.baseline.howToMakeOne)),
       ) +
+      // 3 Scan: the beats and the limitations, then the scan in one of its states; the age is the one stored timestamp's.
       tileHtml(
         3,
-        cx.next.title,
-        '',
-        li(`<b>${esc(cx.next.reads)}</b> ${fill(cx.next.readsLine, exT)}`, `<b>${esc(cx.next.compares)}</b> ${fill(cx.next.comparesLine, exT)}`, `<b>${esc(cx.next.writes)}</b> ${esc(cx.next.writesLine)}`) +
-          p(cx.next.readOnly, {}, 'sub') +
-          `<details open><summary>${esc(cx.next.limitsSummary)}</summary>` +
-          ul(cx.next.limits, {}) +
-          sub(esc(cx.next.limitsMore), `<a>${esc(cx.next.limitsLink)}</a>`) +
-          '</details>',
-      ) +
-      tileHtml(
-        4,
         cx.scan.title,
-        fill(cx.scan.complete.state, { age: '2 minutes ago' }),
-        li(`<b>${exT.people}</b> ${esc(cx.scan.complete.people)}`, `<b>${exT.policies}</b> ${esc(cx.scan.complete.policies)}`, `<b>${fill(cx.scan.complete.window, exT)}</b> ${esc(cx.scan.complete.signIns)}`, `<b>${esc(cx.scan.complete.licences.p2)}</b> ${esc(cx.scan.complete.licence)}`) +
-          sub(esc(cx.scan.complete.notRead), esc(cx.scan.complete.signIns), '·', esc(cx.scan.complete.licences.p1), '·', esc(cx.scan.complete.licences.free)) +
-          acts(cx.scan.complete.open, cx.scan.complete.again),
+        fill(cx.scan.complete.state, { age: '57 minutes ago' }),
+        li(`<b>${esc(cx.scan.reads)}</b> ${fill(cx.scan.readsLine, exT)}`, `<b>${esc(cx.scan.compares)}</b> ${fill(cx.scan.comparesLine, exT)}`, `<b>${esc(cx.scan.writes)}</b> ${esc(cx.scan.writesLine)}`) +
+          p(cx.scan.readOnly, {}, 'sub') +
+          `<details open><summary>${esc(cx.scan.limitsSummary)}</summary>` +
+          ul(cx.scan.limits, {}) +
+          sub(esc(cx.scan.limitsMore), `<a>${esc(cx.scan.limitsLink)}</a>`) +
+          '</details>' +
+          acts(cx.scan.complete.again),
       ) +
       tileHtml(
-        4,
+        3,
         cx.scan.title,
         cx.scan.gaps.state,
         p(cx.scan.gaps.lead, { n: 3 }) +
           p(cx.scan.gaps.leadFirst, { n: 3 }, 'sub') +
           li(`Conditional Access policies · ${esc(cx.scan.gaps.notRead)}`, `Named locations · ${esc(cx.scan.gaps.notRead)}`) +
           sub(fill(cx.scan.gaps.ask, { role: 'Global Reader' }), `<a>${esc(cx.scan.gaps.learn.label)}</a>`) +
-          acts(cx.account.signInAnother, cx.scan.complete.again, fill(cx.scan.gaps.openLast, { date: 'Sep 2' })),
+          acts(cx.account.signInAnother, cx.scan.complete.again),
       ) +
-      tileHtml(4, cx.scan.title, cx.scan.role.state, p(cx.scan.role.lead, { upn: exT.upn, sections: 'Conditional Access policies, people and sign-in records' }) + li(`${esc(cx.scan.role.row)} · ${fill(cx.scan.role.ask, { role: 'Global Reader' })}`) + acts(cx.account.signInAnother)) +
-      tileHtml(4, cx.scan.title, cx.scan.ready.state, p(cx.scan.ready.note, {}) + acts(cx.scan.ready.start)) +
-      tileHtml(4, cx.scan.title, fill(cx.scan.scanning.state, { lane: 'reading sign-in records', elapsed: '8s' }), acts(cx.scan.scanning.stop)),
+      tileHtml(3, cx.scan.title, cx.scan.role.state, p(cx.scan.role.lead, { upn: exT.upn, sections: 'Conditional Access policies, people and sign-in records' }) + li(`${esc(cx.scan.role.row)} · ${fill(cx.scan.role.ask, { role: 'Global Reader' })}`) + acts(cx.account.signInAnother)) +
+      tileHtml(3, cx.scan.title, cx.scan.ready.state, p(cx.scan.ready.note, {}) + acts(cx.scan.ready.start)) +
+      tileHtml(3, cx.scan.title, fill(cx.scan.scanning.state, { lane: 'reading sign-in records', elapsed: '8s' }), acts(cx.scan.scanning.stop)) +
+      // 4 Plan: ready after a complete scan, the last full plan after one with gaps, waiting otherwise.
+      tileHtml(
+        4,
+        cx.plan.title,
+        fill(cx.plan.ready.state, { age: '57 minutes ago' }),
+        li(`<b>${exT.people}</b> ${esc(cx.plan.ready.people)}`, `<b>${exT.policies}</b> ${esc(cx.plan.ready.policies)}`, `<b>${fill(cx.plan.ready.window, exT)}</b> ${esc(cx.plan.ready.signIns)}`, `<b>${esc(cx.plan.ready.licences.p2)}</b> ${esc(cx.plan.ready.licence)}`, `<b>${exT.steps}</b> ${fill(cx.plan.ready.steps, { done: 8 })}`) +
+          sub(esc(cx.plan.ready.notRead), esc(cx.plan.ready.signIns), '·', esc(cx.plan.ready.licences.p1), '·', esc(cx.plan.ready.licences.free)) +
+          acts(cx.plan.ready.open),
+      ) +
+      tileHtml(4, cx.plan.title, fill(cx.plan.last.state, { date: 'Sep 2' }), acts(fill(cx.plan.last.open, { date: 'Sep 2' }))) +
+      tileHtml(4, cx.plan.title, cx.plan.waiting.state, ''),
   )
   const si = cx.signIn
   sec(
@@ -632,14 +637,14 @@ export function renderPages(): string {
       tileHtml(1, si.title, si.errors.personal.state, p(si.errors.personal.lead, { account: 'someone@outlook.com' }) + sub(esc(si.errors.personal.thatAccount)) + acts(si.workAccount, si.demo)) +
       tileHtml(1, si.title, si.errors.cancelled.state, acts(si.signIn, si.demo)) +
       tileHtml(1, si.title, si.errors.failed.state, p(si.errors.failed.lead, { message: 'AADSTS90002: Tenant not found.' }) + acts(si.signIn, si.demo)) +
-      tileHtml(3, cx.next.title, '', li(`<b>${esc(cx.next.reads)}</b> ${fill(cx.next.readsLine, { tenant: cx.next.yourTenant })}`, `<b>${esc(cx.next.compares)}</b> ${fill(cx.next.comparesLine, { tenant: cx.next.yourTenant })}`)) +
+      tileHtml(3, cx.scan.title, cx.scan.sample.state, li(`<b>${esc(cx.scan.reads)}</b> ${fill(cx.scan.readsLine, { tenant: cx.scan.yourTenant })}`, `<b>${esc(cx.scan.compares)}</b> ${fill(cx.scan.comparesLine, { tenant: cx.scan.yourTenant })}`)) +
       tileHtml(
         4,
-        cx.scan.title,
-        cx.scan.sample.state,
-        p(cx.scan.sample.lead, {}, 'sub') +
-          li(`<b>30</b> ${esc(cx.scan.sample.people)}`, `<b>27</b> ${esc(cx.scan.sample.steps)}`, `<b>5</b> ${esc(cx.scan.sample.inPlace)}`, `<b>${fill(cx.scan.sample.weeksValue, { n: 5 })}</b> ${esc(cx.scan.sample.weeks)}`, `<b>${fill(cx.scan.sample.weeksOne, { n: 1 })}</b> ${esc(cx.scan.sample.weeks)}`) +
-          acts(si.demo),
+        cx.plan.title,
+        cx.plan.waiting.state,
+        p(cx.plan.sample.lead, {}, 'sub') +
+          li(`<b>30</b> ${esc(cx.plan.sample.people)}`, `<b>27</b> ${esc(cx.plan.sample.steps)}`, `<b>5</b> ${esc(cx.plan.sample.inPlace)}`, `<b>${fill(cx.plan.sample.weeksValue, { n: 5 })}</b> ${esc(cx.plan.sample.weeks)}`, `<b>${fill(cx.plan.sample.weeksOne, { n: 1 })}</b> ${esc(cx.plan.sample.weeks)}`) +
+          acts(cx.plan.sample.open),
       ),
   )
   const pl = P.plan

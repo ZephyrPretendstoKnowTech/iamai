@@ -2,8 +2,9 @@
 // hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
 // "Next" framing. Signed out, the header is the wordmark and the theme control;
 // signed in it adds the Today, Plan and Export tabs (enabled once a scan
-// exists), Scan to update the plan with the scan's age and the Account menu.
-// The brand links to Connect.
+// exists) and the Account menu. No scan control and no scan age: the scan runs
+// from Connect, which alone shows the tenant and when it was scanned
+// (docs/design/connect-mockup.html). The brand links to Connect.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
@@ -13,9 +14,8 @@ import { fillText } from '../../content/render.ts'
 import { app, pages, planner } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demo.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { STALE_SCAN_DAYS, absoluteDate, scanAgeDays, whenAt } from '../../copy/dates.ts'
-import { rescanLabel, scanAge } from '../../derive/scanAge.ts'
-import { Button, Callout, InfoTip, LinkButton } from '../components/index.ts'
+import { absoluteDate } from '../../copy/dates.ts'
+import { Button, LinkButton } from '../components/index.ts'
 import { RingMark } from '../components/Ring.tsx'
 import { PLAN_HREF, STEP_LINK, resolveHash } from './routes.ts'
 import type { Route } from './routes.ts'
@@ -23,15 +23,12 @@ import type { Route } from './routes.ts'
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
 export type { Route } from './routes.ts'
 
-/** The scan runs from Connect (target-state §3); a re-scan returns to Plan when it finishes. */
-const RESCAN_HREF = '#/connect'
-
 // Pages whose main content is a table read better with the wider cap.
 const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'how'])
 
 export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 
-/** Where the shell is (target-state §2): it decides the tabs, Re-scan, and where an empty hash lands. */
+/** Where the shell is (target-state §2): it decides the tabs and where an empty hash lands. */
 export type ShellState = 'signedOut' | 'noScan' | 'scanning' | 'scanned'
 
 export function useHashRoute(): Route {
@@ -174,8 +171,6 @@ export function AppShell({
   tenantName,
   route,
   state,
-  scannedAt = null,
-  onRescan,
   snapshot = null,
   demoWeek2 = false,
   children,
@@ -184,10 +179,6 @@ export function AppShell({
   tenantName: string | null
   route: Route
   state: ShellState
-  /** When the scan the pages read was taken; the header shows its age. */
-  scannedAt?: string | null
-  /** Re-scan: the app opens Connect in its scanning state and comes back to Plan when done. */
-  onRescan?: () => void
   /** The demo is showing its week-two snapshot: the banner says so (prompt 50 item 14). */
   demoWeek2?: boolean
   /** Only for the feedback summary, which is counts and never names. */
@@ -221,17 +212,6 @@ export function AppShell({
           </nav>
         )}
         <div className="right">
-          {signedIn && tabsOn && scannedAt && (
-            <Button
-              variant="tertiary"
-              onClick={() => {
-                if (onRescan) onRescan()
-                else window.location.hash = RESCAN_HREF
-              }}
-            >
-              {rescanLabel(scanAge(scannedAt))}
-            </Button>
-          )}
           <Button variant="tertiary" onClick={toggleTheme} title={SHELL.themeTooltip}>
             {theme === 'dark' ? SHELL.lightTheme : SHELL.darkTheme}
           </Button>
@@ -317,27 +297,5 @@ export function StepFrame({
         </p>
       )}
     </section>
-  )
-}
-
-/**
- * The scan a page is based on, with a warning past STALE_SCAN_DAYS
- * (prompt 20 §9). Every legacy page that reads the scan shows this.
- */
-export function ScanAge({ at, baseline }: { at: string; baseline?: string | null }) {
-  const days = scanAgeDays(at)
-  return (
-    <>
-      <p className="reason">
-        {fillText(SHELL.basedOn, { when: whenAt(at) })} <a className="no-print" href={RESCAN_HREF}>{SHELL.rescan}</a>
-        {baseline && <> · {fillText(SHELL.baselineLoaded, { source: baseline })}</>}
-        <InfoTip title={SHELL.scanAgeTip} text={SHELL.evidenceAgeNote} />
-      </p>
-      {days >= STALE_SCAN_DAYS && (
-        <Callout kind="warning" title={fillText(SHELL.scanStale, { days })}>
-          <a href={RESCAN_HREF}>{SHELL.scanStaleAction}</a>
-        </Callout>
-      )}
-    </>
   )
 }

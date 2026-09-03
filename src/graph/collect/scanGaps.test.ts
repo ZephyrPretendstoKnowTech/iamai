@@ -1,8 +1,8 @@
 // Connect's three refusals: a scan that could not read a core section builds
 // and stores no plan (coreSections.ts); a token without the roles does not
-// start the scan and names the role to ask for (tokenRoles.ts); the scan tile
-// never renders an empty window (connectView.ts). On the fixture whose token lacks
-// the roles and whose scan lacks the policies section (testing/gapsFixture.ts).
+// start the scan and names the role to ask for (tokenRoles.ts); the Plan tile's
+// facts never render an empty window (connectView.ts). On the fixture whose token
+// lacks the roles and whose scan lacks the policies section (testing/gapsFixture.ts).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../../testing/uiSnapshot.ts'
@@ -10,7 +10,7 @@ import { REFUSED, USER_ROLE_ID, gapsSnapshot, noRolesToken, tokenWithRoles, toke
 import { CORE_SOURCES, coreGaps } from './coreSections.ts'
 import { coreRoleGap, rolesInToken } from './tokenRoles.ts'
 import { READ_EVERYTHING_ROLE } from './roles.ts'
-import { scanTile } from '../../ui/scan/connectView.ts'
+import { planTile } from '../../ui/scan/connectView.ts'
 import type { TenantSnapshot } from './types.ts'
 
 const unlicensed = (): TenantSnapshot => {
@@ -54,9 +54,9 @@ test('a token without the roles does not start the scan and names the role to as
   assert.equal(rolesInToken('not-a-token'), null)
 })
 
-test('the scan tile never renders an empty window: the sign-in records fact reads not read when the records were not read', () => {
-  const fact = (s: TenantSnapshot): string => scanTile({ kind: 'complete', snapshot: s, at: s.asOf }).facts?.[2].value ?? ''
+test('the Plan tile never renders an empty window: the sign-in records fact reads not read when the records were not read', () => {
+  const fact = (s: TenantSnapshot): string => planTile({ kind: 'ready', snapshot: s, at: s.asOf, counts: null }).facts?.[2].value ?? ''
   assert.match(fact(fixtureSnapshot()), /^[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+$/)
   for (const s of [gapsSnapshot(), unlicensed()]) assert.equal(fact(s), 'not read')
-  assert.equal(scanTile({ kind: 'complete', snapshot: gapsSnapshot(), at: gapsSnapshot().asOf }).facts?.[1].value, '0', 'a scan without the section counts no policies')
+  assert.equal(planTile({ kind: 'ready', snapshot: gapsSnapshot(), at: gapsSnapshot().asOf, counts: null }).facts?.[1].value, '0', 'a scan without the section counts no policies')
 })

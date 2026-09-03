@@ -1,12 +1,15 @@
 // Connect (docs/design/connect-mockup.html): one heading above four numbered
 // tiles in both states, drawn from connectView.ts. Signed out: Sign in (with
 // the consent rows and, after a sign-in that did not succeed, one of three
-// error states from the MSAL error code), Baseline, What happens next, and Scan
-// with what the sample tenant produced. Signed in: Signed in, Baseline, What
-// happens next, and Scan in exactly one of its states (complete, finished with
-// gaps, not started for want of a role, scanning, or ready for the first scan).
-// Every action is a button in one of three weights; Global Reader is the only
-// role IAMAI names.
+// error states from the MSAL error code), Baseline, Scan (what it reads,
+// compares and writes; after sign-in) and Plan with what the sample tenant
+// produced. Signed in: Signed in, Baseline, Scan (the same beats, then the scan
+// in exactly one of its states: complete, finished with gaps, not started for
+// want of a role, scanning, or ready for the first scan) and Plan (ready with
+// the facts, the last full plan after a scan with gaps, or waiting for the
+// scan). The tenant's name and the scan's age render here and nowhere else,
+// from the one stored scan timestamp. Every action is a button in one of three
+// weights; Global Reader is the only role IAMAI names.
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
@@ -33,8 +36,10 @@ import { afterScanHref } from '../shell/routes.ts'
 import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
 import { useScanRunner } from '../scan/useScanRunner.ts'
 import type { SectionRow } from '../scan/useScanRunner.ts'
-import { W, accountTile, baselineTile, nextTile, sampleScanTile, scanTile, signInTile } from '../scan/connectView.ts'
-import type { Action, BaselineUpdate, ScanInput, Tone } from '../scan/connectView.ts'
+import { W, accountTile, baselineTile, planTile, scanTile, signInTile } from '../scan/connectView.ts'
+import type { Action, BaselineUpdate, PlanInput, PlanTile, ScanInput, ScanTile, Tone } from '../scan/connectView.ts'
+import { planCounts } from '../../derive/planHeader.ts'
+import { operatorIdOf, usePlanData } from './planData.ts'
 
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
@@ -59,6 +64,8 @@ export function Connect(
     returnTo: string | null
     autoScan: boolean
     onAutoScanConsumed: () => void
+    /** The demo has no worker: its Scan again advances the sample to week two and back (App.tsx demoWeek2). */
+    onDemoScan: () => void
   },
 ) {
   const { account } = props
@@ -141,33 +148,80 @@ function accountRole(roleIds: string[] | null): string | null {
   return names.find((n) => n === GLOBAL_ADMINISTRATOR) ?? names.find((n) => n === READ_EVERYTHING_ROLE) ?? names[0] ?? null
 }
 
-/** Tile 3, in both states: Reads / Compares / Writes, the read-only line, the limitations collapsible. */
-function NextTile({ tenant }: { tenant: string }) {
-  const t3 = nextTile({ tenant })
+/**
+ * Tile 3, Scan, in both states: the scan's state in the heading, Reads /
+ * Compares / Writes, the read-only line, the limitations collapsible, then the
+ * state's own body (the bar while scanning, the account and the unread rows,
+ * the one ask for Global Reader) and its buttons.
+ */
+function ScanTileView({ tile, upn, bar, actions }: { tile: ScanTile; upn: string | null; bar?: ReactNode; actions: ReactNode }) {
   return (
-    <Tile n={3} title={t3.title} tone={t3.tone}>
+    <Tile n={3} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)}>
       <ul className="beats">
-        {t3.beats.map((b) => (
+        {tile.beats.map((b) => (
           <li key={b.label}>
             <b>{b.label}</b> {b.text}
           </li>
         ))}
       </ul>
-      <p className="quiet">{t3.readOnly}</p>
+      <p className="quiet">{tile.readOnly}</p>
       <details>
-        <summary>{t3.limits.summary}</summary>
+        <summary>{tile.limits.summary}</summary>
         <ul className="beats">
-          {t3.limits.lines.map((line) => (
+          {tile.limits.lines.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
         <p className="quiet">
-          {t3.limits.more}{' '}
-          <a className="lnk" href={t3.limits.link.href}>
-            {t3.limits.link.label}
+          {tile.limits.more}{' '}
+          <a className="lnk" href={tile.limits.link.href}>
+            {tile.limits.link.label}
           </a>
         </p>
       </details>
+      {bar}
+      {tile.lead && <p>{lead(upn, tile.lead)}</p>}
+      {tile.rows && (
+        <ul className="tile-rows">
+          {tile.rows.map((r) => (
+            <li key={r.name}>
+              <span>{r.name}</span> <span>{roleSpan(r.value)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {tile.ask && (
+        <p className="quiet">
+          {roleSpan(tile.ask)}{' '}
+          {tile.learn && (
+            <a className="lnk" href={tile.learn.url} target="_blank" rel="noopener noreferrer">
+              {tile.learn.label}
+            </a>
+          )}
+        </p>
+      )}
+      {tile.note && <p className="quiet">{tile.note}</p>}
+      {actions}
+    </Tile>
+  )
+}
+
+/** Tile 4, Plan: the state in the heading, the facts row when there is one, and the plan's button. */
+function PlanTileView({ tile, actions }: { tile: PlanTile; actions: ReactNode }) {
+  return (
+    <Tile n={4} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)}>
+      {tile.lead && <p className="quiet">{tile.lead}</p>}
+      {tile.facts && (
+        <ul className="facts">
+          {tile.facts.map((f) => (
+            <li key={f.label}>
+              <b>{f.value}</b>
+              {f.label}
+            </li>
+          ))}
+        </ul>
+      )}
+      {actions}
     </Tile>
   )
 }
@@ -218,7 +272,8 @@ function SignedOut({ error, baseline, baselineRestoreError, onBaseline }: Baseli
     }
   }, [])
   const t1 = signInTile({ error })
-  const t4 = sampleScanTile(facts)
+  const t3 = scanTile(W.scan.yourTenant, { kind: 'sample' })
+  const t4 = planTile({ kind: 'sample', facts })
   return (
     <>
       <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone={stateToneOf(t1.tone)}>
@@ -242,23 +297,15 @@ function SignedOut({ error, baseline, baselineRestoreError, onBaseline }: Baseli
         </details>
       </Tile>
       <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={false} />
-      <NextTile tenant={W.next.yourTenant} />
-      <Tile n={4} title={t4.title} state={t4.state} tone={t4.tone}>
-        {t4.lead && <p className="quiet">{t4.lead}</p>}
-        {t4.facts && (
-          <ul className="facts">
-            {t4.facts.map((f) => (
-              <li key={f.label}>
-                <b>{f.value}</b>
-                {f.label}
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="actions">
-          <Act action={t4.actions[0]} href={demoUrl()} />
-        </div>
-      </Tile>
+      <ScanTileView tile={t3} upn={null} actions={null} />
+      <PlanTileView
+        tile={t4}
+        actions={
+          <div className="actions">
+            <Act action={t4.actions[0]} href={demoUrl()} />
+          </div>
+        }
+      />
     </>
   )
 }
@@ -278,6 +325,7 @@ function SignedIn({
   returnTo,
   autoScan,
   onAutoScanConsumed,
+  onDemoScan,
 }: BaselineProps & {
   account: AccountInfo
   tenantName: string | null
@@ -290,6 +338,7 @@ function SignedIn({
   returnTo: string | null
   autoScan: boolean
   onAutoScanConsumed: () => void
+  onDemoScan: () => void
 }) {
   // A re-scan returns to the plan when it finishes (target-state §2); a first
   // scan stays here and offers it.
@@ -315,7 +364,7 @@ function SignedIn({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoScan])
   // The token's roles, read before the first Graph call (tokenRoles.ts): tile 1
-  // names the account's role, and tile 4 says so when none of them reads the
+  // names the account's role, and tile 3 says so when none of them reads the
   // tenant. The demo never signs in, so it has no token to read.
   const [roleIds, setRoleIds] = useState<string[] | null>(null)
   useEffect(() => {
@@ -335,12 +384,17 @@ function SignedIn({
   const tenant = tenantName ?? account.username
   const upn = account.username
   const start = (first: boolean): void => {
+    // The demo has no worker: Scan again flips the sample to week two and back.
+    if (isDemo()) {
+      onDemoScan()
+      return
+    }
     if (first) hadScanRef.current = false
     void runner.start()
   }
 
   const t1 = accountTile({ tenant, upn, role: accountRole(roleIds) })
-  // Tile 4's one state, in priority: no role, scanning, gaps, complete, ready.
+  // Tile 3's one state, in priority: no role, scanning, gaps, complete, ready.
   const scanInput: ScanInput = roleGap
     ? { kind: 'role', upn, gap: roleGap }
     : scanning
@@ -348,32 +402,39 @@ function SignedIn({
       : runner.gaps.length > 0
         ? { kind: 'gaps', unread: runner.unread, lastScan }
         : lastScan
-          ? { kind: 'complete', snapshot: lastScan.snapshot, at: lastScan.at }
+          ? { kind: 'complete', at: lastScan.at }
           : { kind: 'ready' }
-  const t4 = scanTile(scanInput)
+  const t3 = scanTile(tenant, scanInput)
+  // Tile 4 follows: the plan is ready after a complete scan (its step counts
+  // the way the Plan header counts them, once the plan has computed), the last
+  // full plan stays after a scan with gaps, and otherwise it waits for the scan.
+  const planScan = scanInput.kind === 'complete' ? lastScan : null
+  const plan = usePlanData(planScan, baseline, operatorIdOf(planScan?.snapshot ?? null, account))
+  const computed = plan.computed
+  const planInput: PlanInput =
+    scanInput.kind === 'complete' && lastScan
+      ? { kind: 'ready', snapshot: lastScan.snapshot, at: lastScan.at, counts: computed ? (({ steps, inPlace }) => ({ steps, done: inPlace }))(planCounts(computed.steps, computed.schedule.cleanup ?? null)) : null }
+      : scanInput.kind === 'gaps' && lastScan
+        ? { kind: 'last', at: lastScan.at }
+        : { kind: 'waiting' }
+  const t4 = planTile(planInput)
   const scanActions = (): ReactNode => {
-    switch (t4.kind) {
+    switch (t3.kind) {
       case 'complete':
-        return (
-          <>
-            <Act action={t4.actions[0]} href={PLAN_HREF} />
-            <Act action={t4.actions[1]} onClick={() => start(false)} />
-          </>
-        )
+        return <Act action={t3.actions[0]} onClick={() => start(false)} />
       case 'gaps':
         return (
           <>
-            <Act action={t4.actions[0]} onClick={() => void signInAnother()} />
-            <Act action={t4.actions[1]} onClick={() => start(false)} />
-            {t4.actions[2] && <Act action={t4.actions[2]} href={PLAN_HREF} />}
+            <Act action={t3.actions[0]} onClick={() => void signInAnother()} />
+            <Act action={t3.actions[1]} onClick={() => start(false)} />
           </>
         )
       case 'role':
-        return <Act action={t4.actions[0]} onClick={() => void signInAnother()} />
+        return <Act action={t3.actions[0]} onClick={() => void signInAnother()} />
       case 'scanning':
-        return <Act action={t4.actions[0]} onClick={runner.stop} />
+        return <Act action={t3.actions[0]} onClick={runner.stop} />
       default:
-        return <Act action={t4.actions[0]} onClick={() => start(true)} />
+        return <Act action={t3.actions[0]} onClick={() => start(true)} />
     }
   }
   return (
@@ -387,43 +448,18 @@ function SignedIn({
         </div>
       </Tile>
       <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} />
-      <NextTile tenant={tenant} />
-      <Tile n={4} title={t4.title} state={t4.state} tone={t4.tone} stateTone={stateToneOf(t4.tone)}>
-        {t4.kind === 'scanning' && <ScanBar runner={runner} />}
-        {t4.lead && <p>{lead(upn, t4.lead)}</p>}
-        {t4.facts && (
-          <ul className="facts">
-            {t4.facts.map((f) => (
-              <li key={f.label}>
-                <b>{f.value}</b>
-                {f.label}
-              </li>
-            ))}
-          </ul>
-        )}
-        {t4.rows && (
-          <ul className="tile-rows">
-            {t4.rows.map((r) => (
-              <li key={r.name}>
-                <span>{r.name}</span> <span>{roleSpan(r.value)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {t4.ask && (
-          <p className="quiet">
-            {roleSpan(t4.ask)}{' '}
-            {t4.learn && (
-              <a className="lnk" href={t4.learn.url} target="_blank" rel="noopener noreferrer">
-                {t4.learn.label}
-              </a>
-            )}
-          </p>
-        )}
-        {t4.note && <p className="quiet">{t4.note}</p>}
-        {!scanning && runner.state === 'failed' && runner.error && <p className="quiet">{fillText(C.failed, { why: runner.error })}</p>}
-        <div className="actions">{scanActions()}</div>
-      </Tile>
+      <ScanTileView
+        tile={t3}
+        upn={upn}
+        bar={t3.kind === 'scanning' ? <ScanBar runner={runner} /> : null}
+        actions={
+          <>
+            {!scanning && runner.state === 'failed' && runner.error && <p className="quiet">{fillText(C.failed, { why: runner.error })}</p>}
+            <div className="actions">{scanActions()}</div>
+          </>
+        }
+      />
+      <PlanTileView tile={t4} actions={t4.actions.length > 0 ? <div className="actions">{t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)}</div> : null} />
       <ScanDevTools tenantId={account.tenantId} runner={runner} snapshot={lastScan?.snapshot ?? null} />
     </>
   )
