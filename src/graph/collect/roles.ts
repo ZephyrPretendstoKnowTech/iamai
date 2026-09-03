@@ -67,7 +67,12 @@ export function rolesForSource(source: string): { least: string[]; covering: str
   return { least, covering: READ_EVERYTHING_ROLE }
 }
 
-const LICENCE_RE = /licen[cs]e|not available on this/i
+const LICENCE_RE = /licen[cs]e|not available on this|needs entra id/i
+
+/** Whether a section's reason is a licence gate: there was nothing to read, rather than a refusal or an error. */
+export function isLicenceGate(reason: string | null | undefined): boolean {
+  return !!reason && LICENCE_RE.test(reason)
+}
 const DENIED_RE =
   /insufficient privileg|authorization_requestdenied|access denied|accessdenied|forbidden|does not have (access|permission)|not authorized|unauthorized|403/i
 

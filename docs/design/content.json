@@ -192,12 +192,13 @@
       "stop": "Stop",
       "baselineUpdated": "Baseline updated by its author on {date}: {n} policies changed · review",
       "baselineUpdatedRow": "{policy}: {change}",
-      "baselineUpdatedNote": "Shown on Connect only when the author's repository is ahead of the pinned version; review lists each changed policy and the steps that change.",
       "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy."
     },
     "tenant": {
       "h1": "{tenant}",
-      "scanLine": "Scan complete · {people} people · {policies} policies · sign-ins {from} → {to}",
+      "scanLine": "Scan complete · {people} people · {policies} policies · {signIns}",
+      "signIns": "sign-ins {from} → {to}",
+      "signInsNotRead": "sign-ins not read",
       "open": "Open the plan →",
       "tip": "Everything the scan found is inside the plan's steps, where you can confirm or change it."
     },
@@ -553,7 +554,13 @@
         "paused": "The Microsoft session expired. Sign in again to continue; nothing collected so far is lost.",
         "signInAgain": "Sign in again",
         "details": "Scan details",
-        "diagnostics": "Download diagnostics (redacted)"
+        "diagnostics": "Download diagnostics (redacted)",
+        "gapsLine": "Scan finished with gaps · no plan built",
+        "gapsRow": "{section}: {reason} · ask for {roles}",
+        "gapsNotRead": "not read",
+        "gapsCovering": "{covering} reads every section IAMAI needs and writes nothing.",
+        "gapsKept": "The plan from the {date} scan and its record are unchanged.",
+        "roleGap": "{upn} holds none of the roles that read {sections}. Ask for {roles}; {covering} reads everything IAMAI needs and writes nothing. The scan has not started."
       },
       "plan": {
         "needsScan": "Nothing to plan until the first scan.",

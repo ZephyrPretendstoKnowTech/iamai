@@ -9,14 +9,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { authReady, signIn, signOut } from '../../graph/auth.ts'
-import { isPrivilegeDenial } from '../../graph/collect/roles.ts'
+import { READ_EVERYTHING_ROLE, isPrivilegeDenial } from '../../graph/collect/roles.ts'
+import type { TokenSource } from '../../graph/collect/runScan.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { demoUrl } from '../demo.ts'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
-import { absoluteDate, monthDay } from '../../copy/dates.ts'
+import { absoluteDate } from '../../copy/dates.ts'
+import { list, lowerFirst } from '../../copy/statements.ts'
 import { Button, Callout, LinkButton } from '../components/index.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
 const C = app.connect
@@ -26,11 +28,13 @@ import { PLAN_HREF } from '../shell/AppShell.tsx'
 import { afterScanHref } from '../shell/routes.ts'
 import { DeniedSections, ScanDevTools, ScanProgress } from '../scan/ScanProgress.tsx'
 import { deniedSources, useScanRunner } from '../scan/useScanRunner.ts'
+import { scanLineVars } from '../scan/scanLine.ts'
 import type { SectionRow } from '../scan/useScanRunner.ts'
 
 const HOW_HREF = '#/how'
 const PACKAGE_HREF = '#/how#package'
 
+const SCAN = app.scan
 const O = pages.opener as Record<string, unknown>
 const CN = pages.connectNoScan as Record<string, unknown>
 const TN = pages.tenant as Record<string, unknown>
@@ -50,6 +54,10 @@ export function Connect(props: {
   onBaseline: (r: BaselineResult) => void
   lastScan: { snapshot: TenantSnapshot; at: string } | null
   frozen: Record<string, SectionRow> | null
+  /** A scan that just finished with gaps (the mock only). */
+  finished: TenantSnapshot | null
+  /** The mock's token stand-in; MSAL otherwise. */
+  getToken?: TokenSource
   onRunningChange: (running: boolean) => void
   onComplete: (snapshot: TenantSnapshot, at: string) => void
   /** Where the scan lands when it finishes: the step that asked for it, or the Plan. */
@@ -186,6 +194,8 @@ function SignedIn({
   onBaseline,
   lastScan,
   frozen,
+  finished,
+  getToken,
   onRunningChange,
   onComplete,
   returnTo,
@@ -199,6 +209,8 @@ function SignedIn({
   onBaseline: (r: BaselineResult) => void
   lastScan: { snapshot: TenantSnapshot; at: string } | null
   frozen: Record<string, SectionRow> | null
+  finished: TenantSnapshot | null
+  getToken?: TokenSource
   onRunningChange: (running: boolean) => void
   onComplete: (snapshot: TenantSnapshot, at: string) => void
   /** Where the scan lands when it finishes: the step that asked for it, or the Plan. */
@@ -213,6 +225,8 @@ function SignedIn({
   returnToRef.current = returnTo
   const runner = useScanRunner(account.tenantId, {
     frozen,
+    finished,
+    getToken,
     onRunningChange,
     onComplete: (snapshot, at) => {
       onComplete(snapshot, at)
@@ -230,7 +244,14 @@ function SignedIn({
   const snapshot = lastScan?.snapshot ?? null
   const scanned = !scanning && snapshot !== null
   const { denied, all } = deniedSources(runner.sections, snapshot, isPrivilegeDenial)
-  const window_ = snapshot?.sources.signInEvidence?.coveredWindow ?? null
+  // The last scan could not read a core section: it is done, with gaps, and no
+  // plan was built from it. Connect lists the sections with the roles that read
+  // them, withholds Open the plan, and offers the scan again; the last good
+  // scan and its record are as they were.
+  const gapped = !scanning && runner.gaps.length > 0
+  const sectionLabel = (source: string): string => SCAN.sections[source] ?? source
+  /** A section label mid-sentence: "Conditional Access policies" keeps its capitals, "People" becomes "people". */
+  const midSentence = (label: string): string => (/^[A-Z][a-z]+ [A-Z]/.test(label) ? label : lowerFirst(label))
   const [signedInText, signOutLabel] = splitControl(fillText(CN.signedIn as string, { tenant: tenantName ?? account.username, upn: account.username }))
   return (
     <>
@@ -249,7 +270,36 @@ function SignedIn({
       <BaselineLine baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} tenant={tenantName ?? account.username} />
       {scanning && <ScanProgress runner={runner} />}
       {!scanning && runner.state === 'failed' && runner.error && <Callout kind="danger">{fillText(C.failed, { why: runner.error })}</Callout>}
-      {!scanning && !scanned && (
+      {!scanning && runner.roleGap && (
+        <Callout kind="warning">
+          {fillText(C.roleGap, {
+            upn: account.username,
+            sections: list(runner.roleGap.sources.map((s) => midSentence(sectionLabel(s)))),
+            roles: list(runner.roleGap.ask.length > 0 ? runner.roleGap.ask : [runner.roleGap.covering]),
+            covering: runner.roleGap.covering,
+          })}
+        </Callout>
+      )}
+      {gapped && (
+        <>
+          <p className="line">{C.gapsLine}</p>
+          <div className="found">
+            {runner.gaps.map((g) => (
+              <div className="frow" key={g.source}>
+                {fillText(C.gapsRow, { section: sectionLabel(g.source), reason: (g.reason ?? C.gapsNotRead).replace(/\.$/, ''), roles: list(g.roles.length > 0 ? g.roles : [READ_EVERYTHING_ROLE]) })}
+              </div>
+            ))}
+          </div>
+          <p className="reason">{fillText(C.gapsCovering, { covering: READ_EVERYTHING_ROLE })}</p>
+          {lastScan && <p className="reason">{fillText(C.gapsKept, { date: absoluteDate(lastScan.at) })}</p>}
+          <p className="actions">
+            <Button variant="primary" onClick={() => void runner.start()}>
+              {CN.scanButton as string}
+            </Button>
+          </p>
+        </>
+      )}
+      {!scanning && !scanned && !gapped && (
         <>
           <p className="actions">
             <Button
@@ -265,16 +315,9 @@ function SignedIn({
           <p className="reason">{CN.scanNote as string}</p>
         </>
       )}
-      {scanned && snapshot && (
+      {scanned && snapshot && !gapped && (
         <>
-          <p className="line">
-            {fillText(TN.scanLine as string, {
-              people: snapshot.users.length,
-              policies: snapshot.config.caPolicies?.rows.length ?? 0,
-              from: window_ ? monthDay(window_.from) : '',
-              to: window_ ? monthDay(window_.to) : '',
-            })}
-          </p>
+          <p className="line">{fillText(TN.scanLine as string, scanLineVars(snapshot))}</p>
           <DeniedSections denied={denied} all={all} />
           <p className="actions">
             <LinkButton href={PLAN_HREF}>{TN.open as string}</LinkButton>
@@ -437,7 +480,6 @@ function BaselineUpdated() {
           {reviewLabel}
         </Button>
       </p>
-      <p className="sub">{CN.baselineUpdatedNote as string}</p>
       {reviewing && (
         <div className="found">
           {changes.map((c) => (

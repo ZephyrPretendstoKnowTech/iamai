@@ -4,6 +4,7 @@ import { initAuth } from '../graph/auth.ts'
 import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
+import type { TokenSource } from '../graph/collect/runScan.ts'
 import { planIdFor } from '../roadmap/generate.ts'
 import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
 import { Callout, ErrorBoundary } from './components/index.ts'
@@ -70,6 +71,10 @@ export function App() {
   // item 2). The progress view is otherwise unreachable by a harness: it lasts
   // as long as the worker takes, and the synthetic tenant has no worker.
   const [frozenScan, setFrozenScan] = useState<Record<string, { source: string; status: string; rows?: number; reason?: string; ms?: number }> | null>(null)
+  // The mock's Connect refusals (test support): a scan that just finished with
+  // gaps, and a token whose roles read none of the core sections.
+  const [finishedScan, setFinishedScan] = useState<TenantSnapshot | null>(null)
+  const [mockToken, setMockToken] = useState<TokenSource | null>(null)
   const route = useHashRoute()
   // The header's Re-scan and a step's Scan to update the plan: request the scan,
   // go to Connect, which starts it as it mounts, and come back to `returnTo`.
@@ -153,7 +158,7 @@ export function App() {
       // The dev-only contract walk and failure-path checks run against a
       // calibrated synthetic tenant (test support); the demo (?demo=1) is what
       // loads the demo fixture through the same App snapshot-setting path.
-      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }]) => {
+      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts'), import('../testing/gapsFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }, { gapsSnapshot, noRolesToken }]) => {
         const params = new URLSearchParams(window.location.search)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
@@ -179,6 +184,9 @@ export function App() {
           snapshot.signInEvidence = {}
           snapshot.evidenceAggregates = null
         }
+        // ?roles=none: the signed-in token holds the User role and nothing else;
+        // the scan must not start, and Connect names the role to ask for.
+        if (params.get('roles') === 'none') setMockToken(() => async () => noRolesToken())
         // ?policies=0: a tenant with no Conditional Access policies at all (prompt 31 §4.19).
         if (params.get('policies') === '0') snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [] }
         // ?state=<signedOut|noScan|scanning|scanned>: which state the synthetic
@@ -209,6 +217,11 @@ export function App() {
             users: { source: 'users', status: 'started' },
           })
           setScanRunning(true)
+        } else if (state === 'gaps') {
+          // A scan that could not read the policies or the sign-in records just
+          // finished; the last good scan is kept, as its record would be.
+          setLastScan({ snapshot, at: snapshot.asOf })
+          setFinishedScan(gapsSnapshot())
         } else if (state === 'scanned') {
           setLastScan({ snapshot, at: snapshot.asOf })
         }
@@ -299,6 +312,8 @@ export function App() {
               }}
               lastScan={lastScan}
               frozen={frozenScan}
+              finished={finishedScan}
+              getToken={mockToken ?? undefined}
               onRunningChange={setScanRunning}
               onComplete={(snapshot, at) => {
                 setLastScan({ snapshot, at })

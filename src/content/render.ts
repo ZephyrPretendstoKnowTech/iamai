@@ -279,7 +279,6 @@ export function renderStep(st: Record<string, any>): string {
   parts.push(`<div class="stephead"><span class="title2">${esc(st.title)}</span> <span class="chip status">${esc(status)}</span></div>`)
   if (st.changeLine) parts.push(p(st.changeLine, ex, 'change'))
   if (st.partner) parts.push(p(st.partner, ex, 'partner'))
-  if (st.placement) parts.push(p(st.placement, ex, 'sub'))
   // Why
   parts.push(h('Why'))
   const learn = st.learn || {}
@@ -584,7 +583,7 @@ export function renderPages(): string {
       `<p class="sub">While scanning: <span class="progress">${fill(cn.scanning, { lane: 'Reading sign-in records', done: 3, total: 8 })}</span> ${btn(cn.stop)}</p>`,
   )
   const t = P.tenant
-  sec('Connect (scanned)', `<h2 class="h1">${esc(t.h1)}</h2>` + p(t.scanLine, exT) + btn(t.open, true) + `<div class="tip">${esc(t.tip)}<span class="q">?</span></div>`)
+  sec('Connect (scanned)', `<h2 class="h1">${esc(t.h1)}</h2>` + p(t.scanLine, { ...exT, signIns: fill(t.signIns, exT) }) + p(t.scanLine, { ...exT, signIns: t.signInsNotRead }, 'sub') + btn(t.open, true) + `<div class="tip">${esc(t.tip)}<span class="q">?</span></div>`)
   const pl = P.plan
   const s = pl.settings
   sec(
