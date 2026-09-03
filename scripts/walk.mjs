@@ -477,7 +477,7 @@ async function walkFixture(fx) {
           const want = ['Ready', 'Method not strong enough', 'Registered, never used', 'No method', 'Admins without a passkey or key']
           if (tiles.some((t, k) => t.label !== want[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}`)
           stripCounts = Object.fromEntries(tiles.map((t) => [t.label, t.n]))
-          const rowsOf = () => evaluate(`[...document.querySelectorAll('main.page .readiness .names li')].map((li) => ({ ok: li.querySelector('.dot-ok') !== null, idle: li.querySelector('.dot-idle') !== null, admin: [...li.querySelectorAll('.chip')].some((c) => c.textContent.trim() === 'Admin'), text: li.textContent.replace(/\\s+/g, ' ').trim() }))`)
+          const rowsOf = () => evaluate(`[...document.querySelectorAll('main.page .readiness .names li')].map((li) => ({ ok: li.querySelector('.status-ok') !== null, idle: li.querySelector('.status-idle') !== null, admin: [...li.querySelectorAll('.chip')].some((c) => c.textContent.trim() === 'Admin'), text: li.textContent.replace(/\\s+/g, ' ').trim() }))`)
           const openCount = () => evaluate(`document.querySelectorAll('main.page .readiness .tile.open').length`)
           for (let k = 0; k < 5; k++) {
             await evaluate(`(() => { const t = document.querySelectorAll('main.page .readiness .tile')[${k}]; t.scrollIntoView({ block: 'center' }); t.click() })()`)

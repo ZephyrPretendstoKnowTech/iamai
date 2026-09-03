@@ -12,7 +12,7 @@ import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts
 import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, listCountVars, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
-import { Picker, PageTip } from '../components/index.ts'
+import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
@@ -136,7 +136,6 @@ export function ContentStep({
       <p className="line">
         <span className="step-title">{cs.title}</span> <Status tone={status.tone}>{status.word}</Status>
       </p>
-      <PageTip page="step" text={String(pages.stepTip)} />
       <Line s={cs.changeLine} ex={ex} cls="reason" />
       <Line s={cs.partner} ex={ex} cls="reason partner" />
 

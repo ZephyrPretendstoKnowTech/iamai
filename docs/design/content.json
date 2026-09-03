@@ -249,10 +249,28 @@
         "notInBaselineReview": "review",
         "rename": "{policy}: off the tenant's naming convention · proposed {proposed}"
       },
-      "tip": "Rows open in place. Every choice the plan needs is made inside the step that needs it.",
       "startControl": "Start the plan",
       "startNote": "Starting locks the dates. Until then, every visit proposes dates from today.",
-      "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}"
+      "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}",
+      "readiness": {
+        "tiles": {
+          "ready": "Ready",
+          "weak": "Method not strong enough",
+          "unproven": "Registered, never used",
+          "noMethod": "No method",
+          "admins": "Admins without a passkey or key"
+        },
+        "value": "{n} · {pct}",
+        "of": "of active people",
+        "row": "{name} · {method} · {last}",
+        "last": "MFA {when}",
+        "never": "no MFA sign-in in the window",
+        "empty": "Nobody.",
+        "bar": {
+          "met": "meets the bar the plan needs",
+          "below": "below the bar the plan needs"
+        }
+      }
     },
     "today": {
       "h1": "Today",
@@ -316,7 +334,6 @@
       "inventory": "Everything the scan read →",
       "tip": "Every number here is a share of active people: those who signed in during the last 90 days."
     },
-    "stepTip": "Scan to update the plan re-reads this step against the tenant as it is now.",
     "export": {
       "h1": "Export",
       "cards": {

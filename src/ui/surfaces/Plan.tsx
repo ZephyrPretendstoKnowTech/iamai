@@ -20,7 +20,8 @@ import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { headerLine1, planCounts, startControl } from '../../derive/planHeader.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
-import { Button, InfoTip, Status, PageTip } from '../components/index.ts'
+import { Button, InfoTip, Status } from '../components/index.ts'
+import { ReadinessStrip } from './ReadinessStrip.tsx'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
@@ -136,7 +137,8 @@ export function Plan({ scan, baseline, account, onScan }: {
         <InfoTip title={app.plan.constraintTip} text={lengthTip} />
       </p>
       <p className="line">{line2}</p>
-      <PageTip page="plan" text={P.tip} />
+      {/* The readiness strip: five tiles from the plan's own population and buckets, each opening to its people. */}
+      <ReadinessStrip snapshot={scan.snapshot} mapping={data.mapping ?? EMPTY_MAPPING} nameOf={nameOf} />
       {/* The start (§5), in this order: the Start date field (default: the next working
           day in the display zone), Start the plan under it, which locks the date shown,
           then Plan settings. */}
