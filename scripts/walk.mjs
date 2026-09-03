@@ -463,7 +463,8 @@ async function walkFixture(fx) {
           const m = statement.match(/(\d+) steps · (\d+) (?:in place|done)/)
           if (!m) add('P0', `${label}: the print cover's statement carries no step count ("${statement.slice(0, 80)}")`)
           else if (planHeaderCounts && m[1] !== planHeaderCounts.steps) add('P0', `${label}: the print cover counts ${m[1]} steps and the Plan header ${planHeaderCounts.steps} (Cleanup is in the header's count)`)
-          const printText = await evaluate(`(document.querySelector('.print-plan') || {}).innerText || ''`)
+          // The print document is hidden on screen (print media shows it), so its innerText is empty: read textContent.
+          const printText = await evaluate(`[...document.querySelectorAll('.print-plan h1, .print-plan h2, .print-plan h3, .print-plan p, .print-plan li, .print-plan td, .print-plan dd')].map((e) => e.textContent).join('\\n')`)
           if (!/\bCleanup\b/.test(printText)) add('P0', `${label}: the print does not list Cleanup`)
           checkText(`${label} (print)`, printText, { emails: true })
         }
