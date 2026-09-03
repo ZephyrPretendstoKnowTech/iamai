@@ -195,7 +195,13 @@ export function Plan({ scan, baseline, account, onScan }: {
         </section>
       )}
 
-      <PlanFooter computed={c} nameOf={nameOf} onPutBack={(id) => data.setNotApplicable(id, null)} />
+      {/* An In place row opens like any other: a done step still carries its decisions and their effect lines. */}
+      <PlanFooter
+        computed={c}
+        nameOf={nameOf}
+        onPutBack={(id) => data.setNotApplicable(id, null)}
+        renderRow={(s) => <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />}
+      />
     </section>
   )
 }

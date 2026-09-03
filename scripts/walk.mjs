@@ -503,9 +503,18 @@ async function walkFixture(fx) {
               const b = await clickText('label', /^Hybrid-joined is enough$/, 'main.page .step-body')
               const c = a && b ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
               if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
-              const applied = c ? await waitFor(`/Phones leave the compliant-device policy/.test((document.querySelector('main.page .step-body') || {}).innerText || '')`, 8000) : false
-              if (c && !applied) add('P0', `${slabel}: the phones answer's effect line does not show after Save`)
-              decidedHere = applied
+              // Saved, the step is In place and sits in the footer; it opens there like any row, with its effect line.
+              const moved = c ? await waitFor(`[...document.querySelectorAll('main.page .plan-footer .plan-row .step-title')].some((e) => /Decide How Devices Are Managed/.test(e.textContent || ''))`, 8000) : false
+              if (c && !moved) add('P0', `${slabel}: the decided step did not move to the footer as In place`)
+              if (moved) {
+                await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
+                await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-footer .plan-row')].find((e) => /Decide How Devices Are Managed/.test((e.querySelector('.step-title') || {}).textContent || '')); if (r) { r.scrollIntoView({ block: 'center' }); r.click() } })()`)
+                const applied = await waitFor(`/Phones leave the compliant-device policy/.test((document.querySelector('main.page .plan-footer .step-body') || {}).innerText || '')`, 8000)
+                if (!applied) add('P0', `${slabel}: the phones answer's effect line does not show on the decided step`)
+                // Device readiness is measured against the answer from here: the numbers before the decision are not the numbers after it.
+                readinessOf(currentFixture).delete('device')
+                decidedHere = true
+              }
             }
           }
           if (/Require a Managed Device for Office 365/.test(title)) {
