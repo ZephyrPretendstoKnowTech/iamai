@@ -389,7 +389,7 @@ async function walkFixture(fx) {
   }
   mkdirSync(dir, { recursive: true })
   const summary = []
-  const routeContract = { connect: 'connect.scanned', today: 'today', plan: 'plan', export: 'export', how: 'how' }
+  const routeContract = { connect: 'connect.scanned', today: 'today', plan: 'plan', export: 'export', how: 'how', inventory: 'inventory' }
   let rowTitles = []
   let rowStatuses = []
   let rowWhens = []
@@ -405,7 +405,7 @@ async function walkFixture(fx) {
     await setWidth(width)
     const wdir = join(dir, String(width))
     mkdirSync(wdir, { recursive: true })
-    for (const route of fx.routes ?? ['plan', 'today', 'export', 'how', 'connect']) {
+    for (const route of fx.routes ?? ['plan', 'today', 'export', 'how', 'connect', 'inventory']) {
       const label = `${fx.name} @${width} /${route}`
       await send('Page.navigate', { url: `${fx.base}#/${route}` })
       await sleep(600)
@@ -430,6 +430,20 @@ async function walkFixture(fx) {
         add(width < 600 ? 'P1' : 'P1', `${label}: the page overflows the viewport by ${overflow}px (${widest})`)
       }
       summary.push({ width, route, words: text.split(/\s+/).filter(Boolean).length, rows: d.rows.length })
+      // Today's "n admins" is the count of rows tagged Admin (E5); the demo's
+      // people fit one page, so the tags on the page are every tag.
+      if (route === 'today') {
+        const m = text.match(/(\d+) admins?\b/)
+        const tagged = await evaluate(`[...document.querySelectorAll('main.page .chip.tag')].filter((e) => (e.textContent || '').trim() === 'Admin').length`)
+        if (!m) add('P0', `${label}: the line does not count admins`)
+        else if (Number(m[1]) !== tagged) add('P0', `${label}: the line says ${m[1]} admins and ${tagged} rows are tagged Admin`)
+      }
+      // The Inventory policies table carries an Exclusions column, the groups and users by name (E5).
+      if (route === 'inventory') {
+        const headers = await evaluate(`[...document.querySelectorAll('main.page th')].map((e) => (e.textContent || '').trim())`)
+        if (!headers.includes('Exclusions')) add('P0', `${label}: the policies table has no Exclusions column`)
+        else if (!/Core - Break glass/.test(text)) add('P0', `${label}: the Exclusions column names no excluded group`)
+      }
       // The Plan header's counts, for the print cover to agree with (E4).
       if (route === 'plan') {
         const m = text.match(/(\d+) steps · (\d+) (?:in place|done)/)
@@ -690,6 +704,23 @@ async function walkFixture(fx) {
         checkText(`${fx.name} @${width} /plan footer`, ft)
         for (const t of fd.titles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name} @${width} /plan footer: "${t}" is a goal the baseline does not hold`)
         for (const row of fd.rows) for (const nm of ABSENT_GOAL_NAMES) if (row.text.includes(nm)) add('P0', `${fx.name} @${width} /plan footer: "${nm}" is a goal the baseline does not hold`)
+      }
+      // A started plan (E5), on day one: Start the plan locks the dates; the
+      // Start date field and its note go, and "started <date>" stands in their
+      // place. The start persists into week two, as a started plan's does.
+      if (fx.name === 'demo') {
+        const slabel = `${fx.name} @${width} /plan started`
+        const pressed = await clickText('button', /^Start the plan$/)
+        if (!pressed) add('P0', `${slabel}: no Start the plan control`)
+        else {
+          const started = await waitFor(`/^started \\S.*\\d{4}$/m.test((document.querySelector('main.page') || {}).innerText || '')`, 8000)
+          if (!started) add('P0', `${slabel}: the plan does not read started <date> after Start the plan`)
+          const field = await evaluate(`document.querySelector('main.page label.rows input[type=date]') !== null`)
+          if (field) add('P0', `${slabel}: the Start date field is still shown on a started plan`)
+          const after = await mainText()
+          if (/Starting locks the dates/.test(after) || /Clear the date to start/.test(after)) add('P0', `${slabel}: the start note is still shown on a started plan`)
+          checkText(slabel, after)
+        }
       }
     }
   }
