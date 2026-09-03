@@ -12,6 +12,8 @@ export function stepIdForGoal(goalId: string): string {
   return idFor('goal', goalId)
 }
 export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
+/** Separate admin accounts (E6): a directory-role holder who reads mail or joins Teams on the same account. */
+export const SEPARATE_ADMIN_ACCOUNTS_STEP_ID = 's-check-separate-admin-accounts'
 /** Break-glass: the plan's escape hatch, checked and gated by the validation rules. */
 export const BREAK_GLASS_STEP_ID = 's-prereq-break-glass'
 

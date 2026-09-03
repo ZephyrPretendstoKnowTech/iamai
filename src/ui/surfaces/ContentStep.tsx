@@ -11,7 +11,7 @@ import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
+import { fillText, listCountVars, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Picker, PageTip } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
@@ -304,7 +304,9 @@ function whoLead(who: Record<string, any>, ex: Ex): boolean {
  * or prose ending in `: {list:accounts}` — renders the names as a list, one per
  * row, never inline (§6.3, §6.5); the prose before it stays a line.
  */
-function WhoLine({ line, ex }: { line: string; ex: Ex }) {
+function WhoLine({ line, ex: stepEx }: { line: string; ex: Ex }) {
+  // A line that counts and lists counts its own list (render.ts listCountVars).
+  const ex = listCountVars(line, stepEx) as Ex
   const m = /^(.*?)\s*\{list:([a-zA-Z0-9_]+)\}\s*$/.exec(line)
   const items = m ? ex[m[2]] : undefined
   if (!m || !Array.isArray(items) || items.length === 0) return <p className="reason"><T s={line} ex={ex} /></p>

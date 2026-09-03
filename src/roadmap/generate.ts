@@ -18,6 +18,7 @@ import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
 import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers } from '../derive/sets.ts'
+import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { accountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
@@ -134,7 +135,7 @@ const EXTRAS = STEP_EXTRAS
 // The step ids live in stepIds.ts (the answer readers name them without
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
-import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
+import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
 function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
@@ -619,6 +620,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.action = { ...s.action, kind: 'check' }
     // The dormant step is the one place never-signed-in accounts are a population (§8.1): it names them, though none are active.
     s.population = { total: dormant.length, active: 0, admins: 0, guests: 0, ids: dormant.map((u) => u.id), activeIds: dormant.map((u) => u.id), inScope: dormant.length }
+    steps.push(s)
+  }
+
+  // Separate admin accounts (E6): a directory-role holder who also reads mail or
+  // joins Teams on the same account. A Preparation check step, skippable, only
+  // while somebody does; the admin policies name the same people beside it.
+  const adminsWithWorkload = adminsWithWorkloadOf(snapshot, new Set(mapping.breakGlassUserIds)).map(([id]) => id)
+  if (canUseConditionalAccess && adminsWithWorkload.length > 0) {
+    const s = prereq(SEPARATE_ADMIN_ACCOUNTS_STEP_ID)
+    s.kind = 'check'
+    s.action = { ...s.action, kind: 'check' }
+    s.population = { total: adminsWithWorkload.length, active: adminsWithWorkload.length, admins: adminsWithWorkload.length, guests: 0, ids: adminsWithWorkload, activeIds: adminsWithWorkload, inScope: adminsWithWorkload.length }
     steps.push(s)
   }
 

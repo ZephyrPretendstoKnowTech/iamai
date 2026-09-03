@@ -33,10 +33,25 @@ test('nothing fires on clean rows, and every shape is present', () => {
   const zero = emptyScenarioEvidence()
   for (const k of Object.keys(zero) as (keyof typeof zero)[]) {
     if (k === 'trustedLocationMatches') continue
+    // A clean row is a Teams sign-in, which is what the mail-or-Teams derivation reports (E6).
+    if (k === 'officeSignIns') continue
     assert.equal((e[k] as { count: number }).count, 0, `${k} is silent`)
     assert.deepEqual((e[k] as { people: string[] }).people, [], `${k} names nobody`)
   }
   assert.equal(e.trustedLocationMatches.total, 2)
+  assert.deepEqual(e.officeSignIns!.byPerson, { u1: ['Microsoft Teams'], u2: ['Microsoft Teams'] }, 'the Teams sign-in is a mail-or-Teams sign-in, by person')
+})
+
+test('mail or Teams sign-ins are named per person; the Azure portal and the management API are Azure sign-ins (E6, E9)', () => {
+  const e = deriveScenarioEvidence([
+    row({ userId: 'a', appDisplayName: 'Outlook', resourceDisplayName: 'Office 365 Exchange Online' }),
+    row({ userId: 'a', clientAppUsed: 'IMAP4', appDisplayName: 'Mail client' }),
+    row({ userId: 'b', appId: 'c44b4083-3bb0-49c1-b47d-974e53cbdf3c', appDisplayName: 'Azure Portal', resourceDisplayName: 'Windows Azure Service Management API' }),
+    row({ userId: 'c', appId: '14d82eec-204b-4c2f-b7e8-296a70dab67e', appDisplayName: 'Microsoft Graph Command Line Tools' }),
+  ])
+  assert.deepEqual(e.officeSignIns!.byPerson, { a: ['Mail client', 'Outlook'] })
+  assert.deepEqual(e.azureSignIns!.people, ['b'])
+  assert.equal(e.azureSignIns!.count, 1)
 })
 
 test('legacy clients are named per person; the phone Mail app is Exchange ActiveSync', () => {

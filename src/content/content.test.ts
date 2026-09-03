@@ -66,6 +66,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[16].who.adminsNote',
   '.steps[17].who.evidence[1]',
   '.steps[18].who.evidence[1]',
+  // Directory-role holders who use the same account for mail or Teams (E6), on the
+  // three admin policies (15, 23, 33); the examples list none.
+  '.steps[18].who.evidence[2]',
+  '.steps[26].who.evidence[2]',
+  '.steps[36].who.evidence[1]',
   '.steps[19].who.evidence[0]',
   // Azure sign-ins by people with no directory role (step-audit item 16); the example lists none.
   '.steps[19].who.evidence[2]',

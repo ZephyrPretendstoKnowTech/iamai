@@ -120,7 +120,20 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // the last sign-in date, or the content example's own "no sign-in on record".
     accountsWithState: dormant.map((u) => `${nameOf(u.id)} · ${u.lastSuccessfulSignIn ? absoluteDate(u.lastSuccessfulSignIn) : 'no sign-in on record'}`),
     accountsWithStateIds: dormant.map((u) => u.id),
+    // Directory-role holders who read mail or join Teams on the same account (E6),
+    // with the apps: the separate-accounts step lists them, and the admin policies
+    // name them beside the step. The emergency accounts are not everyday accounts.
+    adminsWithWorkload: adminsWithWorkloadOf(snapshot, bg).map(([id, apps]) => `${nameOf(id)} · ${apps.join(', ')}`),
+    adminsWithWorkloadIds: adminsWithWorkloadOf(snapshot, bg).map(([id]) => id),
   }
+}
+
+/** Each directory-role holder with mail or Teams sign-ins on the same account, with the apps seen (E6). */
+export function adminsWithWorkloadOf(snapshot: TenantSnapshot, exclude: ReadonlySet<string> = new Set()): [string, string[]][] {
+  const office = snapshot.scenarioEvidence?.officeSignIns
+  if (!office) return []
+  const users = new Set(snapshot.users.map((u) => u.id))
+  return [...adminUserIds(snapshot.roles)].filter((id) => users.has(id) && !exclude.has(id) && (office.byPerson[id] ?? []).length > 0).map((id) => [id, office.byPerson[id]])
 }
 
 function upnOf(snapshot: TenantSnapshot, id: string): string | undefined {

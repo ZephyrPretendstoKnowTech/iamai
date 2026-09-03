@@ -44,6 +44,10 @@ export type ScenarioEvidence = {
   phoneSignIns?: Derived
   /** Computer sign-ins from devices neither joined, registered, compliant nor managed, by person and app (E2). Absent on snapshots from before it. */
   unjoinedComputers?: Derived
+  /** Mail and Teams sign-ins (Exchange, Outlook, Teams), by person and app: a directory-role holder among them uses the admin account for everyday work (E6). Absent on snapshots from before it. */
+  officeSignIns?: PerPerson
+  /** Azure management sign-ins (the Azure portal, the management API), by person and app: the people a block of the admin portals reaches beyond the admins (E9). Absent on snapshots from before it. */
+  azureSignIns?: Derived
 }
 
 type App = { appId: string; displayName: string; role?: string }
@@ -224,6 +228,33 @@ export function unjoinedComputers(rows: Iterable<StoredSignIn>): Derived {
   return acc.out()
 }
 
+const MAIL_OR_TEAMS = /exchange|outlook|teams/i
+const AZURE_APP_IDS = new Set(['c44b4083-3bb0-49c1-b47d-974e53cbdf3c', '797f4846-ba00-4fd7-ba43-dac1f8f63013'])
+const AZURE_APP = /azure portal|azure service management/i
+
+/** Mail and Teams sign-ins by person and app (E6): a legacy client counts too (it is mail). */
+export function officeSignIns(rows: Iterable<StoredSignIn>): PerPerson {
+  const acc = new Acc()
+  for (const row of rows) {
+    if (!row.userId) continue
+    const label = `${row.appDisplayName ?? ''} ${row.resourceDisplayName ?? ''} ${row.clientAppUsed ?? ''}`
+    if (!MAIL_OR_TEAMS.test(label) && !LEGACY_ANY.test(row.clientAppUsed ?? '')) continue
+    acc.hit(row, appName(row))
+  }
+  return acc.outPerPerson()
+}
+
+/** Azure management sign-ins by person and app (E9): the Azure portal and the management API. */
+export function azureSignIns(rows: Iterable<StoredSignIn>): Derived {
+  const acc = new Acc()
+  for (const row of rows) {
+    const byId = AZURE_APP_IDS.has((row.appId ?? '').toLowerCase())
+    if (!byId && !AZURE_APP.test(`${row.appDisplayName ?? ''} ${row.resourceDisplayName ?? ''}`)) continue
+    acc.hit(row, appName(row))
+  }
+  return acc.out()
+}
+
 export function serviceProviderSignIns(rows: Iterable<StoredSignIn>): Derived & { homeTenants: number } {
   const acc = new Acc()
   const tenants = new Set<string>()
@@ -292,6 +323,8 @@ export function deriveScenarioEvidence(rowsIn: Iterable<StoredSignIn>, compliant
     sharedDeviceOnly: sharedDeviceOnly(rows),
     phoneSignIns: phoneSignIns(rows),
     unjoinedComputers: unjoinedComputers(rows),
+    officeSignIns: officeSignIns(rows),
+    azureSignIns: azureSignIns(rows),
   }
 }
 
@@ -313,5 +346,7 @@ export function emptyScenarioEvidence(): ScenarioEvidence {
     sharedDeviceOnly: empty(),
     phoneSignIns: empty(),
     unjoinedComputers: empty(),
+    officeSignIns: { ...empty(), byPerson: {} },
+    azureSignIns: empty(),
   }
 }
