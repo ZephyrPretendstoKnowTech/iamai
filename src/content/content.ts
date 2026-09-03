@@ -80,5 +80,7 @@ export type EngineWords = {
   staticRules: Record<string, string>
   serviceSignals: Record<string, string>
   emergencySignals: Record<string, string>
+  /** What a personal device can still do once devices are required (E7): the browser with limits while the unmanaged-browser step is on the plan, else blocked. */
+  personalDevices: { browserLimited: string; blocked: string }
 }
 export const engine = shared.engine as unknown as EngineWords

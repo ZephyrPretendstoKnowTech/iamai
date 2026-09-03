@@ -41,8 +41,14 @@ export type StepVarContext = {
   operatorId: string | null
   /** As-of time for the campaign buckets (usually snapshot.asOf). */
   now: string
-  /** The plan's first enforcement date (ISO): the campaign's enrol-by and firstEnforce. */
+  /** The plan's first enforcement date (ISO): the campaign's enrol-by. */
   firstEnforce?: string | null
+  /** The day Require MFA for Everyone enforces (ISO): the campaign's and the device plan's date (E7). */
+  mfaEnforce?: string | null
+  /** The campaign's window in days, from the plan's start to its enrol-by (E7): the email's "over the next {enrolWindowDays} days". */
+  enrolWindowDays?: number | null
+  /** True when the plan carries the unmanaged-browser step, so personal devices keep the browser with limits (E7); otherwise they are blocked. */
+  unmanagedBrowserOnPlan?: boolean
   /** This step's report-only creation date (ISO), for a policy step's dates line. */
   reportOnlyAt?: string | null
   /** The one active-people count (Today's denominator), so every step's summary line agrees (walk-51 item 8). */
@@ -94,9 +100,14 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // emails (longDate), both from the same instant in the display time zone.
     enforce: short(enforce?.at),
     enforceLong: long(enforce?.at),
-    firstEnforce: short(enforce?.at),
-    firstEnforceLong: long(enforce?.at),
     announce: short(announce?.at),
+    // The day Require MFA for Everyone enforces, for the campaign and the device
+    // plan (E7); the campaign's window; and what a personal device can still do
+    // once devices are required (shared.engine.personalDevices).
+    mfaEnforce: short(ctx.mfaEnforce ?? ctx.firstEnforce),
+    mfaEnforceLong: long(ctx.mfaEnforce ?? ctx.firstEnforce),
+    enrolWindowDays: ctx.enrolWindowDays ?? undefined,
+    personalDevicesClause: ctx.unmanagedBrowserOnPlan === undefined ? undefined : ctx.unmanagedBrowserOnPlan ? engine.personalDevices.browserLimited : engine.personalDevices.blocked,
     // A policy already in report-only has its date from the scan (tracking), not
     // from the schedule, which only dates the policies the plan creates.
     reportOnly: short(step.tracking?.reportOnlyAt ?? ctx.reportOnlyAt),
@@ -138,14 +149,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     v.evidenceGate = ready.kind === 'now' ? fillText(TRACK.readyNow, { n: ready.days }) : fillText(TRACK.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days })
   }
 
-  // A campaign has no enforcement date of its own; its enrol-by and the first
-  // policy's enforcement are the plan's first enforcement date (walk-51 item 2,
-  // target-state §9).
-  if (!enforce && ctx.firstEnforce) {
-    v.firstEnforce = absoluteDate(ctx.firstEnforce)
-    v.firstEnforceLong = longDate(ctx.firstEnforce)
-    v.enrollBy = absoluteDate(ctx.firstEnforce)
-  }
+  // A campaign has no enforcement date of its own; its enrol-by is the plan's
+  // first enforcement date (walk-51 item 2, target-state §9).
+  if (!enforce && ctx.firstEnforce) v.enrollBy = absoluteDate(ctx.firstEnforce)
 
   // The two-policy (merged) goals carry A/B names.
   const mapped = policiesForGoal(PINNED_GOAL_MAP, snapshotPolicyKeys(), step.goalId)
@@ -286,3 +292,18 @@ function snapshotPolicyKeys(): { id?: string | null; displayName: string }[] {
 }
 
 export { absoluteDate }
+
+/**
+ * The plan-wide dates a step's variables read (E7), from the plan's steps and
+ * schedule: the first enforcement (the campaign's enrol-by), the day Require
+ * MFA for Everyone enforces, the campaign's window from the plan's start to
+ * that enrol-by, and whether the unmanaged-browser step is on the plan.
+ */
+export function planDates(steps: readonly Step[], scheduleStart: string): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan'> {
+  const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
+  const mfa = steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')
+  const mfaEnforce = mfa?.events?.enforce?.at ?? firstEnforce
+  const enrolWindowDays = firstEnforce ? Math.max(1, Math.ceil((Date.parse(firstEnforce) - Date.parse(scheduleStart)) / 86_400_000)) : null
+  const unmanagedBrowserOnPlan = steps.some((s) => (s.goalId === 'block-downloads-unmanaged' || s.goalId === 'byod-session-controls') && s.status !== 'skipped')
+  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan }
+}
