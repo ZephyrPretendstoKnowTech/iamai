@@ -630,9 +630,14 @@ async function walkFixture(fx) {
           // enforcement day and the window; the managed-device email says what a
           // personal device can still do; step 12 asks for a passkey or a key.
           if (/MFA Registration Campaign/.test(title)) {
-            if (!/over the next \d+ days/.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
-            // The email dates an enforcement: the MFA policy's day (MFA not yet in place) or the first passkey policy's (MFA in place).
-            if (!/^From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, (signing in|.+ requires a passkey)/m.test(emailText)) add('P0', `${slabel}: the campaign email does not date the enforcement it warns of`)
+            if (!/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
+            // The email dates the enforcement it warns of: the MFA policy's day while
+            // MFA is not yet in place; the first passkey policy's while one remains
+            // (the passkey version names it; once none remains, nothing to date).
+            const LONG = '(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \\d{1,2}'
+            const passkeyVersion = /You already confirm sign-ins/.test(emailText)
+            if (!passkeyVersion && !new RegExp(`^From ${LONG}, signing in`, 'm').test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
+            if (passkeyVersion && /requires a passkey/.test(emailText) && !new RegExp(`^From ${LONG}, .+ requires a passkey\\.$`, 'm').test(emailText)) add('P0', `${slabel}: the passkey email names a policy without its date`)
             if (!/passkey or a hardware security key/.test(bodyText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
             // Require MFA for Everyone is in place on the demo: the email is the
             // passkey version, and on day one it names the admins policy as the
