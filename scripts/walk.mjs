@@ -556,6 +556,14 @@ async function walkFixture(fx) {
             if (week2 && !/MFP Reception/.test(bodyText)) add('P0', `${slabel}: the mail-sending printer named on the legacy block is not in the service-accounts group's list`)
             if (!week2 && /MFP Reception/.test(bodyText)) add('P0', `${slabel}: the printer is a service account before anyone named it`)
           }
+          // Separate admin accounts (E6): two demo admins read mail or join Teams on
+          // their admin account; the step lists them, and the admin policy names them beside it.
+          if (/^Use Separate Accounts for Admin Work$/.test(title)) {
+            const named = (bodyText.match(/^.+ · (Outlook|Microsoft Teams)/gm) ?? []).length
+            if (named < 2) add('P0', `${slabel}: the step lists ${named} admin(s) with mail or Teams sign-ins; the demo has two`)
+            if (!/^Skip this step$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step is not skippable`)
+          }
+          if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
           if (/Decide How Devices Are Managed/.test(title)) {
             if (!/phones are out of/i.test(bodyText)) add('P0', `${slabel}: the step does not say the decision is open (phones out until decided)`)
             if (/Phones leave the compliant-device policy/.test(bodyText)) add('P0', `${slabel}: the phones answer's effect line shows before any answer`)
@@ -730,6 +738,8 @@ async function walkFixture(fx) {
   // Preparation). On the demo it is Ready both days; week two's re-scan recognised the
   // group, so the step must check it rather than still offer the create instructions.
   if (fx.name.startsWith('demo') && !rowTitles.some((t) => /Exclusions Group/i.test(t))) add('P0', `${fx.name}: the exclusions-group step is missing; it is on every plan`)
+  // Separate admin accounts (E6): the demo's plan carries the step while an admin reads mail or joins Teams on the admin account.
+  if (fx.name.startsWith('demo') && !rowTitles.some((t) => /^Use Separate Accounts for Admin Work$/.test(t))) add('P0', `${fx.name}: no Preparation row asks for separate admin accounts, although two admins use theirs for mail or Teams`)
   // The consolidation row exists whenever a step's existingCoverage line rendered, and only then (E3).
   if (fx.name.startsWith('demo') && sawExistingCoverage !== rowTitlesAfter.some((t) => /Consolidate Overlapping Policies/.test(t))) add('P0', `${fx.name}: ${sawExistingCoverage ? 'a step found existing coverage but Cleanup has no Consolidate Overlapping Policies row' : 'Cleanup has a Consolidate Overlapping Policies row but no step found existing coverage'}`)
   if (fx.week2 && exclusionBody !== null && /No exclusions group recognised|New group/.test(exclusionBody)) add('P0', `${fx.name}: the exclusions-group step still offers to create the group in week two, although the re-scan recognised it`)
