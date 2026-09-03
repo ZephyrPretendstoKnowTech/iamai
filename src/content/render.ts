@@ -612,7 +612,11 @@ export function renderPages(): string {
       ul([pl.gapSuffix['admin-session']], exT) +
       h('Footer groups') +
       ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT) +
-      `<div class="tip">${esc(pl.tip)}<span class="q">?</span></div>`,
+      // The readiness strip: the five tiles, a tile's value, and a person's line on an opened tile.
+      h('Readiness strip') +
+      ul(Object.values(pl.readiness.tiles as Record<string, string>).map((t) => `${t}: ${pl.readiness.value} ${pl.readiness.of}`), { n: 12, pct: '40%' }) +
+      ul([pl.readiness.row, pl.readiness.bar.met, pl.readiness.bar.below, pl.readiness.empty], { name: 'Kaladin Stormblessed', method: 'Phishing-resistant', last: fill(pl.readiness.last, { when: '3 days ago' }) }) +
+      p(pl.readiness.never, {}, 'sub'),
   )
   const td = P.today
   // A tile's label is the states it groups, in the table's own words (derive/today.ts TILE_STATES over pages.today.show).
@@ -646,14 +650,12 @@ export function renderPages(): string {
       `<div class="tip">${esc(exP.tip)}<span class="q">?</span></div>`,
   )
   sec(
-    'Footer, How IAMAI works, step tip',
+    'Footer, How IAMAI works',
     p((P.footer.links as { text: string }[]).map((l) => l.text).join(' | '), {}) +
       h('How IAMAI works — reworded lines') +
       ul([P.how.exclusionsCheckReworded, P.how.groupSearchReworded, P.how.packageProblem], { policy: 'IAC - AGENT - BLOCK - HighRiskAgent' }) +
       p('Needs column now names the step: ' + Object.values(P.how.needsByStep).join(', '), {}) +
-      p('Under Limits: ' + P.how.noAi, {}) +
-      h('Tip on every step') +
-      p(P.stepTip, {}),
+      p('Under Limits: ' + P.how.noAi, {}),
   )
   return out.join('')
 }
