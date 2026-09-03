@@ -564,6 +564,19 @@ async function walkFixture(fx) {
             if (!/^Skip this step$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step is not skippable`)
           }
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
+          // The lockout list (E8): the demo's admins with no passkey or key are
+          // named (three or fewer), and the line counts the names it lists.
+          if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
+            const m = bodyText.match(/^(\d+) admins? (?:has|have) no phishing-resistant method; register before .+:\s*$/m)
+            if (!m) add('P0', `${slabel}: the step does not say how many admins have no phishing-resistant method today`)
+            else {
+              const at = bodyText.indexOf(m[0])
+              const names = bodyText.slice(at + m[0].length).split('\n').map((x) => x.trim()).filter(Boolean)
+              const listed = names.findIndex((x) => /^(Roles held|Today:|No session control|\d+ of them|Contoso)/.test(x))
+              const count = listed < 0 ? names.length : listed
+              if (count !== Number(m[1])) add('P0', `${slabel}: the line says ${m[1]} admins and names ${count}`)
+            }
+          }
           if (/Decide How Devices Are Managed/.test(title)) {
             if (!/phones are out of/i.test(bodyText)) add('P0', `${slabel}: the step does not say the decision is open (phones out until decided)`)
             if (/Phones leave the compliant-device policy/.test(bodyText)) add('P0', `${slabel}: the phones answer's effect line shows before any answer`)
