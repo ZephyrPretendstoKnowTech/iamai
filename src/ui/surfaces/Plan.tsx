@@ -8,7 +8,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
-import type { StepDecision } from '../../roadmap/decisions.ts'
+import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { app, engine, pages, phases } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry } from './CleanupStep.tsx'
@@ -30,6 +30,7 @@ import { ContentStep } from './ContentStep.tsx'
 import { contentTitle } from '../../content/stepTitle.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
+import { returnToStep, stepFromPlanHash } from '../shell/routes.ts'
 
 type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; startNote: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }; blocked: { after: string } }
 const PP = pages.plan as unknown as PlanPage
@@ -40,18 +41,19 @@ const S = app.shell
 // contentLists total when a step opens a frame before the mapping settles.
 const EMPTY_MAPPING = { breakGlassUserIds: [], serviceAccountUserIds: [] } as unknown as MappingState
 
-function planStepFromHash(): string | null {
-  const m = /^#\/plan\/(.+)$/.exec(window.location.hash)
-  return m ? decodeURIComponent(m[1]) : null
-}
-
-export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null; account: AccountInfo | null }) {
+export function Plan({ scan, baseline, account, onScan }: {
+  scan: { snapshot: TenantSnapshot; at: string } | null
+  baseline: BaselineResult | null
+  account: AccountInfo | null
+  /** Scan to update the plan, from inside a step: the header's handler, told where to return (#/plan/<stepId>). */
+  onScan?: (returnTo: string) => void
+}) {
   const operatorId = operatorIdOf(scan?.snapshot ?? null, account)
   const data = usePlanData(scan, baseline, operatorId)
-  const [open, setOpen] = useState<string | null>(planStepFromHash)
+  const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
   useEffect(() => {
-    const onHash = () => setOpen(planStepFromHash())
+    const onHash = () => setOpen(stepFromPlanHash(window.location.hash))
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -167,7 +169,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
             {w.steps.map((s) => {
               const isNext = !nextMarked && s.status === 'ready'
               if (isNext) nextMarked = true
-              return <Row key={s.id} step={s} isNext={isNext} waveStart={w.wave.start} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+              return <Row key={s.id} step={s} isNext={isNext} waveStart={w.wave.start} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
             })}
           </section>
         )
@@ -179,7 +181,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
       {floorRows.length > 0 && (
         <section className="phase floor">
           {floorRows.map((s) => (
-            <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
+            <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} firstEnforce={firstEnforce} groups={data.groups} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
           ))}
         </section>
       )}
@@ -188,7 +190,7 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
         <section className="phase">
           <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(cleanupPhase.start), end: absoluteDate(cleanupPhase.end) })}</h2>
           {cleanupPhase.rows.map((r) => (
-            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} alertingDone={data.mapping?.breakGlassAnswers?.signInMonitoring === true} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} />
+            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} alertingDone={data.mapping?.breakGlassAnswers?.signInMonitoring === true} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} onScan={onScan} />
           ))}
         </section>
       )}
@@ -199,13 +201,14 @@ export function Plan({ scan, baseline, account }: { scan: { snapshot: TenantSnap
 }
 
 /** A Cleanup row (§5): the content title, one status word, who it touches, its day; opens in place. */
-function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle }: {
+function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
   alertingDone: boolean
   nameOf: (id: string) => string
   open: boolean
   onToggle: () => void
+  onScan?: (returnTo: string) => void
 }) {
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
@@ -223,12 +226,12 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle }: {
           <span className="when">{absoluteDate(row.day)}</span>
         </span>
       </div>
-      {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => { window.location.hash = '#/connect' }} onClose={onToggle} />}
+      {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} />}
     </>
   )
 }
 
-function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide }: {
+function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, firstEnforce, groups, decision, onDecide, onScan }: {
   step: Step
   isNext: boolean
   /** The wave's start, the date a blocked step without one of its own reads. */
@@ -251,7 +254,8 @@ function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, na
   firstEnforce: string | null
   groups: GroupMembers
   decision: StepDecision | null
-  onDecide: (decision: { picked?: string[]; option?: string }) => void
+  onDecide: (decision: StepDecisionInput) => void
+  onScan?: (returnTo: string) => void
 }) {
   const status = statusOf(step)
   return (
@@ -270,13 +274,14 @@ function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, na
       </div>
       {open && (
         <ContentStep
+          key={snapshot.asOf}
           step={step}
           ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature, operatorId, now: snapshot.asOf, firstEnforce, reportOnlyAt: computed.schedule.reportOnlyAt[step.id] ?? null, groups, naming: computed.coverage.organisation.naming }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onDoesntApply={(reason) => onDoesntApply(step.id, reason)}
           onClose={onToggle}
-          onScan={() => { window.location.hash = '#/connect' }}
+          onScan={() => (onScan ? onScan(returnToStep(step.id)) : (window.location.hash = '#/connect'))}
           decision={decision}
           onDecide={onDecide}
         />

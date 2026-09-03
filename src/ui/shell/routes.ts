@@ -77,3 +77,19 @@ export function resolveHash(hash: string): { route: Route; redirect: string | nu
   if (VALID.has(h)) return { route: h as Route, redirect: null }
   return { route: 'connect', redirect: '#/connect' }
 }
+
+/** The Plan hash that opens one step: where a Scan to update the plan pressed inside it returns. */
+export function returnToStep(stepId: string): string {
+  return `#/plan/${stepId}`
+}
+
+/** The step a Plan hash opens (#/plan/<stepId>), or null. */
+export function stepFromPlanHash(hash: string): string | null {
+  const m = PLAN_STEP.exec(hash.replace(/^#\/?/, ''))
+  return m ? decodeURIComponent(m[1]) : null
+}
+
+/** Where a finished scan lands: the step that asked for it, otherwise the Plan. */
+export function afterScanHref(returnTo: string | null | undefined): string {
+  return returnTo && stepFromPlanHash(returnTo) !== null ? returnTo : PLAN_HREF
+}

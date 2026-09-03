@@ -60,6 +60,9 @@ export function App() {
   // The header's Re-scan: Connect starts the scan as soon as it mounts, and
   // returns to Plan when it finishes (target-state §2).
   const [rescanRequested, setRescanRequested] = useState(false)
+  // Where the scan lands when it finishes: the Plan, or the step whose Scan to
+  // update the plan asked for it (#/plan/<stepId>); consumed when the scan lands.
+  const [scanReturnTo, setScanReturnTo] = useState<string | null>(null)
   // The demo's Re-scan advances to a week-two snapshot and back (prompt 50 item 14).
   const [demoWeek2, setDemoWeek2] = useState(false)
   // A scan frozen mid-lane, for the 'scanning' mock state (prompt 46 Part 1
@@ -67,6 +70,18 @@ export function App() {
   // as long as the worker takes, and the synthetic tenant has no worker.
   const [frozenScan, setFrozenScan] = useState<Record<string, { source: string; status: string; rows?: number; reason?: string; ms?: number }> | null>(null)
   const route = useHashRoute()
+  // The header's Re-scan and a step's Scan to update the plan: request the scan,
+  // go to Connect, which starts it as it mounts, and come back to `returnTo`.
+  // In the demo the scan is the week-two snapshot (and back), without a worker.
+  const requestScan = (returnTo: string = PLAN_HREF): void => {
+    setScanReturnTo(returnTo)
+    if (DEMO) {
+      setDemoWeek2((w) => !w)
+      return
+    }
+    setRescanRequested(true)
+    window.location.hash = '#/connect'
+  }
   // Role names the scan carries ($expand=roleDefinition) resolve ids the bundled catalogue lacks.
   useEffect(() => {
     if (lastScan) learnRoleNames(lastScan.snapshot.config.roleAssignments?.rows ?? [])
@@ -108,6 +123,11 @@ export function App() {
         setTenantName('Contoso Pty Ltd')
         if (stale) return
         setLastScan({ snapshot: d.snapshot, at: d.snapshot.asOf })
+        // The scan has landed: back to the step that asked for it, reopened on the new plan.
+        if (scanReturnTo) {
+          window.location.hash = scanReturnTo
+          setScanReturnTo(null)
+        }
         // The demo derives through the product's pinned baseline and goal map
         // (walk-51 item 9); the fixture's package is that same one.
         setBaseline(await loadPinnedBaseline())
@@ -240,15 +260,7 @@ export function App() {
       route={route}
       state={shellState}
       scannedAt={lastScan?.at ?? null}
-      onRescan={() => {
-        if (DEMO) {
-          // Re-scan in the demo advances to week two and back, without a worker.
-          setDemoWeek2((w) => !w)
-          return
-        }
-        setRescanRequested(true)
-        window.location.hash = '#/connect'
-      }}
+      onRescan={() => requestScan()}
       snapshot={lastScan?.snapshot ?? null}
       demoWeek2={demoWeek2}
     >
@@ -279,7 +291,9 @@ export function App() {
               onComplete={(snapshot, at) => {
                 setLastScan({ snapshot, at })
                 if (account) void saveSnapshotRecord(account.tenantId, { snapshot, at })
+                setScanReturnTo(null)
               }}
+              returnTo={scanReturnTo}
               autoScan={rescanRequested}
               onAutoScanConsumed={() => setRescanRequested(false)}
             />
@@ -301,7 +315,7 @@ export function App() {
                 </p>
               </section>
             ))}
-          {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
+          {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} onScan={requestScan} />}
           {route === 'export' && (
             <Suspense fallback={<section className="surface"><p className="reason">{app.shell.loading}</p></section>}>
               <Export scan={lastScan} baseline={baseline} account={account} />

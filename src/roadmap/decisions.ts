@@ -12,8 +12,16 @@ import { blockerStepId } from './blockerSteps.ts'
 /** A step the operator set aside, with the reason and when. */
 export type SkipDecision = { reason: string; at: string }
 
-/** A picker's saved decision: the ticked ids, the chosen option, and when (prompt 52 Part 3). */
-export type StepDecision = { picked?: string[]; option?: string; at: string }
+/**
+ * A picker's saved decision: the ticked ids, the chosen option, the answers to
+ * the step's questions by their label, and when (prompt 52 Part 3).
+ */
+export type StepDecision = { picked?: string[]; option?: string; answers?: Record<string, string>; at: string }
+/** What a Save hands over: the decision without its time. */
+export type StepDecisionInput = Omit<StepDecision, 'at'>
+
+/** The mapping key a step's question answer persists under: questionAnswers[stepId + ':' + label]. */
+export const answerKey = (stepId: string, label: string): string => `${stepId}:${label}`
 
 /**
  * Everything a person decided about the plan, persisted between sessions and
@@ -88,6 +96,7 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
   for (const [stepId, d] of Object.entries(stepDecisions)) {
     if (!d) continue
     if (typeof d.option === 'string') next.questionAnswers![stepId] = d.option
+    for (const [label, a] of Object.entries(d.answers ?? {})) if (typeof a === 'string') next.questionAnswers![answerKey(stepId, label)] = a
     if (!Array.isArray(d.picked)) continue
     const picked = d.picked.map(String)
     if (DECISION_STEPS.emergency.has(stepId)) {

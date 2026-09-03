@@ -35,6 +35,7 @@ import type { GroupMembers } from '../../coverage/population.ts'
 import type { NameDirectory } from '../../names.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
+import type { StepDecisionInput } from '../../roadmap/decisions.ts'
 
 // The persisted record holds decisions only (prompt 50.1 item 1): skips, the
 // start date, the freeze, the checkpoints. Steps, statuses, populations,
@@ -83,7 +84,7 @@ export type PlanData = {
   /** Every picker's saved decision, by step id (prompt 52 Part 3): in the plan record and the plan file. */
   stepDecisions: Record<string, StepDecision>
   /** A picker's Save: record the decision and regenerate the plan around it. */
-  onDecide: (stepId: string, decision: { picked?: string[]; option?: string }) => void
+  onDecide: (stepId: string, decision: StepDecisionInput) => void
   /** The name every Tell your people box signs with (Plan settings); in the plan file. */
   signature: string
   setSignature: (signature: string) => void
