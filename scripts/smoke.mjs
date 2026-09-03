@@ -496,7 +496,8 @@ try {
   // Item 4: a readiness-held step renders as a Blocked row whose date column
   // reads the reason in the 46 shape, not a date.
   const whenCols = await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => e.textContent.trim()).join(' | ')`)
-  check('Demo: a readiness-held step reads its reason in the date column', /when [a-z ]*readiness reaches \d+% \(now \d+%\)/.test(whenCols), (whenCols.match(/when [a-z ]*readiness reaches[^|]*/) ?? ['none'])[0].trim())
+  // Any family: the demo's held rows are the MFA ones now that the device and admin session gates are gone (E9).
+  check('Demo: a readiness-held step reads its reason in the date column', /when [A-Za-z ]*readiness reaches \d+% \(now \d+%\)/.test(whenCols), (whenCols.match(/when [A-Za-z ]*readiness reaches[^|]*/) ?? ['none'])[0].trim())
 
   // Two steps: open two plan rows, each shows its step body.
   let demoOpened = 0
