@@ -229,7 +229,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   return v
 }
 
-type DevicePlanWords = { phone: Record<string, string>; computer: Record<string, string>; personLine: string; phoneWord: string; computerWord: string; sentence: string; sentencePhones: string }
+type DevicePlanWords = { phone: Record<string, string>; computer: Record<string, string>; personLine: string; phoneWord: string; computerWord: string; intro: string; introPhones: string; sentence: string; sentencePhones: string }
 
 /**
  * The answers as words (answers.ts): the person's own answer with ids resolved
@@ -259,9 +259,11 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
     const W = shared.devicePlan as DevicePlanWords
     const phoneWords = fillText(W.phone[plan.phones], v)
     const computerWords = plan.computers ? fillText(W.computer[plan.computers], v) : null
-    const lines: string[] = phones.map((id) => fillText(W.personLine, { name: ctx.nameOf(id), device: W.phoneWord, instruction: phoneWords }))
-    if (computerWords) for (const id of unjoined) lines.push(fillText(W.personLine, { name: ctx.nameOf(id), device: W.computerWord, instruction: computerWords }))
+    // One line per person (the name and the device); the instruction once, in the list's lead.
+    const lines: string[] = phones.map((id) => fillText(W.personLine, { name: ctx.nameOf(id), device: W.phoneWord }))
+    if (computerWords) for (const id of unjoined) lines.push(fillText(W.personLine, { name: ctx.nameOf(id), device: W.computerWord }))
     out.deviceLines = lines
+    out.deviceIntro = computerWords ? fillText(W.intro, { phones: phoneWords, computers: computerWords }) : fillText(W.introPhones, { phones: phoneWords })
     out.deviceSentence = computerWords ? fillText(W.sentence, { phones: phoneWords, computers: computerWords }) : fillText(W.sentencePhones, { phones: phoneWords })
   }
   return out

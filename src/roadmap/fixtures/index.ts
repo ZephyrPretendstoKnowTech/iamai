@@ -471,12 +471,13 @@ export function buildFixture(spec: Spec): Fixture {
   // the pinned package, never a synthetic one of its own. Every other fixture
   // keeps the synthetic baseline as a stand-in, filtered by the pinned goal map.
   const baseline = spec.demo ? pinnedPackage() : syntheticBaseline(seed)
-  // The demo's week two carries the decisions its technician made in week one
-  // (E1, E2): the travellers question (New Zealand added), the partner question
+  // The demo's week two carries the answers its technician gave in week one
+  // (E1): the travellers question (New Zealand added), the partner question
   // (service providers excluded), the mail-sending printer (in the service
-  // accounts group), and the device decision (phones protected by their apps,
-  // computers hybrid-joined). The app seeds them into the demo's plan record, so
-  // the walk sees every answer's effect on the plan; a visitor's own decisions win.
+  // accounts group). The app seeds them into the demo's plan record, so the walk
+  // sees every answer's effect on the plan; a visitor's own decisions win. The
+  // device decision (E2) is not seeded: it stays open, so the device steps are
+  // seen waiting on it, and the walk makes it on its step.
   let decisions: Record<string, StepDecision> | undefined
   if (spec.demo && spec.week2) {
     decisions = {}
@@ -485,8 +486,6 @@ export function buildFixture(spec: Spec): Fixture {
     const guests = questionLabels(stepIdForGoal('guests-mfa'))
     if (guests.question) decisions[stepIdForGoal('guests-mfa')] = { picked: [], answers: { [guests.question]: "Exclude service providers (they use their own tenant's MFA)" }, at: NOW }
     if (printerId !== null) decisions[stepIdForGoal('block-legacy-auth')] = { option: `Yes: add: ${printerId}; the service-accounts group carries them`, at: NOW }
-    const devices = questionLabels(PREREQ_STEP_ID.devicePlan)
-    if (devices.decision && devices.question) decisions[PREREQ_STEP_ID.devicePlan] = { option: 'Protect the apps only', answers: { [devices.question]: 'Hybrid-joined is enough' }, at: NOW }
   }
   return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}) }
 }

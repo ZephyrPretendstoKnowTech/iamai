@@ -375,6 +375,8 @@ async function walkFixture(fx) {
   let rowStatuses = []
   let rowWhens = []
   let rowReasons = []
+  let rowTitlesOpen = []
+  let rowReasonsOpen = []
   let rowTitlesAfter = []
   let rowReasonsAfter = []
   let exclusionBody = null
@@ -411,16 +413,21 @@ async function walkFixture(fx) {
 
       // Every row, one by one: it opens; its body shares the row's title; the
       // body keeps the invariants; More opens; Learn links resolve.
-      const n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
+      let n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
       rowTitles = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
       rowStatuses = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.status') || {}).textContent || '').trim())`)
       rowWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.when') || {}).textContent || '').trim())`)
       rowReasons = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim())`)
-      const inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
+      // The rows as first seen, with every decision still open (the loop re-reads the rows after a decision moves a step).
+      rowTitlesOpen = [...rowTitles]
+      rowReasonsOpen = [...rowReasons]
+      let inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
       for (let i = 0; i < n; i++) {
         if (inFooter[i]) continue
         const title = rowTitles[i]
         const slabel = `${fx.name} @${width} step "${title}"`
+        // Set when a decision made on this step moved it to the footer (In place), so the rows below it moved up one.
+        let decidedHere = false
         await send('Page.navigate', { url: `${fx.base}#/plan` })
         await sleep(300)
         await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
@@ -498,6 +505,7 @@ async function walkFixture(fx) {
               if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
               const applied = c ? await waitFor(`/Phones leave the compliant-device policy/.test((document.querySelector('main.page .step-body') || {}).innerText || '')`, 8000) : false
               if (c && !applied) add('P0', `${slabel}: the phones answer's effect line does not show after Save`)
+              decidedHere = applied
             }
           }
           if (/Require a Managed Device for Office 365/.test(title)) {
@@ -506,9 +514,9 @@ async function walkFixture(fx) {
             if (!week2 && /Device platforms/.test(bodyText)) add('P0', `${slabel}: a platform condition shows before the device decision`)
           }
           if (/MFA Registration Campaign/.test(title)) {
-            if (week2 && !/· phone: /.test(bodyText)) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
+            if (week2 && !/· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
             if (week2 && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
-            if (!week2 && /· phone: /.test(bodyText)) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
+            if (!week2 && /· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
           }
         }
         // A step body's counts are its own population (one population per step), checked against its row above.
@@ -544,6 +552,16 @@ async function walkFixture(fx) {
         for (const href of await evaluate(`[...document.querySelectorAll('main.page .step-body a[href^="http"]')].map((a) => a.href)`)) learnLinks.add(href)
         const overflowStep = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
         if (overflowStep > 0) add('P1', `${slabel}: the opened step overflows the viewport by ${overflowStep}px`)
+        if (decidedHere) {
+          // The decided step is In place and sits in the footer now; the rows below it moved up one. Re-read them and take this index again.
+          await sleep(300)
+          rowTitles = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
+          rowStatuses = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.status') || {}).textContent || '').trim())`)
+          rowWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.when') || {}).textContent || '').trim())`)
+          inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
+          n = rowTitles.length
+          i -= 1
+        }
       }
       // The footer groups, expanded.
       await send('Page.navigate', { url: `${fx.base}#/plan` })
@@ -594,11 +612,11 @@ async function walkFixture(fx) {
     if (!rowTitles.some((t) => /Decide How Devices Are Managed/.test(t))) add('P0', `${fx.name}: no Preparation row decides how devices are managed, although phones and unjoined computers sign in and the tenant holds Intune`)
     const reasonsOf = (titles, reasons, re) => titles.map((t, i) => (re.test(t) ? reasons[i] || '' : null)).filter((r) => r !== null)
     const DEVICE_STEPS = [/Require a Managed Device/, /Intune Enrollment/]
-    for (const [i, t] of rowTitles.entries()) if (/Decide How Devices Are Managed/.test(rowReasons[i] || '') && !DEVICE_STEPS.some((re) => re.test(t)) && !/App Protection/.test(t)) add('P0', `${fx.name}: "${t}" waits on the device decision; only the device steps do`)
+    for (const [i, t] of rowTitlesOpen.entries()) if (/Decide How Devices Are Managed/.test(rowReasonsOpen[i] || '') && !DEVICE_STEPS.some((re) => re.test(t)) && !/App Protection/.test(t)) add('P0', `${fx.name}: "${t}" waits on the device decision; only the device steps do`)
     if (fx.week2) {
       // The foundations are done on week two, so the wait on the decision is the binding reason a row shows.
       for (const re of DEVICE_STEPS) {
-        if (!reasonsOf(rowTitles, rowReasons, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
+        if (!reasonsOf(rowTitlesOpen, rowReasonsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
         if (reasonsOf(rowTitlesAfter, rowReasonsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
       }
     }
