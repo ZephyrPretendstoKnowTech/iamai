@@ -57,6 +57,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
     signature: ex && ex.signature !== undefined ? ex.signature : S.signatureDefault,
     policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, datesNew: S.datesNew, datesChange: S.datesChange,
     portalOpen: S.portalOpen, existingCoverage: S.existingCoverage ?? '', syncRoleNote: S.syncRoleNote ?? '', strengthName: (ex && ex.strengthName) ?? '',
+    certificatePrompt: S.certificatePrompt ?? '',
   }
   const subList = (_m: string, key: string): string => {
     const items = (ex as Record<string, unknown>)[key]
@@ -88,7 +89,7 @@ export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts',
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
 export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'adminGroups', 'strengths']
 
-const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName'])
+const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt'])
 
 /**
  * The variables a content line names that `ex` does not fill (walk-51 item 2). A
@@ -162,6 +163,8 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     portalOpen: S.portalOpen,
     existingCoverage: S.existingCoverage ?? '',
     syncRoleNote: S.syncRoleNote ?? '',
+    // The certificate-prompt note, said once for the plan and referenced by the steps whose policy carries a device condition (step-audit item 26).
+    certificatePrompt: S.certificatePrompt ?? '',
   }
   const defaults: Record<string, any> = {
     announce: 'Tue Sep 1',

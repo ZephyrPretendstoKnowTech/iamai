@@ -113,6 +113,27 @@ export const ACCEPTANCE = [
   { item: '19', step: 'block-legacy-auth', path: 'why', must: 'Legacy protocols skip MFA; this also moves everyone off the built-in phone mail apps (ActiveSync), even with modern sign-in.', mustNot: 'the door attackers try first' },
   { item: '19', step: 'block-legacy-auth', path: 'more.risks', must: 'The built-in Mail app on iPhone or Android stops syncing until Outlook is installed.', mustNot: 'by IMAP or ActiveSync stops syncing' },
   { item: '20', step: 'block-device-code', path: 'more.helpDesk', must: 'An admin using az login on a box with no browser: sign in from a browser on your own device; device code is off.' },
+  // Per step, 21–30.
+  { item: '21', step: 'block-auth-transfer', path: 'why', must: 'which is exactly what an attacker who gets someone to scan a code wants', mustNot: 'an attacker with a screenshot' },
+  { item: '22', step: 'geo-restriction', path: 'more.helpDesk', must: "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit.", mustNot: 'egress address to the trusted location' },
+  { item: '22', step: 'geo-restriction', path: 'more.helpDesk', must: "log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates" },
+  { item: '23', step: 'admin-session', path: 'comms.body', must: 'expire after {wantedLong} and never persist. If your admin account is also your everyday account, that applies to everything you do with it.', mustNot: 'will not stay signed in when you close the browser' },
+  { item: '23', step: 'admin-session', path: 'more.helpDesk', must: 'Prompts every few minutes: the browser is not signed in to a registered device; sign in to the device account.' },
+  { item: '24', step: 'unmanaged-browser', path: 'who.evidence', must: 'Policy A: Windows browsers on unmanaged devices.' },
+  { item: '24', step: 'unmanaged-browser', path: 'who.evidence', must: 'Policy B: other platforms outside the office.' },
+  { item: '25', step: 'require-managed-device', path: 'comms.body', must: 'Personal devices {personalDevicesClause}.', mustNot: 'can still use the browser with limits' },
+  { item: '26', step: 'block-unsupported-platforms', path: 'why', must: 'Linux, and any platform Entra cannot identify, is blocked; that is where the device rules leak.' },
+  { item: '26', step: 'block-unsupported-platforms', path: 'more.risks', must: '{certificatePrompt} This policy has one.', mustNot: 'this policy can prompt iOS and macOS users' },
+  { item: '27', step: 'mobile-app-protection', path: 'why', must: 'App protection needs Intune Plan 1 (in Business Premium, E3, E5).' },
+  { item: '27', step: 'mobile-app-protection', path: 'licence', must: 'Intune Plan 1' },
+  { item: '27', step: 'mobile-app-protection', path: 'comms.body', must: 'mail, files, Teams and any other app that uses your work account', mustNot: 'mail and files on your phone' },
+  { item: '28', step: 'azure-management-mfa', path: 'who.evidence', must: 'Microsoft enforces MFA for Azure sign-ins itself; this policy adds the exclusions-group discipline and covers the tools that rollout has not reached.' },
+  { item: '28', step: 'azure-management-mfa', path: 'who.evidence', must: 'Require MFA for Everyone already prompts here; this policy keeps Azure covered if that one is ever scoped down.' },
+  { item: '28', step: 'azure-management-mfa', path: 'comms.body', must: 'anything that manages Azure at {tenant}' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Devices → Device settings → Require Multifactor Authentication to register or join devices: No (this policy replaces it).' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Do not add device-state conditions to this policy; a first join has no device to check.' },
+  { item: '30', step: 'token-protection', path: 'more.risks', must: 'meeting-room devices (already outside this policy if Give Shared Devices Their Own Policy is done)' },
+  { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in, this is why.' },
 ]
 
 /** Every Learn URL the content carries (steps and cleanup rows), for the link check. */

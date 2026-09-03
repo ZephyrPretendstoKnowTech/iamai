@@ -34,6 +34,7 @@
     "reportOnlyLine": "Enable policy: Report-only → Create",
     "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Consolidate Overlapping Policies (Cleanup) retires the old ones once this one is enforced.",
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
+    "certificatePrompt": "In report-only, a policy with a device condition can prompt iOS and macOS users to pick a certificate from the day it is created.",
     "strengthName": "Modern MFA + TAP",
     "aaguids": {
       "Microsoft Authenticator for Android": "de1e552d-db1d-4423-a619-566b625cdc84",
@@ -105,6 +106,10 @@
         "globalAdmin": "Global Administrator",
         "excludedEverywhere": "excluded from every policy",
         "noLicence": "no licence"
+      },
+      "personalDevices": {
+        "browserLimited": "can still use the browser with the limits from Limit Unmanaged Devices in the Browser",
+        "blocked": "are blocked"
       },
       "carveOuts": {
         "mailDevices": {
@@ -2396,7 +2401,7 @@
       "kind": "policy",
       "title": "Block Authentication Transfer",
       "changeLine": null,
-      "why": "Authentication transfer moves a session to a second device without a new sign-in, which is exactly what an attacker with a screenshot wants.",
+      "why": "Authentication transfer moves a session to a second device without a new sign-in, which is exactly what an attacker who gets someone to scan a code wants.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },
@@ -2511,8 +2516,8 @@
           }
         ],
         "helpDesk": [
-          "Travel: log the trip and add the country to the allowed list for its dates; never a user exclusion.",
-          "VPN exit abroad: add the VPN's egress address to the trusted location."
+          "Travel: log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates; never a user exclusion.",
+          "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit."
         ],
         "manager": "Sign-ins from places the business does not operate in are blocked. Without this, a stolen password works from anywhere in the world.",
         "waits": null
@@ -2577,7 +2582,7 @@
       "comms": {
         "audience": "admins",
         "salutation": "Admins,",
-        "body": "From {enforceLong}, admin sessions at {tenant} expire after {wantedLong} and will not stay signed in when you close the browser. Expect to sign in again more often on admin portals; nothing changes for everyday work.",
+        "body": "From {enforceLong}, admin sessions at {tenant} expire after {wantedLong} and never persist. If your admin account is also your everyday account, that applies to everything you do with it. Expect to sign in again more often on admin portals.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -2595,7 +2600,8 @@
           }
         ],
         "helpDesk": [
-          "Prompts every few hours in admin portals are deliberate; if it is every few minutes, check the device clock and compliance."
+          "Prompts every few hours in admin portals are deliberate.",
+          "Prompts every few minutes: the browser is not signed in to a registered device; sign in to the device account."
         ],
         "manager": "Admin sessions expire after {wanted} and never persist, so a stolen admin session cannot be used for long. Without this, one unlocked screen stays usable for a week.",
         "waits": null
@@ -2668,6 +2674,8 @@
         "evidence": [
           "{n} people signed in from a device Entra does not manage since {from}; they will see the limited experience from {enforce}: {list:unmanagedUsers}",
           "{n} people signed in only from managed devices and notice nothing.",
+          "Policy A: Windows browsers on unmanaged devices.",
+          "Policy B: other platforms outside the office.",
           "{existingCoverage}"
         ]
       },
@@ -2773,7 +2781,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, {tenant} mail, files and Teams open only on a company-managed device. Sign in to your work computer with your work account this week so we can confirm it is set up. Personal devices can still use the browser with limits.",
+        "body": "From {enforceLong}, {tenant} mail, files and Teams open only on a company-managed device. Sign in to your work computer with your work account this week so we can confirm it is set up. Personal devices {personalDevicesClause}.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -2823,6 +2831,7 @@
         "policyName": "Core - Require - Compliant device for Office 365",
         "enforce": "Tue Sep 22",
         "enforceLong": "Tuesday, September 22",
+        "personalDevicesClause": "can still use the browser with the limits from Limit Unmanaged Devices in the Browser",
         "signature": "IT",
         "existingPolicies": [],
         "from": "Aug 1"
@@ -2846,7 +2855,7 @@
       "kind": "policy",
       "title": "Block Unsupported Device Platforms",
       "changeLine": null,
-      "why": "A platform Entra cannot identify is one it cannot check, and that is where the device rules leak.",
+      "why": "Linux, and any platform Entra cannot identify, is blocked; that is where the device rules leak.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions"
       },
@@ -2875,7 +2884,7 @@
             "applies": "always"
           },
           {
-            "text": "In report-only, this policy can prompt iOS and macOS users to pick a certificate from the day it is created.",
+            "text": "{certificatePrompt} This policy has one.",
             "applies": "always"
           }
         ],
@@ -2911,9 +2920,10 @@
     {
       "id": "mobile-app-protection",
       "kind": "policy",
+      "licence": "Intune Plan 1",
       "title": "Require App Protection on Phones",
       "changeLine": null,
-      "why": "A protected app keeps company data inside the app and can wipe it without touching the phone; any other app can copy it anywhere.",
+      "why": "A protected app keeps company data inside the app and can wipe it without touching the phone; any other app can copy it anywhere. App protection needs Intune Plan 1 (in Business Premium, E3, E5).",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-approved-app-or-app-protection"
       },
@@ -2934,7 +2944,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, {tenant} mail and files on your phone open in the Microsoft apps (Outlook, Teams, OneDrive, Edge). If you use the built-in mail app, switch to Outlook this week; your personal mail can stay where it is. Reply here if you need a hand.",
+        "body": "From {enforceLong}, {tenant} mail, files, Teams and any other app that uses your work account on your phone open in the Microsoft apps (Outlook, Teams, OneDrive, Edge). If you use the built-in mail app, switch to Outlook this week; your personal mail can stay where it is. Reply here if you need a hand.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -3000,6 +3010,8 @@
         "evidence": [
           "{n} people used Azure management since {from}: {list:azureUsers}",
           "{n} sign-ins by scripts or service accounts: the service-accounts group carries them, or move them to a managed identity.",
+          "Microsoft enforces MFA for Azure sign-ins itself; this policy adds the exclusions-group discipline and covers the tools that rollout has not reached.",
+          "Require MFA for Everyone already prompts here; this policy keeps Azure covered if that one is ever scoped down.",
           "{existingCoverage}"
         ]
       },
@@ -3009,7 +3021,12 @@
         "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
-      "comms": null,
+      "comms": {
+        "audience": "affected",
+        "salutation": "Hello,",
+        "body": "From {enforceLong}, anything that manages Azure at {tenant} (the portal, the CLI, PowerShell) asks for MFA. If you already confirm with Authenticator or a passkey, nothing changes; a script that signs in as you needs a service principal or a managed identity before then.",
+        "signature": "{signature}"
+      },
       "doesntApply": true,
       "skip": true,
       "scanControl": true,
@@ -3035,6 +3052,8 @@
         ],
         "serviceAccountsGroup": "Core - Exception - Service accounts",
         "policyName": "Core - Require - Azure management",
+        "enforceLong": "Tuesday, September 15",
+        "signature": "IT",
         "existingPolicies": [],
         "from": "Aug 1"
       },
@@ -3103,11 +3122,13 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
+          "Entra admin center → Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices: No (this policy replaces it).",
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → User actions → Register or join devices",
           "Grant → Require authentication strength: Multifactor authentication",
+          "Do not add device-state conditions to this policy; a first join has no device to check.",
           "{reportOnlyLine}"
         ]
       }
@@ -3138,7 +3159,7 @@
       "comms": {
         "audience": "affected",
         "salutation": "Hi {firstName},",
-        "body": "From {enforceLong}, Outlook, Teams and OneDrive on your Windows computer need the computer to be registered with {tenant}. Settings → Accounts → Access work or school → Connect, sign in with your work account, and you are done. Reply here if it asks anything you are not sure about.",
+        "body": "From {enforceLong}, Outlook, Teams and OneDrive on your Windows computer need the computer to be registered with {tenant}. Settings → Accounts → Access work or school → Connect, sign in with your work account, and you are done. Reply here if it asks anything you are not sure about. If Outlook keeps asking you to sign in, this is why.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -3147,7 +3168,7 @@
       "more": {
         "risks": [
           {
-            "text": "Clients that cannot do token protection are blocked rather than downgraded: PowerShell against SharePoint, perpetual Office, and meeting-room devices.",
+            "text": "Clients that cannot do token protection are blocked rather than downgraded: PowerShell against SharePoint, perpetual Office, and meeting-room devices (already outside this policy if Give Shared Devices Their Own Policy is done).",
             "applies": "always"
           },
           {
