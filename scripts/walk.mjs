@@ -273,6 +273,11 @@ const holeIn = (text) => text.replace(/\/\{id\}/g, '/').match(HOLE)
 // comma, "from ·" — the shapes a missing date or name leaves. A lead's colon is
 // content (its list or none-branch follows), so it is not one.
 const EMPTY_VALUE = /(·\s*·)|(\(\s*\))|(,\s*,)|(\bfrom\s+until\b)|(\bfrom\s*·)|(·\s*$)|(^\s*·)/m
+// A variable the engine does not fill renders as nothing, and the sentence
+// around it closes on a preposition or an article: "From , signing in", "over
+// the next days", "Personal devices ." (the campaign email read "over the next
+// days." when its window became a variable the engine did not yet fill).
+const EMPTIED_VALUE = /\b(From|from|the next|after|by|before|on|until|within) (,|\.|days\b|hours\b)|\s\.(\s|$)/
 
 const matchesAllow = (item, allow) => (allow ?? []).some((a) => (a.startsWith('re:') ? new RegExp(a.slice(3)).test(item) : a === item))
 
@@ -320,6 +325,8 @@ function checkText(label, text, { emails = false } = {}) {
   if (hole) add('P0', `${label}: unfilled variable ${hole[0]} in the rendered text`)
   const ev = text.match(EMPTY_VALUE)
   if (ev) add('P0', `${label}: an empty value in the rendered text ("${ev[0].trim().slice(0, 30)}")`)
+  const em = text.match(EMPTIED_VALUE)
+  if (em) add('P0', `${label}: a variable rendered as nothing ("${em[0].trim().slice(0, 30)}")`)
   for (const p of FORBIDDEN_PHRASES) if (text.includes(p)) add('P0', `${label}: forbidden phrase "${p}"`)
   if (!emails && LONG_DATE.test(text)) add('P1', `${label}: the long date form "${text.match(LONG_DATE)[0]}" outside an email`)
   if (ODD_SHORT_DATE.test(text)) add('P1', `${label}: a second date format "${text.match(ODD_SHORT_DATE)[0]}" beside the short form`)
