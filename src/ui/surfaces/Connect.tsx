@@ -282,7 +282,7 @@ function SignedIn({
       )}
       {gapped && (
         <>
-          <p className="line">{C.gapsLine}</p>
+          <p className="line">{fillText(C.gapsLine, { covering: READ_EVERYTHING_ROLE })}</p>
           <div className="found">
             {runner.gaps.map((g) => (
               <div className="frow" key={g.source}>
@@ -290,7 +290,6 @@ function SignedIn({
               </div>
             ))}
           </div>
-          <p className="reason">{fillText(C.gapsCovering, { covering: READ_EVERYTHING_ROLE })}</p>
           {lastScan && <p className="reason">{fillText(C.gapsKept, { date: absoluteDate(lastScan.at) })}</p>}
           <p className="actions">
             <Button variant="primary" onClick={() => void runner.start()}>
