@@ -2010,7 +2010,7 @@
         "evidence": [
           "{list:guestsWithState}",
           "{n} service-provider accounts from {partners} partner tenants signed in since {from}; an IT partner is cut off by a policy aimed at external users unless the Service provider type is excluded.",
-          "Until Microsoft's B2B passkey rollout lands (from October 2026), a guest cannot register a passkey in {tenant}; a phishing-resistant requirement on guests works only for partner tenants whose MFA you trust. The baseline's partner tier is offered below for that case.",
+          "A guest cannot register a passkey in {tenant} today; a phishing-resistant requirement on guests works only for partner tenants whose MFA you trust. The baseline's partner tier is offered below for that case.",
           "{existingCoverage}"
         ]
       },
@@ -2061,13 +2061,13 @@
             "applies": "serviceProvidersInScope"
           },
           {
-            "text": "Policy B on a partner whose MFA is not trusted locks that partner out entirely until October 2026 at the earliest.",
+            "text": "Policy B on a partner whose MFA is not trusted locks that partner out entirely: their people cannot register a passkey here.",
             "applies": "partnerTierChosen"
           }
         ],
         "helpDesk": [
           "A guest who cannot register: trust their home tenant's MFA under Cross-tenant access settings → Inbound → Trust settings, or have them register from their own tenant.",
-          "A partner blocked by Policy B: confirm MFA trust is on for their tenant; if they have no passkey, move them to Policy A until October 2026."
+          "A partner blocked by Policy B: confirm MFA trust is on for their tenant; if they have no passkey, move them to Policy A."
         ],
         "manager": "Outside people you share with prove who they are, the same as staff. Without this, a partner's stolen password is a way into your files.",
         "waits": null
@@ -2942,7 +2942,7 @@
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
           "Conditions → Device platforms → Include: Android, iOS",
-          "Grant → Require app protection policy. Do not use Require approved client app: Microsoft retired it on June 30, 2026.",
+          "Grant → Require app protection policy. Do not use Require approved client app: Microsoft has retired it.",
           "{reportOnlyLine}"
         ]
       }
@@ -3112,7 +3112,7 @@
             "applies": "always"
           },
           {
-            "text": "Browsers are covered only in preview; this policy is for desktop apps.",
+            "text": "This policy is for desktop apps; a browser session is outside it.",
             "applies": "always"
           }
         ],
