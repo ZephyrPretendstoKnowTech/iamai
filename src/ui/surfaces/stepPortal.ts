@@ -119,15 +119,35 @@ function contextFor(p: PinnedPolicy, names: PortalNames): PortalContext {
  * policy sets none (walk of f3d140b: the manager note read "expire after and").
  */
 export function sessionWantedForGoal(goalId: string): string | null {
+  const hours = sessionWantedHoursForGoal(goalId)
+  return hours === null ? null : hoursInWords(hours)
+}
+
+/** The sign-in frequency the goal's baseline policy wants, in hours; null when the mapped policy sets none. */
+function sessionWantedHoursForGoal(goalId: string): number | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
   for (const p of mapped) {
     const sc = (p.sessionControls ?? null) as { signInFrequency?: { isEnabled?: boolean; value?: number; type?: string } } | null
     const f = sc?.signInFrequency
     if (!f || f.isEnabled === false || typeof f.value !== 'number') continue
-    const hours = /^day/i.test(String(f.type ?? '')) ? f.value * 24 : f.value
-    return hoursInWords(hours)
+    return /^day/i.test(String(f.type ?? '')) ? f.value * 24 : f.value
   }
   return null
+}
+
+/**
+ * The same frequency as a duration an email can say "expire after": "4 hours",
+ * "a day", "a week" ({wantedLong} on the admin-sessions email; "expire after
+ * weekly" is not a sentence). Null when the mapped policy sets none.
+ */
+export function sessionWantedLongForGoal(goalId: string): string | null {
+  const hours = sessionWantedHoursForGoal(goalId)
+  if (hours === null) return null
+  if (hours === 1) return 'an hour'
+  if (hours < 24) return `${hours} hours`
+  if (hours === 24) return 'a day'
+  if (hours === 168) return 'a week'
+  return hours % 24 === 0 ? `${hours / 24} days` : `${hours} hours`
 }
 
 /** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
