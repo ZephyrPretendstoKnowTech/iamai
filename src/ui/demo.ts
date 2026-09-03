@@ -13,6 +13,7 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
+import { planIdFor } from '../roadmap/generate.ts'
 
 /**
  * The tenant id demo mode uses.
@@ -74,7 +75,14 @@ function shiftDates<T>(value: T, offsetMs: number): T {
 export function demoTenant(week2 = false): DemoTenant {
   const f = fixture(week2 ? 'demo-week2' : 'demo')
   const offset = Date.now() - Date.parse(f.snapshot.asOf)
-  const snapshot = shiftDates({ ...f.snapshot, tenantId: DEMO_TENANT_ID }, offset)
+  // The policies the plan created carry the plan's tag (generate.ts). The app's
+  // plan id follows planIdFor over the tenant id, and the tenant id is rewritten
+  // here, so the tags are rewritten with it; otherwise week two's report-only
+  // policies never match their steps on screen.
+  const retag = (v: unknown): unknown => (typeof v === 'string' ? v.replaceAll(`[IAMAI:${f.planId}:`, `[IAMAI:${planIdFor(DEMO_TENANT_ID)}:`) : v)
+  const caPolicies = f.snapshot.config.caPolicies
+  const rows = (caPolicies?.rows ?? []).map((p) => ({ ...(p as Record<string, unknown>), description: retag((p as { description?: unknown }).description) }))
+  const snapshot = shiftDates({ ...f.snapshot, tenantId: DEMO_TENANT_ID, config: { ...f.snapshot.config, caPolicies: { ...caPolicies, rows } } }, offset)
   const mapping = { ...f.mapping, tenantId: DEMO_TENANT_ID }
   // The group members carry no dates, so they travel unshifted; they are what
   // lets coverage resolve each policy's exclusions (prompt 50.1 item 5).

@@ -8,7 +8,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { stepIdForGoal } from '../../roadmap/generate.ts'
+import { stepIdForGoal, findTaggedPolicy, planIdFor } from '../../roadmap/generate.ts'
+import { DEMO_TENANT_ID, demoTenant } from '../demo.ts'
 import { applyProgress } from '../../roadmap/progress.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { reportOnlySeenOf } from '../../roadmap/tracking.ts'
@@ -91,4 +92,19 @@ test('rescan: a policy still in report-only past its date stays Report-only and 
   assert.equal(statusOf(step).word, 'Report-only')
   assert.equal(rowWhen(step), `ready since ${absoluteDate(step.tracking!.readyOn!)}`)
   assert.equal(step.history.at(-1)?.note, `ready since ${absoluteDate(step.tracking!.readyOn!)}`)
+})
+
+test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (ready now / ready <date>) and the admins policy reads Enforced', () => {
+  const f = fixture('demo-week2')
+  const d = demoTenant(true)
+  const planId = planIdFor(DEMO_TENANT_ID)
+  assert.ok(findTaggedPolicy(d.snapshot, planId, TOKEN), 'the token protection policy carries the app\'s plan tag')
+  const run = runFixture({ ...f, snapshot: d.snapshot, mapping: d.mapping, planId })
+  const token = run.steps.find((s) => s.id === TOKEN)!
+  assert.equal(statusOf(token).word, 'Report-only')
+  assert.equal(rowWhen(token), 'ready now')
+  const transfer = run.steps.find((s) => s.id === TRANSFER)!
+  assert.equal(statusOf(transfer).word, 'Report-only')
+  assert.match(rowWhen(transfer), /^ready \S.*\d{4}$/)
+  assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'Enforced')
 })
