@@ -1,6 +1,8 @@
 // Connect's four tiles (docs/design/connect-mockup.html) as strings and button
-// weights: the account, the baseline, what happens next, and the scan in exactly
-// one of its states. Pure, so each tile and each state renders in a test;
+// weights, in both states: signed out (the sign-in tile with its consent rows
+// and its three error states, the sample tenant's facts) and signed in (the
+// account, the scan in exactly one of its states); the baseline and what
+// happens next in both. Pure, so each tile and each state renders in a test;
 // Connect.tsx draws from it. Global Reader is the only role IAMAI names.
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -9,12 +11,32 @@ import { list, lowerFirst } from '../../copy/statements.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
 import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import type { SignInError } from '../../graph/authError.ts'
+import type { DemoFacts } from '../demoFacts.ts'
 
 type Words = {
   h1: string
+  intro: string
+  signIn: {
+    title: string
+    state: string
+    signIn: string
+    demo: string
+    workAccount: string
+    permissionsSummary: string
+    consentLead: string
+    consent: { scope: string; name: string; reads: string }[]
+    removal: string
+    errors: {
+      consent: { state: string; lead: string; thisTenant: string }
+      personal: { state: string; lead: string; thatAccount: string }
+      cancelled: { state: string }
+      failed: { state: string; lead: string }
+    }
+  }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string }
   baseline: { title: string; state: string; loading: string; none: string; what: string; goal: string; updated: string; diff: { added: string; removed: string; changed: string }; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
-  next: { title: string; reads: string; readsLine: string; compares: string; comparesLine: string; writes: string; writesLine: string; readOnly: string; limitsSummary: string; limits: string[]; limitsMore: string; limitsLink: string }
+  next: { title: string; reads: string; readsLine: string; compares: string; comparesLine: string; writes: string; writesLine: string; readOnly: string; limitsSummary: string; limits: string[]; limitsMore: string; limitsLink: string; yourTenant: string }
   scan: {
     title: string
     complete: { state: string; people: string; policies: string; signIns: string; window: string; notRead: string; licence: string; licences: { p2: string; p1: string; free: string }; open: string; again: string }
@@ -22,6 +44,7 @@ type Words = {
     role: { state: string; lead: string; row: string; ask: string }
     ready: { state: string; note: string; start: string }
     scanning: { state: string; stop: string }
+    sample: { state: string; lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksValue: string; weeksOne: string }
   }
 }
 export const W = pages.connect as unknown as Words
@@ -36,6 +59,36 @@ export type Tone = 'done' | 'wait' | 'stop' | null
 const sectionLabel = (source: string): string => SECTIONS[source] ?? source
 /** A section label mid-sentence: "Conditional Access policies" keeps its capitals, "People" becomes "people". */
 const midSentence = (label: string): string => (/^[A-Z][a-z]+ [A-Z]/.test(label) ? label : lowerFirst(label))
+
+// ---- 1 Sign in (signed out) ----
+export type SignInTile = {
+  n: 1
+  title: string
+  state: string
+  tone: Tone
+  /** The error state's paragraph; it replaces the Global Reader line. */
+  lead: string | null
+  note: string | null
+  actions: Action[]
+  permissions: { summary: string; lead: string; rows: { scope: string; name: string; reads: string }[]; removal: string }
+}
+export function signInTile({ error }: { error: SignInError | null }): SignInTile {
+  const S = W.signIn
+  const signIn: Action = { label: S.signIn, weight: 'primary' }
+  const demo: Action = { label: S.demo, weight: 'secondary' }
+  const base = { n: 1 as const, title: S.title, permissions: { summary: S.permissionsSummary, lead: fillText(S.consentLead, { n: S.consent.length }), rows: S.consent, removal: S.removal } }
+  if (!error) return { ...base, state: S.state, tone: null, lead: null, note: W.account.note, actions: [signIn, demo] }
+  switch (error.kind) {
+    case 'consent':
+      return { ...base, state: S.errors.consent.state, tone: 'wait', lead: fillText(S.errors.consent.lead, { domain: error.domain ?? S.errors.consent.thisTenant }), note: null, actions: [signIn, demo] }
+    case 'personal':
+      return { ...base, state: S.errors.personal.state, tone: 'stop', lead: fillText(S.errors.personal.lead, { account: error.account ?? S.errors.personal.thatAccount }), note: null, actions: [{ label: S.workAccount, weight: 'primary' }, demo] }
+    case 'cancelled':
+      return { ...base, state: S.errors.cancelled.state, tone: null, lead: null, note: null, actions: [signIn, demo] }
+    case 'failed':
+      return { ...base, state: S.errors.failed.state, tone: 'stop', lead: fillText(S.errors.failed.lead, { message: error.message }), note: null, actions: [signIn, demo] }
+  }
+}
 
 // ---- 1 Signed in ----
 export type AccountTile = { n: 1; title: string; state: string; tone: Tone; line: string; note: string; actions: Action[] }
@@ -103,7 +156,7 @@ export type ScanInput =
   | { kind: 'ready' }
 export type ScanTile = {
   n: 4
-  kind: ScanInput['kind']
+  kind: ScanInput['kind'] | 'sample'
   title: string
   state: string
   tone: Tone
@@ -183,24 +236,47 @@ export function scanTile(input: ScanInput): ScanTile {
   }
 }
 
+/** Tile 4 before sign-in: what the sample tenant produced, computed from the demo fixture (demoFacts.ts); the facts wait for it. */
+export function sampleScanTile(facts: DemoFacts | null): ScanTile {
+  const S = W.scan.sample
+  return {
+    n: 4,
+    kind: 'sample',
+    title: W.scan.title,
+    state: S.state,
+    tone: null,
+    lead: S.lead,
+    facts: facts
+      ? [
+          { value: String(facts.people), label: S.people },
+          { value: String(facts.steps), label: S.steps },
+          { value: String(facts.inPlace), label: S.inPlace },
+          { value: fillText(facts.weeks === 1 ? S.weeksOne : S.weeksValue, { n: facts.weeks }), label: S.weeks },
+        ]
+      : undefined,
+    actions: [{ label: W.signIn.demo, weight: 'secondary' }],
+  }
+}
+
 /** Every string a tile renders, in order, for the tests that keep the states apart. */
-export function tileStrings(tile: AccountTile | BaselineTile | NextTile | ScanTile): string[] {
+export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | NextTile | ScanTile): string[] {
   const out: string[] = [tile.title]
-  if ('state' in tile) out.push(tile.state)
-  if ('line' in tile) out.push(tile.line, tile.note)
+  if ('state' in tile && tile.state) out.push(tile.state)
+  if ('line' in tile) out.push(tile.line)
+  if ('lead' in tile && tile.lead) out.push(tile.lead)
+  if ('note' in tile && tile.note) out.push(tile.note)
   if ('paragraphs' in tile) {
     out.push(...tile.paragraphs)
     if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, r.step]))
   }
   if ('beats' in tile) out.push(...tile.beats.flatMap((b) => [b.label, b.text]), tile.readOnly, tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
   if ('kind' in tile) {
-    if (tile.lead) out.push(tile.lead)
     for (const f of tile.facts ?? []) out.push(f.value, f.label)
     for (const r of tile.rows ?? []) out.push(r.name, r.value)
     if (tile.ask) out.push(tile.ask)
     if (tile.learn) out.push(tile.learn.label)
-    if (tile.note) out.push(tile.note)
   }
+  if ('permissions' in tile) out.push(tile.permissions.summary, tile.permissions.lead, ...tile.permissions.rows.flatMap((r) => [r.name, r.reads]), tile.permissions.removal)
   if ('actions' in tile) out.push(...tile.actions.map((a) => a.label))
   return out
 }

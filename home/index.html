@@ -47,6 +47,16 @@
           <p class="tool-name"><a href="/{{TOOL_PATH}}/#/connect">IAMAI Planner</a> <span class="pill">Preview</span></p>
           <p class="descriptor">Conditional Access rollout planner</p>
           <p class="tool-desc">Reads the tenant's configuration and all the available sign-in evidence, compares it with a published baseline, and writes a dated plan: report-only before enforced, readiness before either, nobody locked out. Every step carries the portal clicks, the policy JSON, and the communications to send, timed to keep your people in the loop. Ships with Microsoft MVP Jon Hope's Defense in Depth baseline today; more baselines are coming, including the ability to load your own.</p>
+          <p class="tool-sub">Built for</p>
+          <p class="tool-desc">The person doing security at a small MSP or a small business, on their own, who has to get this done in a few weeks.</p>
+          <p class="tool-sub">What it catches</p>
+          <ul class="tool-list">
+            <li>An admin whose only sign-in method is a text message, about to be required to use a passkey.</li>
+            <li>An emergency access account inside the policy it exists to survive.</li>
+            <li>A country rule that blocks the person who wrote it.</li>
+            <li>A service account that a legacy-authentication block stops at 2 a.m.</li>
+            <li>A meeting-room device that a session rule signs out every hour.</li>
+          </ul>
           <p class="tool-actions">
             <a class="tool-open" href="/{{TOOL_PATH}}/#/connect">Open the planner</a>
             <a class="tool-demo" href="/{{TOOL_PATH}}/?demo=1#/plan">See it with sample data</a>
@@ -65,7 +75,6 @@
       <p class="links">
         <a href="https://www.linkedin.com/in/lachlanrobinette/">LinkedIn</a>
         <a href="https://github.com/ZephyrPretendstoKnowTech">GitHub</a>
-        <a href="mailto:feedback@getiamai.com">feedback@getiamai.com</a>
       </p>
     </main>
 

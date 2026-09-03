@@ -37,12 +37,12 @@ export function laneOf(runner: ScanRunner): { lane: string; percent: number | nu
   return { lane, percent: onSignIns && finished >= total ? null : percent }
 }
 
-/** The bar, and the pause and slow notices; the tile carries the line and Stop. */
+/** The bar, and the pause and slow notices; the tile carries the one line (the lane · elapsed) and Stop, so the bar has no caption. */
 export function ScanBar({ runner }: { runner: ScanRunner }) {
   const { lane, percent } = laneOf(runner)
   return (
     <>
-      <ProgressBar percent={percent} caption={lane} />
+      <ProgressBar percent={percent} label={lane} />
       {runner.state === 'paused' && (
         <Callout kind="warning">
           {CONNECT.paused}{' '}

@@ -1,5 +1,7 @@
-// Determinate (0–100) or indeterminate progress with a caption line.
-export function ProgressBar({ percent, caption }: { percent: number | null; caption?: string }) {
+// Determinate (0–100) or indeterminate progress. The caption is optional: the
+// Scan tile carries the line itself (docs/design/connect-mockup.html), so it
+// passes the lane as the bar's label only, never as a second line.
+export function ProgressBar({ percent, caption, label }: { percent: number | null; caption?: string; label?: string }) {
   const indeterminate = percent === null
   return (
     <div className={`progress ${indeterminate ? 'progress-indeterminate' : ''}`}>
@@ -9,7 +11,7 @@ export function ProgressBar({ percent, caption }: { percent: number | null; capt
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={indeterminate ? undefined : Math.round(percent)}
-        aria-label={caption}
+        aria-label={label ?? caption}
       >
         <div className="progress-fill" style={indeterminate ? undefined : { width: `${Math.max(0, Math.min(100, percent))}%` }} />
       </div>
