@@ -598,6 +598,16 @@ async function walkFixture(fx) {
           if (/^Shorten Admin Sessions$/.test(title)) {
             if (!/expire after (\d+ hours|an hour|a day|a week|\d+ days) and never persist/.test(emailText)) add('P0', `${slabel}: the admin email does not say how long sessions last (expire after {wantedLong})`)
           }
+          // One definition of enough (E7): the campaign email dates the MFA
+          // enforcement day and the window; the managed-device email says what a
+          // personal device can still do; step 12 asks for a passkey or a key.
+          if (/MFA Registration Campaign/.test(title)) {
+            if (!/over the next \d+ days/.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
+            if (!/^From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, signing in/m.test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
+            if (!/passkey or a hardware security key/.test(bodyText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
+          }
+          if (/Require a Managed Device/.test(title) && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
+          if (/^Register Your Own Passkey$/.test(title) && !/or a hardware security key/.test(bodyText)) add('P0', `${slabel}: step 12 asks for a key and a passkey; either is enough`)
           if (/MFA Registration Campaign/.test(title)) {
             if (week2 && !/· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
             if (week2 && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
