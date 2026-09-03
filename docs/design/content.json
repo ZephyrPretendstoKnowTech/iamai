@@ -555,11 +555,10 @@
         "signInAgain": "Sign in again",
         "details": "Scan details",
         "diagnostics": "Download diagnostics (redacted)",
-        "gapsLine": "Scan finished with gaps · no plan built",
+        "gapsLine": "Scan finished with gaps · no plan built · {covering} reads every section",
         "gapsRow": "{section}: {reason} · ask for {roles}",
         "gapsNotRead": "not read",
-        "gapsCovering": "{covering} reads every section IAMAI needs and writes nothing.",
-        "gapsKept": "The plan from the {date} scan and its record are unchanged.",
+        "gapsKept": "The {date} plan and its record are unchanged.",
         "roleGap": "{upn} holds none of the roles that read {sections}. Ask for {roles}; {covering} reads everything IAMAI needs and writes nothing. The scan has not started."
       },
       "plan": {
