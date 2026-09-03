@@ -85,7 +85,8 @@ export type Floor = { grant?: GrantFloor; session?: SessionFloor }
 
 export type Signature = Record<string, unknown>
 
-export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' }
+/** `serviceAccounts`: the confirmed service accounts (the mapping's), which the caller supplies; the directory alone cannot name them. */
+export type PopulationSpec = { kind: 'all' | 'members' | 'guests' | 'coreAdmins' | 'workload' | 'serviceAccounts' }
 
 export type Implementation = {
   tier: 'free' | 'p1' | 'p2' | 'intune' | 'workloadId' | 'gsa' | 'mcas'

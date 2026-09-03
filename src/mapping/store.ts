@@ -29,5 +29,6 @@ export function toCoverageMapping(state: MappingState, snapshot: TenantSnapshot)
     breakGlassUsers,
     exclusionGroups,
     confirmed: answersComplete(snapshot, state),
+    serviceAccountUsers: [...state.serviceAccountUserIds],
   }
 }

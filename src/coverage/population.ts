@@ -48,6 +48,8 @@ export function resolvePopulation(
       break
     case 'workload':
       break // not user-based; scored structurally
+    case 'serviceAccounts':
+      break // the mapping's confirmed service accounts; the caller supplies them (coverage.ts, generate.ts)
   }
   return { ids, estimated: false, unresolvedGroups: [] }
 }

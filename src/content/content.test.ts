@@ -77,7 +77,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[20].who.evidence[1]',
   '.steps[21].who.evidence[0]',
   '.steps[22].who.evidence[0]',
-  '.steps[25].who.evidence[2]',
+  // The countries block's usage line and its partner line (E9): the example lists nobody outside and no partner.
+  '.steps[25].who.evidence[0]',
+  '.steps[25].who.evidence[1]',
   // Eligible admins with no passkey or key yet (step-audit item 33); the example lists none.
   '.steps[36].who.evidence[0]',
   '.steps[37].who.evidence[0]',
@@ -85,6 +87,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[39].who.evidence[0]',
   '.steps[40].who.evidence[1]',
   '.steps[41].who.evidence[1]',
+  // The service-accounts block's none line (E9); the example has service accounts.
+  '.steps[43].who.none',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52

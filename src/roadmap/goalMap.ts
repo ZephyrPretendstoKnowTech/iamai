@@ -36,6 +36,7 @@ export function policiesForGoal<T extends { id?: string | null; displayName: str
 
 /** Build the map for an uploaded baseline (no stored map), with the pin-time rule. */
 export function goalMapFor(policies: CaPolicy[], strengths: StrengthLookup): GoalMapResult {
-  const forMap: PolicyForMap[] = policies.map((p) => ({ id: p.id ?? p.displayName, name: p.displayName, facts: policyFacts(p, strengths) }))
+  // A pinned policy carries the pin's tokens for the author's objects (which group is the service-accounts group); an upload carries none.
+  const forMap: PolicyForMap[] = policies.map((p) => ({ id: p.id ?? p.displayName, name: p.displayName, facts: policyFacts(p, strengths), placeholders: (p as { placeholders?: Record<string, string> }).placeholders }))
   return mapGoalsToPolicies(forMap)
 }

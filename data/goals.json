@@ -2094,6 +2094,85 @@
         "5.2",
         "6.3"
       ]
+    },
+    {
+      "id": "service-accounts-trusted-network",
+      "name": "Service accounts restricted to the trusted network",
+      "shortName": "Service accounts outside the trusted network",
+      "description": "Accounts no person signs in with can sign in only from the trusted network.",
+      "phase": 2,
+      "domain": "Legacy access",
+      "securityValue": 3,
+      "baseEffort": 1,
+      "applicability": null,
+      "implementations": [
+        {
+          "tier": "p1",
+          "kind": "ca",
+          "signature": {
+            "locationsPresent": true,
+            "grantBlock": true,
+            "appsAll": true,
+            "clientAppsAll": true,
+            "noFlows": true,
+            "noRisk": true
+          },
+          "expectedWho": {
+            "kind": "serviceAccounts"
+          },
+          "expectedApps": "all",
+          "floor": {
+            "grant": "block"
+          },
+          "allowedExclusions": [
+            "breakGlass",
+            "globalExclusion"
+          ],
+          "template": {
+            "displayName": "{namePrefix} - Block - Service accounts outside the trusted network",
+            "conditions": {
+              "users": {
+                "includeGroups": [
+                  "{serviceAccountsGroup}"
+                ],
+                "excludeUsers": [
+                  "{breakGlass}"
+                ],
+                "excludeGroups": [
+                  "{exclusionsGroup}"
+                ]
+              },
+              "applications": {
+                "includeApplications": [
+                  "All"
+                ]
+              },
+              "clientAppTypes": [
+                "all"
+              ],
+              "locations": {
+                "includeLocations": [
+                  "All"
+                ],
+                "excludeLocations": [
+                  "{trustedLocations}"
+                ]
+              }
+            },
+            "grantControls": {
+              "operator": "OR",
+              "builtInControls": [
+                "block"
+              ]
+            },
+            "sessionControls": null
+          }
+        }
+      ],
+      "free": [],
+      "learnUrl": "https://learn.microsoft.com/entra/architecture/secure-service-accounts",
+      "tldr": "The accounts every other policy leaves out are pinned to the office network, where a stolen password is useless from anywhere else.",
+      "cis": []
     }
   ]
 }

@@ -30,6 +30,9 @@ import { readyWhen } from '../../derive/readyWhen.ts'
 import { engine, shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
+import { nobodyAffected } from '../../roadmap/timing.ts'
+import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
+import { proposedObjectNames } from '../../coverage/naming.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -170,6 +173,12 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   if (wanted) v.wanted = wanted
   const wantedLong = sessionWantedLongForGoal(step.goalId)
   if (wantedLong) v.wantedLong = wantedLong
+
+  // Nobody affected (timing.ts, the one definition): the records show nobody
+  // using what this step blocks, so the manager's "nobody here used it" clause
+  // applies (E9); and the service-accounts group the service-accounts block names.
+  if (nobodyAffected(step)) v.nobodyAffected = true
+  if (step.goalId === SERVICE_ACCOUNTS_TRUSTED_GOAL) v.serviceAccountsGroup = ctx.mapping.serviceAccountsGroupId ? ctx.nameOf(ctx.mapping.serviceAccountsGroupId) : proposedObjectNames(ctx.naming ?? null).serviceAccountsGroup.name
 
   // Existing coverage: whether a policy already delivers the goal (drives the
   // {existingCoverage} line's presence). A done step's policies are what makes

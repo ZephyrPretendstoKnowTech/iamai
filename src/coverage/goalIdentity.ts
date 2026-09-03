@@ -26,7 +26,8 @@ const CATALOGUE = goalsData.goals as unknown as Goal[]
 // (owner: if a policy targets it, the goal is not in this baseline).
 const AZURE_MGMT_APP_IDS = new Set(['797f4846-ba00-4fd7-ba43-dac1f8f63013'])
 
-export type PolicyForMap = { id: string; name: string; facts: PolicyFacts }
+/** A policy for the map; `placeholders` (the pin's tokens for the author's objects) says which group is the service-accounts group. */
+export type PolicyForMap = { id: string; name: string; facts: PolicyFacts; placeholders?: Record<string, string> }
 export type GoalMap = Record<string, string[]>
 export type GoalMapResult = {
   map: GoalMap
@@ -47,14 +48,16 @@ export type GoalMapResult = {
 const MERGE_ANCHOR: Record<string, string> = { 'byod-session-controls': 'block-downloads-unmanaged' }
 const DECLARED_PAIR = new Set(['guests-mfa'])
 
-type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members'
+type UserClass = 'all' | 'coreAdmins' | 'guests' | 'workload' | 'members' | 'serviceAccounts'
 type CondTag = string // 'locations' | 'platforms' | 'clientAppsRestricted' | 'flows' | 'deviceFilter' | 'userActions' | 'authContext' | 'signInRisk:high' | 'userRisk:medium' | …
 
-function userClass(f: PolicyFacts): UserClass {
+function userClass(f: PolicyFacts, placeholders: Record<string, string> = {}): UserClass {
   if (f.workload) return 'workload'
   if (f.who.roles.size > 0) return 'coreAdmins'
   if (f.who.all) return 'all'
   if (f.who.guests !== null) return 'guests'
+  // A policy that includes the author's service-accounts group (the pin's token) targets the service accounts (E9).
+  if (f.who.groups.size > 0 && [...f.who.groups].some((g) => Object.entries(placeholders).some(([id, token]) => id.toLowerCase() === g.toLowerCase() && token === 'serviceAccountsGroup'))) return 'serviceAccounts'
   return 'members'
 }
 
@@ -168,7 +171,7 @@ function candidates(impl: Implementation, policies: PolicyForMap[]): PolicyForMa
   const want = templateTags(impl)
   return policies.filter((p) => {
     if (!controlKindOk(impl, p.facts)) return false
-    if (userClass(p.facts) !== impl.expectedWho.kind) return false
+    if (userClass(p.facts, p.placeholders) !== impl.expectedWho.kind) return false
     if (appsClass(p.facts) !== impl.expectedApps) return false
     return subset(want, condTags(p.facts))
   })
@@ -186,9 +189,9 @@ export function mapGoalsToPolicies(policies: PolicyForMap[]): GoalMapResult {
 
   // A policy without its exclusion set — two policies with the same core are one
   // goal plus a variant (owner resolution). The exclusion set is compared apart.
-  const core = (f: PolicyFacts): string =>
+  const core = (f: PolicyFacts, placeholders?: Record<string, string>): string =>
     JSON.stringify([
-      userClass(f), appsClass(f),
+      userClass(f, placeholders), appsClass(f),
       [...condTags(f)].sort(),
       f.grant ? [[...f.grant.controls].sort(), f.grant.strengthId ? 'strength' : ''] : null,
       [f.session.signInFrequencyHours, f.session.signInFrequencyEveryTime, f.session.persistentBrowser, f.session.appEnforced, f.session.secureSignInSession, f.session.cloudAppSecurity],
@@ -212,7 +215,7 @@ export function mapGoalsToPolicies(policies: PolicyForMap[]): GoalMapResult {
     // placeholder-carrying policy) wins, the rest are recorded as variants.
     const byCore = new Map<string, PolicyForMap[]>()
     for (const p of found.values()) {
-      const k = core(p.facts)
+      const k = core(p.facts, p.placeholders)
       ;(byCore.get(k) ?? byCore.set(k, []).get(k)!).push(p)
     }
     const cands: PolicyForMap[] = []

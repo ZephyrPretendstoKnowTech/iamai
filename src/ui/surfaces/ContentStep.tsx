@@ -22,7 +22,7 @@ import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { jsonOffered, missingObjects } from './stepJson.ts'
-import { datesLineFor } from './stepExport.ts'
+import { datesLineFor, managerText, whoEvidenceLines } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -328,31 +328,9 @@ function whoHasContent(who: Record<string, any>, ex: Ex): boolean {
   return false
 }
 
-/** The who-line evidence lines that apply to this tenant (render.ts renderStep gating). */
+/** The who-line evidence lines that apply to this tenant: the one gate the exports read too (stepExport.ts). */
 function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
-  const out: string[] = []
-  let none: string | null = null
-  for (const [k, v] of Object.entries(who)) {
-    if (['lead', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
-    if (k === 'none') {
-      none = typeof v === 'string' ? v : null
-      continue
-    }
-    const arr = Array.isArray(v) ? (v as string[]) : typeof v === 'string' ? [v] : []
-    for (let line of arr) {
-      if (line === '{existingCoverage}') {
-        if (!truthy(ex.existingPolicies)) continue
-        line = String((content.shared as Record<string, unknown>).existingCoverage)
-      }
-      const lk = listKeys(line)
-      if (lk.length > 0 && lk.every((k2) => !truthy(ex[k2]))) continue
-      if (lk.length === 0 && line.includes('{n}') && (ex.n ?? 1) === 0) continue
-      out.push(line)
-    }
-  }
-  // The none branch stands in only when nothing else in the block renders.
-  if (none !== null && !out.some((line) => whole(line, ex))) out.push(none)
-  return out
+  return whoEvidenceLines(who, ex as Record<string, unknown>)
 }
 
 function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
@@ -508,11 +486,12 @@ function More({ cs, ex, step, onSkip, onUnskip, onDoesntApply, copy, copied, ope
           <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}
-      {more.manager && whole(more.manager, ex) && (
+      {managerText(cs, ex as Record<string, unknown>) !== null && (
         <>
           <h3>For your manager</h3>
-          <p className="reason"><T s={more.manager} ex={ex} /></p>
-          <p className="actions"><Button variant="secondary" onClick={() => copy('manager', fillText(more.manager, ex as Record<string, unknown>))}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
+          {/* The three sentences, and the clause the records earn (managerNone under its applies, E9). */}
+          <p className="reason">{managerText(cs, ex as Record<string, unknown>)}</p>
+          <p className="actions"><Button variant="secondary" onClick={() => copy('manager', managerText(cs, ex as Record<string, unknown>) ?? '')}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
           <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}

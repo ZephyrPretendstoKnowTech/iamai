@@ -31,6 +31,8 @@ export function evidenceFor(
   if (goalId === 'block-legacy-auth') base.affectedUserIds = usage?.legacyAuth.userIds ?? []
   else if (goalId === 'block-device-code') base.affectedUserIds = usage?.deviceCode.userIds ?? []
   else if (goalId === 'block-auth-transfer') base.affectedUserIds = usage?.authTransfer.userIds ?? []
+  // The unsupported-platforms block stops the sign-ins that carried no platform (E9).
+  else if (goalId === 'block-unsupported-platforms') base.affectedUserIds = snapshot.scenarioEvidence?.emptyPlatform?.people ?? []
   else if (RISK_HIGH_GOALS.has(goalId)) base.affectedUserIds = riskIds([usage?.riskHigh])
   else if (RISK_MEDIUM_GOALS.has(goalId)) base.affectedUserIds = riskIds([usage?.riskMedium, usage?.riskHigh])
 

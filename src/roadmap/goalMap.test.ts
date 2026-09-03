@@ -44,7 +44,8 @@ test('no ties remain; only the five goals whose control no policy carries at hea
   // merge partner block-downloads-unmanaged (no app-enforced / cloud-app-security
   // policy — O365-Timeout was removed), mobile-app-protection (no app-protection).
   assert.deepEqual(built.unmappedGoals.slice().sort(), ['azure-management-mfa', 'block-downloads-unmanaged', 'byod-session-controls', 'mobile-app-protection', 'register-info-protected'])
-  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 21, 'the mapped-goal count changed — reconcile the baseline report')
+  // 22 with the service-accounts block (E9): the author's group is the pin's serviceAccountsGroup token.
+  assert.equal(Object.keys(PINNED_GOAL_MAP).length, 22, 'the mapped-goal count changed — reconcile the baseline report')
   assert.deepEqual(built.variants.map((v) => v.policy), ['IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions'])
 })
 

@@ -10,10 +10,14 @@ const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-r
 // Risk policies act on the sign-ins Identity Protection flags, so their
 // evidence is usage, like a block's (prompt 47 item 6).
 const RISK_GOALS = new Set(['sign-in-risk', 'user-risk', 'sign-in-risk-medium', 'user-risk-medium'])
-const ADMIN_GOALS = new Set(['admins-phishing-resistant', 'admin-session'])
-const DEVICE_GOALS = new Set(['require-managed-device', 'block-unsupported-platforms', 'mobile-app-protection'])
+// The admin session policy is not gated on admin readiness (E9): shortening a
+// session locks nobody out, whatever method they hold.
+const ADMIN_GOALS = new Set(['admins-phishing-resistant'])
+const DEVICE_GOALS = new Set(['require-managed-device', 'mobile-app-protection'])
 const GUEST_GOALS = new Set(['guests-mfa'])
-const BLOCK_GOALS = new Set(['block-legacy-auth', 'block-device-code', 'block-auth-transfer'])
+// The unsupported-platforms block is a block like the others (E9): its evidence
+// is the sign-ins that carried no platform, not device readiness.
+const BLOCK_GOALS = new Set(['block-legacy-auth', 'block-device-code', 'block-auth-transfer', 'block-unsupported-platforms'])
 const LOCATION_GOALS = new Set(['geo-restriction'])
 
 export function goalFamily(goalId: string): Readiness['family'] {
