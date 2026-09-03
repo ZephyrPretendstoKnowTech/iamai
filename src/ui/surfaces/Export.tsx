@@ -159,7 +159,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     window.location.hash = '#/plan'
   }
 
-  const csvTables = [todayTable(snapshot, new Set(data.mapping?.serviceAccountUserIds ?? [])), ...inventoryTables(snapshot)]
+  const csvTables = [todayTable(snapshot, new Set(data.mapping?.serviceAccountUserIds ?? [])), ...inventoryTables(snapshot, data.groups)]
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
   // the same variables the Plan builds for a step, then the same view.
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null

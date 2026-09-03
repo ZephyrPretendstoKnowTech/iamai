@@ -3,6 +3,7 @@
 // place. Faithful key columns, computed from the snapshot; the rich display
 // stays in the Inventory tab components. Pure: no DOM, no network.
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import type { GroupMembers } from '../../coverage/population.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { policyFacts } from '../../coverage/facts.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
@@ -18,8 +19,9 @@ export type InventoryTable = { id: string; label: string; csvName: string; heade
 type Raw = Record<string, unknown>
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
 
-export function inventoryTables(snapshot: TenantSnapshot): InventoryTable[] {
-  const names = buildNameDirectory(snapshot, new Map())
+export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers = new Map()): InventoryTable[] {
+  // The groups the plan loaded name the excluded groups (E5); without them a group is its id.
+  const names = buildNameDirectory(snapshot, groups)
   const label = (id: string): string => names.label(id)
   const out: InventoryTable[] = []
 
@@ -29,10 +31,11 @@ export function inventoryTables(snapshot: TenantSnapshot): InventoryTable[] {
     id: 'policies',
     label: C.tabs.policies,
     csvName: 'iamai-policies.csv',
-    header: ['Name', 'State', 'Microsoft-managed'],
+    header: ['Name', 'State', 'Microsoft-managed', C.policies.columns.exclusions],
     rows: (snapshot.config.caPolicies?.rows ?? []).map((raw) => {
       const f = policyFacts(raw, strengths, (snapshot.microsoftManagedPolicyIds ?? []).includes(str((raw as Raw).id)))
-      return [f.name, f.state, f.isMicrosoftManaged ? 'yes' : 'no']
+      // The groups and users excluded, by name (E5), as the Inventory table shows them.
+      return [f.name, f.state, f.isMicrosoftManaged ? 'yes' : 'no', [...[...f.whoNot.groups].map(label), ...[...f.whoNot.users].map(label)].join(' ')]
     }),
   })
 

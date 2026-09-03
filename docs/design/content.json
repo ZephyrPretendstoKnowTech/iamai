@@ -555,7 +555,8 @@
         "notAssessedLabel": "Does not apply here",
         "notAssessedPrompt": "Why does {policy} not apply to {tenant}? One line; it goes in the plan file.",
         "notAssessedRow": "{policy}: does not apply: {reason}",
-        "notAssessedSave": "Save"
+        "notAssessedSave": "Save",
+        "startedLine": "started {date}"
       },
       "today": {
         "lineNoRecords": "no sign-in records",
