@@ -51,6 +51,11 @@ export const ACCEPTANCE = [
   { item: 'C2', cleanup: 'naming', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' },
   { item: 'C2', cleanup: 'consolidation', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' },
   { item: 'C2', cleanup: 'notAssessed', path: 'learn.url', must: 'https://github.com/Jhope188/ConditionalAccessPolicies' },
+  // C4: a manager line never asserts "nobody here used it" unconditionally; the
+  // clause returns under the engine's `applies` when the evidence count is zero.
+  { item: 'C4', step: 'block-device-code', path: 'more.manager', must: 'Without this, one pasted code signs an attacker in.', mustNot: /nobody here/i },
+  { item: 'C4', step: 'block-auth-transfer', path: 'more.manager', must: 'Without this, a captured QR code is a captured account.', mustNot: /nobody here/i },
+  { item: 'C4', step: 'geo-restriction', path: 'more.manager', must: 'Without this, a stolen password works from anywhere in the world.', mustNot: /nobody signed in/i },
 ]
 
 /** Every Learn URL the content carries (steps and cleanup rows), for the link check. */

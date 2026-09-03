@@ -2327,7 +2327,7 @@
         "helpDesk": [
           "Scripts on device code sign-in need a workload identity or a managed identity."
         ],
-        "manager": "A sign-in flow used almost only by phishing kits is turned off; nobody here uses it. Without this, one pasted code signs an attacker in.",
+        "manager": "A sign-in flow used almost only by phishing kits is turned off. Without this, one pasted code signs an attacker in.",
         "waits": null
       },
       "example": {
@@ -2390,7 +2390,7 @@
         "helpDesk": [
           "Sign in on the phone directly; the QR shortcut is off on purpose."
         ],
-        "manager": "A session can no longer be copied to another device without a sign-in. Nobody here used it; without this, a captured QR code is a captured account.",
+        "manager": "A session can no longer be copied to another device without a sign-in. Without this, a captured QR code is a captured account.",
         "waits": null
       },
       "example": {
@@ -2476,7 +2476,7 @@
           "Travel: log the trip and add the country to the allowed list for its dates; never a user exclusion.",
           "VPN exit abroad: add the VPN's egress address to the trusted location."
         ],
-        "manager": "Sign-ins from places the business does not operate in are blocked. Nobody signed in from outside {countries} since {from}; without this, a stolen password works from anywhere in the world.",
+        "manager": "Sign-ins from places the business does not operate in are blocked. Without this, a stolen password works from anywhere in the world.",
         "waits": null
       },
       "example": {
