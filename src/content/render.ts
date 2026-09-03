@@ -127,6 +127,20 @@ export function whole(text: unknown, ex: Ex): boolean {
   return typeof text !== 'string' || missingVars(text, ex).length === 0
 }
 
+/**
+ * A who-line that counts and lists ("{n} of them …: {list:x}") counts its own
+ * list: `n` is the list's length, as the review render has always read it
+ * (renderStep), so the product never says 3 and names 2. Any other line keeps
+ * the step's own `n`.
+ */
+export function listCountVars(text: unknown, ex: Ex): Ex {
+  if (typeof text !== 'string' || !text.includes('{n}')) return ex
+  const m = /\{list:([a-zA-Z0-9_]+)\}/.exec(text)
+  if (!m) return ex
+  const items = (ex as Record<string, unknown>)?.[m[1]]
+  return Array.isArray(items) ? { ...(ex ?? {}), n: items.length } : ex
+}
+
 // "1 guests" reads as one guest (walk-51 item 2). After the count is filled, a
 // count of exactly one singularises the noun that follows it. Only a curated set
 // of nouns, so "1 status" is never mistaken for a plural.

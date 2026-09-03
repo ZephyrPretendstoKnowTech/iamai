@@ -12,7 +12,7 @@ import type { ExportStep, Step } from '../../roadmap/types.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
-import { fillText, whole } from '../../content/render.ts'
+import { fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
@@ -79,7 +79,8 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   const who = (cs.who ?? {}) as Record<string, unknown>
   for (const [k, v] of Object.entries(who)) {
     if (k === 'groups' || k === 'timeline' || k === 'overlap') continue
-    for (const line of Array.isArray(v) ? v : [v]) add(line)
+    // A line that counts and lists counts its own list, as on screen (render.ts listCountVars).
+    for (const line of Array.isArray(v) ? v : [v]) add(line, listCountVars(line, ex) as Record<string, unknown>)
   }
   const d = (cs.decision ?? {}) as Record<string, unknown>
   add(d.label)

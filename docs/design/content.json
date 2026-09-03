@@ -2107,6 +2107,7 @@
         "evidence": [
           "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
           "{n} admins have no phishing-resistant method; register before {enforce}: {list:adminsWithout}",
+          "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
           "Roles held through Privileged Identity Management are in scope only while activated.",
           "{existingCoverage}"
         ]
@@ -2121,7 +2122,7 @@
       "comms": {
         "audience": "admins",
         "salutation": "Admins,",
-        "body": "From {enforceLong}, sign-ins by your admin account at {tenant} need a passkey or a security key; app approvals and codes will not be accepted for admin work. Register one now: https://aka.ms/mfasetup → Add sign-in method → Passkey, or bring your key and we will register it together. Everyday work is unaffected.",
+        "body": "From {enforceLong}, sign-ins by your admin account at {tenant} need a passkey or a security key; app approvals and codes will not be accepted for admin work. Register one now: https://aka.ms/mfasetup → Add sign-in method → Passkey, or bring your key and we will register it together. Everyday work on a separate account is unaffected.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -2182,7 +2183,8 @@
           "Core - Allow - MFA for Admins"
         ],
         "strengthName": "Modern MFA + TAP",
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "adminsWithWorkload": []
       },
       "whatToDoReference": {
         "lead": null,
@@ -2824,6 +2826,7 @@
         "evidence": [
           "Today: {current}, and sessions persist. The baseline wants {wanted} and never persistent.",
           "Apps these sessions cover, with sign-ins since {from}: {list:appsCovered}",
+          "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
           "{existingCoverage}"
         ]
       },
@@ -2889,7 +2892,8 @@
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
         "existingPolicies": [],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "adminsWithWorkload": []
       },
       "whatToDoReference": {
         "lead": null,
@@ -3656,6 +3660,7 @@
         "lead": "{n} people hold an eligible role: {list:eligible}",
         "evidence": [
           "{n} of them have no passkey or key yet: {list:eligibleWithout}",
+          "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
           "{existingCoverage}"
         ]
       },
@@ -3704,7 +3709,8 @@
         "signature": "IT",
         "existingPolicies": [],
         "strengthName": "Modern MFA + TAP",
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "adminsWithWorkload": []
       },
       "whatToDoReference": {
         "lead": null,
@@ -4065,6 +4071,60 @@
           "Conditions → User risk → Medium",
           "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
+        ]
+      }
+    },
+    {
+      "id": "s-check-separate-admin-accounts",
+      "kind": "check",
+      "title": "Use Separate Accounts for Admin Work",
+      "changeLine": null,
+      "why": "An admin account that also reads mail and joins Teams meetings is phished like any other mailbox; the admin policies then guard an account that is open all day.",
+      "learn": {
+        "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts"
+      },
+      "who": {
+        "lead": "{n} people hold a directory role and use that same account for mail or Teams since {from}:",
+        "accounts": "{list:adminsWithWorkload}"
+      },
+      "decision": null,
+      "whatToDo": {
+        "lead": "For each person:",
+        "steps": [
+          "Create a second, cloud-only account for the role, named so the purpose is obvious (adm- and their name); no licence, no mailbox.",
+          "Move the directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignment; then remove the role from the everyday account.",
+          "Register a passkey or security key on the admin account before its first use; the admin policies require one.",
+          "Keep mail, Teams and files on the everyday account; open admin portals with the admin account only."
+        ]
+      },
+      "dates": null,
+      "doneWhen": [
+        "No account with a directory role has mail or Teams sign-ins in the records."
+      ],
+      "ifWrong": "Put the role back on the everyday account; nothing else changes.",
+      "comms": null,
+      "doesntApply": false,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "An admin who keeps doing admin work from the everyday account never sees the separation; moving the role is what makes it real.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "An admin refused by a portal on the everyday account: the role moved; sign in with the admin account."
+        ],
+        "manager": "Admin work moves to accounts that do nothing else, so a phished mailbox is not a phished tenant. Without this, every admin inbox is a way in to every setting.",
+        "waits": null
+      },
+      "example": {
+        "n": 2,
+        "from": "Aug 1",
+        "adminsWithWorkload": [
+          "Lachlan Robinette · Outlook, Microsoft Teams",
+          "Kaladin Stormblessed · Microsoft Teams"
         ]
       }
     }
