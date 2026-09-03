@@ -8,7 +8,7 @@ import { fillText, missingVars } from '../../content/render.ts'
 import { Button, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 
-export type CleanupEntry = { title: string; why: string; whatToDo: string[]; doneWhen: string[] }
+export type CleanupEntry = { title: string; learn?: { url: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
 
 /** The content entry behind a Cleanup row, or null when content.cleanup lacks it. */
 export function cleanupEntry(kind: string): CleanupEntry | null {
@@ -39,7 +39,14 @@ export function CleanupBody({ phase, row, status, onScan, onClose }: {
         <span className="step-title">{entry.title}</span> <Status tone={status.tone}>{status.word}</Status>
       </p>
       <h3>Why</h3>
-      <p>{fillText(entry.why, ex)}</p>
+      <p>
+        {fillText(entry.why, ex)}{' '}
+        {entry.learn?.url && (
+          <a href={entry.learn.url} target="_blank" rel="noopener noreferrer">
+            Learn →
+          </a>
+        )}
+      </p>
       <h3>What to do</h3>
       <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
       {doneWhen.length > 0 && (

@@ -28,7 +28,25 @@ const test = (re, text) => (re instanceof RegExp ? re.test(text) : text.includes
 // One entry per audit item. `path` is a key inside the step (dotted); the check
 // reads every string under it. `must` is the acceptance; `mustNot` the wording
 // it replaced, so the entry fails on the content before the fix.
-export const ACCEPTANCE = []
+export const ACCEPTANCE = [
+  // C2: the Learn links that answered 404 or opened the wrong page. The audit's
+  // guest URL (policy-old-require-mfa-b2b) answers 404 itself; the B2B MFA
+  // tutorial is the page. The audit's Intune-enrollment URL answers 404 too, and
+  // the audit said keep the current one in that case.
+  { item: 'C2', step: 's-check-dormant-accounts', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts', mustNot: '/users/users-inactive' },
+  { item: 'C2', step: 'admins-phishing-resistant', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa', mustNot: 'policy-admin-phishing-resistant-mfa' },
+  { item: 'C2', step: 'block-legacy-auth', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy', mustNot: 'policy-block-legacy-auth' },
+  { item: 'C2', step: 's-prereq-exclusion-group', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations', mustNot: 'plan-conditional-access' },
+  { item: 'C2', step: 's-prereq-service-accounts-group', path: 'learn.url', must: 'https://learn.microsoft.com/entra/architecture/secure-service-accounts', mustNot: 'conditional-access/workload-identity' },
+  { item: 'C2', step: 'admin-portals-protected', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals', mustNot: 'policy-old-require-mfa-admin' },
+  { item: 'C2', step: 'guests-mfa', path: 'learn.url', must: 'https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa', mustNot: 'policy-all-users-mfa-strength' },
+  { item: 'C2', step: 'intune-enrollment-reauth', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/concept-session-lifetime' },
+  { item: 'C2', cleanup: 'alerting', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs' },
+  { item: 'C2', cleanup: 'drill', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs' },
+  { item: 'C2', cleanup: 'naming', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' },
+  { item: 'C2', cleanup: 'consolidation', path: 'learn.url', must: 'https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access' },
+  { item: 'C2', cleanup: 'notAssessed', path: 'learn.url', must: 'https://github.com/Jhope188/ConditionalAccessPolicies' },
+]
 
 /** Every Learn URL the content carries (steps and cleanup rows), for the link check. */
 export function contentLearnUrls(content) {
@@ -52,6 +70,10 @@ export function contentFindings(content, pinned = null) {
 
   // C1: frameworks return as a feature, not a chip; no step carries a CIS value.
   for (const s of steps) if (s.learn && 'cis' in s.learn) add('P0', `content ${s.id}: learn.cis is still present (C1: no CIS chip)`)
+
+  // C2: every step and every Cleanup row has a Learn link.
+  for (const s of steps) if (!s.learn?.url) add('P0', `content ${s.id}: no Learn link (C2)`)
+  for (const [k, c] of Object.entries(cleanup)) if (!c.learn?.url) add('P0', `content cleanup.${k}: no Learn link (C2)`)
 
   // The per-item acceptance table.
   for (const a of ACCEPTANCE) {

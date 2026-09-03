@@ -40,7 +40,7 @@ export type ContentFile = {
   shared: Record<string, unknown>
   phases: { first: string; middle: string; last: string; heading: string }
   pages: Record<string, Record<string, unknown>>
-  cleanup: Record<string, { title: string; why: string; whatToDo: string[]; doneWhen: string[] }>
+  cleanup: Record<string, { title: string; learn: Learn; why: string; whatToDo: string[]; doneWhen: string[] }>
   steps: ContentStep[]
 }
 
