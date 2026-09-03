@@ -400,6 +400,7 @@ async function walkFixture(fx) {
   let rowReasonsAfter = []
   let exclusionBody = null
   let sawExistingCoverage = false
+  let planHeaderCounts = null
   for (const width of WIDTHS) {
     await setWidth(width)
     const wdir = join(dir, String(width))
@@ -429,6 +430,32 @@ async function walkFixture(fx) {
         add(width < 600 ? 'P1' : 'P1', `${label}: the page overflows the viewport by ${overflow}px (${widest})`)
       }
       summary.push({ width, route, words: text.split(/\s+/).filter(Boolean).length, rows: d.rows.length })
+      // The Plan header's counts, for the print cover to agree with (E4).
+      if (route === 'plan') {
+        const m = text.match(/(\d+) steps · (\d+) (?:in place|done)/)
+        if (m) planHeaderCounts = { steps: m[1], inPlace: m[2] }
+      }
+      // The print cover (E4): Print or save as PDF mounts the print document; its
+      // statement carries the Plan header's own count (the steps and the Cleanup
+      // rows), and its contents list Cleanup. window.print is stubbed so headless
+      // Chrome does not block; afterprint tears the document down.
+      if (route === 'export') {
+        await evaluate(`window.print = function () { try { window.dispatchEvent(new Event('beforeprint')) } catch (e) {} }`)
+        const printed = await clickText('button', /^Print or save as PDF$/)
+        const cover = printed ? await waitFor(`document.querySelector('.print-plan .print-statement') !== null`, 8000) : false
+        if (!cover) add('P0', `${label}: Print or save as PDF renders no cover`)
+        else {
+          const statement = await evaluate(`[...document.querySelectorAll('.print-plan .print-statement')].map((e) => e.textContent).join(' ')`)
+          const m = statement.match(/(\d+) steps · (\d+) (?:in place|done)/)
+          if (!m) add('P0', `${label}: the print cover's statement carries no step count ("${statement.slice(0, 80)}")`)
+          else if (planHeaderCounts && m[1] !== planHeaderCounts.steps) add('P0', `${label}: the print cover counts ${m[1]} steps and the Plan header ${planHeaderCounts.steps} (Cleanup is in the header's count)`)
+          const printText = await evaluate(`(document.querySelector('.print-plan') || {}).innerText || ''`)
+          if (!/\bCleanup\b/.test(printText)) add('P0', `${label}: the print does not list Cleanup`)
+          checkText(`${label} (print)`, printText, { emails: true })
+        }
+        await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
+        await sleep(200)
+      }
       if (route !== 'plan') continue
 
       // Every row, one by one: it opens; its body shares the row's title; the
