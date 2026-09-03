@@ -104,7 +104,7 @@
   <!-- 3 · What IAMAI does -->
   <section class="tile done">
     <span class="n">3</span>
-    <h2>What happens next</h2>
+    <h2>Scan <span class="state ok">complete · 57 minutes ago</span></h2>
     <ul class="beats">
       <li><b>Reads</b> GetIAMAI's policies, people, sign-in records and licences.</li>
       <li><b>Compares</b> what each baseline policy is for with what GetIAMAI already has.</li>
@@ -122,28 +122,30 @@
       </ul>
       <p class="quiet">Permissions, every check it runs, and its limits in full: <a class="lnk" href="#">How IAMAI works →</a></p>
     </details>
+    <div class="actions"><button class="btn secondary">Scan again</button></div>
   </section>
 
-  <!-- 4 · Scan — three states, one shown -->
-  <p class="quiet" style="margin:18px 0 6px">Mockup note (not rendered in the app): tile 4 has four states and shows exactly one. All four are stacked here.</p>
+  <!-- 4 · Plan — states -->
+  <p class="quiet" style="margin:18px 0 6px">Mockup note (not rendered): tile 3 (Scan) has the states not started / scanning / finished with gaps; tile 4 (Plan) shows ready, or the last full plan, or waits. Stacked here.</p>
   <div class="state-block on" data-state="complete">
     <section class="tile done">
       <span class="n">4</span>
-      <h2>Scan <span class="state ok">complete · 2 minutes ago</span></h2>
+      <h2>Plan <span class="state ok">ready · from the scan 57 minutes ago</span></h2>
       <ul class="facts">
         <li><b>13</b>people</li>
         <li><b>10</b>policies</li>
         <li><b>Aug 4 → Sep 3</b>sign-in records</li>
         <li><b>P2</b>licence</li>
+        <li><b>33</b>steps · 8 done</li>
       </ul>
-      <div class="actions"><a class="btn" href="#">Open the plan →</a><button class="btn secondary">Scan again</button></div>
+      <div class="actions"><a class="btn" href="#">Open the plan →</a></div>
     </section>
   </div>
 
   <div class="state-block" data-state="gaps">
     <section class="tile wait">
       <span class="n">4</span>
-      <h2>Scan <span class="state wait">finished with gaps · no plan built</span></h2>
+      <h2>Scan <span class="state wait">finished with gaps · no plan built</span> <span class="quiet">(tile 3 state)</span></h2>
       <p>Three sections could not be read with this account. The plan needs them, so IAMAI kept your last full plan and built nothing from this scan.</p>
       <ul class="rows">
         <li><span>Conditional Access policies</span><span>not read</span></li>
@@ -151,14 +153,19 @@
         <li><span>Cross-tenant access</span><span>not read</span></li>
       </ul>
       <p class="quiet">Ask whoever administers the tenant for <span class="role">Global Reader</span>; it reads every section and writes nothing. <a class="lnk" href="#">Microsoft: Global Reader</a></p>
-      <div class="actions"><a class="btn" href="#">Sign in with another account</a><button class="btn secondary">Scan again</button><button class="btn tertiary">Open the last full plan (Sep 2)</button></div>
+      <div class="actions"><a class="btn" href="#">Sign in with another account</a><button class="btn secondary">Scan again</button></div>
+    </section>
+    <section class="tile">
+      <span class="n">4</span>
+      <h2>Plan <span class="state">last full plan · Sep 2</span></h2>
+      <div class="actions"><button class="btn tertiary">Open the last full plan (Sep 2)</button></div>
     </section>
   </div>
 
   <div class="state-block" data-state="role">
     <section class="tile stop">
       <span class="n">4</span>
-      <h2>Scan <span class="state stop">not started · this account can't read the tenant</span></h2>
+      <h2>Scan <span class="state stop">not started · this account can't read the tenant</span> <span class="quiet">(tile 3 state)</span></h2>
       <p><strong>Lachlan@getiamai.com</strong> holds none of the roles that read Conditional Access policies, people and sign-in records.</p>
       <ul class="rows">
         <li><span>Everything IAMAI needs, read-only</span><span>ask for <span class="role">Global Reader</span></span></li>
@@ -170,7 +177,7 @@
   <div class="state-block" data-state="scanning">
     <section class="tile">
       <span class="n">4</span>
-      <h2>Scan <span class="state">reading sign-in records · 8s</span></h2>
+      <h2>Scan <span class="state">reading sign-in records · 8s</span> <span class="quiet">(tile 3 state)</span></h2>
       <div style="height:6px;background:var(--bg-inset);border-radius:3px;margin:10px 0 6px;overflow:hidden"><div style="width:38%;height:100%;background:var(--accent)"></div></div>
       <div class="actions"><button class="btn tertiary">Stop</button></div>
     </section>
@@ -231,7 +238,7 @@
 
   <section class="tile done">
     <span class="n">3</span>
-    <h2>What happens next</h2>
+    <h2>Scan <span class="state">after sign-in · about a minute for a small tenant</span></h2>
     <ul class="beats">
       <li><b>Reads</b> your tenant's policies, people, sign-in records and licences.</li>
       <li><b>Compares</b> what each baseline policy is for with what your tenant already has.</li>
@@ -246,7 +253,7 @@
 
   <section class="tile">
     <span class="n">4</span>
-    <h2>Scan <span class="state">after sign-in · about a minute for a small tenant</span></h2>
+    <h2>Plan <span class="state">after the scan</span></h2>
     <p class="quiet" style="margin-top:8px">What the sample tenant produced:</p>
     <ul class="facts">
       <li><b>30</b>people</li>
@@ -254,7 +261,7 @@
       <li><b>5</b>already in place</li>
       <li><b>5 weeks</b>to finish</li>
     </ul>
-    <div class="actions"><a class="btn secondary" href="#">Try it with sample data</a></div>
+    <div class="actions"><a class="btn secondary" href="#">Open the sample plan</a></div>
   </section>
 </main>
 
