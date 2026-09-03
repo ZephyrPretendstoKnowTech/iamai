@@ -68,6 +68,13 @@ export function contentLearnUrls(content) {
   return [...urls]
 }
 
+/** The pinned policies a content step's goal maps to (the stored goalMap, the product's own source). */
+function pinnedPolicyFor(pinned, goalId) {
+  const keys = pinned?.goalMap?.[goalId] ?? []
+  const policies = pinned?.policies ?? []
+  return keys.map((k) => policies.find((p) => (p.id ?? p.displayName) === k)).filter(Boolean)
+}
+
 /**
  * The findings over one content file: [{ level, text }]. `pinned` is the pinned
  * baseline (its goalMap and policies) for the transcription checks.
@@ -78,7 +85,6 @@ export function contentFindings(content, pinned = null) {
   const steps = content.steps ?? []
   const cleanup = content.cleanup ?? {}
   const stepById = Object.fromEntries(steps.map((s) => [s.id, s]))
-  void pinned
 
   // C1: frameworks return as a feature, not a chip; no step carries a CIS value.
   for (const s of steps) if (s.learn && 'cis' in s.learn) add('P0', `content ${s.id}: learn.cis is still present (C1: no CIS chip)`)
@@ -98,6 +104,37 @@ export function contentFindings(content, pinned = null) {
   for (const [path, s] of strings({ steps, cleanup, shared: content.shared, pages: content.pages })) {
     const m = TICK.exec(s)
     if (m) add('P0', `content ${path}: "${m[0]}" (C5: no tick vocabulary)`)
+  }
+
+  // C6: a step's transcription of its policy agrees with the pinned baseline,
+  // resolved through the stored goalMap the product itself reads.
+  if (pinned) {
+    const cap = (x) => x[0].toUpperCase() + x.slice(1)
+    const levelsLine = (s, kind) => strings(s.whatToDoReference ?? {}).map(([, t]) => t).find((t) => t.includes(`Conditions → ${kind} risk →`)) ?? null
+    for (const [id, kind, field] of [['sign-in-risk', 'Sign-in', 'signInRiskLevels'], ['sign-in-risk-medium', 'Sign-in', 'signInRiskLevels'], ['user-risk', 'User', 'userRiskLevels'], ['user-risk-medium', 'User', 'userRiskLevels']]) {
+      const s = stepById[id]
+      const [p] = pinnedPolicyFor(pinned, id)
+      if (!s || !p) continue
+      const want = [...(p.conditions?.[field] ?? [])].map(cap).sort().join(', ')
+      const line = levelsLine(s, kind)
+      const have = line ? line.split('→').pop().trim().split(/,\s*/).sort().join(', ') : null
+      if (have !== want) add('P0', `content ${id}: the condition line reads "${have}" but the baseline's policy carries ${field} ${want} (C6)`)
+    }
+    const managed = stepById['require-managed-device']
+    const [managedPolicy] = pinnedPolicyFor(pinned, 'require-managed-device')
+    if (managed && managedPolicy) {
+      if (!managedPolicy.conditions?.platforms && !/no platform condition/.test(textAt(managed, 'who'))) add('P0', `content require-managed-device: the baseline's policy has no platform condition and the evidence does not say so (C6)`)
+      if ((managedPolicy.conditions?.locations?.excludeLocations ?? []).includes('AllTrusted') && !/Outside the Office/.test(managed.title)) add('P0', `content require-managed-device: the baseline's policy excludes trusted locations and the title "${managed.title}" does not say so (C6)`)
+    }
+    const userRisk = stepById['user-risk']
+    const [userRiskPolicy] = pinnedPolicyFor(pinned, 'user-risk')
+    if (userRisk && userRiskPolicy && !userRiskPolicy.conditions?.users?.excludeGuestsOrExternalUsers && !/Guests rated high risk are blocked, not remediated/.test(textAt(userRisk, 'who'))) add('P0', `content user-risk: the baseline's policy includes guests, who cannot change a password here, and the evidence does not say so (C6)`)
+    const workload = stepById['workload-identity-block']
+    const [workloadPolicy] = pinnedPolicyFor(pinned, 'workload-identity-block')
+    if (workload && workloadPolicy && (workloadPolicy.conditions?.clientApplications?.includeServicePrincipals ?? []).length > 0) {
+      if (!/Cloud Sync's provisioning service principal/.test(textAt(workload, 'who'))) add('P0', `content workload-identity-block: the baseline's policy targets a service principal (Cloud Sync's provisioning service principal) and the Who line does not say so (C6)`)
+      if (!/Classic Entra Connect syncs with a user account/.test(`${workload.why}\n${textAt(workload, 'who')}`)) add('P0', `content workload-identity-block: classic Entra Connect's user account is not named as outside this policy (C6)`)
+    }
   }
 
   // The per-item acceptance table.
