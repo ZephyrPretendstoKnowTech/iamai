@@ -16,7 +16,7 @@ import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
-import { sessionWantedForGoal, strengthForGoal } from './stepPortal.ts'
+import { sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal } from './stepPortal.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { pickerVars } from './pickerRows.ts'
@@ -158,9 +158,12 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // who and decision lines that name it (walk-51 item 18).
   const strength = strengthForGoal(step.goalId)
   if (strength) v.strengthName = strength
-  // The session frequency the baseline wants, for the lines that name {wanted}.
+  // The session frequency the baseline wants, for the lines that name {wanted},
+  // and as a duration for the email that says "expire after {wantedLong}".
   const wanted = sessionWantedForGoal(step.goalId)
   if (wanted) v.wanted = wanted
+  const wantedLong = sessionWantedLongForGoal(step.goalId)
+  if (wantedLong) v.wantedLong = wantedLong
 
   // Existing coverage: whether a policy already delivers the goal (drives the
   // {existingCoverage} line's presence).

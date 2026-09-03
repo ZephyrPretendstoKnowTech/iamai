@@ -8,7 +8,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { missingVars } from '../../content/render.ts'
 import { pages, shared } from '../../content/content.ts'
-import { sessionWantedForGoal } from './stepPortal.ts'
+import { sessionWantedForGoal, sessionWantedLongForGoal } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 
@@ -43,6 +43,8 @@ test('a session goal fills {wanted} from the baseline policy it maps to, in word
   const step = r.steps.find((s) => s.goalId === 'admin-session')!
   const ex = stepVars(step, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: null, now: f.snapshot.asOf })
   assert.equal(ex.wanted, '4 hours', 'the manager note "expire after {wanted}" fills')
+  assert.equal(ex.wantedLong, '4 hours', 'the email "expire after {wantedLong}" fills, as a duration')
+  assert.equal(sessionWantedLongForGoal('mfa-all-users'), null)
 })
 
 test('the problematic-accounts check lists the dormant accounts with their state, and counts them', () => {
