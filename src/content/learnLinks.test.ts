@@ -40,3 +40,8 @@ test('every step and every Cleanup row has a Learn link', () => {
   const missing = [...content.steps.filter((s) => !s.learn?.url).map((s) => s.id), ...Object.entries(content.cleanup).filter(([, c]) => !c.learn?.url).map(([k]) => `cleanup.${k}`)]
   assert.deepEqual(missing, [])
 })
+
+test('no step carries a CIS value on its Learn link (step-audit.md C1: frameworks are not a chip)', () => {
+  const withCis = content.steps.filter((s) => s.learn && 'cis' in (s.learn as Record<string, unknown>)).map((s) => s.id)
+  assert.deepEqual(withCis, [])
+})
