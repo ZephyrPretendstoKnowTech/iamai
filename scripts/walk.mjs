@@ -53,6 +53,8 @@ const RULES = contracts.rules
 const FORBID_EVERY = contracts.forbidEverywhere ?? []
 const REPEATERS = contracts.repeaters ?? []
 const contractById = Object.fromEntries((contracts.surfaces ?? []).map((c) => [c.id, c]))
+// The pinned package's policy count (baselines/*.pinned.json): the Baseline tile's one count, signed in and out.
+const PINNED_COUNT = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8')).policies.length
 
 // The titles and goal names that must never appear as a plan row: the content
 // steps absent from the pinned baseline, and the catalogue names of the goals
@@ -512,6 +514,35 @@ async function walkFixture(fx) {
         const stayed = await evaluate(`window.__stillHere === 2`)
         if (prevented || !stayed) add('P0', `${label}: a second chunk load failure in the session reloaded again (handled ${prevented}, page kept ${stayed}); once, then the error page`)
       }
+      // The signed-in account is never dormant or Not active (derive/operator.ts):
+      // with its directory sign-in 200 days stale, Today counts it active as
+      // "signed in now", the dormant step never lists it, and the admin steps
+      // count it with the operator note.
+      if (fx.mock === 'operator' && route === 'today') {
+        const row = await evaluate(`(() => { const tr = [...document.querySelectorAll('main.page table.datatable tbody tr')].find((r) => /Alex Morgan/.test(r.innerText)); if (!tr) return null; const tds = [...tr.querySelectorAll('td')].map((td) => (td.innerText || '').replace(/\\s+/g, ' ').trim()); return { state: tds[1] || '', evidence: tds[3] || '', text: tr.innerText.replace(/\\s+/g, ' ') } })()`)
+        if (!row) add('P0', `${label}: Today has no row for the signed-in account`)
+        else {
+          if (/Not active/.test(row.state)) add('P0', `${label}: Today counts the signed-in account as Not active ("${row.state}"); it is signed in now`)
+          if (!/signed in now/.test(row.evidence)) add('P0', `${label}: the signed-in account's evidence reads "${row.evidence}"; signed in now`)
+        }
+        const active = (text.match(/(\d+) active people/) || [])[1]
+        if (active !== undefined && Number(active) < 1) add('P0', `${label}: Today counts no active people with the signed-in account on the page`)
+      }
+      if (fx.mock === 'operator' && route === 'plan') {
+        const openStep = async (re) => {
+          const clicked = await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => ${re}.test(((x.querySelector('.step-title') || {}).textContent || '').trim())); if (!r) return false; r.scrollIntoView({ block: 'center' }); r.click(); return true })()`)
+          if (!clicked) return null
+          await waitFor(`document.querySelector('main.page .step-body') !== null`, 6000)
+          const body = await evaluate(`((document.querySelector('main.page .step-body') || {}).innerText || '').replace(/\\s+/g, ' ')`)
+          await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => ${re}.test(((x.querySelector('.step-title') || {}).textContent || '').trim())); if (r) r.click() })()`)
+          return body
+        }
+        const dormant = await openStep(/Dormant Accounts/)
+        if (dormant !== null && /Alex Morgan/.test(dormant)) add('P0', `${label}: the dormant step lists the signed-in account`)
+        const admins = await openStep(/Phishing-Resistant MFA for Admins/)
+        if (admins === null) add('P0', `${label}: no admin step on the plan`)
+        else if (!/Your account is in scope/.test(admins)) add('P0', `${label}: the admin step's who does not carry the operator note ("Your account is in scope")`)
+      }
       const overflow = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
       if (overflow > 0) {
         const widest = await evaluate(`(() => { const w = document.documentElement.clientWidth; const els = [...document.querySelectorAll('main.page *')].filter((e) => e.getBoundingClientRect().right > w + 1); const e = els[0]; return e ? (e.className || e.tagName) + ' ' + Math.round(e.getBoundingClientRect().right - w) + 'px past the edge' : '' })()`)
@@ -630,6 +661,26 @@ async function walkFixture(fx) {
         // 2 Baseline
         if (t2) {
           if (!/^Baseline .+ · \d+ polic/.test(t2.h2)) add('P0', `${label}: tile 2 does not carry the baseline name and count as its state: "${t2.h2}"`)
+          // One policy count, the pinned package's, signed out and (the demo runs on it) signed in.
+          if ((signedOut || inDemo) && !new RegExp(' · ' + PINNED_COUNT + ' policies$').test(t2.state)) add('P0', `${label}: tile 2 reads "${t2.state}"; the pinned package holds ${PINNED_COUNT} policies`)
+          // The author's update: every changed policy named (added, removed, changed), under each the plan steps that change or "no step changes"; no row reads "policy".
+          if (fx.mock === 'author') {
+            const review = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /Updated by its author/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; return { summary: (d.querySelector('summary').textContent || '').replace(/\\s+/g, ' ').trim(), rows: [...d.querySelectorAll(':scope > ul.diff > li')].map((li) => ({ tag: ((li.querySelector('.tag') || {}).textContent || '').trim(), policy: ((li.querySelector('.policy') || {}).textContent || '').trim(), steps: [...li.querySelectorAll('.steps li')].map((x) => (x.textContent || '').trim()) })) } })()`)
+            if (!review) add('P0', `${label}: tile 2 has no author-update review`)
+            else {
+              if (!/^Updated by its author on .+ · 4 policies changed · review$/.test(review.summary)) add('P0', `${label}: the review summary reads "${review.summary}"`)
+              if (review.rows.length !== 4) add('P0', `${label}: the review lists ${review.rows.length} rows; one per changed policy (4)`)
+              for (const r of review.rows) {
+                if (!['added', 'removed', 'changed'].includes(r.tag)) add('P0', `${label}: a review row's change word is "${r.tag}"`)
+                if (r.policy.length < 4 || /\bpolicy\b/.test(r.policy)) add('P0', `${label}: a review row does not name its policy: "${r.policy}"`)
+                const ok = r.steps.length >= 1 && (r.steps.every((x) => /^changes .{5,}$/.test(x)) || (r.steps.length === 1 && r.steps[0] === 'no step changes'))
+                if (!ok) add('P0', `${label}: the steps under "${r.policy}" read ${JSON.stringify(r.steps)}; "changes <step>" lines or "no step changes"`)
+                if (/\bpolicy\b/.test(r.steps.join(' '))) add('P0', `${label}: a review row reads "policy": ${JSON.stringify(r.steps)}`)
+              }
+              if (!review.rows.some((r) => r.steps.some((x) => /^changes /.test(x)))) add('P0', `${label}: no review row names a step that changes, although the update touches mapped policies`)
+              if (!review.rows.some((r) => r.steps[0] === 'no step changes')) add('P0', `${label}: no review row reads "no step changes", although the update touches an unmapped policy`)
+            }
+          }
           if (!/built and maintained by Jon Hope/.test(t2.text) || !/Its aim is layered protection/.test(t2.text)) add('P0', `${label}: tile 2 lacks the approved baseline sentences`)
           expectBtn(t2, /^Change baseline$/, 'secondary', 'tile 2')
         }
@@ -729,7 +780,14 @@ async function walkFixture(fx) {
             const labels = facts.map((f) => f.label)
             if (labels.length !== 5 || labels.slice(0, 4).join(' · ') !== 'people · policies · sign-in records · licence' || !/^steps · \d+ done$/.test(labels[4])) add('P0', `${label}: the Plan tile's facts read ${JSON.stringify(facts)}; people · policies · sign-in records · licence · steps · N done`)
             else {
-              if (!/^\d+$/.test(facts[0].value) || !/^\d+$/.test(facts[1].value) || !/^\d+$/.test(facts[4].value)) add('P0', `${label}: the Plan tile's counts are not numbers: ${JSON.stringify(facts)}`)
+              if (fx.mock === 'drop') {
+                // The previous scan read three times as many: "15 → 5 people since <date>", and the same for policies.
+                if (!/^\d+ → \d+$/.test(facts[0].value) || !/^people since [A-Z][a-z]{2} \d+$/.test(facts[0].label)) add('P0', `${label}: the people fact reads ${JSON.stringify(facts[0])}; "N → n" with "people since <date>" after a drop of more than a third`)
+                if (!/^\d+ → \d+$/.test(facts[1].value) || !/^policies since [A-Z][a-z]{2} \d+$/.test(facts[1].label)) add('P0', `${label}: the policies fact reads ${JSON.stringify(facts[1])}; "N → n" with "policies since <date>" after a drop of more than a third`)
+                const [before, now] = facts[0].value.split(' → ').map(Number)
+                if (!(now < before * (2 / 3))) add('P0', `${label}: the drop fact shows ${facts[0].value}, not a drop of more than a third`)
+              } else if (!/^\d+$/.test(facts[0].value) || !/^\d+$/.test(facts[1].value)) add('P0', `${label}: the Plan tile's counts are not plain numbers without a drop: ${JSON.stringify(facts)}`)
+              if (!/^\d+$/.test(facts[4].value)) add('P0', `${label}: the Plan tile's step count is not a number: ${JSON.stringify(facts)}`)
               if (/→\s*$/.test(facts[2].value) || /^\s*→/.test(facts[2].value)) add('P0', `${label}: the sign-in records fact renders an empty window`)
               if (fx.mock === 'free' && facts[2].value !== 'not read') add('P0', `${label}: sign-ins were not read and the fact does not say so: ${JSON.stringify(facts[2])}`)
               const done = Number((labels[4].match(/\d+/) || ['0'])[0])
@@ -1406,6 +1464,12 @@ const fixtures = [
   { name: 'mock-ready', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=noScan`, routes: ['connect'], mock: 'ready' },
   // A surface that throws while drawing: the error page (pages.app.error).
   { name: 'mock-crash', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&crash=1`, routes: ['error'], mock: 'crash' },
+  // The signed-in account with a stale directory sign-in: never dormant, never Not active.
+  { name: 'mock-operator', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&operatorDormant=1`, routes: ['today', 'plan'], mock: 'operator' },
+  // A scan that read a third of the people and policies the previous one did.
+  { name: 'mock-drop', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&previous=1`, routes: ['connect'], mock: 'drop' },
+  // The demo with an author update over the pinned package: the review rows.
+  { name: 'demo-author', base: `http://localhost:${PORT}/rollout/?demo=1&author=1`, routes: ['connect'], mock: 'author' },
   // The same page before sign-in, and tile 1 after a sign-in that did not succeed.
   { name: 'mock-signedout', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut`, routes: ['connect'], mock: 'signedOut' },
   { name: 'mock-auth-consent', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut&auth=consent`, routes: ['connect'], mock: 'consent' },

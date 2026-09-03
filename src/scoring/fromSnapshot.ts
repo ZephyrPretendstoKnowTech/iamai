@@ -5,6 +5,7 @@ import { computeAuthenticatorBaseline } from './platform.ts'
 import type { EvidenceStatus, MfaViabilityInput } from './mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { personAccounts } from '../derive/sets.ts'
+import { lastSignInOf } from '../derive/operator.ts'
 import { adminUserIds } from '../roles.ts'
 
 /**
@@ -63,7 +64,8 @@ export function buildViabilityInputs(
           }
         : null,
       methods: methodsAvailable ? (snapshot.authMethods[u.id] ?? 'unknown') : 'unknown',
-      lastSuccessfulSignIn: u.lastSuccessfulSignIn,
+      // The signed-in account signed in at the scan (derive/operator.ts): never dormant.
+      lastSuccessfulSignIn: lastSignInOf(snapshot, u),
       accountCreated: u.createdDateTime,
       evidence,
       tenant: { now, newestAuthenticatorVersionByPlatform },

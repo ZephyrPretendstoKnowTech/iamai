@@ -5,6 +5,7 @@
 // No check lives here. Everything this module does is build the context the
 // rules declare they need, call `evaluateSubject`, and group what comes back.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { operatorUserId } from '../derive/operator.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { MappingState, ValidationResult } from '../mapping/types.ts'
 import { evaluateSubject, isBlocking } from './rules.ts'
@@ -20,10 +21,9 @@ export type ValidationInputs = {
   drillDates?: string[]
 }
 
-/** The signed-in operator, from the /me section the scan already reads. */
+/** The signed-in operator, from the /me section the scan already reads (derive/operator.ts, the one reader of it). */
 export function operatorIdOf(snapshot: TenantSnapshot): string | null {
-  const me = (snapshot.config.me?.rows?.[0] ?? null) as { id?: string } | null
-  return typeof me?.id === 'string' ? me.id : null
+  return operatorUserId(snapshot)
 }
 
 export function buildContext(i: ValidationInputs): ValidationContext {

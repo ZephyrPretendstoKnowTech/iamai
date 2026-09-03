@@ -272,6 +272,8 @@ export type OrganisationReport = {
 
 export type CoverageReport = {
   results: GoalResult[]
+  /** The baseline policies a goal assessed, by name: the package's count less these is the not-assessed list. */
+  assessed: string[]
   couldNotEvaluate: { name: string; reason: string }[]
   organisation: OrganisationReport
   assumed: AssumedExclusions

@@ -29,6 +29,7 @@ import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { defaultDecisions } from './pickerRows.ts'
 import { proposedStart } from '../../derive/planStart.ts'
+import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
@@ -104,10 +105,10 @@ export type PlanData = {
   setNotAssessedNote: (policy: string, reason: string | null) => void
 }
 
-/** The operator's own account in the directory: their evidence line, and the special-care default. */
+/** The operator's own account in the directory (derive/operator.ts: the scan's /me row; the signed-in name when the scan has none): their evidence line, and the special-care default. */
 export function operatorIdOf(snapshot: TenantSnapshot | null, account: { username: string } | null): string | null {
   if (!snapshot || !account) return null
-  return snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
+  return operatorUserId(snapshot) ?? snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
 }
 
 export function usePlanData(

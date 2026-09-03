@@ -20,7 +20,9 @@ const tenant = 'Contoso Pty Ltd'
 const full = fixtureSnapshot()
 const last = { snapshot: full, at: full.asOf }
 const twoMinutesLater = Date.parse(full.asOf) + 120_000
-const stepFor = (policy: string): string | null => (policy === 'IAC - GLOBAL - GRANT - MFA - AllAdmins' ? 'Require Phishing-Resistant MFA for Admins' : null)
+// The review rows' helpers, as Connect wires them (derive/baselineDiff.ts): a file names a policy; the goal map names its steps.
+const labelFor = (file: string): string => file.replace(/^.*\//, '').replace(/\.json$/, '').replace(/---/g, ' - ')
+const stepsFor = (file: string): string[] => (labelFor(file) === 'IAC - GLOBAL - GRANT - MFA - AllAdmins' ? ['Require Phishing-Resistant MFA for Admins', 'Require MFA for Everyone'] : [])
 
 const NEVER = ['Security Reader', 'Reports Reader', 'Directory Readers']
 const noOtherRole = (strings: string[]): void => {
@@ -44,7 +46,7 @@ test('tile 1, Signed in: the tenant as the state, account · role, the Global Re
 })
 
 test('tile 2, Baseline: name · count as the state, the approved sentences in two paragraphs, the author-update rows, Change baseline (secondary)', () => {
-  const t = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 46, loading: null, update: null, stepFor })
+  const t = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 46, loading: null, update: null, labelFor, stepsFor })
   assert.equal(t.n, 2)
   assert.equal(t.title, 'Baseline')
   assert.equal(t.state, 'Jon Hope — Defense in Depth · 46 policies')
@@ -57,20 +59,27 @@ test('tile 2, Baseline: name · count as the state, the approved sentences in tw
     name: 'Jon Hope — Defense in Depth',
     policyCount: 46,
     loading: null,
-    update: { date: '2026-09-03T10:00:00Z', changes: [{ policy: 'IAC - INTUNE - GRANT - Device Registration', change: 'added' }, { policy: 'IAC - GLOBAL - GRANT - MFA - AllAdmins', change: 'updated' }, { policy: 'IAC - OLD - BLOCK', change: 'removed' }] },
-    stepFor,
+    update: { date: '2026-09-03T10:00:00Z', changes: [{ policy: 'Policies/IAC---INTUNE---GRANT---Device Registration.json', change: 'added' }, { policy: 'Policies/IAC---GLOBAL---GRANT---MFA---AllAdmins.json', change: 'updated' }, { policy: 'IAC - OLD - BLOCK', change: 'removed' }] },
+    labelFor,
+    stepsFor,
   })
   assert.ok(u.update)
   assert.match(u.update.summary, /^Updated by its author on [A-Z][a-z]{2} \d+, \d{4} · 3 policies changed · review$/)
+  // Every changed policy is named (added, removed, changed), and under each the plan steps that change, one line each, or "no step changes".
   assert.deepEqual(
-    u.update.rows.map((r) => [r.tag, r.policy, r.step]),
+    u.update.rows.map((r) => [r.tag, r.policy, ...r.steps]),
     [
       ['added', 'IAC - INTUNE - GRANT - Device Registration', 'no step changes'],
-      ['changed', 'IAC - GLOBAL - GRANT - MFA - AllAdmins', 'changes Require Phishing-Resistant MFA for Admins'],
+      ['changed', 'IAC - GLOBAL - GRANT - MFA - AllAdmins', 'changes Require Phishing-Resistant MFA for Admins', 'changes Require MFA for Everyone'],
       ['removed', 'IAC - OLD - BLOCK', 'no step changes'],
     ],
   )
-  assert.equal(baselineTile({ name: 'synthetic baseline', policyCount: 1, loading: null, update: null, stepFor }).state, 'synthetic baseline · 1 policy')
+  for (const r of u.update.rows) {
+    assert.ok(['added', 'removed', 'changed'].includes(r.tag))
+    assert.ok(r.policy.length > 3 && !/\bpolicy\b/.test(r.policy), `a row names its policy, never "policy": "${r.policy}"`)
+    assert.ok(r.steps.length >= 1)
+  }
+  assert.equal(baselineTile({ name: 'synthetic baseline', policyCount: 1, loading: null, update: null, labelFor, stepsFor }).state, 'synthetic baseline · 1 policy')
   noOtherRole(tileStrings(u))
 })
 
@@ -218,6 +227,26 @@ test('tile 4, Plan, ready: ready · from the scan N ago, people · policies · s
   free.sources.signInEvidence = { status: 'disabled', coveredWindow: null, reason: 'not available on this licence (needs Entra ID P1)', asOf: free.asOf }
   assert.equal(planTile({ kind: 'ready', snapshot: free, at: free.asOf, counts: null }).facts?.[2].value, 'not read', 'sign-ins not read: the fact says so, never an empty window')
   planOnlyItsOwn(t)
+})
+
+test('tile 4, ready: a count that fell by more than a third since the previous scan reads "13 → 4 people since Sep 2"; smaller drops and the other facts read as before', () => {
+  const at = '2026-09-03T10:00:00.000Z'
+  const before = { at: '2026-09-02T09:00:00.000Z', people: 13, policies: 10 }
+  const small = fixtureSnapshot()
+  assert.equal(small.users.length, 5)
+  assert.equal(small.config.caPolicies?.rows.length, 3)
+  const t = planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: before })
+  assert.deepEqual(t.facts?.[0], { value: '13 → 5', label: 'people since Sep 2' })
+  assert.deepEqual(t.facts?.[1], { value: '10 → 3', label: 'policies since Sep 2' })
+  // A third or less is not a drop; a rise is not a drop; no previous scan, no arrow.
+  const steady = planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: { at: before.at, people: 7, policies: 4 } })
+  assert.deepEqual(steady.facts?.[0], { value: '5', label: 'people' })
+  assert.deepEqual(steady.facts?.[1], { value: '3', label: 'policies' })
+  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: { at: before.at, people: 2, policies: 1 } }).facts?.[0], { value: '5', label: 'people' })
+  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: null }).facts?.[0], { value: '5', label: 'people' })
+  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null }).facts?.[1], { value: '3', label: 'policies' })
+  const page = tileStrings(t).join('\n')
+  assert.ok(page.includes('13 → 5') && page.includes('people since Sep 2'))
 })
 
 test('tile 4 after a scan with gaps: last full plan · date and Open the last full plan (date) (tertiary) alone, no state colour; with nothing before it, it waits', () => {
