@@ -406,10 +406,11 @@ function SignedIn({
           : { kind: 'ready' }
   const t3 = scanTile(tenant, scanInput)
   // Tile 4 follows: the plan is ready after a complete scan (its step counts
-  // the way the Plan header counts them, once the plan has computed), the last
+  // the way the Plan header counts them, once the plan has computed; read-only,
+  // so opening Connect never creates or touches the plan record), the last
   // full plan stays after a scan with gaps, and otherwise it waits for the scan.
   const planScan = scanInput.kind === 'complete' ? lastScan : null
-  const plan = usePlanData(planScan, baseline, operatorIdOf(planScan?.snapshot ?? null, account))
+  const plan = usePlanData(planScan, baseline, operatorIdOf(planScan?.snapshot ?? null, account), true)
   const computed = plan.computed
   const planInput: PlanInput =
     scanInput.kind === 'complete' && lastScan

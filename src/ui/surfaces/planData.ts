@@ -123,6 +123,8 @@ export function usePlanData(
   scan: { snapshot: TenantSnapshot; at: string } | null,
   baseline: BaselineResult | null,
   operatorId: string | null,
+  /** Compute only, never write: Connect's Plan tile counts the steps without creating or touching the plan record. */
+  readOnly = false,
 ): PlanData {
   const snapshot = scan?.snapshot ?? null
   const planId = snapshot ? planIdFor(snapshot.tenantId) : ''
@@ -274,7 +276,7 @@ export function usePlanData(
   // rewrites the record in the decisions-only shape (prompt 50.1 items 1-2).
   const lastPersist = useRef('')
   useEffect(() => {
-    if (!computed || !snapshot || !saved) return
+    if (readOnly || !computed || !snapshot || !saved) return
     const decisions: PlanDecisions = {
       planId,
       skips: saved.skips,
