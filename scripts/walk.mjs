@@ -462,6 +462,45 @@ async function walkFixture(fx) {
         const m = text.match(/(\d+) steps · (\d+) (?:in place|done)/)
         if (m) planHeaderCounts = { steps: m[1], inPlace: m[2] }
       }
+      // Connect's refusals: the scan line never renders an empty window and says
+      // "sign-ins not read" when the records were not read; a scan that could not
+      // read a core section ends on "Scan finished with gaps" with the sections and
+      // roles listed, withholds Open the plan, stores nothing, keeps the last good
+      // plan, and offers Scan tenant; a token without the roles names the role to
+      // ask for and does not start the scan.
+      if (route === 'connect') {
+        const scanLine = (text.match(/Scan complete[^\n]*/) ?? [null])[0]
+        if (scanLine && /sign-ins\s*→|→\s*(·|$)/.test(scanLine)) add('P0', `${label}: the scan line renders an empty window: "${scanLine}"`)
+        if (fx.mock === 'free' && !(scanLine && /sign-ins not read/.test(scanLine))) add('P0', `${label}: sign-ins were not read and the scan line does not say so: "${scanLine}"`)
+        const buttons = () => evaluate(`[...document.querySelectorAll('main.page button, main.page a.btn')].map((e) => (e.textContent || '').trim())`)
+        if (fx.mock === 'gaps') {
+          if (!/Scan finished with gaps/.test(text)) add('P0', `${label}: the scan could not read the policies or the sign-in records and Connect does not end on Scan finished with gaps`)
+          if (!/Conditional Access policies:[^\n]*ask for Security Reader/.test(text)) add('P0', `${label}: the policies section is not listed with the role that reads it`)
+          if (!/Sign-in records:[^\n]*ask for Reports Reader/.test(text)) add('P0', `${label}: the sign-in records section is not listed with the role that reads it`)
+          const b = await buttons()
+          if (b.some((t) => /Open the plan/.test(t))) add('P0', `${label}: Open the plan is offered after a scan with gaps`)
+          if (!b.some((t) => /^Scan tenant$/.test(t))) add('P0', `${label}: Scan tenant is not offered after a scan with gaps`)
+          const stored = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); const n = db.objectStoreNames.contains('snapshot') ? await new Promise((r) => { const q = db.transaction('snapshot').objectStore('snapshot').count(); q.onsuccess = () => r(q.result) }) : 0; db.close(); return n } catch { return -1 } })()`)
+          if (stored !== 0) add('P0', `${label}: the scan with gaps left ${stored} snapshot record(s) in the store; it is never stored`)
+          await send('Page.navigate', { url: `${fx.base}#/plan` })
+          const kept = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 10000)
+          if (!kept) add('P0', `${label}: the last good plan is gone after a scan with gaps`)
+        }
+        if (fx.mock === 'roles') {
+          const clicked = await clickText('button', /^Scan tenant$/)
+          if (!clicked) add('P0', `${label}: no Scan tenant button`)
+          const said = await waitFor(`/holds none of the roles that read/.test(document.body.innerText)`, 5000)
+          const after = await mainText()
+          if (!said) add('P0', `${label}: a token without the roles does not stop the scan with the role to ask for`)
+          else if (!/Ask for Security Reader; Global Reader reads everything IAMAI needs/.test(after)) add('P0', `${label}: the role line does not name the role to ask for: "${(after.match(/holds none of the roles[^\n]*/) ?? [''])[0]}"`)
+          const started = await evaluate(`document.querySelector('main.page .progress') !== null`)
+          const b = await buttons()
+          if (started || b.some((t) => /^Stop$/.test(t))) add('P0', `${label}: the scan started although the token lacks the roles`)
+          if (!b.some((t) => /^Scan tenant$/.test(t))) add('P0', `${label}: Scan tenant is not offered again after the role line`)
+          writeFileSync(join(wdir, 'connect-roles.txt'), after)
+          await shot(join(wdir, 'connect-roles.png'))
+        }
+      }
       // The page tips: Today and Export keep theirs; the Plan has none.
       const tips = await evaluate(`document.querySelectorAll('main.page .page-tip').length`)
       if ((route === 'today' || route === 'export') && tips !== 1) add('P0', `${label}: the page renders ${tips} tips; it keeps one`)
@@ -1058,6 +1097,13 @@ const fixtures = [
   { name: 'demo', base: `http://localhost:${PORT}/rollout/?demo=1` },
   // The three-minute path's last stop: Scan to update the plan → week two (queue item 4).
   { name: 'demo-week2', base: `http://localhost:${PORT}/rollout/?demo=1`, week2: true, routes: ['plan', 'today'] },
+  // The mock tenant's Connect refusals: a token without the roles (the scan does
+  // not start), a scan that could not read the policies or the sign-in records
+  // (finished with gaps; the last good plan kept), and a licence without sign-in
+  // records (the scan line says so). Dev-only, on the dev server the walk runs.
+  { name: 'mock-roles', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=noScan&roles=none`, routes: ['connect'], mock: 'roles' },
+  { name: 'mock-gaps', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=gaps`, routes: ['connect'], mock: 'gaps' },
+  { name: 'mock-free', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&licence=free`, routes: ['connect'], mock: 'free' },
 ]
 const summaries = {}
 for (const fx of fixtures) {

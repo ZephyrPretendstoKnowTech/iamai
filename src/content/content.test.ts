@@ -138,6 +138,25 @@ test('no orphan content string: every non-structural key renders, or is a known 
   assert.deepEqual(miss.sort(), [...EXAMPLE_SUPPRESSED_OR_APP_ONLY].sort(), 'the set of non-rendered content strings changed; a new entry is a content key no renderer consumes')
 })
 
+// A placement note ("Shown on Connect only when…", a step's placement line) is
+// a note to the author, never a sentence on a page: no rendered string starts
+// with one, in the review body or among the content strings a renderer reads.
+test('no rendered string starts with "Shown on"', () => {
+  assert.equal(/(^|>)\s*Shown on\b/.test(reviewBody()), false, 'the review body renders a placement note')
+  const hits: string[] = []
+  const walk = (node: unknown, path: string): void => {
+    if (typeof node === 'string') {
+      if (!isStructural(path) && /^Shown on\b/.test(node)) hits.push(path)
+    } else if (Array.isArray(node)) {
+      node.forEach((v, i) => walk(v, `${path}[${i}]`))
+    } else if (node && typeof node === 'object') {
+      for (const [k, v] of Object.entries(node)) if (k !== 'example' && k !== '$comment') walk(v, `${path}.${k}`)
+    }
+  }
+  walk(content, '')
+  assert.deepEqual(hits, [], 'a content string a renderer reads starts with "Shown on"')
+})
+
 // Prompt 52 Part 2: a policy step's whatToDoReference is the reviewer's reference
 // portal lines; the product generates What-to-do from the baseline policy
 // (src/ui/surfaces/stepPortal.ts) and must never read the reference. Only the
