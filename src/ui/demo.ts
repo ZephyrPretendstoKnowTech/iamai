@@ -49,7 +49,7 @@ export function exitDemoUrl(): string {
   return u.toString()
 }
 
-export type DemoTenant = { snapshot: TenantSnapshot; mapping: MappingState; baseline: ReturnType<typeof fixture>['baseline']; operatorId: string; groups: GroupMembers; decisions: Record<string, StepDecision> | null }
+export type DemoTenant = { snapshot: TenantSnapshot; mapping: MappingState; baseline: ReturnType<typeof fixture>['baseline']; operatorId: string; groups: GroupMembers; decisions: Record<string, StepDecision> | null; checkpoints: unknown[] | null }
 
 /** Shift every ISO date in a value by `offsetMs`, so the fixture reads as of now. */
 function shiftDates<T>(value: T, offsetMs: number): T {
@@ -89,5 +89,7 @@ export function demoTenant(week2 = false): DemoTenant {
   // lets coverage resolve each policy's exclusions (prompt 50.1 item 5).
   // Week two's decisions (the technician's answers from week one) are dated with the snapshot.
   const decisions = f.decisions ? shiftDates(f.decisions, offset) : null
-  return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId, groups: f.groups, decisions }
+  // Week two's checkpoints (the drill the technician recorded, E3) shift with the sign-ins they match.
+  const checkpoints = f.checkpoints ? shiftDates(f.checkpoints, offset) : null
+  return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId, groups: f.groups, decisions, checkpoints }
 }

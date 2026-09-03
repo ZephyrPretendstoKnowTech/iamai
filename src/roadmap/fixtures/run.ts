@@ -18,6 +18,7 @@ import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap } from '../generate.ts'
 import { annotateStateReasons } from '../stateReason.ts'
 import { applyProgress } from '../progress.ts'
+import { cleanupRecord } from '../cleanupDone.ts'
 import type { Fixture } from './index.ts'
 import type { RoadmapInput } from '../generate.ts'
 
@@ -35,7 +36,7 @@ const memo = new Map<string, { key: string; run: FixtureRun }>()
 
 /** Everything the derivation reads, serialised: a fixture edited in place gets a new key. */
 function keyOf(f: Fixture): string {
-  return [f.planId, f.planCreatedAt, f.operatorId, JSON.stringify(f.mapping), JSON.stringify([...f.groups]), JSON.stringify(f.baseline), JSON.stringify(f.snapshot)].join('\u0000')
+  return [f.planId, f.planCreatedAt, f.operatorId, JSON.stringify(f.mapping), JSON.stringify([...f.groups]), JSON.stringify(f.baseline), JSON.stringify(f.snapshot), JSON.stringify(f.checkpoints ?? [])].join('\u0000')
 }
 
 export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}): FixtureRun {
@@ -82,6 +83,8 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
     operatorUserId: f.operatorId,
     names,
     groupMembers: f.groups,
+    // What the fixture's technician recorded on Cleanup (E3), as the app reads it from the plan record.
+    cleanupRecord: cleanupRecord(f.checkpoints ?? []),
     ...over,
   }
   const t1 = performance.now()
