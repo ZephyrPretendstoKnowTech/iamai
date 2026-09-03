@@ -581,6 +581,21 @@ header.app .right a {
   color: var(--ink-2);
   text-decoration: none;
 }
+/* The theme and Account controls: text in the header's colour, no button face. */
+header.app .right .text-control {
+  font: inherit;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+header.app .right .text-control:hover,
+header.app .right .text-control:focus-visible {
+  color: var(--ink);
+}
 main.page {
   max-width: calc(var(--page) + 2 * var(--pad));
   padding: var(--pad);
@@ -1136,7 +1151,30 @@ footer.app a {
   margin: 0 0 16px;
   max-width: 32rem;
 }
-/* Each control on its own line; a label never wraps mid-word. */
+/* Each control on its own line; a label never wraps mid-word. The Start date
+   field above Start the plan is the same control, without the box. */
+.plan-start label.rows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  padding: 10px 0;
+}
+.plan-start .rows > * {
+  border-bottom: 0;
+  padding: 0;
+}
+.plan-start .rows > span {
+  white-space: nowrap;
+}
+/* The row rule above cancels the surface's row borders and padding on every
+   child; a control in the row keeps its own edge and inset. */
+.plan-start .rows > input,
+.plan-settings .rows > input,
+.plan-settings .rows > select {
+  border-bottom: 1px solid var(--ink-3);
+  padding: 0 8px;
+}
 .plan-settings label.rows {
   display: flex;
   align-items: center;

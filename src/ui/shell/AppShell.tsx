@@ -12,7 +12,7 @@ import { forgetTenant } from '../../graph/collect/cache.ts'
 import { clearAuthCache, signOut } from '../../graph/auth.ts'
 import { fillText } from '../../content/render.ts'
 import { app, pages, planner } from '../../content/content.ts'
-import { exitDemoUrl, isDemo } from '../demo.ts'
+import { exitDemoUrl, isDemo } from '../demoMode.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, LinkButton } from '../components/index.ts'
@@ -136,9 +136,10 @@ function AccountMenu({ account }: { account: AccountInfo }) {
   }, [open])
   return (
     <div className="menu" ref={ref}>
-      <Button variant="tertiary" aria-haspopup="menu" aria-expanded={open} title={fillText(SHELL.accountTooltip, { username: account.username })} onClick={() => setOpen((o) => !o)}>
+      {/* Text, not a button face (docs/design/connect-mockup.html's header): the menu it opens keeps its buttons. */}
+      <button type="button" className="text-control" aria-haspopup="menu" aria-expanded={open} title={fillText(SHELL.accountTooltip, { username: account.username })} onClick={() => setOpen((o) => !o)}>
         {SHELL.account}
-      </Button>
+      </button>
       {open && (
         <div className="menu-list" role="menu">
           <Button variant="tertiary" role="menuitem" onClick={() => void signOut()}>
@@ -212,9 +213,10 @@ export function AppShell({
           </nav>
         )}
         <div className="right">
-          <Button variant="tertiary" onClick={toggleTheme} title={SHELL.themeTooltip}>
+          {/* The theme and Account controls are text, not button faces (docs/design/connect-mockup.html's header). */}
+          <button type="button" className="text-control" onClick={toggleTheme} title={SHELL.themeTooltip}>
             {theme === 'dark' ? SHELL.lightTheme : SHELL.darkTheme}
-          </Button>
+          </button>
           {signedIn && <AccountMenu account={account} />}
         </div>
       </header>

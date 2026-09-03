@@ -338,7 +338,7 @@
       "settings": {
         "h3": "Plan settings",
         "start": "Start date",
-        "startNote": "Clear the date to start on the next working day.",
+        "startNote": "Clear the date to start today.",
         "freeze": "Change freeze",
         "freezeFrom": "from",
         "freezeTo": "to",
@@ -601,20 +601,23 @@
         "footerBuild": "Build {commit}, {date}",
         "footerBuildLocal": "Local build, {date}",
         "footerBuildTitle": "The commit this page was built from",
-        "errorTitle": "This page hit an error",
-        "errorCalloutTitle": "Nothing in the tenant changed",
-        "errorBody": "The page could not finish drawing. The saved scan, Setup answers and plan on this device are intact. Download the diagnostics to report the problem, or start over from the Start step.",
-        "errorDiagnostics": "Download diagnostics (redacted)",
-        "errorStartOver": "Start over",
-        "errorDetail": "Technical detail: {message}",
         "needs": "Needs:",
         "next": "Next: {label}",
         "baselineLoaded": "Baseline: {source}",
         "loading": "Loading…",
         "storageBlocked": "Saved data is not available yet",
         "scanNeedsConnect": "The scan reads the tenant into a local record. Connect a tenant first.",
-        "connectLink": "Connect a tenant",
-        "errorSend": "Send the diagnostics to feedback@getiamai.com"
+        "connectLink": "Connect a tenant"
+      },
+      "error": {
+        "title": "This page hit an error",
+        "lead": "Nothing in the tenant changed.",
+        "body": "The page could not finish drawing. The saved scan, answers and plan on this device are intact.",
+        "reload": "Reload",
+        "diagnostics": "Download diagnostics (redacted)",
+        "startOver": "Start over",
+        "send": "Send the diagnostics to feedback@getiamai.com",
+        "detail": "Technical detail: {message}"
       },
       "scan": {
         "reading": "reading…",

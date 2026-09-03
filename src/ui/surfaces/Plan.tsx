@@ -137,15 +137,18 @@ export function Plan({ scan, baseline, account, onScan }: {
       <p className="line">{line2}</p>
       {/* The readiness strip: five tiles from the plan's own population and buckets, each opening to its people. */}
       <ReadinessStrip snapshot={scan.snapshot} mapping={data.mapping ?? EMPTY_MAPPING} nameOf={nameOf} />
-      {/* The start (§5), in this order: the Start date field (default: the next working
-          day in the display zone), Start the plan under it, which locks the date shown,
+      {/* The start (§5), in this order: the Start date field (default: today in the
+          display zone, proposed again on every visit; the same control as Plan
+          settings' inputs), Start the plan under it, which locks the date shown,
           then Plan settings. */}
       {data.startedFrom === null ? (
         <>
-          <label className="rows no-print">
-            <span>{PP.settings.start}</span>
-            <input type="date" value={c.schedule.start.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
-          </label>
+          <div className="plan-start no-print">
+            <label className="rows">
+              <span>{PP.settings.start}</span>
+              <input type="date" value={c.schedule.start.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
+            </label>
+          </div>
           <p className="line reason no-print">{PP.settings.startNote}</p>
           <p className="actions no-print">
             <Button variant="primary" onClick={() => data.startPlan(c.schedule.start)}>

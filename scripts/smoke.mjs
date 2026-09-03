@@ -155,6 +155,8 @@ try {
   await send('Page.addScriptToEvaluateOnNewDocument', {
     source: `(() => { const seen = () => { if (window.__firstFrameHash === undefined && document.querySelector('header.app')) window.__firstFrameHash = location.hash }; new MutationObserver(seen).observe(document, { childList: true, subtree: true }); document.addEventListener('DOMContentLoaded', seen) })()`,
   })
+  // The dev server fetches hundreds of modules; the resource timing buffer must hold them all for the demo-chunk checks.
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: 'performance.setResourceTimingBufferSize(20000)' })
   // Capture downloads (produced bytes), swallow alerts (they would block the
   // headless page), and make print a no-op. It fires beforeprint but NOT
   // afterprint: the print DOM mounts on demand (prompt 49.1 item 4) and afterprint
@@ -172,6 +174,21 @@ try {
   await waitFor('window.__firstFrameHash !== undefined', 15000)
   check('Sign-in: an auth response in the fragment is intact when the first frame renders', (await evaluate('window.__firstFrameHash')) === '#code=abc&client_info=def&state=ghi', String(await evaluate('window.__firstFrameHash')))
   check('Sign-in: once auth has settled the page lands on Plan', await waitFor(`location.hash === '#/plan'`))
+
+  // The demo chunk loads in demo mode and nowhere else: the signed-out page reads
+  // the sample facts from the build-time module and never fetches src/ui/demo.ts.
+  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`)
+  check('Connect (signed out): the demo chunk is not loaded outside demo mode', !(await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts|\\/src\\/ui\\/demoFacts\\.ts/.test(e.name))`)))
+  t = await text()
+  check('Connect (signed out): the sample facts are on the page without it', /\d+\s*steps/.test(t) && /already in place/.test(t))
+  // A chunk that fails to load reloads the page once per session, then leaves the error page to the person.
+  await evaluate(`sessionStorage.removeItem('iamai.preloadReloaded'); window.__stillHere = 1; window.dispatchEvent(new Event('vite:preloadError', { cancelable: true }))`)
+  check('Preload failure: the page reloads once', await waitFor(`(performance.getEntriesByType('navigation')[0] || {}).type === 'reload' && window.__stillHere === undefined`, 8000))
+  await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`)
+  const preloadAgain = await evaluate(`(() => { const e = new Event('vite:preloadError', { cancelable: true }); window.__stillHere = 2; window.dispatchEvent(e); return e.defaultPrevented })()`)
+  await sleep(1500)
+  check('Preload failure: a second failure in the session does not reload again', !preloadAgain && (await evaluate(`window.__stillHere === 2`)))
 
   // The walk (prompt 47 Part 6 item 23): Connect signed out, sign in (the mock state), the scan, Today, Inventory, then the legacy Roadmap.
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
@@ -276,6 +293,15 @@ try {
   let pt = await text()
   check('Plan: the header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |the plan cannot finish)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
   check('Plan: line two points at Today; the tenant and the scan age live on Connect alone', /Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on/.test(pt))
+  // The Start date proposes today in the display zone (a weekend: the Monday after), in the same control as Plan settings' inputs, its label spaced.
+  const startField = await evaluate(`(() => { const l = document.querySelector('main.page .plan-start label.rows'); const i = l && l.querySelector('input[type=date]'); if (!i) return null; const cs = getComputedStyle(l); const ci = getComputedStyle(i); return { value: i.value, display: cs.display, gap: cs.columnGap, padTop: ci.paddingTop, borderBottom: ci.borderBottomWidth } })()`)
+  const startZone = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); if (!db.objectStoreNames.contains('mapping')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('mapping').objectStore('mapping').getAll(); q.onsuccess = () => r(q.result) }); db.close(); const m = rows.find((x) => x && x.displayTimeZone); return m ? m.displayTimeZone : null } catch { return null } })()`)
+  const startToday = await evaluate(`new Intl.DateTimeFormat('en-CA', { timeZone: ${JSON.stringify(startZone)} || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())`)
+  const startShift = (ymd, n) => new Date(Date.parse(`${ymd}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
+  const startDow = new Date(`${startToday}T12:00:00Z`).getUTCDay()
+  const startExpected = startDow === 6 ? startShift(startToday, 2) : startDow === 0 ? startShift(startToday, 1) : startToday
+  check('Plan: the Start date proposes today in the display zone', !!startField && startField.value === startExpected, `${startField && startField.value} vs ${startExpected} (${startZone ?? 'browser zone'})`)
+  check("Plan: the Start date field is a spaced row in Plan settings' control style", !!startField && startField.display === 'flex' && parseFloat(startField.gap) >= 8 && startField.padTop === '0px' && startField.borderBottom === '1px', JSON.stringify(startField))
   check('Plan: phases render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .phase').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3 && /next/.test(pt))
   check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /What to do/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
@@ -359,6 +385,7 @@ try {
   check('Header: the three tabs and the controls, no tenant tab (the tenant is on Connect)', !/Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Export/.test(t) && !/Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
   check('Header: no scan control and no scan age on any page', !/Scan to update the plan|scanned|Re-scan/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: the theme and Account controls are text, not button faces', await evaluate(`document.querySelectorAll('header.app .right button').length >= 2 && [...document.querySelectorAll('header.app .right button')].every((b) => { const cs = getComputedStyle(b); return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.paddingLeft === '0px' })`))
   check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
   check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=noScan#/plan` })
@@ -507,6 +534,7 @@ try {
   const demoDay1Header = (demoText.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
   check('Demo: the banner says nothing is from a real tenant and offers to leave', /Sample data . nothing here is from a real tenant/.test(demoText) && /Leave the demo/.test(demoText))
   check('Demo: the plan header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |nothing is dated)/.test(demoText), demoDay1Header)
+  check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts/.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // Item 4: a readiness-held step renders as a Blocked row whose date column
   // reads the reason in the 46 shape, not a date.
@@ -705,6 +733,17 @@ try {
     consoleErrors.slice(demoErrBase).filter((e) => !/authmethods|favicon|microsoftonline|net::|ERR_/.test(e)).length === 0,
     consoleErrors.slice(demoErrBase).slice(0, 3).join(' | '),
   )
+
+  // The error page (pages.app.error), through the mock's ?crash=1: the words and
+  // the three buttons in their weights; Reload reloads the page. Last, because
+  // the throw is logged to the console.
+  await send('Page.navigate', { url: `${BASE}&crash=1#/plan` })
+  check('Error page: a surface that throws while drawing shows it', await waitFor(`document.querySelector('main.page section.error-page') !== null`))
+  const errPage = await evaluate(`(() => { const s = document.querySelector('main.page section.error-page'); if (!s) return { title: '', ps: [], btns: [], text: '' }; const ps = [...s.querySelectorAll('p')].map((p) => (p.textContent || '').replace(/\\s+/g, ' ').trim()); const btns = [...s.querySelectorAll('button')].map((b) => (b.textContent || '').trim() + ':' + (/btn-primary/.test(b.className) ? 'primary' : /btn-secondary/.test(b.className) ? 'secondary' : /btn-tertiary/.test(b.className) ? 'tertiary' : 'none')); return { title: ((s.querySelector('h2') || {}).textContent || '').trim(), ps, btns, text: s.innerText } })()`)
+  check('Error page: the title, the lead with its full stop, no Setup, no Start step', errPage.title === 'This page hit an error' && errPage.ps[0] === 'Nothing in the tenant changed.' && !/\bSetup\b|Start step/.test(errPage.text), JSON.stringify(errPage.ps.slice(0, 2)))
+  check('Error page: Reload (primary), Download diagnostics (redacted) (secondary), Start over (tertiary), and where to send them', errPage.btns.join(' | ') === 'Reload:primary | Download diagnostics (redacted):secondary | Start over:tertiary' && errPage.ps.includes('Send the diagnostics to feedback@getiamai.com'), errPage.btns.join(' | '))
+  await clickText('/^Reload$/')
+  check('Error page: Reload reloads the page', await waitFor(`(performance.getEntriesByType('navigation')[0] || {}).type === 'reload'`, 8000))
 } catch (e) {
   check('walk completed', false, e instanceof Error ? e.message : String(e))
 } finally {

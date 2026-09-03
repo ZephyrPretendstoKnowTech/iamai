@@ -35,12 +35,17 @@ const DevSpikes = import.meta.env.DEV
   ? lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m.DevSpikes })))
   : () => null
 import { app, pages } from '../content/content.ts'
-import { isDemo } from './demo.ts'
+import { DEMO_TENANT_ID, isDemo } from './demoMode.ts'
 import { saveMappingState } from '../mapping/store.ts'
 import { probeStorage } from '../graph/collect/cache.ts'
 
 const DEV_PANEL =
   import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1'
+
+/** The mock's ?crash=1: throws while drawing, inside the page's error boundary. */
+function MockCrash(): never {
+  throw new Error('mock crash (?crash=1)')
+}
 // ?dev=1&mock=1: the smoke test's tenant (prompt 20 §10). A synthetic account,
 // scan and baseline stand in for Graph so the walk from Start to Roadmap runs
 // headless with no sign-in. Dev builds only; the fixture is loaded lazily so
@@ -79,6 +84,9 @@ export function App() {
   // gaps, and a token whose roles read none of the core sections.
   const [finishedScan, setFinishedScan] = useState<TenantSnapshot | null>(null)
   const [mockToken, setMockToken] = useState<TokenSource | null>(null)
+  // ?crash=1 (the mock only): a surface that throws while drawing, so the error
+  // page can be reached by the walk and the smoke.
+  const [mockCrash, setMockCrash] = useState(false)
   const route = useHashRoute()
   // A step's Scan to update the plan: request the scan, go to Connect, which
   // starts it as it mounts, and come back to `returnTo`. In the demo the scan
@@ -103,7 +111,7 @@ export function App() {
       // Re-scan); only the latest may land, or the earlier one finishing last
       // would leave day one's plan under week two's banner.
       let stale = false
-      void import('./demo.ts').then(async ({ demoTenant, DEMO_TENANT_ID }) => {
+      void import('./demo.ts').then(async ({ demoTenant }) => {
         const d = demoTenant(demoWeek2)
         if (stale) return
         // Seed the Setup answers, or the Roadmap has nothing to compute from and
@@ -165,6 +173,7 @@ export function App() {
       // loads the demo fixture through the same App snapshot-setting path.
       void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts'), import('../testing/gapsFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }, { gapsSnapshot, mockAuthError, noRolesToken, tokenWithRoles }]) => {
         const params = new URLSearchParams(window.location.search)
+        if (params.get('crash') === '1') setMockCrash(true)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
         if (params.get('licence') === 'free') {
@@ -298,6 +307,7 @@ export function App() {
         app.shell.loading
       ) : (
         <ErrorBoundary key={route} route={route}>
+          {mockCrash && <MockCrash />}
           {storageWarning && <Callout kind="warning" title={app.shell.storageBlocked}>{storageWarning}</Callout>}
           {route === 'connect' && (
             <Connect

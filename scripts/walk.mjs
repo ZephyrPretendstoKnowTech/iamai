@@ -180,6 +180,8 @@ const evaluate = async (expr) => {
   return r.result.result.value
 }
 await send('Page.enable')
+// The dev server fetches hundreds of modules; the resource timing buffer must hold them all for the demo-chunk invariant.
+await send('Page.addScriptToEvaluateOnNewDocument', { source: `performance.setResourceTimingBufferSize(20000)` })
 await send('Runtime.enable')
 
 const setWidth = (width) => send('Emulation.setDeviceMetricsOverride', { width, height: 1400, deviceScaleFactor: 1, mobile: width < 600 })
@@ -400,7 +402,7 @@ async function walkFixture(fx) {
   }
   mkdirSync(dir, { recursive: true })
   const summary = []
-  const routeContract = { connect: 'connect.signedIn', today: 'today', plan: 'plan', export: 'export', how: 'how', inventory: 'inventory' }
+  const routeContract = { connect: 'connect.signedIn', today: 'today', plan: 'plan', export: 'export', how: 'how', inventory: 'inventory', error: 'error' }
   let rowTitles = []
   let rowStatuses = []
   let rowWhens = []
@@ -446,6 +448,69 @@ async function walkFixture(fx) {
       if (route === 'plan') {
         const lines = await evaluate(`[...document.querySelectorAll('main.page p.line')].map((p) => (p.textContent || '').replace(/\\s+/g, ' ').trim())`)
         if (lines[1] !== 'Today shows where each person stands.') add('P0', `${label}: the Plan's second line reads "${lines[1]}"; Today shows where each person stands. (the tenant and the scan age are Connect's)`)
+      }
+      // The header's theme and Account controls are text, not button faces
+      // (docs/design/connect-mockup.html's header): no border, no background, no padding.
+      const faces = await evaluate(`[...document.querySelectorAll('header.app .right button')].map((b) => { const cs = getComputedStyle(b); return { t: (b.textContent || '').trim(), border: cs.borderTopWidth, bg: cs.backgroundColor, pad: cs.paddingLeft } })`)
+      if (!faces.some((f) => /theme$/.test(f.t))) add('P0', `${label}: no theme control in the header`)
+      for (const f of faces) if (f.border !== '0px' || !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(f.bg) || f.pad !== '0px') add('P0', `${label}: the header's ${f.t} control has a button face (border ${f.border}, background ${f.bg}, padding ${f.pad}); text`)
+      // The demo chunk (src/ui/demo.ts, the fixture and the engine behind the
+      // sample tenant) loads in demo mode and nowhere else: the page's resources
+      // name it on the demo fixtures and never on the mock's.
+      const demoLoaded = await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts|\\/src\\/ui\\/demoFacts\\.ts|\\/assets\\/demo-[^/]*\\.js/.test(e.name))`)
+      const inDemo = /[?&]demo=1/.test(fx.base)
+      if (demoLoaded !== inDemo) add('P0', `${label}: the demo chunk ${demoLoaded ? 'loaded outside demo mode' : 'did not load in demo mode'}`)
+      // The Start date on an unstarted plan: today in the display zone (a weekend
+      // clamps to the Monday after it), never a remembered proposal, in the same
+      // control as Plan settings' inputs with its label spaced from it.
+      if (route === 'plan' && !fx.week2) {
+        const field = await evaluate(`(() => { const l = document.querySelector('main.page .plan-start label.rows'); const i = l && l.querySelector('input[type=date]'); if (!i) return null; const cs = getComputedStyle(l); const ci = getComputedStyle(i); return { value: i.value, display: cs.display, gap: cs.columnGap, borderBottom: ci.borderBottomWidth, padTop: ci.paddingTop } })()`)
+        const startedLine = /\bstarted [A-Z][a-z]{2} \d/.test(text)
+        if (!field && !startedLine) add('P0', `${label}: no Start date field on an unstarted plan`)
+        if (field) {
+          const zone = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); if (!db.objectStoreNames.contains('mapping')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('mapping').objectStore('mapping').getAll(); q.onsuccess = () => r(q.result) }); db.close(); const m = rows.find((x) => x && x.displayTimeZone); return m ? m.displayTimeZone : null } catch { return null } })()`)
+          const today = await evaluate(`new Intl.DateTimeFormat('en-CA', { timeZone: ${JSON.stringify(zone)} || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())`)
+          const shift = (ymd, n) => new Date(Date.parse(`${ymd}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
+          const dow = new Date(`${today}T12:00:00Z`).getUTCDay()
+          const expected = dow === 6 ? shift(today, 2) : dow === 0 ? shift(today, 1) : today
+          if (field.value !== expected) add('P0', `${label}: the Start date proposes ${field.value}; today in ${zone ?? 'the browser zone'} is ${today}${expected !== today ? ` (a weekend: the working day after is ${expected})` : ''}`)
+          const saved = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); if (!db.objectStoreNames.contains('plan')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('plan').objectStore('plan').getAll(); q.onsuccess = () => r(q.result) }); db.close(); return rows.map((x) => x && x.startDate).filter(Boolean) } catch { return null } })()`)
+          if (saved && saved.length > 0) add('P0', `${label}: the proposed start was written to the plan record (${saved.join(', ')}); it is proposed again on every visit until Start`)
+          if (field.display !== 'flex' || parseFloat(field.gap) < 8) add('P0', `${label}: the Start date label is not a spaced row (display ${field.display}, gap ${field.gap})`)
+          if (field.padTop !== '0px' || field.borderBottom !== '1px') add('P0', `${label}: the Start date input is not styled like Plan settings' inputs (padding-top ${field.padTop}, border-bottom ${field.borderBottom})`)
+        }
+      }
+      // The error page (pages.app.error), reached through the mock's ?crash=1: the
+      // title, the lead with its full stop, no Setup and no Start step, Reload
+      // (primary), the redacted diagnostics (secondary), Start over (tertiary),
+      // where to send the diagnostics; Reload reloads the page.
+      if (route === 'error') {
+        const e = await evaluate(`(() => { const s = document.querySelector('main.page section.error-page'); if (!s) return null; const h = s.querySelector('h1, h2'); const ps = [...s.querySelectorAll('p')].map((p) => (p.textContent || '').replace(/\\s+/g, ' ').trim()); const btns = [...s.querySelectorAll('button, a.btn')].map((b) => ({ t: (b.textContent || '').trim(), w: /btn-primary/.test(b.className) ? 'primary' : /btn-secondary/.test(b.className) ? 'secondary' : /btn-tertiary/.test(b.className) ? 'tertiary' : 'none' })); return { title: h ? (h.textContent || '').trim() : '', ps, btns, text: (s.innerText || '').replace(/\\s+/g, ' ') } })()`)
+        if (!e) add('P0', `${label}: no error page for a surface that throws while drawing`)
+        else {
+          if (e.title !== 'This page hit an error') add('P0', `${label}: the error page's title reads "${e.title}"`)
+          if (e.ps[0] !== 'Nothing in the tenant changed.') add('P0', `${label}: the error page's lead reads "${e.ps[0]}"; Nothing in the tenant changed. (with its full stop)`)
+          if (/\bSetup\b|Start step/.test(e.text)) add('P0', `${label}: the error page still says Setup or Start step`)
+          const order = e.btns.map((b) => `${b.t} (${b.w})`).join(' · ')
+          if (order !== 'Reload (primary) · Download diagnostics (redacted) (secondary) · Start over (tertiary)') add('P0', `${label}: the error page's buttons read ${order}; Reload (primary) · Download diagnostics (redacted) (secondary) · Start over (tertiary)`)
+          if (!e.ps.includes('Send the diagnostics to feedback@getiamai.com')) add('P0', `${label}: the error page lacks "Send the diagnostics to feedback@getiamai.com"`)
+          await clickText('button', /^Reload$/, 'main.page')
+          const reloaded = await waitFor(`(performance.getEntriesByType('navigation')[0] || {}).type === 'reload'`, 8000)
+          if (!reloaded) add('P0', `${label}: Reload did not reload the page`)
+        }
+      }
+      // A chunk that fails to load (Vite's vite:preloadError, the old page asking
+      // for a file the new build no longer ships) reloads the page once per
+      // session; a second failure falls through to the error page.
+      if (fx.mock === 'ready' && route === 'connect') {
+        await evaluate(`sessionStorage.removeItem('iamai.preloadReloaded'); window.__stillHere = 1; window.dispatchEvent(new Event('vite:preloadError', { cancelable: true }))`)
+        const reloaded = await waitFor(`(performance.getEntriesByType('navigation')[0] || {}).type === 'reload' && window.__stillHere === undefined`, 8000)
+        if (!reloaded) add('P0', `${label}: a chunk load failure did not reload the page`)
+        await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 15000)
+        const prevented = await evaluate(`(() => { const e = new Event('vite:preloadError', { cancelable: true }); window.__stillHere = 2; window.dispatchEvent(e); return e.defaultPrevented })()`)
+        await sleep(1500)
+        const stayed = await evaluate(`window.__stillHere === 2`)
+        if (prevented || !stayed) add('P0', `${label}: a second chunk load failure in the session reloaded again (handled ${prevented}, page kept ${stayed}); once, then the error page`)
       }
       const overflow = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
       if (overflow > 0) {
@@ -1160,9 +1225,12 @@ async function walkFixture(fx) {
   // Small engine items (E9): the unsupported-platforms block and the admin session
   // policy are held by no readiness threshold; the service-accounts block is a row.
   if (fx.name.startsWith('demo')) {
+    // The when column was captured before the steps were opened; a decision made
+    // on a step moves the rows under it, so the column is read by title, not index.
+    const whenByTitle = Object.fromEntries(rowTitles.map((t, k) => [t, rowWhens[k] ?? '']))
     for (const [i, t] of rowTitlesOpen.entries()) {
-      if (/^Block Unsupported Device Platforms$/.test(t) && /device readiness/i.test(`${rowReasonsOpen[i] ?? ''} ${rowWhens[i] ?? ''}`)) add('P0', `${fx.name}: Block Unsupported Device Platforms is held by device readiness; it is a block, gated on its evidence`)
-      if (/^Shorten Admin Sessions$/.test(t) && /admin readiness/i.test(`${rowReasonsOpen[i] ?? ''} ${rowWhens[i] ?? ''}`)) add('P0', `${fx.name}: Shorten Admin Sessions is held by admin readiness; a shorter session locks nobody out`)
+      if (/^Block Unsupported Device Platforms$/.test(t) && /device readiness/i.test(`${rowReasonsOpen[i] ?? ''} ${whenByTitle[t] ?? ''}`)) add('P0', `${fx.name}: Block Unsupported Device Platforms is held by device readiness; it is a block, gated on its evidence`)
+      if (/^Shorten Admin Sessions$/.test(t) && /admin readiness/i.test(`${rowReasonsOpen[i] ?? ''} ${whenByTitle[t] ?? ''}`)) add('P0', `${fx.name}: Shorten Admin Sessions is held by admin readiness; a shorter session locks nobody out`)
     }
     if (!rowTitles.some((t) => /^Restrict Service Accounts to the Trusted Network$/.test(t))) add('P0', `${fx.name}: the baseline's service-accounts block is not a row, although the demo has service accounts`)
   }
@@ -1309,6 +1377,14 @@ let firstLoadMs = null
     firstLoadMs = ok ? Date.now() - t0 : null
     await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
     await send('Network.disable')
+    // The demo chunk loads in demo mode and nowhere else, in the production
+    // bundle too: the signed-out app fetches no demo-*.js; the demo just did.
+    const demoChunkInDemo = await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/assets\\/demo-[^/]*\\.js/.test(e.name))`)
+    if (!demoChunkInDemo) add('P0', 'production bundle, demo: the demo chunk (demo-*.js) did not load in demo mode')
+    await send('Page.navigate', { url: `http://localhost:${STATIC_PORT}/rollout/#/connect` })
+    await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 30000)
+    const demoChunkSignedOut = await evaluate(`performance.getEntriesByType('resource').filter((e) => /\\/assets\\/demo(Facts)?-[^/]*\\.js/.test(e.name)).map((e) => e.name.split('/').pop())`)
+    if (demoChunkSignedOut.length > 0) add('P0', `production bundle, signed out: the demo chunk loaded outside demo mode (${demoChunkSignedOut.join(', ')})`)
     server.close()
     if (firstLoadMs === null) add('P1', 'demo: the first load did not show a plan row within 30 s on a throttled connection (production bundle)')
     else if (firstLoadMs > 2000) add('P1', `demo: the first load took ${(firstLoadMs / 1000).toFixed(1)} s to the first plan row on a throttled connection (production bundle; over 2 s)`)
@@ -1328,6 +1404,8 @@ const fixtures = [
   { name: 'mock-free', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&licence=free`, routes: ['connect'], mock: 'free' },
   { name: 'mock-scanning', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=scanning`, routes: ['connect'], mock: 'scanning' },
   { name: 'mock-ready', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=noScan`, routes: ['connect'], mock: 'ready' },
+  // A surface that throws while drawing: the error page (pages.app.error).
+  { name: 'mock-crash', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&crash=1`, routes: ['error'], mock: 'crash' },
   // The same page before sign-in, and tile 1 after a sign-in that did not succeed.
   { name: 'mock-signedout', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut`, routes: ['connect'], mock: 'signedOut' },
   { name: 'mock-auth-consent', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut&auth=consent`, routes: ['connect'], mock: 'consent' },
@@ -1369,7 +1447,8 @@ for (const b of BEFORE_LINES) if (b.lines.length === 0) add('P0', `content ${b.i
 // Cross-surface invariants.
 for (const [name, readiness] of readinessBy) for (const [kind, values] of readiness) if (values.size > 1) add('P0', `${name}: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and Today (one readiness per kind)`)
 for (const [name, populations] of populationsBy) if (populations.size > 1) add('P0', `${name}: the active-people count reads ${[...populations].join(' and ')} across surfaces (one population)`)
-for (const e of consoleErrors.filter((x) => !/favicon|microsoftonline|net::|ERR_/.test(x))) add('P0', `demo: console error: ${e.slice(0, 160)}`)
+// The mock-crash fixture throws on purpose (React logs what the boundary caught); every other console error is a finding.
+for (const e of consoleErrors.filter((x) => !/favicon|microsoftonline|net::|ERR_|mock crash \(\?crash=1\)/.test(x))) add('P0', `demo: console error: ${e.slice(0, 160)}`)
 
 // Learn links: every one resolves.
 log(`checking ${learnLinks.size} link(s)`)

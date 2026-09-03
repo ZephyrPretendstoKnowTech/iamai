@@ -15,7 +15,7 @@
 // pointing at the copy that warns about it. `exportGuard.test.ts` then walks the
 // source and fails if any new call site reaches a browser export API directly.
 import { redactIdentifiers } from '../redact.ts'
-import { isDemo } from './demo.ts'
+import { isDemo } from './demoMode.ts'
 import { app } from '../content/content.ts'
 
 /**

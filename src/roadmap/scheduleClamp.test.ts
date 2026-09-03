@@ -25,7 +25,7 @@ test('toWeekday is idempotent: clamping an effective start again does not move i
   }
 })
 
-test('prompt 50 item 2: the default start is the next working day and reads as one in Denver and in Sydney', () => {
+test("nextWorkingDay (the engine's fallback when no start is proposed) is never today, never a weekend, in Denver and in Sydney", () => {
   // A Monday, a Friday and a weekend, viewed from a zone behind and ahead of UTC.
   const days: Record<string, string> = { Monday: '2026-08-31', Friday: '2026-09-04', Saturday: '2026-09-05', Sunday: '2026-09-06' }
   for (const [label, day] of Object.entries(days)) {

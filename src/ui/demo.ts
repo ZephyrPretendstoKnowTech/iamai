@@ -15,39 +15,14 @@ import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { StepDecision } from '../roadmap/decisions.ts'
 import { planIdFor } from '../roadmap/generate.ts'
-
-/**
- * The tenant id demo mode uses.
- *
- * Not a GUID, and not the fixture's own generated one, because every store in
- * this app keys on the tenant id: IndexedDB scans, plans, mapping state and the
- * baseline. A demo that reused a GUID-shaped id could collide with a real
- * tenant's saved data, and "Forget this tenant" would then be ambiguous about
- * which one it forgot. Nothing real is ever named `demo-sample-tenant`.
- */
-export const DEMO_TENANT_ID = 'demo-sample-tenant'
-
-export const DEMO_PARAM = 'demo'
-
-/** True when this page load is a demo. Read from the URL, never from storage. */
-export function isDemo(search: string = window.location.search): boolean {
-  return new URLSearchParams(search).get(DEMO_PARAM) === '1'
-}
-
-export function demoUrl(): string {
-  const u = new URL(window.location.href)
-  u.searchParams.set(DEMO_PARAM, '1')
-  // The demo enters at Plan (target-state §2).
-  u.hash = '#/plan'
-  return u.toString()
-}
-
-export function exitDemoUrl(): string {
-  const u = new URL(window.location.href)
-  u.searchParams.delete(DEMO_PARAM)
-  u.hash = '#/connect'
-  return u.toString()
-}
+// The demo's switches and its tenant id live in demoMode.ts, which is light;
+// this module carries the fixture and the engine, and loads only on demand.
+// The tenant id is not a GUID, and not the fixture's own generated one,
+// because every store in this app keys on the tenant id: IndexedDB scans,
+// plans, mapping state and the baseline. A demo that reused a GUID-shaped id
+// could collide with a real tenant's saved data, and "Forget this tenant" would
+// then be ambiguous about which one it forgot.
+import { DEMO_TENANT_ID } from './demoMode.ts'
 
 export type DemoTenant = { snapshot: TenantSnapshot; mapping: MappingState; baseline: ReturnType<typeof fixture>['baseline']; operatorId: string; groups: GroupMembers; decisions: Record<string, StepDecision> | null; checkpoints: unknown[] | null }
 

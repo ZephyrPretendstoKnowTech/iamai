@@ -6,6 +6,7 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { planner } from './src/content/content.ts'
 import { buildHome } from './scripts/build-home.ts'
+import { demoFacts } from './src/ui/demoFacts.ts'
 
 // Dev-only: lets the spike harness save raw result JSON to docs/spikes/raw/.
 // This middleware exists only in the local dev server; the shipped app is a
@@ -36,6 +37,24 @@ function spikeCapture(): Plugin {
           res.end('ok')
         })
       })
+    },
+  }
+}
+
+// The sample tenant's four facts for the signed-out Connect page, computed here
+// at build time from the demo fixture through the plan engine (ui/demoFacts.ts)
+// and served as `virtual:demo-facts`, four numbers: the page never loads the
+// demo chunk, which loads in demo mode and nowhere else (ui/demoChunk.test.ts).
+function demoFactsModule(): Plugin {
+  const id = 'virtual:demo-facts'
+  const resolved = '\0' + id
+  return {
+    name: 'demo-facts',
+    resolveId(source) {
+      return source === id ? resolved : null
+    },
+    load(moduleId) {
+      return moduleId === resolved ? `export default ${JSON.stringify(demoFacts())}` : null
     },
   }
 }
@@ -104,7 +123,7 @@ export default defineConfig({
   // absolute URL, so nothing else has to change between them.
   base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? `/${TOOL_PATH}/`,
   build: { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
-  plugins: [react(), spikeCapture(), productTitle(), homeTheme()],
+  plugins: [react(), spikeCapture(), productTitle(), homeTheme(), demoFactsModule()],
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },
 })
