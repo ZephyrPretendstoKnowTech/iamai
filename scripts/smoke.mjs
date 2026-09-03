@@ -7,7 +7,7 @@
 //
 //   npm run smoke            (CHROME=/path/to/chrome to override the binary)
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 
 // No rendered surface and no downloaded artifact may carry a forbidEverywhere
@@ -67,9 +67,14 @@ if (!up) {
 }
 
 // ---- browser ----
+// A fresh profile every run, as CI has: a second run on one machine otherwise
+// inherits the demo record the first run's week-two visit seeded, and the
+// record checks read the wrong order.
+const profile = `${process.env.TMPDIR ?? process.env.TEMP ?? '/tmp'}/iamai-smoke-profile`
+rmSync(profile, { recursive: true, force: true })
 const chrome = spawn(CHROME, [
   '--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--hide-scrollbars',
-  `--user-data-dir=${process.env.TMPDIR ?? process.env.TEMP ?? '/tmp'}/iamai-smoke-profile`,
+  `--user-data-dir=${profile}`,
   `--remote-debugging-port=${CDP_PORT}`, '--window-size=1440,1000', 'about:blank',
 ], { stdio: 'ignore' })
 let targets = []
@@ -215,7 +220,9 @@ try {
   check('Today: the table renders', await waitFor(`document.querySelectorAll('table.datatable tbody tr').length >= 4`))
   t = await text()
   check('Today: one line counts active people, enabled, admins and the sign-in window', /(\d+ active (person|people)|no enabled people) of \d+ enabled · (\d+ admins?|no admins) · sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/.test(t), (t.match(/[^\n]*active (person|people)[^\n]*/) ?? [''])[0])
-  check('Today: four tiles', /MFA proven/.test(t) && /Registered, unproven/.test(t) && /No method/.test(t) && /Not active/.test(t))
+  // The tiles' labels are the table's state words; the grouping tile names its states.
+  const tileLabels = await evaluate(`[...document.querySelectorAll('main.page .tile .stat-label')].map((e) => { const c = e.cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return (c.textContent || '').replace(/\\s+/g, ' ').trim() })`)
+  check('Today: four tiles', tileLabels.length === 4 && tileLabels[0] === 'Proven' && tileLabels[1] === 'Likely works · Never prompted · Possibly broken' && tileLabels[2] === 'No method' && tileLabels[3] === 'Not active', tileLabels.join(' | '))
   check('Today: state words are the plain six', /Proven|Likely works|Never prompted|Possibly broken|No method|Not active/.test(t) && !/Verified|Looks healthy/.test(t))
   check('Today: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card').length`)) === 0)
   check('Today: one Show dropdown and a search box', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)))
