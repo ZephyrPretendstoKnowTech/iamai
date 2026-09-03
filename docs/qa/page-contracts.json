@@ -50,7 +50,6 @@
         "columns": [],
         "chips": [],
         "buttons": [
-          "re:^Scan to update the plan( · scanned .+)?$",
           "Light theme",
           "Dark theme",
           "Account",
@@ -69,6 +68,8 @@
       "forbid": [
         "Recovery card",
         "Re-scan",
+        "Scan to update the plan",
+        "scanned",
         "Wave"
       ]
     },
@@ -85,15 +86,15 @@
           "Plan the journey to your Conditional Access baseline.",
           "re:^Sign in .+$",
           "re:^Baseline .+$",
-          "What happens next",
-          "re:^Scan after sign-in · .+$"
+          "re:^Scan after sign-in · .+$",
+          "Plan after the scan"
         ],
         "tabs": [],
         "tiles": [
           "Sign in",
           "Baseline",
-          "What happens next",
-          "Scan"
+          "Scan",
+          "Plan"
         ],
         "columns": [],
         "chips": [],
@@ -101,7 +102,8 @@
           "Sign in with Microsoft",
           "Try it with sample data",
           "Sign in with a work or school account",
-          "Change baseline"
+          "Change baseline",
+          "Open the sample plan"
         ],
         "summaries": [
           "What IAMAI asks for, and how to remove it",
@@ -118,6 +120,7 @@
       },
       "forbid": [
         "Connect a tenant",
+        "What happens next",
         "Built for",
         "What it catches",
         "Needs a Global Administrator",
@@ -125,6 +128,7 @@
         "Reports Reader",
         "How to use",
         "Step 1",
+        "scanned",
         "feedback@getiamai.com"
       ]
     },
@@ -187,14 +191,15 @@
           "re:^Signed in .+$",
           "re:^Baseline .+$",
           "What happens next",
-          "re:^Scan (complete · .+|finished with gaps · no plan built|not started( · this account can't read the tenant)?|.+ · \\d+(m \\d+)?s)$"
+          "re:^Scan (complete · .+|finished with gaps · no plan built|not started( · this account can't read the tenant)?|.+ · \\d+(m \\d+)?s)$",
+          "re:^Plan (ready · from the scan .+|last full plan · [A-Z][a-z]{2} \\d+|after the scan)$"
         ],
         "tabs": [],
         "tiles": [
           "Signed in",
           "Baseline",
-          "What happens next",
-          "Scan"
+          "Scan",
+          "Plan"
         ],
         "columns": [],
         "chips": [],
@@ -223,6 +228,7 @@
       },
       "forbid": [
         "Connect a tenant",
+        "What happens next",
         "Security Reader",
         "Reports Reader",
         "Directory Readers",
@@ -230,6 +236,7 @@
         "answer",
         "question",
         "What IAMAI found",
+        "scanned",
         "feedback@getiamai.com"
       ]
     },
@@ -422,6 +429,7 @@
       },
       "forbid": [
         "Assumes",
+        "scanned",
         "Before anything else",
         "Housekeeping (0)",
         "(0)",

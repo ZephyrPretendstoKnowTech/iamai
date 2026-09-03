@@ -213,6 +213,14 @@ try {
   check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
   check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+synthetic baseline · 1 polic(y|ies)/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
   check('Connect (scanned): the facts and Open the plan', /5\s*people/.test(t) && /3\s*policies/.test(t) && /[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+\s*sign-in records/.test(t) && /Open the plan →/.test(t) && !/Scan complete · 5 people/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
+  // Tile 3 reads Scan complete · N ago once; tile 4 reads Plan ready · from the scan N ago with the same words, from the one stored timestamp; nothing says scanned.
+  check(
+    "Connect (scanned): the scan's age once as Scan complete · N ago, Plan ready · from the scan with the same age, and no scanned line",
+    (await waitFor(`/Plan\\s+ready · from the scan/.test(document.body.innerText)`)) &&
+      (await evaluate(`(() => { const t = document.querySelector('main.page').innerText; const m = t.match(/Scan\\s+complete · ([^\\n]+)/); if (!m) return false; const age = m[1].trim(); return (t.match(/complete · [^\\n]+/g) || []).length === 1 && t.includes('ready · from the scan ' + age) && !/scanned/.test(t) })()`)),
+    (t.match(/Plan\s+ready[^\n]*/) ?? [''])[0],
+  )
+  check('Connect (scanned): the plan facts count the steps and how many are done', await waitFor(`/\\d+\\s*steps · \\d+ done/.test(document.body.innerText)`, 20000), ((await text()).match(/\d+\s*steps · \d+ done/) ?? [''])[0])
   check('Connect: Global Reader is the only role IAMAI names', !/Security Reader|Reports Reader/.test(t))
   check('Connect (scanned): Change baseline opens the picker with two choices', (await clickText('/^Change baseline$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /How to make one →/.test(document.body.innerText)`)))
   // Today: where things are now, over active people (target-state §4).
@@ -267,7 +275,7 @@ try {
   // The Plan surface (target-state §5): two header lines, numbered phases, the footer.
   let pt = await text()
   check('Plan: the header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |the plan cannot finish)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
-  check('Plan: line two names what the plan is built from', /Built from what IAMAI found on/.test(pt) && /Today shows where each person stands/.test(pt))
+  check('Plan: line two points at Today; the tenant and the scan age live on Connect alone', /Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on/.test(pt))
   check('Plan: phases render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .phase').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3 && /next/.test(pt))
   check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /What to do/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
@@ -344,13 +352,13 @@ try {
   )
   check('Export: no downloaded artifact carries a forbidden placeholder', artifactHits.length === 0, artifactHits.join('; '))
 
-  // The header (target-state §2): wordmark, tenant, tabs, Scan to update the plan with the scan's age, theme, Account.
+  // The header (target-state §2, docs/design/connect-mockup.html): wordmark, tabs, theme, Account. No scan control: the scan runs from Connect, which alone shows the tenant and the scan's age.
   await go('plan')
   await waitFor(`/\\bsteps\\b/.test(document.body.innerText)`)
   t = await evaluate(`document.querySelector('header.app').innerText`)
   check('Header: the three tabs and the controls, no tenant tab (the tenant is on Connect)', !/Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Export/.test(t) && !/Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
-  check('Header: Scan to update the plan carries the scan age', /Scan to update the plan · scanned (just now|\d+h ago|\d+d ago)/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: no scan control and no scan age on any page', !/Scan to update the plan|scanned|Re-scan/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)
   check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=noScan#/plan` })
@@ -653,8 +661,16 @@ try {
   const inPlaceOf = (body) => Number((body.match(/(\d+) in place/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)
-  await clickText('/^Scan to update the plan/', 'header.app')
-  check('Demo: Re-scan advances to the week-two snapshot', await waitFor(`/Sample data . week 2/.test(document.body.innerText)`))
+  // The header has no scan control: the demo's Scan again lives on Connect's
+  // Scan tile, and a hash change keeps the page (and the week) alive.
+  const demoScanAgain = async () => {
+    await demoGo('connect')
+    await waitFor(`[...document.querySelectorAll('main.page section.step-tile button')].some((b) => /^Scan again$/.test((b.textContent || '').trim()))`)
+    return clickText('/^Scan again$/', 'main.page')
+  }
+  check('Demo: Connect offers Scan again', await demoScanAgain())
+  check('Demo: Scan again advances to the week-two snapshot', await waitFor(`/Sample data . week 2/.test(document.body.innerText)`))
+  await demoGo('plan')
   // The week-two snapshot reloads asynchronously (a dynamic import, then a
   // regenerate); the banner flips first. Poll the plan until its body changes
   // from day one, so the check proves the plan advanced, not just the banner.
@@ -671,8 +687,8 @@ try {
     inPlaceOf(week2Body) > inPlaceOf(day1Body),
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
   )
-  await clickText('/^Scan to update the plan/', 'header.app')
-  check('Demo: a second Re-scan returns to day one', await waitFor(`/Sample data . nothing here is from a real tenant/.test(document.body.innerText)`))
+  await demoScanAgain()
+  check('Demo: a second Scan again returns to day one', await waitFor(`/Sample data . nothing here is from a real tenant/.test(document.body.innerText)`))
 
   // Leave the demo: back to the signed-out app, no banner (item 12).
   await clickText('/Leave the demo/', '.demo-banner')

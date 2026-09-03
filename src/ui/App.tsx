@@ -63,13 +63,13 @@ export function App() {
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
   const [lastScan, setLastScan] = useState<{ snapshot: TenantSnapshot; at: string } | null>(null)
   const [scanRunning, setScanRunning] = useState(false)
-  // The header's Re-scan: Connect starts the scan as soon as it mounts, and
-  // returns to Plan when it finishes (target-state §2).
+  // A step's Scan to update the plan: Connect starts the scan as soon as it
+  // mounts, and returns to the step when it finishes (target-state §2).
   const [rescanRequested, setRescanRequested] = useState(false)
   // Where the scan lands when it finishes: the Plan, or the step whose Scan to
   // update the plan asked for it (#/plan/<stepId>); consumed when the scan lands.
   const [scanReturnTo, setScanReturnTo] = useState<string | null>(null)
-  // The demo's Re-scan advances to a week-two snapshot and back (prompt 50 item 14).
+  // The demo's Scan again (Connect's Scan tile) advances to a week-two snapshot and back (prompt 50 item 14).
   const [demoWeek2, setDemoWeek2] = useState(false)
   // A scan frozen mid-lane, for the 'scanning' mock state (prompt 46 Part 1
   // item 2). The progress view is otherwise unreachable by a harness: it lasts
@@ -80,9 +80,10 @@ export function App() {
   const [finishedScan, setFinishedScan] = useState<TenantSnapshot | null>(null)
   const [mockToken, setMockToken] = useState<TokenSource | null>(null)
   const route = useHashRoute()
-  // The header's Re-scan and a step's Scan to update the plan: request the scan,
-  // go to Connect, which starts it as it mounts, and come back to `returnTo`.
-  // In the demo the scan is the week-two snapshot (and back), without a worker.
+  // A step's Scan to update the plan: request the scan, go to Connect, which
+  // starts it as it mounts, and come back to `returnTo`. In the demo the scan
+  // (from a step, or Connect's Scan again) is the week-two snapshot and back,
+  // without a worker.
   const requestScan = (returnTo: string = PLAN_HREF): void => {
     setScanReturnTo(returnTo)
     if (DEMO) {
@@ -269,8 +270,7 @@ export function App() {
   }, [demoWeek2])
 
   // The shell's state (target-state §2): signed out, signed in with no scan,
-  // scanning, or scanned. It decides the tabs, the Re-scan control and where
-  // an empty hash lands.
+  // scanning, or scanned. It decides the tabs and where an empty hash lands.
   const shellState: ShellState = !account ? 'signedOut' : scanRunning ? 'scanning' : lastScan ? 'scanned' : 'noScan'
   useEffect(() => {
     if (!ready) return
@@ -291,8 +291,6 @@ export function App() {
       tenantName={tenantName}
       route={route}
       state={shellState}
-      scannedAt={lastScan?.at ?? null}
-      onRescan={() => requestScan()}
       snapshot={lastScan?.snapshot ?? null}
       demoWeek2={demoWeek2}
     >
@@ -326,6 +324,7 @@ export function App() {
               returnTo={scanReturnTo}
               autoScan={rescanRequested}
               onAutoScanConsumed={() => setRescanRequested(false)}
+              onDemoScan={() => requestScan()}
             />
           )}
           {(route === 'today' || route === 'inventory') &&

@@ -1,8 +1,9 @@
 // Connect before sign-in (docs/design/connect-mockup.html): tile 1 as the
 // sign-in tile with the consent rows for every requested scope, its three
-// error states from the MSAL error code, and tile 4 with the sample tenant's
-// four facts computed from the demo fixture. The other states' strings are
-// absent from each.
+// error states from the MSAL error code, tile 3 (Scan) after sign-in with the
+// beats for your tenant, and tile 4 (Plan) after the scan with the sample
+// tenant's four facts computed from the demo fixture and Open the sample plan.
+// The other states' strings are absent from each.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { GRAPH_SCOPES } from '../../graph/scopes.ts'
@@ -10,7 +11,7 @@ import { SIGN_IN_SCOPES } from '../../copy/permissions.ts'
 import { classifyAuthError } from '../../graph/authError.ts'
 import { demoFacts } from '../demoFacts.ts'
 import { demoTenant } from '../demo.ts'
-import { W, accountTile, nextTile, sampleScanTile, signInTile, tileStrings } from './connectView.ts'
+import { W, accountTile, planTile, scanTile, signInTile, tileStrings } from './connectView.ts'
 import type { SignInTile } from './connectView.ts'
 
 const CONSENT = 'The first sign-in in a tenant needs an account that can grant consent (a Global Administrator, once); every sign-in after that can be Global Reader.'
@@ -35,6 +36,7 @@ test('the heading above the tiles is the same in both states, and Connect a tena
   assert.equal(W.h1, 'Plan the journey to your Conditional Access baseline.')
   assert.equal(W.intro, 'IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.')
   assert.ok(!JSON.stringify(W).includes('Connect a tenant'))
+  assert.ok(!JSON.stringify(W).includes('What happens next'), 'tile 3 is Scan')
 })
 
 test('tile 1 signed out: no tenant connected, the Global Reader line with the consent sentence, Sign in with Microsoft (primary), Try it with sample data (secondary), the consent rows for every requested scope in order, the removal line', () => {
@@ -116,18 +118,29 @@ test('a sign-in error is one of three states from the MSAL error code: admin app
   onlyItsOwn('cancelled', x)
 })
 
-test('tile 3 signed out says "your tenant"', () => {
-  const t = nextTile({ tenant: 'your tenant' })
+test('tile 3 signed out: Scan after sign-in · about a minute for a small tenant, the beats for "your tenant", no button, no state colour', () => {
+  const t = scanTile(W.scan.yourTenant, { kind: 'sample' })
+  assert.equal(t.n, 3)
+  assert.equal(t.title, 'Scan')
+  assert.equal(t.state, 'after sign-in · about a minute for a small tenant')
+  assert.equal(t.tone, null)
   assert.equal(t.beats[0].text, "your tenant's policies, people, sign-in records and licences.")
+  assert.equal(t.beats[1].text, 'what each baseline policy is for with what your tenant already has.')
+  assert.equal(t.limits.lines.length, 5)
+  assert.deepEqual(t.actions, [])
+  const text = tileStrings(t).join('\n')
+  for (const s of ['complete · ', 'no plan built', "can't read the tenant", 'Stop', 'Scan tenant', 'Scan again']) assert.ok(!text.includes(s), `the signed-out Scan tile must not render "${s}"`)
 })
 
-test("tile 4 signed out: after sign-in, the sample tenant's four facts computed from the demo fixture, Try it with sample data (secondary)", () => {
+test("tile 4 signed out: Plan after the scan, the sample tenant's four facts computed from the demo fixture, Open the sample plan (secondary)", () => {
   const facts = demoFacts()
-  assert.equal(facts.people, demoTenant(false).snapshot.users.length, 'people is the demo snapshot\'s user count, as the complete tile counts it')
+  assert.equal(facts.people, demoTenant(false).snapshot.users.length, 'people is the demo snapshot\'s user count, as the ready tile counts it')
   assert.ok(facts.steps > 10 && facts.inPlace >= 0 && facts.inPlace <= facts.steps && facts.weeks >= 1, JSON.stringify(facts))
-  const t = sampleScanTile(facts)
+  const t = planTile({ kind: 'sample', facts })
+  assert.equal(t.n, 4)
   assert.equal(t.kind, 'sample')
-  assert.equal(t.state, 'after sign-in · about a minute for a small tenant')
+  assert.equal(t.title, 'Plan')
+  assert.equal(t.state, 'after the scan')
   assert.equal(t.tone, null)
   assert.equal(t.lead, 'What the sample tenant produced:')
   assert.deepEqual(
@@ -136,7 +149,8 @@ test("tile 4 signed out: after sign-in, the sample tenant's four facts computed 
   )
   assert.deepEqual(t.facts?.slice(0, 3).map((f) => f.value), [String(facts.people), String(facts.steps), String(facts.inPlace)])
   assert.match(t.facts?.[3].value ?? '', /^\d+ weeks?$/)
-  assert.deepEqual(t.actions, [{ label: 'Try it with sample data', weight: 'secondary' }])
+  assert.deepEqual(t.actions, [{ label: 'Open the sample plan', weight: 'secondary' }])
+  assert.equal(planTile({ kind: 'sample', facts: null }).facts, undefined, 'the facts wait for the fixture; nothing is typed in')
   const text = tileStrings(t).join('\n')
-  for (const s of ['Open the plan →', 'no plan built', "can't read the tenant", 'Stop', 'Scan tenant']) assert.ok(!text.includes(s), `the sample tile must not render "${s}"`)
+  for (const s of ['Open the plan →', 'Open the last full plan', 'from the scan', 'Try it with sample data', 'licence']) assert.ok(!text.includes(s), `the sample tile must not render "${s}"`)
 })
