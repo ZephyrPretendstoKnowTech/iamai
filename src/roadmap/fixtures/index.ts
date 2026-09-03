@@ -10,7 +10,9 @@ import type { MappingState } from '../../mapping/types.ts'
 import { emptyMappingState } from '../../mapping/types.ts'
 import { emptyCapabilities } from '../../licensing/capabilities.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
-import { stepIdForGoal } from '../generate.ts'
+import { PREREQ_STEP_ID, stepIdForGoal } from '../generate.ts'
+import { questionLabels } from '../decisions.ts'
+import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
 
 export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile' | 'demo' | 'demo-week2'
@@ -28,6 +30,8 @@ export type Fixture = {
   planCreatedAt: string
   /** Who runs the plan: an admin id in the fixture. */
   operatorId: string
+  /** The step decisions the fixture's technician saved (the demo's week two): seeded into the demo's plan record. */
+  decisions?: Record<string, StepDecision>
   expect: FixtureExpectations
 }
 
@@ -203,6 +207,20 @@ export function buildFixture(spec: Spec): Fixture {
     // Every active person (90 days) has sign-in evidence: the records cover the whole window.
     if (lastDays < 90 && !spec.hostile) {
       signInEvidence[id] = { signInCount: 1 + Math.floor(rand() * 20), lastSignIn: daysAgo(lastDays), lastMfaSuccess: methods.length > 0 && rand() < 0.65 ? { at: daysAgo(lastDays), method: 'Mobile app notification' } : null, countries: rand() < 0.04 ? ['AU', 'NZ'] : ['AU'] }
+    }
+  }
+  // The demo's reception printer: an account nobody signs in with, which sends
+  // scan-to-email by SMTP AUTH and so never appears in the records. Week one
+  // lists it among the dormant accounts; week two's technician names it as the
+  // mail-sending device, which puts it in the service-accounts group (E1).
+  const printerId = spec.demo ? (users.find((u) => u.lastSuccessfulSignIn !== null && Date.parse(u.lastSuccessfulSignIn) < Date.parse(daysAgo(90)))?.id ?? null) : null
+  if (printerId !== null) {
+    const printer = users.find((u) => u.id === printerId)
+    if (printer) {
+      printer.displayName = 'MFP Reception'
+      printer.userPrincipalName = `mfp-reception@${seed}.example.com`
+      printer.department = null
+      printer.jobTitle = null
     }
   }
   // Break-glass accounts: cloud-only GAs, excluded everywhere; SMS-only when messy.
@@ -453,7 +471,24 @@ export function buildFixture(spec: Spec): Fixture {
   // the pinned package, never a synthetic one of its own. Every other fixture
   // keeps the synthetic baseline as a stand-in, filtered by the pinned goal map.
   const baseline = spec.demo ? pinnedPackage() : syntheticBaseline(seed)
-  return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect }
+  // The demo's week two carries the decisions its technician made in week one
+  // (E1, E2): the travellers question (New Zealand added), the partner question
+  // (service providers excluded), the mail-sending printer (in the service
+  // accounts group), and the device decision (phones protected by their apps,
+  // computers hybrid-joined). The app seeds them into the demo's plan record, so
+  // the walk sees every answer's effect on the plan; a visitor's own decisions win.
+  let decisions: Record<string, StepDecision> | undefined
+  if (spec.demo && spec.week2) {
+    decisions = {}
+    const countries = questionLabels(PREREQ_STEP_ID.allowedCountries)
+    if (countries.question) decisions[PREREQ_STEP_ID.allowedCountries] = { picked: [...mapping.allowedCountries], answers: { [countries.question]: 'Regularly: add: NZ' }, at: NOW }
+    const guests = questionLabels(stepIdForGoal('guests-mfa'))
+    if (guests.question) decisions[stepIdForGoal('guests-mfa')] = { picked: [], answers: { [guests.question]: "Exclude service providers (they use their own tenant's MFA)" }, at: NOW }
+    if (printerId !== null) decisions[stepIdForGoal('block-legacy-auth')] = { option: `Yes: add: ${printerId}; the service-accounts group carries them`, at: NOW }
+    const devices = questionLabels(PREREQ_STEP_ID.devicePlan)
+    if (devices.decision && devices.question) decisions[PREREQ_STEP_ID.devicePlan] = { option: 'Protect the apps only', answers: { [devices.question]: 'Hybrid-joined is enough' }, at: NOW }
+  }
+  return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}) }
 }
 
 /** A baseline with one policy per catalogue family, so every family produces steps. */

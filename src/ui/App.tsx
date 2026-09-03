@@ -3,7 +3,8 @@ import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/auth.ts'
 import { fetchTenantName } from '../graph/organization.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache } from '../graph/collect/cache.ts'
+import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
+import { planIdFor } from '../roadmap/generate.ts'
 import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
 import { Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
@@ -110,6 +111,13 @@ export function App() {
             saveGroupMembersCache({ tenantId: DEMO_TENANT_ID, groupId, displayName: g.displayName ?? null, membershipRule: null, mailEnabled: false, memberCount: g.memberCount, memberIds: g.memberIds, sampled: g.sampled, asOf: d.snapshot.asOf }),
           ),
         )
+        // Week two carries the decisions the sample's technician made in week
+        // one (the fixture's), so every answer's effect shows on the plan. A
+        // decision the visitor saved themselves wins over the sample's.
+        if (d.decisions) {
+          const rec: Record<string, unknown> & { stepDecisions?: Record<string, unknown> } = (await loadPlanRecord<Record<string, unknown> & { stepDecisions?: Record<string, unknown> }>(DEMO_TENANT_ID)) ?? { planId: planIdFor(DEMO_TENANT_ID), skips: {}, checkpoints: [] }
+          await savePlanRecord(DEMO_TENANT_ID, { ...rec, stepDecisions: { ...d.decisions, ...(rec.stepDecisions ?? {}) } })
+        }
         setAccount({
           homeAccountId: 'demo',
           environment: 'login.windows.net',

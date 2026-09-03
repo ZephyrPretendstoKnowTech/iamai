@@ -13,6 +13,7 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
+import type { StepDecision } from '../roadmap/decisions.ts'
 import { planIdFor } from '../roadmap/generate.ts'
 
 /**
@@ -48,7 +49,7 @@ export function exitDemoUrl(): string {
   return u.toString()
 }
 
-export type DemoTenant = { snapshot: TenantSnapshot; mapping: MappingState; baseline: ReturnType<typeof fixture>['baseline']; operatorId: string; groups: GroupMembers }
+export type DemoTenant = { snapshot: TenantSnapshot; mapping: MappingState; baseline: ReturnType<typeof fixture>['baseline']; operatorId: string; groups: GroupMembers; decisions: Record<string, StepDecision> | null }
 
 /** Shift every ISO date in a value by `offsetMs`, so the fixture reads as of now. */
 function shiftDates<T>(value: T, offsetMs: number): T {
@@ -86,5 +87,7 @@ export function demoTenant(week2 = false): DemoTenant {
   const mapping = { ...f.mapping, tenantId: DEMO_TENANT_ID }
   // The group members carry no dates, so they travel unshifted; they are what
   // lets coverage resolve each policy's exclusions (prompt 50.1 item 5).
-  return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId, groups: f.groups }
+  // Week two's decisions (the technician's answers from week one) are dated with the snapshot.
+  const decisions = f.decisions ? shiftDates(f.decisions, offset) : null
+  return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId, groups: f.groups, decisions }
 }

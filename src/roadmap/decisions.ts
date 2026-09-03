@@ -8,6 +8,7 @@ import type { ChangeFreeze } from './schedule.ts'
 import type { MappingRecord, MappingState } from '../mapping/types.ts'
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './generate.ts'
 import { blockerStepId } from './blockerSteps.ts'
+import { contentStepFor } from '../content/stepTitle.ts'
 
 /** A step the operator set aside, with the reason and when. */
 export type SkipDecision = { reason: string; at: string }
@@ -22,6 +23,17 @@ export type StepDecisionInput = Omit<StepDecision, 'at'>
 
 /** The mapping key a step's question answer persists under: questionAnswers[stepId + ':' + label]. */
 export const answerKey = (stepId: string, label: string): string => `${stepId}:${label}`
+
+/**
+ * The labels a step's decision block carries in content.json: the decision's
+ * own (its options), its question's, and its strict toggle's. The answer keys
+ * are built from these, so the content file is the one source of a label.
+ */
+export function questionLabels(stepId: string): { decision: string | null; question: string | null; strict: string | null } {
+  const d = contentStepFor({ id: stepId, goalId: stepId.replace(/^s-goal-/, '') })?.decision as { label?: unknown; question?: { label?: unknown }; strict?: { label?: unknown } } | null | undefined
+  const str = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null)
+  return { decision: str(d?.label), question: str(d?.question?.label), strict: str(d?.strict?.label) }
+}
 
 /**
  * Everything a person decided about the plan, persisted between sessions and
