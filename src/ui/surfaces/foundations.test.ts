@@ -17,11 +17,12 @@ test('emergency access is on every plan: Ready with one failing check on the dem
   const bg1 = day1.steps.find((s) => s.id === BG)!
   assert.ok(bg1, 'present on day one')
   assert.equal(bg1.status, 'ready', 'Ready: the second account sits inside one report-only policy')
-  assert.equal(bg1.checks?.failing, 1, `one failing check (${bg1.checks?.items.map((i) => i.fix).join(', ')})`)
-  assert.equal(bg1.checks?.items[0]?.fix, 'excluded-everywhere', 'the second account is inside one enabled policy')
+  // Day one: the second account is inside one enabled policy, and both accounts
+  // signed in ten days before the scan with no drill recorded (E3): who and why.
+  assert.deepEqual(bg1.checks?.items.map((i) => i.fix).sort(), ['excluded-everywhere', 'recent-sign-in', 'recent-sign-in'], `the failing checks (${bg1.checks?.items.map((i) => i.fix).join(', ')})`)
   const week2 = runFixture(fixture('demo-week2'))
   const bg2 = week2.steps.find((s) => s.id === BG)!
-  assert.equal(bg2.status, 'done', 'In place on week two')
+  assert.equal(bg2.status, 'done', 'In place on week two: the group is excluded and the sign-in is a recorded drill')
   assert.equal(bg2.checks?.failing, 0)
   const f = fixture('getiamai')
   assert.ok(runFixture(f).steps.some((s) => s.id === BG), 'present on GetIAMAI')

@@ -114,9 +114,13 @@ export function App() {
         // Week two carries the decisions the sample's technician made in week
         // one (the fixture's), so every answer's effect shows on the plan. A
         // decision the visitor saved themselves wins over the sample's.
-        if (d.decisions) {
-          const rec: Record<string, unknown> & { stepDecisions?: Record<string, unknown> } = (await loadPlanRecord<Record<string, unknown> & { stepDecisions?: Record<string, unknown> }>(DEMO_TENANT_ID)) ?? { planId: planIdFor(DEMO_TENANT_ID), skips: {}, checkpoints: [] }
-          await savePlanRecord(DEMO_TENANT_ID, { ...rec, stepDecisions: { ...d.decisions, ...(rec.stepDecisions ?? {}) } })
+        // The checkpoints its technician recorded travel the same way (the
+        // emergency access drill, E3), once each, beside the visitor's own.
+        if (d.decisions || d.checkpoints) {
+          const rec: Record<string, unknown> & { stepDecisions?: Record<string, unknown>; checkpoints?: unknown[] } = (await loadPlanRecord<Record<string, unknown> & { stepDecisions?: Record<string, unknown>; checkpoints?: unknown[] }>(DEMO_TENANT_ID)) ?? { planId: planIdFor(DEMO_TENANT_ID), skips: {}, checkpoints: [] }
+          const have = new Set((rec.checkpoints ?? []).map((c: unknown) => JSON.stringify(c)))
+          const seeded = (d.checkpoints ?? []).filter((c: unknown) => !have.has(JSON.stringify(c)))
+          await savePlanRecord(DEMO_TENANT_ID, { ...rec, stepDecisions: { ...(d.decisions ?? {}), ...(rec.stepDecisions ?? {}) }, checkpoints: [...(rec.checkpoints ?? []), ...seeded] })
         }
         setAccount({
           homeAccountId: 'demo',

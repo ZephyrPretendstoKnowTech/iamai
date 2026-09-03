@@ -14,6 +14,7 @@ import { PREREQ_STEP_ID, stepIdForGoal } from '../generate.ts'
 import { questionLabels } from '../decisions.ts'
 import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
+import { withCleanupDone } from '../cleanupDone.ts'
 
 export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile' | 'demo' | 'demo-week2'
 
@@ -32,6 +33,8 @@ export type Fixture = {
   operatorId: string
   /** The step decisions the fixture's technician saved (the demo's week two): seeded into the demo's plan record. */
   decisions?: Record<string, StepDecision>
+  /** The plan checkpoints the fixture's technician recorded (the demo's week two: the emergency access drill, E3): seeded into the demo's plan record. */
+  checkpoints?: unknown[]
   expect: FixtureExpectations
 }
 
@@ -479,6 +482,7 @@ export function buildFixture(spec: Spec): Fixture {
   // device decision (E2) is not seeded: it stays open, so the device steps are
   // seen waiting on it, and the walk makes it on its step.
   let decisions: Record<string, StepDecision> | undefined
+  let checkpoints: unknown[] | undefined
   if (spec.demo && spec.week2) {
     decisions = {}
     const countries = questionLabels(PREREQ_STEP_ID.allowedCountries)
@@ -486,8 +490,14 @@ export function buildFixture(spec: Spec): Fixture {
     const guests = questionLabels(stepIdForGoal('guests-mfa'))
     if (guests.question) decisions[stepIdForGoal('guests-mfa')] = { picked: [], answers: { [guests.question]: "Exclude service providers (they use their own tenant's MFA)" }, at: NOW }
     if (printerId !== null) decisions[stepIdForGoal('block-legacy-auth')] = { option: `Yes: add: ${printerId}; the service-accounts group carries them`, at: NOW }
+    // The emergency accounts signed in ten days before the scan (E3): on day one
+    // the emergency-access step asks who and why; by week two the technician
+    // recorded that sign-in as the drill on the Cleanup row, so the step is In
+    // place and the drill row reads done.
+    const drillAt = users.find((u) => u.id === bgIds[0])?.lastSuccessfulSignIn ?? null
+    if (drillAt) checkpoints = withCleanupDone([], 'drill', drillAt.slice(0, 10), NOW)
   }
-  return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}) }
+  return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}), ...(checkpoints ? { checkpoints } : {}) }
 }
 
 /** A baseline with one policy per catalogue family, so every family produces steps. */

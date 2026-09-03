@@ -560,14 +560,20 @@ async function walkFixture(fx) {
         // the consolidation row; the drill row's Done records today and the row
         // reads done <date>; the not-assessed row takes a note per policy.
         if (fx.name.startsWith('demo')) {
-          if (/Emergency Access Accounts/.test(title) && !/signed in \d+ days ago, not a recorded drill: confirm who signed in and why/.test(bodyText)) add('P0', `${slabel}: an emergency account signed in inside the drill window with no drill recorded, and the step does not ask who signed in and why`)
+          // Day one: no drill is recorded, so the step asks. Week two: the sample's
+          // technician recorded that sign-in as the drill, so it does not.
+          const asksWhy = /signed in \d+ days ago, not a recorded drill: confirm who signed in and why/.test(bodyText)
+          if (/Emergency Access Accounts/.test(title) && !fx.week2 && !asksWhy) add('P0', `${slabel}: an emergency account signed in inside the drill window with no drill recorded, and the step does not ask who signed in and why`)
+          if (/Emergency Access Accounts/.test(title) && fx.week2 && asksWhy) add('P0', `${slabel}: the sign-in is a recorded drill in week two, and the step still asks who and why`)
           if (/already covers this with/.test(bodyText)) sawExistingCoverage = true
           if (/Emergency Access Drill/.test(title)) {
-            const pressed = await clickText('button', /^Done$/, 'main.page .step-body .decision')
-            if (!pressed) add('P0', `${slabel}: no Done control on the Cleanup row`)
-            else {
-              const shown = await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Emergency Access Drill/.test((r.querySelector('.step-title') || {}).textContent || '') && /^done \\S.*\\d{4}$/.test((r.querySelector('.when') || {}).textContent || ''))`, 8000)
-              if (!shown) add('P0', `${slabel}: Done did not put "done <date>" on the row`)
+            const doneOnRow = () => waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Emergency Access Drill/.test((r.querySelector('.step-title') || {}).textContent || '') && /^done \\S.*\\d{4}$/.test((r.querySelector('.when') || {}).textContent || ''))`, 8000)
+            if (fx.week2) {
+              if (!(await doneOnRow())) add('P0', `${slabel}: the drill was recorded, and the row does not read done <date>`)
+            } else {
+              const pressed = await clickText('button', /^Done$/, 'main.page .step-body .decision')
+              if (!pressed) add('P0', `${slabel}: no Done control on the Cleanup row`)
+              else if (!(await doneOnRow())) add('P0', `${slabel}: Done did not put "done <date>" on the row`)
             }
           }
           if (/Did Not Assess/.test(title)) {
