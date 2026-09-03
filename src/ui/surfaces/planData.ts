@@ -28,7 +28,7 @@ import { reportOnlySeenOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { defaultDecisions } from './pickerRows.ts'
-import { nextWorkingDay } from '../../roadmap/schedule.ts'
+import { proposedStart } from '../../derive/planStart.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { getGroupMembers } from '../../graph/collect/onDemand.ts'
@@ -102,15 +102,6 @@ export type PlanData = {
   markCleanupDone: (kind: CleanupKind, date: string) => void
   /** The not-assessed Cleanup row's note for one baseline policy: does not apply, with the reason (null clears it). In the mapping, so in the plan file. */
   setNotAssessedNote: (policy: string, reason: string | null) => void
-}
-
-/** Today's date in the display zone (never UTC), as YYYY-MM-DD. */
-function todayIn(zone: string | null): string {
-  try {
-    return new Intl.DateTimeFormat('en-CA', { timeZone: zone ?? undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-  } catch {
-    return new Date().toISOString().slice(0, 10)
-  }
 }
 
 /** The operator's own account in the directory: their evidence line, and the special-care default. */
@@ -214,8 +205,10 @@ export function usePlanData(
     const defaults = defaultDecisions({ snapshot, mapping, nameOf, groups, operatorId, now: snapshot.asOf })
     return applyStepDecisions(applyStepDecisions(mapping, defaults, 'detected'), saved?.stepDecisions ?? null)
   }, [mapping, saved, snapshot, groups, operatorId])
-  // The default start is the next working day after today in the display zone.
-  const startDate = saved?.startDate ?? (snapshot ? nextWorkingDay(`${todayIn(mapping?.displayTimeZone ?? null)}T12:00:00.000Z`) : null)
+  // The default start is today in the display zone (derive/planStart.ts),
+  // proposed again on every visit until Start the plan anchors a date; the
+  // schedule clamps a weekend to the working day after it.
+  const startDate = saved?.startDate ?? (snapshot ? proposedStart(mapping?.displayTimeZone ?? null) : null)
   // Every date the pages format reads the stored zone.
   useEffect(() => {
     setDisplayTimeZone(mapping?.displayTimeZone ?? null)

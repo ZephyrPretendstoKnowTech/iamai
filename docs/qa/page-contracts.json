@@ -241,6 +241,40 @@
       ]
     },
     {
+      "id": "error",
+      "name": "Error page (a surface that threw while drawing)",
+      "status": "built",
+      "reach": {
+        "route": "/plan",
+        "state": "scanned",
+        "mock": "crash=1"
+      },
+      "allow": {
+        "headings": [
+          "This page hit an error"
+        ],
+        "tabs": [],
+        "tiles": [],
+        "columns": [],
+        "chips": [],
+        "buttons": [
+          "Reload",
+          "Download diagnostics (redacted)",
+          "Start over"
+        ],
+        "summaries": [],
+        "links": []
+      },
+      "budget": {
+        "sentences": 6,
+        "words": 70
+      },
+      "forbid": [
+        "Setup",
+        "Start step"
+      ]
+    },
+    {
       "id": "today",
       "name": "Today",
       "status": "built",

@@ -25,8 +25,11 @@ import { fillText } from '../../content/render.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { stepIdForGoal } from '../../roadmap/stepIds.ts'
 import { roleName } from '../../roles.ts'
-import { demoUrl, isDemo } from '../demo.ts'
-import type { DemoFacts } from '../demoFacts.ts'
+import { demoUrl, isDemo } from '../demoMode.ts'
+// The sample tenant's four facts, computed from the demo fixture through the
+// plan engine at build time (vite.config.ts demoFactsModule): the signed-out
+// page reads four numbers and never loads the demo chunk.
+import SAMPLE_FACTS from 'virtual:demo-facts'
 import { elapsedLabel } from '../format.ts'
 import { Button, LinkButton } from '../components/index.ts'
 import { PINNED_BASELINE, baselineChanges, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
@@ -259,21 +262,9 @@ function SignedOut({ error, baseline, baselineRestoreError, onBaseline }: Baseli
       })
     }
   }, [signInReady, opening, error])
-  // The sample tenant's facts, computed from the demo fixture through the plan
-  // engine, loaded with it: nothing here is typed.
-  const [facts, setFacts] = useState<DemoFacts | null>(null)
-  useEffect(() => {
-    let live = true
-    void import('../demoFacts.ts').then((m) => {
-      if (live) setFacts(m.demoFacts())
-    })
-    return () => {
-      live = false
-    }
-  }, [])
   const t1 = signInTile({ error })
   const t3 = scanTile(W.scan.yourTenant, { kind: 'sample' })
-  const t4 = planTile({ kind: 'sample', facts })
+  const t4 = planTile({ kind: 'sample', facts: SAMPLE_FACTS })
   return (
     <>
       <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone={stateToneOf(t1.tone)}>
