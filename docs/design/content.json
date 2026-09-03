@@ -262,7 +262,7 @@
         "notActive": {
           "label": "Not active",
           "value": "{n}",
-          "heldBy": "held by Address Problematic Accounts",
+          "heldBy": "held by Disable or Confirm Dormant Accounts",
           "tip": "Enabled people with no sign-in in 90 days, or none on record. Listed, never counted; whoever signs in first registers the method, so each one is decided in Address Problematic Accounts."
         }
       },
@@ -755,13 +755,14 @@
         ],
         "checkFixes": {
           "second-account": "Create a second account: one account is a single point of failure.",
+          "second-account-none": "Create two accounts: one is a single point of failure.",
           "permanent-global-admin": "{name}: assign Global Administrator permanently and actively; an eligible role has to activate first, and activation is one of the things a bad policy can block.",
           "cloud-only": "{name}: this account is synced from on-premises; recreate it as cloud-only.",
           "onmicrosoft-domain": "{name}: move the sign-in address to {onmicrosoftDomain}; a custom domain depends on DNS and on any federation.",
           "enabled": "{name}: enable the account.",
           "excluded-everywhere": "{name} is inside {list:policies}: add the exclusions group to each policy's Users → Exclude → Groups in Create or Correct Exclusions Group. Do not exclude the account itself.",
           "no-dynamic-group": "{name} is a member of the dynamic group {group}, which a policy targets; remove it or change the rule.",
-          "mfa-method": "{name}: register a hardware security key (see step 5 above).",
+          "mfa-method": "{name}: register a hardware security key (FIDO2) and keep it with the passphrase; not a passkey in Authenticator, which lives on a person's phone.",
           "shared-authenticator": "{name} shares the Authenticator device {device} with {otherAccount}; move it to its own security key or passkey.",
           "not-a-person": "{name} looks like a person's account (it has {attribute}); use a dedicated account instead.",
           "report-only-excluded": "The report-only policies {list:policies} do not exclude the exclusions group either; same fix, in Create or Correct Exclusions Group.",
@@ -770,7 +771,7 @@
           "method-diversity": "Both accounts depend on {method} alone; give one of them a different method type.",
           "auth-methods-migration": "Finish migrating to the authentication methods policy (the per-user MFA setting can block a recovery sign-in): Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration complete.",
           "no-licence-no-mailbox": "{name} holds {licence}; remove it. An emergency account needs no mailbox.",
-          "recent-sign-in": "{name} last signed in {ago}; run the drill (Cleanup) once the checks pass.",
+          "recent-sign-in": "{name} signed in {ago}, not a recorded drill: confirm who signed in and why.",
           "display-name": "{name}: rename so the purpose is obvious to whoever finds it next, for example {exampleName}."
         }
       },
@@ -887,12 +888,11 @@
           "Leave it without a licence and not mail-enabled."
         ],
         "checkFixes": {
-          "members-only-emergency": "Remove {list:extraMembers}: anyone in this group is outside every policy it is excluded from.",
-          "no-admin-members": "{name} holds {role} and is in the group; an excluded administrator is the most valuable unprotected account in the tenant. Remove them.",
+          "members-only-emergency": "Remove {list:extraMembers}: only the emergency accounts belong here, and anyone else in this group is outside every policy it is excluded from.",
+          "no-admin-members": "{name} holds {role} and is in the group besides the emergency accounts; an excluded administrator is the most valuable unprotected account in the tenant. Remove them.",
           "not-dynamic": "The group is dynamic; recreate it with assigned membership.",
           "excluded-from-every-policy": "Exclude the group from {list:policies}: open each policy → Users → Exclude → Groups.",
-          "member-count": "The group has {memberCount} members and there are {emergencyCount} emergency accounts; each extra member is an account no policy applies to.",
-          "not-mail-enabled": "The group is mail-enabled or licensed; remove the mail address and the licence."
+          "not-mail-enabled": "The group is mail-enabled or licensed; recreate it as a plain security group."
         }
       },
       "dates": null,
@@ -956,7 +956,7 @@
     {
       "id": "s-check-dormant-accounts",
       "kind": "check",
-      "title": "Address Problematic Accounts",
+      "title": "Disable or Confirm Dormant Accounts",
       "changeLine": null,
       "why": "Nobody has signed in to these accounts for 90 days, or ever; whoever signs in first registers the MFA method, and that may not be the owner.",
       "learn": {
@@ -964,7 +964,8 @@
       },
       "who": {
         "lead": "{n} enabled accounts with no sign-in for 90 days or none on record:",
-        "accounts": "{list:accountsWithState}"
+        "accounts": "{list:accountsWithState}",
+        "licenceNote": "Last sign-in dates need Entra ID P1; without it every account here reads no sign-in on record."
       },
       "decision": null,
       "whatToDo": {
@@ -1028,7 +1029,7 @@
       },
       "decision": {
         "label": "Allowed countries",
-        "help": "Every country with sign-ins since {from}. Remove one nobody should work from; add one people travel to.",
+        "help": "Every country with sign-ins since {from}. Remove one nobody should work from.",
         "pickerRow": "{country} · {people} people · {signIns} sign-ins",
         "save": "Save",
         "question": {
@@ -1131,10 +1132,11 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Find the office's public address: from a machine in the office, open https://whatismyip.com and note the IPv4 and IPv6 addresses.",
+          "Find the office's public address: from a machine in the office, open https://whatismyip.com and note the IPv4 and IPv6 addresses, or take it from the sign-in log's IP column filtered to the office.",
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
-          "Add each address as a range: {list:ranges} Never 0.0.0.0/0; nothing wider than /16, and a single office is usually /32 or a /24.",
+          "Add each address as a range: {list:ranges} Never 0.0.0.0/0; nothing wider than /16; a single office is usually /32; use the small block only if your ISP assigned one.",
+          "IPv6: /128 for one address, or the /64 your ISP delegated; never wider.",
           "Select \"Mark as trusted location\". Save."
         ],
         "correct": [
@@ -1155,6 +1157,10 @@
         "risks": [
           {
             "text": "An office on ordinary broadband whose address changes, so the trusted location stops matching.",
+            "applies": "always"
+          },
+          {
+            "text": "A trusted location also lowers Identity Protection risk scores, so keep the ranges tight.",
             "applies": "always"
           },
           {
@@ -1216,7 +1222,7 @@
       "doneWhen": [
         "The group exists with exactly the confirmed accounts."
       ],
-      "ifWrong": null,
+      "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
       "comms": null,
       "doesntApply": true,
       "skip": false,
@@ -1226,6 +1232,10 @@
           {
             "text": "An unattended account with an admin role is a password with tenant-wide reach.",
             "applies": "serviceAccountHasRole"
+          },
+          {
+            "text": "Accounts in this group are outside the legacy, countries and token policies; the baseline's Block Service Accounts policy pins them to the trusted network: see Restrict Service Accounts to the Trusted Network.",
+            "applies": "always"
           }
         ],
         "helpDesk": null,
@@ -1275,7 +1285,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "A policy scoped to the shared-device accounts requires a compliant device and nothing that prompts a person."
+        "A policy scoped to the shared-device accounts allows them only from the trusted network, and nothing prompts a person."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -1319,7 +1329,8 @@
           "Name: {policyName}",
           "Users → Include: {list:sharedDevices}",
           "Target resources → Resources → All resources",
-          "Grant → Require device to be marked as compliant",
+          "Conditions → Locations → Include: Any location; Exclude: {trustedLocation}",
+          "Grant → Block access",
           "{reportOnlyLine}",
           "Then exclude the same accounts from every policy that prompts a person: {list:peoplePolicies}"
         ]
@@ -1389,7 +1400,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": null,
+        "lead": "On the day Require MFA for Everyone enforces, and not before:",
         "steps": [
           "Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration in progress.",
           "Confirm each method people use (Authenticator, phone, passkeys) is enabled under Policies.",
@@ -1407,7 +1418,12 @@
       "skip": false,
       "scanControl": true,
       "more": {
-        "risks": [],
+        "risks": [
+          {
+            "text": "Disabling per-user MFA before the policy enforces removes MFA for that person.",
+            "applies": "always"
+          }
+        ],
         "helpDesk": null,
         "manager": null,
         "waits": null
@@ -1440,10 +1456,10 @@
         "lead": null,
         "steps": [
           "Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable: On; Target: All users.",
-          "Allow self-service set up: Yes. Enforce attestation: Yes.",
+          "Allow self-service set up: Yes. Enforce attestation: Yes, so only the key models on the list can register.",
           "Restrict specific keys: Allow. Select Microsoft Authenticator (Microsoft adds both app identifiers), or add them by hand with + Add AAGUID: Authenticator for Android {aaguidAndroid}; Authenticator for iOS {aaguidIos}.",
           "Add the identifier of every hardware key already registered in {tenant}, listed above, and of any key model you will buy for the emergency accounts. A key model missing from this list cannot register or sign in.",
-          "Save. Then Microsoft Authenticator → Enable: On, All users, so passkeys in the app can be registered.",
+          "Save. Then Microsoft Authenticator → Enable: On, All users, for push and codes; passkeys in the app are governed by the Passkey (FIDO2) policy above.",
           "Temporary Access Pass → Enable: On, All users; one-time use; 1 hour. This is how a person with no method registers their first passkey."
         ]
       },
@@ -1465,6 +1481,10 @@
           },
           {
             "text": "Removing an identifier later stops sign-in for everyone who registered with it.",
+            "applies": "always"
+          },
+          {
+            "text": "Synced passkeys (iCloud Keychain, Google Password Manager) fail attestation and cannot register under these settings.",
             "applies": "always"
           }
         ],
