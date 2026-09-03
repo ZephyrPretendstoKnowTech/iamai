@@ -5,6 +5,7 @@ import { computeAuthenticatorBaseline } from './platform.ts'
 import type { EvidenceStatus, MfaViabilityInput } from './mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { personAccounts } from '../derive/sets.ts'
+import { adminUserIds } from '../roles.ts'
 
 /**
  * One row per person. Accounts that are not people — shared mailboxes, room and
@@ -31,6 +32,11 @@ export function buildViabilityInputs(
   const evidenceSource = snapshot.sources.signInEvidence
   const evidenceStatus: EvidenceStatus =
     evidenceSource.status === 'error' ? 'disabled' : evidenceSource.status
+  // One definition of admin (roles.ts): the directory's role holders. The
+  // registration report carries its own admin flag, refreshed on Microsoft's
+  // schedule and over Microsoft's role list, so Today's line and its Admin tags
+  // disagreed (E5); the tag and the count read the roles.
+  const admins = adminUserIds(snapshot.roles ?? { active: {} })
 
   return personAccounts(snapshot, confirmedServiceAccountIds).map((u) => {
     const reg = registrationById.get(u.id) ?? null
@@ -52,7 +58,7 @@ export function buildViabilityInputs(
             methodsRegistered: reg.methodsRegistered,
             defaultMfaMethod: reg.defaultMfaMethod,
             userPreferredMethodForSecondaryAuthentication: reg.userPreferredMethodForSecondaryAuthentication,
-            isAdmin: reg.isAdmin,
+            isAdmin: admins.has(u.id),
             userType: reg.userType,
           }
         : null,

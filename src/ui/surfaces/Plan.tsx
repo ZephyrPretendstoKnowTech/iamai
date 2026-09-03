@@ -138,13 +138,13 @@ export function Plan({ scan, baseline, account, onScan }: {
       {/* The start (§5), in this order: the Start date field (default: the next working
           day in the display zone), Start the plan under it, which locks the date shown,
           then Plan settings. */}
-      <label className="rows no-print">
-        <span>{PP.settings.start}</span>
-        <input type="date" value={c.schedule.start.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
-      </label>
-      <p className="line reason no-print">{PP.settings.startNote}</p>
-      {data.startedFrom === null && (
+      {data.startedFrom === null ? (
         <>
+          <label className="rows no-print">
+            <span>{PP.settings.start}</span>
+            <input type="date" value={c.schedule.start.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
+          </label>
+          <p className="line reason no-print">{PP.settings.startNote}</p>
           <p className="actions no-print">
             <Button variant="primary" onClick={() => data.startPlan(c.schedule.start)}>
               {start.label}
@@ -152,6 +152,9 @@ export function Plan({ scan, baseline, account, onScan }: {
           </p>
           <p className="line reason">{start.note}</p>
         </>
+      ) : (
+        // A started plan (E5): the date is locked, so the field and its note go; the start stands in their place.
+        <p className="line reason">{fillText(app.plan.startedLine, { date: absoluteDate(data.startedFrom) })}</p>
       )}
 
       <p className="line no-print">

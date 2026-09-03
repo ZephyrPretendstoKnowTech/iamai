@@ -124,6 +124,14 @@ function usersSummary(f: PolicyFacts): string {
   return bits.join(', ') || P.none
 }
 
+/** The Exclusions column (E5): the groups and users the policy excludes, by name; guests when the whole type is. */
+export function exclusionsSummary(f: PolicyFacts, label: (id: string) => string): string {
+  const P = C.policies
+  const bits = [...[...f.whoNot.groups].map(label), ...[...f.whoNot.users].map(label)]
+  if (f.whoNot.guests) bits.push(P.guests)
+  return bits.join(', ') || '—'
+}
+
 // Tooltip for the Users column: the names behind the counts.
 function usersDetail(f: PolicyFacts, label: (id: string) => string): string {
   const parts: string[] = []
@@ -217,6 +225,7 @@ function PoliciesTab({ facts, names }: { facts: { raw: Raw; facts: PolicyFacts }
       render: (r) => <Chip status={STATE_CHIP[r.state]}>{P.state[r.state]}</Chip>,
     },
     { key: 'users', header: P.columns.users, csv: (r) => usersSummary(r), render: (r) => <span title={usersDetail(r, names.label) || undefined}>{usersSummary(r)}</span> },
+    { key: 'exclusions', header: P.columns.exclusions, csv: (r) => exclusionsSummary(r, names.label), render: (r) => exclusionsSummary(r, names.label) },
     { key: 'apps', header: P.columns.apps, csv: (r) => appsSummary(r), render: (r) => appsSummary(r) },
     { key: 'conditions', header: P.columns.conditions, csv: (r) => conditionsSummary(r, names.label), render: (r) => conditionsSummary(r, names.label) },
     { key: 'grant', header: P.columns.grant, csv: (r) => grantSummary(r, names.label), render: (r) => grantSummary(r, names.label) },

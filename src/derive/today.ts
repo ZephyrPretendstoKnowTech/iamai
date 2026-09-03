@@ -58,7 +58,6 @@ function evidenceOf(v: MfaViability, u: UserRow): TodayEvidence {
 }
 
 export function todayView(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): TodayView {
-  const counts = peopleCounts(snapshot, now, confirmedServiceAccountIds)
   const enabled = new Map(enabledUsers(snapshot, confirmedServiceAccountIds).map((u) => [u.id, u]))
   const scored = sortViability(buildViabilityInputs(snapshot, now).map(scoreMfaViability))
   const rows: TodayRow[] = []
@@ -67,6 +66,8 @@ export function todayView(snapshot: TenantSnapshot, now: string, confirmedServic
     if (!user) continue
     rows.push({ user, viability: v, state: stateOf(v), bucket: rolloutBucket(v), strongest: v.strongestMethod, evidence: evidenceOf(v, user) })
   }
+  // The line's admin count is the rows tagged Admin (E5): one number, one source.
+  const counts = { ...peopleCounts(snapshot, now, confirmedServiceAccountIds), admins: rows.filter((r) => r.viability.isAdmin).length }
   // The active people are the plan's (derive/population.ts): one denominator.
   const activeIds = new Set(activePeopleIds(snapshot, now, confirmedServiceAccountIds))
   const tiles = { proven: 0, unproven: 0, noMethod: 0, notActive: 0, active: 0 }

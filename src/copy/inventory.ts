@@ -30,7 +30,7 @@ export const INVENTORY = {
     signIns: { title: 'Where this comes from', text: 'Counts derived from the interactive sign-in records collected for the window. Raw records stay in the browser and are never shown.' },
   },
   policies: {
-    columns: { name: 'Policy', state: 'State', users: 'Users', apps: 'Apps', conditions: 'Conditions', grant: 'Grant', session: 'Session' },
+    columns: { name: 'Policy', state: 'State', users: 'Users', exclusions: 'Exclusions', apps: 'Apps', conditions: 'Conditions', grant: 'Grant', session: 'Session' },
     state: { enabled: 'On', enabledForReportingButNotEnforced: 'Report-only', disabled: 'Off', unknown: 'Unknown' },
     microsoftManaged: 'Microsoft-managed',
     allUsers: 'All users',

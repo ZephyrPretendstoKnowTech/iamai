@@ -293,6 +293,10 @@ export function buildFixture(spec: Spec): Fixture {
     // A directory-sync service account holds the sync role (scenario 13).
     const syncId = at(spec.admins + 3)
     if (syncId) rolesActive[syncId] = ['d29b2b05-8046-44ba-8758-1e26182fcf32']
+    // The registration report's admin flag lags the directory's roles (E5): the
+    // third admin holds Global Administrator and the report does not say so.
+    // Today's line and its Admin tags read the roles, so they agree.
+    setReg(at(2), { isAdmin: false })
     // Three active people have no MFA method (the campaign; scenario 14).
     for (const id of ids.slice(spec.admins + 5, spec.admins + 8)) {
       setReg(id, { isMfaCapable: false, isMfaRegistered: false, isPasswordlessCapable: false, methodsRegistered: [] })
