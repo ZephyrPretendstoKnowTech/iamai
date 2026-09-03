@@ -657,7 +657,7 @@ const planFile = scanPlanFile()
 // rendered on the demo or not.
 const contentFile = JSON.parse(readFileSync('docs/design/content.json', 'utf8'))
 const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8'))
-for (const f of contentFindings(contentFile, pinnedFile)) add(f.level, f.text)
+for (const f of contentFindings(contentFile, pinnedFile, contracts)) add(f.level, f.text)
 for (const href of contentLearnUrls(contentFile)) learnLinks.add(href)
 
 // Cross-surface invariants.

@@ -664,7 +664,9 @@
       "whatToDo": [
         "Entra admin center → Entra ID → Monitoring & health → Diagnostic settings → send SignInLogs to a Log Analytics workspace (or the SIEM you already use).",
         "Create an alert rule on that workspace: SigninLogs where UserPrincipalName is one of {list:emergencyAccountUpns}.",
-        "Send it to a mailbox or channel somebody reads every day; test it with one sign-in and confirm the alert arrives."
+        "Send it to a mailbox or channel somebody reads every day; test it with one sign-in and confirm the alert arrives.",
+        "Log Analytics ingestion is billed; a small tenant's sign-in logs cost a few dollars a month.",
+        "Defender XDR or your SIEM can take the same rule."
       ],
       "doneWhen": [
         "A test sign-in by an emergency account produced an alert somebody saw."
@@ -702,7 +704,7 @@
       "learn": {
         "url": "https://github.com/Jhope188/ConditionalAccessPolicies"
       },
-      "why": "These baseline policies carry conditions IAMAI cannot compare, so their status is yours to judge.",
+      "why": "These baseline policies carry conditions IAMAI cannot compare (device filters, authentication contexts, workload identities, agent policies), so their status is yours to judge.",
       "whatToDo": [
         "Open each and decide whether it applies: {list:policies}",
         "Where it does, create it from its JSON and put it in report-only."
@@ -3168,7 +3170,7 @@
       "more": {
         "risks": [
           {
-            "text": "Clients that cannot do token protection are blocked rather than downgraded: PowerShell against SharePoint, perpetual Office, and meeting-room devices (already outside this policy if Give Shared Devices Their Own Policy is done).",
+            "text": "Clients that cannot do token protection are blocked rather than downgraded: PowerShell against SharePoint, perpetual Office, and meeting-room devices (already outside this policy once Give Shared Devices Their Own Policy is in place).",
             "applies": "always"
           },
           {
@@ -3290,6 +3292,7 @@
         "evidence": [
           "{n} people signed in from browsers on unmanaged devices since {from}; they re-authenticate every 9 hours from {enforce}: {list:browserUsers}",
           "Shared devices are excluded by Give Shared Devices Their Own Policy.",
+          "When several session policies apply, the shortest wins.",
           "{existingCoverage}"
         ]
       },
@@ -3303,7 +3306,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, when you close your browser you are signed out of {tenant}, and you will be asked to sign in again about once a working day; on a personal or unmanaged device that applies to every app, not only the browser. On your work computer the desktop apps stay signed in.",
+        "body": "From {enforceLong}, when you close your browser you are signed out of {tenant}, and you will be asked to sign in again about once a working day; on a personal or unmanaged device it is every 9 hours, and it applies to every app, not only the browser. On your work computer the desktop apps stay signed in.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -3326,7 +3329,7 @@
         ],
         "helpDesk": [
           "Signed out when the browser closed: deliberate. Sign in again.",
-          "Prompted every few minutes: check the device clock and, on a managed device, compliance."
+          "Prompted every few minutes: the browser is not signed in to a registered device; sign in to the device account."
         ],
         "manager": "Sessions end when the browser closes and re-authenticate daily; on unmanaged devices every app does. People sign in a little more often; without this, one unlocked screen stays usable for days.",
         "waits": null
@@ -3378,13 +3381,14 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Require MFA at Every Role Activation",
       "changeLine": null,
-      "why": "Role activation is the moment an account becomes powerful; a fresh prompt there is cheap and stops a hijacked session activating anything.",
+      "why": "Role activation is the moment an account becomes powerful; a fresh prompt there is cheap and stops a hijacked session activating anything. PIM for Groups and Azure resource roles can use the same authentication context.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings"
       },
       "who": {
         "lead": "{n} people hold an eligible role: {list:eligible}",
         "evidence": [
+          "{n} of them have no passkey or key yet: {list:eligibleWithout}",
           "{existingCoverage}"
         ]
       },
@@ -3398,7 +3402,7 @@
       "comms": {
         "audience": "admins",
         "salutation": "Admins,",
-        "body": "From {enforceLong}, activating an admin role at {tenant} asks you to confirm with MFA each time, even if you just signed in. It takes a few seconds.",
+        "body": "From {enforceLong}, activating an admin role at {tenant} asks for your passkey or security key each time, even if you just signed in. It takes a few seconds.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -3422,6 +3426,7 @@
         "eligible": [
           "Kaladin Stormblessed · Security Administrator"
         ],
+        "eligibleWithout": [],
         "contextName": "c1 - Privileged role activation",
         "emergencyAccounts": [
           "Breakglass",
@@ -3484,7 +3489,7 @@
         "helpDesk": [
           "Enrolment asks to sign in again even though the person just did: expected."
         ],
-        "manager": "Enrolling a device asks for a fresh MFA sign-in each time, so a borrowed session cannot enrol a device. People see one extra prompt when they set up a device.",
+        "manager": "Enrolling a device asks for a fresh MFA sign-in each time, so a borrowed session cannot enrol a device. People see two prompts when they set up a device: one to join, one to enrol.",
         "waits": null
       },
       "example": {
@@ -3524,13 +3529,15 @@
           "The baseline requires {strengthName} on a high-risk sign-in: a passkey, security key, Windows Hello, certificate, or a one-time pass. Authenticator approval does not pass, which is why the campaign registers passkeys for everyone.",
           "{n} risky sign-ins since {from} by {list:riskyUsers}.",
           "No sign-in was rated risky since {from}.",
+          "{n} people with only Authenticator approval would be stopped by a risky sign-in: {list:pushOnlyUsers}",
           "{existingCoverage}"
         ]
       },
       "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Every risky sign-in in the report-only days was reviewed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -3541,6 +3548,10 @@
         "risks": [
           {
             "text": "A person on a new VPN or travelling is rated risky and prompted; that is the policy working.",
+            "applies": "always"
+          },
+          {
+            "text": "A person with only Authenticator approval is not prompted but stopped, until they get a Temporary Access Pass; the campaign's lists say who.",
             "applies": "always"
           }
         ],
@@ -3555,6 +3566,7 @@
         "active": 3,
         "n": 0,
         "riskyUsers": [],
+        "pushOnlyUsers": [],
         "emergencyAccounts": [
           "Breakglass",
           "Emergency Access 2"
@@ -3599,7 +3611,8 @@
       "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Every user rated at risk in the report-only days was reviewed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -3636,6 +3649,7 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
+          "Hybrid tenants: enable password writeback in Entra Connect, or the change fails.",
           "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required.",
           "{portalRoot}",
           "Name: {policyName}",
@@ -3660,6 +3674,7 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
+          "The second rung after Challenge High-Risk Sign-ins: medium risk gets plain MFA, high risk the phishing-resistant strength.",
           "{n} medium-risk sign-ins since {from} by {list:riskyUsers}.",
           "{existingCoverage}"
         ]
@@ -3722,7 +3737,9 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
+          "Supersedes Remediate High-Risk Users once enforced; set that one to Off in Consolidate Overlapping Policies.",
           "{n} people are rated at risk today: {list:atRiskUsers}",
+          "Self-service password reset must be enabled or the change loops; {sspr}.",
           "{existingCoverage}"
         ]
       },
@@ -3754,6 +3771,7 @@
         "active": 3,
         "n": 0,
         "atRiskUsers": [],
+        "sspr": "it is enabled for all users",
         "policyName": "Core - Require - Password change for medium-risk users",
         "existingPolicies": [],
         "from": "Aug 1"
@@ -3761,6 +3779,8 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
+          "Hybrid tenants: enable password writeback in Entra Connect, or the change fails.",
+          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required.",
           "{portalRoot}",
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude Guest or external users (all types).",

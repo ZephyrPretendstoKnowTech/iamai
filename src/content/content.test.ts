@@ -73,11 +73,15 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[17].who.evidence[0]',
   '.steps[18].who.evidence[0]',
   '.steps[21].who.evidence[2]',
+  // Eligible admins with no passkey or key yet (step-audit item 33); the example lists none.
+  '.steps[32].who.evidence[0]',
   '.steps[33].who.evidence[0]',
   '.steps[34].who.evidence[1]',
+  // People with only Authenticator approval, stopped by a risky sign-in (step-audit item 35); the example lists none.
+  '.steps[34].who.evidence[3]',
   '.steps[35].who.evidence[0]',
-  '.steps[36].who.evidence[0]',
-  '.steps[37].who.evidence[0]',
+  '.steps[36].who.evidence[1]',
+  '.steps[37].who.evidence[1]',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52
