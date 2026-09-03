@@ -508,7 +508,8 @@ async function walkFixture(fx) {
               if (c && !moved) add('P0', `${slabel}: the decided step did not move to the footer as In place`)
               if (moved) {
                 await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
-                await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-footer .plan-row')].find((e) => /Decide How Devices Are Managed/.test((e.querySelector('.step-title') || {}).textContent || '')); if (r) { r.scrollIntoView({ block: 'center' }); r.click() } })()`)
+                // The step stays open as it moves (the page keeps the opened id); a click would close it, so click only when its body is not there.
+                await evaluate(`(() => { if (document.querySelector('main.page .plan-footer .step-body')) return; const r = [...document.querySelectorAll('main.page .plan-footer .plan-row')].find((e) => /Decide How Devices Are Managed/.test((e.querySelector('.step-title') || {}).textContent || '')); if (r) { r.scrollIntoView({ block: 'center' }); r.click() } })()`)
                 const applied = await waitFor(`/Phones leave the compliant-device policy/.test((document.querySelector('main.page .plan-footer .step-body') || {}).innerText || '')`, 8000)
                 if (!applied) add('P0', `${slabel}: the phones answer's effect line does not show on the decided step`)
                 // Device readiness is measured against the answer from here: the numbers before the decision are not the numbers after it.
