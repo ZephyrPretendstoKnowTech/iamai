@@ -16,7 +16,8 @@ import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
-import { sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal } from './stepPortal.ts'
+import { needsPasskeyForGoal, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal } from './stepPortal.ts'
+import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { pickerVars } from './pickerRows.ts'
@@ -52,6 +53,11 @@ export type StepVarContext = {
   enrolWindowDays?: number | null
   /** True when the plan carries the unmanaged-browser step, so personal devices keep the browser with limits (E7); otherwise they are blocked. */
   unmanagedBrowserOnPlan?: boolean
+  /** True when Require MFA for Everyone is already in place: the campaign's email is the passkey version. */
+  mfaInPlace?: boolean
+  /** The first policy still to enforce that needs a passkey (its content title), and when (ISO): the passkey email names it. */
+  passkeyPolicy?: string | null
+  passkeyEnforce?: string | null
   /** This step's report-only creation date (ISO), for a policy step's dates line. */
   reportOnlyAt?: string | null
   /** The one active-people count (Today's denominator), so every step's summary line agrees (walk-51 item 8). */
@@ -111,6 +117,11 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     mfaEnforceLong: long(ctx.mfaEnforce ?? ctx.firstEnforce),
     enrolWindowDays: ctx.enrolWindowDays ?? undefined,
     personalDevicesClause: ctx.unmanagedBrowserOnPlan === undefined ? undefined : ctx.unmanagedBrowserOnPlan ? engine.personalDevices.browserLimited : engine.personalDevices.blocked,
+    // Require MFA for Everyone already in place: the campaign email is the passkey
+    // version, naming the first policy still to enforce that needs a passkey.
+    mfaInPlace: ctx.mfaInPlace ? true : undefined,
+    passkeyPolicy: ctx.passkeyPolicy ?? undefined,
+    passkeyEnforceLong: long(ctx.passkeyEnforce),
     // A policy already in report-only has its date from the scan (tracking), not
     // from the schedule, which only dates the policies the plan creates.
     reportOnly: short(step.tracking?.reportOnlyAt ?? ctx.reportOnlyAt),
@@ -308,11 +319,17 @@ export { absoluteDate }
  * MFA for Everyone enforces, the campaign's window from the plan's start to
  * that enrol-by, and whether the unmanaged-browser step is on the plan.
  */
-export function planDates(steps: readonly Step[], scheduleStart: string): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan'> {
+export function planDates(steps: readonly Step[], scheduleStart: string): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce'> {
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const mfa = steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')
   const mfaEnforce = mfa?.events?.enforce?.at ?? firstEnforce
   const enrolWindowDays = firstEnforce ? Math.max(1, Math.ceil((Date.parse(firstEnforce) - Date.parse(scheduleStart)) / 86_400_000)) : null
   const unmanagedBrowserOnPlan = steps.some((s) => (s.goalId === 'block-downloads-unmanaged' || s.goalId === 'byod-session-controls') && s.status !== 'skipped')
-  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan }
+  // Require MFA for Everyone in place: the campaign's email is the passkey version,
+  // and names the first policy still to enforce that needs a passkey, by its date.
+  const mfaInPlace = mfa?.status === 'done'
+  const passkey = steps
+    .filter((s) => s.status !== 'done' && s.status !== 'skipped' && typeof s.events?.enforce?.at === 'string' && needsPasskeyForGoal(s.goalId))
+    .sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))[0]
+  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null }
 }

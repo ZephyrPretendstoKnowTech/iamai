@@ -92,6 +92,27 @@ export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string
   return out
 }
 
+/** What a step's Tell your people box says, with the tenant's values. */
+export type CommsView = { salutation: string; body: string; extra: string[]; signature: string }
+
+/**
+ * The step's email, as the screen shows it (one rule for the screen, the copy
+ * button and the exports): the body keyed on the tenant's state, the extra
+ * lines an answer or the state adds (each only when whole), the salutation
+ * and the signature. The campaign carries a second body for a tenant where
+ * Require MFA for Everyone is already in place (comms.bodyMfaInPlace, with
+ * comms.extraMfaInPlace), the passkey version; otherwise comms.body.
+ */
+export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown>): CommsView | null {
+  const comms = (cs.comms ?? null) as Record<string, unknown> | null
+  if (!comms) return null
+  const inPlace = Boolean(ex.mfaInPlace) && typeof comms.bodyMfaInPlace === 'string'
+  const body = inPlace ? comms.bodyMfaInPlace : comms.body
+  const extraRaw = inPlace && comms.extraMfaInPlace !== undefined ? comms.extraMfaInPlace : comms.extra
+  const extra = (Array.isArray(extraRaw) ? extraRaw : extraRaw === undefined || extraRaw === null ? [] : [extraRaw]).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex))
+  return { salutation: fillText(comms.salutation, ex), body: fillText(body, ex), extra, signature: fillText(comms.signature, ex) }
+}
+
 /**
  * The manager's three sentences, with the clause a step adds when the records
  * show nobody using what it blocks (more.managerNone, under its `applies`, E9);
@@ -143,8 +164,8 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   for (const l of Array.isArray(more.helpDesk) ? more.helpDesk : []) add(l)
   const manager = managerText(cs, ex)
   if (manager) out.push(manager)
-  const comms = (cs.comms ?? null) as Record<string, unknown> | null
-  if (comms) for (const k of ['salutation', 'body', 'signature']) add(comms[k])
+  const comms = commsFor(cs, ex)
+  if (comms) out.push(comms.salutation, comms.body, ...comms.extra, comms.signature)
   return out
 }
 
@@ -155,8 +176,8 @@ export function copyBoxes(step: Step, ctx: StepVarContext): { kind: 'comms' | 'h
   const ex = stepVars(step, ctx) as Record<string, unknown>
   const after = String((content.shared as Record<string, unknown>).adaptLine)
   const out: { kind: 'comms' | 'helpDesk' | 'manager'; text: string; after: string }[] = []
-  const comms = (cs.comms ?? null) as Record<string, unknown> | null
-  if (comms) out.push({ kind: 'comms', text: ['salutation', 'body', 'signature'].map((k) => fillText(comms[k], ex)).join('\n\n'), after })
+  const comms = commsFor(cs, ex)
+  if (comms) out.push({ kind: 'comms', text: [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n'), after })
   const more = (cs.more ?? {}) as Record<string, unknown>
   const helpDesk = (Array.isArray(more.helpDesk) ? more.helpDesk : []).filter((x) => whole(x, ex))
   if (helpDesk.length > 0) out.push({ kind: 'helpDesk', text: helpDesk.map((x) => fillText(x, ex)).join('\n'), after })

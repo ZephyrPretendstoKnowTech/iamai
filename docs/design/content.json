@@ -260,25 +260,21 @@
       "line": "{active} active people of {enabled} enabled · {admins} admins · sign-ins {from} → {to}",
       "tiles": {
         "proven": {
-          "label": "MFA proven",
           "value": "{n} · {pct} of active",
           "heldBy": null,
           "tip": "Active people with a successful MFA sign-in since {from}. Seen in the records, not inferred from a registration."
         },
         "unproven": {
-          "label": "Registered, unproven",
           "value": "{n} · {pct} of active",
           "heldBy": "held by Create and Enforce the MFA Registration Campaign",
           "tip": "Active people with a registered method and no MFA sign-in in the records: never prompted, or possibly broken."
         },
         "noMethod": {
-          "label": "No method",
           "value": "{n} · {pct} of active",
           "heldBy": "held by Create and Enforce the MFA Registration Campaign",
           "tip": "Active people with no MFA-capable method registered. Email and security questions do not count."
         },
         "notActive": {
-          "label": "Not active",
           "value": "{n}",
           "heldBy": "held by Disable or Confirm Dormant Accounts",
           "tip": "Enabled people with no sign-in in 90 days, or none on record. Listed, never counted; whoever signs in first registers the method, so each one is decided in Address Problematic Accounts."
@@ -556,7 +552,7 @@
         "notAssessedPrompt": "Why does {policy} not apply to {tenant}? One line; it goes in the plan file.",
         "notAssessedRow": "{policy}: does not apply: {reason}",
         "notAssessedSave": "Save",
-        "startedLine": "started {date}"
+        "lockoutSuffix": "{n} without a passkey"
       },
       "today": {
         "lineNoRecords": "no sign-in records",
@@ -1934,7 +1930,12 @@
         "body": "From {mfaEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next {enrolWindowDays} days. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "signature": "{signature}",
         "extra": "{deviceSentence}",
-        "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together."
+        "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together.",
+        "bodyMfaInPlace": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Over the next {enrolWindowDays} days, add a passkey in the app so admin work and risky sign-ins keep working. It takes a few minutes: open https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone; then sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "extraMfaInPlace": [
+          "From {passkeyEnforceLong}, {passkeyPolicy} requires a passkey.",
+          "{deviceSentence}"
+        ]
       },
       "doesntApply": false,
       "skip": false,
@@ -2002,7 +2003,9 @@
         "from": "Aug 1",
         "mfaEnforce": "Tue Sep 8",
         "mfaEnforceLong": "Tuesday, September 8",
-        "enrolWindowDays": 14
+        "enrolWindowDays": 14,
+        "passkeyEnforceLong": "Tuesday, September 15",
+        "passkeyPolicy": "Require Phishing-Resistant MFA for Admins"
       }
     },
     {

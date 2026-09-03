@@ -14,6 +14,8 @@ import { readyWhen } from '../../derive/readyWhen.ts'
 const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; readySince: string }
 
 export function rowWhen(step: Step, waveStart: string | null = null): string {
+  // A done step's row shows no date word: blank, never "now".
+  if (step.status === 'done') return ''
   if (heldByReadiness(step)) {
     const b = step.blockers.find((x) => x.kind === 'readiness' && typeof x.binding === 'string' && /readiness reaches/.test(x.binding))
     if (b && typeof b.binding === 'string') return b.binding

@@ -125,6 +125,8 @@ export type Step = {
   gapShort: string | null
   /** Policies that already deliver the goal (name and state), the evidence a Done step cites (ux-review-04 §5). */
   deliveredBy: string[]
+  /** A strength policy's lockout count (roadmap/lockout.ts): the people in scope with no phishing-resistant method today; the row shows it when it is not zero. */
+  lockout?: number
   /**
    * The one binding reason while blocked (target-state §8.5): at most twelve
    * words, in one of three shapes; null otherwise. The full list is `blockers`.
