@@ -111,8 +111,10 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const campaign = r.steps.find((s) => s.id === 's-verify-mfa')!
   const cv = stepVars(campaign, ctx)
   const deviceLines = cv.deviceLines as string[]
-  assert.ok(deviceLines.some((l) => / · phone: use Outlook and Teams for work; nothing to enrol$/.test(l)), `a phone line per person: ${deviceLines.join(' | ')}`)
-  assert.ok(deviceLines.some((l) => / · computer: domain-joined computers are already covered$/.test(l)), 'a computer line per person')
+  assert.ok(deviceLines.some((l) => / · phone$/.test(l)), `a phone line per person: ${deviceLines.join(' | ')}`)
+  assert.ok(deviceLines.some((l) => / · computer$/.test(l)), 'a computer line per person')
+  assert.equal(deviceLines.length, (cv.phoneUsers as string[]).length + (cv.unjoinedUsers as string[]).length, 'one line per person on a phone or an unjoined computer')
+  assert.equal(cv.deviceIntro, 'Devices, from Decide How Devices Are Managed, one line per person: on a phone, use Outlook and Teams for work; nothing to enrol; on a computer, domain-joined computers are already covered:')
   assert.equal(cv.deviceSentence, 'On your phone, use Outlook and Teams for work; nothing to enrol; on your computer, domain-joined computers are already covered.')
 })
 

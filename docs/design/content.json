@@ -19,9 +19,11 @@
         "hybrid": "domain-joined computers are already covered",
         "unmanaged": "nothing changes for computers"
       },
-      "personLine": "{name} · {device}: {instruction}",
+      "personLine": "{name} · {device}",
       "phoneWord": "phone",
       "computerWord": "computer",
+      "intro": "Devices, from Decide How Devices Are Managed, one line per person: on a phone, {phones}; on a computer, {computers}:",
+      "introPhones": "Devices, from Decide How Devices Are Managed, one line per person: on a phone, {phones}:",
       "sentence": "On your phone, {phones}; on your computer, {computers}.",
       "sentencePhones": "On your phone, {phones}."
     },
@@ -1856,7 +1858,7 @@
         },
         "overlap": "Each person appears once, in the first list that applies to them, top to bottom; an admin with no method is in the no-method list with the admin instructions.",
         "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key.",
-        "devices": "Devices, from Decide How Devices Are Managed, one line per person: {list:deviceLines}"
+        "devices": "{deviceIntro} {list:deviceLines}"
       },
       "decision": {
         "label": "People who need special care",
@@ -1947,9 +1949,10 @@
         "firstEnforce": "Tue Sep 8",
         "firstEnforceLong": "Tuesday, September 8",
         "holdouts": [],
+        "deviceIntro": "Devices, from Decide How Devices Are Managed, one line per person: on a phone, use Outlook and Teams for work; nothing to enrol; on a computer, domain-joined computers are already covered:",
         "deviceLines": [
-          "Kaladin Stormblessed · phone: use Outlook and Teams for work; nothing to enrol",
-          "Shallan Davar · computer: domain-joined computers are already covered"
+          "Kaladin Stormblessed · phone",
+          "Shallan Davar · computer"
         ],
         "deviceSentence": "On your phone, use Outlook and Teams for work; nothing to enrol; on your computer, domain-joined computers are already covered.",
         "specialCare": [
