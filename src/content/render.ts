@@ -57,6 +57,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
     signature: ex && ex.signature !== undefined ? ex.signature : S.signatureDefault,
     policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, datesNew: S.datesNew, datesChange: S.datesChange,
     portalOpen: S.portalOpen, existingCoverage: S.existingCoverage ?? '', syncRoleNote: S.syncRoleNote ?? '', strengthName: (ex && ex.strengthName) ?? '',
+    certificatePrompt: S.certificatePrompt ?? '',
   }
   const subList = (_m: string, key: string): string => {
     const items = (ex as Record<string, unknown>)[key]
@@ -88,7 +89,7 @@ export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts',
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
 export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'adminGroups', 'strengths']
 
-const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName'])
+const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt'])
 
 /**
  * The variables a content line names that `ex` does not fill (walk-51 item 2). A
@@ -162,6 +163,8 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     portalOpen: S.portalOpen,
     existingCoverage: S.existingCoverage ?? '',
     syncRoleNote: S.syncRoleNote ?? '',
+    // The certificate-prompt note, said once for the plan and referenced by the steps whose policy carries a device condition (step-audit item 26).
+    certificatePrompt: S.certificatePrompt ?? '',
   }
   const defaults: Record<string, any> = {
     announce: 'Tue Sep 1',
@@ -235,8 +238,7 @@ export function renderStep(st: Record<string, any>): string {
   // Why
   parts.push(h('Why'))
   const learn = st.learn || {}
-  const cis = learn.cis ? ` <span class="chip cis">CIS ${esc(learn.cis)}</span>` : ''
-  parts.push(`<p>${fill(st.why, ex)} <a class="learn" href="${esc(learn.url || '')}">Learn →</a>${cis}</p>`)
+  parts.push(`<p>${fill(st.why, ex)} <a class="learn" href="${esc(learn.url || '')}">Learn →</a></p>`)
   // Who
   const who = st.who || {}
   parts.push(h('Who this touches'))
@@ -611,7 +613,7 @@ export function reviewBody(): string {
 
 export function renderCleanup(c: Record<string, any>): string {
   const parts = [`<div class="steprow"><span class="chip status">Ready</span><span class="title">${esc(c.title)}</span></div><div class="stepbody">`]
-  parts.push(h('Why') + p(c.why, {}))
+  parts.push(h('Why') + `<p>${fill(c.why, {})} <a class="learn" href="${esc(c.learn?.url || '')}">Learn →</a></p>`)
   parts.push(
     h('What to do') +
       ol(c.whatToDo, {

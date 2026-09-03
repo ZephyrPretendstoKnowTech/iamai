@@ -26,6 +26,7 @@ import { absentStepIds } from '../src/roadmap/baselineScope.ts'
 import { isFloorGoal } from '../src/roadmap/floor.ts'
 import { steps as contentSteps } from '../src/content/content.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
+import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
@@ -274,6 +275,11 @@ const holeIn = (text) => text.replace(/\/\{id\}/g, '/').match(HOLE)
 // comma, "from ·" — the shapes a missing date or name leaves. A lead's colon is
 // content (its list or none-branch follows), so it is not one.
 const EMPTY_VALUE = /(·\s*·)|(\(\s*\))|(,\s*,)|(\bfrom\s+until\b)|(\bfrom\s*·)|(·\s*$)|(^\s*·)/m
+// A variable the engine does not fill renders as nothing, and the sentence
+// around it closes on a preposition or an article: "From , signing in", "over
+// the next days", "Personal devices ." (the campaign email read "over the next
+// days." when its window became a variable the engine did not yet fill).
+const EMPTIED_VALUE = /\b(From|from|the next|after|by|before|on|until|within) (,|\.|days\b|hours\b)|\s\.(\s|$)/
 
 const matchesAllow = (item, allow) => (allow ?? []).some((a) => (a.startsWith('re:') ? new RegExp(a.slice(3)).test(item) : a === item))
 
@@ -321,6 +327,8 @@ function checkText(label, text, { emails = false } = {}) {
   if (hole) add('P0', `${label}: unfilled variable ${hole[0]} in the rendered text`)
   const ev = text.match(EMPTY_VALUE)
   if (ev) add('P0', `${label}: an empty value in the rendered text ("${ev[0].trim().slice(0, 30)}")`)
+  const em = text.match(EMPTIED_VALUE)
+  if (em) add('P0', `${label}: a variable rendered as nothing ("${em[0].trim().slice(0, 30)}")`)
   for (const p of FORBIDDEN_PHRASES) if (text.includes(p)) add('P0', `${label}: forbidden phrase "${p}"`)
   if (!emails && LONG_DATE.test(text)) add('P1', `${label}: the long date form "${text.match(LONG_DATE)[0]}" outside an email`)
   if (ODD_SHORT_DATE.test(text)) add('P1', `${label}: a second date format "${text.match(ODD_SHORT_DATE)[0]}" beside the short form`)
@@ -518,7 +526,7 @@ async function walkFixture(fx) {
               }
             }
           }
-          if (/Require a Managed Device for Office 365/.test(title)) {
+          if (/Require a Managed Device/.test(title)) {
             if (week2 && !/Device platforms → Include: Any device; Exclude: Android, iOS/.test(bodyText)) add('P0', `${slabel}: the device decision (phones protected by their apps) did not scope phones out of the compliant-device policy`)
             if (week2 && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the platform deviation is not shown beside the baseline's version`)
             if (!week2 && /Device platforms/.test(bodyText)) add('P0', `${slabel}: a platform condition shows before the device decision`)
@@ -535,6 +543,8 @@ async function walkFixture(fx) {
         const sd = await evaluate(extractIn(`document.querySelector('main.page .step-body')`, sc?.reach?.exclude ?? ''))
         if (sd) {
           diffContract(slabel, sc, sd)
+          // C1: frameworks return as a feature, not a chip.
+          for (const c of sd.chips) if (/^CIS\b/.test(c)) add('P0', `${slabel}: a CIS chip "${c}" on the step (frameworks are not a chip)`)
           for (const h of sd.emptySections) add('P0', `${slabel}: the "${h}" section is empty`)
           if (sd.emptyLists > 0) add('P0', `${slabel}: ${sd.emptyLists} empty list(s) rendered`)
           for (const l of sd.danglingLeads) add('P1', `${slabel}: the lead "${l.slice(0, 70)}" has nothing listed under it`)
@@ -559,7 +569,10 @@ async function walkFixture(fx) {
             }
           }
         }
-        for (const href of await evaluate(`[...document.querySelectorAll('main.page .step-body a[href^="http"]')].map((a) => a.href)`)) learnLinks.add(href)
+        // C2: every opened step and Cleanup row carries a Learn link beside its Why.
+        const bodyLinks = await evaluate(`[...document.querySelectorAll('main.page .step-body a[href^="http"]')].map((a) => a.href)`)
+        if (/^Why$/m.test(bodyText) && bodyLinks.length === 0) add('P0', `${slabel}: no Learn link on the opened step`)
+        for (const href of bodyLinks) learnLinks.add(href)
         const overflowStep = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
         if (overflowStep > 0) add('P1', `${slabel}: the opened step overflows the viewport by ${overflowStep}px`)
         if (decidedHere) {
@@ -758,6 +771,14 @@ for (const fx of fixtures) {
 }
 const planFile = scanPlanFile()
 
+// The content file's own invariants (step-audit.md; scripts/walkContent.mjs runs
+// them alone over any content file), and every Learn link the content carries,
+// rendered on the demo or not.
+const contentFile = JSON.parse(readFileSync('docs/design/content.json', 'utf8'))
+const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8'))
+for (const f of contentFindings(contentFile, pinnedFile, contracts)) add(f.level, f.text)
+for (const href of contentLearnUrls(contentFile)) learnLinks.add(href)
+
 // Cross-surface invariants.
 for (const [name, readiness] of readinessBy) for (const [kind, values] of readiness) if (values.size > 1) add('P0', `${name}: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and Today (one readiness per kind)`)
 for (const [name, populations] of populationsBy) if (populations.size > 1) add('P0', `${name}: the active-people count reads ${[...populations].join(' and ')} across surfaces (one population)`)
@@ -766,16 +787,12 @@ for (const e of consoleErrors.filter((x) => !/favicon|microsoftonline|net::|ERR_
 // Learn links: every one resolves.
 log(`checking ${learnLinks.size} link(s)`)
 for (const href of learnLinks) {
-  try {
-    const ctl = new AbortController()
-    const t = setTimeout(() => ctl.abort(), 12000)
-    let r = await fetch(href, { method: 'HEAD', redirect: 'follow', signal: ctl.signal })
-    if (!r.ok) r = await fetch(href, { method: 'GET', redirect: 'follow', signal: ctl.signal })
-    clearTimeout(t)
-    if (!r.ok) add('P1', `Learn link ${href} answers ${r.status}`)
-  } catch (e) {
-    add('P2', `Learn link ${href} could not be checked from here (${String(e.message ?? e).slice(0, 60)})`)
-  }
+  const r = await probe(href)
+  // A 404 is a wrong fact on screen (a Learn link that opens nothing); another
+  // refusal is the site's, not the link's.
+  if (r.error) add('P2', `Learn link ${href} could not be checked from here (${r.error})`)
+  else if (r.status === 404) add('P0', `Learn link ${href} answers 404`)
+  else if (r.status >= 400) add('P1', `Learn link ${href} answers ${r.status}`)
 }
 
 // ---- the report ----

@@ -28,6 +28,7 @@ import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { stepLines } from '../ui/surfaces/stepExport.ts'
+import { stepById } from '../content/content.ts'
 
 function applied(f: Fixture, decisions: Record<string, StepDecision> | null): MappingState {
   const nameOf = (id: string): string => f.snapshot.users.find((u) => u.id === id)?.displayName ?? id
@@ -147,7 +148,7 @@ test('no Intune licence: the device steps are one shared Not licensed line, devi
   const rows = notLicensedRows(r.coverage, PINNED_GOAL_MAP)
   const devices = rows.filter((x) => x.goalId === 'devices')
   assert.equal(devices.length, 1, `one shared line: ${rows.map((x) => x.goalId).join(', ')}`)
-  assert.match(devices[0].text, /Require a Managed Device for Office 365/)
+  assert.ok(devices[0].text.includes(String(stepById[COMPLIANT_DEVICE_GOAL]?.title)), 'the shared line names the compliant-device step by its content title')
   assert.match(devices[0].text, /Require a Fresh Sign-in for Intune Enrollment/)
   assert.match(devices[0].text, /Intune Plan 1/)
   assert.ok(!rows.some((x) => DEVICE_GOALS.has(x.goalId)), 'no device goal has a line of its own')
