@@ -396,7 +396,7 @@ async function walkFixture(fx) {
   }
   mkdirSync(dir, { recursive: true })
   const summary = []
-  const routeContract = { connect: 'connect.scanned', today: 'today', plan: 'plan', export: 'export', how: 'how', inventory: 'inventory' }
+  const routeContract = { connect: 'connect.signedIn', today: 'today', plan: 'plan', export: 'export', how: 'how', inventory: 'inventory' }
   let rowTitles = []
   let rowStatuses = []
   let rowWhens = []
@@ -469,61 +469,110 @@ async function walkFixture(fx) {
       // plan, and offers Scan tenant; a token without the roles names the role to
       // ask for and does not start the scan.
       if (route === 'connect') {
-        const scanLine = (text.match(/Scan complete[^\n]*/) ?? [null])[0]
-        if (scanLine && /sign-ins\s*→|→\s*(·|$)/.test(scanLine)) add('P0', `${label}: the scan line renders an empty window: "${scanLine}"`)
-        if (fx.mock === 'free' && !(scanLine && /sign-ins not read/.test(scanLine))) add('P0', `${label}: sign-ins were not read and the scan line does not say so: "${scanLine}"`)
-        const buttons = () => evaluate(`[...document.querySelectorAll('main.page button, main.page a.btn')].map((e) => (e.textContent || '').trim())`)
-        // One status block, never two: the three states' markers are exclusive,
-        // in priority Role missing, Scan finished with gaps, Scan complete.
-        const markers = { 'Role missing': /holds none of the roles that read/, 'Scan finished with gaps': /Scan finished with gaps/, 'Scan complete': /Scan complete ·/ }
-        const oneBlock = (t, where) => {
-          const seen = Object.entries(markers).filter(([, re]) => re.test(t)).map(([k]) => k)
-          if (seen.length > 1) add('P0', `${label}: ${where} shows ${seen.length} status blocks (${seen.join(', ')}); one, never two`)
+        // Connect is four numbered tiles (docs/design/connect-mockup.html): the
+        // account, the baseline, what happens next, and the scan in exactly one
+        // of its states; every action a button in one of three weights.
+        const tiles = await evaluate(`[...document.querySelectorAll('main.page section.step-tile')].map((s) => ({ n: ((s.querySelector('.n') || {}).textContent || '').trim(), h2: ((s.querySelector('h2') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), state: ((s.querySelector('h2 .state') || {}).textContent || '').trim(), cls: s.className, buttons: [...s.querySelectorAll('button, a.btn')].filter((b) => !b.closest('.picker')).map((b) => ({ t: (b.textContent || '').trim(), w: /btn-primary/.test(b.className) ? 'primary' : /btn-secondary/.test(b.className) ? 'secondary' : /btn-tertiary/.test(b.className) ? 'tertiary' : 'none' })), text: (s.innerText || '').replace(/\\s+/g, ' ') }))`)
+        if (tiles.length !== 4 || tiles.map((x) => x.n).join('') !== '1234') add('P0', `${label}: Connect renders ${tiles.length} tiles numbered ${tiles.map((x) => x.n).join(',')}; four, 1 to 4`)
+        const [t1, t2, t3, t4] = tiles
+        const btnOf = (tile, re) => (tile ? tile.buttons.find((b) => re.test(b.t)) : undefined)
+        const expectBtn = (tile, re, w, what) => {
+          const b = btnOf(tile, re)
+          if (!b) add('P0', `${label}: ${what} has no ${re} button`)
+          else if (b.w !== w) add('P0', `${label}: ${what}'s ${b.t} is ${b.w}; the mockup makes it ${w}`)
         }
-        oneBlock(text, 'the page')
-        if (fx.mock === 'gaps') {
-          if (!/Scan finished with gaps/.test(text)) add('P0', `${label}: the scan could not read the policies or the sign-in records and Connect does not end on Scan finished with gaps`)
-          if (!/Conditional Access policies:[^\n]*ask for Security Reader/.test(text)) add('P0', `${label}: the policies section is not listed with the role that reads it`)
-          if (!/Sign-in records:[^\n]*ask for Reports Reader/.test(text)) add('P0', `${label}: the sign-in records section is not listed with the role that reads it`)
-          if (/Some sections need a higher role/.test(text)) add('P0', `${label}: a previous scan's warnings render beside the gaps`)
-          const b = await buttons()
-          if (b.some((t) => /^Open the plan/.test(t))) add('P0', `${label}: Open the plan is offered after a scan with gaps`)
-          if (!b.some((t) => /^Open the last full plan \([A-Z][a-z]{2} \d+, \d{4}\)/.test(t))) add('P0', `${label}: a full plan exists and Open the last full plan (date) is not offered`)
-          if (!b.some((t) => /^Scan tenant$/.test(t))) add('P0', `${label}: Scan tenant is not offered after a scan with gaps`)
-          const stored = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); const n = db.objectStoreNames.contains('snapshot') ? await new Promise((r) => { const q = db.transaction('snapshot').objectStore('snapshot').count(); q.onsuccess = () => r(q.result) }) : 0; db.close(); return n } catch { return -1 } })()`)
-          if (stored !== 0) add('P0', `${label}: the scan with gaps left ${stored} snapshot record(s) in the store; it is never stored`)
-          await send('Page.navigate', { url: `${fx.base}#/plan` })
-          const kept = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 10000)
-          if (!kept) add('P0', `${label}: the last good plan is gone after a scan with gaps`)
+        const bare = await evaluate(`[...document.querySelectorAll('main.page section.step-tile a[href]:not(.btn):not(.lnk)')].map((a) => (a.textContent || '').trim())`)
+        if (bare.length > 0) add('P0', `${label}: bare link(s) on Connect: ${bare.join(' | ')}; every action is a button in one of three weights`)
+        if (/Security Reader|Reports Reader|Directory Readers/.test(text)) add('P0', `${label}: a role other than Global Reader is named on screen`)
+        if (/Everything the scan found is inside the plan/.test(text)) add('P0', `${label}: the "everything the scan found" line still renders`)
+        if ((await evaluate(`document.querySelectorAll('main.page .footer-link').length`)) > 0) add('P0', `${label}: the footer How link still renders`)
+        // The header: the brand links to Connect, no tenant tab, three tabs.
+        const brand = await evaluate(`(() => { const a = document.querySelector('header.app a.wordmark'); return a ? a.getAttribute('href') : null })()`)
+        if (brand !== '#/connect') add('P0', `${label}: the brand links to ${brand}; #/connect`)
+        if (await evaluate(`document.querySelector('header.app .tenant') !== null`)) add('P0', `${label}: the header still shows the tenant tab`)
+        const tabs = await evaluate(`[...document.querySelectorAll('header.app nav a')].map((a) => (a.textContent || '').trim())`)
+        if (tabs.join(' · ') !== 'Today · Plan · Export') add('P0', `${label}: the header tabs read ${tabs.join(' · ')}; Today · Plan · Export`)
+        // 1 Signed in
+        if (t1) {
+          if (!/^Signed in /.test(t1.h2) || !t1.state) add('P0', `${label}: tile 1 does not read Signed in with the tenant as its state: "${t1.h2}"`)
+          if (!/Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can\. It writes nothing\./.test(t1.text)) add('P0', `${label}: tile 1 lacks the Global Reader line as the mockup words it`)
+          expectBtn(t1, /^Sign in with another account$/, 'secondary', 'tile 1')
+          expectBtn(t1, /^Sign out$/, 'tertiary', 'tile 1')
         }
-        if (fx.mock === 'roles') {
-          // Loaded on a previous scan whose sections Graph refused (denied=1): its
-          // summary and warnings show until the token's roles stop the next scan,
-          // and then nothing but the one warning block and its button remains.
-          if (!/Scan complete ·/.test(text) || !/Some sections need a higher role/.test(text)) add('P0', `${label}: the previous scan's summary and warnings are not on the page before the scan; the case cannot show them go`)
-          const clicked = await clickText('button', /^Scan tenant$/)
-          if (!clicked) add('P0', `${label}: no Scan tenant button`)
-          const said = await waitFor(`/holds none of the roles that read/.test(document.body.innerText)`, 5000)
-          const after = await mainText()
-          if (!said) add('P0', `${label}: a token without the roles does not stop the scan with the role to ask for`)
+        // 2 Baseline
+        if (t2) {
+          if (!/^Baseline .+ · \d+ polic/.test(t2.h2)) add('P0', `${label}: tile 2 does not carry the baseline name and count as its state: "${t2.h2}"`)
+          if (!/built and maintained by Jon Hope/.test(t2.text) || !/Its aim is layered protection/.test(t2.text)) add('P0', `${label}: tile 2 lacks the approved baseline sentences`)
+          expectBtn(t2, /^Change baseline$/, 'secondary', 'tile 2')
+        }
+        // 3 What happens next
+        if (t3) {
+          if (!/^What happens next$/.test(t3.h2)) add('P0', `${label}: tile 3 reads "${t3.h2}"`)
+          for (const w of ['Reads', 'Compares', 'Writes']) if (!new RegExp('\\b' + w + '\\b').test(t3.text)) add('P0', `${label}: tile 3 lacks its ${w} line`)
+          if (!/Read-only\. It holds no permission that can create, change or delete anything\./.test(t3.text)) add('P0', `${label}: tile 3 lacks the read-only line`)
+          const limits = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /IAMAI limitations/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; const ps = d.querySelectorAll('p'); return { items: d.querySelectorAll('li').length, last: ((ps[ps.length - 1] || {}).textContent || '').replace(/\\s+/g, ' ').trim() } })()`)
+          if (!limits) add('P0', `${label}: tile 3 has no IAMAI limitations collapsible`)
           else {
-            if (!/holds none of the roles that read Conditional Access policies, people and sign-in records/.test(after)) add('P0', `${label}: the warning does not name the three sections: "${(after.match(/holds none of the roles[^\n]*/) ?? [''])[0]}"`)
-            if (!/Ask for Security Reader, or Global Reader \(reads everything IAMAI needs, writes nothing\)/.test(after)) add('P0', `${label}: the warning does not say what to ask for: "${(after.match(/Ask for[^\n]*/) ?? [''])[0]}"`)
+            if (limits.items !== 5) add('P0', `${label}: the limitations list has ${limits.items} lines; five`)
+            if (limits.last !== 'Permissions, every check it runs, and its limits in full: How IAMAI works →') add('P0', `${label}: the limitations' last line reads "${limits.last}"`)
           }
-          const started = await evaluate(`document.querySelector('main.page .progress') !== null`)
-          const b = await buttons()
-          if (started || b.some((t) => /^Stop$/.test(t))) add('P0', `${label}: the scan started although the token lacks the roles`)
-          if (!b.some((t) => /^Sign in with another account$/.test(t))) add('P0', `${label}: the warning offers no Sign in with another account button`)
-          for (const gone of [/^Scan tenant$/, /^Open the plan/, /^Open the last full plan/]) if (b.some((t) => gone.test(t))) add('P0', `${label}: ${b.find((t) => gone.test(t))} is offered below the role warning; nothing else is`)
-          if (/Scan complete ·/.test(after)) add('P0', `${label}: the previous scan's summary line renders below the role warning`)
-          if (/Some sections need a higher role/.test(after)) add('P0', `${label}: the previous scan's warnings render below the role warning`)
-          oneBlock(after, 'the page after the role warning')
-          writeFileSync(join(wdir, 'connect-roles.txt'), after)
-          await shot(join(wdir, 'connect-roles.png'))
         }
-        if (fx.mock === 'free') {
-          const b = await buttons()
-          if (!b.some((t) => /^Open the plan/.test(t)) || !b.some((t) => /^Scan tenant$/.test(t))) add('P0', `${label}: a complete scan does not offer Open the plan and Scan tenant`)
+        // 4 Scan: exactly one of its states, the one the fixture reaches; the
+        // number badge carries the state colour; nothing of the other states.
+        const STATES = { complete: /^Scan complete · /, gaps: /^Scan finished with gaps · no plan built$/, role: /^Scan not started · this account can't read the tenant$/, scanning: /^Scan .+ · \d+(m \d+)?s$/, ready: /^Scan not started$/ }
+        const want = { roles: 'role', gaps: 'gaps', free: 'complete', scanning: 'scanning', ready: 'ready' }[fx.mock] ?? 'complete'
+        if (t4) {
+          const seen = Object.entries(STATES).filter(([, re]) => re.test(t4.h2)).map(([k]) => k)
+          if (seen.length !== 1 || seen[0] !== want) add('P0', `${label}: tile 4 reads "${t4.h2}"; the ${want} state`)
+          const badge = { complete: 'done', gaps: 'wait', role: 'stop' }[want]
+          if (badge && !new RegExp('\\b' + badge + '\\b').test(t4.cls)) add('P0', `${label}: tile 4's number badge does not carry the ${want} state colour (class ${badge}); it has "${t4.cls}"`)
+          if (!badge && /\b(done|wait|stop)\b/.test(t4.cls)) add('P0', `${label}: tile 4 in the ${want} state carries a state colour (${t4.cls})`)
+          const OTHER = { complete: [/\bpeople\b/, /^Open the plan →$/], gaps: [/no plan built/, /^Open the last full plan/], role: [/holds none of the roles that read/, /Everything IAMAI needs, read-only/], scanning: [/^Stop$/], ready: [/About ten minutes/, /^Scan tenant$/] }
+          for (const [k, res] of Object.entries(OTHER)) {
+            if (k === want) continue
+            for (const re of res) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 in the ${want} state carries the ${k} state's ${re}`)
+          }
+          if (want === 'complete') {
+            if (!/\d+ ?people/.test(t4.text) || !/\d+ ?policies/.test(t4.text) || !/sign-in records/.test(t4.text) || !/licence/.test(t4.text)) add('P0', `${label}: the complete tile lacks a fact (people, policies, sign-in records, licence): "${t4.text}"`)
+            if (/→\s*sign-in records/.test(t4.text) || /sign-in records\s*→/.test(t4.text)) add('P0', `${label}: the sign-in records fact renders an empty window`)
+            if (fx.mock === 'free' && !/not read ?sign-in records/.test(t4.text)) add('P0', `${label}: sign-ins were not read and the fact does not say so: "${t4.text}"`)
+            expectBtn(t4, /^Open the plan →$/, 'primary', 'the complete tile')
+            expectBtn(t4, /^Scan again$/, 'secondary', 'the complete tile')
+            if (t4.buttons.length !== 2) add('P0', `${label}: the complete tile has ${t4.buttons.length} buttons; two`)
+          }
+          if (want === 'gaps') {
+            const rows = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
+            if (!rows.some((r) => /^Conditional Access policies not read$/.test(r))) add('P0', `${label}: the policies section row is not marked not read: ${JSON.stringify(rows)}`)
+            if (!rows.some((r) => /^Sign-in records not read$/.test(r))) add('P0', `${label}: the sign-in records row is not marked not read: ${JSON.stringify(rows)}`)
+            if (!/Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t4.text)) add('P0', `${label}: the gaps tile lacks the one ask for Global Reader`)
+            if (!(await evaluate(`[...document.querySelectorAll('main.page section.step-tile a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || '') && /global-reader/.test(a.getAttribute('href') || ''))`))) add('P0', `${label}: the gaps tile lacks Microsoft's Global Reader link`)
+            expectBtn(t4, /^Sign in with another account$/, 'primary', 'the gaps tile')
+            expectBtn(t4, /^Scan again$/, 'secondary', 'the gaps tile')
+            expectBtn(t4, /^Open the last full plan \([A-Z][a-z]{2} \d+\)$/, 'tertiary', 'the gaps tile')
+            const stored = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); const n = db.objectStoreNames.contains('snapshot') ? await new Promise((r) => { const q = db.transaction('snapshot').objectStore('snapshot').count(); q.onsuccess = () => r(q.result) }) : 0; db.close(); return n } catch { return -1 } })()`)
+            if (stored !== 0) add('P0', `${label}: the scan with gaps left ${stored} snapshot record(s) in the store; it is never stored`)
+            await send('Page.navigate', { url: `${fx.base}#/plan` })
+            const kept = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 10000)
+            if (!kept) add('P0', `${label}: the last good plan is gone after a scan with gaps`)
+          }
+          if (want === 'role') {
+            if (!/holds none of the roles that read Conditional Access policies, people and sign-in records\./.test(t4.text)) add('P0', `${label}: the role tile does not name the account and the three sections: "${t4.text}"`)
+            const rows = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
+            if (rows.length !== 1 || !/^Everything IAMAI needs, read-only ask for Global Reader$/.test(rows[0])) add('P0', `${label}: the role tile's rows read ${JSON.stringify(rows)}; one row asking for Global Reader`)
+            expectBtn(t4, /^Sign in with another account$/, 'primary', 'the role tile')
+            if (t4.buttons.length !== 1) add('P0', `${label}: the role tile has ${t4.buttons.length} buttons; Sign in with another account alone`)
+            if (await evaluate(`document.querySelector('main.page .progress') !== null`)) add('P0', `${label}: the scan started although the token lacks the roles`)
+          }
+          if (want === 'scanning') {
+            if (!(await evaluate(`document.querySelector('main.page section.step-tile .progress') !== null`))) add('P0', `${label}: the scanning tile has no bar`)
+            expectBtn(t4, /^Stop$/, 'tertiary', 'the scanning tile')
+            if (t4.buttons.length !== 1) add('P0', `${label}: the scanning tile has ${t4.buttons.length} buttons; Stop alone`)
+          }
+          if (want === 'ready') {
+            expectBtn(t4, /^Scan tenant$/, 'primary', 'the ready tile')
+            if (!/About ten minutes\. Reads the tenant into this browser; nothing is sent anywhere\./.test(t4.text)) add('P0', `${label}: the ready tile lacks the ten-minute line`)
+          }
+          writeFileSync(join(wdir, 'connect-tiles.json'), JSON.stringify(tiles, null, 2))
         }
       }
       // The page tips: Today and Export keep theirs; the Plan has none.
@@ -1126,9 +1175,11 @@ const fixtures = [
   // not start), a scan that could not read the policies or the sign-in records
   // (finished with gaps; the last good plan kept), and a licence without sign-in
   // records (the scan line says so). Dev-only, on the dev server the walk runs.
-  { name: 'mock-roles', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&denied=1&roles=none`, routes: ['connect'], mock: 'roles' },
+  { name: 'mock-roles', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&roles=none`, routes: ['connect'], mock: 'roles' },
   { name: 'mock-gaps', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=gaps`, routes: ['connect'], mock: 'gaps' },
   { name: 'mock-free', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&licence=free`, routes: ['connect'], mock: 'free' },
+  { name: 'mock-scanning', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=scanning`, routes: ['connect'], mock: 'scanning' },
+  { name: 'mock-ready', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=noScan`, routes: ['connect'], mock: 'ready' },
 ]
 const summaries = {}
 for (const fx of fixtures) {

@@ -163,72 +163,8 @@
       }
     },
     {
-      "id": "connect.noScan",
-      "name": "Connect (signed in, no scan)",
-      "status": "built",
-      "reach": {
-        "route": "/connect",
-        "state": "noScan"
-      },
-      "allow": {
-        "headings": [
-          "Connect a tenant"
-        ],
-        "tabs": [],
-        "tiles": [],
-        "columns": [],
-        "chips": [],
-        "buttons": [
-          "Sign out",
-          "Scan tenant",
-          "change"
-        ],
-        "summaries": [],
-        "links": [
-          "how to make one →",
-          "How IAMAI works →"
-        ]
-      },
-      "budget": {
-        "sentences": 8,
-        "words": 130
-      },
-      "forbid": [
-        "About this baseline",
-        "version",
-        "files"
-      ]
-    },
-    {
-      "id": "connect.scanning",
-      "name": "Connect (scanning)",
-      "status": "built",
-      "reach": {
-        "route": "/connect",
-        "state": "scanning"
-      },
-      "allow": {
-        "headings": [
-          "Connect a tenant"
-        ],
-        "tabs": [],
-        "tiles": [],
-        "columns": [],
-        "chips": [],
-        "buttons": [
-          "Stop"
-        ],
-        "summaries": [],
-        "links": []
-      },
-      "budget": {
-        "sentences": 4,
-        "words": 60
-      }
-    },
-    {
-      "id": "connect.scanned",
-      "name": "The tenant page (scanned)",
+      "id": "connect.signedIn",
+      "name": "Connect (signed in): the four tiles",
       "status": "built",
       "reach": {
         "route": "/connect",
@@ -236,38 +172,53 @@
       },
       "allow": {
         "headings": [
-          "re:^.{1,80}$"
+          "Connect a tenant",
+          "re:^Signed in .+$",
+          "re:^Baseline .+$",
+          "What happens next",
+          "re:^Scan (complete · .+|finished with gaps · no plan built|not started( · this account can't read the tenant)?|.+ · \\d+(m \\d+)?s)$"
         ],
         "tabs": [],
-        "tiles": [],
+        "tiles": [
+          "Signed in",
+          "Baseline",
+          "What happens next",
+          "Scan"
+        ],
         "columns": [],
         "chips": [],
         "buttons": [
+          "Sign in with another account",
           "Sign out",
+          "Change baseline",
           "Open the plan →",
+          "Scan again",
           "Scan tenant",
-          "change"
+          "re:^Open the last full plan \\([A-Z][a-z]{2} \\d+\\)$",
+          "Stop"
         ],
-        "summaries": [],
+        "summaries": [
+          "re:^Updated by its author on .+ · \\d+ polic(y|ies) changed · review$",
+          "IAMAI limitations"
+        ],
         "links": [
-          "how to make one →",
-          "How IAMAI works →"
+          "How IAMAI works →",
+          "Microsoft: Global Reader"
         ]
       },
       "budget": {
-        "sentences": 9,
-        "words": 130
+        "sentences": 16,
+        "words": 230
       },
       "forbid": [
+        "Security Reader",
+        "Reports Reader",
+        "Directory Readers",
+        "Everything the scan found",
         "answer",
         "question",
-        "Assumes",
         "What IAMAI found"
-      ],
-      "rowBudget": {
-        "sentences": 2,
-        "words": 40
-      }
+      ]
     },
     {
       "id": "today",
