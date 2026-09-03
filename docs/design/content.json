@@ -301,6 +301,8 @@
             "p1": "P1",
             "free": "Free"
           },
+          "dropValue": "{before} → {now}",
+          "dropSince": "{label} since {date}",
           "steps": "steps · {done} done",
           "open": "Open the plan →"
         },
@@ -707,6 +709,7 @@
         "mfaCompleted": "MFA completed {when}",
         "neverSignedIn": "no sign-in on record",
         "inactiveSince": "inactive since {date}",
+        "signedInNow": "signed in now",
         "noMethodEvidence": "no MFA-capable method registered",
         "noMatch": "Nobody matches.",
         "needsScan": "Nothing to show until the first scan.",

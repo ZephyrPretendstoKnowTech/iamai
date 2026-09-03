@@ -129,8 +129,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     policyName: step.naming?.proposed,
     proposedName: step.naming?.proposed,
     existingName: step.naming?.fromBaseline ?? undefined,
-    // The operator's own sign-in count, when the operator is in scope.
-    operatorSignIns: ctx.operatorId ? operatorSignIns(ctx.snapshot, ctx.operatorId) : undefined,
+    // The operator's own sign-in count, when the operator is in the step's population (the "Your account is in scope" line).
+    operatorSignIns: ctx.operatorId && (step.population?.ids ?? []).includes(ctx.operatorId) ? operatorSignIns(ctx.snapshot, ctx.operatorId) : undefined,
     people: view.active,
     // The step's people: the active ones it touches, or, for a check step, the
     // accounts it checks (the dormant accounts are by definition not active).

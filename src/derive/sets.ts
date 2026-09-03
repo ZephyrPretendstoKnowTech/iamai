@@ -19,6 +19,7 @@ import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import type { Step } from '../roadmap/types.ts'
 import { INACTIVE_DAYS } from '../scoring/mfaViability.ts'
 import { adminUserIds } from '../roles.ts'
+import { lastSignInOf } from './operator.ts'
 import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 
 // ---------- people ----------
@@ -79,8 +80,10 @@ export function enabledUsers(snapshot: TenantSnapshot, confirmedServiceAccountId
 export function activeUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
   const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
   return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => {
-    if (!u.lastSuccessfulSignIn) return false
-    const at = Date.parse(u.lastSuccessfulSignIn)
+    // The signed-in account signed in at the scan (derive/operator.ts).
+    const last = lastSignInOf(snapshot, u)
+    if (!last) return false
+    const at = Date.parse(last)
     return Number.isFinite(at) && at >= cutoff
   })
 }

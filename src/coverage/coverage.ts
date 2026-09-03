@@ -210,8 +210,11 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     scoredPercent: scored.length > 0 ? Math.round((enforcedCount / scored.length) * 100) : 0,
   }
 
+  // A policy the adapter could not read is not assessed, whatever its signature matched.
+  const unusable = new Set(input.baselineUnusable.map((w) => w.policyName))
   return {
     results,
+    assessed: [...matchedBaseline].filter((name) => !unusable.has(name)),
     couldNotEvaluate,
     organisation,
     assumed,
