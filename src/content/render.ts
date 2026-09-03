@@ -235,8 +235,7 @@ export function renderStep(st: Record<string, any>): string {
   // Why
   parts.push(h('Why'))
   const learn = st.learn || {}
-  const cis = learn.cis ? ` <span class="chip cis">CIS ${esc(learn.cis)}</span>` : ''
-  parts.push(`<p>${fill(st.why, ex)} <a class="learn" href="${esc(learn.url || '')}">Learn →</a>${cis}</p>`)
+  parts.push(`<p>${fill(st.why, ex)} <a class="learn" href="${esc(learn.url || '')}">Learn →</a></p>`)
   // Who
   const who = st.who || {}
   parts.push(h('Who this touches'))

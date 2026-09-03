@@ -26,6 +26,7 @@ import { absentStepIds } from '../src/roadmap/baselineScope.ts'
 import { isFloorGoal } from '../src/roadmap/floor.ts'
 import { steps as contentSteps } from '../src/content/content.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
+import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
@@ -460,6 +461,8 @@ async function walkFixture(fx) {
         const sd = await evaluate(extractIn(`document.querySelector('main.page .step-body')`, sc?.reach?.exclude ?? ''))
         if (sd) {
           diffContract(slabel, sc, sd)
+          // C1: frameworks return as a feature, not a chip.
+          for (const c of sd.chips) if (/^CIS\b/.test(c)) add('P0', `${slabel}: a CIS chip "${c}" on the step (frameworks are not a chip)`)
           for (const h of sd.emptySections) add('P0', `${slabel}: the "${h}" section is empty`)
           if (sd.emptyLists > 0) add('P0', `${slabel}: ${sd.emptyLists} empty list(s) rendered`)
           for (const l of sd.danglingLeads) add('P1', `${slabel}: the lead "${l.slice(0, 70)}" has nothing listed under it`)
@@ -646,6 +649,14 @@ for (const fx of fixtures) {
 }
 const planFile = scanPlanFile()
 
+// The content file's own invariants (step-audit.md; scripts/walkContent.mjs runs
+// them alone over any content file), and every Learn link the content carries,
+// rendered on the demo or not.
+const contentFile = JSON.parse(readFileSync('docs/design/content.json', 'utf8'))
+const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8'))
+for (const f of contentFindings(contentFile, pinnedFile)) add(f.level, f.text)
+for (const href of contentLearnUrls(contentFile)) learnLinks.add(href)
+
 // Cross-surface invariants.
 for (const [name, readiness] of readinessBy) for (const [kind, values] of readiness) if (values.size > 1) add('P0', `${name}: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and Today (one readiness per kind)`)
 for (const [name, populations] of populationsBy) if (populations.size > 1) add('P0', `${name}: the active-people count reads ${[...populations].join(' and ')} across surfaces (one population)`)
@@ -654,16 +665,12 @@ for (const e of consoleErrors.filter((x) => !/favicon|microsoftonline|net::|ERR_
 // Learn links: every one resolves.
 log(`checking ${learnLinks.size} link(s)`)
 for (const href of learnLinks) {
-  try {
-    const ctl = new AbortController()
-    const t = setTimeout(() => ctl.abort(), 12000)
-    let r = await fetch(href, { method: 'HEAD', redirect: 'follow', signal: ctl.signal })
-    if (!r.ok) r = await fetch(href, { method: 'GET', redirect: 'follow', signal: ctl.signal })
-    clearTimeout(t)
-    if (!r.ok) add('P1', `Learn link ${href} answers ${r.status}`)
-  } catch (e) {
-    add('P2', `Learn link ${href} could not be checked from here (${String(e.message ?? e).slice(0, 60)})`)
-  }
+  const r = await probe(href)
+  // A 404 is a wrong fact on screen (a Learn link that opens nothing); another
+  // refusal is the site's, not the link's.
+  if (r.error) add('P2', `Learn link ${href} could not be checked from here (${r.error})`)
+  else if (r.status === 404) add('P0', `Learn link ${href} answers 404`)
+  else if (r.status >= 400) add('P1', `Learn link ${href} answers ${r.status}`)
 }
 
 // ---- the report ----
