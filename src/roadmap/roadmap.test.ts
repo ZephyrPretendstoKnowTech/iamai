@@ -215,8 +215,9 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   applyProgress(steps, snap2, input.coverage, PLAN)
   assert.equal(step.status, 'in-report-only')
 
-  step.evidence.reportOnly = { daysObserved: 10, signIns: 600, failures: 0, meetsExitCriterion: true }
-  applyProgress(steps, snap2, input.coverage, PLAN)
+  // The time gate: the plan record says a scan eight days before this one first
+  // saw the policy in report-only, past the observation window.
+  applyProgress(steps, snap2, input.coverage, PLAN, undefined, null, { [step.id]: '2026-08-18T00:00:00Z' })
   assert.equal(step.status, 'ready-to-enforce')
 
   const rows = snap2.config.caPolicies.rows as P[]

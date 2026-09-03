@@ -61,7 +61,7 @@ export const STEP_STATUS = {
   ready: { title: 'Ready', text: 'Nothing blocks this step; it can start on its scheduled date.' },
   blocked: { title: 'Blocked', text: 'A named earlier step, or a readiness threshold, has to clear first. The step says exactly which.' },
   'in-report-only': { title: 'In report-only', text: 'The policy exists in report-only mode and is collecting evidence; nobody is affected yet.' },
-  'ready-to-enforce': { title: 'Ready to enforce', text: 'Report-only evidence meets the exit criteria: enough days, enough sign-ins, zero failures.' },
+  'ready-to-enforce': { title: 'Ready to enforce', text: 'The policy has sat in report-only for its observation window, or the sign-in records since it entered report-only show zero failures with every active person in scope seen at least once.' },
   skipped: { title: 'Skipped', text: 'Marked not applicable, with a written reason. Skipped steps stay in the plan for the record.' },
 } as const satisfies Record<string, Definition>
 

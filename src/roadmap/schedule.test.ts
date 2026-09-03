@@ -36,7 +36,7 @@ function step(over: Partial<Step> & { id: string }): Step {
     unblockNotes: [],
     population: { total: ids.length, active: ids.length, admins: 0, guests: 0, ids },
     readiness: { family: 'mfa', percent: 100, lines: [] },
-    evidence: { status: 'none', lines: [], affectedUserIds: [], reportOnly: null },
+    evidence: { status: 'none', lines: [], affectedUserIds: [] },
     action: { kind: 'create', summary: [], json: null, portalSteps: [] },
     history: [],
     skipReason: null,
@@ -271,7 +271,7 @@ test('a batch never mixes a zero-affected change with one that has a blast radiu
     id: 'block-legacy',
     phase: 1,
     readiness: { family: 'block', percent: null, lines: [] },
-    evidence: { status: 'ok', lines: [], affectedUserIds: [], reportOnly: null },
+    evidence: { status: 'ok', lines: [], affectedUserIds: [] },
     population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
     rings: [ring(0, 3, people(20))],
   })
@@ -279,7 +279,7 @@ test('a batch never mixes a zero-affected change with one that has a blast radiu
     id: 'require-mfa',
     phase: 1,
     readiness: { family: 'mfa', percent: 100, lines: [] },
-    evidence: { status: 'ok', lines: [], affectedUserIds: people(9, 'a'), reportOnly: null },
+    evidence: { status: 'ok', lines: [], affectedUserIds: people(9, 'a') },
     population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
     rings: [ring(0, 3, people(20))],
   })

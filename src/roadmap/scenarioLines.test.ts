@@ -45,7 +45,8 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
   const week2 = runFixture(fixture('demo-week2'))
   const unproven = (r: ReturnType<typeof runFixture>): number => (r.steps.find((s) => s.kind === 'verify')?.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')?.people.length ?? 0
   const inPlace = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'done').length
-  const reportOnly = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'in-report-only').length
+  // A policy in report-only is in-report-only, or ready-to-enforce once one of its two gates is met (tracking.ts); both read Report-only.
+  const reportOnly = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'in-report-only' || s.status === 'ready-to-enforce').length
   const exclusionStep = (r: ReturnType<typeof runFixture>) => r.steps.find((s) => s.id === 's-prereq-exclusion-group')
   assert.equal(unproven(week2), unproven(day1) - 3, 'three of the unproven are proven in week two')
   // By week two the admins phishing-resistant policy is enforced and the second

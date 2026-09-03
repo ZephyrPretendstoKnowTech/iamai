@@ -29,12 +29,6 @@ export type Evidence = {
   status: 'ok' | 'partial' | 'insufficient' | 'disabled' | 'pending' | 'error' | 'none'
   lines: string[]
   affectedUserIds: string[]
-  reportOnly: {
-    daysObserved: number
-    signIns: number
-    failures: number
-    meetsExitCriterion: boolean
-  } | null
 }
 
 export type Action = {
@@ -202,15 +196,29 @@ export type StepTracking = {
   createdAt: string | null
   modifiedAt: string | null
   state: string
+  /**
+   * In report-only since: the earlier of the scan that first saw the policy in
+   * report-only (PlanDecisions.reportOnlySeen) and the first sign-in record that
+   * shows it evaluated in report-only. Null until the policy is in report-only.
+   */
   reportOnlyAt: string | null
   enforcedAt: string | null
   regressedAt: string | null
   /** The scan that noticed the event; the event's own date is enforcedAt / reportOnlyAt. */
   noticedAt: string | null
+  /** Days from reportOnlyAt to the scan. */
   daysInReportOnly: number
+  /** The time gate: reportOnlyAt plus the step's observation window (constants.ts); null until the policy is in report-only. */
+  readyOn: string | null
+  /** The evidence gate: the records since reportOnlyAt show zero failures and every active person in scope at least once. */
+  readyNow: boolean
+  /** Active people in scope the records since reportOnlyAt have seen, over the active people in scope. */
+  seenInScope: number
+  activeInScope: number
+  /** Records of this policy in the scan's window (any result). */
   signIns: number
+  /** Failing or interrupted records since reportOnlyAt (the gate's zero). */
   failures: number
-  interruptions: number
   failuresByUser: { userId: string; count: number }[]
   evidenceQuality: 'enough' | 'thin' | 'none'
 }

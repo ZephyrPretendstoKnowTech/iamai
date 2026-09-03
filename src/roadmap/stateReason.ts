@@ -39,7 +39,7 @@ export function blockedReasonFor(step: Step, stepById: Map<string, Step>): strin
     return BLOCKED_REASON.reaches(READINESS_MEASURE[step.readiness.family] ?? 'readiness', `${threshold}%`, `${step.readiness.percent}%`)
   }
   if (step.blockers.some((b) => b.kind === 'evidence')) {
-    return BLOCKED_REASON.reaches('clean report-only days', '7', String(step.evidence.reportOnly?.daysObserved ?? 0))
+    return BLOCKED_REASON.reaches('clean report-only days', '7', String(step.tracking?.daysInReportOnly ?? 0))
   }
   // Every producer names its cause in a shape; reaching here is a bug the
   // blockedReason test catches, not a sentence a user should see.

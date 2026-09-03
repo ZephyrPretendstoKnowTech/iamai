@@ -63,8 +63,8 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
 
 // Detection on every scan (roadmap-v2.md §5) lives in tracking.ts; this
 // keeps the entry point the page and the tests call.
-export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string, planCreatedAt: string | null = null): Step[] {
-  return trackExecution(steps, snapshot, coverage, planId, now)
+export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string, planCreatedAt: string | null = null, reportOnlySeen: Record<string, string> | null = null): Step[] {
+  return trackExecution(steps, snapshot, coverage, planId, now, reportOnlySeen ?? {})
 }
 
 // ---- Decisions-only record (prompt 50.1 item 1) ----
@@ -100,6 +100,10 @@ export function decisionsOf(
     if (!d || typeof d !== 'object') continue
     stepDecisions[id] = { ...(Array.isArray(d.picked) ? { picked: d.picked.map(String) } : {}), ...(typeof d.option === 'string' ? { option: d.option } : {}), at: String(d.at ?? '') }
   }
+  // The scan that first saw each step's policy in report-only: an observation
+  // only the record holds (tracking.ts reportOnlySince).
+  const reportOnlySeen: Record<string, string> = {}
+  for (const [id, at] of Object.entries(rec?.reportOnlySeen ?? {})) if (typeof at === 'string' && !Number.isNaN(Date.parse(at))) reportOnlySeen[id] = at
   return {
     planId: rec?.planId ?? planId,
     skips,
@@ -110,6 +114,7 @@ export function decisionsOf(
     checkpoints: rec?.checkpoints ?? [],
     planCreatedAt: rec?.planCreatedAt,
     stepDecisions,
+    reportOnlySeen,
     ...(typeof (rec as { signature?: unknown } | null)?.signature === 'string' ? { signature: (rec as { signature: string }).signature } : {}),
   }
 }

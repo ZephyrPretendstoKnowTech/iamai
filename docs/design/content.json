@@ -20,6 +20,10 @@
       "The changed settings match the baseline on the next scan.",
       "No new sign-in failures on this policy in the week after the change."
     ],
+    "policyDoneWhenTracked": [
+      "Time: in report-only since {reportOnly}, {timeGate}.",
+      "Evidence: zero failures and every active person in scope seen in the sign-in records since {reportOnly}; today {evidenceGate}."
+    ],
     "policyIfWrong": "Set the policy back to report-only, or delete it; nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
     "changeIfWrong": "Put the settings back to what they were (shown above); nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
@@ -62,8 +66,10 @@
         "reportOnlyFound": "policy in report-only since {date}",
         "enforced": "policy enforced on {date}",
         "enforcedByOther": "{name} already enforces this",
-        "soak": "{days} days in report-only, {signIns} sign-ins, {failures} failing or interrupted",
-        "readyToEnforce": "report-only evidence meets the exit criterion",
+        "readyOn": "ready on {date}",
+        "readySince": "ready since {date}",
+        "readyNow": "ready now: 0 failures in {n} days",
+        "evidenceToday": "{failures} failing or interrupted, {seen} of {people} active people seen in {n} days",
         "regression": {
           "disabled": "{name} was disabled after {since}; the goal is open again",
           "deleted": "{name} was deleted after {since}; the goal is open again",
@@ -186,6 +192,9 @@
       "line2": "Built from what IAMAI found on {tenant}, scanned {age} · Today shows where each person stands.",
       "next": "next",
       "now": "now",
+      "readyOn": "ready {date}",
+      "readyNow": "ready now",
+      "readySince": "ready since {date}",
       "settingsLink": "Plan settings",
       "settings": {
         "h3": "Plan settings",

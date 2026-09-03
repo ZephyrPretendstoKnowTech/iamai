@@ -370,6 +370,8 @@ async function walkFixture(fx) {
   const summary = []
   const routeContract = { connect: 'connect.scanned', today: 'today', plan: 'plan', export: 'export', how: 'how' }
   let rowTitles = []
+  let rowStatuses = []
+  let rowWhens = []
   let exclusionBody = null
   for (const width of WIDTHS) {
     await setWidth(width)
@@ -406,6 +408,8 @@ async function walkFixture(fx) {
       // body keeps the invariants; More opens; Learn links resolve.
       const n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
       rowTitles = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
+      rowStatuses = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.status') || {}).textContent || '').trim())`)
+      rowWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.when') || {}).textContent || '').trim())`)
       const inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
       for (let i = 0; i < n; i++) {
         if (inFooter[i]) continue
@@ -424,6 +428,15 @@ async function walkFixture(fx) {
         }
         await settle()
         const bodyText = await evaluate(`(document.querySelector('main.page .step-body') || {}).innerText || ''`)
+        // A policy in report-only says when it may be enforced, on the row and in
+        // the step: the date column reads ready <date> · ready now · ready since
+        // <date>, and Done when carries both gates with today's numbers.
+        if (rowStatuses[i] === 'Report-only') {
+          if (!/^ready (now|since .+|\S.*\d{4})$/.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say when it may be enforced (ready <date> · ready now · ready since <date>)`)
+          if (!/Time: in report-only since .+, ready (on|since) /.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
+          if (!/Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days)\./.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
+          if (rowWhens[i] === 'ready now' && !/ready now: 0 failures in \d+ days/.test(bodyText)) add('P0', `${slabel}: the row reads ready now but the step's Done when does not say so`)
+        }
         // One population per step: the row's who-line count is the lead's count.
         const rowWho = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
         const bodyLines = bodyText.split('\n').map((x) => x.trim()).filter(Boolean)
@@ -500,6 +513,18 @@ async function walkFixture(fx) {
   // group, so the step must check it rather than still offer the create instructions.
   if (fx.name.startsWith('demo') && !rowTitles.some((t) => /Exclusions Group/i.test(t))) add('P0', `${fx.name}: the exclusions-group step is missing; it is on every plan`)
   if (fx.week2 && exclusionBody !== null && /No exclusions group recognised|New group/.test(exclusionBody)) add('P0', `${fx.name}: the exclusions-group step still offers to create the group in week two, although the re-scan recognised it`)
+  // A policy in report-only (Report-only in the status column) says when it may
+  // be enforced in the date column, from two gates. The demo's week one has one
+  // such row, dated from the observation window; week two reads ready now for the
+  // policy whose records are clean and complete, and Enforced for the one the
+  // tenant turned on. Nothing asks the person to mark anything.
+  if (fx.name.startsWith('demo')) {
+    const reportOnly = rowStatuses.map((s, i) => (s === 'Report-only' ? rowWhens[i] : null)).filter((w) => w !== null)
+    if (reportOnly.length === 0) add('P0', `${fx.name}: no plan row reads Report-only; the demo has a policy in report-only`)
+    if (!fx.week2 && !reportOnly.some((w) => /^ready \S.*\d{4}$/.test(w))) add('P0', `${fx.name}: no Report-only row reads ready <date> on week one`)
+    if (fx.week2 && !reportOnly.includes('ready now')) add('P0', `${fx.name}: no Report-only row reads ready now in week two (the token protection policy's records are clean and complete)`)
+    if (fx.week2 && !rowStatuses.includes('Enforced')) add('P0', `${fx.name}: no row reads Enforced in week two (the tenant turned the admins policy on)`)
+  }
   return summary
 }
 

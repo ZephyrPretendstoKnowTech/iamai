@@ -29,6 +29,7 @@ import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './step
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
+import { doneWhenTemplates } from './doneWhen.ts'
 
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
@@ -221,10 +222,10 @@ export function ContentStep({
       )}
 
       {(() => {
-        // Expand the shared policy/change done-when placeholders, then drop any
+        // Expand the shared policy/change done-when placeholders (a policy in
+        // report-only gets its two gates with today's numbers), then drop any
         // line with a hole; the heading appears only if a line survives (§8.7).
-        const shared = content.shared as Record<string, string[]>
-        const dw = (cs.doneWhen || []).flatMap((x: unknown) => (x === '{policyDoneWhen}' ? shared.policyDoneWhen : x === '{changeDoneWhen}' ? shared.changeDoneWhen : [x])).filter((x: unknown) => whole(x, ex))
+        const dw = doneWhenTemplates(step, (cs.doneWhen || []) as unknown[]).filter((x: unknown) => whole(x, ex))
         if (dw.length === 0) return null
         return (
           <>

@@ -11,6 +11,7 @@
 import type { ExportStep, Step } from '../../roadmap/types.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
+import { doneWhenTemplates } from './doneWhen.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -40,9 +41,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   if (typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
   if (portal && portal.length > 0) lines.push(...portal)
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
-  const shared = content.shared as Record<string, string[]>
-  const doneWhen = ((cs.doneWhen ?? []) as unknown[])
-    .flatMap((x) => (x === '{policyDoneWhen}' ? shared.policyDoneWhen : x === '{changeDoneWhen}' ? shared.changeDoneWhen : [x]))
+  const doneWhen = doneWhenTemplates(step, (cs.doneWhen ?? []) as unknown[])
     .filter((x) => whole(x, ex))
     .map((x) => fillText(x, ex))
   return {
