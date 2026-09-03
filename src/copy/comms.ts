@@ -102,6 +102,7 @@ export const PROMPTS = {
   step: 'Step',
   record: 'Record',
   plan: 'Plan',
+  cleanup: 'Cleanup',
   language: 'the language you need',
 }
 

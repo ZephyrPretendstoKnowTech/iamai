@@ -5,13 +5,14 @@
 //
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
+import type { CleanupExport } from '../../roadmap/types.ts'
 import { app, cleanup as cleanupContent } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 
+export type { CleanupExport }
 export type CleanupEntry = { title: string; learn?: { url: string } | null; why: string; whatToDo: string[]; doneWhen: string[] }
 export type NotAssessedNotes = Record<string, string>
-export type CleanupExport = { kind: string; day: string; done: string | null; title: string; why: string; whatToDo: string[]; doneWhen: string[] }
 
 const A = app.plan
 
