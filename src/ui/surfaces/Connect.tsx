@@ -1,48 +1,44 @@
-// Connect (prompt 47 Part 4, target-state §3): one component, four states, now
-// rendered from docs/design/content.json (prompt 52 Part 1). Signed out: the
-// opener — what it is, who it is built for, what it catches; Sign in; the
-// permissions and how to remove them; the IAMAI limitations panel. Signed in:
-// who is signed in, the baseline explained in place with the author's site and
-// the "updated by its author" line, and the scan, run from here. Scanning: the
-// progress line and Stop. Scanned: the tenant's name, the one-line result, Open
-// the plan, the tip, and Scan tenant again, run in place.
+// Connect (docs/design/connect-mockup.html). Signed out: the opener — what it
+// is, who it is built for, what it catches; Sign in; the permissions and how to
+// remove them; the IAMAI limitations panel. Signed in: four numbered tiles from
+// connectView.ts — Signed in, Baseline, What happens next, and Scan in exactly
+// one of its states (complete, finished with gaps, not started for want of a
+// role, scanning, or ready for the first scan). Every action is a button in one
+// of three weights; Global Reader is the only role IAMAI names.
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
-import { authReady, signIn, signInAnother, signOut } from '../../graph/auth.ts'
-import { isPrivilegeDenial } from '../../graph/collect/roles.ts'
+import { authReady, getGraphToken, signIn, signInAnother, signOut } from '../../graph/auth.ts'
+import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
 import type { TokenSource } from '../../graph/collect/runScan.ts'
+import { GLOBAL_ADMINISTRATOR, coreRoleGap, rolesInToken } from '../../graph/collect/tokenRoles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { demoUrl } from '../demo.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
+import { stepIdForGoal } from '../../roadmap/stepIds.ts'
+import { roleName } from '../../roles.ts'
+import { demoUrl, isDemo } from '../demo.ts'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
-import { absoluteDate } from '../../copy/dates.ts'
-import { Button, Callout, LinkButton } from '../components/index.ts'
+import { elapsedLabel } from '../format.ts'
+import { Button, LinkButton } from '../components/index.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
-const C = app.connect
 import { PINNED_BASELINE, baselineChanges, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
-import type { BaselineChange, BaselineResult } from '../baseline.ts'
+import type { BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
 import { afterScanHref } from '../shell/routes.ts'
-import { DeniedSections, ScanDevTools, ScanProgress } from '../scan/ScanProgress.tsx'
-import { deniedSources, useScanRunner } from '../scan/useScanRunner.ts'
-import { connectStatus } from '../scan/connectStatus.ts'
+import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
+import { useScanRunner } from '../scan/useScanRunner.ts'
 import type { SectionRow } from '../scan/useScanRunner.ts'
+import { W, accountTile, baselineTile, nextTile, scanTile } from '../scan/connectView.ts'
+import type { Action, BaselineUpdate, ScanInput, Tone } from '../scan/connectView.ts'
 
+const C = app.connect
 const HOW_HREF = '#/how'
 const PACKAGE_HREF = '#/how#package'
 
 const O = pages.opener as Record<string, unknown>
-const CN = pages.connectNoScan as Record<string, unknown>
-const TN = pages.tenant as Record<string, unknown>
-
-/** Split a filled line on its last " · ", so a trailing control word (Sign out, change) becomes a button. */
-function splitControl(line: string): [string, string] {
-  const parts = line.split(' · ')
-  const label = parts.pop() ?? ''
-  return [parts.join(' · '), label]
-}
 
 export function Connect(props: {
   account: AccountInfo | null
@@ -184,6 +180,68 @@ function SignedOut() {
   )
 }
 
+/** One numbered tile; the badge carries the state colour (accent done, amber gaps, red no role). */
+function Tile({ n, title, state, tone, stateTone, children }: { n: number; title: string; state?: string; tone: Tone; stateTone?: 'ok' | 'wait' | 'stop'; children: ReactNode }) {
+  return (
+    <section className={`step-tile${tone ? ` ${tone}` : ''}`}>
+      <span className="n">{n}</span>
+      <h2>
+        {title}
+        {state && <span className={`state${stateTone ? ` ${stateTone}` : ''}`}>{state}</span>}
+      </h2>
+      {children}
+    </section>
+  )
+}
+
+/** An action in one of the three weights, as the mockup assigns them. */
+function Act({ action, onClick, href }: { action: Action; onClick?: () => void; href?: string }) {
+  if (href) {
+    return (
+      <LinkButton href={href} variant={action.weight}>
+        {action.label}
+      </LinkButton>
+    )
+  }
+  return (
+    <Button variant={action.weight} onClick={onClick}>
+      {action.label}
+    </Button>
+  )
+}
+
+/** The one role IAMAI names, set in the row's weight. */
+function roleSpan(text: string): ReactNode {
+  const i = text.indexOf(READ_EVERYTHING_ROLE)
+  if (i < 0) return text
+  return (
+    <>
+      {text.slice(0, i)}
+      <span className="role">{READ_EVERYTHING_ROLE}</span>
+      {text.slice(i + READ_EVERYTHING_ROLE.length)}
+    </>
+  )
+}
+
+/** The account's leading text in the tile's weight, the rest of the line after it. */
+function lead(upn: string, line: string): ReactNode {
+  return line.startsWith(upn) ? (
+    <>
+      <strong>{upn}</strong>
+      {line.slice(upn.length)}
+    </>
+  ) : (
+    line
+  )
+}
+
+/** The account's directory role for tile 1: Global Administrator or Global Reader first, else the first the catalogue knows. */
+function accountRole(roleIds: string[] | null): string | null {
+  if (!roleIds) return null
+  const names = roleIds.map((id) => roleName(id)).filter((n): n is string => n !== null)
+  return names.find((n) => n === GLOBAL_ADMINISTRATOR) ?? names.find((n) => n === READ_EVERYTHING_ROLE) ?? names[0] ?? null
+}
+
 function SignedIn({
   account,
   tenantName,
@@ -211,7 +269,6 @@ function SignedIn({
   getToken?: TokenSource
   onRunningChange: (running: boolean) => void
   onComplete: (snapshot: TenantSnapshot, at: string) => void
-  /** Where the scan lands when it finishes: the step that asked for it, or the Plan. */
   returnTo: string | null
   autoScan: boolean
   onAutoScanConsumed: () => void
@@ -239,128 +296,187 @@ function SignedIn({
     void runner.start()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoScan])
-  const snapshot = lastScan?.snapshot ?? null
-  const scanned = !scanning && snapshot !== null
-  const { denied, all } = deniedSources(runner.sections, snapshot, isPrivilegeDenial)
-  // One status block, never two (connectStatus.ts): Role missing, Scan finished
-  // with gaps, or Scan complete, in that priority; a gapped scan's summary is
-  // never stored, so it cannot render beside a later state.
-  const status = connectStatus({ roleGap: runner.roleGap, gaps: runner.gaps, lastScan, upn: account.username })
-  const [signedInText, signOutLabel] = splitControl(fillText(CN.signedIn as string, { tenant: tenantName ?? account.username, upn: account.username }))
+  // The token's roles, read before the first Graph call (tokenRoles.ts): tile 1
+  // names the account's role, and tile 4 says so when none of them reads the
+  // tenant. The demo never signs in, so it has no token to read.
+  const [roleIds, setRoleIds] = useState<string[] | null>(null)
+  useEffect(() => {
+    if (isDemo()) return
+    let live = true
+    const source: TokenSource = getToken ?? getGraphToken
+    void source('silent')
+      .then((token) => {
+        if (live) setRoleIds(rolesInToken(token))
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [getToken, account.homeAccountId])
+  const roleGap = runner.roleGap ?? coreRoleGap(roleIds)
+  const tenant = tenantName ?? account.username
+  const upn = account.username
+  const start = (first: boolean): void => {
+    if (first) hadScanRef.current = false
+    void runner.start()
+  }
+
+  const t1 = accountTile({ tenant, upn, role: accountRole(roleIds) })
+  const t3 = nextTile({ tenant })
+  // Tile 4's one state, in priority: no role, scanning, gaps, complete, ready.
+  const scanInput: ScanInput = roleGap
+    ? { kind: 'role', upn, gap: roleGap }
+    : scanning
+      ? { kind: 'scanning', lane: laneOf(runner).lane, elapsed: elapsedLabel(runner.startedAt ?? runner.nowTick, runner.nowTick) }
+      : runner.gaps.length > 0
+        ? { kind: 'gaps', unread: runner.unread, lastScan }
+        : lastScan
+          ? { kind: 'complete', snapshot: lastScan.snapshot, at: lastScan.at }
+          : { kind: 'ready' }
+  const t4 = scanTile(scanInput)
+  const stateTone = t4.tone === 'done' ? 'ok' : (t4.tone ?? undefined)
+  const scanActions = (): ReactNode => {
+    switch (t4.kind) {
+      case 'complete':
+        return (
+          <>
+            <Act action={t4.actions[0]} href={PLAN_HREF} />
+            <Act action={t4.actions[1]} onClick={() => start(false)} />
+          </>
+        )
+      case 'gaps':
+        return (
+          <>
+            <Act action={t4.actions[0]} onClick={() => void signInAnother()} />
+            <Act action={t4.actions[1]} onClick={() => start(false)} />
+            {t4.actions[2] && <Act action={t4.actions[2]} href={PLAN_HREF} />}
+          </>
+        )
+      case 'role':
+        return <Act action={t4.actions[0]} onClick={() => void signInAnother()} />
+      case 'scanning':
+        return <Act action={t4.actions[0]} onClick={runner.stop} />
+      case 'ready':
+        return <Act action={t4.actions[0]} onClick={() => start(true)} />
+    }
+  }
   return (
     <>
-      <h1>{scanned ? fillText(TN.h1 as string, { tenant: tenantName ?? account.username }) : (CN.h1 as string)}</h1>
-      <p className="line">
-        {signedInText}
-        {!scanning && (
-          <>
-            {' · '}
-            <Button variant="tertiary" onClick={() => void signOut()}>
-              {signOutLabel}
-            </Button>
-          </>
-        )}
-      </p>
-      <BaselineLine baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} tenant={tenantName ?? account.username} />
-      {scanning && <ScanProgress runner={runner} />}
-      {!scanning && runner.state === 'failed' && runner.error && <Callout kind="danger">{fillText(C.failed, { why: runner.error })}</Callout>}
-      {!scanning && status.kind === 'roleMissing' && (
-        <Callout kind="warning">
-          <p>{status.text}</p>
-          <p className="actions">
-            <Button variant="primary" onClick={() => void signInAnother()}>
-              {status.signInAnother}
-            </Button>
-          </p>
-        </Callout>
-      )}
-      {!scanning && status.kind === 'gaps' && (
-        <>
-          <p className="line">{status.line}</p>
-          <div className="found">
-            {status.rows.map((row) => (
-              <div className="frow" key={row}>
-                {row}
-              </div>
+      <h1>{W.h1}</h1>
+      <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone="ok">
+        <p>{lead(upn, t1.line)}</p>
+        <p className="quiet">{t1.note}</p>
+        <div className="actions">
+          <Act action={t1.actions[0]} onClick={() => void signInAnother()} />
+          <Act action={t1.actions[1]} onClick={() => void signOut()} />
+        </div>
+      </Tile>
+      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} />
+      <Tile n={3} title={t3.title} tone={t3.tone}>
+        <ul className="beats">
+          {t3.beats.map((b) => (
+            <li key={b.label}>
+              <b>{b.label}</b> {b.text}
+            </li>
+          ))}
+        </ul>
+        <p className="quiet">{t3.readOnly}</p>
+        <details>
+          <summary>{t3.limits.summary}</summary>
+          <ul className="beats">
+            {t3.limits.lines.map((line) => (
+              <li key={line}>{line}</li>
             ))}
-          </div>
-          <p className="actions">
-            {status.openLastFull && <LinkButton href={PLAN_HREF}>{status.openLastFull}</LinkButton>}
-            <Button variant={status.openLastFull ? 'secondary' : 'primary'} onClick={() => void runner.start()}>
-              {status.scan}
-            </Button>
+          </ul>
+          <p className="quiet">
+            {t3.limits.more}{' '}
+            <a className="lnk" href={t3.limits.link.href}>
+              {t3.limits.link.label}
+            </a>
           </p>
-        </>
-      )}
-      {!scanning && status.kind === 'none' && (
-        <>
-          <p className="actions">
-            <Button
-              variant="primary"
-              onClick={() => {
-                hadScanRef.current = false
-                void runner.start()
-              }}
-            >
-              {status.scan}
-            </Button>
+        </details>
+      </Tile>
+      <Tile n={4} title={t4.title} state={t4.state} tone={t4.tone} stateTone={stateTone}>
+        {t4.kind === 'scanning' && <ScanBar runner={runner} />}
+        {t4.lead && <p>{lead(upn, t4.lead)}</p>}
+        {t4.facts && (
+          <ul className="facts">
+            {t4.facts.map((f) => (
+              <li key={f.label}>
+                <b>{f.value}</b>
+                {f.label}
+              </li>
+            ))}
+          </ul>
+        )}
+        {t4.rows && (
+          <ul className="tile-rows">
+            {t4.rows.map((r) => (
+              <li key={r.name}>
+                <span>{r.name}</span> <span>{roleSpan(r.value)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {t4.ask && (
+          <p className="quiet">
+            {roleSpan(t4.ask)}{' '}
+            {t4.learn && (
+              <a className="lnk" href={t4.learn.url} target="_blank" rel="noopener noreferrer">
+                {t4.learn.label}
+              </a>
+            )}
           </p>
-          <p className="reason">{status.note}</p>
-        </>
-      )}
-      {!scanning && status.kind === 'complete' && (
-        <>
-          <p className="line">{status.line}</p>
-          <DeniedSections denied={denied} all={all} />
-          <p className="actions">
-            <LinkButton href={PLAN_HREF}>{status.open}</LinkButton>
-            <Button variant="secondary" onClick={() => void runner.start()}>
-              {status.scan}
-            </Button>
-          </p>
-          <p className="tip">{TN.tip as string}</p>
-        </>
-      )}
-      <ScanDevTools tenantId={account.tenantId} runner={runner} snapshot={snapshot} />
-      {!scanning && (
-        <p className="footer-link">
-          <a href={HOW_HREF}>{(O.links as string[])[0]}</a>
-        </p>
-      )}
+        )}
+        {t4.note && <p className="quiet">{t4.note}</p>}
+        {!scanning && runner.state === 'failed' && runner.error && <p className="quiet">{fillText(C.failed, { why: runner.error })}</p>}
+        <div className="actions">{scanActions()}</div>
+      </Tile>
+      <ScanDevTools tenantId={account.tenantId} runner={runner} snapshot={lastScan?.snapshot ?? null} />
     </>
   )
 }
 
 /**
- * "Baseline: <label> (46 policies) · change", the three explanation lines (what
- * the baseline is, its aim, how IAMAI uses it), and —
- * when the author's repository is ahead of the pin — the "updated by its author"
- * line with its review list (prompt 52 Part 1). The default loads itself when
- * nothing is saved; change opens a picker with two choices.
+ * The author's head against the pin (prompt 52 Part 1): when it differs and the
+ * changed-policy list is known, tile 2 carries the update as a collapsible. The
+ * one runtime network call and its compare both fail closed, so the line never
+ * appears without real changes behind it.
  */
-function BaselineLine({
-  baseline,
-  restoreError,
-  onBaseline,
-  locked,
-  tenant,
-}: {
-  baseline: BaselineResult | null
-  restoreError: string | null
-  onBaseline: (r: BaselineResult) => void
-  locked: boolean
-  /** The tenant's name, for the line that says what the baseline is compared with. */
-  tenant: string
-}) {
+function useAuthorUpdate(): BaselineUpdate | null {
+  const [update, setUpdate] = useState<BaselineUpdate | null>(null)
+  useEffect(() => {
+    let live = true
+    void checkAuthorHead().then(async (head) => {
+      if (!live || !head.updated || !head.head || !head.date) return
+      const changes = await baselineChanges(head.head)
+      if (!live || changes.length === 0) return
+      setUpdate({ date: head.date, changes })
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+  return update
+}
+
+/**
+ * Tile 2: the baseline's name and count as its state, the approved sentences,
+ * the author-update rows (added / removed / changed · policy · the step that
+ * changes), and Change baseline, which opens the picker with two choices. The
+ * default loads itself when nothing is saved.
+ */
+function BaselineTile({ baseline, restoreError, onBaseline, locked }: { baseline: BaselineResult | null; restoreError: string | null; onBaseline: (r: BaselineResult) => void; locked: boolean }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadingRef = useRef(false)
+  const update = useAuthorUpdate()
 
   const loadPinned = async () => {
     if (loadingRef.current) return
     loadingRef.current = true
-    setBusy(fillText(C.baselineLoading, { source: PINNED_BASELINE.label }))
+    setBusy(PINNED_BASELINE.label)
     setError(null)
     try {
       onBaseline(await loadPinnedBaseline())
@@ -373,7 +489,7 @@ function BaselineLine({
   }
   const loadUpload = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
-    setBusy(fillText(C.readingFiles, { n: fileList.length }))
+    setBusy(C.uploadedSource)
     setError(null)
     try {
       const files: BaselineFile[] = await Promise.all([...fileList].map(async (f) => ({ path: f.name, text: await f.text() })))
@@ -392,30 +508,40 @@ function BaselineLine({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseline, restoreError])
 
-  const [baselineText, changeLabel] = baseline ? splitControl(fillText(CN.baselineLine as string, { baselineName: baseline.source, policyCount: baseline.pkg.policies.length })) : ['', 'change']
-
+  // The step a changed policy stands for, through the baseline's goal map.
+  const stepFor = (policy: string): string | null => {
+    const map = baseline?.goalMap ?? {}
+    const goalId = Object.keys(map).find((g) => map[g].includes(policy))
+    return goalId ? (contentStepFor({ id: stepIdForGoal(goalId), goalId })?.title ?? null) : null
+  }
+  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: baseline?.pkg.policies.length ?? 0, loading: busy, update, stepFor })
   return (
-    <>
-      <p className="line">
-        {busy ?? (baseline ? baselineText : C.baselineNone)}
-        {!locked && !busy && (
-          <>
-            {' · '}
-            <Button variant="tertiary" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-              {changeLabel}
-            </Button>
-          </>
-        )}
-      </p>
-      {error && <p className="reason">{fillText(C.baselineFailed, { why: error })}</p>}
-      {!error && !baseline && restoreError && <p className="reason">{C.restoreFailed}</p>}
-      {!locked && !busy && baseline && (
-        <>
-          <p className="reason">{CN.baselineWhat as string}</p>
-          <p className="reason">{CN.baselineGoal as string}</p>
-          <p className="reason">{fillText(CN.baselineHow as string, { tenant })}</p>
-          <BaselineUpdated />
-        </>
+    <Tile n={2} title={t2.title} state={t2.state} tone={t2.tone}>
+      {t2.paragraphs.map((text) => (
+        <p key={text}>{text}</p>
+      ))}
+      {error && <p className="quiet">{fillText(C.baselineFailed, { why: error })}</p>}
+      {!error && !baseline && restoreError && <p className="quiet">{C.restoreFailed}</p>}
+      {t2.update && (
+        <details>
+          <summary>{t2.update.summary}</summary>
+          <ul className="diff">
+            {t2.update.rows.map((r) => (
+              <li key={r.policy}>
+                <span className="tag">{r.tag}</span>
+                <span>{r.policy}</span>
+                <span className="steps">{r.step}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {!locked && !busy && (
+        <div className="actions">
+          <Button variant="secondary" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {t2.actions[0].label}
+          </Button>
+        </div>
       )}
       {open && !locked && (
         <div className="picker" role="group" aria-label={C.pickerLabel}>
@@ -432,56 +558,11 @@ function BaselineLine({
             <span>{C.uploadChoice}</span>
             <input type="file" accept=".json" multiple aria-label={C.uploadLabel} onChange={(e) => void loadUpload(e.currentTarget.files)} disabled={busy !== null} />
           </label>
-          <a href={PACKAGE_HREF}>{C.howToMakeOne}</a>
+          <LinkButton href={PACKAGE_HREF} variant="tertiary">
+            {W.baseline.howToMakeOne}
+          </LinkButton>
         </div>
       )}
-    </>
-  )
-}
-
-/**
- * The "Baseline updated by its author" line and its review list, shown only when
- * the author's head differs from the pin and the changed-policy list is known
- * (prompt 52 Part 1). The one runtime network call and its compare both fail
- * closed, so the line never appears without real changes behind it.
- */
-function BaselineUpdated() {
-  const [date, setDate] = useState<string | null>(null)
-  const [changes, setChanges] = useState<BaselineChange[]>([])
-  const [reviewing, setReviewing] = useState(false)
-  useEffect(() => {
-    let live = true
-    void checkAuthorHead().then(async (head) => {
-      if (!live || !head.updated || !head.head) return
-      const list = await baselineChanges(head.head)
-      if (!live || list.length === 0) return
-      setChanges(list)
-      setDate(head.date ? absoluteDate(head.date) : null)
-    })
-    return () => {
-      live = false
-    }
-  }, [])
-  if (changes.length === 0 || !date) return null
-  const [updatedText, reviewLabel] = splitControl(fillText(CN.baselineUpdated as string, { date, n: changes.length }))
-  return (
-    <>
-      <p className="reason">
-        {updatedText}
-        {' · '}
-        <Button variant="tertiary" aria-expanded={reviewing} onClick={() => setReviewing((r) => !r)}>
-          {reviewLabel}
-        </Button>
-      </p>
-      {reviewing && (
-        <div className="found">
-          {changes.map((c) => (
-            <div className="frow" key={c.policy}>
-              {fillText(CN.baselineUpdatedRow as string, { policy: c.policy, change: c.change })}
-            </div>
-          ))}
-        </div>
-      )}
-    </>
+    </Tile>
   )
 }

@@ -177,7 +177,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (signed out): the opener heading, Built for, What it catches and Sign in', /Plan the journey to your Conditional Access baseline/.test(t) && /Built for/.test(t) && /What it catches/.test(t) && /Global Administrator or Global Reader/.test(t) && /Sign in with Microsoft/.test(t))
+  check('Connect (signed out): the opener heading, Built for, What it catches and Sign in', /Plan the journey to your Conditional Access baseline/.test(t) && /Built for/.test(t) && /What it catches/.test(t) && /Sign in with a Global Reader account/.test(t) && /Sign in with Microsoft/.test(t))
 
   // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
@@ -205,16 +205,18 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=scanning#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (scanning): the lane in plain words and Stop', /Reading people/.test(t) && /Stop/.test(t) && !/Scan tenant/.test(t), (t.match(/Reading[^\n]*/) ?? [''])[0])
+  check('Connect (scanning): the lane in plain words with the elapsed time, and Stop', /reading people · \d+s/.test(t) && /Stop/.test(t) && !/Scan tenant/.test(t), (t.match(/[^\n]*reading[^\n]*/) ?? [''])[0])
   check('Connect (scanning): the header tabs are disabled', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 3)
   // Connect, scanned: who is signed in, the baseline line, the one-line result, Open the plan (target-state §3).
   await go('connect')
   await sleep(600)
   t = await text()
-  check('Connect: signed in as the operator', /Signed in to Contoso Pty Ltd as alex@example\.com/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
-  check('Connect: the baseline line names the baseline and its policy count', /Baseline: synthetic baseline \(1 polic(y|ies)\)/.test(t), (t.match(/Baseline:[^\n]*/) ?? [''])[0])
-  check('Connect (scanned): the one-line result and Open the plan', /Scan complete · 5 people · 3 policies · sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/.test(t) && /Open the plan →/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
-  check('Connect (scanned): the baseline picker opens with two choices', (await clickText('/^change$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /how to make one →/.test(document.body.innerText)`)))
+  // Connect as four tiles (docs/design/connect-mockup.html).
+  check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
+  check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+synthetic baseline · 1 polic(y|ies)/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
+  check('Connect (scanned): the facts and Open the plan', /5\s*people/.test(t) && /3\s*policies/.test(t) && /[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+\s*sign-in records/.test(t) && /Open the plan →/.test(t) && !/Scan complete · 5 people/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
+  check('Connect: Global Reader is the only role IAMAI names', !/Security Reader|Reports Reader/.test(t))
+  check('Connect (scanned): Change baseline opens the picker with two choices', (await clickText('/^Change baseline$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /How to make one →/.test(document.body.innerText)`)))
   // Today: where things are now, over active people (target-state §4).
   await go('today')
   check('Today: the table renders', await waitFor(`document.querySelectorAll('table.datatable tbody tr').length >= 4`))
@@ -397,13 +399,13 @@ try {
   t = await text()
   // A sign-in with too little access names the role to ask for (prompt 31 4.18).
   // The refused-sections notice lives with the scan result, on Connect (prompt 47 Part 4).
-  await send('Page.navigate', { url: `${BASE}&denied=1#/connect` })
+  await send('Page.navigate', { url: `${BASE}&state=gaps#/connect` })
   await sleep(1500)
-  check('Denied sections: the scan says a role is missing, never just insufficient privileges', await waitFor(`/Some sections need a higher role/.test(document.body.innerText)`))
+  check('Scan with gaps: the tile says so and builds no plan', await waitFor(`/finished with gaps · no plan built/.test(document.body.innerText)`))
   t = await text()
-  check('Denied sections: the ask is Global Reader, and it is read-only', /Global Reader/.test(t) && /grants every section IAMAI reads and can change nothing/.test(t))
-  check('Denied sections: each refused section names its own least role', /Conditional Access policies|CA policies/.test(t) && /Security Reader/.test(t) && /Reports Reader/.test(t))
-  check('Denied sections: a licence gate is never reported as a missing role', !/not available on this licence[\s\S]{0,120}holds no role/.test(t))
+  check('Scan with gaps: the unread sections are rows marked not read', /Conditional Access policies\s*not read/.test(t) && /Sign-in records\s*not read/.test(t))
+  check('Scan with gaps: the one ask is Global Reader, read-only', /Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t) && !/Security Reader|Reports Reader/.test(t))
+  check('Scan with gaps: the last full plan stays open', /Open the last full plan \([A-Z][a-z]{2} \d+\)/.test(t) && !/Open the plan →/.test(t))
 
   check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))
 

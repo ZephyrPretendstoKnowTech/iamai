@@ -109,7 +109,8 @@ test('design 3: border-radius at most 4px, or 8px on a .wave / .export-card pane
     for (const m of r.body.matchAll(/border-radius\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
       if (v === '0' || v === 'var(--radius)') continue
-      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector))) continue
+      // The Connect tiles' number badge is a circle (docs/design/connect-mockup.html).
+      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.step-tile \.n/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate ×).
       if (v === '999px' && /\.chip-(select|remove)/.test(r.selector)) continue
       const px = v.match(/^(\d+(?:\.\d+)?)px$/)
@@ -147,10 +148,11 @@ test('design 4: font-family only via --font-*, font-weight 400 or 500, font-size
   assert.deepEqual(hits, [])
 })
 
-test('design 5: --ok, --wait, --stop and --idle only inside a .status rule', () => {
+test('design 5: --ok, --wait, --stop and --idle only inside a .status rule, or a Connect tile carrying its state colour', () => {
   const { rules } = sources()
+  // A Connect tile's number badge and state word carry the state colour (docs/design/connect-mockup.html).
   const hits = rules
-    .filter((r) => /var\(--(ok|wait|stop|idle)\)/.test(r.body) && !/\.status/.test(r.selector))
+    .filter((r) => /var\(--(ok|wait|stop|idle)\)/.test(r.body) && !/\.status|\.step-tile/.test(r.selector))
     .map((r) => where(r, r.body.match(/var\(--(ok|wait|stop|idle)\)/)?.[0] ?? ''))
   assert.deepEqual(hits, [])
 })
@@ -160,7 +162,8 @@ test('design 6: --bg-raised only on the two-depth panels and the floating layers
   // The raised surface is the two content panels (.wave, .export-card) and the
   // floating layers that already sit above the page (a tooltip, a menu, a table
   // row on hover). Nothing else in the content flow may gain a box.
-  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover/
+  // The Connect tiles are panels too (docs/design/connect-mockup.html).
+  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover|\.step-tile\b/
   const hits = rules
     .filter((r) => /var\(--bg-raised\)/.test(r.body) && !ALLOWED.test(r.selector))
     .map((r) => where(r, 'var(--bg-raised)'))

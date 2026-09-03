@@ -169,7 +169,7 @@
         "How IAMAI works →",
         "See it with sample data →"
       ],
-      "tip": "Sign in with a Global Administrator or Global Reader account. Entra ID P1 adds sign-in evidence; the plan works without it.",
+      "tip": "Sign in with a Global Reader account: the least privilege that reads everything IAMAI needs, and it writes nothing. Entra ID P1 adds sign-in evidence; the plan works without it.",
       "cantCatchSummary": "IAMAI limitations",
       "cantCatch": [
         "Devices that send mail without signing in: Direct Send printers, scanners and some applications. Nothing appears in the records, so a legacy-authentication block can stop one the plan never listed. Ask whoever manages printing and scan-to-email; the step asks before that block enforces.",
@@ -180,27 +180,99 @@
       ],
       "cantCatchIntro": "IAMAI plans from what Microsoft records, and nothing else. Where something outside those records could change what a step does, the step says so and asks you before anything is enforced. What that covers, and how to check each yourself:"
     },
-    "connectNoScan": {
+    "connect": {
       "h1": "Connect a tenant",
-      "signedIn": "Signed in to {tenant} as {upn} · Sign out",
-      "baselineLine": "Baseline: {baselineName} ({policyCount} policies) · change",
-      "baselineWhat": "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech. IAMAI pins a reviewed version and tells you when he updates it.",
-      "baselineHow": "IAMAI compares what each policy is for with what {tenant} has, and plans the difference.",
-      "scanButton": "Scan tenant",
-      "scanNote": "About ten minutes. Reads the tenant into this browser; nothing is sent anywhere.",
-      "scanning": "{lane}, {done} of {total} pages",
-      "stop": "Stop",
-      "baselineUpdated": "Baseline updated by its author on {date}: {n} policies changed · review",
-      "baselineUpdatedRow": "{policy}: {change}",
-      "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy."
-    },
-    "tenant": {
-      "h1": "{tenant}",
-      "scanLine": "Scan complete · {people} people · {policies} policies · {signIns}",
-      "signIns": "sign-ins {from} → {to}",
-      "signInsNotRead": "sign-ins not read",
-      "open": "Open the plan →",
-      "tip": "Everything the scan found is inside the plan's steps, where you can confirm or change it."
+      "account": {
+        "title": "Signed in",
+        "line": "{upn} · {role}",
+        "note": "Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can. It writes nothing.",
+        "signInAnother": "Sign in with another account",
+        "signOut": "Sign out"
+      },
+      "baseline": {
+        "title": "Baseline",
+        "state": "{baselineName} · {policyCount} policies",
+        "loading": "loading {source}…",
+        "none": "none loaded",
+        "what": "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech. IAMAI pins a reviewed version and tells you when he updates it.",
+        "goal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
+        "updated": "Updated by its author on {date} · {n} policies changed · review",
+        "diff": {
+          "added": "added",
+          "removed": "removed",
+          "changed": "changed"
+        },
+        "diffStep": "changes {step}",
+        "diffNoStep": "no step changes",
+        "change": "Change baseline",
+        "howToMakeOne": "How to make one →"
+      },
+      "next": {
+        "title": "What happens next",
+        "reads": "Reads",
+        "readsLine": "{tenant}'s policies, people, sign-in records and licences.",
+        "compares": "Compares",
+        "comparesLine": "what each baseline policy is for with what {tenant} already has.",
+        "writes": "Writes",
+        "writesLine": "a dated plan for the difference: report-only before enforced, who each change touches, what would break, and the emails to send.",
+        "readOnly": "Read-only. It holds no permission that can create, change or delete anything.",
+        "limitsSummary": "IAMAI limitations",
+        "limits": [
+          "Devices that send mail without signing in (Direct Send printers, scanners) leave no record; a legacy-authentication block can stop one the plan never listed. The step asks before that block enforces.",
+          "Authentication that happens outside Entra (federation, third-party MFA, on-premises apps) is recorded as a sign-in but not as what the other system enforced.",
+          "Anything on a longer cycle than the records (the quarterly invoice run, the yearly renewal) has left no evidence yet; keep new blocks in report-only across a full cycle.",
+          "Credentials saved on equipment nobody has touched in years surface the day something blocks them; a walk through the comms room beats any report.",
+          "A partner's own tenant enforces for their people; IAMAI sees their sign-ins here, never their controls."
+        ],
+        "limitsMore": "Permissions, every check it runs, and its limits in full:",
+        "limitsLink": "How IAMAI works →"
+      },
+      "scan": {
+        "title": "Scan",
+        "complete": {
+          "state": "complete · {age}",
+          "people": "people",
+          "policies": "policies",
+          "signIns": "sign-in records",
+          "window": "{from} → {to}",
+          "notRead": "not read",
+          "licence": "licence",
+          "licences": {
+            "p2": "P2",
+            "p1": "P1",
+            "free": "Free"
+          },
+          "open": "Open the plan →",
+          "again": "Scan again"
+        },
+        "gaps": {
+          "state": "finished with gaps · no plan built",
+          "lead": "{n} sections could not be read with this account. The plan needs them, so IAMAI kept your last full plan and built nothing from this scan.",
+          "leadFirst": "{n} sections could not be read with this account. The plan needs them, so IAMAI built nothing from this scan.",
+          "notRead": "not read",
+          "ask": "Ask whoever administers the tenant for {role}; it reads every section and writes nothing.",
+          "learn": {
+            "label": "Microsoft: Global Reader",
+            "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/permissions-reference#global-reader"
+          },
+          "openLast": "Open the last full plan ({date})"
+        },
+        "role": {
+          "state": "not started · this account can't read the tenant",
+          "lead": "{upn} holds none of the roles that read {sections}.",
+          "row": "Everything IAMAI needs, read-only",
+          "ask": "ask for {role}"
+        },
+        "ready": {
+          "state": "not started",
+          "note": "About ten minutes. Reads the tenant into this browser; nothing is sent anywhere.",
+          "start": "Scan tenant"
+        },
+        "scanning": {
+          "state": "{lane} · {elapsed}",
+          "stop": "Stop"
+        }
+      }
     },
     "plan": {
       "h1": "Plan",
@@ -535,7 +607,6 @@
       "connect": {
         "failed": "The scan stopped before it finished: {why}",
         "baselineLoading": "Baseline: loading {source}…",
-        "baselineNone": "Baseline: none loaded",
         "baselineFailed": "The baseline could not be loaded: {why}",
         "restoreFailed": "The baseline saved with the scan could not be restored; choose one again.",
         "pickerLabel": "Baseline",
@@ -554,13 +625,7 @@
         "paused": "The Microsoft session expired. Sign in again to continue; nothing collected so far is lost.",
         "signInAgain": "Sign in again",
         "details": "Scan details",
-        "diagnostics": "Download diagnostics (redacted)",
-        "gapsLine": "Scan finished with gaps · no plan built · {covering} reads every section",
-        "gapsRow": "{section}: {reason} · ask for {roles}",
-        "gapsNotRead": "not read",
-        "roleGap": "{upn} holds none of the roles that read {sections}. Ask for {roles}, or {covering} (reads everything IAMAI needs, writes nothing).",
-        "signInAnother": "Sign in with another account",
-        "openLastFull": "Open the last full plan ({date})"
+        "diagnostics": "Download diagnostics (redacted)"
       },
       "plan": {
         "needsScan": "Nothing to plan until the first scan.",

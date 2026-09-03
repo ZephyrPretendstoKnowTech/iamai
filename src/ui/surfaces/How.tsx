@@ -8,8 +8,6 @@ import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
 import type { RuleSubject, RuleSeverity } from '../../validation/rules.ts'
 import { scopeRows } from '../PermissionsDisclosure.tsx'
 import { PERMISSIONS, SIGN_IN_SCOPES } from '../../copy/permissions.ts'
-import { ACCESS } from '../../copy/access.ts'
-import { ROLE_FOR_SCOPE } from '../../graph/collect/roles.ts'
 import { SEVERITY, SUBJECT, NEED_LABEL, CITATION, FIELD_PRACTICE } from '../../copy/validation.ts'
 import { PACKAGE } from '../../copy/inventory.ts'
 import { app, pages } from '../../content/content.ts'
@@ -64,7 +62,6 @@ export function How() {
               { key: 'endpoint', header: READS.columns.endpoint, render: (s) => <code>{s.endpoint}</code> },
               { key: 'version', header: READS.columns.api, render: (s) => <Chip status="neutral">{s.version}</Chip> },
               { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes.join(', ') },
-              { key: 'role', header: ACCESS.roleColumn, render: (s) => ACCESS.roleFor([...new Set(s.scopes.map((sc) => ROLE_FOR_SCOPE[sc]?.least).filter((r): r is string => r !== undefined))]) },
               { key: 'gate', header: READS.columns.gate, render: (s) => s.gate },
               { key: 'purpose', header: READS.columns.why, render: (s) => s.purpose },
             ]}

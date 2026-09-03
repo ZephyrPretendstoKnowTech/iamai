@@ -1,9 +1,9 @@
 // The shell (prompt 47 Part 3, target-state §2): one 48px header with a
 // hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
 // "Next" framing. Signed out, the header is the wordmark and the theme control;
-// signed in it adds the tenant name, the Today and Plan tabs (enabled once a
-// scan exists), Scan to update the plan with the scan's age and the
-// Account menu.
+// signed in it adds the Today, Plan and Export tabs (enabled once a scan
+// exists), Scan to update the plan with the scan's age and the Account menu.
+// The brand links to Connect.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
@@ -203,11 +203,10 @@ export function AppShell({
   return (
     <div className="shell">
       <header className="app">
-        <a className="wordmark" href={tabsOn ? PLAN_HREF : '#/connect'}>
+        <a className="wordmark" href="#/connect">
           <RingMark size={18} />
           {planner.name}
         </a>
-        {signedIn && <span className="tenant">{tenantName ?? account.username}</span>}
         {signedIn && (
           <nav aria-label={SHELL.navLabel}>
             <Tab href="#/today" active={todayActive} enabled={tabsOn}>
