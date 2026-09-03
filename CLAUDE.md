@@ -17,7 +17,12 @@ surfaces (Today, Plan, Export) plus Connect, How, Inventory. Words come from
 - While working: `npx tsc --noEmit` only. Tests once, before the push: `npm test`.
   The walk (`npm run walk`) once, at the end of the task. CI runs smoke.
 - Commit per change, plain message. No reports.
-- Done = pushed and CI green (`gh run list --limit 2`).
+- Done means four things: the item's acceptance line is visible on screen; a test asserts it
+  on a fixture; `npm run walk` has an invariant for it that fails on a fixture without the fix;
+  pushed and CI green (`gh run list --limit 2`). Report each item as: acceptance → the test →
+  the walk invariant. An item with no walk invariant is not done.
+- The tool helps with strictness and never requires it. A decision may narrow scope or defer;
+  it never weakens a grant. The baseline's version is always shown beside the person's choice.
 - Do not read `archive/`. Do not read `content.json` whole; grep the key you need.
 - Stop only for a contradiction or a write scope. Otherwise decide and continue.
 
