@@ -24,9 +24,16 @@ import { extname, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { absentStepIds } from '../src/roadmap/baselineScope.ts'
 import { isFloorGoal } from '../src/roadmap/floor.ts'
-import { steps as contentSteps } from '../src/content/content.ts'
+import { pages, steps as contentSteps, stepById } from '../src/content/content.ts'
+import { fillText } from '../src/content/render.ts'
+import * as todayModel from '../src/derive/today.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
+
+// The Today tiles' labels: each tile's states, in the table's own words
+// (pages.today.show). Read through the namespace so a build without the tile
+// model still walks, and its labels fail here rather than the import.
+const TILE_LABELS = ['proven', 'unproven', 'noMethod', 'notActive'].map((k) => (todayModel.TILE_STATES?.[k] ?? []).map((s) => pages.today.show[(todayModel.SHOW_KEYS ?? []).indexOf(s)]).join(' · '))
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
@@ -431,12 +438,17 @@ async function walkFixture(fx) {
       }
       summary.push({ width, route, words: text.split(/\s+/).filter(Boolean).length, rows: d.rows.length })
       // Today's "n admins" is the count of rows tagged Admin (E5); the demo's
-      // people fit one page, so the tags on the page are every tag.
+      // people fit one page, so the tags on the page are every tag. The tiles'
+      // labels are the table's state words (pages.today.show, the keys of
+      // pages.today.states); a tile that groups states names them.
       if (route === 'today') {
         const m = text.match(/(\d+) admins?\b/)
         const tagged = await evaluate(`[...document.querySelectorAll('main.page .chip.tag')].filter((e) => (e.textContent || '').trim() === 'Admin').length`)
         if (!m) add('P0', `${label}: the line does not count admins`)
         else if (Number(m[1]) !== tagged) add('P0', `${label}: the line says ${m[1]} admins and ${tagged} rows are tagged Admin`)
+        const labels = await evaluate(`[...document.querySelectorAll('main.page .tile .stat-label')].map((e) => { const c = e.cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return (c.textContent || '').replace(/\\s+/g, ' ').trim() })`)
+        const expected = TILE_LABELS
+        if (labels.length !== expected.length || labels.some((l, k) => l !== expected[k])) add('P0', `${label}: the tile labels read ${JSON.stringify(labels)}; the table's state words give ${JSON.stringify(expected)}`)
       }
       // The Inventory policies table carries an Exclusions column, the groups and users by name (E5).
       if (route === 'inventory') {
@@ -529,6 +541,9 @@ async function walkFixture(fx) {
         const outsideEmail = emailText ? bodyText.replace(emailText, '') : bodyText
         checkText(slabel, outsideEmail)
         checkText(`${slabel} (email)`, emailText, { emails: true })
+        // A count of one reads as one, noun and verb: never "1 people", never "1 person hold".
+        const plural = bodyText.match(/(?<![\d,.])\b1 (people|admins|guests|users|accounts|persons)\b|(?<![\d,.])\b1 (?:of them|person|admin|guest|user|account) (hold|have|use|are|were|sign|need|do)\b/)
+        if (plural) add('P0', `${slabel}: a count of one reads "${plural[0]}"`)
         // Answers apply (E1) and the device decision (E2), on the demo. Week two
         // carries the sample technician's stored answers (fixtures/index.ts
         // decisions): New Zealand added to the allowed list, service providers
@@ -616,8 +631,24 @@ async function walkFixture(fx) {
           // personal device can still do; step 12 asks for a passkey or a key.
           if (/MFA Registration Campaign/.test(title)) {
             if (!/over the next \d+ days/.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
-            if (!/^From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, signing in/m.test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
+            // The email dates an enforcement: the MFA policy's day (MFA not yet in place) or the first passkey policy's (MFA in place).
+            if (!/^From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, (signing in|.+ requires a passkey)/m.test(emailText)) add('P0', `${slabel}: the campaign email does not date the enforcement it warns of`)
             if (!/passkey or a hardware security key/.test(bodyText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
+            // Require MFA for Everyone is in place on the demo: the email is the
+            // passkey version, and on day one it names the admins policy as the
+            // first one that needs a passkey (enforced by week two, so no line then).
+            if (!/You already confirm sign-ins/.test(emailText) || /will ask you to confirm with the Microsoft Authenticator app/.test(emailText)) add('P0', `${slabel}: Require MFA for Everyone is in place, and the campaign email is not the passkey version`)
+            if (!week2 && !/Require Phishing-Resistant MFA for Admins requires a passkey/.test(emailText)) add('P0', `${slabel}: the passkey email does not name the first policy that needs a passkey`)
+          }
+          // A strength policy's row carries its lockout count in the who-column
+          // when it is not zero, and the count is the step's own.
+          if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
+            const m = bodyText.match(/^(\d+) admins? (?:has|have) no phishing-resistant method/m)
+            const who = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
+            const suffix = who.match(/· (\d+) without a passkey$/)
+            if (m && !suffix) add('P0', `${slabel}: ${m[1]} admins have no passkey and the row's who-column does not say so`)
+            else if (m && suffix && suffix[1] !== m[1]) add('P0', `${slabel}: the row says ${suffix[1]} without a passkey and the step says ${m[1]}`)
+            else if (!m && suffix) add('P0', `${slabel}: the row carries a lockout count the step does not`)
           }
           if (/Require a Managed Device/.test(title) && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
           if (/^Register Your Own Passkey$/.test(title) && !/or a hardware security key/.test(bodyText)) add('P0', `${slabel}: step 12 asks for a key and a passkey; either is enough`)
@@ -758,6 +789,10 @@ async function walkFixture(fx) {
         checkText(`${fx.name} @${width} /plan footer`, ft)
         for (const t of fd.titles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name} @${width} /plan footer: "${t}" is a goal the baseline does not hold`)
         for (const row of fd.rows) for (const nm of ABSENT_GOAL_NAMES) if (row.text.includes(nm)) add('P0', `${fx.name} @${width} /plan footer: "${nm}" is a goal the baseline does not hold`)
+        // A done step's row shows no date word: blank, never "now".
+        const doneWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-footer .plan-row')].filter((r) => /^(In place|Enforced)$/.test(((r.querySelector('.status') || {}).textContent || '').trim())).map((r) => ((r.querySelector('.when') || {}).textContent || '').trim())`)
+        const dated = doneWhens.filter((w) => w !== '')
+        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan footer: ${dated.length} done row(s) carry a date word ("${dated[0]}"); a done row is blank`)
       }
       // A started plan (E5), on day one: Start the plan locks the dates; the
       // Start date field and its note go, and "started <date>" stands in their
@@ -767,12 +802,16 @@ async function walkFixture(fx) {
         const pressed = await clickText('button', /^Start the plan$/)
         if (!pressed) add('P0', `${slabel}: no Start the plan control`)
         else {
-          const started = await waitFor(`/^started \\S.*\\d{4}$/m.test((document.querySelector('main.page') || {}).innerText || '')`, 8000)
+          // "started <date>" once, in the header line only.
+          const started = await waitFor(`/started \\S.*\\d{4}/.test((document.querySelector('main.page') || {}).innerText || '')`, 8000)
           if (!started) add('P0', `${slabel}: the plan does not read started <date> after Start the plan`)
           const field = await evaluate(`document.querySelector('main.page label.rows input[type=date]') !== null`)
           if (field) add('P0', `${slabel}: the Start date field is still shown on a started plan`)
           const after = await mainText()
           if (/Starting locks the dates/.test(after) || /Clear the date to start/.test(after)) add('P0', `${slabel}: the start note is still shown on a started plan`)
+          const times = (after.match(/started \S+ \d{1,2}, \d{4}/g) ?? []).length
+          if (times !== 1) add('P0', `${slabel}: "started <date>" appears ${times} times; once, in the header line`)
+          if (!/^\d+ steps · \d+ done · started \S+ \d{1,2}, \d{4}/m.test(after)) add('P0', `${slabel}: the header line does not carry the start`)
           checkText(slabel, after)
         }
       }
@@ -961,6 +1000,18 @@ const contentFile = JSON.parse(readFileSync('docs/design/content.json', 'utf8'))
 const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8'))
 for (const f of contentFindings(contentFile, pinnedFile, contracts)) add(f.level, f.text)
 for (const href of contentLearnUrls(contentFile)) learnLinks.add(href)
+
+// The pluraliser conjugates the verb with the count wherever {n} precedes a verb
+// (step 15's Who line is the test): a count of one reads as one, noun and verb.
+for (const [line, vals, want] of [
+  [stepById['admins-phishing-resistant']?.who?.lead, { admins: 1 }, '1 person holds an admin role'],
+  [stepById['admins-phishing-resistant']?.who?.lead, { admins: 3 }, '3 people hold an admin role'],
+  [stepById['s-check-separate-admin-accounts']?.who?.lead, { n: 1, from: 'Aug 1' }, '1 person holds a directory role and uses that same account for mail or Teams since Aug 1:'],
+  ['{n} of them have no passkey or key yet.', { n: 1 }, '1 of them has no passkey or key yet.'],
+]) {
+  const got = typeof line === 'string' ? fillText(line, vals) : null
+  if (got !== want) add('P0', `pluraliser: "${line}" with ${JSON.stringify(vals)} reads "${got}", not "${want}"`)
+}
 
 // The before lines exist in the content for every step that carries one (the
 // step check above needs the row on the plan; this fails on the content alone).
