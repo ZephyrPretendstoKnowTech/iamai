@@ -1335,20 +1335,20 @@
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "who": {
-        "lead": "Everyone in {tenant}: security defaults prompt every person for MFA today, and the plan's first enforced policy takes that over."
+        "lead": "Everyone in {tenant}: security defaults prompt every person for MFA today, and Require MFA for Everyone takes that over."
       },
       "decision": null,
       "whatToDo": {
-        "lead": "On the day the first policy enforces, and not before:",
+        "lead": "Report-only policies can exist while security defaults are on; an enforced one cannot. On the day Require MFA for Everyone enforces, and not before:",
         "steps": [
-          "Confirm the first policy to enforce ({firstPolicy}) has been in report-only with no failures.",
+          "Confirm Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins have been in report-only with no failures; all three enforce today.",
           "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled → Save.",
-          "Enforce {firstPolicy} within the hour."
+          "Enforce Require MFA for Everyone within the hour, then Block Legacy Authentication and Require Phishing-Resistant MFA for Admins the same day."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Security defaults are off and Require MFA for Everyone is enforced."
+        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced."
       ],
       "ifWrong": "Turn security defaults back on from the same page; it takes effect within minutes.",
       "comms": null,
@@ -1362,17 +1362,17 @@
             "applies": "always"
           }
         ],
-        "helpDesk": null,
+        "helpDesk": [
+          "Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass."
+        ],
         "manager": null,
         "waits": "Every policy step waits on this."
       },
       "example": {
         "tenant": "GetIAMAI",
-        "firstEnforce": "Tue Sep 8",
-        "firstPolicy": "Require MFA for Everyone",
         "from": "Aug 1"
       },
-      "placement": "Placed immediately before the first policy that enforces, on that day, whatever else the plan holds. Shown only when security defaults are on."
+      "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on."
     },
     {
       "id": "s-prereq-per-user-mfa",

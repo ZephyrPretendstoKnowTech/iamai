@@ -58,6 +58,13 @@ export const ACCEPTANCE = [
   { item: 'C4', step: 'block-device-code', path: 'more.manager', must: 'Without this, one pasted code signs an attacker in.', mustNot: /nobody here/i },
   { item: 'C4', step: 'block-auth-transfer', path: 'more.manager', must: 'Without this, a captured QR code is a captured account.', mustNot: /nobody here/i },
   { item: 'C4', step: 'geo-restriction', path: 'more.manager', must: 'Without this, a stolen password works from anywhere in the world.', mustNot: /nobody signed in/i },
+  // C7: the security-defaults switch is dated to the day Require MFA for Everyone
+  // enforces, with the legacy block and the admin MFA policy the same day, and
+  // the step says so (report-only policies can exist with security defaults on).
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Report-only policies can exist while security defaults are on; an enforced one cannot. On the day Require MFA for Everyone enforces, and not before:', mustNot: '{firstPolicy}' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'then Block Legacy Authentication and Require Phishing-Resistant MFA for Admins the same day.' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'more.helpDesk', must: 'Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.' },
 ]
 
 /** Every Learn URL the content carries (steps and cleanup rows), for the link check. */
