@@ -13,10 +13,12 @@ import { goalInMap } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import { tierName } from '../coverage/coverage.ts'
+import { DEVICE_GOALS } from '../roadmap/deviations.ts'
+import { list } from '../copy/statements.ts'
 
 export type NotLicensedRow = { goalId: string; title: string; licence: string; text: string }
 
-type FooterCopy = { notLicensed: string; notLicensedRow: string; notLicensedNote: string }
+type FooterCopy = { notLicensed: string; notLicensedRow: string; notLicensedNote: string; notLicensedDevices: string }
 const footer = (): FooterCopy => (pages.plan as { footer: FooterCopy }).footer
 
 /**
@@ -38,6 +40,17 @@ export function notLicensedRows(coverage: CoverageReport, goalMap: GoalMap): Not
     const title = cs?.title ?? r.goal.name
     const licence = cs?.licence ?? facetLicence ?? tierName(r.goal.implementations[0]?.tier ?? '')
     out.push({ goalId: r.goal.id, title, licence, text: fillText(P.notLicensedRow, { stepTitle: title, licence }) })
+  }
+  // No Intune licence (E2): the compliant-device, app-protection and
+  // Intune-enrolment steps are one shared line, never three, and nothing asks
+  // how devices are managed (the device decision is not generated).
+  const devices = out.filter((r) => DEVICE_GOALS.has(r.goalId))
+  if (devices.length >= 2) {
+    const steps = list(devices.map((r) => r.title))
+    const first = out.indexOf(devices[0])
+    const rest = out.filter((r) => !DEVICE_GOALS.has(r.goalId))
+    rest.splice(first, 0, { goalId: 'devices', title: steps, licence: devices[0].licence, text: fillText(P.notLicensedDevices, { steps }) })
+    return rest
   }
   return out
 }

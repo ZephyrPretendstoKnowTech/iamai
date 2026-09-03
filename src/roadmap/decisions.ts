@@ -6,9 +6,11 @@
 import type { SizeBand } from './constants.ts'
 import type { ChangeFreeze } from './schedule.ts'
 import type { MappingRecord, MappingState } from '../mapping/types.ts'
-import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './generate.ts'
+import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { blockerStepId } from './blockerSteps.ts'
-import { contentStepFor } from '../content/stepTitle.ts'
+import { answerKey, mailDevicesOf, questionLabels, travelCountriesOf } from './answers.ts'
+
+export { answerKey, questionLabels } from './answers.ts'
 
 /** A step the operator set aside, with the reason and when. */
 export type SkipDecision = { reason: string; at: string }
@@ -20,20 +22,6 @@ export type SkipDecision = { reason: string; at: string }
 export type StepDecision = { picked?: string[]; option?: string; answers?: Record<string, string>; at: string }
 /** What a Save hands over: the decision without its time. */
 export type StepDecisionInput = Omit<StepDecision, 'at'>
-
-/** The mapping key a step's question answer persists under: questionAnswers[stepId + ':' + label]. */
-export const answerKey = (stepId: string, label: string): string => `${stepId}:${label}`
-
-/**
- * The labels a step's decision block carries in content.json: the decision's
- * own (its options), its question's, and its strict toggle's. The answer keys
- * are built from these, so the content file is the one source of a label.
- */
-export function questionLabels(stepId: string): { decision: string | null; question: string | null; strict: string | null } {
-  const d = contentStepFor({ id: stepId, goalId: stepId.replace(/^s-goal-/, '') })?.decision as { label?: unknown; question?: { label?: unknown }; strict?: { label?: unknown } } | null | undefined
-  const str = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null)
-  return { decision: str(d?.label), question: str(d?.question?.label), strict: str(d?.strict?.label) }
-}
 
 /**
  * Everything a person decided about the plan, persisted between sessions and
@@ -96,8 +84,12 @@ export const DECISION_STEPS = {
  * emergency access accounts → the break-glass ids; the exclusions group → the
  * `__globalExclusion` record; allowed countries → the country codes; the trusted
  * network → the trusted location ids; service accounts → their ids; the
- * campaign's special care → the high-care ids; and a chosen option → the
- * question answer for that step. A decision marks its question answered, so no
+ * campaign's special care → the high-care ids; and a chosen option or a
+ * question's answer → questionAnswers[stepId:label], in the option's own words
+ * (answers.ts). An answer then applies (E1): the travellers' countries join the
+ * allowed list and the mail-sending devices join the service accounts; the
+ * partner and device answers are read from the words where they apply
+ * (deviations.ts, readiness.ts). A decision marks its question answered, so no
  * step waits on it. The mapping passed in is not mutated; the plan derives from
  * the result on every regeneration, and the next scan verifies it.
  *
@@ -115,7 +107,10 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
   }
   for (const [stepId, d] of Object.entries(stepDecisions)) {
     if (!d) continue
-    if (typeof d.option === 'string') next.questionAnswers![stepId] = d.option
+    // The decision's own option persists under the decision's label, the
+    // question's answer under the question's, so one rule reads every answer.
+    const labels = questionLabels(stepId)
+    if (typeof d.option === 'string') next.questionAnswers![labels.decision ? answerKey(stepId, labels.decision) : stepId] = d.option
     for (const [label, a] of Object.entries(d.answers ?? {})) if (typeof a === 'string') next.questionAnswers![answerKey(stepId, label)] = a
     if (!Array.isArray(d.picked)) continue
     const picked = d.picked.map(String)
@@ -142,6 +137,17 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     } else if (stepId === DECISION_STEPS.campaign) {
       next.highCareUserIds = picked
     }
+  }
+  // The answers that add to a picker's list (E1): the travellers' countries
+  // join the allowed list; the mail-sending devices join the service accounts
+  // (and leave the rejected list). Read from the words just stored, so a Save
+  // of the picker and its question lands as one decision.
+  const travel = travelCountriesOf(next).filter((c) => !next.allowedCountries.includes(c))
+  if (travel.length > 0) next.allowedCountries = [...next.allowedCountries, ...travel]
+  const devices = mailDevicesOf(next).filter((id) => !next.serviceAccountUserIds.includes(id))
+  if (devices.length > 0) {
+    next.serviceAccountUserIds = [...next.serviceAccountUserIds, ...devices]
+    next.serviceAccountRejectedIds = next.serviceAccountRejectedIds.filter((id) => !devices.includes(id))
   }
   return next
 }

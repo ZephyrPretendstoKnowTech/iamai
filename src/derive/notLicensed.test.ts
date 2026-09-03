@@ -45,6 +45,11 @@ test('a goal whose content step names no licence falls back to the tier the cont
   assert.ok(rows.length > 0, 'micro has no P1, so goals are licence-limited')
   for (const row of rows) {
     assert.ok(row.licence.length > 0, `${row.goalId}: a licence is named`)
+    // The device steps are one shared line (E2): the compliant-device and Intune-enrolment steps need Intune Plan 1.
+    if (row.goalId === 'devices') {
+      assert.match(row.text, /Intune Plan 1/)
+      continue
+    }
     assert.equal(row.text, `${row.title}: needs a licence this tenant does not hold: ${row.licence}`)
   }
 })

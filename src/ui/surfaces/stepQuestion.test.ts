@@ -46,8 +46,9 @@ test('the countries step shows the travellers question on the demo, and its answ
   assert.equal(valued.questionAnswers?.[key], value)
   assert.deepEqual(answerParts(valued.questionAnswers?.[key], q.options), { option: q.options[2], picked: ['FR', 'ES'] })
   assert.equal(answerParts('Something else', q.options), null)
-  // The picker's own decision is untouched by an answer.
-  assert.deepEqual(valued.allowedCountries, mapping.allowedCountries)
+  // The answer applies (E1): the travellers' countries join the allowed list after the picker's own; a radio adds none.
+  assert.deepEqual(valued.allowedCountries, [...mapping.allowedCountries, 'FR', 'ES'])
+  assert.deepEqual(radio.allowedCountries, mapping.allowedCountries)
 })
 
 test('an option that needs a value renders the accounts picker: the legacy block\'s mail-sending devices', () => {

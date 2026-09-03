@@ -6,6 +6,7 @@
 // questionAnswers[stepId + ':' + label] (decisions.ts answerKey). Pure: no
 // React, no DOM, so the demo fixture's tests can read it.
 import { missingVars, whole } from '../../content/render.ts'
+import { answerTextFor, parseAnswer } from '../../roadmap/answers.ts'
 import { pickerKind } from './pickerRows.ts'
 
 type Ex = Record<string, unknown>
@@ -37,25 +38,13 @@ export function valueSource(stepId: string): string | null {
   return pickerKind(stepId, null) === 'other' ? 'accounts' : null
 }
 
-/** The answer an option makes: its text, with the picked ids in the variable's place. */
+/** The answer an option makes: its text, with the picked ids in the variable's place (answers.ts, the one rule). */
 export function answerText(option: QuestionOption, picked: string[] = []): string {
-  return option.needs ? option.text.replace(VAR, picked.join(', ')) : option.text
+  return option.needs ? answerTextFor(option.text, picked) : option.text
 }
 
-/** The option and the picked ids an answer came from; null when no option matches it. */
+/** The option and the picked ids an answer came from; null when no option matches it (answers.ts parseAnswer, the one rule). */
 export function answerParts(answer: string | null | undefined, options: QuestionOption[]): { option: QuestionOption; picked: string[] } | null {
-  if (typeof answer !== 'string') return null
-  const radio = options.find((o) => o.needs === null && o.text === answer)
-  if (radio) return { option: radio, picked: [] }
-  for (const o of options) {
-    if (o.needs === null) continue
-    const m = VAR.exec(o.text)
-    if (!m) continue
-    const before = o.text.slice(0, m.index)
-    const after = o.text.slice(m.index + m[0].length)
-    if (answer.length < before.length + after.length || !answer.startsWith(before) || !answer.endsWith(after)) continue
-    const middle = answer.slice(before.length, answer.length - after.length)
-    return { option: o, picked: middle.split(', ').map((s) => s.trim()).filter((s) => s.length > 0) }
-  }
-  return null
+  const p = parseAnswer(answer, options.map((o) => o.text))
+  return p ? { option: options[p.index], picked: p.picked } : null
 }

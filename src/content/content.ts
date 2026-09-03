@@ -80,6 +80,5 @@ export type EngineWords = {
   staticRules: Record<string, string>
   serviceSignals: Record<string, string>
   emergencySignals: Record<string, string>
-  carveOuts: Record<string, { title: string }>
 }
 export const engine = shared.engine as unknown as EngineWords

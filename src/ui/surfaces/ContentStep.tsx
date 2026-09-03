@@ -19,6 +19,7 @@ import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
+import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { jsonOffered, missingObjects } from './stepJson.ts'
 import { datesLineFor } from './stepExport.ts'
@@ -257,6 +258,8 @@ export function ContentStep({
             </Button>
             <p><T s={cs.comms.salutation} ex={ex} /></p>
             <p><T s={cs.comms.body} ex={ex} /></p>
+            {/* One sentence a decision adds (the campaign's device sentence): only when its variable is filled. */}
+            <Line s={cs.comms.extra} ex={ex} />
             <p><T s={cs.comms.signature} ex={ex} /></p>
           </div>
           <p className="reason adapt">{ADAPT_LINE}</p>
@@ -389,12 +392,21 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   const valueUniverse = useMemo(() => (needsValue ? pickerUniverse(stepId, valueSource(stepId), pickerCtx) : []), [needsValue, stepId, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
   const [option, setOption] = useState<string | null>(saved?.option ?? null)
   const [answer, setAnswer] = useState<string | null>(question ? (saved?.answers?.[question.label] ?? null) : null)
+  // The strict toggle (the device decision's Block phones): off unless ticked;
+  // its answer is its one option's words, under its own label.
+  const strict = d.strict && typeof d.strict.label === 'string' && typeof d.strict.option === 'string' ? (d.strict as { label: string; option: string; help?: string }) : null
+  const [strictOn, setStrictOn] = useState<boolean>(strict ? saved?.answers?.[strict.label] === strict.option : false)
   const save = (): void =>
     onDecide?.({
       ...(hasPicker ? { picked: chips.map((c) => c.id) } : {}),
       ...(option !== null ? { option } : {}),
       ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
+      ...(strict && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
     })
+  // Each effect line shows once its answer applied (answers.ts effectLine): the
+  // applied mapping holds the stored answer, so the line is true when it shows.
+  const decisionEffect = options.length > 0 ? effectLine(d.effect, answerOf(ctx.mapping, stepId, 'decision')) : null
+  const questionEffect = question ? effectLine((d.question as { effect?: unknown }).effect, answerOf(ctx.mapping, stepId, 'question')) : null
   // The help is explanatory prose and renders in the flow, not inside the
   // .decision row (which the contract measures against the row budget).
   return (
@@ -404,11 +416,24 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
         <div className="dlabel">{d.label}</div>
         {hasPicker && <Picker selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
         {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} options={options} answer={option} onAnswer={setOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />}
+        {decisionEffect && whole(decisionEffect, ex) && <p className="reason effect"><T s={decisionEffect} ex={ex} /></p>}
         {question && (
           <>
             <div className="dlabel">{question.label}</div>
             <p className="reason"><T s={question.text} ex={ex} /></p>
             <Options name={answerKey(stepId, question.label)} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />
+            {questionEffect && whole(questionEffect, ex) && <p className="reason effect"><T s={questionEffect} ex={ex} /></p>}
+          </>
+        )}
+        {strict && (
+          <>
+            <div className="dlabel">{strict.label}</div>
+            {strict.help && <p className="reason"><T s={strict.help} ex={ex} /></p>}
+            <div className="picker">
+              <label>
+                <input type="checkbox" checked={strictOn} onChange={(e) => setStrictOn(e.currentTarget.checked)} /> <T s={strict.option} ex={ex} />
+              </label>
+            </div>
           </>
         )}
         <Button variant="secondary" onClick={save}>{d.save || 'Save'}</Button>
@@ -509,7 +534,9 @@ function More({ cs, ex, step, onSkip, onUnskip, onDoesntApply, copy, copied, ope
 }
 
 function commsText(comms: Record<string, any>, ex: Ex): string {
-  return [fillText(comms.salutation, ex as Record<string, unknown>), fillText(comms.body, ex as Record<string, unknown>), fillText(comms.signature, ex as Record<string, unknown>)].join('\n\n')
+  const vals = ex as Record<string, unknown>
+  const extra = comms.extra && whole(comms.extra, ex) ? [fillText(comms.extra, vals)] : []
+  return [fillText(comms.salutation, vals), fillText(comms.body, vals), ...extra, fillText(comms.signature, vals)].join('\n\n')
 }
 
 function policyJson(step: Step): unknown {

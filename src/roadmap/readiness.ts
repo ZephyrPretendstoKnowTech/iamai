@@ -2,6 +2,9 @@
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Readiness } from './types.ts'
+import { deviceScopeOf } from './answers.ts'
+import type { DeviceScope } from './answers.ts'
+import { isPhoneOs } from '../derive/platforms.ts'
 
 const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected'])
 // Risk policies act on the sign-ins Identity Protection flags, so their
@@ -30,6 +33,8 @@ export function readinessFor(
   populationIds: string[],
   viability: MfaViability[],
   snapshot: TenantSnapshot,
+  /** Device readiness is measured against the device decision (E2): which platforms count, and whether a hybrid-joined computer is managed. Open: phones out, compliant computers only. */
+  scope: DeviceScope = deviceScopeOf(null),
 ): Readiness {
   const family = goalFamily(goalId)
   // A source the scan could not read never masquerades as a number (roadmap-v2.md §7, hostile).
@@ -58,7 +63,12 @@ export function readinessFor(
     return { family, percent, lines: [] }
   }
   if (family === 'device') {
-    const owners = new Set(snapshot.devices.filter((d) => d.isCompliant === true).flatMap((d) => d.ownerIds))
+    // A device counts when its platform is in the decision's scope and it is
+    // managed the way the decision accepts: compliant, or hybrid-joined where
+    // the answer says hybrid-joined is enough.
+    const inScope = (d: TenantSnapshot['devices'][number]): boolean => (isPhoneOs(d.operatingSystem) ? scope.phones : scope.computers)
+    const managed = (d: TenantSnapshot['devices'][number]): boolean => d.isCompliant === true || (scope.hybridCounts && !isPhoneOs(d.operatingSystem) && d.trustType === 'ServerAd')
+    const owners = new Set(snapshot.devices.filter((d) => inScope(d) && managed(d)).flatMap((d) => d.ownerIds))
     const activeIds = new Set(active.map((v) => v.userId))
     const members = activeIds.size
     // Same population on both sides of the ratio: active members only.

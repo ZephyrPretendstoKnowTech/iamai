@@ -54,8 +54,8 @@ import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { isFloorGoal } from './floor.ts'
-/** The three questions the operator can answer (prompt 48 item 10); a title lives in content.json, under shared.engine.carveOuts. */
-const CARVE_OUT_IDS = ['mailDevices', 'travel', 'partner'] as const
+import { answeredCarveOuts, devicePlanOf, deviceScopeOf } from './answers.ts'
+import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
 
 /** Step titles are the goal name as an imperative: the kind is a chip, never a prefix. */
 function stepTitle(goalName: string): string {
@@ -124,17 +124,10 @@ export type RoadmapResult = {
 
 const EXTRAS = STEP_EXTRAS
 
-function idFor(prefix: string, key: string): string {
-  return `s-${prefix}-${key.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}`
-}
-
-/** The stable step id for a goal (deep links from Findings and Setup). */
-export function stepIdForGoal(goalId: string): string {
-  return idFor('goal', goalId)
-}
-export const EXCLUSION_GROUP_STEP_ID = 's-prereq-exclusion-group'
-/** Nominating the emergency access accounts. Exported so the skip guard can name it. */
-export const BREAK_GLASS_STEP_ID = 's-prereq-break-glass'
+// The step ids live in stepIds.ts (the answer readers name them without
+// importing the engine); re-exported here for the modules that import them from the engine.
+export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
+import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
 function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
@@ -195,17 +188,6 @@ function activeGapShort(result: GoalResult, popActive: number, active: Set<strin
 // ---- action building (roadmap.md §3) ----
 
 type RawPolicy = Record<string, unknown>
-
-/** The Wave 0 steps that create the objects the plan's policies reference. */
-export const PREREQ_STEP_ID = {
-  breakGlass: BREAK_GLASS_STEP_ID,
-  exclusionsGroup: 's-prereq-exclusion-group',
-  trustedLocation: 's-prereq-trusted-location',
-  allowedCountries: 's-prereq-allowed-countries',
-  serviceAccountsGroup: 's-prereq-service-accounts-group',
-  /** The device decision (E2): how phones and computers are managed, before any device policy is offered. */
-  devicePlan: 's-prereq-device-plan',
-} as const
 
 /**
  * The Wave 0 step a template placeholder waits on while the tenant has no
@@ -309,9 +291,12 @@ export function buildCreateAction(
   mapping: MappingState,
   planId: string,
   stepId: string,
+  goalId: string,
   opts: { displayName?: string; adjust?: { policyId: string; state: string }; unresolved?: ReadonlyMap<string, string | null>; resolveIds?: ReadonlyMap<string, string> } = {},
 ): Action {
-  const body = replaceIds(replaceReferences(baselinePolicy, mapping), opts.resolveIds ?? new Map())
+  // The person's answers, applied as recorded deviations (deviations.ts): the
+  // portal lines pass the same policy through the same rule.
+  const body = applyDeviations(replaceIds(replaceReferences(baselinePolicy, mapping), opts.resolveIds ?? new Map()), goalId, mapping)
   delete body.id
   delete body.createdDateTime
   delete body.modifiedDateTime
@@ -383,6 +368,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Role names travel with the scan ($expand=roleDefinition); learn them before any label is built.
   learnRoleNames(input.snapshot.config.roleAssignments?.rows ?? [])
   const { snapshot, mapping, viability, planId } = input
+  // The device decision (E2), from its stored answers: which platforms the
+  // device policies cover and what counts as a managed computer. Open: phones
+  // out, compliant computers only, and the device steps wait on the decision.
+  const devicePlan = devicePlanOf(mapping)
+  const deviceScope = deviceScopeOf(devicePlan)
   // Detection only (prompt 46 item 19): admins, the emergency-access accounts,
   // confirmed service accounts, and active people with no method. A list saved
   // by an older Setup is not read.
@@ -420,7 +410,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const adminIds = [...adminUserIds(snapshot.roles)]
     const guestIds = snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id)
     readinessCache.set('mfa', readinessFor('mfa-all-users', allActive, viability, snapshot))
-    readinessCache.set('device', readinessFor('require-managed-device', allActive, viability, snapshot))
+    readinessCache.set('device', readinessFor('require-managed-device', allActive, viability, snapshot, deviceScope))
     readinessCache.set('admin', readinessFor('admins-phishing-resistant', adminIds, viability, snapshot))
     readinessCache.set('guest', readinessFor('guests-mfa', guestIds, viability, snapshot))
   }
@@ -632,14 +622,33 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(step)
   }
 
-  // The three questions the operator can answer (prompt 48 item 10): each
-  // answer adds a carve-out step. Unanswered, the plan proceeds on the evidence
-  // and the affected step carries the can't-see line.
-  const qa = mapping.questionAnswers ?? {}
-  for (const id of CARVE_OUT_IDS) {
-    if ((qa[id] ?? '').trim().length === 0) continue
-    steps.push(prereq(`s-question-${id}`, engine.carveOuts[id]?.title))
+  // The device decision (E2): how phones and computers are managed, asked in
+  // Preparation when phone sign-ins or unjoined computer sign-ins exist and the
+  // tenant holds Intune (without Intune the device steps are Not licensed and
+  // nothing asks). In place once answered; while open, the compliant-device,
+  // app-protection and Intune-enrolment steps wait on it (the goal loop), and
+  // nothing else does.
+  const deviceStepId = PREREQ_STEP_ID.devicePlan
+  const phoneIds = snapshot.scenarioEvidence?.phoneSignIns?.people ?? []
+  const unjoinedIds = snapshot.scenarioEvidence?.unjoinedComputers?.people ?? []
+  if (canUseConditionalAccess && snapshot.capabilities.intune.enabled && (phoneIds.length > 0 || unjoinedIds.length > 0)) {
+    const s = prereq(deviceStepId)
+    s.kind = 'check'
+    s.action = { ...s.action, kind: 'check' }
+    s.population = population([...new Set([...phoneIds, ...unjoinedIds])].filter((id) => !excluded.has(id)), popIndex)
+    if (devicePlan) {
+      s.status = 'done'
+      s.deliveredBy = [devicePlan.phonesText, ...(devicePlan.computersText ? [devicePlan.computersText] : [])]
+    }
+    steps.push(s)
   }
+
+  // The three questions the operator can answer (prompt 48 item 10), read from
+  // their stored answers, questionAnswers[stepId:label] (answers.ts): an answer
+  // that changes the plan adds its carve-out step, whose words are a content
+  // step. Unanswered, the plan proceeds on the evidence and the affected step
+  // carries the can't-see line.
+  for (const id of answeredCarveOuts(mapping)) steps.push(prereq(id))
 
   const secDefaults = (snapshot.config.securityDefaults?.rows?.[0] ?? null) as { isEnabled?: boolean } | null
   // Nothing can take security defaults' place without Conditional Access, so
@@ -808,7 +817,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'create'
       if (source) {
         const proposed = uniqueName(goal)
-        action = buildCreateAction(source.policy, mapping, planId, stepId, { displayName: proposed.name, unresolved: unresolvedFor(goal.id), resolveIds: resolveFor(goal.id) })
+        action = buildCreateAction(source.policy, mapping, planId, stepId, goal.id, { displayName: proposed.name, unresolved: unresolvedFor(goal.id), resolveIds: resolveFor(goal.id) })
         namingNote = proposed
       } else {
         // No baseline policy stands for this goal: the goal's own template is
@@ -818,7 +827,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const resolved = resolveTemplate(impl.template as TemplateBody, templateValues)
         for (const p of resolved.unresolved) blockPlaceholder(p)
         const proposed = uniqueName(goal)
-        action = buildCreateAction(resolved.body, mapping, planId, stepId, { displayName: proposed.name, unresolved: unresolvedFor(goal.id), resolveIds: resolveFor(goal.id) })
+        action = buildCreateAction(resolved.body, mapping, planId, stepId, goal.id, { displayName: proposed.name, unresolved: unresolvedFor(goal.id), resolveIds: resolveFor(goal.id) })
         namingNote = proposed
       }
     } else {
@@ -834,7 +843,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       action = source
         ? adjustAction(
-            buildCreateAction(source.policy, mapping, planId, stepId, {
+            buildCreateAction(source.policy, mapping, planId, stepId, goal.id, {
               unresolved: unresolvedFor(goal.id),
               resolveIds: resolveFor(goal.id),
               displayName: existing?.policyName ?? proposedPolicyName(goal, naming),
@@ -850,6 +859,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Named dependencies (prompt 12 §B).
     if (status !== 'done') {
       if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
+      // The device steps wait on the device decision while it is open (E2); nothing else does.
+      if (DEVICE_GOALS.has(goal.id) && steps.some((s) => s.id === deviceStepId && s.status !== 'done')) blockByStep(deviceStepId, 'device-decision')
       if (goal.id === 'geo-restriction') {
         if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
       }
@@ -1188,6 +1199,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.skipReason = s.doesntApply
     s.status = 'skipped'
   }
+  // The device decision sends a device step to the footer with the answer as
+  // the reason (E2): the compliant-device policy (and the Intune-enrolment step
+  // with it) when no platform is left in it, the app-protection policy unless
+  // phones are protected by their apps.
+  for (const s of steps) {
+    if (s.status === 'done' || s.status === 'skipped' || !DEVICE_GOALS.has(s.goalId)) continue
+    const reason = deviceStepDoesntApply(s.goalId, mapping)
+    if (reason === null) continue
+    s.doesntApply = reason
+    s.skipReason = reason
+    s.status = 'skipped'
+  }
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
     rhythm,
@@ -1209,7 +1232,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Comms per ring, dated (§4.11); the step's own announcement is the first ring's.
     if (s.comms?.includes('{DATE}')) {
       const template = s.comms
-      const firstDate = s.rings[0]?.plannedStart ?? waveStart.get(schedule.waveOf[s.id] ?? 0) ?? startIso
+      // A step the schedule did not place (skipped, or sent to the footer by an answer) has undated rings: the wave's start or the plan's stands in.
+      const firstDate = [s.rings[0]?.plannedStart, waveStart.get(schedule.waveOf[s.id] ?? 0), startIso].find((d): d is string => typeof d === 'string' && !Number.isNaN(Date.parse(d))) ?? startIso
       s.comms = template.replaceAll('{DATE}', absoluteDate(firstDate))
     }
     // A change to an existing policy has no ring of its own: its dates come from where the schedule placed it.

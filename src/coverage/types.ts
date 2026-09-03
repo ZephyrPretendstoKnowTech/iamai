@@ -22,6 +22,8 @@ export type PolicyFacts = {
     groups: Set<string>
     users: Set<string>
     guests: boolean
+    /** The guest or external user types excluded, when the exclude names them (empty: every type); null when none is excluded. */
+    guestTypes: string[] | null
   }
   apps: {
     all: boolean

@@ -18,11 +18,14 @@ import { policyFacts } from '../../coverage/facts.ts'
 import type { CaPolicy } from '../../baseline/types.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
-import { portalLines, portalLinesAB } from '../../roadmap/portalLines.ts'
+import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import { shared } from '../../content/content.ts'
 import { proposedObjectNames } from '../../coverage/naming.ts'
 import { tenantCountryLocation } from '../../mapping/countries.ts'
+import type { MappingState } from '../../mapping/types.ts'
+import { applyDeviations } from '../../roadmap/deviations.ts'
+import { fillText } from '../../content/render.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 type PinnedPolicy = { id: string | null; displayName: string; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
@@ -40,6 +43,8 @@ export type PortalNames = {
   trustedLocationIds?: string[]
   /** The names the plan proposes for the objects the tenant lacks, so a token never renders unnamed. */
   proposed?: { exclusionsGroup?: string | null; serviceAccountsGroup?: string | null; allowedCountries?: string | null; trustedLocation?: string | null } | null
+  /** The stored answers (the applied mapping): the recorded deviations from the baseline are read from them (deviations.ts). */
+  answers?: Pick<MappingState, 'questionAnswers'> | null
 }
 
 /**
@@ -59,6 +64,7 @@ export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>,
     allowedCountriesLocationId: tenantCountryLocation(ctx.snapshot, m.allowedCountries ?? [])?.id ?? null,
     trustedLocationIds: m.trustedLocationIds ?? [],
     proposed: { exclusionsGroup: proposed.exclusionsGroup.name, serviceAccountsGroup: proposed.serviceAccountsGroup.name, allowedCountries: proposed.allowedCountries.name, trustedLocation: proposed.trustedLocation.name },
+    answers: m,
   }
 }
 
@@ -159,15 +165,36 @@ export function stepPortalLinesFromBody(json: string, names: PortalNames): strin
 export function stepPortalLines(goalId: string, names: PortalNames): string[] | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
   if (mapped.length === 0) return null
+  // The person's answers as recorded deviations (deviations.ts): the same rule
+  // the engine's JSON passes through. Every line the deviation changes is shown
+  // beside the baseline's version, so the choice and the baseline both stay on screen.
+  const deviated = (p: PinnedPolicy): PinnedPolicy => (names.answers ? (applyDeviations(p as unknown as Record<string, unknown>, goalId, names.answers) as unknown as PinnedPolicy) : p)
+  const linesOf = (p: PinnedPolicy): string[] => portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names))
+  const annotated = (p: PinnedPolicy): string[] => {
+    const d = deviated(p)
+    return d === p ? linesOf(p) : besideBaseline(linesOf(d), linesOf(p))
+  }
   if (mapped.length >= 2) {
     const a = mapped[0] as PinnedPolicy
     const b = mapped[1] as PinnedPolicy
-    return portalLinesAB(
-      { facts: policyFacts(a as unknown as CaPolicy, new Map()), ctx: contextFor(a, names) },
-      { facts: policyFacts(b as unknown as CaPolicy, new Map()), ctx: contextFor(b, names) },
-      { a: 'A', b: 'B' },
-    )
+    return labelledBlocks({ lines: annotated(a), name: names.policyName }, { lines: annotated(b), name: names.policyName }, { a: 'A', b: 'B' })
   }
-  const p = mapped[0] as PinnedPolicy
-  return portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names))
+  return annotated(mapped[0] as PinnedPolicy)
+}
+
+/** The head of a portal line (its section), so a changed line finds the baseline's line for the same section. */
+const sectionOf = (line: string): string => line.split(' → ').slice(0, 2).join(' → ')
+
+/**
+ * The deviated lines, each one the deviation changed carrying the baseline's
+ * version beside it (shared.deviation.line); a line the deviation adds names
+ * the baseline's absence (shared.deviation.none).
+ */
+export function besideBaseline(lines: string[], baseline: string[]): string[] {
+  const words = shared.deviation as { line: string; none: string }
+  return lines.map((line) => {
+    if (baseline.includes(line)) return line
+    const was = baseline.find((b) => sectionOf(b) === sectionOf(line))
+    return fillText(words.line, { line, baseline: was ?? words.none })
+  })
 }
