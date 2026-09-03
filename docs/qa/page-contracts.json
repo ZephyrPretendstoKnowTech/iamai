@@ -74,7 +74,7 @@
     },
     {
       "id": "connect.signedOut",
-      "name": "The opener (signed out)",
+      "name": "Connect (signed out): the four tiles",
       "status": "built",
       "reach": {
         "route": "/connect",
@@ -83,39 +83,53 @@
       "allow": {
         "headings": [
           "Plan the journey to your Conditional Access baseline.",
-          "Built for",
-          "What it catches"
+          "re:^Sign in .+$",
+          "re:^Baseline .+$",
+          "What happens next",
+          "re:^Scan after sign-in · .+$"
         ],
         "tabs": [],
-        "tiles": [],
+        "tiles": [
+          "Sign in",
+          "Baseline",
+          "What happens next",
+          "Scan"
+        ],
         "columns": [],
         "chips": [],
         "buttons": [
-          "Sign in with Microsoft"
+          "Sign in with Microsoft",
+          "Try it with sample data",
+          "Sign in with a work or school account",
+          "Change baseline"
         ],
         "summaries": [
           "What IAMAI asks for, and how to remove it",
           "IAMAI limitations"
         ],
         "links": [
-          "How IAMAI works →",
-          "See it with sample data →"
+          "How IAMAI works →"
         ]
       },
       "budget": {
-        "sentences": 14,
-        "words": 220
+        "sentences": 18,
+        "words": 260
       },
       "forbid": [
         "Connect a tenant",
+        "Built for",
+        "What it catches",
         "Needs a Global Administrator",
+        "Security Reader",
+        "Reports Reader",
         "How to use",
-        "Step 1"
+        "Step 1",
+        "feedback@getiamai.com"
       ]
     },
     {
       "id": "connect.signedOut.permissions",
-      "name": "The opener / permissions expanded",
+      "name": "Connect (signed out) / permissions expanded",
       "status": "built",
       "reach": {
         "route": "/connect",
@@ -129,16 +143,10 @@
         "root": "details.permissions"
       },
       "allow": {
-        "headings": [
-          "Removing it"
-        ],
+        "headings": [],
         "tabs": [],
         "tiles": [],
-        "columns": [
-          "Permission",
-          "What IAMAI reads",
-          "Without it"
-        ],
+        "columns": [],
         "chips": [],
         "buttons": [],
         "summaries": [
@@ -147,19 +155,21 @@
         "links": []
       },
       "budget": {
-        "sentences": 8,
-        "words": 140
+        "sentences": 12,
+        "words": 170
       },
       "forbid": [
         "Application.Read.All",
         "Used for",
         "Requested, not yet used",
         "openid",
-        "offline_access"
+        "offline_access",
+        "Plus the standard",
+        "Without it"
       ],
       "rowBudget": {
-        "sentences": 3,
-        "words": 45
+        "sentences": 2,
+        "words": 30
       }
     },
     {
@@ -172,7 +182,7 @@
       },
       "allow": {
         "headings": [
-          "Connect a tenant",
+          "Plan the journey to your Conditional Access baseline.",
           "re:^Signed in .+$",
           "re:^Baseline .+$",
           "What happens next",
@@ -207,17 +217,19 @@
         ]
       },
       "budget": {
-        "sentences": 18,
-        "words": 230
+        "sentences": 21,
+        "words": 300
       },
       "forbid": [
+        "Connect a tenant",
         "Security Reader",
         "Reports Reader",
         "Directory Readers",
         "Everything the scan found",
         "answer",
         "question",
-        "What IAMAI found"
+        "What IAMAI found",
+        "feedback@getiamai.com"
       ]
     },
     {
