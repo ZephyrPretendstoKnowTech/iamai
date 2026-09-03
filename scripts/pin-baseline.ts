@@ -75,8 +75,14 @@ function classify(policies: CaPolicy[]): { placeholderFor: Map<string, string>; 
   for (const p of policies) {
     const name = p.displayName.toLowerCase()
     const isAdminPortal = s(p.conditions?.applications?.includeApplications).some((a) => /MicrosoftAdminPortals/i.test(a))
-    const isCountries = /countr|geo|location|region/i.test(name)
+    // A "TrustedLocations" policy names the trusted network, not the countries (E9: the
+    // break-glass policy's location was read as the countries location, and the
+    // service-accounts block excludes that same location, the trusted network).
+    const isCountries = /countr|geo|region|allowed/i.test(name) || (/location/i.test(name) && !/trusted/i.test(name))
+    const isServiceAccounts = /service.?accounts?/i.test(name)
     for (const g of s(p.conditions?.users?.includeGroups)) if (GUID.test(g) && isAdminPortal) placeholderFor.set(g.toLowerCase(), 'adminsGroup')
+    // The group a service-accounts policy includes is the service-accounts group (E9).
+    for (const g of s(p.conditions?.users?.includeGroups)) if (GUID.test(g) && isServiceAccounts && !placeholderFor.has(g.toLowerCase())) placeholderFor.set(g.toLowerCase(), 'serviceAccountsGroup')
     for (const g of s(p.conditions?.users?.excludeGroups)) {
       const k = g.toLowerCase()
       if (placeholderFor.has(k)) continue
@@ -164,6 +170,7 @@ async function main(): Promise<void> {
     id: p.id ?? p.displayName,
     name: p.displayName,
     facts: policyFacts(p, new Map()),
+    placeholders: p.placeholders,
   }))
   const goals: GoalMapResult = mapGoalsToPolicies(forMap)
   const pinned = { commit: target, generatedAt, policies: next.policies, stripped: next.stripped, goalMap: goals.map }

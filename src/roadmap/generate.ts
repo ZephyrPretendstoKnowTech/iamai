@@ -59,6 +59,9 @@ import { isFloorGoal } from './floor.ts'
 import { answeredCarveOuts, devicePlanOf, deviceScopeOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
 
+/** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
+export const SERVICE_ACCOUNTS_TRUSTED_GOAL = 'service-accounts-trusted-network'
+
 /** Step titles are the goal name as an imperative: the kind is a chip, never a prefix. */
 function stepTitle(goalName: string): string {
   return goalName.charAt(0).toUpperCase() + goalName.slice(1)
@@ -476,9 +479,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // step's, any other location the trusted network's). The countries location the
   // tenant already has stands in for the baseline's on the countries policy.
   const unresolvedRefs = unresolvedReferences(input.baseline.references).filter((r) => mapping.records[r.id]?.resolvedId == null)
-  const stepForReference = (kind: ReferenceKind, goalId: string): string | null =>
-    kind === 'group' ? PREREQ_STEP_ID.exclusionsGroup : kind === 'namedLocation' ? (goalId === 'geo-restriction' ? PREREQ_STEP_ID.allowedCountries : PREREQ_STEP_ID.trustedLocation) : kind === 'authenticationStrength' ? 's-prereq-auth-strength' : null
-  const unresolvedFor = (goalId: string): Map<string, string | null> => new Map(unresolvedRefs.map((r) => [r.id, stepForReference(r.kind, goalId)]))
+  // The pin's token for an author's object, so a group reference names the step
+  // that creates the tenant's own (the service-accounts group, not the exclusions group).
+  const tokenOf = (id: string): string | null => {
+    for (const p of input.baseline.policies) for (const [k, token] of Object.entries(((p as { placeholders?: Record<string, string> }).placeholders ?? {}))) if (k.toLowerCase() === id.toLowerCase()) return token
+    return null
+  }
+  const stepForReference = (kind: ReferenceKind, goalId: string, id: string): string | null =>
+    kind === 'group' ? (tokenOf(id) === 'serviceAccountsGroup' ? PREREQ_STEP_ID.serviceAccountsGroup : PREREQ_STEP_ID.exclusionsGroup) : kind === 'namedLocation' ? (goalId === 'geo-restriction' ? PREREQ_STEP_ID.allowedCountries : PREREQ_STEP_ID.trustedLocation) : kind === 'authenticationStrength' ? 's-prereq-auth-strength' : null
+  const unresolvedFor = (goalId: string): Map<string, string | null> => new Map(unresolvedRefs.map((r) => [r.id, stepForReference(r.kind, goalId, r.id)]))
   const countriesLocationId = tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null
   // A group the baseline only ever excludes is its exclusions group: the tenant's recognised one stands in for it.
   const exclusionsGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
@@ -784,9 +793,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
 
     const whoKey = impl.expectedWho.kind
-    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : [...resolvePopulation(impl.expectedWho, snapshot).ids].filter((id) => !excluded.has(id)))
+    // The service accounts are the mapping's, and the one population every other
+    // step excludes (E9): the step that restricts them names them all.
+    if (!expectedCache.has(whoKey)) expectedCache.set(whoKey, whoKey === 'workload' ? [] : whoKey === 'serviceAccounts' ? [...mapping.serviceAccountUserIds] : [...resolvePopulation(impl.expectedWho, snapshot).ids].filter((id) => !excluded.has(id)))
     const popIds = expectedCache.get(whoKey) ?? []
-    if (!populationCache.has(whoKey)) populationCache.set(whoKey, population(popIds, popIndex))
+    if (!populationCache.has(whoKey)) populationCache.set(whoKey, whoKey === 'serviceAccounts' ? { total: popIds.length, active: popIds.length, admins: 0, guests: 0, ids: popIds, activeIds: popIds, inScope: popIds.length } : population(popIds, popIndex))
     const pop = { ...(populationCache.get(whoKey) as StepPopulation) }
     const readinessKey = goalFamily(goal.id)
     if (!readinessCache.has(readinessKey)) readinessCache.set(readinessKey, readinessFor(goal.id, popIds, rowsFor(popIds), snapshot))
@@ -883,6 +894,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (DEVICE_GOALS.has(goal.id) && steps.some((s) => s.id === deviceStepId && s.status !== 'done')) blockByStep(deviceStepId, 'device-decision')
       if (goal.id === 'geo-restriction') {
         if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
+      }
+      // The service-accounts block names the group and the trusted network (E9): it waits on both.
+      if (goal.id === SERVICE_ACCOUNTS_TRUSTED_GOAL) {
+        if (steps.some((s) => s.id === saStepId)) blockByStep(saStepId, 'create-object')
+        if (steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
       }
     }
 

@@ -56,6 +56,55 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   }
 }
 
+const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
+const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}/g)].map((m) => m[1])
+
+/**
+ * The who-line evidence lines that apply to this tenant, as the step renders
+ * them (the one gate for the screen and the exports): the existing-coverage
+ * line only when a policy delivers the goal; a line with a list only when the
+ * list has people; a line with {n} and no list not at zero; the none branch
+ * only when no usage line renders (the existing-coverage line does not count).
+ */
+export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string, unknown>): string[] {
+  const out: string[] = []
+  let none: string | null = null
+  const coverage = String((content.shared as Record<string, unknown>).existingCoverage)
+  for (const [k, v] of Object.entries(who)) {
+    if (['lead', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
+    if (k === 'none') {
+      none = typeof v === 'string' ? v : null
+      continue
+    }
+    const arr = Array.isArray(v) ? (v as string[]) : typeof v === 'string' ? [v] : []
+    for (let line of arr) {
+      if (line === '{existingCoverage}') {
+        if (!truthy(ex.existingPolicies)) continue
+        line = coverage
+      }
+      const lk = listKeys(line)
+      if (lk.length > 0 && lk.every((k2) => !truthy(ex[k2]))) continue
+      if (lk.length === 0 && line.includes('{n}') && (ex.n ?? 1) === 0) continue
+      out.push(line)
+    }
+  }
+  if (none !== null && !out.some((line) => line !== coverage && whole(line, ex))) out.push(none)
+  return out
+}
+
+/**
+ * The manager's three sentences, with the clause a step adds when the records
+ * show nobody using what it blocks (more.managerNone, under its `applies`, E9);
+ * null when the manager line is not whole.
+ */
+export function managerText(cs: Record<string, unknown>, ex: Record<string, unknown>): string | null {
+  const more = (cs.more ?? {}) as Record<string, unknown>
+  if (typeof more.manager !== 'string' || !whole(more.manager, ex)) return null
+  const none = more.managerNone as { text?: unknown; applies?: unknown } | undefined
+  const applies = none && typeof none.text === 'string' && (typeof none.applies !== 'string' || Boolean(ex[none.applies])) && whole(none.text, ex)
+  return applies ? `${fillText(more.manager, ex)} ${fillText(none!.text, ex)}` : fillText(more.manager, ex)
+}
+
 /**
  * Every line the step body renders on screen, filled, for the tests that read
  * rendered text without a DOM: the why, the who lines, the decision's words,
@@ -77,11 +126,10 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   add(cs.changeLine)
   add(cs.partner)
   const who = (cs.who ?? {}) as Record<string, unknown>
-  for (const [k, v] of Object.entries(who)) {
-    if (k === 'groups' || k === 'timeline' || k === 'overlap') continue
-    // A line that counts and lists counts its own list, as on screen (render.ts listCountVars).
-    for (const line of Array.isArray(v) ? v : [v]) add(line, listCountVars(line, ex) as Record<string, unknown>)
-  }
+  add(who.lead)
+  add(who.adminsNote)
+  // The evidence lines as the step gates them; a line that counts and lists counts its own list (render.ts listCountVars).
+  for (const line of whoEvidenceLines(who, ex)) add(line, listCountVars(line, ex) as Record<string, unknown>)
   const d = (cs.decision ?? {}) as Record<string, unknown>
   add(d.label)
   add(d.help)
@@ -93,7 +141,8 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   const more = (cs.more ?? {}) as Record<string, unknown>
   for (const r of Array.isArray(more.risks) ? (more.risks as { text?: string }[]) : []) add(r.text)
   for (const l of Array.isArray(more.helpDesk) ? more.helpDesk : []) add(l)
-  add(more.manager)
+  const manager = managerText(cs, ex)
+  if (manager) out.push(manager)
   const comms = (cs.comms ?? null) as Record<string, unknown> | null
   if (comms) for (const k of ['salutation', 'body', 'signature']) add(comms[k])
   return out
@@ -111,6 +160,7 @@ export function copyBoxes(step: Step, ctx: StepVarContext): { kind: 'comms' | 'h
   const more = (cs.more ?? {}) as Record<string, unknown>
   const helpDesk = (Array.isArray(more.helpDesk) ? more.helpDesk : []).filter((x) => whole(x, ex))
   if (helpDesk.length > 0) out.push({ kind: 'helpDesk', text: helpDesk.map((x) => fillText(x, ex)).join('\n'), after })
-  if (typeof more.manager === 'string' && whole(more.manager, ex)) out.push({ kind: 'manager', text: fillText(more.manager, ex), after })
+  const manager = managerText(cs, ex)
+  if (manager) out.push({ kind: 'manager', text: manager, after })
   return out
 }

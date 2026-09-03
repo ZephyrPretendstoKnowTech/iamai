@@ -258,6 +258,9 @@ export function renderStep(st: Record<string, any>): string {
   parts.push(h('Who this touches'))
   if (who.lead) parts.push(p(who.lead, ex))
   if (who.timeline) parts.push(p(who.timeline, ex, 'evidence'))
+  // The none branch stands in when no evidence line renders (the existing-coverage line does not count), as the product renders it.
+  let rendered = 0
+  let none: string | null = null
   for (const [k, v] of Object.entries(who)) {
     if (['lead', 'groups', 'adminsNote', 'timeline', 'overlap'].includes(k)) continue
     if (Array.isArray(v)) {
@@ -265,18 +268,23 @@ export function renderStep(st: Record<string, any>): string {
         if (line === '{existingCoverage}') {
           if (!truthy(ex.existingPolicies)) continue
           line = S.existingCoverage
-        }
+        } else rendered += 1
         const lk = listKeys(line)
-        if (lk.length > 0 && lk.every((k2) => !truthy(ex[k2]))) continue
-        if (lk.length === 0 && line.includes('{n}') && (ex.n ?? 1) === 0) continue
+        if (lk.length > 0 && lk.every((k2) => !truthy(ex[k2]))) {
+          rendered -= 1
+          continue
+        }
+        if (lk.length === 0 && line.includes('{n}') && (ex.n ?? 1) === 0) {
+          rendered -= 1
+          continue
+        }
         const e2 = { ...ex }
         if (lk.length > 0 && line.includes('{n}')) e2.n = (ex[lk[0]] || []).length
         parts.push(p(line, e2, 'evidence'))
       }
     } else if (typeof v === 'string') {
       if (k === 'none') {
-        const main = ['locationsWithMatches', 'accountsWithSignals', 'devicesWithSignals', 'members', 'strengths', 'syncAddresses'].filter((kk) => kk in ex)
-        if (main.length > 0 && !truthy(ex[main[0]])) parts.push(p(v, ex, 'evidence'))
+        none = v
         continue
       }
       if (['remoteHint', 'emergencyNote', 'timeline'].includes(k)) {
@@ -287,9 +295,13 @@ export function renderStep(st: Record<string, any>): string {
         if (truthy(ex.matchedStrength)) parts.push(p(v, ex, 'evidence'))
         continue
       }
+      const lk = listKeys(v)
+      if (lk.length > 0 && lk.every((k2) => !truthy(ex[k2]))) continue
+      rendered += 1
       parts.push(p(v, ex, 'evidence'))
     }
   }
+  if (none !== null && rendered === 0) parts.push(p(none, ex, 'evidence'))
   if (who.groups) {
     const g = who.groups
     for (const [gk, gl] of Object.entries(g)) {
@@ -450,7 +462,10 @@ export function renderStep(st: Record<string, any>): string {
   }
   if (m.manager) {
     parts.push(h('For your manager'))
-    parts.push(p(m.manager, ex))
+    // The clause the records earn (managerNone under its applies, E9): the review shows it when the example applies it.
+    const none = m.managerNone
+    const clause = none && typeof none.text === 'string' && (typeof none.applies !== 'string' || truthy(ex[none.applies])) ? ` ${none.text}` : ''
+    parts.push(p(`${m.manager}${clause}`, ex))
   }
   const mb = [btn('Copy as prompt')]
   if (st.skip) mb.push(btn('Skip this step'))

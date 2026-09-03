@@ -97,7 +97,7 @@ export type CoverageInput = {
   groupMembers: GroupMembers
   facetOverrides?: FacetOverrides
   /** Confirmed mapping (prompt 06); until then assumed exclusions are used. */
-  mapping?: { breakGlassUsers?: string[]; exclusionGroups?: Record<string, string>; confirmed?: boolean }
+  mapping?: { breakGlassUsers?: string[]; exclusionGroups?: Record<string, string>; confirmed?: boolean; /** The confirmed service accounts: the population of a goal that targets them (E9). */ serviceAccountUsers?: string[] }
   /**
    * The baseline's goal map (walk-51 item 9, goalMap.ts): for a goal it holds,
    * the map's policy is the one evaluated against — its floor, its name in a
@@ -272,10 +272,16 @@ function evaluateGoal(
   const { floor, raised } = raiseFloor(goal, baselineMatches)
   base.floorRaised = raised
 
-  // Expected population E.
-  const expected = resolvePopulation(impl.expectedWho, input.snapshot)
+  // Expected population E. The service accounts are the mapping's (E9): the
+  // directory cannot name them.
+  const expected = impl.expectedWho.kind === 'serviceAccounts' ? { ids: new Set(input.mapping?.serviceAccountUsers ?? []), estimated: false, unresolvedGroups: [] } : resolvePopulation(impl.expectedWho, input.snapshot)
   const E = expected.ids
   base.expectedCount = E.size
+  // No service accounts confirmed: nothing for the goal to restrict, so it does not apply here.
+  if (impl.expectedWho.kind === 'serviceAccounts' && E.size === 0) {
+    const reason = 'no service accounts confirmed'
+    return { ...base, status: 'not-applicable', statement: notApplicableStatement(goal.name, reason), applicability: { facet: 'serviceAccounts', reason } }
+  }
 
   // Candidates (§7.1).
   const candidates = tenantFacts.filter((f) => matchesSignature(f, impl.signature))

@@ -582,7 +582,7 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "0403d368-f07f-4e4c-b75d-aa169d5b6683": "allowedCountries",
+        "0403d368-f07f-4e4c-b75d-aa169d5b6683": "trustedLocation",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
@@ -1330,7 +1330,8 @@
         "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
-        "0403d368-f07f-4e4c-b75d-aa169d5b6683": "allowedCountries"
+        "0403d368-f07f-4e4c-b75d-aa169d5b6683": "trustedLocation",
+        "6612d6d7-12c8-4cbd-8ad5-7460ae2a6579": "serviceAccountsGroup"
       }
     },
     {
@@ -2355,6 +2356,9 @@
     ],
     "user-risk-medium": [
       "7475b373-0544-4ee8-8827-cff35009136d"
+    ],
+    "service-accounts-trusted-network": [
+      "99eabebd-877c-4800-aa15-d389b8767760"
     ]
   }
 }

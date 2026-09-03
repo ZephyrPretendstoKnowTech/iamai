@@ -2611,10 +2611,10 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
-          "No device-code sign-ins since {from}.",
+          "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
           "{existingCoverage}"
-        ]
+        ],
+        "none": "No device-code sign-ins since {from}."
       },
       "decision": null,
       "dates": "{datesNew}",
@@ -2638,7 +2638,11 @@
           "An admin using az login on a box with no browser: sign in from a browser on your own device; device code is off."
         ],
         "manager": "A sign-in flow used almost only by phishing kits is turned off. Without this, one pasted code signs an attacker in.",
-        "waits": null
+        "waits": null,
+        "managerNone": {
+          "text": "Nobody here used it since {from}.",
+          "applies": "nobodyAffected"
+        }
       },
       "example": {
         "tenant": "GetIAMAI",
@@ -2648,7 +2652,9 @@
         "policyName": "Core - Block - Device code flow",
         "enforce": "Tue Sep 8",
         "existingPolicies": [],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "deviceCodeCount": 0,
+        "nobodyAffected": true
       },
       "whatToDoReference": {
         "lead": null,
@@ -2675,10 +2681,10 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} authentication transfers since {from} by {list:transferUsers}.",
-          "No authentication transfers since {from}.",
+          "{transferCount} authentication transfers since {from} by {list:transferUsers}.",
           "{existingCoverage}"
-        ]
+        ],
+        "none": "No authentication transfers since {from}."
       },
       "decision": null,
       "dates": "{datesNew}",
@@ -2701,7 +2707,11 @@
           "Sign in on the phone directly; the QR shortcut is off on purpose."
         ],
         "manager": "A session can no longer be copied to another device without a sign-in. Without this, a captured QR code is a captured account.",
-        "waits": null
+        "waits": null,
+        "managerNone": {
+          "text": "Nobody here used it since {from}.",
+          "applies": "nobodyAffected"
+        }
       },
       "example": {
         "tenant": "GetIAMAI",
@@ -2710,7 +2720,9 @@
         "transferUsers": [],
         "policyName": "Core - Block - Authentication transfer",
         "existingPolicies": [],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "transferCount": 0,
+        "nobodyAffected": true
       },
       "whatToDoReference": {
         "lead": null,
@@ -2737,11 +2749,11 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} sign-ins from outside {countries} since {from} by {list:outsideUsers}; a travel exception or a country to add before {enforce}.",
-          "Nobody signed in from outside {countries} since {from}.",
+          "{n} people signed in from outside {countries} since {from}; a travel exception or a country to add before {enforce}: {list:outsideUsers}",
           "{n} service-provider sign-ins from {partners} partner tenants outside {countries}: the service-accounts group or the Service provider exclusion carries them.",
           "{existingCoverage}"
-        ]
+        ],
+        "none": "Nobody signed in from outside {countries} since {from}."
       },
       "decision": null,
       "dates": "{datesNew}",
@@ -2779,7 +2791,11 @@
           "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit."
         ],
         "manager": "Sign-ins from places the business does not operate in are blocked. Without this, a stolen password works from anywhere in the world.",
-        "waits": null
+        "waits": null,
+        "managerNone": {
+          "text": "Nobody here signed in from outside {countries} since {from}.",
+          "applies": "nobodyAffected"
+        }
       },
       "example": {
         "tenant": "GetIAMAI",
@@ -2799,7 +2815,8 @@
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
         "existingPolicies": [],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "nobodyAffected": true
       },
       "whatToDoReference": {
         "lead": null,
@@ -3133,10 +3150,10 @@
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} sign-ins since {from} carried no platform ({apps}) by {list:noPlatformUsers}; they would be stopped.",
-          "Every sign-in since {from} came from a supported platform.",
+          "{noPlatformCount} sign-ins since {from} carried no platform ({apps}) by {list:noPlatformUsers}; they would be stopped.",
           "{existingCoverage}"
-        ]
+        ],
+        "none": "Every sign-in since {from} came from a supported platform."
       },
       "decision": null,
       "dates": "{datesNew}",
@@ -3163,7 +3180,11 @@
           "A Linux user: add Linux to the excluded platforms deliberately, with a ticket, or provide a managed device."
         ],
         "manager": "Devices Entra cannot identify are blocked; everyone on Windows, Mac, iPhone or Android notices nothing. Without this, an unidentified device slips past every device rule.",
-        "waits": null
+        "waits": null,
+        "managerNone": {
+          "text": "Nobody here signed in from an unidentified device since {from}.",
+          "applies": "nobodyAffected"
+        }
       },
       "example": {
         "tenant": "GetIAMAI",
@@ -3173,7 +3194,9 @@
         "noPlatformUsers": [],
         "policyName": "Core - Block - Unsupported platforms",
         "existingPolicies": [],
-        "from": "Aug 1"
+        "from": "Aug 1",
+        "noPlatformCount": 0,
+        "nobodyAffected": true
       },
       "whatToDoReference": {
         "lead": null,
@@ -4147,6 +4170,79 @@
         "adminsWithWorkload": [
           "Lachlan Robinette · Outlook, Microsoft Teams",
           "Kaladin Stormblessed · Microsoft Teams"
+        ]
+      }
+    },
+    {
+      "id": "service-accounts-trusted-network",
+      "kind": "policy",
+      "title": "Restrict Service Accounts to the Trusted Network",
+      "changeLine": null,
+      "why": "A service account cannot answer a prompt, so the policies that would break it leave it out; this one pins it to the office network instead, where a stolen password is useless from anywhere else.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
+      },
+      "who": {
+        "lead": "{n} service accounts, in {serviceAccountsGroup}:",
+        "accounts": "{list:serviceAccounts}",
+        "none": "No service accounts recognised in {tenant}; nothing for this policy to restrict.",
+        "evidence": [
+          "{existingCoverage}"
+        ]
+      },
+      "decision": null,
+      "dates": "{datesNew}",
+      "doneWhen": [
+        "{policyDoneWhen}"
+      ],
+      "ifWrong": "{policyIfWrong}",
+      "comms": null,
+      "doesntApply": true,
+      "skip": true,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "A service account that runs from home, a cloud host or a vendor network has no trusted network to sign in from and stops the day this enforces; add that network first.",
+            "applies": "always"
+          },
+          {
+            "text": "A trusted network that lists a whole ISP range trusts every customer on it.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": [
+          "A script that stopped overnight: it signed in from outside the trusted network; add that network to the location, or move the job onto it."
+        ],
+        "manager": "Accounts no person signs in with work only from the office network, so a stolen service password is useless anywhere else. Without this, the accounts every other policy leaves out are the easiest way in.",
+        "waits": null
+      },
+      "example": {
+        "tenant": "Contoso Pty Ltd",
+        "n": 2,
+        "serviceAccounts": [
+          "svc-mailer-1",
+          "svc-mailer-2"
+        ],
+        "serviceAccountsGroup": "Core - Exception - Service accounts",
+        "trustedLocation": "Head office",
+        "policyName": "Core - Block - Service accounts outside the trusted network",
+        "announce": "Tue Sep 15",
+        "reportOnly": "Tue Sep 15",
+        "enforce": "Tue Sep 22",
+        "existingPolicies": [],
+        "from": "Aug 1"
+      },
+      "whatToDoReference": {
+        "lead": null,
+        "steps": [
+          "{portalRoot}",
+          "Name: {policyName}",
+          "Users → Include: Groups: {serviceAccountsGroup}. {exclusionsLine}",
+          "Target resources → Resources → All resources",
+          "Conditions → Locations → Include: Any location; Exclude: {trustedLocation}",
+          "Grant → Block access",
+          "{reportOnlyLine}"
         ]
       }
     }

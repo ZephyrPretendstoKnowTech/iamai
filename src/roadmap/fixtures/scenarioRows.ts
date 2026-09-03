@@ -110,6 +110,8 @@ export function scenarioRows(name: string, ids: string[], svcIds: string[]): Sto
       row({ userId: u(0), appId: '14d82eec-204b-4c2f-b7e8-296a70dab67e', appDisplayName: 'Microsoft Graph Command Line Tools', isCompliant: false, isManaged: false, trustType: 'none' }),
       // 16 — a server sign-in.
       row({ userId: u(1), appId: '372140e0-b3b7-4226-8ef9-d57986796201', appDisplayName: 'Azure Windows VM Sign-In' }),
+      // A developer with no directory role opens the Azure portal (E9): the admin-portals block reaches them.
+      row({ userId: u(5), appId: 'c44b4083-3bb0-49c1-b47d-974e53cbdf3c', appDisplayName: 'Azure Portal', resourceDisplayName: 'Windows Azure Service Management API' }),
       // 9 — Outlook from an unregistered Windows device (token protection).
       row({ userId: u(2), appDisplayName: 'Outlook', resourceDisplayName: 'Office 365 Exchange Online', trustType: 'none', isCompliant: false, isManaged: false }),
       // 18 — a compliant laptop on Chrome without device claims.

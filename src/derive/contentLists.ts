@@ -104,6 +104,16 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const eligibleWithoutL = lockout(eligibleRows)
   const pushOnlyL = lockout(pushOnlyRows)
 
+  // The usage a block would stop (E9), by person, with the sign-in counts the
+  // lines name: device code, authentication transfer, sign-ins with no platform
+  // (and the apps they came from), sign-ins from outside the allowed countries,
+  // and Azure sign-ins by people with no directory role.
+  const usage = snapshot.evidenceUsage
+  const platform = scen?.emptyPlatform
+  const allowed = new Set(mapping.allowedCountries.map((c) => c.toUpperCase()))
+  const outside = Object.entries(snapshot.signInEvidence ?? {}).filter(([id, e]) => byId.has(id) && !bg.has(id) && (e.countries ?? []).some((c) => !allowed.has(c.toUpperCase()))).map(([id]) => id)
+  const azureNonAdmins = (scen?.azureSignIns?.people ?? []).filter((id) => byId.has(id) && !admins.has(id) && !bg.has(id))
+
   return {
     // Campaign buckets (mfaViability over collected methods + sign-ins).
     noMethod: bucketName(noMethod),
@@ -144,6 +154,14 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     eligibleWithout: eligibleWithoutL.names,
     pushOnlyUsers: pushOnlyL.names,
     ...(counts({ adminsWithoutCount: adminsWithoutL.count, eligibleWithoutCount: eligibleWithoutL.count, pushOnlyCount: pushOnlyL.count, pushOnlyTotal: pushOnlyRows.length > 0 ? pushOnlyRows.length : undefined }) as Record<string, string[]>),
+    // The usage a block would stop (E9).
+    deviceCodeUsers: names(usage?.deviceCode.userIds ?? []),
+    transferUsers: names(usage?.authTransfer.userIds ?? []),
+    noPlatformUsers: names(platform?.people ?? []),
+    outsideUsers: names(outside),
+    azureNonAdmins: names(azureNonAdmins),
+    ...(counts({ deviceCodeCount: usage?.deviceCode.count || undefined, transferCount: usage?.authTransfer.count || undefined, noPlatformCount: platform?.count || undefined }) as Record<string, string[]>),
+    ...(platform && platform.count > 0 ? { apps: Object.keys(platform.detail).join(', ') as unknown as string[] } : {}),
   }
 }
 
