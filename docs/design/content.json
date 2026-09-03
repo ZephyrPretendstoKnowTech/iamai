@@ -2708,7 +2708,7 @@
     {
       "id": "require-managed-device",
       "kind": "policy",
-      "title": "Require a Managed Device for Office 365",
+      "title": "Require a Managed Device Outside the Office",
       "changeLine": null,
       "why": "Company data on a device you manage can be protected, updated and wiped; on any other device, outside the office, it cannot.",
       "learn": {
@@ -2721,6 +2721,7 @@
           "{name} signed in from a browser without device claims on a compliant device, so those sign-ins are blocked until the browser is signed in to the device account.",
           "{n} sign-ins to servers or Azure VMs by {list:serverUsers}: servers cannot be compliant; scope them out or they lose RDP.",
           "{n} sign-ins to Microsoft Graph Command Line Tools from non-compliant devices: Autopilot registration from those machines stops.",
+          "The baseline has no platform condition: phones are in scope until the device decision says otherwise.",
           "{existingCoverage}"
         ]
       },
@@ -3158,13 +3159,13 @@
       "licence": "Microsoft Entra Workload ID Premium",
       "title": "Restrict the Entra Connect Sync Account to Its Address",
       "changeLine": null,
-      "why": "The sync service principal's secret works from anywhere unless it is tied to the server that uses it.",
+      "why": "The sync service principal's secret works from anywhere unless it is tied to the server that uses it. Classic Entra Connect syncs with a user account; it is covered by the exclusions in the MFA policies, not by this policy.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity"
       },
       "who": {
-        "lead": "Entra Connect in {tenant}: {syncStatus}. The sync service principal signed in from {list:syncAddresses} since {from}.",
-        "none": "No Entra Connect sync in {tenant}; this step does not apply."
+        "lead": "Cloud Sync in {tenant}: {syncStatus}. Cloud Sync's provisioning service principal signed in from {list:syncAddresses} since {from}.",
+        "none": "No Cloud Sync in {tenant}; this step does not apply."
       },
       "decision": null,
       "dates": "{datesNew}",
@@ -3205,10 +3206,10 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
-          "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location: name it {locationName}; add the Entra Connect server's public address {list:syncAddresses}",
+          "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location: name it {locationName}; add the provisioning agent server's public address {list:syncAddresses}",
           "{portalRoot}",
           "Name: {policyName}",
-          "Users or workload identities → Workload identities → Select service principals → the Entra Connect sync service principal",
+          "Users or workload identities → Workload identities → Select service principals → Cloud Sync's provisioning service principal",
           "Target resources → Resources → All resources",
           "Conditions → Locations → Include: Any location; Exclude: {locationName}",
           "Grant → Block access",
@@ -3511,7 +3512,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine}",
           "Target resources → Resources → All resources",
-          "Conditions → Sign-in risk → High, Medium",
+          "Conditions → Sign-in risk → High",
           "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
@@ -3532,6 +3533,7 @@
         "evidence": [
           "{n} people are rated at risk today: {list:atRiskUsers}",
           "Self-service password reset must be enabled or the change loops; {sspr}.",
+          "Guests rated high risk are blocked, not remediated: they cannot change a password here.",
           "{existingCoverage}"
         ]
       },
@@ -3704,7 +3706,7 @@
           "Name: {policyName}",
           "Users → Include: All users. {exclusionsLine} Also exclude Guest or external users (all types).",
           "Target resources → Resources → All resources",
-          "Conditions → User risk → High, Medium",
+          "Conditions → User risk → Medium",
           "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
