@@ -16,9 +16,14 @@ export type PlanFinish = {
   waitingCount: number
 }
 
-/** A blocker written in the "when <measure> reaches <threshold>" shape by a readiness threshold. */
+/** The step waits whose decision the threshold is measured against: while the decision is open, the wait binds, not the number (E2: device readiness follows the device decision). */
+const DECISION_WAITS = new Set(['device-decision'])
+
+/** A blocker written in the "when <measure> reaches <threshold>" shape by a readiness threshold, unless the step first waits on the decision that threshold is measured against. */
 export function heldByReadiness(step: Step): boolean {
-  return step.status === 'blocked' && step.blockers.some((b) => b.kind === 'readiness' && typeof b.binding === 'string' && /readiness reaches/.test(b.binding))
+  if (step.status !== 'blocked') return false
+  if (step.blockers.some((b) => b.kind === 'step' && DECISION_WAITS.has(b.label))) return false
+  return step.blockers.some((b) => b.kind === 'readiness' && typeof b.binding === 'string' && /readiness reaches/.test(b.binding))
 }
 
 const lastRingEnd = (s: Step): string | null => s.rings.at(-1)?.plannedEnd ?? null
