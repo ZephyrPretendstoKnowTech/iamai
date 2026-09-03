@@ -621,6 +621,26 @@ async function walkFixture(fx) {
           }
           if (/Require a Managed Device/.test(title) && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
           if (/^Register Your Own Passkey$/.test(title) && !/or a hardware security key/.test(bodyText)) add('P0', `${slabel}: step 12 asks for a key and a passkey; either is enough`)
+          // Small engine items (E9), on the demo: the admin-portals step names the
+          // developer who opened the Azure portal; the service-accounts block is
+          // a step naming the group and the trusted network; the manager's
+          // "nobody here used it" clause is on the blocks nobody used and off the
+          // one somebody did.
+          if (/^Block the Admin Portals for Non-Admins$/.test(title) && !/^1 person without a directory role signed in to Azure since /m.test(bodyText)) add('P0', `${slabel}: the step does not name the person without a directory role who signed in to Azure`)
+          if (/^Restrict Service Accounts to the Trusted Network$/.test(title)) {
+            if (!/Users → Include: Groups: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not name the service-accounts group`)
+            if (!/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
+            if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
+          }
+          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title)) {
+            const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).innerText || ''`)
+            if (!/Nobody here used it since /.test(more)) add('P0', `${slabel}: nobody on the demo used this, and the manager line does not say so`)
+          }
+          if (/^Block Unsupported Device Platforms$/.test(title)) {
+            const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).innerText || ''`)
+            if (/Nobody here/.test(more)) add('P0', `${slabel}: one demo sign-in carried no platform, and the manager line says nobody did`)
+            if (!/carried no platform \(Outlook Mobile\)/.test(bodyText)) add('P0', `${slabel}: the step does not name the sign-in that carried no platform`)
+          }
           if (/MFA Registration Campaign/.test(title)) {
             if (week2 && !/· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
             if (week2 && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
@@ -761,6 +781,15 @@ async function walkFixture(fx) {
   // Preparation). On the demo it is Ready both days; week two's re-scan recognised the
   // group, so the step must check it rather than still offer the create instructions.
   if (fx.name.startsWith('demo') && !rowTitles.some((t) => /Exclusions Group/i.test(t))) add('P0', `${fx.name}: the exclusions-group step is missing; it is on every plan`)
+  // Small engine items (E9): the unsupported-platforms block and the admin session
+  // policy are held by no readiness threshold; the service-accounts block is a row.
+  if (fx.name.startsWith('demo')) {
+    for (const [i, t] of rowTitlesOpen.entries()) {
+      if (/^Block Unsupported Device Platforms$/.test(t) && /device readiness/i.test(`${rowReasonsOpen[i] ?? ''} ${rowWhens[i] ?? ''}`)) add('P0', `${fx.name}: Block Unsupported Device Platforms is held by device readiness; it is a block, gated on its evidence`)
+      if (/^Shorten Admin Sessions$/.test(t) && /admin readiness/i.test(`${rowReasonsOpen[i] ?? ''} ${rowWhens[i] ?? ''}`)) add('P0', `${fx.name}: Shorten Admin Sessions is held by admin readiness; a shorter session locks nobody out`)
+    }
+    if (!rowTitles.some((t) => /^Restrict Service Accounts to the Trusted Network$/.test(t))) add('P0', `${fx.name}: the baseline's service-accounts block is not a row, although the demo has service accounts`)
+  }
   // Separate admin accounts (E6): the demo's plan carries the step while an admin reads mail or joins Teams on the admin account.
   if (fx.name.startsWith('demo') && !rowTitles.some((t) => /^Use Separate Accounts for Admin Work$/.test(t))) add('P0', `${fx.name}: no Preparation row asks for separate admin accounts, although two admins use theirs for mail or Teams`)
   // The consolidation row exists whenever a step's existingCoverage line rendered, and only then (E3).
