@@ -633,11 +633,13 @@ async function walkFixture(fx) {
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
           if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title)) {
-            const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).innerText || ''`)
+            // More is closed at this point, so its innerText is empty: read textContent.
+            const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).textContent || ''`)
             if (!/Nobody here used it since /.test(more)) add('P0', `${slabel}: nobody on the demo used this, and the manager line does not say so`)
           }
           if (/^Block Unsupported Device Platforms$/.test(title)) {
-            const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).innerText || ''`)
+            // More is closed at this point, so its innerText is empty: read textContent.
+            const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).textContent || ''`)
             if (/Nobody here/.test(more)) add('P0', `${slabel}: one demo sign-in carried no platform, and the manager line says nobody did`)
             if (!/carried no platform \(Outlook Mobile\)/.test(bodyText)) add('P0', `${slabel}: the step does not name the sign-in that carried no platform`)
           }
