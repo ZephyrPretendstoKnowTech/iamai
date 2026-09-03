@@ -32,12 +32,16 @@ export const RULE_TO_FIX: Record<string, string> = {
   'xg.noExtraAdmins': 'no-admin-members',
   'xg.notDynamic': 'not-dynamic',
   'xg.usedConsistently': 'excluded-from-every-policy',
-  'xg.sizeReasonable': 'member-count',
   'xg.notMailEnabled': 'not-mail-enabled',
 }
 
-/** Break-glass rules that carry no checkFixes template — informational notes, and per-user-MFA state Graph cannot read structurally. */
-export const RULES_WITHOUT_TEMPLATE = new Set(['bg.drilled', 'bg.credentialStorage', 'bg.signInMonitoring', 'bg.signInCountries', 'bg.mfaSeen'])
+/**
+ * Rules that carry no checkFixes template — informational notes, per-user-MFA
+ * state Graph cannot read structurally, and the group-size rule, whose fact
+ * (an extra member) is the members-only-emergency line (step-audit item 2: one
+ * fix line per fact).
+ */
+export const RULES_WITHOUT_TEMPLATE = new Set(['bg.drilled', 'bg.credentialStorage', 'bg.signInMonitoring', 'bg.signInCountries', 'bg.mfaSeen', 'xg.sizeReasonable'])
 
 export type StepCheckItem = { fix: string; subject: string; target: string | null; values: Record<string, unknown> }
 export type StepChecks = { failing: number; total: number; items: StepCheckItem[] }

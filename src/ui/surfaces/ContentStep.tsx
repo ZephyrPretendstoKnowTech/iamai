@@ -144,8 +144,6 @@ export function ContentStep({
             Learn →
           </a>
         )}
-        {learn.url && learn.cis && ' '}
-        {learn.cis && <span className="chip">CIS {learn.cis}</span>}
       </p>
 
       {whoHasContent(who, ex) && <h3>Who this touches</h3>}

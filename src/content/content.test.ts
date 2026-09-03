@@ -67,15 +67,21 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[17].who.evidence[1]',
   '.steps[18].who.evidence[1]',
   '.steps[19].who.evidence[0]',
+  // Azure sign-ins by people with no directory role (step-audit item 16); the example lists none.
+  '.steps[19].who.evidence[2]',
   '.steps[20].who.evidence[1]',
   '.steps[21].who.evidence[0]',
   '.steps[22].who.evidence[0]',
   '.steps[25].who.evidence[2]',
+  // Eligible admins with no passkey or key yet (step-audit item 33); the example lists none.
+  '.steps[36].who.evidence[0]',
   '.steps[37].who.evidence[0]',
   '.steps[38].who.evidence[1]',
+  // People with only Authenticator approval, stopped by a risky sign-in (step-audit item 35); the example lists none.
+  '.steps[38].who.evidence[3]',
   '.steps[39].who.evidence[0]',
-  '.steps[40].who.evidence[0]',
-  '.steps[41].who.evidence[0]',
+  '.steps[40].who.evidence[1]',
+  '.steps[41].who.evidence[1]',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52
@@ -91,7 +97,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // read by the product, never by the review page.
 const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
 const isStructural = (p: string): boolean =>
-  /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.(url|cis)$/.test(p) || /\.whatToDoReference\b/.test(p)
+  /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p)
 
 test('no orphan content string: every non-structural key renders, or is a known example-suppressed / app-only variant', () => {
   const body = reviewBody()
