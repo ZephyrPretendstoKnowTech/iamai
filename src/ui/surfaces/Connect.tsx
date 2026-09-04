@@ -3,7 +3,7 @@
 // the consent rows and, after a sign-in that did not succeed, one of three
 // error states from the MSAL error code), Baseline, Scan (what it reads,
 // compares and writes; after sign-in) and Plan with what the sample tenant
-// produced. Signed in: Signed in, Baseline, Scan (the read-only line, the limitations, then the scan
+// produced. Signed in: Signed in, Baseline, Scan (the limitations, then the scan
 // in exactly one of its states: complete, finished with gaps, not started for
 // want of a role, scanning, or ready for the first scan) and Plan (ready with
 // the facts, the last full plan after a scan with gaps, or waiting for the
@@ -160,15 +160,14 @@ function accountRole(roleIds: string[] | null): string | null {
 }
 
 /**
- * Tile 3, Scan, in both states: the scan's state in the heading, the read-only
- * line, the limitations collapsible, then the state's own body (the bar while
- * scanning, the account and the unread rows, the one ask for Global Reader)
- * and its buttons.
+ * Tile 3, Scan, in both states: the scan's state in the heading, the
+ * limitations collapsible, then the state's own body (the bar while scanning,
+ * the account and the unread rows, the one ask for Global Reader) and its
+ * buttons.
  */
 function ScanTileView({ tile, upn, bar, actions }: { tile: ScanTile; upn: string | null; bar?: ReactNode; actions: ReactNode }) {
   return (
     <Tile n={3} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)}>
-      <p className="quiet">{tile.readOnly}</p>
       <details>
         <summary>{tile.limits.summary}</summary>
         <ul className="beats">

@@ -234,7 +234,6 @@
       },
       "scan": {
         "title": "Scan",
-        "readOnly": "Read-only. It holds no permission that can create, change or delete anything.",
         "limitsSummary": "IAMAI limitations",
         "limits": [
           "Devices that send mail without signing in (Direct Send printers, scanners) leave no record; a legacy-authentication block can stop one the plan never listed. The step asks before that block enforces.",

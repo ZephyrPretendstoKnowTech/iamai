@@ -686,7 +686,7 @@ async function walkFixture(fx) {
           if (!/built and maintained by Jon Hope/.test(t2.text) || !/Its aim is layered protection/.test(t2.text)) add('P0', `${label}: tile 2 lacks the approved baseline sentences`)
           expectBtn(t2, /^Change baseline$/, 'secondary', 'tile 2')
         }
-        // 3 Scan: the read-only line and the limitations in both states (no Reads / Compares / Writes beats),
+        // 3 Scan: the limitations in both states (no Reads / Compares / Writes beats, no read-only line),
         // then exactly one of its states (docs/design/connect-mockup.html); the
         // number badge carries the state colour; nothing of the other states, and
         // nothing of the Plan tile's.
@@ -697,8 +697,7 @@ async function walkFixture(fx) {
           if (seen.length !== 1 || seen[0] !== want) add('P0', `${label}: tile 3 reads "${t3.h2}"; Scan in the ${want} state`)
           if (/What happens next/.test(t3.text)) add('P0', `${label}: tile 3 still reads What happens next`)
           for (const s of ['policies, people, sign-in records and licences', 'what each baseline policy is for', 'a dated plan for the difference']) if (t3.text.includes(s)) add('P0', `${label}: tile 3 still carries a Reads / Compares / Writes beat ("${s}")`)
-          if (!/Read-only\. It holds no permission that can create, change or delete anything\./.test(t3.text)) add('P0', `${label}: tile 3 lacks the read-only line`)
-          if (!/Read-only\. It holds no permission that can create, change or delete anything\./.test(t3.text)) add('P0', `${label}: tile 3 lacks the read-only line`)
+          if (/Read-only\. It holds no permission/.test(t3.text)) add('P0', `${label}: tile 3 still carries the read-only line`)
           const limits = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /IAMAI limitations/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; const ps = d.querySelectorAll('p'); const tile = d.closest('section.step-tile'); return { items: d.querySelectorAll('li').length, last: ((ps[ps.length - 1] || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: tile ? ((tile.querySelector('.n') || {}).textContent || '').trim() : '' } })()`)
           if (!limits) add('P0', `${label}: tile 3 has no IAMAI limitations collapsible`)
           else {
