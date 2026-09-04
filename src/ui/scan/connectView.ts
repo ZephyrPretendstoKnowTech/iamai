@@ -244,7 +244,7 @@ export function scanTile(input: ScanInput): ScanTile {
 // ---- 4 Plan: ready, the last full plan, waiting for the scan, or the sample ----
 export type PlanInput =
   /** A complete scan: the facts and Open the plan. The step counts arrive once the plan has computed; the previous scan's numbers show a drop. */
-  | { kind: 'ready'; snapshot: TenantSnapshot; at: string; counts: { steps: number; done: number } | null; previous?: PreviousScan | null; now?: number; serviceAccountIds?: readonly string[] }
+  | { kind: 'ready'; snapshot: TenantSnapshot; at: string; counts: { steps: number; done: number } | null; previous?: PreviousScan | null; now?: number; /** The accounts that are not people (derive/sets.ts notPeopleIds). */ notPeople?: ReadonlySet<string> }
   /** A scan with gaps kept the last full plan. */
   | { kind: 'last'; at: string }
   /** Signed in, no plan yet: the scan has not run, is running, or ended with gaps and nothing before it. */
@@ -276,7 +276,7 @@ export function planTile(input: PlanInput): PlanTile {
       const R = P.ready
       const w = input.snapshot.sources.signInEvidence?.coveredWindow ?? null
       // The people the plan counts (derive/sets.ts peopleCounts, Today's line): "2 active people · of 3 enabled"; the directory's row count appears nowhere.
-      const counts = peopleCounts(input.snapshot, input.snapshot.asOf, new Set(input.serviceAccountIds ?? []))
+      const counts = peopleCounts(input.snapshot, input.snapshot.asOf, input.notPeople ?? new Set())
       const policies = input.snapshot.config.caPolicies?.rows.length ?? 0
       // A count that fell by more than a third since the previous scan reads
       // "13 → 4 active people since Sep 2": the tenant, or the account's reach, shrank.

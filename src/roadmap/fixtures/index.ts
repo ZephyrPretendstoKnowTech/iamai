@@ -558,7 +558,8 @@ export const FIXTURE_SPECS: Spec[] = [
   // (walk-51 item 9) it adds 8 policies, and messy has to land above the
   // 40-policy line to keep proving the consolidation warning.
   { name: 'messy', users: 120, admins: 6, licence: 'p1', policies: 6, securityDefaults: true, perUserMfa: true, disabledPolicies: 24, reportOnlyPolicies: 6, breakGlassSmsOnly: true, exclusionGroupSize: 400, expect: { rings: 2, weeksAtMost: 8, namesListed: false, policyCapWarning: true } },
-  { name: 'midflight', users: 60, admins: 3, licence: 'p1', policies: 6, midflight: true, expect: { rings: 2, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
+  // 50 active people once the two emergency accounts are not people (derive/sets.ts notPeopleIds): the band table's one ring.
+  { name: 'midflight', users: 60, admins: 3, licence: 'p1', policies: 6, midflight: true, expect: { rings: 1, weeksAtMost: 8, namesListed: false, policyCapWarning: false } },
   // 36 active people and no sign-in evidence at all: nothing is in the zero
   // class, so MFA, device and session changes chain a soak apart; 34 days.
   { name: 'hostile', users: 40, admins: 2, licence: 'p1', policies: 3, hostile: true, expect: { rings: 1, weeksAtMost: 4, namesListed: false, policyCapWarning: false } },

@@ -17,7 +17,7 @@ import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
 import { campaignIds } from '../derive/population.ts'
-import { isNonPerson, notActiveUsers } from '../derive/sets.ts'
+import { isNonPerson, notActiveUsers, notPeopleIds } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { LOCKOUT_GOALS, lockoutIds } from './lockout.ts'
 import { accountVerdict } from './strand.ts'
@@ -623,7 +623,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // can lock out an account nobody uses. The risk is the other way round:
   // whoever signs in first registers the MFA method. Present only while there
   // is somebody to decide on; done when the count reaches 0 on re-scan.
-  const dormant = notActiveUsers(snapshot, snapshot.asOf, new Set(mapping.serviceAccountUserIds))
+  const dormant = notActiveUsers(snapshot, snapshot.asOf, notPeopleIds(mapping))
   if (dormant.length > 0) {
     const s = prereq('s-check-dormant-accounts')
     s.kind = 'check'

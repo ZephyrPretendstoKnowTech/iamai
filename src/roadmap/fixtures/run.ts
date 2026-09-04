@@ -13,6 +13,7 @@ import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { toCoverageMapping } from '../../mapping/store.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
+import { notPeopleIds } from '../../derive/sets.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap } from '../generate.ts'
@@ -68,7 +69,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
   })
   // Confirmed service accounts are counted nowhere (target-state §8.1): they
   // leave the viability rows here, exactly as sets.activeUsers leaves them out.
-  const viability = buildViabilityInputs(snapshot, snapshot.asOf, new Set(f.mapping.serviceAccountUserIds)).map(scoreMfaViability)
+  const viability = buildViabilityInputs(snapshot, snapshot.asOf, notPeopleIds(f.mapping)).map(scoreMfaViability)
   const names = buildNameDirectory(snapshot, f.groups)
   const input: RoadmapInput = {
     planId: f.planId,

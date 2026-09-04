@@ -19,7 +19,7 @@ import test from 'node:test'
 import type { Step, StepStatus } from '../roadmap/types.ts'
 import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { applicableGoals, doneSteps, goalCounts, trackableSteps } from './sets.ts'
+import { applicableGoals, doneSteps, goalCounts, trackableSteps, notPeopleIds } from './sets.ts'
 
 const STATUSES: StepStatus[] = ['done', 'ready', 'blocked', 'in-report-only', 'ready-to-enforce', 'skipped']
 
@@ -134,7 +134,7 @@ test('one denominator: active people agree across sets, viability and rollout, a
     const run = runFixture(f)
     const snapshot = run.input.snapshot
     const now = snapshot.asOf
-    const confirmed = new Set(f.mapping.serviceAccountUserIds ?? [])
+    const confirmed = notPeopleIds(f.mapping)
     const active = activeUsers(snapshot, now, confirmed)
     const notActive = notActiveUsers(snapshot, now, confirmed)
     const people = peopleCounts(snapshot, now, confirmed)
@@ -199,7 +199,7 @@ for (const f of allFixtures()) {
     const { affectedIds } = await import('./whoLine.ts')
     const run = runFixture(f)
     const snapshot = run.input.snapshot
-    const svc = new Set(f.mapping.serviceAccountUserIds)
+    const svc = notPeopleIds(f.mapping)
     const pc = peopleCounts(snapshot, snapshot.asOf, svc)
     for (const s of run.steps) {
       const p = s.population

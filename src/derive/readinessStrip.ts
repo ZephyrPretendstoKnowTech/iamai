@@ -16,6 +16,7 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { rolloutBucket, scoreMfaViability, sortViability } from '../scoring/mfaViability.ts'
 import type { MethodTier, MfaViability } from '../scoring/mfaViability.ts'
 import { campaignIds } from './population.ts'
+import { notPeopleIds } from './sets.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { adminUserIds } from '../roles.ts'
 import { lockoutIds } from '../roadmap/lockout.ts'
@@ -33,14 +34,15 @@ export function meetsBar(v: Pick<MfaViability, 'methodTiers' | 'mfa'>, admin: bo
 }
 
 export function readinessStrip(snapshot: TenantSnapshot, mapping: Pick<MappingState, 'breakGlassUserIds' | 'serviceAccountUserIds'>, now: string): ReadinessStrip {
-  const svc = new Set(mapping.serviceAccountUserIds)
-  const viability = sortViability(buildViabilityInputs(snapshot, now, svc).map(scoreMfaViability))
+  // The emergency and service accounts are not people (sets.ts notPeopleIds): one population with Today and the campaign.
+  const notPeople = notPeopleIds(mapping)
+  const viability = sortViability(buildViabilityInputs(snapshot, now, notPeople).map(scoreMfaViability))
   const pop = new Set(campaignIds(viability, snapshot, mapping))
   const admins = adminUserIds(snapshot.roles ?? { active: {} })
   const rows = viability.filter((v) => pop.has(v.userId))
   const person = (v: MfaViability): StripPerson => ({ id: v.userId, admin: admins.has(v.userId), meetsBar: meetsBar(v, admins.has(v.userId)), method: v.strongestMethod, lastMfa: v.evidence?.at ?? null })
   const phishingResistant = (v: MfaViability): boolean => v.methodTiers.includes('phishingResistant')
-  const lockedOut = new Set(lockoutIds('admins-phishing-resistant', viability, snapshot, new Set([...mapping.breakGlassUserIds, ...sharedDeviceIds(snapshot), ...svc])))
+  const lockedOut = new Set(lockoutIds('admins-phishing-resistant', viability, snapshot, new Set([...notPeople, ...sharedDeviceIds(snapshot)])))
   return {
     active: rows.length,
     tiles: {

@@ -18,6 +18,7 @@ import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { loadMappingState, saveMappingState, toCoverageMapping } from '../../mapping/store.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
+import { notPeopleIds } from '../../derive/sets.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { buildNameDirectory } from '../../names.ts'
@@ -233,7 +234,7 @@ export function usePlanData(
       facetOverrides: mapping.facetOverrides,
       goalMap: baseline.goalMap,
     })
-    const viability = buildViabilityInputs(snapshot, snapshot.asOf, new Set(mapping.serviceAccountUserIds)).map(scoreMfaViability)
+    const viability = buildViabilityInputs(snapshot, snapshot.asOf, notPeopleIds(mapping)).map(scoreMfaViability)
     const names = buildNameDirectory(snapshot, groups)
     const result = generateRoadmap({
       planId,
