@@ -104,6 +104,8 @@ export const INVENTORY = {
     columns: { name: 'Name', upn: 'Sign-in address', type: 'Type', activity: 'Activity', mfa: 'MFA state', method: 'Strongest method', licence: 'Licence', roles: 'Roles' },
     member: 'Member',
     guest: 'Guest',
+    /** Sign-in blocked (a shared mailbox, a resource): listed here, and not a person anywhere else. */
+    signInDisabled: 'sign-in disabled',
     p2: 'P2',
     p1: 'P1',
     free: 'Free',
