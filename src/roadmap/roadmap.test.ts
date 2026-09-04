@@ -282,9 +282,13 @@ test('11: geo policy: allowlist style chosen by data, NoExclusions dropped', () 
   const { input } = build({ baselinePolicies: [noEx, block, allow] })
   const steps = generateRoadmap(input).steps
   const step = stepFor(steps, 'geo-restriction')
-  // Allowlist style: everywhere except the allowed location, block.
-  const json = JSON.parse(step.action.json ?? '{}') as { conditions: { locations: { includeLocations: string[]; excludeLocations: string[] } } }
-  assert.deepEqual(json.conditions.locations, { includeLocations: ['All'], excludeLocations: ['loc-allowed'] })
+  // Allowlist style: everywhere except the allowed location, block. The allowed
+  // location is the author's own, and this tenant has none matching its country
+  // list, so the one resolution boundary leaves it out of the body and the step
+  // waits on the Preparation step that creates it (resolvePolicy.ts).
+  const json = JSON.parse(step.action.json ?? '{}') as { conditions: { locations: { includeLocations: string[]; excludeLocations?: string[] } } }
+  assert.deepEqual(json.conditions.locations, { includeLocations: ['All'] })
+  assert.deepEqual(step.action.missing?.map((m) => m.token), ['loc-allowed'])
   assert.doesNotMatch(step.action.json ?? '', /NoExclusions|loc-blocked/)
 })
 
