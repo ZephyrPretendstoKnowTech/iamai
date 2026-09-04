@@ -170,11 +170,16 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
 
   // The admins group: every group the plan loaded whose members hold an admin
   // role, the one holding the most admins first and ticked; the roles its
-  // members hold, by name. Groups only: no account is a row here.
+  // members hold, by name. Groups only: no account is a row here. The
+  // exclusions group is never a candidate (pickerUniverse, the same rule): it
+  // holds the emergency accounts, so it always looks like an admins group, and
+  // one group can never be both.
   if (stepId === DECISION_STEPS.adminsGroup) {
     const admins = adminUserIds(snapshot.roles)
+    const exclusions = lc(mapping.records['__globalExclusion']?.resolvedId ?? '')
     const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
     const candidates = [...(ctx.groups ?? [])]
+      .filter(([id]) => exclusions === '' || lc(id) !== exclusions)
       .map(([id, g]) => ({ id, g, adminMembers: g.memberIds.filter((m) => admins.has(m)) }))
       .filter((c) => c.adminMembers.length > 0)
       .sort((a, b) => b.adminMembers.length - a.adminMembers.length || (a.g.displayName ?? nameOf(a.id)).localeCompare(b.g.displayName ?? nameOf(b.id)))
