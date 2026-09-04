@@ -14,8 +14,9 @@ import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
 import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
-import { previousOf } from './scanRecord.ts'
-import { peopleCounts } from '../../derive/sets.ts'
+import { RUNGS, ladder, ladderCounts } from '../../derive/ladder.ts'
+import { todayView } from '../../derive/today.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
 
 const upn = 'alex@example.com'
 const tenant = 'Contoso Pty Ltd'
@@ -193,7 +194,7 @@ test('tile 3, scanning: one line with the elapsed time, Stop (tertiary), no stat
 
 // The strings that belong to one Plan state and no other.
 const PLAN_OWN: Record<PlanTile['kind'], string[]> = {
-  ready: ['ready · from the scan', 'Open the plan →', 'licence'],
+  ready: ['from the scan', 'Open the plan →'],
   last: ['last full plan · ', 'Open the last full plan'],
   waiting: [],
   sample: ['What the sample tenant produced', 'already in place', 'Open the sample plan'],
@@ -211,61 +212,35 @@ const planOnlyItsOwn = (t: PlanTile): void => {
   noOtherRole(tileStrings(t))
 }
 
-test('tile 4, Plan, ready: ready · from the scan N ago, people · policies · sign-in window · licence · steps and done, Open the plan (primary) alone, the accent badge', () => {
-  const t = planTile({ kind: 'ready', snapshot: full, at: full.asOf, counts: { steps: 33, done: 8 }, now: twoMinutesLater })
-  assert.equal(t.state, 'ready · from the scan 2 minutes ago')
+const NO_MAPPING = { breakGlassUserIds: [] as string[], serviceAccountUserIds: [] as string[] }
+const L = ladderCounts(ladder(full, NO_MAPPING, full.asOf))
+
+test('tile 4, Plan, ready (docs/design/mockups/connect-v2.html): "ready · N steps, N done · from the scan N ago", the ladder\'s five numbers, Open the plan (primary) alone, the accent badge; no facts row, no drop line', () => {
+  const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, ladder: L, now: twoMinutesLater })
+  assert.equal(t.state, 'ready · 33 steps, 8 done · from the scan 2 minutes ago')
   assert.equal(t.tone, 'done')
-  // The people the plan counts (Today's line): active people of enabled, never the directory's row count.
-  const counts = peopleCounts(full, full.asOf)
-  assert.ok(counts.active < full.users.length || counts.enabled < full.users.length || counts.active > 0)
-  assert.deepEqual(
-    t.facts?.map((f) => f.label),
-    [`active people · of ${counts.enabled} enabled`, 'policies', 'sign-in records', 'licence', 'steps · 8 done'],
-  )
-  assert.equal(t.facts?.[0].value, String(counts.active))
-  assert.notEqual(t.facts?.[0].value, String(full.users.length + 1), 'a guard against a coincidence: the value is the active count')
-  assert.equal(t.facts?.[1].value, '3')
-  assert.match(t.facts?.[2].value ?? '', /^[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+$/)
-  assert.match(t.facts?.[3].value ?? '', /^(P2|P1|Free)$/)
-  assert.equal(t.facts?.[4].value, '33')
+  assert.deepEqual(t.ladder, L, 'the five numbers are the ladder\'s')
+  assert.equal(t.facts, undefined, 'the facts row left the tile')
   assert.deepEqual(t.actions, [{ label: 'Open the plan →', weight: 'primary' }])
-  const counting = planTile({ kind: 'ready', snapshot: full, at: full.asOf, counts: null })
-  assert.equal(counting.facts?.length, 4, 'until the plan has computed, the four scan facts alone; never a placeholder count')
-  const free = fixtureSnapshot()
-  free.sources.signInEvidence = { status: 'disabled', coveredWindow: null, reason: 'not available on this licence (needs Entra ID P1)', asOf: free.asOf }
-  assert.equal(planTile({ kind: 'ready', snapshot: free, at: free.asOf, counts: null }).facts?.[2].value, 'not read', 'sign-ins not read: the fact says so, never an empty window')
+  // Until the plan has computed, the state carries the age alone: never a placeholder count.
+  const counting = planTile({ kind: 'ready', at: full.asOf, counts: null, ladder: L, now: twoMinutesLater })
+  assert.equal(counting.state, 'ready · from the scan 2 minutes ago')
+  assert.deepEqual(counting.ladder, L)
+  const page = tileStrings(t).join('\n')
+  assert.ok(!/→ \d|\d →|licence|sign-in records|policies/.test(page), `no drop line, no window, no facts: ${page}`)
   planOnlyItsOwn(t)
 })
 
-test('tile 4, ready: a count that fell by more than a third since the previous scan reads "13 → 4 active people since Sep 2"; smaller drops and the other facts read as before', () => {
-  const at = '2026-09-03T10:00:00.000Z'
-  const small = fixtureSnapshot()
-  const { active, enabled } = peopleCounts(small, small.asOf)
-  assert.ok(active > 0)
-  assert.equal(small.config.caPolicies?.rows.length, 3)
-  const before = { at: '2026-09-02T09:00:00.000Z', people: active * 3, policies: 10 }
-  const t = planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: before })
-  assert.deepEqual(t.facts?.[0], { value: `${active * 3} → ${active}`, label: `active people since Sep 2 · of ${enabled} enabled` })
-  assert.deepEqual(t.facts?.[1], { value: '10 → 3', label: 'policies since Sep 2' })
-  // A third or less is not a drop; a rise is not a drop; no previous scan, no arrow.
-  const plain = { value: String(active), label: `active people · of ${enabled} enabled` }
-  const steady = planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: { at: before.at, people: Math.ceil(active * 1.3), policies: 4 } })
-  assert.deepEqual(steady.facts?.[0], plain)
-  assert.deepEqual(steady.facts?.[1], { value: '3', label: 'policies' })
-  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: { at: before.at, people: Math.max(1, active - 1), policies: 1 } }).facts?.[0], plain)
-  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: null }).facts?.[0], plain)
-  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null }).facts?.[1], { value: '3', label: 'policies' })
-  const page = tileStrings(t).join('\n')
-  assert.ok(page.includes(`${active * 3} → ${active}`) && page.includes('active people since Sep 2'))
-  // The raw account total appears nowhere on the tile.
-  assert.ok(!tileStrings(planTile({ kind: 'ready', snapshot: small, at, counts: null })).includes(String(small.users.length)) || small.users.length === active, 'the directory row count is not a fact')
-})
-
-test('the previous scan is stored as the plan counts it: active people, never the directory\'s row count', () => {
-  const small = fixtureSnapshot()
-  const prev = previousOf({ snapshot: small, at: small.asOf })!
-  assert.equal(prev.people, peopleCounts(small, small.asOf).active)
-  assert.equal(prev.policies, 3)
+test("Connect's tile shows the numbers Today and the Plan show, on the demo and GetIAMAI", () => {
+  for (const name of ['demo', 'getiamai'] as const) {
+    const f = fixture(name)
+    const connect = ladderCounts(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
+    const today = ladderCounts(todayView(f.snapshot, f.snapshot.asOf, f.mapping).ladder)
+    assert.deepEqual(connect, today, `${name}: Connect and Today`)
+    assert.equal(RUNGS.reduce((n, r) => n + connect.rungs[r], 0), connect.active, `${name}: the five tiles sum to the active people`)
+    const t = planTile({ kind: 'ready', at: f.snapshot.asOf, counts: { steps: 30, done: 5 }, ladder: connect })
+    assert.deepEqual(t.ladder, connect)
+  }
 })
 
 test('tile 4 after a scan with gaps: last full plan · date and Open the last full plan (date) (tertiary) alone, no state colour; with nothing before it, it waits', () => {
@@ -289,9 +264,9 @@ test('tile 4 after a scan with gaps: last full plan · date and Open the last fu
 test("the page renders the scan's age from the one stored timestamp: Scan says complete · N ago, Plan says from the scan N ago with the same words, and no words say scanned", () => {
   const now = Date.parse(full.asOf) + 57 * 60_000
   const scan = scanTile({ kind: 'complete', at: full.asOf, now })
-  const plan = planTile({ kind: 'ready', snapshot: full, at: full.asOf, counts: { steps: 33, done: 8 }, now })
+  const plan = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, ladder: L, now })
   assert.equal(scan.state, 'complete · 57 minutes ago')
-  assert.equal(plan.state, 'ready · from the scan 57 minutes ago')
+  assert.equal(plan.state, 'ready · 33 steps, 8 done · from the scan 57 minutes ago')
   const age = scan.state.replace('complete · ', '')
   assert.ok(plan.state.endsWith(age), 'the two tiles read the same age')
   const page = [...tileStrings(accountTile({ tenant, upn, role: 'Global Administrator' })), ...tileStrings(scan), ...tileStrings(plan)].join('\n')
@@ -300,7 +275,8 @@ test("the page renders the scan's age from the one stored timestamp: Scan says c
   // The header and the Plan surface carry neither the scan's age nor the tenant: Connect alone does (docs/design/connect-mockup.html).
   const shell = JSON.stringify(app.shell)
   assert.ok(!/scanned|Re-scan|\{age\}/.test(shell), 'the header words carry no scan age or scan control')
-  const plan2 = (pages.plan as { line2: string }).line2
-  assert.equal(plan2, 'Today shows where each person stands.')
-  assert.ok(!/\{tenant\}|\{age\}/.test(plan2))
+  // The Plan's header words: the steps line and its variants, never the tenant or the scan's age (its second line left with docs/design/mockups/plan-top-v2.html).
+  const planWords = JSON.stringify(pages.plan)
+  assert.ok(!/\{tenant\}|\{age\}/.test(planWords))
+  assert.ok(!('line2' in (pages.plan as Record<string, unknown>)), 'pages.plan.line2 was retired')
 })

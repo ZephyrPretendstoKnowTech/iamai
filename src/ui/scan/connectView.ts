@@ -17,9 +17,7 @@ import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import type { DemoFacts } from '../demoFacts.ts'
-import { droppedByAThird } from './scanRecord.ts'
-import { peopleCounts } from '../../derive/sets.ts'
-import type { PreviousScan } from './scanRecord.ts'
+import type { LadderCounts } from '../../derive/ladder.ts'
 
 type Words = {
   h1: string
@@ -58,7 +56,7 @@ type Words = {
   }
   plan: {
     title: string
-    ready: { state: string; people: string; peopleSince: string; policies: string; signIns: string; window: string; notRead: string; licence: string; licences: { p2: string; p1: string; free: string }; dropValue: string; dropSince: string; steps: string; open: string }
+    ready: { state: string; stateCounted: string; open: string }
     last: { state: string; open: string }
     waiting: { state: string }
     sample: { lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksValue: string; weeksOne: string; open: string }
@@ -240,8 +238,8 @@ export function scanTile(input: ScanInput): ScanTile {
 
 // ---- 4 Plan: ready, the last full plan, waiting for the scan, or the sample ----
 export type PlanInput =
-  /** A complete scan: the facts and Open the plan. The step counts arrive once the plan has computed; the previous scan's numbers show a drop. */
-  | { kind: 'ready'; snapshot: TenantSnapshot; at: string; counts: { steps: number; done: number } | null; previous?: PreviousScan | null; now?: number; /** The accounts that are not people (derive/sets.ts notPeopleIds). */ notPeople?: ReadonlySet<string> }
+  /** A complete scan (docs/design/mockups/connect-v2.html): the state with the step counts once the plan has computed, the MFA readiness ladder's five numbers (derive/ladder.ts, the same as Today's and the Plan's), and Open the plan. */
+  | { kind: 'ready'; at: string; counts: { steps: number; done: number } | null; ladder: LadderCounts; now?: number }
   /** A scan with gaps kept the last full plan. */
   | { kind: 'last'; at: string }
   /** Signed in, no plan yet: the scan has not run, is running, or ended with gaps and nothing before it. */
@@ -255,15 +253,11 @@ export type PlanTile = {
   state: string
   tone: Tone
   lead?: string
+  /** The sample tenant's four facts, before sign-in. */
   facts?: { value: string; label: string }[]
+  /** The MFA readiness ladder's five numbers, on the ready tile. */
+  ladder?: LadderCounts
   actions: Action[]
-}
-
-function licenceWord(snapshot: TenantSnapshot): string {
-  const L = W.plan.ready.licences
-  if (snapshot.capabilities?.entraP2?.enabled) return L.p2
-  if (snapshot.capabilities?.entraP1?.enabled) return L.p1
-  return L.free
 }
 
 export function planTile(input: PlanInput): PlanTile {
@@ -271,33 +265,15 @@ export function planTile(input: PlanInput): PlanTile {
   switch (input.kind) {
     case 'ready': {
       const R = P.ready
-      const w = input.snapshot.sources.signInEvidence?.coveredWindow ?? null
-      // The people the plan counts (derive/sets.ts peopleCounts, Today's line): "2 active people · of 3 enabled"; the directory's row count appears nowhere.
-      const counts = peopleCounts(input.snapshot, input.snapshot.asOf, input.notPeople ?? new Set())
-      const policies = input.snapshot.config.caPolicies?.rows.length ?? 0
-      // A count that fell by more than a third since the previous scan reads
-      // "13 → 4 active people since Sep 2": the tenant, or the account's reach, shrank.
-      const prev = input.previous ?? null
-      const dropped = (now: number, before: number | undefined): boolean => prev !== null && droppedByAThird(now, before)
-      const value = (now: number, before: number | undefined): string => (dropped(now, before) ? fillText(R.dropValue, { before: String(before), now: String(now) }) : String(now))
-      const fact = (now: number, before: number | undefined, label: string): { value: string; label: string } =>
-        dropped(now, before) ? { value: value(now, before), label: fillText(R.dropSince, { label, date: monthDay(prev!.at) }) } : { value: String(now), label }
-      const people = dropped(counts.active, prev?.people)
-        ? { value: value(counts.active, prev?.people), label: fillText(R.peopleSince, { date: monthDay(prev!.at), enabled: counts.enabled }) }
-        : { value: String(counts.active), label: fillText(R.people, { enabled: counts.enabled }) }
+      const age = scanAgeWords(input.at, input.now)
       return {
         n: 4,
         kind: 'ready',
         title: P.title,
-        state: fillText(R.state, { age: scanAgeWords(input.at, input.now) }),
+        // The step counts arrive once the plan has computed; until then the state carries the scan's age alone, never a placeholder.
+        state: input.counts ? fillText(R.stateCounted, { steps: input.counts.steps, done: input.counts.done, age }) : fillText(R.state, { age }),
         tone: 'done',
-        facts: [
-          people,
-          fact(policies, prev?.policies, R.policies),
-          { value: w ? fillText(R.window, { from: monthDay(w.from), to: monthDay(w.to) }) : R.notRead, label: R.signIns },
-          { value: licenceWord(input.snapshot), label: R.licence },
-          ...(input.counts ? [{ value: String(input.counts.steps), label: fillText(R.steps, { done: input.counts.done }) }] : []),
-        ],
+        ladder: input.ladder,
         actions: [{ label: R.open, weight: 'primary' }],
       }
     }

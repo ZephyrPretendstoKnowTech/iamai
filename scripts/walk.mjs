@@ -625,7 +625,8 @@ async function walkFixture(fx) {
         if (h1 !== 'Plan the journey to your Conditional Access baseline.') add('P0', `${label}: the heading reads "${h1}"; Plan the journey to your Conditional Access baseline.`)
         if (!/IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to help you close the gaps without locking anyone out\. It is read-only and runs in this browser\./.test(text)) add('P0', `${label}: the line under the heading is missing or changed`)
         if (/Connect a tenant/.test(text)) add('P0', `${label}: "Connect a tenant" still renders`)
-        const bare = await evaluate(`[...document.querySelectorAll('main.page section.step-tile a[href]:not(.btn):not(.lnk)')].map((a) => (a.textContent || '').trim())`)
+        // The ladder's five tiles are links to Today filtered (docs/design/mockups/connect-v2.html), not actions.
+        const bare = await evaluate(`[...document.querySelectorAll('main.page section.step-tile a[href]:not(.btn):not(.lnk):not(.rung-tile)')].map((a) => (a.textContent || '').trim())`)
         if (bare.length > 0) add('P0', `${label}: bare link(s) on Connect: ${bare.join(' | ')}; every action is a button in one of three weights`)
         if (/Security Reader|Reports Reader|Directory Readers/.test(text)) add('P0', `${label}: a role other than Global Reader is named on screen`)
         if (/Everything the scan found is inside the plan/.test(text)) add('P0', `${label}: the "everything the scan found" line still renders`)
@@ -798,28 +799,26 @@ async function walkFixture(fx) {
           }
           for (const re of [/^Scan again$/, /^Scan tenant$/, /^Stop$/, /^Sign in with another account$/, /\bReads\b/, /IAMAI limitations/, /not read$/]) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 carries the Scan tile's ${re}`)
           if (wantPlan === 'ready') {
-            // The step counts arrive when the plan has computed; the four scan facts are there from the start.
-            const counted = await waitFor(`/\\d+\\s*steps · \\d+ done/.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
-            if (!counted) add('P0', `${label}: the Plan tile never counted its steps`)
-            const facts = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .facts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
-            const labels = facts.map((f) => f.label)
-            const plainOrDrop = (l, w) => l === w || new RegExp('^' + w + ' since [A-Z][a-z]{2} \\d+$').test(l)
-            // The people fact counts what the plan counts: "active people · of N enabled" (with "since <date>" after a drop); never the directory's row count.
-            const peopleLabel = /^active people( since [A-Z][a-z]{2} \d+)? · of \d+ enabled$/.test(labels[0])
-            if (labels.length !== 5 || !peopleLabel || !plainOrDrop(labels[1], 'policies') || labels[2] !== 'sign-in records' || labels[3] !== 'licence' || !/^steps · \d+ done$/.test(labels[4])) add('P0', `${label}: the Plan tile's facts read ${JSON.stringify(facts)}; active people · of N enabled · policies · sign-in records · licence · steps · N done`)
+            // The state carries the step counts once the plan has computed (docs/design/mockups/connect-v2.html):
+            // "ready · N steps, N done · from the scan <age>"; under it the ladder's header and five tiles, each
+            // linking to Today filtered to its rung; no facts row, no drop line.
+            const counted = await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan /.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
+            if (!counted) add('P0', `${label}: the Plan tile never counted its steps in its state line`)
+            const state = await evaluate(`((document.querySelectorAll('main.page section.step-tile')[3] || {}).querySelector('h2 .state') || {}).textContent || ''`)
+            const sm = state.match(/^ready · (\d+) steps, (\d+) done · from the scan /)
+            if (!sm) add('P0', `${label}: the Plan tile's state reads "${state}"; ready · N steps, N done · from the scan <age>`)
+            else if (Number(sm[2]) > Number(sm[1])) add('P0', `${label}: more done than steps: "${state}"`)
+            if ((await evaluate(`document.querySelectorAll('main.page section.step-tile .facts').length`)) > 0) add('P0', `${label}: the Plan tile still renders a facts row`)
+            if (/\d+ → \d+|\d+ → [A-Z][a-z]{2} \d+/.test(t4.text)) add('P0', `${label}: the Plan tile carries a drop line or a window: "${t4.text.slice(0, 80)}"`)
+            const tiles = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .rung-tiles .rung-tile')].map((t) => ({ label: ((t.querySelector('.rung-title') || {}).textContent || '').trim(), n: Number(((t.querySelector('.rung-n') || {}).textContent || '').trim()), href: t.getAttribute('href') || '' }))`)
+            if (tiles.length !== 5) add('P0', `${label}: the Plan tile's ladder has ${tiles.length} tiles; five`)
             else {
-              if (fx.mock === 'drop') {
-                // The previous scan read three times as many: "15 → 5 people since <date>", and the same for policies.
-                if (!/^\d+ → \d+$/.test(facts[0].value) || !/^active people since [A-Z][a-z]{2} \d+ · of \d+ enabled$/.test(facts[0].label)) add('P0', `${label}: the people fact reads ${JSON.stringify(facts[0])}; "N → n" with "active people since <date> · of N enabled" after a drop of more than a third`)
-                if (!/^\d+ → \d+$/.test(facts[1].value) || !/^policies since [A-Z][a-z]{2} \d+$/.test(facts[1].label)) add('P0', `${label}: the policies fact reads ${JSON.stringify(facts[1])}; "N → n" with "policies since <date>" after a drop of more than a third`)
-                const [before, now] = facts[0].value.split(' → ').map(Number)
-                if (!(now < before * (2 / 3))) add('P0', `${label}: the drop fact shows ${facts[0].value}, not a drop of more than a third`)
-              } else if (!/^\d+$/.test(facts[0].value) || !/^\d+$/.test(facts[1].value)) add('P0', `${label}: the Plan tile's counts are not plain numbers without a drop: ${JSON.stringify(facts)}`)
-              if (!/^\d+$/.test(facts[4].value)) add('P0', `${label}: the Plan tile's step count is not a number: ${JSON.stringify(facts)}`)
-              if (/→\s*$/.test(facts[2].value) || /^\s*→/.test(facts[2].value)) add('P0', `${label}: the sign-in records fact renders an empty window`)
-              if (fx.mock === 'free' && facts[2].value !== 'not read') add('P0', `${label}: sign-ins were not read and the fact does not say so: ${JSON.stringify(facts[2])}`)
-              const done = Number((labels[4].match(/\d+/) || ['0'])[0])
-              if (done > Number(facts[4].value)) add('P0', `${label}: more done than steps: ${JSON.stringify(facts[4])}`)
+              if (tiles.some((t, k) => t.label !== RUNG_TITLES[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
+              const active = Number((t4.text.match(/of (\d+) active (?:person|people)/) || [])[1])
+              if (tiles.reduce((a, t) => a + t.n, 0) !== active) add('P0', `${label}: the tiles sum to ${tiles.reduce((a, t) => a + t.n, 0)} and the header says of ${active} active people`)
+              for (const [k, t] of tiles.entries()) if (!new RegExp(`#/today/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; Today filtered to its rung`)
+              if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: Connect's "${t.label}" reads ${t.n} and Today's ${ladderCounts[t.label]}`)
+              if (stripCounts) for (const t of tiles) if (stripCounts[t.label] !== undefined && stripCounts[t.label] !== t.n) add('P0', `${label}: Connect's "${t.label}" reads ${t.n} and the Plan's ${stripCounts[t.label]}`)
               // One denominator (E4): the Plan header's counts, read now rather than
               // from the Plan route's capture (the walk's own clicks there mark a
               // Cleanup row done, so an earlier capture is stale by design).
@@ -829,7 +828,7 @@ async function walkFixture(fx) {
                 const headerNow = onPlan ? await evaluate(`((document.querySelector('main.page p.line') || {}).textContent || '').replace(/\\s+/g, ' ')`) : ''
                 const hm = headerNow.match(/(\d+) steps · (\d+) (?:in place|done)/)
                 if (!hm) add('P0', `${label}: the Plan header could not be read for the count check: "${headerNow}"`)
-                else if (hm[1] !== facts[4].value || hm[2] !== String(done)) add('P0', `${label}: the Plan tile counts ${facts[4].value} steps · ${done} done; the Plan header ${hm[1]} · ${hm[2]}`)
+                else if (sm && (hm[1] !== sm[1] || hm[2] !== sm[2])) add('P0', `${label}: the Plan tile counts ${sm[1]} steps, ${sm[2]} done; the Plan header ${hm[1]} · ${hm[2]}`)
                 await evaluate(`location.hash = '#/connect'`)
                 await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 15000)
               }
@@ -1619,7 +1618,6 @@ const fixtures = [
   // The signed-in account with a stale directory sign-in: never dormant, never Not active.
   { name: 'mock-operator', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&operatorDormant=1`, routes: ['today', 'plan'], mock: 'operator' },
   // A scan that read a third of the people and policies the previous one did.
-  { name: 'mock-drop', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&previous=1`, routes: ['connect'], mock: 'drop' },
   // The demo with an author update over the pinned package: the review rows.
   // Named mock-, not demo-: the demo's plan checks key on the demo- prefix, and this fixture walks Connect alone.
   { name: 'mock-author', base: `http://localhost:${PORT}/rollout/?demo=1&author=1`, routes: ['connect'], mock: 'author' },
