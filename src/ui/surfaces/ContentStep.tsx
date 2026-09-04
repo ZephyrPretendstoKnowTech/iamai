@@ -22,7 +22,7 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { jsonOffered, missingObjects } from './stepJson.ts'
+import { jsonOffered, missingObjects, policyJson, policyJsonText } from './stepJson.ts'
 import { commsFor, datesLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
@@ -208,11 +208,11 @@ export function ContentStep({
           {(tab === 'json' || tab === 'ps') && !jsonOffered(step) && (
             <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
           )}
-          {tab === 'json' && jsonOffered(step) && <pre className="mono">{JSON.stringify(policyJson(step), null, 2)}</pre>}
+          {tab === 'json' && jsonOffered(step) && <pre className="mono">{policyJsonText(step)}</pre>}
           {tab === 'ps' && jsonOffered(step) && <pre className="mono">{powershellFor(policyJson(step), step.kind === 'adjust' ? (step.tracking?.policyId ?? null) : null)}</pre>}
           {jsonOffered(step) && (
             <p className="actions">
-              <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, JSON.stringify(policyJson(step), null, 2), 'application/json', REDACTED)}>
+              <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, policyJsonText(step), 'application/json', REDACTED)}>
                 Download JSON
               </Button>
             </p>
@@ -528,6 +528,3 @@ function More({ cs, ex, step, onSkip, onUnskip, onDoesntApply, copy, copied, ope
   )
 }
 
-function policyJson(step: Step): unknown {
-  return step.action?.json ? JSON.parse(step.action.json) : { note: 'Portal steps show the policy to create.' }
-}

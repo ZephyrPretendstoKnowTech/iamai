@@ -26,7 +26,11 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
     conditions: { users: { includeUsers: ['All'], excludeGroups: ['ref-exclusions'] } },
     grantControls: { operator: 'OR', builtInControls: ['mfa'] },
   }
-  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', 'x', { unresolved: new Map([['ref-exclusions', null]]) })
+  // The author's own group, from the baseline the policy came from: the one
+  // resolution boundary reads the reference there, and this tenant has nothing
+  // to resolve it with.
+  const policies = [{ displayName: 'author', conditions: { users: { excludeGroups: ['ref-exclusions'] } } }] as never
+  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', 'x', { tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null, allowedCountriesLocationId: null }, policies })
   assert.ok(action.json, 'json produced')
   assert.doesNotMatch(action.json!, /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the JSON')
   assert.doesNotMatch(action.json!, /"excludeGroups"/, 'the array emptied by stripping loses its key')

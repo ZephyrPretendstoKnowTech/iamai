@@ -10,6 +10,20 @@ export function missingObjects(step: Step): { token: string; stepId: string | nu
   return (step.action.missing ?? []).map((m) => ({ ...m, title: (m.stepId && stepById[m.stepId]?.title) || m.token }))
 }
 
+/**
+ * The body the JSON tab shows, the PowerShell tab wraps and Download JSON
+ * saves: the one resolved policy (roadmap/resolvePolicy.ts), read once so the
+ * three channels can never carry three bodies.
+ */
+export function policyJson(step: Step): unknown {
+  return step.action?.json ? JSON.parse(step.action.json) : { note: 'Portal steps show the policy to create.' }
+}
+
+/** The three channels' one text: the resolved body, as it is downloaded and shown. */
+export function policyJsonText(step: Step): string {
+  return JSON.stringify(policyJson(step), null, 2)
+}
+
 /** True when the JSON tab, the PowerShell tab and Download JSON are offered. */
 export function jsonOffered(step: Step): boolean {
   return typeof step.action.json === 'string' && missingObjects(step).length === 0
