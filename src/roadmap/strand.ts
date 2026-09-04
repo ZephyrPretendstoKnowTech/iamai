@@ -1,7 +1,7 @@
 // Strand simulation (roadmap-v2.md §7): would carrying out a step, as written,
 // lock a given account out? Pure: runs in tests, the worker and the page.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { finalTargets } from './operations.ts'
+import { finalTargets, implementationOffered, isOpenPolicy } from './operations.ts'
 import type { Step } from './types.ts'
 
 export type StrandVerdict = { stranded: boolean; unknown: boolean; reason: string }
@@ -23,18 +23,23 @@ const PHISHING_RESISTANT = new Set([
  */
 export function canDenyAccess(step: Step): boolean {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return false
-  // What the step actually leaves behind: a create's body, an update's policy
-  // with its own patch applied (roadmap/operations.ts finalTargets). Read from
-  // the operations, never from a body serialised beside them, which could say
-  // something else.
   type Body = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }
-  for (const body of finalTargets(step) as Body[]) {
+  const denies = (body: Body): boolean => {
     const grant = body.grantControls
     if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
-    if (body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined)) return true
+    return Boolean(body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined))
   }
-  // A step with no operation to read — one already in place, one the plan cannot
-  // write yet — says nothing of its own: the goal family decides.
+  // A policy the plan can write answers for itself: what it leaves behind is a
+  // create's body or an update's policy with its patch applied
+  // (roadmap/operations.ts finalTargets). The goal's family never overrules it,
+  // and a policy the plan cannot write invents no impact at all.
+  if (isOpenPolicy(step)) {
+    if (!implementationOffered(step)) return false
+    return (finalTargets(step) as Body[]).some(denies)
+  }
+  // A policy already in place has no operation but is live in the tenant, and a
+  // step that is not a policy at all — the enforce step — has none either: the
+  // goal family decides for both, as it always did.
   return step.readiness.family !== 'other'
 }
 

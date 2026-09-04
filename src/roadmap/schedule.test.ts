@@ -46,7 +46,7 @@ function step(over: Partial<Step> & { id: string }): Step {
       json: '{}',
       portalSteps: [],
       missing: [],
-      resolution: { policies: [{ sourceName: over.id, mode: 'create' as const, policyId: null, body: { displayName: over.id } }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } },
+      resolution: { policies: [{ sourceName: over.id, mode: 'create' as const, policyId: null, body: { displayName: over.id, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } },
     },
     history: [],
     skipReason: null,

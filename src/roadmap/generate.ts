@@ -224,9 +224,10 @@ export type StepPolicyInput = {
   displayName?: string
   /**
    * The tenant policy this member is already represented by, so the operation is
-   * an update to it rather than a second copy. Absent for a create.
+   * an update to it rather than a second copy: its id, its current state and the
+   * policy itself, which the update's target is built from. Absent for a create.
    */
-  target?: { policyId: string; state: string } | null
+  target?: { policyId: string; state: string; policy: RawPolicy | null } | null
 }
 
 /** The sections of a policy an update may carry, in the order a person meets them in the portal. */
@@ -246,10 +247,12 @@ const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], Cha
 }
 
 /**
- * The policy an update leaves behind: the whole policy it is working towards
- * with its own patch applied. A patch that turns a report-only policy on makes
- * the target enabled too — nothing downstream may read a target the submitted
- * body contradicts.
+ * The policy an update leaves behind: the tenant's own policy with this exact
+ * patch applied. Built from what the tenant has, not from the baseline's version
+ * of it, so a field the update does not submit stays as the tenant set it —
+ * including one the tenant deliberately set differently. A patch that turns a
+ * report-only policy on makes the target enabled too; nothing downstream may
+ * read a target the submitted body contradicts.
  */
 function withPatch(whole: RawPolicy, patch: RawPolicy): RawPolicy {
   const out: RawPolicy = { ...whole, ...patch }
@@ -334,15 +337,18 @@ export function buildCreateAction(
     const target = p.target ?? null
     if (target) {
       const patch = patchOf(whole.policy, sections)
+      // The policy the change leaves behind: the tenant's own policy with this
+      // patch applied. Read for explanation, impact and audit; never submitted.
+      // Without the tenant's policy there is no complete target, and the whole
+      // step is unavailable rather than described from a partial body.
+      const current = target.policy
       operations.push({
         sourceName: p.sourceName,
         mode: 'update',
         policyId: target.policyId,
         body: patch,
         baseline: wholeBaseline ? patchOf(wholeBaseline, sections) : undefined,
-        // The policy the change leaves behind: the whole policy with this exact
-        // patch applied. Read for explanation, impact and audit; never submitted.
-        target: withPatch(whole.policy, patch),
+        target: current ? withPatch(current, patch) : undefined,
       })
     } else {
       operations.push({ sourceName: p.sourceName, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline })
@@ -504,19 +510,36 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // resolves the author's strength to one of these, the body carries the
   // tenant's id — so it must carry the tenant's name too, or an instruction
   // would name one object while the request submits another.
-  const strengthNames = new Map(
-    ((snapshot.config.authStrengths?.rows ?? []) as Record<string, unknown>[])
-      .filter((x) => typeof x.id === 'string' && typeof x.displayName === 'string')
-      .map((x) => [String(x.id).toLowerCase(), String(x.displayName)]),
-  )
-  /** The resolved policy with its authentication strength named as this tenant knows it. */
+  const strengthNames = new Map<string, string>()
+  for (const row of (snapshot.config.authStrengths?.rows ?? []) as Record<string, unknown>[]) {
+    if (typeof row.id === 'string' && typeof row.displayName === 'string') strengthNames.set(row.id.toLowerCase(), row.displayName)
+  }
+  // A person who confirmed the mapping named the object as they picked it; that
+  // name travels with the id even when the scan holds no row for it.
+  for (const rec of Object.values(mapping.records ?? {})) {
+    if (typeof rec.resolvedId === 'string' && typeof rec.resolvedName === 'string' && rec.resolvedName.length > 0) {
+      if (!strengthNames.has(rec.resolvedId.toLowerCase())) strengthNames.set(rec.resolvedId.toLowerCase(), rec.resolvedName)
+    }
+  }
+  /**
+   * The resolved policy with its authentication strength named as this tenant
+   * knows it. Where the id moved and no tenant name is known, the author's name
+   * goes with it: a strength named for one object while the request names
+   * another is worse than a strength the instruction describes generically.
+   */
   const namedStrength = (resolved: ResolvedPolicy): ResolvedPolicy => {
     const grant = resolved.body.grantControls as { authenticationStrength?: { id?: unknown; displayName?: unknown } } | null | undefined
     const strength = grant?.authenticationStrength
-    const id = typeof strength?.id === 'string' ? strength.id.toLowerCase() : null
-    const name = id ? strengthNames.get(id) : undefined
-    if (!strength || !name || name === strength.displayName) return resolved
-    return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: { ...strength, displayName: name } } } }
+    if (!strength || typeof strength.id !== 'string') return resolved
+    const substituted = resolved.substitutions.has(strength.id.toLowerCase()) || [...resolved.substitutions.values()].some((ids) => ids.some((x) => x.toLowerCase() === (strength.id as string).toLowerCase()))
+    const name = strengthNames.get(strength.id.toLowerCase())
+    if (name) {
+      if (name === strength.displayName) return resolved
+      return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: { ...strength, displayName: name } } } }
+    }
+    if (!substituted) return resolved
+    const { displayName: _dropped, ...rest } = strength as Record<string, unknown>
+    return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: rest } } }
   }
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
@@ -929,7 +952,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (changing.length < 2) {
         // One policy: the goal's coverage names the tenant policy it changes.
         const one = named(changing, existing?.policyName ?? proposedPolicyName(goal, naming))
-        one[0] = { ...one[0], target: existing ? { policyId: existing.policyId, state: existing.state } : null }
+        one[0] = { ...one[0], target: existing ? { policyId: existing.policyId, state: existing.state, policy: existingRaw } : null }
         action = changesFor(buildCreateAction(one, mapping, planId, stepId, goal.id, { sections }), sections, existingRaw)
       } else {
         // Two policies: each member needs its own tenant policy, or none. The
@@ -950,7 +973,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         } else {
           const withTargets = members.map((m, i) => {
             const p = matched[i]
-            return p ? { ...m, target: { policyId: String(p.id), state: String(p.state ?? 'enabled') } } : { ...m, target: null }
+            return p ? { ...m, target: { policyId: String(p.id), state: String(p.state ?? 'enabled'), policy: p } } : { ...m, target: null }
           })
           const firstUpdate = matched.find((p) => p !== null) ?? null
           action = changesFor(buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections }), sections, firstUpdate)

@@ -13,13 +13,34 @@
 import type { Action, PolicyOperation, Step } from './types.ts'
 import { hasBaselineConflict } from './baselineConflict.ts'
 
+const isObject = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v)
+
+/**
+ * True when an update's target really is the policy its body leaves behind: a
+ * complete policy, and every field the body submits already agreeing with it.
+ * A target that disagrees with the request would let one channel describe the
+ * policy the tenant ends up with while another submits something else.
+ */
+function targetAgrees(op: PolicyOperation): boolean {
+  const target = op.target
+  if (!isObject(target) || Object.keys(target).length === 0) return false
+  // Every field the body submits is already in the target. The target carries
+  // more — the fields the update leaves alone — so a section the body narrows is
+  // compared field by field rather than whole.
+  const agrees = (whole: unknown, submitted: unknown): boolean => {
+    if (isObject(whole) && isObject(submitted)) return Object.entries(submitted).every(([k, v]) => agrees(whole[k], v))
+    return JSON.stringify(whole) === JSON.stringify(submitted)
+  }
+  return agrees(target, op.body)
+}
+
 /** True when the operation says exactly one thing: create this policy, or change that one. */
 export function isValidOperation(op: PolicyOperation | null | undefined): op is PolicyOperation {
   if (!op || typeof op !== 'object') return false
   if (typeof op.sourceName !== 'string') return false
-  if (op.body === null || typeof op.body !== 'object' || Array.isArray(op.body)) return false
+  if (!isObject(op.body)) return false
   if (op.mode === 'create') return op.policyId === null || op.policyId === undefined
-  if (op.mode === 'update') return typeof op.policyId === 'string' && op.policyId.length > 0 && Object.keys(op.body).length > 0
+  if (op.mode === 'update') return typeof op.policyId === 'string' && op.policyId.length > 0 && Object.keys(op.body).length > 0 && targetAgrees(op)
   return false
 }
 
@@ -62,9 +83,22 @@ export function unavailableReason(step: PolicyStep): UnavailableReason | null {
   return null
 }
 
-/** True when the goal is already in place: nothing to write, and nothing wrong. */
+/**
+ * True when the step carries operations that do not hold together. Not the same
+ * as having none: a goal already in place has none because there is nothing to
+ * write, which is a result of its own.
+ */
+export function hasMalformedOperations(step: PolicyStep): boolean {
+  return (step.action.resolution?.policies ?? []).length > 0 && validOperations(step.action).length === 0
+}
+
+/**
+ * True when the goal is already in place: nothing to write, and nothing wrong.
+ * A step carrying operations that failed validation is not preserved — it is
+ * broken, and says so.
+ */
 export function isPreserved(step: PolicyStep): boolean {
-  return step.status === 'done' && validOperations(step.action).length === 0
+  return step.status === 'done' && (step.action.resolution?.policies ?? []).length === 0
 }
 
 /**
@@ -108,5 +142,9 @@ export function operationBodies(step: PolicyStep): Record<string, unknown>[] {
  * — reads these and never a body serialised somewhere else.
  */
 export function finalTargets(step: PolicyStep): Record<string, unknown>[] {
-  return operationsOf(step).map((o) => (o.mode === 'update' ? (o.target ?? o.body) : o.body))
+  // An update's target is the tenant's own policy with this patch applied; a
+  // create's is its body. There is no fallback to the patch itself: a partial
+  // body read as a whole policy would understate what the change leaves behind,
+  // and an operation without a complete target is not valid in the first place.
+  return operationsOf(step).map((o) => (o.mode === 'update' ? (o.target as Record<string, unknown>) : o.body))
 }

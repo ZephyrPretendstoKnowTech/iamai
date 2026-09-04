@@ -63,9 +63,13 @@ for (const f of fixtures) {
     // regenerated from the snapshot.
     const inWaves = new Set(schedule.waves.flatMap((w) => w.stepIds))
     for (const s of steps) {
-      const asRow = s.status !== 'done' && inWaves.has(s.id)
+      // A policy the plan cannot write yet is in no wave — it has no date to sit
+      // under — and renders in the Plan's own undated group (Plan.tsx heldRows).
+      const held = unavailableReason(s) !== null
+      const asRow = s.status !== 'done' && (inWaves.has(s.id) || held)
       const inFooter = s.status === 'done'
-      assert.ok(asRow !== inFooter, `${f.name} ${s.id} (${s.status}) renders ${asRow && inFooter ? 'twice' : 'nowhere'}: inWave=${inWaves.has(s.id)}`)
+      assert.ok(asRow !== inFooter, `${f.name} ${s.id} (${s.status}) renders ${asRow && inFooter ? 'twice' : 'nowhere'}: inWave=${inWaves.has(s.id)}, held=${held}`)
+      if (held) assert.ok(!inWaves.has(s.id), `${f.name} ${s.id}: a policy the plan cannot write is in no dated wave`)
     }
   })
 

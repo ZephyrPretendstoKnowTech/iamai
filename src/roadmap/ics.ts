@@ -1,6 +1,7 @@
 // ICS export (roadmap-v2.md §8): one calendar entry per scheduled step, from
 // its first ring to its last, and one per Cleanup row on its day (E4). Pure; the
 // file is built in the browser.
+import { unavailableReason } from './operations.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 
 function icsDate(iso: string): string {
@@ -30,6 +31,9 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     [why, dates ?? '', whatToDo.length > 0 ? `What to do: ${whatToDo.join(' | ')}` : '', doneWhen.length > 0 ? `Done when: ${doneWhen.join(' | ')}` : '', ifWrong ?? ''].filter(Boolean).join('\n')
   for (const s of steps) {
     if (s.status === 'done' || s.status === 'skipped') continue
+    // A policy the plan cannot write has no entry, whatever dates a step loaded
+    // from an older plan file still carries (roadmap/operations.ts).
+    if (unavailableReason(s) !== null) continue
     // A change to an existing policy has no ring: its enforcement instant is its day.
     const start = s.rings[0]?.plannedStart ?? s.events?.enforce.at ?? null
     const end = s.rings.at(-1)?.plannedEnd ?? start

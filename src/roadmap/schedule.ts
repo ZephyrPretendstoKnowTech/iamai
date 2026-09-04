@@ -676,10 +676,10 @@ export function buildSchedule(
   // start, no report-only date, no ring dates and no enforcement event. It stays
   // in the foundation wave so the plan still shows it — a step in no wave at all
   // renders nowhere — waiting beside the Preparation work it needs.
-  // A policy the plan cannot write yet is in no enforcement wave. It keeps its
-  // place in the foundation wave so the plan still shows the row — a step in no
-  // wave at all renders nowhere — but it takes no date from it (rowWhen.ts).
-  const day0Steps = steps.filter((s) => !isEnforcement(s)).map((s) => s.id)
+  // A policy the plan cannot write yet is in no wave at all — not the foundation
+  // wave either, whose dates are the Preparation work's and not this policy's.
+  // The Plan renders it in its own undated group instead (Plan.tsx heldRows).
+  const day0Steps = steps.filter((s) => !isEnforcement(s) && !nothingToRun(s)).map((s) => s.id)
   for (const id of day0Steps) waveOf[id] = 0
   waves.push({ wave: 0, phase: 0, phases: [0], start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })
   const enforcement = steps.filter(isEnforcement).filter((s) => placed.has(s.id))
