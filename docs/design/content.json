@@ -610,7 +610,7 @@
         "accountTooltip": "Signed in as {username}",
         "signOut": "Sign out",
         "forget": "Forget this tenant",
-        "forgetTooltip": "Deletes everything IAMAI stored for this tenant on this device, then signs out",
+        "forgetTooltip": "Deletes everything IAMAI stored for this tenant on this device; you stay signed in",
         "demoBanner": "Sample data · nothing here is from a real tenant",
         "demoBannerWeek2": "Sample data · week 2",
         "demoLeave": "Leave the demo",

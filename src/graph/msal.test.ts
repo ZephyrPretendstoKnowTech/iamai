@@ -30,3 +30,15 @@ test('authReady waits for both the memoized init and the warmed authority metada
   assert.match(body, /initAuth\(\)/, 'authReady does not await initAuth')
   assert.match(body, /warmAuthority\(\)/, 'authReady does not warm the authority metadata')
 })
+
+test('sign-out clears the cache whether or not MSAL held an account, and redirects only with one; it never routes the page itself (ui/actions.ts does)', () => {
+  const start = src.indexOf('export async function signOut')
+  assert.ok(start >= 0)
+  const body = src.slice(start, src.indexOf('\n}', start))
+  const clearAt = body.indexOf('clearAuthCache()')
+  const returnAt = body.indexOf('if (!account) return')
+  const redirectAt = body.indexOf('msal.logoutRedirect({ account })')
+  assert.ok(clearAt >= 0 && returnAt >= 0 && redirectAt >= 0, body)
+  assert.ok(clearAt < returnAt && returnAt < redirectAt, 'the cache is cleared before the no-account return, and the redirect comes last')
+  assert.doesNotMatch(body, /window\.location/, 'the action module lands the page on Connect; the library only signs out')
+})

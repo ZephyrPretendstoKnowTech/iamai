@@ -603,6 +603,41 @@ footer.app a {
   color: var(--ink-2);
   font-size: var(--t-2);
 }
+/* The scan in flight, on every page but Connect (ui/actions.ts): one line under the header. */
+.scan-line {
+  margin: 0;
+  padding: 8px var(--pad);
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-2);
+  font-size: var(--t-2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.scan-line .callout {
+  margin: 0;
+}
+.menu-list .menu-error {
+  margin: 4px 12px 6px;
+  max-width: 16rem;
+}
+/* A heading with its page's own action beside it (Today's Scan again). */
+.surface .page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.surface .page-head h1 {
+  margin: 0 0 12px;
+}
+.surface .page-head-actions {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
 @media (max-width: 700px) {
   header.app {
     height: auto;

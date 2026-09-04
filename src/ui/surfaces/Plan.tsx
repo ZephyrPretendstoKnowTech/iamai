@@ -34,6 +34,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
 import { returnToStep, stepFromPlanHash } from '../shell/routes.ts'
+import { scan as runScan } from '../actions.ts'
 
 type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }; blocked: { after: string } }
 const PP = pages.plan as unknown as PlanPage
@@ -44,15 +45,16 @@ const S = app.shell
 // contentLists total when a step opens a frame before the mapping settles.
 const EMPTY_MAPPING = { breakGlassUserIds: [], serviceAccountUserIds: [] } as unknown as MappingState
 
-export function Plan({ scan, baseline, account, onScan }: {
+export function Plan({ scan: lastScan, baseline, account }: {
   scan: { snapshot: TenantSnapshot; at: string } | null
   baseline: BaselineResult | null
   account: AccountInfo | null
-  /** Scan to update the plan, from inside a step: the header's handler, told where to return (#/plan/<stepId>). */
-  onScan?: (returnTo: string) => void
 }) {
+  const scan = lastScan
   const operatorId = operatorIdOf(scan?.snapshot ?? null, account)
   const data = usePlanData(scan, baseline)
+  // A step's Scan to update the plan (ui/actions.ts): the scan runs from here, its line under the header, and returns to the step.
+  const onScan = (returnTo: string): void => void runScan(returnTo)
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
   // The tenant's facts (derive/facts.ts), the same numbers Today and Connect show, once the mapping has loaded.

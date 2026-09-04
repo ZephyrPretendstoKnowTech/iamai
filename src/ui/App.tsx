@@ -2,9 +2,8 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/auth.ts'
 import { fetchTenantName } from '../graph/organization.ts'
-import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
-import type { TokenSource } from '../graph/collect/runScan.ts'
+import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
+import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { GLOBAL_ADMINISTRATOR } from '../graph/collect/tokenRoles.ts'
 import { authErrorOf, classifyAuthError } from '../graph/authError.ts'
 import type { SignInError } from '../graph/authError.ts'
@@ -20,6 +19,7 @@ import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import type { BaselineResult } from './baseline.ts'
 import { Plan } from './surfaces/Plan.tsx'
 import { Today } from './surfaces/Today.tsx'
+import { IDLE_SCAN, setScan, setSession, useSession } from './session.ts'
 // The surfaces a first visit does not open arrive on demand (prompt 53 queue
 // item 8): Export carries the print and every exporter, Inventory its tables,
 // How its endpoint tables. Plan, Today and Connect stay in the first chunk.
@@ -60,56 +60,25 @@ const MOCK = DEV_PANEL && new URLSearchParams(window.location.search).get('mock'
 const DEMO = isDemo()
 
 export function App() {
-  const [account, setAccount] = useState<AccountInfo | null>(null)
+  // The session (ui/session.ts): who is signed in, the stored scan, the scan in
+  // flight. ui/actions.ts changes it from any page's button; this reads it.
+  const { account, tenantName, lastScan, scan, demoWeek2 } = useSession()
   const [ready, setReady] = useState(false)
   // A sign-in that returned an error, classified (graph/authError.ts): Connect's first tile shows one of three states from it.
   const [authError, setAuthError] = useState<SignInError | null>(null)
-  const [tenantName, setTenantName] = useState<string | null>(null)
   const [baseline, setBaseline] = useState<BaselineResult | null>(null)
   const [baselineRestoreError, setBaselineRestoreError] = useState<string | null>(null)
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
-  // The stored scan, with the scan before it in three numbers (scan/scanRecord.ts).
-  const [lastScan, setLastScan] = useState<ScanRecord | null>(null)
   // Test support (dev builds, ?author=1): an author update over the pinned package, no network.
   const [mockAuthorUpdate, setMockAuthorUpdate] = useState<BaselineUpdate | null>(null)
   useEffect(() => {
     if (!import.meta.env.DEV || new URLSearchParams(window.location.search).get('author') !== '1') return
     void import('../testing/authorUpdate.ts').then((m) => setMockAuthorUpdate(m.mockAuthorUpdate()))
   }, [])
-  const [scanRunning, setScanRunning] = useState(false)
-  // A step's Scan to update the plan: Connect starts the scan as soon as it
-  // mounts, and returns to the step when it finishes (target-state §2).
-  const [rescanRequested, setRescanRequested] = useState(false)
-  // Where the scan lands when it finishes: the Plan, or the step whose Scan to
-  // update the plan asked for it (#/plan/<stepId>); consumed when the scan lands.
-  const [scanReturnTo, setScanReturnTo] = useState<string | null>(null)
-  // The demo's Scan again (Connect's Scan tile) advances to a week-two snapshot and back (prompt 50 item 14).
-  const [demoWeek2, setDemoWeek2] = useState(false)
-  // A scan frozen mid-lane, for the 'scanning' mock state (prompt 46 Part 1
-  // item 2). The progress view is otherwise unreachable by a harness: it lasts
-  // as long as the worker takes, and the synthetic tenant has no worker.
-  const [frozenScan, setFrozenScan] = useState<Record<string, { source: string; status: string; rows?: number; reason?: string; ms?: number }> | null>(null)
-  // The mock's Connect refusals (test support): a scan that just finished with
-  // gaps, and a token whose roles read none of the core sections.
-  const [finishedScan, setFinishedScan] = useState<TenantSnapshot | null>(null)
-  const [mockToken, setMockToken] = useState<TokenSource | null>(null)
   // ?crash=1 (the mock only): a surface that throws while drawing, so the error
   // page can be reached by the walk and the smoke.
   const [mockCrash, setMockCrash] = useState(false)
   const route = useHashRoute()
-  // A step's Scan to update the plan: request the scan, go to Connect, which
-  // starts it as it mounts, and come back to `returnTo`. In the demo the scan
-  // (from a step, or Connect's Scan again) is the week-two snapshot and back,
-  // without a worker.
-  const requestScan = (returnTo: string = PLAN_HREF): void => {
-    setScanReturnTo(returnTo)
-    if (DEMO) {
-      setDemoWeek2((w) => !w)
-      return
-    }
-    setRescanRequested(true)
-    window.location.hash = '#/connect'
-  }
   // Role names the scan carries ($expand=roleDefinition) resolve ids the bundled catalogue lacks.
   useEffect(() => {
     if (lastScan) learnRoleNames(lastScan.snapshot.config.roleAssignments?.rows ?? [])
@@ -149,23 +118,26 @@ export function App() {
           const seeded = (d.checkpoints ?? []).filter((c: unknown) => !have.has(JSON.stringify(c)))
           await savePlanRecord(DEMO_TENANT_ID, { ...rec, stepDecisions: { ...(d.decisions ?? {}), ...(rec.stepDecisions ?? {}) }, checkpoints: [...(rec.checkpoints ?? []), ...seeded] })
         }
-        setAccount({
-          homeAccountId: 'demo',
-          environment: 'login.windows.net',
-          tenantId: DEMO_TENANT_ID,
-          username: 'sample.admin@sample-tenant.example',
-          localAccountId: d.operatorId,
-          name: 'Sample Admin',
-        } as AccountInfo)
+        if (stale) return
         // The sample org's own name; the banner, not the tenant name, tells a
         // visitor it is sample data (prompt 50 item 12).
-        setTenantName('Contoso Pty Ltd')
-        if (stale) return
-        setLastScan({ snapshot: d.snapshot, at: d.snapshot.asOf })
-        // The scan has landed: back to the step that asked for it, reopened on the new plan.
-        if (scanReturnTo) {
-          window.location.hash = scanReturnTo
-          setScanReturnTo(null)
+        setSession({
+          account: {
+            homeAccountId: 'demo',
+            environment: 'login.windows.net',
+            tenantId: DEMO_TENANT_ID,
+            username: 'sample.admin@sample-tenant.example',
+            localAccountId: d.operatorId,
+            name: 'Sample Admin',
+          } as AccountInfo,
+          tenantName: 'Contoso Pty Ltd',
+          lastScan: { snapshot: d.snapshot, at: d.snapshot.asOf },
+        })
+        // The scan has landed: back to the page that asked for it, reopened on the new plan (ui/actions.ts scan).
+        const returnTo = scan.returnTo
+        if (returnTo) {
+          setScan({ returnTo: null })
+          window.location.hash = returnTo
         }
         // The demo derives through the product's pinned baseline and goal map
         // (walk-51 item 9); the fixture's package is that same one.
@@ -185,11 +157,11 @@ export function App() {
         if (params.get('crash') === '1') setMockCrash(true)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
         // ?operatorDormant=1: the signed-in account's directory sign-in is stale
-        // (Graph's activity lags); it is signed in now all the same (derive/operator.ts).
+        // and it has no sign-in records of its own: a person like any other
+        // (derive/operator.ts is display only), so Today reads it not active.
         if (params.get('operatorDormant') === '1') {
           const me = snapshot.users.find((u) => u.id === 'u-1')
           if (me) me.lastSuccessfulSignIn = new Date(Date.parse(snapshot.asOf) - 200 * 86_400_000).toISOString()
-          // No sign-in records of their own either: Today's evidence reads "signed in now".
           delete snapshot.signInEvidence['u-1']
         }
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
@@ -217,7 +189,7 @@ export function App() {
         }
         // The mock's token: a Global Administrator, or with ?roles=none the User
         // role and nothing else, so the scan must not start and Connect says so.
-        setMockToken(() => async () => (params.get('roles') === 'none' ? noRolesToken() : tokenWithRoles([GLOBAL_ADMINISTRATOR])))
+        setSession({ getToken: async () => (params.get('roles') === 'none' ? noRolesToken() : tokenWithRoles([GLOBAL_ADMINISTRATOR])) })
         // ?policies=0: a tenant with no Conditional Access policies at all (prompt 31 §4.19).
         if (params.get('policies') === '0') snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [] }
         // ?state=<signedOut|noScan|scanning|scanned>: which state the synthetic
@@ -233,31 +205,42 @@ export function App() {
           setReady(true)
           return
         }
-        setAccount({
-          homeAccountId: 'mock',
-          environment: 'login.windows.net',
-          tenantId: snapshot.tenantId,
-          username: 'alex@example.com',
-          localAccountId: 'u-1',
-          name: 'Alex Morgan',
-        } as AccountInfo)
-        setTenantName('Contoso Pty Ltd')
+        setSession({
+          account: {
+            homeAccountId: 'mock',
+            environment: 'login.windows.net',
+            tenantId: snapshot.tenantId,
+            username: 'alex@example.com',
+            localAccountId: 'u-1',
+            name: 'Alex Morgan',
+          } as AccountInfo,
+          tenantName: 'Contoso Pty Ltd',
+        })
         setBaseline(fixtureBaseline())
         if (state === 'scanning') {
-          // Frozen two lanes in: configuration read, people in progress.
-          setFrozenScan({
-            'config:caPolicies': { source: 'config:caPolicies', status: 'ok', rows: 3, ms: 412 },
-            'config:namedLocations': { source: 'config:namedLocations', status: 'ok', rows: 2, ms: 205 },
-            users: { source: 'users', status: 'started' },
+          // A scan frozen two lanes in (configuration read, people in progress),
+          // for the 'scanning' mock state (prompt 46 Part 1 item 2): the progress
+          // view is otherwise unreachable by a harness, as it lasts as long as
+          // the worker takes, and the synthetic tenant has no worker.
+          setScan({
+            ...IDLE_SCAN,
+            state: 'running',
+            startedAt: Date.now(),
+            nowTick: Date.now(),
+            sections: {
+              'config:caPolicies': { source: 'config:caPolicies', status: 'ok', rows: 3, ms: 412 },
+              'config:namedLocations': { source: 'config:namedLocations', status: 'ok', rows: 2, ms: 205 },
+              users: { source: 'users', status: 'started' },
+            },
           })
-          setScanRunning(true)
         } else if (state === 'gaps') {
           // A scan that could not read the policies or the sign-in records just
           // finished; the last good scan is kept, as its record would be.
-          setLastScan({ snapshot, at: snapshot.asOf })
-          setFinishedScan(gapsSnapshot())
+          const finished = gapsSnapshot()
+          setSession({ lastScan: { snapshot, at: snapshot.asOf } })
+          setScan({ ...IDLE_SCAN, state: 'done', gaps: coreGaps(finished), unread: unreadSources(finished) })
         } else if (state === 'scanned') {
-          setLastScan({ snapshot, at: snapshot.asOf })
+          setSession({ lastScan: { snapshot, at: snapshot.asOf } })
         }
         setReady(true)
       })
@@ -265,14 +248,14 @@ export function App() {
     }
     initAuth()
       .then(async (a) => {
-        setAccount(a)
+        setSession({ account: a })
         if (a) {
-          void fetchTenantName().then(setTenantName)
+          void fetchTenantName().then((name) => setSession({ tenantName: name }))
           // Restore the last scan so nobody re-scans just to look around. Where
           // the app lands depends on it (target-state §2: a scanned tenant
           // lands on Plan), so the shell waits for the record before drawing.
           const stored = await loadSnapshotRecord<ScanRecord>(a.tenantId).catch(() => null)
-          if (stored?.snapshot) setLastScan({ snapshot: stored.snapshot, at: stored.at })
+          if (stored?.snapshot) setSession({ lastScan: { snapshot: stored.snapshot, at: stored.at } })
           // A blocked store shows as a plain sentence, never as a silently empty app.
           void probeStorage().catch((e: unknown) => setStorageWarning(e instanceof Error ? e.message : String(e)))
           // The loaded baseline comes back too (prompt 14 §6): pinned index by
@@ -297,7 +280,8 @@ export function App() {
 
   // The shell's state (target-state §2): signed out, signed in with no scan,
   // scanning, or scanned. It decides the tabs and where an empty hash lands.
-  const shellState: ShellState = !account ? 'signedOut' : scanRunning ? 'scanning' : lastScan ? 'scanned' : 'noScan'
+  const scanning = scan.state === 'running' || scan.state === 'paused'
+  const shellState: ShellState = !account ? 'signedOut' : scanning ? 'scanning' : lastScan ? 'scanned' : 'noScan'
   useEffect(() => {
     if (!ready) return
     if (route === 'home') {
@@ -339,21 +323,7 @@ export function App() {
                 if (account) void saveBaselineRecord(account.tenantId, r.origin)
               }}
               lastScan={lastScan}
-              frozen={frozenScan}
-              finished={finishedScan}
-              getToken={mockToken ?? undefined}
-              onRunningChange={setScanRunning}
-              onComplete={(snapshot, at) => {
-                const record: ScanRecord = { snapshot, at }
-                setLastScan(record)
-                if (account) void saveSnapshotRecord(account.tenantId, record)
-                setScanReturnTo(null)
-              }}
               authorUpdate={mockAuthorUpdate}
-              returnTo={scanReturnTo}
-              autoScan={rescanRequested}
-              onAutoScanConsumed={() => setRescanRequested(false)}
-              onDemoScan={() => requestScan()}
             />
           )}
           {(route === 'today' || route === 'inventory') &&
@@ -373,7 +343,7 @@ export function App() {
                 </p>
               </section>
             ))}
-          {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} onScan={requestScan} />}
+          {route === 'plan' && <Plan scan={lastScan} baseline={baseline} account={account} />}
           {route === 'export' && (
             <Suspense fallback={<section className="surface"><p className="reason">{app.shell.loading}</p></section>}>
               <Export scan={lastScan} baseline={baseline} account={account} />

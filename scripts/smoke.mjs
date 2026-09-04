@@ -447,7 +447,7 @@ try {
 
   check('No page threw', consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).length === 0, consoleErrors.filter((e) => !/authmethods|Not signed in|favicon/.test(e)).slice(0, 2).join(' | '))
 
-  // Forget this tenant clears every store for it (prompt 31 §2.8).
+  // Forget this tenant clears every store for it (prompt 31 §2.8) and keeps the sign-in.
   await go('plan')
   await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`)
   const tenantId = await evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const tx = db.transaction('plan'); const all = await new Promise((r) => { const q = tx.objectStore('plan').getAllKeys(); q.onsuccess = () => r(q.result) }); db.close(); return all[0] ?? null })()`)
@@ -460,7 +460,9 @@ try {
   await sleep(1500)
   const after = tenantId ? await countFor(tenantId) : 0
   check('Forget: every store is empty for the tenant afterwards', after === 0, `rows=${after}`)
-  check('Forget: no MSAL account remains in session storage', (await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\.windows|microsoftonline/.test(k)).length`)) === 0)
+  // Forget keeps the sign-in (ui/actions.ts forgetTenant): Connect renders its not-scanned state, tile 1 still signed in.
+  t = await text()
+  check('Forget: Connect shows the not-scanned state, still signed in', /Signed in/.test(t) && /Scan tenant/.test(t) && !/Open the plan/.test(t), t.replace(/\s+/g, ' ').slice(0, 160))
 
   // The rule registry renders itself (validation-rules.md 5).
   await go('checks')
