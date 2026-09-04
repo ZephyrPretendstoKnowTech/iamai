@@ -16,10 +16,13 @@ import type { StepVarContext } from './stepVars.ts'
 import { content } from '../../content/content.ts'
 import { absentStepIds } from '../../roadmap/baselineScope.ts'
 
+/** A service-accounts group this tenant has named. */
+const SERVICE_ACCOUNTS_GROUP = '00000000-0000-4000-8000-0000000a0001'
+
 const BEFORE: { id: string; line: RegExp; on: FixtureName[] }[] = [
   { id: 'device-registration-mfa', line: /^Entra admin center → Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices: No/, on: ['getiamai'] },
   // The managed-device policy needs Intune, which GetIAMAI does not hold: it renders on the demo (Intune) instead.
-  { id: 'require-managed-device', line: /^Before this policy: Intune → Devices → Compliance → Compliance policy settings/, on: ['getiamai', 'demo'] },
+  { id: 'require-managed-device', line: /^Before this policy: Intune → Devices → Compliance → Compliance policy settings/, on: ['getiamai', 'demo-week2'] },
   { id: 'user-risk', line: /^Hybrid tenants: enable password writeback in Entra Connect/, on: ['getiamai', 'mid'] },
   { id: 'user-risk-medium', line: /^Hybrid tenants: enable password writeback in Entra Connect/, on: ['getiamai', 'mid'] },
   { id: 'unmanaged-browser', line: /^SharePoint admin center → Policies → Access control → Unmanaged devices/, on: ['getiamai'] },
@@ -42,10 +45,14 @@ test('the before lines render above the portal lines on the GetIAMAI fixture (an
     let seen = false
     for (const name of b.on) {
       const f = fixture(name)
-      const r = runFixture(f)
+      // The baseline's own policies exclude the author's service-accounts group,
+      // so a tenant with service accounts has to name one before any of them can
+      // be written (roadmap/resolvePolicy.ts). This tenant has.
+      const mapping = f.mapping.serviceAccountUserIds.length > 0 && !f.mapping.serviceAccountsGroupId ? { ...f.mapping, serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP } : f.mapping
+      const r = runFixture({ ...f, mapping }, { mapping })
       const s = r.steps.find((x) => x.goalId === b.id)
       if (!s) continue
-      const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
+      const ctx: StepVarContext = { snapshot: f.snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
       const lines = stepExportView(s, ctx).whatToDo
       const at = lines.findIndex((l) => b.line.test(l))
       const root = lines.findIndex((l) => /Conditional Access → Policies → New policy/.test(l))

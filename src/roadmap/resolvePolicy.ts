@@ -125,19 +125,45 @@ function tokensOf(policies: readonly CaPolicy[]): Map<string, string> {
 /** Graph's own location words, which name no tenant object. */
 const LOCATION_KEYWORDS = new Set(['all', 'alltrusted'])
 
+/**
+ * The pin's tokens for an author object the product maps to a tenant object of
+ * its own. A reference carrying one of these means that object and nothing
+ * else: it resolves to the tenant's own or it stays unresolved, waiting on the
+ * Preparation step that creates it. It never falls through to the generic
+ * exclusions group — an exclusion of the service accounts is not an exclusion
+ * of the emergency accounts, and substituting one for the other would write a
+ * policy the author did not describe.
+ *
+ * `travellersGroup` is deliberately not here: the product has no tenant object
+ * for it, so it is a plain exclusion group and the generic rule applies.
+ */
+const MAPPED_TOKENS = new Set(['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation'])
+
 /** The Preparation step that creates the tenant's object for a reference the tenant lacks. */
 function stepForReference(kind: ReferenceKind, token: string | null, goalId: string): string | null {
   if (kind === 'group') return token === 'serviceAccountsGroup' ? PREREQ_STEP_ID.serviceAccountsGroup : PREREQ_STEP_ID.exclusionsGroup
-  if (kind === 'namedLocation') return token === 'allowedCountries' || goalId === 'geo-restriction' ? PREREQ_STEP_ID.allowedCountries : PREREQ_STEP_ID.trustedLocation
+  if (kind === 'namedLocation') {
+    if (token === 'allowedCountries') return PREREQ_STEP_ID.allowedCountries
+    if (token === 'trustedLocation') return PREREQ_STEP_ID.trustedLocation
+    return goalId === 'geo-restriction' ? PREREQ_STEP_ID.allowedCountries : PREREQ_STEP_ID.trustedLocation
+  }
   if (kind === 'authenticationStrength') return 's-prereq-auth-strength'
   return null
 }
 
 /**
  * What each author reference is worth in this tenant, in one order every
- * channel shares: the object a person confirmed for it, then the object the
- * pin's own token names, then — for a group the baseline only ever excludes —
- * the tenant's recognised exclusions group. Anything left over is unresolved.
+ * channel shares:
+ *
+ * 1. the object a person confirmed for that reference (mapping.records);
+ * 2. the tenant object the pin's own token names, when the token is one the
+ *    product maps — and nothing else, so a token whose object this tenant does
+ *    not have stays unresolved rather than becoming a different object;
+ * 3. for a reference with no mapped token: the tenant's exclusions group where
+ *    the baseline only ever excludes the group, and the allowed-countries
+ *    location for the countries policy's own location.
+ *
+ * Anything left over is unresolved, with the Preparation step that creates it.
  */
 function substitutionsFor(refs: Reference[], tokens: Map<string, string>, tenant: TenantObjects, goalId: string): { ids: Map<string, string>; unresolved: Map<string, string | null> } {
   const ids = new Map<string, string>()
@@ -148,16 +174,27 @@ function substitutionsFor(refs: Reference[], tokens: Map<string, string>, tenant
     if (r.kind === 'namedLocation' && LOCATION_KEYWORDS.has(r.id)) continue
     const token = tokens.get(r.id) ?? null
     const confirmed = tenant.confirmed?.get(r.id) ?? null
-    const byToken =
-      token === 'exclusionsGroup' ? tenant.exclusionsGroupId : token === 'serviceAccountsGroup' ? tenant.serviceAccountsGroupId : token === 'allowedCountries' ? tenant.allowedCountriesLocationId : null
-    // A group the baseline only ever excludes is its exclusions group: the
-    // tenant's recognised one stands in for it.
+    if (confirmed) {
+      ids.set(r.id, confirmed)
+      continue
+    }
+    if (token !== null && MAPPED_TOKENS.has(token)) {
+      // A token the product maps means that object and no other. The trusted
+      // network is a list, not one object, so the product maps no single tenant
+      // object for it yet and the reference waits on the step that creates one.
+      const byToken =
+        token === 'exclusionsGroup' ? tenant.exclusionsGroupId : token === 'serviceAccountsGroup' ? tenant.serviceAccountsGroupId : token === 'allowedCountries' ? tenant.allowedCountriesLocationId : null
+      if (byToken) ids.set(r.id, byToken)
+      else unresolved.set(r.id, stepForReference(r.kind, token, goalId))
+      continue
+    }
+    // No mapped semantic identity: the generic rules. A group the baseline only
+    // ever excludes is its exclusions group, and the countries policy's own
+    // location is the allowed-countries list (a baseline the product reads
+    // without a placeholder map still names one location there).
     const excludeOnly = r.kind === 'group' && r.uses.length > 0 && r.uses.every((u) => u.side === 'exclude') ? tenant.exclusionsGroupId : null
-    // The countries policy's location is the allowed-countries list, whether or
-    // not the source carries the pin's token for it (a baseline the product
-    // reads without a placeholder map still names one location there).
     const geoLocation = r.kind === 'namedLocation' && goalId === 'geo-restriction' ? tenant.allowedCountriesLocationId : null
-    const to = confirmed ?? byToken ?? excludeOnly ?? geoLocation
+    const to = excludeOnly ?? geoLocation
     if (to) ids.set(r.id, to)
     else unresolved.set(r.id, stepForReference(r.kind, token, goalId))
   }

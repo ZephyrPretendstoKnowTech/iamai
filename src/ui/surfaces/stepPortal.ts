@@ -7,13 +7,17 @@
 //
 // The baseline's policies carry the author's own objects (its exclusions group,
 // its service-accounts group, its countries location, its trusted network) as
-// placeholder ids with a token each. They become this tenant's objects at the
-// one resolution boundary (roadmap/resolvePolicy.ts) before a line is written,
-// so the instruction a person follows and the body the JSON, PowerShell and
-// Download tabs carry are the same policy — and a tenant object several of the
-// author's objects resolve to is named once. An object the tenant does not have
-// yet keeps the author's reference and is named by the name the plan proposes
-// to create it under — never an id, never an unnamed thing.
+// placeholder ids with a token each. They become this tenant's objects once, at
+// the roadmap boundary (roadmap/resolvePolicy.ts), and the step carries the
+// result (`step.action.resolution`). These lines render that result; they never
+// resolve a baseline reference again, so the instruction a person follows and
+// the body the JSON, PowerShell and Download tabs carry are the same policy —
+// and a tenant object several of the author's objects resolve to is named once.
+//
+// While the step names an object this tenant does not have yet, no
+// implementation is offered at all: no portal lines, no JSON, no PowerShell, no
+// download (stepJson.ts implementationOffered). The step still says what is
+// missing and which Preparation step creates it.
 //
 // Pure: no DOM, no network.
 import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
@@ -23,9 +27,9 @@ import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
 import { hasBaselineConflict } from '../../roadmap/baselineConflict.ts'
-import { resolveTenantPolicy } from '../../roadmap/resolvePolicy.ts'
-import type { TenantObjects } from '../../roadmap/resolvePolicy.ts'
+import { implementationOffered } from './stepJson.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
+import type { Step, StepResolution } from '../../roadmap/types.ts'
 import { shared } from '../../content/content.ts'
 import { proposedNamesFor } from './proposedNames.ts'
 import { tenantCountryLocation } from '../../mapping/countries.ts'
@@ -92,32 +96,16 @@ function tokenNames(names: PortalNames): Record<string, string | null> {
   }
 }
 
-/** The tenant objects behind the author's references, as the resolution boundary reads them. */
-function tenantObjectsFor(names: PortalNames): TenantObjects {
-  return {
-    exclusionsGroupId: names.exclusionsGroupId ?? null,
-    serviceAccountsGroupId: names.serviceAccountsGroupId ?? null,
-    allowedCountriesLocationId: names.allowedCountriesLocationId ?? null,
-  }
-}
-
-function contextFor(p: PinnedPolicy, names: PortalNames): PortalContext {
-  const ph = p.placeholders ?? {}
+/**
+ * The context for one resolved body. The two group ids are the ones the
+ * resolution actually used, read off the step — never rebuilt from names — so a
+ * line labels the object the body holds.
+ */
+function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['tenant']): PortalContext {
   const tokens = tokenNames(names)
-  // The author's ids (lowercased, as the facts carry them), each with the name
-  // its token resolves to. The lines render the resolved body, so the tenant's
-  // own object is what the policy names; the author's id stands in only for an
-  // object this tenant does not have yet, which the plan names by the name it
-  // proposes to create it under.
   const byId = new Map<string, string>()
-  let exclusionsGroupId: string | null = names.exclusionsGroupId?.toLowerCase() ?? null
-  let serviceAccountsGroupId: string | null = names.serviceAccountsGroupId?.toLowerCase() ?? null
-  for (const [id, token] of Object.entries(ph)) {
-    const name = tokens[token]
-    if (name) byId.set(id.toLowerCase(), name)
-    if (token === 'exclusionsGroup' && exclusionsGroupId === null) exclusionsGroupId = id.toLowerCase()
-    if (token === 'serviceAccountsGroup' && serviceAccountsGroupId === null) serviceAccountsGroupId = id.toLowerCase()
-  }
+  const exclusionsGroupId: string | null = used.exclusionsGroupId?.toLowerCase() ?? null
+  const serviceAccountsGroupId: string | null = used.serviceAccountsGroupId?.toLowerCase() ?? null
   const nameOf = (id: string): string => byId.get(id.toLowerCase()) ?? names.nameOf(id)
   const strengthName = names.strengthName ?? (p.grantControls as { authenticationStrength?: { displayName?: string } } | null)?.authenticationStrength?.displayName ?? null
   const exclusionsGroup = tokens.exclusionsGroup ?? (exclusionsGroupId ? nameOf(exclusionsGroupId) : 'the exclusions group')
@@ -218,57 +206,43 @@ export function strengthForGoal(goalId: string): string | null {
 }
 
 /**
- * The portal lines for a policy body the engine built — the floor's step, whose
- * goal the baseline does not hold, renders Microsoft's template (resolved with
- * the tenant's objects) through the same translator as a baseline policy. The
- * exclusions read as the exclusions group, never the emergency accounts by name.
+ * The portal instructions for a step, rendered from the resolved policies the
+ * roadmap already produced for it (`step.action.resolution`). Returns null and
+ * offers nothing when:
+ *
+ * - the baseline's definition of the goal contradicts itself
+ *   (roadmap/baselineConflict.ts);
+ * - the step names an object this tenant does not have yet — the same condition
+ *   that withholds the JSON, the PowerShell and the download, so the four never
+ *   disagree about whether the policy can be implemented;
+ * - the baseline holds no policy for the goal, so there is nothing to render.
+ *
+ * The one place the lines are made, so the screen, the print and the exports all
+ * get the same answer.
  */
-export function stepPortalLinesFromBody(json: string, names: PortalNames): string[] | null {
-  let body: Record<string, unknown>
-  try {
-    body = JSON.parse(json) as Record<string, unknown>
-  } catch {
-    return null
-  }
-  const p: PinnedPolicy = { id: null, displayName: String(body.displayName ?? names.policyName), conditions: body.conditions ?? null, grantControls: body.grantControls ?? null, sessionControls: body.sessionControls ?? null, placeholders: {} }
-  const lines = portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names))
-  return lines.length > 0 ? lines : null
-}
-
-/**
- * The portal lines for a goal's step, from its mapped baseline policy. Returns
- * null when the baseline does not hold the goal (no policy to render), and when
- * the baseline's definition of the policy contradicts itself: the one place the
- * lines are made, so the screen, the print and the exports all get none
- * (roadmap/baselineConflict.ts).
- */
-export function stepPortalLines(goalId: string, names: PortalNames): string[] | null {
-  if (hasBaselineConflict(goalId)) return null
-  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+export function stepPortalLines(step: Step, names: PortalNames): string[] | null {
+  if (hasBaselineConflict(step.goalId)) return null
+  if (!implementationOffered(step)) return null
+  const resolution = step.action.resolution
+  const mapped = resolution?.policies ?? []
   if (mapped.length === 0) return null
+  const asPolicy = (body: Record<string, unknown>): PinnedPolicy => body as unknown as PinnedPolicy
   // The person's answers as recorded deviations (deviations.ts): the same rule
   // the engine's JSON passes through. Every line the deviation changes is shown
   // beside the baseline's version, so the choice and the baseline both stay on screen.
-  // The one resolution boundary (resolvePolicy.ts): the author's objects become
-  // this tenant's before a line is written, so the instruction on the step and
-  // the body in the JSON, PowerShell and Download tabs are the same policy —
-  // and a tenant object several of the author's objects resolve to is named once.
-  const tenant = tenantObjectsFor(names)
-  const resolve = (p: PinnedPolicy): PinnedPolicy => resolveTenantPolicy(p as unknown as Record<string, unknown>, tenant, goalId, POLICIES as unknown as CaPolicy[]).body as unknown as PinnedPolicy
-  const deviated = (p: PinnedPolicy): PinnedPolicy => (names.answers ? (applyDeviations(p as unknown as Record<string, unknown>, goalId, names.answers) as unknown as PinnedPolicy) : p)
-  const linesOf = (p: PinnedPolicy): string[] => portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names))
-  const annotated = (source: PinnedPolicy): string[] => {
-    const p = resolve(source)
+  const deviated = (p: PinnedPolicy): PinnedPolicy => (names.answers ? (applyDeviations(p as unknown as Record<string, unknown>, step.goalId, names.answers) as unknown as PinnedPolicy) : p)
+  const linesOf = (p: PinnedPolicy): string[] => portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names, resolution!.tenant))
+  const annotated = (body: Record<string, unknown>): string[] => {
+    const p = asPolicy(body)
     const d = deviated(p)
     return d === p ? linesOf(p) : besideBaseline(linesOf(d), linesOf(p))
   }
   if (mapped.length >= 2) {
-    const a = mapped[0] as PinnedPolicy
-    const b = mapped[1] as PinnedPolicy
     // Two policies, two names (stepVars policyNameA/B): never the one name on both blocks.
-    return labelledBlocks({ lines: annotated(a), name: names.policyNameA ?? names.policyName }, { lines: annotated(b), name: names.policyNameB ?? names.policyName }, { a: 'A', b: 'B' })
+    return labelledBlocks({ lines: annotated(mapped[0].body), name: names.policyNameA ?? names.policyName }, { lines: annotated(mapped[1].body), name: names.policyNameB ?? names.policyName }, { a: 'A', b: 'B' })
   }
-  return annotated(mapped[0] as PinnedPolicy)
+  const lines = annotated(mapped[0].body)
+  return lines.length > 0 ? lines : null
 }
 
 /**

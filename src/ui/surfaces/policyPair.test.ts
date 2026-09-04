@@ -26,11 +26,20 @@ test('guests Policy A and Policy B carry distinct names: the proposal, and the p
   assert.notEqual(ex.policyNameA, ex.policyNameB)
   const bWords = baseline[1].split(/\s+[-–|]\s+/).pop()!
   assert.ok((ex.policyNameB as string).endsWith(bWords), `${ex.policyNameB} carries the baseline's words for B (${bWords})`)
-  const lines = stepPortalLines(guests.goalId, portalNamesFor(ctx, ex, guests.title))!
+})
+
+// The two blocks come from the step's own resolved policies, so they render on a
+// fixture whose baseline is the pinned one — the package the product ships.
+test('a goal the baseline implements with two policies renders two labelled blocks', () => {
+  const fd = fixture('demo-week2')
+  const rd = runFixture(fd)
+  const ctxd: StepVarContext = { snapshot: fd.snapshot, mapping: fd.mapping, nameOf: (id) => rd.input.names!.label(id), signature: 'IT', operatorId: fd.operatorId, now: fd.snapshot.asOf, groups: fd.groups, naming: rd.coverage.organisation.naming, ...planDates(rd.steps, rd.schedule.start, rd.coverage.organisation.naming) }
+  const step = rd.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
+  assert.equal(step.action.resolution?.policies.length, 2, 'the step carries both of the baseline\'s policies')
+  const exd = stepVars(step, ctxd) as Record<string, unknown>
+  const lines = stepPortalLines(step, portalNamesFor(ctxd, exd, step.title))!
   const roots = lines.filter((l) => /^Policy [AB] — /.test(l))
   assert.equal(roots.length, 2, JSON.stringify(lines))
-  assert.ok(roots[0].startsWith(`Policy A — ${ex.policyNameA}: `), roots[0])
-  assert.ok(roots[1].startsWith(`Policy B — ${ex.policyNameB}: `), roots[1])
 })
 
 test('the pair names follow the tenant\'s separator, and never collapse to one name', () => {

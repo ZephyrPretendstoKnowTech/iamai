@@ -22,12 +22,12 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { jsonOffered, missingObjects, policyJson, policyJsonText } from './stepJson.ts'
+import { implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText } from './stepJson.ts'
 import { commsFor, datesLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
+import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button, Status } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
@@ -115,13 +115,19 @@ export function ContentStep({
   // The tenant's objects behind the baseline's placeholders (a saved decision
   // included), or the names the plan proposes for them, so every line is a name.
   const portalNames = portalNamesFor(ctx, ex, String(cs.title))
-  // The baseline's policy through the translator; a floor step (Microsoft
-  // recommended, not in this baseline) renders Microsoft's template the engine
-  // resolved for this tenant, through the same translator.
-  const portalLines = cs.kind === 'policy' ? (stepPortalLines(step.goalId, portalNames) ?? (step.floor && step.action.json ? stepPortalLinesFromBody(step.action.json, portalNames) : null)) : null
+  // The step's own resolved policies through the translator (stepPortal.ts): the
+  // same bodies the JSON, the PowerShell and the download carry. A floor step
+  // (Microsoft recommended, not in this baseline) carries the template the
+  // engine resolved for this tenant, and renders through the same translator.
+  const portalLines = cs.kind === 'policy' ? stepPortalLines(step, portalNames) : null
   // A goal the baseline holds no policy for has no portal lines; an empty list is
   // not a What to do (the shared-devices step rendered an empty section).
   const portal = portalLines && portalLines.length > 0 ? portalLines : null
+  // While the policy names an object this tenant does not have yet, no
+  // implementation is offered at all — no portal lines, no JSON, no PowerShell,
+  // no download. The step says what is missing and which step creates it; that
+  // is an explanation, not an instruction to implement.
+  const waiting = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
   // The content's leading "before" lines (a setting to change before the policy
@@ -130,7 +136,7 @@ export function ContentStep({
   const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
   // §8.7: a section with no content is not rendered. A step with nothing to do
   // is a missing content key, logged by the walk, never an empty heading.
-  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || hasSteps || before.length > 0
+  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -218,6 +224,8 @@ export function ContentStep({
             </p>
           )}
         </>
+      ) : waiting ? (
+        <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
       ) : (
         (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...(hasSteps ? (w.steps as unknown[]).map((l) => <T s={l} ex={ex} />) : [])].map((node, i) => <li key={i}>{node}</li>)}</ol>
       )}

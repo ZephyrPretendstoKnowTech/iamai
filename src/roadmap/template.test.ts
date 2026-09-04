@@ -12,6 +12,7 @@ import { CATALOGUE } from '../coverage/coverage.ts'
 import { actionVerb, proposedPolicyName } from '../coverage/naming.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { buildCreateAction, PLACEHOLDER_STEP } from './generate.ts'
+import { resolveTenantPolicy } from './resolvePolicy.ts'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { placeholdersIn, resolveTemplate, SAMPLE_VALUES, TEMPLATE_PLACEHOLDERS } from './template.ts'
@@ -30,7 +31,8 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
   // resolution boundary reads the reference there, and this tenant has nothing
   // to resolve it with.
   const policies = [{ displayName: 'author', conditions: { users: { excludeGroups: ['ref-exclusions'] } } }] as never
-  const action = buildCreateAction(body, mapping, 'plan-1', 's-x', 'x', { tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null, allowedCountriesLocationId: null }, policies })
+  const resolved = resolveTenantPolicy(body, { exclusionsGroupId: null, serviceAccountsGroupId: null, allowedCountriesLocationId: null }, 'x', policies)
+  const action = buildCreateAction(resolved, mapping, 'plan-1', 's-x', 'x')
   assert.ok(action.json, 'json produced')
   assert.doesNotMatch(action.json!, /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the JSON')
   assert.doesNotMatch(action.json!, /"excludeGroups"/, 'the array emptied by stripping loses its key')
@@ -43,7 +45,8 @@ test('item 12: every goal × implementation renders Do it from the template with
     for (const impl of goal.implementations) {
       const { body, unresolved } = resolveTemplate(impl.template as TemplateBody, SAMPLE_VALUES)
       assert.deepEqual(unresolved, [], `${goal.id}: sample values resolve everything`)
-      const action = buildCreateAction(body, mapping, 'plan-1', `s-goal-${goal.id}`, goal.id, { displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` })
+      const resolved = resolveTenantPolicy(body, { exclusionsGroupId: null, serviceAccountsGroupId: null, allowedCountriesLocationId: null }, goal.id)
+      const action = buildCreateAction(resolved, mapping, 'plan-1', `s-goal-${goal.id}`, goal.id, { displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` })
       assert.ok(action.json, `${goal.id}: json`)
       const parsed = JSON.parse(action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null; state: string; description: string }
       const grants = (parsed.grantControls?.builtInControls?.length ?? 0) + (parsed.grantControls?.authenticationStrength ? 1 : 0)

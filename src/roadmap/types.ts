@@ -31,6 +31,27 @@ export type Evidence = {
   affectedUserIds: string[]
 }
 
+/** One policy of a step, resolved once at the roadmap boundary (roadmap/resolvePolicy.ts). */
+export type ResolvedStepPolicy = {
+  /** The baseline's own name for the policy, so a merged goal can label Policy A and Policy B. */
+  sourceName: string
+  /** The canonical resolved body: this tenant's objects, each named once. */
+  body: Record<string, unknown>
+}
+
+/**
+ * The authoritative resolved semantics of a step's policy: the baseline plus the
+ * applied mapping, resolved once. Every implementation channel — the portal
+ * instructions, the JSON, the PowerShell and the download — describes these
+ * bodies, and `Action.missing` gates all four of them together.
+ */
+export type StepResolution = {
+  /** One entry per policy the baseline uses for the goal, in the map's order. */
+  policies: ResolvedStepPolicy[]
+  /** The tenant objects the resolution used, so an instruction names the object the body actually holds. */
+  tenant: { exclusionsGroupId: string | null; serviceAccountsGroupId: string | null }
+}
+
 export type Action = {
   kind: StepKind
   summary: string[] // adjust: the exact field changes in words; others: what to do
@@ -46,6 +67,11 @@ export type Action = {
    * step does). The JSON and PowerShell tabs wait on these; nothing is dropped silently.
    */
   missing?: { token: string; stepId: string | null }[]
+  /**
+   * The step's canonical resolved policies. Portal, JSON, PowerShell and
+   * Download all render from these; nothing resolves a baseline reference again.
+   */
+  resolution?: StepResolution
 }
 
 /**

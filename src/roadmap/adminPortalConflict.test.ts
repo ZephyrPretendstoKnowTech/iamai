@@ -117,7 +117,7 @@ test('the step states the baseline conflict and gives no implementation', () => 
   assert.equal(blockedReasonFor(step, new Map(runFixture(fixture('demo-week2')).steps.map((s) => [s.id, s]))), BLOCKED_REASON.baseline, 'the row reads the baseline conflict, not a tenant prerequisite')
 
   // No implementation, on any channel.
-  assert.equal(stepPortalLines(GOAL, portalNamesFor(ctx, ex, String(cs.title))), null, 'no portal lines')
+  assert.equal(stepPortalLines(step, portalNamesFor(ctx, ex, String(cs.title))), null, 'no portal lines')
   assert.equal(step.action.json, null, 'no JSON body')
   assert.deepEqual(step.action.portalSteps, [], 'no portal steps')
   assert.equal(jsonOffered(step), false, 'no JSON tab, no PowerShell tab, no download')

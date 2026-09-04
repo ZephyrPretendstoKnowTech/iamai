@@ -67,13 +67,13 @@ test('step 35 offers the plain-MFA rung as the first enforcement while anyone ha
   assert.equal(d.applies, 'pushOnlyTotal', 'offered only while the list is not empty')
   assert.ok(ex[d.applies], 'offered here')
   // Undecided: the baseline's strength.
-  const before = stepPortalLines('sign-in-risk', portalNamesFor(ctxFor(f, r), ex, 'x'))!
+  const before = stepPortalLines(s, portalNamesFor(ctxFor(f, r), ex, 'x'))!
   assert.ok(before.some((l) => /^Grant → Require authentication strength: /.test(l)), 'the baseline requires its strength')
   // The plain-MFA rung chosen: the grant is plain MFA, the baseline's version beside it.
   const key = answerKey(stepIdForGoal('sign-in-risk'), questionLabels(stepIdForGoal('sign-in-risk')).decision!)
   const mapping = { ...f.mapping, questionAnswers: { ...(f.mapping.questionAnswers ?? {}), [key]: d.options[1] } }
   assert.ok(plainMfaFirst(mapping))
-  const after = stepPortalLines('sign-in-risk', portalNamesFor(ctxFor(f, r, { mapping }), ex, 'x'))!
+  const after = stepPortalLines(s, portalNamesFor(ctxFor(f, r, { mapping }), ex, 'x'))!
   const grant = after.find((l) => l.startsWith('Grant → '))!
   assert.match(grant, /^Grant → Require multifactor authentication · your choice; the baseline's version: Grant → Require authentication strength: /)
   const withAnswer = runFixture({ ...f, mapping }, { mapping })

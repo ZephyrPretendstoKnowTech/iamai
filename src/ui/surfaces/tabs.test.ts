@@ -9,7 +9,7 @@ import { todayView } from '../../derive/today.ts'
 import { todayTable } from './inventoryTables.ts'
 import { methodWord, readinessWord, todayEvidenceText } from './todayCells.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
+import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -55,7 +55,7 @@ test('for every policy step, the three Do it tabs differ and the PowerShell carr
       if (cs?.kind !== 'policy' || !s.action.json) continue
       const ex = stepVars(s, ctx)
       const names = portalNamesFor(ctx, ex, String(cs.title))
-      const portal = stepPortalLines(s.goalId, names) ?? (s.floor ? stepPortalLinesFromBody(s.action.json, names) : null)
+      const portal = stepPortalLines(s, names)
       if (!portal || portal.length === 0) continue
       const body = JSON.parse(s.action.json) as { displayName?: string }
       const jsonTab = JSON.stringify(body, null, 2)
@@ -165,7 +165,7 @@ test('GetIAMAI: with a Windows-only token-protection policy on, the step names t
   const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const ex = stepVars(step, ctx)
   assert.equal(ex.policyName, 'Core - Require - Token Protection (Windows)', 'Name: is the tenant\'s policy')
-  const lines = stepPortalLines(step.goalId, portalNamesFor(ctx, ex, 'Require Token Protection')) ?? []
+  const lines = stepPortalLines(step, portalNamesFor(ctx, ex, 'Require Token Protection')) ?? []
   assert.ok(lines.some((l) => l.includes('Core - Require - Token Protection (Windows)')), 'the portal lines name it')
   assert.ok(!lines.some((l) => /Name: Require Token Protection/.test(l)), 'never the step title')
   const now = (pages.plan as { now: string }).now

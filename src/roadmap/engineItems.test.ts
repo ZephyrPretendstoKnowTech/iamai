@@ -21,6 +21,7 @@ import type { CaPolicy } from '../baseline/types.ts'
 import { stepById } from '../content/content.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { managerText, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
+import { implementationOffered } from '../ui/surfaces/stepJson.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 
 const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming })
@@ -89,9 +90,17 @@ test('step 6 gains Restrict Service Accounts to the Trusted Network on a plan wi
   assert.equal(s.plainTitle, 'Restrict Service Accounts to the Trusted Network')
   assert.deepEqual([...s.population.ids].sort(), [...f.mapping.serviceAccountUserIds].sort(), 'its population is the service accounts')
   assert.ok(s.blockedBy.includes(PREREQ_STEP_ID.serviceAccountsGroup), 'waits on the service-accounts group')
+  // The demo has neither the group nor the trusted network yet, so the step
+  // offers no implementation at all — not the portal instructions, not the JSON,
+  // not the PowerShell, not the download — and says which steps come first
+  // (roadmap/resolvePolicy.ts, stepJson.ts implementationOffered).
   const view = stepExportView(s, ctxFor(f, r))
-  assert.ok(view.whatToDo.some((l) => /^Users → Include: Groups: .+\. Users → Exclude → Groups: /.test(l)), view.whatToDo.join(' | '))
-  assert.ok(view.whatToDo.some((l) => /^Conditions → Locations → Include: Any location; Exclude: .+/.test(l)), 'the trusted network is the exclusion')
+  assert.equal(implementationOffered(s), false, 'it waits on the group and the network')
+  assert.ok(!view.whatToDo.some((l) => /^Users → Include: /.test(l)), `no instructions while it waits: ${view.whatToDo.join(' | ')}`)
+  const waits = view.whatToDo.find((l) => /first: this policy names an object/.test(l))
+  assert.ok(waits, `the step says what is missing: ${view.whatToDo.join(' | ')}`)
+  assert.match(waits, /Trusted Network/, 'the trusted network is named')
+  assert.match(waits, /Service Accounts Group/, 'the service-accounts group is named')
   assert.ok(!view.whatToDo.some((l) => /[0-9a-f]{8}-[0-9a-f]{4}-/.test(l)), 'every object is a name')
   const risk = (stepById[PREREQ_STEP_ID.serviceAccountsGroup] as unknown as { more: { risks: { text: string }[] } }).more.risks
   assert.ok(risk.some((x) => x.text.includes('see Restrict Service Accounts to the Trusted Network')), "step 6's risk names it")
