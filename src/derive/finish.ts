@@ -6,6 +6,7 @@
 // §9): when the calendar dates an enforcement, a dated Cleanup ends the plan.
 // Pure.
 import { READINESS_MEASURE } from '../copy/reasons.ts'
+import { unavailableReason } from '../roadmap/operations.ts'
 import type { Step } from '../roadmap/types.ts'
 
 export type PlanFinish = {
@@ -40,6 +41,9 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
       waiting.set(measure, w)
       continue
     }
+    // A policy the plan cannot write dates nothing, so it does not end the plan —
+    // whatever ring dates a step loaded from an older plan file still carries.
+    if (unavailableReason(s) !== null) continue
     const end = lastRingEnd(s)
     if (end && (finish === null || end > finish)) finish = end
   }
