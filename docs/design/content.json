@@ -707,6 +707,7 @@
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
       "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
       "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
+      "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",

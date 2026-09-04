@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { isValidOperation, unimplementableReason } from './operations.ts'
+import { isValidOperation, unavailableReason } from './operations.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
@@ -246,6 +246,20 @@ const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], Cha
 }
 
 /**
+ * The policy an update leaves behind: the whole policy it is working towards
+ * with its own patch applied. A patch that turns a report-only policy on makes
+ * the target enabled too — nothing downstream may read a target the submitted
+ * body contradicts.
+ */
+function withPatch(whole: RawPolicy, patch: RawPolicy): RawPolicy {
+  const out: RawPolicy = { ...whole, ...patch }
+  const wholeConditions = (whole.conditions ?? null) as RawPolicy | null
+  const patchConditions = (patch.conditions ?? null) as RawPolicy | null
+  if (wholeConditions && patchConditions) out.conditions = { ...wholeConditions, ...patchConditions }
+  return out
+}
+
+/**
  * The fields an update submits: the whole policy narrowed to the sections that
  * change, and nothing else. Not the description — the instruction says every
  * setting it does not list is left as it is, and a description the person never
@@ -318,20 +332,21 @@ export function buildCreateAction(
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
     const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p), p.resolved.unresolved).policy : undefined
     const target = p.target ?? null
-    operations.push(
-      target
-        ? {
-            sourceName: p.sourceName,
-            mode: 'update',
-            policyId: target.policyId,
-            body: patchOf(whole.policy, sections),
-            baseline: wholeBaseline ? patchOf(wholeBaseline, sections) : undefined,
-            // The whole policy the change is working towards: read for
-            // explanation and impact, never submitted.
-            target: whole.policy,
-          }
-        : { sourceName: p.sourceName, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline },
-    )
+    if (target) {
+      const patch = patchOf(whole.policy, sections)
+      operations.push({
+        sourceName: p.sourceName,
+        mode: 'update',
+        policyId: target.policyId,
+        body: patch,
+        baseline: wholeBaseline ? patchOf(wholeBaseline, sections) : undefined,
+        // The policy the change leaves behind: the whole policy with this exact
+        // patch applied. Read for explanation, impact and audit; never submitted.
+        target: withPatch(whole.policy, patch),
+      })
+    } else {
+      operations.push({ sourceName: p.sourceName, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline })
+    }
   }
   // `json` is a projection of the operations, for the plan file and the exports;
   // the channels read the operations themselves (roadmap/operations.ts). It is
@@ -485,6 +500,24 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // creates the object.
   const countriesLocationId = tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null
   const tenantObjects = tenantObjectsOf(mapping, countriesLocationId)
+  // The tenant's own authentication strengths, by id. Where a confirmed mapping
+  // resolves the author's strength to one of these, the body carries the
+  // tenant's id — so it must carry the tenant's name too, or an instruction
+  // would name one object while the request submits another.
+  const strengthNames = new Map(
+    ((snapshot.config.authStrengths?.rows ?? []) as Record<string, unknown>[])
+      .filter((x) => typeof x.id === 'string' && typeof x.displayName === 'string')
+      .map((x) => [String(x.id).toLowerCase(), String(x.displayName)]),
+  )
+  /** The resolved policy with its authentication strength named as this tenant knows it. */
+  const namedStrength = (resolved: ResolvedPolicy): ResolvedPolicy => {
+    const grant = resolved.body.grantControls as { authenticationStrength?: { id?: unknown; displayName?: unknown } } | null | undefined
+    const strength = grant?.authenticationStrength
+    const id = typeof strength?.id === 'string' ? strength.id.toLowerCase() : null
+    const name = id ? strengthNames.get(id) : undefined
+    if (!strength || !name || name === strength.displayName) return resolved
+    return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: { ...strength, displayName: name } } } }
+  }
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
@@ -791,7 +824,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // resolved once against the applied mapping. The action below builds its
     // JSON from the same result, and the portal instructions read it off the
     // step — nothing resolves a baseline reference twice.
-    const resolveOne = (body: RawPolicy, authorPolicies: readonly CaPolicy[]): ResolvedPolicy => resolveTenantPolicy(body, tenantObjects, goal.id, authorPolicies)
+    const resolveOne = (body: RawPolicy, authorPolicies: readonly CaPolicy[]): ResolvedPolicy => namedStrength(resolveTenantPolicy(body, tenantObjects, goal.id, authorPolicies))
     /**
      * The step's policies, ready to become its artifact: the baseline's, in the
      * baseline's order, each resolved once; or the goal's own template where the
@@ -1286,7 +1319,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   // A policy step with nothing to run gets no rings either: the plan does not
   // date a rollout for a policy it cannot write (roadmap/operations.ts).
-  for (const s of steps) s.rings = (s.kind === 'create' || s.kind === 'adjust') && unimplementableReason(s) !== null ? [] : proposeRings(s, ringCtx)
+  // A policy the plan cannot write yet gets no rings either: it does not date a
+  // rollout for a policy it cannot write (roadmap/operations.ts).
+  for (const s of steps) s.rings = unavailableReason(s) !== null ? [] : proposeRings(s, ringCtx)
 
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
   const rhythm = tenantRhythm(snapshot, mapping.displayTimeZone)

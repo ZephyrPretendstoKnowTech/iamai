@@ -1,6 +1,7 @@
 // Strand simulation (roadmap-v2.md §7): would carrying out a step, as written,
 // lock a given account out? Pure: runs in tests, the worker and the page.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { finalTargets } from './operations.ts'
 import type { Step } from './types.ts'
 
 export type StrandVerdict = { stranded: boolean; unknown: boolean; reason: string }
@@ -22,22 +23,18 @@ const PHISHING_RESISTANT = new Set([
  */
 export function canDenyAccess(step: Step): boolean {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return false
-  if (step.action.json) {
-    try {
-      type Body = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }
-      // A goal the baseline implements with two policies carries both bodies.
-      const parsed = JSON.parse(step.action.json) as Body | Body[]
-      for (const body of Array.isArray(parsed) ? parsed : [parsed]) {
-        const grant = body.grantControls
-        if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
-        if (body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined)) return true
-      }
-      // A change step carries only the sections it changes, so a body with no
-      // control says nothing: the goal family decides.
-    } catch {
-      // fall through to the family
-    }
+  // What the step actually leaves behind: a create's body, an update's policy
+  // with its own patch applied (roadmap/operations.ts finalTargets). Read from
+  // the operations, never from a body serialised beside them, which could say
+  // something else.
+  type Body = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }
+  for (const body of finalTargets(step) as Body[]) {
+    const grant = body.grantControls
+    if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
+    if (body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined)) return true
   }
+  // A step with no operation to read — one already in place, one the plan cannot
+  // write yet — says nothing of its own: the goal family decides.
   return step.readiness.family !== 'other'
 }
 

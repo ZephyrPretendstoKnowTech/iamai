@@ -72,7 +72,11 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
   const serviceAccountsGroupId: string | null = used.serviceAccountsGroupId?.toLowerCase() ?? null
   const nameOf = names.nameOf
   const policyName = typeof p.displayName === 'string' && p.displayName.length > 0 ? p.displayName : names.policyName
-  const strengthName = names.strengthName ?? (p.grantControls as { authenticationStrength?: { displayName?: string } } | null)?.authenticationStrength?.displayName ?? null
+  // The strength the operation's own body names, first: a confirmed mapping can
+  // resolve the author's strength to a tenant object of another name, and the
+  // instruction has to name the object the request carries. The goal's own name
+  // stands in only for a body that names none.
+  const strengthName = (p.grantControls as { authenticationStrength?: { displayName?: string } } | null)?.authenticationStrength?.displayName ?? names.strengthName ?? null
   const exclusionsGroup = exclusionsGroupId ? nameOf(exclusionsGroupId) : 'the exclusions group'
   return {
     policyName,

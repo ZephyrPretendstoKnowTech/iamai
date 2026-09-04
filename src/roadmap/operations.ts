@@ -30,26 +30,51 @@ export function validOperations(action: Pick<Action, 'resolution'>): PolicyOpera
   return ops.every(isValidOperation) ? ops : []
 }
 
+/** Why an open policy cannot be written as it stands. */
+export type UnavailableReason = 'missing-object' | 'unmatched-pair' | 'baseline-conflict' | 'no-operation'
+
+/** What any of this applies to: a step that describes a policy. */
+type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status'>>
+
 /**
- * Why a policy step cannot be implemented as it stands, or null when nothing
- * stops it. Three reasons, and the plan treats all three alike: nothing is
- * scheduled for the step, it carries no rollout dates, no completion criteria,
- * no rollback and no announcement, and it says what to do about it instead.
+ * True when the step is a policy the plan is still trying to write. A goal
+ * already in place is not one: it has nothing to write, which is a result of its
+ * own (`isPreserved`), not a failure to produce one.
  */
-export function unimplementableReason(step: Pick<Step, 'goalId' | 'action'>): 'missing-object' | 'unmatched-pair' | 'baseline-conflict' | null {
+export function isOpenPolicy(step: PolicyStep): boolean {
+  const kind = step.kind ?? step.action.kind
+  return (kind === 'create' || kind === 'adjust') && step.status !== 'done' && step.status !== 'skipped'
+}
+
+/**
+ * Why an open policy cannot be written as it stands, or null when nothing stops
+ * it. Four reasons, and the plan treats all four alike: nothing is scheduled for
+ * the step, it takes no date from the wave it sits in, it has no rings, no
+ * events, no completion criteria, no rollback and no announcement, and it says
+ * what to do about it instead. A goal already in place is never one of them.
+ */
+export function unavailableReason(step: PolicyStep): UnavailableReason | null {
+  if (!isOpenPolicy(step)) return null
   if (hasBaselineConflict(step.goalId)) return 'baseline-conflict'
   if (step.action.unmatchedPair === true) return 'unmatched-pair'
   if ((step.action.missing ?? []).length > 0) return 'missing-object'
+  if (validOperations(step.action).length === 0) return 'no-operation'
   return null
+}
+
+/** True when the goal is already in place: nothing to write, and nothing wrong. */
+export function isPreserved(step: PolicyStep): boolean {
+  return step.status === 'done' && validOperations(step.action).length === 0
 }
 
 /**
  * The one implementation decision, for every channel and for the schedule. An
  * implementation is offered when all of these hold:
  *
- * - the step has at least one valid operation to run — a goal already in place
- *   has none, and must not offer instructions for making a second copy of a
- *   policy the tenant already has;
+ * - the step is a policy the plan is still trying to write;
+ * - it has at least one valid operation to run — a goal already in place has
+ *   none, and must not offer instructions for making a second copy of a policy
+ *   the tenant already has;
  * - every object its policy names exists in the tenant (`action.missing` empty);
  * - the plan knows which tenant policy each half of a pair is;
  * - nothing suppresses it — the baseline's own definition of the goal does not
@@ -61,16 +86,27 @@ export function unimplementableReason(step: Pick<Step, 'goalId' | 'action'>): 'm
  * still says what is missing and which step comes first; that is an explanation,
  * not an implementation.
  */
-export function implementationOffered(step: Pick<Step, 'goalId' | 'action'>): boolean {
-  return validOperations(step.action).length > 0 && unimplementableReason(step) === null
+export function implementationOffered(step: PolicyStep): boolean {
+  return isOpenPolicy(step) && validOperations(step.action).length > 0 && unavailableReason(step) === null
 }
 
 /** The operations a step actually runs: its own, when it offers an implementation at all. */
-export function operationsOf(step: Pick<Step, 'goalId' | 'action'>): PolicyOperation[] {
+export function operationsOf(step: PolicyStep): PolicyOperation[] {
   return implementationOffered(step) ? validOperations(step.action) : []
 }
 
 /** The bodies those operations submit: one body, or one per policy in the baseline's order. */
-export function operationBodies(step: Pick<Step, 'goalId' | 'action'>): Record<string, unknown>[] {
+export function operationBodies(step: PolicyStep): Record<string, unknown>[] {
   return operationsOf(step).map((o) => o.body)
+}
+
+/**
+ * The whole policy each operation is working towards: what the tenant's policy
+ * will be once the operation has run. A create's is its body; an update's is the
+ * policy it names with its own patch applied. Everything that decides what the
+ * change *means* — what it can deny, who it would strand, what a person is told
+ * — reads these and never a body serialised somewhere else.
+ */
+export function finalTargets(step: PolicyStep): Record<string, unknown>[] {
+  return operationsOf(step).map((o) => (o.mode === 'update' ? (o.target ?? o.body) : o.body))
 }
