@@ -52,10 +52,14 @@ function vars(key: string, rows: string[], ids: string[], ticked: string[]): Pic
   return { pickerKey: key, [key]: rows, [`${key}Ids`]: ids, [`${key}Ticked`]: ticked }
 }
 
-/** The mapping's own ids where it holds any (the plan's current value), else everything nominated. */
-function tickedFrom(current: readonly string[], ids: string[]): string[] {
+/**
+ * The mapping's own ids where it holds any (the plan's current value), else the
+ * fallback — everything nominated, unless a picker names a narrower default
+ * (the emergency picker ticks only what a scan may classify by itself).
+ */
+function tickedFrom(current: readonly string[], ids: string[], fallback: string[] = ids): string[] {
   const held = current.filter((id) => ids.includes(id))
-  return held.length > 0 ? held : ids
+  return held.length > 0 ? held : fallback
 }
 
 function policyGroups(p: unknown): { include: string[]; exclude: string[] } {
@@ -73,8 +77,11 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
   const policies = snapshot.config.caPolicies?.rows ?? []
   const userOf = (id: string): UserRow | undefined => snapshot.users.find((u) => u.id === id)
 
-  // Emergency access: the accounts two or more signals nominate, strongest
-  // first, then any the plan already holds that the signals missed.
+  // Emergency access: the accounts the signals nominate, the named ones first,
+  // then any the plan already holds that the signals missed. Every nomination
+  // is offered; only the ones the tenant named for the job are ticked before a
+  // person decides (emergencyAccess.ts), because a tick here is the plan's
+  // classification — it takes the account out of the people population.
   if (DECISION_STEPS.emergency.has(stepId)) {
     const candidates = detectEmergencyAccess(snapshot, policies)
     const ids = [...new Set([...candidates.map((c) => c.id), ...mapping.breakGlassUserIds])]
@@ -83,7 +90,8 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
       const signals = candidates.find((c) => c.id === id)?.signals ?? (u ? emergencySignals(u, snapshot, policies) : [])
       return row(template, { name: nameOf(id), upn: u?.userPrincipalName ?? undefined, signals: signals.map((s) => engine.emergencySignals[s] ?? s).join(', ') || undefined })
     })
-    return vars('emergencyCandidates', rows, ids, tickedFrom(mapping.breakGlassUserIds, ids))
+    const automatic = candidates.filter((c) => c.automatic).map((c) => c.id)
+    return vars('emergencyCandidates', rows, ids, tickedFrom(mapping.breakGlassUserIds, ids, automatic))
   }
 
   // The exclusions group: every group the plan knows (the ones policies name
