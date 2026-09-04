@@ -22,7 +22,7 @@ import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { jsonOffered, missingObjects } from './stepJson.ts'
-import { commsFor, datesLineFor, managerText, whoEvidenceLines } from './stepExport.ts'
+import { commsFor, datesLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -392,18 +392,20 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
     })
   // Each effect line shows once its answer applied (answers.ts effectLine): the
   // applied mapping holds the stored answer, so the line is true when it shows.
-  const decisionEffect = options.length > 0 ? effectLine(d.effect, answerOf(ctx.mapping, stepId, 'decision')) : null
+  const decisionAnswer = answerOf(ctx.mapping, stepId, 'decision')
   const questionEffect = question ? effectLine((d.question as { effect?: unknown }).effect, answerOf(ctx.mapping, stepId, 'question')) : null
   // The help is explanatory prose and renders in the flow, not inside the
-  // .decision row (which the contract measures against the row budget).
+  // .decision row (which the contract measures against the row budget); once
+  // the decision is answered, its effect line stands where the help stood
+  // (stepExport.ts decisionLine): one line, never both.
   return (
     <>
-      <Line s={d.help} ex={ex} cls="reason" />
+      {decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
         <div className="dlabel">{d.label}</div>
         {hasPicker && <Picker selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
         {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} options={options} answer={option} onAnswer={setOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />}
-        {decisionEffect && whole(decisionEffect, ex) && <p className="reason effect"><T s={decisionEffect} ex={ex} /></p>}
+        {decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
         {question && (
           <>
             <div className="dlabel">{question.label}</div>

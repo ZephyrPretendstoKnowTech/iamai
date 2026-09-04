@@ -430,7 +430,19 @@ function PeopleTab({
         columns={[
           { key: 'name', header: P.columns.name, sortValue: (r) => (r.displayName ?? '').toLowerCase(), csv: (r) => r.displayName ?? '', render: (r) => r.displayName ?? '—' },
           { key: 'upn', header: P.columns.upn, sortValue: (r) => (r.userPrincipalName ?? '').toLowerCase(), csv: (r) => r.userPrincipalName ?? '', render: (r) => <span className="sub">{r.userPrincipalName}</span> },
-          { key: 'type', header: P.columns.type, sortValue: (r) => r.userType, csv: (r) => r.userType, render: (r) => (r.userType === 'guest' ? <Chip>{P.guest}</Chip> : P.member) },
+          {
+            key: 'type',
+            header: P.columns.type,
+            sortValue: (r) => `${r.userType}${r.accountEnabled === false ? ' disabled' : ''}`,
+            csv: (r) => (r.accountEnabled === false ? `${r.userType} · ${P.signInDisabled}` : r.userType),
+            // A sign-in-disabled account (a shared mailbox, a resource) is listed here with its tag, and counted as a person nowhere.
+            render: (r) => (
+              <>
+                {r.userType === 'guest' ? <Chip>{P.guest}</Chip> : P.member}
+                {r.accountEnabled === false && <> <Chip status="neutral">{P.signInDisabled}</Chip></>}
+              </>
+            ),
+          },
           { key: 'activity', header: P.columns.activity, sortValue: (r) => r.v?.activity ?? '', csv: (r) => (r.v ? ACTIVITY_STATE[r.v.activity].title : ''), render: (r) => (r.v ? ACTIVITY_STATE[r.v.activity].title : '—') },
           { key: 'mfa', header: P.columns.mfa, sortValue: (r) => r.v?.mfa ?? '', csv: (r) => (r.v ? MFA_STATE[r.v.mfa].title : ''), render: (r) => (r.v ? MFA_STATE[r.v.mfa].title : '—') },
           { key: 'method', header: P.columns.method, sortValue: (r) => r.v?.strongestMethod ?? '', csv: (r) => (r.v ? METHOD_TIER[r.v.strongestMethod].title : ''), render: (r) => (r.v && r.v.strongestMethod !== 'none' ? METHOD_TIER[r.v.strongestMethod].title : '—') },

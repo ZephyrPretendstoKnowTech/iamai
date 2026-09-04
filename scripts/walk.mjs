@@ -686,7 +686,7 @@ async function walkFixture(fx) {
           if (!/built and maintained by Jon Hope/.test(t2.text) || !/Its aim is layered protection/.test(t2.text)) add('P0', `${label}: tile 2 lacks the approved baseline sentences`)
           expectBtn(t2, /^Change baseline$/, 'secondary', 'tile 2')
         }
-        // 3 Scan: the beats, the read-only line and the limitations in both states,
+        // 3 Scan: the read-only line and the limitations in both states (no Reads / Compares / Writes beats),
         // then exactly one of its states (docs/design/connect-mockup.html); the
         // number badge carries the state colour; nothing of the other states, and
         // nothing of the Plan tile's.
@@ -696,8 +696,8 @@ async function walkFixture(fx) {
           const seen = Object.entries(SCAN_STATES).filter(([, re]) => re.test(t3.h2)).map(([k]) => k)
           if (seen.length !== 1 || seen[0] !== want) add('P0', `${label}: tile 3 reads "${t3.h2}"; Scan in the ${want} state`)
           if (/What happens next/.test(t3.text)) add('P0', `${label}: tile 3 still reads What happens next`)
-          for (const w of ['Reads', 'Compares', 'Writes']) if (!new RegExp('\\b' + w + '\\b').test(t3.text)) add('P0', `${label}: tile 3 lacks its ${w} line`)
-          if (signedOut && !/Reads your tenant's policies, people, sign-in records and licences\./.test(t3.text)) add('P0', `${label}: signed out, tile 3 does not say "your tenant"`)
+          for (const s of ['policies, people, sign-in records and licences', 'what each baseline policy is for', 'a dated plan for the difference']) if (t3.text.includes(s)) add('P0', `${label}: tile 3 still carries a Reads / Compares / Writes beat ("${s}")`)
+          if (!/Read-only\. It holds no permission that can create, change or delete anything\./.test(t3.text)) add('P0', `${label}: tile 3 lacks the read-only line`)
           if (!/Read-only\. It holds no permission that can create, change or delete anything\./.test(t3.text)) add('P0', `${label}: tile 3 lacks the read-only line`)
           const limits = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /IAMAI limitations/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; const ps = d.querySelectorAll('p'); const tile = d.closest('section.step-tile'); return { items: d.querySelectorAll('li').length, last: ((ps[ps.length - 1] || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: tile ? ((tile.querySelector('.n') || {}).textContent || '').trim() : '' } })()`)
           if (!limits) add('P0', `${label}: tile 3 has no IAMAI limitations collapsible`)
@@ -781,11 +781,13 @@ async function walkFixture(fx) {
             const facts = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .facts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
             const labels = facts.map((f) => f.label)
             const plainOrDrop = (l, w) => l === w || new RegExp('^' + w + ' since [A-Z][a-z]{2} \\d+$').test(l)
-            if (labels.length !== 5 || !plainOrDrop(labels[0], 'people') || !plainOrDrop(labels[1], 'policies') || labels[2] !== 'sign-in records' || labels[3] !== 'licence' || !/^steps · \d+ done$/.test(labels[4])) add('P0', `${label}: the Plan tile's facts read ${JSON.stringify(facts)}; people · policies · sign-in records · licence · steps · N done`)
+            // The people fact counts what the plan counts: "active people · of N enabled" (with "since <date>" after a drop); never the directory's row count.
+            const peopleLabel = /^active people( since [A-Z][a-z]{2} \d+)? · of \d+ enabled$/.test(labels[0])
+            if (labels.length !== 5 || !peopleLabel || !plainOrDrop(labels[1], 'policies') || labels[2] !== 'sign-in records' || labels[3] !== 'licence' || !/^steps · \d+ done$/.test(labels[4])) add('P0', `${label}: the Plan tile's facts read ${JSON.stringify(facts)}; active people · of N enabled · policies · sign-in records · licence · steps · N done`)
             else {
               if (fx.mock === 'drop') {
                 // The previous scan read three times as many: "15 → 5 people since <date>", and the same for policies.
-                if (!/^\d+ → \d+$/.test(facts[0].value) || !/^people since [A-Z][a-z]{2} \d+$/.test(facts[0].label)) add('P0', `${label}: the people fact reads ${JSON.stringify(facts[0])}; "N → n" with "people since <date>" after a drop of more than a third`)
+                if (!/^\d+ → \d+$/.test(facts[0].value) || !/^active people since [A-Z][a-z]{2} \d+ · of \d+ enabled$/.test(facts[0].label)) add('P0', `${label}: the people fact reads ${JSON.stringify(facts[0])}; "N → n" with "active people since <date> · of N enabled" after a drop of more than a third`)
                 if (!/^\d+ → \d+$/.test(facts[1].value) || !/^policies since [A-Z][a-z]{2} \d+$/.test(facts[1].label)) add('P0', `${label}: the policies fact reads ${JSON.stringify(facts[1])}; "N → n" with "policies since <date>" after a drop of more than a third`)
                 const [before, now] = facts[0].value.split(' → ').map(Number)
                 if (!(now < before * (2 / 3))) add('P0', `${label}: the drop fact shows ${facts[0].value}, not a drop of more than a third`)
@@ -828,7 +830,7 @@ async function walkFixture(fx) {
           if (wantPlan === 'waiting' && (t4.buttons.length !== 0 || /\d+ people/.test(t4.text))) add('P0', `${label}: the waiting Plan tile carries buttons or facts: ${JSON.stringify(t4.buttons)} "${t4.text}"`)
           if (wantPlan === 'sample') {
             const facts = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .facts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
-            if (facts.map((f) => f.label).join(' · ') !== 'people · steps · already in place · to finish') add('P0', `${label}: the sample tile's facts read ${JSON.stringify(facts)}; people · steps · already in place · to finish`)
+            if (facts.map((f) => f.label).join(' · ') !== 'active people · steps · already in place · to finish') add('P0', `${label}: the sample tile's facts read ${JSON.stringify(facts)}; active people · steps · already in place · to finish`)
             else if (!facts.slice(0, 3).every((f) => /^\d+$/.test(f.value) && Number(f.value) > 0) || !/^\d+ weeks?$/.test(facts[3].value)) add('P0', `${label}: the sample tile's facts are not computed numbers: ${JSON.stringify(facts)}`)
             else if (Number(facts[2].value) > Number(facts[1].value)) add('P0', `${label}: more already in place than steps: ${JSON.stringify(facts)}`)
             if (!/What the sample tenant produced:/.test(t4.text)) add('P0', `${label}: the sample tile lacks its lead`)

@@ -75,7 +75,7 @@ import type { SizeBand } from './constants.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
-import { proposedObjectNames } from '../coverage/naming.ts'
+import { proposedName, proposedObjectNames } from '../coverage/naming.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
@@ -648,6 +648,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Shared devices, their own policy (prompt 48 item 4).
   if (canUseConditionalAccess && sharedDevices.length > 0) {
     const step = prereq('s-shared-devices')
+    // Its own policy, named in the tenant's convention (the baseline holds none; the step's instructions create it).
+    step.naming = { proposed: proposedName({ prefix: 'CA', rest: ['Allow', 'Shared devices'], collapsed: 'Allow shared devices' }, naming).name, fromBaseline: null }
     step.population = { total: sharedDevices.length, active: sharedDevices.length, admins: 0, guests: 0, ids: sharedDevices.map((u) => u.id), activeIds: sharedDevices.map((u) => u.id), inScope: sharedDevices.length }
     steps.push(step)
   }

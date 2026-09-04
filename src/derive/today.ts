@@ -67,9 +67,10 @@ export function stateOf(v: MfaViability): TodayState {
 function evidenceOf(v: MfaViability, u: UserRow, snapshot: TenantSnapshot): TodayEvidence {
   if (v.activity === 'neverSignedIn') return { kind: 'neverSignedIn' }
   if (v.activity === 'dormant') return u.lastSuccessfulSignIn ? { kind: 'inactive', since: u.lastSuccessfulSignIn } : { kind: 'neverSignedIn' }
+  // The signed-in account is active, with MFA, by the scan itself (derive/operator.ts):
+  // its evidence reads "signed in now" unless the records hold an MFA sign-in of its own.
+  if (isOperator(snapshot, u.id) && !snapshot.signInEvidence?.[u.id]?.lastMfaSuccess) return { kind: 'signedInNow' }
   if (v.evidence) return { kind: 'mfa', method: v.evidence.method, at: v.evidence.at }
-  // The signed-in account is active by the scan itself (derive/operator.ts).
-  if (isOperator(snapshot, u.id)) return { kind: 'signedInNow' }
   if (v.mfa === 'none') return { kind: 'noMethod' }
   return { kind: 'reasons', reasons: v.reasons }
 }

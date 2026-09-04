@@ -54,6 +54,39 @@ function contextFor(p: Pol): PortalContext {
 
 const EMPTY: StrengthLookup = new Map()
 
+// An include and an exclude never name the same set on one line: an exclude
+// wins in Entra, so a group, a location or a platform on both sides would
+// describe a policy that applies to nobody; the translator drops the exclude.
+test('portal include/exclude lines never name the same set on both sides', () => {
+  const policy = (conditions: Record<string, unknown>): Pol =>
+    ({ id: null, displayName: 'Same set', conditions: { applications: { includeApplications: ['All'], excludeApplications: [], includeUserActions: [] }, ...conditions }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, sessionControls: null, placeholders: { g1: 'exclusionsGroup' } }) as unknown as Pol
+  const both = policy({
+    users: { includeUsers: [], excludeUsers: [], includeGroups: ['g1'], excludeGroups: ['g1'], includeRoles: [], excludeRoles: [], includeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } }, excludeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } } },
+    locations: { includeLocations: ['l1'], excludeLocations: ['l1'] },
+    platforms: { includePlatforms: ['android', 'iOS'], excludePlatforms: ['android'] },
+  })
+  const lines = portalLines(policyFacts(both, EMPTY), contextFor(both))
+  const users = lines.find((l) => l.startsWith('Users → '))!
+  assert.ok(users.includes('Groups: the exclusions group'), users)
+  assert.ok(!/Exclude → Groups/.test(users), `no exclude of the included group: ${users}`)
+  assert.ok(!/Also exclude Guest/.test(users), `no exclude of the included guest type: ${users}`)
+  const loc = lines.find((l) => l.startsWith('Conditions → Locations'))!
+  assert.ok(!/Exclude/.test(loc), `no exclude of the included location: ${loc}`)
+  const plat = lines.find((l) => l.startsWith('Conditions → Device platforms'))!
+  assert.ok(/Include: Android, iOS$/.test(plat), `no exclude of an included platform: ${plat}`)
+  // The same excludes against a different include stay.
+  const apart = policy({
+    users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: ['g1'], includeRoles: [], excludeRoles: [], excludeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } } },
+    locations: { includeLocations: ['All'], excludeLocations: ['l1'] },
+    platforms: { includePlatforms: ['all'], excludePlatforms: ['android'] },
+  })
+  const kept = portalLines(policyFacts(apart, EMPTY), contextFor(apart))
+  const users2 = kept.find((l) => l.startsWith('Users → '))!
+  assert.ok(/Exclude → Groups: the exclusions group/.test(users2) && /Also exclude Guest/.test(users2), users2)
+  assert.ok(/Exclude: /.test(kept.find((l) => l.startsWith('Conditions → Locations'))!))
+  assert.ok(/Include: Any device; Exclude: Android$/.test(kept.find((l) => l.startsWith('Conditions → Device platforms'))!))
+})
+
 test('every pinned baseline policy renders non-empty portal lines that end in a grant or session control, with no unresolved placeholder', () => {
   const failures: string[] = []
   for (const p of pinned.policies as Pol[]) {

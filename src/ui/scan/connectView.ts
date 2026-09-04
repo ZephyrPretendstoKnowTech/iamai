@@ -18,6 +18,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import type { DemoFacts } from '../demoFacts.ts'
 import { droppedByAThird } from './scanRecord.ts'
+import { peopleCounts } from '../../derive/sets.ts'
 import type { PreviousScan } from './scanRecord.ts'
 
 type Words = {
@@ -44,18 +45,11 @@ type Words = {
   baseline: { title: string; state: string; loading: string; none: string; what: string; goal: string; updated: string; diff: { added: string; removed: string; changed: string }; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
   scan: {
     title: string
-    reads: string
-    readsLine: string
-    compares: string
-    comparesLine: string
-    writes: string
-    writesLine: string
     readOnly: string
     limitsSummary: string
     limits: string[]
     limitsMore: string
     limitsLink: string
-    yourTenant: string
     complete: { state: string; again: string }
     gaps: { state: string; lead: string; leadFirst: string; notRead: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string }
@@ -65,7 +59,7 @@ type Words = {
   }
   plan: {
     title: string
-    ready: { state: string; people: string; policies: string; signIns: string; window: string; notRead: string; licence: string; licences: { p2: string; p1: string; free: string }; dropValue: string; dropSince: string; steps: string; open: string }
+    ready: { state: string; people: string; peopleSince: string; policies: string; signIns: string; window: string; notRead: string; licence: string; licences: { p2: string; p1: string; free: string }; dropValue: string; dropSince: string; steps: string; open: string }
     last: { state: string; open: string }
     waiting: { state: string }
     sample: { lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksValue: string; weeksOne: string; open: string }
@@ -171,7 +165,7 @@ export function baselineTile({
   }
 }
 
-// ---- 3 Scan: the beats, then exactly one of its states ----
+// ---- 3 Scan: the read-only line and the limitations, then exactly one of its states ----
 export type ScanInput =
   | { kind: 'complete'; at: string; now?: number }
   | { kind: 'gaps'; unread: string[]; lastScan: { at: string } | null }
@@ -186,7 +180,6 @@ export type ScanTile = {
   title: string
   state: string
   tone: Tone
-  beats: { label: string; text: string }[]
   readOnly: string
   limits: { summary: string; lines: string[]; more: string; link: { label: string; href: string } }
   lead?: string
@@ -200,16 +193,11 @@ export type ScanTile = {
 /** The scan's age, from the one stored timestamp: the Scan and Plan tiles both read this. */
 export const scanAgeWords = (at: string, now?: number): string => relative(at, now)
 
-export function scanTile(tenant: string, input: ScanInput): ScanTile {
+export function scanTile(input: ScanInput): ScanTile {
   const S = W.scan
   const base = {
     n: 3 as const,
     title: S.title,
-    beats: [
-      { label: S.reads, text: fillText(S.readsLine, { tenant }) },
-      { label: S.compares, text: fillText(S.comparesLine, { tenant }) },
-      { label: S.writes, text: S.writesLine },
-    ],
     readOnly: S.readOnly,
     limits: { summary: S.limitsSummary, lines: S.limits, more: S.limitsMore, link: { label: S.limitsLink, href: HOW_HREF } },
   }
@@ -256,7 +244,7 @@ export function scanTile(tenant: string, input: ScanInput): ScanTile {
 // ---- 4 Plan: ready, the last full plan, waiting for the scan, or the sample ----
 export type PlanInput =
   /** A complete scan: the facts and Open the plan. The step counts arrive once the plan has computed; the previous scan's numbers show a drop. */
-  | { kind: 'ready'; snapshot: TenantSnapshot; at: string; counts: { steps: number; done: number } | null; previous?: PreviousScan | null; now?: number }
+  | { kind: 'ready'; snapshot: TenantSnapshot; at: string; counts: { steps: number; done: number } | null; previous?: PreviousScan | null; now?: number; serviceAccountIds?: readonly string[] }
   /** A scan with gaps kept the last full plan. */
   | { kind: 'last'; at: string }
   /** Signed in, no plan yet: the scan has not run, is running, or ended with gaps and nothing before it. */
@@ -287,13 +275,19 @@ export function planTile(input: PlanInput): PlanTile {
     case 'ready': {
       const R = P.ready
       const w = input.snapshot.sources.signInEvidence?.coveredWindow ?? null
-      const people = input.snapshot.users.length
+      // The people the plan counts (derive/sets.ts peopleCounts, Today's line): "2 active people · of 3 enabled"; the directory's row count appears nowhere.
+      const counts = peopleCounts(input.snapshot, input.snapshot.asOf, new Set(input.serviceAccountIds ?? []))
       const policies = input.snapshot.config.caPolicies?.rows.length ?? 0
       // A count that fell by more than a third since the previous scan reads
-      // "13 → 4 people since Sep 2": the tenant, or the account's reach, shrank.
+      // "13 → 4 active people since Sep 2": the tenant, or the account's reach, shrank.
       const prev = input.previous ?? null
+      const dropped = (now: number, before: number | undefined): boolean => prev !== null && droppedByAThird(now, before)
+      const value = (now: number, before: number | undefined): string => (dropped(now, before) ? fillText(R.dropValue, { before: String(before), now: String(now) }) : String(now))
       const fact = (now: number, before: number | undefined, label: string): { value: string; label: string } =>
-        prev && droppedByAThird(now, before) ? { value: fillText(R.dropValue, { before: String(before), now: String(now) }), label: fillText(R.dropSince, { label, date: monthDay(prev.at) }) } : { value: String(now), label }
+        dropped(now, before) ? { value: value(now, before), label: fillText(R.dropSince, { label, date: monthDay(prev!.at) }) } : { value: String(now), label }
+      const people = dropped(counts.active, prev?.people)
+        ? { value: value(counts.active, prev?.people), label: fillText(R.peopleSince, { date: monthDay(prev!.at), enabled: counts.enabled }) }
+        : { value: String(counts.active), label: fillText(R.people, { enabled: counts.enabled }) }
       return {
         n: 4,
         kind: 'ready',
@@ -301,7 +295,7 @@ export function planTile(input: PlanInput): PlanTile {
         state: fillText(R.state, { age: scanAgeWords(input.at, input.now) }),
         tone: 'done',
         facts: [
-          fact(people, prev?.people, R.people),
+          people,
           fact(policies, prev?.policies, R.policies),
           { value: w ? fillText(R.window, { from: monthDay(w.from), to: monthDay(w.to) }) : R.notRead, label: R.signIns },
           { value: licenceWord(input.snapshot), label: R.licence },
@@ -349,8 +343,8 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
     out.push(...tile.paragraphs)
     if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, ...r.steps]))
   }
-  if ('beats' in tile) {
-    out.push(...tile.beats.flatMap((b) => [b.label, b.text]), tile.readOnly, tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
+  if ('readOnly' in tile) {
+    out.push(tile.readOnly, tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
     for (const r of tile.rows ?? []) out.push(r.name, r.value)
     if (tile.ask) out.push(tile.ask)
     if (tile.learn) out.push(tile.learn.label)
