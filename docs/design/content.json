@@ -1071,7 +1071,7 @@
       },
       "decision": {
         "label": "Exclusions group",
-        "help": "The one group every policy excludes. IAMAI recognised this one from the exclusions already in place.",
+        "help": "The one group every policy excludes. IAMAI recognised {exclusionsGroup} from the exclusions already in place.",
         "pickerSource": "groups",
         "pickerRow": "{name} · {memberCount} members · excluded from {excludedFrom} of {policyCount} policies",
         "save": "Save"
