@@ -65,3 +65,23 @@ test('the Plan page tip and the step tip are gone; Today and Export keep theirs'
   const R = (pages.plan as { readiness: { tiles: Record<string, string> } }).readiness
   assert.deepEqual(Object.values(R.tiles), ['Ready', 'Method not strong enough', 'Registered, never used', 'No method', 'Admins without a passkey or key'])
 })
+
+// With Require MFA for Everyone in place, nobody is registered but never seen
+// (population.ts campaignBucket): the strip's tile is empty, the four tiles
+// still partition the active people, and the campaign's list agrees.
+test('with Require MFA for Everyone in place, the unproven tile is empty and the campaign agrees; the partition holds', () => {
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const nameOf = (id: string): string => r.input.names!.label(id)
+  const off = readinessStrip(f.snapshot, f.mapping, f.snapshot.asOf, false)
+  const on = readinessStrip(f.snapshot, f.mapping, f.snapshot.asOf, true)
+  assert.ok(off.tiles.unproven.length > 0, 'the records hold people never seen to complete MFA')
+  assert.equal(on.tiles.unproven.length, 0)
+  assert.equal(on.active, off.active)
+  for (const strip of [off, on]) assert.equal(strip.tiles.ready.length + strip.tiles.weak.length + strip.tiles.unproven.length + strip.tiles.noMethod.length, strip.active, 'the first four tiles partition the active people')
+  assert.equal(on.tiles.ready.length + on.tiles.weak.length, off.tiles.ready.length + off.tiles.weak.length + off.tiles.unproven.length, 'the never-seen people are proven under the policy')
+  const listOff = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: f.operatorId, mfaInPlace: false })
+  const listOn = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: f.operatorId, mfaInPlace: true })
+  assert.deepEqual([...listOff.unproven].sort(), off.tiles.unproven.map((p) => nameOf(p.id)).sort(), 'the same people, whatever the order')
+  assert.deepEqual(listOn.unproven, [])
+})
