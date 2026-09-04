@@ -29,6 +29,8 @@ export type Palette = {
   wait: string
   stop: string
   idle: string
+  /** Set up, never used for MFA: the ladder's rung 2, between amber and red (docs/design/mockups/today-v2.html). */
+  unproven: string
 }
 
 /** Paper. The default; print always uses it. */
@@ -48,6 +50,7 @@ export const LIGHT: Palette = {
   wait: '#8A5A0B',
   stop: '#9B2C2C',
   idle: '#8A8A83',
+  unproven: '#9E5014',
 }
 
 /** Ink on charcoal. Neutral, never navy. */
@@ -67,6 +70,7 @@ export const DARK: Palette = {
   wait: '#E0B25C',
   stop: '#E28B8B',
   idle: '#7A7871',
+  unproven: '#C98A2E',
 }
 
 /** Three families, self-hosted Latin subsets under public/fonts (OFL). Two weights: 400 and 500. */
@@ -147,7 +151,11 @@ const VAR_NAMES: Record<keyof Palette, string> = {
   wait: '--wait',
   stop: '--stop',
   idle: '--idle',
+  unproven: '--unproven',
 }
+
+/** The MFA readiness ladder's colour per rung (derive/ladder.ts), each an alias of a palette colour so it follows the theme. */
+export const RUNG_COLOURS: Record<string, string> = { '--rung-5': '--ok', '--rung-4': '--accent', '--rung-3': '--wait', '--rung-2': '--unproven', '--rung-1': '--stop', '--rung-0': '--idle' }
 
 function paletteBlock(p: Palette, indent = '  '): string {
   return (Object.keys(VAR_NAMES) as (keyof Palette)[]).map((k) => `${indent}${VAR_NAMES[k]}: ${p[k].toLowerCase()};`).join('\n')
@@ -197,6 +205,11 @@ ${scale}
 
   /* light: paper */
 ${paletteBlock(LIGHT)}
+
+  /* the MFA readiness ladder: a colour per rung, from the palette */
+${Object.entries(RUNG_COLOURS)
+  .map(([k, v]) => `  ${k}: var(${v});`)
+  .join('\n')}
 }
 
 @media (prefers-color-scheme: dark) {

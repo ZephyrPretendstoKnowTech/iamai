@@ -13,8 +13,8 @@ import type { StepVarContext } from './stepVars.ts'
 import { commsFor, stepLines } from './stepExport.ts'
 import { fillText } from '../../content/render.ts'
 import { app, pages, stepById } from '../../content/content.ts'
-import { TILE_STATES } from '../../derive/today.ts'
-import { tileLabel } from './todayCells.ts'
+import { RUNGS } from '../../derive/ladder.ts'
+import { rungWords, showWord } from './todayCells.ts'
 import { rowWhen } from './rowWhen.ts'
 import { rowWho } from './rowWho.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
@@ -68,14 +68,12 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   assert.ok(lines.some((l) => /^1 admin has no phishing-resistant method; register before /.test(l)))
 })
 
-test("(3) Today's tile labels are the table's state words; a tile that groups states names them", () => {
-  const show = (pages.today as { show: string[]; tiles: Record<string, Record<string, unknown>> }).show
-  assert.equal(tileLabel('proven'), 'Proven')
-  assert.equal(tileLabel('unproven'), 'Likely works · Never prompted · Possibly broken')
-  assert.equal(tileLabel('noMethod'), 'No method')
-  assert.equal(tileLabel('notActive'), 'Not active')
-  for (const k of Object.keys(TILE_STATES)) for (const word of tileLabel(k as keyof typeof TILE_STATES).split(' · ')) assert.ok(show.includes(word), `${word} is a table state word`)
-  for (const t of Object.values((pages.today as { tiles: Record<string, Record<string, unknown>> }).tiles)) assert.ok(!('label' in t), 'the tiles carry no label of their own')
+test("(3) Today's rungs are the ladder's titles, and the Show list offers each by the same title", () => {
+  assert.deepEqual(RUNGS.map((r) => rungWords(r).title), ['Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, never used for MFA', 'Nothing set up'])
+  for (const r of RUNGS) assert.equal(showWord(`rung-${r}`), rungWords(r).title, `rung ${r} in the Show list`)
+  const show = (pages.today as { show: Record<string, string> }).show
+  assert.equal(showWord('all'), show.all)
+  assert.ok(!('tiles' in (pages.today as Record<string, unknown>)), 'the tiles carry no words of their own')
 })
 
 test('(4) a done step\'s row shows no date word', () => {

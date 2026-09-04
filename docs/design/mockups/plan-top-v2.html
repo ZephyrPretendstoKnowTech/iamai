@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Plan (top panel) — mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;500&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font-serif:'IBM Plex Serif',Georgia,serif; --font-sans:'IBM Plex Sans',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+    --t-1:12px;--t-2:13px;--t-3:14px;--t-4:16px;--t-5:20px;--t-6:26px;--radius:4px;--page:760px;
+    --bg:#fbf9f5;--bg-raised:#f4f1ea;--bg-inset:#ede9e0;--ink:#1b1b1b;--ink-2:#55554f;--ink-3:#6b6b65;--rule:#e3dfd6;--rule-strong:#c9c4b8;
+    --accent:#0b5b57;--accent-tint:#e1edeb;--on-accent:#fbf9f5;--ok:#2f6b4f;--wait:#8a5a0b;--stop:#9b2c2c;--idle:#8a8a83;
+  }
+  [data-theme="dark"]{
+    --bg:#15171a;--bg-raised:#1d2024;--bg-inset:#24282d;--ink:#eceae4;--ink-2:#a7a59d;--ink-3:#8a887f;--rule:#2c3036;--rule-strong:#3d4249;
+    --accent:#5fb8b0;--accent-tint:#1b302f;--on-accent:#0f1214;--ok:#7bc9a0;--wait:#e0b25c;--stop:#e28b8b;--idle:#7a7871;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:400 var(--t-3)/1.5 var(--font-sans)}
+  header{height:48px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--rule);font-size:var(--t-2)}
+  header .brand{font:500 var(--t-4) var(--font-serif);color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:8px}
+  header nav a{color:var(--ink-2);text-decoration:none;margin-right:14px}
+  header nav a.on{color:var(--ink);border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:-16px}
+  header .right{margin-left:auto;display:flex;gap:18px;color:var(--ink-2)}
+  main{max-width:var(--page);margin:0 auto;padding:28px 24px 60px}
+  h1{font:400 var(--t-6)/1.25 var(--font-serif);margin:0 0 6px}
+  .sub{color:var(--ink-2);margin:0 0 22px}
+  /* the step tiles */
+  .tile{position:relative;background:var(--bg-raised);border:1px solid var(--rule);border-radius:var(--radius);padding:16px 20px 16px 56px;margin:0 0 10px}
+  .tile .n{position:absolute;left:18px;top:15px;width:24px;height:24px;border-radius:50%;border:1px solid var(--rule-strong);color:var(--ink-2);font:500 var(--t-2)/22px var(--font-mono);text-align:center}
+  .tile.done .n{background:var(--accent-tint);border-color:var(--accent);color:var(--accent)}
+  .tile.stop .n{border-color:var(--stop);color:var(--stop)}
+  .tile.wait .n{border-color:var(--wait);color:var(--wait)}
+  .tile h2{font:500 var(--t-4)/1.25 var(--font-sans);margin:0 0 4px;display:flex;align-items:baseline;gap:10px}
+  .tile h2 .state{font:400 var(--t-2) var(--font-sans);color:var(--ink-2)}
+  .tile h2 .state.ok{color:var(--ok)} .tile h2 .state.stop{color:var(--stop)} .tile h2 .state.wait{color:var(--wait)}
+  .tile p{margin:6px 0 0;color:var(--ink-2)}
+  .tile p strong{color:var(--ink);font-weight:500}
+  .tile .beats{margin:8px 0 0;padding:0;list-style:none}
+  .tile .beats li{padding:4px 0;color:var(--ink-2)}
+  .tile .beats b{color:var(--ink);font-weight:500;display:inline-block;width:76px}
+  .tile .facts{display:flex;gap:32px;margin:12px 0 0;padding:0;list-style:none}
+  .tile .facts li{font-size:var(--t-2);color:var(--ink-2)}
+  .tile .facts b{display:block;font:500 var(--t-5)/1.2 var(--font-serif);color:var(--ink)}
+  .tile .facts b.stop{color:var(--stop)}
+  .tile .actions{display:flex;gap:16px;align-items:center;margin-top:14px}
+  .btn{display:inline-block;background:var(--accent);color:var(--on-accent);border:0;border-radius:var(--radius);padding:7px 14px;font:500 var(--t-3) var(--font-sans);cursor:pointer;text-decoration:none}
+  .btn.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent);padding:6px 13px}
+  .btn.tertiary{background:var(--bg-inset);color:var(--ink-2);border:1px solid var(--rule-strong);padding:6px 13px}
+  .lnk{color:var(--accent);text-decoration:underline;text-underline-offset:3px;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+  .quiet{color:var(--ink-3);font-size:var(--t-2)}
+  .rows{margin:10px 0 0;padding:0;list-style:none;border-top:1px solid var(--rule)}
+  .rows li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--rule);font-size:var(--t-2)}
+  .rows li span:last-child{color:var(--ink-2)}
+  .rows li .role{color:var(--ink);font-weight:500}
+  .diff{margin:10px 0 0;padding:0;list-style:none}
+  .diff li{display:flex;gap:10px;padding:5px 0;font-size:var(--t-2);border-bottom:1px solid var(--rule)}
+  .diff .tag{width:64px;color:var(--ink-3)}
+  .diff .steps{color:var(--ink-3);margin-left:auto}
+  details summary{cursor:pointer;color:var(--accent);font-size:var(--t-2);list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  .state-block{display:block;margin-bottom:4px}
+  footer{margin-top:60px;text-align:center;font-size:var(--t-1);color:var(--ink-3)}
+  footer a{color:var(--ink-3)}
+  .strip-head{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 0;font-size:var(--t-1);color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase}
+  .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin:6px 0 16px}
+  .strip a{display:block;padding:12px 10px 12px 0;text-decoration:none;color:inherit;border-bottom:2px solid transparent}
+  .strip a:hover{border-bottom-color:var(--accent)}
+  .strip b{display:block;font:500 var(--t-5)/1.1 var(--font-serif);color:var(--ink)}
+  .strip b small{font:400 var(--t-2) var(--font-sans);color:var(--ink-2);margin-left:6px}
+  .strip span{font-size:var(--t-1);color:var(--ink-2)}
+  .strip a.pri{border-left:1px solid var(--rule-strong);padding-left:12px}
+  .ladder{margin:6px 0 4px;padding:0;list-style:none;border-top:1px solid var(--rule)}
+  .ladder li{display:grid;grid-template-columns:28px 1fr 56px 220px;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule);cursor:pointer}
+  .ladder .r{font:500 var(--t-2) var(--font-mono);color:var(--ink-3);text-align:center;border:1px solid var(--rule-strong);border-radius:50%;width:24px;height:24px;line-height:22px}
+  .ladder .r.top{border-color:var(--ok);color:var(--ok)}
+  .ladder .name{font:500 var(--t-3) var(--font-sans);color:var(--ink)} .ladder .name .quiet{margin-left:4px}
+  .ladder .desc{font-size:var(--t-1);color:var(--ink-3);display:block;margin-top:1px}
+  .ladder .n{font:500 var(--t-5)/1 var(--font-serif);color:var(--ink);text-align:right}
+  .ladder .bar{height:6px;background:var(--bg-inset);border-radius:3px;overflow:hidden}
+  .ladder .bar i{display:block;height:100%;background:var(--idle)}
+  .ladder li.top .bar i{background:var(--ok)} .ladder li.warn .bar i{background:var(--wait)} .ladder li.bad .bar i{background:var(--stop)}
+  .ladder li.divider{display:block;padding:8px 0 4px;border-bottom:0;cursor:default;font:500 11px var(--font-sans);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
+  .ladder li.divider::after{content:"";display:block;height:2px;background:var(--rule-strong);margin-top:4px}
+  .ledger{margin:6px 0 0;color:var(--ink-2)} .ledger b{color:var(--ink);font-weight:500}
+  table{border-collapse:collapse;width:100%;font-size:var(--t-2)}
+  th{text-align:left;color:var(--ink-3);font-weight:500;padding:8px 10px 8px 0;border-bottom:1px solid var(--rule)}
+  td{padding:9px 10px 9px 0;border-bottom:1px solid var(--rule);color:var(--ink-2);vertical-align:top}
+  td.name{color:var(--ink)} .tag{font-size:11px;color:var(--ink-3);margin-left:8px;border:1px solid var(--rule-strong);border-radius:3px;padding:0 5px}
+  .startrow{display:flex;align-items:center;gap:10px;margin:18px 0 10px;font-size:var(--t-2);color:var(--ink-2)}
+  .startrow input{background:var(--bg-inset);border:1px solid var(--rule-strong);color:var(--ink);border-radius:var(--radius);padding:5px 8px;font:inherit}
+  .search{display:inline-flex;align-items:center;gap:8px;background:var(--bg-inset);border:1px solid var(--rule-strong);border-radius:var(--radius);padding:6px 10px;color:var(--ink-3);font-size:var(--t-2);width:260px}
+  .tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:6px 0 16px}
+  .tiles a{display:block;background:var(--bg-raised);border:1px solid var(--rule);border-radius:var(--radius);padding:12px 14px;text-decoration:none;color:inherit}
+  .tiles a:hover{border-color:var(--accent)}
+  .tiles b{display:block;font:500 32px/1.1 var(--font-serif);margin-top:8px}
+  .tiles b small{font:400 var(--t-2) var(--font-sans);color:var(--ink-2);margin-left:6px}
+  .tiles span{display:block;font:500 var(--t-2)/1.3 var(--font-sans);color:var(--ink);min-height:34px}
+  .tiles a.pri{border-left:3px solid var(--rule-strong)}
+  .tiles .r{display:inline-block;font:600 11px/18px var(--font-mono);width:18px;text-align:center;border-radius:50%;color:var(--on-accent);margin-right:8px;vertical-align:middle;font-style:normal}
+</style>
+</head>
+<body>
+<header><a class="brand" href="#">◐ IAMAI Planner</a><nav><a href="#">Today</a><a class="on" href="#">Plan</a><a href="#">Export</a></nav><div class="right"><span>Dark theme</span><span>Account</span></div></header>
+<main>
+
+<h1>Plan</h1>
+<p class="sub" style="margin-bottom:4px">30 steps · 5 in place · finishes Oct 14, 2026 <span class="quiet">ⓘ</span></p>
+<div class="strip-head"><span>MFA Readiness</span><span>of 33 active people</span></div>
+<div class="strip-head" style="margin-top:0"></div><div class="tiles">
+  <a href="#"><span>Passkey or security key, proven</span><b style="color:var(--ok)">2</b></a>
+  <a href="#"><span>Authenticator app, proven</span><b style="color:var(--accent)">9</b></a>
+  <a class="pri" href="#"><span>Windows Hello only</span><b style="color:var(--wait)">1</b></a>
+  <a href="#"><span>Set up, never used for MFA</span><b style="color:#c98a2e">14</b></a>
+  <a href="#"><span>Nothing set up</span><b style="color:var(--stop)">7</b></a>
+</div>
+<div class="startrow">Start date <input type="date" value="2026-09-03"></div>
+<div class="actions"><a class="btn" href="#">Start the plan</a><a class="btn secondary" href="#">Plan settings</a></div>
+
+</main>
+<footer><a href="#">IAMAI Home</a> | <a href="#">Follow me on LinkedIn</a> | <a href="#">GitHub</a> | <a href="#">feedback@getiamai.com</a></footer>
+</body></html>

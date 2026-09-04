@@ -61,24 +61,24 @@ test('the problematic-accounts check lists the dormant accounts with their state
   assert.equal((ex.accountsWithStateIds as string[]).length, rows.length)
 })
 
-test("Today's Show list is the content file's, in the six-state order the table uses (walk-51 item 10)", () => {
-  const show = (pages.today as { show: string[] }).show
-  // The surface maps each option to a filter by position; a change to this list
-  // is a change to that mapping, so the order is pinned here.
-  assert.deepEqual(show, ['All', 'Proven', 'Likely works', 'Never prompted', 'Possibly broken', 'No method', 'Not active', 'Admins', 'Guests'])
-  const tiles = (pages.today as { tiles: Record<string, { label: string; value: string; heldBy: string | null; tip: string }> }).tiles
-  assert.deepEqual(Object.keys(tiles), ['proven', 'unproven', 'noMethod', 'notActive'])
-  assert.equal(tiles.proven.heldBy, null, 'proven is held by nothing')
-  for (const k of ['unproven', 'noMethod', 'notActive']) assert.match(tiles[k].heldBy ?? '', /^held by /, `${k} names the step that moves it`)
+test("Today's Show list: every account, the five rungs by title, the not active, the four kinds, the guests (docs/design/mockups/today-v2.html)", async () => {
+  const { SHOW_KEYS } = await import('../../derive/today.ts')
+  const { showWord } = await import('./todayCells.ts')
+  assert.deepEqual(
+    SHOW_KEYS.map(showWord),
+    ['All accounts', 'Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, never used for MFA', 'Nothing set up', 'Not active', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'],
+  )
+  assert.ok(!('tiles' in (pages.today as Record<string, unknown>)), 'the four tiles are gone: the ladder stands in their place')
 })
 
-test("the Boardroom room's method and evidence agree (walk-51 item 11: the fixture, not the product)", async () => {
+test("the Boardroom room is a shared device on Today: listed, not placed, its method never a passkey (walk-51 item 11)", async () => {
   const { todayView } = await import('../../derive/today.ts')
   const f = fixture('demo')
-  const v = todayView(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds))
+  const v = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
   const room = v.rows.find((r) => r.user.displayName === 'Boardroom')
   assert.ok(room, 'the demo has the Boardroom room')
-  assert.notEqual(room.strongest, 'phishingResistant', 'a room holds no passkey')
-  assert.equal(room.evidence.kind, 'mfa')
-  if (room.evidence.kind === 'mfa') assert.match(room.evidence.method, /notification/i, 'its evidence is the Authenticator approval it has')
+  assert.equal(room.kind, 'shared')
+  assert.equal(room.rung, null, 'a shared device stands on no rung')
+  assert.notEqual(room.method, 'passkey', 'a room holds no passkey')
+  assert.equal(room.evidence.kind, 'sharedDevice', 'its evidence is why it counts as a shared device')
 })

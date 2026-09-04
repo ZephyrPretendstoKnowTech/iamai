@@ -109,8 +109,8 @@ test('design 3: border-radius at most 4px, or 8px on a .wave / .export-card pane
     for (const m of r.body.matchAll(/border-radius\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
       if (v === '0' || v === 'var(--radius)') continue
-      // The Connect tiles' number badge is a circle (docs/design/connect-mockup.html).
-      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.step-tile \.n/.test(r.selector))) continue
+      // The Connect tiles' number badge is a circle (docs/design/connect-mockup.html), and so is the ladder's rung badge (docs/design/mockups/today-v2.html).
+      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.step-tile \.n/.test(r.selector) || /\.rung-badge/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate ×).
       if (v === '999px' && /\.chip-(select|remove)/.test(r.selector)) continue
       const px = v.match(/^(\d+(?:\.\d+)?)px$/)

@@ -18,7 +18,7 @@ const S = C.shared
 // calls renderStep (ContentStep renders a policy step from the baseline via
 // stepPortal.ts), so tree-shaking keeps this out of the browser bundle.
 import translatorOutput from '../../docs/design/translator-output.json' with { type: 'json' }
-import { SHOW_KEYS, TILE_STATES } from '../derive/today.ts'
+import { SHOW_KEYS } from '../derive/today.ts'
 const TRANSLATED = translatorOutput as unknown as Record<string, { steps: string[] }>
 
 export function esc(s: unknown): string {
@@ -681,26 +681,35 @@ export function renderPages(): string {
       p(pl.readiness.never, {}, 'sub'),
   )
   const td = P.today
-  // A tile's label is the states it groups, in the table's own words (derive/today.ts TILE_STATES over pages.today.show).
-  const tileLabel = (k: string): string => (TILE_STATES[k as keyof typeof TILE_STATES] ?? []).map((s) => td.show[SHOW_KEYS.indexOf(s)]).join(' · ')
-  const tiles = Object.entries(td.tiles)
-    .map(([k, v]: [string, any]) => `<div class="tile"><div class="tv">${fill(v.value, exT)}</div><div class="tl">${esc(tileLabel(k))}</div>` + (v.heldBy ? `<div class="held">${esc(v.heldBy)}</div>` : '') + `<div class="ttip">${esc(v.tip)}</div></div>`)
+  const ld = P.ladder
+  // The ladder (pages.ladder): the header, the five rungs with their tooltips and descriptions, the rule before the three to prioritise.
+  const rungRows = ['r5', 'r4', 'r3', 'r2', 'r1']
+    .map((k, i) => {
+      const r = ld.rungs[k]
+      return (i === 2 ? `<li class="sub">${esc(ld.prioritise)}</li>` : '') + `<li><b>${esc(r.title)}</b> — ${esc(r.desc)} <span class="sub">(ⓘ ${esc(r.tip)})</span></li>`
+    })
     .join('')
+  // A Show option is a rung's title or one of the content's words (derive/today.ts SHOW_KEYS).
+  const showWords = SHOW_KEYS.map((k) => (k.startsWith('rung-') ? ld.rungs[`r${k.slice(5)}`].title : td.show[k]))
+  const ledgerParts = ['active', 'notActive', 'emergency', 'service', 'shared', 'disabled'].map((k) => fill(td.ledger[k], { n: 3 })).join(' · ')
   sec(
     'Today',
     `<h2 class="h1">${esc(td.h1)}</h2>` +
-      p(td.purpose, {}) +
-      p(td.line, exT) +
-      `<div class="tiles">${tiles}</div>` +
-      `<p class="sub">Show: ${(td.show as string[]).join(' · ')}</p>` +
-      h('State definitions') +
+      p(`${fill(td.ledger.lead, { accounts: 18 })} ${ledgerParts}`, {}) +
+      `<p class="sub">${esc(ld.header)} · ${fill(ld.of, { n: 12 })}</p>` +
+      `<ul>${rungRows}</ul>` +
+      `<p class="sub">Show: ${showWords.join(' · ')} · ${esc(td.adminsOnly)}</p>` +
+      `<p class="sub">Columns: ${(td.columns as string[]).join(' · ')}</p>` +
+      h('Kinds (an account that is not a person)') +
       '<ul>' +
-      Object.entries(td.states).map(([k, v]) => `<li><b>${esc(k)}</b> — ${esc(v)}</li>`).join('') +
+      Object.values(td.kinds as Record<string, string>).map((v) => `<li>${esc(v)} — ${esc(td.notAPerson)}</li>`).join('') +
       '</ul>' +
-      h('Method definitions') +
-      '<ul>' +
-      Object.entries(td.methods).map(([k, v]) => `<li><b>${esc(k)}</b> — ${esc(v)}</li>`).join('') +
-      '</ul>' +
+      h('Method words') +
+      `<p class="sub">${Object.values(td.methods as Record<string, string>).map(esc).join(' · ')}</p>` +
+      h('Evidence lines') +
+      ul([`${td.evidence.windowsHello} · ${td.evidence.phones}`, `${td.evidence.windowsHello} · ${td.evidence.phonesSome}`, `${td.evidence.windowsHello} · ${td.evidence.noPhones}`, td.evidence.lastSignIn], { n: 12, when: '41 days ago' }) +
+      btn(td.export) +
+      `<p><a>${esc(td.inventory)}</a></p>` +
       `<div class="tip">${esc(td.tip)}<span class="q">?</span></div>`,
   )
   const exP = P.export

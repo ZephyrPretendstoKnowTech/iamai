@@ -389,66 +389,93 @@
         }
       }
     },
+    "ladder": {
+      "$comment": "The MFA readiness ladder (derive/ladder.ts; docs/design/mockups/today-v2.html): the header, the five rungs and the rule before the three to prioritise, read by Today's rows, the Plan strip and Connect's Plan tile.",
+      "header": "MFA Readiness",
+      "of": "of {n} active people",
+      "prioritise": "Prioritise",
+      "rungs": {
+        "r5": {
+          "title": "Passkey or security key, proven",
+          "tip": "A passkey in Microsoft Authenticator, a hardware security key, or a certificate that travels with the person; they have passed MFA with it. It cannot be phished.",
+          "desc": "Passes MFA from any device and cannot be phished. The target for everyone."
+        },
+        "r4": {
+          "title": "Authenticator app, proven",
+          "tip": "Approve or a code in Microsoft Authenticator on their phone; they have passed MFA with it.",
+          "desc": "Passes MFA from any device."
+        },
+        "r3": {
+          "title": "Windows Hello only",
+          "tip": "Windows Hello for Business or a certificate on one PC. It works on that PC and nowhere else.",
+          "desc": "Passes MFA on that PC only; a phone or a new device is blocked."
+        },
+        "r2": {
+          "title": "Set up, never used for MFA",
+          "tip": "A method is registered, but the sign-in records show no MFA with it, so it is unproven.",
+          "desc": "Has a method; has not passed MFA with it yet."
+        },
+        "r1": {
+          "title": "Nothing set up",
+          "tip": "No sign-in method registered. The first MFA prompt blocks them.",
+          "desc": "Blocked when MFA turns on."
+        }
+      }
+    },
     "today": {
       "h1": "Today",
-      "purpose": "Where each person stands before anything is enforced. The plan waits on these numbers.",
-      "line": "{active} active people of {enabled} enabled · {admins} admins · sign-ins {from} → {to}",
-      "tiles": {
-        "proven": {
-          "value": "{n} · {pct} of active",
-          "heldBy": null,
-          "tip": "Active people with a successful MFA sign-in since {from}. Seen in the records, not inferred from a registration."
-        },
-        "unproven": {
-          "value": "{n} · {pct} of active",
-          "heldBy": "held by Create and Enforce the MFA Registration Campaign",
-          "tip": "Active people with a registered method and no MFA sign-in in the records: never prompted, or possibly broken."
-        },
-        "noMethod": {
-          "value": "{n} · {pct} of active",
-          "heldBy": "held by Create and Enforce the MFA Registration Campaign",
-          "tip": "Active people with no MFA-capable method registered. Email and security questions do not count."
-        },
-        "notActive": {
-          "value": "{n}",
-          "heldBy": "held by Disable or Confirm Dormant Accounts",
-          "tip": "Enabled people with no sign-in in 90 days, or none on record. Listed, never counted; whoever signs in first registers the method, so each one is decided in Address Problematic Accounts."
-        }
+      "ledger": {
+        "$comment": "One line under the heading: every account once, the kinds summing to the accounts; a kind at zero is left out.",
+        "lead": "{accounts} accounts:",
+        "active": "{n} active people",
+        "notActive": "{n} not active",
+        "emergency": "{n} emergency access",
+        "service": "{n} service accounts",
+        "shared": "{n} shared devices",
+        "disabled": "{n} sign-in disabled"
       },
-      "activeTip": "Enabled people with a successful sign-in in the last 90 days. Enabled counts everyone who can sign in; admins hold a directory role.",
-      "show": [
-        "All",
-        "Proven",
-        "Likely works",
-        "Never prompted",
-        "Possibly broken",
-        "No method",
-        "Not active",
-        "Admins",
-        "Guests"
-      ],
+      "show": {
+        "all": "All accounts",
+        "notActive": "Not active",
+        "emergency": "Emergency access",
+        "service": "Service accounts",
+        "shared": "Shared devices",
+        "disabled": "Sign-in disabled",
+        "guests": "Guests"
+      },
+      "adminsOnly": "Admins only",
       "columns": [
-        "Person",
-        "State",
+        "Account",
+        "Readiness",
         "Strongest method",
         "Evidence"
       ],
-      "states": {
-        "Proven": "Completed MFA in the collected sign-in records.",
-        "Likely works": "A current method with recent use of the app, and no MFA challenge in the records yet.",
-        "Never prompted": "Signed in during the collected window, but nothing required MFA of them: enforcement is their first real test.",
-        "Possibly broken": "A method is registered but nothing shows it working. Verify before enforcing.",
-        "No method": "No MFA-capable method registered. Email and security questions do not count.",
-        "Not active": "No successful sign-in for more than 90 days, or none on record."
+      "kinds": {
+        "emergency": "Emergency access",
+        "service": "Service account",
+        "shared": "Shared device",
+        "disabled": "Sign-in disabled"
       },
+      "notAPerson": "not a person",
       "methods": {
-        "Phishing-resistant": "Passkeys and FIDO2 security keys, Windows Hello for Business, or certificates.",
-        "App notification": "Microsoft Authenticator push approval.",
-        "Text or call": "Phone-based methods only: they work, and they are the weakest tier.",
-        "None": "No MFA-capable method registered."
+        "passkey": "Passkey or security key",
+        "passwordless": "Authenticator passwordless",
+        "push": "App notification",
+        "otp": "One-time code",
+        "smsVoice": "Text or call",
+        "windowsHello": "Windows Hello",
+        "certificate": "Certificate",
+        "none": "None"
+      },
+      "evidence": {
+        "windowsHello": "Windows Hello on one PC",
+        "phones": "{n} phone sign-ins in the window",
+        "phonesSome": "phone sign-ins in the window",
+        "noPhones": "no phone sign-ins seen",
+        "lastSignIn": "last sign-in {when}"
       },
       "export": "Export CSV",
-      "inventory": "Everything the scan read →",
+      "inventory": "Every account and policy the scan read →",
       "tip": "Every number here is a share of active people: those who signed in during the last 90 days."
     },
     "export": {

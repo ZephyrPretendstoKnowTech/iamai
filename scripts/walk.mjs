@@ -31,10 +31,10 @@ import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
 import { RETIRED_OPENER } from './build-home.ts'
 
-// The Today tiles' labels: each tile's states, in the table's own words
-// (pages.today.show). Read through the namespace so a build without the tile
-// model still walks, and its labels fail here rather than the import.
-const TILE_LABELS = ['proven', 'unproven', 'noMethod', 'notActive'].map((k) => (todayModel.TILE_STATES?.[k] ?? []).map((s) => pages.today.show[(todayModel.SHOW_KEYS ?? []).indexOf(s)]).join(' · '))
+// The ladder's five rung titles, top to bottom (pages.ladder; derive/ladder.ts
+// RUNGS): Today's rows, the Plan strip's tiles and Connect's tiles read them.
+// Read through the namespace so a build without the model still walks.
+const RUNG_TITLES = (todayModel.SHOW_KEYS ?? []).filter((k) => k.startsWith('rung-')).map((k) => pages.ladder.rungs[`r${k.slice(5)}`].title)
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
@@ -418,6 +418,8 @@ async function walkFixture(fx) {
   let sawExistingCoverage = false
   let planHeaderCounts = null
   let stripCounts = null
+  // Today's five rung counts by title, for the Plan strip and Connect's tiles to agree with.
+  let ladderCounts = null
   for (const width of WIDTHS) {
     await setWidth(width)
     const wdir = join(dir, String(width))
@@ -552,17 +554,39 @@ async function walkFixture(fx) {
       }
       summary.push({ width, route, words: text.split(/\s+/).filter(Boolean).length, rows: d.rows.length })
       // Today's "n admins" is the count of rows tagged Admin (E5); the demo's
-      // people fit one page, so the tags on the page are every tag. The tiles'
-      // labels are the table's state words (pages.today.show, the keys of
-      // pages.today.states); a tile that groups states names them.
+      // people fit one page, so the tags on the page are every tag. The ledger
+      // line counts every account once, its kinds summing to the accounts; the
+      // ladder is five boxed rungs by title (pages.ladder), the rule before the
+      // three to prioritise, each rung's count the number of rows it filters to.
       if (route === 'today') {
-        const m = text.match(/(\d+) admins?\b/)
-        const tagged = await evaluate(`[...document.querySelectorAll('main.page .chip.tag')].filter((e) => (e.textContent || '').trim() === 'Admin').length`)
-        if (!m) add('P0', `${label}: the line does not count admins`)
-        else if (Number(m[1]) !== tagged) add('P0', `${label}: the line says ${m[1]} admins and ${tagged} rows are tagged Admin`)
-        const labels = await evaluate(`[...document.querySelectorAll('main.page .tile .stat-label')].map((e) => { const c = e.cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return (c.textContent || '').replace(/\\s+/g, ' ').trim() })`)
-        const expected = TILE_LABELS
-        if (labels.length !== expected.length || labels.some((l, k) => l !== expected[k])) add('P0', `${label}: the tile labels read ${JSON.stringify(labels)}; the table's state words give ${JSON.stringify(expected)}`)
+        const ledger = text.match(/(\d+) accounts?: (.*?)\s*(?:sign-ins [A-Z][a-z]{2} \d+ → |no sign-in records)/)
+        if (!ledger) add('P0', `${label}: the ledger line is missing`)
+        else {
+          const parts = [...ledger[2].matchAll(/(\d+) /g)].map((m) => Number(m[1]))
+          if (parts.reduce((a, b) => a + b, 0) !== Number(ledger[1])) add('P0', `${label}: the ledger's kinds sum to ${parts.reduce((a, b) => a + b, 0)} and it counts ${ledger[1]} accounts ("${ledger[0].slice(0, 80)}")`)
+          if (/\b0 /.test(ledger[2])) add('P0', `${label}: the ledger names a kind at zero ("${ledger[2].slice(0, 80)}")`)
+        }
+        const rungs = await evaluate(`[...document.querySelectorAll('main.page .ladder .ladder-row')].map((li) => { const c = li.querySelector('.rung-title').cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return { title: (c.textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((li.querySelector('.rung-n') || {}).textContent || '').trim()), rung: li.getAttribute('data-rung') } })`)
+        if (rungs.length !== RUNG_TITLES.length || rungs.some((r, k) => r.title !== RUNG_TITLES[k])) add('P0', `${label}: the rungs read ${JSON.stringify(rungs.map((r) => r.title))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
+        else {
+          const active = Number((text.match(/of (\d+) active (?:person|people)/) || [])[1])
+          if (rungs.reduce((a, r) => a + r.n, 0) !== active) add('P0', `${label}: the rungs sum to ${rungs.reduce((a, r) => a + r.n, 0)} and the header says of ${active} active people`)
+          if ((await evaluate(`document.querySelectorAll('main.page .ladder .ladder-divider').length`)) !== 1) add('P0', `${label}: the rule before the three to prioritise is missing`)
+          // Clicking a rung filters the table to its people; a second click clears it.
+          const rowsShown = () => evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
+          for (const r of rungs) {
+            await evaluate(`(() => { const li = document.querySelector('main.page .ladder .ladder-row[data-rung="${r.rung}"]'); li.scrollIntoView({ block: 'center' }); li.click() })()`)
+            await sleep(200)
+            const shown = await rowsShown()
+            if (shown !== r.n) add('P0', `${label}: "${r.title}" counts ${r.n} and the table filtered to it shows ${shown} rows`)
+            await evaluate(`(() => { const li = document.querySelector('main.page .ladder .ladder-row[data-rung="${r.rung}"]'); li.click() })()`)
+            await sleep(150)
+          }
+          ladderCounts = Object.fromEntries(rungs.map((r) => [r.title, r.n]))
+        }
+        // The accounts that are not people read "not a person" with a grey dash, never a rung.
+        const notPeople = await evaluate(`[...document.querySelectorAll('main.page table.datatable tbody tr')].filter((tr) => /not a person/.test(tr.innerText)).map((tr) => (tr.querySelector('.rung-badge') || {}).className || '')`)
+        for (const cls of notPeople) if (!/rung-0/.test(cls)) add('P0', `${label}: an account that is not a person carries a rung badge (${cls})`)
       }
       // The Inventory policies table carries an Exclusions column, the groups and users by name (E5).
       if (route === 'inventory') {

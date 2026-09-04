@@ -60,10 +60,10 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   const run = runFixture(f)
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: run.input.operatorUserId ?? null })
-  // Today less the emergency and shared-device accounts: they are outside the campaign (48.1 item 2).
-  const tv = todayView(f.snapshot, f.snapshot.asOf, new Set([...f.mapping.serviceAccountUserIds, ...f.mapping.breakGlassUserIds, ...sharedDeviceIds(f.snapshot)]))
-  assert.equal(cl.noMethod.length, tv.tiles.noMethod, 'no-method matches Today')
-  assert.equal(cl.unproven.length, tv.tiles.unproven, 'registered-unproven matches Today')
+  // Today's ladder over the same people: the campaign's groups are its rungs (derive/ladder.ts).
+  const tv = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
+  assert.equal(cl.noMethod.length, tv.ladder.rungs[1].length, 'Nothing set up matches Today')
+  assert.equal(cl.unproven.length, tv.ladder.rungs[2].length, 'Set up, never used for MFA matches Today')
   assert.ok(cl.noMethod.length > 0 && cl.unproven.length > 0, 'the demo has people in these buckets')
   assert.ok(cl.specialCare.length > 0, 'the special-care picker has people')
   for (const row of cl.specialCare) {
@@ -150,7 +150,7 @@ test('the guests step fills its strength; the partner line is whole or dropped',
 test('one readiness per family and one active-people count, on the demo and GetIAMAI', () => {
   for (const f of allFixtures().filter((x) => x.name === 'demo' || x.name === 'getiamai')) {
     const run = runFixture(f)
-    const tv = todayView(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds))
+    const tv = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
     const byFamily: Record<string, Set<number>> = {}
     for (const s of run.steps) {
       const r = s.readiness
@@ -166,7 +166,7 @@ test('one readiness per family and one active-people count, on the demo and GetI
       // One population per step: the campaign counts the plan's active people
       // minus the emergency and shared-device accounts; Today's tile is the plan's.
       assert.equal(ex.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${f.name}: the campaign's lead counts its own population`)
-      assert.equal(tv.tiles.active, activePeopleIds(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds)).length, `${f.name}: Today's active tile is the plan's active people`)
+      assert.equal(tv.ledger.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${f.name}: Today's active people are the campaign's population`)
     }
   }
 })

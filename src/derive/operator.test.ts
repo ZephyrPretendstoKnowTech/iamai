@@ -59,19 +59,20 @@ test('Today counts the operator active as "signed in now"; the not-active set ne
   const v = buildViabilityInputs(s, s.asOf).map(scoreMfaViability).find((x) => x.userId === 'u-1')!
   assert.equal(v.activity, 'active')
   const row = todayView(s, s.asOf).rows.find((r) => r.user.id === 'u-1')!
-  assert.notEqual(row.state, 'notActive')
+  assert.notEqual(row.rung, null, 'on a rung: active')
   assert.equal(todayEvidenceText(row), 'signed in now')
   assert.equal(app.today.signedInNow, 'signed in now')
   // With MFA evidence in the records, the evidence column keeps it: "signed in now" stands in only where "inactive since" would have.
   const withEvidence = fixtureSnapshot()
   withEvidence.users.find((u) => u.id === 'u-1')!.lastSuccessfulSignIn = new Date(Date.parse(withEvidence.asOf) - 200 * 86_400_000).toISOString()
   const rowWithEvidence = todayView(withEvidence, withEvidence.asOf).rows.find((r) => r.user.id === 'u-1')!
-  assert.notEqual(rowWithEvidence.state, 'notActive')
+  assert.notEqual(rowWithEvidence.rung, null, 'on a rung: active')
   assert.match(todayEvidenceText(rowWithEvidence), /^MFA /)
   // Somebody else 200 days stale stays Not active: the rule is the operator's alone.
   const other = fixtureSnapshot()
   other.users.find((u) => u.id === 'u-2')!.lastSuccessfulSignIn = new Date(Date.parse(other.asOf) - 200 * 86_400_000).toISOString()
-  assert.equal(todayView(other, other.asOf).rows.find((r) => r.user.id === 'u-2')!.state, 'notActive')
+  const stale2 = todayView(other, other.asOf).rows.find((r) => r.user.id === 'u-2')!
+  assert.ok(stale2.kind === 'person' && stale2.rung === null, 'a person outside the ladder: not active')
 })
 
 test('on the demo through the engine: the dormant step never lists the operator, and the admin steps count it with the operator note', () => {

@@ -245,14 +245,16 @@ try {
   await go('today')
   check('Today: the table renders', await waitFor(`document.querySelectorAll('table.datatable tbody tr').length >= 4`))
   t = await text()
-  check('Today: one line counts active people, enabled, admins and the sign-in window', /(\d+ active (person|people)|no enabled people) of \d+ enabled · (\d+ admins?|no admins) · sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/.test(t), (t.match(/[^\n]*active (person|people)[^\n]*/) ?? [''])[0])
-  // The tiles' labels are the table's state words; the grouping tile names its states.
-  const tileLabels = await evaluate(`[...document.querySelectorAll('main.page .tile .stat-label')].map((e) => { const c = e.cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return (c.textContent || '').replace(/\\s+/g, ' ').trim() })`)
-  check('Today: four tiles', tileLabels.length === 4 && tileLabels[0] === 'Proven' && tileLabels[1] === 'Likely works · Never prompted · Possibly broken' && tileLabels[2] === 'No method' && tileLabels[3] === 'Not active', tileLabels.join(' | '))
-  check('Today: state words are the plain six', /Proven|Likely works|Never prompted|Possibly broken|No method|Not active/.test(t) && !/Verified|Looks healthy/.test(t))
-  check('Today: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card').length`)) === 0)
-  check('Today: one Show dropdown and a search box', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)))
-  check('Today: the link to everything the scan read', /Everything the scan read →/.test(t))
+  // The ledger line (docs/design/mockups/today-v2.html): the accounts, then the kinds that are not zero, summing to the accounts, and the sign-in window.
+  const ledger = (t.match(/(\d+) accounts?: ([^\n]*?)\s*sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/) ?? [])
+  check('Today: the ledger line counts every account once, the kinds summing to the accounts, with the sign-in window', ledger.length > 0 && Number(ledger[1]) === [...(ledger[2] ?? '').matchAll(/(\d+) /g)].reduce((a, m) => a + Number(m[1]), 0) && /\d+ active (person|people)/.test(ledger[2] ?? ''), (t.match(/[^\n]*accounts?:[^\n]*/) ?? [''])[0])
+  // The ladder: five boxed rungs, the titles in order, the rule before the three to prioritise.
+  const rungTitles = await evaluate(`[...document.querySelectorAll('main.page .ladder .ladder-row .rung-title')].map((e) => { const c = e.cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return (c.textContent || '').replace(/\\s+/g, ' ').trim() })`)
+  check('Today: the five rungs by title', rungTitles.join(' | ') === 'Passkey or security key, proven | Authenticator app, proven | Windows Hello only | Set up, never used for MFA | Nothing set up', rungTitles.join(' | '))
+  check('Today: the MFA Readiness header and the rule before the three to prioritise', /MFA Readiness/i.test(t) && /of \d+ active (person|people)/.test(t) && (await evaluate(`document.querySelectorAll('main.page .ladder .ladder-divider').length`)) === 1)
+  check('Today: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card, .tiles').length`)) === 0)
+  check('Today: one Show dropdown, a search box and Admins only', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)) && /Admins only/.test(t))
+  check('Today: the link to every account and policy the scan read', /Every account and policy the scan read →/.test(t))
   // Walk fixes (prompt 47.1 Part 2): markers stand off the name; no inner scroll; a hairline header, not a band.
   check('Today: the Admin marker stands off the name, small and quiet', await evaluate(`(() => { const c = document.querySelector('main.page td .chip:not(.status)'); if (!c) return false; const cs = getComputedStyle(c); return parseFloat(cs.marginLeft) >= 6 && cs.fontSize === '13px' })()`))
   check('Today: the table has no inner scroll', (await evaluate(`getComputedStyle(document.querySelector('main.page .datatable-wrap')).maxHeight`)) === 'none')
