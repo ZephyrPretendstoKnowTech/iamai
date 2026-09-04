@@ -162,8 +162,9 @@ test('design 6: --bg-raised only on the two-depth panels and the floating layers
   // The raised surface is the two content panels (.wave, .export-card) and the
   // floating layers that already sit above the page (a tooltip, a menu, a table
   // row on hover). Nothing else in the content flow may gain a box.
-  // The Connect tiles are panels too (docs/design/connect-mockup.html).
-  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover|\.step-tile\b/
+  // The Connect tiles are panels too (docs/design/connect-mockup.html), and so
+  // are the home page's cards (docs/design/home-mockup.html; home/home.css).
+  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover|\.step-tile\b|\.card\b/
   const hits = rules
     .filter((r) => /var\(--bg-raised\)/.test(r.body) && !ALLOWED.test(r.selector))
     .map((r) => where(r, 'var(--bg-raised)'))

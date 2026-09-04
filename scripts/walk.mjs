@@ -29,6 +29,7 @@ import { fillText } from '../src/content/render.ts'
 import * as todayModel from '../src/derive/today.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
+import { RETIRED_OPENER } from './build-home.ts'
 
 // The Today tiles' labels: each tile's states, in the table's own words
 // (pages.today.show). Read through the namespace so a build without the tile
@@ -1386,6 +1387,149 @@ function scanPlanFile() {
   return { present: true, steps: steps.length, savedAt: redact(plan.createdAt ?? '') }
 }
 
+// ---- the home page (docs/design/home-mockup.html) ----
+//
+// getiamai.com's front page, generated from pages.home by scripts/build-home.ts
+// and assembled over the bundle by scripts/assemble-site.mjs, walked from the
+// static server like the bundle: the hero (the headline and the site line), the
+// Tools grid with the one card and every part the mockup gives it, How these
+// work as two small cards, About with its three buttons, the app's footer, the
+// header's text theme control in both themes, every string a content string,
+// and nothing of the retired opener.
+const HOME = pages.home
+const HOME_SHELL = pages.app.shell
+const HOME_FOOTER = pages.footer.links
+const WEIGHT = `(b) => /btn-primary/.test(b.className) ? 'primary' : /btn-secondary/.test(b.className) ? 'secondary' : /btn-tertiary/.test(b.className) ? 'tertiary' : 'none'`
+const homeLeaves = (node, out = [], key = '') => {
+  if (typeof node === 'string') {
+    if (key !== 'href') out.push(node)
+  } else if (Array.isArray(node)) node.forEach((v) => homeLeaves(v, out, key))
+  else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) homeLeaves(v, out, k)
+  return out
+}
+async function walkHome(url) {
+  const label = 'home @1280 /'
+  const wdir = join(OUT, 'home', '1280')
+  mkdirSync(wdir, { recursive: true })
+  await setWidth(1280)
+  await send('Page.navigate', { url })
+  await sleep(600)
+  await settle()
+  const text = await mainText()
+  writeFileSync(join(wdir, 'home.txt'), text)
+  await shot(join(wdir, 'home.png'))
+  checkText(label, text)
+  const pageText = await evaluate(`document.body.innerText.replace(/\\s+/g, ' ')`)
+  for (const s of RETIRED_OPENER) if (pageText.includes(s)) add('P0', `${label}: the retired opener still renders: "${s.slice(0, 60)}"`)
+  if (/Built for/.test(pageText)) add('P0', `${label}: a Built for block renders; the site line carries the audience`)
+  // The hero: the headline and the site line.
+  const hero = await evaluate(`(() => { const h = document.querySelector('main.page .hero'); return h ? { h1: ((h.querySelector('h1') || {}).textContent || '').trim(), line: ((h.querySelector('p.site-line') || {}).textContent || '').replace(/\\s+/g, ' ').trim() } : null })()`)
+  if (!hero) add('P0', `${label}: no hero`)
+  else {
+    if (hero.h1 !== HOME.h1) add('P0', `${label}: the headline reads "${hero.h1}"; ${HOME.h1}`)
+    if (hero.line !== HOME.siteLine) add('P0', `${label}: the site line reads "${hero.line}"; ${HOME.siteLine}`)
+  }
+  // The section labels, in order.
+  const sections = await evaluate(`[...document.querySelectorAll('main.page h2.section')].map((h) => (h.textContent || '').trim())`)
+  const wantSections = [HOME.toolsLabel, HOME.howLabel, HOME.aboutLabel]
+  if (sections.join(' · ') !== wantSections.join(' · ')) add('P0', `${label}: the sections read ${sections.join(' · ')}; ${wantSections.join(' · ')}`)
+  // The Tools grid: one card per tool (one column with one tool, two from the
+  // second), the card being the name and its pill, the tag line, Reads /
+  // Compares / Writes, What it catches closed, Open (primary), Try it with
+  // sample data (secondary), and the meta line with its read-the-code link.
+  const grid = await evaluate(`(() => { const g = document.querySelector('main.page .grid.tools'); if (!g) return null; const w = ${WEIGHT}; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { two: g.classList.contains('two'), cards: [...g.querySelectorAll('section.card.tool')].map((c) => ({ name: tx((c.querySelector('h3.tool-name') || {}).firstChild), pill: tx(c.querySelector('h3 .pill')), tag: tx(c.querySelector('p.tag')), beats: [...c.querySelectorAll('ul.beats li')].map((l) => ({ verb: tx(l.querySelector('b')), text: tx(l).slice(tx(l.querySelector('b')).length).trim() })), details: (() => { const d = c.querySelector('details.catches'); return d ? { open: d.open, summary: tx(d.querySelector('summary')), items: [...d.querySelectorAll('ul.catch li')].map(tx), shown: [...d.querySelectorAll('ul.catch li')].some((l) => l.checkVisibility()) } : null })(), buttons: [...c.querySelectorAll('.actions a.btn')].map((b) => ({ t: tx(b), w: w(b), href: b.getAttribute('href') })), meta: (() => { const m = c.querySelector('p.meta'); return m ? { text: tx(m), link: m.querySelector('a') ? { t: tx(m.querySelector('a')), href: m.querySelector('a').getAttribute('href') } : null } : null })() })) } })()`)
+  if (!grid) add('P0', `${label}: no Tools grid`)
+  else {
+    if (grid.cards.length < 1) add('P0', `${label}: the Tools grid has no card`)
+    if (grid.two !== grid.cards.length > 1) add('P0', `${label}: the Tools grid is ${grid.two ? 'two columns' : 'one column'} with ${grid.cards.length} tool(s); one column with one tool, two from the second`)
+    const pl = HOME.planner
+    const card = grid.cards[0]
+    if (card) {
+      if (card.name !== pl.name) add('P0', `${label}: the card is named "${card.name}"; ${pl.name}`)
+      if (card.pill !== pl.label) add('P0', `${label}: the card's pill reads "${card.pill}"; ${pl.label}`)
+      if (card.tag !== pl.descriptor) add('P0', `${label}: the card's tag line reads "${card.tag}"; ${pl.descriptor}`)
+      const wantBeats = pl.beats.map((b) => `${b.verb} ${b.text}`)
+      const gotBeats = card.beats.map((b) => `${b.verb} ${b.text}`)
+      if (gotBeats.join('|') !== wantBeats.join('|')) add('P0', `${label}: the card's beats read ${gotBeats.map((b) => b.split(' ')[0]).join(' / ') || 'nothing'}; Reads / Compares / Writes, from pages.home.planner.beats`)
+      if (!card.details) add('P0', `${label}: the card has no What it catches collapsible`)
+      else {
+        if (card.details.summary !== pl.catchesLabel) add('P0', `${label}: the collapsible is labelled "${card.details.summary}"; ${pl.catchesLabel}`)
+        if (card.details.open || card.details.shown) add('P0', `${label}: What it catches is open on arrival; closed until opened`)
+        if (card.details.items.join('|') !== pl.catches.join('|')) add('P0', `${label}: What it catches lists ${card.details.items.length} item(s) that differ from pages.home.planner.catches`)
+        await clickText('details.catches summary', /./, 'main.page')
+        await sleep(200)
+        const shown = await evaluate(`[...document.querySelectorAll('main.page details.catches ul.catch li')].every((l) => l.checkVisibility())`)
+        if (!shown) add('P0', `${label}: What it catches does not open on its summary`)
+        await shot(join(wdir, 'home-catches.png'))
+        await clickText('details.catches summary', /./, 'main.page')
+      }
+      const wantButtons = [{ t: pl.open, w: 'primary', href: '/rollout/#/connect' }, { t: pl.demo, w: 'secondary', href: '/rollout/?demo=1#/plan' }]
+      if (JSON.stringify(card.buttons) !== JSON.stringify(wantButtons)) add('P0', `${label}: the card's buttons are ${card.buttons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ') || 'missing'}; ${wantButtons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ')}`)
+      const wantMeta = `${pl.meta.baseline} · ${pl.meta.role} · ${pl.meta.code}`
+      if (!card.meta) add('P0', `${label}: the card has no meta line`)
+      else {
+        if (card.meta.text !== wantMeta) add('P0', `${label}: the meta line reads "${card.meta.text}"; ${wantMeta}`)
+        if (!card.meta.link || card.meta.link.t !== pl.meta.code || card.meta.link.href !== pl.meta.href) add('P0', `${label}: the meta line's read-the-code link is missing or points elsewhere`)
+      }
+    }
+  }
+  // How these work: two small cards, the second linking to the source.
+  const how = await evaluate(`[...document.querySelectorAll('main.page .grid[aria-labelledby="how-heading"] section.card.small')].map((c) => ({ title: ((c.querySelector('h3') || {}).textContent || '').trim(), body: ((c.querySelector('p') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), link: c.querySelector('a.lnk') ? { t: (c.querySelector('a.lnk').textContent || '').trim(), href: c.querySelector('a.lnk').getAttribute('href') } : null, two: !!c.closest('.grid.two') }))`)
+  if (how.length !== HOME.how.length || how.length !== 2) add('P0', `${label}: How these work renders ${how.length} card(s); two`)
+  HOME.how.forEach((c, i) => {
+    const got = how[i]
+    if (!got) return
+    if (got.title !== c.title) add('P0', `${label}: How card ${i + 1} is titled "${got.title}"; ${c.title}`)
+    if (!got.body.startsWith(c.body)) add('P0', `${label}: How card ${i + 1} reads "${got.body.slice(0, 60)}"; ${c.body.slice(0, 60)}`)
+    if (c.link && (!got.link || got.link.t !== c.link || got.link.href !== c.href)) add('P0', `${label}: How card ${i + 1} lacks its source link`)
+    if (!got.two) add('P0', `${label}: How card ${i + 1} is not in the two-column grid`)
+  })
+  // About: the paragraph and its three buttons, secondary then tertiary.
+  const about = await evaluate(`(() => { const s = document.querySelector('main.page section.card.about'); if (!s) return null; const w = ${WEIGHT}; return { body: ((s.querySelector('p') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), buttons: [...s.querySelectorAll('.actions a.btn')].map((b) => ({ t: (b.textContent || '').trim(), w: w(b), href: b.getAttribute('href') })) } })()`)
+  if (!about) add('P0', `${label}: no About card`)
+  else {
+    if (about.body !== HOME.about) add('P0', `${label}: About reads "${about.body.slice(0, 60)}"; pages.home.about`)
+    const wantAbout = HOME.aboutLinks.map((l, i) => ({ t: l.text, w: i === 0 ? 'secondary' : 'tertiary', href: l.href }))
+    if (about.buttons.length !== 3 || JSON.stringify(about.buttons) !== JSON.stringify(wantAbout)) add('P0', `${label}: About's buttons are ${about.buttons.map((b) => `${b.t} (${b.w})`).join(', ') || 'missing'}; ${wantAbout.map((b) => `${b.t} (${b.w})`).join(', ')}`)
+  }
+  // The footer is the app's: pages.footer's links, joined with a bar.
+  const footer = await evaluate(`(() => { const f = document.querySelector('footer.app'); return f ? { text: (f.innerText || '').replace(/\\s+/g, ' ').trim(), links: [...f.querySelectorAll('a')].map((a) => ({ text: (a.textContent || '').trim(), href: a.getAttribute('href') })) } : null })()`)
+  if (!footer) add('P0', `${label}: no footer`)
+  else {
+    if (footer.text !== HOME_FOOTER.map((l) => l.text).join(' | ')) add('P0', `${label}: the footer reads "${footer.text}"; the app's ${HOME_FOOTER.map((l) => l.text).join(' | ')}`)
+    if (JSON.stringify(footer.links) !== JSON.stringify(HOME_FOOTER)) add('P0', `${label}: the footer's links differ from pages.footer`)
+  }
+  // The header: the brand, and the theme control as text (no button face), in both themes.
+  const brand = await evaluate(`(() => { const a = document.querySelector('header.app a.wordmark'); return a ? { t: (a.textContent || '').trim(), href: a.getAttribute('href') } : null })()`)
+  if (!brand || brand.t !== HOME.brand || brand.href !== '/') add('P0', `${label}: the wordmark is ${brand ? `"${brand.t}" → ${brand.href}` : 'missing'}; ${HOME.brand} → /`)
+  const faces = await evaluate(`[...document.querySelectorAll('header.app .right button')].map((b) => { const cs = getComputedStyle(b); return { t: (b.textContent || '').trim(), border: cs.borderTopWidth, bg: cs.backgroundColor, pad: cs.paddingLeft } })`)
+  if (!faces.some((f) => f.t === HOME_SHELL.darkTheme || f.t === HOME_SHELL.lightTheme)) add('P0', `${label}: no theme control in the header with the app's labels`)
+  for (const f of faces) if (f.border !== '0px' || !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(f.bg) || f.pad !== '0px') add('P0', `${label}: the header's ${f.t} control has a button face (border ${f.border}, background ${f.bg}, padding ${f.pad}); text`)
+  const paint = () => evaluate(`(() => { const c = document.querySelector('main.page section.card.tool'); const b = document.querySelector('main.page a.btn-primary'); return { theme: document.documentElement.getAttribute('data-theme'), label: (document.getElementById('theme') || {}).textContent, page: getComputedStyle(document.body).backgroundColor, card: c ? getComputedStyle(c).backgroundColor : null, primary: b ? getComputedStyle(b).backgroundColor : null } })()`)
+  const before = await paint()
+  await evaluate(`document.getElementById('theme').click()`)
+  await sleep(200)
+  const after = await paint()
+  await shot(join(wdir, `home-${after.theme ?? 'toggled'}.png`))
+  await evaluate(`document.getElementById('theme').click()`)
+  await sleep(200)
+  const back = await paint()
+  if (!after.theme || after.theme === before.theme) add('P0', `${label}: the theme control does not switch the theme (data-theme ${before.theme} → ${after.theme})`)
+  if (before.page === after.page || before.card === after.card) add('P0', `${label}: the page and the card do not repaint between light and dark (page ${before.page} → ${after.page}, card ${before.card} → ${after.card})`)
+  if (/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(String(after.card)) || /^rgba\(0, 0, 0, 0\)$|^transparent$/.test(String(before.card))) add('P0', `${label}: the card has no raised background in one theme`)
+  if (!after.primary || after.primary === 'rgba(0, 0, 0, 0)') add('P0', `${label}: the primary button has no fill`)
+  if (before.label === after.label || after.label !== (after.theme === 'dark' ? HOME_SHELL.lightTheme : HOME_SHELL.darkTheme)) add('P0', `${label}: the theme control's label reads "${after.label}" in the ${after.theme} theme`)
+  if (back.theme === after.theme) add('P0', `${label}: the theme control does not switch back`)
+  // Every string on the page is a content string: pages.home, the app's footer, the theme labels.
+  const allowed = new Set([...homeLeaves(HOME), ...HOME_FOOTER.map((l) => l.text), HOME_SHELL.darkTheme, HOME_SHELL.lightTheme])
+  const shown = await evaluate(`(() => { const out = []; const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) { if (n.parentElement && n.parentElement.closest('script, style')) continue; const t = (n.textContent || '').replace(/\\s+/g, ' ').trim(); if (t && t !== '·' && t !== '|') out.push(t) } return out })()`)
+  const strays = shown.filter((s) => !allowed.has(s))
+  if (strays.length > 0) add('P0', `${label}: string(s) on the page that are not in content.json: ${strays.map((s) => `"${s.slice(0, 40)}"`).join(', ')}`)
+  for (const s of homeLeaves(HOME)) if (!shown.includes(s) && s !== HOME.metaTitle && s !== HOME.metaDescription) add('P0', `${label}: pages.home string not on the page: "${s.slice(0, 60)}"`)
+  return [{ width: 1280, route: '', words: text.split(/\s+/).filter(Boolean).length, rows: grid ? grid.cards.length : 0 }]
+}
+let homeSummary = null
+
 // ---- the first load, throttled (queue item 8) ----
 //
 // Measured against the production bundle, served statically from dist/ (the
@@ -1445,6 +1589,17 @@ let firstLoadMs = null
     await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 30000)
     const demoChunkSignedOut = await evaluate(`performance.getEntriesByType('resource').filter((e) => /\\/assets\\/demo(Facts)?-[^/]*\\.js/.test(e.name)).map((e) => e.name.split('/').pop())`)
     if (demoChunkSignedOut.length > 0) add('P0', `production bundle, signed out: the demo chunk loaded outside demo mode (${demoChunkSignedOut.join(', ')})`)
+    // The home page, assembled over this bundle (dist/index.html) and served from the same root.
+    try {
+      execSync('node scripts/assemble-site.mjs', { stdio: 'ignore', env: { ...process.env, TOOL_PATH: 'rollout' } })
+    } catch {
+      /* reported below */
+    }
+    if (!existsSync('dist/index.html')) add('P2', 'home: the site could not be assembled here (scripts/assemble-site.mjs), so the home page was not walked')
+    else {
+      log('walking home')
+      homeSummary = await walkHome(`http://localhost:${STATIC_PORT}/`)
+    }
     server.close()
     if (firstLoadMs === null) add('P1', 'demo: the first load did not show a plan row within 30 s on a throttled connection (production bundle)')
     else if (firstLoadMs > 2000) add('P1', `demo: the first load took ${(firstLoadMs / 1000).toFixed(1)} s to the first plan row on a throttled connection (production bundle; over 2 s)`)
@@ -1471,7 +1626,7 @@ const fixtures = [
   // A scan that read a third of the people and policies the previous one did.
   { name: 'mock-drop', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&previous=1`, routes: ['connect'], mock: 'drop' },
   // The demo with an author update over the pinned package: the review rows.
-  { name: 'mock-author', base: `http://localhost:${PORT}/rollout/?demo=1&author=1`, routes: ['connect'], mock: 'author' },
+  { name: 'demo-author', base: `http://localhost:${PORT}/rollout/?demo=1&author=1`, routes: ['connect'], mock: 'author' },
   // The same page before sign-in, and tile 1 after a sign-in that did not succeed.
   { name: 'mock-signedout', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut`, routes: ['connect'], mock: 'signedOut' },
   { name: 'mock-auth-consent', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut&auth=consent`, routes: ['connect'], mock: 'consent' },
@@ -1484,6 +1639,7 @@ for (const fx of fixtures) {
   currentFixture = fx.name
   summaries[fx.name] = await walkFixture(fx)
 }
+if (homeSummary) summaries.home = homeSummary
 const planFile = scanPlanFile()
 
 // The content file's own invariants (step-audit.md; scripts/walkContent.mjs runs
