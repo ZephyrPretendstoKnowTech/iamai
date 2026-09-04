@@ -10,9 +10,9 @@
 //
 // Classifying wrongly is the expensive one: an ordinary administrator turned
 // into a non-person silently shrinks the population a rollout is meant to
-// protect. Only the explicit name signal ("break glass", "emergency", "bg" as
-// its own token) says the tenant itself named the account for the job, so only
-// that signal classifies on its own. The circumstantial four — a Global
+// protect. Only the explicit name signal — a purpose phrase the tenant wrote
+// itself ("break glass", "emergency access", "bg" as its own token), never a
+// loose word — classifies on its own. The circumstantial four — a Global
 // Administrator, a .onmicrosoft.com address, no licence, excluded from every
 // policy — describe most first admins of a small tenant just as well as they
 // describe an emergency account, so two or more of them nominate a candidate
@@ -28,8 +28,33 @@ export const EMERGENCY_MIN_SIGNALS = 2
 /** The one signal strong enough to classify an account on its own: the tenant named it for the job. */
 export const EMERGENCY_DECIDING_SIGNAL: EmergencySignal = 'name'
 const GA_ROLE = '62e90394-69f5-4237-9190-012177145e10'
-/** break, glass, emergency, or "bg" as its own token, in the name or the sign-in address. */
-const NAME_PATTERN = /break|glass|emergency|(?:^|[^a-z0-9])bg(?:[^a-z0-9]|$)/i
+/**
+ * The names a tenant gives an account it created for the job, and nothing else.
+ * Now that this signal classifies on its own, a loose English substring is not
+ * enough: "glass" alone is a surname (Alice Glass, John Glassman) and "break"
+ * alone starts ordinary words (Breakwater, Breakfast), and an account so named
+ * would silently leave the people population.
+ *
+ * So each pattern is a purpose phrase, not a word:
+ *   - "break" joined to "glass", however it is spaced (breakglass, break glass,
+ *     Break-Glass, break_glass, Break Glass 2);
+ *   - "emergency" joined to what the account is for (Emergency Access,
+ *     Emergency-Access, EmergencyAccess, emergency admin, emergency account);
+ *   - "bg" as its own token, the convention that spells the phrase in two
+ *     letters (BG-Admin, bg_admin) — never inside a word (Bigby, bgood).
+ * A name that misses all three is still nominated when two circumstantial
+ * signals point at it; it is just not classified without a person.
+ */
+const EMERGENCY_NAME_PATTERNS = [
+  /break[\s._-]*glass/i,
+  /emergency[\s._-]*(?:access|admin(?:istrator)?|account|acct|login|user)/i,
+  /(?:^|[^a-z0-9])bg(?:[^a-z0-9]|$)/i,
+]
+
+/** True when a display name or a sign-in address names the account for emergency access. */
+export function isEmergencyName(text: string): boolean {
+  return EMERGENCY_NAME_PATTERNS.some((re) => re.test(text))
+}
 
 function localPart(upn: string | null): string {
   return (upn ?? '').split('@')[0]
@@ -37,7 +62,7 @@ function localPart(upn: string | null): string {
 
 export function emergencySignals(u: UserRow, snapshot: TenantSnapshot, tenantPolicies: unknown[]): EmergencySignal[] {
   const out: EmergencySignal[] = []
-  if (NAME_PATTERN.test(u.displayName ?? '') || NAME_PATTERN.test(localPart(u.userPrincipalName))) out.push('name')
+  if (isEmergencyName(u.displayName ?? '') || isEmergencyName(localPart(u.userPrincipalName))) out.push('name')
   if (/\.onmicrosoft\.com$/i.test(u.userPrincipalName ?? '')) out.push('onmicrosoft')
   if ((snapshot.roles?.active[u.id] ?? []).some((r) => r.toLowerCase() === GA_ROLE)) out.push('globalAdmin')
   const live = tenantPolicies.filter((p) => (p as { state?: string }).state !== 'disabled')

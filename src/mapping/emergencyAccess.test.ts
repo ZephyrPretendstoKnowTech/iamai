@@ -4,7 +4,7 @@
 // that puts the accounts in Wave 0.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { autoEmergencyAccess, detectEmergencyAccess, emergencySignals } from './emergencyAccess.ts'
+import { autoEmergencyAccess, detectEmergencyAccess, emergencySignals, isEmergencyName } from './emergencyAccess.ts'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { emptyMappingState } from './types.ts'
 import { applyDetectedDefaults } from './wizard.ts'
@@ -31,6 +31,67 @@ const user = (over: Partial<UserRow>): UserRow => ({
   jobTitle: null,
   officeLocation: null,
   ...over,
+})
+
+// The name signal classifies on its own, so it reads a purpose phrase the
+// tenant wrote, never a word that happens to appear in somebody's name.
+test('the automatic name is a purpose phrase: every way a tenant writes one', () => {
+  for (const name of [
+    'Breakglass',
+    'Break Glass',
+    'Break-Glass',
+    'break_glass',
+    'Break Glass 2',
+    'Break-glass 01',
+    'breakglass@contoso.com',
+    'BreakGlass Admin',
+    'Emergency Access',
+    'Emergency-Access',
+    'EmergencyAccess',
+    'emergency access 1',
+    'emergency admin',
+    'Emergency Account',
+    'BG-Admin',
+    'bg_admin',
+    'BG Admin',
+    'contoso bg',
+  ]) {
+    assert.equal(isEmergencyName(name), true, `${name} names the account for the job`)
+  }
+})
+
+test('the automatic name never fires on an ordinary name that contains the words', () => {
+  for (const name of [
+    'Alice Glass',
+    'John Glassman',
+    'Glass, Alice',
+    'Breakwater',
+    'Breakfast Club',
+    'Kim Breakwell',
+    'Glasscock Holdings',
+    'Emergency Services Liaison',
+    'Emergency Contact Mailbox',
+    'Bigby Wolf',
+    'bgood@contoso.com',
+    'Bridget Gallagher',
+    'Sam Lee',
+  ]) {
+    assert.equal(isEmergencyName(name), false, `${name} is a name, not a purpose`)
+  }
+})
+
+test('a person whose surname is Glass keeps every weak signal and is still not classified', () => {
+  const s = fixtureSnapshot()
+  s.config.caPolicies!.rows = []
+  s.roles = { active: { alice: [GA] }, eligible: {} }
+  s.users = [
+    user({ id: 'alice', displayName: 'Alice Glass', userPrincipalName: 'alice.glass@contoso.onmicrosoft.com', assignedPlans: [] }),
+    user({ id: 'bg', displayName: 'Breakglass', userPrincipalName: 'breakglass@contoso.onmicrosoft.com', assignedPlans: [] }),
+  ]
+  assert.deepEqual(emergencySignals(s.users[0], s, []), ['onmicrosoft', 'globalAdmin', 'noLicence'], 'no name signal')
+  assert.deepEqual(emergencySignals(s.users[1], s, []), ['name', 'onmicrosoft', 'noLicence'])
+  assert.deepEqual(detectEmergencyAccess(s, []).map((c) => c.id), ['bg', 'alice'], 'both nominated, the named one first')
+  assert.deepEqual(autoEmergencyAccess(s, []).map((c) => c.id), ['bg'], 'only the account named for the job is classified')
 })
 
 test('each signal is read from the tenant, and "bg" only as its own token', () => {
