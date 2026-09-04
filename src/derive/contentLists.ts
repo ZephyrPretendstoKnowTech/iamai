@@ -14,7 +14,7 @@ import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { notActiveUsers } from './sets.ts'
-import { campaignIds } from './population.ts'
+import { campaignBucket, campaignIds } from './population.ts'
 import { stateOf } from './today.ts'
 import type { TodayState } from './today.ts'
 import { absoluteDate } from '../copy/dates.ts'
@@ -27,6 +27,8 @@ export type ListContext = {
   now: string
   /** The operator's own account, so the special-care picker can include "you". */
   operatorId?: string | null
+  /** Require MFA for Everyone in place (stepVars planDates): the unproven bucket is empty. */
+  mfaInPlace?: boolean
 }
 
 // The state word for the special-care picker, in the six-state model (Today §4).
@@ -65,7 +67,8 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const smsOnly = active.filter((v) => v.signals.smsVoiceOnly || (v.methodTiers.length > 0 && v.methodTiers.every((t) => t === 'smsVoice')))
   const pushOnly = active.filter((v) => v.methodTiers.includes('push') && !v.methodTiers.includes('phishingResistant') && !v.methodTiers.includes('passwordless') && v.mfa !== 'verified')
   const possiblyBroken = active.filter((v) => v.mfa === 'unverified' && v.signals.observableInWindow === false)
-  const unproven = active.filter((v) => rolloutBucket(v) === 'unproven')
+  // With Require MFA for Everyone in place nobody is registered but never seen (population.ts campaignBucket; the strip reads the same rule).
+  const unproven = active.filter((v) => campaignBucket(v, ctx.mfaInPlace === true) === 'unproven')
   const bucketName = (rows: MfaViability[]): string[] => rows.map((v) => nameOf(v.userId))
 
   // The special-care picker (the campaign's decision): admins, anyone with no

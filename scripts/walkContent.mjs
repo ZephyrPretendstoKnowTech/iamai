@@ -81,7 +81,7 @@ export const ACCEPTANCE = [
   { item: '5', step: 's-prereq-trusted-location', path: 'more.risks', must: 'A trusted location also lowers Identity Protection risk scores, so keep the ranges tight.' },
   { item: '6', step: 's-prereq-service-accounts-group', path: 'ifWrong', must: 'Remove the account from the group; the policies apply again on its next sign-in.' },
   { item: '6', step: 's-prereq-service-accounts-group', path: 'more.risks', must: 'see Restrict Service Accounts to the Trusted Network' },
-  { item: '7', step: 's-shared-devices', path: 'whatToDoReference.steps', must: 'Exclude: {trustedLocation}', mustNot: 'Require device to be marked as compliant' },
+  { item: '7', step: 's-shared-devices', path: 'whatToDo.steps', must: 'Exclude: {trustedLocation}', mustNot: 'Require device to be marked as compliant' },
   { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'allows them only from the trusted network', mustNot: 'requires a compliant device' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.lead', must: 'On the day Require MFA for Everyone enforces, and not before:' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'Disabling per-user MFA before the policy enforces removes MFA for that person.' },

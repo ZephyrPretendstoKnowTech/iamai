@@ -37,6 +37,18 @@ export function stepPopulation(step: Step): StepPopulationView {
   }
 }
 
+/**
+ * A person's campaign bucket under the plan: the rollout bucket, except that
+ * with Require MFA for Everyone in place every sign-in completed MFA, so nobody
+ * is "registered but never seen to complete MFA": they are proven (Ready with
+ * a phishing-resistant method, else a method not strong enough). One rule for
+ * the campaign's lists and the readiness strip, so the two never disagree.
+ */
+export function campaignBucket(v: MfaViability, mfaEnforced: boolean): ReturnType<typeof rolloutBucket> {
+  const bucket = rolloutBucket(v)
+  return mfaEnforced && bucket === 'unproven' ? 'proven' : bucket
+}
+
 /** One of the plan's active people: enabled, signed in within the window (the rollout has a bucket for them). */
 export function isActivePerson(v: MfaViability): boolean {
   return rolloutBucket(v) !== null
