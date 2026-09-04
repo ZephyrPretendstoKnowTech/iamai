@@ -231,6 +231,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     const record = ctx.mapping.records['__globalExclusion'] ?? null
     const id = record?.resolvedId ?? null
     v.needsCreate = id === null
+    // No group: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
+    if (id === null) delete v.total
     if (id !== null) {
       const g = ctx.groups?.get(id) ?? [...(ctx.groups ?? [])].find(([k]) => k.toLowerCase() === id.toLowerCase())?.[1] ?? null
       const policies = ctx.snapshot.config.caPolicies?.rows ?? []
