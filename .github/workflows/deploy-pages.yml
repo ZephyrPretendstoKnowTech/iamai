@@ -51,13 +51,14 @@ jobs:
       - run: npm run walk
         env:
           CHROME: /usr/bin/google-chrome
+      # This run's report beside its captures (walk/<sha>/); the committed reports stay out.
+      - if: always()
+        run: cp "docs/reports/walk-$(git rev-parse --short=7 HEAD).md" walk/ 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: walk-${{ github.sha }}
-          path: |
-            docs/reports/walk-*.md
-            walk/
+          path: walk/
           if-no-files-found: ignore
   build:
     needs: walk

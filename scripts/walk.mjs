@@ -1626,7 +1626,8 @@ const fixtures = [
   // A scan that read a third of the people and policies the previous one did.
   { name: 'mock-drop', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&previous=1`, routes: ['connect'], mock: 'drop' },
   // The demo with an author update over the pinned package: the review rows.
-  { name: 'demo-author', base: `http://localhost:${PORT}/rollout/?demo=1&author=1`, routes: ['connect'], mock: 'author' },
+  // Named mock-, not demo-: the demo's plan checks key on the demo- prefix, and this fixture walks Connect alone.
+  { name: 'mock-author', base: `http://localhost:${PORT}/rollout/?demo=1&author=1`, routes: ['connect'], mock: 'author' },
   // The same page before sign-in, and tile 1 after a sign-in that did not succeed.
   { name: 'mock-signedout', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut`, routes: ['connect'], mock: 'signedOut' },
   { name: 'mock-auth-consent', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut&auth=consent`, routes: ['connect'], mock: 'consent' },
