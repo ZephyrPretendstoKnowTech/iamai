@@ -91,7 +91,7 @@ export function Plan({ scan, baseline, account, onScan }: {
   const nameOf = (id: string): string => c.names.label(id)
   // The plan-wide dates the step variables read (the campaign's enrol-by, the
   // MFA enforcement day, the campaign's window); the operator's own account is resolved above, once.
-  const dates = planDates(c.steps, c.schedule.start)
+  const dates = planDates(c.steps, c.schedule.start, c.coverage.organisation.naming)
   // Cleanup (§5): one row each, dated after the last enforcement; the drill is a
   // Cleanup row and nothing else, so it counts once. The finish is the end of
   // the last phase, Cleanup included (§9).

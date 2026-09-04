@@ -21,7 +21,7 @@ import { hoursInWords } from '../../coverage/verdict.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import { shared } from '../../content/content.ts'
-import { proposedObjectNames } from '../../coverage/naming.ts'
+import { proposedNamesFor } from './proposedNames.ts'
 import { tenantCountryLocation } from '../../mapping/countries.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { applyDeviations } from '../../roadmap/deviations.ts'
@@ -54,7 +54,7 @@ export type PortalNames = {
  */
 export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>, fallbackTitle: string): PortalNames {
   const m = ctx.mapping
-  const proposed = proposedObjectNames(ctx.naming ?? null)
+  const proposed = proposedNamesFor(ctx)
   return {
     nameOf: ctx.nameOf,
     policyName: String(ex.policyName ?? fallbackTitle),
@@ -63,7 +63,7 @@ export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>,
     serviceAccountsGroupId: m.serviceAccountsGroupId ?? null,
     allowedCountriesLocationId: tenantCountryLocation(ctx.snapshot, m.allowedCountries ?? [])?.id ?? null,
     trustedLocationIds: m.trustedLocationIds ?? [],
-    proposed: { exclusionsGroup: proposed.exclusionsGroup.name, serviceAccountsGroup: proposed.serviceAccountsGroup.name, allowedCountries: proposed.allowedCountries.name, trustedLocation: proposed.trustedLocation.name },
+    proposed,
     answers: m,
   }
 }
