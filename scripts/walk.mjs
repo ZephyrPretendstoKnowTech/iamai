@@ -941,10 +941,20 @@ async function walkFixture(fx) {
         }
         await settle()
         const bodyText = await evaluate(`(document.querySelector('main.page .step-body') || {}).innerText || ''`)
+        // Foundation A: a policy step offers no implementation at all — no portal
+        // instructions, no JSON, no PowerShell, no download — while it names an
+        // object this tenant does not have yet, or when it has nothing to create
+        // because the goal is already in place (src/ui/surfaces/stepJson.ts
+        // implementationOffered). It says which step comes first, or that there
+        // is nothing to do but keep the policy. The checks below read the
+        // instructions, so they apply only where the instructions are offered.
+        const waitsOnAnObject = / first: this policy names an object /.test(bodyText) || /in place already: nothing to create/.test(bodyText)
         // A policy in report-only says when it may be enforced, on the row and in
         // the step: the date column reads ready <date> · ready now · ready since
         // <date>, and Done when carries both gates with today's numbers.
-        if (rowStatuses[i] === 'Report-only') {
+        // A policy the plan cannot write yet has nothing to enforce, so it carries
+        // no completion gates; what it must carry is what it waits on.
+        if (rowStatuses[i] === 'Report-only' && !waitsOnAnObject) {
           if (!/^ready (now|since .+|\S.*\d{4})$/.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say when it may be enforced (ready <date> · ready now · ready since <date>)`)
           if (!/Time: in report-only since .+, ready (on|since) /.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
           if (!/Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days)\./.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
@@ -963,14 +973,6 @@ async function walkFixture(fx) {
         writeFileSync(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.txt`), bodyText)
         await shot(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.png`))
         if (bodyTitle.trim() && bodyTitle.trim() !== title) add('P0', `${slabel}: the row says "${title}" and the opened step says "${bodyTitle.trim()}"`)
-        // Foundation A: a policy step offers no implementation at all — no portal
-        // instructions, no JSON, no PowerShell, no download — while it names an
-        // object this tenant does not have yet, or when it has nothing to create
-        // because the goal is already in place (src/ui/surfaces/stepJson.ts
-        // implementationOffered). It says which step comes first, or that there
-        // is nothing to do but keep the policy. The checks below read the
-        // instructions, so they apply only where the instructions are offered.
-        const waitsOnAnObject = / first: this policy names an object /.test(bodyText) || /in place already: nothing to create/.test(bodyText)
         const emailText = await evaluate(`[...document.querySelectorAll('main.page .step-body .copy-box')].map((e) => e.innerText).join('\\n')`)
         const outsideEmail = emailText ? bodyText.replace(emailText, '') : bodyText
         checkText(slabel, outsideEmail)
@@ -1104,7 +1106,9 @@ async function walkFixture(fx) {
             else if (m && suffix && suffix[1] !== m[1]) add('P0', `${slabel}: the row says ${suffix[1]} not yet at rung 5 and the step says ${m[1]}`)
             else if (!m && suffix) add('P0', `${slabel}: the row carries a lockout count the step does not`)
           }
-          if (/Require a Managed Device/.test(title) && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
+          if (/Require a Managed Device/.test(title) && !waitsOnAnObject && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
+          // A policy the plan cannot write yet announces nothing at all.
+          if (/Require a Managed Device/.test(title) && waitsOnAnObject && emailText.trim() !== '') add('P0', `${slabel}: it waits on an object and still announces a change`)
           if (/^Register Your Own Passkey$/.test(title) && !/or a hardware security key/.test(bodyText)) add('P0', `${slabel}: step 12 asks for a key and a passkey; either is enough`)
           // Small engine items (E9), on the demo: the admin-portals step names the
           // developer who opened the Azure portal; the service-accounts block is
