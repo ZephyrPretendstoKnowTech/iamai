@@ -234,12 +234,6 @@
       },
       "scan": {
         "title": "Scan",
-        "reads": "Reads",
-        "readsLine": "{tenant}'s policies, people, sign-in records and licences.",
-        "compares": "Compares",
-        "comparesLine": "what each baseline policy is for with what {tenant} already has.",
-        "writes": "Writes",
-        "writesLine": "a dated plan for the difference: report-only before enforced, who each change touches, what would break, and the emails to send.",
         "readOnly": "Read-only. It holds no permission that can create, change or delete anything.",
         "limitsSummary": "IAMAI limitations",
         "limits": [
@@ -251,7 +245,6 @@
         ],
         "limitsMore": "Permissions, every check it runs, and its limits in full:",
         "limitsLink": "How IAMAI works →",
-        "yourTenant": "your tenant",
         "complete": {
           "state": "complete · {age}",
           "again": "Scan again"

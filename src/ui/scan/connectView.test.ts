@@ -92,7 +92,7 @@ const SCAN_OWN: Record<ScanTile['kind'], string[]> = {
   ready: ['Scan tenant', 'About ten minutes'],
   sample: ['after sign-in · about a minute for a small tenant'],
 }
-// What the other tile carries, never the Scan tile (its Reads beat says "licences"; the fact label is the Plan tile's).
+// What the other tile carries, never the Scan tile (the fact labels are the Plan tile's).
 const PLAN_STRINGS = ['Open the plan →', 'Open the last full plan', 'from the scan', 'What the sample tenant produced', 'already in place', 'Open the sample plan']
 const scanOnlyItsOwn = (t: ScanTile): void => {
   const text = tileStrings(t).join('\n')
@@ -104,16 +104,17 @@ const scanOnlyItsOwn = (t: ScanTile): void => {
   for (const s of PLAN_STRINGS) assert.ok(!text.includes(s), `the Scan tile must not render the Plan tile's "${s}"`)
   noOtherRole(tileStrings(t))
 }
+// The Scan tile carries no Reads / Compares / Writes beats in either state: the read-only line, the limitations and its state alone.
+const noBeats = (t: ScanTile): void => {
+  assert.ok(!('beats' in t), 'no beats on the tile')
+  const text = tileStrings(t).join('\n')
+  // The beat sentences, not the words: the ready state's own note reads "Reads the tenant into this browser".
+  for (const s of ['policies, people, sign-in records and licences', 'what each baseline policy is for', 'a dated plan for the difference', '\nReads\n', '\nCompares\n', '\nWrites\n']) assert.ok(!text.includes(s), `the Scan tile must not render the beat "${s.trim()}"`)
+}
 const beatsOf = (t: ScanTile): void => {
   assert.equal(t.n, 3)
   assert.equal(t.title, 'Scan')
-  assert.deepEqual(
-    t.beats.map((b) => b.label),
-    ['Reads', 'Compares', 'Writes'],
-  )
-  assert.equal(t.beats[0].text, "Contoso Pty Ltd's policies, people, sign-in records and licences.")
-  assert.equal(t.beats[1].text, 'what each baseline policy is for with what Contoso Pty Ltd already has.')
-  assert.match(t.beats[2].text, /^a dated plan for the difference: report-only before enforced, who each change touches, what would break, and the emails to send\.$/)
+  noBeats(t)
   assert.equal(t.readOnly, 'Read-only. It holds no permission that can create, change or delete anything.')
   assert.equal(t.limits.summary, 'IAMAI limitations')
   assert.equal(t.limits.lines.length, 5)
@@ -122,8 +123,8 @@ const beatsOf = (t: ScanTile): void => {
   assert.equal(t.limits.link.href, '#/how')
 }
 
-test('tile 3, Scan, complete: the beats, the read-only line, the five limitations and the How line, complete · N ago in the heading, Scan again (secondary) alone, the accent badge', () => {
-  const t = scanTile(tenant, { kind: 'complete', at: full.asOf, now: twoMinutesLater })
+test('tile 3, Scan, complete: no beats, the read-only line, the five limitations and the How line, complete · N ago in the heading, Scan again (secondary) alone, the accent badge', () => {
+  const t = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater })
   beatsOf(t)
   assert.equal(t.state, 'complete · 2 minutes ago')
   assert.equal(t.tone, 'done')
@@ -136,7 +137,7 @@ test('tile 3, Scan, complete: the beats, the read-only line, the five limitation
 test('tile 3, finished with gaps: the unread rows, one ask for Global Reader with the Microsoft link, Sign in with another account (primary), Scan again (secondary), the amber badge; no plan button', () => {
   const unread = unreadSources(gapsSnapshot())
   assert.deepEqual(unread, ['config:caPolicies', 'signInEvidence'])
-  const t = scanTile(tenant, { kind: 'gaps', unread, lastScan: last })
+  const t = scanTile({ kind: 'gaps', unread, lastScan: last })
   beatsOf(t)
   assert.equal(t.state, 'finished with gaps · no plan built')
   assert.equal(t.tone, 'wait')
@@ -152,7 +153,7 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
     { label: 'Sign in with another account', weight: 'primary' },
     { label: 'Scan again', weight: 'secondary' },
   ])
-  const first = scanTile(tenant, { kind: 'gaps', unread, lastScan: null })
+  const first = scanTile({ kind: 'gaps', unread, lastScan: null })
   assert.equal(first.lead, '2 sections could not be read with this account. The plan needs them, so IAMAI built nothing from this scan.')
   assert.deepEqual(first.actions, t.actions, 'the last full plan is the Plan tile\'s, not this one\'s')
   scanOnlyItsOwn(t)
@@ -161,7 +162,7 @@ test('tile 3, finished with gaps: the unread rows, one ask for Global Reader wit
 test('tile 3, not started: the account, one row asking for Global Reader, Sign in with another account (primary) alone, the red badge', () => {
   const gap = coreRoleGap(rolesInToken(noRolesToken()))
   assert.ok(gap)
-  const t = scanTile(tenant, { kind: 'role', upn, gap })
+  const t = scanTile({ kind: 'role', upn, gap })
   beatsOf(t)
   assert.equal(t.state, "not started · this account can't read the tenant")
   assert.equal(t.tone, 'stop')
@@ -172,13 +173,13 @@ test('tile 3, not started: the account, one row asking for Global Reader, Sign i
 })
 
 test('tile 3, scanning: one line with the elapsed time, Stop (tertiary), no state colour; ready: Scan tenant (primary) and the ten-minute line', () => {
-  const s = scanTile(tenant, { kind: 'scanning', lane: 'Reading sign-in records', elapsed: '8s' })
+  const s = scanTile({ kind: 'scanning', lane: 'Reading sign-in records', elapsed: '8s' })
   beatsOf(s)
   assert.equal(s.state, 'reading sign-in records · 8s')
   assert.equal(s.tone, null)
   assert.deepEqual(s.actions, [{ label: 'Stop', weight: 'tertiary' }])
   scanOnlyItsOwn(s)
-  const r = scanTile(tenant, { kind: 'ready' })
+  const r = scanTile({ kind: 'ready' })
   beatsOf(r)
   assert.equal(r.state, 'not started')
   assert.equal(r.tone, null)
@@ -269,7 +270,7 @@ test('tile 4 after a scan with gaps: last full plan · date and Open the last fu
 
 test("the page renders the scan's age from the one stored timestamp: Scan says complete · N ago, Plan says from the scan N ago with the same words, and no words say scanned", () => {
   const now = Date.parse(full.asOf) + 57 * 60_000
-  const scan = scanTile(tenant, { kind: 'complete', at: full.asOf, now })
+  const scan = scanTile({ kind: 'complete', at: full.asOf, now })
   const plan = planTile({ kind: 'ready', snapshot: full, at: full.asOf, counts: { steps: 33, done: 8 }, now })
   assert.equal(scan.state, 'complete · 57 minutes ago')
   assert.equal(plan.state, 'ready · from the scan 57 minutes ago')

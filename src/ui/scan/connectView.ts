@@ -44,18 +44,11 @@ type Words = {
   baseline: { title: string; state: string; loading: string; none: string; what: string; goal: string; updated: string; diff: { added: string; removed: string; changed: string }; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
   scan: {
     title: string
-    reads: string
-    readsLine: string
-    compares: string
-    comparesLine: string
-    writes: string
-    writesLine: string
     readOnly: string
     limitsSummary: string
     limits: string[]
     limitsMore: string
     limitsLink: string
-    yourTenant: string
     complete: { state: string; again: string }
     gaps: { state: string; lead: string; leadFirst: string; notRead: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string }
@@ -171,7 +164,7 @@ export function baselineTile({
   }
 }
 
-// ---- 3 Scan: the beats, then exactly one of its states ----
+// ---- 3 Scan: the read-only line and the limitations, then exactly one of its states ----
 export type ScanInput =
   | { kind: 'complete'; at: string; now?: number }
   | { kind: 'gaps'; unread: string[]; lastScan: { at: string } | null }
@@ -186,7 +179,6 @@ export type ScanTile = {
   title: string
   state: string
   tone: Tone
-  beats: { label: string; text: string }[]
   readOnly: string
   limits: { summary: string; lines: string[]; more: string; link: { label: string; href: string } }
   lead?: string
@@ -200,16 +192,11 @@ export type ScanTile = {
 /** The scan's age, from the one stored timestamp: the Scan and Plan tiles both read this. */
 export const scanAgeWords = (at: string, now?: number): string => relative(at, now)
 
-export function scanTile(tenant: string, input: ScanInput): ScanTile {
+export function scanTile(input: ScanInput): ScanTile {
   const S = W.scan
   const base = {
     n: 3 as const,
     title: S.title,
-    beats: [
-      { label: S.reads, text: fillText(S.readsLine, { tenant }) },
-      { label: S.compares, text: fillText(S.comparesLine, { tenant }) },
-      { label: S.writes, text: S.writesLine },
-    ],
     readOnly: S.readOnly,
     limits: { summary: S.limitsSummary, lines: S.limits, more: S.limitsMore, link: { label: S.limitsLink, href: HOW_HREF } },
   }
@@ -349,8 +336,8 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
     out.push(...tile.paragraphs)
     if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, ...r.steps]))
   }
-  if ('beats' in tile) {
-    out.push(...tile.beats.flatMap((b) => [b.label, b.text]), tile.readOnly, tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
+  if ('readOnly' in tile) {
+    out.push(tile.readOnly, tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
     for (const r of tile.rows ?? []) out.push(r.name, r.value)
     if (tile.ask) out.push(tile.ask)
     if (tile.learn) out.push(tile.learn.label)

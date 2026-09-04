@@ -118,14 +118,15 @@ test('a sign-in error is one of three states from the MSAL error code: admin app
   onlyItsOwn('cancelled', x)
 })
 
-test('tile 3 signed out: Scan after sign-in · about a minute for a small tenant, the beats for "your tenant", no button, no state colour', () => {
-  const t = scanTile(W.scan.yourTenant, { kind: 'sample' })
+test('tile 3 signed out: Scan after sign-in · about a minute for a small tenant, the read-only line and the limitations, no beats, no button, no state colour', () => {
+  const t = scanTile({ kind: 'sample' })
   assert.equal(t.n, 3)
   assert.equal(t.title, 'Scan')
   assert.equal(t.state, 'after sign-in · about a minute for a small tenant')
   assert.equal(t.tone, null)
-  assert.equal(t.beats[0].text, "your tenant's policies, people, sign-in records and licences.")
-  assert.equal(t.beats[1].text, 'what each baseline policy is for with what your tenant already has.')
+  assert.ok(!('beats' in t), 'no beats signed out either')
+  assert.ok(!/\bReads\b|\bCompares\b|\bWrites\b|your tenant/.test(tileStrings(t).join('\n')), 'no Reads / Compares / Writes line')
+  assert.equal(t.readOnly, 'Read-only. It holds no permission that can create, change or delete anything.')
   assert.equal(t.limits.lines.length, 5)
   assert.deepEqual(t.actions, [])
   const text = tileStrings(t).join('\n')
