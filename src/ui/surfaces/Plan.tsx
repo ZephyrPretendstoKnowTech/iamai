@@ -20,7 +20,8 @@ import { headerLine1, planCounts, startControl } from '../../derive/planHeader.t
 import { FINISH } from '../../copy/statements.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { Button, InfoTip, Status } from '../components/index.ts'
-import { ReadinessStrip } from './ReadinessStrip.tsx'
+import { LadderTiles } from './LadderTiles.tsx'
+import { ladder, ladderCounts } from '../../derive/ladder.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
@@ -34,7 +35,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
 import { returnToStep, stepFromPlanHash } from '../shell/routes.ts'
 
-type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; startNote: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }; blocked: { after: string } }
+type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }; blocked: { after: string } }
 const PP = pages.plan as unknown as PlanPage
 const S = app.shell
 
@@ -54,6 +55,9 @@ export function Plan({ scan, baseline, account, onScan }: {
   const data = usePlanData(scan, baseline, operatorId)
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
+  // The MFA readiness ladder's five counts (derive/ladder.ts), the same numbers Today and Connect show.
+  const snapshot = scan?.snapshot ?? null
+  const counts = useMemo(() => (snapshot ? ladderCounts(ladder(snapshot, data.mapping ?? EMPTY_MAPPING, snapshot.asOf)) : null), [snapshot, data.mapping])
   useEffect(() => {
     const onHash = () => setOpen(stepFromPlanHash(window.location.hash))
     window.addEventListener('hashchange', onHash)
@@ -109,8 +113,6 @@ export function Plan({ scan, baseline, account, onScan }: {
   // once started, the anchored start is on the line and a scan never moves it (§5, §9).
   const line1 = headerLine1({ steps: total, inPlace, finish: finish.finish, weeks: weeksText, constraint: waiting, startedFrom: data.startedFrom })
   const start = startControl()
-  // The tenant and the scan's age live on Connect, and nowhere else.
-  const line2 = P.line2
   // Filled once: one because, one full stop; the clause names steps by their content titles.
   const lengthTip = c.schedule.derivation.reason ? fillText(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.reason }) : engine.critical.sentenceDone
 
@@ -134,9 +136,9 @@ export function Plan({ scan, baseline, account, onScan }: {
         {line1}
         <InfoTip title={app.plan.constraintTip} text={lengthTip} />
       </p>
-      <p className="line">{line2}</p>
-      {/* The readiness strip: five tiles from the plan's own population and buckets, each opening to its people. */}
-      <ReadinessStrip snapshot={scan.snapshot} mapping={data.mapping ?? EMPTY_MAPPING} nameOf={nameOf} />
+      {/* The MFA readiness ladder (docs/design/mockups/plan-top-v2.html): the header and
+          five tiles under the steps line, each linking to Today filtered to its rung. */}
+      {counts && <LadderTiles counts={counts} />}
       {/* The start (§5), in this order: the Start date field (default: today in the
           display zone, proposed again on every visit; the same control as Plan
           settings' inputs), Start the plan under it, which locks the date shown,
@@ -149,13 +151,11 @@ export function Plan({ scan, baseline, account, onScan }: {
               <input type="date" value={c.schedule.start.slice(0, 10)} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
             </label>
           </div>
-          <p className="line reason no-print">{PP.settings.startNote}</p>
           <p className="actions no-print">
             <Button variant="primary" onClick={() => data.startPlan(c.schedule.start)}>
               {start.label}
             </Button>
           </p>
-          <p className="line reason">{start.note}</p>
         </>
       ) : null}
       {/* A started plan: the date is locked, so the field and its note go; the header line carries the start, once. */}
