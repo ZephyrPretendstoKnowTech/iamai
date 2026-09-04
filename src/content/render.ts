@@ -580,13 +580,12 @@ export function renderPages(): string {
           acts(cx.baseline.change) +
           sub(btn(cx.baseline.howToMakeOne)),
       ) +
-      // 3 Scan: the beats and the limitations, then the scan in one of its states; the age is the one stored timestamp's.
+      // 3 Scan: the read-only line and the limitations, then the scan in one of its states; the age is the one stored timestamp's.
       tileHtml(
         3,
         cx.scan.title,
         fill(cx.scan.complete.state, { age: '57 minutes ago' }),
-        li(`<b>${esc(cx.scan.reads)}</b> ${fill(cx.scan.readsLine, exT)}`, `<b>${esc(cx.scan.compares)}</b> ${fill(cx.scan.comparesLine, exT)}`, `<b>${esc(cx.scan.writes)}</b> ${esc(cx.scan.writesLine)}`) +
-          p(cx.scan.readOnly, {}, 'sub') +
+        p(cx.scan.readOnly, {}, 'sub') +
           `<details open><summary>${esc(cx.scan.limitsSummary)}</summary>` +
           ul(cx.scan.limits, {}) +
           sub(esc(cx.scan.limitsMore), `<a>${esc(cx.scan.limitsLink)}</a>`) +
@@ -639,7 +638,7 @@ export function renderPages(): string {
       tileHtml(1, si.title, si.errors.personal.state, p(si.errors.personal.lead, { account: 'someone@outlook.com' }) + sub(esc(si.errors.personal.thatAccount)) + acts(si.workAccount, si.demo)) +
       tileHtml(1, si.title, si.errors.cancelled.state, acts(si.signIn, si.demo)) +
       tileHtml(1, si.title, si.errors.failed.state, p(si.errors.failed.lead, { message: 'AADSTS90002: Tenant not found.' }) + acts(si.signIn, si.demo)) +
-      tileHtml(3, cx.scan.title, cx.scan.sample.state, li(`<b>${esc(cx.scan.reads)}</b> ${fill(cx.scan.readsLine, { tenant: cx.scan.yourTenant })}`, `<b>${esc(cx.scan.compares)}</b> ${fill(cx.scan.comparesLine, { tenant: cx.scan.yourTenant })}`)) +
+      tileHtml(3, cx.scan.title, cx.scan.sample.state, p(cx.scan.readOnly, {}, 'sub') + `<details><summary>${esc(cx.scan.limitsSummary)}</summary>` + ul(cx.scan.limits, {}) + sub(esc(cx.scan.limitsMore), `<a>${esc(cx.scan.limitsLink)}</a>`) + '</details>') +
       tileHtml(
         4,
         cx.plan.title,
