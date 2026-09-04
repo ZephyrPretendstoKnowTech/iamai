@@ -24,9 +24,17 @@ import { longDate } from '../../copy/dates.ts'
 
 const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start) })
 
+/** Week two with its admins policy back in report-only: a policy the plan can write, and a change to make to it. */
+function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
+  const ca = f.snapshot.config.caPolicies!
+  const rows = (ca.rows as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
+  return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
+}
+
 test('(1) the campaign email is the passkey version once Require MFA for Everyone is in place, naming the first policy that needs a passkey', () => {
-  const f = fixture('demo')
-  const r = runFixture(f)
+  const f = fixture('demo-week2')
+  const snapshot = adminsInReportOnly(f)
+  const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const camp = r.steps.find((s) => s.id === 's-verify-mfa')!
   assert.equal(r.steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')?.status, 'done', 'the demo enforces MFA already')
   const ex = stepVars(camp, ctxFor(f, r)) as Record<string, unknown>

@@ -15,7 +15,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
 import { SUBJECT } from '../../copy/validation.ts'
-import { jsonOffered, missingObjects } from './stepJson.ts'
+import { jsonOffered, missingObjects, stepOperations } from './stepJson.ts'
 import { copyBoxes, stepLines } from './stepExport.ts'
 import { content } from '../../content/content.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
@@ -59,21 +59,27 @@ test('for every policy step, the three Do it tabs differ and the PowerShell carr
       if (!portal || portal.length === 0) continue
       const body = JSON.parse(s.action.json) as { displayName?: string }
       const jsonTab = JSON.stringify(body, null, 2)
-      const ps = powershellFor(body, s.kind === 'adjust' ? (s.tracking?.policyId ?? null) : null)
+      const ps = powershellFor(stepOperations(s))
       const portalTab = portal.join('\n')
       assert.notEqual(portalTab, jsonTab, `${name} ${s.id}: portal and JSON differ`)
       assert.notEqual(jsonTab, ps, `${name} ${s.id}: JSON and PowerShell differ`)
       assert.notEqual(portalTab, ps, `${name} ${s.id}: portal and PowerShell differ`)
       assert.match(ps, /^Connect-MgGraph -Scopes Policy\.ReadWrite\.ConditionalAccess\n/, `${name} ${s.id}: connects with the one write scope`)
       if (typeof body.displayName === 'string') assert.ok(ps.includes(body.displayName), `${name} ${s.id}: the PowerShell carries the JSON tab's displayName`)
-      if (s.kind === 'adjust') assert.ok(s.tracking?.policyId && ps.includes(`-ConditionalAccessPolicyId '${s.tracking.policyId}'`), `${name} ${s.id}: an adjust updates the policy it names`)
-      else assert.match(ps, /New-MgIdentityConditionalAccessPolicy -BodyParameter \$body/, `${name} ${s.id}: a create is New-`)
+      // Each operation calls the cmdlet its own mode names, against its own policy.
+      for (const op of stepOperations(s)) {
+        if (op.mode === 'update') assert.ok(op.policyId && ps.includes(`-ConditionalAccessPolicyId '${op.policyId}'`), `${name} ${s.id}: an update names the policy it changes`)
+        else assert.match(ps, /New-MgIdentityConditionalAccessPolicy -BodyParameter \$body/, `${name} ${s.id}: a create is New-`)
+      }
       seen++
     }
   }
   assert.ok(seen >= 10, `policy steps checked (${seen})`)
   // Two bodies are two labelled blocks.
-  const two = powershellFor([{ displayName: 'A' }, { displayName: 'B' }])
+  const two = powershellFor([
+    { mode: 'create', policyId: null, body: { displayName: 'A' } },
+    { mode: 'create', policyId: null, body: { displayName: 'B' } },
+  ])
   assert.match(two, /# Policy A\n\$bodyA = @'/)
   assert.match(two, /# Policy B\n\$bodyB = @'/)
 })
@@ -99,11 +105,10 @@ test('GetIAMAI: the countries block waits on the allowed-countries location, the
   const f = fixture('getiamai')
   const geo = (r: ReturnType<typeof runFixture>) => r.steps.find((s) => s.id === 's-goal-geo-restriction')!
   const without = geo(runFixture(f))
-  assert.ok(without.action.json, 'the body exists')
+  assert.equal(without.action.json, null, 'no body at all while the location is missing')
   assert.equal(jsonOffered(without), false, 'no JSON is offered while the location is missing')
   const names = missingObjects(without).map((m) => m.title)
   assert.ok(names.includes('Create or Correct Allowed Countries Location'), `names the step that creates it (${names.join(', ')})`)
-  assert.ok(!JSON.parse(without.action.json!).conditions?.locations?.excludeLocations, 'the missing location is not in the JSON')
   // The tenant's own countries location, matching the allowed list.
   const location = { '@odata.type': '#microsoft.graph.countryNamedLocation', id: 'loc-au', displayName: 'Allowed countries', countriesAndRegions: ['AU'], includeUnknownCountriesAndRegions: false }
   const named = f.snapshot.config.namedLocations ?? { status: 'ok', reason: null, rows: [] }

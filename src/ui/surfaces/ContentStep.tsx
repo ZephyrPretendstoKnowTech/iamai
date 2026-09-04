@@ -22,7 +22,7 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText } from './stepJson.ts'
+import { implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText, stepOperations } from './stepJson.ts'
 import { commsFor, datesLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
@@ -130,7 +130,8 @@ export function ContentStep({
   // nothing to create — that there is nothing to do but keep it.
   const suppressed = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
   const waiting = suppressed && missingObjects(step).length > 0
-  const inPlace = suppressed && !waiting && step.status === 'done' && !step.action.json
+  const unmatched = suppressed && !waiting && step.action.unmatchedPair === true
+  const inPlace = suppressed && !waiting && !unmatched && step.status === 'done' && !step.action.json
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
   // The content's leading "before" lines (a setting to change before the policy
@@ -139,7 +140,7 @@ export function ContentStep({
   const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
   // §8.7: a section with no content is not rendered. A step with nothing to do
   // is a missing content key, logged by the walk, never an empty heading.
-  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || inPlace || hasSteps || before.length > 0
+  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || inPlace || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -218,7 +219,7 @@ export function ContentStep({
             <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
           )}
           {tab === 'json' && jsonOffered(step) && <pre className="mono">{policyJsonText(step)}</pre>}
-          {tab === 'ps' && jsonOffered(step) && <pre className="mono">{powershellFor(policyJson(step), step.kind === 'adjust' ? (step.tracking?.policyId ?? null) : null)}</pre>}
+          {tab === 'ps' && jsonOffered(step) && <pre className="mono">{powershellFor(stepOperations(step))}</pre>}
           {jsonOffered(step) && (
             <p className="actions">
               <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, policyJsonText(step), 'application/json', REDACTED)}>
@@ -229,13 +230,15 @@ export function ContentStep({
         </>
       ) : waiting ? (
         <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
+      ) : unmatched ? (
+        <p className="reason">{fillText(app.plan.pairUnmatched, { tenant: String(ex.tenant ?? '') })}</p>
       ) : inPlace ? (
         <p className="reason">{app.plan.inPlaceKeep}</p>
       ) : (
         (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...(hasSteps ? (w.steps as unknown[]).map((l) => <T s={l} ex={ex} />) : [])].map((node, i) => <li key={i}>{node}</li>)}</ol>
       )}
 
-      {datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
+      {!waiting && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
         <>
           <h3>Dates</h3>
           <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
@@ -246,7 +249,7 @@ export function ContentStep({
         // Expand the shared policy/change done-when placeholders (a policy in
         // report-only gets its two gates with today's numbers), then drop any
         // line with a hole; the heading appears only if a line survives (§8.7).
-        const dw = doneWhenTemplates(step, (cs.doneWhen || []) as unknown[]).filter((x: unknown) => whole(x, ex))
+        const dw = waiting ? [] : doneWhenTemplates(step, (cs.doneWhen || []) as unknown[]).filter((x: unknown) => whole(x, ex))
         if (dw.length === 0) return null
         return (
           <>
@@ -256,7 +259,7 @@ export function ContentStep({
         )
       })()}
 
-      {cs.ifWrong && whole(cs.ifWrong, ex) && (
+      {!waiting && cs.ifWrong && whole(cs.ifWrong, ex) && (
         <>
           <h3>If it goes wrong</h3>
           <p className="line"><T s={cs.ifWrong} ex={ex} /></p>
@@ -271,7 +274,7 @@ export function ContentStep({
 
       {(() => {
         // The email as the exports say it (stepExport.ts commsFor): the body keyed on the tenant's state, the extra lines only when whole.
-        const comms = commsFor(cs, ex as Record<string, unknown>)
+        const comms = waiting ? null : commsFor(cs, ex as Record<string, unknown>)
         if (!comms) return null
         const text = [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n')
         return (

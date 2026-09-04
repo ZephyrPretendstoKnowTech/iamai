@@ -8,7 +8,7 @@ import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
-import type { ResolvedStepPolicy } from './types.ts'
+import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
 import { hasBaselineConflict } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
@@ -221,73 +221,20 @@ export type StepPolicyInput = {
   resolved: ResolvedPolicy
   /** The name this tenant's policy takes (the plan's proposal, or the existing policy's). */
   displayName?: string
+  /**
+   * The tenant policy this member is already represented by, so the operation is
+   * an update to it rather than a second copy. Absent for a create.
+   */
+  target?: { policyId: string; state: string } | null
 }
 
-/**
- * The step's action, built once from the canonical resolved policies the caller
- * has already produced. This is the only place a policy becomes an artifact: the
- * answers are applied here, the tenant's name and state and tag go on here, and
- * the bodies this returns are the ones the step carries — the portal
- * instructions, the JSON, the PowerShell and the download all describe these and
- * nothing else.
- */
-export function buildCreateAction(
-  policies: StepPolicyInput[],
-  mapping: MappingState,
-  planId: string,
-  stepId: string,
-  goalId: string,
-  opts: { adjust?: { policyId: string; state: string } } = {},
-): Action {
-  const tag = `[IAMAI:${planId}:${stepId}]`
-  /** One policy as the artifact it will be created or changed as. */
-  const artifact = (source: RawPolicy, displayName: string | undefined): RawPolicy => {
-    const body = structuredClone(source)
-    const sourceDescription = body.description
-    delete body.id
-    delete body.createdDateTime
-    delete body.modifiedDateTime
-    // The pinned baseline's own placeholder map names the author's objects; it is not a policy field.
-    delete body.placeholders
-    // A new policy starts in report-only; an adjusted one keeps its current state.
-    body.state = opts.adjust ? opts.adjust.state : 'enabledForReportingButNotEnforced'
-    if (displayName) body.displayName = displayName
-    body.description = `${tag}${typeof sourceDescription === 'string' && sourceDescription ? ' ' + sourceDescription : ''}`
-    return body
-  }
-  const missing: NonNullable<Action['missing']> = []
-  const resolvedPolicies: ResolvedStepPolicy[] = []
-  for (const p of policies) {
-    // The person's answers, applied as recorded deviations (deviations.ts) —
-    // once, here. Where an answer changed the policy, the baseline's own version
-    // travels with it so the step can show the choice beside it.
-    const clone = structuredClone(p.resolved.body)
-    const answered = applyDeviations(clone, goalId, mapping)
-    const deviated = answered !== clone
-    // The body the channels carry: the artifact, with any object this tenant
-    // does not have taken out of it (prompt 49.1 item 1) — nothing is dropped
-    // silently, every one comes back in `missing`.
-    const stripped = implementable(artifact(answered, p.displayName), p.resolved.unresolved)
-    for (const m of stripped.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
-    resolvedPolicies.push({
-      sourceName: p.sourceName,
-      body: stripped.policy,
-      baseline: deviated ? implementable(artifact(p.resolved.body, p.displayName), p.resolved.unresolved).policy : undefined,
-    })
-  }
-  // One policy is one body; a goal the baseline implements with two is both, in
-  // the baseline's order. PowerShell reads the same shape (a block per body).
-  const bodies = resolvedPolicies.map((r) => r.body)
-  const json = JSON.stringify(bodies.length === 1 ? bodies[0] : bodies, null, 2)
-  return { kind: opts.adjust ? 'adjust' : 'create', summary: [], json, portalSteps: [], missing, resolution: { policies: resolvedPolicies, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } }
-}
+/** The sections of a policy an update may carry, in the order a person meets them in the portal. */
+export type ChangedSection = 'users' | 'applications' | 'grantControls' | 'sessionControls' | 'state'
 
-export { proposedPolicyName } from '../coverage/naming.ts'
-
-// A Change step shows the tenant's current include/exclude and carries only
-// the fields that change (prompt 17 §4): the JSON is a patch, the portal
-// steps open the existing policy and list the changed fields.
-const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], 'grantControls' | 'sessionControls' | 'users' | 'applications' | 'state'>> = {
+// A Change step carries only the fields that change (prompt 17 §4): the request
+// body is a patch, and the portal steps open the existing policy and list those
+// fields alone.
+const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], ChangedSection>> = {
   'weaker-control': 'grantControls',
   'session-weaker': 'sessionControls',
   'not-targeted': 'users',
@@ -297,31 +244,112 @@ const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], 'gr
   'report-only': 'state',
 }
 
-function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | null): Action {
-  if (!full.json) return { ...full, kind: 'adjust' }
-  const parsed = JSON.parse(full.json) as RawPolicy | RawPolicy[]
-  const bodies = Array.isArray(parsed) ? parsed : [parsed]
-  const body = bodies[0]
-  const sections = new Set(result.reasons.filter((r) => !r.expected).map((r) => CHANGED_SECTION[r.kind]).filter(Boolean))
-  if (result.floorRaised) sections.add('grantControls')
-  const patchFor = (b: RawPolicy): RawPolicy => {
-    const patch: RawPolicy = { description: b.description }
-    const c0 = (b.conditions ?? {}) as RawPolicy
-    if (sections.has('grantControls')) patch.grantControls = b.grantControls
-    if (sections.has('sessionControls')) patch.sessionControls = b.sessionControls
-    if (sections.has('users') || sections.has('applications')) {
-      const c: RawPolicy = {}
-      if (sections.has('users')) c.users = c0.users
-      if (sections.has('applications')) c.applications = c0.applications
-      patch.conditions = c
-    }
-    if (sections.has('state')) patch.state = 'enabled'
-    return patch
-  }
+/** The fields an update submits: the whole policy narrowed to the sections that change. */
+function patchOf(body: RawPolicy, sections: ReadonlySet<ChangedSection>): RawPolicy {
+  const patch: RawPolicy = { description: body.description }
   const conditions = (body.conditions ?? {}) as RawPolicy
-  const patches = bodies.map(patchFor)
-  const json = JSON.stringify(patches.length === 1 ? patches[0] : patches, null, 2)
-  // Current value → new value, field by field (roadmap-v2.md §4.6); nothing else is touched.
+  if (sections.has('grantControls')) patch.grantControls = body.grantControls
+  if (sections.has('sessionControls')) patch.sessionControls = body.sessionControls
+  if (sections.has('users') || sections.has('applications')) {
+    const c: RawPolicy = {}
+    if (sections.has('users')) c.users = conditions.users
+    if (sections.has('applications')) c.applications = conditions.applications
+    patch.conditions = c
+  }
+  if (sections.has('state')) patch.state = 'enabled'
+  return patch
+}
+
+/**
+ * The step's action, built once from the canonical resolved policies the caller
+ * has already produced. This is the only place a policy becomes an operation:
+ * the answers are applied here, the tenant's name and state and tag go on here,
+ * the mode and the target policy are decided here, and the bodies this returns
+ * are the ones the step carries — the portal instructions, the JSON, the
+ * PowerShell and the download all describe these and nothing else.
+ *
+ * While any object a policy names is missing there is no operation to run at
+ * all: `json` is null, so no channel offers an incomplete body and nothing
+ * schedules a rollout for it. The list of what is missing stays.
+ */
+export function buildCreateAction(
+  policies: StepPolicyInput[],
+  mapping: MappingState,
+  planId: string,
+  stepId: string,
+  goalId: string,
+  opts: { sections?: ReadonlySet<ChangedSection> } = {},
+): Action {
+  const tag = `[IAMAI:${planId}:${stepId}]`
+  /** One policy as the whole policy it is meant to be in this tenant. */
+  const artifact = (source: RawPolicy, p: StepPolicyInput): RawPolicy => {
+    const body = structuredClone(source)
+    const sourceDescription = body.description
+    delete body.id
+    delete body.createdDateTime
+    delete body.modifiedDateTime
+    // The pinned baseline's own placeholder map names the author's objects; it is not a policy field.
+    delete body.placeholders
+    // A new policy starts in report-only; a policy already there keeps its state.
+    body.state = p.target ? p.target.state : 'enabledForReportingButNotEnforced'
+    if (p.displayName) body.displayName = p.displayName
+    body.description = `${tag}${typeof sourceDescription === 'string' && sourceDescription ? ' ' + sourceDescription : ''}`
+    return body
+  }
+  const sections = opts.sections ?? new Set<ChangedSection>()
+  const missing: NonNullable<Action['missing']> = []
+  const operations: PolicyOperation[] = []
+  for (const p of policies) {
+    // The person's answers, applied as recorded deviations (deviations.ts) —
+    // once, here. Where an answer changed the policy, the baseline's own version
+    // travels with it so the step can show the choice beside it.
+    const clone = structuredClone(p.resolved.body)
+    const answered = applyDeviations(clone, goalId, mapping)
+    const deviated = answered !== clone
+    // Nothing is dropped silently: an object the tenant does not have comes back
+    // in `missing`, and while any does there is no operation to run.
+    const whole = implementable(artifact(answered, p), p.resolved.unresolved)
+    for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
+    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p), p.resolved.unresolved).policy : undefined
+    const update = p.target != null
+    operations.push({
+      sourceName: p.sourceName,
+      mode: update ? 'update' : 'create',
+      policyId: p.target?.policyId ?? null,
+      body: update ? patchOf(whole.policy, sections) : whole.policy,
+      baseline: wholeBaseline ? (update ? patchOf(wholeBaseline, sections) : wholeBaseline) : undefined,
+      // The whole policy an update is working towards: read for explanation and
+      // impact, never submitted.
+      target: update ? whole.policy : undefined,
+    })
+  }
+  const bodies = operations.map((o) => o.body)
+  // One policy is one body; a goal the baseline implements with two is both, in
+  // the baseline's order. PowerShell reads the same shape (a block per operation).
+  const json = missing.length > 0 ? null : JSON.stringify(bodies.length === 1 ? bodies[0] : bodies, null, 2)
+  const kind = operations.some((o) => o.mode === 'update') ? 'adjust' : 'create'
+  return { kind, summary: [], json, portalSteps: [], missing, resolution: { policies: operations, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } }
+}
+
+export { proposedPolicyName } from '../coverage/naming.ts'
+
+/** The sections a partly-covered goal's policy has to change (roadmap-v2.md §4.6). */
+function changedSections(result: GoalResult): Set<ChangedSection> {
+  const sections = new Set(result.reasons.filter((r) => !r.expected).map((r) => CHANGED_SECTION[r.kind]).filter((x): x is ChangedSection => Boolean(x)))
+  if (result.floorRaised) sections.add('grantControls')
+  return sections
+}
+
+/**
+ * The field-by-field account of what an update changes on the tenant's policy —
+ * current value → new value, read from the operation's own body so the account
+ * and the request can never differ. Nothing outside the operation is listed.
+ */
+function changesFor(action: Action, sections: ReadonlySet<ChangedSection>, existing: RawPolicy | null): Action {
+  const update = action.resolution?.policies.find((o) => o.mode === 'update')
+  if (!update) return action
+  const body = update.body
+  const conditions = (body.conditions ?? {}) as RawPolicy
   const show = (v: unknown): string => (v === undefined || v === null ? '—' : JSON.stringify(v))
   const changes: NonNullable<Action['changes']> = []
   const ex = (existing ?? {}) as RawPolicy
@@ -331,11 +359,10 @@ function adjustAction(full: Action, result: GoalResult, existing: RawPolicy | nu
   if (sections.has('users')) changes.push({ field: 'Users', from: show(exConditions.users), to: show(conditions.users) })
   if (sections.has('applications')) changes.push({ field: 'Target resources', from: show(exConditions.applications), to: show(conditions.applications) })
   if (sections.has('state')) changes.push({ field: 'State', from: show(ex.state), to: '"enabled"' })
-
   const cur = ((existing?.conditions ?? {}) as RawPolicy).users as RawPolicy | undefined
   const roleList = cur && Array.isArray(cur.includeRoles) && cur.includeRoles.length > 0 ? roleListSummary(cur.includeRoles.map(String)) : null
   const excludeRoles = cur && Array.isArray(cur.excludeRoles) && cur.excludeRoles.length > 0 ? roleListSummary(cur.excludeRoles.map(String)) : null
-  return { kind: 'adjust', summary: [], json, portalSteps: [], missing: full.missing, resolution: full.resolution, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
+  return { ...action, roleList: roleList && roleList.names.length > 5 ? roleList : excludeRoles && excludeRoles.names.length > 5 ? excludeRoles : null, changes }
 }
 
 // ---- generation ----
@@ -852,13 +879,38 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // is the goal's own template — the same body the absent branch builds,
       // through the same boundary.
       const changing = source ? stepPolicies() : templatePolicy()
-      action = adjustAction(
-        buildCreateAction(named(changing, existing?.policyName ?? proposedPolicyName(goal, naming)), mapping, planId, stepId, goal.id, {
-          adjust: existing ? { policyId: existing.policyId, state: existing.state } : undefined,
-        }),
-        result,
-        existingRaw,
-      )
+      const sections = changedSections(result)
+      if (changing.length < 2) {
+        // One policy: the goal's coverage names the tenant policy it changes.
+        const one = named(changing, existing?.policyName ?? proposedPolicyName(goal, naming))
+        one[0] = { ...one[0], target: existing ? { policyId: existing.policyId, state: existing.state } : null }
+        action = changesFor(buildCreateAction(one, mapping, planId, stepId, goal.id, { sections }), sections, existingRaw)
+      } else {
+        // Two policies: each member needs its own tenant policy, or none. The
+        // plan associates a member with a tenant policy only where the policy
+        // carries the name the plan gives that member — an operator who followed
+        // these instructions. Anything less is a guess, so the step withholds the
+        // implementation and asks for the names to be sorted out instead.
+        // The plan's canonical name for each member — not the suffixed proposal a
+        // create would take, because the policy this matches is the one already
+        // carrying that name.
+        const members = named(changing, proposedPolicyName(goal, naming))
+        const byName = new Map((snapshot.config.caPolicies?.rows ?? []).map((p) => [String((p as RawPolicy).displayName ?? '').trim().toLowerCase(), p as RawPolicy]))
+        const matched = members.map((m) => byName.get(String(m.displayName ?? '').trim().toLowerCase()) ?? null)
+        const ids = matched.filter((p): p is RawPolicy => p !== null).map((p) => String(p.id))
+        const ambiguous = matched.every((p) => p === null) || new Set(ids).size !== ids.length
+        if (ambiguous) {
+          action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [], unmatchedPair: true }
+        } else {
+          const withTargets = members.map((m, i) => {
+            const p = matched[i]
+            return p ? { ...m, target: { policyId: String(p.id), state: String(p.state ?? 'enabled') } } : { ...m, target: null }
+          })
+          const firstUpdate = matched.find((p) => p !== null) ?? null
+          action = changesFor(buildCreateAction(withTargets, mapping, planId, stepId, goal.id, { sections }), sections, firstUpdate)
+        }
+      }
+      if (action.kind === 'create') namingNote = uniqueName(goal)
     }
 
     // The tenant objects the resolution used travel with the result, so an

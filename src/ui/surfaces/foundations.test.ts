@@ -35,8 +35,18 @@ test('emergency access is on every plan: Ready with one failing check on the dem
 })
 
 test('a change step carries Announce and Change dates and a calendar entry, on the demo and GetIAMAI', () => {
-  const cases: { name: 'demo' | 'getiamai'; stepId: string; snapshot?: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture>['snapshot'] }[] = [
-    { name: 'demo', stepId: 's-goal-admins-phishing-resistant' },
+  const cases: { name: 'demo-week2' | 'getiamai'; stepId: string; snapshot?: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture>['snapshot'] }[] = [
+    // Week two, with its admins policy back in report-only: a change the plan can
+    // write, so it is dated. A policy naming an object the tenant lacks is not.
+    {
+      name: 'demo-week2',
+      stepId: 's-goal-admins-phishing-resistant',
+      snapshot: (f) => {
+        const ca = f.snapshot.config.caPolicies!
+        const rows = (ca.rows as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
+        return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
+      },
+    },
     {
       name: 'getiamai',
       stepId: 's-goal-token-protection',

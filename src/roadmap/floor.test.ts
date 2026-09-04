@@ -12,7 +12,7 @@ import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
 import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 
 test('the pinned baseline lacks registration protection, so the floor renders it, flagged, from the template', () => {
-  const r = runFixture(fixture('demo'))
+  const r = runFixture(fixture('demo-week2'))
   const reg = r.steps.find((s) => s.goalId === 'register-info-protected')
   assert.ok(reg, 'registration protection renders through the floor')
   assert.equal(reg.floor, true, 'flagged as not the author\'s')

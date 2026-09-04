@@ -10,7 +10,7 @@ import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { commsFor, copyBoxes, stepLines } from './stepExport.ts'
 
-const f = fixture('demo')
+const f = fixture('demo-week2')
 const r = runFixture(f)
 const ctxFor = (snapshot = f.snapshot): StepVarContext => ({ snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start) })
 /** A step on the demo whose email renders today and names the tenant. */

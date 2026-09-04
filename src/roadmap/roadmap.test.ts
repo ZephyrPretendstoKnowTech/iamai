@@ -286,10 +286,13 @@ test('11: geo policy: allowlist style chosen by data, NoExclusions dropped', () 
   // location is the author's own, and this tenant has none matching its country
   // list, so the one resolution boundary leaves it out of the body and the step
   // waits on the Preparation step that creates it (resolvePolicy.ts).
-  const json = JSON.parse(step.action.json ?? '{}') as { conditions: { locations: { includeLocations: string[]; excludeLocations?: string[] } } }
-  assert.deepEqual(json.conditions.locations, { includeLocations: ['All'] })
+  assert.equal(step.action.json, null, 'nothing executable while the location is missing')
   assert.deepEqual(step.action.missing?.map((m) => m.token), ['loc-allowed'])
-  assert.doesNotMatch(step.action.json ?? '', /NoExclusions|loc-blocked/)
+  // The allowlist variant is the one the step describes: its rejected siblings
+  // are nowhere in what the step carries.
+  const carried = JSON.stringify(step.action.resolution?.policies ?? [])
+  assert.doesNotMatch(carried, /NoExclusions|loc-blocked/)
+  assert.deepEqual((JSON.parse(carried)[0].body.conditions as { locations: unknown }).locations, { includeLocations: ['All'] })
 })
 
 test('12: answered Countries with no matching tenant location → phase-0 step creates it and gates the geo policy', () => {

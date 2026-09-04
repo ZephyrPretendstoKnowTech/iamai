@@ -45,7 +45,8 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // implementationOffered).
   const suppressed = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
   const waiting = suppressed && missingObjects(step).length > 0
-  const inPlace = suppressed && !waiting && step.status === 'done' && !step.action.json
+  const unmatched = suppressed && !waiting && step.action.unmatchedPair === true
+  const inPlace = suppressed && !waiting && !unmatched && step.status === 'done' && !step.action.json
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   const lines: string[] = []
   if (typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
@@ -53,18 +54,23 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   if (Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
   else if (waiting) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.jsonWaits), { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') }))
+  else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))
   else if (inPlace) lines.push(String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep))
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
-  const doneWhen = doneWhenTemplates(step, (cs.doneWhen ?? []) as unknown[])
-    .filter((x) => whole(x, ex))
-    .map((x) => fillText(x, ex))
+  // Nothing that implies the policy can be rolled out while it cannot be written:
+  // no completion criteria, no rollback, no dates.
+  const doneWhen = waiting
+    ? []
+    : doneWhenTemplates(step, (cs.doneWhen ?? []) as unknown[])
+        .filter((x) => whole(x, ex))
+        .map((x) => fillText(x, ex))
   return {
     title: String(cs.title),
     why: fillText(cs.why, ex),
     whatToDo: lines,
     doneWhen,
-    ifWrong: cs.ifWrong && whole(cs.ifWrong, ex) ? fillText(cs.ifWrong, ex) : null,
-    dates: whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
+    ifWrong: !waiting && cs.ifWrong && whole(cs.ifWrong, ex) ? fillText(cs.ifWrong, ex) : null,
+    dates: !waiting && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
   }
 }
 

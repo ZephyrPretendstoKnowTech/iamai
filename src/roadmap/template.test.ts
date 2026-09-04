@@ -33,10 +33,14 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
   const policies = [{ displayName: 'author', conditions: { users: { excludeGroups: ['ref-exclusions'] } } }] as never
   const resolved = resolveTenantPolicy(body, { exclusionsGroupId: null, serviceAccountsGroupId: null, allowedCountriesLocationId: null }, 'x', policies)
   const action = buildCreateAction([{ sourceName: 'author', resolved }], mapping, 'plan-1', 's-x', 'x')
-  assert.ok(action.json, 'json produced')
-  assert.doesNotMatch(action.json!, /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the JSON')
-  assert.doesNotMatch(action.json!, /"excludeGroups"/, 'the array emptied by stripping loses its key')
-  assert.doesNotMatch(powershellFor(JSON.parse(action.json!)), /__IAMAI_|Replace the placeholders|ref-exclusions/, 'no placeholder token or advisory in the PowerShell')
+  // Nothing executable while an object the policy names is missing: no body at
+  // all, and the reference named as what the step waits on.
+  assert.equal(action.json, null, 'no incomplete body is exposed')
+  assert.deepEqual(action.missing?.map((m) => m.token), ['ref-exclusions'], 'the reference is what it waits on')
+  // The operation the step carries holds no placeholder either.
+  const op = action.resolution!.policies[0]
+  assert.doesNotMatch(JSON.stringify(op.body), /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the body')
+  assert.doesNotMatch(JSON.stringify(op.body), /"excludeGroups"/, 'the array emptied by stripping loses its key')
 })
 
 test('item 12: every goal × implementation renders Do it from the template with a grant or session control', () => {
@@ -54,7 +58,7 @@ test('item 12: every goal × implementation renders Do it from the template with
       assert.ok(grants + sessions >= 1, `${goal.id}: at least one grant or session control`)
       assert.equal(parsed.state, 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only`)
       assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
-      assert.match(powershellFor(parsed), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
+      assert.match(powershellFor([{ mode: 'create', policyId: null, body: parsed }]), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
     }
   }
 })
@@ -88,7 +92,12 @@ test('item 12: with no baseline at all, every create step still carries a body, 
   assert.ok(creates.length >= 8, `expected a create step per held goal small lacks, got ${creates.length}`)
   for (const s of creates) assert.ok(goalInMap(PINNED_GOAL_MAP, s.goalId) || (isFloorGoal(s.goalId) && s.floor === true), `${s.id}: a create step for a goal the baseline does not hold`)
   for (const s of creates) {
-    assert.ok(s.action.json, `${s.id}: has a body`)
+    // A step whose policy names an object this tenant does not have has no body
+    // at all; the ones that can be written have theirs.
+    if (!s.action.json) {
+      assert.ok((s.action.missing ?? []).length > 0, `${s.id}: no body, and it says why`)
+      continue
+    }
     assert.equal(s.action.summary.some((l) => /No baseline policy matches/.test(l)), false, `${s.id}: no "create a policy that meets the floor" hand-off`)
     const leftover = TEMPLATE_PLACEHOLDERS.filter((p) => s.action.json?.includes(p))
     for (const p of leftover) {
