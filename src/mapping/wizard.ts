@@ -9,7 +9,7 @@ import type { CaPolicy } from '../baseline/types.ts'
 import type { MappingRecord, MappingState, QuestionGroup } from './types.ts'
 import { detectServiceAccounts } from './serviceAccounts.ts'
 import { suggestCountries } from './countries.ts'
-import { detectEmergencyAccess } from './emergencyAccess.ts'
+import { autoEmergencyAccess } from './emergencyAccess.ts'
 
 export type WizardQuestionId = 'breakGlass' | 'globalExclusion' | 'countries' | 'trustedLocations' | 'serviceAccounts' | 'timeZone' | 'applicability'
 
@@ -131,7 +131,9 @@ export function applyDetectedDefaults(state: MappingState, snapshot: TenantSnaps
   }
 
   if (detectable('breakGlass')) {
-    const candidates = detectEmergencyAccess(snapshot, tenantPolicies)
+    // Only the accounts the tenant named for the job (emergencyAccess.ts): a
+    // circumstantial nomination is offered in the picker, never classified here.
+    const candidates = autoEmergencyAccess(snapshot, tenantPolicies)
     next.breakGlassUserIds = candidates.map((c) => c.id)
     if (candidates.length > 0) delete next.records['__breakGlassMissing']
     else next.records['__breakGlassMissing'] = auto('__breakGlassMissing', 'user', 'breakGlass', null, null, true)
