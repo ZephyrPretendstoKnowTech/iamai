@@ -105,6 +105,8 @@ const add = (level, text) => {
   if (seen.has(key)) return
   seen.add(key)
   findings[level].push(text)
+  // A P0 fails the CI job: say it in the job log as it is found, so the log alone names the cause.
+  if (level === 'P0') console.log(`walk: P0 ${text}`)
 }
 const log = (m) => console.log(`walk: ${m}`)
 
@@ -569,7 +571,7 @@ async function walkFixture(fx) {
         const rungs = await evaluate(`[...document.querySelectorAll('main.page .ladder .ladder-row')].map((li) => { const c = li.querySelector('.rung-title').cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return { title: (c.textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((li.querySelector('.rung-n') || {}).textContent || '').trim()), rung: li.getAttribute('data-rung') } })`)
         if (rungs.length !== RUNG_TITLES.length || rungs.some((r, k) => r.title !== RUNG_TITLES[k])) add('P0', `${label}: the rungs read ${JSON.stringify(rungs.map((r) => r.title))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
         else {
-          const active = Number((text.match(/of (\d+) active (?:person|people)/) || [])[1])
+          const active = Number((text.match(/of (\d+) active (?:person|people)/i) || [])[1])
           if (rungs.reduce((a, r) => a + r.n, 0) !== active) add('P0', `${label}: the rungs sum to ${rungs.reduce((a, r) => a + r.n, 0)} and the header says of ${active} active people`)
           if ((await evaluate(`document.querySelectorAll('main.page .ladder .ladder-divider').length`)) !== 1) add('P0', `${label}: the rule before the three to prioritise is missing`)
           // Clicking a rung filters the table to its people; a second click clears it.
@@ -814,7 +816,7 @@ async function walkFixture(fx) {
             if (tiles.length !== 5) add('P0', `${label}: the Plan tile's ladder has ${tiles.length} tiles; five`)
             else {
               if (tiles.some((t, k) => t.label !== RUNG_TITLES[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
-              const active = Number((t4.text.match(/of (\d+) active (?:person|people)/) || [])[1])
+              const active = Number((t4.text.match(/of (\d+) active (?:person|people)/i) || [])[1])
               if (tiles.reduce((a, t) => a + t.n, 0) !== active) add('P0', `${label}: the tiles sum to ${tiles.reduce((a, t) => a + t.n, 0)} and the header says of ${active} active people`)
               for (const [k, t] of tiles.entries()) if (!new RegExp(`#/today/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; Today filtered to its rung`)
               if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: Connect's "${t.label}" reads ${t.n} and Today's ${ladderCounts[t.label]}`)
@@ -885,7 +887,7 @@ async function walkFixture(fx) {
           if (tiles.some((t, k) => t.label !== RUNG_TITLES[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
           stripCounts = Object.fromEntries(tiles.map((t) => [t.label, t.n]))
           if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: the Plan's "${t.label}" reads ${t.n} and Today's ${ladderCounts[t.label]}`)
-          const active = Number((text.match(/of (\d+) active (?:person|people)/) || [])[1])
+          const active = Number((text.match(/of (\d+) active (?:person|people)/i) || [])[1])
           if (tiles.reduce((a, t) => a + t.n, 0) !== active) add('P0', `${label}: the tiles sum to ${tiles.reduce((a, t) => a + t.n, 0)} and the header says of ${active} active people`)
           for (const [k, t] of tiles.entries()) if (!new RegExp(`#/today/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; Today filtered to its rung`)
         }

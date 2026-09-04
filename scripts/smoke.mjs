@@ -230,12 +230,12 @@ try {
   check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
   check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+synthetic baseline · 1 polic(y|ies)/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
   // Tile 4 (docs/design/mockups/connect-v2.html): the MFA Readiness header, the five rungs by title, Open the plan; no facts row.
-  check('Connect (scanned): the ladder and Open the plan', /MFA Readiness/i.test(t) && /of \d+ active (person|people)/.test(t) && /Passkey or security key, proven/.test(t) && /Nothing set up/.test(t) && /Open the plan →/.test(t) && !/sign-in records/.test(t) && (await evaluate(`document.querySelectorAll('main.page section.step-tile .rung-tile').length`)) === 5, (t.match(/Plan\s+ready[^\n]*/) ?? [''])[0])
+  check('Connect (scanned): the ladder and Open the plan', /MFA Readiness/i.test(t) && /of \d+ active (person|people)/i.test(t) && /Passkey or security key, proven/.test(t) && /Nothing set up/.test(t) && /Open the plan →/.test(t) && (await evaluate(`document.querySelectorAll('main.page section.step-tile .facts').length`)) === 0 && (await evaluate(`document.querySelectorAll('main.page section.step-tile .rung-tile').length`)) === 5, (t.match(/Plan\s+ready[^\n]*/) ?? [''])[0])
   // Tile 3 reads Scan complete · N ago once; tile 4 reads Plan ready · from the scan N ago with the same words, from the one stored timestamp; nothing says scanned.
   check(
     "Connect (scanned): the scan's age once as Scan complete · N ago, Plan ready · from the scan with the same age, and no scanned line",
-    (await waitFor(`/Plan\\s+ready · from the scan/.test(document.body.innerText)`)) &&
-      (await evaluate(`(() => { const t = document.querySelector('main.page').innerText; const m = t.match(/Scan\\s+complete · ([^\\n]+)/); if (!m) return false; const age = m[1].trim(); return (t.match(/complete · [^\\n]+/g) || []).length === 1 && t.includes('ready · from the scan ' + age) && !/scanned/.test(t) })()`)),
+    (await waitFor(`/Plan\\s+ready · (\\d+ steps, \\d+ done · )?from the scan/.test(document.body.innerText)`)) &&
+      (await evaluate(`(() => { const t = document.querySelector('main.page').innerText; const m = t.match(/Scan\\s+complete · ([^\\n]+)/); if (!m) return false; const age = m[1].trim(); return (t.match(/complete · [^\\n]+/g) || []).length === 1 && /ready · (\\d+ steps, \\d+ done · )?from the scan /.test(t) && t.includes('from the scan ' + age) && !/scanned/.test(t) })()`)),
     (t.match(/Plan\s+ready[^\n]*/) ?? [''])[0],
   )
   check('Connect (scanned): the plan state counts the steps and how many are done', await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan/.test(document.body.innerText)`, 20000), ((await text()).match(/ready · \d+ steps, \d+ done[^\n]*/) ?? [''])[0])
@@ -251,7 +251,7 @@ try {
   // The ladder: five boxed rungs, the titles in order, the rule before the three to prioritise.
   const rungTitles = await evaluate(`[...document.querySelectorAll('main.page .ladder .ladder-row .rung-title')].map((e) => { const c = e.cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return (c.textContent || '').replace(/\\s+/g, ' ').trim() })`)
   check('Today: the five rungs by title', rungTitles.join(' | ') === 'Passkey or security key, proven | Authenticator app, proven | Windows Hello only | Set up, never used for MFA | Nothing set up', rungTitles.join(' | '))
-  check('Today: the MFA Readiness header and the rule before the three to prioritise', /MFA Readiness/i.test(t) && /of \d+ active (person|people)/.test(t) && (await evaluate(`document.querySelectorAll('main.page .ladder .ladder-divider').length`)) === 1)
+  check('Today: the MFA Readiness header and the rule before the three to prioritise', /MFA Readiness/i.test(t) && /of \d+ active (person|people)/i.test(t) && (await evaluate(`document.querySelectorAll('main.page .ladder .ladder-divider').length`)) === 1)
   check('Today: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card, .tiles').length`)) === 0)
   check('Today: one Show dropdown, a search box and Admins only', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)) && /Admins only/.test(t))
   check('Today: the link to every account and policy the scan read', /Every account and policy the scan read →/.test(t))
@@ -295,7 +295,9 @@ try {
   // The Plan surface (target-state §5): two header lines, numbered phases, the footer.
   let pt = await text()
   check('Plan: the header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |the plan cannot finish)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
-  check('Plan: line two points at Today; the tenant and the scan age live on Connect alone', /Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on/.test(pt))
+  // The second header line left with docs/design/mockups/plan-top-v2.html; the tenant and the scan age live on Connect alone.
+  check('Plan: no second header line; the tenant and the scan age live on Connect alone', !/Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on|from the scan/.test(pt))
+  check('Plan: the MFA Readiness header and five rung tiles under the steps line', /MFA Readiness/i.test(pt) && /of \d+ active (person|people)/i.test(pt) && (await evaluate(`document.querySelectorAll('main.page .rung-tiles .rung-tile').length`)) === 5)
   // The Start date proposes today in the display zone (a weekend: the Monday after), in the same control as Plan settings' inputs, its label spaced.
   const startField = await evaluate(`(() => { const l = document.querySelector('main.page .plan-start label.rows'); const i = l && l.querySelector('input[type=date]'); if (!i) return null; const cs = getComputedStyle(l); const ci = getComputedStyle(i); return { value: i.value, display: cs.display, gap: cs.columnGap, padTop: ci.paddingTop, borderBottom: ci.borderBottomWidth } })()`)
   const startZone = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); if (!db.objectStoreNames.contains('mapping')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('mapping').objectStore('mapping').getAll(); q.onsuccess = () => r(q.result) }); db.close(); const m = rows.find((x) => x && x.displayTimeZone); return m ? m.displayTimeZone : null } catch { return null } })()`)
