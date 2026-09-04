@@ -6,6 +6,7 @@
 // its role counts in the admin populations. One source for who the operator
 // is and when they last signed in; nothing else reads config.me.
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
+import { pages } from '../content/content.ts'
 
 /** The operator's user id, from the scan's /me row; null when the scan did not read it. */
 export function operatorUserId(snapshot: TenantSnapshot): string | null {
@@ -16,6 +17,18 @@ export function operatorUserId(snapshot: TenantSnapshot): string | null {
 /** True for the signed-in account. */
 export function isOperator(snapshot: TenantSnapshot, userId: string): boolean {
   return operatorUserId(snapshot) === userId
+}
+
+/**
+ * A person's MFA evidence as the plan reads it: the records' last MFA success,
+ * except that the operator's sign-in for this scan is one, at the scan's
+ * moment, when the records hold none: the account signed in now, with MFA, to
+ * run the scan, so it stands in the readiness strip like any active person
+ * (Ready with a passkey), never "registered but never seen to complete MFA".
+ */
+export function mfaEvidenceOf(snapshot: TenantSnapshot, userId: string, records: { lastMfaSuccess?: { at: string; method: string } | null } | undefined): { at: string; method: string } | null {
+  if (records?.lastMfaSuccess) return records.lastMfaSuccess
+  return isOperator(snapshot, userId) ? { at: snapshot.asOf, method: (pages.app.today as { signedInNow: string }).signedInNow } : null
 }
 
 /**

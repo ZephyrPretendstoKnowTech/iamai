@@ -5,7 +5,7 @@ import { computeAuthenticatorBaseline } from './platform.ts'
 import type { EvidenceStatus, MfaViabilityInput } from './mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { personAccounts } from '../derive/sets.ts'
-import { lastSignInOf } from '../derive/operator.ts'
+import { lastSignInOf, mfaEvidenceOf } from '../derive/operator.ts'
 import { adminUserIds } from '../roles.ts'
 
 /**
@@ -45,7 +45,8 @@ export function buildViabilityInputs(
     const evidence: MfaViabilityInput['evidence'] = {
       status: evidenceStatus,
       covered: evidenceSource.coveredWindow,
-      lastMfaSuccess: userEvidence?.lastMfaSuccess ?? null,
+      // The signed-in account's own sign-in for this scan is MFA evidence when the records hold none (derive/operator.ts).
+      lastMfaSuccess: mfaEvidenceOf(snapshot, u.id, userEvidence),
     }
     return {
       userId: u.id,
