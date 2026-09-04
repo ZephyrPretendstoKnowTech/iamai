@@ -45,7 +45,6 @@ type Words = {
   baseline: { title: string; state: string; loading: string; none: string; what: string; goal: string; updated: string; diff: { added: string; removed: string; changed: string }; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
   scan: {
     title: string
-    readOnly: string
     limitsSummary: string
     limits: string[]
     limitsMore: string
@@ -165,7 +164,7 @@ export function baselineTile({
   }
 }
 
-// ---- 3 Scan: the read-only line and the limitations, then exactly one of its states ----
+// ---- 3 Scan: the limitations, then exactly one of its states ----
 export type ScanInput =
   | { kind: 'complete'; at: string; now?: number }
   | { kind: 'gaps'; unread: string[]; lastScan: { at: string } | null }
@@ -180,7 +179,6 @@ export type ScanTile = {
   title: string
   state: string
   tone: Tone
-  readOnly: string
   limits: { summary: string; lines: string[]; more: string; link: { label: string; href: string } }
   lead?: string
   rows?: { name: string; value: string }[]
@@ -198,7 +196,6 @@ export function scanTile(input: ScanInput): ScanTile {
   const base = {
     n: 3 as const,
     title: S.title,
-    readOnly: S.readOnly,
     limits: { summary: S.limitsSummary, lines: S.limits, more: S.limitsMore, link: { label: S.limitsLink, href: HOW_HREF } },
   }
   const signInAnother: Action = { label: W.account.signInAnother, weight: 'primary' }
@@ -343,8 +340,8 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
     out.push(...tile.paragraphs)
     if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, ...r.steps]))
   }
-  if ('readOnly' in tile) {
-    out.push(tile.readOnly, tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
+  if ('limits' in tile) {
+    out.push(tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
     for (const r of tile.rows ?? []) out.push(r.name, r.value)
     if (tile.ask) out.push(tile.ask)
     if (tile.learn) out.push(tile.learn.label)

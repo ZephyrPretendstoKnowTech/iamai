@@ -117,7 +117,8 @@ const beatsOf = (t: ScanTile): void => {
   assert.equal(t.n, 3)
   assert.equal(t.title, 'Scan')
   noBeats(t)
-  assert.equal(t.readOnly, 'Read-only. It holds no permission that can create, change or delete anything.')
+  // No read-only line either: the limitations collapsible and the scan control alone.
+  assert.ok(!('readOnly' in t) && !tileStrings(t).join('\n').includes('Read-only.'), 'no read-only line on the tile')
   assert.equal(t.limits.summary, 'IAMAI limitations')
   assert.equal(t.limits.lines.length, 5)
   assert.equal(t.limits.more, 'Permissions, every check it runs, and its limits in full:')
@@ -125,7 +126,7 @@ const beatsOf = (t: ScanTile): void => {
   assert.equal(t.limits.link.href, '#/how')
 }
 
-test('tile 3, Scan, complete: no beats, the read-only line, the five limitations and the How line, complete · N ago in the heading, Scan again (secondary) alone, the accent badge', () => {
+test('tile 3, Scan, complete: no beats, no read-only line, the five limitations and the How line, complete · N ago in the heading, Scan again (secondary) alone, the accent badge', () => {
   const t = scanTile({ kind: 'complete', at: full.asOf, now: twoMinutesLater })
   beatsOf(t)
   assert.equal(t.state, 'complete · 2 minutes ago')
