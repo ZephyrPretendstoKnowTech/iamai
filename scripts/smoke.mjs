@@ -229,7 +229,8 @@ try {
   // Connect as four tiles (docs/design/connect-mockup.html).
   check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
   check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+synthetic baseline · 1 polic(y|ies)/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
-  check('Connect (scanned): the facts and Open the plan', /5\s*people/.test(t) && /3\s*policies/.test(t) && /[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+\s*sign-in records/.test(t) && /Open the plan →/.test(t) && !/Scan complete · 5 people/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
+  // The people fact counts what the plan counts: "N active people · of M enabled", never the directory's row count.
+  check('Connect (scanned): the facts and Open the plan', /\d+\s*active people · of \d+ enabled/.test(t) && !/5\s*people/.test(t) && /3\s*policies/.test(t) && /[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+\s*sign-in records/.test(t) && /Open the plan →/.test(t) && !/Scan complete · 5 people/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
   // Tile 3 reads Scan complete · N ago once; tile 4 reads Plan ready · from the scan N ago with the same words, from the one stored timestamp; nothing says scanned.
   check(
     "Connect (scanned): the scan's age once as Scan complete · N ago, Plan ready · from the scan with the same age, and no scanned line",
