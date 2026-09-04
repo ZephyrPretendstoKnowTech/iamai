@@ -14,6 +14,8 @@ import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
 import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
+import { previousOf } from './scanRecord.ts'
+import { peopleCounts } from '../../derive/sets.ts'
 
 const upn = 'alex@example.com'
 const tenant = 'Contoso Pty Ltd'
@@ -212,11 +214,15 @@ test('tile 4, Plan, ready: ready · from the scan N ago, people · policies · s
   const t = planTile({ kind: 'ready', snapshot: full, at: full.asOf, counts: { steps: 33, done: 8 }, now: twoMinutesLater })
   assert.equal(t.state, 'ready · from the scan 2 minutes ago')
   assert.equal(t.tone, 'done')
+  // The people the plan counts (Today's line): active people of enabled, never the directory's row count.
+  const counts = peopleCounts(full, full.asOf)
+  assert.ok(counts.active < full.users.length || counts.enabled < full.users.length || counts.active > 0)
   assert.deepEqual(
     t.facts?.map((f) => f.label),
-    ['people', 'policies', 'sign-in records', 'licence', 'steps · 8 done'],
+    [`active people · of ${counts.enabled} enabled`, 'policies', 'sign-in records', 'licence', 'steps · 8 done'],
   )
-  assert.equal(t.facts?.[0].value, '5')
+  assert.equal(t.facts?.[0].value, String(counts.active))
+  assert.notEqual(t.facts?.[0].value, String(full.users.length + 1), 'a guard against a coincidence: the value is the active count')
   assert.equal(t.facts?.[1].value, '3')
   assert.match(t.facts?.[2].value ?? '', /^[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+$/)
   assert.match(t.facts?.[3].value ?? '', /^(P2|P1|Free)$/)
@@ -230,24 +236,35 @@ test('tile 4, Plan, ready: ready · from the scan N ago, people · policies · s
   planOnlyItsOwn(t)
 })
 
-test('tile 4, ready: a count that fell by more than a third since the previous scan reads "13 → 4 people since Sep 2"; smaller drops and the other facts read as before', () => {
+test('tile 4, ready: a count that fell by more than a third since the previous scan reads "13 → 4 active people since Sep 2"; smaller drops and the other facts read as before', () => {
   const at = '2026-09-03T10:00:00.000Z'
-  const before = { at: '2026-09-02T09:00:00.000Z', people: 13, policies: 10 }
   const small = fixtureSnapshot()
-  assert.equal(small.users.length, 5)
+  const { active, enabled } = peopleCounts(small, small.asOf)
+  assert.ok(active > 0)
   assert.equal(small.config.caPolicies?.rows.length, 3)
+  const before = { at: '2026-09-02T09:00:00.000Z', people: active * 3, policies: 10 }
   const t = planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: before })
-  assert.deepEqual(t.facts?.[0], { value: '13 → 5', label: 'people since Sep 2' })
+  assert.deepEqual(t.facts?.[0], { value: `${active * 3} → ${active}`, label: `active people since Sep 2 · of ${enabled} enabled` })
   assert.deepEqual(t.facts?.[1], { value: '10 → 3', label: 'policies since Sep 2' })
   // A third or less is not a drop; a rise is not a drop; no previous scan, no arrow.
-  const steady = planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: { at: before.at, people: 7, policies: 4 } })
-  assert.deepEqual(steady.facts?.[0], { value: '5', label: 'people' })
+  const plain = { value: String(active), label: `active people · of ${enabled} enabled` }
+  const steady = planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: { at: before.at, people: Math.ceil(active * 1.3), policies: 4 } })
+  assert.deepEqual(steady.facts?.[0], plain)
   assert.deepEqual(steady.facts?.[1], { value: '3', label: 'policies' })
-  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: { at: before.at, people: 2, policies: 1 } }).facts?.[0], { value: '5', label: 'people' })
-  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: null }).facts?.[0], { value: '5', label: 'people' })
+  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: { at: before.at, people: Math.max(1, active - 1), policies: 1 } }).facts?.[0], plain)
+  assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null, previous: null }).facts?.[0], plain)
   assert.deepEqual(planTile({ kind: 'ready', snapshot: small, at, counts: null }).facts?.[1], { value: '3', label: 'policies' })
   const page = tileStrings(t).join('\n')
-  assert.ok(page.includes('13 → 5') && page.includes('people since Sep 2'))
+  assert.ok(page.includes(`${active * 3} → ${active}`) && page.includes('active people since Sep 2'))
+  // The raw account total appears nowhere on the tile.
+  assert.ok(!tileStrings(planTile({ kind: 'ready', snapshot: small, at, counts: null })).includes(String(small.users.length)) || small.users.length === active, 'the directory row count is not a fact')
+})
+
+test('the previous scan is stored as the plan counts it: active people, never the directory\'s row count', () => {
+  const small = fixtureSnapshot()
+  const prev = previousOf({ snapshot: small, at: small.asOf })!
+  assert.equal(prev.people, peopleCounts(small, small.asOf).active)
+  assert.equal(prev.policies, 3)
 })
 
 test('tile 4 after a scan with gaps: last full plan · date and Open the last full plan (date) (tertiary) alone, no state colour; with nothing before it, it waits', () => {

@@ -406,7 +406,7 @@ function SignedIn({
   const computed = plan.computed
   const planInput: PlanInput =
     scanInput.kind === 'complete' && lastScan
-      ? { kind: 'ready', snapshot: lastScan.snapshot, at: lastScan.at, previous: lastScan.previous ?? null, counts: computed ? (({ steps, inPlace }) => ({ steps, done: inPlace }))(planCounts(computed.steps, computed.schedule.cleanup ?? null)) : null }
+      ? { kind: 'ready', snapshot: lastScan.snapshot, at: lastScan.at, previous: lastScan.previous ?? null, serviceAccountIds: plan.mapping?.serviceAccountUserIds ?? [], counts: computed ? (({ steps, inPlace }) => ({ steps, done: inPlace }))(planCounts(computed.steps, computed.schedule.cleanup ?? null)) : null }
       : scanInput.kind === 'gaps' && lastScan
         ? { kind: 'last', at: lastScan.at }
         : { kind: 'waiting' }

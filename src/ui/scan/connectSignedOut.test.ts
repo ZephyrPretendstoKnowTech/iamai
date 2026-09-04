@@ -10,6 +10,7 @@ import { GRAPH_SCOPES } from '../../graph/scopes.ts'
 import { SIGN_IN_SCOPES } from '../../copy/permissions.ts'
 import { classifyAuthError } from '../../graph/authError.ts'
 import { demoFacts } from '../demoFacts.ts'
+import { peopleCounts } from '../../derive/sets.ts'
 import { demoTenant } from '../demo.ts'
 import { W, accountTile, planTile, scanTile, signInTile, tileStrings } from './connectView.ts'
 import type { SignInTile } from './connectView.ts'
@@ -135,7 +136,9 @@ test('tile 3 signed out: Scan after sign-in · about a minute for a small tenant
 
 test("tile 4 signed out: Plan after the scan, the sample tenant's four facts computed from the demo fixture, Open the sample plan (secondary)", () => {
   const facts = demoFacts()
-  assert.equal(facts.people, demoTenant(false).snapshot.users.length, 'people is the demo snapshot\'s user count, as the ready tile counts it')
+  const d = demoTenant(false)
+  assert.equal(facts.people, peopleCounts(d.snapshot, d.snapshot.asOf, new Set(d.mapping.serviceAccountUserIds)).active, 'people is the demo\'s active people, as the ready tile and Today count them')
+  assert.notEqual(facts.people, d.snapshot.users.length, 'never the directory\'s row count')
   assert.ok(facts.steps > 10 && facts.inPlace >= 0 && facts.inPlace <= facts.steps && facts.weeks >= 1, JSON.stringify(facts))
   const t = planTile({ kind: 'sample', facts })
   assert.equal(t.n, 4)
@@ -146,7 +149,7 @@ test("tile 4 signed out: Plan after the scan, the sample tenant's four facts com
   assert.equal(t.lead, 'What the sample tenant produced:')
   assert.deepEqual(
     t.facts?.map((f) => f.label),
-    ['people', 'steps', 'already in place', 'to finish'],
+    ['active people', 'steps', 'already in place', 'to finish'],
   )
   assert.deepEqual(t.facts?.slice(0, 3).map((f) => f.value), [String(facts.people), String(facts.steps), String(facts.inPlace)])
   assert.match(t.facts?.[3].value ?? '', /^\d+ weeks?$/)
