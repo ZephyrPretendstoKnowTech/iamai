@@ -2572,6 +2572,7 @@
           "Emergency Access 2"
         ],
         "policyName": "Core - Require - MFA for guests and external users",
+        "policyNameA": "Core - Require - MFA for guests and external users",
         "enforceLong": "Tuesday, September 8",
         "signature": "IT",
         "existingPolicies": [
@@ -2587,7 +2588,7 @@
         "lead": "Policy A, every guest: and Policy B only for the partner tenants chosen above.",
         "steps": [
           "Cross-tenant trust first, if you chose a partner: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → Organizational settings → the partner → Inbound access → Trust settings → Trust multifactor authentication from Microsoft Entra tenants: On.",
-          "Policy A: {policyName}: {portalRoot}",
+          "Policy A: {policyNameA}: {portalRoot}",
           "Users → Include: Guest or external users → all types{serviceProviderClause}. {exclusionsLine}",
           "Target resources → Resources → All resources",
           "Grant → Require multifactor authentication",
@@ -3825,6 +3826,7 @@
         "wanted": "12 hours",
         "wantedValue": "12 hours",
         "policyName": "Core - Session - Non-persistent browser sessions",
+        "policyNameA": "Core - Session - Non-persistent browser sessions",
         "enforceLong": "Tuesday, September 15",
         "signature": "IT",
         "existingPolicies": [],
@@ -3839,7 +3841,7 @@
       "whatToDoReference": {
         "lead": "Two policies, as the baseline has them: everyone's browser, and everything on an unmanaged device.",
         "steps": [
-          "Policy A: {policyName}: {portalRoot}",
+          "Policy A: {policyNameA}: {portalRoot}",
           "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
           "Target resources → Resources → All resources",
           "Conditions → Client apps → Browser",

@@ -35,6 +35,9 @@ const POLICIES = pinned.policies as unknown as PinnedPolicy[]
 export type PortalNames = {
   nameOf: (id: string) => string
   policyName: string
+  /** The pair's names where the baseline implements the goal with two policies (stepVars policyNameA/B). */
+  policyNameA?: string | null
+  policyNameB?: string | null
   strengthName?: string | null
   /** The tenant's own objects behind the baseline's tokens, where the mapping names them. */
   exclusionsGroupId?: string | null
@@ -58,6 +61,8 @@ export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>,
   return {
     nameOf: ctx.nameOf,
     policyName: String(ex.policyName ?? fallbackTitle),
+    policyNameA: typeof ex.policyNameA === 'string' ? ex.policyNameA : null,
+    policyNameB: typeof ex.policyNameB === 'string' ? ex.policyNameB : null,
     strengthName: typeof ex.strengthName === 'string' ? ex.strengthName : null,
     exclusionsGroupId: m.records?.['__globalExclusion']?.resolvedId ?? null,
     serviceAccountsGroupId: m.serviceAccountsGroupId ?? null,
@@ -164,6 +169,12 @@ export function needsPasskeyForGoal(goalId: string): boolean {
   return false
 }
 
+/** The baseline's own names for a goal it implements with two policies (Policy A and Policy B), in the map's order; empty otherwise. */
+export function pairBaselineNames(goalId: string): string[] {
+  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+  return mapped.length >= 2 ? mapped.map((p) => p.displayName) : []
+}
+
 /**
  * True when the goal's mapped baseline policy prompts a person: it requires MFA
  * or an authentication strength, or sets a sign-in frequency. The shared-device
@@ -227,7 +238,8 @@ export function stepPortalLines(goalId: string, names: PortalNames): string[] | 
   if (mapped.length >= 2) {
     const a = mapped[0] as PinnedPolicy
     const b = mapped[1] as PinnedPolicy
-    return labelledBlocks({ lines: annotated(a), name: names.policyName }, { lines: annotated(b), name: names.policyName }, { a: 'A', b: 'B' })
+    // Two policies, two names (stepVars policyNameA/B): never the one name on both blocks.
+    return labelledBlocks({ lines: annotated(a), name: names.policyNameA ?? names.policyName }, { lines: annotated(b), name: names.policyNameB ?? names.policyName }, { a: 'A', b: 'B' })
   }
   return annotated(mapped[0] as PinnedPolicy)
 }

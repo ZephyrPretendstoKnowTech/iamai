@@ -1,0 +1,40 @@
+// A goal the baseline implements with two policies (Policy A / Policy B, the
+// guests policy): two policies, two names, on the step's lines and in the
+// portal's two blocks (coverage/naming.ts policyPairNames; stepPortal).
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { policyPairNames } from '../../coverage/naming.ts'
+import { planDates, stepVars } from './stepVars.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { pairBaselineNames, portalNamesFor, stepPortalLines } from './stepPortal.ts'
+
+// GetIAMAI: the guests policy is not in place there, so the plan proposes the pair's names.
+const f = fixture('getiamai')
+const r = runFixture(f)
+const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
+const guests = r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
+
+test('guests Policy A and Policy B carry distinct names: the proposal, and the proposal with the baseline\'s words for the second policy', () => {
+  const baseline = pairBaselineNames(guests.goalId)
+  assert.equal(baseline.length, 2, 'the baseline implements the guests goal with two policies')
+  const proposed = String(guests.naming?.proposed)
+  const ex = stepVars(guests, ctx) as Record<string, unknown>
+  assert.equal(ex.policyNameA, proposed, 'A is the plan\'s proposal')
+  assert.equal(typeof ex.policyNameB, 'string')
+  assert.notEqual(ex.policyNameA, ex.policyNameB)
+  const bWords = baseline[1].split(/\s+[-–|]\s+/).pop()!
+  assert.ok((ex.policyNameB as string).endsWith(bWords), `${ex.policyNameB} carries the baseline's words for B (${bWords})`)
+  const lines = stepPortalLines(guests.goalId, portalNamesFor(ctx, ex, guests.title))!
+  const roots = lines.filter((l) => /^Policy [AB] — /.test(l))
+  assert.equal(roots.length, 2, JSON.stringify(lines))
+  assert.ok(roots[0].startsWith(`Policy A — ${ex.policyNameA}: `), roots[0])
+  assert.ok(roots[1].startsWith(`Policy B — ${ex.policyNameB}: `), roots[1])
+})
+
+test('the pair names follow the tenant\'s separator, and never collapse to one name', () => {
+  assert.deepEqual(policyPairNames('CA - Require - MFA for guests', 'IAC - GLOBAL - GRANT - Phishing resistant MFA for partners', null), { a: 'CA - Require - MFA for guests', b: 'CA - Require - Phishing resistant MFA for partners' })
+  assert.deepEqual(policyPairNames('CA_Require_MFA for guests', 'IAC - GLOBAL - GRANT - Partners', { prefix: 'CA', separator: '_' }), { a: 'CA_Require_MFA for guests', b: 'CA_Require_Partners' })
+  assert.deepEqual(policyPairNames('CA - Require - Same', 'X - Same', null), { a: 'CA - Require - Same', b: 'CA - Require - Same - B' })
+})

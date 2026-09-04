@@ -15,8 +15,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
 import { countryName } from '../../mapping/countries.ts'
-import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
-import { needsPasskeyForGoal, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, promptsPersonForGoal } from './stepPortal.ts'
+import { needsPasskeyForGoal, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
@@ -34,6 +33,7 @@ import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
+import { policyPairNames } from '../../coverage/naming.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
 
 export type StepVarContext = {
@@ -174,11 +174,14 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // first enforcement date (walk-51 item 2, target-state §9).
   if (!enforce && ctx.firstEnforce) v.enrollBy = absoluteDate(ctx.firstEnforce)
 
-  // The two-policy (merged) goals carry A/B names.
-  const mapped = policiesForGoal(PINNED_GOAL_MAP, snapshotPolicyKeys(), step.goalId)
-  if (mapped.length >= 2) {
-    v.policyNameA = step.naming?.proposed
-    v.policyNameB = step.naming?.proposed
+  // The two-policy (merged) goals carry A/B names: the proposal with its letter,
+  // in the tenant's separator (coverage/naming.ts policyPairNames), for the
+  // step's lines and the portal's two blocks alike; never one name on both.
+  const pairNames = pairBaselineNames(step.goalId)
+  if (pairNames.length >= 2 && step.naming?.proposed) {
+    const pair = policyPairNames(step.naming.proposed, pairNames[1], ctx.naming ?? null)
+    v.policyNameA = pair.a
+    v.policyNameB = pair.b
   }
 
   // The authentication strength the goal's baseline policy requires, for the
@@ -321,12 +324,6 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
 function operatorSignIns(snapshot: TenantSnapshot, operatorId: string): number | undefined {
   const ev = (snapshot as { signInEvidence?: Record<string, { signInCount?: number }> }).signInEvidence
   return ev?.[operatorId]?.signInCount
-}
-
-// Placeholder for the mapped-policy lookup keys; the merged-goal A/B naming is
-// finished when the per-sub-policy naming lands (see docs/reports/51.md).
-function snapshotPolicyKeys(): { id?: string | null; displayName: string }[] {
-  return []
 }
 
 export { absoluteDate }
