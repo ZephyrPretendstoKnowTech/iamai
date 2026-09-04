@@ -26,7 +26,11 @@ test('whole() treats an empty value, an empty list and a list with an empty item
 // without a hole showing. Each entry names a step and the variables its email
 // body must fill on the demo (the admin-sessions email's {wantedLong} was left
 // unfilled by the merge and the email vanished).
-const EMAIL_VARIABLES: [string, string[]][] = [['admin-session', ['enforceLong', 'tenant', 'wantedLong']]]
+const EMAIL_VARIABLES: [string, string[]][] = [
+  ['admin-session', ['enforceLong', 'tenant', 'wantedLong']],
+  // The countries email names the allowed countries through the step's one variable (a second, {countriesLong}, was never filled and the email vanished).
+  ['geo-restriction', ['enforceLong', 'tenant', 'countries']],
+]
 
 test('on the demo, an email body fills every variable it names', () => {
   const f = fixture('demo')

@@ -16,6 +16,7 @@ import { fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
+import { answerOf, effectLine } from '../../roadmap/answers.ts'
 
 export type { ExportStep }
 
@@ -106,11 +107,26 @@ export type CommsView = { salutation: string; body: string; extra: string[]; sig
 export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown>): CommsView | null {
   const comms = (cs.comms ?? null) as Record<string, unknown> | null
   if (!comms) return null
+  // A step already in place asks nobody to do anything: no email (stepVars stepDone).
+  if (ex.stepDone) return null
   const inPlace = Boolean(ex.mfaInPlace) && typeof comms.bodyMfaInPlace === 'string'
   const body = inPlace ? comms.bodyMfaInPlace : comms.body
+  // The hole rule, once, for the screen, the copy box, the exports and the
+  // tests' lines: the email renders whole or not at all, like any other line.
+  if (![comms.salutation, body, comms.signature].every((part) => typeof part === 'string' && whole(part, ex))) return null
   const extraRaw = inPlace && comms.extraMfaInPlace !== undefined ? comms.extraMfaInPlace : comms.extra
   const extra = (Array.isArray(extraRaw) ? extraRaw : extraRaw === undefined || extraRaw === null ? [] : [extraRaw]).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex))
   return { salutation: fillText(comms.salutation, ex), body: fillText(body, ex), extra, signature: fillText(comms.signature, ex) }
+}
+
+/**
+ * A decision block's one line under its label: the help while the decision is
+ * open ("Until you decide, …"), or the effect of the answer once it is made
+ * (answers.ts effectLine) — never both (the device decision showed its open
+ * line under its answer). One rule for the screen and the rendered lines.
+ */
+export function decisionLine(d: Record<string, unknown>, answer: { index: number } | null): unknown {
+  return answer ? effectLine(d.effect, answer) : d.help
 }
 
 /**
@@ -151,9 +167,14 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   add(who.adminsNote)
   // The evidence lines as the step gates them; a line that counts and lists counts its own list (render.ts listCountVars).
   for (const line of whoEvidenceLines(who, ex)) add(line, listCountVars(line, ex) as Record<string, unknown>)
+  // The campaign's people lists: each bucket's line, only where the bucket has people (as the screen).
+  for (const [gk, gl] of Object.entries((who.groups ?? {}) as Record<string, unknown>)) {
+    const items = ex[gk]
+    if (Array.isArray(items) && items.length > 0) add(gl, { ...ex, n: items.length })
+  }
   const d = (cs.decision ?? {}) as Record<string, unknown>
   add(d.label)
-  add(d.help)
+  add(decisionLine(d, answerOf(ctx.mapping, step.id, 'decision')))
   for (const o of Array.isArray(d.options) ? d.options : []) add(o)
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   if (ex.needsCreate && Array.isArray(w.create)) for (const l of w.create) add(l)

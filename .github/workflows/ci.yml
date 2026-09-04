@@ -8,7 +8,9 @@ on:
   pull_request:
 
 jobs:
-  test-build-smoke:
+  # The job is the status check main requires ("ci", the repository rule), so it carries that name.
+  ci:
+    name: ci
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

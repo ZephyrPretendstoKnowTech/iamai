@@ -123,10 +123,15 @@ test('getiamai: the campaign names real active people, never the break-glass adm
   void bg; void bgIds
   const verify = r.steps.find((s) => s.kind === 'verify')
   assert.ok(verify, 'the verification campaign exists')
-  // The campaign shows the two registered-but-unproven active people (item 6),
-  // and never a break-glass account (they are the tenant's admin cohort).
+  // The campaign shows the registered-but-unproven active people (item 6),
+  // never a break-glass account (they are the tenant's admin cohort) and never
+  // the signed-in account, which signed in with MFA to run the scan
+  // (derive/operator.ts): of GetIAMAI's two active people, the one who is not the operator.
   const line = (verify!.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')
-  assert.ok(line && line.people.length === 2, 'two registered-but-unproven people named')
+  assert.ok(line && line.people.length === 1, `one registered-but-unproven person named: ${JSON.stringify(line?.people)}`)
+  const f = fixture('getiamai')
+  const operatorName = r.input.names!.label(f.operatorId)
+  assert.ok(!line!.people.some((p) => p === f.operatorId || p === operatorName), 'the signed-in account is never "never seen to complete MFA"')
 })
 
 // Prompt 48.1 item 5: every admin holder resolves to a name; "an account IAMAI

@@ -16,6 +16,7 @@ import type { ShellState } from './shell/AppShell.tsx'
 import { Connect } from './surfaces/Connect.tsx'
 import type { BaselineUpdate } from './scan/connectView.ts'
 import { previousOf } from './scan/scanRecord.ts'
+import { peopleCounts } from '../derive/sets.ts'
 import type { ScanRecord } from './scan/scanRecord.ts'
 import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import type { BaselineResult } from './baseline.ts'
@@ -194,7 +195,7 @@ export function App() {
           delete snapshot.signInEvidence['u-1']
         }
         // ?previous=1: the scan before this one read three times the people and policies, a day earlier.
-        const previous = params.get('previous') === '1' ? { at: new Date(Date.parse(snapshot.asOf) - 86_400_000).toISOString(), people: snapshot.users.length * 3, policies: (snapshot.config.caPolicies?.rows.length ?? 0) * 3 } : null
+        const previous = params.get('previous') === '1' ? { at: new Date(Date.parse(snapshot.asOf) - 86_400_000).toISOString(), people: peopleCounts(snapshot, snapshot.asOf).active * 3, policies: (snapshot.config.caPolicies?.rows.length ?? 0) * 3 } : null
         // ?licence=free: the unlicensed tenant (prompt 31 §4.17): no P1, no sign-in records, no registration report.
         if (params.get('licence') === 'free') {
           for (const k of Object.keys(snapshot.capabilities) as (keyof typeof snapshot.capabilities)[]) snapshot.capabilities[k] = { enabled: false, seats: 0, consumed: 0 }

@@ -19,7 +19,7 @@ import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import type { Step } from '../roadmap/types.ts'
 import { INACTIVE_DAYS } from '../scoring/mfaViability.ts'
 import { adminUserIds } from '../roles.ts'
-import { lastSignInOf } from './operator.ts'
+import { isOperator, lastSignInOf } from './operator.ts'
 import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 
 // ---------- people ----------
@@ -56,7 +56,9 @@ export function isNonPerson(u: UserRow, confirmedServiceAccountIds: ReadonlySet<
 
 /** Everyone in the directory who is a person. Guests included: they sign in too. */
 export function personAccounts(snapshot: TenantSnapshot, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
-  return snapshot.users.filter((u) => !isNonPerson(u, confirmedServiceAccountIds))
+  // The signed-in account is a person: it signed in to run this scan, whatever
+  // the directory's stale sign-in and its licence shape say (derive/operator.ts).
+  return snapshot.users.filter((u) => (isOperator(snapshot, u.id) ? !confirmedServiceAccountIds.has(u.id) : !isNonPerson(u, confirmedServiceAccountIds)))
 }
 
 /**

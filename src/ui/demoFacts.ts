@@ -6,6 +6,7 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { planCounts } from '../derive/planHeader.ts'
 import { planFinish } from '../derive/finish.ts'
+import { peopleCounts } from '../derive/sets.ts'
 import { demoTenant } from './demo.ts'
 
 export type DemoFacts = { people: number; steps: number; inPlace: number; weeks: number }
@@ -21,6 +22,7 @@ export function demoFacts(): DemoFacts {
   const finish = planFinish(run.steps, cleanup?.end ?? null)
   // Weeks derive from the finish date, as the Plan header does.
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(run.schedule.start)) / (7 * 86_400_000))) : run.schedule.weeks
-  cached = { people: d.snapshot.users.length, steps, inPlace, weeks }
+  // The active people, as the Plan tile and Today count them; never the directory's row count.
+  cached = { people: peopleCounts(d.snapshot, d.snapshot.asOf, new Set(d.mapping.serviceAccountUserIds)).active, steps, inPlace, weeks }
   return cached
 }

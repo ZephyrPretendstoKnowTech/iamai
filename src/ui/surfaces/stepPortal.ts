@@ -21,7 +21,7 @@ import { hoursInWords } from '../../coverage/verdict.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import { shared } from '../../content/content.ts'
-import { proposedObjectNames } from '../../coverage/naming.ts'
+import { proposedNamesFor } from './proposedNames.ts'
 import { tenantCountryLocation } from '../../mapping/countries.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { applyDeviations } from '../../roadmap/deviations.ts'
@@ -35,6 +35,9 @@ const POLICIES = pinned.policies as unknown as PinnedPolicy[]
 export type PortalNames = {
   nameOf: (id: string) => string
   policyName: string
+  /** The pair's names where the baseline implements the goal with two policies (stepVars policyNameA/B). */
+  policyNameA?: string | null
+  policyNameB?: string | null
   strengthName?: string | null
   /** The tenant's own objects behind the baseline's tokens, where the mapping names them. */
   exclusionsGroupId?: string | null
@@ -54,16 +57,18 @@ export type PortalNames = {
  */
 export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>, fallbackTitle: string): PortalNames {
   const m = ctx.mapping
-  const proposed = proposedObjectNames(ctx.naming ?? null)
+  const proposed = proposedNamesFor(ctx)
   return {
     nameOf: ctx.nameOf,
     policyName: String(ex.policyName ?? fallbackTitle),
+    policyNameA: typeof ex.policyNameA === 'string' ? ex.policyNameA : null,
+    policyNameB: typeof ex.policyNameB === 'string' ? ex.policyNameB : null,
     strengthName: typeof ex.strengthName === 'string' ? ex.strengthName : null,
     exclusionsGroupId: m.records?.['__globalExclusion']?.resolvedId ?? null,
     serviceAccountsGroupId: m.serviceAccountsGroupId ?? null,
     allowedCountriesLocationId: tenantCountryLocation(ctx.snapshot, m.allowedCountries ?? [])?.id ?? null,
     trustedLocationIds: m.trustedLocationIds ?? [],
-    proposed: { exclusionsGroup: proposed.exclusionsGroup.name, serviceAccountsGroup: proposed.serviceAccountsGroup.name, allowedCountries: proposed.allowedCountries.name, trustedLocation: proposed.trustedLocation.name },
+    proposed,
     answers: m,
   }
 }
@@ -164,6 +169,28 @@ export function needsPasskeyForGoal(goalId: string): boolean {
   return false
 }
 
+/** The baseline's own names for a goal it implements with two policies (Policy A and Policy B), in the map's order; empty otherwise. */
+export function pairBaselineNames(goalId: string): string[] {
+  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+  return mapped.length >= 2 ? mapped.map((p) => p.displayName) : []
+}
+
+/**
+ * True when the goal's mapped baseline policy prompts a person: it requires MFA
+ * or an authentication strength, or sets a sign-in frequency. The shared-device
+ * accounts are excluded from every such policy (the shared-devices step's last line).
+ */
+export function promptsPersonForGoal(goalId: string): boolean {
+  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+  for (const p of mapped as PinnedPolicy[]) {
+    const g = p.grantControls as { builtInControls?: string[]; authenticationStrength?: unknown } | null
+    if ((g?.builtInControls ?? []).some((c) => String(c).toLowerCase() === 'mfa') || (g?.authenticationStrength ?? null) !== null) return true
+    const f = (p.sessionControls as { signInFrequency?: { isEnabled?: boolean } } | null)?.signInFrequency
+    if (f && f.isEnabled !== false) return true
+  }
+  return false
+}
+
 /** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
 export function strengthForGoal(goalId: string): string | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
@@ -211,7 +238,8 @@ export function stepPortalLines(goalId: string, names: PortalNames): string[] | 
   if (mapped.length >= 2) {
     const a = mapped[0] as PinnedPolicy
     const b = mapped[1] as PinnedPolicy
-    return labelledBlocks({ lines: annotated(a), name: names.policyName }, { lines: annotated(b), name: names.policyName }, { a: 'A', b: 'B' })
+    // Two policies, two names (stepVars policyNameA/B): never the one name on both blocks.
+    return labelledBlocks({ lines: annotated(a), name: names.policyNameA ?? names.policyName }, { lines: annotated(b), name: names.policyNameB ?? names.policyName }, { a: 'A', b: 'B' })
   }
   return annotated(mapped[0] as PinnedPolicy)
 }

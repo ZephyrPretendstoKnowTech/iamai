@@ -15,8 +15,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
 import { countryName } from '../../mapping/countries.ts'
-import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
-import { needsPasskeyForGoal, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal } from './stepPortal.ts'
+import { needsPasskeyForGoal, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
@@ -33,7 +32,9 @@ import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
-import { proposedObjectNames } from '../../coverage/naming.ts'
+import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
+import { policyPairNames } from '../../coverage/naming.ts'
+import type { ProposedObjectNames } from './proposedNames.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
@@ -65,6 +66,10 @@ export type StepVarContext = {
   groups?: GroupMembers
   /** The tenant's naming convention (coverage.organisation.naming): the portal lines name the objects the plan proposes before they exist. */
   naming?: NamingConvention
+  /** The names the plan proposes for the objects the tenant lacks, from its prerequisite steps (planDates): the one source the prerequisite step and every portal line name. */
+  proposed?: ProposedObjectNames
+  /** The plan's policies that prompt a person (content titles, planDates): the shared-device accounts are excluded from each. */
+  peoplePolicies?: string[]
 }
 
 /** The long form, in the display time zone, only when the instant is real. */
@@ -169,11 +174,14 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // first enforcement date (walk-51 item 2, target-state §9).
   if (!enforce && ctx.firstEnforce) v.enrollBy = absoluteDate(ctx.firstEnforce)
 
-  // The two-policy (merged) goals carry A/B names.
-  const mapped = policiesForGoal(PINNED_GOAL_MAP, snapshotPolicyKeys(), step.goalId)
-  if (mapped.length >= 2) {
-    v.policyNameA = step.naming?.proposed
-    v.policyNameB = step.naming?.proposed
+  // The two-policy (merged) goals carry A/B names: the proposal with its letter,
+  // in the tenant's separator (coverage/naming.ts policyPairNames), for the
+  // step's lines and the portal's two blocks alike; never one name on both.
+  const pairNames = pairBaselineNames(step.goalId)
+  if (pairNames.length >= 2 && step.naming?.proposed) {
+    const pair = policyPairNames(step.naming.proposed, pairNames[1], ctx.naming ?? null)
+    v.policyNameA = pair.a
+    v.policyNameB = pair.b
   }
 
   // The authentication strength the goal's baseline policy requires, for the
@@ -191,18 +199,27 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // using what this step blocks, so the manager's "nobody here used it" clause
   // applies (E9); and the service-accounts group the service-accounts block names.
   if (nobodyAffected(step)) v.nobodyAffected = true
-  if (step.goalId === SERVICE_ACCOUNTS_TRUSTED_GOAL) v.serviceAccountsGroup = ctx.mapping.serviceAccountsGroupId ? ctx.nameOf(ctx.mapping.serviceAccountsGroupId) : proposedObjectNames(ctx.naming ?? null).serviceAccountsGroup.name
+  if (step.goalId === SERVICE_ACCOUNTS_TRUSTED_GOAL) v.serviceAccountsGroup = ctx.mapping.serviceAccountsGroupId ? ctx.nameOf(ctx.mapping.serviceAccountsGroupId) : proposedNamesFor(ctx).serviceAccountsGroup
+  // The trusted network by name (the team's own locations, else the plan's proposal: the portal's rule, stepPortal tokenNames), and the policies that prompt a person, for the shared-devices step's own instructions.
+  const trustedIds = ctx.mapping.trustedLocationIds ?? []
+  v.trustedLocation = trustedIds.length > 0 ? trustedIds.map(ctx.nameOf).join(', ') : proposedNamesFor(ctx).trustedLocation
+  if (ctx.peoplePolicies && ctx.peoplePolicies.length > 0) v.peoplePolicies = ctx.peoplePolicies
 
   // Existing coverage: whether a policy already delivers the goal (drives the
   // {existingCoverage} line's presence). A done step's policies are what makes
   // it In place, not coverage this step's version supersedes; the line names
   // what the consolidation row retires (generate.ts supersededPolicies).
   v.existingPolicies = step.status !== 'done' && step.deliveredBy.length > 0 ? step.deliveredBy : []
+  // In place: the step asks nobody to do anything, so its email does not render (stepExport.ts commsFor).
+  if (step.status === 'done') v.stepDone = true
 
   // The list variables, derived from what the scan collected (never gated when
   // the data exists): the campaign buckets, the lockout-scenario people, and the
   // emergency/service/admin id sets. A step reads only the keys it uses.
   Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, operatorId: ctx.operatorId }))
+  // Require MFA for Everyone in place: every sign-in completes MFA, so nobody is
+  // "registered but never seen to complete MFA"; the line renders only while the policy is not enforced.
+  if (ctx.mfaInPlace) v.unproven = []
   // The stored answers in words (E1), for the steps an answer adds; and the
   // device decision's lines (E2): who signs in from a phone or an unjoined
   // computer, one device line per person for the campaign, and the one
@@ -226,6 +243,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     const record = ctx.mapping.records['__globalExclusion'] ?? null
     const id = record?.resolvedId ?? null
     v.needsCreate = id === null
+    // No group: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
+    if (id === null) delete v.total
     if (id !== null) {
       const g = ctx.groups?.get(id) ?? [...(ctx.groups ?? [])].find(([k]) => k.toLowerCase() === id.toLowerCase())?.[1] ?? null
       const policies = ctx.snapshot.config.caPolicies?.rows ?? []
@@ -307,12 +326,6 @@ function operatorSignIns(snapshot: TenantSnapshot, operatorId: string): number |
   return ev?.[operatorId]?.signInCount
 }
 
-// Placeholder for the mapped-policy lookup keys; the merged-goal A/B naming is
-// finished when the per-sub-policy naming lands (see docs/reports/51.md).
-function snapshotPolicyKeys(): { id?: string | null; displayName: string }[] {
-  return []
-}
-
 export { absoluteDate }
 
 /**
@@ -321,7 +334,7 @@ export { absoluteDate }
  * MFA for Everyone enforces, the campaign's window from the plan's start to
  * that enrol-by, and whether the unmanaged-browser step is on the plan.
  */
-export function planDates(steps: readonly Step[], scheduleStart: string): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce'> {
+export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies'> {
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const mfa = steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')
   const mfaEnforce = mfa?.events?.enforce?.at ?? firstEnforce
@@ -333,5 +346,8 @@ export function planDates(steps: readonly Step[], scheduleStart: string): Pick<S
   const passkey = steps
     .filter((s) => s.status !== 'done' && s.status !== 'skipped' && typeof s.events?.enforce?.at === 'string' && needsPasskeyForGoal(s.goalId))
     .sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))[0]
-  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null }
+  // The plan's policies that prompt a person (the shared-devices step excludes its accounts from each), by content title, in plan order.
+  const peoplePolicies = [...new Set(steps.filter((s) => s.status !== 'skipped' && s.id !== 's-shared-devices' && (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy' && promptsPersonForGoal(s.goalId)).map((s) => contentTitle(s)))]
+  // The proposed names, from the plan's prerequisite steps: the prerequisite step and every portal line name the same group and location.
+  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null, proposed: planProposedNames(steps, naming), peoplePolicies }
 }

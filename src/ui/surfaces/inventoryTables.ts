@@ -71,12 +71,13 @@ export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers =
     id: 'people',
     label: C.tabs.people,
     csvName: 'iamai-people.csv',
-    header: ['Name', 'Sign-in name', 'Type', 'Enabled', 'Last sign-in', 'MFA state'],
+    header: ['Name', 'Sign-in name', 'Type', 'Tags', 'Last sign-in', 'MFA state'],
     rows: snapshot.users.map((u) => [
       label(u.id),
       u.userPrincipalName ?? '',
       u.userType,
-      u.accountEnabled === false ? 'no' : 'yes',
+      // Sign-in blocked: listed with its tag, a person nowhere else (derive/sets.ts isNonPerson).
+      u.accountEnabled === false ? C.people.signInDisabled : '',
       u.lastSuccessfulSignIn ? absoluteDate(u.lastSuccessfulSignIn) : '',
       viability.get(u.id)?.mfa ?? '',
     ]),
