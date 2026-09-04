@@ -190,9 +190,8 @@
           "Plan the journey to your Conditional Access baseline.",
           "re:^Signed in .+$",
           "re:^Baseline .+$",
-          "What happens next",
           "re:^Scan (complete · .+|finished with gaps · no plan built|not started( · this account can't read the tenant)?|.+ · \\d+(m \\d+)?s)$",
-          "re:^Plan (ready · from the scan .+|last full plan · [A-Z][a-z]{2} \\d+|after the scan)$"
+          "re:^Plan (ready · (\\d+ steps, \\d+ done · )?from the scan .+|last full plan · [A-Z][a-z]{2} \\d+|after the scan)$"
         ],
         "tabs": [],
         "tiles": [
@@ -211,7 +210,8 @@
           "Scan again",
           "Scan tenant",
           "re:^Open the last full plan \\([A-Z][a-z]{2} \\d+\\)$",
-          "Stop"
+          "Stop",
+          "Sign in again"
         ],
         "summaries": [
           "re:^Updated by its author on .+ · \\d+ polic(y|ies) changed · review$",
@@ -219,7 +219,8 @@
         ],
         "links": [
           "How IAMAI works →",
-          "Microsoft: Global Reader"
+          "Microsoft: Global Reader",
+          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, never used for MFA|Nothing set up)\\s*\\d+$"
         ]
       },
       "budget": {
@@ -288,35 +289,36 @@
         ],
         "tabs": [],
         "tiles": [
-          "MFA proven",
-          "Registered, unproven",
-          "No method",
-          "Not active"
+          "Passkey or security key, proven",
+          "Authenticator app, proven",
+          "Windows Hello only",
+          "Set up, never used for MFA",
+          "Nothing set up"
         ],
         "columns": [
-          "Person",
-          "State",
+          "Account",
+          "Readiness",
           "Strongest method",
           "Evidence"
         ],
         "chips": [
-          "Proven",
-          "Likely works",
-          "Never prompted",
-          "Possibly broken",
-          "No method",
-          "Not active",
           "Admin",
-          "Guest"
+          "Guest",
+          "Emergency access",
+          "Service account",
+          "Shared device",
+          "Sign-in disabled"
         ],
         "buttons": [
+          "Scan again",
+          "Admins only",
           "Export CSV",
           "Previous",
           "Next"
         ],
         "summaries": [],
         "links": [
-          "Everything the scan read →"
+          "Every account and policy the scan read →"
         ]
       },
       "budget": {
@@ -329,7 +331,13 @@
         "To set up before enforcement",
         "Sign-in records: complete",
         "assume",
-        "nothing can lock out"
+        "nothing can lock out",
+        "signed in now",
+        "MFA proven",
+        "Registered, unproven",
+        "Likely works",
+        "Never prompted",
+        "Possibly broken"
       ]
     },
     {
@@ -454,7 +462,8 @@
           "re:^Housekeeping \\(\\d+\\)$"
         ],
         "links": [
-          "Plan settings"
+          "Plan settings",
+          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, never used for MFA|Nothing set up)\\s*\\d+$"
         ]
       },
       "budget": {
