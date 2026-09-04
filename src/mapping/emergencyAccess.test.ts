@@ -51,6 +51,9 @@ test('the automatic name is a purpose phrase: every way a tenant writes one', ()
     'emergency access 1',
     'emergency admin',
     'Emergency Account',
+    'Emergency Admin',
+    'Emergency Administrator',
+    'svc-breakglass',
     'BG-Admin',
     'bg_admin',
     'BG Admin',
@@ -58,6 +61,36 @@ test('the automatic name is a purpose phrase: every way a tenant writes one', ()
   ]) {
     assert.equal(isEmergencyName(name), true, `${name} names the account for the job`)
   }
+})
+
+// The phrase has to be the whole token, at both ends: it starts the text or
+// follows a non-alphanumeric, and it ends the text or is followed by one —
+// account numbering aside. Without both boundaries a word that merely contains
+// the phrase would classify, and an account so named would leave the people
+// population with nobody deciding.
+test('the phrase must start at a boundary: a longer word that begins with something else is not a name', () => {
+  for (const name of ['Unbreakglass', 'NonEmergencyAccess', 'Xbreakglass', 'unbg', 'prebreak glass']) {
+    assert.equal(isEmergencyName(name), false, `${name} does not start the phrase at a boundary`)
+  }
+  for (const name of ['svc-breakglass', 'svc_emergency-access', 'contoso bg', 'IT.breakglass']) {
+    assert.equal(isEmergencyName(name), true, `${name} carries the phrase as its own token`)
+  }
+})
+
+test('the phrase must end at a boundary: a longer word that continues past it is not a name', () => {
+  for (const name of ['Breakglassman', 'Breakglassware', 'Emergency Accessory', 'Emergency Administratorial', 'Emergency AdminAssistant', 'Emergency Accountancy', 'bgood', 'BGuard']) {
+    assert.equal(isEmergencyName(name), false, `${name} runs past the end of the phrase`)
+  }
+  for (const name of ['Breakglass Admin', 'breakglass@contoso.com', 'Emergency Access (do not disable)', 'bg-admin']) {
+    assert.equal(isEmergencyName(name), true, `${name} ends the phrase at a boundary`)
+  }
+})
+
+test('digits straight after the phrase are account numbering, not another word', () => {
+  for (const name of ['Break Glass 2', 'Break-glass 01', 'breakglass2', 'Emergency Access 1', 'emergencyaccess01', 'bg1', 'bg01']) {
+    assert.equal(isEmergencyName(name), true, `${name} is the phrase, numbered`)
+  }
+  assert.equal(isEmergencyName('breakglass2man'), false, 'numbering ends the name; letters after it do not')
 })
 
 test('the automatic name never fires on an ordinary name that contains the words', () => {
@@ -69,6 +102,13 @@ test('the automatic name never fires on an ordinary name that contains the words
     'Breakfast Club',
     'Kim Breakwell',
     'Glasscock Holdings',
+    'Unbreakglass',
+    'Breakglassman',
+    'Breakglassware',
+    'NonEmergencyAccess',
+    'Emergency Accessory',
+    'Emergency Administratorial',
+    'Emergency AdminAssistant',
     'Emergency Services Liaison',
     'Emergency Contact Mailbox',
     'Bigby Wolf',
