@@ -5,6 +5,7 @@ import type { Readiness } from './types.ts'
 import { deviceScopeOf } from './answers.ts'
 import type { DeviceScope } from './answers.ts'
 import { isPhoneOs } from '../derive/platforms.ts'
+import { rungOf } from '../derive/ladder.ts'
 
 const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected'])
 // Risk policies act on the sign-ins Identity Protection flags, so their
@@ -62,8 +63,9 @@ export function readinessFor(
     return { family, percent, lines: [] }
   }
   if (family === 'admin') {
-    const withPr = rows.filter((v) => v.methodTiers.includes('phishingResistant')).length
-    const percent = rows.length > 0 ? Math.round((withPr / rows.length) * 100) : null
+    // One definition of enough (E7): an admin is ready at Passkey or security key, proven (derive/ladder.ts rung 5), the same rung the lockout list reads.
+    const ready = rows.filter((v) => rungOf(v) === 5).length
+    const percent = rows.length > 0 ? Math.round((ready / rows.length) * 100) : null
     return { family, percent, lines: [] }
   }
   if (family === 'device') {

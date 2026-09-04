@@ -1,5 +1,6 @@
-// One definition of enough (E7): admin readiness is a phishing-resistant method
-// (a passkey or a security key), and the campaign and step 12 say "or"; the
+// One definition of enough (E7): admin readiness is Passkey or security key,
+// proven (derive/ladder.ts rung 5, the rung the lockout list reads), and the
+// campaign and step 12 say "or"; the
 // campaign email fills {mfaEnforceLong} and {enrolWindowDays}, the managed-device
 // email {personalDevicesClause}, and firstEnforce is gone from the variables.
 import { test } from 'node:test'
@@ -12,6 +13,7 @@ import { missingVars, fillText } from '../../content/render.ts'
 import { engine, stepById } from '../../content/content.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { adminUserIds } from '../../roles.ts'
+import { rungOf } from '../../derive/ladder.ts'
 
 const setUp = () => {
   const f = fixture('demo')
@@ -21,11 +23,11 @@ const setUp = () => {
   return { f, r, dates, ctx }
 }
 
-test('admin readiness is the share of admins with a phishing-resistant method', () => {
+test('admin readiness is the share of admins at Passkey or security key, proven', () => {
   const { f, r } = setUp()
   const admins = [...adminUserIds(f.snapshot.roles)]
   const rows = r.viability.filter((v) => admins.includes(v.userId))
-  const withPr = rows.filter((v) => v.methodTiers.includes('phishingResistant')).length
+  const withPr = rows.filter((v) => rungOf(v) === 5).length
   const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant')!
   assert.equal(step.readiness.family, 'admin')
   assert.equal(step.readiness.percent, Math.round((withPr / rows.length) * 100))

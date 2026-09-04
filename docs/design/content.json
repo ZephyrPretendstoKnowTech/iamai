@@ -709,7 +709,7 @@
         "notAssessedPrompt": "Why does {policy} not apply to {tenant}? One line; it goes in the plan file.",
         "notAssessedRow": "{policy}: does not apply: {reason}",
         "notAssessedSave": "Save",
-        "lockoutSuffix": "{n} without a passkey"
+        "lockoutSuffix": "{n} not yet at Passkey or security key, proven"
       },
       "today": {
         "lineNoRecords": "no sign-in records",
@@ -2041,14 +2041,14 @@
         "lead": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90% until {enrollBy}.",
         "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
         "groups": {
-          "noMethod": "{n} people with no method; issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
-          "insufficient": "{n} people whose only method is text or call; register a passkey in Microsoft Authenticator, then remove the phone number:",
-          "pushOnly": "{n} people with Authenticator approval but no passkey; add a passkey in Authenticator; a risky sign-in requires one:",
-          "unproven": "{n} people registered but never seen to complete MFA; ask each for one MFA sign-in:",
-          "possiblyBroken": "{n} people whose last sign-in is older than the records; treat as unverified; ask each for one MFA sign-in:",
+          "$comment": "The campaign's groups are the ladder's rungs (derive/ladder.ts; pages.ladder titles), worst first; rung 5 needs nothing.",
+          "noMethod": "{n} people at Nothing set up; issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
+          "unproven": "{n} people at Set up, never used for MFA; ask each for one MFA sign-in:",
+          "rung3": "{n} people at Windows Hello only; register a passkey in Microsoft Authenticator, so a phone or a new PC works too:",
+          "rung4": "{n} people at Authenticator app, proven; add a passkey in Authenticator; a risky sign-in requires one:",
           "holdouts": "{n} people past the enrol-by date with nothing done; review each; they are locked out when the policy enforces:"
         },
-        "overlap": "Each person appears once, in the first list that applies to them, top to bottom; an admin with no method is in the no-method list with the admin instructions.",
+        "overlap": "Each person appears once, on their rung; an admin at Nothing set up is in that list with the admin instructions.",
         "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key.",
         "devices": "{deviceIntro} {list:deviceLines}"
       },
@@ -2137,8 +2137,8 @@
         "unproven": [
           "Lachlan Robinette (guest) · never prompted"
         ],
-        "insufficient": [],
-        "possiblyBroken": [],
+        "rung3": [],
+        "rung4": [],
         "adminsList": [
           "Lachlan Robinette · passkey registered",
           "Breakglass · see the emergency-access step"
@@ -2269,8 +2269,8 @@
         "lead": "{admins} people hold an admin role",
         "evidence": [
           "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
-          "{n} admins have no phishing-resistant method; register before {enforce}: {list:adminsWithout}",
-          "{adminsWithoutCount} admins have no phishing-resistant method; register before {enforce}.",
+          "{n} admins are not yet at Passkey or security key, proven; register before {enforce}: {list:adminsWithout}",
+          "{adminsWithoutCount} admins are not yet at Passkey or security key, proven; register before {enforce}.",
           "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
           "Roles held through Privileged Identity Management are in scope only while activated.",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
@@ -3854,8 +3854,8 @@
       "who": {
         "lead": "{n} people hold an eligible role: {list:eligible}",
         "evidence": [
-          "{n} of them have no passkey or key yet: {list:eligibleWithout}",
-          "{eligibleWithoutCount} of them have no passkey or key yet.",
+          "{n} of them are not yet at Passkey or security key, proven: {list:eligibleWithout}",
+          "{eligibleWithoutCount} of them are not yet at Passkey or security key, proven.",
           "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
           "{existingCoverage}"
         ]

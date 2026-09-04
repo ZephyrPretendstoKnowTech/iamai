@@ -57,7 +57,7 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   assert.equal(fillText('{admins} people hold an admin role', { admins: 1 }), '1 person holds an admin role')
   assert.equal(fillText('{admins} people hold an admin role', { admins: 3 }), '3 people hold an admin role')
   assert.equal(fillText('{n} of them have no passkey or key yet.', { n: 1 }), '1 of them has no passkey or key yet.')
-  assert.equal(fillText('{n} admins have no phishing-resistant method; register before {enforce}: {list:x}', { n: 1, enforce: 'Sep 7', x: ['Kai'] }), '1 admin has no phishing-resistant method; register before Sep 7: Kai')
+  assert.equal(fillText('{n} admins are not yet at Passkey or security key, proven; register before {enforce}: {list:x}', { n: 1, enforce: 'Sep 7', x: ['Kai'] }), '1 admin is not yet at Passkey or security key, proven; register before Sep 7: Kai')
   assert.equal(fillText('{n} people hold a directory role and use that same account for mail or Teams since {from}:', { n: 1, from: 'Aug 1' }), '1 person holds a directory role and uses that same account for mail or Teams since Aug 1:')
   assert.equal(fillText('{n} people signed in from outside', { n: 1 }), '1 person signed in from outside', 'a past tense stays')
   const g = fixture('getiamai')
@@ -65,7 +65,7 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   const lines = stepLines(s, ctxFor(g, r))
   assert.ok(lines.includes('1 person holds an admin role'), lines.filter((l) => /admin role/.test(l)).join(' | '))
-  assert.ok(lines.some((l) => /^1 admin has no phishing-resistant method; register before /.test(l)))
+  assert.ok(lines.some((l) => /^1 admin is not yet at Passkey or security key, proven; register before /.test(l)), lines.filter((l) => /Passkey or security key/.test(l)).join(' | '))
 })
 
 test("(3) Today's rungs are the ladder's titles, and the Show list offers each by the same title", () => {
@@ -102,8 +102,8 @@ test("(6) a strength policy's row carries its lockout count in the who-column wh
   const nameOf = (id: string): string => r.input.names!.label(id)
   const who = rowWho(s, nameOf)
   // The who-line, its gap clause when the row has one, then the lockout count.
-  assert.equal(who, `${whoLine(s.population, nameOf, s.gapShort ?? s.gap ?? null)} · ${without.length} without a passkey`)
-  assert.match(who, new RegExp(`^${s.population.active} people · .*${without.length} without a passkey$`))
+  assert.equal(who, `${whoLine(s.population, nameOf, s.gapShort ?? s.gap ?? null)} · ${without.length} not yet at Passkey or security key, proven`)
+  assert.match(who, new RegExp(`^${s.population.active} people · .*${without.length} not yet at Passkey or security key, proven$`))
   // Zero: no suffix. The block policies carry none.
   const block = r.steps.find((x) => x.goalId === 'block-legacy-auth')!
   assert.equal(block.lockout, undefined)
