@@ -703,6 +703,7 @@
         "constraintTip": "What set the plan length",
         "putBack": "Put this step back",
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
+      "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",

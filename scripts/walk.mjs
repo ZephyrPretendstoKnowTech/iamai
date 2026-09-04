@@ -963,13 +963,14 @@ async function walkFixture(fx) {
         writeFileSync(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.txt`), bodyText)
         await shot(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.png`))
         if (bodyTitle.trim() && bodyTitle.trim() !== title) add('P0', `${slabel}: the row says "${title}" and the opened step says "${bodyTitle.trim()}"`)
-        // Foundation A: a policy step that names an object this tenant does not
-        // have yet offers no implementation at all — no portal instructions, no
-        // JSON, no PowerShell, no download — and says which step comes first
-        // instead (src/roadmap/resolvePolicy.ts, stepJson.ts
-        // implementationOffered). The checks below read the instructions, so
-        // they apply only where the instructions are offered.
-        const waitsOnAnObject = / first: this policy names an object /.test(bodyText)
+        // Foundation A: a policy step offers no implementation at all — no portal
+        // instructions, no JSON, no PowerShell, no download — while it names an
+        // object this tenant does not have yet, or when it has nothing to create
+        // because the goal is already in place (src/ui/surfaces/stepJson.ts
+        // implementationOffered). It says which step comes first, or that there
+        // is nothing to do but keep the policy. The checks below read the
+        // instructions, so they apply only where the instructions are offered.
+        const waitsOnAnObject = / first: this policy names an object /.test(bodyText) || /in place already: nothing to create/.test(bodyText)
         const emailText = await evaluate(`[...document.querySelectorAll('main.page .step-body .copy-box')].map((e) => e.innerText).join('\\n')`)
         const outsideEmail = emailText ? bodyText.replace(emailText, '') : bodyText
         checkText(slabel, outsideEmail)

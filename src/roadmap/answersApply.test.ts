@@ -97,6 +97,10 @@ test('the service-provider exclusion is on both policies, in the JSON and on the
   const m = applied(f, f.decisions ?? null)
   const r0 = runFixture({ ...f, mapping: before }, { mapping: before })
   const r = runFixture({ ...f, mapping: m }, { mapping: m })
+  // A goal already in place has no policy to create, so its instructions are not
+  // offered at all; the same tenant with none of its policies yet shows them.
+  const bare = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...(f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }), rows: [] } } }
+  const rBare = runFixture({ ...f, mapping: m, snapshot: bare }, { mapping: m, snapshot: bare })
   let seenOnScreen = false
   for (const goalId of ['guests-mfa', 'geo-restriction']) {
     const step = r.steps.find((s) => s.goalId === goalId)
@@ -116,13 +120,14 @@ test('the service-provider exclusion is on both policies, in the JSON and on the
     // download (stepJson.ts implementationOffered). The countries policy waits
     // on the allowed-countries location here, so it offers none; the answer is
     // still in its body.
-    const lines = stepPortalLines(step, portalNamesFor(ctxFor(f, r, m), stepVars(step, ctxFor(f, r, m)), goalId)) ?? []
+    const onScreen = rBare.steps.find((s) => s.goalId === goalId && s.kind !== 'verify') ?? step
+    const lines = stepPortalLines(onScreen, portalNamesFor(ctxFor(f, rBare, m), stepVars(onScreen, ctxFor(f, rBare, m)), goalId)) ?? []
     const lines0 = stepPortalLines(step0, portalNamesFor(ctxFor(f, r0, before), stepVars(step0, ctxFor(f, r0, before)), goalId)) ?? []
-    if (implementationOffered(step)) {
+    if (implementationOffered(onScreen)) {
       assert.ok(lines.some((l) => /Service provider users/.test(l) && /the baseline's version/.test(l)), `${goalId}: the exclusion shows beside the baseline's version: ${lines.join(' | ')}`)
       seenOnScreen = true
     } else {
-      assert.deepEqual(lines, [], `${goalId}: waiting on an object, so no instructions either`)
+      assert.deepEqual(lines, [], `${goalId}: no implementation offered, so no instructions either`)
     }
     assert.ok(!lines0.some((l) => /the baseline's version/.test(l)), `${goalId}: unanswered, nothing deviates from the baseline`)
   }
