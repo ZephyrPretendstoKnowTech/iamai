@@ -138,10 +138,12 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     emergencyAccounts: names(mapping.breakGlassUserIds),
     emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => upnOf(snapshot, id) ?? nameOf(id)),
     serviceAccounts: names(mapping.serviceAccountUserIds),
-    // The admins the campaign's note names: the emergency accounts hold roles but are outside the campaign, so they are never on it.
-    adminNames: names([...adminUserIds(snapshot.roles)].filter((id) => !bg.has(id))),
+    // The admins the campaign's note names: the people among the role holders. A
+    // service principal holds a role but is never a person; the emergency accounts
+    // are not people (sets.ts notPeopleIds); byId holds the person accounts.
+    adminNames: names([...adminUserIds(snapshot.roles)].filter((id) => byId.has(id))),
     coreAdminRoles: [...CORE_ADMIN_ROLE_IDS].map(roleName),
-    eligible: names(Object.keys(snapshot.roles.eligible)),
+    eligible: names(Object.keys(snapshot.roles.eligible).filter((id) => byId.has(id))),
     // The special-care picker rows ("name · state"), and their ids.
     specialCare,
     specialCareIds,
