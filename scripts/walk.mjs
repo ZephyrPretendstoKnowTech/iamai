@@ -963,6 +963,13 @@ async function walkFixture(fx) {
         writeFileSync(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.txt`), bodyText)
         await shot(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.png`))
         if (bodyTitle.trim() && bodyTitle.trim() !== title) add('P0', `${slabel}: the row says "${title}" and the opened step says "${bodyTitle.trim()}"`)
+        // Foundation A: a policy step that names an object this tenant does not
+        // have yet offers no implementation at all — no portal instructions, no
+        // JSON, no PowerShell, no download — and says which step comes first
+        // instead (src/roadmap/resolvePolicy.ts, stepJson.ts
+        // implementationOffered). The checks below read the instructions, so
+        // they apply only where the instructions are offered.
+        const waitsOnAnObject = / first: this policy names an object /.test(bodyText)
         const emailText = await evaluate(`[...document.querySelectorAll('main.page .step-body .copy-box')].map((e) => e.innerText).join('\\n')`)
         const outsideEmail = emailText ? bodyText.replace(emailText, '') : bodyText
         checkText(slabel, outsideEmail)
@@ -1000,8 +1007,8 @@ async function walkFixture(fx) {
             if (!week2 && /on the allowed list now/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line shows before any answer`)
           }
           if (/^Require MFA for Guests$/.test(title) || /Countries Not Allowed/.test(title)) {
-            if (week2 && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the policy's What to do`)
-            if (week2 && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the service-provider exclusion is not shown beside the baseline's version`)
+            if (week2 && !waitsOnAnObject && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the policy's What to do`)
+            if (week2 && !waitsOnAnObject && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the service-provider exclusion is not shown beside the baseline's version`)
             if (!week2 && /the baseline's version/.test(bodyText)) add('P0', `${slabel}: a deviation from the baseline shows before any answer`)
           }
           if (/^Block Legacy Authentication$/.test(title)) {
@@ -1058,8 +1065,8 @@ async function walkFixture(fx) {
             }
           }
           if (/Require a Managed Device/.test(title)) {
-            if (week2 && !/Device platforms → Include: Any device; Exclude: Android, iOS/.test(bodyText)) add('P0', `${slabel}: the device decision (phones protected by their apps) did not scope phones out of the compliant-device policy`)
-            if (week2 && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the platform deviation is not shown beside the baseline's version`)
+            if (week2 && !waitsOnAnObject && !/Device platforms → Include: Any device; Exclude: Android, iOS/.test(bodyText)) add('P0', `${slabel}: the device decision (phones protected by their apps) did not scope phones out of the compliant-device policy`)
+            if (week2 && !waitsOnAnObject && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the platform deviation is not shown beside the baseline's version`)
             if (!week2 && /Device platforms/.test(bodyText)) add('P0', `${slabel}: a platform condition shows before the device decision`)
           }
           // The admin-sessions email says how long a session lasts (the merge
@@ -1105,8 +1112,8 @@ async function walkFixture(fx) {
           // one somebody did.
           if (/^Block the Admin Portals for Non-Admins$/.test(title) && !/^1 person without a directory role signed in to Azure since /m.test(bodyText)) add('P0', `${slabel}: the step does not name the person without a directory role who signed in to Azure`)
           if (/^Restrict Service Accounts to the Trusted Network$/.test(title)) {
-            if (!/Users → Include: Groups: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not name the service-accounts group`)
-            if (!/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
+            if (!waitsOnAnObject && !/Users → Include: Groups: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not name the service-accounts group`)
+            if (!waitsOnAnObject && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
           if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title)) {
@@ -1159,7 +1166,7 @@ async function walkFixture(fx) {
         // portal lines (the merge follow-up): on the step, each line is present and
         // sits before the portal root line.
         for (const b of BEFORE_LINES) {
-          if (b.title !== title || b.lines.length === 0) continue
+          if (b.title !== title || b.lines.length === 0 || waitsOnAnObject) continue
           const root = bodyText.indexOf('Conditional Access → Policies → New policy')
           for (const line of b.lines) {
             const at = bodyText.indexOf(line.replace(/\{[a-zA-Z0-9_:]+\}/g, '').split(' ').slice(0, 6).join(' '))
