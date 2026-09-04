@@ -649,20 +649,21 @@ export function renderPages(): string {
   )
   const pl = P.plan
   const s = pl.settings
+  const ld = P.ladder
   sec(
     'Plan header, settings, blocked reasons, footer',
     `<h2 class="h1">${esc(pl.h1)}</h2>` +
       p(pl.line1, exT) +
+      // The MFA readiness ladder's five tiles (pages.ladder, drawn in full under Today), then the start date and the two controls.
+      `<p class="sub">${esc(ld.header)} · ${fill(ld.of, { n: 12 })} — ${['r5', 'r4', 'r3', 'r2', 'r1'].map((k) => esc(ld.rungs[k].title)).join(' · ')}</p>` +
+      kv(s.start, '[date]') +
       btn(pl.startControl, true) +
-      p(pl.startNote, exT, 'sub') +
       p('After starting: ' + fill(pl.line1Started, { ...exT, done: 4, start: 'Mon Sep 7' }), exT, 'sub') +
-      p(pl.line2, exT) +
       `<p class="sub">If it cannot finish: ${fill(pl.line1CannotFinish, exT)}</p><p class="sub">Length tooltip: ${fill(pl.lengthTip, exT)}</p>` +
       `<p class="sub">Phase heading: <b>${fill(C.phases.heading, exT)}</b> — first phase <b>${esc(C.phases.first)}</b>, last <b>${esc(C.phases.last)}</b></p>` +
       '<div class="settings"><b>' +
       esc(s.h3) +
       '</b>' +
-      kv(s.start, '[date]  ' + s.startNote) +
       kv(s.freeze, `${s.freezeFrom} [date] ${s.freezeTo} [date]  ${s.freezeNote}`) +
       kv(s.timezone, 'America/Denver') +
       kv(s.signature, 'IT') +
@@ -673,15 +674,9 @@ export function renderPages(): string {
       h('Gap suffix on a partly-in-place row') +
       ul([pl.gapSuffix['admin-session']], exT) +
       h('Footer groups') +
-      ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT) +
-      // The readiness strip: the five tiles, a tile's value, and a person's line on an opened tile.
-      h('Readiness strip') +
-      ul(Object.values(pl.readiness.tiles as Record<string, string>).map((t) => `${t}: ${pl.readiness.value} ${pl.readiness.of}`), { n: 12, pct: '40%' }) +
-      ul([pl.readiness.row, pl.readiness.bar.met, pl.readiness.bar.below, pl.readiness.empty], { name: 'Kaladin Stormblessed', method: 'Phishing-resistant', last: fill(pl.readiness.last, { when: '3 days ago' }) }) +
-      p(pl.readiness.never, {}, 'sub'),
+      ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT),
   )
   const td = P.today
-  const ld = P.ladder
   // The ladder (pages.ladder): the header, the five rungs with their tooltips and descriptions, the rule before the three to prioritise.
   const rungRows = ['r5', 'r4', 'r3', 'r2', 'r1']
     .map((k, i) => {

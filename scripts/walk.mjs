@@ -874,53 +874,24 @@ async function walkFixture(fx) {
       const tips = await evaluate(`document.querySelectorAll('main.page .page-tip').length`)
       if ((route === 'today' || route === 'export') && tips !== 1) add('P0', `${label}: the page renders ${tips} tips; it keeps one`)
       if (route === 'plan' && tips !== 0) add('P0', `${label}: the Plan still renders a page tip`)
-      // The readiness strip (five tiles under the header, above the start): each
-      // opens in place to its people, one at a time, the dots against the states;
-      // a second click collapses it; the open tile is remembered. The counts are
-      // kept for the campaign step and the admins step to agree with.
+      // The MFA readiness ladder on the Plan (docs/design/mockups/plan-top-v2.html):
+      // under the steps line, the header and five tiles by title, each linking to
+      // Today filtered to its rung, the numbers Today's; no expanding lists, no
+      // "Clear the date" or "Starting locks" line. The counts are kept for the
+      // campaign step to agree with.
       if (route === 'plan') {
-        const tiles = await evaluate(`[...document.querySelectorAll('main.page .readiness .tile')].map((t) => ({ label: ((t.querySelector('.stat-label') || {}).textContent || '').trim(), n: Number((((t.querySelector('.stat-num') || {}).textContent || '').match(/^(\\d+)/) || [])[1]) }))`)
-        if (tiles.length !== 5) add('P0', `${label}: the readiness strip has ${tiles.length} tiles; five`)
+        const tiles = await evaluate(`[...document.querySelectorAll('main.page .rung-tiles .rung-tile')].map((t) => ({ label: ((t.querySelector('.rung-title') || {}).textContent || '').trim(), n: Number(((t.querySelector('.rung-n') || {}).textContent || '').trim()), href: t.getAttribute('href') || '' }))`)
+        if (tiles.length !== 5) add('P0', `${label}: the Plan's ladder has ${tiles.length} tiles; five`)
         else {
-          const want = ['Ready', 'Method not strong enough', 'Registered, never used', 'No method', 'Admins without a passkey or key']
-          if (tiles.some((t, k) => t.label !== want[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}`)
+          if (tiles.some((t, k) => t.label !== RUNG_TITLES[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
           stripCounts = Object.fromEntries(tiles.map((t) => [t.label, t.n]))
-          const rowsOf = () => evaluate(`[...document.querySelectorAll('main.page .readiness .names li')].map((li) => ({ ok: li.querySelector('.status-ok') !== null, idle: li.querySelector('.status-idle') !== null, admin: [...li.querySelectorAll('.chip')].some((c) => c.textContent.trim() === 'Admin'), text: li.textContent.replace(/\\s+/g, ' ').trim() }))`)
-          const openCount = () => evaluate(`document.querySelectorAll('main.page .readiness .tile.open').length`)
-          for (let k = 0; k < 5; k++) {
-            await evaluate(`(() => { const t = document.querySelectorAll('main.page .readiness .tile')[${k}]; t.scrollIntoView({ block: 'center' }); t.click() })()`)
-            await sleep(250)
-            const rows = await rowsOf()
-            const t = tiles[k]
-            if (rows.length !== t.n) add('P0', `${label}: the "${t.label}" tile counts ${t.n} and opens to ${rows.length} people`)
-            if ((await openCount()) !== 1) add('P0', `${label}: ${await openCount()} tiles open at once after opening "${t.label}"`)
-            for (const r of rows) {
-              if (r.ok === r.idle) add('P0', `${label}: "${t.label}": a row with ${r.ok ? 'two dots' : 'no dot'} ("${r.text.slice(0, 40)}")`)
-              if (!/ · .+ · /.test(r.text)) add('P0', `${label}: "${t.label}": a row without name · method · last MFA sign-in ("${r.text.slice(0, 60)}")`)
-              // The dots against the states: the bar is phishing-resistant for an admin, a working method for everyone else.
-              if (t.label === 'Ready' && !r.ok) add('P0', `${label}: Ready lists someone below the bar ("${r.text.slice(0, 40)}")`)
-              if (t.label === 'No method' && r.ok) add('P0', `${label}: No method lists someone meeting the bar ("${r.text.slice(0, 40)}")`)
-              if (t.label === 'Admins without a passkey or key' && (r.ok || !r.admin)) add('P0', `${label}: the admins tile lists ${r.admin ? 'an admin meeting the bar' : 'someone who is not an admin'} ("${r.text.slice(0, 40)}")`)
-              if (t.label === 'Method not strong enough' && r.ok === r.admin) add('P0', `${label}: Method not strong enough: ${r.admin ? 'an admin meets the bar without a passkey' : 'a working method is below the bar'} ("${r.text.slice(0, 40)}")`)
-              if (t.label === 'Registered, never used' && r.admin && r.ok && !/Phishing-resistant/.test(r.text)) add('P0', `${label}: Registered, never used: an admin meets the bar without a passkey ("${r.text.slice(0, 40)}")`)
-            }
-            await evaluate(`(() => { const t = document.querySelectorAll('main.page .readiness .tile')[${k}]; t.click() })()`)
-            await sleep(200)
-            if ((await openCount()) !== 0) add('P0', `${label}: a second click does not collapse "${t.label}"`)
-          }
-          // Remembered: open Ready, leave the page, come back.
-          await evaluate(`(() => { const t = document.querySelectorAll('main.page .readiness .tile')[0]; t.click() })()`)
-          await sleep(200)
-          await send('Page.navigate', { url: `${fx.base}#/today` })
-          await sleep(500)
-          await send('Page.navigate', { url: `${fx.base}#/plan` })
-          await waitFor(`document.querySelectorAll('main.page .readiness .tile').length === 5`, 8000)
-          await sleep(300)
-          const remembered = await evaluate(`((document.querySelector('main.page .readiness .tile.open .stat-label') || {}).textContent || '').trim()`)
-          if (remembered !== 'Ready') add('P0', `${label}: the open tile is not remembered across a visit (open: "${remembered}")`)
-          await evaluate(`(() => { const t = document.querySelector('main.page .readiness .tile.open'); if (t) t.click() })()`)
-          await sleep(200)
+          if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: the Plan's "${t.label}" reads ${t.n} and Today's ${ladderCounts[t.label]}`)
+          const active = Number((text.match(/of (\d+) active (?:person|people)/) || [])[1])
+          if (tiles.reduce((a, t) => a + t.n, 0) !== active) add('P0', `${label}: the tiles sum to ${tiles.reduce((a, t) => a + t.n, 0)} and the header says of ${active} active people`)
+          for (const [k, t] of tiles.entries()) if (!new RegExp(`#/today/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; Today filtered to its rung`)
         }
+        if ((await evaluate(`document.querySelectorAll('main.page .readiness, main.page .readiness-people').length`)) > 0) add('P0', `${label}: the old readiness strip still renders`)
+        if (/Clear the date|Starting locks the dates/.test(text)) add('P0', `${label}: a note under the start date still renders`)
       }
       // The print cover (E4): Print or save as PDF mounts the print document; its
       // statement carries the Plan header's own count (the steps and the Cleanup
@@ -1008,21 +979,17 @@ async function walkFixture(fx) {
         checkText(`${slabel} (email)`, emailText, { emails: true })
         // No step tip on an opened step.
         if ((await evaluate(`document.querySelectorAll('main.page .step-body .page-tip').length`)) !== 0) add('P0', `${slabel}: the step still renders a tip`)
-        // The readiness strip's numbers are the campaign step's and the admins step's for the same fact.
+        // The ladder's numbers are the campaign step's for the same rung.
         if (stripCounts) {
           const group = (re) => { const m = bodyText.match(re); return m ? Number(m[1]) : null }
           if (/MFA Registration Campaign/.test(title)) {
             const noMethod = group(/^(\d+) (?:people|person) with no method;/m) ?? 0
             const unproven = group(/^(\d+) (?:people|person) registered but never seen to complete MFA/m) ?? 0
-            if (noMethod !== stripCounts['No method']) add('P0', `${slabel}: the campaign lists ${noMethod} with no method and the strip counts ${stripCounts['No method']}`)
-            // With Require MFA for Everyone in place (the passkey email), the campaign asks nobody for one MFA sign-in while the strip keeps the records' fact.
+            if (noMethod !== stripCounts['Nothing set up']) add('P0', `${slabel}: the campaign lists ${noMethod} at Nothing set up and the ladder counts ${stripCounts['Nothing set up']}`)
+            // With Require MFA for Everyone in place (the passkey email), the campaign asks nobody for one MFA sign-in while the ladder keeps the records' fact.
             const mfaInPlace = /You already confirm sign-ins to/.test(bodyText)
-            if (mfaInPlace && unproven !== 0) add('P0', `${slabel}: the campaign lists ${unproven} registered but never seen although Require MFA for Everyone is in place`)
-            if (!mfaInPlace && unproven !== stripCounts['Registered, never used']) add('P0', `${slabel}: the campaign lists ${unproven} registered but never seen and the strip counts ${stripCounts['Registered, never used']}`)
-          }
-          if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
-            const without = group(/^(\d+) admins? (?:has|have) no phishing-resistant method/m) ?? 0
-            if (without !== stripCounts['Admins without a passkey or key']) add('P0', `${slabel}: the step counts ${without} admins without a passkey and the strip ${stripCounts['Admins without a passkey or key']}`)
+            if (mfaInPlace && unproven !== 0) add('P0', `${slabel}: the campaign lists ${unproven} set up, never used although Require MFA for Everyone is in place`)
+            if (!mfaInPlace && unproven !== stripCounts['Set up, never used for MFA']) add('P0', `${slabel}: the campaign lists ${unproven} set up, never used and the ladder counts ${stripCounts['Set up, never used for MFA']}`)
           }
         }
         // A count of one reads as one, noun and verb: never "1 people", never "1 person hold".

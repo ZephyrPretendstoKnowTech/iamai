@@ -323,7 +323,6 @@
       "line1": "{steps} steps · {inPlace} in place · finishes {finish} · {weeks}",
       "line1CannotFinish": "{steps} steps · {inPlace} in place · cannot finish until {blocker}",
       "lengthTip": "The plan is {weeks} because {constraint}.",
-      "line2": "Today shows where each person stands.",
       "next": "next",
       "now": "now",
       "readyOn": "ready {date}",
@@ -333,7 +332,6 @@
       "settings": {
         "h3": "Plan settings",
         "start": "Start date",
-        "startNote": "Clear the date to start today.",
         "freeze": "Change freeze",
         "freezeFrom": "from",
         "freezeTo": "to",
@@ -367,27 +365,7 @@
         "rename": "{policy}: off the tenant's naming convention · proposed {proposed}"
       },
       "startControl": "Start the plan",
-      "startNote": "Starting locks the dates. Until then, every visit proposes dates from today.",
-      "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}",
-      "readiness": {
-        "tiles": {
-          "ready": "Ready",
-          "weak": "Method not strong enough",
-          "unproven": "Registered, never used",
-          "noMethod": "No method",
-          "admins": "Admins without a passkey or key"
-        },
-        "value": "{n} · {pct}",
-        "of": "of active people",
-        "row": "{name} · {method} · {last}",
-        "last": "MFA {when}",
-        "never": "no MFA sign-in in the window",
-        "empty": "Nobody.",
-        "bar": {
-          "met": "meets the bar the plan needs",
-          "below": "below the bar the plan needs"
-        }
-      }
+      "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}"
     },
     "ladder": {
       "$comment": "The MFA readiness ladder (derive/ladder.ts; docs/design/mockups/today-v2.html): the header, the five rungs and the rule before the three to prioritise, read by Today's rows, the Plan strip and Connect's Plan tile.",

@@ -11,7 +11,7 @@ import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { notPeopleIds, peopleCounts } from './sets.ts'
 import { todayView } from './today.ts'
-import { readinessStrip } from './readinessStrip.ts'
+import { RUNGS, ladder } from './ladder.ts'
 import { affectedIds } from './whoLine.ts'
 import { contentLists } from './contentLists.ts'
 import { planDates, stepVars } from '../ui/surfaces/stepVars.ts'
@@ -29,7 +29,7 @@ const campaign = r.steps.find((s) => (contentStepFor(s) as { kind?: string } | u
 const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
 
 test('GetIAMAI: the strip, the campaign lead, its who column and Today\'s active count all read 2, the operator among them', () => {
-  const strip = readinessStrip(f.snapshot, f.mapping, f.snapshot.asOf)
+  const strip = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
   const ex = stepVars(campaign, ctx) as Record<string, unknown>
   const lead = fillText(String((contentStepFor(campaign) as unknown as { who: { lead: string } }).who.lead), ex)
   const who = affectedIds(campaign.population)
@@ -41,7 +41,7 @@ test('GetIAMAI: the strip, the campaign lead, its who column and Today\'s active
   for (const id of who) assert.ok(whoText.includes(nameOf(id)) || /2 people/.test(whoText), `${whoText} covers ${nameOf(id)}`)
   // The operator is one of them, on every screen.
   assert.ok(who.includes(f.operatorId), 'the campaign counts the operator')
-  assert.ok(Object.values(strip.tiles).flat().some((p) => p.id === f.operatorId), 'the strip counts the operator')
+  assert.ok(RUNGS.some((r) => strip.rungs[r].some((p) => p.id === f.operatorId)), 'the ladder places the operator')
   const row = today.rows.find((x) => x.user.id === f.operatorId)!
   assert.ok(row && row.rung !== null, 'Today counts the operator active')
 })

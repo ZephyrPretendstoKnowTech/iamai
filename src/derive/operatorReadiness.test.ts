@@ -1,13 +1,14 @@
-// The signed-in account is in the readiness strip like any active person
+// The signed-in account is on the ladder like any active person
 // (derive/operator.ts mfaEvidenceOf, derive/sets.ts personAccounts): it signed
-// in now, with MFA, to run the scan, so with a passkey it is Ready, whatever
-// the directory's stale sign-in, its licence shape or the records' silence say.
+// in now, with MFA, to run the scan, so with a passkey it stands on rung 5,
+// whatever the directory's stale sign-in, its licence shape or the records'
+// silence say.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { personAccounts, peopleCounts } from './sets.ts'
 import { todayView } from './today.ts'
-import { readinessStrip } from './readinessStrip.ts'
+import { RUNGS, ladder } from './ladder.ts'
 import { operatorUserId } from './operator.ts'
 
 const MAPPING = { breakGlassUserIds: [] as string[], serviceAccountUserIds: [] as string[] }
@@ -29,15 +30,15 @@ const staleOperator = () => {
   return { s, me }
 }
 
-test('the signed-in account is a person and Ready in the strip; the same shape on another account is a shared mailbox', () => {
+test('the signed-in account is a person on rung 5; the same shape on another account is a shared mailbox, on no rung', () => {
   const { s, me } = staleOperator()
   const people = personAccounts(s).map((u) => u.id)
   assert.ok(people.includes(me), 'the operator is a person')
   assert.ok(!people.includes('u-2'), 'the other account in the same shape is not')
-  const strip = readinessStrip(s, MAPPING, s.asOf)
-  assert.ok(strip.tiles.ready.some((p) => p.id === me), `the operator holds a passkey and signed in now: Ready (${JSON.stringify(Object.fromEntries(Object.entries(strip.tiles).map(([k, v]) => [k, v.map((p) => p.id)])))})`)
-  assert.ok(!Object.values(strip.tiles).flat().some((p) => p.id === 'u-2'))
-  assert.equal(strip.active, peopleCounts(s, s.asOf).active, 'the strip counts the plan\'s active people, the operator among them')
+  const l = ladder(s, MAPPING, s.asOf)
+  assert.ok(l.rungs[5].some((p) => p.id === me), `the operator holds a passkey and signed in now: rung 5 (${JSON.stringify(Object.fromEntries(RUNGS.map((r) => [r, l.rungs[r].map((p) => p.id)])))})`)
+  assert.ok(!RUNGS.some((r) => l.rungs[r].some((p) => p.id === 'u-2')))
+  assert.equal(l.active, peopleCounts(s, s.asOf).active, "the ladder counts the plan's active people, the operator among them")
 })
 
 test("Today: the operator's row is proven with the evidence \"signed in now\"; the records' own MFA sign-in wins when they hold one", () => {
