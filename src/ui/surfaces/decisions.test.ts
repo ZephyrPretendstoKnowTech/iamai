@@ -112,7 +112,10 @@ test('saving a group names it on every policy step; before that, no policy step 
   assert.ok(after.length >= 5, `with the group, the policy steps offer their instructions (${after.length})`)
   for (const { step, lines } of after) {
     const exclusions = lines.filter((l) => l.includes(EXCLUSIONS_PREFIX))
-    assert.ok(exclusions.length > 0, `${step.id}: has an exclusions line`)
+    // A change to an existing policy lists only the fields it changes, so it
+    // carries the exclusions line only when its own body carries the users.
+    const writesUsers = (step.action.resolution?.policies ?? []).some((o) => o.mode === 'create' || ((o.body.conditions as Record<string, unknown> | undefined)?.users !== undefined))
+    if (writesUsers) assert.ok(exclusions.length > 0, `${step.id}: has an exclusions line`)
     for (const l of exclusions) assert.ok(l.includes(`${EXCLUSIONS_PREFIX}Core - Exclusions.`), `${step.id}: names the saved group: ${l}`)
     for (const l of lines) assert.ok(!l.includes(UNNAMED), `${step.id}: no unnamed thing: ${l}`)
   }

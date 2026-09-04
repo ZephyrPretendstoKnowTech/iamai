@@ -159,6 +159,11 @@ export function noticeDaysFor(step: Step): number {
 export function eventsFor(step: Step, ctx: TimingContext, placedStart: string | null = null): StepEvents | null {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return null
   if (step.status === 'done' || step.status === 'skipped') return null
+  // Nothing to roll out while there is nothing to run: a policy step whose
+  // operation the plan cannot write yet — an object it names is missing, a pair
+  // it cannot match, a baseline that contradicts itself — has no enforcement
+  // date and no announcement (src/ui/surfaces/stepJson.ts implementationOffered).
+  if ((step.kind === 'create' || step.kind === 'adjust') && step.action.json === null) return null
   const enforceDay = step.rings[0]?.plannedStart ?? placedStart ?? null
   if (!enforceDay) return null
   // The slot varies within the hours the change may land in (prompt 42 §12).

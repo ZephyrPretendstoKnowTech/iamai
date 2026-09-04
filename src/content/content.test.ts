@@ -39,6 +39,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // opener (every mapped policy here is created new), syncRoleNote is the
   // directory-sync caveat (no synced account in the example).
   '.shared.portalOpen',
+  // The two lines a change to an existing policy adds under portalOpen: the
+  // "only these fields" note and the enable-and-save line. Every mapped policy
+  // in the example is created new, so neither is emitted here.
+  '.shared.changeUntouched',
+  '.shared.enableLine',
   '.shared.syncRoleNote',
   // The two gates with today's numbers render only on a step whose policy the
   // scan found in report-only (doneWhen.ts); the review's example steps are all new.

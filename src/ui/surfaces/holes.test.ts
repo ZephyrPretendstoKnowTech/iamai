@@ -5,7 +5,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { stepLines } from './stepExport.ts'
+import { commsFor, stepExportView, stepLines } from './stepExport.ts'
+import { implementationOffered } from './stepJson.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { missingVars, whole } from '../../content/render.ts'
@@ -33,8 +34,11 @@ const EMAIL_VARIABLES: [string, string[]][] = [
 ]
 
 test('on the demo, an email body fills every variable it names', () => {
-  const f = fixture('demo')
+  // Week two: the objects the policies name exist, so the policies are datable
+  // and their announcements render (stepJson.ts implementationOffered).
+  const f = fixture('demo-week2')
   const r = runFixture(f)
+  let announced = 0
   for (const [goalId, vars] of EMAIL_VARIABLES) {
     const s = r.steps.find((x) => x.goalId === goalId)!
     assert.ok(s, `the demo has the ${goalId} step`)
@@ -42,9 +46,19 @@ test('on the demo, an email body fills every variable it names', () => {
     for (const v of vars) assert.ok(cs.comms.body.includes(`{${v}}`), `${goalId}: the email names {${v}}`)
     const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
     const ex = stepVars(s, ctx) as Record<string, unknown>
+    if (!implementationOffered(s)) {
+      // A policy naming an object this tenant does not have has no date to
+      // announce and nothing to announce yet: no email at all, and no hole.
+      assert.equal(commsFor(cs as unknown as Record<string, unknown>, ex), null, `${goalId}: nothing to announce while it waits`)
+      assert.deepEqual(stepExportView(s, ctx).doneWhen, [], `${goalId}: no completion criteria while it waits`)
+      assert.equal(stepExportView(s, ctx).dates, null, `${goalId}: no dates while it waits`)
+      continue
+    }
     assert.deepEqual(missingVars(cs.comms.body, ex), [], `${goalId}: the email body fills every variable`)
     assert.ok(stepLines(s, ctx).some((line) => line.includes(String(ex.wantedLong ?? ex.enforceLong))), `${goalId}: the email renders`)
+    announced += 1
   }
+  assert.ok(announced > 0, 'at least one of the two announces')
 })
 
 test('on the demo and GetIAMAI, no rendered line has a hole', () => {

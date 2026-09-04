@@ -29,6 +29,7 @@ import type { CaPolicy } from '../../baseline/types.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
+import type { PortalSection } from '../../roadmap/portalLines.ts'
 import { implementationOffered } from './stepJson.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import type { Step, StepResolution } from '../../roadmap/types.ts'
@@ -66,7 +67,7 @@ export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>,
  * resolution used, read off the step, so a line labels the object the body
  * actually holds. The name on the block is the body's own.
  */
-function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['tenant']): PortalContext {
+function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['tenant'], openName?: string): PortalContext {
   const exclusionsGroupId: string | null = used.exclusionsGroupId?.toLowerCase() ?? null
   const serviceAccountsGroupId: string | null = used.serviceAccountsGroupId?.toLowerCase() ?? null
   const nameOf = names.nameOf
@@ -78,12 +79,27 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
     nameOf,
     strengthName,
     portalRoot: shared.portalRoot as string,
-    portalOpen: (shared.portalOpen as string).replace('{policy}', policyName),
+    // An update opens the tenant's own policy, by the name the tenant knows it by.
+    portalOpen: (shared.portalOpen as string).replace('{policy}', openName ?? policyName),
     reportOnlyLine: shared.reportOnlyLine as string,
+    changeUntouched: shared.changeUntouched as string,
+    enableLine: shared.enableLine as string,
     exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', exclusionsGroup),
     exclusionsGroupId,
     serviceAccountsGroupId,
   }
+}
+
+/** The sections an update's body carries, so the instruction lists those and no others. */
+function sectionsOf(body: Record<string, unknown>): Set<PortalSection> {
+  const only = new Set<PortalSection>()
+  const conditions = (body.conditions ?? {}) as Record<string, unknown>
+  if (conditions.users !== undefined) only.add('users')
+  if (conditions.applications !== undefined) only.add('applications')
+  if (body.grantControls !== undefined) only.add('grant')
+  if (body.sessionControls !== undefined) only.add('session')
+  if (body.state !== undefined) only.add('state')
+  return only
 }
 
 /**
@@ -190,15 +206,26 @@ export function stepPortalLines(step: Step, names: PortalNames): string[] | null
   const mapped = resolution?.policies ?? []
   if (mapped.length === 0) return null
   const asPolicy = (body: Record<string, unknown>): PinnedPolicy => body as unknown as PinnedPolicy
-  const linesOf = (body: Record<string, unknown>): string[] => {
+  // The operation's own name for the policy it opens: an update names the
+  // tenant's policy, a create names the one the plan proposes.
+  const openNameOf = (one: (typeof mapped)[number]): string => {
+    const whole = (one.target ?? one.body) as Record<string, unknown>
+    return typeof whole.displayName === 'string' && whole.displayName ? whole.displayName : names.policyName
+  }
+  const linesOf = (one: (typeof mapped)[number], body: Record<string, unknown>): string[] => {
     const p = asPolicy(body)
-    return portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names, resolution!.tenant))
+    const ctx = contextFor(p, names, resolution!.tenant, openNameOf(one))
+    // An update lists the fields its own body carries and says the rest is left
+    // alone; a create describes the whole policy it writes.
+    return one.mode === 'update'
+      ? portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx, { mode: 'change', only: sectionsOf(body) })
+      : portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx)
   }
   // A policy an answer changed carries the baseline's own version with it
   // (roadmap/generate.ts), so every line the answer moved is shown beside what
   // the baseline said. The answer is not applied here; it is already in the body.
-  const annotated = (one: (typeof mapped)[number]): string[] => (one.baseline ? besideBaseline(linesOf(one.body), linesOf(one.baseline)) : linesOf(one.body))
-  const nameOfBlock = (one: (typeof mapped)[number]): string => (typeof one.body.displayName === 'string' && one.body.displayName ? one.body.displayName : names.policyName)
+  const annotated = (one: (typeof mapped)[number]): string[] => (one.baseline ? besideBaseline(linesOf(one, one.body), linesOf(one, one.baseline)) : linesOf(one, one.body))
+  const nameOfBlock = (one: (typeof mapped)[number]): string => openNameOf(one)
   if (mapped.length >= 2) {
     // Two policies, two blocks, in the baseline's order, each named by its own body.
     return labelledBlocks({ lines: annotated(mapped[0]), name: nameOfBlock(mapped[0]) }, { lines: annotated(mapped[1]), name: nameOfBlock(mapped[1]) }, { a: 'A', b: 'B' })

@@ -9,6 +9,7 @@
 // added by prompt 43 — the rule is about what reaches the user, not about who
 // wrote it.
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
+import { stepOperations } from '../ui/surfaces/stepJson.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -37,7 +38,7 @@ test('every PowerShell string a step can render is a single line', () => {
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) {
       if (!s.action.json) continue
-      const ps = powershellFor(JSON.parse(s.action.json), s.kind === 'adjust' ? (s.tracking?.policyId ?? null) : null)
+      const ps = powershellFor(stepOperations(s))
       for (const line of ps.split('\n')) {
         const t = line.trim()
         if (t === '' || t.startsWith('#')) continue

@@ -107,7 +107,8 @@ test('the short and long date forms name the same day, one short format everywhe
   assert.equal(shortForm.match(/\d+/)?.[0], longForm.match(/\d+/)?.[0], `short "${shortForm}" and long "${longForm}" name the same day`)
   setDisplayTimeZone(null)
 
-  const f = allFixtures().find((x) => x.name === 'demo')!
+  // A policy the plan can write: one it cannot has no enforcement date at all.
+  const f = allFixtures().find((x) => x.name === 'demo-week2')!
   const run = runFixture(f)
   const policy = run.steps.find((s) => s.events?.enforce && run.schedule.reportOnlyAt[s.id])!
   assert.ok(policy, 'a policy step with an enforcement date and a report-only date')

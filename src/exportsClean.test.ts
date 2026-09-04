@@ -21,7 +21,9 @@ const FORBID_EVERY = contracts.forbidEverywhere
 // The v2 vocabulary the reviewer's walk named; the contract lists most of it.
 const V2 = ['soak', "the ring's", 'this ring', 'Ring plan', 'Exit criteria', 'Do it', 'created by the step above', 'Readiness table', 'Nothing changes for anyone', 'This is groundwork']
 
-const f = fixture('demo')
+// Week two: its policies name nothing the tenant lacks, so they carry dates and
+// calendar entries (a policy the plan cannot write yet carries neither).
+const f = fixture('demo-week2')
 const run = runFixture(f)
 const nameOf = (id: string): string => run.input.names!.label(id)
 const firstEnforce = run.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null

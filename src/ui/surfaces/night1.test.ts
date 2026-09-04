@@ -23,9 +23,10 @@ test('a shared reference with an unfilled variable is a hole in the line that na
 })
 
 test('a policy already in report-only dates its Report-only line from the scan', () => {
-  const f = fixture('demo')
+  // Week two: the policy names nothing this tenant lacks, so it is datable.
+  const f = fixture('demo-week2')
   const r = runFixture(f)
-  const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant')!
+  const step = r.steps.find((s) => s.goalId === 'block-auth-transfer')!
   assert.equal(step.status, 'in-report-only')
   assert.ok(step.tracking?.reportOnlyAt, 'the scan dates the report-only policy')
   const ex = stepVars(step, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: null, now: f.snapshot.asOf, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null })

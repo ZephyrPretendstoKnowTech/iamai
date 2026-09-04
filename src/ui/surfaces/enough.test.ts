@@ -16,7 +16,7 @@ import { adminUserIds } from '../../roles.ts'
 import { rungOf } from '../../derive/ladder.ts'
 
 const setUp = () => {
-  const f = fixture('demo')
+  const f = fixture('demo-week2')
   const r = runFixture(f)
   const dates = planDates(r.steps, r.schedule.start)
   const ctx = (over: Partial<StepVarContext> = {}): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, ...dates, ...over })
@@ -61,8 +61,10 @@ test('the managed-device email says what a personal device can still do, from th
   // The pinned baseline holds no unmanaged-browser goal: personal devices are blocked.
   const blocked = stepVars(md, ctx()) as Record<string, unknown>
   assert.equal(blocked.personalDevicesClause, engine.personalDevices.blocked)
-  assert.deepEqual(missingVars(cs.comms.body, blocked), [])
-  assert.ok(fillText(cs.comms.body, blocked).includes(`Personal devices ${engine.personalDevices.blocked}.`))
+  // The compliant-device policy waits on this tenant's service-accounts group,
+  // so it has no enforcement date to announce; every other variable is filled.
+  assert.deepEqual(missingVars(cs.comms.body, blocked), ['enforceLong'])
+  assert.ok(fillText(cs.comms.body, { ...blocked, enforceLong: 'a date' }).includes(`Personal devices ${engine.personalDevices.blocked}.`))
   const limited = stepVars(md, ctx({ unmanagedBrowserOnPlan: true })) as Record<string, unknown>
   assert.equal(limited.personalDevicesClause, engine.personalDevices.browserLimited)
   assert.equal((stepVars(md, ctx({ unmanagedBrowserOnPlan: undefined })) as Record<string, unknown>).personalDevicesClause, undefined, 'unknown, the line drops rather than guesses')

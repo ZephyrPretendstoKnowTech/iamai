@@ -27,6 +27,10 @@ export type PortalContext = {
   portalRoot: string
   /** shared.portalOpen, for a change to an existing policy (no `Name:` line). */
   portalOpen?: string
+  /** shared.changeUntouched — an update changes the fields it lists and no others. */
+  changeUntouched?: string
+  /** shared.enableLine — an update that turns a report-only policy on. */
+  enableLine?: string
   /** shared.reportOnlyLine, resolved — `Enable policy: Report-only → Create`. */
   reportOnlyLine: string
   /** shared.exclusionsLine, resolved with the exclusions group's name. */
@@ -40,6 +44,12 @@ export type PortalContext = {
 
 /** How the step opens: a new policy (root + Name) or a change to an existing one. */
 export type PortalMode = 'new' | 'change'
+
+/**
+ * The sections an update's request body carries. An update lists these and only
+ * these; every other setting on the policy is left as it is.
+ */
+export type PortalSection = 'users' | 'applications' | 'grant' | 'session' | 'state'
 
 /** The registration step's fallback: require MFA instead of Block when the tenant has no trusted network. */
 export type GrantOverride = 'mfa'
@@ -214,8 +224,28 @@ function sessionLines(f: PolicyFacts): string[] {
  * grant nor a session control returns a block with no control line, which the
  * caller treats as a build failure (shape-01).
  */
-export function portalLines(f: PolicyFacts, ctx: PortalContext, opts: { mode?: PortalMode; grantOverride?: GrantOverride } = {}): string[] {
+export function portalLines(f: PolicyFacts, ctx: PortalContext, opts: { mode?: PortalMode; grantOverride?: GrantOverride; only?: ReadonlySet<PortalSection> } = {}): string[] {
   const mode = opts.mode ?? 'new'
+  // An update: open the policy the operation names, list the fields its body
+  // carries, and say that nothing else on the policy is touched. The lines are
+  // the operation's, so a field the body leaves out is never instructed here.
+  if (opts.only) {
+    const only = opts.only
+    const out: string[] = [ctx.portalOpen ?? ctx.portalRoot]
+    if (only.has('users')) out.push(usersLine(f, ctx))
+    if (only.has('applications')) {
+      const res = resourcesLine(f, ctx)
+      if (res) out.push(res)
+    }
+    if (only.has('grant')) {
+      const grant = grantLine(f, ctx, opts.grantOverride)
+      if (grant) out.push(grant)
+    }
+    if (only.has('session')) out.push(...sessionLines(f))
+    if (only.has('state') && ctx.enableLine) out.push(ctx.enableLine)
+    if (ctx.changeUntouched) out.push(ctx.changeUntouched)
+    return out
+  }
   const out: string[] = []
   out.push(mode === 'change' ? (ctx.portalOpen ?? ctx.portalRoot) : ctx.portalRoot)
   if (mode !== 'change') out.push(`Name: ${ctx.policyName}`)

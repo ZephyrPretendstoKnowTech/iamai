@@ -31,29 +31,48 @@ export type Evidence = {
   affectedUserIds: string[]
 }
 
-/** One policy of a step, resolved once at the roadmap boundary (roadmap/resolvePolicy.ts). */
-export type ResolvedStepPolicy = {
+/**
+ * One operation a step runs against the tenant: the whole of what IAMAI asks a
+ * person to do for one policy, decided once at the roadmap boundary
+ * (roadmap/generate.ts over roadmap/resolvePolicy.ts). The portal instructions,
+ * the JSON, the PowerShell and the download all describe this operation — its
+ * mode, its target and its body — and nothing else.
+ */
+export type PolicyOperation = {
   /** The baseline's own name for the policy, so a merged goal can label Policy A and Policy B. */
   sourceName: string
-  /** The canonical resolved body: this tenant's objects, each named once, the person's answers applied, ready to create or change. */
+  /** Create a new policy, or update the tenant policy this operation names. */
+  mode: 'create' | 'update'
+  /** The tenant policy an update submits to; null for a create. */
+  policyId: string | null
+  /**
+   * The exact Graph request body to submit: the whole policy for a create, only
+   * the fields that change for an update. Every field this body does not carry
+   * is left as it is on the tenant's policy.
+   */
   body: Record<string, unknown>
   /**
    * The same body without the person's answers — the baseline's own version —
    * present only where an answer changed the policy, so a step can show the
-   * choice beside what the baseline said. Never a second thing to implement.
+   * choice beside what the baseline said. Never a second thing to submit.
    */
   baseline?: Record<string, unknown>
+  /**
+   * The whole policy the operation is working towards, where the operation
+   * itself is a partial update. Explanation, impact and audit read it; it is not
+   * a second actionable body and no channel submits it.
+   */
+  target?: Record<string, unknown>
 }
 
 /**
- * The authoritative resolved semantics of a step's policy: the baseline plus the
- * applied mapping, resolved once. Every implementation channel — the portal
- * instructions, the JSON, the PowerShell and the download — describes these
- * bodies, and `Action.missing` gates all four of them together.
+ * The step's operations: one per policy the baseline uses for the goal, in the
+ * baseline's order. `Action.json` is these operations' bodies and `Action.missing`
+ * gates every channel that would run them.
  */
 export type StepResolution = {
   /** One entry per policy the baseline uses for the goal, in the map's order. */
-  policies: ResolvedStepPolicy[]
+  policies: PolicyOperation[]
   /** The tenant objects the resolution used, so an instruction names the object the body actually holds. */
   tenant: { exclusionsGroupId: string | null; serviceAccountsGroupId: string | null }
 }
@@ -74,10 +93,16 @@ export type Action = {
    */
   missing?: { token: string; stepId: string | null }[]
   /**
-   * The step's canonical resolved policies. Portal, JSON, PowerShell and
-   * Download all render from these; nothing resolves a baseline reference again.
+   * The step's operations. Portal, JSON, PowerShell and Download all render
+   * from these; nothing resolves a baseline reference or decides a mode again.
    */
   resolution?: StepResolution
+  /**
+   * Why the step offers no implementation although nothing it names is missing:
+   * the plan cannot tell which of the tenant's policies is which half of a pair,
+   * so it will not guess. The step says so and waits for a person to sort it out.
+   */
+  unmatchedPair?: boolean
 }
 
 /**
