@@ -21,30 +21,58 @@ const PHISHING_RESISTANT = new Set([
  * from the policy body the step creates or changes; the goal family decides
  * when there is no body.
  */
+/** The shape the impact rules read out of a policy: what it grants and what it does to a session. */
+type Control = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null; conditions?: { locations?: unknown } | null }
+
+const lc = (s: string): string => s.toLowerCase()
+const builtIn = (body: Control): Set<string> => new Set((body.grantControls?.builtInControls ?? []).map(lc))
+const hasSession = (body: Control): boolean => Boolean(body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined))
+
+/** A policy that grants or restricts something can stop or interrupt a sign-in. */
+function denies(body: Control): boolean {
+  const grant = body.grantControls
+  if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
+  return hasSession(body)
+}
+
+/** A policy that asks a person for something, rather than simply stopping them. */
+function prompts(body: Control): boolean {
+  if (builtIn(body).has('block')) return false
+  const grant = body.grantControls
+  if (grant?.authenticationStrength) return true
+  if (builtIn(body).size > 0) return true
+  return hasSession(body)
+}
+
+/**
+ * The policies a step describes, when it is an open policy the plan can write:
+ * a create's body, an update's policy with its patch applied
+ * (roadmap/operations.ts finalTargets). Null for anything else — a policy
+ * already in place, the enforce step — which has no operation of its own and is
+ * read by its goal's family, as it always was.
+ */
+function policiesOf(step: Step): Control[] | null {
+  if (!isOpenPolicy(step)) return null
+  return implementationOffered(step) ? (finalTargets(step) as Control[]) : []
+}
+
 export function canDenyAccess(step: Step): boolean {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return false
-  type Body = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }
-  const denies = (body: Body): boolean => {
-    const grant = body.grantControls
-    if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
-    return Boolean(body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined))
-  }
-  // A policy the plan can write answers for itself: what it leaves behind is a
-  // create's body or an update's policy with its patch applied
-  // (roadmap/operations.ts finalTargets). The goal's family never overrules it,
-  // and a policy the plan cannot write invents no impact at all.
-  if (isOpenPolicy(step)) {
-    if (!implementationOffered(step)) return false
-    return (finalTargets(step) as Body[]).some(denies)
-  }
-  // A policy already in place has no operation but is live in the tenant, and a
-  // step that is not a policy at all — the enforce step — has none either: the
-  // goal family decides for both, as it always did.
+  const policies = policiesOf(step)
+  if (policies !== null) return policies.some(denies)
   return step.readiness.family !== 'other'
 }
 
-/** Steps that prompt people (a grant they must satisfy) rather than silently block a protocol. */
+/**
+ * Steps that prompt people (something they must satisfy) rather than silently
+ * blocking a protocol. An open policy answers from what it will leave behind and
+ * from nothing else: a Block asks nobody for anything, whatever family the goal
+ * is filed under, and a policy that asks for a method prompts even when it is
+ * not.
+ */
 export function promptsPeople(step: Step): boolean {
+  const policies = policiesOf(step)
+  if (policies !== null) return policies.some(prompts)
   return canDenyAccess(step) && step.readiness.family !== 'block' && step.readiness.family !== 'location'
 }
 

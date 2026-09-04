@@ -20,7 +20,7 @@ import { fillText } from '../content/render.ts'
 
 const CRITICAL = engine.critical
 import { absoluteDate } from '../copy/dates.ts'
-import { unavailableReason } from './operations.ts'
+import { finalTargets, implementationOffered, isOpenPolicy, unavailableReason } from './operations.ts'
 import type { Step } from './types.ts'
 
 export type WaveSchedule = {
@@ -182,12 +182,30 @@ export function observationDaysFor(step: Step): number {
   return batchClassOf(step) === 'zero' ? OBSERVATION_DAYS_ZERO : OBSERVATION_DAYS
 }
 
+const DEVICE_CONTROLS = new Set(['compliantdevice', 'domainjoineddevice', 'compliantapplication', 'approvedapplication'])
+
+/**
+ * How the policy interrupts people, for the same-people rule. An open policy the
+ * plan can write answers from what it will leave behind: a change that asks for
+ * a sign-in method is one interruption, a change that asks for a device or
+ * narrows where and how long a session lives is another, and a block asks for
+ * nothing. Anything without an operation of its own — a policy already in place,
+ * the enforce step — is read by its goal's family, as it always was.
+ */
 export function batchClassOf(step: Step): BatchClass {
   const family = step.readiness.family
   // Evidence-backed zero, not merely absent evidence, and not an unmeasured
   // field read as zero (nobodyAffected in timing.ts is the one definition; the
   // notice period reads the same bar).
   if (nobodyAffected(step)) return 'zero'
+  if (isOpenPolicy(step)) {
+    type Body = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; conditions?: { locations?: unknown } | null }
+    const bodies = implementationOffered(step) ? (finalTargets(step) as Body[]) : []
+    const controls = (b: Body): Set<string> => new Set((b.grantControls?.builtInControls ?? []).map((c) => c.toLowerCase()))
+    if (bodies.some((b) => b.grantControls?.authenticationStrength || controls(b).has('mfa'))) return 'mfa'
+    if (bodies.some((b) => [...controls(b)].some((c) => DEVICE_CONTROLS.has(c)) || (b.conditions?.locations ?? null) !== null)) return 'deviceSession'
+    return 'other'
+  }
   // A risk policy that does apply prompts for MFA, so it batches with the MFA changes.
   if (family === 'mfa' || family === 'admin' || family === 'guest' || family === 'risk') return 'mfa'
   if (family === 'device' || family === 'location') return 'deviceSession'

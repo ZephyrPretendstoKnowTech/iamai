@@ -72,11 +72,14 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
   const serviceAccountsGroupId: string | null = used.serviceAccountsGroupId?.toLowerCase() ?? null
   const nameOf = names.nameOf
   const policyName = typeof p.displayName === 'string' && p.displayName.length > 0 ? p.displayName : names.policyName
-  // The strength the operation's own body names, first: a confirmed mapping can
-  // resolve the author's strength to a tenant object of another name, and the
-  // instruction has to name the object the request carries. The goal's own name
-  // stands in only for a body that names none.
-  const strengthName = (p.grantControls as { authenticationStrength?: { displayName?: string } } | null)?.authenticationStrength?.displayName ?? names.strengthName ?? null
+  // The strength the operation's own body names. A body that names one and
+  // carries no friendly name for it — a confirmed mapping to a tenant object the
+  // scan has no row for — falls back to the generic phrase, never to the
+  // baseline author's name for a different object and never to a raw id. The
+  // goal's own name stands in only where the body names no strength at all.
+  const strength = (p.grantControls as { authenticationStrength?: { displayName?: unknown } } | null | undefined)?.authenticationStrength
+  const bodyStrengthName = typeof strength?.displayName === 'string' && strength.displayName.length > 0 ? strength.displayName : null
+  const strengthName = strength ? bodyStrengthName : (names.strengthName ?? null)
   const exclusionsGroup = exclusionsGroupId ? nameOf(exclusionsGroupId) : 'the exclusions group'
   return {
     policyName,

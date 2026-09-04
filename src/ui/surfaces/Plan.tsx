@@ -15,6 +15,7 @@ import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { inWave, waveLabels } from '../../derive/phases.ts'
+import { undatedRows } from './planRows.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
@@ -126,12 +127,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // the phases, grouped as not the author's.
   const floorRows = c.steps.filter((st) => st.floor && st.status !== 'done')
   // A policy the plan cannot write yet is in no wave: it has no date to sit
-  // under (roadmap/operations.ts unavailableReason). Its row still renders, in
-  // its own undated group after the phases, saying what it waits on. The rule is
-  // "every step the waves do not carry", so a step whose reason changed after
-  // the schedule was built still has exactly one row.
-  const scheduled = new Set(c.schedule.waves.flatMap((w) => w.stepIds))
-  const heldRows = c.steps.filter((st) => inWave(st) && !st.floor && !scheduled.has(st.id))
+  // under (roadmap/operations.ts). Its row still renders, in its own undated
+  // group after the phases, saying what it waits on (planRows.ts).
+  const heldRows = undatedRows(c.steps, c.schedule.waves)
   const waveRows = c.schedule.waves
     .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && inWave(st)) }))
     .filter((w) => w.steps.length > 0)

@@ -22,6 +22,18 @@ function ring(index: number, soakDays: number, ids: string[]): Ring {
   }
 }
 
+/**
+ * The policy a synthetic step writes, matching the family it claims: the
+ * batching rule reads what the step will leave behind, so a step that says it is
+ * a device change carries a device requirement (roadmap/schedule.ts batchClassOf).
+ */
+function policyBodyFor(family: string, name: string): Record<string, unknown> {
+  const conditions: Record<string, unknown> = { users: { includeUsers: ['All'] } }
+  if (family === 'location') conditions.locations = { includeLocations: ['All'] }
+  const controls = family === 'device' ? ['compliantDevice'] : family === 'block' || family === 'location' ? ['block'] : ['mfa']
+  return { displayName: name, conditions, grantControls: { operator: 'OR', builtInControls: controls } }
+}
+
 function step(over: Partial<Step> & { id: string }): Step {
   const ids = over.population?.ids ?? people(20)
   return {
@@ -46,7 +58,7 @@ function step(over: Partial<Step> & { id: string }): Step {
       json: '{}',
       portalSteps: [],
       missing: [],
-      resolution: { policies: [{ sourceName: over.id, mode: 'create' as const, policyId: null, body: { displayName: over.id, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } },
+      resolution: { policies: [{ sourceName: over.id, mode: 'create' as const, policyId: null, body: policyBodyFor(over.readiness?.family ?? 'mfa', over.id) }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } },
     },
     history: [],
     skipReason: null,
