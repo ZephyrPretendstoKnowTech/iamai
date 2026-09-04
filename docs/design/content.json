@@ -526,16 +526,28 @@
     "home": {
       "metaTitle": "IAMAI: tools for Microsoft Entra identity work",
       "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change would lock out before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
+      "brand": "IAMAI",
       "h1": "Know what a change will do before you make it.",
-      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a security baseline, and plans the rollout of that baseline while catching the pitfalls of hardening: the admin whose only method is a text message, the country rule that blocks its author, the account with no method at all. Read-only, in your browser, no account to create.",
+      "siteLine": "Tools for the person doing Microsoft Entra security on their own: read the tenant, see what a change touches, plan it so nobody is locked out. Read-only, in your browser, source public.",
       "toolsLabel": "Tools",
       "planner": {
         "name": "IAMAI Planner",
         "descriptor": "Conditional Access rollout planner",
         "label": "Preview",
-        "body": "Reads the tenant's configuration and all the available sign-in evidence, compares it with a published baseline, and writes a dated plan: report-only before enforced, readiness before either, nobody locked out. Every step carries the portal clicks, the policy JSON, and the communications to send, timed to keep your people in the loop. Ships with Microsoft MVP Jon Hope's Defense in Depth baseline today; more baselines are coming, including the ability to load your own.",
-        "builtForLabel": "Built for",
-        "builtFor": "The person doing security at a small MSP or a small business, on their own, who has to get this done in a few weeks.",
+        "beats": [
+          {
+            "verb": "Reads",
+            "text": "a tenant's policies, people, sign-in records and licences."
+          },
+          {
+            "verb": "Compares",
+            "text": "what each baseline policy is for with what the tenant already has."
+          },
+          {
+            "verb": "Writes",
+            "text": "a dated plan for the difference: report-only before enforced, who each change touches, what would break, and the emails to send."
+          }
+        ],
         "catchesLabel": "What it catches",
         "catches": [
           "An admin whose only sign-in method is a text message, about to be required to use a passkey.",
@@ -545,24 +557,42 @@
           "A meeting-room device that a session rule signs out every hour."
         ],
         "open": "Open the planner",
-        "demo": "See it with sample data"
+        "demo": "Try it with sample data",
+        "meta": {
+          "baseline": "Ships with Jon Hope's Defense in Depth baseline",
+          "role": "needs Global Reader",
+          "code": "read the code",
+          "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
+        }
       },
       "howLabel": "How these work",
       "how": [
-        "Read-only. No tool here holds a permission that can create, change or delete anything, and nothing it reads leaves this browser unless you export it yourself.",
-        "The source is public. Read the code, then decide whether to connect: github.com/ZephyrPretendstoKnowTech/iamai."
+        {
+          "title": "Read-only",
+          "body": "No tool here holds a permission that can create, change or delete anything. Nothing it reads leaves your browser unless you export it yourself."
+        },
+        {
+          "title": "Source is public",
+          "body": "Read the code, then decide whether to connect.",
+          "link": "github.com/ZephyrPretendstoKnowTech/iamai",
+          "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
+        }
       ],
       "aboutLabel": "About",
       "about": "Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not.",
       "aboutLinks": [
-        "LinkedIn",
-        "GitHub"
-      ],
-      "footer": "Read-only",
-      "footerLinks": [
-        "Lachlan Robinette",
-        "GitHub",
-        "Source"
+        {
+          "text": "Follow me on LinkedIn",
+          "href": "https://www.linkedin.com/in/lachlanrobinette/"
+        },
+        {
+          "text": "GitHub",
+          "href": "https://github.com/ZephyrPretendstoKnowTech"
+        },
+        {
+          "text": "feedback@getiamai.com",
+          "href": "mailto:feedback@getiamai.com"
+        }
       ]
     },
     "app": {

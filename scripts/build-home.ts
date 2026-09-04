@@ -1,10 +1,15 @@
 // Writes home/theme.css and home/index.html from the tool's own sources
-// (prompt 47.1 Part 3 item 11; prompt 52 Part 1). The home page wears the same
-// palette, type scale and fonts as the planner (theme.css from the tokens), and
-// every sentence it shows is a string in docs/design/content.json (pages.home),
-// generated here so the home page and the app cannot drift. home.test.ts fails
-// while either generated file and its source disagree, the way tokens.test.ts
-// guards tokens.css.
+// (prompt 47.1 Part 3 item 11; prompt 52 Part 1; docs/design/home-mockup.html).
+// The home page wears the same palette, type scale and fonts as the planner
+// (theme.css from the tokens), and every sentence it shows is a string in
+// docs/design/content.json (pages.home; the footer is the app's, pages.footer;
+// the theme control's labels are the app's, pages.app.shell), generated here so
+// the home page and the app cannot drift. home.test.ts fails while either
+// generated file and its source disagree, the way tokens.test.ts guards tokens.css.
+//
+// The page: the hero (the headline and the site line), the Tools grid (one card
+// per tool, one column with one tool and two from the second), How these work
+// as two small cards, About with its three buttons, and the app's footer.
 //
 // The fonts and the planner hrefs are referenced through the {{TOOL_PATH}}
 // placeholder that scripts/assemble-site.mjs substitutes, so the path lives in
@@ -14,32 +19,104 @@ import { fileURLToPath } from 'node:url'
 import { renderTokensCss } from '../src/ui/tokens.ts'
 import { pages } from '../src/content/content.ts'
 
-const LINKEDIN = 'https://www.linkedin.com/in/lachlanrobinette/'
-const GITHUB = 'https://github.com/ZephyrPretendstoKnowTech'
-const REPO = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
-const MAILTO = 'mailto:feedback@getiamai.com'
 /** The planner and its sample-data view, under the substituted tool path. */
 const PLANNER_HREF = '/{{TOOL_PATH}}/#/connect'
 const DEMO_HREF = '/{{TOOL_PATH}}/?demo=1#/plan'
+
+/**
+ * The opener the mockup retired: the old lede and the planner's old body. None
+ * of these sentences may come back, on the page or in pages.home (home.test.ts
+ * and the walk's home fixture both read this list).
+ */
+export const RETIRED_OPENER = [
+  'IAMAI reads a Microsoft Entra tenant, compares it with a security baseline, and plans the rollout of that baseline',
+  'catching the pitfalls of hardening',
+  'the admin whose only method is a text message, the country rule that blocks its author, the account with no method at all',
+  'no account to create',
+  "Reads the tenant's configuration and all the available sign-in evidence",
+  'readiness before either, nobody locked out',
+  'Every step carries the portal clicks, the policy JSON, and the communications to send',
+  'more baselines are coming, including the ability to load your own',
+  'See it with sample data',
+]
+
+export type HomeTool = {
+  name: string
+  descriptor: string
+  label: string
+  beats: { verb: string; text: string }[]
+  catchesLabel: string
+  catches: string[]
+  open: string
+  demo: string
+  meta: { baseline: string; role: string; code: string; href: string }
+}
+type HomeContent = {
+  metaTitle: string
+  metaDescription: string
+  brand: string
+  h1: string
+  siteLine: string
+  toolsLabel: string
+  planner: HomeTool
+  howLabel: string
+  how: { title: string; body: string; link?: string; href?: string }[]
+  aboutLabel: string
+  about: string
+  aboutLinks: { text: string; href: string }[]
+}
+type Link = { text: string; href: string }
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/** A sentence with one token turned into a link (the repo, in the source bullet). */
-function linkify(text: string, token: string, href: string): string {
-  const i = text.indexOf(token)
-  if (i < 0) return esc(text)
-  return esc(text.slice(0, i)) + `<a href="${href}">${esc(token)}</a>` + esc(text.slice(i + token.length))
+/** A button in one of the three weights (docs/design/connect-mockup.html): primary filled, secondary outlined, tertiary muted. */
+function button(text: string, href: string, weight: 'primary' | 'secondary' | 'tertiary'): string {
+  return `<a class="btn btn-${weight}" href="${href}">${esc(text)}</a>`
 }
 
-/** The href for an About or footer link, from its visible text. */
-function hrefFor(label: string): string {
-  if (/linkedin/i.test(label) || label === 'Lachlan Robinette') return LINKEDIN
-  if (label === 'Source') return REPO
-  if (/github/i.test(label)) return GITHUB
-  if (label.includes('@')) return MAILTO
-  return REPO
+/**
+ * The one tool card (docs/design/home-mockup.html): the name with its status
+ * pill, the tag line, Reads / Compares / Writes, the What it catches
+ * collapsible, Open (primary) and Try it with sample data (secondary), and the
+ * meta line: baseline · role needed · read the code.
+ */
+export function toolCard(tool: HomeTool, hrefs: { open: string; demo: string }): string {
+  const beats = tool.beats.map((b) => `<li><b>${esc(b.verb)}</b> ${esc(b.text)}</li>`).join('\n            ')
+  const catches = tool.catches.map((c) => `<li>${esc(c)}</li>`).join('\n              ')
+  return `<section class="card tool">
+          <h3 class="tool-name">${esc(tool.name)} <span class="pill">${esc(tool.label)}</span></h3>
+          <p class="tag">${esc(tool.descriptor)}</p>
+          <ul class="beats">
+            ${beats}
+          </ul>
+          <details class="catches">
+            <summary>${esc(tool.catchesLabel)}</summary>
+            <ul class="catch">
+              ${catches}
+            </ul>
+          </details>
+          <p class="actions">
+            ${button(tool.open, hrefs.open, 'primary')}
+            ${button(tool.demo, hrefs.demo, 'secondary')}
+          </p>
+          <p class="meta"><span>${esc(tool.meta.baseline)}</span> · <span>${esc(tool.meta.role)}</span> · <a href="${tool.meta.href}">${esc(tool.meta.code)}</a></p>
+        </section>`
+}
+
+/** The Tools grid: one column with one tool, two columns from the second tool on. */
+export function toolsGrid(cards: string[]): string {
+  return `<div class="grid tools${cards.length > 1 ? ' two' : ''}" aria-labelledby="tools-heading">
+        ${cards.join('\n        ')}
+      </div>`
+}
+
+/** A small card: a title and a paragraph (How these work), or a paragraph and its buttons (About). */
+function smallCard(title: string | null, body: string, cls = ''): string {
+  return `<section class="card small${cls ? ' ' + cls : ''}">
+          ${title === null ? '' : `<h3>${esc(title)}</h3>\n          `}${body}
+        </section>`
 }
 
 export function renderHomeTheme(): string {
@@ -49,28 +126,16 @@ export function renderHomeTheme(): string {
 }
 
 export function renderHomeHtml(): string {
-  const h = pages.home as unknown as {
-    metaTitle: string
-    metaDescription: string
-    h1: string
-    intro: string
-    toolsLabel: string
-    planner: { name: string; descriptor: string; label: string; body: string; builtForLabel: string; builtFor: string; catchesLabel: string; catches: string[]; open: string; demo: string }
-    howLabel: string
-    how: string[]
-    aboutLabel: string
-    about: string
-    aboutLinks: string[]
-    footer: string
-    footerLinks: string[]
-  }
-  const pl = h.planner
-  const aboutLinks = h.aboutLinks.map((l) => `<a href="${hrefFor(l)}">${esc(l)}</a>`).join('\n        ')
-  const footerLinks = h.footerLinks.map((l) => `<a href="${hrefFor(l)}">${esc(l)}</a>`).join('\n        ')
-  // The source bullet names the repository; everything else is plain text.
-  const howItems = h.how
-    .map((line) => `<li>${line.includes('github.com/') ? linkify(line, 'github.com/ZephyrPretendstoKnowTech/iamai', REPO) : esc(line)}</li>`)
-    .join('\n        ')
+  const h = pages.home as unknown as HomeContent
+  const shell = pages.app.shell as { lightTheme: string; darkTheme: string; themeTooltip: string }
+  const footer = pages.footer as { links: Link[] }
+  const howCards = h.how.map((c) => smallCard(c.title, `<p>${esc(c.body)}${c.link && c.href ? ` <a class="lnk" href="${c.href}">${esc(c.link)}</a>` : ''}</p>`)).join('\n        ')
+  const aboutButtons = h.aboutLinks.map((l, i) => button(l.text, l.href, i === 0 ? 'secondary' : 'tertiary')).join('\n            ')
+  const about = smallCard(null, `<p>${esc(h.about)}</p>\n          <p class="actions">\n            ${aboutButtons}\n          </p>`, 'about')
+  // The footer is the app's (AppShell's Footer, pages.footer): the same links, joined the same way.
+  const footerLinks = footer.links
+    .map((l, i) => `${i > 0 ? ' | ' : ''}<a href="${l.href}"${/^https:\/\/getiamai\.com\/?$/.test(l.href) ? '' : ' target="_blank" rel="noopener noreferrer"'}>${esc(l.text)}</a>`)
+    .join('')
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -103,53 +168,34 @@ export function renderHomeHtml(): string {
           <circle cx="16" cy="16" r="4" fill="currentColor" />
           <path d="M16 6 A10 10 0 1 1 6 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
         </svg>
-        IAMAI
+        ${esc(h.brand)}
       </a>
       <div class="right">
-        <button class="btn" id="theme" type="button" title="Switch between dark and light themes">Dark theme</button>
+        <!-- The theme control is text, not a button face, the way the app's is (AppShell). -->
+        <button class="text-control" id="theme" type="button" title="${esc(shell.themeTooltip)}">${esc(shell.darkTheme)}</button>
       </div>
     </header>
 
     <main class="page">
-      <h1>${esc(h.h1)}</h1>
-      <p class="lede">${esc(h.intro)}</p>
-
-      <h2 id="tools-heading">${esc(h.toolsLabel)}</h2>
-      <div class="rows" aria-labelledby="tools-heading">
-        <div class="tool-card">
-          <p class="tool-name"><a href="${PLANNER_HREF}">${esc(pl.name)}</a> <span class="pill">${esc(pl.label)}</span></p>
-          <p class="descriptor">${esc(pl.descriptor)}</p>
-          <p class="tool-desc">${esc(pl.body)}</p>
-          <p class="tool-sub">${esc(pl.builtForLabel)}</p>
-          <p class="tool-desc">${esc(pl.builtFor)}</p>
-          <p class="tool-sub">${esc(pl.catchesLabel)}</p>
-          <ul class="tool-list">
-            ${pl.catches.map((c) => `<li>${esc(c)}</li>`).join('\n            ')}
-          </ul>
-          <p class="tool-actions">
-            <a class="tool-open" href="${PLANNER_HREF}">${esc(pl.open)}</a>
-            <a class="tool-demo" href="${DEMO_HREF}">${esc(pl.demo)}</a>
-          </p>
-        </div>
+      <div class="hero">
+        <h1>${esc(h.h1)}</h1>
+        <p class="site-line">${esc(h.siteLine)}</p>
       </div>
 
-      <h2 id="how-heading">${esc(h.howLabel)}</h2>
-      <ul aria-labelledby="how-heading">
-        ${howItems}
-      </ul>
+      <h2 class="section" id="tools-heading">${esc(h.toolsLabel)}</h2>
+      ${toolsGrid([toolCard(h.planner, { open: PLANNER_HREF, demo: DEMO_HREF })])}
 
-      <h2 id="about-heading">${esc(h.aboutLabel)}</h2>
-      <p>${esc(h.about)}</p>
-      <p class="links">
-        ${aboutLinks}
-      </p>
+      <h2 class="section" id="how-heading">${esc(h.howLabel)}</h2>
+      <div class="grid two" aria-labelledby="how-heading">
+        ${howCards}
+      </div>
+
+      <h2 class="section" id="about-heading">${esc(h.aboutLabel)}</h2>
+      ${about}
     </main>
 
     <footer class="app">
-      <span>${esc(h.footer)}</span>
-      <span class="footer-links">
-        ${footerLinks}
-      </span>
+      <span class="footer-links">${footerLinks}</span>
     </footer>
 
     <!-- The theme control shares the planner's key and labels (prompt 47.1 item 12): a choice made on either side
@@ -157,6 +203,7 @@ export function renderHomeHtml(): string {
     <script>
       ;(function () {
         var key = 'iamai-theme'
+        var labels = ${JSON.stringify({ light: shell.lightTheme, dark: shell.darkTheme })}
         var root = document.documentElement
         var button = document.getElementById('theme')
         function stored() {
@@ -172,7 +219,7 @@ export function renderHomeHtml(): string {
         function apply(theme) {
           if (theme) root.setAttribute('data-theme', theme)
           else root.removeAttribute('data-theme')
-          button.textContent = (theme || system()) === 'dark' ? 'Light theme' : 'Dark theme'
+          button.textContent = (theme || system()) === 'dark' ? labels.light : labels.dark
         }
         apply(stored())
         button.addEventListener('click', function () {

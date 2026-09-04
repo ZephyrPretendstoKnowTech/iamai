@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>getiamai.com — home mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;500&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font-serif:'IBM Plex Serif',Georgia,serif; --font-sans:'IBM Plex Sans',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+    --t-1:12px;--t-2:13px;--t-3:14px;--t-4:16px;--t-5:20px;--t-6:26px;--radius:4px;--page:760px;
+    --bg:#fbf9f5;--bg-raised:#f4f1ea;--bg-inset:#ede9e0;--ink:#1b1b1b;--ink-2:#55554f;--ink-3:#6b6b65;--rule:#e3dfd6;--rule-strong:#c9c4b8;
+    --accent:#0b5b57;--accent-tint:#e1edeb;--on-accent:#fbf9f5;--ok:#2f6b4f;--wait:#8a5a0b;--stop:#9b2c2c;--idle:#8a8a83;
+  }
+  [data-theme="dark"]{
+    --bg:#15171a;--bg-raised:#1d2024;--bg-inset:#24282d;--ink:#eceae4;--ink-2:#a7a59d;--ink-3:#8a887f;--rule:#2c3036;--rule-strong:#3d4249;
+    --accent:#5fb8b0;--accent-tint:#1b302f;--on-accent:#0f1214;--ok:#7bc9a0;--wait:#e0b25c;--stop:#e28b8b;--idle:#7a7871;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:400 var(--t-3)/1.5 var(--font-sans)}
+  header{height:48px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--rule);font-size:var(--t-2)}
+  header .brand{font:500 var(--t-4) var(--font-serif);color:var(--ink);text-decoration:none;display:flex;align-items:center;gap:8px}
+  header nav a{color:var(--ink-2);text-decoration:none;margin-right:14px}
+  header nav a.on{color:var(--ink);border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:-16px}
+  header .right{margin-left:auto;display:flex;gap:18px;color:var(--ink-2)}
+  main{max-width:var(--page);margin:0 auto;padding:28px 24px 60px}
+  h1{font:400 var(--t-6)/1.25 var(--font-serif);margin:0 0 6px}
+  .sub{color:var(--ink-2);margin:0 0 22px}
+  /* the step tiles */
+  .tile{position:relative;background:var(--bg-raised);border:1px solid var(--rule);border-radius:var(--radius);padding:16px 20px 16px 56px;margin:0 0 10px}
+  .tile .n{position:absolute;left:18px;top:15px;width:24px;height:24px;border-radius:50%;border:1px solid var(--rule-strong);color:var(--ink-2);font:500 var(--t-2)/22px var(--font-mono);text-align:center}
+  .tile.done .n{background:var(--accent-tint);border-color:var(--accent);color:var(--accent)}
+  .tile.stop .n{border-color:var(--stop);color:var(--stop)}
+  .tile.wait .n{border-color:var(--wait);color:var(--wait)}
+  .tile h2{font:500 var(--t-4)/1.25 var(--font-sans);margin:0 0 4px;display:flex;align-items:baseline;gap:10px}
+  .tile h2 .state{font:400 var(--t-2) var(--font-sans);color:var(--ink-2)}
+  .tile h2 .state.ok{color:var(--ok)} .tile h2 .state.stop{color:var(--stop)} .tile h2 .state.wait{color:var(--wait)}
+  .tile p{margin:6px 0 0;color:var(--ink-2)}
+  .tile p strong{color:var(--ink);font-weight:500}
+  .tile .beats{margin:8px 0 0;padding:0;list-style:none}
+  .tile .beats li{padding:4px 0;color:var(--ink-2)}
+  .tile .beats b{color:var(--ink);font-weight:500;display:inline-block;width:76px}
+  .tile .facts{display:flex;gap:32px;margin:12px 0 0;padding:0;list-style:none}
+  .tile .facts li{font-size:var(--t-2);color:var(--ink-2)}
+  .tile .facts b{display:block;font:500 var(--t-5)/1.2 var(--font-serif);color:var(--ink)}
+  .tile .facts b.stop{color:var(--stop)}
+  .tile .actions{display:flex;gap:16px;align-items:center;margin-top:14px}
+  .btn{display:inline-block;background:var(--accent);color:var(--on-accent);border:0;border-radius:var(--radius);padding:7px 14px;font:500 var(--t-3) var(--font-sans);cursor:pointer;text-decoration:none}
+  .btn.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent);padding:6px 13px}
+  .btn.tertiary{background:var(--bg-inset);color:var(--ink-2);border:1px solid var(--rule-strong);padding:6px 13px}
+  .lnk{color:var(--accent);text-decoration:underline;text-underline-offset:3px;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+  .quiet{color:var(--ink-3);font-size:var(--t-2)}
+  .rows{margin:10px 0 0;padding:0;list-style:none;border-top:1px solid var(--rule)}
+  .rows li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--rule);font-size:var(--t-2)}
+  .rows li span:last-child{color:var(--ink-2)}
+  .rows li .role{color:var(--ink);font-weight:500}
+  .diff{margin:10px 0 0;padding:0;list-style:none}
+  .diff li{display:flex;gap:10px;padding:5px 0;font-size:var(--t-2);border-bottom:1px solid var(--rule)}
+  .diff .tag{width:64px;color:var(--ink-3)}
+  .diff .steps{color:var(--ink-3);margin-left:auto}
+  details summary{cursor:pointer;color:var(--accent);font-size:var(--t-2);list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  .state-block{display:block;margin-bottom:4px}
+  footer{margin-top:60px;text-align:center;font-size:var(--t-1);color:var(--ink-3)}
+  footer a{color:var(--ink-3)}
+  .hero h1{font-size:30px;margin:0 0 8px}
+  .hero p{max-width:640px}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px}
+  .card{background:var(--bg-raised);border:1px solid var(--rule);border-radius:var(--radius);padding:18px 20px}
+  .card h2{font:500 var(--t-5)/1.2 var(--font-serif);margin:0;display:flex;align-items:center;gap:10px}
+  .pill{font:500 11px/1 var(--font-sans);letter-spacing:.02em;text-transform:uppercase;color:var(--accent);background:var(--accent-tint);border-radius:999px;padding:4px 8px}
+  .pill.soon{color:var(--ink-3);background:var(--bg-inset)}
+  .card .tag{color:var(--ink-2);margin:2px 0 10px}
+  .card p{color:var(--ink-2);margin:6px 0 0}
+  .card .beats{margin:10px 0 0;padding:0;list-style:none}
+  .card .beats li{padding:3px 0;color:var(--ink-2)}
+  .card .beats b{color:var(--ink);font-weight:500;display:inline-block;width:76px}
+  .card .actions{margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .card .meta{margin-top:12px;font-size:var(--t-1);color:var(--ink-3)}
+  .card .meta a{color:var(--ink-3)}
+  h3.section{font:400 var(--t-4) var(--font-serif);color:var(--ink-2);margin:28px 0 10px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .card.small p{margin-top:4px}
+  .catch{margin:8px 0 0;padding-left:18px;color:var(--ink-2)}
+  .catch li{padding:2px 0}
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="#">◐ IAMAI</a>
+  <div class="right"><span>Dark theme</span></div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Know what a change will do before you make it.</h1>
+    <p class="sub">Tools for the person doing Microsoft Entra security on their own: read the tenant, see what a change touches, plan it so nobody is locked out. Read-only, in your browser, source public.</p>
+  </div>
+
+  <h3 class="section">Tools</h3>
+  <div class="grid">
+
+    <section class="card">
+      <h2>IAMAI Planner <span class="pill">Preview</span></h2>
+      <div class="tag">Conditional Access rollout planner</div>
+      <ul class="beats">
+        <li><b>Reads</b> a tenant's policies, people, sign-in records and licences.</li>
+        <li><b>Compares</b> what each baseline policy is for with what the tenant already has.</li>
+        <li><b>Writes</b> a dated plan for the difference: report-only before enforced, who each change touches, what would break, and the emails to send.</li>
+      </ul>
+      <details style="margin-top:10px">
+        <summary>What it catches</summary>
+        <ul class="catch">
+          <li>An admin whose only sign-in method is a text message, about to be required to use a passkey.</li>
+          <li>An emergency access account inside the policy it exists to survive.</li>
+          <li>A country rule that blocks the person who wrote it.</li>
+          <li>A service account that a legacy-authentication block stops at 2 a.m.</li>
+          <li>A meeting-room device that a session rule signs out every hour.</li>
+        </ul>
+      </details>
+      <div class="actions"><a class="btn" href="#">Open the planner →</a><a class="btn secondary" href="#">Try it with sample data</a></div>
+      <div class="meta">Ships with Jon Hope's Defense in Depth baseline · needs Global Reader · <a href="#">read the code</a></div>
+    </section>
+
+  </div>
+
+  <p class="quiet" style="margin:18px 0 6px">Mockup note (not rendered until a second tool exists): the same card for the next tool, so the grid grows without a redesign. Two columns from the second tool on.</p>
+  <div class="two">
+    <section class="card small">
+      <h2>IAMAI Planner <span class="pill">Preview</span></h2>
+      <div class="tag">Conditional Access rollout planner</div>
+      <p>Reads a tenant, compares it with a baseline, writes a dated plan for the difference.</p>
+      <div class="actions"><a class="btn" href="#">Open →</a><a class="btn secondary" href="#">Sample data</a></div>
+    </section>
+    <section class="card small">
+      <h2>Second tool <span class="pill soon">Coming</span></h2>
+      <div class="tag">One line that says what it is</div>
+      <p>Two sentences on what it reads and what it gives you.</p>
+      <div class="actions"><a class="btn tertiary" href="#">Follow on LinkedIn for the release</a></div>
+    </section>
+  </div>
+
+  <h3 class="section">How these work</h3>
+  <div class="two">
+    <section class="card small">
+      <h2 style="font-size:var(--t-4)">Read-only</h2>
+      <p>No tool here holds a permission that can create, change or delete anything. Nothing it reads leaves your browser unless you export it yourself.</p>
+    </section>
+    <section class="card small">
+      <h2 style="font-size:var(--t-4)">Source is public</h2>
+      <p>Read the code, then decide whether to connect. <a class="lnk" href="#">github.com/ZephyrPretendstoKnowTech/iamai</a></p>
+    </section>
+  </div>
+
+  <h3 class="section">About</h3>
+  <section class="card small">
+    <p>Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not.</p>
+    <div class="actions"><a class="btn secondary" href="#">Follow me on LinkedIn</a><a class="btn tertiary" href="#">GitHub</a><a class="btn tertiary" href="#">feedback@getiamai.com</a></div>
+  </section>
+</main>
+
+<footer>IAMAI Home | <a href="#">Follow me on LinkedIn</a> | <a href="#">GitHub</a></footer>
+</body>
+</html>
