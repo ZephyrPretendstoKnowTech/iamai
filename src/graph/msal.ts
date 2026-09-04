@@ -79,21 +79,20 @@ export async function signInAnother(): Promise<void> {
   return msal.loginRedirect({ scopes: GRAPH_SCOPES, prompt: 'select_account' })
 }
 
+/**
+ * Sign out of MSAL (ui/actions.ts signOut has already cleared the app's
+ * session and landed on Connect). With an account, Microsoft's logout
+ * redirect after the local cache is cleared; without one (never signed in
+ * through MSAL: the dev mock, a visitor who only warmed it up), the cache
+ * alone is cleared and the page stays where it is.
+ */
 export async function signOut(): Promise<void> {
-  // Never signed in through MSAL (the dev mock): nothing to log out of; back to Connect.
-  if (!initialized) {
-    window.location.hash = '#/connect'
-    return
-  }
-  await initialized
-  // Warming MSAL up initialises it without ever signing in (the mock, or a
-  // visitor who never clicked): there is no account to redirect a logout for, so
-  // stay local and go back to Connect.
-  if (!msal.getActiveAccount()) {
-    window.location.hash = '#/connect'
-    return
-  }
-  return msal.logoutRedirect()
+  const account = initialized ? ((await initialized), (msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null)) : null
+  // The cache goes first, whether or not an account was in it; the redirect
+  // carries the account it was given, so the cleared cache is no loss to it.
+  clearAuthCache()
+  if (!account) return
+  return msal.logoutRedirect({ account })
 }
 
 /**

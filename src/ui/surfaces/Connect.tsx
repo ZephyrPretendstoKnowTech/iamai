@@ -9,16 +9,18 @@
 // the facts, the last full plan after a scan with gaps, or waiting for the
 // scan). The tenant's name and the scan's age render here and nowhere else,
 // from the one stored scan timestamp. Every action is a button in one of three
-// weights; Global Reader is the only role IAMAI names.
+// weights, and every one calls ui/actions.ts: the scan's state is the
+// session's (ui/session.ts), so a scan started anywhere shows here as tile 3's
+// progress; an action that fails renders its error in the tile that pressed
+// it. Global Reader is the only role IAMAI names.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
-import { authReady, getGraphToken, signIn, signInAnother, signOut } from '../../graph/auth.ts'
+import { authReady, getGraphToken } from '../../graph/auth.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
 import type { TokenSource } from '../../graph/collect/runScan.ts'
 import { GLOBAL_ADMINISTRATOR, coreRoleGap, rolesInToken } from '../../graph/collect/tokenRoles.ts'
-import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineFile } from '../../baseline/index.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -36,10 +38,10 @@ import { Button, LinkButton } from '../components/index.ts'
 import { PINNED_BASELINE, baselineChanges, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
 import type { BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
-import { afterScanHref } from '../shell/routes.ts'
 import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
-import { useScanRunner } from '../scan/useScanRunner.ts'
-import type { SectionRow } from '../scan/useScanRunner.ts'
+import { scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
+import { useAction } from '../useAction.ts'
+import { useSession } from '../session.ts'
 import { W, accountTile, baselineTile, planTile, scanTile, signInTile } from '../scan/connectView.ts'
 import type { Action, BaselineUpdate, PlanInput, PlanTile, ScanInput, ScanTile, Tone } from '../scan/connectView.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
@@ -64,19 +66,6 @@ export function Connect(
     /** A sign-in that returned an error, classified (graph/authError.ts); tile 1 shows it. */
     authError: SignInError | null
     lastScan: ScanRecord | null
-    frozen: Record<string, SectionRow> | null
-    /** A scan that just finished with gaps (the mock only). */
-    finished: TenantSnapshot | null
-    /** The mock's token stand-in; MSAL otherwise. */
-    getToken?: TokenSource
-    onRunningChange: (running: boolean) => void
-    onComplete: (snapshot: TenantSnapshot, at: string) => void
-    /** Where the scan lands when it finishes: the step that asked for it, or the Plan. */
-    returnTo: string | null
-    autoScan: boolean
-    onAutoScanConsumed: () => void
-    /** The demo has no worker: its Scan again advances the sample to week two and back (App.tsx demoWeek2). */
-    onDemoScan: () => void
   },
 ) {
   const { account } = props
@@ -243,6 +232,8 @@ function SignedOut({ error, baseline, baselineRestoreError, onBaseline, authorUp
   // the first click always lands (prompt 50.1 item 7).
   const [signInReady, setSignInReady] = useState(false)
   const firing = useRef(false)
+  // A sign-in that could not start renders under the button (ui/useAction.ts): nothing is swallowed.
+  const { run, error: actionError } = useAction()
   useEffect(() => {
     let live = true
     void authReady().then(() => {
@@ -257,12 +248,15 @@ function SignedOut({ error, baseline, baselineRestoreError, onBaseline, authorUp
       firing.current = true
       // A personal account: the picker, so a work or school account can be chosen.
       const go = error?.kind === 'personal' ? signInAnother : signIn
-      void go().catch(() => {
-        firing.current = false
-        setOpening(false)
-      })
+      run(
+        go().catch((e: unknown) => {
+          firing.current = false
+          setOpening(false)
+          throw e
+        }),
+      )
     }
-  }, [signInReady, opening, error])
+  }, [signInReady, opening, error, run])
   const t1 = signInTile({ error })
   const t3 = scanTile({ kind: 'sample' })
   const t4 = planTile({ kind: 'sample', facts: SAMPLE_FACTS })
@@ -275,6 +269,7 @@ function SignedOut({ error, baseline, baselineRestoreError, onBaseline, authorUp
           <Act action={t1.actions[0]} loading={opening} busy={!signInReady} onClick={() => setOpening(true)} />
           <Act action={t1.actions[1]} href={demoUrl()} />
         </div>
+        {actionError && <p className="quiet">{actionError}</p>}
         <details className="permissions">
           <summary>{t1.permissions.summary}</summary>
           <p className="quiet">{t1.permissions.lead}</p>
@@ -310,52 +305,17 @@ function SignedIn({
   onBaseline,
   authorUpdate,
   lastScan,
-  frozen,
-  finished,
-  getToken,
-  onRunningChange,
-  onComplete,
-  returnTo,
-  autoScan,
-  onAutoScanConsumed,
-  onDemoScan,
 }: BaselineProps & {
   account: AccountInfo
   tenantName: string | null
   lastScan: ScanRecord | null
-  frozen: Record<string, SectionRow> | null
-  finished: TenantSnapshot | null
-  getToken?: TokenSource
-  onRunningChange: (running: boolean) => void
-  onComplete: (snapshot: TenantSnapshot, at: string) => void
-  returnTo: string | null
-  autoScan: boolean
-  onAutoScanConsumed: () => void
-  onDemoScan: () => void
 }) {
-  // A re-scan returns to the plan when it finishes (target-state §2); a first
-  // scan stays here and offers it.
-  const hadScanRef = useRef(lastScan !== null)
-  const returnToRef = useRef(returnTo)
-  returnToRef.current = returnTo
-  const runner = useScanRunner(account.tenantId, {
-    frozen,
-    finished,
-    getToken,
-    onRunningChange,
-    onComplete: (snapshot, at) => {
-      onComplete(snapshot, at)
-      if (hadScanRef.current) window.location.hash = afterScanHref(returnToRef.current)
-    },
-  })
+  // The scan in flight, wherever it was started (ui/session.ts): tile 3 shows it.
+  const { scan: runner, getToken } = useSession()
   const scanning = runner.state === 'running' || runner.state === 'paused'
-  useEffect(() => {
-    if (!autoScan || scanning) return
-    onAutoScanConsumed()
-    hadScanRef.current = lastScan !== null
-    void runner.start()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoScan])
+  // What an action reported, rendered in the tile that pressed it (ui/useAction.ts).
+  const tile1 = useAction()
+  const tile3 = useAction()
   // The token's roles, read before the first Graph call (tokenRoles.ts): tile 1
   // names the account's role, and tile 3 says so when none of them reads the
   // tenant. The demo never signs in, so it has no token to read.
@@ -376,15 +336,8 @@ function SignedIn({
   const roleGap = runner.roleGap ?? coreRoleGap(roleIds)
   const tenant = tenantName ?? account.username
   const upn = account.username
-  const start = (first: boolean): void => {
-    // The demo has no worker: Scan again flips the sample to week two and back.
-    if (isDemo()) {
-      onDemoScan()
-      return
-    }
-    if (first) hadScanRef.current = false
-    void runner.start()
-  }
+  // A first scan stays here and offers the plan; Scan again returns to the Plan when it lands (target-state §2).
+  const start = (first: boolean): void => tile3.run(runScan(first ? null : PLAN_HREF))
 
   const t1 = accountTile({ tenant, upn, role: accountRole(roleIds) })
   // Tile 3's one state, in priority: no role, scanning, gaps, complete, ready.
@@ -423,14 +376,14 @@ function SignedIn({
       case 'gaps':
         return (
           <>
-            <Act action={t3.actions[0]} onClick={() => void signInAnother()} />
+            <Act action={t3.actions[0]} onClick={() => tile3.run(signInAnother())} />
             <Act action={t3.actions[1]} onClick={() => start(false)} />
           </>
         )
       case 'role':
-        return <Act action={t3.actions[0]} onClick={() => void signInAnother()} />
+        return <Act action={t3.actions[0]} onClick={() => tile3.run(signInAnother())} />
       case 'scanning':
-        return <Act action={t3.actions[0]} onClick={runner.stop} />
+        return <Act action={t3.actions[0]} onClick={stopScan} />
       default:
         return <Act action={t3.actions[0]} onClick={() => start(true)} />
     }
@@ -441,24 +394,26 @@ function SignedIn({
         <p>{lead(upn, t1.line)}</p>
         <p className="quiet">{t1.note}</p>
         <div className="actions">
-          <Act action={t1.actions[0]} onClick={() => void signInAnother()} />
-          <Act action={t1.actions[1]} onClick={() => void signOut()} />
+          <Act action={t1.actions[0]} onClick={() => tile1.run(signInAnother())} />
+          <Act action={t1.actions[1]} onClick={() => tile1.run(signOut())} />
         </div>
+        {tile1.error && <p className="quiet">{tile1.error}</p>}
       </Tile>
       <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} authorUpdate={authorUpdate} />
       <ScanTileView
         tile={t3}
         upn={upn}
-        bar={t3.kind === 'scanning' ? <ScanBar runner={runner} /> : null}
+        bar={t3.kind === 'scanning' ? <ScanBar scan={runner} /> : null}
         actions={
           <>
             {!scanning && runner.state === 'failed' && runner.error && <p className="quiet">{fillText(C.failed, { why: runner.error })}</p>}
+            {tile3.error && <p className="quiet">{tile3.error}</p>}
             <div className="actions">{scanActions()}</div>
           </>
         }
       />
       <PlanTileView tile={t4} actions={t4.actions.length > 0 ? <div className="actions">{t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)}</div> : null} />
-      <ScanDevTools tenantId={account.tenantId} runner={runner} snapshot={lastScan?.snapshot ?? null} />
+      <ScanDevTools tenantId={account.tenantId} scan={runner} snapshot={lastScan?.snapshot ?? null} />
     </>
   )
 }

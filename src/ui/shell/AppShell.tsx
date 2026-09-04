@@ -2,29 +2,36 @@
 // hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
 // "Next" framing. Signed out, the header is the wordmark and the theme control;
 // signed in it adds the Today, Plan and Export tabs (enabled once a scan
-// exists) and the Account menu. No scan control and no scan age: the scan runs
-// from Connect, which alone shows the tenant and when it was scanned
-// (docs/design/connect-mockup.html). The brand links to Connect.
+// exists) and the Account menu. No scan control and no scan age in the header:
+// the scan runs from any page's own button (ui/actions.ts), Connect's tile 3
+// shows its progress, and every other page shows one line under the header
+// while it runs, pauses or fails. Connect alone shows the tenant and when it
+// was scanned (docs/design/connect-mockup.html). The brand links to Connect.
 import { useEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { ReactNode } from 'react'
-import { forgetTenant } from '../../graph/collect/cache.ts'
-import { clearAuthCache, signOut } from '../../graph/auth.ts'
 import { fillText } from '../../content/render.ts'
 import { app, pages, planner } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demoMode.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
+import { lowerFirst } from '../../copy/statements.ts'
 import { Button, LinkButton } from '../components/index.ts'
 import { RingMark } from '../components/Ring.tsx'
+import { forgetTenant, signOut, stopScan } from '../actions.ts'
+import { useAction } from '../useAction.ts'
+import { useSession } from '../session.ts'
+import { PausedNotice, laneOf } from '../scan/ScanProgress.tsx'
+import { elapsedLabel } from '../format.ts'
 import { PLAN_HREF, STEP_LINK, resolveHash } from './routes.ts'
 import type { Route } from './routes.ts'
 
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
 export type { Route } from './routes.ts'
 
-// Pages whose main content is a table read better with the wider cap.
-const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'how'])
+// Pages whose main content is a table read better with the wider cap. Today's
+// content column is the app's page width; its rungs and its table span it.
+const WIDE_ROUTES = new Set<Route>(['inventory', 'how'])
 
 export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 
@@ -100,6 +107,8 @@ function useTheme(): [string, () => void] {
 }
 
 const SHELL = app.shell
+const CONNECT = app.connect
+const SCAN_WORDS = (pages.connect as unknown as { scan: { scanning: { state: string; stop: string } } }).scan.scanning
 
 function Tab({ href, active, enabled, children }: { href: string; active: boolean; enabled: boolean; children: ReactNode }) {
   if (!enabled) {
@@ -116,9 +125,11 @@ function Tab({ href, active, enabled, children }: { href: string; active: boolea
   )
 }
 
+/** The Account menu: Sign out and Forget this tenant (ui/actions.ts); an error renders in the menu, under the button that raised it. */
 function AccountMenu({ account }: { account: AccountInfo }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { run, error } = useAction()
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
@@ -142,27 +153,45 @@ function AccountMenu({ account }: { account: AccountInfo }) {
       </button>
       {open && (
         <div className="menu-list" role="menu">
-          <Button variant="tertiary" role="menuitem" onClick={() => void signOut()}>
+          <Button variant="tertiary" role="menuitem" onClick={() => run(signOut())}>
             {SHELL.signOut}
           </Button>
-          <Button
-            variant="tertiary"
-            role="menuitem"
-            title={SHELL.forgetTooltip}
-            onClick={() => {
-              void forgetTenant(account.tenantId)
-                .catch(() => {})
-                .then(() => {
-                  // Clear MSAL's own local cache too, so forgetting leaves no trace
-                  // even after the sign-in button warmed MSAL up (prompt 50.1 item 7).
-                  return clearAuthCache().then(() => signOut())
-                })
-            }}
-          >
+          <Button variant="tertiary" role="menuitem" title={SHELL.forgetTooltip} onClick={() => run(forgetTenant())}>
             {SHELL.forget}
           </Button>
+          {error && <p className="quiet menu-error">{error}</p>}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * The scan in flight, on every page but Connect (whose tile 3 carries it): one
+ * line under the header with the lane and the elapsed time and Stop; paused,
+ * the Sign in again notice; failed, why, until the next scan.
+ */
+function ScanLine({ route }: { route: Route }) {
+  const { scan } = useSession()
+  if (route === 'connect' || scan.state === 'idle' || scan.state === 'done') return null
+  if (scan.state === 'failed') {
+    return (
+      <p className="scan-line" role="status">
+        {fillText(CONNECT.failed, { why: scan.error ?? '' })}
+      </p>
+    )
+  }
+  const { lane } = laneOf(scan)
+  const elapsed = elapsedLabel(scan.startedAt ?? scan.nowTick, scan.nowTick)
+  return (
+    <div className="scan-line" role="status">
+      <span>{fillText(SCAN_WORDS.state, { lane: lowerFirst(lane), elapsed })}</span>
+      {scan.state === 'running' && (
+        <Button variant="tertiary" onClick={stopScan}>
+          {SCAN_WORDS.stop}
+        </Button>
+      )}
+      {scan.state === 'paused' && <PausedNotice />}
     </div>
   )
 }
@@ -225,6 +254,7 @@ export function AppShell({
           {demoWeek2 ? SHELL.demoBannerWeek2 : SHELL.demoBanner} · <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
         </p>
       )}
+      {signedIn && <ScanLine route={route} />}
       <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
         {signedIn && (
           <div className="print-only muted">

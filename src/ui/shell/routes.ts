@@ -103,7 +103,9 @@ export function todayHref(show: string): string {
   return show === 'all' ? '#/today' : `#/today/${show}`
 }
 
-/** Where a finished scan lands: the step that asked for it, otherwise the Plan. */
+/** Where a finished scan lands: the page that asked for it (a step's hash opens the step, Today keeps its filter), otherwise the Plan. */
 export function afterScanHref(returnTo: string | null | undefined): string {
-  return returnTo && stepFromPlanHash(returnTo) !== null ? returnTo : PLAN_HREF
+  if (!returnTo) return PLAN_HREF
+  const { route, redirect } = resolveHash(returnTo)
+  return route !== 'home' && redirect === null ? returnTo : PLAN_HREF
 }

@@ -23,6 +23,9 @@ import { useAppliedMapping } from './planData.ts'
 import { showFromTodayHash, todayHref } from '../shell/routes.ts'
 import { Button, DataTable, InfoTip, PageTip } from '../components/index.ts'
 import type { Column } from '../components/index.ts'
+import { scan } from '../actions.ts'
+import { useAction } from '../useAction.ts'
+import { W as CONNECT_WORDS } from '../scan/connectView.ts'
 
 type TodayCopy = { h1: string; adminsOnly: string; columns: string[]; notAPerson: string; inventory: string; tip: string }
 const T = pages.today as unknown as TodayCopy
@@ -40,6 +43,8 @@ function RungBadge({ rung }: { rung: Rung | null }) {
 export function Today({ snapshot }: { snapshot: TenantSnapshot }) {
   // The population's mapping (the detected emergency and service accounts, and every saved decision): the Plan's and Connect's.
   const mapping = useAppliedMapping(snapshot)
+  // Scan again, beside the heading (ui/actions.ts): the scan's line shows under the header, and it returns here with the filter kept.
+  const again = useAction()
   const view = useMemo(() => (mapping ? todayView(snapshot, snapshot.asOf, mapping) : null), [snapshot, mapping])
   const [query, setQuery] = useState('')
   const [show, setShow] = useState<ShowKey>(() => showKeyOf(showFromTodayHash(window.location.hash)) ?? 'all')
@@ -92,10 +97,21 @@ export function Today({ snapshot }: { snapshot: TenantSnapshot }) {
     { key: 'evidence', header: T.columns[3], csv: (r) => todayEvidenceText(r), render: (r) => todayEvidenceText(r) },
   ]
 
+  const heading = (
+    <div className="page-head">
+      <h1>{T.h1}</h1>
+      <span className="page-head-actions">
+        <Button variant="tertiary" onClick={() => again.run(scan(todayHref(show)))}>
+          {CONNECT_WORDS.scan.complete.again}
+        </Button>
+        {again.error && <span className="quiet">{again.error}</span>}
+      </span>
+    </div>
+  )
   if (!view) {
     return (
       <section className="surface today">
-        <h1>{T.h1}</h1>
+        {heading}
         <p className="reason">{app.shell.loading}</p>
       </section>
     )
@@ -104,7 +120,7 @@ export function Today({ snapshot }: { snapshot: TenantSnapshot }) {
   const pct = (n: number): string => (facts.active > 0 ? `${Math.round((n / facts.active) * 100)}%` : '0%')
   return (
     <section className="surface today">
-      <h1>{T.h1}</h1>
+      {heading}
       <p className="line ledger">
         {ledgerText(facts)} <span className="quiet">{window_}</span>
       </p>
