@@ -1,5 +1,5 @@
 // Prompt 52 Part 5: Start the plan (target-state §5, §9). Until pressed, every
-// visit proposes dates from today and the header carries the start note; pressing
+// visit proposes dates from today under the Start date field; pressing
 // writes the start date to the plan file and the header's first line becomes the
 // started form; later scans update statuses and evidence but never move the
 // anchored start. Changing the start afterwards is Plan settings.
@@ -23,8 +23,9 @@ test('the header line has three branches, each a content string: proposed, canno
   assert.equal(headerLine1({ ...base, finish: FINISH, startedFrom: START }), `23 steps · 5 done · started ${absoluteDate(START)} · finishes ${absoluteDate(FINISH)}`)
   // A started plan that cannot finish still says what holds it, never a hole.
   assert.equal(headerLine1({ ...base, finish: null, startedFrom: START }), '23 steps · 5 in place · cannot finish until 2 device steps wait for device readiness')
-  const P = pages.plan as unknown as { startControl: string; startNote: string }
-  assert.deepEqual(startControl(), { label: P.startControl, note: P.startNote })
+  // The control carries its label alone: the note under it left with docs/design/mockups/plan-top-v2.html.
+  const P = pages.plan as unknown as { startControl: string }
+  assert.deepEqual(startControl(), { label: P.startControl })
   assert.equal(startControl().label, 'Start the plan')
 })
 
