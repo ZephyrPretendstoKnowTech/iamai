@@ -13,6 +13,7 @@ import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, listCountVars, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { hasBaselineConflict } from '../../roadmap/baselineConflict.ts'
+import { unimplementableReason } from '../../roadmap/operations.ts'
 import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
@@ -128,10 +129,11 @@ export function ContentStep({
   // implementationOffered). What the step says instead: the objects it waits on
   // and the steps that create them, or — for a goal already in place, which has
   // nothing to create — that there is nothing to do but keep it.
-  const suppressed = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
-  const waiting = suppressed && missingObjects(step).length > 0
-  const unmatched = suppressed && !waiting && step.action.unmatchedPair === true
-  const inPlace = suppressed && !waiting && !unmatched && step.status === 'done' && !step.action.json
+  const reason = cs.kind === 'policy' ? unimplementableReason(step) : null
+  const suppressed = cs.kind === 'policy' && !implementationOffered(step)
+  const waiting = reason === 'missing-object'
+  const unmatched = reason === 'unmatched-pair'
+  const inPlace = suppressed && reason === null && step.status === 'done' && !step.action.json
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
   // The content's leading "before" lines (a setting to change before the policy
@@ -238,7 +240,7 @@ export function ContentStep({
         (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...(hasSteps ? (w.steps as unknown[]).map((l) => <T s={l} ex={ex} />) : [])].map((node, i) => <li key={i}>{node}</li>)}</ol>
       )}
 
-      {!waiting && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
+      {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
         <>
           <h3>Dates</h3>
           <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
@@ -249,7 +251,7 @@ export function ContentStep({
         // Expand the shared policy/change done-when placeholders (a policy in
         // report-only gets its two gates with today's numbers), then drop any
         // line with a hole; the heading appears only if a line survives (§8.7).
-        const dw = waiting ? [] : doneWhenTemplates(step, (cs.doneWhen || []) as unknown[]).filter((x: unknown) => whole(x, ex))
+        const dw = reason !== null ? [] : doneWhenTemplates(step, (cs.doneWhen || []) as unknown[]).filter((x: unknown) => whole(x, ex))
         if (dw.length === 0) return null
         return (
           <>
@@ -259,7 +261,7 @@ export function ContentStep({
         )
       })()}
 
-      {!waiting && cs.ifWrong && whole(cs.ifWrong, ex) && (
+      {reason === null && cs.ifWrong && whole(cs.ifWrong, ex) && (
         <>
           <h3>If it goes wrong</h3>
           <p className="line"><T s={cs.ifWrong} ex={ex} /></p>
@@ -274,7 +276,7 @@ export function ContentStep({
 
       {(() => {
         // The email as the exports say it (stepExport.ts commsFor): the body keyed on the tenant's state, the extra lines only when whole.
-        const comms = waiting ? null : commsFor(cs, ex as Record<string, unknown>)
+        const comms = reason !== null ? null : commsFor(cs, ex as Record<string, unknown>)
         if (!comms) return null
         const text = [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n')
         return (

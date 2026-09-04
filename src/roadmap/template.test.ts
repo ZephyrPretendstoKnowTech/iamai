@@ -58,7 +58,7 @@ test('item 12: every goal × implementation renders Do it from the template with
       assert.ok(grants + sessions >= 1, `${goal.id}: at least one grant or session control`)
       assert.equal(parsed.state, 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only`)
       assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
-      assert.match(powershellFor([{ mode: 'create', policyId: null, body: parsed }]), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
+      assert.match(powershellFor([{ sourceName: goal.id, mode: 'create', policyId: null, body: parsed }]), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
     }
   }
 })

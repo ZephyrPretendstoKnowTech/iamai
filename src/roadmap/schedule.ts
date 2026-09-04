@@ -20,6 +20,7 @@ import { fillText } from '../content/render.ts'
 
 const CRITICAL = engine.critical
 import { absoluteDate } from '../copy/dates.ts'
+import { unimplementableReason } from './operations.ts'
 import type { Step } from './types.ts'
 
 export type WaveSchedule = {
@@ -234,7 +235,16 @@ export function nextWorkingDay(fromIso: string): string {
   return toWeekday(addDays(fromIso.slice(0, 10) + 'T12:00:00.000Z', 1))
 }
 
-const isWork = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped'
+/**
+ * A policy step with nothing to run is not work the plan can place: an object it
+ * names is missing, the plan cannot tell which tenant policy is which half of a
+ * pair, or the baseline contradicts itself. It gets no wave, no start, no
+ * report-only date and no ring dates until the thing it waits on is done
+ * (roadmap/operations.ts implementationOffered). Every other step is scheduled
+ * as before.
+ */
+const nothingToRun = (s: Step): boolean => (s.kind === 'create' || s.kind === 'adjust') && unimplementableReason(s) !== null
+const isWork = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped' && !nothingToRun(s)
 const isEnforcement = (s: Step): boolean => isWork(s) && (s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce')
 
 /** ISO week key (Monday-based) for the weekly cap. */
@@ -662,6 +672,10 @@ export function buildSchedule(
   // ---- Waves read back from the ring dates: one wave per enforcement start week ----
   const waveOf: Record<string, number> = {}
   const waves: WaveSchedule[] = []
+  // A policy the plan cannot write yet is in no enforcement wave: it has no
+  // start, no report-only date, no ring dates and no enforcement event. It stays
+  // in the foundation wave so the plan still shows it — a step in no wave at all
+  // renders nowhere — waiting beside the Preparation work it needs.
   const day0Steps = steps.filter((s) => !isEnforcement(s)).map((s) => s.id)
   for (const id of day0Steps) waveOf[id] = 0
   waves.push({ wave: 0, phase: 0, phases: [0], start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })

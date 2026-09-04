@@ -38,13 +38,9 @@ export type Evidence = {
  * the JSON, the PowerShell and the download all describe this operation — its
  * mode, its target and its body — and nothing else.
  */
-export type PolicyOperation = {
+type PolicyOperationBase = {
   /** The baseline's own name for the policy, so a merged goal can label Policy A and Policy B. */
   sourceName: string
-  /** Create a new policy, or update the tenant policy this operation names. */
-  mode: 'create' | 'update'
-  /** The tenant policy an update submits to; null for a create. */
-  policyId: string | null
   /**
    * The exact Graph request body to submit: the whole policy for a create, only
    * the fields that change for an update. Every field this body does not carry
@@ -66,6 +62,14 @@ export type PolicyOperation = {
 }
 
 /**
+ * A policy IAMAI writes: a new one, naming no tenant policy, or a change to the
+ * one tenant policy it names. The two shapes are distinct so a mode can never
+ * disagree with a target — an update without a policy is not an operation at
+ * all, and roadmap/operations.ts refuses it rather than creating something.
+ */
+export type PolicyOperation = (PolicyOperationBase & { mode: 'create'; policyId?: null }) | (PolicyOperationBase & { mode: 'update'; policyId: string })
+
+/**
  * The step's operations: one per policy the baseline uses for the goal, in the
  * baseline's order. `Action.json` is these operations' bodies and `Action.missing`
  * gates every channel that would run them.
@@ -74,7 +78,7 @@ export type StepResolution = {
   /** One entry per policy the baseline uses for the goal, in the map's order. */
   policies: PolicyOperation[]
   /** The tenant objects the resolution used, so an instruction names the object the body actually holds. */
-  tenant: { exclusionsGroupId: string | null; serviceAccountsGroupId: string | null }
+  tenant: { exclusionsGroupId: string | null; serviceAccountsGroupId: string | null; emergencyIds?: string[] }
 }
 
 export type Action = {

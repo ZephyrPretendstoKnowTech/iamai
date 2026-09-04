@@ -40,7 +40,9 @@ test('the demo has a Cleanup phase: dated after the last enforcement, one workin
 })
 
 test('the finish date is the end of the last phase, Cleanup included; a held plan stays undated', () => {
-  const r = runFixture(fixture('demo'))
+  // Week two: its policies name nothing the tenant lacks, so they are on the
+  // calendar. A tenant whose Preparation work is still to do has nothing dated.
+  const r = runFixture(fixture('demo-week2'))
   const c = r.schedule.cleanup!
   const without = planFinish(r.steps)
   const withCleanup = planFinish(r.steps, c.end)

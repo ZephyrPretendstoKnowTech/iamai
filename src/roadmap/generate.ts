@@ -7,6 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
+import { isValidOperation, unimplementableReason } from './operations.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
@@ -244,9 +245,14 @@ const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], Cha
   'report-only': 'state',
 }
 
-/** The fields an update submits: the whole policy narrowed to the sections that change. */
+/**
+ * The fields an update submits: the whole policy narrowed to the sections that
+ * change, and nothing else. Not the description — the instruction says every
+ * setting it does not list is left as it is, and a description the person never
+ * saw listed would be one of them.
+ */
 function patchOf(body: RawPolicy, sections: ReadonlySet<ChangedSection>): RawPolicy {
-  const patch: RawPolicy = { description: body.description }
+  const patch: RawPolicy = {}
   const conditions = (body.conditions ?? {}) as RawPolicy
   if (sections.has('grantControls')) patch.grantControls = body.grantControls
   if (sections.has('sessionControls')) patch.sessionControls = body.sessionControls
@@ -311,22 +317,29 @@ export function buildCreateAction(
     const whole = implementable(artifact(answered, p), p.resolved.unresolved)
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
     const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p), p.resolved.unresolved).policy : undefined
-    const update = p.target != null
-    operations.push({
-      sourceName: p.sourceName,
-      mode: update ? 'update' : 'create',
-      policyId: p.target?.policyId ?? null,
-      body: update ? patchOf(whole.policy, sections) : whole.policy,
-      baseline: wholeBaseline ? (update ? patchOf(wholeBaseline, sections) : wholeBaseline) : undefined,
-      // The whole policy an update is working towards: read for explanation and
-      // impact, never submitted.
-      target: update ? whole.policy : undefined,
-    })
+    const target = p.target ?? null
+    operations.push(
+      target
+        ? {
+            sourceName: p.sourceName,
+            mode: 'update',
+            policyId: target.policyId,
+            body: patchOf(whole.policy, sections),
+            baseline: wholeBaseline ? patchOf(wholeBaseline, sections) : undefined,
+            // The whole policy the change is working towards: read for
+            // explanation and impact, never submitted.
+            target: whole.policy,
+          }
+        : { sourceName: p.sourceName, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline },
+    )
   }
+  // `json` is a projection of the operations, for the plan file and the exports;
+  // the channels read the operations themselves (roadmap/operations.ts). It is
+  // written only when there is something to run: every operation valid, and
+  // nothing the policy names missing from the tenant.
+  const runnable = missing.length === 0 && operations.length > 0 && operations.every(isValidOperation)
   const bodies = operations.map((o) => o.body)
-  // One policy is one body; a goal the baseline implements with two is both, in
-  // the baseline's order. PowerShell reads the same shape (a block per operation).
-  const json = missing.length > 0 ? null : JSON.stringify(bodies.length === 1 ? bodies[0] : bodies, null, 2)
+  const json = runnable ? JSON.stringify(bodies.length === 1 ? bodies[0] : bodies, null, 2) : null
   const kind = operations.some((o) => o.mode === 'update') ? 'adjust' : 'create'
   return { kind, summary: [], json, portalSteps: [], missing, resolution: { policies: operations, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } }
 }
@@ -916,7 +929,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The tenant objects the resolution used travel with the result, so an
     // instruction names the object the body actually holds rather than looking
     // one up in the mapping again.
-    if (action.resolution) action.resolution = { ...action.resolution, tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId } }
+    if (action.resolution) action.resolution = { ...action.resolution, tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId, emergencyIds: [...mapping.breakGlassUserIds] } }
 
 
     // Named dependencies (prompt 12 §B).
@@ -1271,7 +1284,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     activeUsers: activeTotal,
     ...indexes,
   }
-  for (const s of steps) s.rings = proposeRings(s, ringCtx)
+  // A policy step with nothing to run gets no rings either: the plan does not
+  // date a rollout for a policy it cannot write (roadmap/operations.ts).
+  for (const s of steps) s.rings = (s.kind === 'create' || s.kind === 'adjust') && unimplementableReason(s) !== null ? [] : proposeRings(s, ringCtx)
 
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
   const rhythm = tenantRhythm(snapshot, mapping.displayTimeZone)

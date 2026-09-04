@@ -87,6 +87,7 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
     exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', exclusionsGroup),
     exclusionsGroupId,
     serviceAccountsGroupId,
+    emergencyIds: used.emergencyIds ?? [],
   }
 }
 
