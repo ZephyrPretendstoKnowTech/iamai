@@ -77,8 +77,8 @@ test('for every policy step, the three Do it tabs differ and the PowerShell carr
   assert.ok(seen >= 10, `policy steps checked (${seen})`)
   // Two bodies are two labelled blocks.
   const two = powershellFor([
-    { sourceName: 'A', mode: 'create', policyId: null, body: { displayName: 'A' } },
-    { sourceName: 'B', mode: 'create', policyId: null, body: { displayName: 'B' } },
+    { sourceName: 'A', mode: 'create', policyId: null, body: { displayName: 'A', conditions: {}, grantControls: { builtInControls: ['mfa'] } } },
+    { sourceName: 'B', mode: 'create', policyId: null, body: { displayName: 'B', conditions: {}, grantControls: { builtInControls: ['mfa'] } } },
   ])
   assert.match(two, /# Policy A\n\$bodyA = @'/)
   assert.match(two, /# Policy B\n\$bodyB = @'/)

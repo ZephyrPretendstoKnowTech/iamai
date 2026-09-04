@@ -34,13 +34,33 @@ function targetAgrees(op: PolicyOperation): boolean {
   return agrees(target, op.body)
 }
 
+/**
+ * True when a create's body is a policy Graph would accept: a name, the users
+ * and resources it applies to, and something to do about them. A body missing
+ * any of those is not a policy anyone could submit, so it is not an operation.
+ */
+function createIsSubmittable(body: Record<string, unknown>): boolean {
+  if (typeof body.displayName !== 'string' || body.displayName.trim().length === 0) return false
+  if (!isObject(body.conditions)) return false
+  const controls = body.grantControls
+  const session = body.sessionControls
+  return (isObject(controls) && Object.keys(controls).length > 0) || (isObject(session) && Object.keys(session).length > 0)
+}
+
 /** True when the operation says exactly one thing: create this policy, or change that one. */
 export function isValidOperation(op: PolicyOperation | null | undefined): op is PolicyOperation {
   if (!op || typeof op !== 'object') return false
   if (typeof op.sourceName !== 'string') return false
   if (!isObject(op.body)) return false
-  if (op.mode === 'create') return op.policyId === null || op.policyId === undefined
-  if (op.mode === 'update') return typeof op.policyId === 'string' && op.policyId.length > 0 && Object.keys(op.body).length > 0 && targetAgrees(op)
+  if (op.mode === 'create') return (op.policyId === null || op.policyId === undefined) && createIsSubmittable(op.body)
+  if (op.mode === 'update') {
+    if (typeof op.policyId !== 'string' || op.policyId.length === 0) return false
+    if (Object.keys(op.body).length === 0) return false
+    // The target is the policy this update names, and no other: the id it
+    // carries is the id the request is submitted to.
+    if (!isObject(op.target) || op.target.id !== op.policyId) return false
+    return targetAgrees(op)
+  }
   return false
 }
 
@@ -68,19 +88,48 @@ export function isOpenPolicy(step: PolicyStep): boolean {
 }
 
 /**
+ * What a step's policy work is, in one answer:
+ *
+ * - `implementable`: operations to run, and nothing stopping them;
+ * - `unavailable`: an open policy the plan cannot write, and why;
+ * - `preserved`: a goal already in place — nothing to write, and nothing wrong;
+ * - `not-policy`: a step that describes no policy, or one set aside.
+ *
+ * Everything else in this module is a reading of this one answer. Being in place
+ * never covers up a reason: a goal whose baseline contradicts itself, whose
+ * objects are missing, whose pair cannot be matched, or whose operations do not
+ * hold together is unavailable whether or not the tenant already has something.
+ */
+export type PolicyResult =
+  | { kind: 'implementable'; operations: PolicyOperation[] }
+  | { kind: 'unavailable'; reason: UnavailableReason }
+  | { kind: 'preserved' }
+  | { kind: 'not-policy' }
+
+export function policyResult(step: PolicyStep): PolicyResult {
+  const kind = step.kind ?? step.action.kind
+  if (kind !== 'create' && kind !== 'adjust') return { kind: 'not-policy' }
+  if (step.status === 'skipped') return { kind: 'not-policy' }
+  if (hasBaselineConflict(step.goalId)) return { kind: 'unavailable', reason: 'baseline-conflict' }
+  if (step.action.unmatchedPair === true) return { kind: 'unavailable', reason: 'unmatched-pair' }
+  if ((step.action.missing ?? []).length > 0) return { kind: 'unavailable', reason: 'missing-object' }
+  const declared = step.action.resolution?.policies ?? []
+  const valid = validOperations(step.action)
+  if (declared.length > 0 && valid.length === 0) return { kind: 'unavailable', reason: 'no-operation' }
+  if (valid.length === 0) return step.status === 'done' ? { kind: 'preserved' } : { kind: 'unavailable', reason: 'no-operation' }
+  return step.status === 'done' ? { kind: 'preserved' } : { kind: 'implementable', operations: valid }
+}
+
+/**
  * Why an open policy cannot be written as it stands, or null when nothing stops
- * it. Four reasons, and the plan treats all four alike: nothing is scheduled for
- * the step, it takes no date from the wave it sits in, it has no rings, no
- * events, no completion criteria, no rollback and no announcement, and it says
- * what to do about it instead. A goal already in place is never one of them.
+ * it. The plan treats every reason alike: nothing is scheduled for the step, it
+ * takes no date from the wave it sits in, it has no rings, no events, no
+ * completion criteria, no rollback and no announcement, and it says what to do
+ * about it instead.
  */
 export function unavailableReason(step: PolicyStep): UnavailableReason | null {
-  if (!isOpenPolicy(step)) return null
-  if (hasBaselineConflict(step.goalId)) return 'baseline-conflict'
-  if (step.action.unmatchedPair === true) return 'unmatched-pair'
-  if ((step.action.missing ?? []).length > 0) return 'missing-object'
-  if (validOperations(step.action).length === 0) return 'no-operation'
-  return null
+  const result = policyResult(step)
+  return result.kind === 'unavailable' ? result.reason : null
 }
 
 /**
@@ -92,13 +141,9 @@ export function hasMalformedOperations(step: PolicyStep): boolean {
   return (step.action.resolution?.policies ?? []).length > 0 && validOperations(step.action).length === 0
 }
 
-/**
- * True when the goal is already in place: nothing to write, and nothing wrong.
- * A step carrying operations that failed validation is not preserved — it is
- * broken, and says so.
- */
+/** True when the goal is already in place: nothing to write, and nothing wrong. */
 export function isPreserved(step: PolicyStep): boolean {
-  return step.status === 'done' && (step.action.resolution?.policies ?? []).length === 0
+  return policyResult(step).kind === 'preserved'
 }
 
 /**
@@ -121,12 +166,13 @@ export function isPreserved(step: PolicyStep): boolean {
  * not an implementation.
  */
 export function implementationOffered(step: PolicyStep): boolean {
-  return isOpenPolicy(step) && validOperations(step.action).length > 0 && unavailableReason(step) === null
+  return policyResult(step).kind === 'implementable'
 }
 
 /** The operations a step actually runs: its own, when it offers an implementation at all. */
 export function operationsOf(step: PolicyStep): PolicyOperation[] {
-  return implementationOffered(step) ? validOperations(step.action) : []
+  const result = policyResult(step)
+  return result.kind === 'implementable' ? result.operations : []
 }
 
 /** The bodies those operations submit: one body, or one per policy in the baseline's order. */

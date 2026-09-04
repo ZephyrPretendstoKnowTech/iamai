@@ -34,6 +34,9 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
   const waiting = new Map<string, { measure: string; count: number; family: Step['readiness']['family'] }>()
   for (const s of steps) {
     if (s.status === 'done' || s.status === 'skipped') continue
+    // A policy the plan cannot write is neither dated nor waiting on readiness:
+    // it waits on the thing it names, which is not a number that can rise.
+    if (unavailableReason(s) !== null) continue
     if (heldByReadiness(s)) {
       const measure = READINESS_MEASURE[s.readiness.family] ?? 'readiness'
       const w = waiting.get(measure) ?? { measure, count: 0, family: s.readiness.family }
@@ -41,9 +44,6 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
       waiting.set(measure, w)
       continue
     }
-    // A policy the plan cannot write dates nothing, so it does not end the plan —
-    // whatever ring dates a step loaded from an older plan file still carries.
-    if (unavailableReason(s) !== null) continue
     const end = lastRingEnd(s)
     if (end && (finish === null || end > finish)) finish = end
   }

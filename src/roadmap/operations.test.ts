@@ -5,7 +5,11 @@
 // and an operation that does not say exactly one thing is no operation at all.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { finalTargets, hasMalformedOperations, isPreserved, isValidOperation, operationsOf, implementationOffered, unavailableReason, validOperations } from './operations.ts'
+import { finalTargets, hasMalformedOperations, isPreserved, isValidOperation, operationsOf, implementationOffered, policyResult, unavailableReason, validOperations } from './operations.ts'
+import { promptsPeople, wouldStrand } from './strand.ts'
+import { batchClassOf } from './schedule.ts'
+import { undatedRows } from '../ui/surfaces/planRows.ts'
+import { buildSchedule } from './schedule.ts'
 import type { PolicyOperation, Step } from './types.ts'
 import { jsonOffered, policyJson, policyJsonText, stepOperations } from '../ui/surfaces/stepJson.ts'
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
@@ -24,8 +28,9 @@ import { buildIcs } from './ics.ts'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const CREATE: PolicyOperation = { sourceName: 'author', mode: 'create', policyId: null, body: { displayName: 'A' } }
-const UPDATE: PolicyOperation = { sourceName: 'author', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { displayName: 'the tenant’s own', state: 'enabled' } }
+/** A create Graph would accept: a name, who it applies to, and something to do about them. */
+const CREATE: PolicyOperation = { sourceName: 'author', mode: 'create', policyId: null, body: { displayName: 'A', conditions: { users: { includeUsers: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+const UPDATE: PolicyOperation = { sourceName: 'author', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { id: 'p-1', displayName: 'the tenant’s own', state: 'enabled' } }
 
 /** A step carrying the operations given, with whatever `action.json` the caller wants to plant. */
 const stepWith = (ops: PolicyOperation[], json: string | null): Step =>
@@ -86,8 +91,8 @@ test('a stale action.json cannot make the JSON or the download disagree with the
 })
 
 test('two operations are two bodies, in the step’s order, on every channel', () => {
-  const a: PolicyOperation = { sourceName: 'A', mode: 'create', policyId: null, body: { displayName: 'A' } }
-  const b: PolicyOperation = { sourceName: 'B', mode: 'update', policyId: 'p-b', body: { state: 'enabled' }, target: { displayName: 'B', state: 'enabled' } }
+  const a: PolicyOperation = { sourceName: 'A', mode: 'create', policyId: null, body: { displayName: 'A', conditions: { users: { includeUsers: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+  const b: PolicyOperation = { sourceName: 'B', mode: 'update', policyId: 'p-b', body: { state: 'enabled' }, target: { id: 'p-b', displayName: 'B', state: 'enabled' } }
   const step = stepWith([a, b], '{"displayName":"stale"}')
   assert.deepEqual(policyJson(step), [a.body, b.body])
   assert.equal(policyJsonText(step), JSON.stringify([a.body, b.body], null, 2))
@@ -383,12 +388,14 @@ test('an update leaves the tenant’s untouched fields alone, and every channel 
 })
 
 test('an update with no complete target, or a target its body contradicts, makes the whole step unavailable', () => {
-  const base: PolicyOperation = { sourceName: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { displayName: 'x', state: 'enabled' } }
+  const base: PolicyOperation = { sourceName: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { id: 'p-1', displayName: 'x', state: 'enabled' } }
   assert.equal(isValidOperation(base), true)
   const noTarget = { ...base, target: undefined } as PolicyOperation
   const emptyTarget = { ...base, target: {} } as PolicyOperation
-  const contradicted = { ...base, target: { displayName: 'x', state: 'enabledForReportingButNotEnforced' } } as PolicyOperation
-  for (const [label, op] of [['no target', noTarget], ['empty target', emptyTarget], ['target disagrees', contradicted]] as [string, PolicyOperation][]) {
+  const contradicted = { ...base, target: { id: 'p-1', displayName: 'x', state: 'enabledForReportingButNotEnforced' } } as PolicyOperation
+  const wrongIdentity = { ...base, target: { ...base.target, id: 'p-another' } } as PolicyOperation
+  const noIdentity = { ...base, target: { displayName: 'x', state: 'enabled' } } as PolicyOperation
+  for (const [label, op] of [['no target', noTarget], ['empty target', emptyTarget], ['target disagrees', contradicted], ['target names another policy', wrongIdentity], ['target names no policy', noIdentity]] as [string, PolicyOperation][]) {
     assert.equal(isValidOperation(op), false, label)
     const step = stepWith([op], '{"state":"enabled"}')
     assert.equal(unavailableReason(step), 'no-operation', label)
@@ -403,8 +410,8 @@ test('an update with no complete target, or a target its body contradicts, makes
 // ---- impact is the target's, not the family's ----
 
 test('the goal family never overrules a policy’s own final target', () => {
-  const quiet: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', grantControls: null, sessionControls: null } }
-  const denying: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+  const quiet: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', conditions: { users: { includeUsers: ['All'] } }, sessionControls: { persistentBrowser: null } } }
+  const denying: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', conditions: { users: { includeUsers: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
   const asStep = (op: PolicyOperation, family: string): Step =>
     ({ ...stepWith([op], '{}'), kind: 'create', status: 'ready', readiness: { family, percent: 100, lines: [] } }) as unknown as Step
   assert.equal(canDenyAccess(asStep(quiet, 'mfa')), false, 'a policy that denies nothing denies nothing, whatever its family says')
@@ -462,4 +469,150 @@ test('a contradictory baseline renders and exports one resolution action and not
   const view = stepExportView(step, ctx)
   assert.equal(view.whatToDo.length, 1, `one next action: ${view.whatToDo.join(' | ')}`)
   assert.match(view.whatToDo[0], /Both cannot be true/)
+})
+
+
+// ---- a create must be a policy Graph would accept ----
+
+test('an incomplete create is not an operation, and one bad member spoils the set', () => {
+  const whole = CREATE.body
+  const cases: [string, Record<string, unknown>][] = [
+    ['no name', { ...whole, displayName: '' }],
+    ['no conditions', { displayName: 'A', grantControls: { builtInControls: ['mfa'] } }],
+    ['nothing to do about them', { displayName: 'A', conditions: { users: { includeUsers: ['All'] } } }],
+    ['empty', {}],
+  ]
+  for (const [label, body] of cases) {
+    const op = { ...CREATE, body } as PolicyOperation
+    assert.equal(isValidOperation(op), false, label)
+    const step = stepWith([op], '{"displayName":"stale"}')
+    assert.equal(unavailableReason(step), 'no-operation', label)
+    assert.equal(jsonOffered(step), false, label)
+    assert.equal(stepPortalLines(step, { nameOf: (id) => id, policyName: 'x' }), null, label)
+    assert.equal(powershellFor(stepOperations(step)).trim(), 'Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess', label)
+  }
+  // One bad member in an otherwise good set takes the set with it.
+  const mixed = stepWith([CREATE, { ...CREATE, body: {} } as PolicyOperation], '{}')
+  assert.deepEqual(validOperations(mixed.action), [])
+  assert.equal(unavailableReason(mixed), 'no-operation')
+  assert.deepEqual(finalTargets(mixed), [])
+})
+
+// ---- the impact rules read the operation, never the family ----
+
+test('deny, prompt, strand and batching follow the policy, not the goal it is filed under', () => {
+  const asStep = (body: Record<string, unknown>, family: string): Step =>
+    ({ ...stepWith([{ sourceName: 'a', mode: 'create', policyId: null, body }], '{}'), kind: 'create', status: 'ready', readiness: { family, percent: 100, lines: [] }, evidence: { status: 'none', lines: [], affectedUserIds: [] }, population: { total: 3, active: 3, admins: 0, guests: 0, ids: ['u1', 'u2', 'u3'], activeIds: ['u1', 'u2', 'u3'], inScope: 3 } }) as unknown as Step
+  const users = { users: { includeUsers: ['All'] } }
+  const block = asStep({ displayName: 'b', conditions: users, grantControls: { operator: 'OR', builtInControls: ['block'] } }, 'mfa')
+  const mfa = asStep({ displayName: 'm', conditions: users, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }, 'block')
+  const strength = asStep({ displayName: 's', conditions: users, grantControls: { operator: 'OR', authenticationStrength: { id: 'x', displayName: 'Passkeys' } } }, 'other')
+  const device = asStep({ displayName: 'd', conditions: users, grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }, 'mfa')
+  // A block stops people; it asks nobody for anything, whatever its family says.
+  assert.equal(canDenyAccess(block), true)
+  assert.equal(promptsPeople(block), false, 'a block prompts nobody')
+  assert.equal(batchClassOf(block), 'other', 'and interrupts nobody’s sign-in method')
+  // A policy that asks for a method prompts, even filed under "block".
+  assert.equal(canDenyAccess(mfa), true)
+  assert.equal(promptsPeople(mfa), true)
+  assert.equal(batchClassOf(mfa), 'mfa')
+  // A phishing-resistant strength is a method change too, filed under "other".
+  assert.equal(promptsPeople(strength), true)
+  assert.equal(batchClassOf(strength), 'mfa')
+  // A device requirement is the other kind of interruption, filed under "mfa".
+  assert.equal(batchClassOf(device), 'deviceSession')
+  // The strand verdict follows the same reading.
+  const snapshot = { registrationDetails: [], sources: { registrationDetails: { status: 'ok' } }, users: [], config: {} } as never
+  const opts = { breakGlass: false, allowedCountries: [] }
+  assert.notEqual(wouldStrand(block, 'u1', snapshot, opts).reason, 'the step cannot deny access', 'a block is read for stranding')
+  const quiet = asStep({ displayName: 'q', conditions: users, sessionControls: { persistentBrowser: null } }, 'mfa')
+  assert.equal(canDenyAccess(quiet), false, 'a policy that does nothing denies nothing')
+  assert.equal(wouldStrand(quiet, 'u1', snapshot, opts).reason, 'the step cannot deny access')
+})
+
+// ---- a remapped strength with no name of its own ----
+
+test('a remapped strength with no authoritative name shows neither the author’s name nor its id', () => {
+  const AUTHOR = '42de22a7-5339-4a58-b560-28565d53b14d'
+  const TENANT = '00000000-9999-4000-8000-000000000043'
+  // Confirmed with no name of its own, and no row in the scan to read one from.
+  const record = { placeholder: AUTHOR, kind: 'authenticationStrength', group: 'placeholders' as const, resolvedId: TENANT, resolvedName: null, provenance: 'confirmed' as const, doesNotExist: false, validation: null }
+  const base = fixture('demo-week2')
+  const { r, ctx } = demoRun([], { records: { ...base.mapping.records, [AUTHOR]: record } })
+  const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant' && s.kind !== 'verify')!
+  assert.equal(implementationOffered(step), true)
+  const strength = ((policyJson(step) as Record<string, Record<string, Record<string, unknown>>>).grantControls).authenticationStrength
+  assert.equal(strength.id, TENANT, 'the operation carries the tenant’s id')
+  assert.equal(strength.displayName, undefined, 'and no name it cannot vouch for')
+  const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) ?? []
+  const grant = portal.find((l) => l.startsWith('Grant → '))
+  assert.ok(grant, JSON.stringify(portal))
+  assert.ok(!grant.includes('Modern MFA + TAP'), `never the author’s name: ${grant}`)
+  assert.ok(!grant.includes(TENANT), `never a raw id: ${grant}`)
+  assert.match(grant, /Require authentication strength: Multifactor authentication/, grant)
+  assert.ok(policyJsonText(step).includes(TENANT) && powershellFor(stepOperations(step)).includes(TENANT), 'the id is what the request carries')
+})
+
+// ---- one classification, and preservation never covers a reason ----
+
+test('done, in place, contradicted and broken are four different answers', () => {
+  const done = { ...stepWith([], null), status: 'done' } as unknown as Step
+  assert.deepEqual(policyResult(done), { kind: 'preserved' })
+  const doneConflicted = { ...stepWith([], null), status: 'done', goalId: 'admin-portals-protected' } as unknown as Step
+  assert.deepEqual(policyResult(doneConflicted), { kind: 'unavailable', reason: 'baseline-conflict' }, 'being in place does not settle a contradiction')
+  assert.equal(isPreserved(doneConflicted), false)
+  const doneMissing = { ...stepWith([], null), status: 'done' } as unknown as Step
+  doneMissing.action.missing = [{ token: 'g-1', stepId: 's-prereq-exclusion-group' }]
+  assert.deepEqual(policyResult(doneMissing), { kind: 'unavailable', reason: 'missing-object' })
+  const doneBroken = { ...stepWith([{ ...UPDATE, policyId: '' } as unknown as PolicyOperation], null), status: 'done' } as unknown as Step
+  assert.deepEqual(policyResult(doneBroken), { kind: 'unavailable', reason: 'no-operation' })
+  assert.equal(hasMalformedOperations(doneBroken), true)
+  const live = stepWith([CREATE], '{}')
+  assert.equal(policyResult(live).kind, 'implementable')
+  const notAPolicy = { ...stepWith([], null), kind: 'prerequisite' } as unknown as Step
+  assert.deepEqual(policyResult(notAPolicy), { kind: 'not-policy' })
+})
+
+test('an unavailable policy waiting on low readiness contributes no readiness wait and no finish', () => {
+  const held = {
+    ...stepWith([], null),
+    kind: 'create',
+    status: 'blocked',
+    readiness: { family: 'mfa', percent: 10, lines: [] },
+    blockers: [{ kind: 'readiness', label: 'readiness', binding: 'when MFA readiness reaches 90% (now 10%)' }],
+    rings: [{ name: 'r', plannedStart: '2026-10-01T00:00:00.000Z', plannedEnd: '2026-10-08T00:00:00.000Z', targeting: { kind: 'all', groupName: null, memberCount: 1, suggestedMemberIds: [], departments: [] } }],
+  } as unknown as Step
+  assert.equal(unavailableReason(held), 'no-operation')
+  const p = planFinish([held])
+  assert.equal(p.finish, null, 'it dates nothing')
+  assert.equal(p.waitingCount, 0, 'and it is not waiting on a number that can rise')
+})
+
+// ---- the schedule path itself ----
+
+test('a stale unavailable step goes through the schedule and comes out of every structure', () => {
+  // A real plan, with one step handed back as an older plan file might hand it:
+  // a body, its rings and its dates, and no operations at all.
+  const { r } = demoRun()
+  const liveStep = r.steps.find((s) => s.goalId === 'admin-session' && s.kind !== 'verify')!
+  assert.ok(liveStep.events && liveStep.rings.length > 0, 'it is dated to begin with')
+  const stale = { ...liveStep, action: { ...liveStep.action, json: '{"displayName":"a body from an older plan file"}', resolution: undefined } } as unknown as Step
+  assert.equal(unavailableReason(stale), 'no-operation')
+  const steps = r.steps.map((s) => (s.id === stale.id ? stale : s))
+  const schedule = buildSchedule(steps, r.schedule.start, 30)
+  // No schedule structure carries it, and the rest of the plan is placed.
+  assert.equal(schedule.waveOf[stale.id], undefined, 'no wave')
+  assert.ok(!schedule.waves.some((w) => w.stepIds.includes(stale.id)), 'in no wave’s steps')
+  assert.equal(schedule.startAt[stale.id], undefined, 'no start')
+  assert.equal(schedule.reportOnlyAt[stale.id], undefined, 'no report-only date')
+  assert.ok(Object.keys(schedule.startAt).length > 0, 'the rest of the plan is placed')
+  // No date, no calendar entry, no finish — whatever it still carries.
+  assert.equal(rowWhen(stale, schedule.waves[0]?.start ?? null), '', 'no row date')
+  assert.equal(planFinish([stale]).finish, null, 'no finish contribution')
+  const ics = buildIcs([stale], 'Contoso', 'plan-x', () => ({ title: 'Stale', why: '', whatToDo: [], doneWhen: [], ifWrong: null, dates: null }))
+  assert.ok(!ics.includes(stale.id), 'no calendar entry')
+  // And exactly one row, in the undated group.
+  const undated = undatedRows(steps, schedule.waves)
+  assert.equal(undated.filter((s) => s.id === stale.id).length, 1, 'exactly one undated row for it')
+  assert.ok(!schedule.waves.some((w) => w.stepIds.includes(stale.id)), 'and no second row under a wave')
 })
