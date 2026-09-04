@@ -148,7 +148,7 @@ export const ACCEPTANCE = [
   { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Prompted every few minutes: the browser is not signed in to a registered device; sign in to the device account.', mustNot: 'check the device clock' },
   { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'When several session policies apply, the shortest wins.' },
   { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'asks for your passkey or security key each time', mustNot: 'confirm with MFA each time' },
-  { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them have no passkey or key yet: {list:eligibleWithout}' },
+  { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them are not yet at Passkey or security key, proven: {list:eligibleWithout}' },
   { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'PIM for Groups and Azure resource roles can use the same authentication context.' },
   { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'People see two prompts when they set up a device: one to join, one to enrol.', mustNot: 'one extra prompt' },
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'A person with only Authenticator approval is not prompted but stopped, until they get a Temporary Access Pass' },

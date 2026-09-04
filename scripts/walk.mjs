@@ -453,8 +453,10 @@ async function walkFixture(fx) {
       if (/scanned|Scan to update the plan|Re-scan/.test(header)) add('P0', `${label}: the header carries a scan control or the scan's age: "${header}"`)
       if (route !== 'connect' && /\bscanned\b/i.test(text)) add('P0', `${label}: the page says scanned; only Connect shows when the tenant was scanned`)
       if (route === 'plan') {
+        // One header line (docs/design/mockups/plan-top-v2.html): the steps line; the second line is gone, and the tenant and the scan's age are Connect's.
         const lines = await evaluate(`[...document.querySelectorAll('main.page p.line')].map((p) => (p.textContent || '').replace(/\\s+/g, ' ').trim())`)
-        if (lines[1] !== 'Today shows where each person stands.') add('P0', `${label}: the Plan's second line reads "${lines[1]}"; Today shows where each person stands. (the tenant and the scan age are Connect's)`)
+        const stray = lines.find((l) => /Today shows where each person stands|from the scan|\bscanned\b/.test(l))
+        if (stray) add('P0', `${label}: the Plan's header carries a line that left: "${stray}" (the second line is gone; the tenant and the scan age are Connect's)`)
       }
       // The header's theme and Account controls are text, not button faces
       // (docs/design/connect-mockup.html's header): no border, no background, no padding.
@@ -789,7 +791,8 @@ async function walkFixture(fx) {
         // timestamp's: it renders once as the Scan tile's state, and the Plan
         // tile's "from the scan" carries the same words; nothing says scanned.
         const wantPlan = signedOut ? 'sample' : want === 'complete' ? 'ready' : want === 'gaps' ? 'last' : 'waiting'
-        const PLAN_STATES = { ready: /^Plan ready · from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
+        // The ready state carries the step counts once the plan has computed (docs/design/mockups/connect-v2.html).
+        const PLAN_STATES = { ready: /^Plan ready · (\d+ steps, \d+ done · )?from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
         if (t4) {
           if (!PLAN_STATES[wantPlan].test(t4.h2)) add('P0', `${label}: tile 4 reads "${t4.h2}"; Plan in the ${wantPlan} state`)
           if (wantPlan === 'ready' && !/\bdone\b/.test(t4.cls)) add('P0', `${label}: the ready Plan tile's badge does not carry the accent (${t4.cls})`)
@@ -839,7 +842,7 @@ async function walkFixture(fx) {
             if (t4.buttons.length !== 1) add('P0', `${label}: the ready Plan tile has ${t4.buttons.length} buttons; Open the plan alone`)
             const age = ((t3 ? t3.state : '').match(/^complete · (.+)$/) || [])[1]
             if (!age) add('P0', `${label}: the Scan tile's state does not read complete · N ago: "${t3 ? t3.state : ''}"`)
-            else if (t4.state !== `ready · from the scan ${age}`) add('P0', `${label}: the Plan tile reads "${t4.state}"; ready · from the scan ${age}, the Scan tile's age`)
+            else if (!new RegExp(`^ready · (\\d+ steps, \\d+ done · )?from the scan ${age.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`).test(t4.state)) add('P0', `${label}: the Plan tile reads "${t4.state}"; ready · N steps, N done · from the scan ${age}, the Scan tile's age`)
             // The age is the formatter's words: "this minute" for a fresh scan, "57 minutes ago", "3 days ago".
             const ageLines = (text.match(/\bcomplete · [^\n]+/g) || []).length
             if (ageLines !== 1) add('P0', `${label}: the scan's age line renders ${ageLines} times; once, as the Scan tile's state`)
