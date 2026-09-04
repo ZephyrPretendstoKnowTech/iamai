@@ -127,7 +127,7 @@ test('GetIAMAI: the first render equals the render after a no-change Save on eve
   const f = fixture('getiamai')
   const r0 = runFixture(f)
   const nameOf = (id: string): string => r0.input.names!.label(id)
-  const defaults = defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, operatorId: f.operatorId, now: f.snapshot.asOf })
+  const defaults = defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, now: f.snapshot.asOf })
   assert.ok(Object.keys(defaults).length >= 3, `the fixture detects defaults (${Object.keys(defaults).join(', ')})`)
   const first = applyStepDecisions(f.mapping, defaults, 'detected')
   const r1 = run(f, first)

@@ -10,7 +10,7 @@ import { GRAPH_SCOPES } from '../../graph/scopes.ts'
 import { SIGN_IN_SCOPES } from '../../copy/permissions.ts'
 import { classifyAuthError } from '../../graph/authError.ts'
 import { demoFacts } from '../demoFacts.ts'
-import { notPeopleIds, peopleCounts } from '../../derive/sets.ts'
+import { facts as factsOf } from '../../derive/facts.ts'
 import { demoTenant } from '../demo.ts'
 import { W, accountTile, planTile, scanTile, signInTile, tileStrings } from './connectView.ts'
 import type { SignInTile } from './connectView.ts'
@@ -137,7 +137,7 @@ test('tile 3 signed out: Scan after sign-in · about a minute for a small tenant
 test("tile 4 signed out: Plan after the scan, the sample tenant's four facts computed from the demo fixture, Open the sample plan (secondary)", () => {
   const facts = demoFacts()
   const d = demoTenant(false)
-  assert.equal(facts.people, peopleCounts(d.snapshot, d.snapshot.asOf, notPeopleIds(d.mapping)).active, 'people is the demo\'s active people, as the ready tile and Today count them')
+  assert.equal(facts.people, factsOf(d.snapshot, d.mapping).active, 'people is the demo\'s active people, as the ready tile and Today count them (derive/facts.ts)')
   assert.notEqual(facts.people, d.snapshot.users.length, 'never the directory\'s row count')
   assert.ok(facts.steps > 10 && facts.inPlace >= 0 && facts.inPlace <= facts.steps && facts.weeks >= 1, JSON.stringify(facts))
   const t = planTile({ kind: 'sample', facts })

@@ -278,7 +278,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   // ---- allowed countries ----
   'cty.atLeastOne': { what: 'At least one country is allowed.', why: 'An empty list blocks everyone, everywhere, including the person who set it.' },
   'cty.includesOperator': {
-    what: "The countries the signed-in operator has recently signed in from are included.",
+    what: 'The countries the admins have recently signed in from are included.',
     why: 'The first person locked out by a country policy is usually the person who wrote it.',
   },
   'cty.unknownCountries': { what: 'Sign-ins from unknown countries are not silently allowed.', why: 'Addresses that resolve to no country then pass a policy meant to name every country it allows.' },
@@ -365,7 +365,7 @@ export const FINDING = {
   locUnseen: (cidrs: string[]): string => `no sign-in in the window came from ${list(cidrs)}`,
 
   ctyNone: 'no country is allowed, which blocks everyone',
-  ctyMissingOperator: (countries: string[]): string => `the signed-in operator has signed in from ${list(countries)}, which the list leaves out`,
+  ctyMissingOperator: (countries: string[]): string => `admins have signed in from ${list(countries)}, which the list leaves out`,
   ctyUnknown: 'sign-ins from unknown countries are allowed',
   ctySeenMissing: (countries: string[]): string => `people signed in from ${list(countries)} in the window, and the list leaves them out`,
 

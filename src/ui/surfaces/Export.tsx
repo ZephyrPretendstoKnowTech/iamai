@@ -21,6 +21,7 @@ import { decisionsOf } from '../../roadmap/progress.ts'
 import type { PlanDecisions } from '../../roadmap/progress.ts'
 import { planIdFor } from '../../roadmap/generate.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
+import { facts } from '../../derive/facts.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
 import { savePlanRecord } from '../../graph/collect/cache.ts'
 import { saveMappingState } from '../../mapping/store.ts'
@@ -47,7 +48,7 @@ const S = app.shell
 
 export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null; account: AccountInfo | null }) {
   const operatorId = operatorIdOf(scan?.snapshot ?? null, account)
-  const data = usePlanData(scan, baseline, operatorId)
+  const data = usePlanData(scan, baseline)
   const [copied, setCopied] = useState<string | null>(null)
   const [showPrompts, setShowPrompts] = useState(false)
   const [bundleRedacted, setBundleRedacted] = useState(true)
@@ -101,7 +102,9 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const tenantName = (snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const planId = planIdFor(snapshot.tenantId)
   const operator = { userId: account.localAccountId, userPrincipalName: account.username }
-  const rollout = summarizeTenant(viability).rollout
+  // The verification window's people, from the one facts function (derive/facts.ts): still to set up is nothing set up or never used for MFA.
+  const tenantFacts = data.mapping ? facts(snapshot, data.mapping) : null
+  const toSetUp = tenantFacts ? tenantFacts.rungs[1] + tenantFacts.rungs[2] : 0
   const copy = (id: string, text: string): void => {
     void exportClipboard(text, REDACTED).then((ok) => {
       if (!ok) return
@@ -261,7 +264,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           baselinePin={baselineIndex.commit ?? null}
           steps={steps}
           schedule={schedule}
-          verificationNote={rollout.toSetUp > 0 ? `${rollout.toSetUp} of ${rollout.active} active people still to set up.` : 'Everyone active is ready.'}
+          verificationNote={tenantFacts && toSetUp > 0 ? `${toSetUp} of ${tenantFacts.active} active people still to set up.` : 'Everyone active is ready.'}
           scanAt={scan.at}
           coverage={coverage}
           goalMap={c.goalMap}

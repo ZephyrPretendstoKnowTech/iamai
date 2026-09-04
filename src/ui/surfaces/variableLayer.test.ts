@@ -59,7 +59,7 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   const f = allFixtures().find((x) => x.name === 'demo')!
   const run = runFixture(f)
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
-  const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: run.input.operatorUserId ?? null })
+  const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
   // Today's ladder over the same people: the campaign's groups are its rungs (derive/ladder.ts).
   const tv = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
   assert.equal(cl.noMethod.length, tv.ladder.rungs[1].length, 'Nothing set up matches Today')
@@ -166,7 +166,7 @@ test('one readiness per family and one active-people count, on the demo and GetI
       // One population per step: the campaign counts the plan's active people
       // minus the emergency and shared-device accounts; Today's tile is the plan's.
       assert.equal(ex.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${f.name}: the campaign's lead counts its own population`)
-      assert.equal(tv.ledger.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${f.name}: Today's active people are the campaign's population`)
+      assert.equal(tv.facts.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${f.name}: Today's active people are the campaign's population`)
     }
   }
 })

@@ -16,12 +16,12 @@ import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { inWave, waveLabels } from '../../derive/phases.ts'
 import { planFinish, heldByReadiness } from '../../derive/finish.ts'
-import { headerLine1, planCounts, startControl } from '../../derive/planHeader.ts'
+import { headerLine1, startControl } from '../../derive/planHeader.ts'
+import { facts, stepFacts } from '../../derive/facts.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { Button, InfoTip, Status } from '../components/index.ts'
 import { LadderTiles } from './LadderTiles.tsx'
-import { ladder, ladderCounts } from '../../derive/ladder.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
@@ -52,12 +52,12 @@ export function Plan({ scan, baseline, account, onScan }: {
   onScan?: (returnTo: string) => void
 }) {
   const operatorId = operatorIdOf(scan?.snapshot ?? null, account)
-  const data = usePlanData(scan, baseline, operatorId)
+  const data = usePlanData(scan, baseline)
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
-  // The MFA readiness ladder's five counts (derive/ladder.ts), the same numbers Today and Connect show.
+  // The tenant's facts (derive/facts.ts), the same numbers Today and Connect show, once the mapping has loaded.
   const snapshot = scan?.snapshot ?? null
-  const counts = useMemo(() => (snapshot ? ladderCounts(ladder(snapshot, data.mapping ?? EMPTY_MAPPING, snapshot.asOf)) : null), [snapshot, data.mapping])
+  const counts = useMemo(() => (snapshot && data.mapping ? facts(snapshot, data.mapping) : null), [snapshot, data.mapping])
   useEffect(() => {
     const onHash = () => setOpen(stepFromPlanHash(window.location.hash))
     window.addEventListener('hashchange', onHash)
@@ -101,8 +101,8 @@ export function Plan({ scan, baseline, account, onScan }: {
   // the last phase, Cleanup included (§9).
   const cleanupPhase = c.schedule.cleanup ?? null
   const finish = planFinish(c.steps, cleanupPhase?.end ?? null)
-  // One count for the header and the print cover (derive/planHeader.ts): the steps and the Cleanup rows.
-  const { steps: total, inPlace } = planCounts(c.steps, cleanupPhase)
+  // One count for the header, the print cover and Connect (derive/facts.ts): the steps and the Cleanup rows.
+  const { steps: total, done: inPlace } = stepFacts(c.steps, cleanupPhase)
   const waiting = FINISH.waiting(finish.waiting)
   // Weeks derive from the finish date, not the last blocked wave (item 15).
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(c.schedule.start)) / (7 * 86_400_000))) : c.schedule.weeks

@@ -54,7 +54,7 @@ test('a record or file from before the pickers were live carries no decisions, n
 })
 
 test('the special-care picker rows carry their ids, one per row, in the same order', () => {
-  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => run.input.names!.label(id), now: f.snapshot.asOf, operatorId: f.operatorId })
+  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => run.input.names!.label(id), now: f.snapshot.asOf })
   assert.ok(lists.specialCare.length > 0, 'the demo has special-care rows')
   assert.equal(lists.specialCareIds.length, lists.specialCare.length)
   const users = new Set(f.snapshot.users.map((u) => u.id))

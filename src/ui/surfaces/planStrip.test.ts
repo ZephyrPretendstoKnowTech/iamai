@@ -1,12 +1,13 @@
 // The Plan's MFA readiness strip (docs/design/mockups/plan-top-v2.html): the
-// five tiles read derive/ladder.ts ladderCounts, the numbers Today shows; the
+// five tiles read derive/facts.ts, the numbers Today shows; the
 // expanding lists, the "Clear the date" line and the "Starting locks" line are
 // gone with their words; Start date, Start the plan and Plan settings remain.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { RUNGS, ladder, ladderCounts } from '../../derive/ladder.ts'
+import { RUNGS, ladder } from '../../derive/ladder.ts'
+import { factsOf } from '../../derive/facts.ts'
 import { todayView } from '../../derive/today.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { pages } from '../../content/content.ts'
@@ -15,8 +16,8 @@ import { todayHref } from '../shell/routes.ts'
 test('the Plan strip shows the numbers Today shows, on the demo and GetIAMAI', () => {
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
-    const strip = ladderCounts(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
-    const today = ladderCounts(todayView(f.snapshot, f.snapshot.asOf, f.mapping).ladder)
+    const strip = factsOf(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
+    const today = todayView(f.snapshot, f.snapshot.asOf, f.mapping).facts
     assert.deepEqual(strip, today, `${name}: the strip and Today`)
     assert.equal(RUNGS.reduce((n, r) => n + strip.rungs[r], 0), strip.active, `${name}: the five tiles sum to the active people`)
   }

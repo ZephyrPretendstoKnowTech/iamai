@@ -19,7 +19,7 @@ const campaignOn = (name: FixtureName) => {
   const r = runFixture(f)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
   const step = r.steps.find((s) => (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'campaign')!
-  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: ctx.nameOf, now: f.snapshot.asOf, operatorId: f.operatorId })
+  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: ctx.nameOf, now: f.snapshot.asOf })
   return { step, ctx, lines: stepLines(step, ctx), ex: stepVars(step, ctx) as Record<string, unknown>, unproven: lists.unproven, mfaInPlace: ctx.mfaInPlace === true }
 }
 

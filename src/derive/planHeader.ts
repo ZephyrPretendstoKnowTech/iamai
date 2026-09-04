@@ -4,27 +4,13 @@
 // plan cannot finish, the one clause that holds it replaces the date. Once
 // started, the line becomes `{steps} steps · {done} done · started {start} ·
 // finishes {finish}` and later scans never move the anchored start. Every
-// sentence is a content string; this only picks the branch and fills it.
+// sentence is a content string; this only picks the branch and fills it. The
+// counts it fills are derive/facts.ts stepFacts.
 //
 // Pure: no DOM, no network.
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import type { Step } from '../roadmap/types.ts'
-import type { CleanupPhase } from '../roadmap/cleanupPhase.ts'
-import { doneSteps, trackableSteps } from './sets.ts'
-
-/**
- * The counts the Plan header and the print cover share (E4): the trackable
- * steps plus the Cleanup rows (a step the person said does not apply is out),
- * and how many are in place (a Cleanup row marked done counts as one).
- */
-export function planCounts(steps: readonly Step[], cleanup: CleanupPhase | null | undefined): { steps: number; inPlace: number } {
-  const counted = steps.filter((s) => !s.doesntApply)
-  const rows = cleanup?.rows ?? []
-  return { steps: trackableSteps(counted).length + rows.length, inPlace: doneSteps(counted).length + rows.filter((r) => r.done).length }
-}
-
 export type HeaderInput = {
   /** Rows the plan is measured against (trackable steps plus Cleanup rows). */
   steps: number

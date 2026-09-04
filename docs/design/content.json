@@ -725,7 +725,6 @@
         "mfaCompleted": "MFA completed {when}",
         "neverSignedIn": "no sign-in on record",
         "inactiveSince": "inactive since {date}",
-        "signedInNow": "signed in now",
         "noMethodEvidence": "no MFA-capable method registered",
         "noMatch": "Nobody matches.",
         "needsScan": "Nothing to show until the first scan.",
@@ -2055,7 +2054,7 @@
       },
       "decision": {
         "label": "People who need special care",
-        "help": "Admins, anyone with no method, anyone with text or call only, and your own account. These get the in-person instructions.",
+        "help": "Admins, anyone with no method, and anyone with text or call only. These get the in-person instructions.",
         "pickerSource": "specialCare",
         "pickerRow": "{name} · {state}",
         "save": "Save",

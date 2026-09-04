@@ -359,7 +359,7 @@ export function App() {
           {(route === 'today' || route === 'inventory') &&
             (account && lastScan ? (
               route === 'today' ? (
-                <Today snapshot={lastScan.snapshot} tenantId={account.tenantId} />
+                <Today snapshot={lastScan.snapshot} />
               ) : (
                 <Suspense fallback={<section className="surface"><p className="reason">{app.shell.loading}</p></section>}>
                   <Inventory snapshot={lastScan.snapshot} />

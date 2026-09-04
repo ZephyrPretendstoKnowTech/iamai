@@ -5,7 +5,6 @@ import { computeAuthenticatorBaseline } from './platform.ts'
 import type { EvidenceStatus, MfaViabilityInput } from './mfaViability.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { personAccounts } from '../derive/sets.ts'
-import { lastSignInOf, mfaEvidenceOf } from '../derive/operator.ts'
 import { adminUserIds } from '../roles.ts'
 
 /**
@@ -45,8 +44,8 @@ export function buildViabilityInputs(
     const evidence: MfaViabilityInput['evidence'] = {
       status: evidenceStatus,
       covered: evidenceSource.coveredWindow,
-      // The signed-in account's own sign-in for this scan is MFA evidence when the records hold none (derive/operator.ts).
-      lastMfaSuccess: mfaEvidenceOf(snapshot, u.id, userEvidence),
+      // The records alone: the signed-in account's sign-in for this scan is never evidence.
+      lastMfaSuccess: userEvidence?.lastMfaSuccess ?? null,
     }
     return {
       userId: u.id,
@@ -65,8 +64,8 @@ export function buildViabilityInputs(
           }
         : null,
       methods: methodsAvailable ? (snapshot.authMethods[u.id] ?? 'unknown') : 'unknown',
-      // The signed-in account signed in at the scan (derive/operator.ts): never dormant.
-      lastSuccessfulSignIn: lastSignInOf(snapshot, u),
+      // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
+      lastSuccessfulSignIn: u.lastSuccessfulSignIn,
       accountCreated: u.createdDateTime,
       evidence,
       tenant: { now, newestAuthenticatorVersionByPlatform },

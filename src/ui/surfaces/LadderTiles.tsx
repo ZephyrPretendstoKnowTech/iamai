@@ -4,8 +4,9 @@
 // large in the rung's colour, a rule before the three to prioritise. Each tile
 // links to Today filtered to that rung. The Plan strip and Connect's Plan tile
 // render this; Today renders the header and its own rows. The numbers are
-// derive/ladder.ts ladderCounts, so the three surfaces cannot disagree.
-import type { LadderCounts, Rung } from '../../derive/ladder.ts'
+// derive/facts.ts, so the three surfaces cannot disagree.
+import type { Rung } from '../../derive/ladder.ts'
+import type { Facts } from '../../derive/facts.ts'
 import { PRIORITISE_FROM, RUNGS } from '../../derive/ladder.ts'
 import { todayHref } from '../shell/routes.ts'
 import { ladderWords, rungWords } from './todayCells.ts'
@@ -19,7 +20,7 @@ export function LadderHead({ active }: { active: number }) {
   )
 }
 
-export function LadderTiles({ counts }: { counts: LadderCounts }) {
+export function LadderTiles({ counts }: { counts: Pick<Facts, 'active' | 'rungs'> }) {
   return (
     <>
       <LadderHead active={counts.active} />

@@ -18,7 +18,7 @@ test('the countries step shows the travellers question on the demo, and its answ
   const f = fixture('demo')
   const nameOf = (id: string): string => f.snapshot.users.find((u) => u.id === id)?.displayName ?? id
   // The mapping as the plan derives it: the detected defaults are its decisions.
-  const mapping = applyStepDecisions(f.mapping, defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, operatorId: f.operatorId, now: f.snapshot.asOf }), 'detected')
+  const mapping = applyStepDecisions(f.mapping, defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, now: f.snapshot.asOf }), 'detected')
   const r = runFixture({ ...f, mapping }, { mapping })
   const step = r.steps.find((s) => s.id === PREREQ_STEP_ID.allowedCountries)
   assert.ok(step, 'the demo plan holds the countries step')

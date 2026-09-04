@@ -17,7 +17,10 @@ import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import type { DemoFacts } from '../demoFacts.ts'
-import type { LadderCounts } from '../../derive/ladder.ts'
+import type { Facts } from '../../derive/facts.ts'
+
+/** The ladder's numbers on the Plan tile: the active people and the five rungs (derive/facts.ts). */
+export type LadderCounts = Pick<Facts, 'active' | 'rungs'>
 
 type Words = {
   h1: string
@@ -238,7 +241,7 @@ export function scanTile(input: ScanInput): ScanTile {
 
 // ---- 4 Plan: ready, the last full plan, waiting for the scan, or the sample ----
 export type PlanInput =
-  /** A complete scan (docs/design/mockups/connect-v2.html): the state with the step counts once the plan has computed, the MFA readiness ladder's five numbers (derive/ladder.ts, the same as Today's and the Plan's), and Open the plan. */
+  /** A complete scan (docs/design/mockups/connect-v2.html): the state with the step counts once the plan has computed, the MFA readiness ladder's five numbers (derive/facts.ts, the same as Today's and the Plan's), and Open the plan. */
   | { kind: 'ready'; at: string; counts: { steps: number; done: number } | null; ladder: LadderCounts; now?: number }
   /** A scan with gaps kept the last full plan. */
   | { kind: 'last'; at: string }

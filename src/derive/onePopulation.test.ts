@@ -33,17 +33,17 @@ test('GetIAMAI: the strip, the campaign lead, its who column and Today\'s active
   const ex = stepVars(campaign, ctx) as Record<string, unknown>
   const lead = fillText(String((contentStepFor(campaign) as unknown as { who: { lead: string } }).who.lead), ex)
   const who = affectedIds(campaign.population)
-  const numbers = { strip: strip.active, lead: Number(ex.active), who: who.length, today: today.ledger.active }
+  const numbers = { strip: strip.active, lead: Number(ex.active), who: who.length, today: today.facts.active }
   assert.deepEqual(numbers, { strip: 2, lead: 2, who: 2, today: 2 }, JSON.stringify(numbers))
   assert.ok(lead.startsWith('2 active people'), lead)
-  assert.match(ledgerText(today.ledger), /^\d+ accounts: 2 active people/, "Today's ledger")
+  assert.match(ledgerText(today.facts), /^\d+ accounts: 2 active people/, "Today's ledger")
   const whoText = rowWho(campaign, nameOf)
   for (const id of who) assert.ok(whoText.includes(nameOf(id)) || /2 people/.test(whoText), `${whoText} covers ${nameOf(id)}`)
-  // The operator is one of them, on every screen.
-  assert.ok(who.includes(f.operatorId), 'the campaign counts the operator')
-  assert.ok(RUNGS.some((r) => strip.rungs[r].some((p) => p.id === f.operatorId)), 'the ladder places the operator')
+  // The signed-in account is a person like any other: on every screen when the directory says it is active, on none otherwise.
   const row = today.rows.find((x) => x.user.id === f.operatorId)!
-  assert.ok(row && row.rung !== null, 'Today counts the operator active')
+  assert.ok(row && row.kind === 'person', 'the operator has a row')
+  assert.equal(who.includes(f.operatorId), row.active, 'the campaign counts the operator exactly when Today does')
+  assert.equal(RUNGS.some((r) => strip.rungs[r].some((p) => p.id === f.operatorId)), row.active, 'the ladder counts the operator exactly when Today does')
 })
 
 test('the emergency accounts are not people: listed on Today by kind, never on a rung or in the active count; Inventory and the emergency step list them', () => {
@@ -51,13 +51,13 @@ test('the emergency accounts are not people: listed on Today by kind, never on a
   assert.ok(emergency.length === 2)
   for (const id of emergency) {
     const row = today.rows.find((x) => x.user.id === id)!
-    assert.ok(row && row.kind === 'emergency' && row.rung === null, `${nameOf(id)} is listed as emergency access, on no rung`)
+    assert.ok(row && row.kind === 'emergency' && !row.active, `${nameOf(id)} is listed as emergency access, never counted`)
   }
-  assert.equal(today.ledger.emergency, emergency.length, 'the ledger counts them as emergency access')
+  assert.equal(today.facts.kinds.emergency, emergency.length, 'the ledger counts them as emergency access')
   const withThem = peopleCounts(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds))
-  assert.ok(today.ledger.active < withThem.active, 'not in the active count')
+  assert.ok(today.facts.active < withThem.active, 'not in the active count')
   const people = inventoryTables(f.snapshot).find((t) => t.id === 'people')!
   for (const id of emergency) assert.ok(people.rows.some((row) => String(row[0]) === nameOf(id)), `${nameOf(id)} is listed in Inventory`)
-  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: f.operatorId })
+  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
   assert.deepEqual(lists.emergencyAccounts, emergency.map(nameOf), 'the emergency step lists them')
 })
