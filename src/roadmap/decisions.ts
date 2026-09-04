@@ -79,6 +79,47 @@ export const DECISION_STEPS = {
   adminsGroup: 's-goal-admin-portals-protected',
 } as const
 
+const lcId = (s: string): string => s.toLowerCase()
+
+/**
+ * The exclusions group the plan holds once these decisions apply: the
+ * exclusions picker's own decision where one is saved (both blocker ids write
+ * the same record, so the last one wins, as applying them does), else the
+ * mapping's `__globalExclusion` record.
+ */
+function exclusionsGroupIdOf(mapping: Pick<MappingState, 'records'>, stepDecisions: Record<string, StepDecision> | null | undefined): string | null {
+  let id = mapping.records['__globalExclusion']?.resolvedId ?? null
+  for (const [stepId, d] of Object.entries(stepDecisions ?? {})) {
+    if (DECISION_STEPS.exclusions.has(stepId) && Array.isArray(d?.picked)) id = d.picked[0] ?? null
+  }
+  return id
+}
+
+/**
+ * The persisted decisions with every pick the mapping's own semantics forbid
+ * dropped, before any of them becomes the plan's state. One rule: the
+ * exclusions group is never also the admins group (pickerRows.ts keeps it out
+ * of that picker's candidates), so a decision saved before that rule existed
+ * applies as no decision at all — the admins group reads unset and its step asks
+ * again, rather than the plan guessing another group in its place. Every other
+ * decision passes through untouched, and nothing here writes to persistence:
+ * the stored record keeps whatever it was written with, and cannot become
+ * applied state.
+ */
+export function validStepDecisions(mapping: Pick<MappingState, 'records'>, stepDecisions: Record<string, StepDecision> | null | undefined): Record<string, StepDecision> {
+  const decisions = stepDecisions ?? {}
+  const d = decisions[DECISION_STEPS.adminsGroup]
+  if (!d || !Array.isArray(d.picked) || d.picked.length === 0) return decisions
+  const exclusions = lcId(exclusionsGroupIdOf(mapping, decisions) ?? '')
+  if (exclusions === '') return decisions
+  const kept = d.picked.filter((id) => lcId(String(id)) !== exclusions)
+  if (kept.length === d.picked.length) return decisions
+  const next = { ...decisions }
+  if (kept.length > 0) next[DECISION_STEPS.adminsGroup] = { ...d, picked: kept }
+  else delete next[DECISION_STEPS.adminsGroup]
+  return next
+}
+
 /**
  * The mapping with every saved step decision applied (target-state §6.4):
  * emergency access accounts → the break-glass ids; the exclusions group → the
@@ -98,14 +139,17 @@ export const DECISION_STEPS = {
  * `detected`, and the saved decisions after, so a Save only overrides.
  */
 export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<string, StepDecision> | null | undefined, provenance: 'detected' | 'confirmed' = 'confirmed'): MappingState {
-  if (!stepDecisions || Object.keys(stepDecisions).length === 0) return mapping
+  // Nothing invalid under the mapping's own semantics becomes applied state,
+  // however long it has been persisted (validStepDecisions).
+  const decisions = validStepDecisions(mapping, stepDecisions)
+  if (Object.keys(decisions).length === 0) return mapping
   const next: MappingState = { ...mapping, records: { ...mapping.records }, wizardAnswered: { ...mapping.wizardAnswered }, assumed: { ...(mapping.assumed ?? {}) }, questionAnswers: { ...(mapping.questionAnswers ?? {}) } }
   const recordProvenance = provenance === 'detected' ? 'auto' : 'confirmed'
   const answered = (q: string): void => {
     next.wizardAnswered[q] = true
     next.assumed![q] = provenance
   }
-  for (const [stepId, d] of Object.entries(stepDecisions)) {
+  for (const [stepId, d] of Object.entries(decisions)) {
     if (!d) continue
     // The decision's own option persists under the decision's label, the
     // question's answer under the question's, so one rule reads every answer.
