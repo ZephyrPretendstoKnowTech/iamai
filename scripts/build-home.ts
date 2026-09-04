@@ -14,6 +14,7 @@
 // The fonts and the planner hrefs are referenced through the {{TOOL_PATH}}
 // placeholder that scripts/assemble-site.mjs substitutes, so the path lives in
 // one place (/rollout/… on the published site).
+import { createHash } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { renderTokensCss } from '../src/ui/tokens.ts'
@@ -234,6 +235,38 @@ export function renderHomeHtml(): string {
   </body>
 </html>
 `
+}
+
+/**
+ * A stylesheet's published name: its content hash in the file name
+ * (home.css → home.3f2a9c1e.css), the way vite names the planner's assets. A
+ * changed sheet is a new URL, so no edge or browser cache can dress the new
+ * page in the old rules: the site's stylesheets are cached for hours where its
+ * HTML is not, and a deploy that changed both once rendered the new structure
+ * with no styling for everyone who held the old sheet.
+ */
+export function versionedName(name: string, text: string): string {
+  return name.replace(/\.css$/, `.${createHash('sha256').update(text).digest('hex').slice(0, 8)}.css`)
+}
+
+/**
+ * The published page over the tool path: index.html with each stylesheet link
+ * pointed at the sheet's versioned name, and the sheets under those names.
+ * scripts/assemble-site.mjs writes these into dist/; home.test.ts renders them.
+ */
+export function assembleHome(html: string, sheets: Record<string, string>, toolPath: string): Record<string, string> {
+  const sub = (s: string): string => s.replaceAll('{{TOOL_PATH}}', toolPath)
+  const out: Record<string, string> = {}
+  let page = sub(html)
+  for (const [name, text] of Object.entries(sheets)) {
+    const link = `href="/${name}"`
+    if (!page.includes(link)) throw new Error(`assembleHome: the page does not link /${name}`)
+    const versioned = versionedName(name, sub(text))
+    page = page.replaceAll(link, `href="/${versioned}"`)
+    out[versioned] = sub(text)
+  }
+  out['index.html'] = page
+  return out
 }
 
 export function buildHome(): void {
