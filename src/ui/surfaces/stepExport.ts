@@ -106,8 +106,13 @@ export type CommsView = { salutation: string; body: string; extra: string[]; sig
 export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown>): CommsView | null {
   const comms = (cs.comms ?? null) as Record<string, unknown> | null
   if (!comms) return null
+  // A step already in place asks nobody to do anything: no email (stepVars stepDone).
+  if (ex.stepDone) return null
   const inPlace = Boolean(ex.mfaInPlace) && typeof comms.bodyMfaInPlace === 'string'
   const body = inPlace ? comms.bodyMfaInPlace : comms.body
+  // The hole rule, once, for the screen, the copy box, the exports and the
+  // tests' lines: the email renders whole or not at all, like any other line.
+  if (![comms.salutation, body, comms.signature].every((part) => typeof part === 'string' && whole(part, ex))) return null
   const extraRaw = inPlace && comms.extraMfaInPlace !== undefined ? comms.extraMfaInPlace : comms.extra
   const extra = (Array.isArray(extraRaw) ? extraRaw : extraRaw === undefined || extraRaw === null ? [] : [extraRaw]).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex))
   return { salutation: fillText(comms.salutation, ex), body: fillText(body, ex), extra, signature: fillText(comms.signature, ex) }

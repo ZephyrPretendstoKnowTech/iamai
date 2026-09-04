@@ -198,6 +198,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // it In place, not coverage this step's version supersedes; the line names
   // what the consolidation row retires (generate.ts supersededPolicies).
   v.existingPolicies = step.status !== 'done' && step.deliveredBy.length > 0 ? step.deliveredBy : []
+  // In place: the step asks nobody to do anything, so its email does not render (stepExport.ts commsFor).
+  if (step.status === 'done') v.stepDone = true
 
   // The list variables, derived from what the scan collected (never gated when
   // the data exists): the campaign buckets, the lockout-scenario people, and the
