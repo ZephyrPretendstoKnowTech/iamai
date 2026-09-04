@@ -32,7 +32,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The walk (scripts/walk.mjs) on the pushed branch: every surface of the demo
+  # and the mock fixtures in headless Chrome, against the surface contracts and
+  # the invariants. It exits 1 on a P0, so a P0 stops the build and the deploy.
+  # Sessions never run it; this job is where it runs. The report and the
+  # captures are kept as a run artifact for reading a failure.
+  walk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # ubuntu-latest ships Google Chrome; the script finds it on its own.
+      - run: npm run walk
+        env:
+          CHROME: /usr/bin/google-chrome
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: walk-${{ github.sha }}
+          path: |
+            docs/reports/walk-*.md
+            walk/
+          if-no-files-found: ignore
   build:
+    needs: walk
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
