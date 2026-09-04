@@ -164,6 +164,22 @@ export function needsPasskeyForGoal(goalId: string): boolean {
   return false
 }
 
+/**
+ * True when the goal's mapped baseline policy prompts a person: it requires MFA
+ * or an authentication strength, or sets a sign-in frequency. The shared-device
+ * accounts are excluded from every such policy (the shared-devices step's last line).
+ */
+export function promptsPersonForGoal(goalId: string): boolean {
+  const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
+  for (const p of mapped as PinnedPolicy[]) {
+    const g = p.grantControls as { builtInControls?: string[]; authenticationStrength?: unknown } | null
+    if ((g?.builtInControls ?? []).some((c) => String(c).toLowerCase() === 'mfa') || (g?.authenticationStrength ?? null) !== null) return true
+    const f = (p.sessionControls as { signInFrequency?: { isEnabled?: boolean } } | null)?.signInFrequency
+    if (f && f.isEnabled !== false) return true
+  }
+  return false
+}
+
 /** The authentication-strength name the goal's mapped baseline policy requires, for the who and decision lines (walk-51 item 18). */
 export function strengthForGoal(goalId: string): string | null {
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)

@@ -16,7 +16,7 @@ import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
 import { countryName } from '../../mapping/countries.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
-import { needsPasskeyForGoal, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal } from './stepPortal.ts'
+import { needsPasskeyForGoal, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, promptsPersonForGoal } from './stepPortal.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
@@ -68,6 +68,8 @@ export type StepVarContext = {
   naming?: NamingConvention
   /** The names the plan proposes for the objects the tenant lacks, from its prerequisite steps (planDates): the one source the prerequisite step and every portal line name. */
   proposed?: ProposedObjectNames
+  /** The plan's policies that prompt a person (content titles, planDates): the shared-device accounts are excluded from each. */
+  peoplePolicies?: string[]
 }
 
 /** The long form, in the display time zone, only when the instant is real. */
@@ -195,6 +197,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // applies (E9); and the service-accounts group the service-accounts block names.
   if (nobodyAffected(step)) v.nobodyAffected = true
   if (step.goalId === SERVICE_ACCOUNTS_TRUSTED_GOAL) v.serviceAccountsGroup = ctx.mapping.serviceAccountsGroupId ? ctx.nameOf(ctx.mapping.serviceAccountsGroupId) : proposedNamesFor(ctx).serviceAccountsGroup
+  // The trusted network by name (the team's own locations, else the plan's proposal: the portal's rule, stepPortal tokenNames), and the policies that prompt a person, for the shared-devices step's own instructions.
+  const trustedIds = ctx.mapping.trustedLocationIds ?? []
+  v.trustedLocation = trustedIds.length > 0 ? trustedIds.map(ctx.nameOf).join(', ') : proposedNamesFor(ctx).trustedLocation
+  if (ctx.peoplePolicies && ctx.peoplePolicies.length > 0) v.peoplePolicies = ctx.peoplePolicies
 
   // Existing coverage: whether a policy already delivers the goal (drives the
   // {existingCoverage} line's presence). A done step's policies are what makes
@@ -331,7 +337,7 @@ export { absoluteDate }
  * MFA for Everyone enforces, the campaign's window from the plan's start to
  * that enrol-by, and whether the unmanaged-browser step is on the plan.
  */
-export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed'> {
+export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies'> {
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const mfa = steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')
   const mfaEnforce = mfa?.events?.enforce?.at ?? firstEnforce
@@ -343,6 +349,8 @@ export function planDates(steps: readonly Step[], scheduleStart: string, naming?
   const passkey = steps
     .filter((s) => s.status !== 'done' && s.status !== 'skipped' && typeof s.events?.enforce?.at === 'string' && needsPasskeyForGoal(s.goalId))
     .sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))[0]
+  // The plan's policies that prompt a person (the shared-devices step excludes its accounts from each), by content title, in plan order.
+  const peoplePolicies = [...new Set(steps.filter((s) => s.status !== 'skipped' && s.id !== 's-shared-devices' && (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy' && promptsPersonForGoal(s.goalId)).map((s) => contentTitle(s)))]
   // The proposed names, from the plan's prerequisite steps: the prerequisite step and every portal line name the same group and location.
-  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null, proposed: planProposedNames(steps, naming) }
+  return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null, proposed: planProposedNames(steps, naming), peoplePolicies }
 }

@@ -404,7 +404,10 @@ export function renderStep(st: Record<string, any>): string {
     const before: string[] = Array.isArray(own.before) ? own.before : []
     const tr = TRANSLATED[st.id]
     if (tr) w = { lead: own.lead ?? (st.whatToDoReference || {}).lead, steps: [...before, ...(tr.steps || tr)] }
-    else {
+    else if (Array.isArray(own.steps) && own.steps.length > 0) {
+      // A policy the baseline does not hold (the shared-devices step): the step's own instructions, as the product renders them.
+      w = { ...own, steps: [...before, ...own.steps] }
+    } else {
       const ref = st.whatToDoReference || {}
       w = { ...ref, lead: own.lead ?? ref.lead, steps: [...before, ...(ref.steps || [])] }
       parts.push("<p class=\"annot\">Note: reviewer's rendering; the product generates this section from the baseline policy. Run npm run translator-dump to show the product's version here.</p>")
