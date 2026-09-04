@@ -85,6 +85,22 @@ export function proposedObjectNames(naming: NamingConvention): { exclusionsGroup
   }
 }
 
+/**
+ * The two names a goal the baseline implements with two policies carries
+ * (Policy A / Policy B): A is the plan's proposal; B is the proposal with its
+ * last segment replaced by the baseline author's words for the second policy,
+ * in the tenant's separator, so the pair is two policies with two names on
+ * every surface (the guests pair read one name on both).
+ */
+export function policyPairNames(proposed: string, baselineB: string, naming: NamingConvention): { a: string; b: string } {
+  const separator = naming?.convention?.separator ?? naming?.separator ?? ' - '
+  // The baseline author's last segment names what the second policy is for ("Phishing resistant MFA for partners").
+  const bBody = baselineB.split(/\s+[-–|]\s+/).pop()?.trim() || baselineB.trim()
+  const segments = proposed.split(separator)
+  const b = segments.length > 1 ? [...segments.slice(0, -1), bBody].join(separator) : `${proposed}${separator}${bBody}`
+  return { a: proposed, b: b === proposed ? `${proposed}${separator}B` : b }
+}
+
 export function stepTitle(goalName: string): string {
   return goalName.charAt(0).toUpperCase() + goalName.slice(1)
 }
