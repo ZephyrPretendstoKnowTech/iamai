@@ -108,8 +108,12 @@ export const ACCEPTANCE = [
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', mustNot: '{list:adminsWith}' },
   { item: '15', step: 'admins-phishing-resistant', path: 'comms.body', must: 'sign-ins by your admin account at {tenant} need a passkey or a security key', mustNot: 'admin sign-ins at {tenant}' },
   { item: '16', step: 'admin-portals-protected', path: 'more.risks', must: 'Anyone with an Azure RBAC role but no directory role, most developers, is blocked from the Azure portal and CLI' },
-  { item: '16', step: 'admin-portals-protected', path: 'who.evidence', must: 'signed in to Azure since {from}; they are blocked from {enforce}: {list:azureNonAdmins}' },
-  { item: '16', step: 'admin-portals-protected', path: 'comms.body', must: 'the Azure portal and command-line tools at {tenant} open only for the admins group' },
+  // Run 1B: the baseline defines this policy two ways, so the step states the
+  // conflict and promises no enforcement — the who line no longer says who is
+  // spared, and the announcement is gone with the implementation.
+  { item: '16', step: 'admin-portals-protected', path: 'who.evidence', must: 'signed in to Azure since {from}: {list:azureNonAdmins}', mustNot: 'they are blocked from {enforce}' },
+  { item: '16', step: 'admin-portals-protected', path: 'who.lead', must: 'the exported policy targets every one of them', mustNot: 'admins in {adminsGroup}' },
+  { item: '16', step: 'admin-portals-protected', path: 'baselineConflict', must: 'Nothing is wrong in your tenant' },
   { item: '16', step: 'admin-portals-protected', path: 'whatToDoReference.steps', must: 'Microsoft Purview Platform, Windows Cloud Login, My Staff' },
   { item: '18', step: 'register-info-protected', path: 'more.helpDesk', must: 'over a screen-share, if your VPN exit is in the trusted network, or when they are next in', mustNot: 'while they are on the VPN' },
   { item: '18', step: 'register-info-protected', path: 'more.risks', must: 'New starters register in the office, or with you over a screen-share.' },
