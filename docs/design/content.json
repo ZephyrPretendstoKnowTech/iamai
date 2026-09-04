@@ -2946,7 +2946,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, sign-ins to {tenant} from outside {countriesLong} will be blocked. Travelling for work? Tell us before you go and we will cover the trip; nothing changes if you are at home or in the office.",
+        "body": "From {enforceLong}, sign-ins to {tenant} from outside {countries} will be blocked. Travelling for work? Tell us before you go and we will cover the trip; nothing changes if you are at home or in the office.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -2982,7 +2982,6 @@
         "tenant": "GetIAMAI",
         "active": 3,
         "countries": "the United States",
-        "countriesLong": "the United States",
         "n": 0,
         "outsideUsers": [],
         "partners": 0,
