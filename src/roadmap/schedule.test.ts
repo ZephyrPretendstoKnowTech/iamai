@@ -28,10 +28,10 @@ function ring(index: number, soakDays: number, ids: string[]): Ring {
  * a device change carries a device requirement (roadmap/schedule.ts batchClassOf).
  */
 function policyBodyFor(family: string, name: string): Record<string, unknown> {
-  const conditions: Record<string, unknown> = { users: { includeUsers: ['All'] } }
+  const conditions: Record<string, unknown> = { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }
   if (family === 'location') conditions.locations = { includeLocations: ['All'] }
   const controls = family === 'device' ? ['compliantDevice'] : family === 'block' || family === 'location' ? ['block'] : ['mfa']
-  return { displayName: name, conditions, grantControls: { operator: 'OR', builtInControls: controls } }
+  return { displayName: name, state: 'enabledForReportingButNotEnforced', conditions, grantControls: { operator: 'OR', builtInControls: controls } }
 }
 
 function step(over: Partial<Step> & { id: string }): Step {

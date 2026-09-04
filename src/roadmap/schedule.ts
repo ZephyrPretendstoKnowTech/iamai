@@ -20,7 +20,9 @@ import { fillText } from '../content/render.ts'
 
 const CRITICAL = engine.critical
 import { absoluteDate } from '../copy/dates.ts'
-import { finalTargets, implementationOffered, isOpenPolicy, unavailableReason } from './operations.ts'
+import { unavailableReason } from './operations.ts'
+import type { PolicyEffect } from './operations.ts'
+import { effectsOf } from './strand.ts'
 import type { Step } from './types.ts'
 
 export type WaveSchedule = {
@@ -182,8 +184,6 @@ export function observationDaysFor(step: Step): number {
   return batchClassOf(step) === 'zero' ? OBSERVATION_DAYS_ZERO : OBSERVATION_DAYS
 }
 
-const DEVICE_CONTROLS = new Set(['compliantdevice', 'domainjoineddevice', 'compliantapplication', 'approvedapplication'])
-
 /**
  * How the policy interrupts people, for the same-people rule. An open policy the
  * plan can write answers from what it will leave behind: a change that asks for
@@ -198,12 +198,10 @@ export function batchClassOf(step: Step): BatchClass {
   // field read as zero (nobodyAffected in timing.ts is the one definition; the
   // notice period reads the same bar).
   if (nobodyAffected(step)) return 'zero'
-  if (isOpenPolicy(step)) {
-    type Body = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; conditions?: { locations?: unknown } | null }
-    const bodies = implementationOffered(step) ? (finalTargets(step) as Body[]) : []
-    const controls = (b: Body): Set<string> => new Set((b.grantControls?.builtInControls ?? []).map((c) => c.toLowerCase()))
-    if (bodies.some((b) => b.grantControls?.authenticationStrength || controls(b).has('mfa'))) return 'mfa'
-    if (bodies.some((b) => [...controls(b)].some((c) => DEVICE_CONTROLS.has(c)) || (b.conditions?.locations ?? null) !== null)) return 'deviceSession'
+  const effects = effectsOf(step)
+  if (effects !== null) {
+    if (effects.some((e) => e.asksForMethod)) return 'mfa'
+    if (effects.some((e) => e.requiresDevice || e.usesLocations)) return 'deviceSession'
     return 'other'
   }
   // A risk policy that does apply prompts for MFA, so it batches with the MFA changes.
@@ -315,12 +313,21 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
     }
     if (!isEnforcement(s)) continue
     const family = s.readiness.family
+    // What the step will actually leave behind decides what it waits on
+    // (roadmap/operations.ts stepEffects); a step with no policy of its own —
+    // the enforce step — is read by its goal's family, as it always was.
+    const effects = effectsOf(s)
+    const anyEffect = (test: (e: PolicyEffect) => boolean): boolean => (effects !== null ? effects.some(test) : false)
+    const stopsPeople = effects !== null ? anyEffect((e) => e.blocks || e.usesRisk || (e.usesLocations && !e.asksForMethod)) : family === 'block' || family === 'location' || family === 'risk'
+    const asksForMethod = effects !== null ? anyEffect((e) => e.asksForMethod) : family === 'mfa' || family === 'guest'
+    const usesLocations = effects !== null ? anyEffect((e) => e.usesLocations) : family === 'location'
     if (exclusion) add(s, { stepId: exclusion.id, kind: 'hard', reason: 'exclusion-group' })
-    if (family === 'block' || family === 'location' || family === 'risk') {
-      if (breakGlass) add(s, { stepId: breakGlass.id, kind: 'hard', reason: 'break-glass' })
-    }
-    if ((family === 'mfa' || family === 'guest') && verify) add(s, { stepId: verify.id, kind: 'hard', reason: 'registration' })
-    if (family === 'location') {
+    // A policy that stops people needs the way back in to exist first.
+    if (stopsPeople && breakGlass) add(s, { stepId: breakGlass.id, kind: 'hard', reason: 'break-glass' })
+    // A policy that asks for a sign-in method waits for people to have one.
+    if (asksForMethod && verify) add(s, { stepId: verify.id, kind: 'hard', reason: 'registration' })
+    // A policy that names where people may sign in from waits for the place to exist.
+    if (usesLocations) {
       if (location) add(s, { stepId: location.id, kind: 'hard', reason: 'named-location' })
       if (countries) add(s, { stepId: countries.id, kind: 'hard', reason: 'named-location' })
     }
@@ -586,7 +593,11 @@ export function buildSchedule(
       // two policies in the same window, and neither is anyone else.
       const soft = deps.filter((d) => d.kind === 'soft' && !(relaxSamePeople && d.reason === 'same-people'))
       const rings = s.rings.length > 0 ? s.rings : null
-      const soaks = rings ? rings.map((r) => r.soakDays) : [s.readiness.family === 'other' ? 1 : ringBand.soakDays]
+      // A step with no rings still soaks for as long as what it does deserves: a
+      // policy that asks nothing of anyone needs a day, anything else the band's.
+      const soakEffects = effectsOf(s)
+      const quiet = soakEffects !== null ? !soakEffects.some((e) => e.any) : s.readiness.family === 'other'
+      const soaks = rings ? rings.map((r) => r.soakDays) : [quiet ? 1 : ringBand.soakDays]
       const batch = batchClassOf(s)
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
         const windows: { start: string; end: string }[] = []
