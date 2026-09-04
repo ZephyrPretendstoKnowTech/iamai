@@ -39,10 +39,11 @@ export function stepPopulation(step: Step): StepPopulationView {
 
 /**
  * A person's campaign bucket under the plan: the rollout bucket, except that
- * with Require MFA for Everyone in place every sign-in completed MFA, so nobody
- * is "registered but never seen to complete MFA": they are proven (Ready with
- * a phishing-resistant method, else a method not strong enough). One rule for
- * the campaign's lists and the readiness strip, so the two never disagree.
+ * with Require MFA for Everyone in place every sign-in completes MFA, so the
+ * campaign asks nobody for "one MFA sign-in": its never-seen group is empty and
+ * those people are in the passkey group where they hold a method. The readiness
+ * strip keeps stating the records' fact (a method, no MFA sign-in seen), so the
+ * two differ only under the enforced policy, by design.
  */
 export function campaignBucket(v: MfaViability, mfaEnforced: boolean): ReturnType<typeof rolloutBucket> {
   const bucket = rolloutBucket(v)

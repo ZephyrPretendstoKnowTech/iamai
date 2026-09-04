@@ -136,7 +136,7 @@ export function Plan({ scan, baseline, account, onScan }: {
       </p>
       <p className="line">{line2}</p>
       {/* The readiness strip: five tiles from the plan's own population and buckets, each opening to its people. */}
-      <ReadinessStrip snapshot={scan.snapshot} mapping={data.mapping ?? EMPTY_MAPPING} nameOf={nameOf} mfaEnforced={dates.mfaInPlace === true} />
+      <ReadinessStrip snapshot={scan.snapshot} mapping={data.mapping ?? EMPTY_MAPPING} nameOf={nameOf} />
       {/* The start (§5), in this order: the Start date field (default: today in the
           display zone, proposed again on every visit; the same control as Plan
           settings' inputs), Start the plan under it, which locks the date shown,
