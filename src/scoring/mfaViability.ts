@@ -77,7 +77,8 @@ export type MethodTier = 'phishingResistant' | 'passwordless' | 'push' | 'otp' |
 
 const TIER_ORDER: MethodTier[] = ['phishingResistant', 'passwordless', 'push', 'otp', 'smsVoice']
 
-function tierOf(method: string): MethodTier | null {
+/** The tier a registration-report method name belongs to; null for a method that is not MFA (email, a security question). */
+export function methodTier(method: string): MethodTier | null {
   if (
     method.startsWith('passKeyDeviceBound') ||
     method === 'fido2SecurityKey' ||
@@ -96,7 +97,7 @@ function tierOf(method: string): MethodTier | null {
 export function methodTiersOf(methodsRegistered: string[]): { strongestMethod: MethodTier; methodTiers: MethodTier[] } {
   const present = new Set<MethodTier>()
   for (const m of methodsRegistered) {
-    const tier = tierOf(m)
+    const tier = methodTier(m)
     if (tier) present.add(tier)
   }
   const methodTiers = TIER_ORDER.filter((t) => present.has(t))
@@ -113,6 +114,10 @@ export type MfaViability = {
   isAdmin: boolean
   strongestMethod: MethodTier
   methodTiers: MethodTier[]
+  /** The registration report's method names, as read (methodsRegistered); the ladder (derive/ladder.ts) tells a portable method from one bound to a PC. */
+  registered: string[]
+  /** The MFA-capable kinds among the account's authentication methods, when they could be read. */
+  kinds: MethodKind[]
   reasons: string[]
   evidence?: { at: string; method: string }
   signals: {
@@ -179,6 +184,8 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
     isAdmin,
     strongestMethod,
     methodTiers,
+    registered: registration?.methodsRegistered ?? [],
+    kinds: capable.map((m) => m.kind),
     signals,
   }
 
