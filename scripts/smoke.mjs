@@ -229,8 +229,8 @@ try {
   // Connect as four tiles (docs/design/connect-mockup.html).
   check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
   check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+synthetic baseline · 1 polic(y|ies)/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
-  // The people fact counts what the plan counts: "N active people · of M enabled", never the directory's row count.
-  check('Connect (scanned): the facts and Open the plan', /\d+\s*active people · of \d+ enabled/.test(t) && !/5\s*people/.test(t) && /3\s*policies/.test(t) && /[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+\s*sign-in records/.test(t) && /Open the plan →/.test(t) && !/Scan complete · 5 people/.test(t), (t.match(/Scan complete[^\n]*/) ?? [''])[0])
+  // Tile 4 (docs/design/mockups/connect-v2.html): the MFA Readiness header, the five rungs by title, Open the plan; no facts row.
+  check('Connect (scanned): the ladder and Open the plan', /MFA Readiness/i.test(t) && /of \d+ active (person|people)/.test(t) && /Passkey or security key, proven/.test(t) && /Nothing set up/.test(t) && /Open the plan →/.test(t) && !/sign-in records/.test(t) && (await evaluate(`document.querySelectorAll('main.page section.step-tile .rung-tile').length`)) === 5, (t.match(/Plan\s+ready[^\n]*/) ?? [''])[0])
   // Tile 3 reads Scan complete · N ago once; tile 4 reads Plan ready · from the scan N ago with the same words, from the one stored timestamp; nothing says scanned.
   check(
     "Connect (scanned): the scan's age once as Scan complete · N ago, Plan ready · from the scan with the same age, and no scanned line",
@@ -238,7 +238,7 @@ try {
       (await evaluate(`(() => { const t = document.querySelector('main.page').innerText; const m = t.match(/Scan\\s+complete · ([^\\n]+)/); if (!m) return false; const age = m[1].trim(); return (t.match(/complete · [^\\n]+/g) || []).length === 1 && t.includes('ready · from the scan ' + age) && !/scanned/.test(t) })()`)),
     (t.match(/Plan\s+ready[^\n]*/) ?? [''])[0],
   )
-  check('Connect (scanned): the plan facts count the steps and how many are done', await waitFor(`/\\d+\\s*steps · \\d+ done/.test(document.body.innerText)`, 20000), ((await text()).match(/\d+\s*steps · \d+ done/) ?? [''])[0])
+  check('Connect (scanned): the plan state counts the steps and how many are done', await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan/.test(document.body.innerText)`, 20000), ((await text()).match(/ready · \d+ steps, \d+ done[^\n]*/) ?? [''])[0])
   check('Connect: Global Reader is the only role IAMAI names', !/Security Reader|Reports Reader/.test(t))
   check('Connect (scanned): Change baseline opens the picker with two choices', (await clickText('/^Change baseline$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /How to make one →/.test(document.body.innerText)`)))
   // Today: where things are now, over active people (target-state §4).

@@ -54,9 +54,3 @@ test('a token without the roles does not start the scan and names the role to as
   assert.equal(rolesInToken('not-a-token'), null)
 })
 
-test('the Plan tile never renders an empty window: the sign-in records fact reads not read when the records were not read', () => {
-  const fact = (s: TenantSnapshot): string => planTile({ kind: 'ready', snapshot: s, at: s.asOf, counts: null }).facts?.[2].value ?? ''
-  assert.match(fact(fixtureSnapshot()), /^[A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+$/)
-  for (const s of [gapsSnapshot(), unlicensed()]) assert.equal(fact(s), 'not read')
-  assert.equal(planTile({ kind: 'ready', snapshot: gapsSnapshot(), at: gapsSnapshot().asOf, counts: null }).facts?.[1].value, '0', 'a scan without the section counts no policies')
-})

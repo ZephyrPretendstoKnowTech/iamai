@@ -10,7 +10,7 @@
 // scan). The tenant's name and the scan's age render here and nowhere else,
 // from the one stored scan timestamp. Every action is a button in one of three
 // weights; Global Reader is the only role IAMAI names.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { authReady, getGraphToken, signIn, signInAnother, signOut } from '../../graph/auth.ts'
@@ -44,7 +44,10 @@ import { W, accountTile, baselineTile, planTile, scanTile, signInTile } from '..
 import type { Action, BaselineUpdate, PlanInput, PlanTile, ScanInput, ScanTile, Tone } from '../scan/connectView.ts'
 import { planCounts } from '../../derive/planHeader.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
-import { notPeopleIds } from '../../derive/sets.ts'
+import { ladder, ladderCounts } from '../../derive/ladder.ts'
+import { LadderTiles } from './LadderTiles.tsx'
+
+const EMPTY_MAPPING = { breakGlassUserIds: [] as string[], serviceAccountUserIds: [] as string[] }
 
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
@@ -209,11 +212,12 @@ function ScanTileView({ tile, upn, bar, actions }: { tile: ScanTile; upn: string
   )
 }
 
-/** Tile 4, Plan: the state in the heading, the facts row when there is one, and the plan's button. */
+/** Tile 4, Plan: the state in the heading, the MFA readiness ladder's header and five tiles when the plan is ready (the sample's facts before sign-in), and the plan's button. */
 function PlanTileView({ tile, actions }: { tile: PlanTile; actions: ReactNode }) {
   return (
     <Tile n={4} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)}>
       {tile.lead && <p className="quiet">{tile.lead}</p>}
+      {tile.ladder && <LadderTiles counts={tile.ladder} />}
       {tile.facts && (
         <ul className="facts">
           {tile.facts.map((f) => (
@@ -404,9 +408,12 @@ function SignedIn({
   const planScan = scanInput.kind === 'complete' ? lastScan : null
   const plan = usePlanData(planScan, baseline, operatorIdOf(planScan?.snapshot ?? null, account), true)
   const computed = plan.computed
+  // The ladder's five numbers (derive/ladder.ts): the same as Today's and the Plan's, from the one stored scan.
+  const planSnapshot = planScan?.snapshot ?? null
+  const ladderNumbers = useMemo(() => (planSnapshot ? ladderCounts(ladder(planSnapshot, plan.mapping ?? EMPTY_MAPPING, planSnapshot.asOf)) : null), [planSnapshot, plan.mapping])
   const planInput: PlanInput =
-    scanInput.kind === 'complete' && lastScan
-      ? { kind: 'ready', snapshot: lastScan.snapshot, at: lastScan.at, previous: lastScan.previous ?? null, notPeople: plan.mapping ? notPeopleIds(plan.mapping) : new Set(), counts: computed ? (({ steps, inPlace }) => ({ steps, done: inPlace }))(planCounts(computed.steps, computed.schedule.cleanup ?? null)) : null }
+    scanInput.kind === 'complete' && lastScan && ladderNumbers
+      ? { kind: 'ready', at: lastScan.at, ladder: ladderNumbers, counts: computed ? (({ steps, inPlace }) => ({ steps, done: inPlace }))(planCounts(computed.steps, computed.schedule.cleanup ?? null)) : null }
       : scanInput.kind === 'gaps' && lastScan
         ? { kind: 'last', at: lastScan.at }
         : { kind: 'waiting' }

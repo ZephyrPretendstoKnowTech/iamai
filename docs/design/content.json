@@ -281,22 +281,9 @@
       "plan": {
         "title": "Plan",
         "ready": {
+          "$comment": "docs/design/mockups/connect-v2.html: the state carries the step counts once the plan has computed; under it the MFA Readiness header and five tiles (pages.ladder), then Open the plan.",
           "state": "ready · from the scan {age}",
-          "people": "active people · of {enabled} enabled",
-          "peopleSince": "active people since {date} · of {enabled} enabled",
-          "policies": "policies",
-          "signIns": "sign-in records",
-          "window": "{from} → {to}",
-          "notRead": "not read",
-          "licence": "licence",
-          "licences": {
-            "p2": "P2",
-            "p1": "P1",
-            "free": "Free"
-          },
-          "dropValue": "{before} → {now}",
-          "dropSince": "{label} since {date}",
-          "steps": "steps · {done} done",
+          "stateCounted": "ready · {steps} steps, {done} done · from the scan {age}",
           "open": "Open the plan →"
         },
         "last": {

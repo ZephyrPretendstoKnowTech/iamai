@@ -608,9 +608,10 @@ export function renderPages(): string {
       tileHtml(
         4,
         cx.plan.title,
-        fill(cx.plan.ready.state, { age: '57 minutes ago' }),
-        li(`<b>${exT.active}</b> ${fill(cx.plan.ready.people, exT)}`, `<b>13 → ${exT.active}</b> ${fill(cx.plan.ready.peopleSince, { ...exT, date: 'Sep 2' })}`, `<b>${exT.policies}</b> ${esc(cx.plan.ready.policies)}`, `<b>${fill(cx.plan.ready.window, exT)}</b> ${esc(cx.plan.ready.signIns)}`, `<b>${esc(cx.plan.ready.licences.p2)}</b> ${esc(cx.plan.ready.licence)}`, `<b>${exT.steps}</b> ${fill(cx.plan.ready.steps, { done: 8 })}`) +
-          sub(esc(cx.plan.ready.notRead), esc(cx.plan.ready.signIns), '·', esc(cx.plan.ready.licences.p1), '·', esc(cx.plan.ready.licences.free)) +
+        fill(cx.plan.ready.stateCounted, { steps: 32, done: 9, age: '1 hour ago' }),
+        // Until the plan has computed, the state carries the age alone; then the MFA readiness ladder's header and five tiles (pages.ladder, drawn in full under Today), then Open the plan.
+        sub(`Before the plan computes: ${fill(cx.plan.ready.state, { age: '1 hour ago' })}`) +
+          sub(esc(P.ladder.header), '·', fill(P.ladder.of, { n: 33 }), '—', ['r5', 'r4', 'r3', 'r2', 'r1'].map((k) => esc(P.ladder.rungs[k].title)).join(' · ')) +
           acts(cx.plan.ready.open),
       ) +
       tileHtml(4, cx.plan.title, fill(cx.plan.last.state, { date: 'Sep 2' }), acts(fill(cx.plan.last.open, { date: 'Sep 2' }))) +
