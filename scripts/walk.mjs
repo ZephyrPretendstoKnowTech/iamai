@@ -992,7 +992,10 @@ async function walkFixture(fx) {
             const noMethod = group(/^(\d+) (?:people|person) with no method;/m) ?? 0
             const unproven = group(/^(\d+) (?:people|person) registered but never seen to complete MFA/m) ?? 0
             if (noMethod !== stripCounts['No method']) add('P0', `${slabel}: the campaign lists ${noMethod} with no method and the strip counts ${stripCounts['No method']}`)
-            if (unproven !== stripCounts['Registered, never used']) add('P0', `${slabel}: the campaign lists ${unproven} registered but never seen and the strip counts ${stripCounts['Registered, never used']}`)
+            // With Require MFA for Everyone in place (the passkey email), the campaign asks nobody for one MFA sign-in while the strip keeps the records' fact.
+            const mfaInPlace = /You already confirm sign-ins to/.test(bodyText)
+            if (mfaInPlace && unproven !== 0) add('P0', `${slabel}: the campaign lists ${unproven} registered but never seen although Require MFA for Everyone is in place`)
+            if (!mfaInPlace && unproven !== stripCounts['Registered, never used']) add('P0', `${slabel}: the campaign lists ${unproven} registered but never seen and the strip counts ${stripCounts['Registered, never used']}`)
           }
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
             const without = group(/^(\d+) admins? (?:has|have) no phishing-resistant method/m) ?? 0

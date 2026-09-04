@@ -15,7 +15,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { rolloutBucket, scoreMfaViability, sortViability } from '../scoring/mfaViability.ts'
 import type { MethodTier, MfaViability } from '../scoring/mfaViability.ts'
-import { campaignBucket, campaignIds } from './population.ts'
+import { campaignIds } from './population.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { adminUserIds } from '../roles.ts'
 import { lockoutIds } from '../roadmap/lockout.ts'
@@ -32,7 +32,7 @@ export function meetsBar(v: Pick<MfaViability, 'methodTiers' | 'mfa'>, admin: bo
   return admin ? v.methodTiers.includes('phishingResistant') : v.mfa === 'verified' || v.mfa === 'likelyViable'
 }
 
-export function readinessStrip(snapshot: TenantSnapshot, mapping: Pick<MappingState, 'breakGlassUserIds' | 'serviceAccountUserIds'>, now: string, mfaEnforced = false): ReadinessStrip {
+export function readinessStrip(snapshot: TenantSnapshot, mapping: Pick<MappingState, 'breakGlassUserIds' | 'serviceAccountUserIds'>, now: string): ReadinessStrip {
   const svc = new Set(mapping.serviceAccountUserIds)
   const viability = sortViability(buildViabilityInputs(snapshot, now, svc).map(scoreMfaViability))
   const pop = new Set(campaignIds(viability, snapshot, mapping))
@@ -41,15 +41,13 @@ export function readinessStrip(snapshot: TenantSnapshot, mapping: Pick<MappingSt
   const person = (v: MfaViability): StripPerson => ({ id: v.userId, admin: admins.has(v.userId), meetsBar: meetsBar(v, admins.has(v.userId)), method: v.strongestMethod, lastMfa: v.evidence?.at ?? null })
   const phishingResistant = (v: MfaViability): boolean => v.methodTiers.includes('phishingResistant')
   const lockedOut = new Set(lockoutIds('admins-phishing-resistant', viability, snapshot, new Set([...mapping.breakGlassUserIds, ...sharedDeviceIds(snapshot), ...svc])))
-  // With Require MFA for Everyone in place, nobody is registered but never seen (population.ts campaignBucket): the campaign's rule, so the strip agrees.
-  const bucket = (v: MfaViability): ReturnType<typeof rolloutBucket> => campaignBucket(v, mfaEnforced)
   return {
     active: rows.length,
     tiles: {
-      ready: rows.filter((v) => bucket(v) === 'proven' && phishingResistant(v)).map(person),
-      weak: rows.filter((v) => bucket(v) === 'proven' && !phishingResistant(v)).map(person),
-      unproven: rows.filter((v) => bucket(v) === 'unproven').map(person),
-      noMethod: rows.filter((v) => bucket(v) === 'noMethod').map(person),
+      ready: rows.filter((v) => rolloutBucket(v) === 'proven' && phishingResistant(v)).map(person),
+      weak: rows.filter((v) => rolloutBucket(v) === 'proven' && !phishingResistant(v)).map(person),
+      unproven: rows.filter((v) => rolloutBucket(v) === 'unproven').map(person),
+      noMethod: rows.filter((v) => rolloutBucket(v) === 'noMethod').map(person),
       admins: rows.filter((v) => lockedOut.has(v.userId)).map(person),
     },
   }
