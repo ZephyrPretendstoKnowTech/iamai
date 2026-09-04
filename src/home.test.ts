@@ -9,11 +9,16 @@
 // buttons, the app's footer, the app's button weights, light and dark.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { createServer } from 'node:http'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { setTimeout as sleep } from 'node:timers/promises'
 
 import { content, pages } from './content/content.ts'
-import { RETIRED_OPENER, renderHomeHtml, renderHomeTheme, toolCard, toolsGrid } from '../scripts/build-home.ts'
+import { LAYOUT, LIGHT, TYPE } from './ui/tokens.ts'
+import { RETIRED_OPENER, assembleHome, renderHomeHtml, renderHomeTheme, toolCard, toolsGrid, versionedName } from '../scripts/build-home.ts'
 import type { HomeTool } from '../scripts/build-home.ts'
 
 const home = 'home'
@@ -261,4 +266,151 @@ test('the sections come in order: the hero, Tools, How these work, About', () =>
     at = i
   }
   assert.ok(!readdirSync(home).includes('tools.json'), 'the tool list is pages.home, not a second file')
+})
+
+// The built page (scripts/assemble-site.mjs writes what assembleHome returns):
+// the stylesheets under their content-hashed names, the links pointed at them.
+// The site's stylesheets are cached for hours where its HTML is not, so a deploy
+// that changed both once rendered the new structure with the old sheet, unstyled.
+test('the built page links each stylesheet by its content hash, so a changed sheet is a new URL', () => {
+  const built = assembleHome(html, { 'theme.css': theme, 'home.css': css }, 'rollout')
+  const page = built['index.html']
+  const names = Object.keys(built).filter((n) => n !== 'index.html')
+  assert.equal(names.length, 2)
+  for (const n of names) {
+    assert.match(n, /^(theme|home)\.[0-9a-f]{8}\.css$/, `${n} carries its hash`)
+    assert.ok(page.includes(`<link rel="stylesheet" href="/${n}" />`), `the page links /${n}`)
+    assert.doesNotMatch(built[n], /\{\{/, `${n} is substituted`)
+  }
+  assert.doesNotMatch(page, /href="\/(theme|home)\.css"/, 'an unversioned stylesheet link remains')
+  assert.doesNotMatch(page, /\{\{/, 'the page is substituted')
+  assert.equal(versionedName('home.css', css), versionedName('home.css', css), 'the name is the content')
+  assert.notEqual(versionedName('home.css', css), versionedName('home.css', `${css}\n.card { padding: 0; }\n`), 'a changed sheet is a new name')
+  // The template keeps the plain names: the version is the build's, not the source's.
+  assert.match(html, /<link rel="stylesheet" href="\/home\.css" \/>/)
+  assert.throws(() => assembleHome(html, { 'other.css': '' }, 'rollout'), /does not link/)
+})
+
+// The built page in a browser, with its stylesheet: the computed styles of the
+// primary button, the card and the pill are the tokens (docs/design/home-mockup.html),
+// How these work is two columns, and a button is a button, not an underlined link.
+const CHROME = [
+  process.env.CHROME,
+  'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/chromium-browser',
+  '/usr/bin/chromium',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+].find((p) => p && existsSync(p))
+/** A token's colour the way getComputedStyle spells it. */
+const rgb = (hex: string): string => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+type Computed = Record<string, string> | null
+type Rendered = { sheets: string[]; primary: Computed; secondary: Computed; tertiary: Computed; card: Computed; pill: Computed; how: Computed; beat: Computed }
+type CdpReply = { id?: number; result?: { result?: { value?: unknown }; exceptionDetails?: { text?: string } } }
+
+test('the built page, with its stylesheet, renders the tokens: the primary button, the card, the pill, the two-column How', async () => {
+  assert.ok(CHROME, 'no Chrome binary found; set CHROME=/path/to/chrome')
+  const built = assembleHome(html, { 'theme.css': theme, 'home.css': css }, 'rollout')
+  const server = createServer((req, res) => {
+    const name = (req.url ?? '/').slice(1).split('?')[0] || 'index.html'
+    const body = built[name]
+    if (body === undefined) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    res.writeHead(200, { 'content-type': name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8' })
+    res.end(body)
+  })
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+  const port = (server.address() as { port: number }).port
+  const cdpPort = Number(process.env.HOME_TEST_CDP_PORT ?? 9452)
+  const profile = mkdtempSync(join(tmpdir(), 'iamai-home-test-'))
+  const chrome = spawn(
+    CHROME,
+    ['--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--hide-scrollbars', `--user-data-dir=${profile}`, `--remote-debugging-port=${cdpPort}`, '--window-size=1280,1000', `http://127.0.0.1:${port}/`],
+    { stdio: 'ignore' },
+  )
+  let ws: WebSocket | undefined
+  try {
+    let targets: { type: string; webSocketDebuggerUrl: string }[] = []
+    for (let i = 0; i < 300 && !targets.some((t) => t.type === 'page'); i++) {
+      try {
+        targets = (await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json()) as typeof targets
+      } catch {
+        await sleep(200)
+      }
+    }
+    const target = targets.find((t) => t.type === 'page')
+    assert.ok(target, 'Chrome exposed no page target within 60 s')
+    const socket = new WebSocket(target.webSocketDebuggerUrl)
+    ws = socket
+    await new Promise((r) => (socket.onopen = r))
+    let id = 0
+    const pending = new Map<number, (m: CdpReply) => void>()
+    socket.onmessage = (m) => {
+      const msg = JSON.parse(String(m.data)) as CdpReply
+      if (msg.id !== undefined && pending.has(msg.id)) {
+        pending.get(msg.id)?.(msg)
+        pending.delete(msg.id)
+      }
+    }
+    const evaluate = (expression: string): Promise<unknown> =>
+      new Promise((resolve, reject) => {
+        const i = ++id
+        pending.set(i, (msg) => (msg.result?.exceptionDetails ? reject(new Error(msg.result.exceptionDetails.text ?? 'evaluate failed')) : resolve(msg.result?.result?.value)))
+        socket.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }))
+      })
+    // Both sheets loaded and parsed: a link that failed to load lists no sheet.
+    let loaded = false
+    for (let i = 0; i < 100 && !loaded; i++) {
+      loaded = (await evaluate(`document.readyState === 'complete' && document.styleSheets.length === 2 && [...document.styleSheets].every((s) => s.cssRules.length > 0)`)) === true
+      if (!loaded) await sleep(100)
+    }
+    assert.ok(loaded, 'the page loaded both stylesheets')
+    const r = (await evaluate(`(() => {
+      document.documentElement.setAttribute('data-theme', 'light')
+      const cs = (sel, props) => { const e = document.querySelector(sel); if (!e) return null; const s = getComputedStyle(e); return Object.fromEntries(props.map((p) => [p, s[p]])) }
+      return {
+        sheets: [...document.styleSheets].map((s) => s.href.replace(/^.*\\//, '')),
+        primary: cs('.card.tool .btn-primary', ['backgroundColor', 'color', 'borderTopColor', 'borderTopLeftRadius', 'height', 'fontWeight', 'textDecorationLine']),
+        secondary: cs('.card.tool .btn-secondary', ['backgroundColor', 'color', 'borderTopColor', 'textDecorationLine']),
+        tertiary: cs('.card.about .btn-tertiary', ['backgroundColor', 'color', 'borderTopColor', 'textDecorationLine']),
+        card: cs('.card.tool', ['backgroundColor', 'borderTopWidth', 'borderTopStyle', 'borderTopColor', 'borderTopLeftRadius']),
+        pill: cs('.card.tool .pill', ['color', 'backgroundColor', 'textTransform', 'fontSize', 'fontWeight', 'borderTopLeftRadius']),
+        how: cs('.grid.two', ['display', 'gridTemplateColumns']),
+        beat: cs('.card.tool .beats b', ['display', 'width']),
+      }
+    })()`)) as Rendered
+    assert.deepEqual(r.sheets, Object.keys(built).filter((n) => n !== 'index.html'), 'the page holds the versioned sheets')
+    assert.deepEqual(r.primary, {
+      backgroundColor: rgb(LIGHT.accent),
+      color: rgb(LIGHT.onAccent),
+      borderTopColor: rgb(LIGHT.accent),
+      borderTopLeftRadius: `${LAYOUT.radiusPx}px`,
+      height: `${LAYOUT.controlPx}px`,
+      fontWeight: '500',
+      textDecorationLine: 'none',
+    })
+    assert.deepEqual(r.secondary, { backgroundColor: 'rgba(0, 0, 0, 0)', color: rgb(LIGHT.accent), borderTopColor: rgb(LIGHT.accent), textDecorationLine: 'none' })
+    assert.deepEqual(r.tertiary, { backgroundColor: rgb(LIGHT.bgInset), color: rgb(LIGHT.ink2), borderTopColor: rgb(LIGHT.ruleStrong), textDecorationLine: 'none' })
+    assert.deepEqual(r.card, { backgroundColor: rgb(LIGHT.bgRaised), borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: rgb(LIGHT.rule), borderTopLeftRadius: `${LAYOUT.radiusPx}px` })
+    assert.deepEqual(r.pill, { color: rgb(LIGHT.accent), backgroundColor: rgb(LIGHT.accentTint), textTransform: 'uppercase', fontSize: `${TYPE['t-1']}px`, fontWeight: '500', borderTopLeftRadius: `${LAYOUT.radiusPx}px` })
+    assert.equal(r.how?.display, 'grid')
+    assert.equal(r.how?.gridTemplateColumns.split(' ').length, 2, `How these work is two columns at 1280 (${r.how?.gridTemplateColumns})`)
+    assert.deepEqual(r.beat, { display: 'inline-block', width: '76px' })
+  } finally {
+    ws?.close()
+    const gone = new Promise<void>((r) => chrome.once('exit', () => r()))
+    chrome.kill()
+    await Promise.race([gone, sleep(5000)])
+    await new Promise<void>((r) => server.close(() => r()))
+    try {
+      rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+    } catch {
+      // Chrome's profile lock outlives the process on Windows for a moment; the temp dir is the OS's to clean.
+    }
+  }
 })
