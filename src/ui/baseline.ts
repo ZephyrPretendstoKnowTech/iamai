@@ -87,7 +87,8 @@ export async function baselineChanges(head: string, fetchImpl: typeof fetch = fe
     const body = (await res.json()) as { files?: { filename: string; status: string }[] }
     return (body.files ?? [])
       .filter((f) => /\.json$/i.test(f.filename) && !/\b(index|readme)\b/i.test(f.filename))
-      .map((f) => ({ policy: (f.filename.split('/').pop() ?? f.filename).replace(/\.json$/i, ''), change: word[f.status] ?? f.status }))
+      // The file's name as the compare gives it; the review names the package policy it matches, else this name (derive/baselineDiff.ts policyLabel).
+      .map((f) => ({ policy: f.filename.split('/').pop() ?? f.filename, change: word[f.status] ?? f.status }))
   } catch {
     return []
   }

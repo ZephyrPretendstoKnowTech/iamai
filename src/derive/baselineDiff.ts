@@ -25,12 +25,17 @@ export function policyOfFile(fileName: string, policies: readonly PolicyLike[]):
   return policies.find((p) => norm(p.displayName) === key) ?? null
 }
 
-/** A changed file's name as a person reads it: the package's display name when the package holds it, else the file's base name with its separators tidied. */
+/**
+ * A changed file's name as a person reads it: the package's display name when
+ * the package holds it, else the file's name as the compare gives it (its base
+ * name, untouched): a name the tool invents for a file it does not know is a
+ * fact the review cannot stand behind, and a row never reads "policy".
+ */
 export function policyLabel(fileName: string, policies: readonly PolicyLike[]): string {
   const found = policyOfFile(fileName, policies)
   if (found) return found.displayName
-  const base = (fileName.split('/').pop() ?? fileName).replace(/\.json$/i, '').replace(/\s*\(\d+\)\s*$/, '')
-  return base.replace(/---/g, ' - ').replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
+  const base = (fileName.split('/').pop() ?? '').trim()
+  return base.length > 0 ? base : fileName
 }
 
 /** The titles of the plan steps a policy stands behind, in the goal map's order; empty when no goal maps to it. */
