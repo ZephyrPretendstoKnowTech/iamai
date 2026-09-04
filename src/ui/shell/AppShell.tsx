@@ -238,7 +238,7 @@ export function AppShell({
   )
 }
 
-/** The three links, separated by |, on every page (target-state §3): the home page, the author, the source. */
+/** The four links, separated by |, on every page (docs/design/mockups/today-v2.html): the home page, the author, the source, the feedback address. A web link opens in a new tab; the mail link opens the mail client. */
 export function Footer() {
   const footer = pages.footer as { links: { text: string; href: string }[] }
   return (
@@ -247,9 +247,13 @@ export function Footer() {
         {footer.links.map((l, i) => (
           <span key={l.href}>
             {i > 0 && ' | '}
-            <a href={l.href} target="_blank" rel="noopener noreferrer">
-              {l.text}
-            </a>
+            {l.href.startsWith('mailto:') ? (
+              <a href={l.href}>{l.text}</a>
+            ) : (
+              <a href={l.href} target="_blank" rel="noopener noreferrer">
+                {l.text}
+              </a>
+            )}
           </span>
         ))}
       </span>

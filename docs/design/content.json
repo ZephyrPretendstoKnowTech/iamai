@@ -491,7 +491,8 @@
       "links": [
         { "text": "IAMAI Home", "href": "https://getiamai.com/" },
         { "text": "Follow me on LinkedIn", "href": "https://www.linkedin.com/in/lachlanrobinette/" },
-        { "text": "GitHub", "href": "https://github.com/ZephyrPretendstoKnowTech/iamai" }
+        { "text": "GitHub", "href": "https://github.com/ZephyrPretendstoKnowTech/iamai" },
+        { "text": "feedback@getiamai.com", "href": "mailto:feedback@getiamai.com" }
       ]
     },
     "how": {

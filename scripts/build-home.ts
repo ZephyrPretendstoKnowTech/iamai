@@ -133,9 +133,9 @@ export function renderHomeHtml(): string {
   const howCards = h.how.map((c) => smallCard(c.title, `<p>${esc(c.body)}${c.link && c.href ? ` <a class="lnk" href="${c.href}">${esc(c.link)}</a>` : ''}</p>`)).join('\n        ')
   const aboutButtons = h.aboutLinks.map((l, i) => button(l.text, l.href, i === 0 ? 'secondary' : 'tertiary')).join('\n            ')
   const about = smallCard(null, `<p>${esc(h.about)}</p>\n          <p class="actions">\n            ${aboutButtons}\n          </p>`, 'about')
-  // The footer is the app's (AppShell's Footer, pages.footer): the same links, joined the same way.
+  // The footer is the app's (AppShell's Footer, pages.footer): the same four links, joined the same way; the home link and the mail link open in place.
   const footerLinks = footer.links
-    .map((l, i) => `${i > 0 ? ' | ' : ''}<a href="${l.href}"${/^https:\/\/getiamai\.com\/?$/.test(l.href) ? '' : ' target="_blank" rel="noopener noreferrer"'}>${esc(l.text)}</a>`)
+    .map((l, i) => `${i > 0 ? ' | ' : ''}<a href="${l.href}"${/^https:\/\/getiamai\.com\/?$/.test(l.href) || l.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener noreferrer"'}>${esc(l.text)}</a>`)
     .join('')
   return `<!doctype html>
 <html lang="en">
