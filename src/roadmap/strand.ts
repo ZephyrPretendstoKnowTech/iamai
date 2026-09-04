@@ -1,7 +1,9 @@
 // Strand simulation (roadmap-v2.md §7): would carrying out a step, as written,
 // lock a given account out? Pure: runs in tests, the worker and the page.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { finalTargets, implementationOffered, isOpenPolicy } from './operations.ts'
+import { isOpenPolicy, stepEffects } from './operations.ts'
+import type { PolicyEffect } from './operations.ts'
+import { strengthTier } from '../coverage/strength.ts'
 import type { Step } from './types.ts'
 
 export type StrandVerdict = { stranded: boolean; unknown: boolean; reason: string }
@@ -21,45 +23,21 @@ const PHISHING_RESISTANT = new Set([
  * from the policy body the step creates or changes; the goal family decides
  * when there is no body.
  */
-/** The shape the impact rules read out of a policy: what it grants and what it does to a session. */
-type Control = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null; conditions?: { locations?: unknown } | null }
-
-const lc = (s: string): string => s.toLowerCase()
-const builtIn = (body: Control): Set<string> => new Set((body.grantControls?.builtInControls ?? []).map(lc))
-const hasSession = (body: Control): boolean => Boolean(body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined))
-
-/** A policy that grants or restricts something can stop or interrupt a sign-in. */
-function denies(body: Control): boolean {
-  const grant = body.grantControls
-  if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
-  return hasSession(body)
-}
-
-/** A policy that asks a person for something, rather than simply stopping them. */
-function prompts(body: Control): boolean {
-  if (builtIn(body).has('block')) return false
-  const grant = body.grantControls
-  if (grant?.authenticationStrength) return true
-  if (builtIn(body).size > 0) return true
-  return hasSession(body)
-}
-
 /**
- * The policies a step describes, when it is an open policy the plan can write:
- * a create's body, an update's policy with its patch applied
- * (roadmap/operations.ts finalTargets). Null for anything else — a policy
- * already in place, the enforce step — which has no operation of its own and is
- * read by its goal's family, as it always was.
+ * What the step's own policies ask of people, when it is an open policy the plan
+ * can write (roadmap/operations.ts stepEffects). Null for anything else — a
+ * policy already in place, the enforce step — which has no operation of its own
+ * and is read by its goal's family, as it always was.
  */
-function policiesOf(step: Step): Control[] | null {
+export function effectsOf(step: Step): PolicyEffect[] | null {
   if (!isOpenPolicy(step)) return null
-  return implementationOffered(step) ? (finalTargets(step) as Control[]) : []
+  return stepEffects(step)
 }
 
 export function canDenyAccess(step: Step): boolean {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return false
-  const policies = policiesOf(step)
-  if (policies !== null) return policies.some(denies)
+  const effects = effectsOf(step)
+  if (effects !== null) return effects.some((e) => e.any)
   return step.readiness.family !== 'other'
 }
 
@@ -71,9 +49,51 @@ export function canDenyAccess(step: Step): boolean {
  * not.
  */
 export function promptsPeople(step: Step): boolean {
-  const policies = policiesOf(step)
-  if (policies !== null) return policies.some(prompts)
+  const effects = effectsOf(step)
+  if (effects !== null) return effects.some((e) => !e.blocks && e.any)
   return canDenyAccess(step) && step.readiness.family !== 'block' && step.readiness.family !== 'location'
+}
+
+/**
+ * The control family one policy imposes, for the account-by-account verdict: the
+ * thing a person has to be able to do to get past it. `unknown` where the policy
+ * names a strength nothing tells us the shape of — the honest answer is that we
+ * cannot say, never the goal's own family.
+ */
+export function controlFamilyOf(effect: PolicyEffect): Step['readiness']['family'] | 'unknown' | 'none' {
+  if (effect.blocks) return 'block'
+  if (effect.strength) {
+    if (effect.strength.allowedCombinations.length === 0) return 'unknown'
+    return strengthTier(effect.strength.allowedCombinations) === 'phishingResistant' ? 'admin' : 'mfa'
+  }
+  if (effect.requiresDevice) return 'device'
+  if (effect.usesLocations) return 'location'
+  if (effect.controls.has('mfa')) return 'mfa'
+  if (effect.session) return 'other'
+  return 'none'
+}
+
+/**
+ * Whether one account is stranded by what the step will actually leave behind.
+ * A step with several policies is stranded by any of them; where one cannot be
+ * read from the scan the answer is unknown, never a guess from the goal's family.
+ */
+export function stepAccountVerdict(step: Step, accountId: string, snapshot: TenantSnapshot, allowedCountries: string[]): StrandVerdict {
+  const effects = effectsOf(step)
+  if (effects === null) return accountVerdict(step.readiness.family, accountId, snapshot, allowedCountries)
+  let unknown: StrandVerdict | null = null
+  for (const effect of effects) {
+    const family = controlFamilyOf(effect)
+    if (family === 'none') continue
+    if (family === 'unknown') {
+      unknown = unknown ?? { stranded: false, unknown: true, reason: 'the strength this policy requires could not be read' }
+      continue
+    }
+    const verdict = accountVerdict(family, accountId, snapshot, allowedCountries)
+    if (verdict.stranded) return verdict
+    if (verdict.unknown) unknown = unknown ?? verdict
+  }
+  return unknown ?? { stranded: false, unknown: false, reason: 'no deny condition' }
 }
 
 export function wouldStrand(
@@ -85,7 +105,9 @@ export function wouldStrand(
   if (!canDenyAccess(step)) return { stranded: false, unknown: false, reason: 'the step cannot deny access' }
   if (!step.population.ids.includes(accountId)) return { stranded: false, unknown: false, reason: 'the account is out of scope' }
   if (opts.breakGlass) return { stranded: true, unknown: false, reason: 'a break-glass account is in scope of a step that can deny access' }
-  return accountVerdict(step.readiness.family, accountId, snapshot, opts.allowedCountries)
+  // The policy the step will actually leave behind decides, not the goal it is
+  // filed under (roadmap/operations.ts stepEffects).
+  return stepAccountVerdict(step, accountId, snapshot, opts.allowedCountries)
 }
 
 /** The account's own ability to satisfy a control family, from what the scan holds. */

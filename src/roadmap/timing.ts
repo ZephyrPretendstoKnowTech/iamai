@@ -6,6 +6,7 @@ import { EVENT } from '../copy/timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
 import { unavailableReason } from './operations.ts'
+import { effectsOf } from './strand.ts'
 import type { Step, StepEvent, StepEvents } from './types.ts'
 
 /**
@@ -146,8 +147,15 @@ function spreadHour(base: number, stepId: string, ctx: TimingContext): number {
  * class, never merely absent evidence.
  */
 export function nobodyAffected(step: Step): boolean {
+  // A policy that stops a protocol, a place or a risky sign-in is measured by
+  // who was seen doing it; one that asks people for something is measured by who
+  // it applies to. What the step will leave behind decides which
+  // (roadmap/operations.ts stepEffects); a step with no policy of its own is
+  // read by its goal's family, as it always was.
+  const effects = effectsOf(step)
   const family = step.readiness.family
-  const affected = family === 'block' || family === 'location' || family === 'risk' ? step.evidence.affectedUserIds.length : step.population.active
+  const byEvidence = effects !== null ? effects.some((e) => e.blocks || e.usesRisk || (e.usesLocations && !e.asksForMethod)) : family === 'block' || family === 'location' || family === 'risk'
+  const affected = byEvidence ? step.evidence.affectedUserIds.length : step.population.active
   return step.evidence.status === 'ok' && affected === 0
 }
 

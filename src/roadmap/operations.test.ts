@@ -6,8 +6,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { finalTargets, hasMalformedOperations, isPreserved, isValidOperation, operationsOf, implementationOffered, policyResult, unavailableReason, validOperations } from './operations.ts'
-import { promptsPeople, wouldStrand } from './strand.ts'
-import { batchClassOf } from './schedule.ts'
+import { controlFamilyOf, promptsPeople, stepAccountVerdict, wouldStrand } from './strand.ts'
+import { batchClassOf, dependencyGraph, observationDaysFor } from './schedule.ts'
+import { nobodyAffected, noticeDaysFor } from './timing.ts'
+import { effectOf, isCompletePolicy, stepEffects } from './operations.ts'
 import { undatedRows } from '../ui/surfaces/planRows.ts'
 import { buildSchedule } from './schedule.ts'
 import type { PolicyOperation, Step } from './types.ts'
@@ -29,8 +31,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** A create Graph would accept: a name, who it applies to, and something to do about them. */
-const CREATE: PolicyOperation = { sourceName: 'author', mode: 'create', policyId: null, body: { displayName: 'A', conditions: { users: { includeUsers: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
-const UPDATE: PolicyOperation = { sourceName: 'author', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { id: 'p-1', displayName: 'the tenant’s own', state: 'enabled' } }
+const CREATE: PolicyOperation = { sourceName: 'author', mode: 'create', policyId: null, body: { displayName: 'A', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+const UPDATE: PolicyOperation = { sourceName: 'author', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { id: 'p-1', displayName: 'the tenant’s own', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
 
 /** A step carrying the operations given, with whatever `action.json` the caller wants to plant. */
 const stepWith = (ops: PolicyOperation[], json: string | null): Step =>
@@ -91,8 +93,8 @@ test('a stale action.json cannot make the JSON or the download disagree with the
 })
 
 test('two operations are two bodies, in the step’s order, on every channel', () => {
-  const a: PolicyOperation = { sourceName: 'A', mode: 'create', policyId: null, body: { displayName: 'A', conditions: { users: { includeUsers: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
-  const b: PolicyOperation = { sourceName: 'B', mode: 'update', policyId: 'p-b', body: { state: 'enabled' }, target: { id: 'p-b', displayName: 'B', state: 'enabled' } }
+  const a: PolicyOperation = { sourceName: 'A', mode: 'create', policyId: null, body: { displayName: 'A', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+  const b: PolicyOperation = { sourceName: 'B', mode: 'update', policyId: 'p-b', body: { state: 'enabled' }, target: { id: 'p-b', displayName: 'B', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
   const step = stepWith([a, b], '{"displayName":"stale"}')
   assert.deepEqual(policyJson(step), [a.body, b.body])
   assert.equal(policyJsonText(step), JSON.stringify([a.body, b.body], null, 2))
@@ -388,14 +390,26 @@ test('an update leaves the tenant’s untouched fields alone, and every channel 
 })
 
 test('an update with no complete target, or a target its body contradicts, makes the whole step unavailable', () => {
-  const base: PolicyOperation = { sourceName: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { id: 'p-1', displayName: 'x', state: 'enabled' } }
+  // The target is the whole policy the change leaves behind, not a stub.
+  const whole = { id: 'p-1', displayName: 'x', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
+  const base: PolicyOperation = { sourceName: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: whole }
   assert.equal(isValidOperation(base), true)
   const noTarget = { ...base, target: undefined } as PolicyOperation
   const emptyTarget = { ...base, target: {} } as PolicyOperation
-  const contradicted = { ...base, target: { id: 'p-1', displayName: 'x', state: 'enabledForReportingButNotEnforced' } } as PolicyOperation
-  const wrongIdentity = { ...base, target: { ...base.target, id: 'p-another' } } as PolicyOperation
-  const noIdentity = { ...base, target: { displayName: 'x', state: 'enabled' } } as PolicyOperation
-  for (const [label, op] of [['no target', noTarget], ['empty target', emptyTarget], ['target disagrees', contradicted], ['target names another policy', wrongIdentity], ['target names no policy', noIdentity]] as [string, PolicyOperation][]) {
+  const idAndState = { ...base, target: { id: 'p-1', state: 'enabled' } } as PolicyOperation
+  const idNameState = { ...base, target: { id: 'p-1', displayName: 'x', state: 'enabled' } } as PolicyOperation
+  const contradicted = { ...base, target: { ...whole, state: 'enabledForReportingButNotEnforced' } } as PolicyOperation
+  const wrongIdentity = { ...base, target: { ...whole, id: 'p-another' } } as PolicyOperation
+  const noIdentity = { ...base, target: { ...whole, id: undefined } } as PolicyOperation
+  for (const [label, op] of [
+    ['no target', noTarget],
+    ['empty target', emptyTarget],
+    ['a target of an id and a state', idAndState],
+    ['a target of an id, a name and a state', idNameState],
+    ['target disagrees', contradicted],
+    ['target names another policy', wrongIdentity],
+    ['target names no policy', noIdentity],
+  ] as [string, PolicyOperation][]) {
     assert.equal(isValidOperation(op), false, label)
     const step = stepWith([op], '{"state":"enabled"}')
     assert.equal(unavailableReason(step), 'no-operation', label)
@@ -410,8 +424,8 @@ test('an update with no complete target, or a target its body contradicts, makes
 // ---- impact is the target's, not the family's ----
 
 test('the goal family never overrules a policy’s own final target', () => {
-  const quiet: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', conditions: { users: { includeUsers: ['All'] } }, sessionControls: { persistentBrowser: null } } }
-  const denying: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', conditions: { users: { includeUsers: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+  const quiet: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, sessionControls: { persistentBrowser: null } } }
+  const denying: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
   const asStep = (op: PolicyOperation, family: string): Step =>
     ({ ...stepWith([op], '{}'), kind: 'create', status: 'ready', readiness: { family, percent: 100, lines: [] } }) as unknown as Step
   assert.equal(canDenyAccess(asStep(quiet, 'mfa')), false, 'a policy that denies nothing denies nothing, whatever its family says')
@@ -478,8 +492,13 @@ test('an incomplete create is not an operation, and one bad member spoils the se
   const whole = CREATE.body
   const cases: [string, Record<string, unknown>][] = [
     ['no name', { ...whole, displayName: '' }],
-    ['no conditions', { displayName: 'A', grantControls: { builtInControls: ['mfa'] } }],
-    ['nothing to do about them', { displayName: 'A', conditions: { users: { includeUsers: ['All'] } } }],
+    ['no state', { ...whole, state: undefined }],
+    ['a state Conditional Access has no idea about', { ...whole, state: 'paused' }],
+    ['no conditions', { displayName: 'A', state: 'enabled', grantControls: { builtInControls: ['mfa'] } }],
+    ['conditions that scope nobody', { ...whole, conditions: { users: {}, applications: {} } }],
+    ['a control Conditional Access has never heard of', { ...whole, grantControls: { operator: 'OR', builtInControls: ['makeThemThinkAboutIt'] } }],
+    ['a session control that does nothing', { ...whole, grantControls: null, sessionControls: { persistentBrowser: null } }],
+    ['nothing to do about them', { displayName: 'A', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } } }],
     ['empty', {}],
   ]
   for (const [label, body] of cases) {
@@ -503,11 +522,11 @@ test('an incomplete create is not an operation, and one bad member spoils the se
 test('deny, prompt, strand and batching follow the policy, not the goal it is filed under', () => {
   const asStep = (body: Record<string, unknown>, family: string): Step =>
     ({ ...stepWith([{ sourceName: 'a', mode: 'create', policyId: null, body }], '{}'), kind: 'create', status: 'ready', readiness: { family, percent: 100, lines: [] }, evidence: { status: 'none', lines: [], affectedUserIds: [] }, population: { total: 3, active: 3, admins: 0, guests: 0, ids: ['u1', 'u2', 'u3'], activeIds: ['u1', 'u2', 'u3'], inScope: 3 } }) as unknown as Step
-  const users = { users: { includeUsers: ['All'] } }
-  const block = asStep({ displayName: 'b', conditions: users, grantControls: { operator: 'OR', builtInControls: ['block'] } }, 'mfa')
-  const mfa = asStep({ displayName: 'm', conditions: users, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }, 'block')
-  const strength = asStep({ displayName: 's', conditions: users, grantControls: { operator: 'OR', authenticationStrength: { id: 'x', displayName: 'Passkeys' } } }, 'other')
-  const device = asStep({ displayName: 'd', conditions: users, grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }, 'mfa')
+  const users = { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }
+  const block = asStep({ displayName: 'b', state: 'enabled', conditions: users, grantControls: { operator: 'OR', builtInControls: ['block'] } }, 'mfa')
+  const mfa = asStep({ displayName: 'm', state: 'enabled', conditions: users, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }, 'block')
+  const strength = asStep({ displayName: 's', state: 'enabled', conditions: users, grantControls: { operator: 'OR', authenticationStrength: { id: 'x', displayName: 'Passkeys' } } }, 'other')
+  const device = asStep({ displayName: 'd', state: 'enabled', conditions: users, grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }, 'mfa')
   // A block stops people; it asks nobody for anything, whatever its family says.
   assert.equal(canDenyAccess(block), true)
   assert.equal(promptsPeople(block), false, 'a block prompts nobody')
@@ -525,7 +544,7 @@ test('deny, prompt, strand and batching follow the policy, not the goal it is fi
   const snapshot = { registrationDetails: [], sources: { registrationDetails: { status: 'ok' } }, users: [], config: {} } as never
   const opts = { breakGlass: false, allowedCountries: [] }
   assert.notEqual(wouldStrand(block, 'u1', snapshot, opts).reason, 'the step cannot deny access', 'a block is read for stranding')
-  const quiet = asStep({ displayName: 'q', conditions: users, sessionControls: { persistentBrowser: null } }, 'mfa')
+  const quiet = asStep({ displayName: 'q', state: 'enabled', conditions: users, sessionControls: { persistentBrowser: null } }, 'mfa')
   assert.equal(canDenyAccess(quiet), false, 'a policy that does nothing denies nothing')
   assert.equal(wouldStrand(quiet, 'u1', snapshot, opts).reason, 'the step cannot deny access')
 })
@@ -615,4 +634,159 @@ test('a stale unavailable step goes through the schedule and comes out of every 
   const undated = undatedRows(steps, schedule.waves)
   assert.equal(undated.filter((s) => s.id === stale.id).length, 1, 'exactly one undated row for it')
   assert.ok(!schedule.waves.some((w) => w.stepIds.includes(stale.id)), 'and no second row under a wave')
+})
+
+
+// ---- what a policy does, read from the policy ----
+
+const SCOPE = { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }
+/** A complete policy, with whatever this case is about laid over it. */
+const policy = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+  displayName: 'p',
+  state: 'enabledForReportingButNotEnforced',
+  conditions: SCOPE,
+  grantControls: { operator: 'OR', builtInControls: ['mfa'] },
+  ...over,
+})
+
+test('a complete policy is a name, a state, a scope and a real control', () => {
+  assert.equal(isCompletePolicy(policy()), true)
+  assert.equal(isCompletePolicy(policy({ sessionControls: { signInFrequency: { isEnabled: true, value: 4, type: 'hours' } }, grantControls: null })), true, 'a session-only policy is a policy')
+  assert.equal(isCompletePolicy(policy({ state: 'paused' })), false, 'not a state Conditional Access has')
+  assert.equal(isCompletePolicy(policy({ conditions: { users: {}, applications: {} } })), false, 'conditions that scope nobody')
+  assert.equal(isCompletePolicy(policy({ conditions: { users: { includeUsers: ['All'] } } })), false, 'people but no resources')
+  assert.equal(isCompletePolicy(policy({ grantControls: { operator: 'OR', builtInControls: ['soundTheAlarm'] } })), false, 'a control nobody has heard of')
+  assert.equal(isCompletePolicy(policy({ grantControls: null, sessionControls: { persistentBrowser: null } })), false, 'a session control that does nothing')
+  assert.equal(isCompletePolicy(policy({ grantControls: null, sessionControls: { signInFrequency: { isEnabled: false } } })), false, 'a session control switched off')
+  assert.equal(isCompletePolicy({}), false)
+})
+
+test('the effect is read from the policy: block, method, device, place, risk, session', () => {
+  const block = effectOf(policy({ grantControls: { operator: 'OR', builtInControls: ['block'] } }))
+  assert.equal(block.blocks, true)
+  assert.equal(block.asksForMethod, false)
+  const strength = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's-1', allowedCombinations: ['fido2'] } } }))
+  assert.equal(strength.asksForMethod, true)
+  assert.equal(controlFamilyOf(strength), 'admin', 'a phishing-resistant strength is read as one')
+  const plain = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's-2', allowedCombinations: ['password,microsoftAuthenticatorPush'] } } }))
+  assert.equal(controlFamilyOf(plain), 'mfa', 'a strength that is only multifactor is read as one')
+  const unreadable = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's-3' } } }))
+  assert.equal(controlFamilyOf(unreadable), 'unknown', 'a strength nothing describes cannot be judged')
+  const device = effectOf(policy({ grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }))
+  assert.equal(device.requiresDevice, true)
+  assert.equal(controlFamilyOf(device), 'device')
+  const place = effectOf(policy({ conditions: { ...SCOPE, locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }))
+  assert.equal(place.usesLocations, true)
+  const risky = effectOf(policy({ conditions: { ...SCOPE, signInRiskLevels: ['high'] } }))
+  assert.equal(risky.usesRisk, true)
+  const session = effectOf(policy({ grantControls: null, sessionControls: { signInFrequency: { isEnabled: true, value: 4, type: 'hours' } } }))
+  assert.equal(session.session, true)
+  assert.equal(session.any, true)
+})
+
+// ---- the account verdict, the dependencies and the timing follow the policy ----
+
+test('the strand verdict, the dependencies, the notice and the observation all follow the policy, not the family', () => {
+  const snapshot = {
+    registrationDetails: [{ id: 'u1', isMfaCapable: false, methodsRegistered: [] }],
+    sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' } },
+    devices: [],
+    users: [{ id: 'u1', usageLocation: 'NZ' }],
+    evidenceUsage: { legacyAuth: { userIds: ['u1'] }, deviceCode: { userIds: [] }, authTransfer: { userIds: [] } },
+  } as never
+  const asStep = (body: Record<string, unknown>, family: string, id = 's-x'): Step =>
+    ({
+      ...stepWith([{ sourceName: 'a', mode: 'create', policyId: null, body }], '{}'),
+      id,
+      kind: 'create',
+      phase: 1,
+      status: 'ready',
+      readiness: { family, percent: 100, lines: [] },
+      evidence: { status: 'ok', lines: [], affectedUserIds: ['u1'] },
+      population: { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 },
+      blockedBy: [],
+    }) as unknown as Step
+  const opts = { breakGlass: false, allowedCountries: ['AU'] }
+  // A block filed under mfa: the account is stranded because it was seen using
+  // what the policy blocks, not because it has no method.
+  const block = asStep(policy({ grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'mfa', 's-block')
+  assert.match(wouldStrand(block, 'u1', snapshot, opts).reason, /seen using what the step blocks/)
+  // MFA filed under block: the account is stranded for having no method.
+  const mfa = asStep(policy(), 'block', 's-mfa')
+  assert.match(wouldStrand(mfa, 'u1', snapshot, opts).reason, /no MFA method/)
+  // A phishing-resistant strength filed under other.
+  const strength = asStep(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's', allowedCombinations: ['fido2'] } } }), 'other', 's-strength')
+  assert.match(wouldStrand(strength, 'u1', snapshot, opts).reason, /no phishing-resistant method/)
+  // A device requirement filed under mfa.
+  const device = asStep(policy({ grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }), 'mfa', 's-device')
+  assert.match(wouldStrand(device, 'u1', snapshot, opts).reason, /no compliant device/)
+  // A place filed under mfa: the account signs in from a country the policy blocks.
+  const place = asStep(policy({ conditions: { ...SCOPE, locations: { includeLocations: ['All'], excludeLocations: ['loc-au'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'mfa', 's-place')
+  assert.equal(wouldStrand(place, 'u1', snapshot, opts).stranded, true)
+  // A strength nothing describes: unknown, never a guess from the family.
+  const unreadable = asStep(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's' } } }), 'mfa', 's-unreadable')
+  const verdict = wouldStrand(unreadable, 'u1', snapshot, opts)
+  assert.equal(verdict.unknown, true)
+  assert.equal(verdict.stranded, false)
+
+  // The same reading drives the batching, the notice and the observation window.
+  assert.equal(batchClassOf(block), 'other')
+  assert.equal(batchClassOf(mfa), 'mfa')
+  assert.equal(batchClassOf(strength), 'mfa')
+  assert.equal(batchClassOf(device), 'deviceSession')
+  // A block nobody was seen using affects nobody; one they were seen using does.
+  const quietBlock = { ...block, evidence: { status: 'ok', lines: [], affectedUserIds: [] } } as unknown as Step
+  assert.equal(nobodyAffected(quietBlock), true, 'a block nobody used')
+  assert.equal(nobodyAffected(block), false)
+  assert.equal(noticeDaysFor(quietBlock) < noticeDaysFor(block), true, 'a change nobody feels needs less notice')
+  assert.equal(observationDaysFor(quietBlock) < observationDaysFor(block), true, 'and a shorter watch')
+  // A policy that asks for a method is measured by who it applies to, whatever
+  // evidence says, so it is never "nobody".
+  assert.equal(nobodyAffected({ ...mfa, evidence: { status: 'ok', lines: [], affectedUserIds: [] } } as unknown as Step), false)
+
+  // The dependency graph reads the same policies.
+  const bg = { ...asStep(policy(), 'other', 's-prereq-break-glass'), kind: 'prerequisite' } as unknown as Step
+  const verify = { ...asStep(policy(), 'other', 's-verify-mfa'), kind: 'verify' } as unknown as Step
+  const loc = { ...asStep(policy(), 'other', 's-prereq-trusted-location'), kind: 'prerequisite' } as unknown as Step
+  const graph = dependencyGraph([bg, verify, loc, block, mfa, place])
+  const deps = (id: string): { stepId: string; reason: string }[] => (graph[id] ?? []) as { stepId: string; reason: string }[]
+  assert.ok(deps(block.id).some((d) => d.stepId === bg.id && d.reason === 'break-glass'), 'a block waits for the way back in')
+  assert.ok(!deps(mfa.id).some((d) => d.reason === 'break-glass'), 'a method change does not')
+  assert.ok(deps(mfa.id).some((d) => d.stepId === verify.id && d.reason === 'registration'), 'a method change waits for people to register')
+  assert.ok(!deps(block.id).some((d) => d.reason === 'registration'), 'a block does not')
+  assert.ok(deps(place.id).some((d) => d.stepId === loc.id && d.reason === 'named-location'), 'a policy naming a place waits for the place')
+})
+
+test('a step with several policies is stranded by any of them, and an unavailable one strands nobody', () => {
+  const snapshot = {
+    registrationDetails: [{ id: 'u1', isMfaCapable: true, methodsRegistered: ['microsoftAuthenticatorPush'] }],
+    sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' } },
+    devices: [],
+    users: [{ id: 'u1' }],
+    evidenceUsage: { legacyAuth: { userIds: [] }, deviceCode: { userIds: [] }, authTransfer: { userIds: [] } },
+  } as never
+  const withOps = (ops: PolicyOperation[]): Step =>
+    ({
+      ...stepWith(ops, '{}'),
+      kind: 'create',
+      status: 'ready',
+      readiness: { family: 'other', percent: 100, lines: [] },
+      evidence: { status: 'none', lines: [], affectedUserIds: [] },
+      population: { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 },
+    }) as unknown as Step
+  const op = (body: Record<string, unknown>, name: string): PolicyOperation => ({ sourceName: name, mode: 'create', policyId: null, body })
+  const canMfa = op(policy(), 'A')
+  const needsPasskey = op(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's', allowedCombinations: ['fido2'] } } }), 'B')
+  const both = withOps([canMfa, needsPasskey])
+  assert.equal(stepEffects(both).length, 2, 'both policies are read')
+  const verdict = stepAccountVerdict(both, 'u1', snapshot, [])
+  assert.equal(verdict.stranded, true, 'the account clears one policy and not the other')
+  assert.match(verdict.reason, /no phishing-resistant method/)
+  // One of the two invalid: the step can run nothing, so it strands nobody.
+  const broken = withOps([canMfa, { ...needsPasskey, body: {} } as PolicyOperation])
+  assert.equal(unavailableReason(broken), 'no-operation')
+  assert.deepEqual(stepEffects(broken), [])
+  assert.equal(canDenyAccess(broken), false)
+  assert.equal(stepAccountVerdict(broken, 'u1', snapshot, []).stranded, false)
+  assert.equal(batchClassOf(broken), 'other')
 })

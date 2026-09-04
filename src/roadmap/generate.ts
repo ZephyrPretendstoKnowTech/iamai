@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { isValidOperation, unavailableReason } from './operations.ts'
+import { isValidOperation, stepEffects, unavailableReason } from './operations.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
@@ -25,7 +25,7 @@ import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers, notPeopleIds } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { LOCKOUT_GOALS, lockoutIds } from './lockout.ts'
-import { accountVerdict } from './strand.ts'
+import { accountVerdict, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
 import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
@@ -1029,7 +1029,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The strand simulator decides (roadmap-v2.md §7): the same check the
     // property tests run, so a step that would lock the operator out is
     // never offered as ready.
-    const opVerdict = includesOperator && operatorId !== null ? accountVerdict(readiness.family, operatorId, snapshot, mapping.allowedCountries) : null
+    const opVerdict =
+      includesOperator && operatorId !== null
+        ? stepAccountVerdict({ goalId: goal.id, kind, status, action, readiness, population: pop } as unknown as Step, operatorId, snapshot, mapping.allowedCountries)
+        : null
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded
     if (opVerdict?.stranded && status !== 'done') {
       status = 'blocked'
@@ -1144,7 +1147,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                     ? MANAGER.session(pop.active)
                     : MANAGER.other()),
       // A strength policy's lockout count: the people in scope with no phishing-resistant method today (lockout.ts).
-      ...(LOCKOUT_GOALS.has(goal.id) && status !== 'done' ? { lockout: lockoutIds(goal.id, viability, snapshot, excluded).length } : {}),
+      // The lockout count is the people this policy would stop, and only where
+      // the policy the step will leave behind actually requires a strength: work
+      // the plan cannot write stops nobody (roadmap/operations.ts stepEffects).
+      ...(LOCKOUT_GOALS.has(goal.id) && status !== 'done' && stepEffects({ goalId: goal.id, kind, status, action } as unknown as Step).some((e) => e.strength !== null)
+        ? { lockout: lockoutIds(goal.id, viability, snapshot, excluded).length }
+        : {}),
       // A step that changes the tenant's own policy names that policy, never the
       // step's title; a step that creates one names the proposed name.
       naming:

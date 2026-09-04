@@ -34,17 +34,106 @@ function targetAgrees(op: PolicyOperation): boolean {
   return agrees(target, op.body)
 }
 
+/** The grant controls Conditional Access understands. Anything else is not a control. */
+const BUILT_IN_CONTROLS = new Set([
+  'block',
+  'mfa',
+  'compliantdevice',
+  'domainjoineddevice',
+  'approvedapplication',
+  'compliantapplication',
+  'passwordchange',
+])
+
+/** The device requirements: a policy that asks for one asks for a machine the tenant manages. */
+const DEVICE_CONTROLS = new Set(['compliantdevice', 'domainjoineddevice', 'approvedapplication', 'compliantapplication'])
+
+/** The states a Conditional Access policy may be in. */
+const POLICY_STATES = new Set(['enabled', 'disabled', 'enabledForReportingButNotEnforced'])
+
+const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
+const nonEmpty = (v: unknown): boolean => arr(v).some((x) => typeof x === 'string' && x.trim().length > 0)
+
 /**
- * True when a create's body is a policy Graph would accept: a name, the users
- * and resources it applies to, and something to do about them. A body missing
- * any of those is not a policy anyone could submit, so it is not an operation.
+ * What a policy asks of the people it applies to, read from the policy itself.
+ * Everything that decides what a change means — what it can deny, who it would
+ * strand, what it waits on, how it batches, how long it is watched — reads this
+ * and never the goal it is filed under.
  */
-function createIsSubmittable(body: Record<string, unknown>): boolean {
+export type PolicyEffect = {
+  /** It stops the sign-in outright. */
+  blocks: boolean
+  /** The built-in grant controls it requires, lowercased. */
+  controls: ReadonlySet<string>
+  /** The authentication strength it requires, where it names one. */
+  strength: { id: string | null; allowedCombinations: string[] } | null
+  /** It requires a device the tenant manages. */
+  requiresDevice: boolean
+  /** It asks for a sign-in method: multifactor authentication, or a strength. */
+  asksForMethod: boolean
+  /** It narrows where people may sign in from. */
+  usesLocations: boolean
+  /** It applies only above a risk level. */
+  usesRisk: boolean
+  /** It changes what a session may do or how long it lives. */
+  session: boolean
+  /** It does something: a grant, or a session control. */
+  any: boolean
+}
+
+/** What one policy body does. */
+export function effectOf(body: Record<string, unknown>): PolicyEffect {
+  const grant = isObject(body.grantControls) ? body.grantControls : null
+  const controls = new Set(arr(grant?.builtInControls).filter((c): c is string => typeof c === 'string').map((c) => c.toLowerCase()).filter((c) => BUILT_IN_CONTROLS.has(c)))
+  const rawStrength = grant && isObject(grant.authenticationStrength) ? grant.authenticationStrength : null
+  const strength = rawStrength
+    ? { id: typeof rawStrength.id === 'string' ? rawStrength.id : null, allowedCombinations: arr(rawStrength.allowedCombinations).filter((x): x is string => typeof x === 'string') }
+    : null
+  const conditions = isObject(body.conditions) ? body.conditions : {}
+  const locations = isObject(conditions.locations) ? conditions.locations : null
+  const sessionControls = isObject(body.sessionControls) ? body.sessionControls : null
+  const session = Boolean(
+    sessionControls &&
+      Object.values(sessionControls).some((v) => (isObject(v) ? v.isEnabled !== false && Object.keys(v).length > 0 : v !== null && v !== undefined)),
+  )
+  const blocks = controls.has('block')
+  return {
+    blocks,
+    controls,
+    strength,
+    requiresDevice: [...controls].some((c) => DEVICE_CONTROLS.has(c)),
+    asksForMethod: controls.has('mfa') || strength !== null,
+    usesLocations: locations !== null && (nonEmpty(locations.includeLocations) || nonEmpty(locations.excludeLocations)),
+    usesRisk: nonEmpty(conditions.signInRiskLevels) || nonEmpty(conditions.userRiskLevels),
+    session,
+    any: controls.size > 0 || strength !== null || session,
+  }
+}
+
+/**
+ * True when a body is a Conditional Access policy Graph would accept: a name, a
+ * state it may be in, the people and the resources it applies to, and a real
+ * control to apply. A body missing any of those is not a policy anyone could
+ * submit, so it is not an operation.
+ */
+export function isCompletePolicy(body: unknown): body is Record<string, unknown> {
+  if (!isObject(body)) return false
   if (typeof body.displayName !== 'string' || body.displayName.trim().length === 0) return false
-  if (!isObject(body.conditions)) return false
-  const controls = body.grantControls
-  const session = body.sessionControls
-  return (isObject(controls) && Object.keys(controls).length > 0) || (isObject(session) && Object.keys(session).length > 0)
+  if (typeof body.state !== 'string' || !POLICY_STATES.has(body.state)) return false
+  const conditions = isObject(body.conditions) ? body.conditions : null
+  if (!conditions) return false
+  const users = isObject(conditions.users) ? conditions.users : null
+  const scopesPeople =
+    (users !== null &&
+      (nonEmpty(users.includeUsers) || nonEmpty(users.includeGroups) || nonEmpty(users.includeRoles) || isObject(users.includeGuestsOrExternalUsers))) ||
+    isObject(conditions.clientApplications)
+  if (!scopesPeople) return false
+  const apps = isObject(conditions.applications) ? conditions.applications : null
+  const scopesResources =
+    (apps !== null && (nonEmpty(apps.includeApplications) || nonEmpty(apps.includeUserActions) || nonEmpty(apps.includeAuthenticationContextClassReferences))) ||
+    isObject(conditions.clientApplications)
+  if (!scopesResources) return false
+  return effectOf(body).any
 }
 
 /** True when the operation says exactly one thing: create this policy, or change that one. */
@@ -52,13 +141,15 @@ export function isValidOperation(op: PolicyOperation | null | undefined): op is 
   if (!op || typeof op !== 'object') return false
   if (typeof op.sourceName !== 'string') return false
   if (!isObject(op.body)) return false
-  if (op.mode === 'create') return (op.policyId === null || op.policyId === undefined) && createIsSubmittable(op.body)
+  if (op.mode === 'create') return (op.policyId === null || op.policyId === undefined) && isCompletePolicy(op.body)
   if (op.mode === 'update') {
     if (typeof op.policyId !== 'string' || op.policyId.length === 0) return false
     if (Object.keys(op.body).length === 0) return false
-    // The target is the policy this update names, and no other: the id it
-    // carries is the id the request is submitted to.
+    // The target is the whole policy the change leaves behind, and it is the
+    // policy this update names: the id it carries is the id the request is
+    // submitted to. A stub of an id and a state is not a policy.
     if (!isObject(op.target) || op.target.id !== op.policyId) return false
+    if (!isCompletePolicy(op.target)) return false
     return targetAgrees(op)
   }
   return false
@@ -187,6 +278,11 @@ export function operationBodies(step: PolicyStep): Record<string, unknown>[] {
  * change *means* — what it can deny, who it would strand, what a person is told
  * — reads these and never a body serialised somewhere else.
  */
+/** What each of the step's policies will ask of people once it has run; empty while it cannot run. */
+export function stepEffects(step: PolicyStep): PolicyEffect[] {
+  return finalTargets(step).map(effectOf)
+}
+
 export function finalTargets(step: PolicyStep): Record<string, unknown>[] {
   // An update's target is the tenant's own policy with this patch applied; a
   // create's is its body. There is no fallback to the patch itself: a partial

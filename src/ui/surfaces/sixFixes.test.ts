@@ -101,8 +101,11 @@ test('(5) a started plan says started <date> once, in the header line only', () 
 })
 
 test("(6) a strength policy's row carries its lockout count in the who-column when it is not zero", () => {
-  const f = fixture('demo')
-  const r = runFixture(f)
+  // The count is the people this policy would stop, so the policy has to be one
+  // the plan can write: week two, with its admins policy back in report-only.
+  const f = fixture('demo-week2')
+  const snapshot = adminsInReportOnly(f)
+  const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   const without = lockoutIds('admins-phishing-resistant', r.viability, f.snapshot, new Set(f.mapping.breakGlassUserIds))
   assert.ok(without.length > 0)
