@@ -9,7 +9,7 @@ import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
-import { stepPortalLinesFromBody } from '../ui/surfaces/stepPortal.ts'
+import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 
 test('the pinned baseline lacks registration protection, so the floor renders it, flagged, from the template', () => {
   const r = runFixture(fixture('demo'))
@@ -45,15 +45,18 @@ test('a baseline that holds the goal renders it as the author\'s, not the floor'
 })
 
 test('the floor step\'s What to do is the template through the translator: the user action, the exclusions group, never an account by name', () => {
-  const f = fixture('demo')
+  // Week two: the exclusions group exists, so the template resolves and the step
+  // offers its instructions (stepJson.ts implementationOffered).
+  const f = fixture('demo-week2')
   const r = runFixture(f)
   const reg = r.steps.find((s) => s.goalId === 'register-info-protected')!
   const names = (id: string): string => r.input.names!.label(id)
-  const lines = stepPortalLinesFromBody(reg.action.json!, { nameOf: names, policyName: reg.naming?.proposed ?? reg.title })
+  // The floor step's own resolved template, read off the step like any policy step.
+  const lines = stepPortalLines(reg, { nameOf: names, policyName: reg.naming?.proposed ?? reg.title })
   assert.ok(lines && lines.length > 3, 'portal lines render')
   const text = lines!.join('\n')
   assert.match(text, /Register security information|security info/i, 'the user action is named')
-  assert.match(text, /exclusions group/i, 'the exclusion is the group')
+  assert.match(text, /Exclude → Groups: Core - Exclusions/, 'the exclusion is the group')
   for (const id of f.mapping.breakGlassUserIds) assert.ok(!text.includes(names(id)), 'never an emergency account by name')
   assert.doesNotMatch(text, /\{[a-zA-Z]+\}|__IAMAI|urn:user:/, 'no raw placeholder or URN')
   assert.match(text, /Report-only/, 'ends in report-only')

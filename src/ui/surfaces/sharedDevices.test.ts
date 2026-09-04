@@ -22,7 +22,7 @@ const step = r.steps.find((s) => s.id === 's-shared-devices')!
 test('on a baseline with no shared-device policy, the step renders its instructions, whole', () => {
   assert.ok(step, 'the demo has shared devices')
   const ex = stepVars(step, ctx) as Record<string, unknown>
-  assert.equal(stepPortalLines(step.goalId, portalNamesFor(ctx, ex, step.title)), null, 'the pinned baseline holds no shared-device policy')
+  assert.equal(stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), null, 'the pinned baseline holds no shared-device policy')
   const view = stepExportView(step, ctx)
   assert.equal(view.whatToDo.length, 8, JSON.stringify(view.whatToDo))
   for (const l of view.whatToDo) assert.ok(!HOLE.test(l), `no hole: ${l}`)

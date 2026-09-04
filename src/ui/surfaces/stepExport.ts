@@ -15,7 +15,10 @@ import { doneWhenTemplates } from './doneWhen.ts'
 import { fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
+import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
+import { implementationOffered, missingObjects } from './stepJson.ts'
+import { hasBaselineConflict } from '../../roadmap/baselineConflict.ts'
+import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 
 export type { ExportStep }
@@ -36,13 +39,18 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   }
   const ex = stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, String(cs.title))
-  const portal = cs.kind === 'policy' ? (stepPortalLines(step.goalId, names) ?? (step.floor && step.action.json ? stepPortalLinesFromBody(step.action.json, names) : null)) : null
+  const portal = cs.kind === 'policy' ? stepPortalLines(step, names) : null
+  // The screen's rule, in the export: while the policy names an object this
+  // tenant does not have yet, the export carries the explanation, never the
+  // instructions (stepJson.ts implementationOffered).
+  const waiting = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   const lines: string[] = []
   if (typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
   // The content's leading "before" lines stay above the portal lines, as on screen.
   if (Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
+  else if (waiting) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.jsonWaits), { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') }))
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   const doneWhen = doneWhenTemplates(step, (cs.doneWhen ?? []) as unknown[])
     .filter((x) => whole(x, ex))

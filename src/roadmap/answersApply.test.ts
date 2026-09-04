@@ -20,6 +20,7 @@ import { PREREQ_STEP_ID } from './stepIds.ts'
 import { decisionsOf } from './progress.ts'
 import { defaultDecisions } from '../ui/surfaces/pickerRows.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
+import { implementationOffered } from '../ui/surfaces/stepJson.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
@@ -96,6 +97,7 @@ test('the service-provider exclusion is on both policies, in the JSON and on the
   const m = applied(f, f.decisions ?? null)
   const r0 = runFixture({ ...f, mapping: before }, { mapping: before })
   const r = runFixture({ ...f, mapping: m }, { mapping: m })
+  let seenOnScreen = false
   for (const goalId of ['guests-mfa', 'geo-restriction']) {
     const step = r.steps.find((s) => s.goalId === goalId)
     const step0 = r0.steps.find((s) => s.goalId === goalId)
@@ -109,11 +111,22 @@ test('the service-provider exclusion is on both policies, in the JSON and on the
       const body0 = JSON.parse(step0.action.json) as { conditions: { users: { excludeGuestsOrExternalUsers?: unknown } } }
       assert.equal(body0.conditions.users.excludeGuestsOrExternalUsers, undefined, `${goalId}: unanswered, the baseline's users stand`)
     }
-    const lines = stepPortalLines(goalId, portalNamesFor(ctxFor(f, r, m), stepVars(step, ctxFor(f, r, m)), goalId)) ?? []
-    const lines0 = stepPortalLines(goalId, portalNamesFor(ctxFor(f, r0, before), stepVars(step0, ctxFor(f, r0, before)), goalId)) ?? []
-    assert.ok(lines.some((l) => /Service provider users/.test(l) && /the baseline's version/.test(l)), `${goalId}: the exclusion shows beside the baseline's version: ${lines.join(' | ')}`)
+    // The instructions are offered only when the policy names nothing this
+    // tenant lacks — the same condition as the JSON, the PowerShell and the
+    // download (stepJson.ts implementationOffered). The countries policy waits
+    // on the allowed-countries location here, so it offers none; the answer is
+    // still in its body.
+    const lines = stepPortalLines(step, portalNamesFor(ctxFor(f, r, m), stepVars(step, ctxFor(f, r, m)), goalId)) ?? []
+    const lines0 = stepPortalLines(step0, portalNamesFor(ctxFor(f, r0, before), stepVars(step0, ctxFor(f, r0, before)), goalId)) ?? []
+    if (implementationOffered(step)) {
+      assert.ok(lines.some((l) => /Service provider users/.test(l) && /the baseline's version/.test(l)), `${goalId}: the exclusion shows beside the baseline's version: ${lines.join(' | ')}`)
+      seenOnScreen = true
+    } else {
+      assert.deepEqual(lines, [], `${goalId}: waiting on an object, so no instructions either`)
+    }
     assert.ok(!lines0.some((l) => /the baseline's version/.test(l)), `${goalId}: unanswered, nothing deviates from the baseline`)
   }
+  assert.ok(seenOnScreen, 'at least one of the two shows the deviation on screen')
 })
 
 test('each question\'s effect line is true when it shows, and never before', () => {

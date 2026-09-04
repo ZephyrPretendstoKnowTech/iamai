@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import type { TenantObjects } from './resolvePolicy.ts'
+import type { ResolvedPolicy } from './resolvePolicy.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
 import { hasBaselineConflict } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
@@ -207,21 +207,23 @@ export { PLACEHOLDER_STEP }
 
 
 
+/**
+ * The step's action, built from the canonical resolved policy the caller has
+ * already produced (resolvePolicy.ts). Nothing here resolves a baseline
+ * reference: the body this receives is the one the portal instructions describe.
+ */
 export function buildCreateAction(
-  baselinePolicy: RawPolicy,
+  resolved: ResolvedPolicy,
   mapping: MappingState,
   planId: string,
   stepId: string,
   goalId: string,
-  opts: { displayName?: string; adjust?: { policyId: string; state: string }; tenant?: TenantObjects; policies?: readonly CaPolicy[] } = {},
+  opts: { displayName?: string; adjust?: { policyId: string; state: string } } = {},
 ): Action {
-  // The one resolution boundary (resolvePolicy.ts): the author's objects become
-  // this tenant's, named once each. The portal lines resolve the same policy the
-  // same way, so the screen and the download can never describe two policies.
-  const resolved = resolveTenantPolicy(baselinePolicy, opts.tenant ?? tenantObjectsOf(mapping), goalId, opts.policies ?? [])
   // The person's answers, applied as recorded deviations (deviations.ts): the
   // portal lines pass the same policy through the same rule.
-  const body = applyDeviations(resolved.body, goalId, mapping)
+  const sourceDescription = resolved.body.description
+  const body = applyDeviations(structuredClone(resolved.body), goalId, mapping)
   delete body.id
   delete body.createdDateTime
   delete body.modifiedDateTime
@@ -231,7 +233,7 @@ export function buildCreateAction(
   body.state = opts.adjust ? opts.adjust.state : 'enabledForReportingButNotEnforced'
   if (opts.displayName) body.displayName = opts.displayName
   const tag = `[IAMAI:${planId}:${stepId}]`
-  body.description = `${tag}${typeof baselinePolicy.description === 'string' && baselinePolicy.description ? ' ' + baselinePolicy.description : ''}`
+  body.description = `${tag}${typeof sourceDescription === 'string' && sourceDescription ? ' ' + sourceDescription : ''}`
   // The JSON strips any object that does not exist yet, so a download never carries a placeholder.
   const stripped = implementable(body, resolved.unresolved)
   const json = JSON.stringify(stripped.policy, null, 2)
@@ -395,7 +397,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const countriesLocationId = tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null
   const tenantObjects = tenantObjectsOf(mapping, countriesLocationId)
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
-  const resolution = { tenant: tenantObjects, policies: input.baseline.policies }
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
   const proposedTaken = new Set<string>()
   /** The tenant-convention name, suffixed when a policy of that name already exists; the note explains. */
@@ -691,6 +692,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (hit) source = hit
     }
 
+    // The policies this step describes: the goal map's, which is what a merged
+    // goal renders as Policy A and Policy B. Where the map does not describe the
+    // package (a synthetic fixture) the step describes the one chosen variant —
+    // never the variants it rejected.
+    const mappedSources = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((b): b is (typeof baselineFactsList)[number] => b !== undefined)
+    const stepSources = mappedSources.length > 0 ? mappedSources : source ? [source] : []
+    // The step's one resolution (resolvePolicy.ts): each of those policies,
+    // resolved once against the applied mapping. The action below builds its
+    // JSON from the same result, and the portal instructions read it off the
+    // step — nothing resolves a baseline reference twice.
+    const resolveOne = (body: RawPolicy, authorPolicies: readonly CaPolicy[]): ResolvedPolicy => resolveTenantPolicy(body, tenantObjects, goal.id, authorPolicies)
+    const resolvedByName = new Map<string, ResolvedPolicy>()
+    for (const m of stepSources) resolvedByName.set(m.facts.name, resolveOne(m.policy as RawPolicy, input.baseline.policies))
+    if (source && !resolvedByName.has(source.facts.name)) resolvedByName.set(source.facts.name, resolveOne(source.policy as RawPolicy, input.baseline.policies))
+
     const whoKey = impl.expectedWho.kind
     // The service accounts are the mapping's, and the one population every other
     // step excludes (E9): the step that restricts them names them all.
@@ -747,17 +763,22 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'create'
       if (source) {
         const proposed = uniqueName(goal)
-        action = buildCreateAction(source.policy, mapping, planId, stepId, goal.id, { displayName: proposed.name, ...resolution })
+        action = buildCreateAction(resolvedByName.get(source.facts.name) as ResolvedPolicy, mapping, planId, stepId, goal.id, { displayName: proposed.name })
         namingNote = proposed
       } else {
         // No baseline policy stands for this goal: the goal's own template is
         // the body, with the tenant's objects filled in where they exist and a
         // Wave 0 step named where they do not (prompt 46 item 12). Every step
         // is executable; nothing says "create a policy that meets the floor".
-        const resolved = resolveTemplate(impl.template as TemplateBody, templateValues)
-        for (const p of resolved.unresolved) blockPlaceholder(p)
+        const filled = resolveTemplate(impl.template as TemplateBody, templateValues)
+        for (const p of filled.unresolved) blockPlaceholder(p)
         const proposed = uniqueName(goal)
-        action = buildCreateAction(resolved.body, mapping, planId, stepId, goal.id, { displayName: proposed.name, ...resolution })
+        // The goal's own template is a body the engine wrote, so it carries no
+        // author references; it goes through the same boundary all the same, for
+        // the exclusions group and the de-duplication.
+        const resolvedTemplate = resolveOne(filled.body as RawPolicy, [])
+        resolvedByName.set(goal.id, resolvedTemplate)
+        action = buildCreateAction(resolvedTemplate, mapping, planId, stepId, goal.id, { displayName: proposed.name })
         namingNote = proposed
       }
     } else {
@@ -773,8 +794,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       action = source
         ? adjustAction(
-            buildCreateAction(source.policy, mapping, planId, stepId, goal.id, {
-              ...resolution,
+            buildCreateAction(resolvedByName.get(source.facts.name) as ResolvedPolicy, mapping, planId, stepId, goal.id, {
               displayName: existing?.policyName ?? proposedPolicyName(goal, naming),
               adjust: existing ? { policyId: existing.policyId, state: existing.state } : undefined,
             }),
@@ -782,6 +802,31 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             existingRaw,
           )
         : { kind: 'adjust', summary: [], json: null, portalSteps: [] }
+      if (!source) {
+        // No baseline policy stands for this goal, so the policy the step
+        // describes is the goal's own template — the same body the absent branch
+        // builds, through the same resolution boundary.
+        resolvedByName.set(goal.id, resolveOne(resolveTemplate(impl.template as TemplateBody, templateValues).body as RawPolicy, []))
+      }
+    }
+
+    // One list of what this tenant does not have yet, over every policy the step
+    // describes, and the resolved bodies themselves. The portal instructions,
+    // the JSON, the PowerShell and the download all read these two facts, so all
+    // four are offered together or none of them is.
+    const stepPolicies = stepSources.length > 0 ? stepSources.map((m) => ({ sourceName: m.facts.name, resolved: resolvedByName.get(m.facts.name) })) : [{ sourceName: goal.id, resolved: resolvedByName.get(goal.id) }]
+    const stepMissing: NonNullable<Action['missing']> = []
+    for (const one of stepPolicies) {
+      if (!one.resolved) continue
+      for (const m of implementable(one.resolved.body, one.resolved.unresolved).missing) if (!stepMissing.some((x) => x.token === m.token)) stepMissing.push(m)
+    }
+    action = {
+      ...action,
+      missing: stepMissing,
+      resolution: {
+        policies: stepPolicies.flatMap((one) => (one.resolved ? [{ sourceName: one.sourceName, body: structuredClone(one.resolved.body) }] : [])),
+        tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId },
+      },
     }
 
 

@@ -19,7 +19,8 @@ import { defaultDecisions, filterPickerObjects, pickerUniverse, pickerVars } fro
 import { BREAK_GLASS_STEP_ID } from '../../roadmap/generate.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
+import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
+import { implementationOffered, missingObjects } from './stepJson.ts'
 
 const AT = '2026-09-02T00:00:00.000Z'
 
@@ -41,7 +42,7 @@ function policyPortals(f: Fixture, r: FixtureRun, mapping: MappingState): { step
     if (!cs || cs.kind !== 'policy') continue
     const ex = stepVars(step, ctx)
     const names = portalNamesFor(ctx, ex, String(cs.title))
-    const lines = stepPortalLines(step.goalId, names) ?? (step.floor && step.action.json ? stepPortalLinesFromBody(step.action.json, names) : null)
+    const lines = stepPortalLines(step, names)
     if (lines && lines.length > 0) out.push({ step, lines })
   }
   return out
@@ -79,22 +80,22 @@ test('saving two emergency accounts removes the create instructions', () => {
   assert.ok(!stepAfter || !stepAfter.checks?.items.some((it) => it.fix === 'second-account'), 'two accounts: no second-account check')
 })
 
-test('saving a group names it on every policy step; before that, the proposed group is named, never an unnamed thing', () => {
+test('saving a group names it on every policy step; before that, no policy step offers instructions at all', () => {
   const f = fixture('demo')
   const r = runFixture(f)
-  // The demo starts without an exclusions group: the line names the group the
-  // exclusions step proposes, in the tenant's convention.
+  // The demo starts without an exclusions group. Every policy the baseline
+  // writes excludes one, so until the tenant names a group no policy step offers
+  // an implementation — no portal instructions, no JSON, no PowerShell, no
+  // download (roadmap/resolvePolicy.ts, stepJson.ts implementationOffered). The
+  // step names the group the plan proposes to create, and waits.
   const exclusionsStep = r.steps.find((s) => DECISION_STEPS.exclusions.has(s.id))
   assert.ok(exclusionsStep?.naming?.proposed, 'the exclusions step carries the proposed name')
-  const proposed = exclusionsStep.naming!.proposed
   const before = policyPortals(f, r, f.mapping)
-  assert.ok(before.length >= 10, 'the demo has policy steps with portal lines')
-  for (const { step, lines } of before) {
-    const exclusions = lines.filter((l) => l.includes(EXCLUSIONS_PREFIX))
-    assert.ok(exclusions.length > 0, `${step.id}: has an exclusions line`)
-    for (const l of exclusions) assert.ok(l.includes(`${EXCLUSIONS_PREFIX}${proposed}.`), `${step.id}: names the proposed group: ${l}`)
-    for (const l of lines) assert.ok(!l.includes(UNNAMED), `${step.id}: no unnamed thing: ${l}`)
-  }
+  assert.deepEqual(before.map((x) => x.step.id), [], 'no policy step offers instructions while the group is missing')
+  const waiting = r.steps.filter((s) => (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy' && (s.action.resolution?.policies.length ?? 0) > 0)
+  assert.ok(waiting.length >= 10, 'the demo has policy steps')
+  for (const step of waiting) assert.equal(implementationOffered(step), false, `${step.id}: waits`)
+  assert.ok(waiting.some((step) => missingObjects(step).some((m) => m.stepId === exclusionsStep.id)), 'the exclusions-group step is what they wait on')
   // The exclusions step's picker lists the tenant's groups, with member counts and how many policies exclude each.
   const ex = stepVars(exclusionsStep, ctxFor(f, r, f.mapping))
   const rows = ex.groups as string[]
@@ -108,7 +109,7 @@ test('saving a group names it on every policy step; before that, the proposed gr
   assert.equal(decided.records['__globalExclusion'].doesNotExist, false)
   const r2 = run(f, decided)
   const after = policyPortals(f, r2, decided)
-  assert.equal(after.length, before.length, 'the same policy steps')
+  assert.ok(after.length >= 5, `with the group, the policy steps offer their instructions (${after.length})`)
   for (const { step, lines } of after) {
     const exclusions = lines.filter((l) => l.includes(EXCLUSIONS_PREFIX))
     assert.ok(exclusions.length > 0, `${step.id}: has an exclusions line`)
@@ -137,7 +138,7 @@ test('GetIAMAI: the first render equals the render after a no-change Save on eve
     return r.steps.map((step) => {
       const ex = stepVars(step, ctx) as Record<string, unknown>
       const cs = contentStepFor(step) as { kind?: string; title?: string } | undefined
-      const lines = cs?.kind === 'policy' ? stepPortalLines(step.goalId, portalNamesFor(ctx, ex, String(cs.title))) : null
+      const lines = cs?.kind === 'policy' ? stepPortalLines(step, portalNamesFor(ctx, ex, String(cs.title))) : null
       return { id: step.id, status: step.status, checks: step.checks ? `${step.checks.failing}/${step.checks.total}` : null, blockedBy: step.blockedBy, ex, lines }
     })
   }

@@ -24,7 +24,18 @@ export function policyJsonText(step: Step): string {
   return JSON.stringify(policyJson(step), null, 2)
 }
 
-/** True when the JSON tab, the PowerShell tab and Download JSON are offered. */
+/**
+ * The one implementation gate: true when every object the step's policy names
+ * exists in the tenant. All four implementation channels — the portal
+ * instructions, the JSON, the PowerShell and the download — are offered
+ * together or none of them is. The step still explains what is missing and
+ * which Preparation step creates it; that explanation is not an implementation.
+ */
+export function implementationOffered(step: Step): boolean {
+  return missingObjects(step).length === 0
+}
+
+/** True when the JSON tab, the PowerShell tab and Download JSON are offered: the one gate, plus a body to show. */
 export function jsonOffered(step: Step): boolean {
-  return typeof step.action.json === 'string' && missingObjects(step).length === 0
+  return implementationOffered(step) && typeof step.action.json === 'string'
 }

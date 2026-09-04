@@ -14,6 +14,7 @@ import pinned from '../baselines/jhope188-conditionalaccesspolicies.pinned.json'
 import { steps as contentSteps } from '../src/content/content.ts'
 import { PINNED_GOAL_MAP, policiesForGoal } from '../src/roadmap/goalMap.ts'
 import { stepPortalLines } from '../src/ui/surfaces/stepPortal.ts'
+import type { Step } from '../src/roadmap/types.ts'
 import { buildNameDirectory } from '../src/names.ts'
 
 type PinnedPolicy = { placeholders?: Record<string, string> }
@@ -52,7 +53,25 @@ export function buildTranslatorOutput(): Record<string, { steps: string[] }> {
       }
     }
     const dir = buildNameDirectory(null, [], extra)
-    const lines = stepPortalLines(goalId, {
+    // The review page has no tenant, so the "resolved" policies are the author's
+    // own and the two group ids the lines label with are the author's too. The
+    // step shape is the product's: the translator reads its resolution and
+    // nothing else (src/ui/surfaces/stepPortal.ts).
+    const tokenId = (token: string): string | null => {
+      for (const p of mapped as PinnedPolicy[]) for (const [id, t] of Object.entries(p.placeholders ?? {})) if (t === token) return id.toLowerCase()
+      return null
+    }
+    const asStep = {
+      goalId,
+      action: {
+        missing: [],
+        resolution: {
+          policies: (mapped as unknown as Record<string, unknown>[]).map((p, i) => ({ sourceName: String(p.displayName ?? i), body: p })),
+          tenant: { exclusionsGroupId: tokenId('exclusionsGroup'), serviceAccountsGroupId: tokenId('serviceAccountsGroup') },
+        },
+      },
+    } as unknown as Step
+    const lines = stepPortalLines(asStep, {
       nameOf: (id: string) => dir.label(id),
       policyName: typeof example.policyName === 'string' ? example.policyName : step.title,
       strengthName: typeof example.strengthName === 'string' ? example.strengthName : null,

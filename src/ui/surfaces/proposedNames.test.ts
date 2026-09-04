@@ -22,19 +22,31 @@ const prereq = (id: string) => r.steps.find((s) => s.id === id)!
 const portal = (ctx: StepVarContext): { step: string; line: string }[] =>
   r.steps.filter((s) => (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy').flatMap((s) => {
     const ex = stepVars(s, ctx) as Record<string, unknown>
-    return (stepPortalLines(s.goalId, portalNamesFor(ctx, ex, s.title)) ?? []).map((line) => ({ step: s.id, line }))
+    return (stepPortalLines(s, portalNamesFor(ctx, ex, s.title)) ?? []).map((line) => ({ step: s.id, line }))
   })
 
-test('the exclusions-group step and every portal exclusions line name the same proposed group', () => {
+test('the exclusions-group step names the plan\'s proposal, and the policy steps wait for the group rather than naming a proposal', () => {
   assert.equal(f.mapping.records['__globalExclusion']?.resolvedId ?? null, null, 'the demo recognises no exclusions group, so the plan proposes one')
   const step = prereq(PREREQ_STEP_ID.exclusionsGroup)
   const proposed = String(step.naming?.proposed)
   assert.ok(proposed.length > 0)
   assert.equal((stepVars(step, withPlan) as Record<string, unknown>).proposedName, proposed, 'the prerequisite step names the plan\'s proposal')
   assert.equal(withPlan.proposed?.exclusionsGroup, proposed)
-  const lines = portal(withPlan).filter((l) => /Exclude → Groups:/.test(l.line))
+  // No policy step offers instructions while the group does not exist, so no
+  // portal line names an object the tenant does not have (resolvePolicy.ts).
+  assert.deepEqual(portal(withPlan), [], 'the policy steps wait on the exclusions-group step')
+})
+
+test('with the group saved, every portal exclusions line names the tenant\'s own group', () => {
+  const f2 = fixture('demo-week2')
+  const r2 = runFixture(f2)
+  const ctx2: StepVarContext = { snapshot: f2.snapshot, mapping: f2.mapping, nameOf: (id: string) => r2.input.names!.label(id), signature: 'IT', operatorId: f2.operatorId, now: f2.snapshot.asOf, groups: f2.groups, naming: r2.coverage.organisation.naming, ...planDates(r2.steps, r2.schedule.start, r2.coverage.organisation.naming) }
+  const lines = r2.steps
+    .filter((s) => (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy')
+    .flatMap((s) => (stepPortalLines(s, portalNamesFor(ctx2, stepVars(s, ctx2) as Record<string, unknown>, s.title)) ?? []).map((line) => ({ step: s.id, line })))
+    .filter((l) => /Exclude → Groups:/.test(l.line))
   assert.ok(lines.length > 0, 'policy steps carry an exclusions line')
-  for (const l of lines) assert.ok(l.line.includes(`Exclude → Groups: ${proposed}`), `${l.step} names the same group: ${l.line}`)
+  for (const l of lines) assert.ok(l.line.includes('Exclude → Groups: Core - Exclusions'), `${l.step} names the tenant's group: ${l.line}`)
 })
 
 test('the trusted-network step and the portal names name the same proposed location', () => {

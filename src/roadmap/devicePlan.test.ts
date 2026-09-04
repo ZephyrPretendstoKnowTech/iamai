@@ -39,6 +39,8 @@ function ctxFor(f: Fixture, r: FixtureRun, mapping: MappingState): StepVarContex
   return { snapshot: f.snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: null, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
 }
 const AT = '2026-09-02T00:00:00.000Z'
+/** A service-accounts group this tenant has named, so the compliant-device policy resolves. */
+const SERVICE_ACCOUNTS_GROUP = '00000000-0000-4000-8000-0000000a0001'
 const DEVICE = PREREQ_STEP_ID.devicePlan
 const labels = questionLabels(DEVICE)
 
@@ -82,7 +84,9 @@ test('open: the step asks, phones are out of readiness, and only the device step
 
 test('answered (apps, hybrid): the platform deviation, the enrolment step follows, the campaign says it, readiness counts hybrid', () => {
   const f = fixture('demo')
-  const m = applied(f, decided('Protect the apps only', 'Hybrid-joined is enough'))
+  // The baseline's compliant-device policy excludes the author's service-accounts
+  // group, so this tenant needs one before the policy can be written at all.
+  const m = { ...applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
   const plan = devicePlanOf(m)
   assert.deepEqual(plan && { phones: plan.phones, computers: plan.computers, blockPhones: plan.blockPhones }, { phones: 'apps', computers: 'hybrid', blockPhones: false })
   assert.deepEqual(excludedPlatforms(m), ['android', 'iOS'])
@@ -95,7 +99,7 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   const body = JSON.parse(compliant.action.json ?? '{}') as { conditions?: { platforms?: { includePlatforms?: string[]; excludePlatforms?: string[] } } }
   assert.deepEqual(body.conditions?.platforms, { includePlatforms: ['all'], excludePlatforms: ['android', 'iOS'] }, 'the JSON scopes phones out')
   const ctx = ctxFor(f, r, m)
-  const lines = stepPortalLines(COMPLIANT_DEVICE_GOAL, portalNamesFor(ctx, stepVars(compliant, ctx), 'x')) ?? []
+  const lines = stepPortalLines(compliant, portalNamesFor(ctx, stepVars(compliant, ctx), 'x')) ?? []
   const platforms = lines.find((l) => /Device platforms/.test(l))
   assert.ok(platforms, `the portal lines carry the platform condition: ${lines.join(' | ')}`)
   assert.match(platforms, /Include: Any device; Exclude: Android, iOS/)
