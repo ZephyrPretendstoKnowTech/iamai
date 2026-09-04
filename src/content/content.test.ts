@@ -68,7 +68,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[36].who.evidence[2]',
   '.steps[19].who.evidence[0]',
   // Azure sign-ins by people with no directory role (step-audit item 16); the example lists none.
-  '.steps[19].who.evidence[2]',
+  '.steps[19].who.evidence[1]',
   '.steps[20].who.evidence[1]',
   '.steps[21].who.evidence[0]',
   '.steps[22].who.evidence[0]',

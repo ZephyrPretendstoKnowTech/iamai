@@ -330,7 +330,8 @@
       "blocked": {
         "after": "after: {stepTitle}",
         "readiness": "when {measure} reaches {threshold} (now {value})",
-        "count": "when {n} {thing} exist (now {have})"
+        "count": "when {n} {thing} exist (now {have})",
+        "baseline": "the baseline defines this policy two ways"
       },
       "gapSuffix": {
         "admin-session": "sessions expire {current}, the baseline wants {wanted}",
@@ -2369,61 +2370,48 @@
       "kind": "policy",
       "title": "Block the Admin Portals for Non-Admins",
       "changeLine": null,
+      "baselineConflict": "The baseline's documentation says this policy is for people without an admin role. The policy it exports targets All users and excludes no administrator, by role, by account or by group. Both cannot be true, so IAMAI writes no instructions for this one: it would either lock every administrator out of the admin portals or claim a protection the policy does not carry. Nothing is wrong in your tenant, and nothing here needs your attention — this step waits for a reviewed baseline that settles the contradiction. The rest of the plan is unaffected.",
       "why": "A standard account has no business in an admin portal; blocking it there removes a whole class of accidental and stolen-password changes.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals"
       },
       "who": {
-        "lead": "{active} active people · {adminCount} admins in {adminsGroup}",
+        "lead": "{active} active people · {adminCount} admins · the exported policy targets every one of them",
         "evidence": [
-          "{n} non-admins opened an admin portal since {from}; they are blocked from {enforce}: {list:nonAdminPortalUsers}",
-          "Nobody outside the admins group opened an admin portal since {from}.",
-          "{n} people without a directory role signed in to Azure since {from}; they are blocked from {enforce}: {list:azureNonAdmins}",
+          "{n} people without an admin role opened an admin portal since {from}: {list:nonAdminPortalUsers}",
+          "{n} people without a directory role signed in to Azure since {from}: {list:azureNonAdmins}",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
         ]
-      },
-      "decision": {
-        "label": "Admins group",
-        "help": "The group every admin belongs to; it is excluded from this block.",
-        "pickerSource": "adminGroups",
-        "pickerRow": "{name} · {memberCount} members · {rolesHeld}",
-        "save": "Save"
       },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
       "ifWrong": "{policyIfWrong}",
-      "comms": {
-        "audience": "affected",
-        "salutation": "Hello,",
-        "body": "From {enforceLong}, the Azure portal and command-line tools at {tenant} open only for the admins group. If you work in Azure, we will either add you to that group before then or leave Azure out of this rule; if Azure refuses you after that date, reply here.",
-        "signature": "{signature}"
-      },
       "doesntApply": false,
       "skip": true,
       "scanControl": true,
       "more": {
         "risks": [
           {
-            "text": "An admin outside the admins group is blocked from every admin portal.",
+            "text": "Every administrator is in scope: the exported policy excludes no admin role, account or group.",
             "applies": "always"
           },
           {
-            "text": "A helpdesk person with a scoped role who is not in the group loses the portal they use.",
+            "text": "A helpdesk person with a scoped role loses the portal they use.",
             "applies": "always"
           },
           {
-            "text": "Anyone with an Azure RBAC role but no directory role, most developers, is blocked from the Azure portal and CLI; add them to the admins group or scope the Azure API out.",
+            "text": "Anyone with an Azure RBAC role but no directory role, most developers, is blocked from the Azure portal and CLI.",
             "applies": "always"
           }
         ],
         "helpDesk": [
-          "Someone blocked from a portal who needs it: add them to the admins group, never a user exclusion."
+          "Nothing to hand over: IAMAI has no instructions for this policy while the baseline contradicts itself."
         ],
-        "manager": "Standard accounts cannot open Microsoft's admin portals at all; only the admins group can. Without this, any stolen password can at least look around the controls.",
+        "manager": "Microsoft's admin portals would be closed to standard accounts. We are not acting on this one yet: the baseline we follow describes it as sparing administrators and defines it as sparing nobody, and we will not guess which was meant.",
         "waits": null
       },
       "example": {
@@ -2437,15 +2425,9 @@
           "Lachlan Robinette"
         ],
         "policyName": "Core - Block - Admin portals for non-admins",
-        "enforceLong": "Tuesday, September 8",
         "signature": "IT",
         "existingPolicies": [],
         "adminCount": 2,
-        "adminsGroup": "Core - Role - Admins",
-        "adminGroups": [
-          "Core - Role - Admins · 2 members · Global Administrator, Security Administrator"
-        ],
-        "adminsGroupProposed": "Core - Role - Admins",
         "n": 0,
         "nonAdminPortalUsers": [],
         "azureNonAdmins": [],
@@ -2456,10 +2438,9 @@
       "whatToDoReference": {
         "lead": null,
         "steps": [
-          "If no admins group exists: Entra admin center → Entra ID → Groups → New group → Security, assigned; name it {adminsGroupProposed}; add every admin: {list:adminNames}",
           "{portalRoot}",
           "Name: {policyName}",
-          "Users → Include: All users. Exclude → Groups: {exclusionsGroup}, {adminsGroup}. Exclude → Guest or external users → Service provider users.",
+          "Users → Include: All users. Exclude → Groups: {exclusionsGroup}. Exclude → Guest or external users → Service provider users.",
           "Target resources → Resources → Select resources → Microsoft Admin Portals, Windows Azure Service Management API, Microsoft Purview Platform, Windows Cloud Login, My Staff",
           "Grant → Block access",
           "{reportOnlyLine}"

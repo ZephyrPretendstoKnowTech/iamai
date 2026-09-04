@@ -38,11 +38,13 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
   exist: (n: number, thing: string, now: number): string => fillText(BLOCKED.count, { n, thing: count(n, thing).replace(/^\d+ /, ''), have: now }),
+  /** The baseline's own definition of a policy contradicts itself (roadmap/baselineConflict.ts): nothing in the tenant holds this step. */
+  baseline: BLOCKED.baseline,
 }
 
 /** The measure a readiness threshold is stated against, by family. */

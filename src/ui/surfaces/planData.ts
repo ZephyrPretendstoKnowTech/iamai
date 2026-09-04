@@ -38,7 +38,6 @@ import type { NameDirectory } from '../../names.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import type { StepDecisionInput } from '../../roadmap/decisions.ts'
-import { validStepDecisions } from '../../roadmap/decisions.ts'
 import type { CleanupKind } from '../../roadmap/cleanup.ts'
 import { cleanupRecord, withCleanupDone } from '../../roadmap/cleanupDone.ts'
 
@@ -214,12 +213,6 @@ export function usePlanData(
     const nameOf = (id: string): string => groups.get(id)?.displayName ?? id
     return appliedMapping({ snapshot, mapping, nameOf, groups, now: snapshot.asOf }, saved?.stepDecisions)
   }, [mapping, saved, snapshot, groups])
-  // The decisions the surfaces and the exports read: the persisted ones with
-  // every semantically invalid pick dropped (decisions.ts validStepDecisions),
-  // against the mapping those same decisions produced. The stored record is
-  // left as written — a value it can no longer make applied state simply never
-  // reaches a picker, a policy or the plan file.
-  const stepDecisions = useMemo<Record<string, StepDecision>>(() => validStepDecisions(applied ?? mapping ?? { records: {} }, saved?.stepDecisions), [applied, mapping, saved])
   // The default start is today in the display zone (derive/planStart.ts),
   // proposed again on every visit until Start the plan anchors a date; the
   // schedule clamps a weekend to the working day after it.
@@ -413,7 +406,7 @@ export function usePlanData(
       void saveMappingState(next)
       bump()
     },
-    stepDecisions,
+    stepDecisions: saved?.stepDecisions ?? {},
     onDecide: (stepId, decision) => {
       // The decision is the plan's (target-state §6.4): recorded, then the plan
       // regenerates around it; the next scan verifies it.

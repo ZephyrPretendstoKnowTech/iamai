@@ -25,6 +25,11 @@ function thresholdFor(family: Step['readiness']['family']): number | null {
  */
 export function blockedReasonFor(step: Step, stepById: Map<string, Step>): string {
   const titleOf = (dep: Step): string => dep.plainTitle || dep.title
+  // A baseline that defines the policy two ways binds before any dependency: no
+  // prerequisite in the tenant can clear it, so the row must not read as one
+  // (roadmap/baselineConflict.ts).
+  const conflict = step.blockers.find((b) => b.label === 'baseline-conflict' && typeof b.binding === 'string')
+  if (conflict?.binding) return conflict.binding
   // A validation gate first: the way back in comes before anything else.
   const gate = step.blockers.find((b): b is Extract<Blocker, { kind: 'step' }> => b.kind === 'step' && GATING_SUBJECTS.some((subject) => blockerStepId(subject) === b.stepId))
   if (gate && stepById.get(gate.stepId)) return BLOCKED_REASON.after(titleOf(stepById.get(gate.stepId)!))

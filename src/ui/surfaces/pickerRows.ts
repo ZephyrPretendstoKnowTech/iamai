@@ -17,7 +17,6 @@ import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevic
 import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { contentLists } from '../../derive/contentLists.ts'
-import { adminUserIds, ROLE_TEMPLATES } from '../../roles.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { engine, shared } from '../../content/content.ts'
 
@@ -168,29 +167,6 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     return vars('devicesWithSignals', rows, ids, ids)
   }
 
-  // The admins group: every group the plan loaded whose members hold an admin
-  // role, the one holding the most admins first and ticked; the roles its
-  // members hold, by name. Groups only: no account is a row here. The
-  // exclusions group is never a candidate (pickerUniverse, the same rule): it
-  // holds the emergency accounts, so it always looks like an admins group, and
-  // one group can never be both.
-  if (stepId === DECISION_STEPS.adminsGroup) {
-    const admins = adminUserIds(snapshot.roles)
-    const exclusions = lc(mapping.records['__globalExclusion']?.resolvedId ?? '')
-    const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
-    const candidates = [...(ctx.groups ?? [])]
-      .filter(([id]) => exclusions === '' || lc(id) !== exclusions)
-      .map(([id, g]) => ({ id, g, adminMembers: g.memberIds.filter((m) => admins.has(m)) }))
-      .filter((c) => c.adminMembers.length > 0)
-      .sort((a, b) => b.adminMembers.length - a.adminMembers.length || (a.g.displayName ?? nameOf(a.id)).localeCompare(b.g.displayName ?? nameOf(b.id)))
-    const ids = candidates.map((c) => c.id)
-    const rows = candidates.map((c) => {
-      const held = [...new Set(c.adminMembers.flatMap((m) => snapshot.roles.active[m] ?? []).map(roleName))].sort()
-      return row(template, { name: c.g.displayName ?? nameOf(c.id), memberCount: c.g.memberCount, rolesHeld: held.length > 0 ? held.join(', ') : undefined })
-    })
-    return vars('adminGroups', rows, ids, ids.slice(0, 1))
-  }
-
   return null
 }
 
@@ -239,7 +215,7 @@ export type PickerObject = { id: string; name: string; secondary?: string; why?:
 export type PickerKind = 'accounts' | 'groups' | 'locations' | 'countries' | 'strengths' | 'other'
 export function pickerKind(stepId: string, source: string | null): PickerKind {
   if (DECISION_STEPS.emergency.has(stepId) || stepId === DECISION_STEPS.serviceAccounts || stepId === DECISION_STEPS.sharedDevices || stepId === DECISION_STEPS.campaign || source === 'accounts') return 'accounts'
-  if (DECISION_STEPS.exclusions.has(stepId) || stepId === DECISION_STEPS.adminsGroup || source === 'groups' || source === 'adminGroups') return 'groups'
+  if (DECISION_STEPS.exclusions.has(stepId) || source === 'groups') return 'groups'
   if (stepId === DECISION_STEPS.trustedLocation) return 'locations'
   if (stepId === DECISION_STEPS.countries) return 'countries'
   if (source === 'strengths') return 'strengths'
@@ -249,8 +225,7 @@ export function pickerKind(stepId: string, source: string | null): PickerKind {
 /**
  * Every object of the picker's kind in the tenant, to type against: accounts by
  * name and UPN, the groups the plan knows, the named locations, the countries
- * seen or allowed, the authentication strengths. The exclusions group is never
- * a candidate for the admins group.
+ * seen or allowed, the authentication strengths.
  */
 export function pickerUniverse(stepId: string, source: string | null, ctx: PickerContext): PickerObject[] {
   const { snapshot, mapping, nameOf } = ctx
@@ -260,10 +235,7 @@ export function pickerUniverse(stepId: string, source: string | null, ctx: Picke
     const known = new Map<string, string>()
     for (const [id] of ctx.groups ?? []) known.set(lc(id), id)
     for (const p of snapshot.config.caPolicies?.rows ?? []) for (const id of [...policyGroups(p).include, ...policyGroups(p).exclude]) if (!known.has(lc(id))) known.set(lc(id), id)
-    const exclusions = stepId === DECISION_STEPS.adminsGroup ? lc(mapping.records['__globalExclusion']?.resolvedId ?? '') : ''
-    return [...known.values()]
-      .filter((id) => exclusions === '' || lc(id) !== exclusions)
-      .map((id) => {
+    return [...known.values()].map((id) => {
         const g = ctx.groups?.get(id)
         return { id, name: g?.displayName ?? nameOf(id), secondary: g ? `${g.memberCount} members` : undefined }
       })

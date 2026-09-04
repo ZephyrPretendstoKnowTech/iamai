@@ -1,5 +1,6 @@
 // Progress on re-scan (roadmap.md §7) and the skip rule (§9 test 8). Pure.
 import type { CoverageReport } from '../coverage/types.ts'
+import { RETIRED_DECISION_STEPS } from './baselineConflict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { trackExecution } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
@@ -94,10 +95,12 @@ export function decisionsOf(
     if (s.status === 'skipped' && !skips[id]) skips[id] = { reason: s.skipReason ?? '', at: s.history?.at(-1)?.at ?? '' }
   }
   // A picker's decision travels as written; a record from before the pickers
-  // were live has none.
+  // were live has none, and a record for a decision the product has since
+  // retired is not a decision (baselineConflict.ts RETIRED_DECISION_STEPS): it
+  // stops here, so no surface, no plan and no export ever sees it again.
   const stepDecisions: Record<string, StepDecision> = {}
   for (const [id, d] of Object.entries(rec?.stepDecisions ?? {})) {
-    if (!d || typeof d !== 'object') continue
+    if (!d || typeof d !== 'object' || RETIRED_DECISION_STEPS.has(id)) continue
     // A question's answers travel too (E1): the record is what makes a stored answer apply after a reload.
     const answers = Object.fromEntries(Object.entries(d.answers ?? {}).filter((e): e is [string, string] => typeof e[1] === 'string'))
     stepDecisions[id] = { ...(Array.isArray(d.picked) ? { picked: d.picked.map(String) } : {}), ...(typeof d.option === 'string' ? { option: d.option } : {}), ...(Object.keys(answers).length > 0 ? { answers } : {}), at: String(d.at ?? '') }

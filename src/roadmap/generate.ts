@@ -7,6 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
+import { hasBaselineConflict } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
@@ -1122,6 +1123,25 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (!s.blockers.some((b) => b.kind === 'readiness' && b.label === label)) {
       s.blockers.push({ kind: 'readiness', label, ...(binding ? { binding } : {}) })
     }
+    s.status = 'blocked'
+  }
+
+  // 0. A goal whose baseline policy contradicts its own documentation
+  // (baselineConflict.ts): the step keeps its evidence and loses its
+  // implementation. Not a readiness wait and not a step dependency — the cause
+  // is the baseline, so it is neither counted with the tenant's readiness waits
+  // nor drawn as an edge to a prerequisite. Forced after every other state,
+  // including done: a policy the tenant already holds cannot make a
+  // contradictory definition safe to act on.
+  for (const s of steps) {
+    if (!hasBaselineConflict(s.goalId) || s.status === 'skipped') continue
+    s.action = { kind: s.action.kind, summary: [], json: null, portalSteps: [] }
+    s.deliveredBy = []
+    // The safety edges stay (a deny-capable step still waits on the escape
+    // hatch); the conflict is added beside them and binds the row's reason
+    // ahead of any of them (stateReason.ts), so the cause a person reads is the
+    // baseline's, never a prerequisite in their tenant.
+    if (!s.blockers.some((b) => b.label === 'baseline-conflict')) s.blockers.push({ kind: 'evidence', label: 'baseline-conflict', binding: BLOCKED_REASON.baseline })
     s.status = 'blocked'
   }
 
