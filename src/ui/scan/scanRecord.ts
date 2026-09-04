@@ -9,10 +9,10 @@ export type PreviousScan = { at: string; people: number; policies: number }
 export type ScanRecord = { snapshot: TenantSnapshot; at: string; previous?: PreviousScan | null }
 
 /** The three numbers a finished scan leaves for the one after it. */
-export function previousOf(scan: ScanRecord | null, serviceAccountIds: readonly string[] = []): PreviousScan | null {
+export function previousOf(scan: ScanRecord | null, notPeople: ReadonlySet<string> = new Set()): PreviousScan | null {
   if (!scan) return null
   // The active people, as the plan counts them (derive/sets.ts peopleCounts); the directory's row count appears nowhere.
-  return { at: scan.at, people: peopleCounts(scan.snapshot, scan.snapshot.asOf, new Set(serviceAccountIds)).active, policies: scan.snapshot.config.caPolicies?.rows.length ?? 0 }
+  return { at: scan.at, people: peopleCounts(scan.snapshot, scan.snapshot.asOf, notPeople).active, policies: scan.snapshot.config.caPolicies?.rows.length ?? 0 }
 }
 
 /** A count that fell by more than a third since the previous scan. */

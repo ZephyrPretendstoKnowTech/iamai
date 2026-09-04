@@ -13,6 +13,7 @@ import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import { inventoryTables, todayTable } from './inventoryTables.ts'
+import { notPeopleIds } from '../../derive/sets.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
 import type { Checkpoint } from '../../roadmap/plan.ts'
@@ -160,7 +161,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     window.location.hash = '#/plan'
   }
 
-  const csvTables = [todayTable(snapshot, new Set(data.mapping?.serviceAccountUserIds ?? [])), ...inventoryTables(snapshot, data.groups)]
+  const csvTables = [todayTable(snapshot, data.mapping ? notPeopleIds(data.mapping) : new Set()), ...inventoryTables(snapshot, data.groups)]
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
   // the same variables the Plan builds for a step, then the same view.
   const dates = planDates(steps, schedule.start, coverage.organisation.naming)

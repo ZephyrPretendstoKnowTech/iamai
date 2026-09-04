@@ -9,7 +9,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { rolloutBucket, scoreMfaViability } from '../scoring/mfaViability.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
-import { enabledUsers } from './sets.ts'
+import { enabledUsers, notPeopleIds } from './sets.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { affectedIds } from './whoLine.ts'
 
@@ -71,14 +71,13 @@ export function activePeopleIds(snapshot: TenantSnapshot, now: string, serviceAc
 
 type CampaignMapping = { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }
 
-/** The campaign's population: the plan's active people minus the emergency and shared-device accounts. */
+/** The campaign's population: the plan's active people (the emergency and service accounts are not people, sets.ts notPeopleIds) minus the shared-device accounts. */
 export function campaignIds(viability: readonly MfaViability[], snapshot: TenantSnapshot, mapping: CampaignMapping): string[] {
-  const out = new Set([...mapping.breakGlassUserIds, ...sharedDeviceIds(snapshot)])
-  return activeAmong(viability, snapshot, new Set(mapping.serviceAccountUserIds)).filter((id) => !out.has(id))
+  const shared = new Set(sharedDeviceIds(snapshot))
+  return activeAmong(viability, snapshot, notPeopleIds(mapping)).filter((id) => !shared.has(id))
 }
 
 /** The campaign's population from the snapshot alone (Today, tests). */
 export function campaignIdsFor(snapshot: TenantSnapshot, now: string, mapping: CampaignMapping): string[] {
-  const svc = new Set(mapping.serviceAccountUserIds)
-  return campaignIds(buildViabilityInputs(snapshot, now, svc).map(scoreMfaViability), snapshot, mapping)
+  return campaignIds(buildViabilityInputs(snapshot, now, notPeopleIds(mapping)).map(scoreMfaViability), snapshot, mapping)
 }

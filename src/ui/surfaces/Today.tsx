@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { loadMappingState } from '../../mapping/store.ts'
+import { notPeopleIds } from '../../derive/sets.ts'
 import { todayView } from '../../derive/today.ts'
 import { todayLine } from '../../derive/todayLine.ts'
 import type { TodayRow, TodayState } from '../../derive/today.ts'
@@ -54,7 +55,8 @@ function tileValue(key: keyof TodayCopy['tiles'], n: number, active: number): st
 export function Today({ snapshot, tenantId }: { snapshot: TenantSnapshot; tenantId: string }) {
   const [serviceIds, setServiceIds] = useState<ReadonlySet<string>>(new Set())
   useEffect(() => {
-    void loadMappingState(tenantId).then((m) => setServiceIds(new Set(m.serviceAccountUserIds)))
+    // The emergency and service accounts are not people (derive/sets.ts notPeopleIds): Today's count and table read the plan's population.
+    void loadMappingState(tenantId).then((m) => setServiceIds(notPeopleIds(m)))
   }, [tenantId])
   const view = useMemo(() => todayView(snapshot, snapshot.asOf, serviceIds), [snapshot, serviceIds])
   const [query, setQuery] = useState('')

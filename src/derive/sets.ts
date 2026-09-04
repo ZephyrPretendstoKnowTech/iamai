@@ -22,6 +22,18 @@ import { adminUserIds } from '../roles.ts'
 import { isOperator, lastSignInOf } from './operator.ts'
 import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 
+/**
+ * The accounts the plan's decisions say are not people: the confirmed service
+ * accounts and the emergency accounts (which exist to survive every policy,
+ * never to be rolled out to). One set, passed wherever the people sets are
+ * built, so Today's count and table, the campaign, the readiness strip and
+ * the dormant step read one population; Inventory and the emergency step
+ * still list them. Every `notPeople` parameter below is this set.
+ */
+export function notPeopleIds(mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }): Set<string> {
+  return new Set([...mapping.serviceAccountUserIds, ...mapping.breakGlassUserIds])
+}
+
 // ---------- people ----------
 
 /**

@@ -340,9 +340,9 @@ test('hostile: every step still produced with readiness marked unknown', () => {
   }
 })
 
-test('getiamai: 4 active people and 9 who never signed in plan in four weeks with no registration window on the critical path', () => {
+test('getiamai: 2 active people (the emergency accounts are not people) and 9 who never signed in plan in four weeks with no registration window on the critical path', () => {
   const r = runFixture(byName('getiamai'))
-  assert.equal(r.schedule.activeUsers, 4)
+  assert.equal(r.schedule.activeUsers, 2)
   assert.equal(r.schedule.band, 'small')
   assert.ok(r.schedule.weeks <= 4, `${r.schedule.weeks} weeks`)
   assert.notEqual(r.schedule.derivation.constraint, 'verification', r.schedule.derivation.criticalPath)

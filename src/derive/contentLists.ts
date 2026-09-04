@@ -13,7 +13,7 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
-import { notActiveUsers } from './sets.ts'
+import { notActiveUsers, notPeopleIds } from './sets.ts'
 import { campaignBucket, campaignIds } from './population.ts'
 import { stateOf } from './today.ts'
 import type { TodayState } from './today.ts'
@@ -51,7 +51,8 @@ const people = (ev: { people: string[] } | undefined | null): string[] => ev?.pe
  */
 export function contentLists(ctx: ListContext): Record<string, string[]> {
   const { snapshot, mapping, nameOf, now } = ctx
-  const svc = new Set(mapping.serviceAccountUserIds)
+  // The emergency and service accounts are not people (sets.ts notPeopleIds): the one population.
+  const svc = notPeopleIds(mapping)
   const viability = buildViabilityInputs(snapshot, now, svc).map(scoreMfaViability)
   // The campaign's population (derive/population.ts): the plan's active people
   // minus the emergency and shared-device accounts (prompt 48.1 item 2).
