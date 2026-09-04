@@ -283,7 +283,8 @@
         "title": "Plan",
         "ready": {
           "state": "ready · from the scan {age}",
-          "people": "people",
+          "people": "active people · of {enabled} enabled",
+          "peopleSince": "active people since {date} · of {enabled} enabled",
           "policies": "policies",
           "signIns": "sign-in records",
           "window": "{from} → {to}",
@@ -308,7 +309,7 @@
         },
         "sample": {
           "lead": "What the sample tenant produced:",
-          "people": "people",
+          "people": "active people",
           "steps": "steps",
           "inPlace": "already in place",
           "weeks": "to finish",

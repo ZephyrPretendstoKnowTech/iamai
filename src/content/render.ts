@@ -610,7 +610,7 @@ export function renderPages(): string {
         4,
         cx.plan.title,
         fill(cx.plan.ready.state, { age: '57 minutes ago' }),
-        li(`<b>${exT.people}</b> ${esc(cx.plan.ready.people)}`, `<b>${exT.policies}</b> ${esc(cx.plan.ready.policies)}`, `<b>${fill(cx.plan.ready.window, exT)}</b> ${esc(cx.plan.ready.signIns)}`, `<b>${esc(cx.plan.ready.licences.p2)}</b> ${esc(cx.plan.ready.licence)}`, `<b>${exT.steps}</b> ${fill(cx.plan.ready.steps, { done: 8 })}`) +
+        li(`<b>${exT.active}</b> ${fill(cx.plan.ready.people, exT)}`, `<b>13 → ${exT.active}</b> ${fill(cx.plan.ready.peopleSince, { ...exT, date: 'Sep 2' })}`, `<b>${exT.policies}</b> ${esc(cx.plan.ready.policies)}`, `<b>${fill(cx.plan.ready.window, exT)}</b> ${esc(cx.plan.ready.signIns)}`, `<b>${esc(cx.plan.ready.licences.p2)}</b> ${esc(cx.plan.ready.licence)}`, `<b>${exT.steps}</b> ${fill(cx.plan.ready.steps, { done: 8 })}`) +
           sub(esc(cx.plan.ready.notRead), esc(cx.plan.ready.signIns), '·', esc(cx.plan.ready.licences.p1), '·', esc(cx.plan.ready.licences.free)) +
           acts(cx.plan.ready.open),
       ) +
