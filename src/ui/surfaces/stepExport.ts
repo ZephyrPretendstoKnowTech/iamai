@@ -17,7 +17,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { implementationOffered, missingObjects } from './stepJson.ts'
-import { unimplementableReason } from '../../roadmap/operations.ts'
+import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 
@@ -46,21 +46,26 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // an object it names is missing, a pair the plan cannot match, a baseline that
   // contradicts itself — each carry their own next action and none of them
   // carries a rollout.
-  const reason = cs.kind === 'policy' ? unimplementableReason(step) : null
+  const reason = cs.kind === 'policy' ? unavailableReason(step) : null
   const suppressed = cs.kind === 'policy' && !implementationOffered(step)
   const waiting = reason === 'missing-object'
   const unmatched = reason === 'unmatched-pair'
   const conflicted = reason === 'baseline-conflict'
-  const inPlace = suppressed && reason === null && step.status === 'done' && !step.action.json
+  const noOperation = reason === 'no-operation'
+  const inPlace = suppressed && reason === null && isPreserved(step)
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   const lines: string[] = []
-  if (typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
-  // The content's leading "before" lines stay above the portal lines, as on screen.
-  if (Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
+  // The lead and the "before" lines are part of implementing the policy — a
+  // setting to change before it is created. While it cannot be written they say
+  // nothing here either, on any surface that reads this view (the exports, the
+  // print, the prompts, the grounding bundle): the next action stands alone.
+  if (reason === null && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
+  if (reason === null && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
   else if (waiting) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.jsonWaits), { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') }))
   else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))
   else if (conflicted && typeof cs.baselineConflict === 'string') lines.push(fillText(cs.baselineConflict, ex))
+  else if (noOperation) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.noOperation), { tenant: String(ex.tenant ?? '') }))
   else if (inPlace) lines.push(String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep))
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   // Nothing that implies the policy can be rolled out while it cannot be written:

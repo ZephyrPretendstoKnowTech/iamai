@@ -37,7 +37,17 @@ function step(over: Partial<Step> & { id: string }): Step {
     population: { total: ids.length, active: ids.length, admins: 0, guests: 0, ids },
     readiness: { family: 'mfa', percent: 100, lines: [] },
     evidence: { status: 'none', lines: [], affectedUserIds: [] },
-    action: { kind: 'create', summary: [], json: null, portalSteps: [] },
+    // A policy step the schedule can place has an operation to run: a step with
+    // none is a policy the plan cannot write, and it is not scheduled
+    // (roadmap/operations.ts unavailableReason).
+    action: {
+      kind: 'create',
+      summary: [],
+      json: '{}',
+      portalSteps: [],
+      missing: [],
+      resolution: { policies: [{ sourceName: over.id, mode: 'create' as const, policyId: null, body: { displayName: over.id } }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } },
+    },
     history: [],
     skipReason: null,
     deliveredBy: [],

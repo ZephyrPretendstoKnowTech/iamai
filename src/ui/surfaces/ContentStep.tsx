@@ -13,7 +13,7 @@ import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, listCountVars, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { hasBaselineConflict } from '../../roadmap/baselineConflict.ts'
-import { unimplementableReason } from '../../roadmap/operations.ts'
+import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
@@ -129,11 +129,12 @@ export function ContentStep({
   // implementationOffered). What the step says instead: the objects it waits on
   // and the steps that create them, or — for a goal already in place, which has
   // nothing to create — that there is nothing to do but keep it.
-  const reason = cs.kind === 'policy' ? unimplementableReason(step) : null
+  const reason = cs.kind === 'policy' ? unavailableReason(step) : null
   const suppressed = cs.kind === 'policy' && !implementationOffered(step)
   const waiting = reason === 'missing-object'
   const unmatched = reason === 'unmatched-pair'
-  const inPlace = suppressed && reason === null && step.status === 'done' && !step.action.json
+  const noOperation = reason === 'no-operation'
+  const inPlace = suppressed && reason === null && isPreserved(step)
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
   // The content's leading "before" lines (a setting to change before the policy
@@ -142,7 +143,7 @@ export function ContentStep({
   const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
   // §8.7: a section with no content is not rendered. A step with nothing to do
   // is a missing content key, logged by the walk, never an empty heading.
-  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || inPlace || hasSteps || before.length > 0
+  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || inPlace || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -190,7 +191,7 @@ export function ContentStep({
       {d && (typeof d.applies !== 'string' || truthy(ex[d.applies])) && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
 
       {hasWhatToDo && <h3>What to do</h3>}
-      {hasWhatToDo && w.lead && <p><T s={w.lead} ex={ex} /></p>}
+      {hasWhatToDo && reason === null && w.lead && <p><T s={w.lead} ex={ex} /></p>}
       {/* A check step (emergency access, exclusions group): one numbered fix line
           per failing check, filled from that check's values (walk-51 item 14). */}
       {Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && w.checkFixes && (
@@ -234,6 +235,8 @@ export function ContentStep({
         <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
       ) : unmatched ? (
         <p className="reason">{fillText(app.plan.pairUnmatched, { tenant: String(ex.tenant ?? '') })}</p>
+      ) : noOperation ? (
+        <p className="reason">{fillText(app.plan.noOperation, { tenant: String(ex.tenant ?? '') })}</p>
       ) : inPlace ? (
         <p className="reason">{app.plan.inPlaceKeep}</p>
       ) : (

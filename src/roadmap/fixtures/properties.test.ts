@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
-import { unimplementableReason } from '../operations.ts'
+import { unavailableReason } from '../operations.ts'
 import { canDenyAccess, wouldStrand } from '../strand.ts'
 import { localHour } from '../timing.ts'
 import { buildPlanFile } from '../plan.ts'
@@ -233,8 +233,8 @@ for (const f of fixtures) {
       // A policy the plan cannot write yet is not rolled out in rings: an object
       // it names is missing, a pair it cannot match, or a baseline that
       // contradicts itself (roadmap/operations.ts).
-      if (unimplementableReason(s) !== null) {
-        assert.deepEqual(rings, [], `${s.id} (${unimplementableReason(s)}) has no rings`)
+      if (unavailableReason(s) !== null) {
+        assert.deepEqual(rings, [], `${s.id} (${unavailableReason(s)}) has no rings`)
         continue
       }
       if (!canDenyAccess(s) || s.status === 'done' || s.status === 'skipped') {

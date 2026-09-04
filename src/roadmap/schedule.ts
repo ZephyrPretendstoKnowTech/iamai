@@ -20,7 +20,7 @@ import { fillText } from '../content/render.ts'
 
 const CRITICAL = engine.critical
 import { absoluteDate } from '../copy/dates.ts'
-import { unimplementableReason } from './operations.ts'
+import { unavailableReason } from './operations.ts'
 import type { Step } from './types.ts'
 
 export type WaveSchedule = {
@@ -238,12 +238,12 @@ export function nextWorkingDay(fromIso: string): string {
 /**
  * A policy step with nothing to run is not work the plan can place: an object it
  * names is missing, the plan cannot tell which tenant policy is which half of a
- * pair, or the baseline contradicts itself. It gets no wave, no start, no
- * report-only date and no ring dates until the thing it waits on is done
- * (roadmap/operations.ts implementationOffered). Every other step is scheduled
- * as before.
+ * pair, the baseline contradicts itself, or no valid operation came out of the
+ * boundary at all. It gets no start, no report-only date and no ring dates until
+ * the thing it waits on is done (roadmap/operations.ts unavailableReason). Every
+ * other step is scheduled as before.
  */
-const nothingToRun = (s: Step): boolean => (s.kind === 'create' || s.kind === 'adjust') && unimplementableReason(s) !== null
+const nothingToRun = (s: Step): boolean => unavailableReason(s) !== null
 const isWork = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped' && !nothingToRun(s)
 const isEnforcement = (s: Step): boolean => isWork(s) && (s.kind === 'create' || s.kind === 'adjust' || s.kind === 'enforce')
 
@@ -676,6 +676,9 @@ export function buildSchedule(
   // start, no report-only date, no ring dates and no enforcement event. It stays
   // in the foundation wave so the plan still shows it — a step in no wave at all
   // renders nowhere — waiting beside the Preparation work it needs.
+  // A policy the plan cannot write yet is in no enforcement wave. It keeps its
+  // place in the foundation wave so the plan still shows the row — a step in no
+  // wave at all renders nowhere — but it takes no date from it (rowWhen.ts).
   const day0Steps = steps.filter((s) => !isEnforcement(s)).map((s) => s.id)
   for (const id of day0Steps) waveOf[id] = 0
   waves.push({ wave: 0, phase: 0, phases: [0], start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })
