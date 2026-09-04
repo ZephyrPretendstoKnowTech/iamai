@@ -95,21 +95,26 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   const includeClause = include.length > 0 ? include.join(', ') : 'All users'
 
   // Excludes: the exclusions group is always the shared line; other excludes are
-  // named in the vocabulary the content file uses for them (§8.9).
+  // named in the vocabulary the content file uses for them (§8.9). A set the
+  // include names is never excluded on the same line: an exclude wins in Entra,
+  // so "Include: G … Exclude: G" would name a policy that applies to nobody.
   const parts = [`Users → Include: ${includeClause}.`]
+  const included = (id: string | null | undefined): boolean => id != null && [...f.who.groups].some((g) => lc(g) === lc(id))
   const excludesExclusionsGroup =
     (ctx.exclusionsGroupId != null && f.whoNot.groups.has(ctx.exclusionsGroupId)) || f.whoNot.groups.size > 0 || f.whoNot.users.size > 0
-  if (excludesExclusionsGroup) parts.push(ctx.exclusionsLine)
-  if (ctx.serviceAccountsGroupId != null && f.whoNot.groups.has(ctx.serviceAccountsGroupId)) parts.push(`Also exclude the service accounts group ${ctx.nameOf(ctx.serviceAccountsGroupId)}.`)
-  if (ctx.adminsGroupId != null && f.whoNot.groups.has(ctx.adminsGroupId)) parts.push(`Also exclude the admins group ${ctx.nameOf(ctx.adminsGroupId)}.`)
-  const sharedExcluded = (ctx.sharedDeviceIds ?? []).filter((id) => f.whoNot.users.has(id))
+  if (excludesExclusionsGroup && !included(ctx.exclusionsGroupId)) parts.push(ctx.exclusionsLine)
+  if (ctx.serviceAccountsGroupId != null && f.whoNot.groups.has(ctx.serviceAccountsGroupId) && !included(ctx.serviceAccountsGroupId)) parts.push(`Also exclude the service accounts group ${ctx.nameOf(ctx.serviceAccountsGroupId)}.`)
+  if (ctx.adminsGroupId != null && f.whoNot.groups.has(ctx.adminsGroupId) && !included(ctx.adminsGroupId)) parts.push(`Also exclude the admins group ${ctx.nameOf(ctx.adminsGroupId)}.`)
+  const sharedExcluded = (ctx.sharedDeviceIds ?? []).filter((id) => f.whoNot.users.has(id) && !f.who.users.has(id))
   if (sharedExcluded.length > 0) parts.push(`Also exclude the shared-device accounts ${names(sharedExcluded, ctx)}.`)
   // An exclude of every guest type reads as all types; one that names the types
   // names them in the portal's words (the partner answer excludes Service provider users).
   if (f.whoNot.guests) {
     const types = f.whoNot.guestTypes ?? []
     const all = types.length === 0 || Object.keys(GUEST_TYPE_LABEL).every((t) => types.some((x) => lc(x) === t))
-    parts.push(all ? 'Also exclude Guest or external users (all types).' : `Also exclude Guest or external users → ${types.map((t) => GUEST_TYPE_LABEL[lc(t)] ?? t).join(', ')}.`)
+    const includedTypes = f.who.guests === null ? null : f.who.guests.length === 0 ? 'all' : new Set(f.who.guests.map(lc))
+    const sameAsInclude = includedTypes === 'all' ? all : includedTypes !== null && !all && types.length === includedTypes.size && types.every((t) => includedTypes.has(lc(t)))
+    if (!sameAsInclude) parts.push(all ? 'Also exclude Guest or external users (all types).' : `Also exclude Guest or external users → ${types.map((t) => GUEST_TYPE_LABEL[lc(t)] ?? t).join(', ')}.`)
   }
   return parts.join(' ')
 }
@@ -134,7 +139,9 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
   const out: string[] = []
   if (f.locations) {
     const inc = [...f.locations.include].map((l) => (/^all$/i.test(l) ? 'Any location' : ctx.nameOf(l))).join(', ')
-    const exc = [...f.locations.exclude].map((l) => (/^alltrusted$/i.test(l) ? 'All trusted locations' : ctx.nameOf(l))).join(', ')
+    // A location the include names is not excluded beside it (the same set on both sides names nobody).
+    const includedLoc = new Set([...f.locations.include].map(lc))
+    const exc = [...f.locations.exclude].filter((l) => !includedLoc.has(lc(l))).map((l) => (/^alltrusted$/i.test(l) ? 'All trusted locations' : ctx.nameOf(l))).join(', ')
     out.push(`Conditions → Locations → Include: ${inc || 'Any location'}${exc ? `; Exclude: ${exc}` : ''}`)
   }
   const clientApps = [...f.clientApps].filter((c) => c !== 'all')
@@ -144,7 +151,10 @@ function conditionLines(f: PolicyFacts, ctx: PortalContext): string[] {
     // Graph's `all` is the portal's Any device, never a name.
     const named = new Set([...f.platforms.include].filter((p) => !/^all$/i.test(p)))
     const inc = named.size > 0 ? platformList(named, ctx) : 'Any device'
-    const exc = f.platforms.exclude.size > 0 ? `; Exclude: ${platformList(f.platforms.exclude, ctx)}` : ''
+    // A platform the include names is not excluded beside it.
+    const namedLc = new Set([...named].map(lc))
+    const excluded = new Set([...f.platforms.exclude].filter((p) => !namedLc.has(lc(p))))
+    const exc = excluded.size > 0 ? `; Exclude: ${platformList(excluded, ctx)}` : ''
     out.push(`Conditions → Device platforms → Include: ${inc}${exc}`)
   }
   if (f.deviceFilter) out.push(`Conditions → Filter for devices → ${f.deviceFilter.mode === 'exclude' ? 'Exclude' : 'Include'} devices matching: ${f.deviceFilter.rule}`)
