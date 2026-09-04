@@ -42,12 +42,9 @@ import { useScanRunner } from '../scan/useScanRunner.ts'
 import type { SectionRow } from '../scan/useScanRunner.ts'
 import { W, accountTile, baselineTile, planTile, scanTile, signInTile } from '../scan/connectView.ts'
 import type { Action, BaselineUpdate, PlanInput, PlanTile, ScanInput, ScanTile, Tone } from '../scan/connectView.ts'
-import { planCounts } from '../../derive/planHeader.ts'
-import { operatorIdOf, usePlanData } from './planData.ts'
-import { ladder, ladderCounts } from '../../derive/ladder.ts'
+import { facts, stepFacts } from '../../derive/facts.ts'
+import { usePlanData } from './planData.ts'
 import { LadderTiles } from './LadderTiles.tsx'
-
-const EMPTY_MAPPING = { breakGlassUserIds: [] as string[], serviceAccountUserIds: [] as string[] }
 
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
@@ -406,14 +403,15 @@ function SignedIn({
   // so opening Connect never creates or touches the plan record), the last
   // full plan stays after a scan with gaps, and otherwise it waits for the scan.
   const planScan = scanInput.kind === 'complete' ? lastScan : null
-  const plan = usePlanData(planScan, baseline, operatorIdOf(planScan?.snapshot ?? null, account), true)
+  const plan = usePlanData(planScan, baseline, true)
   const computed = plan.computed
-  // The ladder's five numbers (derive/ladder.ts): the same as Today's and the Plan's, from the one stored scan.
+  // The tenant's facts (derive/facts.ts): the same numbers as Today's and the Plan's, from the one stored scan, once the mapping has loaded.
   const planSnapshot = planScan?.snapshot ?? null
-  const ladderNumbers = useMemo(() => (planSnapshot ? ladderCounts(ladder(planSnapshot, plan.mapping ?? EMPTY_MAPPING, planSnapshot.asOf)) : null), [planSnapshot, plan.mapping])
+  const planMapping = plan.mapping
+  const ladderNumbers = useMemo(() => (planSnapshot && planMapping ? facts(planSnapshot, planMapping) : null), [planSnapshot, planMapping])
   const planInput: PlanInput =
     scanInput.kind === 'complete' && lastScan && ladderNumbers
-      ? { kind: 'ready', at: lastScan.at, ladder: ladderNumbers, counts: computed ? (({ steps, inPlace }) => ({ steps, done: inPlace }))(planCounts(computed.steps, computed.schedule.cleanup ?? null)) : null }
+      ? { kind: 'ready', at: lastScan.at, ladder: ladderNumbers, counts: computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null) : null }
       : scanInput.kind === 'gaps' && lastScan
         ? { kind: 'last', at: lastScan.at }
         : { kind: 'waiting' }

@@ -78,7 +78,7 @@ test("the Boardroom room is a shared device on Today: listed, not placed, its me
   const room = v.rows.find((r) => r.user.displayName === 'Boardroom')
   assert.ok(room, 'the demo has the Boardroom room')
   assert.equal(room.kind, 'shared')
-  assert.equal(room.rung, null, 'a shared device stands on no rung')
+  assert.equal(room.active, false, 'a shared device is never counted on a rung')
   assert.notEqual(room.method, 'passkey', 'a room holds no passkey')
   assert.equal(room.evidence.kind, 'sharedDevice', 'its evidence is why it counts as a shared device')
 })

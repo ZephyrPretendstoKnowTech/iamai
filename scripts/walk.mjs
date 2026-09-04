@@ -521,35 +521,16 @@ async function walkFixture(fx) {
         const stayed = await evaluate(`window.__stillHere === 2`)
         if (prevented || !stayed) add('P0', `${label}: a second chunk load failure in the session reloaded again (handled ${prevented}, page kept ${stayed}); once, then the error page`)
       }
-      // The signed-in account is never dormant or Not active (derive/operator.ts):
-      // with its directory sign-in 200 days stale, Today counts it active as
-      // "signed in now", the dormant step never lists it, and the admin steps
-      // count it with the operator note.
+      // The signed-in account is a person like any other (derive/operator.ts is
+      // display only): with its directory sign-in 200 days stale it reads not
+      // active on Today, like anyone else's would, and never "signed in now".
       if (fx.mock === 'operator' && route === 'today') {
         const row = await evaluate(`(() => { const tr = [...document.querySelectorAll('main.page table.datatable tbody tr')].find((r) => /Alex Morgan/.test(r.innerText)); if (!tr) return null; const tds = [...tr.querySelectorAll('td')].map((td) => (td.innerText || '').replace(/\\s+/g, ' ').trim()); return { state: tds[1] || '', evidence: tds[3] || '', text: tr.innerText.replace(/\\s+/g, ' ') } })()`)
         if (!row) add('P0', `${label}: Today has no row for the signed-in account`)
         else {
-          if (/Not active/.test(row.state)) add('P0', `${label}: Today counts the signed-in account as Not active ("${row.state}"); it is signed in now`)
-          if (!/signed in now/.test(row.evidence)) add('P0', `${label}: the signed-in account's evidence reads "${row.evidence}"; signed in now`)
+          if (!/not active/i.test(row.state)) add('P0', `${label}: Today reads the signed-in account's stale directory sign-in as "${row.state}"; not active, like anyone else's`)
+          if (/signed in now/.test(row.evidence)) add('P0', `${label}: the signed-in account's evidence reads "${row.evidence}"; the population never depends on who is signed in`)
         }
-        const active = (text.match(/(\d+) active people/) || [])[1]
-        if (active !== undefined && Number(active) < 1) add('P0', `${label}: Today counts no active people with the signed-in account on the page`)
-      }
-      if (fx.mock === 'operator' && route === 'plan') {
-        const openStep = async (re) => {
-          const clicked = await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => ${re}.test(((x.querySelector('.step-title') || {}).textContent || '').trim())); if (!r) return false; r.scrollIntoView({ block: 'center' }); r.click(); return true })()`)
-          if (!clicked) return null
-          await waitFor(`document.querySelector('main.page .step-body') !== null`, 6000)
-          const body = await evaluate(`((document.querySelector('main.page .step-body') || {}).innerText || '').replace(/\\s+/g, ' ')`)
-          await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => ${re}.test(((x.querySelector('.step-title') || {}).textContent || '').trim())); if (r) r.click() })()`)
-          return body
-        }
-        const dormant = await openStep(/Dormant Accounts/)
-        if (dormant !== null && /Alex Morgan/.test(dormant)) add('P0', `${label}: the dormant step lists the signed-in account`)
-        const admins = await openStep(/Phishing-Resistant MFA for Admins/)
-        if (admins === null) add('P0', `${label}: no admin step on the plan`)
-        // The note in either form: with the operator's sign-in count, or, with no records of their own, naming them.
-        else if (!/Your account is in scope: \d+ sign-ins since|Alex Morgan, your own account, is in scope: it signed in for this scan and has no sign-in records in the window\./.test(admins)) add('P0', `${label}: the admin step's who does not carry the operator note: "${admins.slice(0, 200)}"`)
       }
       const overflow = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
       if (overflow > 0) {
@@ -588,9 +569,14 @@ async function walkFixture(fx) {
           }
           ladderCounts = Object.fromEntries(rungs.map((r) => [r.title, r.n]))
         }
-        // The accounts that are not people read "not a person" with a grey dash, never a rung.
-        const notPeople = await evaluate(`[...document.querySelectorAll('main.page table.datatable tbody tr')].filter((tr) => /not a person/.test(tr.innerText)).map((tr) => (tr.querySelector('.rung-badge') || {}).className || '')`)
-        for (const cls of notPeople) if (!/rung-0/.test(cls)) add('P0', `${label}: an account that is not a person carries a rung badge (${cls})`)
+        // The accounts that are not people read "not a person"; with a method set
+        // up they carry their rung's badge (every account with a method gets a rung),
+        // with nothing set up a grey dash; the rungs' counts never include them.
+        const notPeople = await evaluate(`[...document.querySelectorAll('main.page table.datatable tbody tr')].filter((tr) => /not a person/.test(tr.innerText)).map((tr) => ({ cls: (tr.querySelector('.rung-badge') || {}).className || '', method: (([...tr.querySelectorAll('td')][2] || {}).innerText || '').trim() }))`)
+        for (const r of notPeople) {
+          if (r.method === 'None' && !/rung-0/.test(r.cls)) add('P0', `${label}: an account that is not a person, with nothing set up, carries a rung badge (${r.cls})`)
+          if (r.method !== 'None' && /rung-0/.test(r.cls)) add('P0', `${label}: an account that is not a person holds ${r.method} and shows no rung`)
+        }
       }
       // The Inventory policies table carries an Exclusions column, the groups and users by name (E5).
       if (route === 'inventory') {

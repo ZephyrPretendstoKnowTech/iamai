@@ -17,7 +17,7 @@ test('the emergency accounts are never in the campaign\'s admins note', () => {
   const admins = adminUserIds(f.snapshot.roles)
   const emergency = f.mapping.breakGlassUserIds
   assert.ok(emergency.length > 0 && emergency.every((id) => admins.has(id)), 'the demo\'s emergency accounts hold an admin role')
-  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: f.operatorId })
+  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
   for (const id of emergency) assert.ok(!lists.adminNames.includes(nameOf(id)), `${nameOf(id)} is an emergency account, not a campaign admin`)
   assert.equal(lists.adminNames.length, [...admins].filter((id) => !emergency.includes(id)).length, 'every other admin is named')
   assert.deepEqual(lists.emergencyAccounts, emergency.map(nameOf), 'the emergency accounts keep their own list')
@@ -33,7 +33,7 @@ test('a service principal never appears in a people list or an admins note', () 
   const users = new Set(f.snapshot.users.map((u) => u.id))
   const principals = [...adminUserIds(f.snapshot.roles)].filter((id) => !users.has(id))
   assert.equal(principals.length, 1, 'GetIAMAI has one role holder that is not a user account')
-  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf, operatorId: f.operatorId })
+  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
   const userNames = new Set(f.snapshot.users.map((u) => nameOf(u.id)))
   for (const key of ['adminNames', 'eligible', 'specialCare', 'adminsWithout', 'emergencyAccounts'] as const) for (const name of lists[key] ?? []) assert.ok(userNames.has(name.split(' · ')[0]), `${key} names a user account: ${name}`)
   for (const id of principals) {

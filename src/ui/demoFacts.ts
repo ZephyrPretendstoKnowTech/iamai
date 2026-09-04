@@ -1,12 +1,11 @@
 // The sample tenant's four facts for the signed-out Scan tile
 // (docs/design/connect-mockup.html): people, steps, already in place, weeks to
 // finish — computed from the demo fixture through the plan engine, the way the
-// Plan header counts them, never typed. Pure; Node and the browser both run it.
+// Plan header counts them (derive/facts.ts), never typed. Pure; Node and the browser both run it.
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { planCounts } from '../derive/planHeader.ts'
+import { facts, stepFacts } from '../derive/facts.ts'
 import { planFinish } from '../derive/finish.ts'
-import { notPeopleIds, peopleCounts } from '../derive/sets.ts'
 import { demoTenant } from './demo.ts'
 
 export type DemoFacts = { people: number; steps: number; inPlace: number; weeks: number }
@@ -18,11 +17,11 @@ export function demoFacts(): DemoFacts {
   const d = demoTenant(false)
   const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
   const cleanup = run.schedule.cleanup ?? null
-  const { steps, inPlace } = planCounts(run.steps, cleanup)
+  const { steps, done: inPlace } = stepFacts(run.steps, cleanup)
   const finish = planFinish(run.steps, cleanup?.end ?? null)
   // Weeks derive from the finish date, as the Plan header does.
   const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(run.schedule.start)) / (7 * 86_400_000))) : run.schedule.weeks
-  // The active people, as the Plan tile and Today count them; never the directory's row count.
-  cached = { people: peopleCounts(d.snapshot, d.snapshot.asOf, notPeopleIds(d.mapping)).active, steps, inPlace, weeks }
+  // The active people, as the Plan tile and Today count them (derive/facts.ts); never the directory's row count.
+  cached = { people: facts(d.snapshot, d.mapping).active, steps, inPlace, weeks }
   return cached
 }

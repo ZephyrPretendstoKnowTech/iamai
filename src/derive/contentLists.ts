@@ -7,15 +7,13 @@
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
-import { scoreMfaViability, rolloutBucket } from '../scoring/mfaViability.ts'
+import { rolloutBucket } from '../scoring/mfaViability.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { notActiveUsers, notPeopleIds } from './sets.ts'
-import { campaignIds } from './population.ts'
-import { rungOf } from './ladder.ts'
+import { RUNGS, ladder, rungOf } from './ladder.ts'
 import type { Rung } from './ladder.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { lockoutIds } from '../roadmap/lockout.ts'
@@ -26,8 +24,6 @@ export type ListContext = {
   mapping: MappingState
   nameOf: (id: string) => string
   now: string
-  /** The operator's own account, so the special-care picker can include "you". */
-  operatorId?: string | null
   /** Require MFA for Everyone in place (stepVars planDates): the unproven bucket is empty. */
   mfaInPlace?: boolean
 }
@@ -35,10 +31,7 @@ export type ListContext = {
 // The readiness word for the special-care picker: the rung's title (pages.ladder), or Not active (pages.today.show).
 type LadderWords = { rungs: Record<`r${Rung}`, { title: string }> }
 const rungTitle = (rung: Rung): string => (pages.ladder as unknown as LadderWords).rungs[`r${rung}`].title
-const stateWord = (v: MfaViability): string => {
-  const rung = rungOf(v)
-  return rung === null ? (pages.today as { show: { notActive: string } }).show.notActive : rungTitle(rung)
-}
+const stateWord = (v: MfaViability): string => (v.activity === 'active' ? rungTitle(rungOf(v)) : (pages.today as { show: { notActive: string } }).show.notActive)
 
 const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
 const people = (ev: { people: string[] } | undefined | null): string[] => ev?.people ?? []
@@ -52,28 +45,30 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const { snapshot, mapping, nameOf, now } = ctx
   // The emergency and service accounts are not people (sets.ts notPeopleIds): the one population.
   const svc = notPeopleIds(mapping)
-  const viability = buildViabilityInputs(snapshot, now, svc).map(scoreMfaViability)
-  // The campaign's population (derive/population.ts): the plan's active people
-  // minus the emergency and shared-device accounts (prompt 48.1 item 2).
+  // The ladder (derive/ladder.ts) scores the people once and counts the
+  // campaign's population on its rungs: the groups here are its rungs, so the
+  // campaign step's numbers are the facts every surface shows (derive/facts.ts).
+  const l = ladder(snapshot, mapping, now)
+  const viability = [...l.viability.values()]
   const bg = new Set(mapping.breakGlassUserIds)
-  const campaign = new Set(campaignIds(viability, snapshot, mapping))
-  const active = viability.filter((v) => campaign.has(v.userId))
+  const active = RUNGS.flatMap((r) => l.rungs[r].map((p) => p.viability))
   const names = (ids: readonly string[]): string[] => ids.map(nameOf)
   const scen = snapshot.scenarioEvidence ?? null
 
-  // The registration campaign's groups read the ladder (derive/ladder.ts): each
-  // person once, on their rung. With Require MFA for Everyone in place every
-  // sign-in completes MFA, so nobody is asked for one MFA sign-in: the rung-2
-  // group is empty under the policy (Today keeps stating the records' fact).
-  const onRung = (rung: Rung): MfaViability[] => active.filter((v) => rungOf(v) === rung)
+  // The registration campaign's groups are the ladder's rungs: each person
+  // once, on their rung. With Require MFA for Everyone in place every sign-in
+  // completes MFA, so nobody is asked for one MFA sign-in: the rung-2 group is
+  // empty under the policy (Today keeps stating the records' fact).
+  const onRung = (rung: Rung): MfaViability[] => l.rungs[rung].map((p) => p.viability)
   const noMethod = onRung(1)
   const unproven = ctx.mfaInPlace === true ? [] : onRung(2)
   const smsOnly = active.filter((v) => v.signals.smsVoiceOnly || (v.methodTiers.length > 0 && v.methodTiers.every((t) => t === 'smsVoice')))
   const bucketName = (rows: MfaViability[]): string[] => rows.map((v) => nameOf(v.userId))
 
   // The special-care picker (the campaign's decision): admins, anyone with no
-  // method, anyone with text or call only, and the operator — each with the Today
-  // state that says why. One entry per person, in that order (walk-51 item 3).
+  // method, anyone with text or call only, each with the Today state that says
+  // why. One entry per person, in that order (walk-51 item 3). Never the
+  // signed-in account for being signed in: the plan does not depend on who ran the scan.
   const byId = new Map(viability.map((v) => [v.userId, v]))
   const admins = new Set(adminUserIds(snapshot.roles))
   const careIds: string[] = []
@@ -87,7 +82,6 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   for (const v of active) if (admins.has(v.userId)) addCare(v.userId)
   for (const v of noMethod) addCare(v.userId)
   for (const v of smsOnly) addCare(v.userId)
-  if (ctx.operatorId) addCare(ctx.operatorId)
   const specialCare = careIds.map((id) => `${nameOf(id)} · ${stateWord(byId.get(id) as MfaViability)}`)
   const dormant = notActiveUsers(snapshot, now, svc)
   // The ids behind the rows, in the same order, so a tick is a decision about an

@@ -19,7 +19,6 @@ import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import type { Step } from '../roadmap/types.ts'
 import { INACTIVE_DAYS } from '../scoring/mfaViability.ts'
 import { adminUserIds } from '../roles.ts'
-import { isOperator, lastSignInOf } from './operator.ts'
 import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 
 /**
@@ -68,9 +67,8 @@ export function isNonPerson(u: UserRow, confirmedServiceAccountIds: ReadonlySet<
 
 /** Everyone in the directory who is a person. Guests included: they sign in too. */
 export function personAccounts(snapshot: TenantSnapshot, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
-  // The signed-in account is a person: it signed in to run this scan, whatever
-  // the directory's stale sign-in and its licence shape say (derive/operator.ts).
-  return snapshot.users.filter((u) => (isOperator(snapshot, u.id) ? !confirmedServiceAccountIds.has(u.id) : !isNonPerson(u, confirmedServiceAccountIds)))
+  // The signed-in account is a person like any other: the directory decides, never who ran the scan.
+  return snapshot.users.filter((u) => !isNonPerson(u, confirmedServiceAccountIds))
 }
 
 /**
@@ -94,10 +92,9 @@ export function enabledUsers(snapshot: TenantSnapshot, confirmedServiceAccountId
 export function activeUsers(snapshot: TenantSnapshot, now: string, confirmedServiceAccountIds: ReadonlySet<string> = new Set()): UserRow[] {
   const cutoff = Date.parse(now) - INACTIVE_DAYS * 86_400_000
   return enabledUsers(snapshot, confirmedServiceAccountIds).filter((u) => {
-    // The signed-in account signed in at the scan (derive/operator.ts).
-    const last = lastSignInOf(snapshot, u)
-    if (!last) return false
-    const at = Date.parse(last)
+    // The directory's last sign-in, for the signed-in account too: the population never depends on who ran the scan.
+    if (!u.lastSuccessfulSignIn) return false
+    const at = Date.parse(u.lastSuccessfulSignIn)
     return Number.isFinite(at) && at >= cutoff
   })
 }

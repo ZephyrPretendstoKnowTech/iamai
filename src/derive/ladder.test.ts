@@ -1,11 +1,14 @@
-// The MFA readiness ladder (derive/ladder.ts): every active person on exactly
-// one rung, the rungs summing to the active people, the accounts that are not
-// people listed and never placed, and the Windows-Hello-only person on rung 3
-// with the phone sign-ins the records hold.
+// The MFA readiness ladder (derive/ladder.ts): every active person counted on
+// exactly one rung, the rungs summing to the active people, the accounts that
+// are not people listed and never counted, and the Windows-Hello-only person on
+// rung 3 with the phone sign-ins the records hold. Rung 5 needs a
+// phishing-resistant sign-in in the records, rung 4 an Authenticator one.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
-import { KINDS, RUNGS, ladder, ladderCounts, methodWordOf, phoneSignInsOf, rungOf, windowsHelloOnly } from './ladder.ts'
+import { KINDS, RUNGS, ladder, methodWordOf, phoneSignInsOf, rungOf, windowsHelloOnly } from './ladder.ts'
+import type { Methods } from './ladder.ts'
+import { factsOf } from './facts.ts'
 import { campaignIdsFor } from './population.ts'
 import { notPeopleIds } from './sets.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
@@ -29,8 +32,9 @@ test('rungs are exclusive and sum to the active people; the kinds and the not ac
     for (const id of placed) assert.ok(!never.has(id), `${name}: ${id} is not a person and stands on a rung`)
     for (const id of f.mapping.breakGlassUserIds) assert.ok(l.kinds.emergency.some((u) => u.id === id), `${name}: an emergency account is listed as one`)
     for (const id of sharedDeviceIds(f.snapshot)) assert.ok(l.kinds.shared.some((u) => u.id === id), `${name}: a shared device is listed as one`)
-    const counts = ladderCounts(l)
+    const counts = factsOf(l)
     assert.equal(RUNGS.reduce((n, r) => n + counts.rungs[r], 0), counts.active, `${name}: the five counts sum to the active people`)
+    assert.equal(counts.accounts, counts.active + counts.notActive + KINDS.reduce((n, k) => n + counts.kinds[k], 0), `${name}: the facts sum to the accounts`)
   }
 })
 
@@ -51,19 +55,30 @@ test('the Windows-Hello-only person is on rung 3 whatever the records prove, wit
   assert.equal(typeof phoneSignInsOf(f.snapshot, other.id), 'number')
 })
 
-test('the rung follows the method that travels, and proof is an MFA sign-in in the records', () => {
-  const base = { userId: 'x', enabled: true, activity: 'active' as const, mfa: 'verified' as const, mfaCapable: true, isAdmin: false, strongestMethod: 'push' as const, methodTiers: ['push' as const], registered: ['microsoftAuthenticatorPush'], kinds: ['microsoftAuthenticator' as const], reasons: [], signals: {} }
-  const proven = { at: '2026-09-01T00:00:00.000Z', method: 'Mobile app notification' }
-  assert.equal(rungOf({ ...base, evidence: proven }), 4, 'Authenticator, proven')
-  assert.equal(rungOf({ ...base, registered: ['microsoftAuthenticatorPush', 'passKeyDeviceBound'], methodTiers: ['phishingResistant', 'push'], evidence: proven }), 5, 'a passkey, proven')
-  assert.equal(rungOf({ ...base, registered: ['windowsHelloForBusiness', 'passKeyDeviceBound'], methodTiers: ['phishingResistant'], evidence: proven }), 5, 'Windows Hello beside a passkey: the passkey travels')
-  assert.equal(rungOf({ ...base, registered: ['windowsHelloForBusiness'], kinds: ['windowsHelloForBusiness'], methodTiers: ['phishingResistant'], evidence: proven }), 3, 'Windows Hello only, proven on that PC')
-  assert.equal(rungOf({ ...base, registered: ['windowsHelloForBusiness'], kinds: ['windowsHelloForBusiness'], methodTiers: ['phishingResistant'], mfa: 'unverified' }), 3, 'Windows Hello only, unproven')
-  assert.equal(rungOf({ ...base, registered: ['x509Certificate'], kinds: [], methodTiers: ['phishingResistant'], evidence: proven }), 3, 'a certificate reads as bound to the PC')
-  assert.equal(rungOf({ ...base, registered: ['windowsHelloForBusiness', 'mobilePhone'], kinds: ['windowsHelloForBusiness', 'phone'], methodTiers: ['phishingResistant', 'smsVoice'], mfa: 'unverified' }), 2, 'a phone number travels: set up, never used')
-  assert.equal(rungOf({ ...base, mfa: 'unverified' }), 2, 'set up, never used')
-  assert.equal(rungOf({ ...base, mfa: 'none', mfaCapable: false, registered: [], kinds: [], methodTiers: [], strongestMethod: 'none' }), 1, 'nothing set up')
-  assert.equal(rungOf({ ...base, activity: 'dormant', evidence: proven }), null, 'not active is outside the ladder')
+test('the rung follows the method that travels, and proof is the sign-in the records name: phishing-resistant for rung 5, the Authenticator app for rung 4', () => {
+  const base: Methods = { mfaCapable: true, registered: ['microsoftAuthenticatorPush'], kinds: ['microsoftAuthenticator'] }
+  const at = '2026-09-01T00:00:00.000Z'
+  const app = { at, method: 'Mobile app notification' }
+  const passkey = { at, method: 'Passkey (device-bound)' }
+  const key = { at, method: 'FIDO2 security key' }
+  const text = { at, method: 'Text message' }
+  const hello = { at, method: 'Windows Hello for Business' }
+  assert.equal(rungOf({ ...base, evidence: app }), 4, 'Authenticator, proven with the app')
+  assert.equal(rungOf({ ...base, evidence: { at, method: 'Microsoft Authenticator passwordless' } }), 4, 'passwordless is the app')
+  assert.equal(rungOf({ ...base, registered: ['microsoftAuthenticatorPush', 'passKeyDeviceBound'], evidence: passkey }), 5, 'a passkey, proven with it')
+  assert.equal(rungOf({ ...base, registered: ['microsoftAuthenticatorPush', 'fido2SecurityKey'], evidence: key }), 5, 'a security key, proven with it')
+  assert.equal(rungOf({ ...base, registered: ['microsoftAuthenticatorPush', 'passKeyDeviceBound'], evidence: app }), 4, 'a passkey held but the app proven: rung 4')
+  assert.equal(rungOf({ ...base, registered: ['windowsHelloForBusiness', 'passKeyDeviceBound'], evidence: passkey }), 5, 'Windows Hello beside a passkey: the passkey travels')
+  assert.equal(rungOf({ ...base, evidence: passkey }), 4, 'a phishing-resistant sign-in with no passkey or key on the report: the app rung, a stronger proof standing for the app')
+  assert.equal(rungOf({ mfaCapable: true, registered: ['windowsHelloForBusiness'], kinds: ['windowsHelloForBusiness'], evidence: hello }), 3, 'Windows Hello only, proven on that PC')
+  assert.equal(rungOf({ mfaCapable: true, registered: ['windowsHelloForBusiness'], kinds: ['windowsHelloForBusiness'] }), 3, 'Windows Hello only, unproven')
+  assert.equal(rungOf({ mfaCapable: true, registered: ['x509Certificate'], kinds: [], evidence: passkey }), 3, 'a certificate reads as bound to the PC')
+  assert.equal(rungOf({ mfaCapable: true, registered: ['windowsHelloForBusiness', 'mobilePhone'], kinds: ['windowsHelloForBusiness', 'phone'] }), 2, 'a phone number travels: set up, never used')
+  assert.equal(rungOf({ ...base }), 2, 'set up, never used')
+  assert.equal(rungOf({ ...base, evidence: text }), 2, 'a text proves MFA, not the app')
+  assert.equal(rungOf({ ...base, evidence: { at, method: 'MFA' } }), 2, 'a record naming no method proves nothing')
+  assert.equal(rungOf({ mfaCapable: false, registered: [], kinds: [] }), 1, 'nothing set up')
+  assert.equal(rungOf({ mfaCapable: false, registered: ['mobilePhone'], kinds: ['phone'] }), 2, 'a registered method counts without the report flag')
   assert.equal(methodWordOf({ registered: ['windowsHelloForBusiness', 'microsoftAuthenticatorPush'], kinds: [] }), 'push', 'the method column names the one that travels')
   assert.equal(methodWordOf({ registered: [], kinds: ['fido2'] }), 'passkey')
   assert.equal(methodWordOf({ registered: [], kinds: [] }), 'none')
@@ -86,6 +101,7 @@ test("the campaign step's groups and the admin steps' lockout counts read the la
     const admins = adminUserIds(f.snapshot.roles)
     const bg = new Set(f.mapping.breakGlassUserIds)
     const below = [...l.viability.values()].filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && rungOf(v) !== 5).map((v) => v.userId).sort()
+    assert.ok(l.rungs[5].length > 0 || name === 'getiamai', `${name}: someone holds a passkey and proved it`)
     assert.deepEqual(lockoutIds('admins-phishing-resistant', [...l.viability.values()], f.snapshot, bg).sort(), below, `${name}: the admin lockout is the admins not yet at rung 5`)
   }
   // The five titles are the words the campaign's groups and the admin steps use.

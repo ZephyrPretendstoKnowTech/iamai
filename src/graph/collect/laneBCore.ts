@@ -259,8 +259,11 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
     if (row.country && !u.countries?.includes(row.country)) (u.countries ??= []).push(row.country)
     const at = row.createdDateTime
     if (u.lastSignIn === null || at > u.lastSignIn) u.lastSignIn = at
+    // The latest MFA success, by the method the record names: a later sign-in
+    // satisfied by an earlier claim (the generic 'MFA') never hides the method
+    // the person proved, which the ladder reads (derive/ladder.ts rungOf).
     const method = mfaSuccessOf(row)
-    if (method && (u.lastMfaSuccess === null || at > u.lastMfaSuccess.at)) {
+    if (method && (u.lastMfaSuccess === null || (at > u.lastMfaSuccess.at && (method !== 'MFA' || u.lastMfaSuccess.method === 'MFA')))) {
       u.lastMfaSuccess = { at, method }
     }
   }

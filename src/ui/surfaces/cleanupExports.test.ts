@@ -8,7 +8,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
-import { planCounts } from '../../derive/planHeader.ts'
+import { stepFacts } from '../../derive/facts.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
 import { stepExportView } from './stepExport.ts'
 import { cleanupExportViews } from './cleanupExport.ts'
@@ -41,13 +41,13 @@ test('every Cleanup row is a calendar entry on its day, with what the row says',
 
 test("the print cover's step count is the Plan header's: the steps and the Cleanup rows", () => {
   const { r } = setUp()
-  const counts = planCounts(r.steps, r.schedule.cleanup)
+  const counts = stepFacts(r.steps, r.schedule.cleanup)
   const rows = r.schedule.cleanup!.rows.length
   assert.ok(rows > 0)
   assert.equal(counts.steps, trackableSteps(r.steps.filter((s) => !s.doesntApply)).length + rows, 'Cleanup rows count')
-  assert.equal(counts.inPlace, doneSteps(r.steps).length, 'no Cleanup row is done yet')
+  assert.equal(counts.done, doneSteps(r.steps).length, 'no Cleanup row is done yet')
   const withDone = { ...r.schedule.cleanup!, rows: r.schedule.cleanup!.rows.map((x, i) => (i === 0 ? { ...x, done: '2026-09-03T12:00:00.000Z' } : x)) }
-  assert.equal(planCounts(r.steps, withDone).inPlace, counts.inPlace + 1, 'a Cleanup row marked done is in place')
+  assert.equal(stepFacts(r.steps, withDone).done, counts.done + 1, 'a Cleanup row marked done is in place')
 })
 
 test('the prompt pack and the bundle list Cleanup under cleanup; the bundle drops the v2 field names', () => {

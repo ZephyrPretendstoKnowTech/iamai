@@ -14,7 +14,7 @@ import { detectEmergencyAccess, emergencySignals } from '../../mapping/emergency
 import { suggestCountries, countryName } from '../../mapping/countries.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
-import { DECISION_STEPS } from '../../roadmap/decisions.ts'
+import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../../roles.ts'
@@ -181,7 +181,7 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
   return null
 }
 
-export type DefaultsContext = PickerContext & { operatorId: string | null; now: string }
+export type DefaultsContext = PickerContext & { now: string }
 
 /**
  * Every picker's pre-ticked default as a decision: the detected emergency
@@ -202,9 +202,21 @@ export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecis
   pick(DECISION_STEPS.countries, 'countriesWithCounts')
   pick(DECISION_STEPS.trustedLocation, 'locationsWithMatches')
   pick(DECISION_STEPS.serviceAccounts, 'accountsWithSignals')
-  const care = contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, operatorId: ctx.operatorId }).specialCareIds
+  const care = contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now }).specialCareIds
   if (care.length > 0) out[DECISION_STEPS.campaign] = { picked: care, at }
   return out
+}
+
+/**
+ * The mapping the plan and every surface derive from (target-state §6.4): the
+ * stored record with every picker's detected default applied as the plan's
+ * decision, then every saved step decision over it. The emergency and service
+ * accounts a scan detects are recognised through this on every scan, whether or
+ * not the person has saved a decision, so Today, the Plan and Connect read one
+ * population (derive/facts.ts) and a re-scan never loses a kind.
+ */
+export function appliedMapping(ctx: DefaultsContext, saved: Record<string, StepDecision> | null | undefined): MappingState {
+  return applyStepDecisions(applyStepDecisions(ctx.mapping, defaultDecisions(ctx), 'detected'), saved ?? null)
 }
 
 /** One object a picker can hold: the id behind a chip, its name, its UPN or count, and, for a nomination, the signal text. */

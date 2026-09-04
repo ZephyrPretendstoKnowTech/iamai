@@ -217,7 +217,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // the data exists): the campaign buckets, the lockout-scenario people, and the
   // emergency/service/admin id sets. A step reads only the keys it uses.
   // With Require MFA for Everyone in place nobody is "registered but never seen to complete MFA" (population.ts campaignBucket).
-  Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, operatorId: ctx.operatorId, mfaInPlace: ctx.mfaInPlace === true }))
+  Object.assign(v, contentLists({ snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, now: ctx.now, mfaInPlace: ctx.mfaInPlace === true }))
   // The stored answers in words (E1), for the steps an answer adds; and the
   // device decision's lines (E2): who signs in from a phone or an unjoined
   // computer, one device line per person for the campaign, and the one

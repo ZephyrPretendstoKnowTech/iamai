@@ -27,8 +27,7 @@ import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
 import { reportOnlySeenOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
-import { applyStepDecisions } from '../../roadmap/decisions.ts'
-import { defaultDecisions } from './pickerRows.ts'
+import { appliedMapping } from './pickerRows.ts'
 import { proposedStart } from '../../derive/planStart.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
@@ -106,7 +105,7 @@ export type PlanData = {
   setNotAssessedNote: (policy: string, reason: string | null) => void
 }
 
-/** The operator's own account in the directory (derive/operator.ts: the scan's /me row; the signed-in name when the scan has none): their evidence line, and the special-care default. */
+/** The operator's own account in the directory (derive/operator.ts: the scan's /me row; the signed-in name when the scan has none): display only, for the steps' "your own account" lines. */
 export function operatorIdOf(snapshot: TenantSnapshot | null, account: { username: string } | null): string | null {
   if (!snapshot || !account) return null
   return operatorUserId(snapshot) ?? snapshot.users.find((u) => (u.userPrincipalName ?? '').toLowerCase() === account.username.toLowerCase())?.id ?? null
@@ -115,7 +114,6 @@ export function operatorIdOf(snapshot: TenantSnapshot | null, account: { usernam
 export function usePlanData(
   scan: { snapshot: TenantSnapshot; at: string } | null,
   baseline: BaselineResult | null,
-  operatorId: string | null,
   /** Compute only, never write: Connect's Plan tile counts the steps without creating or touching the plan record. */
   readOnly = false,
 ): PlanData {
@@ -135,7 +133,16 @@ export function usePlanData(
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
-    if (!snapshot) return
+    if (!snapshot) {
+      // Forgotten or signed out (ui/actions.ts): nothing stays in memory of the tenant.
+      setMapping(null)
+      setSaved(null)
+      setMappingFor(null)
+      setGroups(new Map())
+      setGroupsFor(null)
+      setLoaded(false)
+      return
+    }
     // A new snapshot (a scan, the demo's week two) reloads the mapping and the
     // decisions before the plan computes again: a plan never renders from the
     // new snapshot and the previous mapping (the walk caught the old exclusions
@@ -160,7 +167,7 @@ export function usePlanData(
     if (!snapshot || !mapping || mappingFor !== snapshot) return
     // The defaults here read the policies' groups only (the loaded groups are what
     // this effect produces); every policy-referenced group is loaded regardless.
-    const decided = applyStepDecisions(applyStepDecisions(mapping, defaultDecisions({ snapshot, mapping, nameOf: (id) => id, operatorId, now: snapshot.asOf }), 'detected'), saved?.stepDecisions ?? null)
+    const decided = appliedMapping({ snapshot, mapping, nameOf: (id) => id, now: snapshot.asOf }, saved?.stepDecisions)
     setGroupsLoaded(false)
     let cancelled = false
     const ids = new Set<string>()
@@ -195,7 +202,7 @@ export function usePlanData(
     return () => {
       cancelled = true
     }
-  }, [snapshot, mapping, mappingFor, saved, operatorId])
+  }, [snapshot, mapping, mappingFor, saved])
 
   // Every picker's detected default, then every saved step decision, applied to
   // the stored mapping (target-state §6.4): the plan, its checks and its
@@ -204,9 +211,8 @@ export function usePlanData(
   const applied = useMemo<MappingState | null>(() => {
     if (!mapping || !snapshot) return null
     const nameOf = (id: string): string => groups.get(id)?.displayName ?? id
-    const defaults = defaultDecisions({ snapshot, mapping, nameOf, groups, operatorId, now: snapshot.asOf })
-    return applyStepDecisions(applyStepDecisions(mapping, defaults, 'detected'), saved?.stepDecisions ?? null)
-  }, [mapping, saved, snapshot, groups, operatorId])
+    return appliedMapping({ snapshot, mapping, nameOf, groups, now: snapshot.asOf }, saved?.stepDecisions)
+  }, [mapping, saved, snapshot, groups])
   // The default start is today in the display zone (derive/planStart.ts),
   // proposed again on every visit until Start the plan anchors a date; the
   // schedule clamps a weekend to the working day after it.
@@ -411,4 +417,30 @@ export function usePlanData(
       bump()
     },
   }
+}
+
+/**
+ * The population's mapping for a surface that computes no plan (Today): the
+ * stored record and the saved decisions, with the detected defaults applied
+ * (pickerRows.ts appliedMapping), so its facts (derive/facts.ts) are the
+ * Plan's and Connect's. Null until both records have loaded for this snapshot.
+ */
+export function useAppliedMapping(snapshot: TenantSnapshot | null): MappingState | null {
+  const [state, setState] = useState<{ snapshot: TenantSnapshot; mapping: MappingState } | null>(null)
+  useEffect(() => {
+    if (!snapshot) {
+      setState(null)
+      return
+    }
+    let cancelled = false
+    void Promise.all([loadMappingState(snapshot.tenantId), loadPlanRecord<LegacyOrDecisions>(snapshot.tenantId)]).then(([m, p]) => {
+      if (cancelled) return
+      const saved = decisionsOf(p as never, planIdFor(snapshot.tenantId))
+      setState({ snapshot, mapping: appliedMapping({ snapshot, mapping: m, nameOf: (id) => id, now: snapshot.asOf }, saved?.stepDecisions) })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [snapshot])
+  return state && state.snapshot === snapshot ? state.mapping : null
 }

@@ -14,7 +14,8 @@ import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
 import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
-import { RUNGS, ladder, ladderCounts } from '../../derive/ladder.ts'
+import { RUNGS, ladder } from '../../derive/ladder.ts'
+import { factsOf } from '../../derive/facts.ts'
 import { todayView } from '../../derive/today.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 
@@ -213,7 +214,7 @@ const planOnlyItsOwn = (t: PlanTile): void => {
 }
 
 const NO_MAPPING = { breakGlassUserIds: [] as string[], serviceAccountUserIds: [] as string[] }
-const L = ladderCounts(ladder(full, NO_MAPPING, full.asOf))
+const L = factsOf(ladder(full, NO_MAPPING, full.asOf))
 
 test('tile 4, Plan, ready (docs/design/mockups/connect-v2.html): "ready · N steps, N done · from the scan N ago", the ladder\'s five numbers, Open the plan (primary) alone, the accent badge; no facts row, no drop line', () => {
   const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, ladder: L, now: twoMinutesLater })
@@ -234,8 +235,8 @@ test('tile 4, Plan, ready (docs/design/mockups/connect-v2.html): "ready · N ste
 test("Connect's tile shows the numbers Today and the Plan show, on the demo and GetIAMAI", () => {
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
-    const connect = ladderCounts(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
-    const today = ladderCounts(todayView(f.snapshot, f.snapshot.asOf, f.mapping).ladder)
+    const connect = factsOf(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
+    const today = todayView(f.snapshot, f.snapshot.asOf, f.mapping).facts
     assert.deepEqual(connect, today, `${name}: Connect and Today`)
     assert.equal(RUNGS.reduce((n, r) => n + connect.rungs[r], 0), connect.active, `${name}: the five tiles sum to the active people`)
     const t = planTile({ kind: 'ready', at: f.snapshot.asOf, counts: { steps: 30, done: 5 }, ladder: connect })

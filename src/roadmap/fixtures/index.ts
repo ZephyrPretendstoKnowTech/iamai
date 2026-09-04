@@ -209,7 +209,9 @@ export function buildFixture(spec: Spec): Fixture {
     if (isAdmin) rolesActive[id] = [GA]
     // Every active person (90 days) has sign-in evidence: the records cover the whole window.
     if (lastDays < 90 && !spec.hostile) {
-      signInEvidence[id] = { signInCount: 1 + Math.floor(rand() * 20), lastSignIn: daysAgo(lastDays), lastMfaSuccess: methods.length > 0 && rand() < 0.65 ? { at: daysAgo(lastDays), method: 'Mobile app notification' } : null, countries: rand() < 0.04 ? ['AU', 'NZ'] : ['AU'] }
+      // The records name the method the person proved: the passkey when they hold one, the app otherwise, a text for a phone.
+      const provenWith = methods.includes('passKeyDeviceBound') ? 'Passkey (device-bound)' : methods.includes('microsoftAuthenticatorPush') ? 'Mobile app notification' : 'Text message'
+      signInEvidence[id] = { signInCount: 1 + Math.floor(rand() * 20), lastSignIn: daysAgo(lastDays), lastMfaSuccess: methods.length > 0 && rand() < 0.65 ? { at: daysAgo(lastDays), method: provenWith } : null, countries: rand() < 0.04 ? ['AU', 'NZ'] : ['AU'] }
     }
   }
   // The demo's reception printer: an account nobody signs in with, which sends

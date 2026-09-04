@@ -3,12 +3,14 @@
 // the method word and the evidence line, read by the table on screen and by
 // Today as CSV (inventoryTables.ts todayTable), so a row's CSV cells equal its
 // screen cells. The words are pages.today, pages.ladder and app.today. Pure.
-import type { Ledger, TodayRow } from '../../derive/today.ts'
+import type { TodayRow } from '../../derive/today.ts'
+import type { Facts } from '../../derive/facts.ts'
 import type { Kind, MethodWord, Rung } from '../../derive/ladder.ts'
 import { app, pages, shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate, relative } from '../../copy/dates.ts'
 import { friendlyMethod } from '../format.ts'
+import { lowerFirst } from '../../copy/statements.ts'
 
 export { SHOW_KEYS } from '../../derive/today.ts'
 export type { ShowKey } from '../../derive/today.ts'
@@ -27,10 +29,16 @@ const L = pages.ladder as unknown as LadderWords
 const C = app.today
 const SIGNALS = shared.sharedDeviceSignals as Record<string, string>
 
-/** The ledger line: the accounts, then every kind that is not zero, in the content's order, the kinds summing to the accounts. */
-export function ledgerText(l: Ledger): string {
-  const parts = (['active', 'notActive', 'emergency', 'service', 'shared', 'disabled'] as const).filter((k) => l[k] > 0).map((k) => fillText(T.ledger[k], { n: l[k] }))
-  return `${fillText(T.ledger.lead, { accounts: l.accounts })} ${parts.join(' · ')}`
+/** The ledger line: the accounts, then every part that is not zero, in the content's order, the parts summing to the accounts (derive/facts.ts). */
+export function ledgerText(f: Facts): string {
+  const n = (k: 'active' | 'notActive' | Kind): number => (k === 'active' ? f.active : k === 'notActive' ? f.notActive : f.kinds[k])
+  const parts = (['active', 'notActive', 'emergency', 'service', 'shared', 'disabled'] as const).filter((k) => n(k) > 0).map((k) => fillText(T.ledger[k], { n: n(k) }))
+  return `${fillText(T.ledger.lead, { accounts: f.accounts })} ${parts.join(' · ')}`
+}
+
+/** The word beside an uncounted person's badge: not active. */
+export function notActiveWord(): string {
+  return lowerFirst(T.show.notActive)
 }
 
 /** The rung's words: title, the tooltip, the one-line description. */
@@ -41,10 +49,10 @@ export function rungWords(rung: Rung): { title: string; tip: string; desc: strin
 /** The ladder's header words. */
 export const ladderWords = { header: L.header, of: (n: number): string => fillText(L.of, { n }), prioritise: L.prioritise }
 
-/** The readiness cell's word: the rung's title, Not active, or not a person. */
+/** The readiness cell's word: the rung's title for an active person, Not active, or not a person. */
 export function readinessWord(r: TodayRow): string {
   if (r.kind !== 'person') return T.notAPerson
-  return r.rung === null ? T.show.notActive : rungWords(r.rung).title
+  return r.active && r.rung !== null ? rungWords(r.rung).title : T.show.notActive
 }
 
 /** The kind tag on an account that is not a person. */
@@ -77,8 +85,6 @@ export function todayEvidenceText(r: TodayRow): string {
       return C.neverSignedIn
     case 'inactive':
       return fillText(C.inactiveSince, { date: absoluteDate(e.since) })
-    case 'signedInNow':
-      return C.signedInNow
     case 'noMethod':
       return C.noMethodEvidence
     case 'lastSignIn':

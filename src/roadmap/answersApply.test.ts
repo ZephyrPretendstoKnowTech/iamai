@@ -27,7 +27,7 @@ import { contentStepFor } from '../content/stepTitle.ts'
 /** The mapping as the plan derives it: the detected defaults, then the saved decisions. */
 function applied(f: Fixture, decisions: Record<string, StepDecision> | null): MappingState {
   const nameOf = (id: string): string => f.snapshot.users.find((u) => u.id === id)?.displayName ?? id
-  const defaults = applyStepDecisions(f.mapping, defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, operatorId: f.operatorId, now: f.snapshot.asOf }), 'detected')
+  const defaults = applyStepDecisions(f.mapping, defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, now: f.snapshot.asOf }), 'detected')
   return applyStepDecisions(defaults, decisions)
 }
 

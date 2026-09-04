@@ -762,8 +762,10 @@ const ctyIncludesOperator: ValidationRule = {
   severity: 'blocker',
   needs: ['signInEvidence'],
   evaluate: (_t, ctx) => {
-    if (ctx.operatorUserId === null) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
-    const seen = ctx.snapshot.signInEvidence[ctx.operatorUserId]?.countries ?? []
+    // The admins' sign-in countries, never the signed-in account's alone: the
+    // people who could lock themselves out of the portal, whoever ran the scan.
+    const admins = Object.keys(ctx.snapshot.roles?.active ?? {})
+    const seen = [...new Set(admins.flatMap((id) => ctx.snapshot.signInEvidence[id]?.countries ?? []))]
     if (seen.length === 0) return unknown(UNKNOWN.needs([NEED_LABEL.signInEvidence]))
     const missing = seen.filter((c) => !ctx.allowedCountries.includes(c))
     return missing.length === 0 ? PASS : fail(F.ctyMissingOperator(missing))

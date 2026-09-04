@@ -22,7 +22,7 @@ test('a sign-in-disabled account is not counted, not in Today, never dormant, an
   assert.equal(after.enabled, before.enabled - 1, 'not counted as enabled')
   assert.ok(after.active <= before.active && after.notActive <= before.notActive)
   const todayRow = todayView(s, s.asOf).rows.find((r) => r.user.id === 'u-5')!
-  assert.ok(todayRow && todayRow.kind === 'disabled' && todayRow.rung === null, 'listed on Today as sign-in disabled, on no rung')
+  assert.ok(todayRow && todayRow.kind === 'disabled' && !todayRow.active, 'listed on Today as sign-in disabled, never counted')
   assert.ok(!notActiveUsers(s, s.asOf).some((u) => u.id === 'u-5'), 'never on the dormant step (its source)')
   const people = inventoryTables(s).find((t) => t.id === 'people')!
   const row = people.rows.find((r) => String(r[1]) === mailbox.userPrincipalName)!

@@ -1,101 +1,70 @@
-// The signed-in account is never dormant or Not active (derive/operator.ts):
-// with a directory sign-in 200 days stale, Today counts it active as "signed
-// in now", the dormant step never lists it, and its role counts in the admin
-// populations with the operator note. On the UI fixture (Alex Morgan, the /me
-// row, an admin) and the demo fixture through the engine.
+// The signed-in account (derive/operator.ts) is display only: the population
+// never depends on who ran the scan. A second signed-in account produces
+// identical facts on Today, the Plan and Connect (derive/facts.ts); a stale
+// directory sign-in makes the operator Not active like anyone else; the
+// special-care picker never adds the operator for being signed in.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { isOperator, lastSignInOf, operatorUserId } from './operator.ts'
-import { activeUsers, notActiveUsers } from './sets.ts'
+import { operatorUserId } from './operator.ts'
+import { activeUsers, notActiveUsers, personAccounts } from './sets.ts'
 import { todayView } from './today.ts'
-import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
-import { scoreMfaViability } from '../scoring/mfaViability.ts'
-import { todayEvidenceText } from '../ui/surfaces/todayCells.ts'
+import { facts } from './facts.ts'
+import { contentLists } from './contentLists.ts'
 import { operatorIdOf as reportOperatorIdOf } from '../validation/report.ts'
-import { app } from '../content/content.ts'
+import type { TenantSnapshot } from '../graph/collect/types.ts'
 
-// The operator with a directory sign-in 200 days stale and no sign-in records of their own (Graph's activity lags; the records window may miss them).
-const stale = () => {
-  const s = fixtureSnapshot()
-  const me = s.users.find((u) => u.id === 'u-1')
-  assert.ok(me)
-  me.lastSuccessfulSignIn = new Date(Date.parse(s.asOf) - 200 * 86_400_000).toISOString()
-  delete s.signInEvidence['u-1']
-  return s
+const MAPPING = { breakGlassUserIds: [] as string[], serviceAccountUserIds: [] as string[] }
+
+/** The same tenant scanned by a different account: only the /me row differs. */
+function signedInAs(s: TenantSnapshot, id: string | null): TenantSnapshot {
+  const c = structuredClone(s)
+  const u = id ? c.users.find((x) => x.id === id) : undefined
+  c.config.me = u ? { status: 'ok', reason: null, rows: [{ id: u.id, displayName: u.displayName, userPrincipalName: u.userPrincipalName }] } : { status: 'disabled', reason: 'not read', rows: [] }
+  return c
 }
 
-test('the operator is the scan\'s /me row, read in one place; the plan and the validation report agree on it', () => {
+test("the operator is the scan's /me row, read in one place; the plan and the validation report agree on it", () => {
   const s = fixtureSnapshot()
   assert.equal(operatorUserId(s), 'u-1')
-  assert.equal(isOperator(s, 'u-1'), true)
-  assert.equal(isOperator(s, 'u-2'), false)
   assert.equal(reportOperatorIdOf(s), 'u-1')
-  const noMe = fixtureSnapshot()
-  noMe.config.me = { status: 'disabled', reason: 'not read', rows: [] }
+  const noMe = signedInAs(s, null)
   assert.equal(operatorUserId(noMe), null)
   assert.equal(reportOperatorIdOf(noMe), null)
 })
 
-test('the operator\'s last sign-in is the scan\'s moment when the directory says nothing or something older', () => {
-  const s = stale()
+test('a second signed-in account produces identical facts: Today, the ladder and the campaign read the same numbers whoever ran the scan', () => {
+  for (const name of ['demo', 'getiamai'] as const) {
+    const f = fixture(name)
+    const ids = f.snapshot.users.map((u) => u.id)
+    const runs = [f.operatorId, ids[ids.length - 1], null].map((id) => signedInAs(f.snapshot, id))
+    const [first, ...rest] = runs.map((s) => facts(s, f.mapping))
+    for (const other of rest) assert.deepEqual(other, first, `${name}: the facts change with the signed-in account`)
+    const rows = runs.map((s) => todayView(s, s.asOf, f.mapping).rows.map((r) => [r.user.id, r.kind, r.active, r.rung, r.evidence.kind]))
+    for (const other of rows.slice(1)) assert.deepEqual(other, rows[0], `${name}: Today's rows change with the signed-in account`)
+    const care = runs.map((s) => contentLists({ snapshot: s, mapping: f.mapping, nameOf: (id) => id, now: s.asOf }).specialCareIds)
+    for (const other of care.slice(1)) assert.deepEqual(other, care[0], `${name}: the special-care default changes with the signed-in account`)
+    const populations = runs.map((s) => runFixture({ ...f, snapshot: s }).steps.map((st) => [st.id, [...st.population.ids].sort().join(',')]))
+    for (const other of populations.slice(1)) assert.deepEqual(other, populations[0], `${name}: a step's population changes with the signed-in account`)
+  }
+})
+
+test('the operator is a person like any other: a stale directory sign-in reads Not active, and a mailbox shape is a mailbox', () => {
+  const s = fixtureSnapshot()
   const me = s.users.find((u) => u.id === 'u-1')!
-  assert.equal(lastSignInOf(s, me), s.asOf)
-  const fresh = fixtureSnapshot()
-  const meFresh = fresh.users.find((u) => u.id === 'u-1')!
-  assert.equal(lastSignInOf(fresh, meFresh), fresh.asOf, 'a directory sign-in two days before the scan reads as the scan')
-  const after = new Date(Date.parse(fresh.asOf) + 3_600_000).toISOString()
-  assert.equal(lastSignInOf(fresh, { id: 'u-1', lastSuccessfulSignIn: after }), after, 'a directory sign-in at or after the scan stands')
-  assert.equal(lastSignInOf(s, s.users.find((u) => u.id === 'u-2')!), s.users.find((u) => u.id === 'u-2')!.lastSuccessfulSignIn, 'everyone else keeps the directory\'s date')
-  assert.equal(lastSignInOf(s, { id: 'u-1', lastSuccessfulSignIn: null }), s.asOf, 'never signed in, yet signed in now')
-})
-
-test('Today counts the operator active as "signed in now"; the not-active set never holds it', () => {
-  const s = stale()
-  assert.ok(activeUsers(s, s.asOf).some((u) => u.id === 'u-1'), 'active')
-  assert.ok(!notActiveUsers(s, s.asOf).some((u) => u.id === 'u-1'), 'not dormant')
-  const v = buildViabilityInputs(s, s.asOf).map(scoreMfaViability).find((x) => x.userId === 'u-1')!
-  assert.equal(v.activity, 'active')
-  const row = todayView(s, s.asOf).rows.find((r) => r.user.id === 'u-1')!
-  assert.notEqual(row.rung, null, 'on a rung: active')
-  assert.equal(todayEvidenceText(row), 'signed in now')
-  assert.equal(app.today.signedInNow, 'signed in now')
-  // With MFA evidence in the records, the evidence column keeps it: "signed in now" stands in only where "inactive since" would have.
-  const withEvidence = fixtureSnapshot()
-  withEvidence.users.find((u) => u.id === 'u-1')!.lastSuccessfulSignIn = new Date(Date.parse(withEvidence.asOf) - 200 * 86_400_000).toISOString()
-  const rowWithEvidence = todayView(withEvidence, withEvidence.asOf).rows.find((r) => r.user.id === 'u-1')!
-  assert.notEqual(rowWithEvidence.rung, null, 'on a rung: active')
-  assert.match(todayEvidenceText(rowWithEvidence), /^MFA /)
-  // Somebody else 200 days stale stays Not active: the rule is the operator's alone.
-  const other = fixtureSnapshot()
-  other.users.find((u) => u.id === 'u-2')!.lastSuccessfulSignIn = new Date(Date.parse(other.asOf) - 200 * 86_400_000).toISOString()
-  const stale2 = todayView(other, other.asOf).rows.find((r) => r.user.id === 'u-2')!
-  assert.ok(stale2.kind === 'person' && stale2.rung === null, 'a person outside the ladder: not active')
-})
-
-test('on the demo through the engine: the dormant step never lists the operator, and the admin steps count it with the operator note', () => {
-  const f = fixture('demo')
-  const snapshot = structuredClone(f.snapshot)
-  const me = snapshot.users.find((u) => u.id === f.operatorId)!
-  me.lastSuccessfulSignIn = new Date(Date.parse(snapshot.asOf) - 200 * 86_400_000).toISOString()
-  snapshot.config.me = { status: 'ok', reason: null, rows: [{ id: me.id, displayName: me.displayName, userPrincipalName: me.userPrincipalName }] }
-  // The operator holds a directory role (Global Administrator), so the admin policies' populations are theirs to be in.
-  snapshot.roles = { ...snapshot.roles, active: { ...snapshot.roles.active, [me.id]: ['62e90394-69f5-4237-9190-012177145e10'] } }
-  const run = runFixture({ ...f, snapshot }, { operatorUserId: f.operatorId })
-  const dormant = run.steps.find((s) => s.id === 's-check-dormant-accounts')
-  if (dormant) assert.ok(!dormant.population.ids.includes(me.id), 'the dormant step lists the operator')
-  // The admin policies: everyone with a role, active. Not the separate-accounts check, which names admins with a mailbox or Teams.
-  const adminSteps = run.steps.filter((s) => ['s-goal-admins-phishing-resistant', 's-goal-admin-session', 's-goal-admin-portals-protected'].includes(s.id))
-  assert.ok(adminSteps.length > 0, 'the demo has admin policy steps')
-  for (const s of adminSteps) assert.ok(s.population.ids.includes(me.id), `${s.title} counts the operator (an admin) in its population`)
-  // The stale directory date would have made the operator dormant: the steps' active count still includes them.
-  for (const s of adminSteps) assert.ok((s.population.activeIds ?? s.population.ids).includes(me.id), `${s.title} counts the operator active`)
-  // Without the operator's own account in the /me row, the stale date stands and they are dormant: the rule is the scan's, not the fixture's.
-  const unknown = structuredClone(snapshot)
-  unknown.config.me = { status: 'disabled', reason: 'not read', rows: [] }
-  const runUnknown = runFixture({ ...f, snapshot: unknown }, { operatorUserId: f.operatorId })
-  const dormantUnknown = runUnknown.steps.find((s) => s.id === 's-check-dormant-accounts')
-  assert.ok(dormantUnknown && dormantUnknown.population.ids.includes(me.id), 'with no /me row, a stale account is dormant like any other')
+  me.lastSuccessfulSignIn = new Date(Date.parse(s.asOf) - 200 * 86_400_000).toISOString()
+  delete s.signInEvidence['u-1']
+  assert.ok(!activeUsers(s, s.asOf).some((u) => u.id === 'u-1'), 'not active by the directory')
+  assert.ok(notActiveUsers(s, s.asOf).some((u) => u.id === 'u-1'))
+  const row = todayView(s, s.asOf, MAPPING).rows.find((r) => r.user.id === 'u-1')!
+  assert.equal(row.active, false)
+  assert.equal(row.evidence.kind, 'inactive')
+  assert.ok(row.rung !== null && row.rung >= 2, 'the passkey and the app set up: the badge stays')
+  // The same shape on the operator as on anyone else: a mailbox is not a person.
+  me.lastSuccessfulSignIn = null
+  me.assignedPlans = []
+  me.mail = 'alex@example.com'
+  assert.ok(!personAccounts(s).some((u) => u.id === 'u-1'), 'a mailbox shape is a mailbox, signed in or not')
 })
