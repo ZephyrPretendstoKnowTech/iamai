@@ -35,8 +35,8 @@ function writeOpen(tile: StripTile | null): void {
   }
 }
 
-export function ReadinessStrip({ snapshot, mapping, nameOf }: { snapshot: TenantSnapshot; mapping: Pick<MappingState, 'breakGlassUserIds' | 'serviceAccountUserIds'>; nameOf: (id: string) => string }) {
-  const strip = useMemo(() => readinessStrip(snapshot, mapping, snapshot.asOf), [snapshot, mapping])
+export function ReadinessStrip({ snapshot, mapping, nameOf, mfaEnforced = false }: { snapshot: TenantSnapshot; mapping: Pick<MappingState, 'breakGlassUserIds' | 'serviceAccountUserIds'>; nameOf: (id: string) => string; /** Require MFA for Everyone in place (stepVars planDates): nobody is registered but never seen. */ mfaEnforced?: boolean }) {
+  const strip = useMemo(() => readinessStrip(snapshot, mapping, snapshot.asOf, mfaEnforced), [snapshot, mapping, mfaEnforced])
   const [open, setOpen] = useState<StripTile | null>(() => readOpen())
   const toggle = (tile: StripTile): void => {
     const next = open === tile ? null : tile
