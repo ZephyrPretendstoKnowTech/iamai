@@ -1,6 +1,8 @@
 // One binding blocked reason per step (target-state §8.5, prompt 46 item 16):
-// at most twelve words, in one of three shapes, on every fixture. The rest of
-// the causes stay on the step under More.
+// at most twelve words, in one of four shapes, on every fixture. The rest of
+// the causes stay on the step under More. The fourth shape is the baseline's
+// own contradiction (roadmap/baselineConflict.ts): a whole sentence, because
+// nothing in the tenant is the cause and nothing there can clear it.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { BLOCKED_REASON, BLOCKED_REASON_MAX_WORDS } from '../copy/reasons.ts'
@@ -8,14 +10,19 @@ import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 
 const SHAPES = [/^after: .+$/, /^when .+ reaches .+ \(now .+\)$/, /^when \d+ .+ exists? \(now \d+\)$/]
+/** The fourth shape is the content file's own sentence, not a fill: matched whole. */
+const inShape = (reason: string): boolean => reason === BLOCKED_REASON.baseline || SHAPES.some((re) => re.test(reason))
 const words = (s: string): number => s.trim().split(/\s+/).length
 
-test('the three shapes', () => {
+test('the four shapes', () => {
   assert.equal(BLOCKED_REASON.after('Create the exclusion group'), 'after: Create the exclusion group')
   assert.equal(BLOCKED_REASON.reaches('MFA readiness', '90%', '60%'), 'when MFA readiness reaches 90% (now 60%)')
   assert.equal(BLOCKED_REASON.exist(2, 'emergency-access account', 0), 'when 2 emergency-access accounts exist (now 0)')
   // The pages.plan.blocked count shape, as written.
   assert.equal(BLOCKED_REASON.exist(1, 'trusted location', 0), 'when 1 trusted location exist (now 0)')
+  // The baseline shape is a sentence the content file writes, not a fill.
+  assert.ok(inShape(BLOCKED_REASON.baseline), 'the baseline shape is one of the shapes')
+  assert.ok(words(BLOCKED_REASON.baseline) <= BLOCKED_REASON_MAX_WORDS, 'within twelve words')
 })
 
 test('every blocked step on every fixture carries one binding reason, in shape, within twelve words', () => {
@@ -34,7 +41,7 @@ test('every blocked step on every fixture carries one binding reason, in shape, 
         failures.push(`${f.name}/${s.id}: blocked with no reason`)
         continue
       }
-      if (!SHAPES.some((re) => re.test(reason))) failures.push(`${f.name}/${s.id}: "${reason}" is in none of the three shapes`)
+      if (!inShape(reason)) failures.push(`${f.name}/${s.id}: "${reason}" is in none of the four shapes`)
       if (words(reason) > BLOCKED_REASON_MAX_WORDS) failures.push(`${f.name}/${s.id}: "${reason}" is ${words(reason)} words`)
       if (/named cause/.test(reason)) failures.push(`${f.name}/${s.id}: a producer left its cause unnamed`)
       assert.ok(s.blockers.length + s.blockedBy.length > 0, `${s.id}: the causes are still on the step`)

@@ -33,7 +33,6 @@ export type PortalContext = {
   exclusionsLine: string
   /** Recognised groups, so an exclude of one is labelled, not left as an id. */
   serviceAccountsGroupId?: string | null
-  adminsGroupId?: string | null
   exclusionsGroupId?: string | null
   /** Shared-device accounts, so an exclude of them is labelled. */
   sharedDeviceIds?: string[]
@@ -104,7 +103,6 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
     (ctx.exclusionsGroupId != null && f.whoNot.groups.has(ctx.exclusionsGroupId)) || f.whoNot.groups.size > 0 || f.whoNot.users.size > 0
   if (excludesExclusionsGroup && !included(ctx.exclusionsGroupId)) parts.push(ctx.exclusionsLine)
   if (ctx.serviceAccountsGroupId != null && f.whoNot.groups.has(ctx.serviceAccountsGroupId) && !included(ctx.serviceAccountsGroupId)) parts.push(`Also exclude the service accounts group ${ctx.nameOf(ctx.serviceAccountsGroupId)}.`)
-  if (ctx.adminsGroupId != null && f.whoNot.groups.has(ctx.adminsGroupId) && !included(ctx.adminsGroupId)) parts.push(`Also exclude the admins group ${ctx.nameOf(ctx.adminsGroupId)}.`)
   const sharedExcluded = (ctx.sharedDeviceIds ?? []).filter((id) => f.whoNot.users.has(id) && !f.who.users.has(id))
   if (sharedExcluded.length > 0) parts.push(`Also exclude the shared-device accounts ${names(sharedExcluded, ctx)}.`)
   // An exclude of every guest type reads as all types; one that names the types

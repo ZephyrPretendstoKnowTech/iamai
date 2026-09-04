@@ -19,6 +19,7 @@ import type { CaPolicy } from '../../baseline/types.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
+import { hasBaselineConflict } from '../../roadmap/baselineConflict.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import { shared } from '../../content/content.ts'
 import { proposedNamesFor } from './proposedNames.ts'
@@ -221,9 +222,13 @@ export function stepPortalLinesFromBody(json: string, names: PortalNames): strin
 
 /**
  * The portal lines for a goal's step, from its mapped baseline policy. Returns
- * null when the baseline does not hold the goal (no policy to render).
+ * null when the baseline does not hold the goal (no policy to render), and when
+ * the baseline's definition of the policy contradicts itself: the one place the
+ * lines are made, so the screen, the print and the exports all get none
+ * (roadmap/baselineConflict.ts).
  */
 export function stepPortalLines(goalId: string, names: PortalNames): string[] | null {
+  if (hasBaselineConflict(goalId)) return null
   const mapped = policiesForGoal(PINNED_GOAL_MAP, POLICIES, goalId)
   if (mapped.length === 0) return null
   // The person's answers as recorded deviations (deviations.ts): the same rule

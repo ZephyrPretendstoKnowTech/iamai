@@ -12,6 +12,7 @@ import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts
 import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, listCountVars, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
+import { hasBaselineConflict } from '../../roadmap/baselineConflict.ts'
 import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
@@ -137,6 +138,10 @@ export function ContentStep({
         <span className="step-title">{cs.title}</span> <Status tone={status.tone}>{status.word}</Status>
       </p>
       <Line s={cs.changeLine} ex={ex} cls="reason" />
+      {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
+          the step says so and offers no instructions. The words are the content
+          file's; nothing here composes them. */}
+      {hasBaselineConflict(step.goalId) && cs.baselineConflict && <p className="reason conflict"><T s={cs.baselineConflict} ex={ex} /></p>}
       <Line s={cs.partner} ex={ex} cls="reason partner" />
 
       <h3>Why</h3>

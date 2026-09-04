@@ -10,12 +10,12 @@ import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { applyStepDecisions, DECISION_STEPS, validStepDecisions } from '../../roadmap/decisions.ts'
+import { applyStepDecisions, DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { shared } from '../../content/content.ts'
 import { UNNAMED } from '../../names.ts'
 import { stepVars } from './stepVars.ts'
-import { appliedMapping, defaultDecisions, filterPickerObjects, pickerUniverse, pickerVars } from './pickerRows.ts'
+import { defaultDecisions, filterPickerObjects, pickerUniverse, pickerVars } from './pickerRows.ts'
 import { BREAK_GLASS_STEP_ID } from '../../roadmap/generate.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -183,107 +183,9 @@ test('GetIAMAI: typing sv on the emergency picker lists every account whose name
   assert.deepEqual(saved.breakGlassUserIds, [chip], 'Save writes the chip through applyStepDecisions')
   const again = pickerVars(BREAK_GLASS_STEP_ID, '{name}', { ...ctx, mapping: saved })
   assert.ok(Array.isArray(again?.emergencyCandidatesTicked) && (again!.emergencyCandidatesTicked as string[]).includes(chip), 'the chip comes back ticked on the next open')
-  // The exclusions group is never a candidate for the admins group.
+  // The exclusions group is still the exclusions picker's own answer.
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
   assert.ok(exclusions, 'the fixture recognises an exclusions group')
-  assert.ok(!pickerUniverse(DECISION_STEPS.adminsGroup, 'adminGroups', ctx).some((o) => o.id.toLowerCase() === String(exclusions).toLowerCase()))
   assert.ok(pickerUniverse(DECISION_STEPS.exclusions.values().next().value as string, 'groups', ctx).some((o) => o.id.toLowerCase() === String(exclusions).toLowerCase()))
 })
 
-// ---- Run 1B: a persisted admins group that is the exclusions group ----
-// One group can never be both. A decision saved before that rule existed must
-// not keep driving the plan: it applies as no decision at all, and every other
-// saved decision is untouched.
-
-/** The demo of the invalid record: the exclusions group saved as the admins group, beside two decisions that are perfectly valid. */
-function staleAdminsGroup(f: Fixture): { exclusions: string; valid: string; stale: Record<string, StepDecision>; clean: Record<string, StepDecision> } {
-  const exclusions = f.mapping.records['__globalExclusion']?.resolvedId as string
-  assert.ok(exclusions, 'the fixture recognises an exclusions group')
-  const valid = [...f.groups.keys()].find((id) => id !== exclusions) as string
-  assert.ok(valid, 'the fixture holds another group')
-  const clean: Record<string, StepDecision> = {
-    [BREAK_GLASS_STEP_ID]: { picked: [...f.mapping.breakGlassUserIds], at: AT },
-    [DECISION_STEPS.countries]: { picked: ['AU'], at: AT },
-  }
-  return { exclusions, valid, stale: { ...clean, [DECISION_STEPS.adminsGroup]: { picked: [exclusions], at: AT } }, clean }
-}
-
-test('GetIAMAI: the exclusions group is never a candidate for the admins group, though its members hold admin roles', () => {
-  const f = fixture('getiamai')
-  const { exclusions } = staleAdminsGroup(f)
-  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => id, groups: f.groups }
-  // Without the rule the group would qualify: it holds the emergency accounts,
-  // and they hold a directory role.
-  const admins = new Set(Object.keys(f.snapshot.roles.active))
-  assert.ok((f.groups.get(exclusions)?.memberIds ?? []).some((m) => admins.has(m)), 'the exclusions group holds an admin')
-  const ex = pickerVars(DECISION_STEPS.adminsGroup, '{name} · {memberCount} members · {rolesHeld}', ctx) as Record<string, string[]>
-  assert.ok(ex.adminGroupsIds.length > 0, 'the picker still nominates a group')
-  assert.ok(!ex.adminGroupsIds.includes(exclusions), 'the exclusions group is not nominated')
-  assert.ok(!ex.adminGroupsTicked.includes(exclusions), 'and is never pre-ticked')
-  assert.ok(!pickerUniverse(DECISION_STEPS.adminsGroup, 'adminGroups', ctx).some((o) => o.id === exclusions), 'nor typeable')
-  // The same group is still the exclusions group's own answer.
-  assert.ok(pickerUniverse([...DECISION_STEPS.exclusions][0], 'groups', ctx).some((o) => o.id === exclusions))
-})
-
-test('GetIAMAI: a stored admins group that is the exclusions group applies as no decision, and nothing else changes', () => {
-  const f = fixture('getiamai')
-  const { exclusions, stale, clean } = staleAdminsGroup(f)
-  // 1. The applied value is unset: the decision is dropped whole, and no other
-  //    group is put in its place.
-  const valid = validStepDecisions(f.mapping, stale)
-  assert.equal(valid[DECISION_STEPS.adminsGroup], undefined, 'the invalid decision is not applied')
-  assert.deepEqual(valid, clean, 'every unrelated decision survives unchanged')
-  assert.deepEqual(stale[DECISION_STEPS.adminsGroup]?.picked, [exclusions], 'the record handed in is not mutated')
-
-  // 2. Nothing the plan derives can see it: the applied mapping, and every
-  //    step's variables and portal lines (plan scope, policy generation,
-  //    derived facts and the implementation guidance) are the ones the plan
-  //    has with no admins-group decision at all.
-  const nameOf = (id: string): string => id
-  const dctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, now: f.snapshot.asOf }
-  assert.deepEqual(appliedMapping(dctx, stale), appliedMapping(dctx, clean), 'the applied mapping is the undecided one')
-  const withStale = applyStepDecisions(f.mapping, stale)
-  const withClean = applyStepDecisions(f.mapping, clean)
-  assert.deepEqual(withStale, withClean, 'the mapping every consumer reads is identical')
-  const render = (mapping: MappingState) => {
-    const r = run(f, mapping)
-    const ctx = ctxFor(f, r, mapping)
-    return r.steps.map((step) => {
-      const ex = stepVars(step, ctx) as Record<string, unknown>
-      const cs = contentStepFor(step) as { kind?: string; title?: string } | undefined
-      return { id: step.id, status: step.status, blockedBy: step.blockedBy, ex, lines: cs?.kind === 'policy' ? stepPortalLines(step.goalId, portalNamesFor(ctx, ex, String(cs.title))) : null }
-    })
-  }
-  assert.deepEqual(render(withStale), render(withClean), 'every step renders as it does undecided')
-  const name = f.groups.get(exclusions)?.displayName as string
-  for (const step of render(withStale)) for (const line of step.lines ?? []) assert.ok(!/admins group/i.test(line) || !line.includes(name), `${step.id}: no guidance names it as the admins group: ${line}`)
-
-  // 3. The step opens on no chip naming it (ContentStep: the saved pick, else
-  //    the picker's ticked ids).
-  const ticked = (pickerVars(DECISION_STEPS.adminsGroup, '{name} · {memberCount} members · {rolesHeld}', { snapshot: f.snapshot, mapping: withStale, nameOf, groups: f.groups }) as Record<string, string[]>).adminGroupsTicked
-  const opensOn = valid[DECISION_STEPS.adminsGroup]?.picked ?? ticked
-  assert.ok(!opensOn.includes(exclusions), 'the admins-group picker opens on no chip naming the exclusions group')
-
-  // 4. The exports carry the same decisions the surfaces do (Export.tsx passes
-  //    the sanitised map to buildPlanFile), so the invalid id is in no file.
-  assert.ok(!JSON.stringify({ stepDecisions: valid }).includes(exclusions), 'no exported decision names it')
-
-  // 5. Emergency accounts and the exclusions group itself are untouched.
-  assert.deepEqual(withStale.breakGlassUserIds, [...f.mapping.breakGlassUserIds])
-  assert.equal(withStale.records['__globalExclusion'].resolvedId, exclusions, 'it is still the exclusions group')
-
-  // 6. Reload: re-deriving from the same persisted record never restores it.
-  const again = validStepDecisions(applyStepDecisions(f.mapping, stale), stale)
-  assert.equal(again[DECISION_STEPS.adminsGroup], undefined, 'a second derivation drops it too')
-})
-
-test('GetIAMAI: a valid saved admins group stays the plan decision', () => {
-  const f = fixture('getiamai')
-  const { valid, clean } = staleAdminsGroup(f)
-  const saved = { ...clean, [DECISION_STEPS.adminsGroup]: { picked: [valid], at: AT } }
-  assert.deepEqual(validStepDecisions(f.mapping, saved), saved, 'a group that is not the exclusions group is authoritative')
-  // And the exclusions group's own decision is never the one dropped: saving it
-  // there leaves the admins group's valid answer alone.
-  const both = { ...saved, [[...DECISION_STEPS.exclusions][0]]: { picked: [f.mapping.records['__globalExclusion']?.resolvedId as string], at: AT } }
-  assert.deepEqual(validStepDecisions(f.mapping, both), both)
-})

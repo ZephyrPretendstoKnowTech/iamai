@@ -2,6 +2,7 @@
 // subject; and the registry regression test that makes dropping a rule fail the
 // build (validation-rules.md §6).
 import { test } from 'node:test'
+import { hasBaselineConflict } from '../roadmap/baselineConflict.ts'
 import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
@@ -580,6 +581,11 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
   for (const s of denying) {
     assert.equal(s.status, 'blocked', `${s.id} is offered while the way back in is unverified`)
     assert.ok(s.blockedBy.includes(gate.id), `${s.id} does not name the emergency-access step`)
+    // A step whose baseline contradicts itself still waits on the gate, but the
+    // reason it shows is the baseline's: nothing in the tenant can clear that,
+    // so naming a prerequisite there would read as the operator's fault
+    // (roadmap/baselineConflict.ts, stateReason.ts).
+    if (hasBaselineConflict(s.goalId)) continue
     assert.match(s.blockedReason ?? '', /emergency access/i, `${s.id}: the blocked reason names the subject`)
   }
 })

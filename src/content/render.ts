@@ -88,7 +88,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
  */
 export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts', 'countriesWithCounts', 'locationsWithMatches', 'accountsWithSignals', 'devicesWithSignals', 'adminsList']
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
-export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'adminGroups', 'strengths']
+export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'strengths']
 
 const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt'])
 
@@ -346,6 +346,7 @@ export function renderStep(st: Record<string, any>): string {
       parts.push(p(who.adminsNote, e2, 'evidence'))
     }
   }
+  if (st.baselineConflict) parts.push(p(st.baselineConflict, ex, 'reason conflict'))
   // Decision
   const d = st.decision
   if (d) {
@@ -671,7 +672,7 @@ export function renderPages(): string {
       btn(s.close) +
       '</div>' +
       h('Blocked reasons (one per row)') +
-      ul([pl.blocked.after, pl.blocked.readiness, pl.blocked.count], exT) +
+      ul([pl.blocked.after, pl.blocked.readiness, pl.blocked.count, pl.blocked.baseline], exT) +
       h('Gap suffix on a partly-in-place row') +
       ul([pl.gapSuffix['admin-session']], exT) +
       h('Footer groups') +
