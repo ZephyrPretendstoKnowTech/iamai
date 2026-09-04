@@ -61,13 +61,28 @@ export function buildTranslatorOutput(): Record<string, { steps: string[] }> {
       for (const p of mapped as PinnedPolicy[]) for (const [id, t] of Object.entries(p.placeholders ?? {})) if (t === token) return id.toLowerCase()
       return null
     }
+    // Each mapped policy as the create operation the product would carry: the
+    // review page has no tenant, so the body is the author's own and the ids the
+    // lines label with are the author's too. `json` is the same projection the
+    // engine writes, so the shared gate (roadmap/operations.ts) opens here as it
+    // does in the app.
+    const operations = (mapped as unknown as Record<string, unknown>[]).map((p, i) => ({
+      sourceName: String(p.displayName ?? i),
+      mode: 'create' as const,
+      policyId: null,
+      body: p,
+    }))
     const asStep = {
       goalId,
       action: {
+        kind: 'create',
+        summary: [],
+        portalSteps: [],
         missing: [],
+        json: JSON.stringify(operations.length === 1 ? operations[0].body : operations.map((o) => o.body), null, 2),
         resolution: {
-          policies: (mapped as unknown as Record<string, unknown>[]).map((p, i) => ({ sourceName: String(p.displayName ?? i), body: p })),
-          tenant: { exclusionsGroupId: tokenId('exclusionsGroup'), serviceAccountsGroupId: tokenId('serviceAccountsGroup') },
+          policies: operations,
+          tenant: { exclusionsGroupId: tokenId('exclusionsGroup'), serviceAccountsGroupId: tokenId('serviceAccountsGroup'), emergencyIds: [] },
         },
       },
     } as unknown as Step

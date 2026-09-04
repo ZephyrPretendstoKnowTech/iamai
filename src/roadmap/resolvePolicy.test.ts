@@ -134,6 +134,9 @@ function guestsMemberA(displayName: string, exclusions: string | null): Record<s
   }
 }
 
+/** The exclusions group the step's own resolution used. */
+const X_TENANT = (step: Step): string => String(step.action.resolution?.tenant.exclusionsGroupId)
+
 // ---- 1 + 2 + 8: the resolved object itself ----
 
 test('1: the author’s four exclusion groups on one policy resolve to the tenant’s one exclusions group, once', () => {
@@ -242,9 +245,17 @@ test('3: a confirmed mapping for one author reference wins over the token and th
   assert.ok(powershellFor(stepOperations(step.step)).includes(CONFIRMED), 'the PowerShell wraps the same body')
   assert.equal(policyJsonText(step.step), JSON.stringify(body, null, 2), 'the download is that text')
   assert.ok(step.portal && step.portal.length > 0, 'the portal instructions render')
-  // Portal named the confirmed group by name — from the step's body, not a name
-  // map of its own.
-  assert.match(step.portal.join('\n'), /Exclude → Groups:/, 'the exclusion line renders from the resolved body')
+  // Two distinct tenant objects are excluded, and the instruction names both:
+  // the exclusions group in its own sentence, the confirmed group by name. A
+  // line that collapsed the second into the first would leave a person excluding
+  // one group where the body excludes two.
+  assert.deepEqual(excludeGroupsOf(body), [X_TENANT(step.step), CONFIRMED], 'the body excludes both, in order')
+  const named = (id: string): string => (id === CONFIRMED ? 'Confirmed exclusions' : id)
+  const lines = stepPortalLines(step.step, { nameOf: named, policyName: step.step.title }) ?? []
+  const users = lines.find((l) => l.startsWith('Users → Include:'))
+  assert.ok(users, JSON.stringify(lines))
+  assert.match(users, /Users → Exclude → Groups: /, 'the exclusions group keeps its own sentence')
+  assert.match(users, /Also exclude the groups Confirmed exclusions\./, `the confirmed group is named: ${users}`)
 })
 
 // ---- 6: one unresolved list, one answer from all four channels ----
@@ -527,6 +538,17 @@ test('a single-policy change is one update operation, and every channel carries 
   assert.ok(!portal.some((l) => /^Target resources → /.test(l)), 'the resources are not touched')
   assert.ok(!portal.some((l) => /^Session → /.test(l)), 'the tenant’s own session control is not touched')
   assert.equal(((ops[0].body as Record<string, unknown>).sessionControls), undefined, 'and the body does not carry it either')
+
+  // The body's fields and the instruction's lines are the same set: nothing the
+  // body carries goes uninstructed, and nothing is changed that the body leaves
+  // out — the description included, which a person was never shown.
+  const body = ops[0].body as Record<string, unknown>
+  assert.deepEqual(Object.keys(body).sort(), ['grantControls'], 'the update carries the one section that changes')
+  assert.equal(body.description, undefined, 'no hidden description change')
+  assert.equal(body.state, undefined, 'and no hidden state change')
+  const instructed = portal.filter((l) => /^(Users|Target resources|Conditions|Grant|Session|Enable policy) /.test(l))
+  assert.equal(instructed.length, 1, `one field listed, for the one field the body carries: ${instructed.join(' | ')}`)
+  assert.match(instructed[0], /^Grant → /)
 })
 
 // ---- a pair with one half already there ----
@@ -604,4 +626,34 @@ test('an unresolved step is not scheduled and carries nothing that implies a rol
   // What it does say: the object it waits on and the step that creates it.
   assert.ok(view.whatToDo.some((l) => /first: this policy names an object/.test(l)), view.whatToDo.join(' | '))
   assert.ok(view.whatToDo.some((l) => /Service Accounts Group/.test(l)), 'the Preparation step is named')
+})
+
+
+// ---- the three reasons, on the screen and in the export ----
+
+test('an unmatched pair and a contradictory baseline carry a next action and no rollout', () => {
+  const f = fixture('demo-week2')
+  const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
+  const pair = withTenantPolicies([guestsMemberA('Some other name entirely', exclusions)])
+  const cases: { label: string; step: Step; ctx: StepVarContext; says: RegExp }[] = [
+    { label: 'unmatched pair', step: pair.of('guests-mfa').step, ctx: pair.ctx, says: /IAMAI cannot match to either/ },
+  ]
+  const plain = policySteps('demo-week2')
+  const conflicted = plain.rows.find((x) => x.step.goalId === 'admin-portals-protected')
+  assert.ok(conflicted)
+  cases.push({ label: 'baseline conflict', step: conflicted.step, ctx: plain.ctx, says: /Both cannot be true/ })
+  for (const c of cases) {
+    assert.equal(implementationOffered(c.step), false, `${c.label}: no implementation`)
+    assert.equal(jsonOffered(c.step), false, `${c.label}: no JSON, PowerShell or download`)
+    assert.deepEqual(stepOperations(c.step), [], `${c.label}: no operation to run`)
+    assert.ok(!c.step.events, `${c.label}: nothing scheduled`)
+    assert.deepEqual(c.step.rings, [], `${c.label}: no rings`)
+    const view = stepExportView(c.step, c.ctx)
+    assert.deepEqual(view.doneWhen, [], `${c.label}: no completion criteria`)
+    assert.equal(view.ifWrong, null, `${c.label}: no rollback`)
+    assert.equal(view.dates, null, `${c.label}: no dates`)
+    const cs = contentStepFor(c.step) as Record<string, unknown>
+    assert.equal(commsFor(cs, stepVars(c.step, c.ctx) as Record<string, unknown>), null, `${c.label}: nothing announced`)
+    assert.ok(view.whatToDo.some((l) => c.says.test(l)), `${c.label}: it says what to do — ${view.whatToDo.join(' | ')}`)
+  }
 })

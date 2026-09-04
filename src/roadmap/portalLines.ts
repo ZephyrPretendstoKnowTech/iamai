@@ -40,6 +40,12 @@ export type PortalContext = {
   exclusionsGroupId?: string | null
   /** Shared-device accounts, so an exclude of them is labelled. */
   sharedDeviceIds?: string[]
+  /**
+   * The emergency-access accounts. Exclusions go through the exclusions group,
+   * never an account by name, so an exclude of one of these is covered by the
+   * exclusions sentence and is never named on a line.
+   */
+  emergencyIds?: string[]
 }
 
 /** How the step opens: a new policy (root + Name) or a change to an existing one. */
@@ -109,12 +115,30 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   // so "Include: G … Exclude: G" would name a policy that applies to nobody.
   const parts = [`Users → Include: ${includeClause}.`]
   const included = (id: string | null | undefined): boolean => id != null && [...f.who.groups].some((g) => lc(g) === lc(id))
-  const excludesExclusionsGroup =
-    (ctx.exclusionsGroupId != null && f.whoNot.groups.has(ctx.exclusionsGroupId)) || f.whoNot.groups.size > 0 || f.whoNot.users.size > 0
+  const is = (id: string, other: string | null | undefined): boolean => other != null && lc(id) === lc(other)
+  const excludesGroup = (id: string | null | undefined): boolean => id != null && [...f.whoNot.groups].some((g) => lc(g) === lc(id))
+  // The exclusions group is always the shared sentence. Where the ids are known
+  // the sentence stands for that group alone; a body rendered without them keeps
+  // the older reading, that any exclusion is the exclusions group.
+  const knowsIds = ctx.exclusionsGroupId != null
+  const excludesExclusionsGroup = knowsIds ? excludesGroup(ctx.exclusionsGroupId) : f.whoNot.groups.size > 0 || f.whoNot.users.size > 0
   if (excludesExclusionsGroup && !included(ctx.exclusionsGroupId)) parts.push(ctx.exclusionsLine)
-  if (ctx.serviceAccountsGroupId != null && f.whoNot.groups.has(ctx.serviceAccountsGroupId) && !included(ctx.serviceAccountsGroupId)) parts.push(`Also exclude the service accounts group ${ctx.nameOf(ctx.serviceAccountsGroupId)}.`)
+  if (ctx.serviceAccountsGroupId != null && excludesGroup(ctx.serviceAccountsGroupId) && !included(ctx.serviceAccountsGroupId)) parts.push(`Also exclude the service accounts group ${ctx.nameOf(ctx.serviceAccountsGroupId)}.`)
   const sharedExcluded = (ctx.sharedDeviceIds ?? []).filter((id) => f.whoNot.users.has(id) && !f.who.users.has(id))
   if (sharedExcluded.length > 0) parts.push(`Also exclude the shared-device accounts ${names(sharedExcluded, ctx)}.`)
+  // Every other object the policy excludes is named, so an exclusion a person
+  // confirmed is not swallowed by the sentence about the exclusions group.
+  if (knowsIds) {
+    const otherGroups = [...f.whoNot.groups].filter((g) => !is(g, ctx.exclusionsGroupId) && !is(g, ctx.serviceAccountsGroupId) && !included(g))
+    if (otherGroups.length > 0) parts.push(`Also exclude the groups ${names(otherGroups, ctx)}.`)
+    const excludedRoles = [...f.whoNot.roles].filter((r) => ![...f.who.roles].some((x) => lc(x) === lc(r)))
+    if (excludedRoles.length > 0) parts.push(`Also exclude the directory roles ${names(excludedRoles, ctx)}.`)
+    // The emergency accounts are members of the exclusions group and are never
+    // named on a line; the shared-device accounts have their own line above.
+    const covered = new Set([...(ctx.sharedDeviceIds ?? []), ...(ctx.emergencyIds ?? [])].map(lc))
+    const otherUsers = [...f.whoNot.users].filter((u) => !covered.has(lc(u)) && !f.who.users.has(u))
+    if (otherUsers.length > 0) parts.push(`Also exclude ${names(otherUsers, ctx)}.`)
+  }
   // An exclude of every guest type reads as all types; one that names the types
   // names them in the portal's words (the partner answer excludes Service provider users).
   if (f.whoNot.guests) {
