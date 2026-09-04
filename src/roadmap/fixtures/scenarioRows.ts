@@ -106,6 +106,9 @@ export function scenarioRows(name: string, ids: string[], svcIds: string[]): Sto
       // Phones (E2): two people read work mail on a phone, so the device decision is asked.
       row({ userId: u(14), os: 'iOS', appDisplayName: 'Outlook Mobile', trustType: 'none', isCompliant: false, isManaged: false }),
       row({ userId: u(15), os: 'Android', appDisplayName: 'Microsoft Teams', trustType: 'none', isCompliant: false, isManaged: false }),
+      // The Windows-Hello-only person (fixtures/index.ts, the demo block) reads mail on a phone twice: the rung-3 evidence names the count.
+      row({ userId: u(16), os: 'iOS', appDisplayName: 'Outlook Mobile', trustType: 'none', isCompliant: false, isManaged: false }),
+      row({ userId: u(16), os: 'iOS', appDisplayName: 'Outlook Mobile', trustType: 'none', isCompliant: false, isManaged: false }),
       // 3 — a technician tool from a non-compliant device (Intune tenant).
       row({ userId: u(0), appId: '14d82eec-204b-4c2f-b7e8-296a70dab67e', appDisplayName: 'Microsoft Graph Command Line Tools', isCompliant: false, isManaged: false, trustType: 'none' }),
       // 16 — a server sign-in.

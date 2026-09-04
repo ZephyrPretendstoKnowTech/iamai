@@ -89,6 +89,7 @@ function viabilityRows(readyCount: number, total = 10): MfaViability[] {
     activity: 'active' as const,
     mfa: i < readyCount ? ('verified' as const) : ('unverified' as const),
     enabled: true, mfaCapable: true,
+    registered: ['microsoftAuthenticatorPush'], kinds: ['microsoftAuthenticator' as const],
     isAdmin: i === 0,
     strongestMethod: 'push' as const,
     methodTiers: ['push' as const],

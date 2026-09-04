@@ -314,6 +314,14 @@ export function buildFixture(spec: Spec): Fixture {
     }
     // One person has not typed a password in 30 days (passwordless).
     setUser(at(spec.admins + 11), { displayName: users.find((u) => u.id === at(spec.admins + 11))?.displayName ?? 'Kaladin Stormblood' })
+    // One active person holds Windows Hello for Business and nothing that
+    // travels (derive/ladder.ts rung 3): MFA proven on that PC, and phone
+    // sign-ins in the records (scenarioRows.ts), so a phone is where it bites.
+    const helloOnly = at(spec.admins + 13)
+    setUser(helloOnly, { lastSuccessfulSignIn: daysAgo(2) })
+    setReg(helloOnly, { isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: true, methodsRegistered: ['windowsHelloForBusiness'] })
+    authMethods[helloOnly] = [{ kind: 'windowsHelloForBusiness', displayName: 'DESKTOP-7Q2', deviceLastSignIn: daysAgo(2) }]
+    signInEvidence[helloOnly] = { signInCount: 14, lastSignIn: daysAgo(2), lastMfaSuccess: { at: daysAgo(2), method: 'Windows Hello for Business' }, countries: ['AU'] }
     // A Teams Room shared-device account (scenario 8): the reserved last id.
     const shared = users.find((x) => x.id === sharedId(ids))
     if (shared) {
