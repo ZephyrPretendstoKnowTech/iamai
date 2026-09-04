@@ -30,25 +30,37 @@ export const EMERGENCY_DECIDING_SIGNAL: EmergencySignal = 'name'
 const GA_ROLE = '62e90394-69f5-4237-9190-012177145e10'
 /**
  * The names a tenant gives an account it created for the job, and nothing else.
- * Now that this signal classifies on its own, a loose English substring is not
- * enough: "glass" alone is a surname (Alice Glass, John Glassman) and "break"
- * alone starts ordinary words (Breakwater, Breakfast), and an account so named
- * would silently leave the people population.
+ * Because this signal classifies on its own, the matcher favours precision over
+ * recall: it recognises a whole purpose phrase standing as its own token, never
+ * a substring of a longer word.
  *
- * So each pattern is a purpose phrase, not a word:
- *   - "break" joined to "glass", however it is spaced (breakglass, break glass,
- *     Break-Glass, break_glass, Break Glass 2);
- *   - "emergency" joined to what the account is for (Emergency Access,
- *     Emergency-Access, EmergencyAccess, emergency admin, emergency account);
- *   - "bg" as its own token, the convention that spells the phrase in two
- *     letters (BG-Admin, bg_admin) — never inside a word (Bigby, bgood).
+ * Three phrases, each with the same two boundaries around it:
+ *   - "break" joined to "glass", however it is spaced — breakglass, Break Glass,
+ *     Break-Glass, break_glass;
+ *   - "emergency" joined to what the account is for — Emergency Access,
+ *     EmergencyAccess, Emergency Admin, Emergency Administrator, Emergency
+ *     Account;
+ *   - "bg", the convention that spells the phrase in two letters — BG-Admin,
+ *     bg_admin.
+ *
+ * The boundaries are what keeps a word from passing as a phrase:
+ *   - it starts at the start of the text or after a non-alphanumeric, so
+ *     Unbreakglass and NonEmergencyAccess are ordinary words, not names;
+ *   - it ends at the end of the text or before a non-alphanumeric, so
+ *     Breakglassman, Emergency Accessory, Emergency Administratorial and
+ *     Emergency AdminAssistant are too;
+ *   - digits immediately after the phrase are account numbering, not another
+ *     word, so Break Glass 2, breakglass2 and bg01 still read as the phrase.
+ * A separator before or after (svc-breakglass, contoso bg, breakglass@…) is a
+ * boundary like any other: the phrase is its own token inside a longer name.
+ *
  * A name that misses all three is still nominated when two circumstantial
  * signals point at it; it is just not classified without a person.
  */
 const EMERGENCY_NAME_PATTERNS = [
-  /break[\s._-]*glass/i,
-  /emergency[\s._-]*(?:access|admin(?:istrator)?|account|acct|login|user)/i,
-  /(?:^|[^a-z0-9])bg(?:[^a-z0-9]|$)/i,
+  /(?:^|[^a-z0-9])break[\s._-]*glass\d*(?![a-z0-9])/i,
+  /(?:^|[^a-z0-9])emergency[\s._-]*(?:access|administrator|admin|account|acct|login|user)\d*(?![a-z0-9])/i,
+  /(?:^|[^a-z0-9])bg\d*(?![a-z0-9])/i,
 ]
 
 /** True when a display name or a sign-in address names the account for emergency access. */
