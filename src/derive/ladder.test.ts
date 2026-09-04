@@ -68,3 +68,32 @@ test('the rung follows the method that travels, and proof is an MFA sign-in in t
   assert.equal(methodWordOf({ registered: [], kinds: ['fido2'] }), 'passkey')
   assert.equal(methodWordOf({ registered: [], kinds: [] }), 'none')
 })
+
+test("the campaign step's groups and the admin steps' lockout counts read the ladder; the 90% gate renders nowhere on Today, the Plan strip or Connect", async () => {
+  const { contentLists } = await import('./contentLists.ts')
+  const { lockoutIds } = await import('../roadmap/lockout.ts')
+  const { adminUserIds } = await import('../roles.ts')
+  const { pages } = await import('../content/content.ts')
+  const { readFileSync } = await import('node:fs')
+  for (const name of ['demo', 'getiamai'] as const) {
+    const f = fixture(name)
+    const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
+    const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
+    assert.deepEqual(cl.noMethod.sort(), l.rungs[1].map((p) => p.id).sort(), `${name}: Nothing set up is rung 1`)
+    assert.deepEqual(cl.unproven.sort(), l.rungs[2].map((p) => p.id).sort(), `${name}: Set up, never used for MFA is rung 2`)
+    assert.deepEqual(cl.rung3.sort(), l.rungs[3].map((p) => p.id).sort(), `${name}: Windows Hello only is rung 3`)
+    assert.deepEqual(cl.rung4.sort(), l.rungs[4].map((p) => p.id).sort(), `${name}: Authenticator app, proven is rung 4`)
+    const admins = adminUserIds(f.snapshot.roles)
+    const bg = new Set(f.mapping.breakGlassUserIds)
+    const below = [...l.viability.values()].filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && rungOf(v) !== 5).map((v) => v.userId).sort()
+    assert.deepEqual(lockoutIds('admins-phishing-resistant', [...l.viability.values()], f.snapshot, bg).sort(), below, `${name}: the admin lockout is the admins not yet at rung 5`)
+  }
+  // The five titles are the words the campaign's groups and the admin steps use.
+  const campaign = JSON.stringify((await import('../content/content.ts')).stepById['s-verify-mfa'])
+  for (const t of ['Nothing set up', 'Set up, never used for MFA', 'Windows Hello only', 'Authenticator app, proven']) assert.ok(campaign.includes(t), `the campaign names ${t}`)
+  assert.ok(JSON.stringify((await import('../content/content.ts')).stepById['admins-phishing-resistant']).includes('Passkey or security key, proven'))
+  // The 90% gate stays in the engine (roadmap/constants.ts) and renders on none of the three surfaces.
+  const words = JSON.stringify({ ladder: pages.ladder, today: pages.today, connect: (pages.connect as { plan: unknown }).plan })
+  assert.ok(!/90 ?%/.test(words), 'no 90% on the three surfaces\' words')
+  for (const file of ['src/ui/surfaces/Today.tsx', 'src/ui/surfaces/LadderTiles.tsx', 'src/ui/surfaces/Connect.tsx']) assert.ok(!/READINESS_THRESHOLD|90/.test(readFileSync(file, 'utf8').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')), `${file} renders no gate`)
+})

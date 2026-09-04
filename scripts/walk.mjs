@@ -982,8 +982,8 @@ async function walkFixture(fx) {
         if (stripCounts) {
           const group = (re) => { const m = bodyText.match(re); return m ? Number(m[1]) : null }
           if (/MFA Registration Campaign/.test(title)) {
-            const noMethod = group(/^(\d+) (?:people|person) with no method;/m) ?? 0
-            const unproven = group(/^(\d+) (?:people|person) registered but never seen to complete MFA/m) ?? 0
+            const noMethod = group(/^(\d+) (?:people|person) at Nothing set up;/m) ?? 0
+            const unproven = group(/^(\d+) (?:people|person) at Set up, never used for MFA;/m) ?? 0
             if (noMethod !== stripCounts['Nothing set up']) add('P0', `${slabel}: the campaign lists ${noMethod} at Nothing set up and the ladder counts ${stripCounts['Nothing set up']}`)
             // With Require MFA for Everyone in place (the passkey email), the campaign asks nobody for one MFA sign-in while the ladder keeps the records' fact.
             const mfaInPlace = /You already confirm sign-ins to/.test(bodyText)
@@ -1029,11 +1029,11 @@ async function walkFixture(fx) {
             if (!/^Skip this step$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step is not skippable`)
           }
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
-          // The lockout list (E8): the demo's admins with no passkey or key are
-          // named (three or fewer), and the line counts the names it lists.
+          // The lockout list (E8): the demo's admins not yet at Passkey or security
+          // key, proven are named (three or fewer), and the line counts the names it lists.
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
-            const m = bodyText.match(/^(\d+) admins? (?:has|have) no phishing-resistant method; register before .+:\s*$/m)
-            if (!m) add('P0', `${slabel}: the step does not say how many admins have no phishing-resistant method today`)
+            const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet at Passkey or security key, proven; register before .+:\s*$/m)
+            if (!m) add('P0', `${slabel}: the step does not say how many admins are not yet at Passkey or security key, proven today`)
             else {
               const at = bodyText.indexOf(m[0])
               const names = bodyText.slice(at + m[0].length).split('\n').map((x) => x.trim()).filter(Boolean)
@@ -1098,11 +1098,11 @@ async function walkFixture(fx) {
           // A strength policy's row carries its lockout count in the who-column
           // when it is not zero, and the count is the step's own.
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
-            const m = bodyText.match(/^(\d+) admins? (?:has|have) no phishing-resistant method/m)
+            const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet at Passkey or security key, proven/m)
             const who = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
-            const suffix = who.match(/· (\d+) without a passkey$/)
-            if (m && !suffix) add('P0', `${slabel}: ${m[1]} admins have no passkey and the row's who-column does not say so`)
-            else if (m && suffix && suffix[1] !== m[1]) add('P0', `${slabel}: the row says ${suffix[1]} without a passkey and the step says ${m[1]}`)
+            const suffix = who.match(/· (\d+) not yet at Passkey or security key, proven$/)
+            if (m && !suffix) add('P0', `${slabel}: ${m[1]} admins are not yet at rung 5 and the row's who-column does not say so`)
+            else if (m && suffix && suffix[1] !== m[1]) add('P0', `${slabel}: the row says ${suffix[1]} not yet at rung 5 and the step says ${m[1]}`)
             else if (!m && suffix) add('P0', `${slabel}: the row carries a lockout count the step does not`)
           }
           if (/Require a Managed Device/.test(title) && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)

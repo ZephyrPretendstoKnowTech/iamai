@@ -1,6 +1,7 @@
-// Lockout lists (E8): steps 15, 33 and 35 show in Who how many people in scope
-// have no phishing-resistant method today, by name when three or fewer and as a
-// count otherwise; when that list is not empty, the high-risk sign-in policy
+// Lockout lists (E8): steps 15 and 33 show in Who how many people in scope are
+// not yet at Passkey or security key, proven (derive/ladder.ts rung 5), by name
+// when three or fewer and as a count otherwise; step 35 counts the people with
+// only Authenticator approval, and when that list is not empty the high-risk sign-in policy
 // offers the plain-MFA rung as the first enforcement, with the baseline's
 // strength beside it on the portal lines and deferred in the JSON.
 import { test } from 'node:test'
@@ -18,21 +19,23 @@ import { answerKey, questionLabels } from './answers.ts'
 import { plainMfaFirst } from './deviations.ts'
 import { stepIdForGoal } from './stepIds.ts'
 import { listCountVars, whole } from '../content/render.ts'
+import { rungOf } from '../derive/ladder.ts'
 
 const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>, over: Partial<StepVarContext> = {}): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...over })
 
-test('step 15 names the admins with no phishing-resistant method on the demo (three or fewer), and counts them past that', () => {
+test('step 15 names the admins not yet at Passkey or security key, proven on the demo (three or fewer), and counts them past that', () => {
   const f = fixture('demo')
   const r = runFixture(f)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   const ex = stepVars(s, ctxFor(f, r)) as { adminsWithout: string[]; adminsWithoutCount?: number }
   const admins = [...adminUserIds(f.snapshot.roles)].filter((id) => !f.mapping.breakGlassUserIds.includes(id))
-  const without = r.viability.filter((v) => admins.includes(v.userId) && v.activity === 'active' && !v.methodTiers.includes('phishingResistant'))
-  assert.ok(without.length > 0 && without.length <= NAMES_UP_TO, `the demo has ${without.length} admins without a passkey or key`)
+  // The ladder's rung, not the registration alone: a passkey never used, or Windows Hello on one PC, is not the rung the policy needs.
+  const without = r.viability.filter((v) => admins.includes(v.userId) && v.activity === 'active' && rungOf(v) !== 5)
+  assert.ok(without.length > 0 && without.length <= NAMES_UP_TO, `the demo has ${without.length} admins not yet at rung 5`)
   assert.equal(ex.adminsWithout.length, without.length, 'named, not counted')
   assert.equal(ex.adminsWithoutCount, undefined)
   const lines = stepLines(s, ctxFor(f, r))
-  assert.ok(lines.some((l) => new RegExp(`^${without.length} admins have no phishing-resistant method; register before .+: `).test(l)), 'the line counts its own list')
+  assert.ok(lines.some((l) => new RegExp(`^${without.length} admins? (?:is|are) not yet at Passkey or security key, proven; register before .+: `).test(l)), `the line counts its own list: ${lines.filter((l) => /Passkey or security key/.test(l)).join(' | ')}`)
   // Past three, the count line stands in for the names.
   const many = contentLists({ snapshot: { ...f.snapshot, roles: { ...f.snapshot.roles, active: Object.fromEntries(r.viability.filter((v) => v.activity === 'active').slice(0, 12).map((v) => [v.userId, ['62e90394-69f5-4237-9190-012177145e10']])) } }, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
   assert.deepEqual(many.adminsWithout, [], 'more than three: no names')
@@ -42,7 +45,7 @@ test('step 15 names the admins with no phishing-resistant method on the demo (th
 test('step 33 lists the eligible role holders with no passkey or key yet', () => {
   const f = fixture('mid')
   const r = runFixture(f)
-  const eligibleId = r.viability.find((v) => v.activity === 'active' && !v.methodTiers.includes('phishingResistant') && !f.mapping.breakGlassUserIds.includes(v.userId))!.userId
+  const eligibleId = r.viability.find((v) => v.activity === 'active' && rungOf(v) !== 5 && !f.mapping.breakGlassUserIds.includes(v.userId))!.userId
   const snapshot = { ...f.snapshot, roles: { ...f.snapshot.roles, eligible: { [eligibleId]: ['62e90394-69f5-4237-9190-012177145e10'] } } }
   const lists = contentLists({ snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
   assert.deepEqual(lists.eligibleWithout, [eligibleId])
