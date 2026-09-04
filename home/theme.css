@@ -77,6 +77,15 @@
   --wait: #8a5a0b;
   --stop: #9b2c2c;
   --idle: #8a8a83;
+  --unproven: #9e5014;
+
+  /* the MFA readiness ladder: a colour per rung, from the palette */
+  --rung-5: var(--ok);
+  --rung-4: var(--accent);
+  --rung-3: var(--wait);
+  --rung-2: var(--unproven);
+  --rung-1: var(--stop);
+  --rung-0: var(--idle);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -96,6 +105,7 @@
     --wait: #e0b25c;
     --stop: #e28b8b;
     --idle: #7a7871;
+    --unproven: #c98a2e;
   }
 }
 
@@ -115,6 +125,7 @@
   --wait: #e0b25c;
   --stop: #e28b8b;
   --idle: #7a7871;
+  --unproven: #c98a2e;
 }
 
 @media print {
@@ -135,6 +146,7 @@
     --wait: #8a5a0b;
     --stop: #9b2c2c;
     --idle: #8a8a83;
+    --unproven: #9e5014;
   }
 }
 

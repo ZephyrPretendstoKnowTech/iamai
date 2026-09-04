@@ -7,7 +7,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { todayView } from '../../derive/today.ts'
 import { todayTable } from './inventoryTables.ts'
-import { todayEvidenceText, todayStateWord } from './todayCells.ts'
+import { methodWord, readinessWord, todayEvidenceText } from './todayCells.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, stepPortalLinesFromBody, portalNamesFor } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
@@ -29,15 +29,16 @@ import { fillText } from '../../content/render.ts'
 
 const FIXTURES = ['demo', 'getiamai'] as const
 
-test('Today as CSV writes the state word and the evidence line the Today table renders', () => {
+test('Today as CSV writes the readiness word, the method word and the evidence line the Today table renders', () => {
   for (const name of FIXTURES) {
     const f = fixture(name)
-    const svc = new Set(f.mapping.serviceAccountUserIds)
-    const view = todayView(f.snapshot, f.snapshot.asOf, svc)
-    const table = todayTable(f.snapshot, svc)
+    const view = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
+    const table = todayTable(f.snapshot, f.mapping)
+    assert.deepEqual(table.header, ['Account', 'Readiness', 'Strongest method', 'Evidence'])
     assert.equal(table.rows.length, view.rows.length, `${name}: one CSV row per table row`)
     view.rows.forEach((r, i) => {
-      assert.equal(table.rows[i][1], todayStateWord(r.state), `${name} row ${i}: the state word`)
+      assert.equal(table.rows[i][1], readinessWord(r), `${name} row ${i}: the readiness word`)
+      assert.equal(table.rows[i][2], methodWord(r.method), `${name} row ${i}: the method word`)
       assert.equal(table.rows[i][3], todayEvidenceText(r), `${name} row ${i}: the evidence line`)
     })
   }

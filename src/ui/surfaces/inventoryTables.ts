@@ -161,16 +161,16 @@ export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers =
 
 // Today, as CSV (the same four columns the Today table shows).
 import { todayView } from '../../derive/today.ts'
-import { METHOD_TIER } from '../../copy/definitions.ts'
-import { todayEvidenceText, todayStateWord } from './todayCells.ts'
-export function todayTable(snapshot: TenantSnapshot, serviceAccountIds: ReadonlySet<string> = new Set()): InventoryTable {
+import { pages } from '../../content/content.ts'
+import { methodWord, readinessWord, todayEvidenceText } from './todayCells.ts'
+export function todayTable(snapshot: TenantSnapshot, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] } = { breakGlassUserIds: [], serviceAccountUserIds: [] }): InventoryTable {
   // The same cells the Today table renders (todayCells.ts): a row's CSV equals its screen.
-  const view = todayView(snapshot, snapshot.asOf, serviceAccountIds)
+  const view = todayView(snapshot, snapshot.asOf, mapping)
   return {
     id: 'today',
     label: 'Today',
     csvName: 'iamai-today.csv',
-    header: ['Person', 'State', 'Strongest method', 'Evidence'],
-    rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, todayStateWord(r.state), METHOD_TIER[r.strongest]?.title ?? r.strongest, todayEvidenceText(r)]),
+    header: [...(pages.today as { columns: string[] }).columns],
+    rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, readinessWord(r), methodWord(r.method), todayEvidenceText(r)]),
   }
 }

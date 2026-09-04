@@ -52,7 +52,8 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
       assert.equal(ex.guests, view.guests, `${name} ${s.id}: the lead's {guests}`)
     }
     const svc = new Set(f.mapping.serviceAccountUserIds)
-    assert.equal(todayView(f.snapshot, f.snapshot.asOf, svc).tiles.active, activePeopleIds(f.snapshot, f.snapshot.asOf, svc).length, `${name}: Today's active tile is the plan's active people`)
+    assert.equal(todayView(f.snapshot, f.snapshot.asOf, f.mapping).ledger.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: Today's active people are the campaign's population`)
+    assert.ok(activePeopleIds(f.snapshot, f.snapshot.asOf, svc).length >= campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: the plan's active people include the campaign's`)
     const campaign = r.steps.find((s) => s.kind === 'verify')
     if (campaign) assert.deepEqual([...affectedIds(campaign.population)].sort(), campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).sort(), `${name}: the campaign's population`)
   }

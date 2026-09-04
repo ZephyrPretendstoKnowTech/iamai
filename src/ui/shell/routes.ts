@@ -50,6 +50,8 @@ export const VALID = new Set<string>([
 
 export const STEP_LINK = /^roadmap\/step\/(.+)$/
 const PLAN_STEP = /^plan\/(.+)$/
+/** Today filtered: #/today/rung-3, #/today/notActive (derive/today.ts SHOW_KEYS); the Plan strip's and Connect's tiles link here. */
+const TODAY_SHOW = /^today\/([A-Za-z0-9-]+)$/
 
 /**
  * The fragment MSAL uses to hand back a sign-in: a code or token response, or
@@ -70,6 +72,7 @@ export function resolveHash(hash: string): { route: Route; redirect: string | nu
   const step = STEP_LINK.exec(h)
   if (step) return { route: 'plan', redirect: `#/plan/${step[1]}` }
   if (PLAN_STEP.test(h)) return { route: 'plan', redirect: null }
+  if (TODAY_SHOW.test(h)) return { route: 'today', redirect: null }
   // The baseline-package how-to is an anchor on How (prompt 49 item 11).
   if (h === 'package' || h === 'baseline/package') return { route: 'how', redirect: '#/how#package' }
   const to = REDIRECT[h]
@@ -87,6 +90,17 @@ export function returnToStep(stepId: string): string {
 export function stepFromPlanHash(hash: string): string | null {
   const m = PLAN_STEP.exec(hash.replace(/^#\/?/, ''))
   return m ? decodeURIComponent(m[1]) : null
+}
+
+/** The Show key a Today hash carries (#/today/rung-3), or null for the whole table. */
+export function showFromTodayHash(hash: string): string | null {
+  const m = TODAY_SHOW.exec(hash.replace(/^#\/?/, ''))
+  return m ? m[1] : null
+}
+
+/** The Today hash for a Show key; the whole table for `all`. */
+export function todayHref(show: string): string {
+  return show === 'all' ? '#/today' : `#/today/${show}`
 }
 
 /** Where a finished scan lands: the step that asked for it, otherwise the Plan. */

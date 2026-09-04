@@ -9,27 +9,28 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { todayView } from '../../derive/today.ts'
 import { adminUserIds } from '../../roles.ts'
 import { inventoryTables } from './inventoryTables.ts'
-import { SHOW_KEYS, todayStateWord } from './todayCells.ts'
+import { rungWords } from './todayCells.ts'
+import { RUNGS } from '../../derive/ladder.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import type { TodayState } from '../../derive/today.ts'
 
-test("Today's admin count is the rows tagged Admin, from the directory's roles", () => {
+test("Today's Admin tags come from the directory's roles, and Admins only shows exactly those rows", () => {
   const f = fixture('demo')
   const admins = adminUserIds(f.snapshot.roles)
   // The fixture's registration report disagrees with the roles for one admin, as a real report can.
   const lagging = f.snapshot.registrationDetails.filter((r) => admins.has(r.id) && !r.isAdmin)
   assert.equal(lagging.length, 1, 'one admin the registration report does not flag')
-  const v = todayView(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds))
-  const tagged = v.rows.filter((r) => r.viability.isAdmin)
-  assert.equal(v.counts.admins, tagged.length, 'the line counts the tagged rows')
+  const v = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
+  const tagged = v.rows.filter((r) => r.admin)
   assert.ok(tagged.some((r) => r.user.id === lagging[0].id), 'the lagging admin is tagged from the roles')
   assert.deepEqual(tagged.map((r) => r.user.id).sort(), v.rows.filter((r) => admins.has(r.user.id)).map((r) => r.user.id).sort(), 'the tag is the roles')
 })
 
-test('every state label has its definition in pages.today.states', () => {
-  const states = (pages.today as { states: Record<string, string> }).states
-  for (const k of SHOW_KEYS.slice(1, 7) as TodayState[]) assert.ok(states[todayStateWord(k)]?.length > 20, `${todayStateWord(k)} is defined`)
+test('every rung has its title, its tooltip and its one-line description in pages.ladder', () => {
+  for (const r of RUNGS) {
+    const w = rungWords(r)
+    assert.ok(w.title.length > 5 && w.tip.length > 20 && w.desc.length > 10, `rung ${r} is defined`)
+  }
 })
 
 test('the Inventory policies table carries the exclusions by name, on screen and as CSV', () => {

@@ -30,12 +30,9 @@ test('every strip number is the campaign step\'s and Today\'s for the same fact,
     assert.equal(strip.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length)
     assert.equal(strip.tiles.noMethod.length, cl.noMethod.length, `${name}: no method`)
     assert.equal(strip.tiles.unproven.length, cl.unproven.length, `${name}: registered, never used`)
-    // Today, over the same people (its tiles count the emergency and shared-device accounts as people; the campaign does not).
-    const tv = todayView(f.snapshot, f.snapshot.asOf, new Set([...f.mapping.serviceAccountUserIds, ...f.mapping.breakGlassUserIds, ...sharedDeviceIds(f.snapshot)]))
-    assert.equal(strip.tiles.ready.length + strip.tiles.weak.length, tv.tiles.proven, `${name}: Ready and Method not strong enough are Today's proven`)
-    assert.equal(strip.tiles.unproven.length, tv.tiles.unproven, `${name}: Today's unproven`)
-    assert.equal(strip.tiles.noMethod.length, tv.tiles.noMethod, `${name}: Today's no method`)
-    assert.equal(strip.active, tv.tiles.active, `${name}: Today's active`)
+    // Today, over the same people.
+    const tv = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
+    assert.equal(strip.active, tv.ledger.active, `${name}: Today's active`)
     // The four buckets partition the active people; the admins tile is the admin policy's lockout count.
     assert.equal(strip.tiles.ready.length + strip.tiles.weak.length + strip.tiles.unproven.length + strip.tiles.noMethod.length, strip.active, `${name}: a partition`)
     const without = lockoutIds('admins-phishing-resistant', r.viability, f.snapshot, new Set([...f.mapping.breakGlassUserIds, ...sharedDeviceIds(f.snapshot)]))

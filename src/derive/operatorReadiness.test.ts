@@ -44,9 +44,10 @@ test("Today: the operator's row is proven with the evidence \"signed in now\"; t
   const { s, me } = staleOperator()
   const row = todayView(s, s.asOf).rows.find((r) => r.user.id === me)!
   assert.ok(row, 'the operator has a row')
-  assert.equal(row.state, 'proven')
+  assert.ok(row.rung === 5 || row.rung === 4, `proven: rung 5 or 4 (${row.rung})`)
   assert.deepEqual(row.evidence, { kind: 'signedInNow' })
-  assert.ok(!todayView(s, s.asOf).rows.some((r) => r.user.id === 'u-2'), 'the shared mailbox has no row')
+  const mailbox = todayView(s, s.asOf).rows.find((r) => r.user.id === 'u-2')!
+  assert.ok(mailbox.kind === 'service' && mailbox.rung === null, 'the shared mailbox is listed as an account that is not a person, on no rung')
   const withRecords = fixtureSnapshot()
   const r2 = todayView(withRecords, withRecords.asOf).rows.find((r) => r.user.id === me)!
   assert.equal(r2.evidence.kind, 'mfa', 'MFA evidence in the records stays the evidence')

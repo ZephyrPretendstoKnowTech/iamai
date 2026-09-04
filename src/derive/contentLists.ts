@@ -14,11 +14,12 @@ import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { notActiveUsers, notPeopleIds } from './sets.ts'
-import { campaignBucket, campaignIds } from './population.ts'
-import { stateOf } from './today.ts'
-import type { TodayState } from './today.ts'
+import { campaignIds } from './population.ts'
+import { rungOf } from './ladder.ts'
+import type { Rung } from './ladder.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { lockoutIds } from '../roadmap/lockout.ts'
+import { pages } from '../content/content.ts'
 
 export type ListContext = {
   snapshot: TenantSnapshot
@@ -31,14 +32,12 @@ export type ListContext = {
   mfaInPlace?: boolean
 }
 
-// The state word for the special-care picker, in the six-state model (Today §4).
-const STATE_WORD: Record<TodayState, string> = {
-  proven: 'Proven',
-  likely: 'Likely works',
-  neverPrompted: 'Never prompted',
-  possiblyBroken: 'Possibly broken',
-  noMethod: 'No method',
-  notActive: 'Not active',
+// The readiness word for the special-care picker: the rung's title (pages.ladder), or Not active (pages.today.show).
+type LadderWords = { rungs: Record<`r${Rung}`, { title: string }> }
+const rungTitle = (rung: Rung): string => (pages.ladder as unknown as LadderWords).rungs[`r${rung}`].title
+const stateWord = (v: MfaViability): string => {
+  const rung = rungOf(v)
+  return rung === null ? (pages.today as { show: { notActive: string } }).show.notActive : rungTitle(rung)
 }
 
 const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
@@ -62,14 +61,14 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const names = (ids: readonly string[]): string[] => ids.map(nameOf)
   const scen = snapshot.scenarioEvidence ?? null
 
-  // The registration campaign buckets (§6, the campaign step). Each person once,
-  // in the first bucket that applies — the order the content lists them in.
-  const noMethod = active.filter((v) => rolloutBucket(v) === 'noMethod')
+  // The registration campaign's groups read the ladder (derive/ladder.ts): each
+  // person once, on their rung. With Require MFA for Everyone in place every
+  // sign-in completes MFA, so nobody is asked for one MFA sign-in: the rung-2
+  // group is empty under the policy (Today keeps stating the records' fact).
+  const onRung = (rung: Rung): MfaViability[] => active.filter((v) => rungOf(v) === rung)
+  const noMethod = onRung(1)
+  const unproven = ctx.mfaInPlace === true ? [] : onRung(2)
   const smsOnly = active.filter((v) => v.signals.smsVoiceOnly || (v.methodTiers.length > 0 && v.methodTiers.every((t) => t === 'smsVoice')))
-  const pushOnly = active.filter((v) => v.methodTiers.includes('push') && !v.methodTiers.includes('phishingResistant') && !v.methodTiers.includes('passwordless') && v.mfa !== 'verified')
-  const possiblyBroken = active.filter((v) => v.mfa === 'unverified' && v.signals.observableInWindow === false)
-  // With Require MFA for Everyone in place nobody is registered but never seen (population.ts campaignBucket; the strip reads the same rule).
-  const unproven = active.filter((v) => campaignBucket(v, ctx.mfaInPlace === true) === 'unproven')
   const bucketName = (rows: MfaViability[]): string[] => rows.map((v) => nameOf(v.userId))
 
   // The special-care picker (the campaign's decision): admins, anyone with no
@@ -89,7 +88,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   for (const v of noMethod) addCare(v.userId)
   for (const v of smsOnly) addCare(v.userId)
   if (ctx.operatorId) addCare(ctx.operatorId)
-  const specialCare = careIds.map((id) => `${nameOf(id)} · ${STATE_WORD[stateOf(byId.get(id) as MfaViability)]}`)
+  const specialCare = careIds.map((id) => `${nameOf(id)} · ${stateWord(byId.get(id) as MfaViability)}`)
   const dormant = notActiveUsers(snapshot, now, svc)
   // The ids behind the rows, in the same order, so a tick is a decision about an
   // account (prompt 52 Part 3): the picker reads `<source>Ids` beside `<source>`.
@@ -120,12 +119,11 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const azureNonAdmins = (scen?.azureSignIns?.people ?? []).filter((id) => byId.has(id) && !admins.has(id) && !bg.has(id))
 
   return {
-    // Campaign buckets (mfaViability over collected methods + sign-ins).
+    // The campaign's groups, by rung (derive/ladder.ts).
     noMethod: bucketName(noMethod),
-    insufficient: bucketName(smsOnly),
-    pushOnly: bucketName(pushOnly),
-    possiblyBroken: bucketName(possiblyBroken),
     unproven: bucketName(unproven),
+    rung3: bucketName(onRung(3)),
+    rung4: bucketName(onRung(4)),
     // Lockout-scenario people (scenarioEvidence, from the sign-in rows).
     legacyUsers: names(people(scen?.legacyClients)),
     serverUsers: names(people(scen?.serverSignIns)),

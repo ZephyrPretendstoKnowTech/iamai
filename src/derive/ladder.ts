@@ -130,7 +130,8 @@ export type Ladder = {
 
 export type LadderCounts = { active: number; rungs: Record<Rung, number> }
 
-type LadderMapping = Pick<MappingState, 'breakGlassUserIds' | 'serviceAccountUserIds'>
+/** The two decisions the ladder reads (mapping/types.ts MappingState): which accounts are emergency access, which are service accounts. */
+export type LadderMapping = { readonly [K in 'breakGlassUserIds' | 'serviceAccountUserIds']: MappingState[K] | readonly string[] }
 
 export function ladder(snapshot: TenantSnapshot, mapping: LadderMapping, now: string): Ladder {
   // The emergency and service accounts are not people (sets.ts notPeopleIds): one population with the campaign.
