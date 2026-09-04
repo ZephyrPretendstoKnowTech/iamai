@@ -73,7 +73,12 @@ test('step 35 offers the plain-MFA rung as the first enforcement while anyone ha
   const key = answerKey(stepIdForGoal('sign-in-risk'), questionLabels(stepIdForGoal('sign-in-risk')).decision!)
   const mapping = { ...f.mapping, questionAnswers: { ...(f.mapping.questionAnswers ?? {}), [key]: d.options[1] } }
   assert.ok(plainMfaFirst(mapping))
-  const after = stepPortalLines(s, portalNamesFor(ctxFor(f, r, { mapping }), ex, 'x'))!
+  // The step carries its own policy: pairing this step with another mapping
+  // would change nothing, so the answered plan is derived and its step read.
+  assert.deepEqual(stepPortalLines(s, portalNamesFor(ctxFor(f, r, { mapping }), ex, 'x')), stepPortalLines(s, portalNamesFor(ctxFor(f, r), ex, 'x')), 'the step is authoritative: another mapping does not move its lines')
+  const rAfter = runFixture({ ...f, mapping }, { mapping })
+  const sAfter = rAfter.steps.find((x) => x.goalId === 'sign-in-risk')!
+  const after = stepPortalLines(sAfter, portalNamesFor(ctxFor(f, rAfter, { mapping }), stepVars(sAfter, ctxFor(f, rAfter, { mapping })) as Record<string, unknown>, 'x'))!
   const grant = after.find((l) => l.startsWith('Grant → '))!
   assert.match(grant, /^Grant → Require multifactor authentication · your choice; the baseline's version: Grant → Require authentication strength: /)
   const withAnswer = runFixture({ ...f, mapping }, { mapping })

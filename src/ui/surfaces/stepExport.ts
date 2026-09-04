@@ -40,10 +40,12 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const ex = stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, String(cs.title))
   const portal = cs.kind === 'policy' ? stepPortalLines(step, names) : null
-  // The screen's rule, in the export: while the policy names an object this
-  // tenant does not have yet, the export carries the explanation, never the
-  // instructions (stepJson.ts implementationOffered).
-  const waiting = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
+  // The screen's rule, in the export: where no implementation is offered the
+  // export carries the explanation, never the instructions (stepJson.ts
+  // implementationOffered).
+  const suppressed = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
+  const waiting = suppressed && missingObjects(step).length > 0
+  const inPlace = suppressed && !waiting && step.status === 'done' && !step.action.json
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   const lines: string[] = []
   if (typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
@@ -51,6 +53,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   if (Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
   else if (waiting) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.jsonWaits), { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') }))
+  else if (inPlace) lines.push(String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep))
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   const doneWhen = doneWhenTemplates(step, (cs.doneWhen ?? []) as unknown[])
     .filter((x) => whole(x, ex))

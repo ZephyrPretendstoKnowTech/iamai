@@ -53,6 +53,8 @@ export type TenantObjects = {
   serviceAccountsGroupId: string | null
   /** The tenant's named location matching the allowed-countries list, where one matches. */
   allowedCountriesLocationId: string | null
+  /** The named locations the tenant marked as its trusted network; empty until it names one. */
+  trustedLocationIds?: readonly string[]
   /** Author reference id → the tenant object a person confirmed for it (mapping.records). */
   confirmed?: ReadonlyMap<string, string>
 }
@@ -62,7 +64,7 @@ export type TenantObjects = {
  * object the mapping cannot name on its own — the caller matches the tenant's
  * named locations against the allowed list and passes the result in.
  */
-export function tenantObjectsOf(mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId'>, allowedCountriesLocationId: string | null = null): TenantObjects {
+export function tenantObjectsOf(mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId' | 'trustedLocationIds'>, allowedCountriesLocationId: string | null = null): TenantObjects {
   const confirmed = new Map<string, string>()
   for (const r of Object.values(mapping.records ?? {})) {
     // `__`-prefixed keys are the wizard's own answers, not author references.
@@ -72,6 +74,7 @@ export function tenantObjectsOf(mapping: Pick<MappingState, 'records' | 'service
     exclusionsGroupId: mapping.records?.['__globalExclusion']?.resolvedId ?? null,
     serviceAccountsGroupId: mapping.serviceAccountsGroupId ?? null,
     allowedCountriesLocationId,
+    trustedLocationIds: mapping.trustedLocationIds ?? [],
     confirmed,
   }
 }
@@ -87,8 +90,12 @@ export type ResolvedPolicy = {
    * lines can still name the object the plan proposes to create.
    */
   body: RawPolicy
-  /** Author id → tenant id: what the substitution actually did. */
-  substitutions: ReadonlyMap<string, string>
+  /**
+   * Author id → the tenant objects it became. One object for a group or a
+   * location the tenant names once; the tenant's whole trusted network where the
+   * author names one location and this tenant marks several.
+   */
+  substitutions: ReadonlyMap<string, readonly string[]>
   /** Author id → the Preparation step that creates the tenant's object (null when no step does). */
   unresolved: ReadonlyMap<string, string | null>
 }
@@ -121,6 +128,9 @@ function tokensOf(policies: readonly CaPolicy[]): Map<string, string> {
   tokenCache.set(policies as unknown as object, map)
   return map
 }
+
+/** One tenant object, or none. */
+const single = (id: string | null): string[] => (id ? [id] : [])
 
 /** Graph's own location words, which name no tenant object. */
 const LOCATION_KEYWORDS = new Set(['all', 'alltrusted'])
@@ -165,8 +175,8 @@ function stepForReference(kind: ReferenceKind, token: string | null, goalId: str
  *
  * Anything left over is unresolved, with the Preparation step that creates it.
  */
-function substitutionsFor(refs: Reference[], tokens: Map<string, string>, tenant: TenantObjects, goalId: string): { ids: Map<string, string>; unresolved: Map<string, string | null> } {
-  const ids = new Map<string, string>()
+function substitutionsFor(refs: Reference[], tokens: Map<string, string>, tenant: TenantObjects, goalId: string): { ids: Map<string, string[]>; unresolved: Map<string, string | null> } {
+  const ids = new Map<string, string[]>()
   const unresolved = new Map<string, string | null>()
   for (const r of refs) {
     // Graph's own words for a location ("All", "AllTrusted") are not objects:
@@ -175,16 +185,25 @@ function substitutionsFor(refs: Reference[], tokens: Map<string, string>, tenant
     const token = tokens.get(r.id) ?? null
     const confirmed = tenant.confirmed?.get(r.id) ?? null
     if (confirmed) {
-      ids.set(r.id, confirmed)
+      ids.set(r.id, [confirmed])
       continue
     }
     if (token !== null && MAPPED_TOKENS.has(token)) {
       // A token the product maps means that object and no other. The trusted
-      // network is a list, not one object, so the product maps no single tenant
-      // object for it yet and the reference waits on the step that creates one.
+      // network is the one that is a list rather than a single object: the
+      // author names one location, this tenant may have marked several, and all
+      // of them stand where the author's one stood.
       const byToken =
-        token === 'exclusionsGroup' ? tenant.exclusionsGroupId : token === 'serviceAccountsGroup' ? tenant.serviceAccountsGroupId : token === 'allowedCountries' ? tenant.allowedCountriesLocationId : null
-      if (byToken) ids.set(r.id, byToken)
+        token === 'exclusionsGroup'
+          ? single(tenant.exclusionsGroupId)
+          : token === 'serviceAccountsGroup'
+            ? single(tenant.serviceAccountsGroupId)
+            : token === 'allowedCountries'
+              ? single(tenant.allowedCountriesLocationId)
+              : token === 'trustedLocation'
+                ? [...(tenant.trustedLocationIds ?? [])]
+                : []
+      if (byToken.length > 0) ids.set(r.id, byToken)
       else unresolved.set(r.id, stepForReference(r.kind, token, goalId))
       continue
     }
@@ -195,16 +214,36 @@ function substitutionsFor(refs: Reference[], tokens: Map<string, string>, tenant
     const excludeOnly = r.kind === 'group' && r.uses.length > 0 && r.uses.every((u) => u.side === 'exclude') ? tenant.exclusionsGroupId : null
     const geoLocation = r.kind === 'namedLocation' && goalId === 'geo-restriction' ? tenant.allowedCountriesLocationId : null
     const to = excludeOnly ?? geoLocation
-    if (to) ids.set(r.id, to)
+    if (to) ids.set(r.id, [to])
     else unresolved.set(r.id, stepForReference(r.kind, token, goalId))
   }
   return { ids, unresolved }
 }
 
-/** Every string in the body replaced by the tenant's object where one resolves it. */
-function substitute(value: unknown, ids: ReadonlyMap<string, string>): unknown {
-  if (Array.isArray(value)) return value.map((v) => substitute(v, ids))
-  if (typeof value === 'string') return ids.get(value.toLowerCase()) ?? value
+/**
+ * Every string in the body replaced by the tenant's object where one resolves
+ * it. A reference the tenant answers with several objects (its trusted network)
+ * puts all of them where the author's one stood, in the tenant's own order, so
+ * the collection keeps the author's shape and its first-occurrence order.
+ */
+function substitute(value: unknown, ids: ReadonlyMap<string, readonly string[]>): unknown {
+  if (Array.isArray(value)) {
+    const out: unknown[] = []
+    for (const v of value) {
+      if (typeof v === 'string') {
+        const to = ids.get(v.toLowerCase())
+        if (to) out.push(...to)
+        else out.push(v)
+        continue
+      }
+      out.push(substitute(v, ids))
+    }
+    return out
+  }
+  if (typeof value === 'string') {
+    const to = ids.get(value.toLowerCase())
+    return to && to.length > 0 ? to[0] : value
+  }
   if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value as RawPolicy).map(([k, v]) => [k, substitute(v, ids)]))
   return value
 }

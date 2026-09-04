@@ -11,7 +11,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
-import { planProposedNames } from './proposedNames.ts'
+import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 
 const f = fixture('demo')
 const r = runFixture(f)
@@ -49,21 +49,24 @@ test('with the group saved, every portal exclusions line names the tenant\'s own
   for (const l of lines) assert.ok(l.line.includes('Exclude → Groups: Core - Exclusions'), `${l.step} names the tenant's group: ${l.line}`)
 })
 
-test('the trusted-network step and the portal names name the same proposed location', () => {
+test('the trusted-network step and the plan\'s proposals name the same location', () => {
   const step = prereq(PREREQ_STEP_ID.trustedLocation)
   const proposed = String(step.naming?.proposed)
   assert.equal((stepVars(step, withPlan) as Record<string, unknown>).proposedName, proposed)
-  const names = portalNamesFor(withPlan, stepVars(step, withPlan) as Record<string, unknown>, step.title)
-  assert.equal(names.proposed?.trustedLocation, proposed)
-  assert.equal(names.proposed?.exclusionsGroup, prereq(PREREQ_STEP_ID.exclusionsGroup).naming?.proposed)
+  // The proposals are the plan's, on the step that creates each object. They are
+  // not a portal input any more: a policy step whose object does not exist yet
+  // offers no instructions at all (roadmap/resolvePolicy.ts).
+  const names = proposedNamesFor(withPlan)
+  assert.equal(names.trustedLocation, proposed)
+  assert.equal(names.exclusionsGroup, prereq(PREREQ_STEP_ID.exclusionsGroup).naming?.proposed)
 })
 
-test('the names come from the plan, not from the context\'s convention: a context without the convention names the same group', () => {
+test('the names come from the plan, not from the context\'s convention', () => {
   const noConvention: StepVarContext = { ...base, ...planDates(r.steps, r.schedule.start) }
   const proposed = String(prereq(PREREQ_STEP_ID.exclusionsGroup).naming?.proposed)
-  for (const l of portal(noConvention).filter((l) => /Exclude → Groups:/.test(l.line))) assert.ok(l.line.includes(`Exclude → Groups: ${proposed}`), `${l.step}: ${l.line}`)
-  // Without the plan's steps, the engine's own proposal for the convention stands in, on both sides.
+  assert.equal(proposedNamesFor(noConvention).exclusionsGroup, proposed)
+  // Without the plan's steps, the engine's own proposal for the convention stands in.
   const bare = planProposedNames([], null)
   assert.equal(bare.exclusionsGroup, proposedObjectNames(null).exclusionsGroup.name)
-  assert.equal(portalNamesFor(base, {}, 'x').proposed?.exclusionsGroup, bare.exclusionsGroup)
+  assert.equal(proposedNamesFor({ ...base, naming: undefined }).exclusionsGroup, bare.exclusionsGroup)
 })

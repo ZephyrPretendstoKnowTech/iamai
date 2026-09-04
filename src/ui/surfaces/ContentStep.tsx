@@ -123,11 +123,14 @@ export function ContentStep({
   // A goal the baseline holds no policy for has no portal lines; an empty list is
   // not a What to do (the shared-devices step rendered an empty section).
   const portal = portalLines && portalLines.length > 0 ? portalLines : null
-  // While the policy names an object this tenant does not have yet, no
-  // implementation is offered at all — no portal lines, no JSON, no PowerShell,
-  // no download. The step says what is missing and which step creates it; that
-  // is an explanation, not an instruction to implement.
-  const waiting = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
+  // No implementation is offered unless the step has an artifact, every object
+  // it names exists, and nothing suppresses it (stepJson.ts
+  // implementationOffered). What the step says instead: the objects it waits on
+  // and the steps that create them, or — for a goal already in place, which has
+  // nothing to create — that there is nothing to do but keep it.
+  const suppressed = cs.kind === 'policy' && !hasBaselineConflict(step.goalId) && !implementationOffered(step)
+  const waiting = suppressed && missingObjects(step).length > 0
+  const inPlace = suppressed && !waiting && step.status === 'done' && !step.action.json
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
   // The content's leading "before" lines (a setting to change before the policy
@@ -136,7 +139,7 @@ export function ContentStep({
   const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
   // §8.7: a section with no content is not rendered. A step with nothing to do
   // is a missing content key, logged by the walk, never an empty heading.
-  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || hasSteps || before.length > 0
+  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || inPlace || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -226,6 +229,8 @@ export function ContentStep({
         </>
       ) : waiting ? (
         <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
+      ) : inPlace ? (
+        <p className="reason">{app.plan.inPlaceKeep}</p>
       ) : (
         (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...(hasSteps ? (w.steps as unknown[]).map((l) => <T s={l} ex={ex} />) : [])].map((node, i) => <li key={i}>{node}</li>)}</ol>
       )}

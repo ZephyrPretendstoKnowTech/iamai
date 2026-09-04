@@ -35,8 +35,14 @@ export type Evidence = {
 export type ResolvedStepPolicy = {
   /** The baseline's own name for the policy, so a merged goal can label Policy A and Policy B. */
   sourceName: string
-  /** The canonical resolved body: this tenant's objects, each named once. */
+  /** The canonical resolved body: this tenant's objects, each named once, the person's answers applied, ready to create or change. */
   body: Record<string, unknown>
+  /**
+   * The same body without the person's answers — the baseline's own version —
+   * present only where an answer changed the policy, so a step can show the
+   * choice beside what the baseline said. Never a second thing to implement.
+   */
+  baseline?: Record<string, unknown>
 }
 
 /**

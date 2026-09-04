@@ -20,6 +20,8 @@ import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText } from '../ui/surfaces/stepJson.ts'
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 import type { MappingState } from '../mapping/types.ts'
+import { applyStepDecisions } from './decisions.ts'
+import { applyDeviations } from './deviations.ts'
 import type { Step } from './types.ts'
 
 const POLICIES = pinned.policies as unknown as CaPolicy[]
@@ -63,6 +65,25 @@ function policySteps(name: Parameters<typeof fixture>[0], mappingOver: Partial<M
       return { step: step as Step, cs, portal: cs.kind === 'policy' ? stepPortalLines(step, names) : null }
     })
   return { f, r, ctx, rows }
+}
+
+/** The same tenant with none of its own Conditional Access policies: every goal has a policy to write. */
+function bareSteps(name: Parameters<typeof fixture>[0], mappingOver: Partial<MappingState> = {}) {
+  const base = fixture(name)
+  const mapping = { ...base.mapping, ...mappingOver }
+  const ca = base.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
+  const snapshot = { ...base.snapshot, config: { ...base.snapshot.config, caPolicies: { ...ca, rows: [] } } }
+  const f = { ...base, mapping, snapshot }
+  const r = runFixture(f, { mapping, snapshot })
+  const nameOf = (id: string): string => r.input.names!.label(id)
+  const ctx: StepVarContext = { snapshot, mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
+  const of = (goalId: string): { step: Step; portal: string[] | null } => {
+    const step = r.steps.find((x) => x.goalId === goalId && x.kind !== 'verify') as Step
+    assert.ok(step, `${goalId} is on the plan`)
+    const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title))
+    return { step, portal }
+  }
+  return { f, r, ctx, of }
 }
 
 // ---- 1 + 2 + 8: the resolved object itself ----
@@ -153,7 +174,7 @@ test('3: a confirmed mapping for one author reference wins over the token and th
   const source = authorPolicy('IAC - GLOBAL – SESSION – Admin Persistence (4 Hours)')
   const authorExclusions = authorIdFor(source, 'exclusionsGroup')
   const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ confirmed: new Map([[authorExclusions, CONFIRMED]]) }), 'admin-session', POLICIES)
-  assert.equal(resolved.substitutions.get(authorExclusions), CONFIRMED, 'the confirmed object wins over the token')
+  assert.deepEqual(resolved.substitutions.get(authorExclusions), [CONFIRMED], 'the confirmed object wins over the token')
   // The travellers group still resolves by the generic rule to the tenant's
   // exclusions group: two distinct ids, each named once.
   assert.deepEqual(excludeGroupsOf(resolved.body), [X, CONFIRMED])
@@ -279,4 +300,141 @@ test('emergency access and the exclusions group are unchanged outside policy res
   }
   const names = new Set(f.mapping.breakGlassUserIds.map((id) => r.input.names!.label(id)))
   for (const { step, portal } of rows) for (const line of portal ?? []) for (const n of names) assert.ok(!line.includes(n), `${step.id}: no emergency account named on a portal line`)
+})
+
+
+// ---- the answer is applied once, at the boundary ----
+
+test('an answered deviation is in the step once, and every channel carries it', () => {
+  // The partner answer excludes the Service provider type from the guests
+  // policy. The step's own body carries it; nothing re-applies it downstream.
+  const f = fixture('demo-week2')
+  const answered = applyStepDecisions(f.mapping, f.decisions ?? null)
+  const { of } = bareSteps('demo-week2', answered)
+  const { step, portal } = of('guests-mfa')
+  assert.equal(implementationOffered(step), true)
+  const bodies = policyJson(step) as Record<string, unknown>[]
+  const guestTypes = (b: Record<string, unknown>): string =>
+    String((((b.conditions as Record<string, unknown>).users as Record<string, unknown>).excludeGuestsOrExternalUsers as { guestOrExternalUserTypes?: string } | undefined)?.guestOrExternalUserTypes ?? '')
+  assert.ok(bodies.some((b) => guestTypes(b) === 'serviceProvider'), 'the JSON carries the answer')
+  assert.ok(portal && portal.some((l) => /Service provider users/.test(l)), 'the instructions carry it')
+  assert.ok(portal.some((l) => /the baseline's version/.test(l)), 'and the baseline\'s version beside it')
+  assert.ok(powershellFor(bodies, null).includes('serviceProvider'), 'the PowerShell wraps the same bodies')
+  assert.equal(policyJsonText(step), JSON.stringify(bodies, null, 2), 'the download is that text')
+  // The answer is in the body once: applying it again would change nothing.
+  assert.deepEqual(bodies.map(guestTypes), bodies.map((b) => guestTypes(applyDeviations(structuredClone(b), 'guests-mfa', answered))))
+})
+
+test('the step is authoritative: another mapping context does not move its instructions', () => {
+  const f = fixture('demo-week2')
+  const answered = applyStepDecisions(f.mapping, f.decisions ?? null)
+  const { of, ctx } = bareSteps('demo-week2', answered)
+  const { step, portal } = of('guests-mfa')
+  // A context whose answers contradict the ones the step was built from, and a
+  // context with none at all: the lines are the step's, so neither moves them.
+  for (const other of [{ ...ctx, mapping: { ...ctx.mapping, questionAnswers: {} } }, { ...ctx, mapping: f.mapping }]) {
+    const lines = stepPortalLines(step, portalNamesFor(other as StepVarContext, stepVars(step, other as StepVarContext) as Record<string, unknown>, step.title))
+    assert.deepEqual(lines, portal, 'the instructions are the step\'s')
+  }
+})
+
+// ---- the trusted network: the tenant's own locations, or nothing ----
+
+test('an explicit trustedLocation with none selected stays unresolved and gates all four channels', () => {
+  const { of } = bareSteps('demo-week2', { trustedLocationIds: [], serviceAccountsGroupId: SA })
+  const { step, portal } = of('service-accounts-trusted-network')
+  assert.ok(missingObjects(step).some((m) => m.stepId === PREREQ_STEP_ID.trustedLocation), 'it waits on the trusted-network step')
+  assert.equal(implementationOffered(step), false)
+  assert.equal(portal, null, 'no portal instructions')
+  assert.equal(jsonOffered(step), false, 'no JSON, no PowerShell, no download')
+})
+
+test('the trusted locations the tenant selected stand where the author\'s one stood, in order, once each', () => {
+  const trusted = ['00000000-aaaa-4000-8000-000000000001', '00000000-aaaa-4000-8000-000000000002']
+  const { of, ctx } = bareSteps('demo-week2', { trustedLocationIds: trusted, serviceAccountsGroupId: SA })
+  const { step, portal } = of('service-accounts-trusted-network')
+  assert.equal(implementationOffered(step), true, 'nothing is missing now')
+  const body = policyJson(step) as Record<string, unknown>
+  const locations = (body.conditions as Record<string, unknown>).locations as { excludeLocations?: string[] }
+  assert.deepEqual(locations.excludeLocations, trusted, 'both, in the tenant\'s order, once each')
+  const text = (portal ?? []).join('\n')
+  for (const id of trusted) assert.ok(text.includes(ctx.nameOf(id)), 'the instruction names it')
+  assert.ok(powershellFor(body, null).includes(trusted[1]), 'the PowerShell wraps the same body')
+  assert.equal(policyJsonText(step), JSON.stringify(body, null, 2), 'the download is that text')
+})
+
+// ---- a confirmed reference, named on every channel ----
+
+test('a confirmed object on an include is the object every channel names', () => {
+  // The author's service-accounts group, on the policy that includes it, mapped
+  // by a person to a tenant group of their own. Portal could not name it from
+  // the mapping's own service-accounts group, so this fails if the lines are
+  // rebuilt rather than read off the step.
+  const source = authorPolicy('IAC - GLOBAL – BLOCK – Service Accounts')
+  const authorGroup = authorIdFor(source, 'serviceAccountsGroup')
+  const base = fixture('demo-week2')
+  const record = { placeholder: authorGroup, kind: 'group', group: 'placeholders' as const, resolvedId: CONFIRMED, resolvedName: 'Confirmed service accounts', provenance: 'confirmed' as const, doesNotExist: false, validation: null }
+  const { of } = bareSteps('demo-week2', {
+    records: { ...base.mapping.records, [authorGroup]: record },
+    trustedLocationIds: ['00000000-aaaa-4000-8000-000000000001'],
+    serviceAccountsGroupId: SA,
+  })
+  const { step } = of('service-accounts-trusted-network')
+  assert.equal(implementationOffered(step), true)
+  const body = policyJson(step) as Record<string, unknown>
+  const users = (body.conditions as Record<string, unknown>).users as Record<string, unknown>
+  assert.deepEqual(users.includeGroups, [CONFIRMED], 'the JSON includes the confirmed object, not the mapping\'s service-accounts group')
+  const named = (id: string): string => (id === CONFIRMED ? 'Confirmed service accounts' : id)
+  const lines = stepPortalLines(step, { nameOf: named, policyName: step.title }) ?? []
+  assert.ok(lines.some((l) => l.includes('Confirmed service accounts')), `the instruction names it: ${lines.join(' | ')}`)
+  assert.ok(powershellFor(body, null).includes(CONFIRMED), 'the PowerShell wraps the same body')
+  assert.equal(policyJsonText(step), JSON.stringify(body, null, 2), 'the download is that text')
+})
+
+// ---- a goal the baseline implements with two policies ----
+
+test('the guests pair carries both policies, in the baseline\'s order, on every channel', () => {
+  const { of, ctx } = bareSteps('demo-week2')
+  const { step, portal } = of('guests-mfa')
+  const carried = step.action.resolution?.policies ?? []
+  assert.equal(carried.length, 2, 'the step carries both')
+  assert.equal(implementationOffered(step), true)
+  const bodies = policyJson(step) as Record<string, unknown>[]
+  assert.ok(Array.isArray(bodies) && bodies.length === 2, 'the JSON is both bodies')
+  assert.deepEqual(bodies.map((b) => b.displayName), carried.map((c) => c.body.displayName), 'the same policies, in the same order')
+  const roots = (portal ?? []).filter((l) => /^Policy [AB] — /.test(l))
+  assert.equal(roots.length, 2, 'two labelled blocks')
+  assert.ok(roots[0].startsWith(`Policy A — ${bodies[0].displayName}: `), roots[0])
+  assert.ok(roots[1].startsWith(`Policy B — ${bodies[1].displayName}: `), roots[1])
+  const ps = powershellFor(bodies, null)
+  assert.equal((ps.match(/New-MgIdentityConditionalAccessPolicy/g) ?? []).length, 2, 'a command per policy')
+  assert.ok(ps.indexOf(String(bodies[0].displayName)) < ps.indexOf(String(bodies[1].displayName)), 'in the same order')
+  assert.equal(policyJsonText(step), JSON.stringify(bodies, null, 2), 'the download is that text')
+  assert.ok(ctx.nameOf.length >= 0)
+})
+
+test('one unresolved reference in either policy of a pair gates all four channels', () => {
+  // The tenant has no exclusions group: both guests policies exclude one, so
+  // neither can be written and the step offers nothing.
+  const { of } = bareSteps('demo', {})
+  const { step, portal } = of('guests-mfa')
+  assert.equal((step.action.resolution?.policies ?? []).length, 2, 'both policies are still described')
+  assert.ok(missingObjects(step).length > 0, 'something is missing')
+  assert.equal(implementationOffered(step), false)
+  assert.equal(portal, null, 'no portal instructions')
+  assert.equal(jsonOffered(step), false, 'no JSON, no PowerShell, no download')
+})
+
+// ---- a step with nothing to create ----
+
+test('a goal already in place has no artifact, so it offers no implementation on any channel', () => {
+  const { rows } = policySteps('demo-week2')
+  const done = rows.filter((x) => x.step.status === 'done' && x.cs.kind === 'policy')
+  assert.ok(done.length >= 3, `the demo holds goals already in place (${done.length})`)
+  for (const { step, portal } of done) {
+    assert.equal(step.action.json, null, `${step.id}: nothing to create`)
+    assert.equal(implementationOffered(step), false, `${step.id}: no implementation offered`)
+    assert.equal(portal, null, `${step.id}: no instructions for a second copy`)
+    assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download`)
+  }
 })

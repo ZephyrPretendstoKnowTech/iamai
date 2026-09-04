@@ -24,10 +24,14 @@ export function canDenyAccess(step: Step): boolean {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return false
   if (step.action.json) {
     try {
-      const body = JSON.parse(step.action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }
-      const grant = body.grantControls
-      if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
-      if (body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined)) return true
+      type Body = { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null }
+      // A goal the baseline implements with two policies carries both bodies.
+      const parsed = JSON.parse(step.action.json) as Body | Body[]
+      for (const body of Array.isArray(parsed) ? parsed : [parsed]) {
+        const grant = body.grantControls
+        if (grant && ((grant.builtInControls?.length ?? 0) > 0 || grant.authenticationStrength)) return true
+        if (body.sessionControls && Object.values(body.sessionControls).some((v) => v !== null && v !== undefined)) return true
+      }
       // A change step carries only the sections it changes, so a body with no
       // control says nothing: the goal family decides.
     } catch {

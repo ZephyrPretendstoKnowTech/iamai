@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -32,7 +33,11 @@ test('guests Policy A and Policy B carry distinct names: the proposal, and the p
 // fixture whose baseline is the pinned one — the package the product ships.
 test('a goal the baseline implements with two policies renders two labelled blocks', () => {
   const fd = fixture('demo-week2')
-  const rd = runFixture(fd)
+  // The demo already holds the guests policy, and a goal in place has nothing to
+  // create; the same tenant with none of its policies yet has the pair to write.
+  const ca = fd.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
+  const snapshot = { ...fd.snapshot, config: { ...fd.snapshot.config, caPolicies: { ...ca, rows: [] } } }
+  const rd = runFixture({ ...fd, snapshot }, { snapshot } as Partial<RoadmapInput>)
   const ctxd: StepVarContext = { snapshot: fd.snapshot, mapping: fd.mapping, nameOf: (id) => rd.input.names!.label(id), signature: 'IT', operatorId: fd.operatorId, now: fd.snapshot.asOf, groups: fd.groups, naming: rd.coverage.organisation.naming, ...planDates(rd.steps, rd.schedule.start, rd.coverage.organisation.naming) }
   const step = rd.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
   assert.equal(step.action.resolution?.policies.length, 2, 'the step carries both of the baseline\'s policies')

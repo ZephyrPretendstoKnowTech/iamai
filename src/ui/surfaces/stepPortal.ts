@@ -8,16 +8,19 @@
 // The baseline's policies carry the author's own objects (its exclusions group,
 // its service-accounts group, its countries location, its trusted network) as
 // placeholder ids with a token each. They become this tenant's objects once, at
-// the roadmap boundary (roadmap/resolvePolicy.ts), and the step carries the
-// result (`step.action.resolution`). These lines render that result; they never
-// resolve a baseline reference again, so the instruction a person follows and
-// the body the JSON, PowerShell and Download tabs carry are the same policy —
-// and a tenant object several of the author's objects resolve to is named once.
+// the roadmap boundary (roadmap/generate.ts over roadmap/resolvePolicy.ts),
+// which is also where the person's answers are applied and where the policy
+// becomes the artifact the step will create or change. The step carries the
+// result (`step.action.resolution`), and these lines render exactly that: the
+// same bodies the JSON, the PowerShell and the download carry, in the same
+// order. Nothing here resolves a reference, applies an answer or reads the
+// mapping — pair a step with any other mapping context and its instructions do
+// not move, because they are the step's.
 //
-// While the step names an object this tenant does not have yet, no
-// implementation is offered at all: no portal lines, no JSON, no PowerShell, no
-// download (stepJson.ts implementationOffered). The step still says what is
-// missing and which Preparation step creates it.
+// While the step names an object this tenant does not have yet, or has no
+// artifact at all, no implementation is offered: no portal lines, no JSON, no
+// PowerShell, no download (stepJson.ts implementationOffered). The step says
+// what is missing and which Preparation step creates it instead.
 //
 // Pure: no DOM, no network.
 import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
@@ -26,95 +29,56 @@ import type { CaPolicy } from '../../baseline/types.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
-import { hasBaselineConflict } from '../../roadmap/baselineConflict.ts'
 import { implementationOffered } from './stepJson.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import type { Step, StepResolution } from '../../roadmap/types.ts'
 import { shared } from '../../content/content.ts'
-import { proposedNamesFor } from './proposedNames.ts'
-import { tenantCountryLocation } from '../../mapping/countries.ts'
-import type { MappingState } from '../../mapping/types.ts'
-import { applyDeviations } from '../../roadmap/deviations.ts'
 import { fillText } from '../../content/render.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 type PinnedPolicy = { id: string | null; displayName: string; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
 const POLICIES = pinned.policies as unknown as PinnedPolicy[]
 
-/** The token → resolved-name map used to fill a policy's ids with the tenant's names. */
+/**
+ * What the lines need that is not in the policy itself: how to turn an id into
+ * the name this tenant knows it by, and the strength's name. Nothing here
+ * decides what the policy is — that is the step's.
+ */
 export type PortalNames = {
   nameOf: (id: string) => string
+  /** The fallback name for a body that carries none (the step's title). */
   policyName: string
-  /** The pair's names where the baseline implements the goal with two policies (stepVars policyNameA/B). */
-  policyNameA?: string | null
-  policyNameB?: string | null
   strengthName?: string | null
-  /** The tenant's own objects behind the baseline's tokens, where the mapping names them. */
-  exclusionsGroupId?: string | null
-  serviceAccountsGroupId?: string | null
-  allowedCountriesLocationId?: string | null
-  trustedLocationIds?: string[]
-  /** The names the plan proposes for the objects the tenant lacks, so a token never renders unnamed. */
-  proposed?: { exclusionsGroup?: string | null; serviceAccountsGroup?: string | null; allowedCountries?: string | null; trustedLocation?: string | null } | null
-  /** The stored answers (the applied mapping): the recorded deviations from the baseline are read from them (deviations.ts). */
-  answers?: Pick<MappingState, 'questionAnswers'> | null
 }
 
-/**
- * The portal names for a step, from its variable context: the mapping's
- * objects (a saved decision applied), the tenant's countries location when one
- * matches the allowed list, and the plan's proposed names for the rest.
- */
+/** The names a step's lines need, from its variable context. */
 export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>, fallbackTitle: string): PortalNames {
-  const m = ctx.mapping
-  const proposed = proposedNamesFor(ctx)
   return {
     nameOf: ctx.nameOf,
     policyName: String(ex.policyName ?? fallbackTitle),
-    policyNameA: typeof ex.policyNameA === 'string' ? ex.policyNameA : null,
-    policyNameB: typeof ex.policyNameB === 'string' ? ex.policyNameB : null,
     strengthName: typeof ex.strengthName === 'string' ? ex.strengthName : null,
-    exclusionsGroupId: m.records?.['__globalExclusion']?.resolvedId ?? null,
-    serviceAccountsGroupId: m.serviceAccountsGroupId ?? null,
-    allowedCountriesLocationId: tenantCountryLocation(ctx.snapshot, m.allowedCountries ?? [])?.id ?? null,
-    trustedLocationIds: m.trustedLocationIds ?? [],
-    proposed,
-    answers: m,
-  }
-}
-
-/** What each placeholder token resolves to: the tenant's object, else the proposed name, else nothing. */
-function tokenNames(names: PortalNames): Record<string, string | null> {
-  const p = names.proposed ?? {}
-  const one = (id: string | null | undefined, fallback: string | null | undefined): string | null => (id ? names.nameOf(id) : (fallback ?? null))
-  const trusted = names.trustedLocationIds ?? []
-  return {
-    exclusionsGroup: one(names.exclusionsGroupId, p.exclusionsGroup),
-    serviceAccountsGroup: one(names.serviceAccountsGroupId, p.serviceAccountsGroup),
-    allowedCountries: one(names.allowedCountriesLocationId, p.allowedCountries),
-    trustedLocation: trusted.length > 0 ? trusted.map((id) => names.nameOf(id)).join(', ') : (p.trustedLocation ?? null),
   }
 }
 
 /**
- * The context for one resolved body. The two group ids are the ones the
- * resolution actually used, read off the step — never rebuilt from names — so a
- * line labels the object the body holds.
+ * The context for one body the step carries. Every id in it is this tenant's,
+ * resolved at the roadmap boundary; the two group ids are the ones that
+ * resolution used, read off the step, so a line labels the object the body
+ * actually holds. The name on the block is the body's own.
  */
 function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['tenant']): PortalContext {
-  const tokens = tokenNames(names)
-  const byId = new Map<string, string>()
   const exclusionsGroupId: string | null = used.exclusionsGroupId?.toLowerCase() ?? null
   const serviceAccountsGroupId: string | null = used.serviceAccountsGroupId?.toLowerCase() ?? null
-  const nameOf = (id: string): string => byId.get(id.toLowerCase()) ?? names.nameOf(id)
+  const nameOf = names.nameOf
+  const policyName = typeof p.displayName === 'string' && p.displayName.length > 0 ? p.displayName : names.policyName
   const strengthName = names.strengthName ?? (p.grantControls as { authenticationStrength?: { displayName?: string } } | null)?.authenticationStrength?.displayName ?? null
-  const exclusionsGroup = tokens.exclusionsGroup ?? (exclusionsGroupId ? nameOf(exclusionsGroupId) : 'the exclusions group')
+  const exclusionsGroup = exclusionsGroupId ? nameOf(exclusionsGroupId) : 'the exclusions group'
   return {
-    policyName: names.policyName,
+    policyName,
     nameOf,
     strengthName,
     portalRoot: shared.portalRoot as string,
-    portalOpen: (shared.portalOpen as string).replace('{policy}', names.policyName),
+    portalOpen: (shared.portalOpen as string).replace('{policy}', policyName),
     reportOnlyLine: shared.reportOnlyLine as string,
     exclusionsLine: (shared.exclusionsLine as string).replace('{exclusionsGroup}', exclusionsGroup),
     exclusionsGroupId,
@@ -221,27 +185,25 @@ export function strengthForGoal(goalId: string): string | null {
  * get the same answer.
  */
 export function stepPortalLines(step: Step, names: PortalNames): string[] | null {
-  if (hasBaselineConflict(step.goalId)) return null
   if (!implementationOffered(step)) return null
   const resolution = step.action.resolution
   const mapped = resolution?.policies ?? []
   if (mapped.length === 0) return null
   const asPolicy = (body: Record<string, unknown>): PinnedPolicy => body as unknown as PinnedPolicy
-  // The person's answers as recorded deviations (deviations.ts): the same rule
-  // the engine's JSON passes through. Every line the deviation changes is shown
-  // beside the baseline's version, so the choice and the baseline both stay on screen.
-  const deviated = (p: PinnedPolicy): PinnedPolicy => (names.answers ? (applyDeviations(p as unknown as Record<string, unknown>, step.goalId, names.answers) as unknown as PinnedPolicy) : p)
-  const linesOf = (p: PinnedPolicy): string[] => portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names, resolution!.tenant))
-  const annotated = (body: Record<string, unknown>): string[] => {
+  const linesOf = (body: Record<string, unknown>): string[] => {
     const p = asPolicy(body)
-    const d = deviated(p)
-    return d === p ? linesOf(p) : besideBaseline(linesOf(d), linesOf(p))
+    return portalLines(policyFacts(p as unknown as CaPolicy, new Map()), contextFor(p, names, resolution!.tenant))
   }
+  // A policy an answer changed carries the baseline's own version with it
+  // (roadmap/generate.ts), so every line the answer moved is shown beside what
+  // the baseline said. The answer is not applied here; it is already in the body.
+  const annotated = (one: (typeof mapped)[number]): string[] => (one.baseline ? besideBaseline(linesOf(one.body), linesOf(one.baseline)) : linesOf(one.body))
+  const nameOfBlock = (one: (typeof mapped)[number]): string => (typeof one.body.displayName === 'string' && one.body.displayName ? one.body.displayName : names.policyName)
   if (mapped.length >= 2) {
-    // Two policies, two names (stepVars policyNameA/B): never the one name on both blocks.
-    return labelledBlocks({ lines: annotated(mapped[0].body), name: names.policyNameA ?? names.policyName }, { lines: annotated(mapped[1].body), name: names.policyNameB ?? names.policyName }, { a: 'A', b: 'B' })
+    // Two policies, two blocks, in the baseline's order, each named by its own body.
+    return labelledBlocks({ lines: annotated(mapped[0]), name: nameOfBlock(mapped[0]) }, { lines: annotated(mapped[1]), name: nameOfBlock(mapped[1]) }, { a: 'A', b: 'B' })
   }
-  const lines = annotated(mapped[0].body)
+  const lines = annotated(mapped[0])
   return lines.length > 0 ? lines : null
 }
 
