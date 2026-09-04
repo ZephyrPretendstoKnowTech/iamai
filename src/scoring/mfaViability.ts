@@ -284,7 +284,8 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
   if (capable.some((m) => m.kind === 'fido2' || m.kind === 'passkey')) {
     reasons.push('passkey registered but never seen in a sign-in')
   }
-  if (methodsUnknown) reasons.push('methods unavailable for this user')
+  // A person reads "account", never "user" (Today's evidence column shows these reasons).
+  if (methodsUnknown) reasons.push('methods unavailable for this account')
   if (evidenceUsable && !observable) {
     reasons.push('last sign-in is older than the collected sign-in records')
   }
