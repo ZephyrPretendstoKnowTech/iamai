@@ -1505,6 +1505,14 @@ footer.app a {
   padding: 0;
   list-style: none;
 }
+/* .surface ul's prose cap and list indent (below) would otherwise leave the
+   rows narrower than .ladder-wrap and flush left inside it, out of line with
+   the head above; .ladder-wrap .ladder outranks that generic rule so the
+   rows span the same width the head does. */
+.ladder-wrap .ladder {
+  max-width: none;
+  padding-left: 0;
+}
 .ladder .ladder-row {
   position: relative;
   display: grid;
