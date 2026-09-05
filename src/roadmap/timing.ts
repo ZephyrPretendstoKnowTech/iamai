@@ -147,16 +147,35 @@ function spreadHour(base: number, stepId: string, ctx: TimingContext): number {
  * class, never merely absent evidence.
  */
 export function nobodyAffected(step: Step): boolean {
-  // A policy that stops a protocol, a place or a risky sign-in is measured by
-  // who was seen doing it; one that asks people for something is measured by who
-  // it applies to. What the step will leave behind decides which
-  // (roadmap/operations.ts stepEffects); a step with no policy of its own is
-  // read by its goal's family, as it always was.
+  // A step with no policy of its own — a policy already in place, the enforce
+  // step — is read by its goal's family, as it always was.
   const effects = effectsOf(step)
-  const family = step.readiness.family
-  const byEvidence = effects !== null ? effects.some((e) => e.blocks || e.usesRisk || (e.usesLocations && !e.asksForMethod)) : family === 'block' || family === 'location' || family === 'risk'
-  const affected = byEvidence ? step.evidence.affectedUserIds.length : step.population.active
-  return step.evidence.status === 'ok' && affected === 0
+  if (effects === null) {
+    const family = step.readiness.family
+    const affected = family === 'block' || family === 'location' || family === 'risk' ? step.evidence.affectedUserIds.length : step.population.active
+    return step.evidence.status === 'ok' && affected === 0
+  }
+  // Work the plan cannot write is not proof of anything: it is read the way a
+  // step with no policy is, by who it would apply to.
+  if (effects.length === 0) return step.evidence.status === 'ok' && step.population.active === 0
+  // Zero is proved, never assumed: a policy IAMAI cannot read in full might
+  // touch anyone (roadmap/operations.ts PolicyEffect.unknown).
+  if (effects.some((e) => e.unknown.length > 0)) return false
+  for (const effect of effects) {
+    // A policy that stops a protocol or applies only above a risk level touches
+    // whoever was seen doing it — and only where the records could be read. So
+    // does one that names places and asks for nothing: it stops people, rather
+    // than prompting them.
+    if (effect.blocks || effect.usesRisk || (effect.usesLocations && !effect.asksForMethod && !effect.requiresDevice)) {
+      if (step.evidence.status !== 'ok') return false
+      if (step.evidence.affectedUserIds.length > 0) return false
+      continue
+    }
+    // Anything else asks people for something, so it touches everyone it
+    // applies to.
+    if (step.population.active > 0) return false
+  }
+  return true
 }
 
 export function noticeDaysFor(step: Step): number {

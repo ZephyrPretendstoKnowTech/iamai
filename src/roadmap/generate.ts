@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { isValidOperation, stepEffects, unavailableReason } from './operations.ts'
+import { isOpenPolicy, isValidOperation, stepEffects, unavailableReason } from './operations.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
@@ -16,6 +16,7 @@ import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './templa
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
 import type { GoalMap } from './goalMap.ts'
+import { buildStrengthLookup } from '../coverage/strength.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
@@ -24,7 +25,7 @@ import { proposeRings, ringContextIndexes } from './rings.ts'
 import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers, notPeopleIds } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
-import { LOCKOUT_GOALS, lockoutIds } from './lockout.ts'
+import { lockoutCount } from './lockout.ts'
 import { accountVerdict, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
@@ -521,25 +522,39 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (!strengthNames.has(rec.resolvedId.toLowerCase())) strengthNames.set(rec.resolvedId.toLowerCase(), rec.resolvedName)
     }
   }
+  // What each strength actually allows, by id: the built-in strengths, and this
+  // tenant's own. The author's combinations describe the author's object, so
+  // once an id has moved to a tenant object they are no longer true of it.
+  const strengthCombos = new Map<string, string[]>()
+  for (const [key, combos] of buildStrengthLookup((snapshot.config.authStrengths?.rows ?? []) as unknown[])) strengthCombos.set(key.toLowerCase(), combos)
   /**
-   * The resolved policy with its authentication strength named as this tenant
-   * knows it. Where the id moved and no tenant name is known, the author's name
-   * goes with it: a strength named for one object while the request names
-   * another is worse than a strength the instruction describes generically.
+   * The resolved policy with its authentication strength as this tenant knows
+   * it: the tenant's name, and the tenant's own allowed combinations. Where the
+   * id moved and no tenant name is known, the author's name goes with it — a
+   * strength named for one object while the request names another is worse than
+   * a strength the instruction describes generically. Where the id moved and
+   * nothing describes what it allows, the combinations go rather than stand for
+   * a different object: a policy nobody can read is held, not guessed at
+   * (roadmap/operations.ts PolicyEffect.unknown).
    */
   const namedStrength = (resolved: ResolvedPolicy): ResolvedPolicy => {
     const grant = resolved.body.grantControls as { authenticationStrength?: { id?: unknown; displayName?: unknown } } | null | undefined
     const strength = grant?.authenticationStrength
     if (!strength || typeof strength.id !== 'string') return resolved
-    const substituted = resolved.substitutions.has(strength.id.toLowerCase()) || [...resolved.substitutions.values()].some((ids) => ids.some((x) => x.toLowerCase() === (strength.id as string).toLowerCase()))
-    const name = strengthNames.get(strength.id.toLowerCase())
-    if (name) {
-      if (name === strength.displayName) return resolved
-      return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: { ...strength, displayName: name } } } }
+    const id = strength.id.toLowerCase()
+    const substituted = resolved.substitutions.has(id) || [...resolved.substitutions.values()].some((ids) => ids.some((x) => x.toLowerCase() === id))
+    const name = strengthNames.get(id)
+    const next: Record<string, unknown> = { ...(strength as Record<string, unknown>) }
+    if (name) next.displayName = name
+    else if (substituted) delete next.displayName
+    if (substituted) {
+      const combos = strengthCombos.get(id)
+      if (combos) next.allowedCombinations = combos
+      else delete next.allowedCombinations
     }
-    if (!substituted) return resolved
-    const { displayName: _dropped, ...rest } = strength as Record<string, unknown>
-    return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: rest } } }
+    const same = Object.keys(next).length === Object.keys(strength).length && Object.entries(next).every(([k, v]) => JSON.stringify(v) === JSON.stringify((strength as Record<string, unknown>)[k]))
+    if (same) return resolved
+    return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: next } } }
   }
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
@@ -1018,8 +1033,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(READINESS_MEASURE[readiness.family] ?? 'readiness', `${threshold}%`, `${readiness.percent}%`) })
       }
       // Nothing that can deny access is offered while the way back in is
-      // unverified (validation-rules.md §2).
-      const deniesAccess = impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location'
+      // unverified (validation-rules.md §2). What the step will actually leave
+      // behind decides (roadmap/operations.ts stepEffects); the floor and the
+      // goal's family answer only for a step with no policy of its own.
+      const denyStep = { goalId: goal.id, kind, status, action } as unknown as Step
+      const denyEffects = isOpenPolicy(denyStep) ? stepEffects(denyStep) : []
+      const deniesAccess =
+        denyEffects.length > 0
+          ? denyEffects.some((e) => e.any)
+          : impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location'
       if (deniesAccess && gate !== null) blockByStep(gate.stepId, gate.label)
       if (blockedBy.length > 0) status = 'blocked'
     }
@@ -1029,11 +1051,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The strand simulator decides (roadmap-v2.md §7): the same check the
     // property tests run, so a step that would lock the operator out is
     // never offered as ready.
-    const opVerdict =
-      includesOperator && operatorId !== null
-        ? stepAccountVerdict({ goalId: goal.id, kind, status, action, readiness, population: pop } as unknown as Step, operatorId, snapshot, mapping.allowedCountries)
-        : null
-    const operatorSafe = opVerdict === null ? null : !opVerdict.stranded
+    const asStep = { goalId: goal.id, kind, status, action, readiness, population: pop } as unknown as Step
+    const opVerdict = includesOperator && operatorId !== null ? stepAccountVerdict(asStep, operatorId, snapshot, mapping.allowedCountries) : null
+    const stepLockout = lockoutCount(stepEffects(asStep), popIds, viability, excluded)
+    // Safe means known to be safe: a verdict the scan could not settle is not one.
+    const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
     if (opVerdict?.stranded && status !== 'done') {
       status = 'blocked'
       blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.exist(1, 'safe way in for the signed-in account', 0) })
@@ -1146,13 +1168,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                   : sessionOnly || /session/i.test(goal.name)
                     ? MANAGER.session(pop.active)
                     : MANAGER.other()),
-      // A strength policy's lockout count: the people in scope with no phishing-resistant method today (lockout.ts).
-      // The lockout count is the people this policy would stop, and only where
-      // the policy the step will leave behind actually requires a strength: work
-      // the plan cannot write stops nobody (roadmap/operations.ts stepEffects).
-      ...(LOCKOUT_GOALS.has(goal.id) && status !== 'done' && stepEffects({ goalId: goal.id, kind, status, action } as unknown as Step).some((e) => e.strength !== null)
-        ? { lockout: lockoutIds(goal.id, viability, snapshot, excluded).length }
-        : {}),
+      // The lockout count is the people this policy would stop rather than
+      // prompt: the strength the step will leave behind, measured against the
+      // people in its own scope (roadmap/lockout.ts lockoutCount). No goal has a
+      // lockout count of its own — a policy that requires no strength stops
+      // nobody, and neither does work the plan cannot write.
+      ...(status !== 'done' && stepLockout !== null ? { lockout: stepLockout } : {}),
       // A step that changes the tenant's own policy names that policy, never the
       // step's title; a step that creates one names the proposed name.
       naming:
