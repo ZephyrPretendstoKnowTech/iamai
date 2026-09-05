@@ -1,12 +1,27 @@
 // Strand simulation (roadmap-v2.md §7): would carrying out a step, as written,
 // lock a given account out? Pure: runs in tests, the worker and the page.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { isOpenPolicy, stepEffects } from './operations.ts'
-import type { PolicyEffect, Requirement } from './operations.ts'
-import { strengthTier } from '../coverage/strength.ts'
+import { accountApplicability, isOpenPolicy, stepEffects, strengthLookupOf } from './operations.ts'
+import type { Applicability, PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import type { Step } from './types.ts'
 
 export type StrandVerdict = { stranded: boolean; unknown: boolean; reason: string }
+
+/**
+ * What the tenant can prove, beside the policy itself: who is in a group, what
+ * countries a named location holds, and what each authentication strength
+ * allows. Nothing here is a substitute for the policy — a named location the
+ * plan has not resolved is not answered by the countries the operator picked,
+ * and a strength with no row is not answered by a tier it resembles.
+ */
+export type StrandContext = ScopeEvidence & {
+  /** The countries each named location the plan resolved actually holds, by location id. */
+  countryLocations?: Record<string, readonly string[]>
+  /** What each strength allows, by id; built from the tenant's own metadata (operations.ts strengthLookupOf). */
+  strengths?: Map<string, string[]>
+  /** Kept for the callers that still describe the tenant's allowed countries; never used to judge a location the plan has not resolved. */
+  allowedCountries?: string[]
+}
 
 const PHISHING_RESISTANT = new Set([
   'fido2SecurityKey',
@@ -55,23 +70,118 @@ export function promptsPeople(step: Step): boolean {
 }
 
 /**
- * Whether one account can satisfy one requirement, from what the scan holds.
- * Each kind of requirement is kept distinct: a device is not an app, and an app
- * is not a method. Where the scan cannot answer — a strength nothing describes,
- * an app requirement no sign-in evidence covers — the answer is `unknown`, never
- * a guess and never the goal's own family.
+ * What a strength allows, matched against what the account can actually do.
+ * Each part of a combination is a method the registration report either holds
+ * or does not; a part nothing in the report speaks to leaves the combination
+ * unknown rather than assumed either way. A strength is satisfied when any one
+ * of its combinations is, and refused only when every one of them is refused.
  */
-function requirementVerdict(req: Requirement, accountId: string, snapshot: TenantSnapshot, allowedCountries: string[]): StrandVerdict {
+const COMBINATION_PARTS: Record<string, (m: ReadonlySet<string>) => boolean> = {
+  password: () => true,
+  fido2: (m) => m.has('fido2securitykey') || [...m].some((x) => x.startsWith('passkeydevicebound')),
+  windowshelloforbusiness: (m) => m.has('windowshelloforbusiness'),
+  x509certificatemultifactor: (m) => m.has('x509certificate'),
+  x509certificatesinglefactor: (m) => m.has('x509certificate'),
+  devicebasedpush: (m) => m.has('microsoftauthenticatorpasswordless'),
+  microsoftauthenticatorpasswordless: (m) => m.has('microsoftauthenticatorpasswordless'),
+  microsoftauthenticatorpush: (m) => m.has('microsoftauthenticatorpush'),
+  softwareoath: (m) => m.has('softwareonetimepasscode'),
+  hardwareoath: (m) => m.has('hardwareonetimepasscode'),
+  sms: (m) => m.has('mobilephone') || m.has('alternatemobilephone'),
+  voice: (m) => m.has('mobilephone') || m.has('officephone') || m.has('alternatemobilephone'),
+  temporaryaccesspassonetime: (m) => m.has('temporaryaccesspass'),
+  temporaryaccesspassmultiuse: (m) => m.has('temporaryaccesspass'),
+  email: (m) => m.has('email'),
+}
+
+type Answer = 'yes' | 'no' | 'unknown'
+
+/** Whether the account's registered methods satisfy one of the strength's allowed combinations. */
+export function strengthSatisfaction(combinations: readonly string[], methodsRegistered: readonly string[]): Answer {
+  if (combinations.length === 0) return 'unknown'
+  const methods = new Set(methodsRegistered.map((m) => m.toLowerCase()))
+  let unsure = false
+  for (const combination of combinations) {
+    const parts = combination.split(',').map((x) => x.trim().toLowerCase()).filter((x) => x.length > 0)
+    if (parts.length === 0) continue
+    let all = true
+    let partUnsure = false
+    for (const part of parts) {
+      const test = COMBINATION_PARTS[part]
+      if (test === undefined) partUnsure = true
+      else if (!test(methods)) all = false
+    }
+    if (all && !partUnsure) return 'yes'
+    if (all && partUnsure) unsure = true
+  }
+  return unsure ? 'unknown' : 'no'
+}
+
+/** The place a policy names, matched to the countries the plan resolved it to. */
+function locationVerdict(effect: PolicyEffect, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext): StrandVerdict {
+  const unresolved = { stranded: false, unknown: true, reason: 'the place this policy names has not been matched to the countries it holds' }
+  const ids = effect.locationIds
+  if (ids === null) return { stranded: false, unknown: false, reason: 'no deny condition' }
+  const resolved = ctx.countryLocations ?? {}
+  const countriesOf = (id: string): readonly string[] | null => resolved[id] ?? resolved[id.toLowerCase()] ?? null
+  const includesAll = ids.include.some((x) => x.toLowerCase() === 'all')
+  const named = [...ids.include.filter((x) => x.toLowerCase() !== 'all'), ...ids.exclude]
+  // Any keyword other than "every location" stands for a set of places the plan
+  // has not resolved, and so cannot be judged.
+  if (named.some((x) => x.toLowerCase() === 'all' || x.toLowerCase() === 'alltrusted')) return unresolved
+  if (named.some((x) => countriesOf(x) === null)) return unresolved
+  const user = (snapshot.users ?? []).find((x) => x.id === accountId)
+  if (!user?.usageLocation) return { stranded: false, unknown: true, reason: 'no usage location on the account' }
+  const here = user.usageLocation.toUpperCase()
+  const has = (id: string): boolean => (countriesOf(id) ?? []).some((c) => c.toUpperCase() === here)
+  if (includesAll || ids.include.length === 0) {
+    // Everywhere except the places it excludes.
+    return ids.exclude.some(has)
+      ? { stranded: false, unknown: false, reason: 'the account is in an allowed country' }
+      : { stranded: true, unknown: false, reason: `the account is in a country (${here}) the step blocks` }
+  }
+  // Only from the places it names: a person elsewhere never meets it.
+  return ids.include.some(has)
+    ? { stranded: true, unknown: false, reason: `the account is in a country (${here}) the step blocks` }
+    : { stranded: false, unknown: false, reason: 'the policy does not reach this account' }
+}
+
+/**
+ * Whether one account can satisfy one requirement, from what the scan holds.
+ * Each kind of requirement is kept distinct: a compliant device is not a
+ * domain-joined one, an approved app is not a protected one, and neither is a
+ * method. Where the scan cannot answer — a strength this tenant does not
+ * describe, an app requirement no evidence covers, a token-protection
+ * requirement nothing says the client supports — the answer is `unknown`.
+ */
+function requirementVerdict(req: Requirement, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext): StrandVerdict {
   switch (req.kind) {
     case 'mfa':
-      return accountVerdict('mfa', accountId, snapshot, allowedCountries)
-    case 'strength':
-      if (req.combinations.length === 0) return { stranded: false, unknown: true, reason: 'the strength this policy requires could not be read' }
-      return accountVerdict(strengthTier(req.combinations) === 'phishingResistant' ? 'admin' : 'mfa', accountId, snapshot, allowedCountries)
-    case 'device':
-      return accountVerdict('device', accountId, snapshot, allowedCountries)
+      return accountVerdict('mfa', accountId, snapshot, ctx.allowedCountries ?? [])
+    case 'strength': {
+      const lookup = ctx.strengths ?? strengthLookupOf(snapshot as never)
+      const combinations = lookup.get(req.id.toLowerCase()) ?? []
+      if (combinations.length === 0) return { stranded: false, unknown: true, reason: 'this tenant does not describe the strength the policy requires' }
+      if (snapshot.sources?.registrationDetails?.status !== 'ok') return { stranded: false, unknown: true, reason: 'registration data was not readable' }
+      const methods = (snapshot.registrationDetails ?? []).find((r) => r.id === accountId)?.methodsRegistered ?? []
+      const answer = strengthSatisfaction(combinations, methods)
+      if (answer === 'yes') return { stranded: false, unknown: false, reason: 'the account holds a method the strength allows' }
+      if (answer === 'no') return { stranded: true, unknown: false, reason: 'the account holds no method this strength allows' }
+      return { stranded: false, unknown: true, reason: 'the strength allows a method the scan cannot speak to' }
+    }
+    case 'device': {
+      if (snapshot.sources?.devices?.status !== 'ok') return { stranded: false, unknown: true, reason: 'device data was not readable' }
+      const owned = (snapshot.devices ?? []).filter((d) => d.ownerIds.includes(accountId))
+      const ok = req.control === 'compliantdevice' ? owned.some((d) => d.isCompliant === true) : owned.some((d) => d.trustType === 'ServerAd')
+      const what = req.control === 'compliantdevice' ? 'compliant device' : 'domain-joined device'
+      return ok
+        ? { stranded: false, unknown: false, reason: `the account owns a ${what}` }
+        : { stranded: true, unknown: false, reason: `the account owns no ${what}` }
+    }
     case 'app':
       return { stranded: false, unknown: true, reason: 'the scan does not say which apps this account signs in with' }
+    case 'tokenProtection':
+      return { stranded: false, unknown: true, reason: 'nothing in the scan says this account signs in from a client that can bind its token' }
     case 'passwordChange':
       return { stranded: false, unknown: false, reason: 'the account can change its own password' }
     case 'other':
@@ -81,71 +191,100 @@ function requirementVerdict(req: Requirement, accountId: string, snapshot: Tenan
 
 /**
  * Whether one account is stranded by one policy, read from the policy itself.
- * A block is judged by what people were seen doing; a policy that names places
- * by where the account signs in from; a policy that asks for things by whether
- * the account can satisfy them — every requirement kept apart, combined the way
+ * The policy's own scope decides whether it reaches the account at all; a block
+ * is judged by what people were seen doing, or by the place it names; a policy
+ * that asks for things is judged requirement by requirement, combined the way
  * the policy combines them: all of them for AND, any one of them for OR. Where
- * the policy says something IAMAI cannot read, the answer is `unknown`, and
+ * the policy says something IAMAI cannot decode, the answer is `unknown`, and
  * under OR an unreadable alternative withdraws a stranded verdict too, because
  * it may be the way through.
  */
-export function policyVerdict(effect: PolicyEffect, accountId: string, snapshot: TenantSnapshot, allowedCountries: string[]): StrandVerdict {
+export function policyVerdict(effect: PolicyEffect, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext = {}): StrandVerdict {
+  const reaches = accountApplicability(effect.scope, accountId, snapshot as never, ctx)
+  if (reaches === 'out') return { stranded: false, unknown: false, reason: 'the policy does not reach this account: it is out of scope' }
+  if (reaches === 'unknown') return { stranded: false, unknown: true, reason: 'nothing in the scan settles whether this policy reaches the account' }
   const decided = ((): StrandVerdict => {
-    // A block is judged by what people were seen doing, or by where they sign in
-    // from when it names places.
-    if (effect.blocks) return accountVerdict(effect.usesLocations ? 'location' : 'block', accountId, snapshot, allowedCountries)
-    const verdicts = effect.requirements.map((r) => requirementVerdict(r, accountId, snapshot, allowedCountries))
+    if (effect.blocks) return effect.usesLocations ? locationVerdict(effect, accountId, snapshot, ctx) : accountVerdict('block', accountId, snapshot, [])
+    const verdicts = effect.requirements.map((r) => requirementVerdict(r, accountId, snapshot, ctx))
     if (verdicts.length === 0) {
       // A policy that only scopes a place, or only shortens a session, asks for
       // nothing a person could fail to have.
-      if (effect.usesLocations) return accountVerdict('location', accountId, snapshot, allowedCountries)
+      if (effect.usesLocations) return locationVerdict(effect, accountId, snapshot, ctx)
       return { stranded: false, unknown: false, reason: 'no deny condition' }
     }
     if (effect.operator === 'AND') return verdicts.find((v) => v.stranded) ?? verdicts.find((v) => v.unknown) ?? verdicts[0]
     return verdicts.find((v) => !v.stranded && !v.unknown) ?? verdicts.find((v) => v.unknown) ?? verdicts[0]
   })()
   if (effect.unknown.length === 0) return decided
-  // Something in the policy could not be read. It stands only where reading it
-  // could not help: a block is a block, and under AND a requirement already
-  // failed. Under OR the unreadable part may be the way through, so a stranded
-  // verdict is withdrawn rather than asserted.
+  // Something in the policy could not be decoded. The decided answer stands only
+  // where decoding it could not help: a block is a block, and under AND a
+  // requirement already failed. Under OR the unreadable part may be the way
+  // through, so a stranded verdict is withdrawn rather than asserted.
   const unreadable = { stranded: false, unknown: true, reason: effect.unknown[0] }
   if (decided.stranded && (effect.blocks || effect.operator === 'AND')) return decided
+  if (!decided.stranded && !decided.unknown && effect.blocks) return decided
   return unreadable
 }
 
 /**
  * Whether one account is stranded by what the step will actually leave behind.
  * A step with several policies is stranded by any of them; where one cannot be
- * read from the scan the answer is unknown, never a guess from the goal's family.
+ * decoded the answer is unknown, and a step the plan cannot write at all is
+ * unknown too — never a guess from the goal's family or the people it lists.
  */
-export function stepAccountVerdict(step: Step, accountId: string, snapshot: TenantSnapshot, allowedCountries: string[]): StrandVerdict {
+export function stepAccountVerdict(step: Step, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext = {}): StrandVerdict {
   const effects = effectsOf(step)
-  if (effects === null) return accountVerdict(step.readiness.family, accountId, snapshot, allowedCountries)
+  // A step with no policy of its own — one already in place, the enforce step —
+  // is read by its goal's family, as it always was.
+  if (effects === null) return accountVerdict(step.readiness.family, accountId, snapshot, ctx.allowedCountries ?? [])
+  if (effects.length === 0) return { stranded: false, unknown: true, reason: 'the plan cannot write this policy, so what it would do to the account is unknown' }
+  const reach = stepApplicability(step, accountId, snapshot, ctx)
+  if (reach === 'out') return { stranded: false, unknown: false, reason: 'no policy this step writes reaches the account: it is out of scope' }
   let unknown: StrandVerdict | null = null
   for (const effect of effects) {
-    const verdict = policyVerdict(effect, accountId, snapshot, allowedCountries)
+    const verdict = policyVerdict(effect, accountId, snapshot, ctx)
     if (verdict.stranded) return verdict
     if (verdict.unknown) unknown = unknown ?? verdict
   }
   return unknown ?? { stranded: false, unknown: false, reason: 'no deny condition' }
 }
 
-export function wouldStrand(
-  step: Step,
-  accountId: string,
-  snapshot: TenantSnapshot,
-  opts: { breakGlass: boolean; allowedCountries: string[] },
-): StrandVerdict {
-  if (!canDenyAccess(step)) return { stranded: false, unknown: false, reason: 'the step cannot deny access' }
-  if (!step.population.ids.includes(accountId)) return { stranded: false, unknown: false, reason: 'the account is out of scope' }
-  if (opts.breakGlass) return { stranded: true, unknown: false, reason: 'a break-glass account is in scope of a step that can deny access' }
-  // The policy the step will actually leave behind decides, not the goal it is
-  // filed under (roadmap/operations.ts stepEffects).
-  return stepAccountVerdict(step, accountId, snapshot, opts.allowedCountries)
+/**
+ * Whether any policy the step writes reaches one account. A step with no policy
+ * of its own is bounded by the people it lists; a step the plan cannot write
+ * reaches nobody knowably.
+ */
+export function stepApplicability(step: Step, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext = {}): Applicability {
+  const effects = effectsOf(step)
+  if (effects === null) return step.population.ids.includes(accountId) ? 'in' : 'out'
+  if (effects.length === 0) return 'unknown'
+  const answers = effects.map((e) => accountApplicability(e.scope, accountId, snapshot as never, ctx))
+  if (answers.includes('in')) return 'in'
+  return answers.includes('unknown') ? 'unknown' : 'out'
 }
 
-/** The account's own ability to satisfy a control family, from what the scan holds. */
+export function wouldStrand(step: Step, accountId: string, snapshot: TenantSnapshot, opts: { breakGlass: boolean } & StrandContext): StrandVerdict {
+  if (!canDenyAccess(step)) return { stranded: false, unknown: false, reason: 'the step cannot deny access' }
+  // Who the policy reaches is the policy's own business (policyVerdict); the
+  // step's list of people only bounds a step with no policy of its own.
+  const reach = stepApplicability(step, accountId, snapshot, opts)
+  if (reach === 'out') return { stranded: false, unknown: false, reason: 'the account is out of scope' }
+  if (opts.breakGlass) {
+    // The emergency accounts must never be inside a step that can shut them out.
+    // Whether a policy reaches one is the policy's own answer; the step's list of
+    // people stands in only where the policy's scope cannot be settled.
+    if (reach === 'in' || step.population.ids.includes(accountId)) return { stranded: true, unknown: false, reason: 'a break-glass account is in scope of a step that can deny access' }
+    return { stranded: false, unknown: true, reason: 'nothing in the scan settles whether this policy reaches the emergency account' }
+  }
+  return stepAccountVerdict(step, accountId, snapshot, opts)
+}
+
+/**
+ * The account's own ability to satisfy a control family, from what the scan
+ * holds. This serves steps with no policy of their own — one already in place,
+ * the enforce step. A policy the plan can write is never read this way: its own
+ * requirements are (requirementVerdict).
+ */
 export function accountVerdict(family: Step['readiness']['family'], accountId: string, snapshot: TenantSnapshot, allowedCountries: string[]): StrandVerdict {
   const reg = snapshot.registrationDetails.find((r) => r.id === accountId) ?? null
   const methods = reg?.methodsRegistered ?? []

@@ -69,10 +69,17 @@ export function buildTranslatorOutput(): Record<string, { steps: string[] }> {
     // The body is the policy IAMAI would submit, not the file's record of it:
     // the author's id, its placeholders and the rest of the baseline's
     // bookkeeping are not fields a create carries (roadmap/operations.ts).
-    const submitted = (p: Record<string, unknown>): Record<string, unknown> =>
-      Object.fromEntries(
+    const submitted = (p: Record<string, unknown>): Record<string, unknown> => {
+      const body = Object.fromEntries(
         (['displayName', 'description', 'state', 'conditions', 'grantControls', 'sessionControls'] as const).filter((k) => p[k] !== undefined).map((k) => [k, p[k]]),
       )
+      // A strength is a reference on the wire; its name and its combinations are
+      // the tenant's metadata (roadmap/operations.ts).
+      const grant = body.grantControls as Record<string, unknown> | null | undefined
+      const strength = grant?.authenticationStrength as { id?: unknown } | null | undefined
+      if (grant && strength && typeof strength.id === 'string') body.grantControls = { ...grant, authenticationStrength: { id: strength.id } }
+      return body
+    }
     const operations = (mapped as unknown as Record<string, unknown>[]).map((p, i) => ({
       sourceName: String(p.displayName ?? i),
       mode: 'create' as const,
@@ -93,8 +100,18 @@ export function buildTranslatorOutput(): Record<string, { steps: string[] }> {
         },
       },
     } as unknown as Step
+    // The review page has no tenant, so the name an instruction gives a strength
+    // is the baseline's own — read from the pinned policy beside the body, never
+    // from the body itself (roadmap/operations.ts: the request carries a
+    // reference and nothing that describes it).
+    const authorStrengthNames = new Map<string, string>()
+    for (const p of mapped as unknown as Record<string, unknown>[]) {
+      const st = (p.grantControls as Record<string, unknown> | null | undefined)?.authenticationStrength as { id?: unknown; displayName?: unknown } | null | undefined
+      if (st && typeof st.id === 'string' && typeof st.displayName === 'string') authorStrengthNames.set(st.id.toLowerCase(), st.displayName)
+    }
     const lines = stepPortalLines(asStep, {
       nameOf: (id: string) => dir.label(id),
+      strengthNameFor: (id: string) => authorStrengthNames.get(id.toLowerCase()) ?? null,
       policyName: typeof example.policyName === 'string' ? example.policyName : step.title,
       strengthName: typeof example.strengthName === 'string' ? example.strengthName : null,
     })

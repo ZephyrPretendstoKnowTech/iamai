@@ -9,8 +9,9 @@ import { finalTargets, hasMalformedOperations, isPreserved, isValidOperation, op
 import { policyVerdict, promptsPeople, stepAccountVerdict, wouldStrand } from './strand.ts'
 import { batchClassOf, dependencyGraph, observationDaysFor } from './schedule.ts'
 import { nobodyAffected, noticeDaysFor } from './timing.ts'
-import { effectOf, isCompletePolicy, isSubmittablePatch, stepEffects } from './operations.ts'
+import { effectOf, isCompletePolicy, isSubmittablePatch, stepEffects, strengthLookupOf } from './operations.ts'
 import { lockoutCount } from './lockout.ts'
+import type { PolicyEffect } from './operations.ts'
 import { undatedRows } from '../ui/surfaces/planRows.ts'
 import { buildSchedule } from './schedule.ts'
 import type { PolicyOperation, Step } from './types.ts'
@@ -307,7 +308,8 @@ test('F: a confirmed authentication strength is the tenant’s object on every c
   const body = policyJson(step) as Record<string, unknown>
   const strength = (body.grantControls as Record<string, Record<string, unknown>>).authenticationStrength
   assert.equal(strength.id, TENANT, 'the operation carries the tenant’s strength, not the author’s')
-  assert.equal(strength.displayName, 'Contoso passkeys', 'named as the tenant knows it')
+  assert.equal(strength.displayName, undefined, 'and nothing that describes it: the request carries a reference')
+  assert.deepEqual(Object.keys(strength), ['id'])
   const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) ?? []
   assert.ok(portal.some((l) => l === 'Grant → Require authentication strength: Contoso passkeys'), `the instruction names the tenant’s object: ${portal.join(' | ')}`)
   assert.ok(!portal.some((l) => /Modern MFA \+ TAP/.test(l)), 'never the author’s name for it')
@@ -498,6 +500,7 @@ test('an incomplete create is not an operation, and one bad member spoils the se
     ['no conditions', { displayName: 'A', state: 'enabled', grantControls: { builtInControls: ['mfa'] } }],
     ['conditions that scope nobody', { ...whole, conditions: { users: {}, applications: {} } }],
     ['a control that is not a name at all', { ...whole, grantControls: { operator: 'OR', builtInControls: ['   '] } }],
+    ['a control Conditional Access has never heard of', { ...whole, grantControls: { operator: 'OR', builtInControls: ['makeThemThinkAboutIt'] } }],
     ["Graph's own read-only fields", { ...whole, id: 'p-1', createdDateTime: '2026-01-01T00:00:00Z' }],
     ['a session control that does nothing', { ...whole, grantControls: null, sessionControls: { persistentBrowser: null } }],
     ['nothing to do about them', { displayName: 'A', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } } }],
@@ -527,7 +530,7 @@ test('deny, prompt, strand and batching follow the policy, not the goal it is fi
   const users = { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }
   const block = asStep({ displayName: 'b', state: 'enabled', conditions: users, grantControls: { operator: 'OR', builtInControls: ['block'] } }, 'mfa')
   const mfa = asStep({ displayName: 'm', state: 'enabled', conditions: users, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }, 'block')
-  const strength = asStep({ displayName: 's', state: 'enabled', conditions: users, grantControls: { operator: 'OR', authenticationStrength: { id: 'x', displayName: 'Passkeys' } } }, 'other')
+  const strength = asStep({ displayName: 's', state: 'enabled', conditions: users, grantControls: { operator: 'OR', authenticationStrength: { id: 'x' } } }, 'other')
   const device = asStep({ displayName: 'd', state: 'enabled', conditions: users, grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }, 'mfa')
   // A block stops people; it asks nobody for anything, whatever its family says.
   assert.equal(canDenyAccess(block), true)
@@ -568,8 +571,7 @@ test('a remapped strength with no authoritative name shows neither the author’
   // Nor what the author's object allowed: those describe a different object, and
   // a policy read through them would be judged by what it does not require.
   assert.equal(strength.allowedCombinations, undefined, 'and none of the author’s combinations')
-  assert.deepEqual(stepEffects(step)[0].strength, { id: TENANT, allowedCombinations: [] })
-  assert.equal(stepEffects(step)[0].unknown.length, 1, 'a strength nothing describes is held, not guessed at')
+  assert.deepEqual(stepEffects(step)[0].strength, { id: TENANT }, 'the request carries a reference and nothing else')
   assert.equal(step.lockout, undefined, 'and it counts nobody out')
   const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) ?? []
   const grant = portal.find((l) => l.startsWith('Grant → '))
@@ -663,8 +665,9 @@ test('a complete policy is a name, a state, a scope and a real control', () => {
   assert.equal(isCompletePolicy(policy({ state: 'paused' })), false, 'not a state Conditional Access has')
   assert.equal(isCompletePolicy(policy({ conditions: { users: {}, applications: {} } })), false, 'conditions that scope nobody')
   assert.equal(isCompletePolicy(policy({ conditions: { users: { includeUsers: ['All'] } } })), false, 'people but no resources')
-  assert.equal(isCompletePolicy(policy({ grantControls: { operator: 'OR', builtInControls: ['soundTheAlarm'] } })), true, 'a control IAMAI has no reading for is still a policy Graph would take')
-  assert.equal(effectOf(policy({ grantControls: { operator: 'OR', builtInControls: ['soundTheAlarm'] } })).unknown.length, 1, 'and it is carried, marked unreadable')
+  assert.equal(isCompletePolicy(policy({ grantControls: { operator: 'OR', builtInControls: ['soundTheAlarm'] } })), false, 'a control Conditional Access does not have')
+  assert.equal(isCompletePolicy(policy({ grantControls: { operator: 'OR', builtInControls: ['riskRemediation'] } })), true, 'one it does have, and IAMAI has no reading for')
+  assert.equal(effectOf(policy({ grantControls: { operator: 'OR', builtInControls: ['riskRemediation'] } })).unknown.length, 1, 'carried, marked unreadable')
   assert.equal(isCompletePolicy(policy({ grantControls: null, sessionControls: { persistentBrowser: null } })), false, 'a session control that does nothing')
   assert.equal(isCompletePolicy(policy({ grantControls: null, sessionControls: { signInFrequency: { isEnabled: false } } })), false, 'a session control switched off')
   assert.equal(isCompletePolicy({}), false)
@@ -674,11 +677,9 @@ test('the effect is read from the policy: block, method, device, place, risk, se
   const block = effectOf(policy({ grantControls: { operator: 'OR', builtInControls: ['block'] } }))
   assert.equal(block.blocks, true)
   assert.equal(block.asksForMethod, false)
-  const strength = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's-1', allowedCombinations: ['fido2'] } } }))
+  const strength = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's-1' } } }))
   assert.equal(strength.asksForMethod, true)
-  assert.deepEqual(strength.requirements, [{ kind: 'strength', id: 's-1', combinations: ['fido2'] }], 'the strength is carried whole, not collapsed to a family')
-  const unreadable = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's-3' } } }))
-  assert.equal(unreadable.unknown.length, 1, 'a strength nothing describes cannot be read')
+  assert.deepEqual(strength.requirements, [{ kind: 'strength', id: 's-1' }], 'the strength is a requirement of its own, not a family')
   const device = effectOf(policy({ grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }))
   assert.equal(device.requiresDevice, true)
   assert.deepEqual(device.requirements, [{ kind: 'device', control: 'compliantdevice' }])
@@ -705,7 +706,8 @@ test('the strand verdict, the dependencies, the notice and the observation all f
     registrationDetails: [{ id: 'u1', isMfaCapable: false, methodsRegistered: [] }],
     sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' } },
     devices: [],
-    users: [{ id: 'u1', usageLocation: 'NZ' }],
+    users: [{ id: 'u1', usageLocation: 'NZ', userType: 'member' }],
+    config: { authStrengths: { status: 'ok', reason: null, rows: [{ id: 's', displayName: 'Keys only', allowedCombinations: ['fido2'] }] } },
     evidenceUsage: { legacyAuth: { userIds: ['u1'] }, deviceCode: { userIds: [] }, authTransfer: { userIds: [] } },
   } as never
   const asStep = (body: Record<string, unknown>, family: string, id = 's-x'): Step =>
@@ -720,7 +722,7 @@ test('the strand verdict, the dependencies, the notice and the observation all f
       population: { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 },
       blockedBy: [],
     }) as unknown as Step
-  const opts = { breakGlass: false, allowedCountries: ['AU'] }
+  const opts = { breakGlass: false, allowedCountries: ['AU'], countryLocations: { 'loc-au': ['AU'] } }
   // A block filed under mfa: the account is stranded because it was seen using
   // what the policy blocks, not because it has no method.
   const block = asStep(policy({ grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'mfa', 's-block')
@@ -729,8 +731,8 @@ test('the strand verdict, the dependencies, the notice and the observation all f
   const mfa = asStep(policy(), 'block', 's-mfa')
   assert.match(wouldStrand(mfa, 'u1', snapshot, opts).reason, /no MFA method/)
   // A phishing-resistant strength filed under other.
-  const strength = asStep(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's', allowedCombinations: ['fido2'] } } }), 'other', 's-strength')
-  assert.match(wouldStrand(strength, 'u1', snapshot, opts).reason, /no phishing-resistant method/)
+  const strength = asStep(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's' } } }), 'other', 's-strength')
+  assert.match(wouldStrand(strength, 'u1', snapshot, opts).reason, /no method this strength allows/)
   // A device requirement filed under mfa.
   const device = asStep(policy({ grantControls: { operator: 'OR', builtInControls: ['compliantDevice'] } }), 'mfa', 's-device')
   assert.match(wouldStrand(device, 'u1', snapshot, opts).reason, /no compliant device/)
@@ -738,7 +740,7 @@ test('the strand verdict, the dependencies, the notice and the observation all f
   const place = asStep(policy({ conditions: { ...SCOPE, locations: { includeLocations: ['All'], excludeLocations: ['loc-au'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'mfa', 's-place')
   assert.equal(wouldStrand(place, 'u1', snapshot, opts).stranded, true)
   // A strength nothing describes: unknown, never a guess from the family.
-  const unreadable = asStep(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's' } } }), 'mfa', 's-unreadable')
+  const unreadable = asStep(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's-this-tenant-has-no-such-thing' } } }), 'mfa', 's-unreadable')
   const verdict = wouldStrand(unreadable, 'u1', snapshot, opts)
   assert.equal(verdict.unknown, true)
   assert.equal(verdict.stranded, false)
@@ -776,7 +778,8 @@ test('a step with several policies is stranded by any of them, and an unavailabl
     registrationDetails: [{ id: 'u1', isMfaCapable: true, methodsRegistered: ['microsoftAuthenticatorPush'] }],
     sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' } },
     devices: [],
-    users: [{ id: 'u1' }],
+    users: [{ id: 'u1', userType: 'member' }],
+    config: { authStrengths: { status: 'ok', reason: null, rows: [{ id: 's', displayName: 'Keys only', allowedCombinations: ['fido2'] }] } },
     evidenceUsage: { legacyAuth: { userIds: [] }, deviceCode: { userIds: [] }, authTransfer: { userIds: [] } },
   } as never
   const withOps = (ops: PolicyOperation[]): Step =>
@@ -790,18 +793,18 @@ test('a step with several policies is stranded by any of them, and an unavailabl
     }) as unknown as Step
   const op = (body: Record<string, unknown>, name: string): PolicyOperation => ({ sourceName: name, mode: 'create', policyId: null, body })
   const canMfa = op(policy(), 'A')
-  const needsPasskey = op(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's', allowedCombinations: ['fido2'] } } }), 'B')
+  const needsPasskey = op(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's' } } }), 'B')
   const both = withOps([canMfa, needsPasskey])
   assert.equal(stepEffects(both).length, 2, 'both policies are read')
-  const verdict = stepAccountVerdict(both, 'u1', snapshot, [])
+  const verdict = stepAccountVerdict(both, 'u1', snapshot, {})
   assert.equal(verdict.stranded, true, 'the account clears one policy and not the other')
-  assert.match(verdict.reason, /no phishing-resistant method/)
+  assert.match(verdict.reason, /no method this strength allows/)
   // One of the two invalid: the step can run nothing, so it strands nobody.
   const broken = withOps([canMfa, { ...needsPasskey, body: {} } as PolicyOperation])
   assert.equal(unavailableReason(broken), 'no-operation')
   assert.deepEqual(stepEffects(broken), [])
   assert.equal(canDenyAccess(broken), false)
-  assert.equal(stepAccountVerdict(broken, 'u1', snapshot, []).stranded, false)
+  assert.equal(stepAccountVerdict(broken, 'u1', snapshot, {}).stranded, false)
   assert.equal(batchClassOf(broken), 'other')
 })
 
@@ -873,13 +876,15 @@ test('an update validates what it submits, and reads the tenant policy it does n
   assert.equal(isValidOperation({ ...op, body: { state: 'disabled' } } as PolicyOperation), false)
   // And what the tenant's policy carries is read, not guessed: terms of use IAMAI
   // cannot judge make the effect unreadable rather than something invented.
-  assert.equal(effectOf(target).unknown.length, 1)
+  assert.deepEqual(effectOf(target).unknown, ['terms of use', 'a condition IAMAI has no reading for: insiderRiskLevels'])
 })
 
 // ---- the verdict follows every requirement, combined the way the policy combines them ----
 
+const FIDO_ONLY = 'a1000000-0000-4000-8000-00000000f1d0'
 const SCAN = {
   registrationDetails: [{ id: 'u1', isMfaCapable: true, methodsRegistered: ['microsoftAuthenticatorPush'] }],
+  config: { authStrengths: { status: 'ok', reason: null, rows: [{ id: FIDO_ONLY, displayName: 'Security key only', allowedCombinations: ['fido2'] }] } },
   sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' } },
   devices: [],
   users: [{ id: 'u1', usageLocation: 'NZ' }],
@@ -890,33 +895,33 @@ test('every requirement is judged on its own, and AND and OR are not the same po
   const grant = (over: Record<string, unknown>): Record<string, unknown> => policy({ grantControls: { operator: 'OR', ...over } })
   // The account can approve a sign-in but owns no compliant device.
   const or = effectOf(grant({ operator: 'OR', builtInControls: ['mfa', 'compliantDevice'] }))
-  assert.equal(policyVerdict(or, 'u1', SCAN, []).stranded, false, 'either will do, and one of them can be done')
+  assert.equal(policyVerdict(or, 'u1', SCAN, {}).stranded, false, 'either will do, and one of them can be done')
   const and = effectOf(grant({ operator: 'AND', builtInControls: ['mfa', 'compliantDevice'] }))
-  const both = policyVerdict(and, 'u1', SCAN, [])
+  const both = policyVerdict(and, 'u1', SCAN, {})
   assert.equal(both.stranded, true, 'both are needed, and one of them cannot be done')
   assert.match(both.reason, /no compliant device/, 'and the device is named, not the method')
   // An app requirement is not a device requirement, and the scan cannot settle it.
-  const app = policyVerdict(effectOf(grant({ builtInControls: ['approvedApplication'] })), 'u1', SCAN, [])
+  const app = policyVerdict(effectOf(grant({ builtInControls: ['approvedApplication'] })), 'u1', SCAN, {})
   assert.equal(app.unknown, true)
   assert.equal(app.stranded, false)
   // A strength nothing describes is unknown, never a guess.
-  const blind = policyVerdict(effectOf(grant({ authenticationStrength: { id: 's-9' } })), 'u1', SCAN, [])
-  assert.equal(blind.unknown, true)
+  const blind = policyVerdict(effectOf(grant({ authenticationStrength: { id: 's-9' } })), 'u1', SCAN, {})
+  assert.equal(blind.unknown, true, 'this tenant does not describe it')
   assert.equal(blind.stranded, false)
   // Under OR, an alternative nobody can read withdraws a stranded verdict: it
   // may be the way through.
-  const mixed = policyVerdict(effectOf(grant({ operator: 'OR', builtInControls: ['compliantDevice'], authenticationStrength: { id: 's-9' } })), 'u1', SCAN, [])
+  const mixed = policyVerdict(effectOf(grant({ operator: 'OR', builtInControls: ['compliantDevice'], authenticationStrength: { id: 's-9' } })), 'u1', SCAN, {})
   assert.equal(mixed.stranded, false)
   assert.equal(mixed.unknown, true)
   // Under AND it does not: the device is needed whatever the strength turns out to be.
-  const andBlind = policyVerdict(effectOf(grant({ operator: 'AND', builtInControls: ['compliantDevice'], authenticationStrength: { id: 's-9' } })), 'u1', SCAN, [])
+  const andBlind = policyVerdict(effectOf(grant({ operator: 'AND', builtInControls: ['compliantDevice'], authenticationStrength: { id: 's-9' } })), 'u1', SCAN, {})
   assert.equal(andBlind.stranded, true)
   // A password change is something anyone can do.
-  assert.equal(policyVerdict(effectOf(grant({ builtInControls: ['passwordChange'] })), 'u1', SCAN, []).stranded, false)
+  assert.equal(policyVerdict(effectOf(grant({ builtInControls: ['passwordChange'] })), 'u1', SCAN, {}).stranded, false)
   // A phishing-resistant strength the tenant does describe: the account has push only.
-  const strong = policyVerdict(effectOf(grant({ authenticationStrength: { id: 's-1', allowedCombinations: ['fido2'] } })), 'u1', SCAN, [])
+  const strong = policyVerdict(effectOf(grant({ authenticationStrength: { id: FIDO_ONLY } })), 'u1', SCAN, {})
   assert.equal(strong.stranded, true)
-  assert.match(strong.reason, /no phishing-resistant method/)
+  assert.match(strong.reason, /no method this strength allows/)
 })
 
 test('a policy IAMAI cannot read in full never reads as safe', () => {
@@ -924,7 +929,7 @@ test('a policy IAMAI cannot read in full never reads as safe', () => {
     { operator: 'OR', builtInControls: ['mfa'], termsOfUse: ['t-1'] },
     { operator: 'OR', builtInControls: ['mfa', 'riskRemediation'] },
   ]) {
-    const v = policyVerdict(effectOf({ ...policy(), grantControls: grant }), 'u1', SCAN, [])
+    const v = policyVerdict(effectOf({ ...policy(), grantControls: grant }), 'u1', SCAN, {})
     assert.equal(v.unknown, true, 'the account can approve a sign-in, but the policy asks for something else as well')
     assert.equal(v.stranded, false)
   }
@@ -963,13 +968,28 @@ test('the lockout count comes from the strength the step will leave behind, not 
     { userId: 'u2', activity: 'active', mfaCapable: true, registered: ['passKeyDeviceBound'], kinds: ['passKeyDeviceBound'], methodTiers: ['phishingResistant'], evidence: { at: '2026-01-01', method: 'passKeyDeviceBound' } },
     { userId: 'u3', activity: 'dormant', mfaCapable: false, registered: [], kinds: [], methodTiers: [] },
   ] as never[]
+  const snapshot = {
+    registrationDetails: [
+      { id: 'u1', isMfaCapable: true, methodsRegistered: ['microsoftAuthenticatorPush'] },
+      { id: 'u2', isMfaCapable: true, methodsRegistered: ['passKeyDeviceBound'] },
+      { id: 'u3', isMfaCapable: false, methodsRegistered: [] },
+    ],
+    sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' } },
+    devices: [],
+    users: [],
+    roles: { active: {}, eligible: {} },
+    config: { authStrengths: { status: 'ok', reason: null, rows: [{ id: FIDO_ONLY, displayName: 'Security key only', allowedCombinations: ['fido2'] }] } },
+    evidenceUsage: { legacyAuth: { userIds: [] }, deviceCode: { userIds: [] }, authTransfer: { userIds: [] } },
+  } as never
+  const strengths = strengthLookupOf(snapshot)
   const scope = ['u1', 'u2', 'u3']
-  const strong = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's', allowedCombinations: ['fido2', 'windowsHelloForBusiness'] } } }))
-  assert.equal(lockoutCount([strong], scope, viability), 1, 'the active person with push only; the dormant one is not counted')
-  assert.equal(lockoutCount([strong], ['u2'], viability), 0, 'the scope is the policy own')
+  const count = (effects: PolicyEffect[], ids: string[] = scope): number | null => lockoutCount(effects, ids, viability, snapshot, strengths)
+  const strong = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: FIDO_ONLY } } }))
+  assert.equal(count([strong]), 1, 'the active person with push only; the dormant one is not counted')
+  assert.equal(count([strong], ['u2']), 0, 'the scope is the policy’s own')
   const plain = effectOf(policy({ grantControls: { operator: 'OR', builtInControls: ['mfa'] } }))
-  assert.equal(lockoutCount([plain], scope, viability), null, 'a policy that requires no strength has no lockout list')
+  assert.equal(count([plain]), null, 'a policy that requires no strength has no lockout list')
   const blind = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's-9' } } }))
-  assert.equal(lockoutCount([blind], scope, viability), null, 'and neither has one nobody can read')
-  assert.equal(lockoutCount([], scope, viability), null, 'nor work the plan cannot write')
+  assert.equal(count([blind]), null, 'and neither has one nobody can read')
+  assert.equal(count([]), null, 'nor work the plan cannot write')
 })

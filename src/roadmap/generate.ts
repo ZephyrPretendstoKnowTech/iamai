@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { isOpenPolicy, isValidOperation, stepEffects, unavailableReason } from './operations.ts'
+import { accountApplicability, isOpenPolicy, isValidOperation, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
@@ -16,7 +16,6 @@ import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './templa
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
 import type { GoalMap } from './goalMap.ts'
-import { buildStrengthLookup } from '../coverage/strength.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
 import { resolvePopulation } from '../coverage/population.ts'
@@ -507,54 +506,45 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // creates the object.
   const countriesLocationId = tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null
   const tenantObjects = tenantObjectsOf(mapping, countriesLocationId)
-  // The tenant's own authentication strengths, by id. Where a confirmed mapping
-  // resolves the author's strength to one of these, the body carries the
-  // tenant's id — so it must carry the tenant's name too, or an instruction
-  // would name one object while the request submits another.
-  const strengthNames = new Map<string, string>()
-  for (const row of (snapshot.config.authStrengths?.rows ?? []) as Record<string, unknown>[]) {
-    if (typeof row.id === 'string' && typeof row.displayName === 'string') strengthNames.set(row.id.toLowerCase(), row.displayName)
-  }
-  // A person who confirmed the mapping named the object as they picked it; that
-  // name travels with the id even when the scan holds no row for it.
-  for (const rec of Object.values(mapping.records ?? {})) {
-    if (typeof rec.resolvedId === 'string' && typeof rec.resolvedName === 'string' && rec.resolvedName.length > 0) {
-      if (!strengthNames.has(rec.resolvedId.toLowerCase())) strengthNames.set(rec.resolvedId.toLowerCase(), rec.resolvedName)
-    }
-  }
-  // What each strength actually allows, by id: the built-in strengths, and this
-  // tenant's own. The author's combinations describe the author's object, so
-  // once an id has moved to a tenant object they are no longer true of it.
-  const strengthCombos = new Map<string, string[]>()
-  for (const [key, combos] of buildStrengthLookup((snapshot.config.authStrengths?.rows ?? []) as unknown[])) strengthCombos.set(key.toLowerCase(), combos)
   /**
-   * The resolved policy with its authentication strength as this tenant knows
-   * it: the tenant's name, and the tenant's own allowed combinations. Where the
-   * id moved and no tenant name is known, the author's name goes with it — a
-   * strength named for one object while the request names another is worse than
-   * a strength the instruction describes generically. Where the id moved and
-   * nothing describes what it allows, the combinations go rather than stand for
-   * a different object: a policy nobody can read is held, not guessed at
-   * (roadmap/operations.ts PolicyEffect.unknown).
+   * The resolved policy with its authentication strength as the request may
+   * carry it: the tenant's id, and nothing that describes the object it points
+   * at. A name and a list of allowed combinations are the tenant's own metadata
+   * — read where the answer is needed (operations.ts strengthLookupOf, and the
+   * portal's own name lookup) — and an author's description travelling beside a
+   * remapped id would describe one object while the request names another.
    */
   const namedStrength = (resolved: ResolvedPolicy): ResolvedPolicy => {
-    const grant = resolved.body.grantControls as { authenticationStrength?: { id?: unknown; displayName?: unknown } } | null | undefined
+    const grant = resolved.body.grantControls as { authenticationStrength?: { id?: unknown } } | null | undefined
     const strength = grant?.authenticationStrength
     if (!strength || typeof strength.id !== 'string') return resolved
-    const id = strength.id.toLowerCase()
-    const substituted = resolved.substitutions.has(id) || [...resolved.substitutions.values()].some((ids) => ids.some((x) => x.toLowerCase() === id))
-    const name = strengthNames.get(id)
-    const next: Record<string, unknown> = { ...(strength as Record<string, unknown>) }
-    if (name) next.displayName = name
-    else if (substituted) delete next.displayName
-    if (substituted) {
-      const combos = strengthCombos.get(id)
-      if (combos) next.allowedCombinations = combos
-      else delete next.allowedCombinations
-    }
-    const same = Object.keys(next).length === Object.keys(strength).length && Object.entries(next).every(([k, v]) => JSON.stringify(v) === JSON.stringify((strength as Record<string, unknown>)[k]))
-    if (same) return resolved
-    return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: next } } }
+    if (Object.keys(strength).length === 1) return resolved
+    return { ...resolved, body: { ...resolved.body, grantControls: { ...grant, authenticationStrength: { id: strength.id } } } }
+  }
+  // What the tenant can prove beside the policy: who is in the exclusions group
+  // (the plan's own rule — the emergency accounts are its members), which named
+  // locations are country lists and which countries they hold, and what each
+  // authentication strength allows. A policy is never judged by anything else
+  // (roadmap/strand.ts StrandContext).
+  // Who is in a group, where the scan read the whole group: a sampled list
+  // proves somebody is a member and never that somebody is not, so it answers
+  // nothing here. The plan's own exclusions group answers for itself — the
+  // emergency accounts are its members by the rule that puts them there.
+  const knownGroupMembers: Record<string, string[]> = {}
+  for (const [gid, g] of input.groupMembers?.entries() ?? []) if (g.sampled !== true) knownGroupMembers[gid.toLowerCase()] = [...g.memberIds]
+  if (tenantObjects.exclusionsGroupId && knownGroupMembers[tenantObjects.exclusionsGroupId.toLowerCase()] === undefined)
+    knownGroupMembers[tenantObjects.exclusionsGroupId.toLowerCase()] = [...mapping.breakGlassUserIds]
+  const countryLocations: Record<string, string[]> = {}
+  for (const raw of snapshot.config.namedLocations?.rows ?? []) {
+    const l = raw as { id?: string; '@odata.type'?: string; countriesAndRegions?: unknown }
+    if (typeof l.id === 'string' && String(l['@odata.type'] ?? '').includes('countryNamedLocation') && Array.isArray(l.countriesAndRegions))
+      countryLocations[l.id.toLowerCase()] = l.countriesAndRegions.map((c) => String(c))
+  }
+  const strandContext = {
+    allowedCountries: mapping.allowedCountries,
+    countryLocations,
+    strengths: strengthLookupOf(snapshot),
+    groupMembers: knownGroupMembers,
   }
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
@@ -1037,23 +1027,34 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // behind decides (roadmap/operations.ts stepEffects); the floor and the
       // goal's family answer only for a step with no policy of its own.
       const denyStep = { goalId: goal.id, kind, status, action } as unknown as Step
-      const denyEffects = isOpenPolicy(denyStep) ? stepEffects(denyStep) : []
+      // What the step will actually leave behind decides. A policy the plan
+      // cannot read at all is treated as one that can deny access: the way back
+      // in is never withheld on a guess (roadmap/operations.ts stepEffects).
+      const denyEffects = isOpenPolicy(denyStep) ? stepEffects(denyStep) : null
       const deniesAccess =
-        denyEffects.length > 0
-          ? denyEffects.some((e) => e.any)
+        denyEffects !== null
+          ? denyEffects.length === 0 || denyEffects.some((e) => e.any)
           : impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location'
       if (deniesAccess && gate !== null) blockByStep(gate.stepId, gate.label)
       if (blockedBy.length > 0) status = 'blocked'
     }
 
 
-    const includesOperator = operatorId !== null && popIds.includes(operatorId)
+    // Whether the signed-in account is in scope is the policy's own answer, from
+    // its include and exclude lists (roadmap/operations.ts accountApplicability);
+    // a step with no policy of its own is bounded by the people it lists.
+    const asStep = { goalId: goal.id, kind, status, action, readiness, population: pop } as unknown as Step
+    const operatorEffects = isOpenPolicy(asStep) ? stepEffects(asStep) : []
+    const includesOperator =
+      operatorId !== null &&
+      (operatorEffects.length > 0
+        ? operatorEffects.some((e) => accountApplicability(e.scope, operatorId, snapshot, strandContext) !== 'out')
+        : popIds.includes(operatorId))
     // The strand simulator decides (roadmap-v2.md §7): the same check the
     // property tests run, so a step that would lock the operator out is
     // never offered as ready.
-    const asStep = { goalId: goal.id, kind, status, action, readiness, population: pop } as unknown as Step
-    const opVerdict = includesOperator && operatorId !== null ? stepAccountVerdict(asStep, operatorId, snapshot, mapping.allowedCountries) : null
-    const stepLockout = lockoutCount(stepEffects(asStep), popIds, viability, excluded)
+    const opVerdict = includesOperator && operatorId !== null ? stepAccountVerdict(asStep, operatorId, snapshot, strandContext) : null
+    const stepLockout = lockoutCount(stepEffects(asStep), popIds, viability, snapshot, strandContext.strengths, excluded, strandContext)
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
     if (opVerdict?.stranded && status !== 'done') {
