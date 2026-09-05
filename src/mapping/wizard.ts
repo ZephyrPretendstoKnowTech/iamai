@@ -10,6 +10,7 @@ import type { MappingRecord, MappingState, QuestionGroup } from './types.ts'
 import { detectServiceAccounts } from './serviceAccounts.ts'
 import { suggestCountries } from './countries.ts'
 import { autoEmergencyAccess } from './emergencyAccess.ts'
+import { operatorAnsweredExclusions } from './safetyChoice.ts'
 
 export type WizardQuestionId = 'breakGlass' | 'globalExclusion' | 'countries' | 'trustedLocations' | 'serviceAccounts' | 'timeZone' | 'applicability'
 
@@ -56,9 +57,22 @@ export function askedAnswers(snapshot: TenantSnapshot, state: MappingState): Wiz
   })
 }
 
-/** True once every answer this tenant is asked for has one, detected or a person's: coverage then reads the mapping's exclusions as confirmed. */
+/**
+ * True once every answer this tenant is asked for has one: coverage then reads
+ * the mapping's exclusions as confirmed.
+ *
+ * A detected default counts for six of the seven. It does not count for the
+ * exclusions group, and this is the one place that difference is written down.
+ * `wizardAnswered.globalExclusion` is set by the detection as well as by a
+ * person — older versions set it beside `assumed.globalExclusion = 'detected'`
+ * or `'noneFound'` with nobody having chosen anything — so reading it here told
+ * coverage a machine's reading was a human's confirmation of who a policy still
+ * lets in. The exclusions question is answered by the record an operator's
+ * confirmation writes, including their answer that there is no such group yet
+ * (mapping/safetyChoice.ts operatorAnsweredExclusions), and by nothing else.
+ */
 export function answersComplete(snapshot: TenantSnapshot, state: MappingState): boolean {
-  return askedAnswers(snapshot, state).every((id) => state.wizardAnswered[id] === true)
+  return askedAnswers(snapshot, state).every((id) => (id === 'globalExclusion' ? operatorAnsweredExclusions(state) : state.wizardAnswered[id] === true))
 }
 
 // ---- The exclusions and service-accounts groups, from the tenant's own policy shapes ----

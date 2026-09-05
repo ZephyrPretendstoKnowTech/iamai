@@ -120,6 +120,7 @@ export const RULE_CITATION: Record<string, Citation> = {
   'bg.lastSignIn': EMERGENCY_ACCESS,
   'bg.signInCountries': FIELD_PRACTICE,
   'bg.mfaSeen': EMERGENCY_ACCESS,
+  'xg.containsEmergency': EMERGENCY_ACCESS,
   'xg.membersApproved': PLAN_CA,
   'xg.noExtraAdmins': PLAN_CA,
   'xg.notDynamic': FIELD_PRACTICE,
@@ -245,6 +246,10 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   'bg.signInCountries': { what: 'Countries the account has signed in from in the evidence window.', why: 'An emergency account signing in from an unexpected country is worth a question.' },
   'bg.mfaSeen': { what: 'Whether the account has completed MFA in the evidence window.', why: 'A registered method that has never been used is a method nobody has proved works.' },
   // ---- exclusions group ----
+  'xg.containsEmergency': {
+    what: 'Every confirmed emergency access account is a member of the group.',
+    why: 'Policies exclude the group, never the accounts by name. An emergency account that is not in it is covered by every policy the group is excluded from, so the way back in is closed for exactly the account that exists to open it.',
+  },
   'xg.membersApproved': {
     what: 'Every member is an emergency access account or an approved exclusion.',
     why: 'Anyone inside the group is outside every policy the group is excluded from, which is the whole protection removed.',
@@ -350,6 +355,8 @@ export const FINDING = {
   bgMfaSeen: 'has completed MFA in the evidence window',
   bgMfaNotSeen: 'has not completed MFA in the evidence window: the registered method is unproven',
 
+  xgMissingEmergency: (names: string[]): string => `${list(names)} ${names.length === 1 ? 'is an emergency access account that is not' : 'are emergency access accounts that are not'} in the group, so no policy excluding it lets ${names.length === 1 ? 'that account' : 'those accounts'} back in`,
+  xgMembershipUnread: 'the group exists and its membership could not be read, so IAMAI cannot prove the emergency accounts are in it',
   xgUnapproved: (names: string[]): string => `${list(names)} ${names.length === 1 ? 'is' : 'are'} in the group without being an emergency account or an approved exclusion`,
   xgAdmins: (names: string[]): string => `${list(names)} hold admin roles: exclusion removes their protection`,
   xgDynamic: (rule: string): string => `dynamic membership rule (${rule}): membership can change without anybody reviewing it`,
@@ -455,6 +462,7 @@ export const RULE_ACTION: Record<string, (finding: string | null) => string> = {
   'bg.notPersonal': () => 'Use a dedicated account for emergency access, with no department, job title or office, and not the operator. Entra admin center → Users → New user.',
   'bg.separateDevices': (finding) => `Move an emergency account off the shared Authenticator device${deviceFrom(finding)}. Entra admin center → Users → the account → Authentication methods.`,
   'bg.notInDynamicScope': () => 'Move the account out of any dynamic group that a policy targets, or exclude the account directly. Entra admin center → Groups.',
+  'xg.containsEmergency': (finding) => `Add ${namesFrom(finding) ?? 'each emergency access account'} to the exclusions group. Entra admin center → Groups → the exclusions group → Members → Add members.`,
 }
 
 /** Rules that are attestations, not actions: they become Done-when lines the operator ticks (prompt 48.1 item 9). */
@@ -466,6 +474,11 @@ export const ATTESTATION_DONE_WHEN: Record<string, string> = {
 /** Migration state and other could-not-run checks are Housekeeping only, never an action (prompt 48.1 item 9). */
 export const HOUSEKEEPING_ONLY_RULES: ReadonlySet<string> = new Set(['bg.perUserMfaOff', 'bg.perUserMfa'])
 
+/** The account names an emergency-membership finding opens with, for its action line. */
+function namesFrom(finding: string | null): string | null {
+  const m = finding ? /^(.+?) (?:is an emergency|are emergency)/.exec(finding) : null
+  return m ? m[1] : null
+}
 function policiesFrom(finding: string | null): string {
   const m = finding ? /not excluded from (.+?)(?:, which|:|$)/.exec(finding) : null
   return m ? `: ${m[1]}` : ''

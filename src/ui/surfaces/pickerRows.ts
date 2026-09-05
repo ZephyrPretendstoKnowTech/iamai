@@ -15,7 +15,7 @@ import { suggestCountries, countryName } from '../../mapping/countries.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
-import { exclusionsGroupChoice, storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
+import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { contentLists } from '../../derive/contentLists.ts'
@@ -112,12 +112,18 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     const known = new Map<string, string>()
     for (const [id] of ctx.groups ?? []) known.set(lc(id), id)
     for (const p of policies) for (const id of [...policyGroups(p).include, ...policyGroups(p).exclude]) if (!known.has(lc(id))) known.set(lc(id), id)
-    const stored = storedExclusionsGroupId(mapping)
+    // The tick is the operator's own answer and only that. A record an older
+    // version's detection wrote holds an id, and pre-ticking it would show a
+    // machine's reading back to the operator as their own decision — one Save
+    // away from being exactly that. It still sorts to the top, because it is
+    // the group IAMAI has been watching and the one they most likely want.
     const choice = exclusionsGroupChoice({ snapshot, mapping, groups: ctx.groups, directory: ctx.directory })
+    const stored = operatorExclusionsDecision(mapping)?.id ?? null
     const candidate = new Set(choice.candidates.map((c) => lc(c.id)))
     const isStored = (id: string): number => (stored !== null && lc(id) === lc(stored) ? 1 : 0)
+    const isRecorded = (id: string): number => (choice.recordedId !== null && lc(id) === lc(choice.recordedId) ? 1 : 0)
     const excludedFrom = (id: string): number => policies.filter((p) => policyGroups(p).exclude.some((g) => lc(g) === lc(id))).length
-    const ids = [...known.values()].sort((a, b) => isStored(b) - isStored(a) || Number(candidate.has(lc(b))) - Number(candidate.has(lc(a))) || excludedFrom(b) - excludedFrom(a) || nameOf(a).localeCompare(nameOf(b)))
+    const ids = [...known.values()].sort((a, b) => isStored(b) - isStored(a) || isRecorded(b) - isRecorded(a) || Number(candidate.has(lc(b))) - Number(candidate.has(lc(a))) || excludedFrom(b) - excludedFrom(a) || nameOf(a).localeCompare(nameOf(b)))
     const rows = ids.map((id) => {
       const g = ctx.groups?.get(id)
       return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount, excludedFrom: excludedFrom(id), policyCount: policies.length })

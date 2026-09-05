@@ -111,6 +111,40 @@ export function reportFor(subject: RuleSubject, targets: unknown[], ctx: Validat
 }
 
 /**
+ * The exclusion-group blockers that decide whether the group is safe to *name in
+ * a policy*, as opposed to safe to leave in place.
+ *
+ * Two different questions, and they were one. Being the group the operator
+ * confirmed and this scan read is an identity: it says which object the checks
+ * are about. Whether excluding that object is a carve-out IAMAI would write into
+ * a policy is what these four answer — every emergency account is inside, nobody
+ * unapproved is inside, no administrator is inside, and the membership cannot
+ * change without a person. Each is a fact about who the exclusion lets through,
+ * and an `unknown` is not a pass: a membership nothing enumerated is not a safe
+ * one.
+ *
+ * `xg.usedConsistently` is deliberately not here, and is not weakened by that.
+ * It is a fact about the tenant's *other* policies — which of them have not been
+ * given the exclusion yet — and it goes on holding the exclusions step open and
+ * holding every deny-capable step behind the gate, which is what it is for.
+ * What it does not say is that this group is the wrong object to exclude from
+ * the policy the plan is writing, and it is the only exclusion-group blocker
+ * that says nothing about the group itself.
+ */
+export const POLICY_SAFETY_RULES: ReadonlySet<string> = new Set(['xg.containsEmergency', 'xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic'])
+
+/**
+ * Whether the exclusions group is currently safe to put in a policy, and the
+ * results that say it is not. A missing report is not safety: nothing checked
+ * the group, so nothing may name it.
+ */
+export function exclusionGroupPolicySafety(report: SubjectReport | null | undefined): { safe: boolean; unmet: RuleResult[] } {
+  if (!report) return { safe: false, unmet: [] }
+  const unmet = report.targets.flatMap((t) => t.results).filter((r) => POLICY_SAFETY_RULES.has(r.id) && r.outcome !== 'pass')
+  return { safe: unmet.length === 0, unmet }
+}
+
+/**
  * One line for the checks a failed read kept from running (prompt 46 item
  * 21): "N checks could not run: <what was not read>". Null when every check
  * ran. The reads are named from the rules' own unknown findings.

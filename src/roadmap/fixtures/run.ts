@@ -63,7 +63,11 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
   // does not hold is one nothing read, which is unknown and not absent
   // (mapping/safetyChoice.ts). A fixture that wants an object proved gone says
   // so by passing its own `directory`.
-  const directory = over.directory ?? directoryEvidenceFromGroups(f.groups)
+  // A fixture's `groups` is its tenant's whole group list, so this is the one
+  // caller that may claim a complete candidate universe (mapping/safetyChoice.ts
+  // CandidateUniverse). The app's own reading is the groups somebody asked for
+  // and stays partial.
+  const directory = over.directory ?? directoryEvidenceFromGroups(f.groups, 'complete')
   const exclusionsGroupId = actionableExclusionsGroupId({ snapshot, mapping: f.mapping, groups: f.groups, directory })
   const coverage = computeCoverage({
     snapshot,

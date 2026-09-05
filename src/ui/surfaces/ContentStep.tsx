@@ -134,6 +134,11 @@ export function ContentStep({
   const waiting = reason === 'missing-object'
   const unmatched = reason === 'unmatched-pair'
   const noOperation = reason === 'no-operation'
+  // The emergency-access boundary (roadmap/operations.ts): the step says which
+  // of the two facts it is — the policy reaches the way back in, or IAMAI could
+  // not read enough to say it does not — and offers no instructions either way.
+  const emergencyUnsafe = reason === 'unsafe-emergency-access'
+  const emergencyUnproven = reason === 'unverified-emergency-exclusion'
   const inPlace = suppressed && reason === null && isPreserved(step)
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
@@ -143,7 +148,7 @@ export function ContentStep({
   const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
   // §8.7: a section with no content is not rendered. A step with nothing to do
   // is a missing content key, logged by the walk, never an empty heading.
-  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || inPlace || hasSteps || before.length > 0
+  const hasWhatToDo = Boolean(w.lead) || hasChecks || ((truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || emergencyUnsafe || emergencyUnproven || inPlace || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -201,8 +206,12 @@ export function ContentStep({
           )}
         </ol>
       )}
-      {/* The create instructions, when fewer than two accounts exist. */}
-      {truthy(ex.needsCreate) && Array.isArray(w.create) && (
+      {/* The create instructions. `needsCreate` is a proof that nothing
+          qualifies; `createIfNeeded` is the same instructions offered to an
+          operator who knows they need one, on a reading that could not prove it
+          (mapping/safetyChoice.ts). */}
+      {truthy(ex.createIfNeeded) && typeof w.createIfNeeded === 'string' && <p className="reason"><T s={w.createIfNeeded} ex={ex} /></p>}
+      {(truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create) && (
         <ol className="sections">{(w.create as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
       )}
       {portal ? (
@@ -237,6 +246,10 @@ export function ContentStep({
         <p className="reason">{fillText(app.plan.pairUnmatched, { tenant: String(ex.tenant ?? '') })}</p>
       ) : noOperation ? (
         <p className="reason">{fillText(app.plan.noOperation, { tenant: String(ex.tenant ?? '') })}</p>
+      ) : emergencyUnsafe ? (
+        <p className="reason">{fillText(app.plan.emergencyUnsafe, { tenant: String(ex.tenant ?? '') })}</p>
+      ) : emergencyUnproven ? (
+        <p className="reason">{fillText(app.plan.emergencyUnproven, { tenant: String(ex.tenant ?? '') })}</p>
       ) : inPlace ? (
         <p className="reason">{app.plan.inPlaceKeep}</p>
       ) : (

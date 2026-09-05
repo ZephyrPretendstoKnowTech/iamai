@@ -815,6 +815,40 @@ export function accountApplicability(
 }
 
 /**
+ * The emergency-access boundary, as one reading of a finished policy set.
+ *
+ * For each confirmed emergency access account, every policy the step will leave
+ * behind has to answer `out`. Anything else is recorded, and the two answers are
+ * kept apart because an operator acts differently on each: `reached` is a policy
+ * whose user scope names the account, and `unproven` is a scope resolved against
+ * a membership this scan did not read completely — an exclusion nobody has read
+ * is not an exclusion.
+ *
+ * Structural only. Whether the account happens to be on the office network, on a
+ * compliant device or at low risk is a fact about *when* a policy applies, and
+ * the day the way back in is needed is the day none of those hold.
+ *
+ * Null when there is nothing to say: no confirmed emergency account, no final
+ * policy, or every account out of every one of them.
+ */
+export function emergencyExposureOf(
+  effects: readonly PolicyEffect[],
+  emergencyIds: readonly string[],
+  snapshot: { roles?: { active?: Record<string, string[]> }; users?: DirectoryRow[] },
+  evidence: ScopeEvidence = {},
+): { reached: string[]; unproven: string[] } | null {
+  if (emergencyIds.length === 0 || effects.length === 0) return null
+  const reached: string[] = []
+  const unproven: string[] = []
+  for (const id of emergencyIds) {
+    const answers = effects.map((e) => accountApplicability(e.scope, id, snapshot, evidence))
+    if (answers.some((a) => a === 'in')) reached.push(id)
+    else if (answers.some((a) => a === 'unknown')) unproven.push(id)
+  }
+  return reached.length === 0 && unproven.length === 0 ? null : { reached, unproven }
+}
+
+/**
  * Whether a submitted body is one IAMAI would put on the wire. Two different
  * questions live here, and only this one is about the request:
  *
@@ -949,8 +983,16 @@ export function validOperations(action: Pick<Action, 'resolution'>): PolicyOpera
   return ops.every(isValidOperation) ? ops : []
 }
 
-/** Why an open policy cannot be written as it stands. */
-export type UnavailableReason = 'missing-object' | 'unmatched-pair' | 'baseline-conflict' | 'no-operation'
+/**
+ * Why an open policy cannot be written as it stands.
+ *
+ * The last two are the emergency-access boundary (Foundation A): a final user
+ * scope that reaches a confirmed emergency account, and one that cannot be shown
+ * not to. They are separate words because they are separate facts — "this policy
+ * covers the way back in" and "IAMAI cannot prove it does not" — and an operator
+ * acts differently on each.
+ */
+export type UnavailableReason = 'missing-object' | 'unmatched-pair' | 'baseline-conflict' | 'no-operation' | 'unsafe-emergency-access' | 'unverified-emergency-exclusion'
 
 /** What any of this applies to: a step that describes a policy. */
 type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status'>>
@@ -989,6 +1031,15 @@ export function policyResult(step: PolicyStep): PolicyResult {
   if (kind !== 'create' && kind !== 'adjust') return { kind: 'not-policy' }
   if (step.status === 'skipped') return { kind: 'not-policy' }
   if (hasBaselineConflict(step.goalId)) return { kind: 'unavailable', reason: 'baseline-conflict' }
+  // The emergency-access boundary, and it comes before every other reason
+  // because it is the one that must not be traded away. A policy whose final
+  // user scope reaches an emergency access account — or whose scope this scan
+  // cannot prove it does not reach — is not a policy IAMAI hands anybody, in any
+  // channel. Being already in place does not cover it up, for the same reason a
+  // baseline that contradicts itself does not.
+  const exposure = step.action.emergencyExposure
+  if (exposure && exposure.reached.length > 0) return { kind: 'unavailable', reason: 'unsafe-emergency-access' }
+  if (exposure && exposure.unproven.length > 0) return { kind: 'unavailable', reason: 'unverified-emergency-exclusion' }
   if (step.action.unmatchedPair === true) return { kind: 'unavailable', reason: 'unmatched-pair' }
   if ((step.action.missing ?? []).length > 0) return { kind: 'unavailable', reason: 'missing-object' }
   const declared = step.action.resolution?.policies ?? []
@@ -1035,7 +1086,9 @@ export function isPreserved(step: PolicyStep): boolean {
  * - every object its policy names exists in the tenant (`action.missing` empty);
  * - the plan knows which tenant policy each half of a pair is;
  * - nothing suppresses it — the baseline's own definition of the goal does not
- *   contradict itself (baselineConflict.ts).
+ *   contradict itself (baselineConflict.ts);
+ * - every confirmed emergency access account is structurally out of scope of
+ *   every policy the step will leave behind (`action.emergencyExposure`).
  *
  * The portal instructions, the JSON, the PowerShell and the download are offered
  * together or none of them is, and a step that offers none is not scheduled: no

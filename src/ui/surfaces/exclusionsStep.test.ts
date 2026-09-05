@@ -11,7 +11,7 @@ import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepLines } from './stepExport.ts'
-import { exclusionsGroupChoice, storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
+import { exclusionsGroupChoice, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import type { SafetyStatus } from '../../mapping/safetyChoice.ts'
 
 const linesOn = (name: 'demo' | 'small'): { lines: string[]; ex: Record<string, unknown>; status: SafetyStatus; stored: string | null } => {
@@ -22,7 +22,7 @@ const linesOn = (name: 'demo' | 'small'): { lines: string[]; ex: Record<string, 
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
   const step = r.steps.find((s) => s.id === PREREQ_STEP_ID.exclusionsGroup)!
   const choice = exclusionsGroupChoice({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups })
-  return { lines: stepLines(step, ctx), ex: stepVars(step, ctx) as Record<string, unknown>, status: choice.status, stored: storedExclusionsGroupId(f.mapping) }
+  return { lines: stepLines(step, ctx), ex: stepVars(step, ctx) as Record<string, unknown>, status: choice.status, stored: operatorExclusionsDecision(f.mapping)?.id ?? null }
 }
 
 test('two groups qualify and nobody has chosen: the step asks which, and offers to create nothing', () => {

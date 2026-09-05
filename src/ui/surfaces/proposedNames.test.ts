@@ -12,7 +12,7 @@ import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
-import { storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
+import { operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 
 // Nobody has answered the exclusions-group question here: that is what makes
 // the policy steps wait on the object the plan proposes to create, which is
@@ -30,7 +30,7 @@ const portal = (ctx: StepVarContext): { step: string; line: string }[] =>
   })
 
 test('the exclusions-group step names the plan\'s proposal, and the policy steps wait for the group rather than naming a proposal', () => {
-  assert.equal(storedExclusionsGroupId(f.mapping), null, 'nobody has chosen an exclusions group, so the plan proposes one')
+  assert.equal(operatorExclusionsDecision(f.mapping), null, 'nobody has chosen an exclusions group, so the plan proposes one')
   const step = prereq(PREREQ_STEP_ID.exclusionsGroup)
   const proposed = String(step.naming?.proposed)
   assert.ok(proposed.length > 0)

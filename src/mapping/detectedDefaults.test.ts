@@ -6,16 +6,24 @@ import assert from 'node:assert/strict'
 import { fixtureBaseline, fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { emptyMappingState } from './types.ts'
 import { answersComplete, applyDetectedDefaults, askedAnswers } from './wizard.ts'
+import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from './safetyChoice.ts'
 import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { BREAK_GLASS_STEP_ID } from '../roadmap/generate.ts'
 
-test('after detection every active question is answered and the progress is complete', () => {
+test('after detection every active question is answered, and the exclusions group still waits for a person', () => {
   const snapshot = fixtureSnapshot()
   const pkg = fixtureBaseline().pkg
   const state = applyDetectedDefaults(emptyMappingState(snapshot.tenantId), snapshot, { knownGroups: [], defaultTimeZone: 'Australia/Sydney' })
   const active = askedAnswers(snapshot, state)
-  assert.equal(answersComplete(snapshot, state), true, `unanswered: ${active.filter((q) => state.wizardAnswered[q] !== true).join(', ')}`)
+  for (const q of active) assert.equal(state.wizardAnswered[q], true, `${q} has a detected default`)
+  // Six of the seven are answered by the detection. The exclusions group is the
+  // one coverage may not read that way: it decides who a policy still lets in,
+  // so "complete" waits for the record an operator's confirmation writes, and a
+  // detected default beside it is not that (mapping/safetyChoice.ts).
+  assert.equal(answersComplete(snapshot, state), false, 'a detection does not answer the exclusions question')
+  const confirmed = { ...state, records: { ...state.records, [EXCLUSIONS_RECORD_KEY]: exclusionsGroupRecord(undefined, 'g-exclusions') } }
+  assert.equal(answersComplete(snapshot, confirmed), true, `unanswered: ${active.filter((q) => confirmed.wizardAnswered[q] !== true).join(', ')}`)
   assert.equal(state.displayTimeZone, 'Australia/Sydney')
   for (const q of active) assert.ok(state.assumed?.[q] === 'detected' || state.assumed?.[q] === 'noneFound', `${q} says where it came from`)
   // Countries come from where people sign in; the fixture signs in from Australia.

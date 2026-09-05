@@ -48,7 +48,7 @@ const EXPECTED: Record<RuleSubject, string[]> = {
     'bg.signInCountries',
     'bg.mfaSeen',
   ],
-  exclusionGroup: ['xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic', 'xg.usedConsistently', 'xg.sizeReasonable', 'xg.notMailEnabled'],
+  exclusionGroup: ['xg.containsEmergency', 'xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic', 'xg.usedConsistently', 'xg.sizeReasonable', 'xg.notMailEnabled'],
   trustedLocation: ['loc.notWholeInternet', 'loc.notTooWide', 'loc.isTrusted', 'loc.redundancy', 'loc.seenInSignIns'],
   allowedCountries: ['cty.atLeastOne', 'cty.includesOperator', 'cty.unknownCountries', 'cty.seenCountriesIncluded'],
   pilotGroup: ['pilot.hasMembers', 'pilot.noBreakGlass', 'pilot.spread', 'pilot.hasAdmin', 'pilot.membersReady', 'pilot.passkeyEnabled', 'pilot.tapEnabled'],
@@ -60,7 +60,7 @@ const EXPECTED: Record<RuleSubject, string[]> = {
 const BLOCKERS = new Set([
   'bg.count', 'bg.role.permanentGa', 'bg.cloudOnly', 'bg.initialDomain', 'bg.enabled', 'bg.excludedFromAllPolicies',
   'bg.notInDynamicScope', 'bg.hasMfaMethod', 'bg.separateDevices', 'bg.notPersonal',
-  'xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic', 'xg.usedConsistently',
+  'xg.containsEmergency', 'xg.membersApproved', 'xg.noExtraAdmins', 'xg.notDynamic', 'xg.usedConsistently',
   'loc.notWholeInternet', 'loc.notTooWide', 'loc.isTrusted',
   'cty.atLeastOne', 'cty.includesOperator',
   'pilot.hasMembers', 'pilot.noBreakGlass',
@@ -278,6 +278,15 @@ const CASES: Record<string, Case> = {
     fail: (b) => { b.snapshot.signInEvidence[bgId(b)] = { ...(b.snapshot.signInEvidence[bgId(b)] ?? {}), signInCount: 2, lastMfaSuccess: null } as never },
   },
   // ---- exclusions group ----
+  // Healthy: the group holds exactly the emergency accounts. Failing: it holds
+  // one of the two, which the approved-members rule is happy with — nobody in it
+  // is unapproved — and which leaves the other account inside every policy the
+  // group is excluded from.
+  'xg.containsEmergency': {
+    target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2 }),
+    unknown: 'target',
+    fail: (b) => ({ ...exclusionGroup(b), memberIds: [b.state.breakGlassUserIds[0]], memberCount: 1 }),
+  },
   'xg.membersApproved': {
     target: (b) => ({ ...exclusionGroup(b), memberIds: [...b.state.breakGlassUserIds], memberCount: 2 }),
     unknown: 'target',
