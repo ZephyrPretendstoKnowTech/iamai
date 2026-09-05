@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { accountApplicability, effectOf, isCompletePolicy, isSubmittablePatch, isValidOperation, strengthLookupOf } from './operations.ts'
-import { policyVerdict, stepAccountVerdict } from './strand.ts'
+import { operationReach, policyVerdict, stepAccountVerdict } from './strand.ts'
 import { nobodyAffected } from './timing.ts'
 import { batchClassOf, buildSchedule, observationDaysFor } from './schedule.ts'
 import { lockoutCount } from './lockout.ts'
@@ -174,8 +174,8 @@ test('OR means either: a person who can do one branch is not stranded by the oth
   // The lockout list follows the same reading.
   const viability = [{ userId: 'push', activity: 'active', registered: ['microsoftAuthenticatorPush'], kinds: [], methodTiers: ['push'], mfaCapable: true }] as never[]
   const lookup = strengthLookupOf(snapshot)
-  assert.equal(lockoutCount([either], ['push'], viability, snapshot, lookup), 0, 'nobody is locked out of a door with two keys')
-  assert.equal(lockoutCount([both], ['push'], viability, snapshot, lookup), 1)
+  assert.equal(lockoutCount([either], viability, snapshot, lookup), 0, 'nobody is locked out of a door with two keys')
+  assert.equal(lockoutCount([both], viability, snapshot, lookup), 1)
 })
 
 test('a device requirement and an app requirement are two different requirements', () => {
@@ -284,7 +284,7 @@ test('the lockout number is offered only when the answer is known, one operation
     conditions: { users: { includeRoles: [ADMIN_ROLE] }, applications: { includeApplications: ['All'] } },
     grantControls: { operator: 'OR', authenticationStrength: { id: FIDO_ONLY } },
   })
-  assert.equal(lockoutCount([scoped], ['admin', 'other'], viability, snapshot, lookup), 1, 'only the person the policy reaches')
+  assert.equal(lockoutCount([scoped], viability, snapshot, lookup), 1, 'only the person the policy reaches')
   // A scope nothing in the scan settles offers no number at all.
   const byGroup = effectOf({
     displayName: 'p',
@@ -292,7 +292,7 @@ test('the lockout number is offered only when the answer is known, one operation
     conditions: { users: { includeGroups: ['g-1'] }, applications: { includeApplications: ['All'] } },
     grantControls: { operator: 'OR', authenticationStrength: { id: FIDO_ONLY } },
   })
-  assert.equal(lockoutCount([byGroup], ['admin', 'other'], viability, snapshot, lookup), null)
+  assert.equal(lockoutCount([byGroup], viability, snapshot, lookup), null)
   // And neither does a strength nothing describes.
   const blind = effectOf({
     displayName: 'p',
@@ -300,7 +300,7 @@ test('the lockout number is offered only when the answer is known, one operation
     conditions: { users: { includeRoles: [ADMIN_ROLE] }, applications: { includeApplications: ['All'] } },
     grantControls: { operator: 'OR', authenticationStrength: { id: 'not-in-this-tenant' } },
   })
-  assert.equal(lockoutCount([blind], ['admin', 'other'], viability, snapshot, lookup), null)
+  assert.equal(lockoutCount([blind], viability, snapshot, lookup), null)
 })
 
 test('an open policy with nothing to read falls back on nothing at all', () => {
@@ -372,4 +372,158 @@ test('a step whose policy reaches fewer people than the step does is scheduled o
   assert.equal(batchClassOf(narrow), 'mfa', 'what it asks for, not who the step lists')
   const snapshot = scan({ registrationDetails: [registered('u0', [])], roles: { active: {}, eligible: {} } })
   assert.match(stepAccountVerdict(narrow, 'u0', snapshot, {}).reason, /out of scope/, 'excluded by the policy, whatever the step says')
+})
+
+// ---- the payloads inside a submitted body are exact, not merely present ----
+
+test('a session control that is on says what it does', () => {
+  const session = (v: unknown): Record<string, unknown> => policy({ grantControls: null, sessionControls: v as Record<string, unknown> })
+  const freq = (v: Record<string, unknown>): Record<string, unknown> => session({ signInFrequency: { isEnabled: true, authenticationType: 'primaryAndSecondaryAuthentication', ...v } })
+  assert.equal(isCompletePolicy(freq({ frequencyInterval: 'everyTime' })), true)
+  assert.equal(isCompletePolicy(freq({ frequencyInterval: 'everyTime', type: null, value: null })), true, 'Graph writes the two fields as null')
+  assert.equal(isCompletePolicy(freq({ frequencyInterval: 'timeBased', type: 'hours', value: 4 })), true)
+  assert.equal(isCompletePolicy(freq({})), false, 'on, and it never says how often')
+  assert.equal(isCompletePolicy(freq({ frequencyInterval: 'everyTime', type: 'hours', value: 4 })), false, 'every time and every four hours are not both')
+  assert.equal(isCompletePolicy(freq({ frequencyInterval: 'timeBased', type: 'fortnights', value: 1 })), false)
+  assert.equal(isCompletePolicy(freq({ frequencyInterval: 'timeBased', type: 'hours', value: 0 })), false)
+  assert.equal(isCompletePolicy(freq({ frequencyInterval: 'timeBased', type: 'hours' })), false, 'an interval with no number')
+  assert.equal(isCompletePolicy(session({ signInFrequency: { isEnabled: true, authenticationType: 'wishfulThinking', frequencyInterval: 'everyTime' } })), false)
+  assert.equal(isCompletePolicy(session({ persistentBrowser: { isEnabled: true } })), false, 'on, and it never says always or never')
+  assert.equal(isCompletePolicy(session({ persistentBrowser: { isEnabled: true, mode: 'never' } })), true)
+  assert.equal(isCompletePolicy(session({ secureSignInSession: { isEnabled: 'yes' } })), false)
+  assert.equal(isCompletePolicy(session({ secureSignInSession: { isEnabled: true } })), true)
+  assert.equal(isCompletePolicy(session({ cloudAppSecurity: { isEnabled: true } })), false, 'on, and it never says which kind')
+  assert.equal(isCompletePolicy(session({ cloudAppSecurity: { isEnabled: true, cloudAppSecurityType: 'blockDownloads' } })), true)
+})
+
+test('a condition that names things names ones Conditional Access has', () => {
+  const cond = (v: Record<string, unknown>): Record<string, unknown> => policy({ conditions: { ...SCOPE, ...v } })
+  assert.equal(isCompletePolicy(cond({ platforms: { includePlatforms: ['windows', 'macOS'] } })), true)
+  assert.equal(isCompletePolicy(cond({ platforms: { includePlatforms: ['betamax'] } })), false)
+  assert.equal(isCompletePolicy(cond({ authenticationFlows: { transferMethods: 'deviceCodeFlow' } })), true)
+  assert.equal(isCompletePolicy(cond({ authenticationFlows: { transferMethods: 'telepathy' } })), false)
+  assert.equal(
+    isCompletePolicy(policy({ conditions: { users: { includeUsers: ['All'] }, applications: { includeUserActions: ['urn:user:registerdevice'] } } })),
+    true,
+  )
+  assert.equal(isCompletePolicy(policy({ conditions: { users: { includeUsers: ['All'] }, applications: { includeUserActions: ['urn:user:doTheWashing'] } } })), false)
+  const guest = (v: unknown): Record<string, unknown> => policy({ conditions: { users: { includeGuestsOrExternalUsers: v }, applications: { includeApplications: ['All'] } } })
+  assert.equal(isCompletePolicy(guest({ guestOrExternalUserTypes: 'b2bCollaborationGuest,otherExternalUser', externalTenants: { membershipKind: 'all' } })), true)
+  assert.equal(isCompletePolicy(guest({ guestOrExternalUserTypes: 'friendsOfTheFirm', externalTenants: { membershipKind: 'all' } })), false)
+  assert.equal(isCompletePolicy(guest({ guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'enumerated' } })), false, 'one by one, and it names none')
+  assert.equal(isCompletePolicy(guest({ guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'enumerated', members: ['t-1'] } })), true)
+})
+
+// ---- when a policy applies is decoded from the records, or held ----
+
+const RECORDS = {
+  legacyAuth: { userIds: ['legacy'] },
+  deviceCode: { userIds: ['devicecode'] },
+  authTransfer: { userIds: [] },
+  riskHigh: { userIds: ['risky'] },
+  riskMedium: { userIds: ['a-bit-risky'] },
+}
+
+test('the circumstances the records answer are answered, and the rest are held', () => {
+  const people = ['legacy', 'devicecode', 'risky', 'a-bit-risky', 'quiet']
+  const snapshot = scan({
+    registrationDetails: people.map((id) => registered(id, ['microsoftAuthenticatorPush'])),
+    users: people.map((id) => ({ id, userType: 'member', usageLocation: 'AU' })),
+    evidenceUsage: RECORDS,
+  })
+  const blockOf = (conditions: Record<string, unknown>): ReturnType<typeof effectOf> =>
+    effectOf(policy({ conditions: { ...SCOPE, ...conditions }, grantControls: { operator: 'OR', builtInControls: ['block'] } }))
+  // The old protocols, and the two flows: the records name who was seen in them.
+  const legacy = blockOf({ clientAppTypes: ['exchangeActiveSync', 'other'] })
+  assert.equal(policyVerdict(legacy, 'legacy', snapshot, {}).stranded, true)
+  assert.equal(policyVerdict(legacy, 'quiet', snapshot, {}).stranded, false)
+  const deviceCode = blockOf({ authenticationFlows: { transferMethods: 'deviceCodeFlow' } })
+  assert.equal(policyVerdict(deviceCode, 'devicecode', snapshot, {}).stranded, true)
+  assert.equal(policyVerdict(deviceCode, 'legacy', snapshot, {}).stranded, false, 'a different flow is a different question')
+  // A risk level is answered by the sign-ins rated at it, and only at it.
+  const highRisk = effectOf(policy({ conditions: { ...SCOPE, signInRiskLevels: ['high'] } }))
+  assert.equal(operationReach(highRisk, 'risky', snapshot, {}).answer, 'in')
+  assert.equal(operationReach(highRisk, 'a-bit-risky', snapshot, {}).answer, 'out', 'medium is not high')
+  assert.equal(operationReach(highRisk, 'quiet', snapshot, {}).answer, 'out')
+  // The rest are held, whatever else the policy says.
+  for (const [label, conditions] of [
+    ['a platform', { platforms: { includePlatforms: ['windows'] } }],
+    ['a client kind', { clientAppTypes: ['browser'] }],
+    ['a device rule', { devices: { deviceFilter: { mode: 'exclude', rule: 'device.isCompliant -eq True' } } }],
+  ] as [string, Record<string, unknown>][]) {
+    const held = blockOf(conditions)
+    assert.equal(operationReach(held, 'legacy', snapshot, {}).answer, 'unknown', label)
+    assert.equal(policyVerdict(held, 'legacy', snapshot, {}).stranded, false, label)
+  }
+  // Named resources and user actions are circumstances too.
+  const portals = effectOf(policy({ conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['MicrosoftAdminPortals'] } } }))
+  assert.equal(operationReach(portals, 'quiet', snapshot, {}).answer, 'unknown')
+  const registering = effectOf(policy({ conditions: { users: { includeUsers: ['All'] }, applications: { includeUserActions: ['urn:user:registersecurityinfo'] } } }))
+  assert.equal(operationReach(registering, 'quiet', snapshot, {}).answer, 'unknown')
+  // A policy for everything and everyone narrows nothing, and reaches everyone.
+  assert.equal(operationReach(effectOf(policy()), 'quiet', snapshot, {}).answer, 'in')
+})
+
+test('a held circumstance is never a zero, never a short watch, and never a lockout number', () => {
+  const ids = Array.from({ length: 20 }, (_, i) => `u${i}`)
+  const snapshot = scan({
+    registrationDetails: ids.map((id) => registered(id, ['microsoftAuthenticatorPush'])),
+    users: ids.map((id) => ({ id, userType: 'member' })),
+    config: { authStrengths: { status: 'ok', reason: null, rows: [{ id: 'fido', displayName: 'Keys', allowedCombinations: ['fido2'] }] } },
+    evidenceUsage: RECORDS,
+  })
+  const viability = ids.map((id) => ({ userId: id, activity: 'active', mfaCapable: true, registered: ['microsoftAuthenticatorPush'], kinds: [], methodTiers: ['push'] })) as never[]
+  const platformScoped = effectOf({
+    displayName: 'p',
+    state: 'enabled',
+    conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, platforms: { includePlatforms: ['windows'] } },
+    grantControls: { operator: 'OR', authenticationStrength: { id: 'fido' } },
+  })
+  assert.equal(lockoutCount([platformScoped], viability, snapshot, strengthLookupOf(snapshot)), null, 'nobody can say who signs in from Windows')
+  const withBody = stepFor(
+    [
+      {
+        displayName: 'p',
+        state: 'enabled',
+        conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, platforms: { includePlatforms: ['windows'] } },
+        grantControls: { operator: 'OR', authenticationStrength: { id: 'fido' } },
+      },
+    ],
+    { population: population(ids), evidence: { status: 'ok', lines: [], affectedUserIds: [] } },
+  )
+  assert.equal(nobodyAffected(withBody), false, 'no records answer for a platform, so no zero')
+  assert.equal(observationDaysFor(withBody), 7)
+  assert.notEqual(batchClassOf(withBody), 'zero')
+})
+
+// ---- the operator is in scope when the operation says so ----
+
+test('the operator is in scope of an operation, not of the step', () => {
+  const ADMIN_ROLE = '62e90394-69f5-4237-9190-012177145e10'
+  const snapshot = scan({
+    registrationDetails: [registered('op', ['fido2SecurityKey'])],
+    users: [{ id: 'op', userType: 'member', usageLocation: 'AU' }],
+    roles: { active: { op: [ADMIN_ROLE] }, eligible: {} },
+    evidenceUsage: RECORDS,
+  })
+  const admins = effectOf(policy({ conditions: { users: { includeRoles: [ADMIN_ROLE] }, applications: { includeApplications: ['All'] } } }))
+  assert.equal(operationReach(admins, 'op', snapshot, {}).answer, 'in')
+  const others = effectOf(policy({ conditions: { users: { includeUsers: ['All'], excludeRoles: [ADMIN_ROLE] }, applications: { includeApplications: ['All'] } } }))
+  assert.equal(operationReach(others, 'op', snapshot, {}).answer, 'out', 'the policy excludes the role they hold')
+  const legacyBlock = effectOf(policy({ conditions: { ...SCOPE, clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } }))
+  assert.equal(operationReach(legacyBlock, 'op', snapshot, {}).answer, 'out', 'and the records never saw them on the old protocols')
+})
+
+test('session-only work is placed, and never on optimistic silence', () => {
+  const ids = Array.from({ length: 20 }, (_, i) => `u${i}`)
+  const shorter = scheduleStep(
+    's-session',
+    [policy({ grantControls: null, sessionControls: { signInFrequency: { isEnabled: true, frequencyInterval: 'everyTime', authenticationType: 'primaryAndSecondaryAuthentication' } } })],
+    { population: population(ids) },
+  )
+  assert.equal(nobodyAffected(shorter), false, 'a shorter session is felt by everyone the policy reaches')
+  assert.equal(batchClassOf(shorter), 'deviceSession')
+  assert.equal(observationDaysFor(shorter), 7)
+  const s = buildSchedule([shorter], MON, 100)
+  assert.ok(s.waves.some((w) => w.stepIds.includes('s-session')))
 })

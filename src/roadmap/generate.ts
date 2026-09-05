@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { accountApplicability, isOpenPolicy, isValidOperation, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import { isOpenPolicy, isValidOperation, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
@@ -25,7 +25,7 @@ import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers, notPeopleIds } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { lockoutCount } from './lockout.ts'
-import { accountVerdict, stepAccountVerdict } from './strand.ts'
+import { accountVerdict, operationReach, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor } from './timing.ts'
 import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
@@ -1047,14 +1047,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const operatorEffects = isOpenPolicy(asStep) ? stepEffects(asStep) : []
     const includesOperator =
       operatorId !== null &&
-      (operatorEffects.length > 0
-        ? operatorEffects.some((e) => accountApplicability(e.scope, operatorId, snapshot, strandContext) !== 'out')
+      (isOpenPolicy(asStep)
+        ? // An open policy answers for itself, conditions and all
+          // (roadmap/strand.ts operationReach). One the plan cannot read is
+          // treated as reaching the operator: its safety is then unknown, and
+          // unknown is not safe.
+          operatorEffects.length === 0 || operatorEffects.some((e) => operationReach(e, operatorId, snapshot, strandContext).answer !== 'out')
         : popIds.includes(operatorId))
     // The strand simulator decides (roadmap-v2.md §7): the same check the
     // property tests run, so a step that would lock the operator out is
     // never offered as ready.
     const opVerdict = includesOperator && operatorId !== null ? stepAccountVerdict(asStep, operatorId, snapshot, strandContext) : null
-    const stepLockout = lockoutCount(stepEffects(asStep), popIds, viability, snapshot, strandContext.strengths, excluded, strandContext)
+    const stepLockout = lockoutCount(stepEffects(asStep), viability, snapshot, strandContext.strengths, excluded, strandContext)
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
     if (opVerdict?.stranded && status !== 'done') {
