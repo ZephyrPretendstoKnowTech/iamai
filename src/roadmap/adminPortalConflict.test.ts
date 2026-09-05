@@ -146,10 +146,14 @@ test('who this touches no longer claims the policy spares administrators', () =>
   assert.equal(/admins group/i.test(who), false, 'no line names an admins group')
   assert.equal(/Nobody outside/i.test(who), false, 'no line claims nobody outside the group is touched')
   assert.equal(/blocked from \{enforce\}/.test(who), false, 'no line promises an enforcement date this step cannot reach')
-  assert.match(who, /targets every one of them/, 'the lead says the exported policy targets everyone')
-  // The lead renders: its variables are all produced.
-  assert.equal(typeof ex.active, 'number')
-  assert.equal(typeof ex.adminCount, 'number')
+  assert.match(who, /targets every account in the directory/, 'the lead says what the exported policy targets')
+  // And it says it without a count. There is no operation here for a count to be
+  // a count of: the baseline contradicts itself, the plan writes nothing, and a
+  // number taken from the goal's population would be this step's own guess at
+  // who a policy nobody can write reaches (Foundation A).
+  assert.equal(ex.active, undefined, 'no active count is claimed')
+  assert.equal(ex.adminCount, undefined, 'no admin count is claimed')
+  assert.equal(ex.n, undefined, 'and no {n}')
 })
 
 test('the rest of the plan still generates, and emergency access is unchanged', () => {

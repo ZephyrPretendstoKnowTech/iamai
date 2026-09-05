@@ -24,10 +24,12 @@ import { join } from 'node:path'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { accountApplicability, effectOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
-import { canDenyAccess, effectsOf, familyReading, measuredReach, operationReach, promptsPeople, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
+import { canDenyAccess, effectsOf, familyReading, measuredReach, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
 import { batchClassOf, buildSchedule, dependencyGraph, observationDaysFor } from './schedule.ts'
 import { eventsFor, nobodyAffected, noticeDaysFor } from './timing.ts'
-import { proposeRings, ringContextIndexes } from './rings.ts'
+import { proposeRings, ringContextIndexes, rolloutCohort } from './rings.ts'
+import { reached, stepPopulation } from '../derive/population.ts'
+import { rowWho } from '../ui/surfaces/rowWho.ts'
 import { hasBaselineConflict } from './baselineConflict.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
@@ -46,6 +48,180 @@ const fixtures = allFixtures()
 /** Every fixture's plan, derived once: the runs are memoised, the open policies are not. */
 const runs = fixtures.map((f) => ({ f, r: runFixture(f) }))
 const openPolicies = (steps: Step[]): Step[] => steps.filter((s) => isOpenPolicy(s))
+
+// ---- 1a: the rollout cohort, at the generator ----
+//
+// The sweeps below perturb a finished plan, which cannot see a number that was
+// already worked out and written down while the plan was being built — a ring
+// membership, an announcement's audience. These four build the plan instead.
+
+/** The people a step's own policies name, taken from the step as generated. */
+const cohortOf = (step: Step): string[] | null => rolloutCohort(step)?.slice().sort() ?? null
+
+/** Who the scan can prove is in a group, as the engine reads it: a sampled list proves nobody out. */
+const membersOf = (f: Fixture): { groupMembers: Record<string, string[]> } => ({
+  groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
+})
+
+test('a rollout is the people the policy names, even where the goal is filed under a narrower few', () => {
+  // GetIAMAI's guests goal: the baseline's policy for it targets All users and
+  // excludes only the exclusions group, while the goal's own expectedWho is
+  // `guests` and the tenant has one guest, who is not even active. The rollout is
+  // eleven people because the policy names eleven people. A goal population used
+  // as an upper bound would have proposed a rollout of one — or, since that one
+  // guest is dormant, a who-line reading "nobody affected".
+  const { f, r } = runs.find((x) => x.f.name === 'getiamai') as { f: Fixture; r: FixtureRun }
+  const step = r.steps.find((x) => x.id === 's-goal-guests-mfa') as Step
+  assert.ok(step && isOpenPolicy(step), 'the guests step is an open policy')
+  const effects = stepEffects(step)
+  assert.ok(effects.length > 0 && effects.every((e) => e.scope.allUsers), 'and its policy names all users')
+
+  const cohort = cohortOf(step)
+  assert.ok(cohort !== null, 'whose scope the scan can settle')
+  const named = f.snapshot.users.filter((u) => effects.some((e) => accountApplicability(e.scope, u.id, f.snapshot as never, membersOf(f)) === 'in')).map((u) => u.id)
+  assert.deepEqual(cohort, named.slice().sort(), 'the cohort is exactly the accounts the policy names')
+
+  // The goal's own population is narrower, and decides none of it.
+  assert.ok(step.population.ids.length < cohort.length, `the goal lists fewer (${step.population.ids.length}) than the policy names (${cohort.length})`)
+  const members = step.rings.flatMap((x) => x.targeting.suggestedMemberIds)
+  assert.deepEqual(members.slice().sort(), cohort, 'every ring member comes from the policy, and everyone the policy names is in a ring')
+  assert.equal(step.rings.reduce((n, x) => n + x.targeting.memberCount, 0), cohort.length, 'and the counts say so')
+  // The who-line and the audience read the same authority. The goal's one guest
+  // is dormant, so a goal-derived line would have read "nobody affected".
+  assert.equal(step.population.active, 0, 'the goal population holds nobody active')
+  const view = stepPopulation(step)
+  assert.ok(view !== null && view.active > 0, 'the surfaces count the people the policy names')
+  assert.notEqual(rowWho(step, (id) => r.input.names!.label(id)), 'nobody affected', 'and the row does not report a rollout of nobody')
+})
+
+test('the same policy under a different goal population rolls out to the same people and says the same thing', () => {
+  // The inverse: the goal population is rewritten on every goal before the plan
+  // is built — `all` becomes the core admins and everything else becomes `all` —
+  // while the operations, the directory and the mapping are untouched. Readiness
+  // moves, and it is allowed to: it is a fact about a goal. The cohort, the ring
+  // plan, the counts and the announcement are facts about a policy and may not.
+  for (const name of ['getiamai', 'small', 'mid'] as const) {
+    const { f, r } = runs.find((x) => x.f.name === name) as { f: Fixture; r: FixtureRun }
+    const coverage = structuredClone(r.coverage)
+    for (const result of coverage.results) {
+      for (const impl of result.goal.implementations) impl.expectedWho = impl.expectedWho.kind === 'all' ? { kind: 'coreAdmins' } : { kind: 'all' }
+    }
+    const moved = runFixture(f, { coverage })
+    let compared = 0
+    for (const s of openPolicies(r.steps)) {
+      const other = moved.steps.find((x) => x.id === s.id)
+      if (!other) continue
+      assert.deepEqual(stepEffects(other), stepEffects(s), `${name} ${s.id}: the operations are what this test holds fixed`)
+      // A step whose population the engine sets from the tenant itself rather
+      // than from the goal (the device steps name the people on a phone) does
+      // not move, and proves nothing here.
+      if (JSON.stringify(other.population.ids) !== JSON.stringify(s.population.ids)) compared += 1
+      assert.deepEqual(cohortOf(other), cohortOf(s), `${name} ${s.id}: the cohort follows the policy`)
+      const ringPlan = (x: Step): string[] => x.rings.map((ring) => `${ring.name}:${ring.targeting.memberCount}:${[...ring.targeting.suggestedMemberIds].sort().join(',')}`)
+      assert.deepEqual(ringPlan(other), ringPlan(s), `${name} ${s.id}: and so does the ring plan`)
+      assert.equal(other.comms, s.comms, `${name} ${s.id}: and who the announcement greets`)
+      assert.deepEqual(stepPopulation(other), stepPopulation(s), `${name} ${s.id}: and every count a surface shows`)
+    }
+    assert.ok(compared > 2, `${name}: the goal population really moved under several open policies (${compared})`)
+  }
+})
+
+test('an emergency account leaves a rollout because the policy excludes it, and never because a ring plan did', () => {
+  // Every fixture, as generated. Two halves: the emergency accounts are in no
+  // ring, and the reason is in the policy — each one is out of scope of every
+  // operation the step will run. Nothing in rings.ts takes them out, so a policy
+  // that stopped excluding them fails this rather than being quietly rewritten.
+  for (const { f, r } of runs) {
+    const evidence = membersOf(f)
+    for (const bg of f.mapping.breakGlassUserIds) {
+      for (const s of openPolicies(r.steps)) {
+        const effects = stepEffects(s)
+        if (effects.length === 0) continue
+        const out = effects.every((e) => accountApplicability(e.scope, bg, f.snapshot as never, evidence) === 'out')
+        assert.equal(out, true, `${f.name} ${s.id}: every policy the plan proposes excludes the emergency account`)
+        assert.equal((cohortOf(s) ?? []).includes(bg), false, `${f.name} ${s.id}: so it is in no cohort`)
+        assert.equal(s.rings.some((x) => x.targeting.suggestedMemberIds.includes(bg)), false, `${f.name} ${s.id}: and in no ring`)
+      }
+    }
+  }
+})
+
+test('a ring plan does not remove an account the policy keeps: the safety boundary holds that', () => {
+  // A policy that names all users and excludes nobody, with an emergency account
+  // in the tenant. The rollout includes it, because the policy does. What must
+  // not happen is a ring plan silently taking it out and leaving the plan
+  // claiming a rollout the policy does not describe.
+  const body = {
+    displayName: 'p',
+    state: 'enabledForReportingButNotEnforced',
+    conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } },
+    grantControls: { operator: 'OR', builtInControls: ['mfa'] },
+  }
+  const snapshot = { users: [{ id: 'u1', userType: 'member' }, { id: 'bg', userType: 'member' }], roles: { active: {} }, devices: [], registrationDetails: [], sources: {}, config: {} }
+  const step = {
+    id: 's-open',
+    goalId: 'mfa-all-users',
+    kind: 'create',
+    status: 'ready',
+    readiness: { family: 'mfa', percent: 100, lines: [] },
+    population: { total: 2, active: 2, admins: 0, guests: 0, ids: ['u1', 'bg'], activeIds: ['u1', 'bg'], inScope: 2 },
+    cohort: { total: 2, active: 2, admins: 0, guests: 0, ids: ['u1', 'bg'], activeIds: ['u1', 'bg'], inScope: 2 },
+    rings: [],
+    action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', body }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
+  } as unknown as Step
+  const ringCtx = { snapshot, viability: new Map(), highCareIds: new Set<string>(), operatorId: null, naming: { style: 'none' }, activeUsers: 2, departmentOf: new Map(), deviceReady: new Set<string>() }
+  const rings = proposeRings(step, ringCtx as never)
+  assert.deepEqual(rings.flatMap((x) => x.targeting.suggestedMemberIds).sort(), ['bg', 'u1'], 'the account the policy keeps is in the rollout')
+  // And the safety boundary is what has something to say about it: the policy
+  // reaches the account, and would strand it where it cannot meet the demand.
+  assert.equal(stepApplicability(step, 'bg', snapshot as never), 'in')
+  assert.equal(wouldStrand(step, 'bg', snapshot as never, { breakGlass: true }).stranded, true, 'and it is stranded by a policy that asks it for a method it has not got')
+  // The same policy with the account excluded: out of the rollout, by the policy.
+  const excluded = structuredClone(step)
+  const b = excluded.action.resolution!.policies[0].body as { conditions: { users: Record<string, unknown> } }
+  b.conditions.users.excludeUsers = ['bg']
+  const cohort = scopeCohort(stepEffects(excluded), ['u1', 'bg'], snapshot as never)
+  assert.deepEqual(cohort, ['u1'], 'the policy answers, not the ring code')
+  excluded.cohort = { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 }
+  assert.deepEqual(proposeRings(excluded, ringCtx as never).flatMap((x) => x.targeting.suggestedMemberIds), ['u1'])
+})
+
+test('a policy the plan cannot resolve a scope for proposes no rollout at all', () => {
+  // A readable policy naming a group nothing says who is in. Everything about it
+  // decodes — it asks for MFA, it names one group — so `analysisUnknown` is false
+  // and only the cohort stands between the goal's people and a ring plan.
+  const body = {
+    displayName: 'p',
+    state: 'enabledForReportingButNotEnforced',
+    conditions: { users: { includeGroups: ['00000000-0000-4000-8000-0000000000aa'] }, applications: { includeApplications: ['All'] } },
+    grantControls: { operator: 'OR', builtInControls: ['mfa'] },
+  }
+  const effect = effectOf(body)
+  assert.deepEqual(effect.unknown, [], 'the policy itself is read in full')
+  const snapshot = { users: [{ id: 'u1', userType: 'member' }], roles: { active: {} }, devices: [] }
+  assert.equal(scopeCohort([effect], ['u1'], snapshot as never), null, 'but who it reaches is nobody’s answer')
+  // With the membership read it is an exact cohort again: unknown is a gap in the
+  // evidence, not a verdict about the policy.
+  assert.deepEqual(scopeCohort([effect], ['u1'], snapshot as never, { groupMembers: { '00000000-0000-4000-8000-0000000000aa': ['u1'] } }), ['u1'])
+
+  const step = {
+    id: 's-unresolved',
+    goalId: 'mfa-all-users',
+    kind: 'create',
+    status: 'ready',
+    readiness: { family: 'mfa', percent: 100, lines: [] },
+    population: { total: 2, active: 2, admins: 0, guests: 0, ids: ['u1', 'u2'], activeIds: ['u1', 'u2'], inScope: 2 },
+    rings: [],
+    action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', body }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
+  } as unknown as Step
+  assert.equal(rolloutCohort(step), null, 'the step has no cohort')
+  assert.equal(reached(step), null, 'and no population a surface may show')
+  assert.equal(stepPopulation(step), null, 'so no count is claimed')
+  const ringCtx = { snapshot, viability: new Map(), highCareIds: new Set<string>(), operatorId: null, naming: { style: 'none' }, activeUsers: 2, departmentOf: new Map(), deviceReady: new Set<string>() }
+  assert.deepEqual(proposeRings(step, ringCtx as never), [], 'and no ring names people nobody has established are in scope')
+  // The goal's population is right there, and none of it came from there.
+  assert.equal(step.population.ids.length, 2)
+})
 
 // ---- 2: exact, or explicitly unknown ----
 
@@ -114,9 +290,9 @@ test('a field nothing consumes is held by name rather than read as absent', () =
  * and the author's own metadata are all here. If any real output moves, a
  * consumer is reading one of them.
  */
-function perturbations(step: Step): { why: string; step: Step; rollout?: true; words?: true }[] {
+function perturbations(step: Step): { why: string; step: Step; words?: true }[] {
   const strangers = ['00000000-0000-4000-8000-00000000dead', '00000000-0000-4000-8000-00000000beef']
-  const out: { why: string; step: Step; rollout?: true; words?: true }[] = []
+  const out: { why: string; step: Step; words?: true }[] = []
   for (const family of FAMILIES) if (family !== step.readiness.family) out.push({ why: `family ${family}`, step: { ...step, readiness: { ...step.readiness, family } } })
   // The readiness percentage is shown on the step as the readiness measure — "26%,
   // the plan waits for 80%" — which is a fact about people, not a reading of the
@@ -124,12 +300,14 @@ function perturbations(step: Step): { why: string; step: Step; rollout?: true; w
   // words.
   out.push({ why: 'readiness 0%', words: true, step: { ...step, readiness: { ...step.readiness, percent: 0 } } })
   out.push({ why: 'readiness 100%', words: true, step: { ...step, readiness: { ...step.readiness, percent: 100 } } })
-  // `rollout` marks the one thing a ring plan legitimately reads: which people
-  // this rollout is for. The policy's own scope still filters them, and a policy
-  // whose analysis cannot be settled has no ring plan at all, so the ring
-  // membership is compared under every other perturbation and not this one.
-  out.push({ why: 'a foreign population', rollout: true, step: { ...step, population: { ...step.population, ids: strangers, activeIds: strangers, active: strangers.length, total: strangers.length } } })
-  out.push({ why: 'an empty population', rollout: true, step: { ...step, population: { ...step.population, ids: [], activeIds: [], active: 0, total: 0 } } })
+  // The people the step lists. There is no exemption for the rollout: which
+  // accounts a policy's rollout is for is the policy's own user scope
+  // (roadmap/strand.ts scopeCohort, carried on the step as `cohort`), so the ring
+  // plan, the ring members, the who-line and the audience are all compared under
+  // these two like everything else. A goal population that is an upper bound on
+  // the rollout is the whole defect this pair exists to catch.
+  out.push({ why: 'a foreign population', step: { ...step, population: { ...step.population, ids: strangers, activeIds: strangers, active: strangers.length, total: strangers.length } } })
+  out.push({ why: 'an empty population', step: { ...step, population: { ...step.population, ids: [], activeIds: [], active: 0, total: 0 } } })
   out.push({ why: 'evidence naming strangers', step: { ...step, evidence: { status: 'ok', lines: [], affectedUserIds: strangers } } })
   out.push({ why: 'evidence naming nobody', step: { ...step, evidence: { status: 'ok', lines: [], affectedUserIds: [] } } })
   out.push({ why: 'no evidence at all', step: { ...step, evidence: { status: 'none', lines: [], affectedUserIds: [] } } })
@@ -155,16 +333,16 @@ function perturbations(step: Step): { why: string; step: Step; rollout?: true; w
       },
     },
   })
-  return out as { why: string; step: Step }[]
+  return out
 }
 
 /** Every conclusion an open policy owns, as one comparable string. */
-function readingOf(step: Step, f: Fixture, r: FixtureRun, others: Step[], withRings = true): string {
+function readingOf(step: Step, f: Fixture, r: FixtureRun, others: Step[]): string {
   const anyone = r.viability[0]?.userId ?? 'nobody'
   const plan = others.map((x) => (x.id === step.id ? step : x))
   const graph = dependencyGraph(plan)
   const schedule = buildSchedule(plan, r.schedule.start, r.viability.length)
-  const ringCtx = { snapshot: f.snapshot, viability: new Map(r.viability.map((v) => [v.userId, v])), breakGlassIds: new Set(f.mapping.breakGlassUserIds), highCareIds: new Set<string>(), operatorId: f.operatorId, naming: r.coverage.organisation.naming, activeUsers: r.viability.length, ...ringContextIndexes(f.snapshot) }
+  const ringCtx = { snapshot: f.snapshot, viability: new Map(r.viability.map((v) => [v.userId, v])), highCareIds: new Set<string>(), operatorId: f.operatorId, naming: r.coverage.organisation.naming, activeUsers: r.viability.length, ...ringContextIndexes(f.snapshot) }
   return JSON.stringify([
     // Applicability, operator safety and strand.
     stepApplicability(step, anyone, f.snapshot),
@@ -183,8 +361,11 @@ function readingOf(step: Step, f: Fixture, r: FixtureRun, others: Step[], withRi
     schedule.waveOf[step.id] ?? null,
     schedule.waves.find((w) => w.stepIds.includes(step.id))?.start ?? null,
     eventsFor(step, { rhythm: r.schedule.rhythm, timeZone: 'UTC' } as never, schedule.start),
-    // Rings.
-    withRings ? proposeRings(step, ringCtx as never).map((x) => `${x.name}:${x.targeting.memberCount}:${x.soakDays}`) : proposeRings(step, ringCtx as never).map((x) => `${x.name}:${x.soakDays}`),
+    // Rings: the plan, the counts and the members by name.
+    proposeRings(step, ringCtx as never).map((x) => `${x.name}:${x.targeting.memberCount}:${x.soakDays}:${[...x.targeting.suggestedMemberIds].sort().join(',')}`),
+    // The rollout cohort itself, and the people the surfaces name for the step.
+    rolloutCohort(step)?.slice().sort() ?? null,
+    stepPopulation(step),
     // Implementation and export gating.
     unavailableReason(step),
     implementationOffered(step),
@@ -200,9 +381,9 @@ test('nothing but the operation decides what an open policy does', () => {
   for (const { f, r } of runs) {
     for (const s of openPolicies(r.steps)) {
       assert.equal(familyReading(s), null, `${f.name} ${s.id}: the family answers for no open policy`)
-      for (const { why, step, rollout } of perturbations(s)) {
-        const asGenerated = readingOf(s, f, r, r.steps, rollout !== true)
-        const moved = readingOf(step, f, r, r.steps, rollout !== true)
+      for (const { why, step } of perturbations(s)) {
+        const asGenerated = readingOf(s, f, r, r.steps)
+        const moved = readingOf(step, f, r, r.steps)
         if (moved !== asGenerated) failures.push(`${f.name} ${s.id}: ${why} moved the reading\n  was ${asGenerated}\n  now ${moved}`)
       }
     }
@@ -217,25 +398,26 @@ test('nothing but the operation decides what an open policy tells people or offe
   const failures: string[] = []
   for (const { f, r } of runs) {
     const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names?.label(id) ?? id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming } as never
-    // The step's Who line counts the people this rollout is for, which is what
-    // the step's list is: it is compared under every perturbation but that one.
-    const wordsOf = (step: Step, withWho: boolean): string => {
+    // The step's Who line counts the people this rollout is for, and for an open
+    // policy those are the people its own policy names: it is compared under
+    // every perturbation, this one included.
+    const wordsOf = (step: Step): string => {
       const ex = stepVars(step, ctx) as Record<string, unknown>
-      return JSON.stringify([stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), withWho ? stepLines(step, ctx) : null, ex.strengthName ?? null, ex.wanted ?? null, ex.wantedLong ?? null, step.comms])
+      return JSON.stringify([stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), stepLines(step, ctx), rowWho(step, (id) => (ctx as { nameOf: (x: string) => string }).nameOf(id)), ex.active ?? null, ex.n ?? null, ex.admins ?? null, ex.guests ?? null, ex.strengthName ?? null, ex.wanted ?? null, ex.wantedLong ?? null, step.comms])
     }
     // One family value is enough to catch a family read here; the sweep above
     // walks all eight against every consequence. The words are the expensive
     // half — a whole content render per step — so they are not walked twice.
     for (const s of openPolicies(r.steps)) {
       let seenFamily = false
-      for (const { why, step, rollout, words } of perturbations(s)) {
+      for (const { why, step, words } of perturbations(s)) {
         if (words === true) continue
         if (why.startsWith('family ')) {
           if (seenFamily) continue
           seenFamily = true
         }
-        const asGenerated = wordsOf(s, rollout !== true)
-        const moved = wordsOf(step, rollout !== true)
+        const asGenerated = wordsOf(s)
+        const moved = wordsOf(step)
         if (moved !== asGenerated) failures.push(`${f.name} ${s.id}: ${why} moved the words\n  was ${asGenerated.slice(0, 400)}\n  now ${moved.slice(0, 400)}`)
       }
     }

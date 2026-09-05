@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { activePeopleIds, campaignIdsFor, stepPopulation } from './population.ts'
+import { activePeopleIds, campaignIdsFor, reached, stepPopulation } from './population.ts'
 import { whoLine, populationLine, affectedIds } from './whoLine.ts'
 import { todayView } from './today.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
@@ -15,13 +15,21 @@ test('the row and the step body read the same population, for every step on ever
   const nameOf = (id: string): string => id
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) {
+      // One source for both: the people the step is about (reached) — its own
+      // policy's scope for an open policy, the goal's population otherwise.
+      const of = reached(s)
       const pop = stepPopulation(s)
-      assert.equal(pop.active, affectedIds(s.population).length, `${f.name} ${s.id}: active count`)
+      if (of === null) {
+        assert.equal(pop, null, `${f.name} ${s.id}: an unsettled scope claims no count`)
+        continue
+      }
+      assert.ok(pop !== null)
+      assert.equal(pop.active, affectedIds(of).length, `${f.name} ${s.id}: active count`)
       assert.ok(pop.enabledCovered >= pop.active, `${f.name} ${s.id}: enabledCovered is at least active`)
-      const who = whoLine(s.population, nameOf)
+      const who = whoLine(of, nameOf)
       const m = who.match(/^(\d+) (?:person|people)/)
       if (m) assert.equal(Number(m[1]), pop.active, `${f.name} ${s.id}: the row who-line count is the population's active count`)
-      const line = populationLine(s.population)
+      const line = populationLine(of)
       const lm = line.match(/^(\d+) active (?:person|people)/)
       if (lm) assert.equal(Number(lm[1]), pop.active, `${f.name} ${s.id}: the step body population line is the same active count`)
     }
@@ -41,7 +49,12 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
     for (const s of r.steps) {
       const ex = stepVars(s, ctx) as Record<string, unknown>
       const view = stepPopulation(s)
-      const row = whoLine(s.population, nameOf)
+      const of = reached(s)
+      if (view === null || of === null) {
+        assert.equal(ex.n, undefined, `${name} ${s.id}: an unsettled scope names no count`)
+        continue
+      }
+      const row = whoLine(of, nameOf)
       const m = row.match(/^(\d+) (?:person|people|accounts?)/)
       const rowCount = m ? Number(m[1]) : row.startsWith('nobody affected') ? 0 : row.split(' · ')[0].split(/, | and /).length
       assert.equal(rowCount, view.active, `${name} ${s.id}: the row's count is the population's (${row})`)

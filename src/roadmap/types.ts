@@ -210,6 +210,19 @@ export type Step = {
    */
   measured?: { ids: string[] }
   /**
+   * The rollout cohort: the accounts this step's own policies *name*, read from
+   * their user scope and resolved where the snapshot is (roadmap/strand.ts
+   * scopeCohort). The rings, the who-line, the names and the announcement's
+   * audience are this and nothing else.
+   *
+   * Absent on a step with no policy of its own — one already in place, the
+   * enforce step, a prerequisite — which is bounded by the people it lists, as
+   * it always was; and absent on an open policy whose scope could not be
+   * settled, where an exact cohort is then never claimed and never filled in
+   * from `population`.
+   */
+  cohort?: StepPopulation
+  /**
    * The one binding reason while blocked (target-state §8.5): at most twelve
    * words, in one of three shapes; null otherwise. The full list is `blockers`.
    */

@@ -305,6 +305,45 @@ export function policiesOverlap(a: Step, b: Step): boolean {
 }
 
 /**
+ * The accounts a step's own policies *name*: their user scope, and nothing else.
+ * Who each policy includes and excludes, by account, by group, by directory role
+ * and by guest clause, resolved against the directory and the group memberships
+ * the scan actually read.
+ *
+ * A circumstance is not a scope. Risk, place, platform, client app, a device
+ * rule, an authentication context and the resources a policy names all say
+ * *when* it applies; none of them says which accounts belong to it, so nobody
+ * leaves a rollout because the records happen to show no risky sign-in this
+ * month. Who the records show a policy touching is the other question, and
+ * `measuredReach` answers it.
+ *
+ * Null — not empty — wherever the scope cannot be settled for even one account:
+ * a policy IAMAI could not read in full, a group nothing says who is in, a guest
+ * clause the directory cannot answer. A cohort is proved here or it is not
+ * claimed, and nothing fills the gap from the goal the step is filed under.
+ */
+export function scopeCohort(
+  effects: readonly PolicyEffect[],
+  accounts: readonly string[],
+  snapshot: TenantSnapshot,
+  ctx: StrandContext = {},
+): string[] | null {
+  if (effects.length === 0) return null
+  if (effects.some((e) => e.unknown.length > 0)) return null
+  const out: string[] = []
+  for (const id of accounts) {
+    let named = false
+    for (const effect of effects) {
+      const answer = accountApplicability(effect.scope, id, snapshot as never, ctx)
+      if (answer === 'unknown') return null
+      if (answer === 'in') named = true
+    }
+    if (named) out.push(id)
+  }
+  return out
+}
+
+/**
  * Who the records show a step's own policies touching, person by person, from
  * each policy's own conditions and the evidence those conditions are about.
  * Null — not empty — wherever the answer is not known: a policy IAMAI cannot

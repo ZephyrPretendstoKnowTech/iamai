@@ -10,6 +10,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 import { redactDeep as redactDeepShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
+import { reached } from '../derive/population.ts'
 
 export type PromptKind = 'announcement' | 'reminder' | 'helpDesk' | 'manager' | 'changeRecord' | 'executive' | 'wholePlan'
 
@@ -146,14 +147,14 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
       tracking: s.tracking ? { state: s.tracking.state, enforcedAt: s.tracking.enforcedAt, evidenceQuality: s.tracking.evidenceQuality } : null,
     }
     return v
-      ? { ...data, title: v.title, why: v.why, whatToDo: v.whatToDo, doneWhen: v.doneWhen, dates: v.dates, ifWrong: v.ifWrong, population: s.population.active }
+      ? { ...data, title: v.title, why: v.why, whatToDo: v.whatToDo, doneWhen: v.doneWhen, dates: v.dates, ifWrong: v.ifWrong, population: reached(s)?.active ?? null }
       : {
           ...data,
           events: s.events,
           title: s.title,
           plainTitle: s.plainTitle,
           why: s.why,
-          population: s.population.active,
+          population: reached(s)?.active ?? null,
           rings: s.rings.map((r) => ({ name: r.name, plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })),
           forManager: s.forManager,
         }
