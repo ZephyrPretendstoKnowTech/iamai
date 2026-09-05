@@ -3,6 +3,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import { RETIRED_DECISION_STEPS } from './baselineConflict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { trackExecution } from './tracking.ts'
+import type { TrackingEvidence } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { engine } from '../content/content.ts'
 import { setState, stateForStatus, statusRank } from './lifecycle.ts'
@@ -59,8 +60,21 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
 
 // Detection on every scan (roadmap-v2.md §5) lives in tracking.ts; this
 // keeps the entry point the page and the tests call.
-export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string, planCreatedAt: string | null = null, observations: Record<string, StepObservation> | null = null): Step[] {
-  return trackExecution(steps, snapshot, coverage, planId, now, observations ?? {})
+export function applyProgress(
+  steps: Step[],
+  snapshot: TenantSnapshot,
+  coverage: CoverageReport,
+  planId: string,
+  now?: string,
+  planCreatedAt: string | null = null,
+  observations: Record<string, StepObservation> | null = null,
+  // What a deployed policy's scope is resolved against (tracking.ts
+  // TrackingEvidence): the group memberships the scan read. Absent leaves the
+  // scope of any policy that names a group unknown, which is conservative and
+  // never a fallback to the goal's population.
+  scopeEvidence: TrackingEvidence = {},
+): Step[] {
+  return trackExecution(steps, snapshot, coverage, planId, now, observations ?? {}, scopeEvidence)
 }
 
 // ---- Decisions-only record (prompt 50.1 item 1) ----

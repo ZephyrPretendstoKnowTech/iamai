@@ -30,7 +30,29 @@ import { eventsFor, nobodyAffected, noticeDaysFor } from './timing.ts'
 import { proposeRings, ringContextIndexes, rolloutCohort } from './rings.ts'
 import { announcementFor } from '../copy/announcements.ts'
 import { scenarioLinesFor } from './scenarioLines.ts'
-import { policySemantics } from './generate.ts'
+import { controlNoteFor, policySemantics } from './generate.ts'
+import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
+import { applyProgress } from './progress.ts'
+import { matchPolicy } from './tracking.ts'
+import { readyWhen } from '../derive/readyWhen.ts'
+import { activePeopleIds } from '../derive/population.ts'
+import { notPeopleIds } from '../derive/sets.ts'
+
+/** What the step's own policies ask for, read the way generate.ts reads it. */
+function grantOfStepForTest(step: Step): 'mfa' | 'phishingResistant' | 'block' | 'compliantDevice' | 'compliantApplication' | 'approvedApplication' | 'passwordChange' | null {
+  const effects = stepEffects(step)
+  if (effects.some((e) => e.blocks)) return 'block'
+  for (const e of effects) {
+    for (const r of e.requirements) {
+      if (r.kind === 'strength') return 'phishingResistant'
+      if (r.kind === 'device') return 'compliantDevice'
+      if (r.kind === 'app') return r.control === 'approvedapplication' ? 'approvedApplication' : 'compliantApplication'
+      if (r.kind === 'passwordChange') return 'passwordChange'
+      if (r.kind === 'mfa') return 'mfa'
+    }
+  }
+  return null
+}
 import { reached, stepPopulation } from '../derive/population.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
 import { hasBaselineConflict } from './baselineConflict.ts'
@@ -283,12 +305,12 @@ test('a policy about a place says so from its own conditions, not from the goal'
   // location condition are both on the policy, and both are what the message is
   // about. Neither the goal id nor the family is passed.
   const registration = policySemantics([effectFor({ ...ALL_USERS, applications: { includeUserActions: ['urn:user:registersecurityinfo'] }, locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } })])
-  assert.deepEqual({ ...registration, guestsOnly: false }, { locations: true, registration: true, guestsOnly: false, blocks: false })
+  assert.deepEqual({ ...registration, guestsOnly: false }, { locations: true, registration: true, deviceRegistration: false, resource: null, guestsOnly: false, blocks: false })
   assert.match(String(announcementFor({ policy: registration, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /works from the office network/)
 
   // A block narrowed by place is the countries message, again from the policy.
   const geo = policySemantics([effectFor({ ...ALL_USERS, locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } }, { operator: 'OR', builtInControls: ['block'] })])
-  assert.deepEqual(geo, { locations: true, registration: false, guestsOnly: false, blocks: true })
+  assert.deepEqual(geo, { locations: true, registration: false, deviceRegistration: false, resource: null, guestsOnly: false, blocks: true })
   assert.match(String(announcementFor({ policy: geo, grant: 'block', sessionOnly: false, affected: 3, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /sign-ins from outside our allowed countries/)
 
   // The same two messages are refused where the policy does not carry the
@@ -314,7 +336,7 @@ test('an open policy whose meaning the operation does not establish is sent no a
   // A policy narrowed by place that asks for nothing this reading can name. The
   // family would once have supplied "the office network is trusted"; there is now
   // nothing to say, and nothing is said.
-  const unnamed = { locations: true, registration: false, guestsOnly: false, blocks: false }
+  const unnamed = { locations: true, registration: false, deviceRegistration: false, resource: null, guestsOnly: false, blocks: false }
   assert.equal(announcementFor({ policy: unnamed, grant: null, sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date), null)
   // The family is passed beside it and still changes nothing.
   for (const family of FAMILIES) {
@@ -363,6 +385,188 @@ test('the guests lockout line follows the policy that would prompt them, not the
   assert.equal(shows(stepWith([guest, 'someone-else'])), true, 'the policy names the guest, so the line is shown')
   assert.equal(shows(stepWith(['someone-else'])), false, 'the policy does not name the guest, whatever the goal is called')
   assert.equal(shows(stepWith(null)), false, 'and a scope nobody settled prompts nobody knowably')
+})
+
+// ---- 1c: what a manager is told an open policy does ----
+
+const SEMANTICS = { locations: false, registration: false, deviceRegistration: false, resource: null, guestsOnly: false, blocks: false }
+
+test('a goal id manufactures no control: the note for a named control is the policy’s or nothing', () => {
+  // `controlNoteFor` takes no goal id. Four notes describe a specific control,
+  // and each is returned only where the operation names that control and asks
+  // for a method — which is what makes them true.
+  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'adminPortals' }, 'mfa'), MANAGER_BY_GOAL['admin-portals-protected']())
+  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'azureManagement' }, 'mfa'), MANAGER_BY_GOAL['azure-management-mfa']())
+  assert.equal(controlNoteFor({ ...SEMANTICS, registration: true }, 'mfa'), MANAGER_BY_GOAL['register-info-protected']())
+  assert.equal(controlNoteFor({ ...SEMANTICS, deviceRegistration: true }, 'phishingResistant'), MANAGER_BY_GOAL['device-registration-mfa']())
+
+  // The admin-portals words need the admin-portals target. A policy that names
+  // no resource IAMAI can name, or names one and blocks, or names one and asks
+  // for something else, gets nothing from here.
+  assert.equal(controlNoteFor({ ...SEMANTICS }, 'mfa'), null, 'a policy naming no resource')
+  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'adminPortals', blocks: true }, 'block'), null, 'a policy that blocks the admin portals does not require MFA on them')
+  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'azureManagement' }, 'compliantDevice'), null, 'a device requirement is not an MFA requirement')
+  assert.equal(controlNoteFor({ ...SEMANTICS, resource: 'azureManagement' }, null), null, 'and a policy asking for nothing this reading can name says nothing')
+})
+
+test('the two resources IAMAI names are read from the policy’s own application list', () => {
+  const named = (apps: string[]): ReturnType<typeof policySemantics> =>
+    policySemantics([effectOf({ displayName: 'p', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: apps } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })])
+  assert.equal(named(['MicrosoftAdminPortals']).resource, 'adminPortals', 'Graph’s own admin-portals target')
+  assert.equal(named(['797f4846-ba00-4fd7-ba43-dac1f8f63013']).resource, 'azureManagement', 'the Azure Service Management API')
+  assert.equal(named(['All']).resource, null, 'every resource is not a named one')
+  assert.equal(named(['00000003-0000-0ff1-ce00-000000000000']).resource, null, 'and an application id IAMAI does not name is not interpreted')
+})
+
+test('every generated manager note is what the operation establishes, and the goal adds nothing to it', () => {
+  // The generator-level half: for every open policy on every fixture, a note
+  // describing a named control appears exactly where `controlNoteFor` — which
+  // never sees a goal id — returns one. A goal whose note this build would once
+  // have handed over gets it only on those terms.
+  const named = new Set(Object.values(MANAGER_BY_GOAL).map((f) => f()))
+  for (const { f, r } of runs) {
+    for (const s of openPolicies(r.steps)) {
+      const effects = stepEffects(s)
+      const expected = effects.length === 0 ? null : controlNoteFor(policySemantics(effects), grantOfStepForTest(s))
+      if (expected !== null) {
+        assert.equal(s.forManager, expected, `${f.name} ${s.id}: the note is the one its own policy earns`)
+        continue
+      }
+      assert.equal(named.has(s.forManager), false, `${f.name} ${s.id}: no control note without the control (${s.forManager.slice(0, 60)})`)
+    }
+  }
+})
+
+test('unknown resource semantics get general wording, never goal-derived specificity', () => {
+  // The admin-portals baseline contradicts itself, so there is no operation and
+  // nothing establishes a resource. The note claims nothing specific, and names
+  // neither the portals nor MFA — on every fixture that carries the step.
+  let seen = 0
+  for (const { f, r } of runs) {
+    const s = r.steps.find((x) => x.goalId === 'admin-portals-protected')
+    if (!s) continue
+    seen += 1
+    assert.deepEqual(stepEffects(s), [], `${f.name}: no operation`)
+    assert.equal(policySemantics(stepEffects(s)).resource, null, `${f.name}: and no resource established`)
+    assert.equal(s.forManager, MANAGER.other(), `${f.name}: so the general note stands`)
+    assert.doesNotMatch(s.forManager, /admin portal|Azure|requires MFA/i, `${f.name}: and nothing specific is claimed`)
+  }
+  assert.ok(seen > 0, 'the fixtures carry the step')
+})
+
+// ---- 1d: what the records are counted over ----
+//
+// The evidence gate asks whether every active person in scope has been seen. The
+// object it is about is the policy the tenant has deployed — the records are its
+// records — so that policy's own scope answers, resolved from its conditions
+// exactly as the plan resolves its own (roadmap/strand.ts scopeCohort). The
+// goal's population describes no policy at all and is not consulted.
+
+/** Re-track a fresh derivation of a fixture, optionally rewriting what the goal handed each step. */
+function retrack(f: Fixture, over: { population?: (s: Step) => Step['population']; groupMembers?: Record<string, readonly string[]> } = {}): Step[] {
+  const r = runFixture(f)
+  const steps = r.steps
+  if (over.population) for (const s of steps) s.population = over.population(s)
+  applyProgress(steps, f.snapshot, r.coverage, f.planId, undefined, f.planCreatedAt, null, {
+    groupMembers: over.groupMembers ?? Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
+    activePeople: activePeopleIds(f.snapshot, f.snapshot.asOf, notPeopleIds(f.mapping)),
+  })
+  return steps
+}
+
+const trackingOf = (steps: Step[]): string =>
+  JSON.stringify(steps.filter((s) => s.tracking).map((s) => [s.id, s.tracking?.activeInScope ?? null, s.tracking?.seenInScope ?? null, s.tracking?.readyNow ?? null]))
+
+test('what the records are counted over is the deployed policy’s scope, whatever the goal handed the step', () => {
+  const strangers = ['00000000-0000-4000-8000-00000000dead', '00000000-0000-4000-8000-00000000beef']
+  for (const name of ['demo-week2', 'midflight'] as const) {
+    const f = fixtures.find((x) => x.name === name) as Fixture
+    const asGenerated = trackingOf(retrack(f))
+    const foreign = trackingOf(retrack(f, { population: (s) => ({ ...s.population, ids: strangers, activeIds: strangers, active: 2, total: 2 }) }))
+    const empty = trackingOf(retrack(f, { population: (s) => ({ ...s.population, ids: [], activeIds: [], active: 0, total: 0 }) }))
+    assert.equal(foreign, asGenerated, `${name}: a foreign population moves no gate`)
+    assert.equal(empty, asGenerated, `${name}: nor an empty one`)
+    assert.ok(asGenerated.includes('true') || asGenerated.length > 2, `${name}: there were gates to compare`)
+  }
+})
+
+test('a deployed policy broader than the goal it delivers is tracked over the policy', () => {
+  // demo-week2's guests goal lists one guest. The policy the tenant deployed for
+  // it targets All users, so the records are counted over everyone it reaches —
+  // which is the whole point of asking the policy rather than the goal.
+  const f = fixtures.find((x) => x.name === 'demo-week2') as Fixture
+  const r = runFixture(f)
+  const step = r.steps.find((x) => x.id === 's-goal-guests-mfa') as Step
+  assert.ok(step.tracking, 'it has a matched policy')
+  const goalPeople = (step.population.activeIds ?? step.population.ids).length
+  assert.equal(goalPeople, 1, 'the goal lists one active person')
+  assert.ok((step.tracking!.activeInScope ?? 0) > goalPeople, `the deployed policy reaches more (${step.tracking!.activeInScope})`)
+  // And it is exactly the policy's own scope, resolved the same way the plan
+  // resolves an operation's.
+  const match = matchPolicy(step, f.snapshot, r.coverage, f.planId)
+  assert.ok(match, 'the policy is matched')
+  const evidence = { groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])) }
+  const cohort = scopeCohort([effectOf(match!.policy as Record<string, unknown>)], f.snapshot.users.map((u) => u.id), f.snapshot, evidence)
+  const active = new Set(activePeopleIds(f.snapshot, f.snapshot.asOf, notPeopleIds(f.mapping)))
+  assert.equal(step.tracking!.activeInScope, (cohort ?? []).filter((id) => active.has(id)).length, 'the count is the policy’s own scope, narrowed to active people')
+})
+
+test('a deployed policy whose scope cannot be resolved is tracked as unknown, never as the goal’s people', () => {
+  // Every policy these tenants deployed excludes a group. With no membership
+  // read, who they reach is nobody's answer: no count, no evidence gate, and the
+  // goal's population — which is right there — is not put in its place.
+  for (const name of ['demo-week2', 'midflight'] as const) {
+    const f = fixtures.find((x) => x.name === name) as Fixture
+    const blind = retrack(f, { groupMembers: {} })
+    let checked = 0
+    for (const s of blind) {
+      if (!s.tracking) continue
+      checked += 1
+      assert.equal(s.tracking.activeInScope, null, `${name} ${s.id}: no count is claimed`)
+      assert.equal(s.tracking.seenInScope, null, `${name} ${s.id}: and none seen`)
+      assert.equal(s.tracking.readyNow, false, `${name} ${s.id}: the evidence gate cannot open`)
+      assert.notEqual(readyWhen(s)?.kind, 'now', `${name} ${s.id}: only the time gate is left`)
+    }
+    assert.ok(checked > 0, `${name}: there were tracked steps`)
+    // The people the goal handed the step are right there, and none of them was
+    // counted: a null is the answer, and the goal's number is not.
+    assert.ok(blind.some((s) => s.tracking && (s.population.activeIds ?? s.population.ids).length > 0), `${name}: the goal populations this could have fallen back to are not empty`)
+  }
+})
+
+test('where the plan’s own policy is the one deployed, the records are counted over that same operation', () => {
+  // Matched by tag: the policy on the tenant is the one this plan wrote. Its
+  // scope and the planned operation's cohort are the same reading of the same
+  // policy, so the two agree — no second interpreter, and no goal in either.
+  let compared = 0
+  for (const { f, r } of runs) {
+    for (const s of r.steps) {
+      if (!s.tracking || s.tracking.matchedBy !== 'tag' || !isOpenPolicy(s) || stepEffects(s).length === 0) continue
+      const active = new Set(activePeopleIds(f.snapshot, f.snapshot.asOf, notPeopleIds(f.mapping)))
+      const planned = (s.cohort?.ids ?? []).filter((id) => active.has(id)).length
+      assert.equal(s.tracking.activeInScope, planned, `${f.name} ${s.id}: the deployed policy and the planned operation are one policy`)
+      compared += 1
+    }
+  }
+  assert.ok(compared > 0, 'some fixture deploys its own plan’s policy')
+})
+
+test('the week-two policy that is ready to enforce is ready on its own scope', () => {
+  // The demo's token-protection step advances on the evidence gate. Its planned
+  // operation names objects this tenant has not got, so there is no cohort and no
+  // ring plan; what the gate reads is the policy the tenant actually deployed,
+  // and every active person that policy reaches has been seen. Nothing here comes
+  // from the goal: with the memberships withheld the step falls back to the time
+  // gate rather than to the goal's thirty people.
+  const f = fixtures.find((x) => x.name === 'demo-week2') as Fixture
+  const step = retrack(f).find((x) => x.id === 's-goal-token-protection') as Step
+  assert.equal(unavailableReason(step), 'missing-object', 'the plan cannot write this one')
+  assert.equal(step.cohort, undefined, 'so it has no cohort of its own')
+  assert.equal(step.tracking?.readyNow, true, 'and it is ready on the deployed policy’s records')
+  assert.equal(step.tracking?.seenInScope, step.tracking?.activeInScope, 'every active person the policy reaches has been seen')
+  assert.notEqual(step.tracking?.activeInScope, (step.population.activeIds ?? step.population.ids).length, 'the count is not the goal’s population')
+  const blind = retrack(f, { groupMembers: {} }).find((x) => x.id === 's-goal-token-protection') as Step
+  assert.equal(blind.tracking?.readyNow, false, 'and with the scope unresolved the evidence gate closes rather than falling back')
 })
 
 // ---- 2: exact, or explicitly unknown ----

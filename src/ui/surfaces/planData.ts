@@ -19,6 +19,7 @@ import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { loadMappingState, saveMappingState, toCoverageMapping } from '../../mapping/store.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
+import { activePeopleIds } from '../../derive/population.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
 import { buildNameDirectory } from '../../names.ts'
@@ -265,7 +266,13 @@ export function usePlanData(
     // The one decision a regeneration cannot know, and the one observation (the
     // scan that first saw each policy in report-only); everything else is derived.
     applySkips(steps, saved?.skips ?? null)
-    applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null, saved?.observations ?? null)
+    applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null, saved?.observations ?? null, {
+      // A deployed policy's scope is resolved against the group memberships the
+      // scan actually read; a sampled list proves nobody out, so it answers
+      // nothing (generate.ts knownGroupMembers).
+      groupMembers: Object.fromEntries([...groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])),
+      activePeople: activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(mapping)),
+    })
     annotateStateReasons(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps

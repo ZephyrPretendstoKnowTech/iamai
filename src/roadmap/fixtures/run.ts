@@ -14,6 +14,7 @@ import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { toCoverageMapping } from '../../mapping/store.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
+import { activePeopleIds } from '../../derive/population.ts'
 import { scoreMfaViability } from '../../scoring/mfaViability.ts'
 import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap } from '../generate.ts'
@@ -90,7 +91,10 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
   }
   const t1 = performance.now()
   const result = generateRoadmap(input)
-  applyProgress(result.steps, snapshot, coverage, f.planId, undefined, f.planCreatedAt)
+  applyProgress(result.steps, snapshot, coverage, f.planId, undefined, f.planCreatedAt, null, {
+    groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])),
+    activePeople: activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(f.mapping)),
+  })
   // State reasons read the tracking (the real enforcement date), so they come last.
   annotateStateReasons(result.steps)
   const end = performance.now()

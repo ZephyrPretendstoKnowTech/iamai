@@ -30,7 +30,7 @@ import { lockoutCount } from './lockout.ts'
 import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach, scopeCohort, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
-import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
+import { MANAGER, MANAGER_BY_CONTROL, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { engine, stepById } from '../content/content.ts'
 import { countryName as countryLabel } from '../mapping/countries.ts'
@@ -96,8 +96,21 @@ function grantOf(effects: readonly PolicyEffect[], strengths: Map<string, string
   return null
 }
 
-/** The security-info registration user action, as Graph writes it. */
+/** The registration user actions, as Graph writes them. */
 const REGISTER_SECURITY_INFO = 'urn:user:registersecurityinfo'
+const REGISTER_DEVICE = 'urn:user:registerdevice'
+/**
+ * The two resources IAMAI names by their own identifier: Graph's own
+ * `MicrosoftAdminPortals` target (coverage/facts.ts reads the same string) and
+ * the Windows Azure Service Management API's application id
+ * (coverage/applicability.ts holds the same id). Deliberately just these two —
+ * an arbitrary application id is a resource the plan has nothing to say about,
+ * and it says nothing rather than describing one it cannot name.
+ */
+const NAMED_RESOURCES: { key: NonNullable<PolicySemantics['resource']>; ids: string[] }[] = [
+  { key: 'adminPortals', ids: ['microsoftadminportals'] },
+  { key: 'azureManagement', ids: ['797f4846-ba00-4fd7-ba43-dac1f8f63013'] },
+]
 
 /**
  * What a step's own policies *mean*, for the words the step says about them:
@@ -113,9 +126,13 @@ const REGISTER_SECURITY_INFO = 'urn:user:registersecurityinfo'
  */
 export function policySemantics(effects: readonly PolicyEffect[]): PolicySemantics {
   const scopes = effects.map((e) => e.scope)
+  const named = new Set(scopes.flatMap((sc) => sc.applications.include.map((a) => a.toLowerCase())))
+  const action = (want: string): boolean => scopes.some((sc) => sc.applications.userActions.some((a) => a.toLowerCase() === want))
   return {
     locations: effects.some((e) => e.narrowings.some((n) => n.kind === 'locations')),
-    registration: scopes.some((sc) => sc.applications.userActions.some((a) => a.toLowerCase() === REGISTER_SECURITY_INFO)),
+    registration: action(REGISTER_SECURITY_INFO),
+    deviceRegistration: action(REGISTER_DEVICE),
+    resource: NAMED_RESOURCES.find((r) => r.ids.some((id) => named.has(id)))?.key ?? null,
     // Every policy of the step names external users, and none of them names
     // anybody else: one all-users policy in the pair is a policy about everyone.
     guestsOnly:
@@ -123,6 +140,27 @@ export function policySemantics(effects: readonly PolicyEffect[]): PolicySemanti
       scopes.every((sc) => sc.guests.include !== null && !sc.allUsers && sc.users.include.length === 0 && sc.groups.include.length === 0 && sc.roles.include.length === 0),
     blocks: effects.some((e) => e.blocks),
   }
+}
+
+/**
+ * The manager note for the control a policy *names*, or null where the policy
+ * names none of them.
+ *
+ * There is no goal id here, and that is the point: the four notes that describe
+ * a specific control — registering sign-in methods, joining a device, the
+ * Microsoft admin portals, the Azure management API — used to be keyed by the
+ * goal a step was filed under, so a step whose baseline exports a Block was
+ * telling a manager it "requires MFA to open the Microsoft admin portals".
+ *
+ * Each of them says the policy requires MFA, so each is returned only where the
+ * operation says the same: it asks for a method or a strength, and it blocks
+ * nobody. A resource IAMAI cannot name, or a policy asking for something else,
+ * gets nothing from here and is described by what the operation does establish.
+ */
+export function controlNoteFor(semantics: PolicySemantics, grant: GrantFloor | null): string | null {
+  if (semantics.blocks || (grant !== 'mfa' && grant !== 'phishingResistant')) return null
+  const control = semantics.registration ? 'registration' : semantics.deviceRegistration ? 'deviceRegistration' : semantics.resource
+  return control === null ? null : MANAGER_BY_CONTROL[control]()
 }
 
 /** Step titles are the goal name as an imperative: the kind is a chip, never a prefix. */
@@ -1295,8 +1333,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         )
       }
       const semantics = policySemantics(ownEffects)
-      const byGoal = MANAGER_BY_GOAL[goal.id]
-      if (byGoal && !semantics.blocks && (operationGrant === 'mfa' || operationGrant === 'phishingResistant')) return byGoal()
+      const control = controlNoteFor(semantics, operationGrant)
+      if (control !== null) return control
       // The people the policy names, and the ones among them who cannot meet it
       // yet: the cohort, never the goal's population. Absent where the scope was
       // not settled, and the note then claims no number.

@@ -175,7 +175,16 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     const TRACK = engine.tracking
     v.readyOn = absoluteDate(ready.date)
     v.timeGate = fillText(ready.kind === 'on' ? TRACK.readyOn : TRACK.readySince, { date: absoluteDate(ready.date) })
-    v.evidenceGate = ready.kind === 'now' ? fillText(TRACK.readyNow, { n: ready.days }) : fillText(TRACK.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days })
+    // "3 of 30 active people seen" is a count over the deployed policy's own
+    // scope. Where that scope could not be settled there is no count to show, so
+    // the key is left unset and the line it sits in renders nothing rather than a
+    // number nobody established (tracking.ts trackedScope).
+    v.evidenceGate =
+      ready.kind === 'now'
+        ? fillText(TRACK.readyNow, { n: ready.days })
+        : ready.seen === null || ready.people === null
+          ? undefined
+          : fillText(TRACK.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days })
   }
 
   // A campaign has no enforcement date of its own; its enrol-by is the plan's

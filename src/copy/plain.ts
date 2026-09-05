@@ -27,9 +27,26 @@ export const MANAGER = {
     `This confirms, before anything is enforced, that ${count(people, 'person', 'people')} can complete MFA. It costs each of them a few minutes once. Without it, enforcement locks out whoever was never set up.`,
 }
 
+/**
+ * The same four notes, keyed by the control a policy *names* rather than by the
+ * goal a step is filed under: the security-info or device registration user
+ * action, and the two resources IAMAI resolves by identifier
+ * (roadmap/generate.ts policySemantics). Each says the policy requires MFA, so
+ * each is used only where the operation says so too — a goal id establishes none
+ * of it, and a step whose baseline exports a Block is told nothing about MFA.
+ */
+export const MANAGER_BY_CONTROL: Record<'registration' | 'deviceRegistration' | 'adminPortals' | 'azureManagement', () => string> = {
+  registration: () => MANAGER_BY_GOAL['register-info-protected'](),
+  deviceRegistration: () => MANAGER_BY_GOAL['device-registration-mfa'](),
+  adminPortals: () => MANAGER_BY_GOAL['admin-portals-protected'](),
+  azureManagement: () => MANAGER_BY_GOAL['azure-management-mfa'](),
+}
+
 // Goals whose control does something more specific than "everyone signs in with
 // MFA", so the family note above would name another control's effect (prompt
-// 49.1 item 5). Keyed by goal id; the family note is the fallback.
+// 49.1 item 5). Keyed by goal id, and read only for a step with no policy of its
+// own — one already in place, the enforce step — where the goal is the authority
+// as it always was. An OPEN policy is read by MANAGER_BY_CONTROL above.
 export const MANAGER_BY_GOAL: Record<string, () => string> = {
   'register-info-protected': () =>
     'This stops an attacker with a stolen password from registering their own MFA method and locking the real person out. Anyone already set up sees no change. Without it, one leaked password becomes a lasting hold on the account.',

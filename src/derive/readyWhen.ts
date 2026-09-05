@@ -15,9 +15,14 @@ export type ReadyWhen = {
   days: number
   /** Failing or interrupted records since the policy entered report-only. */
   failures: number
-  /** Active people in scope the records have seen, over the active people in scope. */
-  seen: number
-  people: number
+  /**
+   * Active people in scope the records have seen, over the active people in
+   * scope of the matched tenant policy. Both null where that policy's scope
+   * could not be resolved: the gate then has no numbers to show and cannot be
+   * met (tracking.ts).
+   */
+  seen: number | null
+  people: number | null
 }
 
 export function readyWhen(step: Step): ReadyWhen | null {
