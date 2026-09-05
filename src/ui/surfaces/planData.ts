@@ -28,6 +28,7 @@ import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.t
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
+import { operatorExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 import { proposedStart } from '../../derive/planStart.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
@@ -180,7 +181,7 @@ export function usePlanData(
     // group the mapping names — whether or not a policy references them yet:
     // the checks on the exclusions group read its members, and without them the
     // week-two demo kept a "correct the group" step for a group already right.
-    const ge = decided.records['__globalExclusion']?.resolvedId
+    const ge = operatorExclusionsGroupId(decided)
     if (ge) ids.add(ge)
     if (decided.serviceAccountsGroupId) ids.add(decided.serviceAccountsGroupId)
     void (async () => {

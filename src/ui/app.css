@@ -868,6 +868,14 @@ footer.app a {
   padding: 12px 0;
   margin: 12px 0;
 }
+/* A safety-sensitive choice's two answers, side by side above the picker
+   (Foundation C): Use this group, or choose a different one. */
+.decision-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
 .picker-chips {
   display: flex;
   flex-wrap: wrap;

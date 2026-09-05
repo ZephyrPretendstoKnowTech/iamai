@@ -5,7 +5,8 @@
 // is the plan's decision, verified on the next scan). No DOM.
 import type { SizeBand } from './constants.ts'
 import type { ChangeFreeze } from './schedule.ts'
-import type { MappingRecord, MappingState } from '../mapping/types.ts'
+import type { MappingState } from '../mapping/types.ts'
+import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyChoice.ts'
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { blockerStepId } from './blockerSteps.ts'
 import { answerKey, mailDevicesOf, questionLabels, travelCountriesOf } from './answers.ts'
@@ -85,8 +86,8 @@ export const DECISION_STEPS = {
 
 /**
  * The mapping with every saved step decision applied (target-state §6.4):
- * emergency access accounts → the break-glass ids; the exclusions group → the
- * `__globalExclusion` record; allowed countries → the country codes; the trusted
+ * emergency access accounts → the break-glass ids; the exclusions group → its
+ * own record (safetyChoice.ts); allowed countries → the country codes; the trusted
  * network → the trusted location ids; service accounts → their ids; the
  * campaign's special care → the high-care ids; and a chosen option or a
  * question's answer → questionAnswers[stepId:label], in the option's own words
@@ -124,10 +125,14 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       const missing = next.records['__breakGlassMissing']
       if (missing) next.records['__breakGlassMissing'] = { ...missing, doesNotExist: picked.length === 0, provenance: recordProvenance }
     } else if (DECISION_STEPS.exclusions.has(stepId)) {
-      const id = picked[0] ?? null
-      const prev: MappingRecord = next.records['__globalExclusion'] ?? { placeholder: '__globalExclusion', kind: 'group', group: 'globalExclusion', resolvedId: null, resolvedName: null, provenance: 'confirmed', doesNotExist: true, validation: null }
-      next.records['__globalExclusion'] = { ...prev, resolvedId: id, resolvedName: id === prev.resolvedId ? prev.resolvedName : null, provenance: recordProvenance, doesNotExist: id === null, validation: null }
-      answered('globalExclusion')
+      // Foundation C: the exclusions group is a safety-sensitive choice, and a
+      // detected default is not one. A pre-ticked pick can write every other
+      // field here; this one it may not touch, so no path but an operator's own
+      // Save can put a group into the policies the plan writes.
+      if (provenance === 'confirmed') {
+        next.records[EXCLUSIONS_RECORD_KEY] = exclusionsGroupRecord(next.records[EXCLUSIONS_RECORD_KEY], picked[0] ?? null)
+        answered('globalExclusion')
+      }
     } else if (stepId === DECISION_STEPS.countries) {
       next.allowedCountries = picked.map((c) => c.toUpperCase())
       answered('countries')

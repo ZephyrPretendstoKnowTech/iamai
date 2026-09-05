@@ -4,10 +4,12 @@
 // pickers (prune B); the detection is recomputed until they do. Pure.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { GroupMembersCacheEntry } from '../graph/collect/cache.ts'
+import type { GroupMembers } from '../coverage/population.ts'
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
 import type { MappingRecord, MappingState, QuestionGroup } from './types.ts'
 import { detectServiceAccounts } from './serviceAccounts.ts'
+import { exclusionsGroupCandidates, withoutExclusionsGroupAnswer } from './safetyChoice.ts'
 import { suggestCountries } from './countries.ts'
 import { autoEmergencyAccess } from './emergencyAccess.ts'
 
@@ -84,18 +86,16 @@ export function suggestGroups(kind: 'globalExclusion' | 'serviceAccounts', ctx: 
   }
   const nameOf = (gid: string): string => ctx.knownGroups.find((g) => g.groupId === gid)?.displayName ?? gid
   if (kind === 'globalExclusion') {
-    const bg = new Set(ctx.breakGlassUserIds ?? [])
-    if (bg.size > 0) {
-      for (const g of ctx.knownGroups) {
-        if (g.sampled || g.memberIds.length === 0 || !g.memberIds.every((m) => bg.has(m))) continue
-        add({ id: g.groupId, name: g.displayName ?? g.groupId, rank: 0 })
-      }
+    // The exclusions group is a safety-sensitive choice, and safetyChoice.ts is
+    // the one place that says which groups plausibly are it. The picker offers
+    // the same list; what it may not do is tick one of them.
+    const groups: GroupMembers = new Map(ctx.knownGroups.map((g) => [g.groupId, { memberIds: g.memberIds, memberCount: g.memberCount, sampled: g.sampled, displayName: g.displayName ?? undefined }]))
+    for (const c of exclusionsGroupCandidates({ snapshot: ctx.snapshot, mapping: { records: {}, breakGlassUserIds: ctx.breakGlassUserIds ?? [] }, groups })) {
+      add({ id: c.id, name: c.name === c.id ? nameOf(c.id) : c.name, rank: 0 })
     }
   }
   for (const s of groupSignatures(ctx.tenantPolicies as CaPolicy[])) {
-    const wantGlobal = kind === 'globalExclusion' && (s.inferredRole === 'globalExclusion' || s.inferredRole === 'broadExclusion')
-    const wantSvc = kind === 'serviceAccounts' && s.inferredRole === 'serviceAccounts'
-    if (wantGlobal || wantSvc) add({ id: s.id, name: nameOf(s.id), rank: 0 })
+    if (kind === 'serviceAccounts' && s.inferredRole === 'serviceAccounts') add({ id: s.id, name: nameOf(s.id), rank: 0 })
   }
   for (const g of ctx.knownGroups) {
     if (GROUP_NAME_PATTERN.test(g.displayName ?? '')) add({ id: g.groupId, name: g.displayName ?? g.groupId, rank: 1 })
@@ -142,11 +142,13 @@ export function applyDetectedDefaults(state: MappingState, snapshot: TenantSnaps
 
   const suggestCtx: GroupSuggestContext = { snapshot, tenantPolicies, knownGroups: ctx.knownGroups, breakGlassUserIds: next.breakGlassUserIds }
   if (detectable('globalExclusion')) {
-    const best = suggestGroups('globalExclusion', suggestCtx).find((x) => x.rank === 0) ?? null
-    next.records['__globalExclusion'] = best
-      ? auto('__globalExclusion', 'group', 'globalExclusion', best.id, best.name)
-      : auto('__globalExclusion', 'group', 'globalExclusion', null, null, true)
-    mark('globalExclusion', best !== null)
+    // Foundation C: there is no such thing as a detected exclusions group, only
+    // a recommended one. The recommendation is computed where it is shown
+    // (safetyChoice.ts) and never written into the mapping, so no reader can
+    // pick it up and mistake it for somebody's answer. What a detection leaves
+    // behind here is the absence of an answer.
+    next.records = withoutExclusionsGroupAnswer(next.records)
+    mark('globalExclusion', false)
   }
 
   if (detectable('countries')) {
