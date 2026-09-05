@@ -527,3 +527,80 @@ test('session-only work is placed, and never on optimistic silence', () => {
   const s = buildSchedule([shorter], MON, 100)
   assert.ok(s.waves.some((w) => w.stepIds.includes('s-session')))
 })
+
+// ---- every field the request may carry is read, or held; none is read as absent ----
+
+test('a condition the request may carry is decoded or held, never read as though it were not there', () => {
+  const snapshot = scan({
+    registrationDetails: [registered('u1', ['microsoftAuthenticatorPush'])],
+    users: [{ id: 'u1', userType: 'member', usageLocation: 'AU' }],
+    evidenceUsage: RECORDS,
+  })
+  // An authentication context applies where an application asks for it — role
+  // activation, a labelled site — and the scan never says when that is.
+  const pim = policy({
+    conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: [], includeAuthenticationContextClassReferences: ['c1'] } },
+  })
+  assert.equal(isCompletePolicy(pim), true, 'the pinned baseline submits one')
+  assert.deepEqual(
+    effectOf(pim).narrowings.map((n) => n.kind),
+    ['authContext'],
+  )
+  assert.equal(operationReach(effectOf(pim), 'u1', snapshot, {}).answer, 'unknown')
+  assert.equal(policyVerdict(effectOf(pim), 'u1', snapshot, {}).stranded, false)
+  // A workload identity's risk level is not a question about a person.
+  const spRisk = policy({ conditions: { ...SCOPE, servicePrincipalRiskLevels: ['high'] } })
+  assert.deepEqual(
+    effectOf(spRisk).narrowings.map((n) => n.kind),
+    ['workloadRisk'],
+  )
+  assert.equal(operationReach(effectOf(spRisk), 'u1', snapshot, {}).answer, 'unknown')
+  // An empty list is not a condition at all.
+  assert.deepEqual(effectOf(policy({ conditions: { ...SCOPE, servicePrincipalRiskLevels: [] } })).narrowings, [])
+})
+
+test('a session control the request may carry says what it does, or the policy is held unknown', () => {
+  const session = (v: Record<string, unknown>): Record<string, unknown> => policy({ grantControls: null, sessionControls: v })
+  // What a restriction the application enforces, or a cloud-app proxy governs,
+  // does to one person turns on the client and the device, and the scan holds
+  // neither. They are submittable, and their meaning is held.
+  for (const control of [{ applicationEnforcedRestrictions: { isEnabled: true } }, { cloudAppSecurity: { isEnabled: true, cloudAppSecurityType: 'blockDownloads' } }]) {
+    const body = session(control)
+    assert.equal(isCompletePolicy(body), true, JSON.stringify(control))
+    assert.equal(effectOf(body).unknown.length > 0, true, `${JSON.stringify(control)} is carried, and held`)
+  }
+  // A control that is switched off is not a control.
+  const off = policy({ sessionControls: { disableResilienceDefaults: false, applicationEnforcedRestrictions: { isEnabled: false } } })
+  assert.equal(effectOf(off).session, false, 'a flag written false is the setting turned off')
+  assert.deepEqual(effectOf(off).unknown, [])
+  assert.equal(effectOf(policy({ sessionControls: { disableResilienceDefaults: true } })).session, true)
+})
+
+test('a requirement nothing in the scan can prove is unknown, not satisfied', () => {
+  const snapshot = scan({
+    registrationDetails: [registered('a-bit-risky', ['microsoftAuthenticatorPush'])],
+    users: [{ id: 'a-bit-risky', userType: 'member' }],
+    evidenceUsage: RECORDS,
+  })
+  // The pinned medium-risk policy asks for a password change, and nothing in the
+  // scan says a given account can make one.
+  const change = effectOf(policy({ conditions: { ...SCOPE, userRiskLevels: ['medium', 'high'] }, grantControls: { operator: 'AND', builtInControls: ['passwordChange'] } }))
+  const v = policyVerdict(change, 'a-bit-risky', snapshot, {})
+  assert.equal(v.stranded, false)
+  assert.equal(v.unknown, true, 'not everyone can change their own password')
+})
+
+test('a policy that reaches more people than the step lists is never zero, and takes the full watch', () => {
+  // The step counts nobody; the policy names a group and a role, which the
+  // step's list cannot answer for.
+  const nobody = { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 } as StepPopulation
+  const broad = scheduleStep('s-broad', [policy({ conditions: { users: { includeGroups: ['g-1'], includeRoles: ['r-1'] }, applications: { includeApplications: ['All'] } } })], {
+    population: nobody,
+    evidence: { status: 'ok', lines: [], affectedUserIds: [] },
+  })
+  assert.equal(nobodyAffected(broad), false)
+  assert.notEqual(batchClassOf(broad), 'zero')
+  assert.equal(observationDaysFor(broad), 7)
+  const s = buildSchedule([broad], MON, 100)
+  assert.ok(s.waves.some((w) => w.stepIds.includes('s-broad')))
+})
