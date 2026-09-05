@@ -24,8 +24,9 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { allFixtures } from './fixtures/index.ts'
+import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { applyProgress, mergePersisted } from './progress.ts'
+import { applyProgress, mergePersisted, savedStepOf } from './progress.ts'
 import type { SavedStep } from './progress.ts'
 import { generateRoadmap } from './generate.ts'
 import { stepIdForGoal } from './generate.ts'
@@ -326,6 +327,7 @@ test('observedStateOf reads Graph’s word, and a policy that is not there is no
 // ---- the contract, through the whole engine ----
 
 const DEMO = fixtures.find((f) => f.name === 'demo')!
+const DEMO_WEEK2 = fixtures.find((f) => f.name === 'demo-week2')!
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
 const TEN_DAYS = 10 * 86_400_000
 
@@ -747,15 +749,138 @@ test('the operator’s own decision survives, through its own authority', () => 
   assert.equal(s.skipReason, 'not for us')
 })
 
-test('a step that deploys no policy still keeps what the record says it completed', () => {
-  // The correction is about policy lifecycle. A prerequisite somebody carried
-  // out has no tenant object to re-read, so the record stays its authority.
-  const run = runFixture(DEMO)
-  const steps = generateRoadmap(run.input).steps
-  const prereq = steps.find((x) => x.kind === 'prerequisite' && x.status !== 'done') as Step
-  assert.ok(prereq, 'the demo has a prerequisite still to do')
-  mergePersisted(steps, { [prereq.id]: { status: 'done', history: [], skipReason: null } })
-  assert.equal(prereq.status, 'done', 'and it is still restored')
+// ---- a reading has to be taken again ----
+//
+// This used to assert the opposite: that a prerequisite kept whatever the record
+// said it had completed. It cannot. Every step this engine generates works its
+// own state out from the scan in front of it — a prerequisite from whether the
+// object exists or the validation subject passes *now*, a check from whether
+// anybody is still dormant or still unanswered, the verification from how many
+// people still have no method. None of it is a one-time act nobody can observe
+// again, so a higher saved word was a way for a fact to outlive the evidence that
+// produced it.
+
+const LOCATION = 's-prereq-trusted-location'
+const BREAK_GLASS = 's-prereq-break-glass'
+
+/** Fresh steps for a fixture whose snapshot or mapping this case has edited. */
+function scanOf(f: Fixture, edit: (snapshot: typeof f.snapshot, mapping: typeof f.mapping) => void = () => {}): Step[] {
+  const snapshot = structuredClone(f.snapshot)
+  const mapping = structuredClone(f.mapping)
+  edit(snapshot, mapping)
+  return generateRoadmap(runFixture({ ...f, snapshot, mapping }).input).steps
+}
+
+const noLocation = (snapshot: { config: { namedLocations?: { rows?: unknown[] } | null } }): void => {
+  if (snapshot.config.namedLocations) snapshot.config.namedLocations.rows = []
+}
+
+test('a recurring check that passed and now fails is not restored by the record', () => {
+  // The trusted-location prerequisite is In place because the tenant has an IP
+  // named location. Take it away and the step is work again — whatever a record
+  // written while it existed says.
+  const passing = scanOf(DEMO).find((x) => x.id === LOCATION) as Step
+  assert.equal(passing.status, 'done', 'it passes on the tenant as it stands')
+  const saved = { [LOCATION]: savedStepOf(passing) }
+
+  const now = scanOf(DEMO, noLocation)
+  mergePersisted(now, saved)
+  const step = now.find((x) => x.id === LOCATION) as Step
+  assert.notEqual(step.status, 'done', 'the current reading wins')
+  assert.equal(step.state.satisfied, false)
+  assert.equal(step.state.inPlace, false, 'and nothing claims the tenant still has it')
+})
+
+test('a recurring check whose evidence has gone unreadable stays conservative', () => {
+  // The source itself cannot be read this time. Absent evidence is not passing
+  // evidence, so the step is not In place and the record does not make it so.
+  const passing = scanOf(DEMO).find((x) => x.id === LOCATION) as Step
+  const saved = { [LOCATION]: savedStepOf(passing) }
+  const now = scanOf(DEMO, (snapshot) => {
+    const nl = snapshot.config.namedLocations
+    if (nl) {
+      nl.status = 'error'
+      nl.rows = []
+    }
+  })
+  mergePersisted(now, saved)
+  const step = now.find((x) => x.id === LOCATION) as Step
+  assert.notEqual(step.status, 'done', 'unknown is not done')
+  assert.equal(step.state.satisfied, false)
+})
+
+test('a recurring check that failed and now passes is not held back by the record', () => {
+  // The saved projection is not authority in either direction.
+  const failing = scanOf(DEMO, noLocation).find((x) => x.id === LOCATION) as Step
+  assert.notEqual(failing.status, 'done')
+  const saved = { [LOCATION]: savedStepOf(failing) }
+  const now = scanOf(DEMO)
+  mergePersisted(now, saved)
+  const step = now.find((x) => x.id === LOCATION) as Step
+  assert.equal(step.status, 'done', 'the current reading advances it')
+})
+
+test('a stale saved pass on the emergency-access gate cannot let a rollout step through', () => {
+  // The product question, not the row: emergency access is the gate every change
+  // that can deny access waits behind. A record saying it passed, carried onto a
+  // scan where it does not, would open that gate on evidence that no longer
+  // holds — and the steps behind it are the ones that lock people out.
+  const healthy = scanOf(DEMO_WEEK2).find((x) => x.id === BREAK_GLASS) as Step
+  assert.equal(healthy.status, 'done', 'week two has a healthy emergency account')
+  const saved = { [BREAK_GLASS]: savedStepOf(healthy) }
+
+  const now = scanOf(DEMO_WEEK2, (_snapshot, mapping) => {
+    mapping.breakGlassUserIds = []
+  })
+  const gatedBefore = now.filter((x) => x.blockedBy.includes(BREAK_GLASS)).map((x) => x.id)
+  assert.ok(gatedBefore.length > 0, 'losing the emergency account gates the deny-capable steps')
+
+  mergePersisted(now, saved)
+  const gate = now.find((x) => x.id === BREAK_GLASS) as Step
+  assert.notEqual(gate.status, 'done', 'the gate is not reopened by the record')
+  const gatedAfter = now.filter((x) => x.blockedBy.includes(BREAK_GLASS)).map((x) => x.id)
+  assert.deepEqual(gatedAfter, gatedBefore, 'and every step behind it is still held')
+  for (const id of gatedAfter) {
+    const held = now.find((x) => x.id === id) as Step
+    assert.notEqual(held.state.lifecycle, 'ready-to-enforce', `${id} did not advance on a stale pass`)
+    assert.equal(held.state.satisfied, false, `${id} is not finished by one either`)
+  }
+})
+
+test('the operator’s own decision is persisted as a fact, and survives', () => {
+  // The one thing no scan can re-derive. It is written down as itself now, not
+  // inferred from the word — and a file written before that still loads.
+  const first = scanOf(DEMO)
+  const aside = first.find((x) => x.kind === 'prerequisite') as Step
+  setState(aside, { setAside: true })
+  aside.skipReason = 'not for us'
+  const saved = savedStepOf(aside)
+  assert.equal(saved.setAside, true, 'the fact is what is written down')
+
+  const now = scanOf(DEMO)
+  mergePersisted(now, { [aside.id]: saved })
+  const back = now.find((x) => x.id === aside.id) as Step
+  assert.equal(back.state.setAside, true)
+  assert.equal(back.status, 'skipped')
+  assert.equal(back.skipReason, 'not for us')
+
+  // A record from before `setAside` was stored beside the word still loads.
+  const legacy = scanOf(DEMO)
+  mergePersisted(legacy, { [aside.id]: { status: 'skipped', history: [], skipReason: 'not for us' } })
+  assert.equal((legacy.find((x) => x.id === aside.id) as Step).state.setAside, true)
+})
+
+test('no saved word raises any step, of any kind, on any fixture', () => {
+  // The rule as a sweep rather than a case: hand every step of every fixture the
+  // highest word there is, and nothing moves. `done` is the top of the ranking,
+  // so this is the strongest thing a record could once have said.
+  for (const { f } of runs) {
+    const steps = scanOf(f)
+    const before = steps.map((x) => `${x.id}:${x.status}:${x.state.lifecycle}:${x.state.satisfied}`)
+    mergePersisted(steps, Object.fromEntries(steps.map((x) => [x.id, { status: 'done' as const, history: [], skipReason: null }])))
+    const after = steps.map((x) => `${x.id}:${x.status}:${x.state.lifecycle}:${x.state.satisfied}`)
+    assert.deepEqual(after, before, `${f.name}: a saved word moved a step`)
+  }
 })
 
 // ---- what the plan actually asked to change ----

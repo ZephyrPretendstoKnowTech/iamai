@@ -6,7 +6,7 @@ import { trackExecution } from './tracking.ts'
 import type { TrackingEvidence } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { engine } from '../content/content.ts'
-import { setState, stateForStatus, statusRank } from './lifecycle.ts'
+import { setState } from './lifecycle.ts'
 import { observationsFrom } from './observation.ts'
 import type { StepObservation } from './observation.ts'
 import type { Step, StepStatus } from './types.ts'
@@ -14,11 +14,22 @@ import type { PlanDecisions, SkipDecision, StepDecision } from './decisions.ts'
 
 export type { PlanDecisions, SkipDecision, StepDecision } from './decisions.ts'
 
-// Merge persisted status/history/skips into freshly generated steps by id.
+// Merge what a saved plan legitimately holds into freshly generated steps by id.
 export type SavedStep = {
+  /**
+   * The word the scan that saved this file projected. Kept for the record and for
+   * reading a file written before `setAside` existed; it is not read as authority
+   * for anything (see `mergePersisted`).
+   */
   status: StepStatus
   history: Step['history']
   skipReason: string | null
+  /**
+   * The operator set this step aside. The fact itself rather than the word it
+   * used to be inferred from: a decision nothing about the tenant can re-derive,
+   * so it is persisted and restored explicitly.
+   */
+  setAside?: boolean
   owner?: string | null
   /** Evidence and actual ring dates survive a re-plan (roadmap-v2.md §5). */
   tracking?: Step['tracking']
@@ -31,6 +42,7 @@ export function savedStepOf(step: Step): SavedStep {
     status: step.status,
     history: step.history,
     skipReason: step.skipReason,
+    setAside: step.state.setAside,
     owner: step.owner,
     tracking: step.tracking,
     ringActuals: step.rings.map((r) => ({ actualStart: r.actualStart, actualEnd: r.actualEnd })),
@@ -38,9 +50,31 @@ export function savedStepOf(step: Step): SavedStep {
   }
 }
 
-/** Step kinds whose state belongs to a Conditional Access policy, and so to the current scan. */
-const DEPLOYS_POLICY: ReadonlySet<Step['kind']> = new Set(['create', 'adjust', 'enforce'])
-
+/**
+ * What a saved plan may put back.
+ *
+ * Not the status word. Every step this engine generates works its own state out
+ * from the scan in front of it: a policy step from the tenant's policy and the
+ * observation history whose continuity that scan can prove (tracking.ts); a
+ * prerequisite from whether the object exists or the validation subject passes
+ * *now*; a check from whether anybody is still dormant, still an admin with a
+ * mailbox, still unanswered; the verification from how many people still have no
+ * method. None of that is a one-time act somebody performed and nobody can
+ * observe again — it is all a reading of the tenant, and a reading has to be
+ * taken again every time.
+ *
+ * So restoring a higher saved word was a way for a fact to survive the evidence
+ * that produced it. The dangerous shape is not the row going stale on screen: the
+ * emergency-access and exclusions-group steps are the gate every policy that can
+ * deny access waits behind, and a saved `done` on either would have opened that
+ * gate on evidence from a scan that no longer holds. The dormant and
+ * separate-admin checks are not even generated once their condition clears, so a
+ * word restored onto them describes a step about nobody.
+ *
+ * What does survive is what a scan cannot re-derive: the operator's own decision
+ * to set a step aside, restored from the fact rather than from the word; and the
+ * record — history, owner, tracking, the ring dates a rollout actually ran to.
+ */
 export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> | null): Step[] {
   if (!saved) return steps
   for (const step of steps) {
@@ -53,24 +87,9 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
     if (s.ringActuals) for (const [i, r] of step.rings.entries()) if (s.ringActuals[i]) Object.assign(r, s.ringActuals[i])
     if (typeof s.currentRing === 'number') step.currentRing = Math.min(s.currentRing, Math.max(0, step.rings.length - 1))
     // Setting a step aside is the operator's own decision, and nothing about the
-    // tenant can re-derive it. It is restored through its own authority.
-    if (s.status === 'skipped') {
-      setState(step, { setAside: true })
-      continue
-    }
-    // Everything else the word stood for is a *projection* of a state this scan
-    // works out again (lifecycle.ts projectStatus). For a step that deploys a
-    // policy it must stay that way: a record saying "ready to enforce last time"
-    // is not evidence that the policy deployed now has been watched, and letting
-    // the word back in walked straight past the observation contract — past
-    // artifact continuity, past a window that reset, past a legacy record that
-    // can prove nothing. The lifecycle comes from the current scan and from the
-    // history whose continuity that scan can prove (tracking.ts), or not at all.
-    if (DEPLOYS_POLICY.has(step.kind)) continue
-    // A step that deploys no policy — a prerequisite somebody carried out, a
-    // verification that was run — has no tenant object to re-read, so the record
-    // is the authority it always was.
-    if (statusRank(s.status) > statusRank(step.status)) setState(step, stateForStatus(s.status))
+    // tenant can re-derive it: the fact is restored, and the word is read only
+    // for a file written before the fact was stored beside it.
+    if (s.setAside === true || (s.setAside === undefined && s.status === 'skipped')) setState(step, { setAside: true })
   }
   return steps
 }
