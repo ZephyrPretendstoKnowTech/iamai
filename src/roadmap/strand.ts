@@ -185,6 +185,10 @@ function narrowingReach(n: Narrowing, accountId: string, snapshot: TenantSnapsho
       return { answer: 'unknown', reason: 'the scan does not say which applications this account signs in to' }
     case 'userActions':
       return { answer: 'unknown', reason: 'the scan does not say when this account will register security information or a device' }
+    case 'authContext':
+      return { answer: 'unknown', reason: 'the scan does not say when this account signs in to something that asks for this authentication context' }
+    case 'workloadRisk':
+      return { answer: 'unknown', reason: 'the policy applies at a workload identity risk level, which is not about this account' }
     case 'deviceFilter':
       return { answer: 'unknown', reason: 'the policy narrows by a device rule the scan cannot evaluate' }
   }
@@ -246,7 +250,10 @@ function requirementVerdict(req: Requirement, accountId: string, snapshot: Tenan
     case 'tokenProtection':
       return { stranded: false, unknown: true, reason: 'nothing in the scan says this account signs in from a client that can bind its token' }
     case 'passwordChange':
-      return { stranded: false, unknown: false, reason: 'the account can change its own password' }
+      // Changing a password in Entra is not something every account can do: a
+      // synchronised account without writeback, or one with no way to
+      // reauthenticate, cannot. The scan holds nothing that settles it.
+      return { stranded: false, unknown: true, reason: 'nothing in the scan says this account can change its own password' }
     case 'other':
       return { stranded: false, unknown: true, reason: `the scan cannot say whether this account satisfies ${req.control}` }
   }
