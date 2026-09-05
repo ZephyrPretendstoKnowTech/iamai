@@ -24,10 +24,13 @@ import { join } from 'node:path'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { accountApplicability, effectOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
-import { canDenyAccess, effectsOf, familyReading, measuredReach, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
+import { analysisUnknown, canDenyAccess, effectsOf, familyReading, measuredReach, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
 import { batchClassOf, buildSchedule, dependencyGraph, observationDaysFor } from './schedule.ts'
 import { eventsFor, nobodyAffected, noticeDaysFor } from './timing.ts'
 import { proposeRings, ringContextIndexes, rolloutCohort } from './rings.ts'
+import { announcementFor } from '../copy/announcements.ts'
+import { scenarioLinesFor } from './scenarioLines.ts'
+import { policySemantics } from './generate.ts'
 import { reached, stepPopulation } from '../derive/population.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
 import { hasBaselineConflict } from './baselineConflict.ts'
@@ -221,6 +224,145 @@ test('a policy the plan cannot resolve a scope for proposes no rollout at all', 
   assert.deepEqual(proposeRings(step, ringCtx as never), [], 'and no ring names people nobody has established are in scope')
   // The goal's population is right there, and none of it came from there.
   assert.equal(step.population.ids.length, 2)
+})
+
+// ---- 1b: what an announcement says an open policy does ----
+//
+// The announcement is the one place a policy's meaning is put into words for the
+// people it reaches, and it used to read two of them off the goal's readiness
+// family: a goal filed under `guest` made an all-users policy announce "guest
+// access", and a goal filed under `location` gave a policy nobody could read a
+// message about the office network. `policySemantics` reads the operation
+// instead, and the family reaches the announcement only through `familyReading`,
+// which answers for no open policy.
+
+/** One operation's effect, from a body written for the case at hand. */
+const effectFor = (conditions: Record<string, unknown>, grant: Record<string, unknown> | null = { operator: 'OR', builtInControls: ['mfa'] }): ReturnType<typeof effectOf> =>
+  effectOf({ displayName: 'p', state: 'enabledForReportingButNotEnforced', conditions: { applications: { includeApplications: ['All'] }, ...conditions }, ...(grant ? { grantControls: grant } : {}) })
+
+const ALL_USERS = { users: { includeUsers: ['All'] } }
+const SAY = { tenant: 'Contoso', date: 'Sep 8' }
+
+test('the goal family decides nothing an announcement says about an open policy', () => {
+  // The same resolved operation under all eight families: one announcement, one
+  // audience, one greeting. The family is not even passed for an open policy.
+  const effects = [effectFor(ALL_USERS)]
+  const audience = { kind: 'everyone' as const }
+  const said = new Set<string>()
+  for (const family of FAMILIES) {
+    // `policy` is what an open policy sends; the family is deliberately supplied
+    // beside it to prove it is ignored rather than merely absent.
+    said.add(String(announcementFor({ policy: policySemantics(effects), family, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience }, SAY.tenant, SAY.date)))
+  }
+  assert.equal(said.size, 1, `one announcement for one operation, whatever the goal says: ${[...said].join(' | ')}`)
+  assert.match([...said][0], /stepping up sign-in security/)
+})
+
+test('a policy whose goal says guests but which names everybody does not announce guest access', () => {
+  const everybody = policySemantics([effectFor(ALL_USERS)])
+  assert.equal(everybody.guestsOnly, false, 'the policy names all users, so it is not a guests policy')
+  const said = announcementFor({ policy: everybody, family: 'guest', grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)
+  assert.doesNotMatch(String(said), /guest access/, 'the goal does not make an all-users policy a guests policy')
+
+  // And a policy that really does name external users and nobody else still says so.
+  const guestsOnly = policySemantics([effectFor({ users: { includeUsers: [], includeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } } } })])
+  assert.equal(guestsOnly.guestsOnly, true, 'read from its own scope')
+  assert.match(String(announcementFor({ policy: guestsOnly, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /guest access/)
+
+  // GetIAMAI is the real case: the goal is `guests`, the baseline's policy for it
+  // targets All users, and eleven people were being told about guest access.
+  const { r } = runs.find((x) => x.f.name === 'getiamai') as { f: Fixture; r: FixtureRun }
+  const step = r.steps.find((x) => x.id === 's-goal-guests-mfa') as Step
+  assert.equal(step.readiness.family, 'guest', 'the goal is still filed under guests')
+  assert.ok(typeof step.comms === 'string' && step.comms.length > 0, 'and it still announces')
+  assert.doesNotMatch(step.comms as string, /guest access/, 'but not about guest access')
+})
+
+test('a policy about a place says so from its own conditions, not from the goal', () => {
+  // Registering sign-in methods from the trusted network: the user action and the
+  // location condition are both on the policy, and both are what the message is
+  // about. Neither the goal id nor the family is passed.
+  const registration = policySemantics([effectFor({ ...ALL_USERS, applications: { includeUserActions: ['urn:user:registersecurityinfo'] }, locations: { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } })])
+  assert.deepEqual({ ...registration, guestsOnly: false }, { locations: true, registration: true, guestsOnly: false, blocks: false })
+  assert.match(String(announcementFor({ policy: registration, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /works from the office network/)
+
+  // A block narrowed by place is the countries message, again from the policy.
+  const geo = policySemantics([effectFor({ ...ALL_USERS, locations: { includeLocations: ['All'], excludeLocations: ['loc-1'] } }, { operator: 'OR', builtInControls: ['block'] })])
+  assert.deepEqual(geo, { locations: true, registration: false, guestsOnly: false, blocks: true })
+  assert.match(String(announcementFor({ policy: geo, grant: 'block', sessionOnly: false, affected: 3, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /sign-ins from outside our allowed countries/)
+
+  // The same two messages are refused where the policy does not carry the
+  // condition: registration with no place, and a block with no place.
+  const registrationAnywhere = policySemantics([effectFor({ ...ALL_USERS, applications: { includeUserActions: ['urn:user:registersecurityinfo'] } })])
+  assert.equal(registrationAnywhere.locations, false)
+  assert.doesNotMatch(String(announcementFor({ policy: registrationAnywhere, grant: 'mfa', sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /office network/)
+  const plainBlock = policySemantics([effectFor(ALL_USERS, { operator: 'OR', builtInControls: ['block'] })])
+  assert.doesNotMatch(String(announcementFor({ policy: plainBlock, grant: 'block', sessionOnly: false, affected: 3, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date)), /allowed countries/)
+
+  // And the real plans: every open policy that announces the office-network
+  // message carries both conditions.
+  for (const { f, r } of runs) {
+    for (const s of openPolicies(r.steps)) {
+      if (typeof s.comms !== 'string' || !/works from the office network/.test(s.comms)) continue
+      const p = policySemantics(stepEffects(s))
+      assert.ok(p.registration && p.locations, `${f.name} ${s.id}: the message is the policy's own`)
+    }
+  }
+})
+
+test('an open policy whose meaning the operation does not establish is sent no announcement', () => {
+  // A policy narrowed by place that asks for nothing this reading can name. The
+  // family would once have supplied "the office network is trusted"; there is now
+  // nothing to say, and nothing is said.
+  const unnamed = { locations: true, registration: false, guestsOnly: false, blocks: false }
+  assert.equal(announcementFor({ policy: unnamed, grant: null, sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date), null)
+  // The family is passed beside it and still changes nothing.
+  for (const family of FAMILIES) {
+    assert.equal(announcementFor({ policy: unnamed, family, grant: null, sessionOnly: false, affected: null, admins: false, audience: { kind: 'everyone' } }, SAY.tenant, SAY.date), null, `family ${family}`)
+  }
+  // A block whose reach was never measured claims no count and says nothing.
+  assert.equal(announcementFor({ policy: { ...unnamed, blocks: true, locations: false }, grant: 'block', sessionOnly: false, affected: null, admins: false }, SAY.tenant, SAY.date), null)
+  // The same line still answers for a step with no policy of its own, which is
+  // read by its goal as it always was.
+  assert.match(String(announcementFor({ goalId: 'g', family: 'location', grant: null, sessionOnly: false, affected: null, admins: false }, SAY.tenant, SAY.date)), /treats the office network as trusted/)
+  // A step the plan cannot write at all announces nothing on any fixture.
+  for (const { f, r } of runs) {
+    for (const s of openPolicies(r.steps)) {
+      if (!analysisUnknown(s)) continue
+      assert.equal(s.comms, null, `${f.name} ${s.id}: a policy IAMAI cannot read in full says nothing`)
+    }
+  }
+})
+
+test('the guests lockout line follows the policy that would prompt them, not the goal it is filed under', () => {
+  // The line says "N guests will be prompted from {date}". Whether this step's
+  // policy would prompt them is the policy's answer: it names them, or it does
+  // not. The goal used to decide it, so a policy filed under guests that names
+  // no guest showed the line, and one filed elsewhere that names them all hid it.
+  const guest = '00000000-0000-4000-8000-0000000000g1'.replace('g1', 'a1')
+  const ctx = {
+    snapshot: { users: [], config: {}, sources: {} },
+    evidence: { guestsSeen: { people: [guest], count: 1 }, legacyClients: { byPerson: {} }, technicianToolsOffCompliance: { count: 0, detail: {}, people: [] }, serverSignIns: { people: [] }, browserWithoutClaims: { people: [], detail: {} }, nonMicrosoftApps: { detail: {}, people: [] }, trustedLocationMatches: { byLocation: {}, total: 0 }, serviceProviderSignIns: { people: [], homeTenants: [] }, unregisteredWindows: { people: [] }, passwordNotTyped: { people: [] } },
+    nameOf: (id: string) => id,
+    enforceDate: 'Sep 8',
+    guestMfaTrust: false,
+    hybridPresent: false,
+    syncRoleHolder: null,
+    noMethodActive: [],
+  }
+  const stepWith = (ids: string[] | null): Step =>
+    ({
+      id: 's', goalId: 'guests-mfa', kind: 'create', status: 'ready',
+      // Filed under guests either way: only the cohort differs.
+      readiness: { family: 'guest', percent: 100, lines: [] },
+      population: { total: 1, active: 1, admins: 0, guests: 1, ids: [guest], activeIds: [guest], inScope: 1 },
+      ...(ids === null ? {} : { cohort: { total: ids.length, active: ids.length, admins: 0, guests: 0, ids, activeIds: ids, inScope: ids.length } }),
+      action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', body: { displayName: 'p', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
+    }) as unknown as Step
+  const shows = (step: Step): boolean => scenarioLinesFor(step, ctx as never).some((l) => l.kind === 'guests')
+  assert.equal(shows(stepWith([guest, 'someone-else'])), true, 'the policy names the guest, so the line is shown')
+  assert.equal(shows(stepWith(['someone-else'])), false, 'the policy does not name the guest, whatever the goal is called')
+  assert.equal(shows(stepWith(null)), false, 'and a scope nobody settled prompts nobody knowably')
 })
 
 // ---- 2: exact, or explicitly unknown ----
@@ -796,9 +938,8 @@ test('nothing new reads the goal family or the floor for a policy consequence', 
   // `familyReading`/`effectsOf`, or add the file here with its reason.
   const allowed: Record<string, { family: number; floor: number; why: string }> = {
     'src/roadmap/strand.ts': { family: 1, floor: 0, why: 'familyReading: the one door the family may answer through, and it refuses for an open policy' },
-    'src/roadmap/generate.ts': { family: 23, floor: 4, why: 'the readiness threshold and its blocker, the announcement audience and the manager note — and two fallbacks that sit inside an isOpenPolicy branch' },
+    'src/roadmap/generate.ts': { family: 15, floor: 4, why: 'the readiness threshold and its blocker, and the fallbacks that sit inside an isOpenPolicy branch. Neither the announcement nor the manager note counts any more: the family reaches both through familyReading, which refuses for an open policy' },
     'src/roadmap/stateReason.ts': { family: 2, floor: 0, why: 'the words for a readiness blocker' },
-    'src/roadmap/scenarioLines.ts': { family: 1, floor: 0, why: 'which lockout-scenario lines a step shows' },
     'src/derive/finish.ts': { family: 2, floor: 0, why: 'which readiness measure a waiting step is counted under' },
     'src/coverage/classify.ts': { family: 0, floor: 1, why: 'the baseline floor a tenant policy is compared against' },
     'src/coverage/coverage.ts': { family: 0, floor: 1, why: 'the same comparison' },

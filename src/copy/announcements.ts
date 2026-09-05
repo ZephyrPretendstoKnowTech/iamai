@@ -44,27 +44,71 @@ function listNames(names: string[]): string {
 const SETUP_LINK = 'https://aka.ms/mfasetup'
 const SIGN_OFF = 'Questions or trouble? Reply here and we will help before the change lands.\n\nIT'
 
+/**
+ * What a policy *means*, read from the operation the step will run and from
+ * nothing else (roadmap/operations.ts PolicyEffect). Each is an exact condition
+ * the policy carries, not an interpretation of the goal it is filed under: a
+ * policy naming all users is not a guest policy because its goal is called
+ * guests, and a policy is about a place because it narrows by one.
+ */
+export type PolicySemantics = {
+  /** It narrows by where somebody signs in (a `locations` condition). */
+  locations: boolean
+  /** It is about setting up or changing sign-in methods (the security-info registration user action). */
+  registration: boolean
+  /** Everybody it names is an external user, and nobody else is (its own scope). */
+  guestsOnly: boolean
+  /** It stops the sign-in outright. */
+  blocks: boolean
+}
+
 export type AnnouncementChange = {
-  goalId: string
-  family: Readiness['family']
   /** The grant floor the change lands on, when it is a grant change. */
   grant: 'mfa' | 'passwordless' | 'phishingResistant' | 'block' | 'compliantDevice' | 'compliantApplication' | 'approvedApplication' | 'passwordChange' | null
   /** True when the change is only to session controls. */
   sessionOnly: boolean
   /** Users seen using what a block would block; null when not measured. */
   affected: number | null
-  /** Admin-only population. */
+  /** Admin-only audience; for an open policy, read from who its own policy names. */
   admins: boolean
   /** Who receives it, so the greeting matches (prompt 41 §4). */
   audience?: { kind: string; names?: string[] } | null
+  /**
+   * The policy's own meaning, for an OPEN policy — one the plan is still trying
+   * to write. Present, this is the only thing that chooses the wording, and a
+   * message this cannot establish is not sent (Foundation A).
+   */
+  policy?: PolicySemantics | null
+  /**
+   * The goal's family and the goal itself: the reading for a step with *no*
+   * policy of its own — one already in place, the enforce step — as it always
+   * was (roadmap/strand.ts familyReading). Never set beside `policy`, so the
+   * goal cannot decide what an open policy means.
+   */
+  family?: Readiness['family'] | null
+  goalId?: string | null
 }
 
+/**
+ * The announcement for one change.
+ *
+ * For an OPEN policy every branch is chosen by `c.policy` — the operation's own
+ * conditions — and the goal decides nothing: the two special messages fire on
+ * the semantics they describe (a policy about registering sign-in methods that
+ * narrows by place; a block that narrows by place), the guest message fires only
+ * where the policy names external users and nobody else, and a policy whose
+ * meaning the operation does not establish is sent no message at all rather than
+ * one the goal's family made up.
+ *
+ * For a step with no policy of its own the goal answers, as it always did.
+ */
 export function announcementFor(c: AnnouncementChange, tenant: string, date: string): string | null {
   const hi = salutation(c.audience ?? (c.admins ? { kind: 'admins' } : null))
-  if (c.goalId === 'register-info-protected') {
+  const p = c.policy ?? null
+  if (p ? p.registration && p.locations : c.goalId === 'register-info-protected') {
     return `${hi}\n\nFrom ${date}, setting up or changing your sign-in methods at ${tenant} works from the office network or after a Microsoft Authenticator check. If you need to set up a new phone, do it in the office or ask IT for a one-time pass.\n\n${SIGN_OFF}`
   }
-  if (c.goalId === 'geo-restriction') {
+  if (p ? p.blocks && p.locations : c.goalId === 'geo-restriction') {
     return `${hi}\n\nFrom ${date}, ${tenant} sign-ins from outside our allowed countries will be blocked. Travelling for work? Tell IT before you go so your trip is covered.\n\n${SIGN_OFF}`
   }
   if (c.sessionOnly) {
@@ -91,12 +135,20 @@ export function announcementFor(c: AnnouncementChange, tenant: string, date: str
     return `${hi}\n\nFrom ${date}, ${tenant} asks for a password change when a sign-in looks risky. If you see the prompt, choose a new password and carry on; contact IT if it keeps happening.\n\n${SIGN_OFF}`
   }
   if (c.grant === 'mfa') {
-    if (c.family === 'guest') {
+    // Guests, because the policy names external users and nobody else — never
+    // because the goal is filed under guests. GetIAMAI's guests policy targets
+    // All users, and telling eleven people that "guest access" now needs MFA
+    // named the wrong change to the wrong audience.
+    if (p ? p.guestsOnly : c.family === 'guest') {
       return `Hello,\n\nFrom ${date}, guest access to ${tenant} requires multifactor authentication. When prompted, confirm the sign-in with your own organisation's authenticator or set one up at ${SETUP_LINK}.\n\n${SIGN_OFF}`
     }
     return `${hi}\n\nFrom ${date}, ${tenant} is stepping up sign-in security. You may be asked to confirm sign-ins with Microsoft Authenticator. It takes about two minutes to get ready: go to ${SETUP_LINK} and add Microsoft Authenticator.\n\n${SIGN_OFF}`
   }
-  if (c.family === 'location') {
+  // A policy that narrows by place and asks for nothing this reading can name
+  // has no message: what it would do to a person is not established, and the
+  // goal's family is not allowed to establish it. The line stands for a step
+  // with no policy of its own, which is read by its goal as it always was.
+  if (p === null && c.family === 'location') {
     return `${hi}\n\nFrom ${date}, ${tenant} treats the office network as trusted; some tasks will ask for an extra check when you are away from it.\n\n${SIGN_OFF}`
   }
   return null
