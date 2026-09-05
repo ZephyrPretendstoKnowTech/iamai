@@ -38,7 +38,12 @@ export function scenarioLinesFor(step: Step, ctx: Ctx): ScenarioLine[] {
     out.push({ kind, text, people, count })
   }
   const goal = step.goalId
-  const family = step.readiness.family
+  // Who this step's own policy reaches is the policy's answer, from the accounts
+  // it names (roadmap/rings.ts rolloutCohort). The goal's family answers only for
+  // a step with no policy of its own (roadmap/strand.ts familyReading).
+  const cohort = rolloutCohort(step)
+  const reaches = (ids: readonly string[]): boolean =>
+    effectsOf(step) === null ? familyReading(step) === 'guest' : cohort !== null && ids.some((id) => cohort.includes(id))
 
   // 1 / 7 / 21 — legacy mail clients on the block-legacy-auth step.
   if (goal === 'block-legacy-auth') {
@@ -83,10 +88,14 @@ export function scenarioLinesFor(step: Step, ctx: Ctx): ScenarioLine[] {
     if (sp.people.length > 0) add('gdap', SCENARIO.serviceProvider(sp.people.length, sp.homeTenants, ctx.enforceDate), sp.people, sp.people.length)
   }
 
-  // 6 — guests, when trust is off.
-  if (family === 'guest') {
+  // 6 — guests, when trust is off. The line is shown where this step's own policy
+  // actually reaches one of the guests the records saw — a policy naming all
+  // users reaches them, and a policy filed under guests that the plan cannot read
+  // reaches nobody knowably. The goal used to decide it, which showed the line
+  // for a policy that names no guest and hid it for one that names them all.
+  {
     const g = e.guestsSeen
-    if (g.people.length > 0 && !ctx.guestMfaTrust) add('guests', SCENARIO.guestsNoTrust(g.people.length, ctx.enforceDate), g.people, g.people.length)
+    if (g.people.length > 0 && !ctx.guestMfaTrust && reaches(g.people)) add('guests', SCENARIO.guestsNoTrust(g.people.length, ctx.enforceDate), g.people, g.people.length)
   }
 
   // 9 — token protection.
@@ -163,4 +172,6 @@ export function scenarioContext(args: {
 export const DIR_SYNC_ROLE = 'd29b2b05-8046-44ba-8758-1e26182fcf32'
 
 import { emptyScenarioEvidence } from '../derive/evidence.ts'
+import { rolloutCohort } from './rings.ts'
+import { effectsOf, familyReading } from './strand.ts'
 const EMPTY = emptyScenarioEvidence()

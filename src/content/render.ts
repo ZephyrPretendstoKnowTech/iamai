@@ -53,6 +53,11 @@ function truthy(v: unknown): boolean {
 export function fillText(text: unknown, ex: Ex, depth = 0): string {
   if (text === null || text === undefined) return ''
   if (depth > 4) return String(text)
+  // A line that counts and lists counts its own list (listCountVars). It is done
+  // here, where a line is filled, rather than at each caller: `whole` judges a
+  // line on the same values, so the gate and the render cannot disagree and no
+  // caller can render a count the gate never checked.
+  ex = listCountVars(text, ex)
   const sharedRefs: Record<string, unknown> = {
     portalRoot: S.portalRoot, reportOnlyLine: S.reportOnlyLine, exclusionsLine: S.exclusionsLine,
     signature: ex && ex.signature !== undefined ? ex.signature : S.signatureDefault,
@@ -123,9 +128,23 @@ function filled(v: unknown): boolean {
   return String(v).length > 0
 }
 
-/** A line renders only when every variable it names is filled: no line renders around a hole. */
+/**
+ * A line renders only when every variable it names is filled: no line renders
+ * around a hole.
+ *
+ * It is judged on the values it will be filled with, which for a line that
+ * counts and lists includes its own count (`listCountVars`, applied by
+ * `fillText` too): "{n} people …: {list:x}" is whole when the list is there,
+ * whatever `n` the step carries, because the list is where that `n` comes from.
+ * Judging it on the step's `n` instead made the gate and the render disagree,
+ * and a step with no count of its own lost a line that had names behind it.
+ *
+ * Nothing else is softened. The list itself must still be filled — an empty list
+ * is a hole, and a `{n}` with no list beside it is still the step's own count and
+ * still missing when the step has none.
+ */
 export function whole(text: unknown, ex: Ex): boolean {
-  return typeof text !== 'string' || missingVars(text, ex).length === 0
+  return typeof text !== 'string' || missingVars(text, listCountVars(text, ex)).length === 0
 }
 
 /**

@@ -112,7 +112,7 @@ export const ACCEPTANCE = [
   // conflict and promises no enforcement — the who line no longer says who is
   // spared, and the announcement is gone with the implementation.
   { item: '16', step: 'admin-portals-protected', path: 'who.evidence', must: 'signed in to Azure since {from}: {list:azureNonAdmins}', mustNot: 'they are blocked from {enforce}' },
-  { item: '16', step: 'admin-portals-protected', path: 'who.lead', must: 'the exported policy targets every one of them', mustNot: 'admins in {adminsGroup}' },
+  { item: '16', step: 'admin-portals-protected', path: 'who.lead', must: 'targets every account in the directory and excludes no administrator', mustNot: 'admins in {adminsGroup}' },
   { item: '16', step: 'admin-portals-protected', path: 'baselineConflict', must: 'Nothing is wrong in your tenant' },
   { item: '16', step: 'admin-portals-protected', path: 'whatToDoReference.steps', must: 'Microsoft Purview Platform, Windows Cloud Login, My Staff' },
   { item: '18', step: 'register-info-protected', path: 'more.helpDesk', must: 'over a screen-share, if your VPN exit is in the trusted network, or when they are next in', mustNot: 'while they are on the VPN' },

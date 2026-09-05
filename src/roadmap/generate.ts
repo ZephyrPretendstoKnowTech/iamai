@@ -96,6 +96,35 @@ function grantOf(effects: readonly PolicyEffect[], strengths: Map<string, string
   return null
 }
 
+/** The security-info registration user action, as Graph writes it. */
+const REGISTER_SECURITY_INFO = 'urn:user:registersecurityinfo'
+
+/**
+ * What a step's own policies *mean*, for the words the step says about them:
+ * read from the operations and from nothing else (roadmap/operations.ts
+ * PolicyEffect), exactly as `grantOf` reads what they ask for.
+ *
+ * Each is a condition the policy carries. A policy is about a place because it
+ * narrows by one, about registering sign-in methods because it names that user
+ * action, and about guests because its own scope names external users and
+ * nobody else — never because of the goal it is filed under, whose family used
+ * to decide two of these and gave GetIAMAI's all-users policy a message about
+ * guest access (copy/announcements.ts PolicySemantics).
+ */
+export function policySemantics(effects: readonly PolicyEffect[]): PolicySemantics {
+  const scopes = effects.map((e) => e.scope)
+  return {
+    locations: effects.some((e) => e.narrowings.some((n) => n.kind === 'locations')),
+    registration: scopes.some((sc) => sc.applications.userActions.some((a) => a.toLowerCase() === REGISTER_SECURITY_INFO)),
+    // Every policy of the step names external users, and none of them names
+    // anybody else: one all-users policy in the pair is a policy about everyone.
+    guestsOnly:
+      scopes.length > 0 &&
+      scopes.every((sc) => sc.guests.include !== null && !sc.allUsers && sc.users.include.length === 0 && sc.groups.include.length === 0 && sc.roles.include.length === 0),
+    blocks: effects.some((e) => e.blocks),
+  }
+}
+
 /** Step titles are the goal name as an imperative: the kind is a chip, never a prefix. */
 function stepTitle(goalName: string): string {
   return goalName.charAt(0).toUpperCase() + goalName.slice(1)
@@ -108,6 +137,7 @@ import type { SizeBand } from './constants.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 import { annotateStateReasons } from './stateReason.ts'
 import { NO_ANNOUNCEMENT, announcementFor } from '../copy/announcements.ts'
+import type { PolicySemantics } from '../copy/announcements.ts'
 import { proposedName, proposedObjectNames } from '../coverage/naming.ts'
 import { NAMED_BELOW } from './constants.ts'
 import { registrationWindow } from './campaign.ts'
@@ -1203,8 +1233,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           ? NO_ANNOUNCEMENT
           : announcementFor(
               {
-                goalId: goal.id,
-                family: readiness.family,
+                // An open policy's meaning is its operation's, and the goal is
+                // not passed at all; a step with no policy of its own is read by
+                // its goal, as it always was (roadmap/strand.ts familyReading).
+                ...(ownEffects !== null ? { policy: policySemantics(ownEffects) } : { goalId: goal.id, family: familyReading(asStep) }),
                 grant: sessionOnly ? null : operationGrant,
                 sessionOnly,
                 // How many people a block reaches is the measured answer, not a
@@ -1219,6 +1251,79 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               tenantName,
               '{DATE}',
             )
+
+    /**
+     * The three sentences a manager reads: the risk closed, the cost to people,
+     * what happens if it is not done.
+     *
+     * For an open policy every one of them is the policy's own — what it asks
+     * for (`operationGrant`), what it means (`policySemantics`), who it names
+     * (the cohort) and who the records show it touching (`measured`). The goal's
+     * readiness family used to choose the sentence and the goal's population
+     * used to supply its numbers, which told a manager that GetIAMAI's all-users
+     * policy was about guests, and that a step whose exported policy is a Block
+     * "requires MFA to open the Microsoft admin portals".
+     *
+     * A goal's own note stands only where the operation corroborates the claim
+     * it makes: each of them says the policy requires MFA, so each is used only
+     * where the policy requires MFA and blocks nobody. Where the operation
+     * settles none of it, the note is the one that claims nothing specific
+     * (MANAGER.other) rather than a sentence the goal made up.
+     *
+     * A step with no policy of its own is read by its goal, as it always was.
+     */
+    const managerNote = (): string => {
+      if (ownEffects === null) {
+        const family = familyReading(asStep)
+        return (
+          MANAGER_BY_GOAL[goal.id]?.() ??
+          (family === 'mfa' || family === 'guest'
+            ? family === 'guest'
+              ? MANAGER.guest(pop.active)
+              : MANAGER.mfa(pop.active, notReadyActive)
+            : family === 'admin'
+              ? MANAGER.admin(pop.total)
+              : family === 'block'
+                ? MANAGER.block(evidenceUsable ? evidence.affectedUserIds.length : 0)
+                : family === 'location'
+                  ? MANAGER.location(mapping.allowedCountries.map(countryLabel).join(', '), evidence.affectedUserIds.length)
+                  : family === 'device'
+                    ? MANAGER.device(pop.active, pop.active - popIds.filter((id) => contentIndexes.deviceReady.has(id) && popIndex.active.has(id)).length)
+                    : sessionOnly || /session/i.test(goal.name)
+                      ? MANAGER.session(pop.active)
+                      : MANAGER.other())
+        )
+      }
+      const semantics = policySemantics(ownEffects)
+      const byGoal = MANAGER_BY_GOAL[goal.id]
+      if (byGoal && !semantics.blocks && (operationGrant === 'mfa' || operationGrant === 'phishingResistant')) return byGoal()
+      // The people the policy names, and the ones among them who cannot meet it
+      // yet: the cohort, never the goal's population. Absent where the scope was
+      // not settled, and the note then claims no number.
+      const cohortActive = cohort?.activeIds ?? null
+      // A zero has to be proved: the block and location notes both say "nobody
+      // used it", which is `measuredReach` or nothing (roadmap/strand.ts).
+      const touched = measured?.length ?? null
+      if (semantics.blocks) {
+        if (touched === null) return MANAGER.other()
+        return semantics.locations ? MANAGER.location(mapping.allowedCountries.map(countryLabel).join(', '), touched) : MANAGER.block(touched)
+      }
+      if (cohortActive === null) return MANAGER.other()
+      if (sessionOnly) return MANAGER.session(cohortActive.length)
+      if (operationGrant === 'phishingResistant' || operationGrant === 'passwordless') return MANAGER.admin(cohort?.ids.length ?? 0)
+      if (operationGrant === 'compliantDevice' || operationGrant === 'approvedApplication' || operationGrant === 'compliantApplication')
+        return MANAGER.device(cohortActive.length, cohortActive.filter((id) => !contentIndexes.deviceReady.has(id)).length)
+      if (operationGrant === 'mfa' || operationGrant === 'passwordChange') {
+        if (semantics.guestsOnly) return MANAGER.guest(cohortActive.length)
+        const notReady = cohortActive.filter((id) => {
+          const v = viabilityById.get(id)
+          return v === undefined || !(v.mfa === 'verified' || v.mfa === 'likelyViable')
+        }).length
+        return MANAGER.mfa(cohortActive.length, notReady)
+      }
+      return MANAGER.other()
+    }
+    const forManager = managerNote()
 
     // Operator evidence sentence (prompt 13 §7) — never a promise. A count is
     // only claimed where the records actually measured this goal (block usage
@@ -1265,23 +1370,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         return (own.length > 0 ? own : strong).map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`)
       })(),
       plainTitle: stepTitle(goal.name),
-      forManager:
-        MANAGER_BY_GOAL[goal.id]?.() ??
-        (readiness.family === 'mfa' || readiness.family === 'guest'
-          ? readiness.family === 'guest'
-            ? MANAGER.guest(pop.active)
-            : MANAGER.mfa(pop.active, notReadyActive)
-          : readiness.family === 'admin'
-            ? MANAGER.admin(pop.total)
-            : readiness.family === 'block'
-              ? MANAGER.block(evidenceUsable ? evidence.affectedUserIds.length : 0)
-              : readiness.family === 'location'
-                ? MANAGER.location(mapping.allowedCountries.map(countryLabel).join(', '), evidence.affectedUserIds.length)
-                : readiness.family === 'device'
-                  ? MANAGER.device(pop.active, pop.active - popIds.filter((id) => contentIndexes.deviceReady.has(id) && popIndex.active.has(id)).length)
-                  : sessionOnly || /session/i.test(goal.name)
-                    ? MANAGER.session(pop.active)
-                    : MANAGER.other()),
+      forManager,
       // The lockout count is the people this policy would stop rather than
       // prompt: the strength the step will leave behind, measured against the
       // people in its own scope (roadmap/lockout.ts lockoutCount). No goal has a
