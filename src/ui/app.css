@@ -1494,6 +1494,12 @@ footer.app a {
   color: var(--ink-3);
   font-size: var(--t-2);
 }
+/* Today widens its page for the table (WIDE_ROUTES); the ladder keeps its
+   original, intrinsic width and sits centered above the wider table. */
+.ladder-wrap {
+  max-width: var(--page);
+  margin: 0 auto;
+}
 .ladder {
   margin: 6px 0 4px;
   padding: 0;
@@ -1571,12 +1577,6 @@ footer.app a {
   font-size: var(--t-4);
   font-weight: 500;
   color: var(--ink);
-}
-.ladder .rung-desc {
-  display: block;
-  font-size: var(--t-1);
-  color: var(--ink-3);
-  margin-top: 1px;
 }
 .ladder .rung-n {
   font-family: var(--font-serif);

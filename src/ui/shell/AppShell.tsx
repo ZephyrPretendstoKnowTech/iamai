@@ -29,9 +29,8 @@ import type { Route } from './routes.ts'
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
 export type { Route } from './routes.ts'
 
-// Pages whose main content is a table read better with the wider cap. Today's
-// content column is the app's page width; its rungs and its table span it.
-const WIDE_ROUTES = new Set<Route>(['inventory', 'how'])
+// Pages whose main content is a table read better with the wider cap.
+const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'how'])
 
 export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 
