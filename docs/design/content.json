@@ -164,7 +164,9 @@
         "unchanged": "still in {state}, unchanged since the last scan",
         "stateChanged": "changed to {state} by {date}, and the plan did not ask for it",
         "stateChangedExpected": "moved to {state} by {date}, as the plan asked",
-        "semanticsChanged": "the policy itself changed by {date}: what was watched before this is no longer what is deployed"
+        "semanticsChanged": "the policy itself changed by {date}: what was watched before this is no longer what is deployed",
+      "artifactReplaced": "a different policy is delivering this as of {date}: the one watched before it is not the one deployed, so the window starts again",
+      "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now"
       }
     }
   },

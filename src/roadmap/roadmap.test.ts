@@ -11,6 +11,10 @@ import { generateRoadmap } from './generate.ts'
 import type { RoadmapInput } from './generate.ts'
 import { observationsFrom } from './observation.ts'
 import { applyProgress, mergePersisted, skipStep } from './progress.ts'
+import { artifactIdOf, semanticsOf } from './observation.ts'
+
+/** The tenant's Conditional Access rows, as the tests build them. */
+const rowsOf = (snap: { config: { caPolicies?: { rows?: unknown[] } | null } }): Record<string, unknown>[] => (snap.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
 
 const GA = '62e90394-69f5-4237-9190-012177145e10'
 const PLAN = 'plan-test'
@@ -218,11 +222,22 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   assert.equal(step.status, 'in-report-only')
 
   // The time gate: the plan record says a scan eight days before this one first
-  // saw the policy in report-only, past the observation window.
-  applyProgress(steps, snap2, input.coverage, PLAN, undefined, null, observationsFrom({ reportOnlySeen: { [step.id]: '2026-08-18T00:00:00Z' } }))
+  // saw *this policy* in report-only, past the observation window. The record
+  // names the object it watched; one that does not cannot carry the window
+  // (observation.ts artifactIdOf), which is asserted below.
+  const watched = { [step.id]: { artifact: artifactIdOf('created-1'), state: 'report-only' as const, semantics: semanticsOf(rowsOf(snap2)[0]), firstSeenAt: '2026-08-18T00:00:00Z', since: 'first-scan' as const, lastSeenAt: '2026-08-18T00:00:00Z', evidenceAt: null } }
+  applyProgress(steps, snap2, input.coverage, PLAN, undefined, null, watched)
   assert.equal(step.status, 'ready-to-enforce')
 
-  const rows = snap2.config.caPolicies.rows as P[]
+  // The same eight days in a record that never named a policy: it loads, and it
+  // decides nothing, because nothing in it says which object was watched.
+  const legacy = generateRoadmap(input).steps
+  const legacyStep = stepFor(legacy, 'mfa-all-users')
+  applyProgress(legacy, snap2, input.coverage, PLAN, undefined, null, observationsFrom({ reportOnlySeen: { [legacyStep.id]: '2026-08-18T00:00:00Z' } }))
+  assert.equal(legacyStep.state.observation?.continuity, 'unknown')
+  assert.equal(legacyStep.status, 'in-report-only', 'an unproven window advances nothing')
+
+  const rows = rowsOf(snap2)
   rows[0] = { ...rows[0], state: 'enabled' }
   // The policy is on, but this coverage still says the goal is missing. A step
   // is done if and only if its goal's verdict is inPlace (target-state §8.2,

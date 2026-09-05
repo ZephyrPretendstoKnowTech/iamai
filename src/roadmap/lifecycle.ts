@@ -29,6 +29,7 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
+import { historyReset } from './observation.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 
 const MILESTONE = engine.milestone
@@ -171,8 +172,9 @@ export function raiseCondition(step: Step, next: Condition): Step {
  * The single next thing on this step, with a date only where one is known. A
  * baseline conflict has no rollout date and nothing to submit, so it names the
  * conflict and stops; a step in report-only names the day its window closes;
- * an observation this scan invalidated names that, because a policy that was
- * rewritten has not been watched.
+ * an observation whose window did not carry into this scan names that, because a
+ * policy that was rewritten — or a different one deployed in its place — has not
+ * been watched (observation.ts historyReset).
  */
 export function nextMilestone(step: Step): Milestone {
   const s = step.state
@@ -189,12 +191,12 @@ export function nextMilestone(step: Step): Milestone {
     // A policy this scan found rewritten is being watched from here, and the
     // milestone says so rather than naming a window it has not served.
     const at = step.tracking?.readyOn ?? null
-    const label = s.observation?.invalidated ? s.observation.note : at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(at) }) : MILESTONE.observe
+    const label = s.observation && historyReset(s.observation) ? s.observation.note : at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(at) }) : MILESTONE.observe
     return { kind: 'observe', label, at, gatedBy: null }
   }
   if (s.condition === 'needs-decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }
   if (s.condition === 'blocked') return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: step.blockedReason }
-  if (s.observation?.invalidated) return { kind: 'observe', label: s.observation.note, at: null, gatedBy: null }
+  if (s.observation && historyReset(s.observation)) return { kind: 'observe', label: s.observation.note, at: null, gatedBy: null }
   if (step.kind === 'verify' || step.kind === 'check') return { kind: 'verify', label: MILESTONE.verify, at: null, gatedBy: null }
   if (s.lifecycle === null) return { kind: 'deploy', label: MILESTONE.prepare, at: null, gatedBy: null }
   return { kind: 'deploy', label: MILESTONE.deploy, at: step.events?.announce?.at ?? null, gatedBy: null }

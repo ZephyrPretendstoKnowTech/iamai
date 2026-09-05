@@ -16,7 +16,7 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { advanceState, raiseCondition, setState, statusRank } from './lifecycle.ts'
 import type { StepState } from './lifecycle.ts'
-import { observe, observedStateOf, semanticsOf } from './observation.ts'
+import { artifactIdOf, historyReset, observe, observedStateOf, semanticsOf } from './observation.ts'
 import type { ObservationChange, StepObservation } from './observation.ts'
 
 const TRACK = engine.tracking
@@ -255,6 +255,10 @@ export function trackExecution(
     const pr = policyRow ? snapshot.evidencePolicyResults.find((p) => p.policyId === policyRow.id) : undefined
     const observedState = observedStateOf(policyRow?.state ?? null)
     const change = observe(observations[step.id] ?? null, {
+      // Which object this scan saw. The step id says which row of the plan this
+      // is; it never says which policy is delivering it, and the two were being
+      // asked to do one job (observation.ts artifactIdOf).
+      artifact: artifactIdOf(policyRow?.id),
       state: observedState,
       semantics: semanticsOf(policyRow as Record<string, unknown> | null),
       at: snapshot.asOf,
@@ -265,10 +269,13 @@ export function trackExecution(
     })
     setState(step, { observation: change })
     advanceState(step, { lifecycle: observedState === 'report-only' ? 'report-only' : observedState === 'enforced' ? 'enforced' : 'not-deployed' })
-    // A policy rewritten since the last scan has not been watched: what the
-    // records hold is about the policy it used to be. The step needs looking
-    // at, and its window starts again from the scan that noticed (observe()).
-    if (change.invalidated) raiseCondition(step, 'review-required')
+    // A person looks when what the policy *means* is now something the plan did
+    // not ask for. Not when the window merely restarts: a policy replaced by a
+    // different object that means the same thing, or by exactly the one the plan
+    // meant to create, has changed nothing for anybody to decide, and raising
+    // review for it put a healthy rollout into a condition it was not in
+    // (observation.ts reviewRequired, kept apart from continuity).
+    if (change.reviewRequired) raiseCondition(step, 'review-required')
 
     const since = step.history.at(-1)?.at ?? snapshot.asOf
     const sinceText = absoluteDate(since)
@@ -380,7 +387,13 @@ export function trackExecution(
       // Ready to enforce by whichever gate came first; the note says which. A
       // policy this scan found rewritten has been watched for nothing, so it
       // advances on neither gate however clean the records look.
-      const ready = change.invalidated ? null : readyWhen(step)
+      // A window that does not carry into this scan closes no gate on its own:
+      // the object changed, or it was rewritten, or the record cannot say which
+      // object it watched. What may still open the gate is evidence about the
+      // object deployed *now* — Microsoft's own record of this policy in
+      // report-only — which is a different thing from inherited history and is
+      // the only thing admitted here (observation.ts historyReset, admit).
+      const ready = historyReset(change) && change.latest.evidenceAt === null ? null : readyWhen(step)
       if (ready?.kind === 'now') advance(step, { lifecycle: 'ready-to-enforce' }, fillText(TRACK.readyNow, { n: ready.days }), now)
       else if (ready?.kind === 'since') advance(step, { lifecycle: 'ready-to-enforce' }, fillText(TRACK.readySince, { date: absoluteDate(ready.date) }), now)
       continue

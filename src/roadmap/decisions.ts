@@ -50,16 +50,22 @@ export type PlanDecisions = {
   /** Every picker's saved decision, by step id (prompt 52 Part 3). */
   stepDecisions?: Record<string, StepDecision>
   /**
-   * By step id, what the last scan saw of the step's policy: the state, a
-   * fingerprint of its material semantics, when IAMAI first saw that state and
-   * whatever Microsoft's own evidence dates it to (observation.ts). Like
-   * planCreatedAt, a history no regeneration can repeat — a snapshot shows the
-   * state now, never when a scan first saw it.
+   * By step id, what the last scan saw of the step's policy: *which deployed
+   * object* it was (an opaque identity, never the tenant's own id), the state, a
+   * fingerprint of its material semantics, when IAMAI first saw that object in
+   * that state and whatever Microsoft's own evidence dates it to
+   * (observation.ts). Like planCreatedAt, a history no regeneration can repeat —
+   * a snapshot shows the state now, never when a scan first saw it.
+   *
+   * The object is what makes the rest safe to reuse: keyed by step alone, a
+   * window earned by one policy carried over to whatever replaced it.
    */
   observations?: Record<string, import('./observation.ts').StepObservation>
   /**
    * The pre-Foundation-B version of the same thing: one report-only date per
    * step. Read on load and migrated into `observations`; never written again.
+   * It names no object, so it loads for history and for display and cannot carry
+   * a step over a rollout gate on its own (observation.ts continuity).
    */
   reportOnlySeen?: Record<string, string>
   /** The name every Tell your people box signs with (Plan settings); in the plan file. */

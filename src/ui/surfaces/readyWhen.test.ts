@@ -23,6 +23,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
+import { artifactIdOf, semanticsOf } from '../../roadmap/observation.ts'
 
 const DAY = 86_400_000
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
@@ -89,7 +90,13 @@ test('rescan: a policy still in report-only past its date stays Report-only and 
   const f = fixture('demo')
   const run = runFixture(f)
   const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
-  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
+  const first = runFixture(f).steps.find((s) => s.id === ADMINS)!
+  const rows = (f.snapshot.config.caPolicies?.rows ?? []) as { id?: string }[]
+  const row = rows.find((p) => p.id === first.tracking?.policyId)
+  // The record names the policy it watched, which is what lets the ten days it
+  // counted belong to the policy deployed now (observation.ts artifactIdOf).
+  const watched = { [ADMINS]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }
+  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, watched)
   const step = run.steps.find((s) => s.id === ADMINS)!
   assert.equal(step.tracking?.reportOnlyAt, seenAt, 'the record\'s observation wins over this scan')
   assert.equal(step.status, 'ready-to-enforce')
@@ -97,6 +104,23 @@ test('rescan: a policy still in report-only past its date stays Report-only and 
   assert.equal(statusOf(step).word, 'Report-only')
   assert.equal(rowWhen(step), `ready since ${absoluteDate(step.tracking!.readyOn!)}`)
   assert.equal(step.history.at(-1)?.note, `ready since ${absoluteDate(step.tracking!.readyOn!)}`)
+})
+
+test('rescan: the same ten days in a record that never named a policy carries nothing', () => {
+  // The pre-Foundation-B record held one date per step. A step is not a policy,
+  // so the date cannot be shown to belong to the object deployed now, and the
+  // window runs from the scan that could name it. The date is still loaded and
+  // still readable — it just does not decide a rollout gate.
+  const f = fixture('demo')
+  const run = runFixture(f)
+  const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
+  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
+  const step = run.steps.find((s) => s.id === ADMINS)!
+  assert.equal(step.state.observation?.continuity, 'unknown')
+  assert.equal(step.state.observation?.prior?.firstSeenAt, seenAt, 'the date is still there')
+  assert.equal(step.tracking?.reportOnlyAt, f.snapshot.asOf, 'but the window runs from this scan')
+  assert.notEqual(step.status, 'ready-to-enforce')
+  assert.equal(statusOf(step).word, 'Report-only')
 })
 
 test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (ready now / ready <date>) and the admins policy reads Enforced', () => {
