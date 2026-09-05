@@ -353,6 +353,13 @@ export function renderStep(st: Record<string, any>): string {
     parts.push('<div class="decision">')
     parts.push(`<div class="dlabel">${esc(d.label)}</div>`)
     if (d.help) parts.push(p(d.help, ex, 'dhelp'))
+    // A safety-sensitive choice puts its recommendation and its two answers
+    // above the picker (Foundation C); the review shows every branch, the
+    // product shows the one that applies.
+    if (d.confirm) {
+      const c = d.confirm
+      parts.push(p(c.recommended, ex, 'dhelp') + btn(c.use) + btn(c.other) + p(c.ambiguous, ex, 'dhelp') + p(c.invalidated, ex, 'dhelp'))
+    }
     if (d.location) {
       const L = d.location
       parts.push(`<div class="dlabel">${esc(L.label)}</div>` + p(L.help, ex, 'dhelp'))

@@ -16,6 +16,7 @@ import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
+import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { engine, shared } from '../../content/content.ts'
@@ -100,7 +101,8 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
     const known = new Map<string, string>()
     for (const [id] of ctx.groups ?? []) known.set(lc(id), id)
     for (const p of policies) for (const id of [...policyGroups(p).include, ...policyGroups(p).exclude]) if (!known.has(lc(id))) known.set(lc(id), id)
-    const resolved = mapping.records['__globalExclusion']?.resolvedId ?? null
+    const choice = exclusionsGroupChoice({ snapshot, mapping, groups: ctx.groups ?? null })
+    const resolved = choice.confirmedId
     const isResolved = (id: string): number => (resolved !== null && lc(id) === lc(resolved) ? 1 : 0)
     const excludedFrom = (id: string): number => policies.filter((p) => policyGroups(p).exclude.some((g) => lc(g) === lc(id))).length
     const ids = [...known.values()].sort((a, b) => isResolved(b) - isResolved(a) || excludedFrom(b) - excludedFrom(a) || nameOf(a).localeCompare(nameOf(b)))
@@ -108,8 +110,11 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
       const g = ctx.groups?.get(id)
       return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount, excludedFrom: excludedFrom(id), policyCount: policies.length })
     })
-    const ticked = ids.filter((id) => isResolved(id) === 1)
-    return vars('groups', rows, ids, ticked.length > 0 ? ticked : ids.slice(0, 1))
+    // Foundation C: the confirmed group and nothing else. The picker used to
+    // tick whichever group the most policies excluded when the plan held none,
+    // and that tick was applied as a decision — so the group IAMAI happened to
+    // sort first went into every policy the operator was about to deploy.
+    return vars('groups', rows, ids, ids.filter((id) => isResolved(id) === 1))
   }
 
   // Allowed countries: every country the sign-in records or a usage location

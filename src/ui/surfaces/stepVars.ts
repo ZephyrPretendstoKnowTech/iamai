@@ -22,6 +22,7 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { pickerVars } from './pickerRows.ts'
+import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
 import { DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
@@ -254,16 +255,36 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // many policies exclude it) and its members; the create instructions show
   // while no group is recognised (its checks need a group to check).
   if (DECISION_STEPS.exclusions.has(step.id)) {
-    const record = ctx.mapping.records['__globalExclusion'] ?? null
-    const id = record?.resolvedId ?? null
-    v.needsCreate = id === null
+    const choice = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups ?? null })
+    const id = choice.confirmedId
+    // Create instructions only where there is nothing to choose between: a
+    // tenant that already has a group IAMAI can put forward is asked to confirm
+    // it, not to make a second one.
+    v.needsCreate = choice.status === 'none-found'
+    // The recommendation, said as a recommendation. Nothing in the plan reads
+    // these; they exist so the step can put the question and the operator can
+    // answer it (Foundation C).
+    if (choice.recommended) {
+      v.recommendedGroup = choice.recommended.name
+      v.recommendedGroupId = choice.recommended.id
+      v.recommendedExcludedFrom = choice.recommended.excludedFrom ?? undefined
+      v.recommendedMembers = choice.recommended.memberCount ?? undefined
+    }
+    // Every group that could be it, while nothing is confirmed: the who line
+    // says so instead of "none recognised", which would read as though the
+    // tenant had none. The decision's own ambiguity line is separate, because it
+    // shows only where there is more than one and IAMAI is declining to choose.
+    if (choice.unresolved && choice.candidates.length > 0) v.candidateGroups = choice.candidates.map((c) => c.name)
+    if (choice.status === 'ambiguous') v.ambiguousGroups = choice.candidates.map((c) => c.name)
+    if (choice.invalidatedId !== null) v.invalidatedGroup = ctx.nameOf(choice.invalidatedId)
+    v.policyCount = (ctx.snapshot.config.caPolicies?.rows ?? []).length
     // No group: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
     if (id === null) delete v.total
     if (id !== null) {
       const g = ctx.groups?.get(id) ?? [...(ctx.groups ?? [])].find(([k]) => k.toLowerCase() === id.toLowerCase())?.[1] ?? null
       const policies = ctx.snapshot.config.caPolicies?.rows ?? []
       const excludes = (p: unknown): boolean => ((p as { conditions?: { users?: { excludeGroups?: string[] } } }).conditions?.users?.excludeGroups ?? []).some((x) => x.toLowerCase() === id.toLowerCase())
-      v.exclusionsGroup = g?.displayName ?? record?.resolvedName ?? ctx.nameOf(id)
+      v.exclusionsGroup = g?.displayName ?? choice.confirmedName ?? ctx.nameOf(id)
       v.memberCount = g?.memberCount ?? 0
       v.excludedFrom = policies.filter(excludes).length
       v.policyCount = policies.length

@@ -1088,11 +1088,19 @@
         "lead": "The group and its members:",
         "group": "{exclusionsGroup} · {memberCount} members · excluded from {excludedFrom} of {policyCount} policies",
         "members": "{list:members}",
+        "unconfirmed": "Nothing confirmed yet. {list:candidateGroups} could be it.",
         "none": "No exclusions group recognised in {tenant}."
       },
       "decision": {
         "label": "Exclusions group",
         "help": "The one group every policy excludes. IAMAI recognised {exclusionsGroup} from the exclusions already in place.",
+        "confirm": {
+          "recommended": "IAMAI recommends {recommendedGroup}: {recommendedMembers} members, excluded from {recommendedExcludedFrom} of {policyCount} policies. Nothing in the plan uses it until you confirm it.",
+          "use": "Use this group",
+          "other": "Choose a different group",
+          "ambiguous": "More than one group could be the one every policy excludes: {list:ambiguousGroups}. IAMAI will not choose between them, so choose the one you mean.",
+          "invalidated": "{invalidatedGroup} is no longer a group IAMAI can read in {tenant}. Nothing in the plan uses it, and your choice stands until you make another."
+        },
         "pickerSource": "groups",
         "pickerRow": "{name} · {memberCount} members · excluded from {excludedFrom} of {policyCount} policies",
         "save": "Save"
@@ -1167,6 +1175,18 @@
           "Breakglass Exclusion · 1 member · excluded from 9 of 10 policies",
           "Core - Exclusion - Travellers · 2 members · excluded from 1 of 10 policies"
         ],
+        "recommendedGroup": "Core - Exclusion - Break-glass",
+        "recommendedMembers": 2,
+        "recommendedExcludedFrom": 9,
+        "candidateGroups": [
+          "Core - Exclusion - Break-glass",
+          "Core - Exclusion - Travellers"
+        ],
+        "ambiguousGroups": [
+          "Core - Exclusion - Break-glass",
+          "Core - Exclusion - Travellers"
+        ],
+        "invalidatedGroup": "Core - Exclusion - Break-glass",
         "from": "Aug 1"
       },
       "partner": "Done together with Create or Correct Emergency Access Accounts: the accounts chosen there are this group's only members."
