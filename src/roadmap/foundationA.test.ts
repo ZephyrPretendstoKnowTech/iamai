@@ -79,6 +79,15 @@ test('a field nothing consumes is held by name rather than read as absent', () =
   }
   const e = effectOf(body)
   assert.ok(e.unknown.some((u) => u === 'a field IAMAI recognised but did not read: conditions.users.somethingNew'), e.unknown.join(' | '))
+  // A tenant's own policy comes back with the conditions it does not set written
+  // null. A field carrying nothing has nothing to read, and holding it would
+  // make an update to an ordinary tenant policy unreadable.
+  const asGraphReturnsIt = effectOf({
+    ...body,
+    conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, platforms: null, locations: null, devices: null, clientAppTypes: ['all'] },
+    sessionControls: null,
+  })
+  assert.deepEqual(asGraphReturnsIt.unknown, [], 'a policy that sets nothing extra is read in full')
 })
 
 // ---- 1: the operation is the only authority ----
