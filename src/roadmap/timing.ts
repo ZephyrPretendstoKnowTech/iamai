@@ -155,9 +155,9 @@ export function nobodyAffected(step: Step): boolean {
     const affected = family === 'block' || family === 'location' || family === 'risk' ? step.evidence.affectedUserIds.length : step.population.active
     return step.evidence.status === 'ok' && affected === 0
   }
-  // Work the plan cannot write is not proof of anything: it is read the way a
-  // step with no policy is, by who it would apply to.
-  if (effects.length === 0) return step.evidence.status === 'ok' && step.population.active === 0
+  // Work the plan cannot write proves nothing at all — least of all a zero — and
+  // it is not read by the people the step happens to list.
+  if (effects.length === 0) return false
   // Zero is proved, never assumed: a policy IAMAI cannot read in full might
   // touch anyone (roadmap/operations.ts PolicyEffect.unknown).
   if (effects.some((e) => e.unknown.length > 0)) return false

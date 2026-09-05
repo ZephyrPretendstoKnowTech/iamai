@@ -36,6 +36,7 @@ import type { Step, StepResolution } from '../../roadmap/types.ts'
 import { shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import type { StepVarContext } from './stepVars.ts'
+import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 
 type PinnedPolicy = { id: string | null; displayName: string; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
 const POLICIES = pinned.policies as unknown as PinnedPolicy[]
@@ -50,7 +51,34 @@ export type PortalNames = {
   /** The fallback name for a body that carries none (the step's title). */
   policyName: string
   strengthName?: string | null
+  /**
+   * The name this tenant knows an authentication strength by, from its own
+   * metadata. The request carries a reference and nothing that describes the
+   * object it points at (roadmap/operations.ts), so the instruction's name comes
+   * from here rather than from the body.
+   */
+  strengthNameFor?: (id: string) => string | null
 }
+
+/**
+ * What this tenant calls an authentication strength: its own row for it, then
+ * the name the person who confirmed the mapping picked it under, then
+ * Microsoft's own name for a built-in one. Null where nothing in the tenant
+ * describes it — better a generic instruction than one naming a different
+ * object.
+ */
+export function strengthNameOf(id: string, ctx: Pick<StepVarContext, 'snapshot' | 'mapping'>): string | null {
+  const key = id.toLowerCase()
+  for (const raw of (ctx.snapshot.config.authStrengths?.rows ?? []) as Record<string, unknown>[]) {
+    if (typeof raw.id === 'string' && raw.id.toLowerCase() === key && typeof raw.displayName === 'string' && raw.displayName.length > 0) return raw.displayName
+  }
+  for (const rec of Object.values(ctx.mapping.records ?? {})) {
+    if (typeof rec.resolvedId === 'string' && rec.resolvedId.toLowerCase() === key && typeof rec.resolvedName === 'string' && rec.resolvedName.length > 0) return rec.resolvedName
+  }
+  return BUILT_IN_STRENGTH_NAMES.get(key) ?? null
+}
+
+const BUILT_IN_STRENGTH_NAMES = new Map<string, string>(builtinStrengths.strengths.map((s) => [s.id.toLowerCase(), s.displayName]))
 
 /** The names a step's lines need, from its variable context. */
 export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>, fallbackTitle: string): PortalNames {
@@ -58,6 +86,7 @@ export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>,
     nameOf: ctx.nameOf,
     policyName: String(ex.policyName ?? fallbackTitle),
     strengthName: typeof ex.strengthName === 'string' ? ex.strengthName : null,
+    strengthNameFor: (id) => strengthNameOf(id, ctx),
   }
 }
 
@@ -77,9 +106,9 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
   // scan has no row for — falls back to the generic phrase, never to the
   // baseline author's name for a different object and never to a raw id. The
   // goal's own name stands in only where the body names no strength at all.
-  const strength = (p.grantControls as { authenticationStrength?: { displayName?: unknown } } | null | undefined)?.authenticationStrength
-  const bodyStrengthName = typeof strength?.displayName === 'string' && strength.displayName.length > 0 ? strength.displayName : null
-  const strengthName = strength ? bodyStrengthName : (names.strengthName ?? null)
+  const strength = (p.grantControls as { authenticationStrength?: { id?: unknown } } | null | undefined)?.authenticationStrength
+  const strengthId = typeof strength?.id === 'string' ? strength.id : null
+  const strengthName = strength ? (strengthId ? (names.strengthNameFor?.(strengthId) ?? null) : null) : (names.strengthName ?? null)
   const exclusionsGroup = exclusionsGroupId ? nameOf(exclusionsGroupId) : 'the exclusions group'
   return {
     policyName,

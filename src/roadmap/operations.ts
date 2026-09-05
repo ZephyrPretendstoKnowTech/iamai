@@ -38,44 +38,101 @@ function targetAgrees(op: PolicyOperation): boolean {
 /** Graph's own annotations travel back with a policy and mean nothing on the way in. */
 const isAnnotation = (key: string): boolean => key.includes('@odata.')
 
+const isObjectOnly = (v: unknown, keys: ReadonlySet<string>): v is Record<string, unknown> =>
+  isObject(v) && Object.keys(v).every((k) => keys.has(k) || isAnnotation(k))
+const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
+const strings = (v: unknown): string[] => arr(v).filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+const nonEmpty = (v: unknown): boolean => strings(v).length > 0
+/** An absent list is fine; a present one must be a list of names. */
+const listOk = (v: unknown, allowed: ReadonlySet<string> | null = null): boolean => {
+  if (v === undefined || v === null) return true
+  if (!Array.isArray(v)) return false
+  return v.every((x) => typeof x === 'string' && x.trim().length > 0 && (allowed === null || allowed.has(x.toLowerCase())))
+}
+const word = (v: unknown): boolean => typeof v === 'string' && v.trim().length > 0
+
 /**
- * What IAMAI writes, and what it therefore has a reading for. This is not a
- * Graph schema and does not try to be one: it is the set of shapes the product
- * itself emits and can read back exactly. The fields are the request envelope,
- * and a body carrying anything else is not submitted at all. The rest —
- * conditions, grant settings and session controls — are what a policy *means*,
- * and one IAMAI has no reading for is carried exactly as it stands and reported
- * as unreadable (effectOf), never dropped and never guessed at.
+ * The request envelope: the fields a Conditional Access create or update may
+ * carry. Graph's own read-only bookkeeping is not among them, and a body
+ * carrying it is a request Graph refuses.
  */
 const POLICY_FIELDS = new Set(['displayName', 'description', 'state', 'conditions', 'grantControls', 'sessionControls'])
-const CONDITION_FIELDS = new Set([
-  'users',
-  'applications',
-  'clientApplications',
-  'clientAppTypes',
-  'locations',
-  'platforms',
-  'devices',
-  'deviceStates',
-  'signInRiskLevels',
-  'userRiskLevels',
-  'servicePrincipalRiskLevels',
-  'authenticationFlows',
-  'insiderRiskLevels',
-])
 const GRANT_FIELDS = new Set(['operator', 'builtInControls', 'customAuthenticationFactors', 'termsOfUse', 'authenticationStrength'])
-const SESSION_FIELDS = new Set([
-  'signInFrequency',
-  'persistentBrowser',
-  'secureSignInSession',
-  'applicationEnforcedRestrictions',
-  'cloudAppSecurity',
-  'continuousAccessEvaluation',
-  'disableResilienceDefaults',
-])
 
-/** The grant controls Conditional Access understands. Anything else is not a control IAMAI will submit. */
-const BUILT_IN_CONTROLS = new Set([
+/**
+ * The conditions IAMAI writes or must carry through from the pinned baseline,
+ * each with the shape it has to have. This is not a Graph schema: it is the
+ * bounded set the product actually puts on the wire, checked to its values so a
+ * malformed payload is held rather than submitted.
+ */
+const CONDITION_SHAPES: Record<string, (v: unknown) => boolean> = {
+  users: (v) => isUsersScope(v),
+  applications: (v) =>
+    isObjectOnly(v, new Set(['includeApplications', 'excludeApplications', 'includeUserActions', 'includeAuthenticationContextClassReferences'])) &&
+    listOk(v.includeApplications) &&
+    listOk(v.excludeApplications) &&
+    listOk(v.includeUserActions) &&
+    listOk(v.includeAuthenticationContextClassReferences),
+  clientApplications: (v) => isWorkloadScope(v),
+  clientAppTypes: (v) => Array.isArray(v) && v.length > 0 && listOk(v, CLIENT_APP_TYPES),
+  locations: (v) =>
+    isObjectOnly(v, new Set(['includeLocations', 'excludeLocations'])) && listOk(v.includeLocations) && listOk(v.excludeLocations) && (nonEmpty(v.includeLocations) || nonEmpty(v.excludeLocations)),
+  platforms: (v) => isObjectOnly(v, new Set(['includePlatforms', 'excludePlatforms'])) && listOk(v.includePlatforms) && listOk(v.excludePlatforms) && nonEmpty(v.includePlatforms),
+  devices: (v) => isObjectOnly(v, new Set(['deviceFilter'])) && isFilter(v.deviceFilter),
+  signInRiskLevels: (v) => listOk(v, RISK_LEVELS),
+  userRiskLevels: (v) => listOk(v, RISK_LEVELS),
+  servicePrincipalRiskLevels: (v) => listOk(v, RISK_LEVELS),
+  authenticationFlows: (v) => isObjectOnly(v, new Set(['transferMethods'])) && word(v.transferMethods),
+}
+const RISK_LEVELS = new Set(['low', 'medium', 'high', 'none', 'hidden', 'unknownfuturevalue'])
+const CLIENT_APP_TYPES = new Set(['all', 'browser', 'mobileappsanddesktopclients', 'exchangeactivesync', 'easunsupported', 'other'])
+const USER_SCOPE_FIELDS = new Set([
+  'includeUsers',
+  'excludeUsers',
+  'includeGroups',
+  'excludeGroups',
+  'includeRoles',
+  'excludeRoles',
+  'includeGuestsOrExternalUsers',
+  'excludeGuestsOrExternalUsers',
+])
+const MEMBERSHIP_KINDS = new Set(['all', 'enumerated', 'unknownfuturevalue'])
+
+/** A filter has a mode and a rule, or it filters nothing. */
+const isFilter = (v: unknown): boolean => isObjectOnly(v, new Set(['mode', 'rule'])) && ['include', 'exclude'].includes(String(v.mode).toLowerCase()) && word(v.rule)
+
+/** A guest clause names the kinds of guest it means, and which tenants they come from. */
+function isGuestClause(v: unknown): boolean {
+  if (!isObjectOnly(v, new Set(['guestOrExternalUserTypes', 'externalTenants']))) return false
+  if (!word(v.guestOrExternalUserTypes)) return false
+  const tenants = v.externalTenants
+  if (!isObjectOnly(tenants, new Set(['membershipKind', 'members']))) return false
+  return MEMBERSHIP_KINDS.has(String(tenants.membershipKind).toLowerCase())
+}
+
+/** The people clause: lists of ids, and guest clauses that say what they mean. */
+function isUsersScope(v: unknown): boolean {
+  if (!isObjectOnly(v, USER_SCOPE_FIELDS)) return false
+  for (const k of ['includeUsers', 'excludeUsers', 'includeGroups', 'excludeGroups', 'includeRoles', 'excludeRoles']) if (!listOk(v[k])) return false
+  for (const k of ['includeGuestsOrExternalUsers', 'excludeGuestsOrExternalUsers']) if (v[k] !== undefined && v[k] !== null && !isGuestClause(v[k])) return false
+  return true
+}
+
+/** The workload clause: the service principals it names, or a filter that names them. */
+function isWorkloadScope(v: unknown): boolean {
+  if (!isObjectOnly(v, new Set(['includeServicePrincipals', 'excludeServicePrincipals', 'servicePrincipalFilter']))) return false
+  if (!listOk(v.includeServicePrincipals) || !listOk(v.excludeServicePrincipals)) return false
+  const filter = v.servicePrincipalFilter
+  if (filter !== undefined && filter !== null && !isFilter(filter)) return false
+  return nonEmpty(v.includeServicePrincipals) || (filter !== undefined && filter !== null)
+}
+
+/**
+ * The grant controls Conditional Access has. IAMAI submits any of them, because
+ * the pinned baseline may hold any of them; it reads only the ones it has a
+ * reading for, and says so about the rest.
+ */
+const SUBMITTABLE_CONTROLS = new Set([
   'block',
   'mfa',
   'compliantdevice',
@@ -83,12 +140,16 @@ const BUILT_IN_CONTROLS = new Set([
   'approvedapplication',
   'compliantapplication',
   'passwordchange',
+  'riskremediation',
 ])
 
-/** What each of Microsoft's built-in authentication strengths allows; their ids describe them everywhere. */
-const BUILT_IN_STRENGTHS = new Map<string, string[]>(builtinStrengths.strengths.map((s) => [s.id.toLowerCase(), s.allowedCombinations]))
+/** The ones IAMAI can say something about. Anything else is carried and held unknown. */
+const READABLE_CONTROLS = new Set(['block', 'mfa', 'compliantdevice', 'domainjoineddevice', 'approvedapplication', 'compliantapplication', 'passwordchange'])
 
-/** The device requirements: a policy that asks for one asks for a machine the tenant manages. */
+/** What each of Microsoft's built-in authentication strengths allows; their ids describe them in every tenant. */
+export const BUILT_IN_STRENGTHS = new Map<string, string[]>(builtinStrengths.strengths.map((s) => [s.id.toLowerCase(), s.allowedCombinations]))
+
+/** The device requirements: a policy that asks for one asks for a machine the tenant manages, in the way it names. */
 const DEVICE_CONTROLS = new Set(['compliantdevice', 'domainjoineddevice'])
 /** The application requirements: a policy that asks for one asks for an app the tenant approves or protects. */
 const APP_CONTROLS = new Set(['approvedapplication', 'compliantapplication'])
@@ -96,26 +157,53 @@ const APP_CONTROLS = new Set(['approvedapplication', 'compliantapplication'])
 /** The states a Conditional Access policy may be in. */
 const POLICY_STATES = new Set(['enabled', 'disabled', 'enabledForReportingButNotEnforced'])
 
-const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
-const strings = (v: unknown): string[] => arr(v).filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-const nonEmpty = (v: unknown): boolean => strings(v).length > 0
+/** The session controls IAMAI writes or carries, each with the shape it has to have. */
+const SESSION_SHAPES: Record<string, (v: unknown) => boolean> = {
+  signInFrequency: (v) =>
+    isObjectOnly(v, new Set(['isEnabled', 'type', 'value', 'authenticationType', 'frequencyInterval'])) &&
+    (v.type === undefined || v.type === null || ['days', 'hours'].includes(String(v.type))) &&
+    (v.value === undefined || v.value === null || typeof v.value === 'number') &&
+    (v.frequencyInterval === undefined || v.frequencyInterval === null || ['timeBased', 'everyTime'].includes(String(v.frequencyInterval))),
+  persistentBrowser: (v) => isObjectOnly(v, new Set(['isEnabled', 'mode'])) && (v.mode === undefined || v.mode === null || ['always', 'never'].includes(String(v.mode))),
+  secureSignInSession: (v) => isObjectOnly(v, new Set(['isEnabled'])),
+  applicationEnforcedRestrictions: (v) => isObjectOnly(v, new Set(['isEnabled'])),
+  cloudAppSecurity: (v) => isObjectOnly(v, new Set(['isEnabled', 'cloudAppSecurityType'])),
+  disableResilienceDefaults: (v) => typeof v === 'boolean' || v === null,
+}
 
 /** One thing a policy asks a person for. Kept apart: a device is not an app, and neither is a method. */
 export type Requirement =
   | { kind: 'mfa' }
   | { kind: 'passwordChange' }
-  | { kind: 'strength'; id: string | null; combinations: string[] }
-  | { kind: 'device'; control: string }
-  | { kind: 'app'; control: string }
+  | { kind: 'strength'; id: string }
+  | { kind: 'device'; control: 'compliantdevice' | 'domainjoineddevice' }
+  | { kind: 'app'; control: 'approvedapplication' | 'compliantapplication' }
+  | { kind: 'tokenProtection' }
   | { kind: 'other'; control: string }
 
 /**
- * What a policy asks of the people it applies to, read from the policy itself.
+ * Who and what a policy reaches, decoded from its own conditions. Every list is
+ * the policy's own; nothing here comes from the goal a step is filed under or
+ * from the people the step happens to list.
+ */
+export type PolicyScope = {
+  /** It names every user in the tenant. */
+  allUsers: boolean
+  users: { include: string[]; exclude: string[] }
+  groups: { include: string[]; exclude: string[] }
+  roles: { include: string[]; exclude: string[] }
+  guests: { include: boolean; exclude: boolean }
+  /** It reaches service principals and no person at all. */
+  workloadOnly: boolean
+  applications: { include: string[]; exclude: string[]; userActions: string[] }
+}
+
+/**
+ * What a policy asks of the people it reaches, read from the policy itself.
  * Everything that decides what a change means — what it can deny, who it would
  * strand, what it waits on, how it batches, how long it is watched — reads this
  * and never the goal it is filed under. Where the policy says something IAMAI
- * cannot read from what the tenant scan holds, `unknown` says so; nothing
- * guesses.
+ * cannot decode, `unknown` says so; nothing guesses.
  */
 export type PolicyEffect = {
   /** It stops the sign-in outright. */
@@ -124,10 +212,12 @@ export type PolicyEffect = {
   operator: 'AND' | 'OR'
   /** Each thing it asks for, kept distinct. */
   requirements: Requirement[]
+  /** Who and what it reaches. */
+  scope: PolicyScope
   /** The built-in grant controls it requires, lowercased. */
   controls: ReadonlySet<string>
-  /** The authentication strength it requires, where it names one. */
-  strength: { id: string | null; allowedCombinations: string[] } | null
+  /** The authentication strength it requires, as the reference the request carries. */
+  strength: { id: string } | null
   /** It requires a device the tenant manages. */
   requiresDevice: boolean
   /** It asks for a sign-in method: multifactor authentication, or a strength. */
@@ -150,30 +240,44 @@ export type PolicyEffect = {
   unknown: string[]
 }
 
-/** What one policy body does. */
+/** Who a policy's conditions reach, decoded. */
+function scopeOf(conditions: Record<string, unknown>): PolicyScope {
+  const users = isObject(conditions.users) ? conditions.users : null
+  const workload = isObject(conditions.clientApplications) ? conditions.clientApplications : null
+  const apps = isObject(conditions.applications) ? conditions.applications : null
+  const include = strings(users?.includeUsers)
+  return {
+    allUsers: include.some((u) => u.toLowerCase() === 'all'),
+    users: { include: include.filter((u) => u.toLowerCase() !== 'all'), exclude: strings(users?.excludeUsers) },
+    groups: { include: strings(users?.includeGroups), exclude: strings(users?.excludeGroups) },
+    roles: { include: strings(users?.includeRoles), exclude: strings(users?.excludeRoles) },
+    guests: { include: isObject(users?.includeGuestsOrExternalUsers), exclude: isObject(users?.excludeGuestsOrExternalUsers) },
+    workloadOnly: users === null && workload !== null,
+    applications: { include: strings(apps?.includeApplications), exclude: strings(apps?.excludeApplications), userActions: strings(apps?.includeUserActions) },
+  }
+}
+
+/** What one policy body does, decoded exactly or held unknown. */
 export function effectOf(body: Record<string, unknown>): PolicyEffect {
   const unknown: string[] = []
   const grant = isObject(body.grantControls) ? body.grantControls : null
   const named = arr(grant?.builtInControls).filter((c): c is string => typeof c === 'string').map((c) => c.toLowerCase())
-  const controls = new Set(named.filter((c) => BUILT_IN_CONTROLS.has(c)))
-  const foreign = named.filter((c) => !BUILT_IN_CONTROLS.has(c))
+  const controls = new Set(named.filter((c) => READABLE_CONTROLS.has(c)))
+  const foreign = named.filter((c) => !READABLE_CONTROLS.has(c))
   for (const c of foreign) unknown.push(`a grant control IAMAI has no reading for: ${c}`)
+  // The request carries a reference and nothing else. What the strength allows
+  // is the tenant's own metadata, read where the answer is needed
+  // (strengthLookupOf), never a description travelling beside the id.
   const rawStrength = grant && isObject(grant.authenticationStrength) ? grant.authenticationStrength : null
-  const strengthId = rawStrength && typeof rawStrength.id === 'string' ? rawStrength.id : null
-  // What the strength allows: what the policy itself says, and where it says
-  // nothing, what Microsoft's own built-in strengths allow — the id is the
-  // whole description of those. A tenant strength nothing describes stays
-  // undescribed, and the policy reads unknown rather than being guessed at.
-  const combinations = rawStrength ? strings(rawStrength.allowedCombinations) : []
-  const strength = rawStrength
-    ? { id: strengthId, allowedCombinations: combinations.length > 0 ? combinations : (BUILT_IN_STRENGTHS.get((strengthId ?? '').toLowerCase()) ?? []) }
-    : null
-  if (strength && strength.allowedCombinations.length === 0) unknown.push('an authentication strength this tenant does not describe')
+  const strength = rawStrength && typeof rawStrength.id === 'string' && rawStrength.id.trim().length > 0 ? { id: rawStrength.id } : null
+  if (rawStrength && strength === null) unknown.push('an authentication strength with no id')
   if (grant && nonEmpty(grant.customAuthenticationFactors)) unknown.push('a custom authentication factor')
   if (grant && nonEmpty(grant.termsOfUse)) unknown.push('terms of use')
   const conditions = isObject(body.conditions) ? body.conditions : {}
-  for (const k of Object.keys(conditions)) if (!CONDITION_FIELDS.has(k) && !isAnnotation(k)) unknown.push(`a condition IAMAI has no reading for: ${k}`)
+  for (const k of Object.keys(conditions)) if (CONDITION_SHAPES[k] === undefined && !isAnnotation(k)) unknown.push(`a condition IAMAI has no reading for: ${k}`)
   if (grant) for (const k of Object.keys(grant)) if (!GRANT_FIELDS.has(k) && !isAnnotation(k)) unknown.push(`a grant setting IAMAI has no reading for: ${k}`)
+  // A device filter narrows the policy by a rule IAMAI cannot evaluate.
+  if (isObject(conditions.devices)) unknown.push('a device filter')
   const locations = isObject(conditions.locations) ? conditions.locations : null
   const locationIds = locations ? { include: strings(locations.includeLocations), exclude: strings(locations.excludeLocations) } : null
   const riskLevels = [...strings(conditions.signInRiskLevels), ...strings(conditions.userRiskLevels)]
@@ -188,23 +292,27 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
       }
     : null
   const session = Boolean(sessionControls && (sessionControls.signInFrequency || sessionControls.persistentBrowser || sessionControls.tokenProtection || sessionControls.other))
-  if (raw) for (const [k, v] of Object.entries(raw)) if (!SESSION_FIELDS.has(k) && !isAnnotation(k) && on(v)) unknown.push(`a session control IAMAI has no reading for: ${k}`)
+  if (raw) for (const [k, v] of Object.entries(raw)) if (SESSION_SHAPES[k] === undefined && !isAnnotation(k) && on(v)) unknown.push(`a session control IAMAI has no reading for: ${k}`)
   const requirements: Requirement[] = []
-  if (strength) requirements.push({ kind: 'strength', id: strength.id, combinations: strength.allowedCombinations })
+  if (strength) requirements.push({ kind: 'strength', id: strength.id })
   for (const c of controls) {
     if (c === 'block') continue
     if (c === 'mfa') requirements.push({ kind: 'mfa' })
     else if (c === 'passwordchange') requirements.push({ kind: 'passwordChange' })
-    else if (DEVICE_CONTROLS.has(c)) requirements.push({ kind: 'device', control: c })
-    else if (APP_CONTROLS.has(c)) requirements.push({ kind: 'app', control: c })
+    else if (DEVICE_CONTROLS.has(c)) requirements.push({ kind: 'device', control: c as 'compliantdevice' | 'domainjoineddevice' })
+    else if (APP_CONTROLS.has(c)) requirements.push({ kind: 'app', control: c as 'approvedapplication' | 'compliantapplication' })
   }
+  // Token protection is the one session control that can stop a sign-in rather
+  // than merely shorten it: the client has to be able to bind the token.
+  if (sessionControls?.tokenProtection) requirements.push({ kind: 'tokenProtection' })
   // Carried, named and kept apart from the ones IAMAI can read.
   for (const c of foreign) requirements.push({ kind: 'other', control: c })
-  const operator = String(grant?.operator ?? 'OR').toUpperCase() === 'AND' ? 'AND' : 'OR'
+  const operator = String(grant?.operator ?? '').toUpperCase() === 'AND' ? 'AND' : 'OR'
   return {
     blocks: controls.has('block'),
     operator,
     requirements,
+    scope: scopeOf(conditions),
     controls,
     strength,
     requiresDevice: requirements.some((r) => r.kind === 'device'),
@@ -220,57 +328,135 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   }
 }
 
+/** What each authentication strength this tenant can name allows: Microsoft's own, and the tenant's. */
+export function strengthLookupOf(snapshot: { config?: Record<string, { rows?: unknown[] } | undefined> }): Map<string, string[]> {
+  const lookup = new Map(BUILT_IN_STRENGTHS)
+  for (const row of (snapshot.config?.authStrengths?.rows ?? []) as Record<string, unknown>[]) {
+    if (typeof row.id === 'string' && Array.isArray(row.allowedCombinations)) lookup.set(row.id.toLowerCase(), strings(row.allowedCombinations))
+  }
+  return lookup
+}
+
+/** Whether a policy reaches one account: decided from the policy's own scope, or not decided at all. */
+export type Applicability = 'in' | 'out' | 'unknown'
+
+/** What the scan can say about who is in a group. A group it holds nothing for cannot be answered. */
+export type ScopeEvidence = { groupMembers?: Record<string, readonly string[]> }
+
+/**
+ * Whether one policy reaches one account, from the policy's own include and
+ * exclude lists. Roles come from the directory; group membership comes from
+ * whatever the scan or the plan's own decisions can prove, and a group nothing
+ * answers for leaves the whole question unknown rather than guessed.
+ */
+export function accountApplicability(
+  scope: PolicyScope,
+  accountId: string,
+  snapshot: { roles?: { active?: Record<string, string[]> }; users?: { id: string; userType?: string | null }[] },
+  evidence: ScopeEvidence = {},
+): Applicability {
+  if (scope.workloadOnly) return 'out'
+  const roles = new Set(snapshot.roles?.active?.[accountId] ?? [])
+  const members = evidence.groupMembers ?? {}
+  const inGroup = (id: string): boolean | null => {
+    const known = members[id] ?? members[id.toLowerCase()]
+    return known === undefined ? null : known.some((m) => m.toLowerCase() === accountId.toLowerCase())
+  }
+  const same = (a: string): boolean => a.toLowerCase() === accountId.toLowerCase()
+  if (scope.users.exclude.some(same)) return 'out'
+  if (scope.roles.exclude.some((r) => roles.has(r))) return 'out'
+  let unsure = false
+  for (const g of scope.groups.exclude) {
+    const member = inGroup(g)
+    if (member === true) return 'out'
+    if (member === null) unsure = true
+  }
+  // A guest clause reaches guests. Whether this account is one is the
+  // directory's answer; where the directory holds no row for it, nobody's.
+  const guest = ((): boolean | null => {
+    const row = (snapshot.users ?? []).find((u) => u.id === accountId)
+    return row === undefined || row.userType === undefined || row.userType === null ? null : row.userType === 'guest'
+  })()
+  if (scope.guests.exclude) {
+    if (guest === true) return 'out'
+    if (guest === null) unsure = true
+  }
+  let included = scope.allUsers || scope.users.include.some(same) || scope.roles.include.some((r) => roles.has(r))
+  for (const g of scope.groups.include) {
+    const member = inGroup(g)
+    if (member === true) included = true
+    else if (member === null) unsure = true
+  }
+  if (scope.guests.include) {
+    if (guest === true) included = true
+    else if (guest === null) unsure = true
+  }
+  if (!included) return unsure ? 'unknown' : 'out'
+  return unsure ? 'unknown' : 'in'
+}
+
 /**
  * Whether a submitted body is one IAMAI would put on the wire. Two different
  * questions live here, and only this one is about the request:
  *
- * - a *field* IAMAI does not write is never submitted, because a create
- *   carrying Graph's read-only bookkeeping is a request Graph refuses;
- * - a *value* inside a field it does write — a grant control, a condition, a
- *   session control it has no reading for — is carried exactly as the baseline
- *   holds it. It is never dropped to make the body look familiar: dropping it
- *   would submit a policy that means something else. What it means is the other
- *   question, and effectOf answers it with `unknown`.
+ * - a *field* IAMAI does not write is never submitted, because a create carrying
+ *   Graph's read-only bookkeeping is a request Graph refuses;
+ * - every value inside a field it does write is checked to the shape it has to
+ *   have, so a malformed payload is held rather than sent;
+ * - a grant *control* Conditional Access has is always submittable, because the
+ *   pinned baseline may hold any of them. Whether IAMAI can read one is the
+ *   other question, and effectOf answers it with `unknown`.
  */
 function fieldsAreSupported(body: Record<string, unknown>): boolean {
   if (Object.keys(body).some((k) => !POLICY_FIELDS.has(k) && !isAnnotation(k))) return false
   if (body.state !== undefined && (typeof body.state !== 'string' || !POLICY_STATES.has(body.state))) return false
-  if (body.displayName !== undefined && (typeof body.displayName !== 'string' || body.displayName.trim().length === 0)) return false
+  if (body.displayName !== undefined && !word(body.displayName)) return false
+  if (body.description !== undefined && body.description !== null && typeof body.description !== 'string') return false
   if (body.conditions !== undefined) {
     if (!isObject(body.conditions)) return false
-    const users = body.conditions.users
-    if (users !== undefined && !isObject(users)) return false
-    const clients = body.conditions.clientApplications
-    if (clients !== undefined && !isObject(clients)) return false
+    for (const [k, v] of Object.entries(body.conditions)) {
+      if (isAnnotation(k)) continue
+      const shape = CONDITION_SHAPES[k]
+      if (shape === undefined || !shape(v)) return false
+    }
   }
   if (body.grantControls !== undefined && body.grantControls !== null) {
     const grant = body.grantControls
-    if (!isObject(grant)) return false
-    if (grant.operator !== undefined && !['AND', 'OR'].includes(String(grant.operator).toUpperCase())) return false
-    const named = arr(grant.builtInControls)
-    if (named.some((c) => typeof c !== 'string' || c.trim().length === 0)) return false
+    if (!isObjectOnly(grant, GRANT_FIELDS)) return false
+    if (!listOk(grant.builtInControls, SUBMITTABLE_CONTROLS)) return false
+    if (!listOk(grant.termsOfUse) || !listOk(grant.customAuthenticationFactors)) return false
     const strength = grant.authenticationStrength
     if (strength !== undefined && strength !== null) {
-      if (!isObject(strength)) return false
-      if (typeof strength.id !== 'string' || strength.id.trim().length === 0) return false
+      // A reference, and nothing that describes the object it points at: a name
+      // and a list of combinations are the tenant's metadata, not the request's.
+      if (!isObjectOnly(strength, new Set(['id']))) return false
+      if (!word(strength.id)) return false
     }
-    // A grant that grants nothing is not a grant.
-    if (named.length === 0 && (strength === undefined || strength === null) && !nonEmpty(grant.termsOfUse) && !nonEmpty(grant.customAuthenticationFactors)) return false
+    // A grant that grants nothing is not a grant, and one that grants something
+    // says how its controls combine.
+    const grants = nonEmpty(grant.builtInControls) || (strength !== undefined && strength !== null) || nonEmpty(grant.termsOfUse) || nonEmpty(grant.customAuthenticationFactors)
+    if (!grants) return false
+    if (!['AND', 'OR'].includes(String(grant.operator))) return false
   }
   if (body.sessionControls !== undefined && body.sessionControls !== null) {
     if (!isObject(body.sessionControls)) return false
+    for (const [k, v] of Object.entries(body.sessionControls)) {
+      if (isAnnotation(k) || v === null || v === undefined) continue
+      const shape = SESSION_SHAPES[k]
+      if (shape === undefined || !shape(v)) return false
+    }
   }
   return true
 }
 
 /**
  * True when a body is a Conditional Access policy IAMAI would submit: a name, a
- * state it may be in, the people and the resources it applies to, a real control
- * to apply, and nothing in it IAMAI cannot read back.
+ * state it may be in, the people and the resources it reaches, a real control to
+ * apply, and every value in it one Graph would take.
  */
 export function isCompletePolicy(body: unknown): body is Record<string, unknown> {
   if (!isObject(body)) return false
-  if (typeof body.displayName !== 'string' || body.displayName.trim().length === 0) return false
+  if (!word(body.displayName)) return false
   if (typeof body.state !== 'string' || !POLICY_STATES.has(body.state)) return false
   if (!fieldsAreSupported(body)) return false
   const conditions = isObject(body.conditions) ? body.conditions : null
@@ -279,7 +465,7 @@ export function isCompletePolicy(body: unknown): body is Record<string, unknown>
   const workload = isObject(conditions.clientApplications) ? conditions.clientApplications : null
   const scopesPeople =
     (users !== null && (nonEmpty(users.includeUsers) || nonEmpty(users.includeGroups) || nonEmpty(users.includeRoles) || isObject(users.includeGuestsOrExternalUsers))) ||
-    (workload !== null && (nonEmpty(workload.includeServicePrincipals) || isObject(workload.servicePrincipalFilter)))
+    workload !== null
   if (!scopesPeople) return false
   const apps = isObject(conditions.applications) ? conditions.applications : null
   const scopesResources =
@@ -289,7 +475,7 @@ export function isCompletePolicy(body: unknown): body is Record<string, unknown>
   return effectOf(body).any
 }
 
-/** True when the fields an update submits are ones IAMAI writes and can read back. */
+/** True when the fields an update submits are ones IAMAI writes, in the shapes it writes them. */
 export function isSubmittablePatch(patch: Record<string, unknown>): boolean {
   if (Object.keys(patch).length === 0) return false
   return fieldsAreSupported(patch)
@@ -303,7 +489,7 @@ export function isSubmittablePatch(patch: Record<string, unknown>): boolean {
 function targetIsPolicy(target: unknown, policyId: string): target is Record<string, unknown> {
   if (!isObject(target)) return false
   if (target.id !== policyId) return false
-  if (typeof target.displayName !== 'string' || target.displayName.trim().length === 0) return false
+  if (!word(target.displayName)) return false
   if (typeof target.state !== 'string' || !POLICY_STATES.has(target.state)) return false
   return isObject(target.conditions)
 }
