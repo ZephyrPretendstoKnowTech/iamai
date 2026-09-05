@@ -44,7 +44,7 @@ const population = (ids: string[]): StepPopulation => ({ total: ids.length, acti
 
 /** A step that writes exactly these policies, and claims nothing else. */
 function stepFor(bodies: Record<string, unknown>[], over: Record<string, unknown> = {}): Step {
-  const operations: PolicyOperation[] = bodies.map((body, i) => ({ sourceName: `p${i}`, mode: 'create', policyId: null, body }))
+  const operations: PolicyOperation[] = bodies.map((body, i) => ({ sourceName: `p${i}`, memberKey: `p${i}`, mode: 'create', policyId: null, body }))
   return {
     id: 's-x',
     goalId: 'g-x',
@@ -135,7 +135,7 @@ test('an update still validates only what it submits', () => {
     conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, insiderRiskLevels: 'elevated' },
     grantControls: { operator: 'OR', builtInControls: ['mfa'], termsOfUse: ['t-1'] },
   }
-  const op = { sourceName: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target } as unknown as PolicyOperation
+  const op = { sourceName: 'a', memberKey: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target } as unknown as PolicyOperation
   assert.equal(isValidOperation(op), true, 'the tenant may carry anything IAMAI is not changing')
   assert.equal(isSubmittablePatch({ conditions: { users: { includeUsers: 'All' } } }), false, 'what it does change is checked to its values')
   assert.equal(isSubmittablePatch({ grantControls: { builtInControls: ['mfa'] } }), false, 'including the operator')

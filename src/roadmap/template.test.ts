@@ -32,7 +32,7 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
   // to resolve it with.
   const policies = [{ displayName: 'author', conditions: { users: { excludeGroups: ['ref-exclusions'] } } }] as never
   const resolved = resolveTenantPolicy(body, { exclusionsGroupId: null, serviceAccountsGroupId: null, allowedCountriesLocationId: null }, 'x', policies)
-  const action = buildCreateAction([{ sourceName: 'author', resolved }], mapping, 'plan-1', 's-x', 'x')
+  const action = buildCreateAction([{ sourceName: 'author', sourceKey: 'author', resolved }], mapping, 'plan-1', 's-x', 'x')
   // Nothing executable while an object the policy names is missing: no body at
   // all, and the reference named as what the step waits on.
   assert.equal(action.json, null, 'no incomplete body is exposed')
@@ -50,7 +50,7 @@ test('item 12: every goal × implementation renders Do it from the template with
       const { body, unresolved } = resolveTemplate(impl.template as TemplateBody, SAMPLE_VALUES)
       assert.deepEqual(unresolved, [], `${goal.id}: sample values resolve everything`)
       const resolved = resolveTenantPolicy(body, { exclusionsGroupId: null, serviceAccountsGroupId: null, allowedCountriesLocationId: null }, goal.id)
-      const action = buildCreateAction([{ sourceName: goal.id, resolved, displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` }], mapping, 'plan-1', `s-goal-${goal.id}`, goal.id)
+      const action = buildCreateAction([{ sourceName: goal.id, sourceKey: goal.id, resolved, displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` }], mapping, 'plan-1', `s-goal-${goal.id}`, goal.id)
       assert.ok(action.json, `${goal.id}: json`)
       const parsed = JSON.parse(action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null; state: string; description: string }
       const grants = (parsed.grantControls?.builtInControls?.length ?? 0) + (parsed.grantControls?.authenticationStrength ? 1 : 0)
@@ -58,7 +58,7 @@ test('item 12: every goal × implementation renders Do it from the template with
       assert.ok(grants + sessions >= 1, `${goal.id}: at least one grant or session control`)
       assert.equal(parsed.state, 'enabledForReportingButNotEnforced', `${goal.id}: created in report-only`)
       assert.match(parsed.description, /^\[IAMAI:plan-1:s-goal-/, `${goal.id}: tagged`)
-      assert.match(powershellFor([{ sourceName: goal.id, mode: 'create', policyId: null, body: parsed }]), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
+      assert.match(powershellFor([{ sourceName: goal.id, memberKey: goal.id, mode: 'create', policyId: null, body: parsed }]), /New-MgIdentityConditionalAccessPolicy -BodyParameter/, `${goal.id}: PowerShell`)
     }
   }
 })

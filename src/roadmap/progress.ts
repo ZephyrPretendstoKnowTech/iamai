@@ -8,7 +8,7 @@ import { isEmergencyAccess } from './blockerSteps.ts'
 import { engine } from '../content/content.ts'
 import { setState } from './lifecycle.ts'
 import { observationsFrom } from './observation.ts'
-import type { StepObservation } from './observation.ts'
+import type { StepObservationRecord } from './observation.ts'
 import type { Step, StepStatus } from './types.ts'
 import type { PlanDecisions, SkipDecision, StepDecision } from './decisions.ts'
 
@@ -103,7 +103,7 @@ export function applyProgress(
   planId: string,
   now?: string,
   planCreatedAt: string | null = null,
-  observations: Record<string, StepObservation> | null = null,
+  observations: Record<string, StepObservationRecord> | null = null,
   // What a deployed policy's scope is resolved against (tracking.ts
   // TrackingEvidence): the group memberships the scan read. Absent leaves the
   // scope of any policy that names a group unknown, which is conservative and

@@ -6,7 +6,13 @@
 // history IAMAI can honestly keep is its own — what a scan saw, and when a scan
 // first saw it — and the record has to say which of the two it is holding.
 //
-// One observation per step, carried in the plan record between scans:
+// One observation per *required policy member* of a step, carried in the plan
+// record between scans. A step is a row of the plan; it is not a policy, and a
+// goal the baseline implements with two policies is one step delivering two
+// deployed artifacts. Keyed by step alone, Policy A's window, evidence,
+// continuity and expected movement all stood for Policy B as well — one member
+// could carry the pair over a rollout gate nobody had opened for the other. So
+// the key is the step *and the member* (`memberKeyOf`), and each member holds:
 //
 //   * *which deployed policy object* the scan saw, as an opaque stable identity;
 //   * the state the scan saw (absent / disabled / report-only / enforced);
@@ -208,6 +214,34 @@ function hash(text: string): string {
 export function artifactIdOf(policyId: string | null | undefined): string | null {
   if (typeof policyId !== 'string' || policyId.length === 0) return null
   return hash(policyId) + hash(`${policyId} artifact`)
+}
+
+/**
+ * The stable identity of one *required policy member* of a step: which half of a
+ * Policy A / Policy B pair this is, and not which deployed object currently
+ * delivers it.
+ *
+ * The two are different facts and the record keeps both. `artifactIdOf` answers
+ * *is this the same object I watched before*; this answers *which of the step's
+ * required policies am I watching*. A tenant policy id can never be the member
+ * identity: replacing Policy B with a new object does not make it a different
+ * member, and Policy A's id says nothing about which member it is either.
+ *
+ * The source is the baseline's own stable key for the policy (goalMap.ts
+ * `policyKey`: the baseline policy's id, or its display name where the export
+ * carries no id), so the member survives a regeneration, a rename of the
+ * tenant's copy and a replacement of the deployed object. It is hashed for the
+ * same reason `artifactIdOf` is: it is written into a saved plan and into the
+ * description of a policy on the tenant, equality is the only question ever
+ * asked of it, and an uploaded baseline's key is the customer's own object id.
+ *
+ * `m{index}` is the bounded fallback for a member the baseline gives no key at
+ * all — a goal rendered from its own template. Position is the weakest identity
+ * there is, so it is used only where nothing stronger exists.
+ */
+export function memberKeyOf(sourceKey: string | null | undefined, index: number): string {
+  const key = typeof sourceKey === 'string' ? sourceKey.trim() : ''
+  return key.length > 0 ? hash(key) : `m${index}`
 }
 
 /** The fingerprint of a policy row's material semantics; empty for no policy at all. */
@@ -453,31 +487,70 @@ function isObserved(v: unknown): v is ObservedState {
   return v === 'absent' || v === 'disabled' || v === 'report-only' || v === 'enforced' || v === 'unknown'
 }
 
+/** One stored observation, whatever its vintage; null when it holds no usable date. */
+function readObservation(raw: unknown): StepObservation | null {
+  const o = raw as Partial<StepObservation> | null
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return null
+  const firstSeenAt = typeof o.firstSeenAt === 'string' && !Number.isNaN(Date.parse(o.firstSeenAt)) ? o.firstSeenAt : null
+  if (firstSeenAt === null) return null
+  return {
+    // A record written before artifact identity existed carries none, and
+    // that absence is the fact: continuity is unknown, never assumed.
+    artifact: typeof o.artifact === 'string' && o.artifact.length > 0 ? o.artifact : null,
+    state: isObserved(o.state) ? o.state : 'unknown',
+    semantics: typeof o.semantics === 'string' ? o.semantics : '',
+    // Dimensions, where the record holds them. A record that holds none
+    // cannot say which part of a policy moved, so nothing it carries can
+    // show a later movement was the one the plan asked for.
+    fields: readFields(o.fields),
+    firstSeenAt,
+    since: o.since === 'observed-change' ? 'observed-change' : 'first-scan',
+    lastSeenAt: typeof o.lastSeenAt === 'string' && !Number.isNaN(Date.parse(o.lastSeenAt)) ? o.lastSeenAt : firstSeenAt,
+    evidenceAt: typeof o.evidenceAt === 'string' && !Number.isNaN(Date.parse(o.evidenceAt)) ? o.evidenceAt : null,
+  }
+}
+
+/**
+ * What one step's policies were observed to be at the last scan: one record per
+ * required policy member (`memberKeyOf`), plus whatever a record written before
+ * members existed still holds.
+ *
+ * `unattributed` is a single observation filed under the step alone, from a plan
+ * saved when a step was assumed to deploy one policy. It names a member of
+ * nothing, so it is not copied to every member of a pair — that would hand
+ * Policy B a window nobody had watched it for. It is attributed at tracking
+ * time, and only where the object it names proves whose it is (`priorFor`).
+ */
+export type StepObservationRecord = {
+  /** By member key. The authority: one member, one history. */
+  members: Record<string, StepObservation>
+  /** A pre-member record for the whole step, attributed only on exact identity; null once one has been written in this shape. */
+  unattributed: StepObservation | null
+}
+
 /** Read a stored record's observations, whatever its vintage. */
-export function observationsFrom(rec: { observations?: unknown; reportOnlySeen?: unknown } | null | undefined): Record<string, StepObservation> {
-  const out: Record<string, StepObservation> = {}
+export function observationsFrom(rec: { observations?: unknown; reportOnlySeen?: unknown } | null | undefined): Record<string, StepObservationRecord> {
+  const out: Record<string, StepObservationRecord> = {}
   const stored = rec?.observations
   if (stored && typeof stored === 'object') {
     for (const [id, raw] of Object.entries(stored as Record<string, unknown>)) {
-      const o = raw as Partial<StepObservation> | null
-      if (!o || typeof o !== 'object') continue
-      const firstSeenAt = typeof o.firstSeenAt === 'string' && !Number.isNaN(Date.parse(o.firstSeenAt)) ? o.firstSeenAt : null
-      if (firstSeenAt === null) continue
-      out[id] = {
-        // A record written before artifact identity existed carries none, and
-        // that absence is the fact: continuity is unknown, never assumed.
-        artifact: typeof o.artifact === 'string' && o.artifact.length > 0 ? o.artifact : null,
-        state: isObserved(o.state) ? o.state : 'unknown',
-        semantics: typeof o.semantics === 'string' ? o.semantics : '',
-        // Dimensions, where the record holds them. A record that holds none
-        // cannot say which part of a policy moved, so nothing it carries can
-        // show a later movement was the one the plan asked for.
-        fields: readFields(o.fields),
-        firstSeenAt,
-        since: o.since === 'observed-change' ? 'observed-change' : 'first-scan',
-        lastSeenAt: typeof o.lastSeenAt === 'string' && !Number.isNaN(Date.parse(o.lastSeenAt)) ? o.lastSeenAt : firstSeenAt,
-        evidenceAt: typeof o.evidenceAt === 'string' && !Number.isNaN(Date.parse(o.evidenceAt)) ? o.evidenceAt : null,
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
+      const r = raw as { members?: unknown; unattributed?: unknown }
+      // Which shape this is, from the record itself: a member map holds
+      // `members`, and a record written before members existed is one
+      // observation carrying its own date at the top level.
+      if (r.members && typeof r.members === 'object' && !Array.isArray(r.members)) {
+        const members: Record<string, StepObservation> = {}
+        for (const [key, m] of Object.entries(r.members as Record<string, unknown>)) {
+          const o = readObservation(m)
+          if (o) members[key] = o
+        }
+        const unattributed = readObservation(r.unattributed)
+        if (Object.keys(members).length > 0 || unattributed) out[id] = { members, unattributed }
+        continue
       }
+      const flat = readObservation(raw)
+      if (flat) out[id] = { members: {}, unattributed: flat }
     }
   }
   // A record from before this contract kept one date per step: the scan that
@@ -489,8 +562,35 @@ export function observationsFrom(rec: { observations?: unknown; reportOnlySeen?:
   if (legacy && typeof legacy === 'object') {
     for (const [id, at] of Object.entries(legacy as Record<string, unknown>)) {
       if (out[id] || typeof at !== 'string' || Number.isNaN(Date.parse(at))) continue
-      out[id] = { artifact: null, state: 'report-only', semantics: '', fields: {}, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt: null }
+      out[id] = { members: {}, unattributed: { artifact: null, state: 'report-only', semantics: '', fields: {}, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt: null } }
     }
   }
   return out
+}
+
+/**
+ * The prior observation for one member of a step, from the record the last scan
+ * left behind.
+ *
+ * A member's own record is its own. A pre-member record is inherited only where
+ * identity proves whose it is:
+ *
+ *  * a step with one required member has one history, and it is that member's;
+ *  * a step with two or more takes it only where the object it names is the
+ *    object exactly one member is delivered by now. Anything else — a record
+ *    naming no object, a record naming an object no member is delivered by, an
+ *    object more than one member could be — is not attributed at all, and that
+ *    member starts from this scan with no inherited rollout credit.
+ */
+export function priorFor(rec: StepObservationRecord | null | undefined, memberKey: string, artifact: string | null, soleMember: boolean): StepObservation | null {
+  if (!rec) return null
+  const own = rec.members[memberKey]
+  if (own) return own
+  const legacy = rec.unattributed
+  if (!legacy) return null
+  if (soleMember) return legacy
+  // A record that names no object proves no member identity whatever, and a
+  // member with no object deployed is not the one it was watching either.
+  if (legacy.artifact === null || artifact === null) return null
+  return legacy.artifact === artifact ? legacy : null
 }

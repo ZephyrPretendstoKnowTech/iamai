@@ -198,7 +198,7 @@ test('a ring plan does not remove an account the policy keeps: the safety bounda
     population: { total: 2, active: 2, admins: 0, guests: 0, ids: ['u1', 'bg'], activeIds: ['u1', 'bg'], inScope: 2 },
     cohort: { total: 2, active: 2, admins: 0, guests: 0, ids: ['u1', 'bg'], activeIds: ['u1', 'bg'], inScope: 2 },
     rings: [],
-    action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', body }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
+    action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', memberKey: 'p', body }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
   } as unknown as Step
   const ringCtx = { snapshot, viability: new Map(), highCareIds: new Set<string>(), operatorId: null, naming: { style: 'none' }, activeUsers: 2, departmentOf: new Map(), deviceReady: new Set<string>() }
   const rings = proposeRings(step, ringCtx as never)
@@ -243,7 +243,7 @@ test('a policy the plan cannot resolve a scope for proposes no rollout at all', 
     readiness: { family: 'mfa', percent: 100, lines: [] },
     population: { total: 2, active: 2, admins: 0, guests: 0, ids: ['u1', 'u2'], activeIds: ['u1', 'u2'], inScope: 2 },
     rings: [],
-    action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', body }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
+    action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', memberKey: 'p', body }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
   } as unknown as Step
   assert.equal(rolloutCohort(step), null, 'the step has no cohort')
   assert.equal(reached(step), null, 'and no population a surface may show')
@@ -385,7 +385,7 @@ test('the guests lockout line follows the policy that would prompt them, not the
       readiness: { family: 'guest', percent: 100, lines: [] },
       population: { total: 1, active: 1, admins: 0, guests: 1, ids: [guest], activeIds: [guest], inScope: 1 },
       ...(ids === null ? {} : { cohort: { total: ids.length, active: ids.length, admins: 0, guests: 0, ids, activeIds: ids, inScope: ids.length } }),
-      action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', body: { displayName: 'p', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
+      action: { kind: 'create', summary: [], json: null, portalSteps: [], resolution: { policies: [{ mode: 'create', sourceName: 'p', memberKey: 'p', body: { displayName: 'p', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } },
     }) as unknown as Step
   const shows = (step: Step): boolean => scenarioLinesFor(step, ctx as never).some((l) => l.kind === 'guests')
   assert.equal(shows(stepWith([guest, 'someone-else'])), true, 'the policy names the guest, so the line is shown')
@@ -978,7 +978,7 @@ test('what the records measured for one question is no answer to another', () =>
     population: { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 },
     rings: [],
     blockedBy: [],
-    action: { kind: 'create', summary: [], json: '{}', portalSteps: [], missing: [], resolution: { policies: [{ sourceName: 'a', mode: 'create', policyId: null, body: legacyBlock }] } },
+    action: { kind: 'create', summary: [], json: '{}', portalSteps: [], missing: [], resolution: { policies: [{ sourceName: 'a', memberKey: 'a', mode: 'create', policyId: null, body: legacyBlock }] } },
   } as unknown as Step
   assert.equal(nobodyAffected(step), false, 'an empty count filed under the goal is not this policy’s zero')
   assert.equal(nobodyAffected({ ...step, measured: { ids: ['u1'] } } as Step), false)
@@ -1067,7 +1067,7 @@ test('an update that changes nothing is not an update, at any depth', () => {
     conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } },
     grantControls: { operator: 'OR', builtInControls: ['mfa'] },
   }
-  const op = (body: Record<string, unknown>): never => ({ sourceName: 'a', mode: 'update', policyId: 'p-1', body, target: { ...target, ...body } }) as never
+  const op = (body: Record<string, unknown>): never => ({ sourceName: 'a', memberKey: 'a', mode: 'update', policyId: 'p-1', body, target: { ...target, ...body } }) as never
   assert.equal(isSubmittablePatch({}), false)
   assert.equal(isSubmittablePatch({ conditions: {} }), false, 'an empty section submits nothing')
   assert.equal(isSubmittablePatch({ conditions: { users: {} } }), false, 'nor an empty clause inside one')

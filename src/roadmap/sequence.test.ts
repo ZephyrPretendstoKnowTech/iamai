@@ -17,7 +17,22 @@ import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
 const NAMES = FIXTURE_SPECS.map((s) => s.name)
 
 const open = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped'
-const offered = (s: Step): boolean => s.status === 'ready' || s.status === 'ready-to-enforce' || s.status === 'in-report-only'
+/**
+ * The plan is inviting this step to be done.
+ *
+ * The word alone does not say so. The lifecycle and the condition are separate
+ * axes (roadmap/lifecycle.ts) and the word is a projection in which the
+ * lifecycle outranks the condition, so a step the plan is holding behind a
+ * readiness threshold still reads Report-only while the tenant's own policy sits
+ * in report-only. That is the truth about the policy and it is not an
+ * invitation: the row says Blocked and names the threshold, which is what these
+ * ordering properties are about.
+ *
+ * Anything the plan actually offers — Ready, or Ready to enforce — is still
+ * held to the gate, whatever stage its policy is at.
+ */
+const offered = (s: Step): boolean =>
+  (s.status === 'ready' || s.status === 'ready-to-enforce' || s.status === 'in-report-only') && s.state.condition === 'healthy'
 
 for (const name of NAMES) {
   const { steps } = runFixture(fixture(name))

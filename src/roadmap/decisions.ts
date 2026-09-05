@@ -51,17 +51,25 @@ export type PlanDecisions = {
   /** Every picker's saved decision, by step id (prompt 52 Part 3). */
   stepDecisions?: Record<string, StepDecision>
   /**
-   * By step id, what the last scan saw of the step's policy: *which deployed
-   * object* it was (an opaque identity, never the tenant's own id), the state, a
-   * fingerprint of its material semantics, when IAMAI first saw that object in
-   * that state and whatever Microsoft's own evidence dates it to
-   * (observation.ts). Like planCreatedAt, a history no regeneration can repeat —
-   * a snapshot shows the state now, never when a scan first saw it.
+   * By step id, then by *required policy member* of that step, what the last scan
+   * saw of that member's policy: *which deployed object* it was (an opaque
+   * identity, never the tenant's own id), the state, a fingerprint of its
+   * material semantics, when IAMAI first saw that object in that state and
+   * whatever Microsoft's own evidence dates it to (observation.ts). Like
+   * planCreatedAt, a history no regeneration can repeat — a snapshot shows the
+   * state now, never when a scan first saw it.
    *
    * The object is what makes the rest safe to reuse: keyed by step alone, a
-   * window earned by one policy carried over to whatever replaced it.
+   * window earned by one policy carried over to whatever replaced it. The member
+   * is what keeps a *pair* safe: a goal the baseline implements with two policies
+   * is one step delivering two objects, and keyed by step alone Policy A's window
+   * closed Policy B's gate.
+   *
+   * A record written before members carries one observation for the whole step
+   * (`StepObservationRecord.unattributed`); it is attributed to one member only
+   * where the object it names proves whose it is, and never copied to both.
    */
-  observations?: Record<string, import('./observation.ts').StepObservation>
+  observations?: Record<string, import('./observation.ts').StepObservationRecord>
   /**
    * The pre-Foundation-B version of the same thing: one report-only date per
    * step. Read on load and migrated into `observations`; never written again.
