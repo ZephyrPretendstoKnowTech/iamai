@@ -49,11 +49,24 @@ export function effectsOf(step: Step): PolicyEffect[] | null {
   return stepEffects(step)
 }
 
+/**
+ * The goal family's reading of a step, and the one place anything may ask for
+ * it. It answers only for a step with no policy of its own — one already in
+ * place, the enforce step — and is null for an open policy, whose consequences
+ * are its operations' to decide and nothing else's (Foundation A). Every
+ * consumer that once fell back to `step.readiness.family` goes through here, so
+ * the fallback is unreachable for an open policy by construction rather than by
+ * each caller remembering to guard it.
+ */
+export function familyReading(step: Step): Step['readiness']['family'] | null {
+  return isOpenPolicy(step) ? null : step.readiness.family
+}
+
 export function canDenyAccess(step: Step): boolean {
   if (step.kind === 'prerequisite' || step.kind === 'verify' || step.kind === 'check') return false
   const effects = effectsOf(step)
   if (effects !== null) return effects.some((e) => e.any)
-  return step.readiness.family !== 'other'
+  return familyReading(step) !== 'other'
 }
 
 /**
@@ -66,7 +79,8 @@ export function canDenyAccess(step: Step): boolean {
 export function promptsPeople(step: Step): boolean {
   const effects = effectsOf(step)
   if (effects !== null) return effects.some((e) => !e.blocks && e.any)
-  return canDenyAccess(step) && step.readiness.family !== 'block' && step.readiness.family !== 'location'
+  const family = familyReading(step)
+  return canDenyAccess(step) && family !== 'block' && family !== 'location'
 }
 
 /**
@@ -166,7 +180,7 @@ function narrowingReach(n: Narrowing, accountId: string, snapshot: TenantSnapsho
       ]
       return signals.length > 0 ? seenIn(signals) : { answer: 'unknown', reason: 'a sign-in flow the scan does not measure' }
     }
-    case 'risk': {
+    case 'signInRisk': {
       if (!usage) return { answer: 'unknown', reason: 'no sign-in evidence' }
       const levels = n.levels.map((l) => l.toLowerCase())
       const signals = [...(levels.includes('high') ? [usage.riskHigh] : []), ...(levels.includes('medium') ? [usage.riskMedium] : [])]
@@ -175,6 +189,11 @@ function narrowingReach(n: Narrowing, accountId: string, snapshot: TenantSnapsho
         ? { answer: 'in', reason: 'the account was seen signing in at the risk level this policy acts on' }
         : { answer: 'out', reason: 'no sign-in at the risk level this policy acts on' }
     }
+    case 'userRisk':
+      // The records hold the risk of a sign-in. The risk carried by an account
+      // is Identity Protection's own running judgement, and answering it with
+      // sign-in risk would judge a person by a different measure than the policy.
+      return { answer: 'unknown', reason: 'the scan measures the risk of a sign-in, not the risk this policy acts on: the risk carried by the account' }
     case 'locations':
       return locationReach({ include: n.include, exclude: n.exclude }, accountId, snapshot, ctx)
     case 'clientAppTypes':
@@ -182,6 +201,10 @@ function narrowingReach(n: Narrowing, accountId: string, snapshot: TenantSnapsho
     case 'platforms':
       return { answer: 'unknown', reason: 'the scan does not say which platforms this account signs in from' }
     case 'applications':
+      // A policy that names no resource applies to no sign-in, so it reaches
+      // nobody — an answer, not a gap. Anything else depends on where a person
+      // goes, and the scan does not follow them.
+      if (n.none) return { answer: 'out', reason: 'the policy names no application, so it applies to no sign-in' }
       return { answer: 'unknown', reason: 'the scan does not say which applications this account signs in to' }
     case 'userActions':
       return { answer: 'unknown', reason: 'the scan does not say when this account will register security information or a device' }
@@ -304,7 +327,7 @@ export function stepAccountVerdict(step: Step, accountId: string, snapshot: Tena
   const effects = effectsOf(step)
   // A step with no policy of its own — one already in place, the enforce step —
   // is read by its goal's family, as it always was.
-  if (effects === null) return accountVerdict(step.readiness.family, accountId, snapshot, ctx.allowedCountries ?? [])
+  if (effects === null) return accountVerdict(familyReading(step) ?? 'other', accountId, snapshot, ctx.allowedCountries ?? [])
   if (effects.length === 0) return { stranded: false, unknown: true, reason: 'the plan cannot write this policy, so what it would do to the account is unknown' }
   const reach = stepApplicability(step, accountId, snapshot, ctx)
   if (reach === 'out') return { stranded: false, unknown: false, reason: 'no policy this step writes reaches the account: it is out of scope' }
@@ -339,9 +362,11 @@ export function wouldStrand(step: Step, accountId: string, snapshot: TenantSnaps
   if (reach === 'out') return { stranded: false, unknown: false, reason: 'the account is out of scope' }
   if (opts.breakGlass) {
     // The emergency accounts must never be inside a step that can shut them out.
-    // Whether a policy reaches one is the policy's own answer; the step's list of
-    // people stands in only where the policy's scope cannot be settled.
-    if (reach === 'in' || step.population.ids.includes(accountId)) return { stranded: true, unknown: false, reason: 'a break-glass account is in scope of a step that can deny access' }
+    // Whether a policy reaches one is the policy's own answer and nobody else's:
+    // the step's list of people is not the policy's scope, and a scope the scan
+    // cannot settle is unknown rather than a strand asserted on the list's
+    // behalf. Unknown is not safe either, so nothing downstream reads it as one.
+    if (reach === 'in') return { stranded: true, unknown: false, reason: 'a break-glass account is in scope of a step that can deny access' }
     return { stranded: false, unknown: true, reason: 'nothing in the scan settles whether this policy reaches the emergency account' }
   }
   return stepAccountVerdict(step, accountId, snapshot, opts)

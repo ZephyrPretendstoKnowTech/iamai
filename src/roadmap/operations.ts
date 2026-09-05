@@ -9,6 +9,13 @@
 // older version, an import, a body edited by hand — offers nothing rather than
 // something half-understood.
 //
+// And what an operation *means* is read here or held here, never guessed
+// downstream: `effectOf` decodes the whole policy an operation leaves behind and
+// turns every part of it that the decoding does not consume into a named
+// unknown (READ_LEAVES). A field recognised and then ignored would be read as
+// though the policy did not carry it, which is the one way a wrong answer gets
+// out of this module looking like a right one.
+//
 // Pure data: no DOM, no network.
 import type { Action, PolicyOperation, Step } from './types.ts'
 import { hasBaselineConflict } from './baselineConflict.ts'
@@ -248,6 +255,90 @@ const SESSION_READING: Record<keyof typeof SESSION_SHAPES, boolean> = {
 }
 
 /**
+ * Every leaf of a policy the decoding below actually consumes. A field the
+ * decoder recognises but never reads is the one failure this table exists to
+ * make impossible: `effectOf` walks the policy it is given and turns any leaf
+ * that is not here — and whose whole field is not already held unknown — into an
+ * explicit unknown. So a sub-field can be added to the wire, or arrive on a
+ * tenant's own policy, without being read as though it were not there.
+ *
+ * The depth is where the ignoring happens: two levels inside `conditions` (an
+ * excluded application is not an included one), one inside the grant and the
+ * session (a control is read whole, on or off).
+ */
+const READ_LEAVES = new Set([
+  // Who: every include and exclude list, and the guest clauses (scopeOf).
+  'conditions.users.includeUsers',
+  'conditions.users.excludeUsers',
+  'conditions.users.includeGroups',
+  'conditions.users.excludeGroups',
+  'conditions.users.includeRoles',
+  'conditions.users.excludeRoles',
+  'conditions.users.includeGuestsOrExternalUsers',
+  'conditions.users.excludeGuestsOrExternalUsers',
+  // What: the resources it names, the ones it leaves out, the user actions and
+  // the authentication contexts it applies at.
+  'conditions.applications.includeApplications',
+  'conditions.applications.excludeApplications',
+  'conditions.applications.includeUserActions',
+  'conditions.applications.includeAuthenticationContextClassReferences',
+  // A workload policy reaches service principals and no person at all, whichever
+  // ones it names.
+  'conditions.clientApplications.includeServicePrincipals',
+  'conditions.clientApplications.excludeServicePrincipals',
+  'conditions.clientApplications.servicePrincipalFilter',
+  // When: the client kinds, the places, the platforms, the device rule, the two
+  // risk questions kept apart, and the sign-in flows.
+  'conditions.clientAppTypes',
+  'conditions.locations.includeLocations',
+  'conditions.locations.excludeLocations',
+  'conditions.platforms.includePlatforms',
+  'conditions.platforms.excludePlatforms',
+  'conditions.devices.deviceFilter',
+  'conditions.signInRiskLevels',
+  'conditions.userRiskLevels',
+  'conditions.servicePrincipalRiskLevels',
+  'conditions.authenticationFlows.transferMethods',
+  // The grant: how it combines, what it requires, and the two references it may
+  // carry beside them.
+  'grantControls.operator',
+  'grantControls.builtInControls',
+  'grantControls.authenticationStrength',
+  'grantControls.customAuthenticationFactors',
+  'grantControls.termsOfUse',
+  // The session: each control read whole, on or off (SESSION_READING says which
+  // of them IAMAI can say anything about once it is on).
+  'sessionControls.signInFrequency',
+  'sessionControls.persistentBrowser',
+  'sessionControls.secureSignInSession',
+  'sessionControls.applicationEnforcedRestrictions',
+  'sessionControls.cloudAppSecurity',
+  'sessionControls.disableResilienceDefaults',
+])
+
+/**
+ * The leaves a policy actually carries, at the depth the reading is decided:
+ * `conditions.<field>.<part>` and `grantControls.<control>`. Graph's own
+ * annotations are not fields.
+ */
+function semanticLeaves(body: Record<string, unknown>): string[] {
+  const out: string[] = []
+  for (const [section, deep] of [['conditions', true], ['grantControls', false], ['sessionControls', false]] as const) {
+    const value = body[section]
+    if (!isObject(value)) continue
+    for (const [k, v] of Object.entries(value)) {
+      if (isAnnotation(k)) continue
+      if (deep && isObject(v)) {
+        for (const k2 of Object.keys(v)) if (!isAnnotation(k2)) out.push(`${section}.${k}.${k2}`)
+        continue
+      }
+      out.push(`${section}.${k}`)
+    }
+  }
+  return out
+}
+
+/**
  * A condition that decides *when* a policy applies, rather than who it names.
  * Some of these the tenant scan can answer for one account exactly — the old
  * protocols, the device-code and authentication-transfer flows, a risk level, a
@@ -258,10 +349,11 @@ export type Narrowing =
   | { kind: 'legacyClients' }
   | { kind: 'clientAppTypes'; types: string[] }
   | { kind: 'signInFlow'; methods: string[] }
-  | { kind: 'risk'; levels: string[] }
+  | { kind: 'signInRisk'; levels: string[] }
+  | { kind: 'userRisk'; levels: string[] }
   | { kind: 'locations'; include: string[]; exclude: string[] }
   | { kind: 'platforms' }
-  | { kind: 'applications'; ids: string[] }
+  | { kind: 'applications'; ids: string[]; exclude: string[]; none: boolean }
   | { kind: 'userActions'; actions: string[] }
   | { kind: 'authContext'; ids: string[] }
   | { kind: 'workloadRisk'; levels: string[] }
@@ -343,7 +435,7 @@ export type PolicyEffect = {
   /** It applies only above a risk level. */
   usesRisk: boolean
   /** What it does to a session, where it does anything. */
-  sessionControls: { signInFrequency: boolean; persistentBrowser: boolean; tokenProtection: boolean; other: boolean } | null
+  sessionControls: { signInFrequency: boolean; signInFrequencyEveryTime: boolean; persistentBrowser: boolean; tokenProtection: boolean; other: boolean } | null
   /** It changes what a session may do or how long it lives. */
   session: boolean
   /** It does something: a grant, or a session control. */
@@ -377,6 +469,9 @@ function scopeOf(conditions: Record<string, unknown>): PolicyScope {
 /** What one policy body does, decoded exactly or held unknown. */
 export function effectOf(body: Record<string, unknown>): PolicyEffect {
   const unknown: string[] = []
+  // The fields an unknown already covers: the gap pass below does not name them
+  // a second time.
+  const held = new Set<string>()
   const grant = isObject(body.grantControls) ? body.grantControls : null
   const named = arr(grant?.builtInControls).filter((c): c is string => typeof c === 'string').map((c) => c.toLowerCase())
   const controls = new Set(named.filter((c) => READABLE_CONTROLS.has(c)))
@@ -396,11 +491,16 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
     const reading = CONDITION_READING[k as keyof typeof CONDITION_READING]
     if (reading === undefined) unknown.push(`a condition IAMAI has no reading for: ${k}`)
     else if (!reading) unknown.push(`a condition IAMAI carries but cannot read: ${k}`)
+    if (reading !== true) held.add(`conditions.${k}`)
   }
-  if (grant) for (const k of Object.keys(grant)) if (!GRANT_FIELDS.has(k) && !isAnnotation(k)) unknown.push(`a grant setting IAMAI has no reading for: ${k}`)
+  if (grant)
+    for (const k of Object.keys(grant))
+      if (!GRANT_FIELDS.has(k) && !isAnnotation(k)) {
+        unknown.push(`a grant setting IAMAI has no reading for: ${k}`)
+        held.add(`grantControls.${k}`)
+      }
   const locations = isObject(conditions.locations) ? conditions.locations : null
   const locationIds = locations ? { include: strings(locations.includeLocations), exclude: strings(locations.excludeLocations) } : null
-  const riskLevels = [...strings(conditions.signInRiskLevels), ...strings(conditions.userRiskLevels)]
   const scope = scopeOf(conditions)
   const narrowings: Narrowing[] = []
   const appTypes = strings(conditions.clientAppTypes).map((t) => t.toLowerCase())
@@ -410,14 +510,25 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   }
   const flows = isObject(conditions.authenticationFlows) ? String(conditions.authenticationFlows.transferMethods ?? '') : ''
   if (flows.trim().length > 0) narrowings.push({ kind: 'signInFlow', methods: flows.split(',').map((x) => x.trim()).filter((x) => x.length > 0) })
-  if (riskLevels.length > 0) narrowings.push({ kind: 'risk', levels: riskLevels })
+  // Two different questions, kept apart: the risk of *this sign-in*, which the
+  // records measure, and the risk carried by the *account*, which they do not.
+  const signInRisk = strings(conditions.signInRiskLevels)
+  const userRisk = strings(conditions.userRiskLevels)
+  const riskLevels = [...signInRisk, ...userRisk]
+  if (signInRisk.length > 0) narrowings.push({ kind: 'signInRisk', levels: signInRisk })
+  if (userRisk.length > 0) narrowings.push({ kind: 'userRisk', levels: userRisk })
   if (locationIds !== null && (locationIds.include.length > 0 || locationIds.exclude.length > 0)) narrowings.push({ kind: 'locations', ...locationIds })
   if (isObject(conditions.platforms)) narrowings.push({ kind: 'platforms' })
   if (isObject(conditions.devices)) narrowings.push({ kind: 'deviceFilter' })
   // A policy for every resource narrows nothing; one naming resources or a user
   // action applies only there, and nothing in the scan says where a person goes.
   const namedApps = scope.applications.include.filter((a) => !['all', 'none'].includes(a.toLowerCase()))
-  if (namedApps.length > 0) narrowings.push({ kind: 'applications', ids: namedApps })
+  // A policy that names no resource at all applies to no sign-in; one that
+  // leaves a resource out is not one that applies everywhere, and an exclusion
+  // read as absent would describe a policy the tenant does not have.
+  const noApps = scope.applications.include.length > 0 && scope.applications.include.every((a) => a.toLowerCase() === 'none')
+  const excludedApps = scope.applications.exclude.filter((a) => a.toLowerCase() !== 'none')
+  if (noApps || namedApps.length > 0 || excludedApps.length > 0) narrowings.push({ kind: 'applications', ids: namedApps, exclude: excludedApps, none: noApps })
   if (scope.applications.userActions.length > 0) narrowings.push({ kind: 'userActions', actions: scope.applications.userActions })
   // An authentication context applies where an application asks for it — role
   // activation, a labelled site — and nothing in the scan says when that is.
@@ -431,6 +542,9 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   const sessionControls = raw
     ? {
         signInFrequency: on(raw.signInFrequency),
+        // A sign-in frequency of "every time" reauthenticates on every request:
+        // the one session setting that can put the person applying it in a loop.
+        signInFrequencyEveryTime: on(raw.signInFrequency) && isObject(raw.signInFrequency) && String(raw.signInFrequency.frequencyInterval ?? '') === 'everyTime',
         persistentBrowser: on(raw.persistentBrowser),
         tokenProtection: on(raw.secureSignInSession),
         other: Object.entries(raw).some(([k, v]) => !['signInFrequency', 'persistentBrowser', 'secureSignInSession'].includes(k) && !isAnnotation(k) && on(v)),
@@ -443,6 +557,7 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
       const reading = SESSION_READING[k as keyof typeof SESSION_READING]
       if (reading === undefined) unknown.push(`a session control IAMAI has no reading for: ${k}`)
       else if (!reading) unknown.push(`a session control IAMAI carries but cannot read: ${k}`)
+      if (reading !== true) held.add(`sessionControls.${k}`)
     }
   const requirements: Requirement[] = []
   if (strength) requirements.push({ kind: 'strength', id: strength.id })
@@ -458,7 +573,22 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   if (sessionControls?.tokenProtection) requirements.push({ kind: 'tokenProtection' })
   // Carried, named and kept apart from the ones IAMAI can read.
   for (const c of foreign) requirements.push({ kind: 'other', control: c })
-  const operator = String(grant?.operator ?? '').toUpperCase() === 'AND' ? 'AND' : 'OR'
+  // How the controls combine decides whether one failed requirement strands a
+  // person or merely closes one way through. A grant that does not say is not
+  // read as either: OR stands only so the aggregation has a shape, and the
+  // unknown withdraws every verdict the choice could have decided
+  // (roadmap/strand.ts policyVerdict).
+  const namedOperator = String(grant?.operator ?? '').toUpperCase()
+  if (grant !== null && namedOperator !== 'AND' && namedOperator !== 'OR') unknown.push('a grant that does not say how its controls combine')
+  const operator = namedOperator === 'AND' ? 'AND' : 'OR'
+  // Anything the policy carries that the reading above did not consume is held,
+  // by name. A field recognised and ignored would be read as though the policy
+  // did not have it (READ_LEAVES).
+  for (const leaf of semanticLeaves(body)) {
+    if (READ_LEAVES.has(leaf)) continue
+    if ([...held].some((h) => leaf === h || leaf.startsWith(`${h}.`))) continue
+    unknown.push(`a field IAMAI recognised but did not read: ${leaf}`)
+  }
   return {
     blocks: controls.has('block'),
     operator,

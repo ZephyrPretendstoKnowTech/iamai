@@ -6,10 +6,10 @@ import { EVENT } from '../copy/timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
 import { scopeBoundedBy, unavailableReason } from './operations.ts'
-import { effectsOf } from './strand.ts'
+import { effectsOf, familyReading } from './strand.ts'
 
 /** The circumstances the records can answer; anything else is not proof of a zero. */
-const MEASURED_NARROWINGS = new Set(['legacyClients', 'signInFlow', 'risk', 'locations'])
+const MEASURED_NARROWINGS = new Set(['legacyClients', 'signInFlow', 'signInRisk', 'locations'])
 import type { Step, StepEvent, StepEvents } from './types.ts'
 
 /**
@@ -154,7 +154,7 @@ export function nobodyAffected(step: Step): boolean {
   // step — is read by its goal's family, as it always was.
   const effects = effectsOf(step)
   if (effects === null) {
-    const family = step.readiness.family
+    const family = familyReading(step)
     const affected = family === 'block' || family === 'location' || family === 'risk' ? step.evidence.affectedUserIds.length : step.population.active
     return step.evidence.status === 'ok' && affected === 0
   }

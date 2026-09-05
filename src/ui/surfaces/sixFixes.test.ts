@@ -18,7 +18,8 @@ import { rungWords, showWord } from './todayCells.ts'
 import { rowWhen } from './rowWhen.ts'
 import { rowWho } from './rowWho.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
-import { lockoutIds } from '../../roadmap/lockout.ts'
+import { rungOf } from '../../derive/ladder.ts'
+import { adminUserIds } from '../../roles.ts'
 import { whoLine } from '../../derive/whoLine.ts'
 import { longDate } from '../../copy/dates.ts'
 
@@ -107,7 +108,12 @@ test("(6) a strength policy's row carries its lockout count in the who-column wh
   const snapshot = adminsInReportOnly(f)
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
-  const without = lockoutIds('admins-phishing-resistant', r.viability, f.snapshot, new Set(f.mapping.breakGlassUserIds))
+  // The step's own answer, and the tenant fact behind it: the admins the policy
+  // reaches who are not yet at Passkey or security key, proven. The step reads
+  // its own policy for both the count and the names (roadmap/lockout.ts).
+  const admins = adminUserIds(f.snapshot.roles)
+  const bg = new Set(f.mapping.breakGlassUserIds)
+  const without = r.viability.filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && rungOf(v) !== 5).map((v) => v.userId)
   assert.ok(without.length > 0)
   assert.equal(s.lockout, without.length)
   const nameOf = (id: string): string => r.input.names!.label(id)

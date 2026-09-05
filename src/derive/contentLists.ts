@@ -16,7 +16,6 @@ import { notActiveUsers, notPeopleIds } from './sets.ts'
 import { RUNGS, ladder, rungOf } from './ladder.ts'
 import type { Rung } from './ladder.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { lockoutIds } from '../roadmap/lockout.ts'
 import { pages } from '../content/content.ts'
 
 export type ListContext = {
@@ -88,19 +87,30 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   // account (prompt 52 Part 3): the picker reads `<source>Ids` beside `<source>`.
   const specialCareIds = [...careIds]
 
-  // The lockout lists (E8): who in a step's scope has no phishing-resistant
-  // method today, by name when three or fewer, as a count otherwise. The admins
-  // for the admin policy; the eligible role holders for the activation policy;
-  // everyone with only Authenticator approval (no passkey, no key) for the
-  // risk policy, which stops them rather than prompting.
-  // One rule for the row's count and the step's names (roadmap/lockout.ts).
-  const lockout = (goalId: string): { names: string[]; count: number | undefined; total: number } => {
-    const ids = lockoutIds(goalId, viability, snapshot, bg)
-    return { names: ids.length <= NAMES_UP_TO ? names(ids) : [], count: ids.length > NAMES_UP_TO ? ids.length : undefined, total: ids.length }
+  // The readiness lists these steps name (E8): who among a set of people is not
+  // yet at Passkey or security key, proven (derive/ladder.ts rung 5), by name
+  // when three or fewer and as a count otherwise. A question about people and
+  // the rung they are on — never a reading of what a policy does. What a step's
+  // own policies would stop rather than prompt is a different question with a
+  // different answer, and only the operation answers it (roadmap/lockout.ts
+  // lockoutCount, the row's own count).
+  const notYetAtTopRung = (ids: readonly string[]): { names: string[]; count: number | undefined; total: number } => {
+    const below = ids.filter((id) => {
+      const v = byId.get(id)
+      return v !== undefined && v.activity === 'active' && !bg.has(id) && rungOf(v) !== 5
+    })
+    return { names: below.length <= NAMES_UP_TO ? names(below) : [], count: below.length > NAMES_UP_TO ? below.length : undefined, total: below.length }
   }
-  const adminsWithoutL = lockout('admins-phishing-resistant')
-  const eligibleWithoutL = lockout('pim-activation-reauth')
-  const pushOnlyL = lockout('sign-in-risk')
+  const adminsWithoutL = notYetAtTopRung([...admins])
+  const eligibleWithoutL = notYetAtTopRung(Object.keys(snapshot.roles?.eligible ?? {}))
+  // The risk policy stops, rather than prompts, whoever has only Authenticator
+  // approval: no passkey, no key, nothing passwordless.
+  const pushOnlyL = ((): { names: string[]; count: number | undefined; total: number } => {
+    const only = viability
+      .filter((v) => v.activity === 'active' && !bg.has(v.userId) && v.methodTiers.includes('push') && !v.methodTiers.includes('phishingResistant') && !v.methodTiers.includes('passwordless'))
+      .map((v) => v.userId)
+    return { names: only.length <= NAMES_UP_TO ? names(only) : [], count: only.length > NAMES_UP_TO ? only.length : undefined, total: only.length }
+  })()
 
   // The usage a block would stop (E9), by person, with the sign-in counts the
   // lines name: device code, authentication transfer, sign-ins with no platform
@@ -149,7 +159,7 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
     // name them beside the step. The emergency accounts are not everyday accounts.
     adminsWithWorkload: adminsWithWorkloadOf(snapshot, bg).map(([id, apps]) => `${nameOf(id)} · ${apps.join(', ')}`),
     adminsWithWorkloadIds: adminsWithWorkloadOf(snapshot, bg).map(([id]) => id),
-    // The lockout lists (E8), by name when three or fewer; the count line stands in otherwise.
+    // The readiness lists (E8), by name when three or fewer; the count line stands in otherwise.
     adminsWithout: adminsWithoutL.names,
     eligibleWithout: eligibleWithoutL.names,
     pushOnlyUsers: pushOnlyL.names,

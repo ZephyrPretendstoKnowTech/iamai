@@ -22,7 +22,7 @@ const CRITICAL = engine.critical
 import { absoluteDate } from '../copy/dates.ts'
 import { unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
-import { effectsOf } from './strand.ts'
+import { effectsOf, familyReading } from './strand.ts'
 import type { Step } from './types.ts'
 
 export type WaveSchedule = {
@@ -193,7 +193,6 @@ export function observationDaysFor(step: Step): number {
  * the enforce step — is read by its goal's family, as it always was.
  */
 export function batchClassOf(step: Step): BatchClass {
-  const family = step.readiness.family
   // Evidence-backed zero, not merely absent evidence, and not an unmeasured
   // field read as zero (nobodyAffected in timing.ts is the one definition; the
   // notice period reads the same bar).
@@ -207,6 +206,7 @@ export function batchClassOf(step: Step): BatchClass {
     return 'other'
   }
   // A risk policy that does apply prompts for MFA, so it batches with the MFA changes.
+  const family = familyReading(step)
   if (family === 'mfa' || family === 'admin' || family === 'guest' || family === 'risk') return 'mfa'
   if (family === 'device' || family === 'location') return 'deviceSession'
   return 'other'
@@ -314,7 +314,7 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
       if (blocker && isWork(blocker)) add(s, { stepId: b, kind: 'hard', reason: 'blocked-by' })
     }
     if (!isEnforcement(s)) continue
-    const family = s.readiness.family
+    const family = familyReading(s)
     // What the step will actually leave behind decides what it waits on
     // (roadmap/operations.ts stepEffects); a step with no policy of its own —
     // the enforce step — is read by its goal's family, as it always was.
@@ -599,7 +599,7 @@ export function buildSchedule(
       // change nobody feels needs a day, anything else the band's. What it does
       // and to whom decides (roadmap/timing.ts nobodyAffected), never the goal
       // it is filed under.
-      const quiet = effectsOf(s) !== null ? nobodyAffected(s) : s.readiness.family === 'other'
+      const quiet = effectsOf(s) !== null ? nobodyAffected(s) : familyReading(s) === 'other'
       const soaks = rings ? rings.map((r) => r.soakDays) : [quiet ? 1 : ringBand.soakDays]
       const batch = batchClassOf(s)
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
