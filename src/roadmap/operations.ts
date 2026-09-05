@@ -65,7 +65,7 @@ const GRANT_FIELDS = new Set(['operator', 'builtInControls', 'customAuthenticati
  * bounded set the product actually puts on the wire, checked to its values so a
  * malformed payload is held rather than submitted.
  */
-const CONDITION_SHAPES: Record<string, (v: unknown) => boolean> = {
+const CONDITION_SHAPES = {
   users: (v) => isUsersScope(v),
   applications: (v) =>
     isObjectOnly(v, new Set(['includeApplications', 'excludeApplications', 'includeUserActions', 'includeAuthenticationContextClassReferences'])) &&
@@ -83,6 +83,27 @@ const CONDITION_SHAPES: Record<string, (v: unknown) => boolean> = {
   userRiskLevels: (v) => listOk(v, RISK_LEVELS),
   servicePrincipalRiskLevels: (v) => listOk(v, RISK_LEVELS),
   authenticationFlows: (v) => isObjectOnly(v, new Set(['transferMethods'])) && tokens(v.transferMethods, TRANSFER_METHODS),
+} satisfies Record<string, (v: unknown) => boolean>
+
+/**
+ * Whether `effectOf` turns each condition it will submit into part of the scope
+ * or into a narrowing of its own, or can only hold it unknown. Every field the
+ * submission decoder accepts has an entry, so a condition cannot be added to the
+ * wire without a decision about what it *means*: a key nothing reads would
+ * otherwise be read as though the condition were not there.
+ */
+const CONDITION_READING: Record<keyof typeof CONDITION_SHAPES, boolean> = {
+  users: true,
+  applications: true,
+  clientApplications: true,
+  clientAppTypes: true,
+  locations: true,
+  platforms: true,
+  devices: true,
+  signInRiskLevels: true,
+  userRiskLevels: true,
+  servicePrincipalRiskLevels: true,
+  authenticationFlows: true,
 }
 const RISK_LEVELS = new Set(['low', 'medium', 'high', 'none', 'hidden', 'unknownfuturevalue'])
 const CLIENT_APP_TYPES = new Set(['all', 'browser', 'mobileappsanddesktopclients', 'exchangeactivesync', 'easunsupported', 'other'])
@@ -189,7 +210,7 @@ const APP_CONTROLS = new Set(['approvedapplication', 'compliantapplication'])
 const POLICY_STATES = new Set(['enabled', 'disabled', 'enabledForReportingButNotEnforced'])
 
 /** The session controls IAMAI writes or carries, each with the shape it has to have. */
-const SESSION_SHAPES: Record<string, (v: unknown) => boolean> = {
+const SESSION_SHAPES = {
   // A sign-in frequency that is on says how often: every time, or a number of
   // hours or days. "On", with nothing else, is not a setting Graph can apply.
   signInFrequency: (v) => {
@@ -206,6 +227,24 @@ const SESSION_SHAPES: Record<string, (v: unknown) => boolean> = {
   applicationEnforcedRestrictions: (v) => isObjectOnly(v, new Set(['isEnabled'])) && typeof v.isEnabled === 'boolean',
   cloudAppSecurity: (v) => isObjectOnly(v, new Set(['isEnabled', 'cloudAppSecurityType'])) && (!enabled(v) || CLOUD_APP_SECURITY_TYPES.has(String(v.cloudAppSecurityType))),
   disableResilienceDefaults: (v) => typeof v === 'boolean' || v === null,
+} satisfies Record<string, (v: unknown) => boolean>
+
+/**
+ * Whether `effectOf` can say what each session control it will submit does to
+ * the people the policy reaches. A sign-in frequency and a browser-persistence
+ * setting shorten a session and deny nobody; token protection is a requirement
+ * of its own. The rest — a restriction the application enforces, a session a
+ * cloud-app proxy governs — narrow what a session may do by evidence about the
+ * client and the device that the scan does not hold, so they are held unknown
+ * rather than read as harmless.
+ */
+const SESSION_READING: Record<keyof typeof SESSION_SHAPES, boolean> = {
+  signInFrequency: true,
+  persistentBrowser: true,
+  secureSignInSession: true,
+  disableResilienceDefaults: true,
+  applicationEnforcedRestrictions: false,
+  cloudAppSecurity: false,
 }
 
 /**
@@ -224,6 +263,8 @@ export type Narrowing =
   | { kind: 'platforms' }
   | { kind: 'applications'; ids: string[] }
   | { kind: 'userActions'; actions: string[] }
+  | { kind: 'authContext'; ids: string[] }
+  | { kind: 'workloadRisk'; levels: string[] }
   | { kind: 'deviceFilter' }
 
 /** One thing a policy asks a person for. Kept apart: a device is not an app, and neither is a method. */
@@ -250,7 +291,21 @@ export type PolicyScope = {
   guests: { include: boolean; exclude: boolean }
   /** It reaches service principals and no person at all. */
   workloadOnly: boolean
-  applications: { include: string[]; exclude: string[]; userActions: string[] }
+  applications: { include: string[]; exclude: string[]; userActions: string[]; authContexts: string[] }
+}
+
+/**
+ * True when the people a policy names are all inside a list somebody else holds
+ * — every one of them named outright, and none of them reached through a group,
+ * a role, a guest clause or "all users" that the list cannot stand for. Nothing
+ * may read a step's own population as the policy's reach without this.
+ */
+export function scopeBoundedBy(scope: PolicyScope, ids: readonly string[]): boolean {
+  if (scope.workloadOnly || scope.allUsers || scope.guests.include) return false
+  if (scope.groups.include.length > 0 || scope.roles.include.length > 0) return false
+  if (scope.users.include.length === 0) return false
+  const known = new Set(ids.map((i) => i.toLowerCase()))
+  return scope.users.include.every((u) => known.has(u.toLowerCase()))
 }
 
 /**
@@ -310,7 +365,12 @@ function scopeOf(conditions: Record<string, unknown>): PolicyScope {
     roles: { include: strings(users?.includeRoles), exclude: strings(users?.excludeRoles) },
     guests: { include: isObject(users?.includeGuestsOrExternalUsers), exclude: isObject(users?.excludeGuestsOrExternalUsers) },
     workloadOnly: users === null && workload !== null,
-    applications: { include: strings(apps?.includeApplications), exclude: strings(apps?.excludeApplications), userActions: strings(apps?.includeUserActions) },
+    applications: {
+      include: strings(apps?.includeApplications),
+      exclude: strings(apps?.excludeApplications),
+      userActions: strings(apps?.includeUserActions),
+      authContexts: strings(apps?.includeAuthenticationContextClassReferences),
+    },
   }
 }
 
@@ -331,7 +391,12 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   if (grant && nonEmpty(grant.customAuthenticationFactors)) unknown.push('a custom authentication factor')
   if (grant && nonEmpty(grant.termsOfUse)) unknown.push('terms of use')
   const conditions = isObject(body.conditions) ? body.conditions : {}
-  for (const k of Object.keys(conditions)) if (CONDITION_SHAPES[k] === undefined && !isAnnotation(k)) unknown.push(`a condition IAMAI has no reading for: ${k}`)
+  for (const k of Object.keys(conditions)) {
+    if (isAnnotation(k)) continue
+    const reading = CONDITION_READING[k as keyof typeof CONDITION_READING]
+    if (reading === undefined) unknown.push(`a condition IAMAI has no reading for: ${k}`)
+    else if (!reading) unknown.push(`a condition IAMAI carries but cannot read: ${k}`)
+  }
   if (grant) for (const k of Object.keys(grant)) if (!GRANT_FIELDS.has(k) && !isAnnotation(k)) unknown.push(`a grant setting IAMAI has no reading for: ${k}`)
   const locations = isObject(conditions.locations) ? conditions.locations : null
   const locationIds = locations ? { include: strings(locations.includeLocations), exclude: strings(locations.excludeLocations) } : null
@@ -354,8 +419,15 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   const namedApps = scope.applications.include.filter((a) => !['all', 'none'].includes(a.toLowerCase()))
   if (namedApps.length > 0) narrowings.push({ kind: 'applications', ids: namedApps })
   if (scope.applications.userActions.length > 0) narrowings.push({ kind: 'userActions', actions: scope.applications.userActions })
+  // An authentication context applies where an application asks for it — role
+  // activation, a labelled site — and nothing in the scan says when that is.
+  if (scope.applications.authContexts.length > 0) narrowings.push({ kind: 'authContext', ids: scope.applications.authContexts })
+  const workloadRisk = strings(conditions.servicePrincipalRiskLevels)
+  if (workloadRisk.length > 0) narrowings.push({ kind: 'workloadRisk', levels: workloadRisk })
   const raw = isObject(body.sessionControls) ? body.sessionControls : null
-  const on = (v: unknown): boolean => (isObject(v) ? v.isEnabled !== false && Object.keys(v).length > 0 : v !== null && v !== undefined)
+  // A control is on when it is there and not switched off: an empty object says
+  // nothing, and a flag written `false` is the setting turned off, not a setting.
+  const on = (v: unknown): boolean => (isObject(v) ? v.isEnabled !== false && Object.keys(v).length > 0 : typeof v === 'boolean' ? v : v !== null && v !== undefined)
   const sessionControls = raw
     ? {
         signInFrequency: on(raw.signInFrequency),
@@ -365,7 +437,13 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
       }
     : null
   const session = Boolean(sessionControls && (sessionControls.signInFrequency || sessionControls.persistentBrowser || sessionControls.tokenProtection || sessionControls.other))
-  if (raw) for (const [k, v] of Object.entries(raw)) if (SESSION_SHAPES[k] === undefined && !isAnnotation(k) && on(v)) unknown.push(`a session control IAMAI has no reading for: ${k}`)
+  if (raw)
+    for (const [k, v] of Object.entries(raw)) {
+      if (isAnnotation(k) || !on(v)) continue
+      const reading = SESSION_READING[k as keyof typeof SESSION_READING]
+      if (reading === undefined) unknown.push(`a session control IAMAI has no reading for: ${k}`)
+      else if (!reading) unknown.push(`a session control IAMAI carries but cannot read: ${k}`)
+    }
   const requirements: Requirement[] = []
   if (strength) requirements.push({ kind: 'strength', id: strength.id })
   for (const c of controls) {
@@ -490,7 +568,7 @@ function fieldsAreSupported(body: Record<string, unknown>): boolean {
     if (!isObject(body.conditions)) return false
     for (const [k, v] of Object.entries(body.conditions)) {
       if (isAnnotation(k)) continue
-      const shape = CONDITION_SHAPES[k]
+      const shape = CONDITION_SHAPES[k as keyof typeof CONDITION_SHAPES] as ((v: unknown) => boolean) | undefined
       if (shape === undefined || !shape(v)) return false
     }
   }
@@ -516,7 +594,7 @@ function fieldsAreSupported(body: Record<string, unknown>): boolean {
     if (!isObject(body.sessionControls)) return false
     for (const [k, v] of Object.entries(body.sessionControls)) {
       if (isAnnotation(k) || v === null || v === undefined) continue
-      const shape = SESSION_SHAPES[k]
+      const shape = SESSION_SHAPES[k as keyof typeof SESSION_SHAPES] as ((v: unknown) => boolean) | undefined
       if (shape === undefined || !shape(v)) return false
     }
   }

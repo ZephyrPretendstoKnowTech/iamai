@@ -27,7 +27,7 @@ import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { lockoutCount } from './lockout.ts'
 import { accountVerdict, operationReach, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
-import { eventsFor } from './timing.ts'
+import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
 import { contentTitle } from '../content/stepTitle.ts'
 import { engine, stepById } from '../content/content.ts'
@@ -1079,11 +1079,16 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
     // Announcements by goal family (prompt 13 §8); nobody affected → no template.
     const evidenceUsable = evidence.status === 'ok' || evidence.status === 'partial'
-    const nobodyAffected =
-      (evidenceUsable && (readiness.family === 'block' || readiness.family === 'risk') && evidence.affectedUserIds.length === 0) ||
-      ((readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'admin') && notReadyActive === 0) ||
-      (readiness.family === 'device' && readiness.percent === 100) ||
-      pop.active === 0
+    // Whether anybody feels this change is the policy's own answer, from what it
+    // will leave behind (roadmap/timing.ts nobodyAffected) — the one definition
+    // the notice period, the zero batch and the soak already read. The goal's
+    // family answers only for a step with no policy of its own.
+    const nobodyAffected = isOpenPolicy(asStep)
+      ? nobodyAffectedBy({ ...asStep, evidence } as Step)
+      : (evidenceUsable && (readiness.family === 'block' || readiness.family === 'risk') && evidence.affectedUserIds.length === 0) ||
+        ((readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'admin') && notReadyActive === 0) ||
+        (readiness.family === 'device' && readiness.percent === 100) ||
+        pop.active === 0
     // The change itself decides the wording (prompt 17 §4): an adjust that
     // only tightens sessions gets session wording; a strength raise gets
     // passkey wording; a block names the affected users or needs none.
