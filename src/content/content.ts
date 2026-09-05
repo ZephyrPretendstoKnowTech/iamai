@@ -84,5 +84,9 @@ export type EngineWords = {
   emergencySignals: Record<string, string>
   /** What a personal device can still do once devices are required (E7): the browser with limits while the unmanaged-browser step is on the plan, else blocked. */
   personalDevices: { browserLimited: string; blocked: string }
+  /** The single next thing on a step (roadmap/lifecycle.ts nextMilestone). */
+  milestone: Record<string, string>
+  /** What this scan saw against what the last one saw (roadmap/observation.ts). */
+  observation: Record<string, string> & { states: { absent: string; disabled: string; reportOnly: string; enforced: string; unknown: string } }
 }
 export const engine = shared.engine as unknown as EngineWords

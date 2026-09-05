@@ -15,6 +15,7 @@ import ladderData from '../../data/free-tier-ladder.json' with { type: 'json' }
 import { EXCHANGE_PLANS } from '../mapping/serviceAccounts.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
+import { stateFields } from './lifecycle.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import type { Step } from './types.ts'
 
@@ -181,7 +182,8 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
       kind: 'prerequisite',
       title: item.name,
       why: item.description,
-      status: v.done ? 'done' : 'ready',
+      // A ladder rung the tenant already meets is satisfied by what it already has.
+      ...stateFields(v.done ? { satisfied: true, inPlace: true } : {}),
       blockedBy: [],
       blockers: [],
       unblockNotes: [],

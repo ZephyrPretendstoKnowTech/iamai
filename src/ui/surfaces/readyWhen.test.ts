@@ -13,7 +13,8 @@ import { demoTenant } from '../demo.ts'
 import { DEMO_TENANT_ID } from '../demoMode.ts'
 import { applyProgress } from '../../roadmap/progress.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
-import { reportOnlySeenOf } from '../../roadmap/tracking.ts'
+import { observationsOf } from '../../roadmap/tracking.ts'
+import { observationsFrom } from '../../roadmap/observation.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { rowWhen } from './rowWhen.ts'
 import { statusOf } from './statusWord.ts'
@@ -41,7 +42,10 @@ test('week one: a policy the scan first sees in report-only is ready on the scan
   assert.equal(statusOf(step).word, 'Report-only')
   assert.equal(rowWhen(step), `ready ${absoluteDate(readyOn)}`)
   // The observation the plan record keeps, so the next scan continues the clock.
-  assert.deepEqual(reportOnlySeenOf(run.steps), { [ADMINS]: f.snapshot.asOf })
+  const kept = observationsOf(run.steps)[ADMINS]
+  assert.equal(kept.state, 'report-only')
+  assert.equal(kept.firstSeenAt, f.snapshot.asOf)
+  assert.equal(kept.since, 'first-scan', 'the first time IAMAI looked, not a transition it watched')
 })
 
 test('week two: the report-only policy with clean, complete records is ready now; the one seen for 24 people waits for its window; the one the tenant turned on is Enforced', () => {
@@ -85,7 +89,7 @@ test('rescan: a policy still in report-only past its date stays Report-only and 
   const f = fixture('demo')
   const run = runFixture(f)
   const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
-  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, { [ADMINS]: seenAt })
+  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
   const step = run.steps.find((s) => s.id === ADMINS)!
   assert.equal(step.tracking?.reportOnlyAt, seenAt, 'the record\'s observation wins over this scan')
   assert.equal(step.status, 'ready-to-enforce')

@@ -9,7 +9,11 @@ export type StatusView = { word: string; tone: StatusTone }
 export function statusOf(step: Step): StatusView {
   switch (step.status) {
     case 'done':
-      return step.tracking?.enforcedAt ? { word: 'Enforced', tone: 'ok' } : { word: 'In place', tone: 'ok' }
+      // A goal the plan drove to enforcement reads Enforced; one delivered by
+      // something the tenant already had reads In place, which is a
+      // preservation result and not a stage of the lifecycle. The step's own
+      // lifecycle answers (roadmap/lifecycle.ts), never a date on the tracking.
+      return step.state.lifecycle === 'enforced' ? { word: 'Enforced', tone: 'ok' } : { word: 'In place', tone: 'ok' }
     case 'ready':
       return { word: 'Ready', tone: 'ok' }
     case 'blocked':

@@ -5,19 +5,13 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { trackExecution } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { engine } from '../content/content.ts'
+import { setState, stateForStatus, statusRank } from './lifecycle.ts'
+import { observationsFrom } from './observation.ts'
+import type { StepObservation } from './observation.ts'
 import type { Step, StepStatus } from './types.ts'
 import type { PlanDecisions, SkipDecision, StepDecision } from './decisions.ts'
 
 export type { PlanDecisions, SkipDecision, StepDecision } from './decisions.ts'
-
-const RANK: Record<StepStatus, number> = {
-  blocked: 0,
-  ready: 0,
-  'in-report-only': 1,
-  'ready-to-enforce': 2,
-  done: 3,
-  skipped: -1,
-}
 
 // Merge persisted status/history/skips into freshly generated steps by id.
 export type SavedStep = {
@@ -54,18 +48,19 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
     step.tracking = s.tracking ?? null
     if (s.ringActuals) for (const [i, r] of step.rings.entries()) if (s.ringActuals[i]) Object.assign(r, s.ringActuals[i])
     if (typeof s.currentRing === 'number') step.currentRing = Math.min(s.currentRing, Math.max(0, step.rings.length - 1))
-    if (s.status === 'skipped') step.status = 'skipped'
+    if (s.status === 'skipped') setState(step, { setAside: true })
     // Recurring steps are re-evaluated every scan (a drill can become overdue
-    // again); a saved "done" must not pin them.
-    else if (RANK[s.status] > RANK[step.status]) step.status = s.status
+    // again); a saved "done" must not pin them. A record holds the old single
+    // word, so it restores the state that word stood for (lifecycle.ts).
+    else if (statusRank(s.status) > statusRank(step.status)) setState(step, stateForStatus(s.status))
   }
   return steps
 }
 
 // Detection on every scan (roadmap-v2.md §5) lives in tracking.ts; this
 // keeps the entry point the page and the tests call.
-export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string, planCreatedAt: string | null = null, reportOnlySeen: Record<string, string> | null = null): Step[] {
-  return trackExecution(steps, snapshot, coverage, planId, now, reportOnlySeen ?? {})
+export function applyProgress(steps: Step[], snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, now?: string, planCreatedAt: string | null = null, observations: Record<string, StepObservation> | null = null): Step[] {
+  return trackExecution(steps, snapshot, coverage, planId, now, observations ?? {})
 }
 
 // ---- Decisions-only record (prompt 50.1 item 1) ----
@@ -105,10 +100,10 @@ export function decisionsOf(
     const answers = Object.fromEntries(Object.entries(d.answers ?? {}).filter((e): e is [string, string] => typeof e[1] === 'string'))
     stepDecisions[id] = { ...(Array.isArray(d.picked) ? { picked: d.picked.map(String) } : {}), ...(typeof d.option === 'string' ? { option: d.option } : {}), ...(Object.keys(answers).length > 0 ? { answers } : {}), at: String(d.at ?? '') }
   }
-  // The scan that first saw each step's policy in report-only: an observation
-  // only the record holds (tracking.ts reportOnlySince).
-  const reportOnlySeen: Record<string, string> = {}
-  for (const [id, at] of Object.entries(rec?.reportOnlySeen ?? {})) if (typeof at === 'string' && !Number.isNaN(Date.parse(at))) reportOnlySeen[id] = at
+  // What the last scan saw of each step's policy: the one history only the
+  // record holds (observation.ts). A pre-Foundation-B record kept a single
+  // report-only date per step, and it migrates as a report-only observation.
+  const observations = observationsFrom(rec)
   return {
     planId: rec?.planId ?? planId,
     skips,
@@ -119,7 +114,7 @@ export function decisionsOf(
     checkpoints: rec?.checkpoints ?? [],
     planCreatedAt: rec?.planCreatedAt,
     stepDecisions,
-    reportOnlySeen,
+    observations,
     ...(typeof (rec as { signature?: unknown } | null)?.signature === 'string' ? { signature: (rec as { signature: string }).signature } : {}),
   }
 }
@@ -138,7 +133,7 @@ export function applySkips(steps: Step[], skips: Record<string, SkipDecision> | 
     if (!d || isEmergencyAccess(step)) continue
     step.history = [...step.history, { at: d.at || new Date().toISOString(), from: step.status, to: 'skipped', note: d.reason }]
     step.skipReason = d.reason
-    step.status = 'skipped'
+    setState(step, { setAside: true })
   }
   return steps
 }
@@ -160,7 +155,7 @@ export function skipStep(step: Step, reason: string): { ok: boolean; error?: str
     return { ok: false, error: 'steps are skipped as "not applicable to us", never as accepted risk' }
   }
   step.history.push({ at: new Date().toISOString(), from: step.status, to: 'skipped', note: r })
-  step.status = 'skipped'
+  setState(step, { setAside: true })
   step.skipReason = r
   return { ok: true }
 }
@@ -174,9 +169,9 @@ export function skipStep(step: Step, reason: string): { ok: boolean; error?: str
  * a judgement made against a tenant that has since moved.
  */
 export function unskipStep(step: Step): { ok: boolean; error?: string } {
-  if (step.status !== 'skipped') return { ok: false, error: 'that step is not skipped' }
+  if (!step.state.setAside) return { ok: false, error: 'that step is not skipped' }
   step.history.push({ at: new Date().toISOString(), from: 'skipped', to: 'blocked', note: engine.skip.unskip })
-  step.status = 'blocked'
+  setState(step, { setAside: false, condition: 'blocked' })
   step.skipReason = null
   return { ok: true }
 }

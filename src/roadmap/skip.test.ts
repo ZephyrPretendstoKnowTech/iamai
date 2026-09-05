@@ -12,10 +12,13 @@ import { skipStep, unskipStep } from './progress.ts'
 import { EMERGENCY_ACCESS_STEP_IDS, isEmergencyAccess } from './blockerSteps.ts'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { initialState, setState, stateForStatus } from './lifecycle.ts'
 import type { Step } from './types.ts'
 
-const step = (over: Record<string, unknown> & { id: string }): Step =>
-  ({ status: 'ready', history: [], skipReason: null, score: { value: 3 }, ...over }) as unknown as Step
+const step = (over: Record<string, unknown> & { id: string }): Step => {
+  const built = { status: 'ready', state: initialState(), history: [], skipReason: null, score: { value: 3 }, ...over } as unknown as Step
+  return setState(built, stateForStatus(built.status))
+}
 
 test('every emergency-access step is refused, by id', () => {
   for (const id of EMERGENCY_ACCESS_STEP_IDS) {
