@@ -12,6 +12,7 @@ import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, HOUSEKEEPING_ON
 import { ruleText } from '../validation/rules.ts'
 import type { RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
+import { stateFields } from './lifecycle.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
 import type { Step } from './types.ts'
@@ -96,7 +97,7 @@ export function blockerSteps(reports: SubjectReport[]): Step[] {
       kind: 'prerequisite',
       title: name,
       why: BLOCKER_STEP.why(name, n),
-      status: 'ready',
+      ...stateFields(),
       blockedBy: [],
       blockers: [],
       unblockNotes: [],

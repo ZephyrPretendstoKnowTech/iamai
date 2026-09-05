@@ -9,6 +9,7 @@ import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from './generate.ts'
 import type { RoadmapInput } from './generate.ts'
+import { observationsFrom } from './observation.ts'
 import { applyProgress, mergePersisted, skipStep } from './progress.ts'
 
 const GA = '62e90394-69f5-4237-9190-012177145e10'
@@ -218,7 +219,7 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
 
   // The time gate: the plan record says a scan eight days before this one first
   // saw the policy in report-only, past the observation window.
-  applyProgress(steps, snap2, input.coverage, PLAN, undefined, null, { [step.id]: '2026-08-18T00:00:00Z' })
+  applyProgress(steps, snap2, input.coverage, PLAN, undefined, null, observationsFrom({ reportOnlySeen: { [step.id]: '2026-08-18T00:00:00Z' } }))
   assert.equal(step.status, 'ready-to-enforce')
 
   const rows = snap2.config.caPolicies.rows as P[]

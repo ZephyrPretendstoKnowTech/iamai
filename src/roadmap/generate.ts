@@ -117,6 +117,8 @@ import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
+import { conditionFor, initialState, projectStatus, raiseCondition, setState, stateFields } from './lifecycle.ts'
+import type { StepState } from './lifecycle.ts'
 
 /** Evidence must cover at least this many days and hold this many sign-ins (or one per active person in scope) before a step is safe today (§2.4). */
 export const SAFE_MIN_EVIDENCE_DAYS = 14
@@ -510,7 +512,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     kind: 'prerequisite',
     title: title ?? stepById[id]?.title ?? id,
     why: '',
-    status: 'ready',
+    ...stateFields(),
     blockedBy: [],
     blockers: [],
     unblockNotes: [],
@@ -673,7 +675,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push({
       ...prereq(locStepId),
       naming: { proposed: proposed.name, fromBaseline: null },
-      status: ipLocations.length > 0 ? 'done' : 'ready',
+      // A tenant that already has an IP named location is preserving one, not making one.
+      ...stateFields(ipLocations.length > 0 ? { satisfied: true, inPlace: true } : {}),
       deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
     })
   }
@@ -749,7 +752,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.action = { ...s.action, kind: 'check' }
     s.population = population([...new Set([...phoneIds, ...unjoinedIds])].filter((id) => !excluded.has(id)), popIndex)
     if (devicePlan) {
-      s.status = 'done'
+      setState(s, { satisfied: true, inPlace: true })
       s.deliveredBy = [devicePlan.phonesText, ...(devicePlan.computersText ? [devicePlan.computersText] : [])]
     }
     steps.push(s)
@@ -814,7 +817,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     geStep.checks = stepChecks(geReport)
     const everywhere = geReport.targets.flatMap((t) => t.results).find((r) => r.id === 'xg.usedConsistently')
     if (recognisedGroupId !== null && everywhere?.outcome === 'pass') {
-      geStep.status = 'done'
+      setState(geStep, { satisfied: true, inPlace: true })
       geStep.deliveredBy = [recognisedGroupId]
     }
   }
@@ -824,7 +827,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     bgStep.checks = stepChecks(bgReport)
     const results = bgReport.targets.flatMap((t) => t.results)
     if (mapping.breakGlassUserIds.length > 0 && results.length > 0 && results.every((r) => r.outcome === 'pass')) {
-      bgStep.status = 'done'
+      setState(bgStep, { satisfied: true, inPlace: true })
       bgStep.deliveredBy = [...mapping.breakGlassUserIds]
     }
   }
@@ -935,7 +938,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     let action: Action
     let kind: Step['kind']
-    let status: StepStatus = 'ready'
+    // The step's state as the loop settles it; `status` below is only ever the
+    // projection of it (lifecycle.ts), read where a helper still takes the word.
+    let state: StepState = initialState()
+    const statusNow = (): StepStatus => projectStatus(state)
     let namingNote: { name: string; note: string | null } | null = null
     let existing: GoalResult['candidates'][number] | null = null
     let existingRaw: RawPolicy | null = null
@@ -945,7 +951,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // whether a policy exists: the verdict is decided once, in coverage.
     if (result.verdict === 'inPlace') {
       kind = 'create'
-      status = 'done'
+      // Delivered by something the tenant already has: preserve it.
+      state = { ...state, satisfied: true, inPlace: true }
       action = {
         kind: 'create',
         summary: [],
@@ -1027,7 +1034,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
 
 
     // Named dependencies (prompt 12 §B).
-    if (status !== 'done') {
+    if (!state.satisfied) {
       if (goal.id === 'register-info-protected' && steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
       // The device steps wait on the device decision while it is open (E2); nothing else does.
       if (DEVICE_GOALS.has(goal.id) && steps.some((s) => s.id === deviceStepId && s.status !== 'done')) blockByStep(deviceStepId, 'device-decision')
@@ -1042,7 +1049,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
 
     // Gating (roadmap.md §6).
-    if (status !== 'done') {
+    if (!state.satisfied) {
       const threshold =
         readiness.family === 'mfa' || readiness.family === 'guest'
           ? READINESS_THRESHOLD_MFA_PERCENT
@@ -1052,14 +1059,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               ? READINESS_THRESHOLD_DEVICES_PERCENT
               : null
       if (threshold !== null && readiness.percent !== null && readiness.percent < threshold) {
-        status = 'blocked'
         blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(READINESS_MEASURE[readiness.family] ?? 'readiness', `${threshold}%`, `${readiness.percent}%`) })
+        state = { ...state, condition: conditionFor(blockers) }
       }
       // Nothing that can deny access is offered while the way back in is
       // unverified (validation-rules.md §2). What the step will actually leave
       // behind decides (roadmap/operations.ts stepEffects); the floor and the
       // goal's family answer only for a step with no policy of its own.
-      const denyStep = { goalId: goal.id, kind, status, action } as unknown as Step
+      const denyStep = { goalId: goal.id, kind, status: statusNow(), action } as unknown as Step
       // What the step will actually leave behind decides. A policy the plan
       // cannot read at all is treated as one that can deny access: the way back
       // in is never withheld on a guess (roadmap/operations.ts stepEffects).
@@ -1069,14 +1076,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           ? denyEffects.length === 0 || denyEffects.some((e) => e.any)
           : impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location'
       if (deniesAccess && gate !== null) blockByStep(gate.stepId, gate.label)
-      if (blockedBy.length > 0) status = 'blocked'
+      if (blockedBy.length > 0) state = { ...state, condition: conditionFor(blockers) }
     }
 
 
     // Whether the signed-in account is in scope is the policy's own answer, from
     // its include and exclude lists (roadmap/operations.ts accountApplicability);
     // a step with no policy of its own is bounded by the people it lists.
-    const asStep = { goalId: goal.id, kind, status, action, readiness, population: pop } as unknown as Step
+    const asStep = { goalId: goal.id, kind, status: statusNow(), action, readiness, population: pop } as unknown as Step
     const operatorEffects = isOpenPolicy(asStep) ? stepEffects(asStep) : []
     const includesOperator =
       operatorId !== null &&
@@ -1099,9 +1106,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const measured = isOpenPolicy(asStep) ? measuredReach(stepEffects(asStep), activePeople, snapshot, strandContext) : null
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
-    if (opVerdict?.stranded && status !== 'done') {
-      status = 'blocked'
+    if (opVerdict?.stranded && !state.satisfied) {
       blockers.push({ kind: 'readiness', label: 'operator', binding: BLOCKED_REASON.exist(1, 'safe way in for the signed-in account', 0) })
+      state = { ...state, condition: conditionFor(blockers) }
     }
 
     if (!readyActiveCache.has(whoKey))
@@ -1148,7 +1155,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
           ? adjustSections.size > 0 && [...adjustSections].every((s) => s === 'sessionControls')
           : floorGrant === null && impl.floor.session !== undefined
     const comms =
-      status === 'done' || held
+      state.satisfied || held
         ? null
         : nobodyAffected
           ? NO_ANNOUNCEMENT
@@ -1188,7 +1195,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...(floor ? { floor: true } : {}),
       title: stepTitle(goal.name),
       why,
-      status,
+      ...stateFields(state),
       blockedBy,
       blockers,
       unblockNotes,
@@ -1237,14 +1244,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // people in its own scope (roadmap/lockout.ts lockoutCount). No goal has a
       // lockout count of its own — a policy that requires no strength stops
       // nobody, and neither does work the plan cannot write.
-      ...(status !== 'done' && stepLockout !== null ? { lockout: stepLockout } : {}),
+      ...(!state.satisfied && stepLockout !== null ? { lockout: stepLockout } : {}),
       ...(measured !== null ? { measured: { ids: measured } } : {}),
       // A step that changes the tenant's own policy names that policy, never the
       // step's title; a step that creates one names the proposed name.
       naming:
-        kind === 'create' && status !== 'done'
+        kind === 'create' && !state.satisfied
           ? { proposed: namingNote?.name ?? proposedPolicyName(goal, naming), fromBaseline: source?.facts.name ?? null, note: namingNote?.note ?? null }
-          : kind === 'adjust' && existing && status !== 'done'
+          : kind === 'adjust' && existing && !state.satisfied
             ? { proposed: existing.policyName, fromBaseline: source?.facts.name ?? null, note: null }
             : null,
     })
@@ -1269,7 +1276,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       phase: 2,
       kind: 'verify',
       goalId: 'mfa-all-users',
-      status: verifyDone ? 'done' : 'ready',
+      ...stateFields(verifyDone ? { satisfied: true } : {}),
       population: population(campaignIds(viability, snapshot, mapping), popIndex),
       readiness: verifyReadiness,
       forManager: MANAGER.verify(toSetUp),
@@ -1315,12 +1322,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Ordering rules that hold for any tenant, each one a way somebody gets
   // stranded if the plan runs in the wrong order.
   const blockLate = (s: Step, label: string, binding: string | null, dependsOn?: string): void => {
-    if (s.status === 'done' || s.status === 'skipped') return
+    if (s.state.satisfied || s.state.setAside) return
     if (dependsOn && !s.blockedBy.includes(dependsOn)) s.blockedBy.push(dependsOn)
     if (!s.blockers.some((b) => b.kind === 'readiness' && b.label === label)) {
       s.blockers.push({ kind: 'readiness', label, ...(binding ? { binding } : {}) })
     }
-    s.status = 'blocked'
+    raiseCondition(s, 'blocked')
   }
 
   // 0. A goal whose baseline policy contradicts its own documentation
@@ -1331,7 +1338,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // including done: a policy the tenant already holds cannot make a
   // contradictory definition safe to act on.
   for (const s of steps) {
-    if (!hasBaselineConflict(s.goalId) || s.status === 'skipped') continue
+    if (!hasBaselineConflict(s.goalId) || s.state.setAside) continue
     s.action = { kind: s.action.kind, summary: [], json: null, portalSteps: [] }
     s.deliveredBy = []
     // The safety edges stay (a deny-capable step still waits on the escape
@@ -1339,7 +1346,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // ahead of any of them (stateReason.ts), so the cause a person reads is the
     // baseline's, never a prerequisite in their tenant.
     if (!s.blockers.some((b) => b.label === 'baseline-conflict')) s.blockers.push({ kind: 'evidence', label: 'baseline-conflict', binding: BLOCKED_REASON.baseline })
-    s.status = 'blocked'
+    raiseCondition(s, 'baseline-conflict')
   }
 
   // 1. Security-info registration is the policy that asks for MFA in order to
@@ -1473,7 +1480,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (!doesntApply(s.id)) continue
     s.doesntApply = notApplicable[s.id].trim()
     s.skipReason = s.doesntApply
-    s.status = 'skipped'
+    setState(s, { setAside: true })
   }
   // The device decision sends a device step to the footer with the answer as
   // the reason (E2): the compliant-device policy (and the Intune-enrolment step
@@ -1485,7 +1492,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (reason === null) continue
     s.doesntApply = reason
     s.skipReason = reason
-    s.status = 'skipped'
+    setState(s, { setAside: true })
   }
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,

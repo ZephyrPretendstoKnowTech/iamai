@@ -25,7 +25,7 @@ import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap, planIdFor } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
-import { reportOnlySeenOf } from '../../roadmap/tracking.ts'
+import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
 import { proposedStart } from '../../derive/planStart.ts'
@@ -265,7 +265,7 @@ export function usePlanData(
     // The one decision a regeneration cannot know, and the one observation (the
     // scan that first saw each policy in report-only); everything else is derived.
     applySkips(steps, saved?.skips ?? null)
-    applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null, saved?.reportOnlySeen ?? null)
+    applyProgress(steps, snapshot, coverage, planId, undefined, saved?.planCreatedAt ?? null, saved?.observations ?? null)
     annotateStateReasons(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -287,13 +287,13 @@ export function usePlanData(
       checkpoints: saved.checkpoints ?? [],
       planCreatedAt: saved.planCreatedAt ?? new Date().toISOString(),
       stepDecisions: saved.stepDecisions ?? {},
-      // The scan that first saw each policy in report-only, from this plan's
-      // tracking: the one observation the next scan cannot make again.
-      reportOnlySeen: reportOnlySeenOf(computed.steps),
+      // What this scan saw of each step's policy: the one history the next
+      // scan cannot work out for itself (roadmap/observation.ts).
+      observations: observationsOf(computed.steps),
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
     if (saved.startedAt) decisions.startedAt = saved.startedAt
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, reportOnlySeen: decisions.reportOnlySeen, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
     if (key === lastPersist.current) return
     lastPersist.current = key
     void savePlanRecord(snapshot.tenantId, decisions)

@@ -3,6 +3,12 @@
 /** `check`: a decision the operator makes about accounts, done when the count reaches 0 on re-scan (prompt 46 item 8). */
 export type StepKind = 'prerequisite' | 'create' | 'adjust' | 'verify' | 'enforce' | 'check'
 
+/**
+ * The one word a surface shows for a step. It is a *projection* of the step's
+ * state (roadmap/lifecycle.ts): `projectStatus` is the only thing that writes
+ * it, so the lifecycle stage, the condition and this word cannot disagree.
+ * Nothing new should read it — read `Step.state` instead.
+ */
 export type StepStatus = 'done' | 'ready' | 'blocked' | 'in-report-only' | 'ready-to-enforce' | 'skipped'
 
 export type StepPopulation = {
@@ -157,6 +163,13 @@ export type Step = {
   kind: StepKind
   title: string
   why: string
+  /**
+   * Where the step is in the Conditional Access lifecycle, what condition it is
+   * in, whether the goal is already delivered and whether the operator set it
+   * aside. The authority: `status` below is derived from it.
+   */
+  state: import('./lifecycle.ts').StepState
+  /** Derived from `state` by roadmap/lifecycle.ts `projectStatus`; never assigned anywhere else. */
   status: StepStatus
   blockedBy: string[]
   /** Named causes (prompt 12 §B): a step, a Setup question, a readiness threshold, or evidence. */
@@ -276,7 +289,20 @@ export type StepTracking = {
    * shows it evaluated in report-only. Null until the policy is in report-only.
    */
   reportOnlyAt: string | null
+  /**
+   * Which of the two `reportOnlyAt` is: a sign-in record evaluated under the
+   * policy in report-only, which is Microsoft's own evidence that it was in
+   * report-only that day, or IAMAI's own first sighting of it. Never a
+   * transition time nobody recorded.
+   */
+  reportOnlyAtSource: 'sign-in-evidence' | 'first-seen-by-iamai' | null
   enforcedAt: string | null
+  /**
+   * Where `enforcedAt` comes from. The policy's own stamps are the tenant's
+   * record of the object, not proof of the moment it began to enforce; a value
+   * carried from an earlier scan is older still. Null when nothing dates it.
+   */
+  enforcedAtSource: 'policy-modified' | 'policy-created' | 'carried-forward' | null
   regressedAt: string | null
   /** The scan that noticed the event; the event's own date is enforcedAt / reportOnlyAt. */
   noticedAt: string | null

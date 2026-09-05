@@ -13,13 +13,16 @@ import { affectedIds } from '../derive/whoLine.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { advanceState, raiseCondition, setState, statusRank } from './lifecycle.ts'
+import type { StepState } from './lifecycle.ts'
+import { observe, observedStateOf, semanticsOf } from './observation.ts'
+import type { ObservationChange, StepObservation } from './observation.ts'
 
 const TRACK = engine.tracking
 import type { Step, StepStatus, StepTracking } from './types.ts'
 
 type PolicyRow = { id?: string; displayName?: string; state?: string; createdDateTime?: string; modifiedDateTime?: string; conditions?: { users?: { includeUsers?: string[]; includeGroups?: string[] } } }
 
-const RANK: Record<StepStatus, number> = { blocked: 0, ready: 0, 'in-report-only': 1, 'ready-to-enforce': 2, done: 3, skipped: -1 }
 /**
  * Executed steps needed before a completion date is projected. Below this the
  * page says the projection needs more data rather than extrapolating from one
@@ -32,22 +35,32 @@ const REPORT_ONLY = 'enabledForReportingButNotEnforced'
 
 const daysBetween = (from: string, to: string): number => Math.max(0, Math.floor((Date.parse(to) - Date.parse(from)) / DAY))
 
-function advance(step: Step, to: StepStatus, note: string, at: string): void {
-  if (step.status === 'skipped') return
-  if (RANK[to] < RANK[step.status]) return
+/**
+ * Move a step forward on the evidence, never backwards. The state is what
+ * moves; the status word follows from it (lifecycle.ts), so a stage and a word
+ * cannot disagree. Returns nothing: a refused move leaves the step alone.
+ */
+function advance(step: Step, to: Partial<StepState>, note: string, at: string): void {
+  if (step.state.setAside) return
+  const from = step.status
+  if (!advanceState(step, to)) return
   // A step generated already at this status (coverage saw it enforced) still
   // records the evidence once, so the history says why it is where it is.
-  if (RANK[to] === RANK[step.status]) {
-    if (!step.history.some((h) => h.to === to)) step.history.push({ at, from: 'ready', to, note })
+  if (step.status === from) {
+    if (!step.history.some((h) => h.to === from)) step.history.push({ at, from: 'ready', to: from, note })
     return
   }
-  step.history.push({ at, from: step.status, to, note })
-  step.status = to
+  step.history.push({ at, from, to: step.status, note })
 }
 
+/**
+ * A done step whose policy went away, was turned off, weakened or narrowed. The
+ * goal is open again and the change IAMAI planned is not deployed, so the
+ * lifecycle restarts and the condition says the step needs looking at.
+ */
 function reopen(step: Step, note: string, at: string, kind: Step['kind']): void {
   step.history.push({ at, from: step.status, to: 'ready', note })
-  step.status = 'ready'
+  setState(step, { satisfied: false, inPlace: false, lifecycle: 'not-deployed', condition: 'review-required' })
   step.kind = kind
 }
 
@@ -74,14 +87,30 @@ export function matchPolicy(step: Step, snapshot: TenantSnapshot, coverage: Cove
 }
 
 /**
- * In report-only since: the earlier of the scan that first saw the policy in
- * report-only (the plan record's observation; this scan when there is none) and
- * the first sign-in record that shows it evaluated in report-only. A record with
- * a report-only result is the scan seeing the policy in report-only on that day.
+ * In report-only since, and which of the two it is: Microsoft's own evidence — a
+ * sign-in record evaluated under the policy in report-only, which proves it was
+ * in report-only that day — or IAMAI's own first sighting of it, which proves
+ * only that. The observation holds both and admits the evidence only while it
+ * can still be about the policy that is deployed now (observation.ts).
  */
-function reportOnlySince(pr: PolicyAppliedResult | undefined, seen: string | undefined, asOf: string): string {
-  const dates = [seen ?? asOf, pr?.firstReportOnlyAt ?? null].filter((x): x is string => typeof x === 'string' && !Number.isNaN(Date.parse(x)))
-  return dates.reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a))
+function reportOnlySince(change: ObservationChange): { at: string; source: NonNullable<StepTracking['reportOnlyAtSource']> } {
+  const { firstSeenAt, evidenceAt } = change.latest
+  if (evidenceAt !== null && Date.parse(evidenceAt) < Date.parse(firstSeenAt)) return { at: evidenceAt, source: 'sign-in-evidence' }
+  return { at: firstSeenAt, source: 'first-seen-by-iamai' }
+}
+
+/**
+ * What the step's own operation would leave on the tenant, fingerprinted the
+ * same way an observation is, so a change that matches it is the plan's own work
+ * landing rather than somebody editing the policy. Null where the operation is a
+ * partial update with no whole policy behind it: the plan cannot tell, and a
+ * change it cannot tell about is not one it may claim to have asked for.
+ */
+function intendedSemantics(step: Step): string | null {
+  const op = step.action.resolution?.policies[0]
+  if (!op) return null
+  const whole = op.mode === 'create' ? op.body : op.target
+  return whole ? semanticsOf(whole) : null
 }
 
 /**
@@ -131,21 +160,23 @@ export function trackable(steps: Step[]): Step[] {
 }
 
 /**
- * The observation the plan record keeps (PlanDecisions.reportOnlySeen): for
- * every step whose policy is in report-only, the date it has been since. Steps
- * whose policy left report-only drop out, so a return starts the clock again.
+ * The observations the plan record keeps (PlanDecisions.observations): what this
+ * scan saw of each step's policy, so the next scan can say what moved. The one
+ * thing a regeneration cannot work out again — a snapshot shows the state now,
+ * never when a scan first saw it.
  */
-export function reportOnlySeenOf(steps: Step[]): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const s of steps) if (s.tracking?.state === REPORT_ONLY && s.tracking.reportOnlyAt) out[s.id] = s.tracking.reportOnlyAt
+export function observationsOf(steps: Step[]): Record<string, StepObservation> {
+  const out: Record<string, StepObservation> = {}
+  for (const s of steps) if (s.state.observation) out[s.id] = s.state.observation.latest
   return out
 }
 
 /**
- * Detection on every scan. Statuses move forward on evidence; a done step
- * whose policy was disabled, deleted, weakened or narrowed reopens with a
- * dated note. `now` is injectable for tests; `seen` is the plan record's
- * observation of when each step's policy was first seen in report-only.
+ * Detection on every scan. The lifecycle moves forward on evidence; a done step
+ * whose policy was disabled, deleted, weakened or narrowed reopens with a dated
+ * note. `now` is injectable for tests; `observations` is what the plan record
+ * carried in from the last scan (observation.ts), the one history a
+ * regeneration cannot repeat.
  */
 export function trackExecution(
   steps: Step[],
@@ -153,7 +184,7 @@ export function trackExecution(
   coverage: CoverageReport,
   planId: string,
   now: string = new Date().toISOString(),
-  seen: Record<string, string> = {},
+  observations: Record<string, StepObservation> = {},
 ): Step[] {
   const resultByGoal = new Map(coverage.results.map((r) => [r.goal.id, r]))
   for (const step of steps) {
@@ -161,6 +192,30 @@ export function trackExecution(
     const result = resultByGoal.get(step.goalId)
     const goalStatus = result?.status
     const match = matchPolicy(step, snapshot, coverage, planId)
+
+    // ---- What this scan saw, against what the last one saw ----
+    // Recorded for every step that deploys a policy, including the ones where
+    // there is nothing there yet: "not deployed" is an observation, and a policy
+    // that appears between two scans is a change somebody made.
+    const policyRow = match?.policy ?? null
+    const pr = policyRow ? snapshot.evidencePolicyResults.find((p) => p.policyId === policyRow.id) : undefined
+    const observedState = observedStateOf(policyRow?.state ?? null)
+    const change = observe(observations[step.id] ?? null, {
+      state: observedState,
+      semantics: semanticsOf(policyRow as Record<string, unknown> | null),
+      at: snapshot.asOf,
+      // The one transition a tenant can prove: a sign-in evaluated under the
+      // policy in report-only says it was in report-only that day.
+      evidenceAt: observedState === 'report-only' ? pr?.firstReportOnlyAt ?? null : null,
+      intended: intendedSemantics(step),
+    })
+    setState(step, { observation: change })
+    advanceState(step, { lifecycle: observedState === 'report-only' ? 'report-only' : observedState === 'enforced' ? 'enforced' : 'not-deployed' })
+    // A policy rewritten since the last scan has not been watched: what the
+    // records hold is about the policy it used to be. The step needs looking
+    // at, and its window starts again from the scan that noticed (observe()).
+    if (change.invalidated) raiseCondition(step, 'review-required')
+
     const since = step.history.at(-1)?.at ?? snapshot.asOf
     const sinceText = absoluteDate(since)
     const wasDone = step.status === 'done'
@@ -193,7 +248,7 @@ export function trackExecution(
 
     if (!match) {
       if (result?.verdict === 'inPlace') {
-        advance(step, 'done', fillText(TRACK.enforcedByOther, { name: result?.candidates.find((c) => c.contribution === 'strong')?.policyName ?? 'an existing policy' }), now)
+        advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: result?.candidates.find((c) => c.contribution === 'strong')?.policyName ?? 'an existing policy' }), now)
       }
       continue
     }
@@ -201,9 +256,22 @@ export function trackExecution(
     const createdAt = policy.createdDateTime ?? null
     const modifiedAt = policy.modifiedDateTime ?? null
     const state = policy.state ?? 'unknown'
-    const pr = snapshot.evidencePolicyResults.find((p) => p.policyId === policy.id)
-    const reportOnlyAt = state === REPORT_ONLY ? reportOnlySince(pr, seen[step.id], snapshot.asOf) : null
+    const inReportOnlySince = observedState === 'report-only' ? reportOnlySince(change) : null
+    const reportOnlyAt = inReportOnlySince?.at ?? null
     const evidence = gates(step, snapshot, pr, reportOnlyAt)
+    // A policy's own stamps date the object, never the moment it began to
+    // enforce; a value carried from an earlier scan is older still. The source
+    // says which, so nothing downstream reads it as a proven transition.
+    const enforced: { at: string | null; source: StepTracking['enforcedAtSource'] } =
+      state === 'enabled'
+        ? modifiedAt
+          ? { at: modifiedAt, source: 'policy-modified' }
+          : createdAt
+            ? { at: createdAt, source: 'policy-created' }
+            : { at: null, source: null }
+        : step.tracking?.enforcedAt
+          ? { at: step.tracking.enforcedAt, source: 'carried-forward' }
+          : { at: null, source: null }
     const includesAll = (policy.conditions?.users?.includeUsers ?? []).some((u) => /^(All|GuestsOrExternalUsers)$/i.test(u))
     const tracking: StepTracking = {
       policyId: policy.id ?? '',
@@ -214,7 +282,9 @@ export function trackExecution(
       modifiedAt,
       state,
       reportOnlyAt,
-      enforcedAt: state === 'enabled' ? (modifiedAt ?? createdAt) : step.tracking?.enforcedAt ?? null,
+      reportOnlyAtSource: inReportOnlySince?.source ?? null,
+      enforcedAt: enforced.at,
+      enforcedAtSource: enforced.source,
       regressedAt: null,
       noticedAt: snapshot.asOf,
       ...evidence,
@@ -247,19 +317,21 @@ export function trackExecution(
       // counted 11 in place against 6. An enabled policy behind a partly goal
       // is a change step whose object already exists, never a finished one.
       if (result?.verdict === 'inPlace') {
-        advance(step, 'done', `${fillText(TRACK.enforced, { date: absoluteDate(tracking.enforcedAt ?? now) })}; ${tracking.note}`, now)
+        advance(step, { satisfied: true }, `${fillText(TRACK.enforced, { date: absoluteDate(tracking.enforcedAt ?? now) })}; ${tracking.note}`, now)
       }
       continue
     }
     if (state === REPORT_ONLY && reportOnlyAt) {
-      advance(step, 'in-report-only', `${fillText(TRACK.reportOnlyFound, { date: absoluteDate(reportOnlyAt) })}; ${tracking.note}`, now)
-      // Ready to enforce by whichever gate came first; the note says which.
-      const ready = readyWhen(step)
-      if (ready?.kind === 'now') advance(step, 'ready-to-enforce', fillText(TRACK.readyNow, { n: ready.days }), now)
-      else if (ready?.kind === 'since') advance(step, 'ready-to-enforce', fillText(TRACK.readySince, { date: absoluteDate(ready.date) }), now)
+      advance(step, { lifecycle: 'report-only' }, `${fillText(TRACK.reportOnlyFound, { date: absoluteDate(reportOnlyAt) })}; ${tracking.note}`, now)
+      // Ready to enforce by whichever gate came first; the note says which. A
+      // policy this scan found rewritten has been watched for nothing, so it
+      // advances on neither gate however clean the records look.
+      const ready = change.invalidated ? null : readyWhen(step)
+      if (ready?.kind === 'now') advance(step, { lifecycle: 'ready-to-enforce' }, fillText(TRACK.readyNow, { n: ready.days }), now)
+      else if (ready?.kind === 'since') advance(step, { lifecycle: 'ready-to-enforce' }, fillText(TRACK.readySince, { date: absoluteDate(ready.date) }), now)
       continue
     }
-    if (goalStatus === 'enforced') advance(step, 'done', fillText(TRACK.enforcedByOther, { name: policy.displayName ?? step.title }), now)
+    if (goalStatus === 'enforced') advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: policy.displayName ?? step.title }), now)
   }
   return steps
 }

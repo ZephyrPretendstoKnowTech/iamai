@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { batchClassOf, buildSchedule, dependencyGraph, nextMonday, observationDaysFor, toEnforcementDay } from './schedule.ts'
 import { bandForActiveUsers } from './constants.ts'
+import { initialState, setState, stateForStatus } from './lifecycle.ts'
 import type { Ring, Step } from './types.ts'
 
 const people = (n: number, prefix = 'u'): string[] => Array.from({ length: n }, (_, i) => `${prefix}${i}`)
@@ -38,7 +39,7 @@ function policyBodyFor(family: string, name: string): Record<string, unknown> {
 
 function step(over: Partial<Step> & { id: string }): Step {
   const ids = over.population?.ids ?? people(20)
-  return {
+  const built: Step = {
     goalId: over.id,
     phase: 1,
     kind: 'create',
@@ -79,8 +80,12 @@ function step(over: Partial<Step> & { id: string }): Step {
     events: null,
     plainTitle: '',
     forManager: '',
+    state: initialState(),
     ...over,
   }
+  // The status a case asks for, put back into the state it stands for, so a
+  // double is the shape the engine produces (roadmap/lifecycle.ts).
+  return setState(built, stateForStatus(built.status))
 }
 
 const MON = '2026-08-31T00:00:00.000Z'

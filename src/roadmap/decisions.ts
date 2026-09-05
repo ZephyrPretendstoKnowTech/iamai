@@ -50,11 +50,16 @@ export type PlanDecisions = {
   /** Every picker's saved decision, by step id (prompt 52 Part 3). */
   stepDecisions?: Record<string, StepDecision>
   /**
-   * By step id, the scan (snapshot.asOf) that first saw the step's policy in
-   * report-only. Like planCreatedAt, an observation no regeneration can repeat:
-   * a snapshot shows the state now, never when a scan first saw it. The entry is
-   * kept while the policy stays in report-only and dropped when it leaves, so a
-   * policy that returns to report-only starts its clock again (tracking.ts).
+   * By step id, what the last scan saw of the step's policy: the state, a
+   * fingerprint of its material semantics, when IAMAI first saw that state and
+   * whatever Microsoft's own evidence dates it to (observation.ts). Like
+   * planCreatedAt, a history no regeneration can repeat — a snapshot shows the
+   * state now, never when a scan first saw it.
+   */
+  observations?: Record<string, import('./observation.ts').StepObservation>
+  /**
+   * The pre-Foundation-B version of the same thing: one report-only date per
+   * step. Read on load and migrated into `observations`; never written again.
    */
   reportOnlySeen?: Record<string, string>
   /** The name every Tell your people box signs with (Plan settings); in the plan file. */

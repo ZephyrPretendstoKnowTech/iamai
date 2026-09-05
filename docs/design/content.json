@@ -135,6 +135,36 @@
       "personalDevices": {
         "browserLimited": "can still use the browser with the limits from Limit Unmanaged Devices in the Browser",
         "blocked": "are blocked"
+      },
+      "milestone": {
+        "$comment": "The single next thing on a step (roadmap/lifecycle.ts nextMilestone). One line each; the state word and the date live beside it.",
+        "setAside": "set aside",
+        "conflict": "the baseline defines this policy two ways, so there is nothing to submit",
+        "decide": "answer the question this step is waiting on",
+        "resolve": "clear what this step is waiting on",
+        "prepare": "make the object this step names",
+        "deploy": "create the policy in report-only",
+        "observe": "watch it in report-only",
+        "observeUntil": "watch it in report-only until {date}",
+        "enforce": "turn it on",
+        "verify": "check it did what it should",
+        "preserve": "keep what is already doing this",
+        "none": "nothing left to do"
+      },
+      "observation": {
+        "$comment": "What this scan saw against what the last one saw (roadmap/observation.ts). First seen by IAMAI is never written as a transition time.",
+        "states": {
+          "absent": "not deployed",
+          "disabled": "off",
+          "reportOnly": "report-only",
+          "enforced": "enforced",
+          "unknown": "a state IAMAI does not recognise"
+        },
+        "firstScan": "first seen by IAMAI in {state} on {date}",
+        "unchanged": "still in {state}, unchanged since the last scan",
+        "stateChanged": "changed to {state} by {date}, and the plan did not ask for it",
+        "stateChangedExpected": "moved to {state} by {date}, as the plan asked",
+        "semanticsChanged": "the policy itself changed by {date}: what was watched before this is no longer what is deployed"
       }
     }
   },
