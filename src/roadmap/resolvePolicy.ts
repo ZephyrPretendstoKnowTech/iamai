@@ -34,7 +34,6 @@ export type RawPolicy = Record<string, unknown>
  * resolve, so they are not here.
  */
 export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}' | '{coreAdminRoles}'>, string> = {
-  '{breakGlass}': PREREQ_STEP_ID.breakGlass,
   '{exclusionsGroup}': PREREQ_STEP_ID.exclusionsGroup,
   '{trustedLocations}': PREREQ_STEP_ID.trustedLocation,
   '{allowedCountriesLocation}': PREREQ_STEP_ID.allowedCountries,

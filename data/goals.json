@@ -43,9 +43,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
                 ],
@@ -119,8 +116,8 @@
                 "includeRoles": [
                   "{coreAdminRoles}"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
+                "excludeGroups": [
+                  "{exclusionsGroup}"
                 ],
                 "excludeRoles": [
                   "d29b2b05-8046-44ba-8758-1e26182fcf32"
@@ -191,9 +188,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
                 ]
@@ -245,9 +239,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
@@ -321,8 +312,8 @@
                     "membershipKind": "all"
                   }
                 },
-                "excludeUsers": [
-                  "{breakGlass}"
+                "excludeGroups": [
+                  "{exclusionsGroup}"
                 ]
               },
               "applications": {
@@ -388,9 +379,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
@@ -478,9 +466,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}",
                   "{serviceAccountsGroup}"
@@ -551,9 +536,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
                 ]
@@ -621,9 +603,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
@@ -698,9 +677,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}",
@@ -782,8 +758,8 @@
                 "includeRoles": [
                   "{coreAdminRoles}"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
+                "excludeGroups": [
+                  "{exclusionsGroup}"
                 ]
               },
               "applications": {
@@ -862,9 +838,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
                 ]
@@ -934,9 +907,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}",
                   "{serviceAccountsGroup}"
@@ -1003,9 +973,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
@@ -1080,9 +1047,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
@@ -1159,8 +1123,8 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
+                "excludeGroups": [
+                  "{exclusionsGroup}"
                 ]
               },
               "applications": {
@@ -1239,8 +1203,8 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
+                "excludeGroups": [
+                  "{exclusionsGroup}"
                 ]
               },
               "applications": {
@@ -1320,9 +1284,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}",
                   "{serviceAccountsGroup}"
@@ -1391,9 +1352,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
@@ -1465,9 +1423,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}",
                   "{serviceAccountsGroup}"
@@ -1524,9 +1479,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}",
@@ -1673,9 +1625,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
                 ]
@@ -1744,8 +1693,8 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
+                "excludeGroups": [
+                  "{exclusionsGroup}"
                 ]
               },
               "applications": {
@@ -1823,9 +1772,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
                 ]
@@ -1900,9 +1846,6 @@
                 "includeUsers": [
                   "All"
                 ],
-                "excludeUsers": [
-                  "{breakGlass}"
-                ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
                 ]
@@ -1972,9 +1915,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
@@ -2050,9 +1990,6 @@
               "users": {
                 "includeUsers": [
                   "All"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"
@@ -2134,9 +2071,6 @@
               "users": {
                 "includeGroups": [
                   "{serviceAccountsGroup}"
-                ],
-                "excludeUsers": [
-                  "{breakGlass}"
                 ],
                 "excludeGroups": [
                   "{exclusionsGroup}"

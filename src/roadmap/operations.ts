@@ -986,13 +986,28 @@ export function validOperations(action: Pick<Action, 'resolution'>): PolicyOpera
 /**
  * Why an open policy cannot be written as it stands.
  *
- * The last two are the emergency-access boundary (Foundation A): a final user
- * scope that reaches a confirmed emergency account, and one that cannot be shown
- * not to. They are separate words because they are separate facts — "this policy
- * covers the way back in" and "IAMAI cannot prove it does not" — and an operator
- * acts differently on each.
+ * The last three are the emergency-access boundary. Two are about this policy
+ * (Foundation A): a final user scope that reaches a confirmed emergency account,
+ * and one that cannot be shown not to. They are separate words because they are
+ * separate facts — "this policy covers the way back in" and "IAMAI cannot prove
+ * it does not" — and an operator acts differently on each.
+ *
+ * The third is about the tenant: the emergency accounts or the exclusions group
+ * have blocking checks outstanding, so the way back in is unverified and nothing
+ * that can deny access is offered until it is. That is a different question from
+ * whether *this* policy is safe, and a policy can be perfectly safe and still
+ * wait on it — an exclusions group that is intrinsically sound but is not yet
+ * excluded from the tenant's other policies protects nobody reliably, and the
+ * plan's first step is to fix that.
  */
-export type UnavailableReason = 'missing-object' | 'unmatched-pair' | 'baseline-conflict' | 'no-operation' | 'unsafe-emergency-access' | 'unverified-emergency-exclusion'
+export type UnavailableReason =
+  | 'missing-object'
+  | 'unmatched-pair'
+  | 'baseline-conflict'
+  | 'no-operation'
+  | 'unsafe-emergency-access'
+  | 'unverified-emergency-exclusion'
+  | 'escape-hatch-unverified'
 
 /** What any of this applies to: a step that describes a policy. */
 type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status'>>
@@ -1040,6 +1055,13 @@ export function policyResult(step: PolicyStep): PolicyResult {
   const exposure = step.action.emergencyExposure
   if (exposure && exposure.reached.length > 0) return { kind: 'unavailable', reason: 'unsafe-emergency-access' }
   if (exposure && exposure.unproven.length > 0) return { kind: 'unavailable', reason: 'unverified-emergency-exclusion' }
+  // And the tenant-wide half of the same boundary: the escape hatch itself is
+  // unverified, so nothing that can deny access is offered yet. The gate was a
+  // status and a dependency edge and nothing else, which meant a step reading
+  // "Blocked · after: Create or Correct Exclusions Group" still carried the
+  // portal instructions, the JSON, the PowerShell and Download JSON — every
+  // channel an operator would use to deploy it that afternoon.
+  if (step.action.escapeHatch) return { kind: 'unavailable', reason: 'escape-hatch-unverified' }
   if (step.action.unmatchedPair === true) return { kind: 'unavailable', reason: 'unmatched-pair' }
   if ((step.action.missing ?? []).length > 0) return { kind: 'unavailable', reason: 'missing-object' }
   const declared = step.action.resolution?.policies ?? []
@@ -1088,7 +1110,9 @@ export function isPreserved(step: PolicyStep): boolean {
  * - nothing suppresses it — the baseline's own definition of the goal does not
  *   contradict itself (baselineConflict.ts);
  * - every confirmed emergency access account is structurally out of scope of
- *   every policy the step will leave behind (`action.emergencyExposure`).
+ *   every policy the step will leave behind (`action.emergencyExposure`);
+ * - the way back in is verified: the emergency accounts and the exclusions group
+ *   have no blocking check outstanding (`action.escapeHatch`).
  *
  * The portal instructions, the JSON, the PowerShell and the download are offered
  * together or none of them is, and a step that offers none is not scheduled: no

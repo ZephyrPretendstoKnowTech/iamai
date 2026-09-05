@@ -60,7 +60,10 @@ import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { stepLines } from '../ui/surfaces/stepExport.ts'
 import { jsonOffered, stepOperations } from '../ui/surfaces/stepJson.ts'
-import { directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
+import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
+import { buildContext, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
+import type { SubjectReport } from '../validation/report.ts'
+import { fixture } from './fixtures/index.ts'
 import type { DirectoryEvidence, ObjectEvidence } from '../mapping/safetyChoice.ts'
 import type { Fixture } from './fixtures/index.ts'
 import type { FixtureRun } from './fixtures/run.ts'
@@ -1342,3 +1345,288 @@ test('the step is the unit: one unsafe or unproven policy holds all of it, in pl
   // Being already in place does not cover it up, exactly as a self-contradicting baseline does not.
   assert.equal(unavailableReason({ ...step, status: 'done' } as Step), 'unsafe-emergency-access', 'in place is not an answer to this')
 })
+
+// ---- The emergency carve-out is one object, and it is a group -----------------
+//
+// The product's rule, and the reason it is a rule: a policy excludes the
+// exclusions GROUP, never the emergency accounts by name. One named object an
+// operator can open, inspect and validate; one set of checks that decides
+// whether excluding it is safe; one thing to get right.
+//
+// A second authority had been there the whole time. Every goal template in
+// data/goals.json carried `"excludeUsers": ["{breakGlass}"]`, and generate.ts
+// filled it from `mapping.breakGlassUserIds`, so IAMAI wrote the emergency
+// accounts into the policy body itself. That made the group's checks
+// decorative for those goals: a group that was missing, unverified, dynamic,
+// or full of people who should not be in it changed nothing, because the
+// accounts were carved out by name regardless. It also meant the boundary the
+// product documents was not the boundary the deployed policy used.
+
+/** Every user id any operation of any step would submit in an include or exclude clause. */
+function usersNamedByOperations(step: Step): { include: string[]; exclude: string[] } {
+  const include: string[] = []
+  const exclude: string[] = []
+  for (const o of step.action.resolution?.policies ?? []) {
+    const users = ((o.body as { conditions?: { users?: Record<string, unknown> } }).conditions?.users ?? {}) as Record<string, unknown>
+    for (const id of (users.includeUsers as string[]) ?? []) include.push(id)
+    for (const id of (users.excludeUsers as string[]) ?? []) exclude.push(id)
+  }
+  return { include, exclude }
+}
+
+test('no policy IAMAI writes names an emergency account, in any clause, on any fixture', () => {
+  for (const { f, r } of runs) {
+    const bg = new Set(f.mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
+    if (bg.size === 0) continue
+    for (const s of r.steps) {
+      if ((s.action.resolution?.policies ?? []).length === 0) continue
+      const named = usersNamedByOperations(s)
+      // A create submits a whole body: nothing IAMAI wrote may name them.
+      for (const o of s.action.resolution?.policies ?? []) {
+        if (o.mode !== 'create') continue
+        const users = ((o.body as { conditions?: { users?: Record<string, unknown> } }).conditions?.users ?? {}) as Record<string, unknown>
+        for (const clause of ['includeUsers', 'excludeUsers'] as const) {
+          for (const id of ((users[clause] as string[]) ?? [])) {
+            assert.equal(bg.has(String(id).toLowerCase()), false, `${f.name} ${s.id}: a create names an emergency account in ${clause}`)
+          }
+        }
+      }
+      // An update submits only what it changes. It may not introduce them either.
+      for (const o of s.action.resolution?.policies ?? []) {
+        if (o.mode !== 'update') continue
+        const patch = ((o.body as { conditions?: { users?: Record<string, unknown> } }).conditions?.users ?? {}) as Record<string, unknown>
+        for (const clause of ['includeUsers', 'excludeUsers'] as const) {
+          for (const id of ((patch[clause] as string[]) ?? [])) {
+            assert.equal(bg.has(String(id).toLowerCase()), false, `${f.name} ${s.id}: an update writes an emergency account into ${clause}`)
+          }
+        }
+      }
+      void named
+    }
+  }
+})
+
+test('the boundary is the group: every policy that protects the emergency accounts excludes it, and proves them out', () => {
+  let proved = 0
+  for (const { f, r } of runs) {
+    const group = (f.mapping.records['__globalExclusion']?.resolvedId ?? '').toLowerCase()
+    if (!group) continue
+    const evidence = membersOf(f)
+    for (const s of openPolicies(r.steps)) {
+      if (!implementationOffered(s)) continue
+      const effects = stepEffects(s)
+      if (effects.length === 0) continue
+      // The clauses IAMAI writes: a create's whole body, and an update's patch
+      // where it rewrites the users clause. An update that does not touch users
+      // leaves the tenant's own clause alone, and what is in it is the tenant's
+      // (see the preservation test below).
+      const written = operationsOf(s)
+        .filter((o) => o.mode === 'create' || ((o.body as { conditions?: { users?: unknown } }).conditions?.users !== undefined))
+        .map((o) => effectOf(o.mode === 'update' ? (o.target as Record<string, unknown>) : o.body))
+      for (const id of f.mapping.breakGlassUserIds) {
+        const out = effects.every((e) => accountApplicability(e.scope, id, f.snapshot as never, evidence) === 'out')
+        assert.equal(out, true, `${f.name} ${s.id}: the emergency account is out of scope`)
+        // And where IAMAI wrote the clause, the reason is the group and never the
+        // account's own name.
+        for (const e of written) {
+          assert.equal(e.scope.users.exclude.some((u) => u.toLowerCase() === id.toLowerCase()), false, `${f.name} ${s.id}: IAMAI named the account instead of the group`)
+          assert.equal(e.scope.workloadOnly || e.scope.groups.exclude.some((g) => g.toLowerCase() === group), true, `${f.name} ${s.id}: the policy IAMAI writes excludes the exclusions group`)
+          proved += 1
+        }
+      }
+    }
+  }
+  assert.ok(proved > 0, 'fixtures do offer policies that protect the emergency accounts')
+})
+
+test('with no policy-usable exclusions group there is no direct-user fallback: the policy is simply not offered', () => {
+  const f = fixture('getiamai')
+  const group = f.mapping.records['__globalExclusion'].resolvedId as string
+  const bg = f.mapping.breakGlassUserIds
+
+  // 3. No policy-usable group: an unapproved member, so the group is confirmed
+  //    and read but not safe to name in a policy.
+  const outsider = (f.snapshot.users.find((u) => !bg.includes(u.id)) as { id: string }).id
+  const groups: GroupMembersMap = new Map([...f.groups])
+  const before = groups.get(group) as NonNullable<ReturnType<GroupMembersMap['get']>>
+  groups.set(group, { ...before, memberIds: [...before.memberIds, outsider], memberCount: before.memberCount + 1 })
+  const unsafe = runFixture({ ...f, groups }, { groupMembers: groups, directory: directoryEvidenceFromGroups(groups, 'complete') })
+  assertNoFallback(unsafe.steps, f, 'an unapproved member')
+
+  // 4. Unknown membership: the object is there, the members would not enumerate.
+  const partial: GroupMembersMap = new Map([...f.groups])
+  partial.delete(group)
+  const base = directoryEvidenceFromGroups(partial, 'complete')
+  const unread = runFixture({ ...f, groups: partial }, {
+    groupMembers: partial,
+    directory: { universe: 'complete', groups: new Map([...base.groups, [group.toLowerCase(), { presence: 'present', members: 'unknown', displayName: 'Core - Exclusions', memberIds: [], memberCount: null } as ObjectEvidence]]) },
+  })
+  assertNoFallback(unread.steps, f, 'a membership nobody read')
+})
+
+type GroupMembersMap = Map<string, { memberIds: string[]; memberCount: number; sampled: boolean; displayName?: string | null; membershipRule?: string | null; mailEnabled?: boolean }>
+
+/** No policy names the emergency accounts, and no policy that would need the carve-out is offered. */
+function assertNoFallback(steps: Step[], f: Fixture, why: string): void {
+  const bg = new Set(f.mapping.breakGlassUserIds.map((id) => id.toLowerCase()))
+  let held = 0
+  for (const s of steps) {
+    for (const o of s.action.resolution?.policies ?? []) {
+      const users = ((o.body as { conditions?: { users?: Record<string, unknown> } }).conditions?.users ?? {}) as Record<string, unknown>
+      for (const clause of ['includeUsers', 'excludeUsers'] as const) {
+        for (const id of ((users[clause] as string[]) ?? [])) {
+          assert.equal(bg.has(String(id).toLowerCase()), false, `${why}: ${s.id} fell back to naming an emergency account in ${clause}`)
+        }
+      }
+    }
+    if ((s.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}')) {
+      assert.equal(implementationOffered(s), false, `${why}: ${s.id} is offered without the carve-out`)
+      assert.deepEqual(stepOperations(s), [], `${why}: ${s.id} still carries operations`)
+      assert.equal(jsonOffered(s), false, `${why}: ${s.id} still offers JSON`)
+      held += 1
+    }
+  }
+  assert.ok(held > 0, `${why}: policies do rely on the carve-out here`)
+}
+
+test('an existing tenant policy that excludes an emergency account directly is preserved, not adopted', () => {
+  // 6. The tenant did it by hand before IAMAI existed. The plan is adjusting the
+  //    policy for a different reason and does not control its users clause, so
+  //    the exclusion stays exactly as the tenant wrote it — IAMAI does not erase
+  //    a carve-out it did not ask for. What it must not do is take the credit:
+  //    its own operation adds no user exclusion, and the portal instructions say
+  //    the accounts are members of the group rather than named on the policy.
+  const { f, r } = runs.find((x) => x.f.name === 'large') as { f: Fixture; r: FixtureRun }
+  const adjust = openPolicies(r.steps).find((s) => operationsOf(s).some((o) => o.mode === 'update'))
+  assert.ok(adjust, 'the fixture adjusts a policy the tenant already has')
+  const update = operationsOf(adjust as Step).find((o) => o.mode === 'update')!
+  const target = update.target as { conditions?: { users?: { excludeUsers?: string[] } } }
+  const patch = update.body as { conditions?: { users?: { excludeUsers?: string[] } } }
+  const bg = f.mapping.breakGlassUserIds
+  // The tenant's own direct exclusion, added to the policy the step adjusts.
+  const snapshot = structuredClone(f.snapshot)
+  const rows = snapshot.config.caPolicies?.rows ?? []
+  const row = rows.find((p) => String((p as { id?: string }).id) === update.policyId) as { conditions?: { users?: { excludeUsers?: string[] } } } | undefined
+  assert.ok(row, 'the tenant policy the update names')
+  const users = ((row!.conditions ??= {}).users ??= {})
+  users.excludeUsers = [...bg]
+  const after = runFixture({ ...f, snapshot }, { snapshot })
+  const s2 = after.steps.find((x) => x.id === (adjust as Step).id) as Step
+  const op2 = operationsOf(s2).find((o) => o.mode === 'update')
+  if (op2) {
+    const kept = (op2.target as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users?.excludeUsers ?? []
+    assert.deepEqual([...kept].sort(), [...bg].sort(), 'the policy the tenant is left with keeps the exclusion it already had')
+    const submitted = (op2.body as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users?.excludeUsers
+    assert.equal(submitted, undefined, 'and the request IAMAI submits does not write it')
+  }
+  // Whether or not this operation still runs, nothing IAMAI submits names them.
+  for (const o of s2.action.resolution?.policies ?? []) {
+    const u = ((o.body as { conditions?: { users?: { excludeUsers?: string[] } } }).conditions?.users ?? {}) as { excludeUsers?: string[] }
+    for (const id of u.excludeUsers ?? []) assert.equal(bg.includes(id), false, 'IAMAI submitted a direct emergency exclusion')
+  }
+  void target
+  void patch
+})
+
+// ---- The escape hatch gates enforcement -------------------------------------
+//
+// `xg.usedConsistently` is deliberately outside the intrinsic group-safety set
+// (validation/report.ts POLICY_SAFETY_RULES): it is a fact about the tenant's
+// other policies, not about whether excluding this group is a safe carve-out.
+// It is still a blocking check, and these prove where the two converge — a
+// group that is intrinsically safe does not buy an operator the right to turn a
+// deny-capable policy on while the way back in is unverified.
+
+/** A tenant whose exclusions group passes every intrinsic check and is excluded from too few policies. */
+function usedInconsistently(name: 'midflight'): Fixture {
+  const f = fixture(name)
+  const group = (f.mapping.records['__globalExclusion'].resolvedId as string).toLowerCase()
+  const snapshot = structuredClone(f.snapshot)
+  for (const raw of snapshot.config.caPolicies?.rows ?? []) {
+    const p = raw as { conditions?: { users?: { excludeGroups?: string[] } } }
+    const u = p.conditions?.users
+    if (u?.excludeGroups) u.excludeGroups = u.excludeGroups.filter((g) => g.toLowerCase() !== group)
+  }
+  return { ...f, snapshot }
+}
+
+test('a group that is intrinsically safe but not excluded everywhere still holds every enforcement', () => {
+  const f = usedInconsistently('midflight')
+  const r = runFixture(f)
+  const report = exclusionGroupReportOf(f, r)
+  const intrinsic = exclusionGroupPolicySafety(report)
+  assert.equal(intrinsic.safe, true, 'the group itself passes every check that decides whether it is safe to name in a policy')
+  const consistency = (report?.targets ?? []).flatMap((t) => t.results).find((x) => x.id === 'xg.usedConsistently')
+  assert.equal(consistency?.outcome, 'fail', 'and it is not excluded from every enabled or report-only policy')
+  // The two stay separate: the group is still written into policies, because it
+  // is the right object to exclude.
+  assert.ok(openPolicies(r.steps).some((s) => stepEffects(s).some((e) => e.scope.groups.exclude.length > 0)), 'the group is still the carve-out the plan writes')
+  // And they converge here: the step whose operation would turn a policy on is
+  // offered by no channel at all.
+  const held = openPolicies(r.steps).filter((s) => unavailableReason(s) === 'escape-hatch-unverified')
+  assert.ok(held.length > 0, 'an enforcement is being offered for this gate to hold')
+  for (const s of held) {
+    assert.equal(implementationOffered(s), false, `${s.id}: no implementation`)
+    assert.deepEqual(operationsOf(s), [], `${s.id}: no operation`)
+    assert.equal(jsonOffered(s), false, `${s.id}: no JSON and no download`)
+    assert.deepEqual(stepOperations(s), [], `${s.id}: no PowerShell`)
+    assert.equal(stepPortalLines(s, { nameOf: (id: string) => id, policyName: () => 'P' } as never), null, `${s.id}: no portal instructions`)
+    assert.deepEqual(s.rings, [], `${s.id}: no ring plan`)
+    assert.equal(eventsFor(s, { rhythm: r.schedule.rhythm, timeZone: 'UTC' } as never, r.schedule.start), null, `${s.id}: no enforcement or completion event`)
+    assert.equal(r.schedule.waveOf[s.id] ?? null, null, `${s.id}: no dated wave`)
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    assert.ok(!stepLines(s, ctx).some((l) => /Entra admin center/.test(l)), `${s.id}: the export carries no instructions`)
+    assert.ok(s.blockedBy.includes(s.action.escapeHatch?.stepId ?? ''), `${s.id}: and it names the foundation holding it`)
+  }
+})
+
+test('a consistency check that could not run holds it too: unknown on a blocker blocks', () => {
+  // There is no tenant in which `xg.usedConsistently` alone is unknown: the rule
+  // reads the tenant's Conditional Access policies, and those are the same
+  // policies the plan's operations are built from, so a reading that cannot
+  // answer it cannot produce an operation either. The reachable form is a group
+  // whose object this scan read and whose membership it could not: every
+  // exclusion-group check goes unknown, consistency included, and an unknown on a
+  // blocker blocks. Nothing that needs the carve-out is offered, and nothing that
+  // would turn a policy on is either.
+  const f = fixture('midflight')
+  const group = f.mapping.records['__globalExclusion'].resolvedId as string
+  const partial: GroupMembersMap = new Map([...f.groups])
+  partial.delete(group)
+  const base = directoryEvidenceFromGroups(partial, 'complete')
+  const r = runFixture({ ...f, groups: partial }, {
+    groupMembers: partial,
+    directory: { universe: 'complete', groups: new Map([...base.groups, [group.toLowerCase(), { presence: 'present', members: 'unknown', displayName: 'Core - Exclusions', memberIds: [], memberCount: null } as ObjectEvidence]]) },
+  })
+  const report = exclusionGroupReportOf(f, r)
+  assert.equal((report?.targets ?? []).flatMap((t) => t.results).find((x) => x.id === 'xg.usedConsistently')?.outcome, 'unknown', 'the consistency check could not run')
+  assert.ok((report?.blocking ?? []).length > 0, 'and an unknown blocker blocks')
+  const step = r.steps.find((s) => s.id === 's-goal-admins-phishing-resistant') as Step
+  assert.ok(step, 'the fixture carries the change that would turn a policy on')
+  assert.equal(implementationOffered(step), false, 'the enforcement is offered by nothing')
+  assert.deepEqual(operationsOf(step), [], 'and it has no operation to run')
+  for (const s of openPolicies(r.steps)) {
+    if ((s.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}')) {
+      assert.equal(implementationOffered(s), false, `${s.id}: offered although the carve-out could not be verified`)
+    }
+  }
+})
+
+test('with every check passed the gate lifts, and the same enforcement is offered', () => {
+  // demo-week2 is the tenant that finished its foundations: both blocker reports
+  // are clean, so nothing is held behind them.
+  const { f, r } = runs.find((x) => x.f.name === 'demo-week2') as { f: Fixture; r: FixtureRun }
+  const report = exclusionGroupReportOf(f, r)
+  assert.deepEqual((report?.blocking ?? []).map((x) => x.id), [], 'every blocking exclusion-group check passes, consistency included')
+  assert.equal(openPolicies(r.steps).some((s) => unavailableReason(s) === 'escape-hatch-unverified'), false, 'this gate holds nothing')
+  assert.ok(openPolicies(r.steps).some((s) => implementationOffered(s)), 'and the plan offers its policies')
+})
+
+/** The exclusion-group report the plan built, rebuilt from the same inputs. */
+function exclusionGroupReportOf(f: Fixture, r: FixtureRun): SubjectReport | null {
+  const groupFacts = [...(r.input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
+  const id = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: r.input.mapping, groups: r.input.groupMembers, directory: r.input.directory })
+  if (id === null) return null
+  const ctx = buildContext({ snapshot: f.snapshot, state: r.input.mapping, groupMembers: groupFacts, viability: r.viability })
+  return reportFor('exclusionGroup', [groupFacts.find((g) => g.groupId === id) ?? null], ctx)
+}

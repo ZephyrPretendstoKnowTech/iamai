@@ -38,7 +38,8 @@ const DevSpikes = import.meta.env.DEV
   : () => null
 import { app, pages } from '../content/content.ts'
 import { DEMO_TENANT_ID, isDemo } from './demoMode.ts'
-import { saveMappingState } from '../mapping/store.ts'
+import { loadMappingState, saveMappingState } from '../mapping/store.ts'
+import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyChoice.ts'
 import { probeStorage } from '../graph/collect/cache.ts'
 
 const DEV_PANEL =
@@ -162,10 +163,19 @@ export function App() {
       // The dev-only contract walk and failure-path checks run against a
       // calibrated synthetic tenant (test support); the demo (?demo=1) is what
       // loads the demo fixture through the same App snapshot-setting path.
-      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts'), import('../testing/gapsFixture.ts')]).then(([{ fixtureSnapshot, fixtureBaseline }, { bigFixtureSnapshot }, { gapsSnapshot, mockAuthError, noRolesToken, tokenWithRoles }]) => {
+      void Promise.all([import('../testing/uiSnapshot.ts'), import('../testing/bigFixture.ts'), import('../testing/gapsFixture.ts')]).then(async ([{ fixtureSnapshot, fixtureBaseline, FIXTURE_EXCLUSIONS_GROUP }, { bigFixtureSnapshot }, { gapsSnapshot, mockAuthError, noRolesToken, tokenWithRoles }]) => {
         const params = new URLSearchParams(window.location.search)
         if (params.get('crash') === '1') setMockCrash(true)
         const snapshot = params.get('big') === '1' ? bigFixtureSnapshot() : fixtureSnapshot()
+        // The mock tenant's exclusions group, and the operator's answer naming it
+        // (testing/uiSnapshot.ts). Seeded exactly as the demo seeds its own: the
+        // members into the group cache, so the scan has read them, and the record
+        // through the one writer of that record. Without both, no policy the plan
+        // writes has a carve-out and the surfaces these mocks check are empty.
+        const xg = FIXTURE_EXCLUSIONS_GROUP
+        await saveGroupMembersCache({ tenantId: snapshot.tenantId, groupId: xg.id, displayName: xg.displayName, membershipRule: null, mailEnabled: false, memberCount: xg.memberIds.length, memberIds: [...xg.memberIds], sampled: false, asOf: snapshot.asOf })
+        const stored = await loadMappingState(snapshot.tenantId)
+        await saveMappingState({ ...stored, records: { ...stored.records, [EXCLUSIONS_RECORD_KEY]: exclusionsGroupRecord(stored.records[EXCLUSIONS_RECORD_KEY], xg.id) } })
         // ?operatorDormant=1: the signed-in account's directory sign-in is stale
         // and it has no sign-in records of its own: a person like any other
         // (derive/operator.ts is display only), so Today reads it not active.
