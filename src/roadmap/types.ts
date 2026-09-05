@@ -326,8 +326,18 @@ export type StepTracking = {
   /** The evidence gate: the records since reportOnlyAt show zero failures and every active person in scope at least once. */
   readyNow: boolean
   /** Active people in scope the records since reportOnlyAt have seen, over the active people in scope. */
-  seenInScope: number
-  activeInScope: number
+  /**
+   * The evidence gate's two numbers, over the scope of the *matched tenant
+   * policy* — the object the records are about — resolved from its own
+   * conditions (roadmap/strand.ts scopeCohort). Never the goal's population:
+   * a policy the tenant deployed reaches who it names, not who a goal is
+   * filed under.
+   *
+   * Null where that scope could not be settled. A scope nobody established is
+   * not an empty one, so the gate cannot be read as met and no count is shown.
+   */
+  seenInScope: number | null
+  activeInScope: number | null
   /** Records of this policy in the scan's window (any result). */
   signIns: number
   /** Failing or interrupted records since reportOnlyAt (the gate's zero). */

@@ -56,6 +56,17 @@ export type PolicySemantics = {
   locations: boolean
   /** It is about setting up or changing sign-in methods (the security-info registration user action). */
   registration: boolean
+  /** It is about joining or registering a device (the register-device user action). */
+  deviceRegistration: boolean
+  /**
+   * The resource it names, where that resource is one of the few IAMAI resolves
+   * by its own identifier — Graph's `MicrosoftAdminPortals` target, and the
+   * Windows Azure Service Management API's application id. Null for anything
+   * else, including a policy that names every resource: the plan does not
+   * interpret an arbitrary application id, and says nothing about one it cannot
+   * name.
+   */
+  resource: 'adminPortals' | 'azureManagement' | null
   /** Everybody it names is an external user, and nobody else is (its own scope). */
   guestsOnly: boolean
   /** It stops the sign-in outright. */

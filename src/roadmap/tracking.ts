@@ -9,8 +9,9 @@ import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicy } from './generate.ts'
 import { observationDaysFor } from './schedule.ts'
-import { affectedIds } from '../derive/whoLine.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
+import { effectOf } from './operations.ts'
+import { scopeCohort } from './strand.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { advanceState, raiseCondition, setState, statusRank } from './lifecycle.ts'
@@ -22,6 +23,22 @@ const TRACK = engine.tracking
 import type { Step, StepStatus, StepTracking } from './types.ts'
 
 type PolicyRow = { id?: string; displayName?: string; state?: string; createdDateTime?: string; modifiedDateTime?: string; conditions?: { users?: { includeUsers?: string[]; includeGroups?: string[] } } }
+
+/**
+ * What tracking needs beside the snapshot to resolve a deployed policy's scope
+ * exactly: who is in a group, where the scan read the whole group, and the
+ * tenant's active people — the denominator the evidence gate counts over.
+ *
+ * Both are read only to answer *this policy's* own conditions, and neither is
+ * guessed: a caller that supplies no group memberships leaves the scope of any
+ * policy naming a group unknown, and one that names no active people leaves the
+ * denominator unknown. Both are conservative, and neither is ever filled in from
+ * the goal's population.
+ */
+export type TrackingEvidence = {
+  groupMembers?: Record<string, readonly string[]>
+  activePeople?: readonly string[]
+}
 
 /**
  * Executed steps needed before a completion date is projected. Below this the
@@ -114,18 +131,48 @@ function intendedSemantics(step: Step): string | null {
 }
 
 /**
+ * What the evidence gate counts over: the accounts the *matched tenant policy*
+ * reaches, from its own conditions and nothing else (roadmap/strand.ts
+ * scopeCohort), narrowed to the tenant's active people — the ones the records
+ * could show.
+ *
+ * The question the gate asks is about a policy that is deployed, so the deployed
+ * policy is the authority: the plan's own operation describes a different object
+ * (it may not be this policy, and on a step whose objects are missing there is no
+ * operation at all), and the goal's population describes no policy whatsoever.
+ *
+ * Null — not empty — where the policy's scope cannot be settled: a group nothing
+ * says who is in, a clause IAMAI could not read. Nothing falls back.
+ */
+function trackedScope(policy: PolicyRow, snapshot: TenantSnapshot, ctx: TrackingEvidence, active: ReadonlySet<string> | null): string[] | null {
+  if (active === null) return null
+  const effect = effectOf(policy as Record<string, unknown>)
+  const named = scopeCohort([effect], snapshot.users.map((u) => u.id), snapshot, { groupMembers: ctx.groupMembers })
+  return named === null ? null : named.filter((id) => active.has(id))
+}
+
+/**
  * The records' verdict on a policy, and the two gates on one in report-only
  * (constants.ts OBSERVATION_DAYS): the time gate, ready on `since` plus the
  * step's observation window; the evidence gate, ready now when the records since
- * `since` show zero failures and every active person in scope at least once.
- * Whichever comes first. `since` is null for a policy not in report-only.
+ * `since` show zero failures and every active person the *policy* reaches at
+ * least once. Whichever comes first. `since` is null for a policy not in
+ * report-only.
  */
-function gates(step: Step, snapshot: TenantSnapshot, pr: PolicyAppliedResult | undefined, since: string | null): Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 'seenInScope' | 'activeInScope' | 'signIns' | 'failures' | 'failuresByUser' | 'evidenceQuality'> {
+function gates(
+  step: Step,
+  policy: PolicyRow,
+  snapshot: TenantSnapshot,
+  pr: PolicyAppliedResult | undefined,
+  since: string | null,
+  ctx: TrackingEvidence,
+  activeSet: ReadonlySet<string> | null,
+): Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 'seenInScope' | 'activeInScope' | 'signIns' | 'failures' | 'failuresByUser' | 'evidenceQuality'> {
   const covered = snapshot.sources.signInEvidence?.coveredWindow ?? null
-  const active = affectedIds(step.population)
+  const active = trackedScope(policy, snapshot, ctx, activeSet)
   const daysInReportOnly = since ? daysBetween(since, snapshot.asOf) : 0
   const readyOn = since ? new Date(Date.parse(since) + observationDaysFor(step) * DAY).toISOString() : null
-  if (!pr) return { daysInReportOnly, readyOn, readyNow: false, seenInScope: 0, activeInScope: active.length, signIns: 0, failures: 0, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
+  if (!pr) return { daysInReportOnly, readyOn, readyNow: false, seenInScope: active === null ? null : 0, activeInScope: active?.length ?? null, signIns: 0, failures: 0, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
   const c = pr.counts
   const signIns = c.reportOnlyFailure + c.reportOnlyInterrupted + c.reportOnlySuccess + c.enforcedFailure + c.enforcedSuccess
   // Failing or interrupted records since `since`: by day where the snapshot
@@ -140,13 +187,16 @@ function gates(step: Step, snapshot: TenantSnapshot, pr: PolicyAppliedResult | u
   // A record of this policy for a person is that person seen; a report-only
   // record exists only while the policy is in report-only.
   const seen = new Set(Object.values(pr.affectedUserIds).flat())
-  const seenInScope = active.filter((id) => seen.has(id)).length
+  const seenInScope = active === null ? null : active.filter((id) => seen.has(id)).length
   return {
     daysInReportOnly,
     readyOn,
-    readyNow: since !== null && signIns > 0 && failures === 0 && seenInScope === active.length,
+    // A scope nobody established is not an empty scope: with no in-scope list the
+    // "everybody seen" half of the gate would be vacuously true, so the evidence
+    // gate cannot open at all and the time gate is the only way through.
+    readyNow: active !== null && seenInScope !== null && since !== null && signIns > 0 && failures === 0 && seenInScope === active.length,
     seenInScope,
-    activeInScope: active.length,
+    activeInScope: active?.length ?? null,
     signIns,
     failures,
     failuresByUser: [...byUser.entries()].map(([userId, n]) => ({ userId, count: n })).sort((a, b) => b.count - a.count),
@@ -185,8 +235,12 @@ export function trackExecution(
   planId: string,
   now: string = new Date().toISOString(),
   observations: Record<string, StepObservation> = {},
+  scopeEvidence: TrackingEvidence = {},
 ): Step[] {
   const resultByGoal = new Map(coverage.results.map((r) => [r.goal.id, r]))
+  // The tenant's own active people: a directory fact the caller supplies, never a
+  // goal's population and never invented here.
+  const activeSet = scopeEvidence.activePeople ? new Set(scopeEvidence.activePeople) : null
   for (const step of steps) {
     if (step.kind !== 'create' && step.kind !== 'adjust') continue
     const result = resultByGoal.get(step.goalId)
@@ -258,7 +312,7 @@ export function trackExecution(
     const state = policy.state ?? 'unknown'
     const inReportOnlySince = observedState === 'report-only' ? reportOnlySince(change) : null
     const reportOnlyAt = inReportOnlySince?.at ?? null
-    const evidence = gates(step, snapshot, pr, reportOnlyAt)
+    const evidence = gates(step, policy, snapshot, pr, reportOnlyAt, scopeEvidence, activeSet)
     // A policy's own stamps date the object, never the moment it began to
     // enforce; a value carried from an earlier scan is older still. The source
     // says which, so nothing downstream reads it as a proven transition.
