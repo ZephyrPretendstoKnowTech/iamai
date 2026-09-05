@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { isOpenPolicy, isValidOperation, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import { emergencyExposureOf, isOpenPolicy, isValidOperation, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -182,7 +182,7 @@ import { registrationWindow } from './campaign.ts'
 import { ladderSteps } from './ladder.ts'
 import { EMERGENCY_ACCESS_STEP_IDS, blockerStepId, blockerSteps, gateFor, gateReason } from './blockerSteps.ts'
 import { stepChecks } from '../validation/checkFixes.ts'
-import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
+import { buildContext, breakGlassReport, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
 import { exclusionsGroupChoice } from '../mapping/safetyChoice.ts'
@@ -622,7 +622,26 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // the policy body and the body says so, naming the Preparation step that
   // creates the object.
   const countriesLocationId = tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null
-  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId, exclusions.actionableId)
+  // The exclusions group's own checks, run here rather than with the rest of the
+  // validation below, because the answer decides what the policies say and not
+  // only what the plan asks somebody to fix. The report is the one built; the
+  // blocker steps read this same object later.
+  //
+  // Two questions, kept apart (Foundation C, and validation/report.ts
+  // exclusionGroupPolicySafety). `exclusions.actionableId` is an identity: the
+  // group the operator confirmed and this scan read, which is what the checks
+  // are *about* and what the step names. Whether it is safe to write into a
+  // policy is the checks' answer, and a group missing an emergency account, one
+  // holding somebody unapproved, one holding an administrator, one that is
+  // dynamic, and one whose membership nothing read are all the same answer: no.
+  // A policy that excluded such a group would carry the exclusions group's
+  // promise while keeping none of it.
+  const groupFacts = [...(input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
+  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability, drillDates: input.cleanupRecord?.drills ?? [] })
+  const exclusionGroupReport =
+    exclusions.actionableId === null ? null : reportFor('exclusionGroup', [groupFacts.find((g) => g.groupId === exclusions.actionableId) ?? null], validationCtx)
+  const policyUsableExclusionsGroupId = exclusionGroupPolicySafety(exclusionGroupReport).safe ? exclusions.actionableId : null
+  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId)
   /**
    * The resolved policy with its authentication strength as the request may
    * carry it: the tenant's id, and nothing that describes the object it points
@@ -906,13 +925,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Validation blockers (validation-rules.md §2): the escape hatch first ----
   // Every must-fix check that has not passed becomes a Phase 0 step, and the
   // two subjects a recovery depends on hold every step that can deny access.
-  const groupFacts = [...(input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
-  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability, drillDates: input.cleanupRecord?.drills ?? [] })
   const validationReports: SubjectReport[] = [breakGlassReport(validationCtx)]
-  const exclusionGroupId = exclusions.actionableId
-  if (exclusionGroupId !== null) {
-    validationReports.push(reportFor('exclusionGroup', [groupFacts.find((g) => g.groupId === exclusionGroupId) ?? null], validationCtx))
-  }
+  if (exclusionGroupReport !== null) validationReports.push(exclusionGroupReport)
   const trustedLocations = (snapshot.config.namedLocations?.rows ?? []).filter((l) => mapping.trustedLocationIds.includes(String((l as { id?: string }).id ?? '')))
   if (trustedLocations.length > 0) validationReports.push(reportFor('trustedLocation', trustedLocations, validationCtx))
   // Only when a country restriction is actually planned: the list is checked
@@ -923,15 +937,22 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   if (mapping.serviceAccountUserIds.length > 0) validationReports.push(reportFor('serviceAccount', [''], validationCtx))
   // The exclusions group's checks sit on its own step. In place when the
-  // recognised group is excluded from every enabled or report-only policy (the
-  // rule's verdict); a step already In place holds nothing, and while no group is
-  // recognised the step that creates it holds everything that can deny access.
+  // recognised group is there and *every* blocking check on it has passed; while
+  // no group is recognised the step that creates it holds everything that can
+  // deny access.
+  //
+  // One check used to decide this — the group being excluded from every policy —
+  // and the other four did not. So a group holding an unapproved member, a group
+  // holding an administrator, a dynamic group, and a group whose membership
+  // nothing could read all reached In place, which cleared the gate below and
+  // released every policy the escape hatch was supposed to hold. The report is
+  // the authority on whether the checks passed; the step's word is a projection
+  // of it, and a projection may not answer back.
   const geReport = validationReports.find((r) => r.subject === 'exclusionGroup')
   const geStep = steps.find((s) => s.id === geStepId)
   if (geStep && geReport) {
     geStep.checks = stepChecks(geReport)
-    const everywhere = geReport.targets.flatMap((t) => t.results).find((r) => r.id === 'xg.usedConsistently')
-    if (recognisedGroupId !== null && everywhere?.outcome === 'pass') {
+    if (recognisedGroupId !== null && geReport.blocking.length === 0) {
       setState(geStep, { satisfied: true, inPlace: true })
       geStep.deliveredBy = [recognisedGroupId]
     }
@@ -946,10 +967,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       bgStep.deliveredBy = [...mapping.breakGlassUserIds]
     }
   }
+  // The gate is the validation reports' own verdict, and nothing downgrades it.
+  // A line here used to clear a gate whenever the gating step's status read
+  // done — the projection overruling the report that produced it — so a saved or
+  // mistakenly-satisfied status was enough to release every deny-capable step in
+  // the plan. A step is In place because its checks passed; its checks do not
+  // pass because it is In place.
   let gate = canUseConditionalAccess ? gateReason(validationReports) : null
   if (gate === null && bgStep && bgStep.status !== 'done') gate = gateFor('breakGlass')
   if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
-  if (gate !== null && steps.find((s) => s.id === gate?.stepId)?.status === 'done') gate = null
   // The step has to exist before the goal loop so a held step can name it; the
   // count of what it holds is filled in once the goal steps are known.
   const validationSteps = blockerSteps(validationReports)
@@ -960,7 +986,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // it; an empty array: nothing to put there and nothing to wait for.
   const templateValues: TemplateValues = {
     '{namePrefix}': naming.prefix ?? 'CA',
-    '{exclusionsGroup}': exclusions.actionableId,
+    '{exclusionsGroup}': policyUsableExclusionsGroupId,
     '{breakGlass}': mapping.breakGlassUserIds.length > 0 ? mapping.breakGlassUserIds : null,
     '{serviceAccountsGroup}': mapping.serviceAccountsGroupId ?? (mapping.serviceAccountUserIds.length === 0 ? [] : null),
     '{trustedLocations}': mapping.trustedLocationIds.length > 0 ? mapping.trustedLocationIds : mapping.wizardAnswered.trustedLocations === true ? [] : null,
@@ -1146,6 +1172,33 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // instruction names the object the body actually holds rather than looking
     // one up in the mapping again.
     if (action.resolution) action.resolution = { ...action.resolution, tenant: { exclusionsGroupId: tenantObjects.exclusionsGroupId, serviceAccountsGroupId: tenantObjects.serviceAccountsGroupId, emergencyIds: [...mapping.breakGlassUserIds] } }
+
+    // ---- The emergency-access boundary (Foundation A) ----
+    // The last thing asked of a policy before anything is offered for it, and
+    // the only one asked of the policy the tenant will actually be left with.
+    // Every other guard here is upstream of this: the exclusions group's checks
+    // are about an object, the gate is about a step, and neither reads what a
+    // finished policy says. This does — through the same decoder every other
+    // reading of a policy goes through — and asks one question of each confirmed
+    // emergency access account: is it out of this policy's user scope?
+    //
+    // Out is the only answer that lets the policy through. In is a policy that
+    // covers the way back in. Unknown is a scope resolved against a membership
+    // this scan did not read completely, and an exclusion nobody has read is not
+    // an exclusion.
+    //
+    // Structural only. Whether the account happens to be signing in from the
+    // office, on a compliant device, at low risk, is a fact about *when* a policy
+    // applies and never about whether the account is excluded — the day it
+    // matters is the day none of those hold. And the repair is never a direct
+    // user exclusion added here: the policy's scope is corrected upstream, or it
+    // is not offered.
+    {
+      const probe = { goalId: goal.id, kind, status: statusNow(), action } as unknown as Step
+      const finalEffects = isOpenPolicy(probe) ? stepEffects(probe) : []
+      const exposure = emergencyExposureOf(finalEffects, mapping.breakGlassUserIds, snapshot, strandContext)
+      if (exposure !== null) action = { ...action, emergencyExposure: exposure }
+    }
 
 
     // Named dependencies (prompt 12 §B).

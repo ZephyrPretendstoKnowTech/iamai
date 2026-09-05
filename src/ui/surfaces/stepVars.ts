@@ -280,7 +280,14 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     const policies = ctx.snapshot.config.caPolicies?.rows ?? []
     const excludedFrom = (id: string): number => policies.filter((p) => ((p as { conditions?: { users?: { excludeGroups?: string[] } } }).conditions?.users?.excludeGroups ?? []).some((x) => x.toLowerCase() === id.toLowerCase())).length
     const id = choice.actionableId
+    // Two different sentences again. `needsCreate` is a proof: a reading that
+    // covered the tenant and found nothing that qualifies. `createIfNeeded` is
+    // an offer: nobody has chosen, and IAMAI cannot say whether a group already
+    // does this — so the instructions are there for an operator who knows they
+    // need one, and the words say which of the two this is
+    // (mapping/safetyChoice.ts: the app's group reading is partial).
     v.needsCreate = choice.status === 'none-found'
+    v.createIfNeeded = choice.status === 'undetermined'
     v.policyCount = policies.length
     // No group in use: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
     if (id === null) delete v.total

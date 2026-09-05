@@ -7,18 +7,30 @@
 // untidy: it writes a carve-out for the wrong people into a policy the operator
 // then deploys, and nobody finds out until the day it matters.
 //
-// Four facts, and this module exists to stop any of them standing in for
+// Five facts, and this module exists to stop any of them standing in for
 // another:
 //
+//   recorded    — the id the mapping record holds, whoever or whatever wrote
+//                 it. Worth reading; never authority.
 //   detected    — what the tenant's own evidence currently shows.
 //   recommended — what IAMAI would put forward, given evidence complete enough
 //                 to put anything forward at all.
 //   confirmed   — what the operator explicitly chose. Storage keeps this, and
 //                 nothing but an operator's confirmation writes it.
 //   actionable  — the operator's choice AND an object this scan read for itself.
-//                 The only id anything downstream may put in a policy.
 //
-// Two of the distinctions are easy to lose, so they are written out here:
+// A sixth is a further question again, and lives where the checks do
+// (validation/report.ts exclusionGroupPolicySafety): whether that object is
+// currently *safe* to name in a policy. A group nothing has verified the
+// membership of is an identity, not a carve-out.
+//
+// Four of the distinctions are easy to lose, so they are written out here:
+//
+// A record is not a decision. Versions of IAMAI before this module let a
+// detection write the exclusions record with provenance `auto`, so an upgraded
+// tenant can hold an id nobody chose. It stays — it is history, and the object
+// the next scan should go and read — and it is not the operator's answer, is
+// not pre-ticked as one, and reaches no policy.
 //
 // A stored confirmation is not current actionability. The operator's answer
 // survives a scan that cannot verify it — it is their decision, not IAMAI's
@@ -31,13 +43,18 @@
 // says it could not tell, offers no recommendation, and above all does not
 // conclude that the tenant should create a second group.
 //
+// And evidence is complete only where the reading covered the whole tenant. The
+// app reads the groups the policies name and the two the mapping names, and
+// searches the rest only while somebody types, so its universe is partial and
+// its answer to "does this tenant already have one?" is: I cannot tell.
+//
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { GroupRead, MemberEvidence, ObjectPresence } from '../graph/collect/presence.ts'
-import type { MappingRecord, MappingState } from './types.ts'
+import type { MappingRecord, MappingState, Provenance } from './types.ts'
 
 export type { ObjectPresence, MemberEvidence } from '../graph/collect/presence.ts'
 
@@ -82,6 +99,14 @@ export type SafetyChoice = {
   /** What the operator chose, as storage holds it — kept whatever this scan can verify. */
   storedId: string | null
   storedName: string | null
+  /**
+   * The id the record holds whatever wrote it, and what wrote it. A detection
+   * that ran before this module existed left an id here with provenance `auto`;
+   * it is history, an object worth reading and a name to show — never the
+   * operator's decision, so it is never `storedId` and never `actionableId`.
+   */
+  recordedId: string | null
+  recordedProvenance: Provenance | null
   /** What this scan established about `storedId`; null when nobody has chosen. */
   presence: ObjectPresence | null
   /**
@@ -104,6 +129,13 @@ export type SafetyChoiceInput = {
   role: SafetyRole
   /** The operator's own answer, as storage holds it; null when nobody has answered. */
   stored: { id: string; name: string | null } | null
+  /**
+   * What the record holds and what wrote it, whatever that was. Carried through
+   * untouched: it is the object the next scan should read and the history a
+   * migration must not lose, and it becomes the operator's answer only by their
+   * confirming it.
+   */
+  recorded?: { id: string; provenance: Provenance } | null
   /** What this scan established about that answer's object. Ignored when nobody has answered. */
   presence: ObjectPresence
   /** The objects this scan verified as plausible for the role. */
@@ -118,7 +150,13 @@ export type SafetyChoiceInput = {
  * once.
  */
 export function resolveSafetyChoice(input: SafetyChoiceInput): SafetyChoice {
-  const base = { role: input.role, candidates: input.candidates, evidence: input.evidence }
+  const base = {
+    role: input.role,
+    candidates: input.candidates,
+    evidence: input.evidence,
+    recordedId: input.recorded?.id ?? null,
+    recordedProvenance: input.recorded?.provenance ?? null,
+  }
   if (input.stored !== null) {
     // The operator's answer is theirs. It stays in every branch below; what
     // changes is whether IAMAI may act on it today. And in no branch is it
@@ -159,13 +197,33 @@ export type ObjectEvidence = {
 }
 
 /**
+ * Whether the reading's groups are *every* group in the tenant, or only the ones
+ * some caller went and asked for.
+ *
+ * This is not a count and cannot be worked out from one. A map of readings that
+ * all succeeded is a complete record of what was asked for and says nothing
+ * about what was not: the app reads the groups the tenant's Conditional Access
+ * policies name plus the two the mapping names, and searches the rest only while
+ * an operator types. So `partial` is the default and the honest answer for the
+ * product, and `complete` is a claim a caller makes because it holds the whole
+ * directory — a fixture, a test tenant — and never an inference.
+ */
+export type CandidateUniverse = 'complete' | 'partial'
+
+/**
  * The scan's own readings, keyed by lowercased object id. An id this holds no
  * entry for is `unknown` — never `absent`: a caller that did not look proves
- * nothing about what is there.
+ * nothing about what is there. And `universe` says whether the caller looked
+ * everywhere, which is the only thing that lets an empty candidate list mean
+ * "the tenant has none".
  */
-export type DirectoryEvidence = { groups: ReadonlyMap<string, ObjectEvidence> }
+export type DirectoryEvidence = { groups: ReadonlyMap<string, ObjectEvidence>; universe: CandidateUniverse }
 
-/** The read boundary's results as evidence (graph/collect/onDemand.ts readGroup). */
+/**
+ * The read boundary's results as evidence (graph/collect/onDemand.ts readGroup).
+ * On-demand reads are the groups somebody named, so the universe is partial: the
+ * tenant's other groups were never asked for.
+ */
 export function directoryEvidenceOf(reads: readonly GroupRead[]): DirectoryEvidence {
   const groups = new Map<string, ObjectEvidence>()
   for (const r of reads) {
@@ -177,7 +235,7 @@ export function directoryEvidenceOf(reads: readonly GroupRead[]): DirectoryEvide
       memberCount: r.memberCount,
     })
   }
-  return { groups }
+  return { groups, universe: 'partial' }
 }
 
 /**
@@ -185,8 +243,11 @@ export function directoryEvidenceOf(reads: readonly GroupRead[]): DirectoryEvide
  * whose members it has is one it read. It says nothing about the groups it does
  * not hold, which therefore stay unknown — the loaded map is a record of
  * successes, and a missing entry is a failure whose kind it does not record.
+ *
+ * `universe` is the caller's own claim about that map and defaults to `partial`.
+ * Only a caller that holds the tenant's whole group list may pass `complete`.
  */
-export function directoryEvidenceFromGroups(groups: GroupMembers | null | undefined): DirectoryEvidence {
+export function directoryEvidenceFromGroups(groups: GroupMembers | null | undefined, universe: CandidateUniverse = 'partial'): DirectoryEvidence {
   const out = new Map<string, ObjectEvidence>()
   for (const [id, g] of groups ?? []) {
     out.set(id.toLowerCase(), {
@@ -197,7 +258,7 @@ export function directoryEvidenceFromGroups(groups: GroupMembers | null | undefi
       memberCount: g.memberCount,
     })
   }
-  return { groups: out }
+  return { groups: out, universe }
 }
 
 // ---- The exclusions group ----
@@ -212,13 +273,57 @@ export const EXCLUSIONS_RECORD_KEY = '__globalExclusion'
 const lc = (s: string): string => s.toLowerCase()
 
 /**
- * The operator's stored answer, without checking it against anything. Only two
- * callers may want this: the one deciding which objects the next scan should
- * read, and the picker showing the operator their own answer back. Never the
- * one deciding what a policy says — that is `actionableExclusionsGroupId`.
+ * The one provenance that is an operator saying so.
+ *
+ * `auto` is a machine's reading, and versions of IAMAI before this module let a
+ * detection write the exclusions record with it. `overridden` is declared by the
+ * type and written by nothing in this repository, so there is no evidence in the
+ * product that a person ever authored one; an unevidenced word is not authority
+ * for a carve-out, so it is not accepted either. Only `confirmed`, which
+ * `exclusionsGroupRecord` writes and only decisions.ts calls, is a decision.
  */
-export function storedExclusionsGroupId(mapping: Pick<MappingState, 'records'>): string | null {
-  return mapping.records?.[EXCLUSIONS_RECORD_KEY]?.resolvedId ?? null
+const OPERATOR_PROVENANCE: Provenance = 'confirmed'
+
+/** The record as storage holds it, whatever wrote it. */
+function exclusionsRecord(mapping: Pick<MappingState, 'records'>): MappingRecord | null {
+  return mapping.records?.[EXCLUSIONS_RECORD_KEY] ?? null
+}
+
+/**
+ * The id worth going and reading this scan, whoever put it there: an operator's
+ * confirmation, or a detection an older version wrote. Exactly one caller wants
+ * this — the one deciding which objects to fetch (ui/surfaces/planData.ts) — and
+ * reading an object proves nothing about who chose it, so it is safe to be
+ * generous here and nowhere else.
+ */
+export function exclusionsGroupIdToVerify(mapping: Pick<MappingState, 'records'>): string | null {
+  return exclusionsRecord(mapping)?.resolvedId ?? null
+}
+
+/**
+ * The operator's own answer, without checking it against anything: their
+ * decision as storage holds it, or null where nobody has decided. A record a
+ * detection wrote is not one, however plausible its id — an upgrade must not
+ * turn last year's machine reading into this year's human confirmation.
+ *
+ * The picker shows this back to the operator as their tick. What a policy may
+ * say is a further question again (`policyUsableExclusionsGroupId`).
+ */
+export function operatorExclusionsDecision(mapping: Pick<MappingState, 'records'>): { id: string; name: string | null } | null {
+  const record = exclusionsRecord(mapping)
+  if (record === null || record.provenance !== OPERATOR_PROVENANCE) return null
+  return record.resolvedId === null ? null : { id: record.resolvedId, name: record.resolvedName }
+}
+
+/**
+ * Whether the operator has answered the exclusions-group question at all —
+ * including the answer "there is no such group yet", which
+ * `exclusionsGroupRecord(prev, null)` writes as a confirmed record with no id.
+ * Coverage asks this before calling the mapping's exclusions confirmed
+ * (mapping/store.ts): a detected default is not an answer to this question.
+ */
+export function operatorAnsweredExclusions(mapping: Pick<MappingState, 'records'>): boolean {
+  return exclusionsRecord(mapping)?.provenance === OPERATOR_PROVENANCE
 }
 
 /** The record an operator's confirmation writes. A null id clears their answer. */
@@ -253,6 +358,12 @@ export type ExclusionsContext = {
    * What the scan's own directory reads established. Where a caller has this,
    * an object Graph said is gone is `absent` and one a request failed on is
    * `unknown`; where it does not, everything it did not load is `unknown`.
+   *
+   * It also carries whether those reads are the whole tenant's groups or only
+   * the ones somebody asked for, which is what decides whether an empty
+   * candidate list may be read as "there is none" (`CandidateUniverse`). A
+   * caller that passes nothing here gets `partial`, which is the answer that
+   * concludes least.
    */
   directory?: DirectoryEvidence | null
 }
@@ -294,9 +405,17 @@ export function groupEvidence(ctx: ExclusionsContext, id: string): ObjectEvidenc
 }
 
 /**
- * Whether the detection could conclude. Two things have to hold, because the
- * candidate rules read both:
+ * Whether the detection could conclude. Three things have to hold, because the
+ * candidate rules read all three:
  *
+ *  * the reading covers every group in the tenant. Both candidate rules ask a
+ *    question about the tenant — "is there a group that already does this?" —
+ *    and a reading of the groups the policies happen to name cannot answer it.
+ *    A tenant's exclusions group that no policy references yet is invisible to
+ *    a partial reading, and concluding `none-found` from one tells the operator
+ *    to build a second one. So a partial universe is incomplete evidence, and
+ *    the number of entries in the map never says otherwise
+ *    (`DirectoryEvidence.universe`);
  *  * the tenant's Conditional Access policies were read (the signature rule
  *    reads what the policies do with each group);
  *  * every group those policies name answered determinately — read, or proved
@@ -310,8 +429,10 @@ export function groupEvidence(ctx: ExclusionsContext, id: string): ObjectEvidenc
  * accounts.
  */
 export function exclusionsDetectionEvidence(ctx: ExclusionsContext): DetectionEvidence {
+  const evidence = evidenceOf(ctx)
+  if (evidence.universe !== 'complete') return 'incomplete'
   if ((ctx.snapshot.config.caPolicies?.status ?? 'error') !== 'ok') return 'incomplete'
-  const ev = evidenceOf(ctx).groups
+  const ev = evidence.groups
   for (const id of policyGroupIds(ctx)) {
     const e = ev.get(id)
     if (!e) return 'incomplete'
@@ -370,12 +491,17 @@ export function exclusionsGroupCandidates(ctx: ExclusionsContext): SafetyCandida
 /** The exclusions group as a safety-sensitive choice: the one authority on which group the plan may name. */
 export function exclusionsGroupChoice(ctx: ExclusionsContext): SafetyChoice {
   const record = ctx.mapping.records?.[EXCLUSIONS_RECORD_KEY] ?? null
-  const id = record?.resolvedId ?? null
-  const read = id === null ? null : (evidenceOf(ctx).groups.get(lc(id)) ?? null)
+  // Two different ids, kept apart on purpose: what the record holds, and what an
+  // operator decided. They are the same id whenever an operator wrote it, and a
+  // legacy detection's record has the first and not the second.
+  const recorded = record?.resolvedId ?? null
+  const decision = operatorExclusionsDecision(ctx.mapping)
+  const read = decision === null ? null : (evidenceOf(ctx).groups.get(lc(decision.id)) ?? null)
   return resolveSafetyChoice({
     role: 'exclusionsGroup',
-    stored: id === null ? null : { id, name: read?.displayName ?? record?.resolvedName ?? null },
-    presence: id === null ? 'unknown' : (read?.presence ?? 'unknown'),
+    stored: decision === null ? null : { id: decision.id, name: read?.displayName ?? decision.name ?? null },
+    recorded: recorded === null || record === null ? null : { id: recorded, provenance: record.provenance },
+    presence: decision === null ? 'unknown' : (read?.presence ?? 'unknown'),
     candidates: exclusionsGroupCandidates(ctx),
     evidence: exclusionsDetectionEvidence(ctx),
   })

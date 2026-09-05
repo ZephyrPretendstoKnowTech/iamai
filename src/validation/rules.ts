@@ -589,6 +589,38 @@ type GroupTarget = GroupFacts | null
 
 const groupUnknown = (): RuleEval => unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]))
 
+/**
+ * The direction the approved-members rule does not check.
+ *
+ * `xg.membersApproved` asks whether anybody is in the group who should not be.
+ * This asks the other half, and it is the half the product's whole promise rests
+ * on: policies exclude the *group*, never an emergency account by name, so an
+ * emergency account outside the group is inside every policy the group carves
+ * out of — the account that exists to be the way back in is the one account the
+ * way back in does not cover.
+ *
+ * Absence has to be proved, so a membership nothing enumerated is unknown and
+ * not a pass: a sampled list proves somebody is a member and never that somebody
+ * is not. With no emergency account confirmed there is nothing to contain, and
+ * `bg.count` is the rule that says so.
+ */
+const xgContainsEmergency: ValidationRule<GroupTarget> = {
+  id: 'xg.containsEmergency',
+  subject: 'exclusionGroup',
+  severity: 'blocker',
+  needs: ['groupMembers'],
+  evaluate: (entry, ctx) => {
+    if (!entry) return groupUnknown()
+    if (entry.sampled) return unknown(F.xgMembershipUnread)
+    if (ctx.breakGlassIds.length === 0) return PASS
+    const members = new Set(entry.memberIds.map((id) => id.toLowerCase()))
+    const missing = ctx.breakGlassIds.filter((id) => !members.has(id.toLowerCase()))
+    if (missing.length === 0) return PASS
+    const names = missing.map((id) => nameOf(ctx, id))
+    return fail(F.xgMissingEmergency(names), { missingAccounts: names })
+  },
+}
+
 const xgMembersApproved: ValidationRule<GroupTarget> = {
   id: 'xg.membersApproved',
   subject: 'exclusionGroup',
@@ -1009,6 +1041,7 @@ export const REGISTRY: ValidationRule<any>[] = [
   bgLastSignIn,
   bgSignInCountries,
   bgMfaSeen,
+  xgContainsEmergency,
   xgMembersApproved,
   xgNoExtraAdmins,
   xgNotDynamic,

@@ -35,7 +35,7 @@ import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
 import { readGroup } from '../../graph/collect/onDemand.ts'
 import type { GroupRead } from '../../graph/collect/presence.ts'
-import { actionableExclusionsGroupId, directoryEvidenceOf, storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
+import { actionableExclusionsGroupId, directoryEvidenceOf, exclusionsGroupIdToVerify } from '../../mapping/safetyChoice.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NameDirectory } from '../../names.ts'
@@ -133,7 +133,12 @@ export function usePlanData(
   // or could not tell (Foundation C). Recomputed with the groups on every scan
   // and never carried across one — a previous scan's reading is not evidence
   // about now.
-  const [directory, setDirectory] = useState<DirectoryEvidence>({ groups: new Map() })
+  //
+  // `partial` here is the product's honest answer and not a placeholder: the
+  // reads below are the groups the tenant's policies name plus the two the
+  // mapping names, so this is a record of what was asked for. Nothing may
+  // conclude from it that the tenant has no exclusions group.
+  const [directory, setDirectory] = useState<DirectoryEvidence>({ groups: new Map(), universe: 'partial' })
   const [groupsLoaded, setGroupsLoaded] = useState(false)
   // The snapshot each load was made for: the plan computes only when the
   // mapping and the groups belong to the snapshot on screen, so a scan (or the
@@ -150,7 +155,7 @@ export function usePlanData(
       setSaved(null)
       setMappingFor(null)
       setGroups(new Map())
-      setDirectory({ groups: new Map() })
+      setDirectory({ groups: new Map(), universe: 'partial' })
       setGroupsFor(null)
       setLoaded(false)
       return
@@ -192,10 +197,13 @@ export function usePlanData(
     // group the mapping names — whether or not a policy references them yet:
     // the checks on the exclusions group read its members, and without them the
     // week-two demo kept a "correct the group" step for a group already right.
-    // Storage only, and only to decide what to read: the operator's answer says
-    // which group this scan has to go and look at. What may go into a policy is
-    // decided afterwards, from the reading (mapping/safetyChoice.ts).
-    const ge = storedExclusionsGroupId(decided)
+    // Storage only, and only to decide what to read: whatever the record holds
+    // names a group this scan has to go and look at, whether an operator
+    // confirmed it or an older version's detection wrote it. Reading an object
+    // proves nothing about who chose it, so this is the one place the record is
+    // read generously. What may go into a policy is decided afterwards, from the
+    // reading and from the checks (mapping/safetyChoice.ts).
+    const ge = exclusionsGroupIdToVerify(decided)
     if (ge) ids.add(ge)
     if (decided.serviceAccountsGroupId) ids.add(decided.serviceAccountsGroupId)
     void (async () => {

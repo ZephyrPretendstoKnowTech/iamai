@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
-import { EXCLUSIONS_RECORD_KEY, storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
+import { EXCLUSIONS_RECORD_KEY, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
@@ -106,7 +106,7 @@ test('saving a group names it on every policy step; before that, no policy step 
   // Save the tenant's group: every exclusions line names it, on the next derivation.
   const gid = [...f.groups.entries()].find(([, g]) => g.displayName === 'Core - Exclusions')![0]
   const decided = applyStepDecisions(f.mapping, { [exclusionsStep.id]: { picked: [gid], at: AT } })
-  assert.equal(storedExclusionsGroupId(decided), gid)
+  assert.equal(operatorExclusionsDecision(decided)?.id ?? null, gid)
   assert.equal(decided.records[EXCLUSIONS_RECORD_KEY].doesNotExist, false)
   const r2 = run(f, decided)
   const after = policyPortals(f, r2, decided)

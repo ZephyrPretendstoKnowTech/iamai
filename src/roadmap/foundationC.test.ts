@@ -45,7 +45,16 @@ import { implementationOffered, isOpenPolicy, unavailableReason } from './operat
 import { GraphRequestError, SectionDisabledError, graphRequest } from '../graph/collect/http.ts'
 import { presenceOfError } from '../graph/collect/presence.ts'
 import type { GroupRead } from '../graph/collect/presence.ts'
-import { applyDetectedDefaults } from '../mapping/wizard.ts'
+import { answersComplete, applyDetectedDefaults } from '../mapping/wizard.ts'
+import { toCoverageMapping } from '../mapping/store.ts'
+import { emptyMappingState } from '../mapping/types.ts'
+import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
+import { accountApplicability, stepEffects } from './operations.ts'
+import { planDates } from '../ui/surfaces/stepVars.ts'
+import { directoryEvidenceOf as directoryReadsOf } from '../mapping/safetyChoice.ts'
+import type { GroupMembers } from '../coverage/population.ts'
+import type { Fixture } from './fixtures/index.ts'
+import type { MappingRecord } from '../mapping/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import {
@@ -55,10 +64,11 @@ import {
   directoryEvidenceOf,
   exclusionsDetectionEvidence,
   exclusionsGroupCandidates,
+  exclusionsGroupIdToVerify,
   exclusionsGroupChoice,
   exclusionsGroupRecord,
   resolveSafetyChoice,
-  storedExclusionsGroupId,
+  operatorExclusionsDecision,
 } from '../mapping/safetyChoice.ts'
 import type { DirectoryEvidence, ObjectEvidence, SafetyCandidate } from '../mapping/safetyChoice.ts'
 
@@ -67,7 +77,8 @@ const Y = '00000000-0000-4000-8000-000000000002'
 
 // ---- Small builders, so each test states only what it is about ----
 
-const evidenceOf = (entries: Record<string, Partial<ObjectEvidence>>): DirectoryEvidence => ({
+const evidenceOf = (entries: Record<string, Partial<ObjectEvidence>>, universe: 'complete' | 'partial' = 'complete'): DirectoryEvidence => ({
+  universe,
   groups: new Map(
     Object.entries(entries).map(([id, e]) => [
       id.toLowerCase(),
@@ -131,7 +142,7 @@ test('3. unknown then present: the same stored answer becomes usable again with 
   const scanN1 = exclusionsGroupChoice({ snapshot, mapping, directory: evidenceOf({ [X]: {} }) })
   assert.equal(scanN1.status, 'confirmed')
   assert.equal(scanN1.actionableId, X, 'the object came back, so the answer is actionable again')
-  assert.equal(storedExclusionsGroupId(mapping), X, 'and the stored choice never changed')
+  assert.equal(operatorExclusionsDecision(mapping)?.id ?? null, X, 'and the stored choice never changed')
   assert.deepEqual(mapping.records[EXCLUSIONS_RECORD_KEY], exclusionsGroupRecord(undefined, X), 'nothing was rewritten in between')
 })
 
@@ -317,14 +328,14 @@ function planWith(name: 'small', directory: DirectoryEvidence): FixtureRun {
 
 test('13. a real plan: a stored confirmation this scan cannot verify reaches no policy, and is not called deleted', () => {
   const f = fixture('small')
-  const stored = storedExclusionsGroupId(f.mapping)!
+  const stored = operatorExclusionsDecision(f.mapping)!.id
   // Every group the scan loaded, except the confirmed one: the request for it failed.
   const partial = new Map(f.groups)
   partial.delete(stored)
   const r = planWith('small', directoryEvidenceFromGroups(partial))
   const c = exclusionsGroupChoice({ snapshot: f.snapshot, mapping: f.mapping, groups: partial, directory: directoryEvidenceFromGroups(partial) })
   assert.equal(c.status, 'unverified', 'unverified, not invalidated: nothing said the group is gone')
-  assert.equal(storedExclusionsGroupId(f.mapping), stored, 'the operator\'s mapping still holds their answer')
+  assert.equal(operatorExclusionsDecision(f.mapping)?.id ?? null, stored, 'the operator\'s mapping still holds their answer')
   assert.ok(!planText(r).includes(stored), 'no step in the plan names the unverified group')
   const step = r.steps.find((s) => s.id === EXCLUSIONS_STEP)!
   assert.notEqual(step.status, 'done', 'the exclusions-group step is not in place')
@@ -336,11 +347,11 @@ test('13. a real plan: a stored confirmation this scan cannot verify reaches no 
 
 test('14. a real plan: a confirmed group Graph proves gone is distinguished from one it could not check', () => {
   const f = fixture('small')
-  const stored = storedExclusionsGroupId(f.mapping)!
+  const stored = operatorExclusionsDecision(f.mapping)!.id
   const partial = new Map(f.groups)
   partial.delete(stored)
   const base = directoryEvidenceFromGroups(partial)
-  const absent: DirectoryEvidence = { groups: new Map([...base.groups, [stored.toLowerCase(), { presence: 'absent', members: 'unknown', displayName: null, memberIds: [], memberCount: null } as ObjectEvidence]]) }
+  const absent: DirectoryEvidence = { universe: base.universe, groups: new Map([...base.groups, [stored.toLowerCase(), { presence: 'absent', members: 'unknown', displayName: null, memberIds: [], memberCount: null } as ObjectEvidence]]) }
   const c = exclusionsGroupChoice({ snapshot: f.snapshot, mapping: f.mapping, groups: partial, directory: absent })
   assert.equal(c.status, 'invalidated')
   assert.equal(c.presence, 'absent')
@@ -353,7 +364,7 @@ test('14. a real plan: a confirmed group Graph proves gone is distinguished from
 
 test('15. a real plan: a confirmed group this scan read is the one the policies carve out, and the only one', () => {
   const f = fixture('small')
-  const stored = storedExclusionsGroupId(f.mapping)!
+  const stored = operatorExclusionsDecision(f.mapping)!.id
   const r = runFixture(f)
   assert.equal(actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups }), stored)
   const offered = r.steps.filter((s) => isOpenPolicy(s) && s.action.json)
@@ -368,7 +379,7 @@ test('15. a real plan: a confirmed group this scan read is the one the policies 
 
 test('17. a real plan: a recommended-only group appears in zero policy operations', () => {
   const f = fixture('small')
-  const stored = storedExclusionsGroupId(f.mapping)!
+  const stored = operatorExclusionsDecision(f.mapping)!.id
   // Nobody has answered; the same tenant, the same groups, the same reads.
   const mapping: MappingState = { ...f.mapping, records: {} }
   const g = { ...f, mapping }
@@ -383,7 +394,7 @@ test('17. a real plan: a recommended-only group appears in zero policy operation
 
 test('19. Foundation A: an unresolved safety input leaves the operation unresolved, with no fallback filling it', () => {
   const f = fixture('small')
-  const stored = storedExclusionsGroupId(f.mapping)!
+  const stored = operatorExclusionsDecision(f.mapping)!.id
   const partial = new Map(f.groups)
   partial.delete(stored)
   const r = runFixture(f, { directory: directoryEvidenceFromGroups(partial) })
@@ -425,14 +436,14 @@ test('no picker default and no detected pass can tick the exclusions group, on a
       assert.equal(defaultDecisions(ctx)[stepId], undefined, `${f.name}: ${stepId} has a pre-ticked default`)
     }
     const ticked = pickerVars(PREREQ_STEP_ID.exclusionsGroup, '{name}', ctx)?.groupsTicked
-    const stored = storedExclusionsGroupId(f.mapping)
+    const stored = operatorExclusionsDecision(f.mapping)?.id ?? null
     assert.deepEqual(ticked, stored === null ? [] : [stored], `${f.name}: the picker ticks something nobody chose`)
     // And a detected pass with a decision in hand still refuses to write it.
     const forced = applyStepDecisions(f.mapping, { [PREREQ_STEP_ID.exclusionsGroup]: { picked: [X], at: f.snapshot.asOf } }, 'detected')
-    assert.equal(storedExclusionsGroupId(forced), stored, `${f.name}: a detected pass wrote the exclusions record`)
+    assert.equal(operatorExclusionsDecision(forced)?.id ?? null, stored, `${f.name}: a detected pass wrote the exclusions record`)
     // An operator's own confirmation, through the same door, does write it.
     const chosen = applyStepDecisions(f.mapping, { [PREREQ_STEP_ID.exclusionsGroup]: { picked: [X], at: f.snapshot.asOf } })
-    assert.equal(storedExclusionsGroupId(chosen), X, `${f.name}: an operator's confirmation is refused`)
+    assert.equal(operatorExclusionsDecision(chosen)?.id ?? null, X, `${f.name}: an operator's confirmation is refused`)
   }
 })
 
@@ -459,12 +470,13 @@ test('the exclusions record has one reader: every consumer asks the choice, not 
 
 test('a group in use whose members would not enumerate: no count on screen, and no reach computed from an assumed one', () => {
   const f = fixture('small')
-  const stored = storedExclusionsGroupId(f.mapping)!
+  const stored = operatorExclusionsDecision(f.mapping)!.id
   const partial = new Map(f.groups)
   partial.delete(stored)
   const base = directoryEvidenceFromGroups(partial)
   // The object read; the membership request failed.
   const directory: DirectoryEvidence = {
+    universe: base.universe,
     groups: new Map([...base.groups, [stored.toLowerCase(), { presence: 'present', members: 'unknown', displayName: 'Core - Exclusions', memberIds: [], memberCount: null } as ObjectEvidence]]),
   }
   const choice = exclusionsGroupChoice({ snapshot: f.snapshot, mapping: f.mapping, groups: partial, directory })
@@ -503,4 +515,294 @@ test('a plan whose policies wait on an unchosen safety object says what holds it
   const clause = FINISH.unwritable(fin.unwritable.count, fin.unwritable.waitsOn.map((id) => stepById[id]?.title ?? id))
   assert.match(clause, /^\d+ steps wait on .*Exclusions Group/)
   assert.match(headerLine1({ steps: 30, inPlace: 5, finish: fin.finish, weeks: '4 weeks', constraint: clause, startedFrom: null }), /cannot finish until \S/, 'the line does not trail off')
+})
+
+// ---- A record is not a decision -------------------------------------------
+//
+// Versions of IAMAI before this module let the detection write the exclusions
+// record itself, with provenance `auto`. An upgraded tenant therefore holds an
+// id nobody chose, and the two questions the old code asked of it were one: "is
+// there an id here?" answered "the operator confirmed this group". Reading it
+// that way turns last year's machine reading into this year's human
+// confirmation of who a policy still lets in.
+//
+// The record stays — it is history, and it names the object the next scan
+// should go and read. What it stops being is an answer.
+
+/** The upgraded tenant: the same group id, written by a detection rather than a person. */
+const legacyAuto = (id: string, name = 'Core - Exclusions'): MappingRecord => ({
+  placeholder: EXCLUSIONS_RECORD_KEY,
+  kind: 'group',
+  group: 'globalExclusion',
+  resolvedId: id,
+  resolvedName: name,
+  provenance: 'auto',
+  doesNotExist: false,
+  validation: null,
+})
+
+test('L1. a legacy detected record, its group present: read it, show it, and never call it the operator’s answer', () => {
+  const mapping = { records: { [EXCLUSIONS_RECORD_KEY]: legacyAuto(X) }, breakGlassUserIds: [] }
+  const ctx = { snapshot: snapshotOf(policiesExcluding([X])), mapping, directory: evidenceOf({ [X]: { displayName: 'Core - Exclusions' } }) }
+  const c = exclusionsGroupChoice(ctx)
+  assert.equal(operatorExclusionsDecision(mapping), null, 'a detection did not decide')
+  assert.equal(c.storedId, null, 'so there is no stored answer')
+  assert.equal(c.actionableId, null, 'and nothing may act on it')
+  assert.equal(actionableExclusionsGroupId(ctx), null, 'no policy operation gets the id')
+  assert.equal(c.unresolved, true)
+  // What it is still good for.
+  assert.equal(c.recordedId, X, 'the record is kept, as history and as an object worth reading')
+  assert.equal(c.recordedProvenance, 'auto', 'and it says what wrote it')
+  assert.equal(exclusionsGroupIdToVerify(mapping), X, 'the next scan goes and reads it')
+  assert.deepEqual(c.candidates.map((k) => k.id), [X], 'and it is a candidate, on the evidence, like any other group')
+})
+
+test('L2. the wizard’s own detected answer does not make coverage call the exclusions confirmed', () => {
+  const snapshot = fixtureSnapshot()
+  const base = { ...emptyMappingState(snapshot.tenantId), records: { [EXCLUSIONS_RECORD_KEY]: legacyAuto(X) } }
+  for (const assumed of ['detected', 'noneFound'] as const) {
+    const state: MappingState = {
+      ...base,
+      wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, trustedLocations: true, serviceAccounts: true, timeZone: true, applicability: true },
+      assumed: { globalExclusion: assumed },
+    }
+    assert.equal(answersComplete(snapshot, state), false, `${assumed}: a detection is not the operator’s answer`)
+    assert.equal(toCoverageMapping(state, snapshot, null).confirmed, false, `${assumed}: and coverage is not told it is`)
+  }
+  // The operator's own confirmation, through the one writer of that record.
+  const confirmed: MappingState = {
+    ...base,
+    records: { [EXCLUSIONS_RECORD_KEY]: exclusionsGroupRecord(legacyAuto(X), X) },
+    wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, trustedLocations: true, serviceAccounts: true, timeZone: true, applicability: true },
+    assumed: { globalExclusion: 'confirmed' },
+  }
+  assert.equal(answersComplete(snapshot, confirmed), true)
+  assert.equal(toCoverageMapping(confirmed, snapshot, X).confirmed, true)
+  // Including the answer "there is no such group yet", which is an answer.
+  const none: MappingState = { ...confirmed, records: { [EXCLUSIONS_RECORD_KEY]: exclusionsGroupRecord(undefined, null) } }
+  assert.equal(answersComplete(snapshot, none), true, 'an operator saying there is none is an operator answering')
+})
+
+test('L3. a scan does not migrate a detected record into a confirmation', () => {
+  const snapshot = fixtureSnapshot()
+  const before: MappingState = {
+    ...emptyMappingState(snapshot.tenantId),
+    records: { [EXCLUSIONS_RECORD_KEY]: legacyAuto(X) },
+    wizardAnswered: { globalExclusion: true },
+    assumed: { globalExclusion: 'detected' },
+  }
+  const after = applyDetectedDefaults(before, snapshot, { knownGroups: [] })
+  assert.equal(after.records[EXCLUSIONS_RECORD_KEY].provenance, 'auto', 'the provenance is not rewritten')
+  assert.equal(after.records[EXCLUSIONS_RECORD_KEY].resolvedId, X, 'and the id is not thrown away either')
+  assert.equal(operatorExclusionsDecision(after), null)
+  // Round trip: the merge a load does keeps both facts as they are.
+  const loaded: MappingState = { ...emptyMappingState(snapshot.tenantId), ...JSON.parse(JSON.stringify(after)) }
+  assert.deepEqual(loaded.records[EXCLUSIONS_RECORD_KEY], after.records[EXCLUSIONS_RECORD_KEY])
+  assert.equal(operatorExclusionsDecision(loaded), null, 'a save and a load is not a confirmation')
+})
+
+test('L4. the upgraded tenant, end to end: nothing the legacy record touches reaches a policy, until a person says so', () => {
+  const base = fixture('small')
+  const chosen = base.mapping.records[EXCLUSIONS_RECORD_KEY].resolvedId as string
+  // The same tenant as ever, with the record as an older version left it: the
+  // right group, the wizard marked answered, the assumption marked detected, and
+  // nobody having chosen anything.
+  const f: Fixture = {
+    ...base,
+    mapping: {
+      ...base.mapping,
+      records: { ...base.mapping.records, [EXCLUSIONS_RECORD_KEY]: legacyAuto(chosen) },
+      assumed: { ...(base.mapping.assumed ?? {}), globalExclusion: 'detected' },
+    },
+  }
+  const r = runFixture(f, { mapping: f.mapping })
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => id, groups: f.groups, directory: r.input.directory, now: f.snapshot.asOf }
+
+  // IAMAI may show the group; it may not tick it, use it, or call it confirmed.
+  assert.equal(defaultDecisions(ctx)[PREREQ_STEP_ID.exclusionsGroup], undefined, 'no pre-ticked default')
+  const vars = pickerVars(PREREQ_STEP_ID.exclusionsGroup, '{name}', ctx)
+  assert.deepEqual(vars?.groupsTicked, [], 'the picker ticks nothing')
+  const offeredIds = (vars?.groupsIds ?? []) as string[]
+  assert.ok(offeredIds.some((id) => id.toLowerCase() === chosen.toLowerCase()), 'the group is still offered to choose')
+  assert.equal(toCoverageMapping(f.mapping, f.snapshot, null).confirmed, false, 'coverage is not told the safety answer is confirmed')
+  assert.ok(!planText(r).includes(chosen), 'no step in the plan names the group')
+  // The exact claim: the plan is the plan of a tenant with no answer at all.
+  const unanswered = runFixture(noExclusionsAnswer(base), { mapping: noExclusionsAnswer(base).mapping })
+  const offeredIn = (run: FixtureRun): string[] => run.steps.filter((x) => isOpenPolicy(x) && implementationOffered(x)).map((x) => x.id).sort()
+  assert.deepEqual(offeredIn(r), offeredIn(unanswered), 'no implementation became available because of the detection')
+  assert.ok(r.steps.filter((s) => isOpenPolicy(s)).some((s) => (s.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}')), 'the policies that need the carve-out wait for it')
+
+  // The operator confirms the same group, through the decision path.
+  const decided = applyStepDecisions(f.mapping, { [PREREQ_STEP_ID.exclusionsGroup]: { picked: [chosen], at: f.snapshot.asOf } })
+  assert.equal(decided.records[EXCLUSIONS_RECORD_KEY].provenance, 'confirmed')
+  assert.equal(operatorExclusionsDecision(decided)?.id, chosen)
+  const after = runFixture({ ...f, mapping: decided }, { mapping: decided })
+  const step = after.steps.find((s) => s.id === EXCLUSIONS_STEP)!
+  assert.ok((step.checks?.total ?? 0) > 0, 'the group’s checks now run against it')
+  const offered = after.steps.filter((s) => isOpenPolicy(s) && implementationOffered(s))
+  assert.ok(offered.length > 0, 'and policy generation receives the group')
+  const evidence = { groupMembers: Object.fromEntries([...f.groups].map(([id, g]) => [id.toLowerCase(), g.memberIds])) }
+  for (const s of offered) {
+    assert.ok(stepEffects(s).some((e) => (e.scope.groups.exclude ?? []).some((g) => g.toLowerCase() === chosen.toLowerCase())), `${s.id}: the policy excludes the confirmed group`)
+    for (const id of f.mapping.breakGlassUserIds) {
+      assert.ok(stepEffects(s).every((e) => accountApplicability(e.scope, id, f.snapshot as never, evidence) === 'out'), `${s.id}: and every emergency account is structurally out of it`)
+    }
+  }
+})
+
+// ---- The report is the authority; the step's word is its projection --------
+//
+// One check used to decide whether the exclusions-group step was In place — the
+// group being excluded from every policy — and the other blockers did not. So a
+// group holding an unapproved member, a group holding an administrator, a
+// dynamic group and a group whose membership nothing read all reached In place;
+// and a second line then cleared the gate for any step whose status read done,
+// which let the projection overrule the report that produced it. Between them,
+// every deny-capable step in the plan was released by a group nobody had checked.
+
+/** The healthy tenant: a group in use, every check passing, the step In place. */
+const healthy = (): Fixture => fixture('getiamai')
+
+/** That tenant with one thing wrong with the group, and nothing else changed. */
+type GroupEntry = NonNullable<ReturnType<GroupMembers['get']>>
+function withGroup(f: Fixture, change: (g: GroupEntry) => Partial<GroupEntry>): Fixture {
+  const id = f.mapping.records[EXCLUSIONS_RECORD_KEY].resolvedId as string
+  const groups: GroupMembers = new Map([...f.groups])
+  const before = groups.get(id) as GroupEntry
+  groups.set(id, { ...before, ...change(before) })
+  return { ...f, groups }
+}
+
+test('G1-G3. a blocking exclusion-group check that has not passed holds the step, the gate and the policies', () => {
+  const good = runFixture(healthy())
+  const goodStep = good.steps.find((s) => s.id === EXCLUSIONS_STEP)!
+  assert.equal(goodStep.status, 'done', 'the healthy tenant’s group is In place')
+  assert.ok(good.steps.filter((s) => isOpenPolicy(s)).some((s) => implementationOffered(s)), 'and its policies are offered')
+
+  const f = healthy()
+  const bg = f.mapping.breakGlassUserIds
+  const outsider = (f.snapshot.users.find((u) => !bg.includes(u.id)) as { id: string }).id
+  const cases: [string, Fixture][] = [
+    // Somebody in the group who does not belong there: every policy the group is
+    // excluded from does not apply to them.
+    ['an unapproved member', withGroup(f, (g) => ({ memberIds: [...g.memberIds, outsider], memberCount: g.memberCount + 1 }))],
+    // A rule that adds members adds exclusions, without anybody deciding to.
+    ['a dynamic membership rule', withGroup(f, () => ({ membershipRule: 'user.department -eq "IT"' }))],
+    // An emergency account that is not in the group the policies exclude.
+    ['a missing emergency account', withGroup(f, (g) => ({ memberIds: g.memberIds.filter((m) => m !== bg[0]), memberCount: g.memberCount - 1 }))],
+  ]
+  for (const [why, broken] of cases) {
+    const r = runFixture(broken)
+    const step = r.steps.find((s) => s.id === EXCLUSIONS_STEP)!
+    assert.notEqual(step.status, 'done', `${why}: the step is not In place`)
+    assert.ok((step.checks?.failing ?? 0) > 0, `${why}: and it says which check`)
+    const deny = r.steps.filter((s) => isOpenPolicy(s) && s.blockedBy.includes(EXCLUSIONS_STEP))
+    assert.ok(deny.length > 0, `${why}: the gate still holds every step that can deny access`)
+    const id = (f.mapping.records[EXCLUSIONS_RECORD_KEY].resolvedId as string).toLowerCase()
+    const bodies = JSON.stringify(r.steps.flatMap((s) => (s.action.resolution?.policies ?? []).map((o) => [o.body, o.target]))).toLowerCase()
+    assert.ok(!bodies.includes(id), `${why}: no policy in the plan is written with the group`)
+    assert.ok(r.steps.filter((s) => isOpenPolicy(s)).some((s) => (s.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}')), `${why}: the policies that need the carve-out wait for it`)
+  }
+
+  // A membership nothing read: unknown on a blocker blocks, and is not a pass.
+  const id = f.mapping.records[EXCLUSIONS_RECORD_KEY].resolvedId as string
+  const partial: GroupMembers = new Map([...f.groups])
+  partial.delete(id)
+  const base = directoryEvidenceFromGroups(partial, 'complete')
+  const unread = runFixture({ ...f, groups: partial }, {
+    groupMembers: partial,
+    directory: { universe: 'complete', groups: new Map([...base.groups, [id.toLowerCase(), { presence: 'present', members: 'unknown', displayName: 'Core - Exclusions', memberIds: [], memberCount: null } as ObjectEvidence]]) },
+  })
+  const unreadStep = unread.steps.find((s) => s.id === EXCLUSIONS_STEP)!
+  assert.notEqual(unreadStep.status, 'done', 'an unknown blocker is not a pass')
+  assert.ok(unread.steps.filter((s) => isOpenPolicy(s)).some((s) => (s.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}')), 'and the group reaches no policy')
+})
+
+test('G4. a warning does not hold the step, and a failing warning does not hold a policy', () => {
+  // The group is bigger than the emergency accounts warrant and is mail-enabled:
+  // both are recommendations, neither is a blocker, and neither is the way in.
+  const f = withGroup(healthy(), () => ({ mailEnabled: true }))
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === EXCLUSIONS_STEP)!
+  assert.equal(step.status, 'done', 'the step is In place with a warning outstanding')
+  assert.ok(r.steps.filter((s) => isOpenPolicy(s)).some((s) => implementationOffered(s)), 'and the policies are written')
+})
+
+test('G5. the gate is the report’s, and no status can answer back to it', () => {
+  // The gate takes the reports and nothing else: there is no status to read, so
+  // a saved done, a mistakenly satisfied step and a stale projection have no way
+  // in. The line that used to clear a gate whenever the gating step's status read
+  // done is what this holds shut, and it is a line, so the source says so too.
+  const f = withGroup(healthy(), (g) => ({ memberIds: g.memberIds.slice(0, 1), memberCount: 1 }))
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === EXCLUSIONS_STEP)!
+  assert.notEqual(step.status, 'done', 'the step cannot be In place while a blocker stands')
+  assert.ok(r.steps.some((s) => isOpenPolicy(s) && s.blockedBy.includes(EXCLUSIONS_STEP)), 'and the gate holds')
+  const source = readFileSync('src/roadmap/generate.ts', 'utf8')
+  const clearing = source.split('\n').filter((l) => /gate\s*=\s*null/.test(l) && !l.trim().startsWith('//'))
+  assert.deepEqual(clearing, [], 'a line clears the gate after the reports decided it')
+})
+
+// ---- The candidate universe ------------------------------------------------
+//
+// Both candidate rules ask a question about the tenant — "does a group here
+// already do this?" — and the app reads the groups its policies name plus the
+// two the mapping names, and searches the rest only while somebody types. An
+// empty answer from that reading is not "no". Concluding one told an operator
+// with a perfectly good exclusions group, referenced by no policy yet, to go and
+// build a second one.
+
+test('U1. every policy-referenced group read, nothing qualifies, universe partial: undetermined, not none-found', () => {
+  const ctx = { snapshot: snapshotOf(policiesExcluding([X], 1)), mapping: mappingOf(null), directory: evidenceOf({ [X]: { displayName: 'Sales' } }, 'partial') }
+  const c = exclusionsGroupChoice(ctx)
+  assert.equal(c.evidence, 'incomplete', 'a complete record of what was asked for is not a complete universe')
+  assert.deepEqual(c.candidates, [])
+  assert.notEqual(c.status, 'none-found')
+  assert.equal(c.status, 'undetermined')
+})
+
+test('U2. a suitable group outside the read universe: IAMAI does not conclude there is none', () => {
+  // The tenant has "Emergency Exclusions", holding exactly the emergency
+  // accounts, referenced by no Conditional Access policy. The app never reads it.
+  const read = evidenceOf({ [X]: { displayName: 'Sales' } }, 'partial')
+  const ctx = { snapshot: snapshotOf(policiesExcluding([X], 1)), mapping: mappingOf(null, ['u1', 'u2']), directory: read }
+  assert.equal(exclusionsGroupChoice(ctx).status, 'undetermined', 'nothing found, and nothing concluded')
+  // The same tenant read whole: the group is there, and it is the candidate.
+  const whole = evidenceOf({ [X]: { displayName: 'Sales' }, [Y]: { displayName: 'Emergency Exclusions', memberIds: ['u1', 'u2'], memberCount: 2 } })
+  const seen = exclusionsGroupChoice({ ...ctx, directory: whole })
+  assert.deepEqual(seen.candidates.map((k) => k.id), [Y])
+  assert.equal(seen.status, 'recommended', 'and now it can be put forward')
+  assert.equal(seen.actionableId, null, 'as a suggestion, which is not a confirmation')
+})
+
+test('U3. reading one more group does not complete a partial universe', () => {
+  // What a search does: it adds an object to the reading. It says nothing at all
+  // about the groups nobody searched for.
+  const one = evidenceOf({ [X]: { displayName: 'CA-Exclusions' } }, 'partial')
+  const ctx = { snapshot: snapshotOf(policiesExcluding([X])), mapping: mappingOf(null), directory: one }
+  const c = exclusionsGroupChoice(ctx)
+  assert.deepEqual(c.candidates.map((k) => k.id), [X], 'the group read is offered')
+  assert.equal(c.evidence, 'incomplete')
+  assert.equal(c.status, 'undetermined', 'one candidate under a partial universe is not the only one')
+  assert.equal(c.recommended, null)
+})
+
+test('U4. the app’s own reading is partial, and the step offers to create rather than proving nothing exists', () => {
+  // The product path: on-demand reads of the groups the policies name and the
+  // ones the mapping names (ui/surfaces/planData.ts).
+  const reads: GroupRead[] = [{ groupId: X, presence: 'present', reason: null, object: { displayName: 'Sales', membershipRule: null, mailEnabled: false }, members: 'complete', memberIds: [], memberCount: 0, asOf: '2026-09-05T00:00:00.000Z' }]
+  assert.equal(directoryReadsOf(reads).universe, 'partial', 'reads of what somebody asked for are not the tenant')
+  const f = noExclusionsAnswer(fixture('demo'))
+  const r = runFixture(f, { mapping: f.mapping })
+  const step = r.steps.find((s) => s.id === EXCLUSIONS_STEP)!
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
+  const ex = stepVars(step, ctx) as Record<string, unknown>
+  assert.equal(ex.needsCreate, false, 'nothing was proved not to exist')
+  const partial: StepVarContext = { ...ctx, directory: directoryReadsOf([]) }
+  const exPartial = stepVars(step, partial) as Record<string, unknown>
+  assert.equal(exPartial.needsCreate, false, 'still no proof')
+  assert.equal(exPartial.createIfNeeded, true, 'and the instructions are offered as an offer')
+  const lines = stepLines(step, partial)
+  assert.ok(lines.some((l) => /Create one if .* does not already have an exclusions group/.test(l)), `the words say which it is: ${JSON.stringify(lines)}`)
+  assert.ok(!lines.some((l) => /No exclusions group recognised/.test(l)), 'and never that IAMAI proved there is none')
 })

@@ -23,7 +23,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { accountApplicability, effectOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import { accountApplicability, effectOf, emergencyExposureOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
 import { analysisUnknown, canDenyAccess, effectsOf, familyReading, measuredReach, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
 import { batchClassOf, buildSchedule, dependencyGraph, observationDaysFor } from './schedule.ts'
 import { eventsFor, nobodyAffected, noticeDaysFor } from './timing.ts'
@@ -59,6 +59,9 @@ import { hasBaselineConflict } from './baselineConflict.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { stepLines } from '../ui/surfaces/stepExport.ts'
+import { jsonOffered, stepOperations } from '../ui/surfaces/stepJson.ts'
+import { directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
+import type { DirectoryEvidence, ObjectEvidence } from '../mapping/safetyChoice.ts'
 import type { Fixture } from './fixtures/index.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { lockoutCount } from './lockout.ts'
@@ -1181,4 +1184,161 @@ test('nothing new reads the goal family or the floor for a policy consequence', 
   }
   for (const file of Object.keys(allowed)) if (!counted[file]) wrong.push(`${file}: no longer reads either; remove it from the list`)
   assert.deepEqual(wrong, [])
+})
+
+// ---- The emergency-access boundary on the final operation --------------------
+//
+// The last thing asked of an open policy before any channel offers it, and the
+// only guard that reads the policy the tenant will actually be left with. The
+// exclusions group's own checks are about an object; the Phase 0 gate is about a
+// step; neither opens a finished policy and asks who it reaches. This does,
+// through the same decoder as every other reading, and the question is
+// structural: is each confirmed emergency access account out of this policy's
+// user scope? Out is the only answer that lets it through — `in` is a policy
+// that covers the way back in, and `unknown` is a scope resolved against a
+// membership nothing read.
+//
+// The fixture sweep further up proves the generated plans are safe. It is not
+// the boundary: a resolver bug, a second policy in a pair, or a later change to
+// the exclusions-group checks could each produce a final policy that reaches an
+// emergency account, and this is what refuses one when it happens.
+
+type TenantPolicy = { id?: string; conditions?: { users?: { excludeGroups?: string[] } } }
+
+/**
+ * The reachable shape of the hole, and the reason this guard is not the fixture
+ * sweep. Three fixtures carry a tenant policy the plan adjusts without touching
+ * its users clause: the change is a grant or a state, so the policy the tenant
+ * is left with keeps whatever it already excluded. Take that exclusion away and
+ * the plan is proposing to enforce a policy that reaches the emergency accounts,
+ * with nothing wrong anywhere the other guards look — the exclusions group is
+ * confirmed, read, and passes every check, and the plan is not writing the users
+ * clause at all.
+ */
+function withoutTenantExclusions(f: Fixture, policyIds: Set<string>): Fixture {
+  const snapshot = structuredClone(f.snapshot)
+  for (const raw of snapshot.config.caPolicies?.rows ?? []) {
+    const p = raw as TenantPolicy
+    if (p.id !== undefined && policyIds.has(String(p.id)) && p.conditions?.users) delete p.conditions.users.excludeGroups
+  }
+  return { ...f, snapshot }
+}
+
+test('a final policy that reaches an emergency account is offered by no channel at all', () => {
+  let covered = 0
+  for (const { f, r } of runs) {
+    const bg = f.mapping.breakGlassUserIds
+    // The steps whose change leaves the tenant's own users clause alone.
+    const adjusted = new Map<string, Set<string>>()
+    for (const s of openPolicies(r.steps)) {
+      const ids = operationsOf(s)
+        .filter((o) => o.mode === 'update' && (o.body as { conditions?: { users?: unknown } }).conditions?.users === undefined)
+        .map((o) => String(o.policyId))
+      if (ids.length > 0) adjusted.set(s.id, new Set(ids))
+    }
+    if (adjusted.size === 0) continue
+    covered += 1
+    const all = new Set([...adjusted.values()].flatMap((x) => [...x]))
+    const unsafe = runFixture(withoutTenantExclusions(f, all))
+    for (const stepId of adjusted.keys()) {
+      const s = unsafe.steps.find((x) => x.id === stepId)
+      if (!s) continue
+      const targets = (s.action.resolution?.policies ?? []).map((o) => (o.mode === 'update' ? o.target : o.body) as Record<string, unknown> | undefined)
+      const reaches = bg.some((id) => targets.some((t) => t !== undefined && accountApplicability(effectOf(t).scope, id, f.snapshot as never, membersOf(f)) === 'in'))
+      assert.equal(reaches, true, `${f.name} ${stepId}: the policy the tenant would be left with really does reach an emergency account`)
+      // One result, and every channel reads it.
+      assert.equal(unavailableReason(s), 'unsafe-emergency-access', `${f.name} ${stepId}: named for what it is`)
+      assert.equal(implementationOffered(s), false, `${f.name} ${stepId}: no implementation`)
+      assert.deepEqual(operationsOf(s), [], `${f.name} ${stepId}: no operation`)
+      assert.deepEqual(stepEffects(s), [], `${f.name} ${stepId}: nothing reads it as a policy`)
+      assert.equal(jsonOffered(s), false, `${f.name} ${stepId}: no JSON and no download`)
+      assert.deepEqual(stepOperations(s), [], `${f.name} ${stepId}: no PowerShell`)
+      assert.equal(stepPortalLines(s, { nameOf: (id: string) => id, policyName: () => 'P' } as never), null, `${f.name} ${stepId}: no portal instructions`)
+      assert.deepEqual(s.rings, [], `${f.name} ${stepId}: no ring plan`)
+      assert.equal(eventsFor(s, { rhythm: unsafe.schedule.rhythm, timeZone: 'UTC' } as never, unsafe.schedule.start), null, `${f.name} ${stepId}: no announcement, enforcement, completion or rollback event`)
+      assert.equal(unsafe.schedule.waveOf[s.id] ?? null, null, `${f.name} ${stepId}: no dated wave`)
+      const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+      assert.ok(!stepLines(s, ctx).some((l) => /Entra admin center/.test(l)), `${f.name} ${stepId}: the export carries no instructions`)
+      // And the reason is the policy's scope, never a rollout that quietly dropped them.
+      for (const id of bg) assert.equal((rolloutCohort(s) ?? []).includes(id), false, `${f.name} ${stepId}: and no cohort`)
+    }
+  }
+  assert.ok(covered > 0, 'at least one fixture adjusts a policy without rewriting its users clause')
+})
+
+test('the reading itself: out is the only answer that lets a policy through', () => {
+  const { f } = runs.find((x) => x.f.name === 'small') as { f: Fixture; r: FixtureRun }
+  const bg = f.mapping.breakGlassUserIds
+  const group = f.mapping.records['__globalExclusion'].resolvedId as string
+  const policy = (users: Record<string, unknown>): Record<string, unknown> => ({
+    displayName: 'P',
+    state: 'enabled',
+    conditions: { users, applications: { includeApplications: ['All'] } },
+    grantControls: { operator: 'OR', builtInControls: ['mfa'] },
+  })
+  const read = { groupMembers: { [group.toLowerCase()]: [...bg] } }
+  const effects = (bodies: Record<string, unknown>[]): ReturnType<typeof effectOf>[] => bodies.map(effectOf)
+
+  // All users, excluding a group this scan read and proved holds them: out.
+  assert.equal(emergencyExposureOf(effects([policy({ includeUsers: ['All'], excludeGroups: [group] })]), bg, f.snapshot as never, read), null)
+  // All users, excluding nothing that covers them: in.
+  assert.deepEqual(emergencyExposureOf(effects([policy({ includeUsers: ['All'] })]), bg, f.snapshot as never, read), { reached: [...bg], unproven: [] })
+  // All users, excluding a group nothing answers for: unknown, and unknown is not safety.
+  assert.deepEqual(emergencyExposureOf(effects([policy({ includeUsers: ['All'], excludeGroups: [group] })]), bg, f.snapshot as never, {}), { reached: [], unproven: [...bg] })
+  // A pair: one half safe, one half not. The step is what an operator acts on, so the step is held.
+  const pair = effects([policy({ includeUsers: ['All'], excludeGroups: [group] }), policy({ includeUsers: ['All'] })])
+  assert.deepEqual(emergencyExposureOf(pair, bg, f.snapshot as never, read), { reached: [...bg], unproven: [] })
+  // No emergency account confirmed: nothing to contain, and no invented finding.
+  assert.equal(emergencyExposureOf(effects([policy({ includeUsers: ['All'] })]), [], f.snapshot as never, read), null)
+})
+
+test('an exclusion group whose membership nothing read holds every policy that relies on it', () => {
+  const { f } = runs.find((x) => x.f.name === 'small') as { f: Fixture; r: FixtureRun }
+  const stored = f.mapping.records['__globalExclusion'].resolvedId as string
+  // The group exists — the operator's choice is verified — and this scan could
+  // not enumerate who is in it. Nothing that depends on the carve-out is offered,
+  // and whatever is offered proves the accounts out by its own scope rather than
+  // by a group nobody read.
+  const partial = new Map(f.groups)
+  partial.delete(stored)
+  const base = directoryEvidenceFromGroups(partial, 'complete')
+  const withUnread: DirectoryEvidence = {
+    universe: 'complete',
+    groups: new Map([...base.groups, [stored.toLowerCase(), { presence: 'present', members: 'unknown', displayName: 'Core - Exclusions', memberIds: [], memberCount: null } as ObjectEvidence]]),
+  }
+  const r = runFixture({ ...f, groups: partial }, { groupMembers: partial, directory: withUnread })
+  const evidence = { groupMembers: Object.fromEntries([...partial].map(([id, g]) => [id.toLowerCase(), g.memberIds])) }
+  let held = 0
+  for (const s of openPolicies(r.steps)) {
+    if ((s.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}')) {
+      assert.equal(implementationOffered(s), false, `${s.id}: a policy that relies on the carve-out is held`)
+      held += 1
+    }
+    if (!implementationOffered(s)) continue
+    for (const id of f.mapping.breakGlassUserIds) {
+      assert.ok(stepEffects(s).every((e) => accountApplicability(e.scope, id, f.snapshot as never, evidence) === 'out'), `${s.id}: offered, so its own scope proves the emergency accounts out`)
+    }
+  }
+  assert.ok(held > 0, 'policies do rely on the carve-out in this fixture')
+})
+
+test('a workload-only policy answers out for every account, and raises no false boundary', () => {
+  const { f } = runs.find((x) => x.f.name === 'small') as { f: Fixture; r: FixtureRun }
+  const workload = { displayName: 'W', state: 'enabled', conditions: { clientApplications: { includeServicePrincipals: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }
+  const scope = effectOf(workload).scope
+  assert.equal(scope.workloadOnly, true, 'the policy names no people at all')
+  for (const id of f.mapping.breakGlassUserIds) assert.equal(accountApplicability(scope, id, f.snapshot as never, {}), 'out', 'so no emergency account is in scope, and no users clause has to be invented for one')
+})
+
+test('the step is the unit: one unsafe or unproven policy holds all of it, in place or not', () => {
+  const { f } = runs.find((x) => x.f.name === 'small') as { f: Fixture; r: FixtureRun }
+  const bg = f.mapping.breakGlassUserIds
+  const step = { goalId: 'x', kind: 'create', status: 'ready', action: { kind: 'create', summary: [], json: null, portalSteps: [], emergencyExposure: { reached: [bg[0]], unproven: [] } } } as unknown as Step
+  assert.equal(unavailableReason(step), 'unsafe-emergency-access')
+  assert.equal(implementationOffered(step), false)
+  const unproven = { ...step, action: { ...step.action, emergencyExposure: { reached: [], unproven: [bg[1] ?? bg[0]] } } } as Step
+  assert.equal(unavailableReason(unproven), 'unverified-emergency-exclusion', 'the two facts are told apart')
+  assert.equal(implementationOffered(unproven), false)
+  // Being already in place does not cover it up, exactly as a self-contradicting baseline does not.
+  assert.equal(unavailableReason({ ...step, status: 'done' } as Step), 'unsafe-emergency-access', 'in place is not an answer to this')
 })

@@ -28,6 +28,7 @@ export const RULE_TO_FIX: Record<string, string> = {
   'bg.noLicenceNeeded': 'no-licence-no-mailbox',
   'bg.nameIdentifiesPurpose': 'display-name',
   'bg.lastSignIn': 'recent-sign-in',
+  'xg.containsEmergency': 'all-emergency-accounts',
   'xg.membersApproved': 'members-only-emergency',
   'xg.noExtraAdmins': 'no-admin-members',
   'xg.notDynamic': 'not-dynamic',

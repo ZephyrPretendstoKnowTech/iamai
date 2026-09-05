@@ -113,6 +113,18 @@ export type Action = {
    * so it will not guess. The step says so and waits for a person to sort it out.
    */
   unmatchedPair?: boolean
+  /**
+   * The emergency access accounts this step's *final* policies do not put out of
+   * scope (Foundation A, roadmap/generate.ts emergencyExposureOf). `reached` is
+   * an account a final user scope names; `unproven` is one the scope cannot
+   * settle either way on the membership this scan read completely.
+   *
+   * Written on the action before anything reads the step, because either list
+   * being non-empty is the last word on whether the policy may be offered at
+   * all — the step then has no operation, no cohort, no rings and no dates,
+   * exactly as a missing object leaves it.
+   */
+  emergencyExposure?: { reached: string[]; unproven: string[] }
 }
 
 /**

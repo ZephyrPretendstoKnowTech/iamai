@@ -438,6 +438,7 @@ export function renderStep(st: Record<string, any>): string {
   if (w.steps) parts.push(ol(w.steps, ex))
   if (w.generic) parts.push('<p class="sub">For everyone else:</p>' + ol(w.generic, ex))
   if (w.new) parts.push('<p class="sub">If the policy does not exist yet:</p>' + ol(w.new, ex))
+  if (w.createIfNeeded) parts.push(p(w.createIfNeeded, ex))
   if (w.create) parts.push('<p class="sub">Create:</p>' + ol(w.create, ex))
   if (w.fallback) parts.push('<p class="sub">' + esc(w.fallback.when) + '</p>' + ol(w.fallback.steps, ex))
   if (w.correct) parts.push('<p class="sub">Correct (when it already exists):</p>' + ol(w.correct, ex))

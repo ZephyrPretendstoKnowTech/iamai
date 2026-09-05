@@ -42,9 +42,10 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const portal = cs.kind === 'policy' ? stepPortalLines(step, names) : null
   // The screen's rule, in the export: where no implementation is offered the
   // export carries the explanation, never the instructions
-  // (roadmap/operations.ts). The three reasons a policy cannot be implemented —
-  // an object it names is missing, a pair the plan cannot match, a baseline that
-  // contradicts itself — each carry their own next action and none of them
+  // (roadmap/operations.ts). The reasons a policy cannot be implemented — an
+  // object it names is missing, a pair the plan cannot match, a baseline that
+  // contradicts itself, a final scope that reaches the emergency accounts or
+  // cannot be shown not to — each carry their own next action and none of them
   // carries a rollout.
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
   const suppressed = cs.kind === 'policy' && !implementationOffered(step)
@@ -52,6 +53,8 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const unmatched = reason === 'unmatched-pair'
   const conflicted = reason === 'baseline-conflict'
   const noOperation = reason === 'no-operation'
+  const emergencyUnsafe = reason === 'unsafe-emergency-access'
+  const emergencyUnproven = reason === 'unverified-emergency-exclusion'
   const inPlace = suppressed && reason === null && isPreserved(step)
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   const lines: string[] = []
@@ -66,6 +69,8 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))
   else if (conflicted && typeof cs.baselineConflict === 'string') lines.push(fillText(cs.baselineConflict, ex))
   else if (noOperation) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.noOperation), { tenant: String(ex.tenant ?? '') }))
+  else if (emergencyUnsafe) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnsafe), { tenant: String(ex.tenant ?? '') }))
+  else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))
   else if (inPlace) lines.push(String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep))
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   // Nothing that implies the policy can be rolled out while it cannot be written:
@@ -205,7 +210,8 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   add(decisionLine(d, answerOf(ctx.mapping, step.id, 'decision')))
   for (const o of Array.isArray(d.options) ? d.options : []) add(o)
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
-  if (ex.needsCreate && Array.isArray(w.create)) for (const l of w.create) add(l)
+  if (ex.createIfNeeded && typeof w.createIfNeeded === 'string') add(w.createIfNeeded)
+  if ((ex.needsCreate || ex.createIfNeeded) && Array.isArray(w.create)) for (const l of w.create) add(l)
   const fixes = (w.checkFixes ?? {}) as Record<string, string>
   for (const [key, vals] of (Array.isArray(ex.failingChecks) ? ex.failingChecks : []) as [string, Record<string, unknown>][]) add(fixes[key], { ...ex, ...vals })
   const more = (cs.more ?? {}) as Record<string, unknown>

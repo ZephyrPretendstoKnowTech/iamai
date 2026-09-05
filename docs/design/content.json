@@ -744,6 +744,8 @@
       "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
       "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
       "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
+      "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
+      "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",
@@ -1111,6 +1113,7 @@
       },
       "whatToDo": {
         "lead": "Fix each failing check. {failing} of {total} checks fail today.",
+        "createIfNeeded": "Create one if {tenant} does not already have an exclusions group. IAMAI reads the groups your policies name, not every group in the tenant, so it cannot tell you there is none.",
         "create": [
           "Entra admin center → Entra ID → Groups → New group → Security; membership Assigned, never Dynamic.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
@@ -1118,6 +1121,7 @@
           "Leave it without a licence and not mail-enabled."
         ],
         "checkFixes": {
+          "all-emergency-accounts": "Add {list:missingAccounts} to the group: every policy excludes the group and never an account by name, so an emergency account outside it is covered by every policy the group is excluded from.",
           "members-only-emergency": "Remove {list:extraMembers}: only the emergency accounts belong here, and anyone else in this group is outside every policy it is excluded from.",
           "no-admin-members": "{name} holds {role} and is in the group besides the emergency accounts; an excluded administrator is the most valuable unprotected account in the tenant. Remove them.",
           "not-dynamic": "The group is dynamic; recreate it with assigned membership.",
