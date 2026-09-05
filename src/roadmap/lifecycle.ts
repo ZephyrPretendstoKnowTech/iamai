@@ -127,10 +127,18 @@ export function advanceState(step: Step, patch: Partial<StepState>): boolean {
 }
 
 /**
- * The state a stored status word stood for. The one place a word is read back
- * into a state: a plan record written before this contract existed carries the
- * word and nothing else. Everything live runs the other way — the state is the
- * authority and the word is derived from it.
+ * The state a stored status word stood for.
+ *
+ * Nothing in the engine calls this any more, and nothing should: a word is a
+ * projection of a state, and reading one back was how a saved plan put a fact
+ * back on a step after the evidence that produced it had gone — a policy
+ * "ready to enforce" that no scan had watched, a gate "done" that no longer
+ * passed. Every step works its own state out from the scan in front of it
+ * (roadmap/progress.ts mergePersisted). What survives a save is what a scan
+ * cannot re-derive, and it is stored as itself.
+ *
+ * It remains as a word-to-state mapper for tests that build a step in a given
+ * state, and for reading a file written before that was true.
  */
 export function stateForStatus(status: StepStatus): Partial<StepState> {
   if (status === 'skipped') return { setAside: true }
