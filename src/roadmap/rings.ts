@@ -6,7 +6,7 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NamingConvention } from '../coverage/naming.ts'
 import { proposedGroupName } from '../coverage/naming.ts'
 import type { Ring, RingTargeting, Step } from './types.ts'
-import { canDenyAccess } from './strand.ts'
+import { analysisUnknown, canDenyAccess, effectsOf, operationReach } from './strand.ts'
 
 /** Ring counts and sizes by active users (roadmap-v2.md §1 table). */
 export type RingBand = {
@@ -56,6 +56,12 @@ export function ringBandFor(activeUsers: number, longSoak = true): RingBand {
  */
 export function ringable(step: Step): boolean {
   if (step.status === 'done' || step.status === 'skipped') return false
+  // A staged rollout is a plan for a policy somebody can read. Where the policy's
+  // own analysis cannot settle what it does or who it reaches, a ring plan would
+  // be a proposal about people nobody has established are in scope, so the step
+  // says what is missing instead of naming four groups (roadmap/strand.ts
+  // analysisUnknown).
+  if (analysisUnknown(step)) return false
   return canDenyAccess(step)
 }
 
@@ -169,7 +175,13 @@ const partitionCache = new WeakMap<string[], { name: string; who: string | null;
 export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   if (!ringable(step)) return []
   const band = ringBandFor(ctx.activeUsers)
-  const pool = step.population.ids.filter((id) => !ctx.breakGlassIds.has(id))
+  // The people a ring proposes are the people the policy actually reaches. The
+  // step's list is where the candidates come from; each policy's own scope says
+  // which of them this rollout is about, and somebody it provably leaves alone is
+  // in no ring of it (roadmap/strand.ts operationReach).
+  const effects = effectsOf(step)
+  const reaches = (id: string): boolean => effects === null || effects.some((e) => operationReach(e, id, ctx.snapshot).answer !== 'out')
+  const pool = step.population.ids.filter((id) => !ctx.breakGlassIds.has(id) && reaches(id))
   const total = pool.length
   const useFilter = total > FILTER_THRESHOLD
   const groupName = (ring: string): string => proposedGroupName(ring, step.title, ctx.naming).name
@@ -181,7 +193,7 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   }
 
   type Draft = { name: string; who: string | null; ids: string[]; kind: RingTargeting['kind']; departments: string[] }
-  const cached = partitionCache.get(step.population.ids)
+  const cached = partitionCache.get(pool.length === step.population.ids.length ? step.population.ids : pool)
   const drafts: Draft[] = cached ? cached : []
   if (!cached) {
   if (band.pilot > 0) {
@@ -201,7 +213,7 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
     drafts.push({ name: 'ring-2', who: null, ids: take(depts.flatMap(([, ids]) => ids)), kind: 'group', departments: names })
   }
   drafts.push({ name: 'everyone', who: null, ids: take([...remaining]), kind: 'all', departments: [] })
-  partitionCache.set(step.population.ids, drafts)
+  partitionCache.set(pool.length === step.population.ids.length ? step.population.ids : pool, drafts)
   }
 
 

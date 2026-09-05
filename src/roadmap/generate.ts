@@ -8,6 +8,8 @@ import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
 import { isOpenPolicy, isValidOperation, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import type { PolicyEffect } from './operations.ts'
+import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
@@ -25,7 +27,7 @@ import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers, notPeopleIds } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { lockoutCount } from './lockout.ts'
-import { accountVerdict, effectsOf, familyReading, operationReach, stepAccountVerdict } from './strand.ts'
+import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
@@ -66,6 +68,33 @@ import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviatio
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
 export const SERVICE_ACCOUNTS_TRUSTED_GOAL = 'service-accounts-trusted-network'
+
+/** The combinations that are a passkey or a security key and nothing weaker. */
+const PASSKEY_ONLY = new Set(['fido2', 'windowshelloforbusiness', 'x509certificatemultifactor', 'x509certificatesinglefactor', 'temporaryaccesspassonetime', 'temporaryaccesspassmultiuse'])
+
+/**
+ * What a step's own policies ask for, in the words the announcement is chosen
+ * by. Read from the operation and from what this tenant says its strengths
+ * allow — never the goal's floor, and never the combinations the baseline's
+ * author wrote beside a strength id. Null where they ask for nothing a person
+ * has to do.
+ */
+function grantOf(effects: readonly PolicyEffect[], strengths: Map<string, string[]>): GrantFloor | null {
+  if (effects.some((e) => e.blocks)) return 'block'
+  for (const e of effects) {
+    for (const r of e.requirements) {
+      if (r.kind === 'strength') {
+        const combos = strengths.get(r.id.toLowerCase()) ?? []
+        return combos.length > 0 && combos.every((c) => PASSKEY_ONLY.has(c.toLowerCase())) ? 'phishingResistant' : 'mfa'
+      }
+      if (r.kind === 'device') return 'compliantDevice'
+      if (r.kind === 'app') return r.control === 'approvedapplication' ? 'approvedApplication' : 'compliantApplication'
+      if (r.kind === 'passwordChange') return 'passwordChange'
+      if (r.kind === 'mfa') return 'mfa'
+    }
+  }
+  return null
+}
 
 /** Step titles are the goal name as an imperative: the kind is a chip, never a prefix. */
 function stepTitle(goalName: string): string {
@@ -462,6 +491,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // "Feedback Mailbox" counted as a person with no method). The operator does
   // not have to have confirmed it first — the licence says what it is.
   for (const u of snapshot.users) if (isNonPerson(u, new Set(mapping.serviceAccountUserIds))) excluded.add(u.id)
+  // The people a zero has to be proved over: every active account in the tenant
+  // that a proposed policy does not already exclude (roadmap/strand.ts
+  // measuredReach). The tenant's own people, never a step's list of them.
+  const activePeople = viability.filter((v) => v.activity === 'active' && !excluded.has(v.userId)).map((v) => v.userId)
   // Shared devices (Teams Rooms) are out of every user policy and get their own
   // step (prompt 48 item 4); the directory-sync account is out of the MFA and
   // strength templates via excludeRoles in goals.json.
@@ -1059,6 +1092,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // never offered as ready.
     const opVerdict = includesOperator && operatorId !== null ? stepAccountVerdict(asStep, operatorId, snapshot, strandContext) : null
     const stepLockout = lockoutCount(stepEffects(asStep), viability, snapshot, strandContext.strengths, excluded, strandContext)
+    // Who the records show this step's own policies touching, measured against
+    // the evidence those policies' own conditions are about (roadmap/strand.ts
+    // measuredReach). Absent where the answer is not known; zero impact, the
+    // notice, the batch class and the soak all read it and nothing else.
+    const measured = isOpenPolicy(asStep) ? measuredReach(stepEffects(asStep), activePeople, snapshot, strandContext) : null
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
     if (opVerdict?.stranded && status !== 'done') {
@@ -1084,7 +1122,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // the notice period, the zero batch and the soak already read. The goal's
     // family answers only for a step with no policy of its own.
     const nobodyAffected = isOpenPolicy(asStep)
-      ? nobodyAffectedBy({ ...asStep, evidence } as Step)
+      ? nobodyAffectedBy({ ...asStep, evidence, ...(measured !== null ? { measured: { ids: measured } } : {}) } as Step)
       : (evidenceUsable && (readiness.family === 'block' || readiness.family === 'risk') && evidence.affectedUserIds.length === 0) ||
         ((readiness.family === 'mfa' || readiness.family === 'guest' || readiness.family === 'admin') && notReadyActive === 0) ||
         (readiness.family === 'device' && readiness.percent === 100) ||
@@ -1092,11 +1130,25 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The change itself decides the wording (prompt 17 §4): an adjust that
     // only tightens sessions gets session wording; a strength raise gets
     // passkey wording; a block names the affected users or needs none.
+    //
+    // For an open policy the change is the operation, and what it asks for is
+    // read from the policy the step will leave behind — never the goal's floor,
+    // which is the author's version of a change this tenant may not be getting.
+    // Where the analysis cannot settle what the policy does, the step offers no
+    // announcement at all rather than one describing somebody else's policy.
+    const ownEffects = isOpenPolicy(asStep) ? stepEffects(asStep) : null
+    const held = ownEffects !== null && (ownEffects.length === 0 || ownEffects.some((e) => e.unknown.length > 0))
     const floorGrant = impl.floor.grant ?? null
     const adjustSections = new Set(result.reasons.filter((r) => !r.expected).map((r) => CHANGED_SECTION[r.kind]).filter(Boolean))
-    const sessionOnly = kind === 'adjust' ? adjustSections.size > 0 && [...adjustSections].every((s) => s === 'sessionControls') : floorGrant === null && impl.floor.session !== undefined
+    const operationGrant = ownEffects === null ? floorGrant : grantOf(ownEffects, strandContext.strengths)
+    const sessionOnly =
+      ownEffects !== null
+        ? operationGrant === null && ownEffects.some((e) => e.session)
+        : kind === 'adjust'
+          ? adjustSections.size > 0 && [...adjustSections].every((s) => s === 'sessionControls')
+          : floorGrant === null && impl.floor.session !== undefined
     const comms =
-      status === 'done'
+      status === 'done' || held
         ? null
         : nobodyAffected
           ? NO_ANNOUNCEMENT
@@ -1104,9 +1156,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
               {
                 goalId: goal.id,
                 family: readiness.family,
-                grant: sessionOnly ? null : floorGrant,
+                grant: sessionOnly ? null : operationGrant,
                 sessionOnly,
-                affected: evidenceUsable && readiness.family === 'block' ? evidence.affectedUserIds.length : null,
+                // How many people a block reaches is the measured answer, not a
+                // count collected under the goal.
+                affected: ownEffects !== null ? (measured?.length ?? null) : evidenceUsable && readiness.family === 'block' ? evidence.affectedUserIds.length : null,
                 admins: impl.expectedWho.kind === 'coreAdmins',
                 // Named below the threshold the audience model already uses, so
                 // the greeting and the audience label cannot disagree
@@ -1184,6 +1238,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // lockout count of its own — a policy that requires no strength stops
       // nobody, and neither does work the plan cannot write.
       ...(status !== 'done' && stepLockout !== null ? { lockout: stepLockout } : {}),
+      ...(measured !== null ? { measured: { ids: measured } } : {}),
       // A step that changes the tenant's own policy names that policy, never the
       // step's title; a step that creates one names the proposed name.
       naming:

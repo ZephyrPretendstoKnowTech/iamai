@@ -11,6 +11,7 @@ import { pages, shared } from '../../content/content.ts'
 import { sessionWantedForGoal, sessionWantedLongForGoal } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
+import { effectsOf } from '../../roadmap/strand.ts'
 
 test('a shared reference with an unfilled variable is a hole in the line that names it', () => {
   // {datesNew} expands to "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}".
@@ -34,17 +35,31 @@ test('a policy already in report-only dates its Report-only line from the scan',
   assert.deepEqual(missingVars('{datesNew}', ex), [], 'the Dates line has no hole')
 })
 
-test('a session goal fills {wanted} from the baseline policy it maps to, in words', () => {
-  assert.equal(sessionWantedForGoal('admin-session'), '4 hours')
+test('a session goal fills {wanted} from the policy the step will write, and says nothing where it cannot read one', () => {
+  assert.equal(sessionWantedForGoal('admin-session'), '4 hours', 'the baseline still answers for a step with no policy of its own')
   assert.equal(sessionWantedForGoal('mfa-all-users'), null, 'a grant goal wants no session frequency')
   assert.equal(hoursInWords(168), 'weekly')
   assert.equal(hoursInWords(24), 'daily')
-  const f = fixture('demo')
-  const r = runFixture(f)
-  const step = r.steps.find((s) => s.goalId === 'admin-session')!
-  const ex = stepVars(step, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: null, now: f.snapshot.asOf })
-  assert.equal(ex.wanted, '4 hours', 'the manager note "expire after {wanted}" fills')
-  assert.equal(ex.wantedLong, '4 hours', 'the email "expire after {wantedLong}" fills, as a duration')
+  const varsFor = (name: Parameters<typeof fixture>[0]): { ex: Record<string, unknown>; hours: number | null } => {
+    const f = fixture(name)
+    const r = runFixture(f)
+    const step = r.steps.find((s) => s.goalId === 'admin-session')!
+    const hours = (effectsOf(step) ?? []).map((e) => e.sessionControls?.signInFrequencyHours ?? null).find((h) => h !== null) ?? null
+    return { ex: stepVars(step, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: null, now: f.snapshot.asOf }) as Record<string, unknown>, hours }
+  }
+  // The operation the step will run says how long a session lives — whatever the
+  // baseline's own version of the goal wants.
+  const { ex, hours } = varsFor('getiamai')
+  assert.equal(hours, 12, 'this tenant’s admin-session policy sets twelve hours')
+  assert.equal(ex.wanted, hoursInWords(hours!), 'the manager note "expire after {wanted}" fills from the policy')
+  assert.equal(ex.wantedLong, '12 hours', 'the email "expire after {wantedLong}" fills, as a duration')
+  assert.notEqual(ex.wanted, sessionWantedForGoal('admin-session'), 'and not from the baseline the goal maps to')
+  // The demo cannot write this policy: an object it names is missing. A line
+  // that told the operator what their sessions will expire after would be
+  // describing the author's policy, not one this tenant is getting.
+  const { ex: held } = varsFor('demo')
+  assert.equal(held.wanted, undefined, 'a policy the plan cannot write says nothing about the session it would set')
+  assert.equal(held.wantedLong, undefined)
   assert.equal(sessionWantedLongForGoal('mfa-all-users'), null)
 })
 

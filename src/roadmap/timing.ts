@@ -5,11 +5,9 @@
 import { EVENT } from '../copy/timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
-import { scopeBoundedBy, unavailableReason } from './operations.ts'
+import { unavailableReason } from './operations.ts'
 import { effectsOf, familyReading } from './strand.ts'
 
-/** The circumstances the records can answer; anything else is not proof of a zero. */
-const MEASURED_NARROWINGS = new Set(['legacyClients', 'signInFlow', 'signInRisk', 'locations'])
 import type { Step, StepEvent, StepEvents } from './types.ts'
 
 /**
@@ -158,30 +156,20 @@ export function nobodyAffected(step: Step): boolean {
     const affected = family === 'block' || family === 'location' || family === 'risk' ? step.evidence.affectedUserIds.length : step.population.active
     return step.evidence.status === 'ok' && affected === 0
   }
-  // Work the plan cannot write proves nothing at all — least of all a zero — and
-  // it is not read by the people the step happens to list.
+  // Work the plan cannot write proves nothing at all — least of all a zero.
   if (effects.length === 0) return false
-  // Zero is proved, never assumed: a policy IAMAI cannot read in full might
-  // touch anyone (roadmap/operations.ts PolicyEffect.unknown).
+  // The measured answer is stored beside the step, so the policy it was measured
+  // against is checked here too: a policy IAMAI cannot read in full might touch
+  // anyone, whatever a count written earlier says
+  // (roadmap/operations.ts PolicyEffect.unknown).
   if (effects.some((e) => e.unknown.length > 0)) return false
-  for (const effect of effects) {
-    // A policy that applies only in some circumstance touches whoever the
-    // records show in it — and only where every one of those circumstances is
-    // one the records answer (roadmap/strand.ts narrowingReach).
-    if (effect.narrowings.length > 0) {
-      if (!effect.narrowings.every((n) => MEASURED_NARROWINGS.has(n.kind))) return false
-      if (step.evidence.status !== 'ok' || step.evidence.affectedUserIds.length > 0) return false
-      continue
-    }
-    // Anything else applies whenever the people it names sign in, so it touches
-    // everyone it reaches. The step's own list answers for that only where the
-    // policy names nobody the list does not hold: a policy that reaches a group,
-    // a role or every user reaches people the step never counted, and an empty
-    // count is then no proof of anything (roadmap/operations.ts scopeBoundedBy).
-    if (!scopeBoundedBy(effect.scope, step.population.ids)) return false
-    if (step.population.active > 0) return false
-  }
-  return true
+  // One answer, and it is the step's own policies measured person by person
+  // against the evidence their own conditions are about (roadmap/strand.ts
+  // measuredReach). Absent means the answer is not known: a policy IAMAI cannot
+  // read in full, a scope nothing settles, a circumstance the records do not
+  // measure. None of those is a zero, and none of them is answered by the people
+  // the step happens to list or by evidence collected under the goal.
+  return step.measured !== undefined && step.measured.ids.length === 0
 }
 
 export function noticeDaysFor(step: Step): number {

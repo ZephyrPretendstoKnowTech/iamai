@@ -28,6 +28,8 @@ import { policyFacts } from '../../coverage/facts.ts'
 import type { CaPolicy } from '../../baseline/types.ts'
 import { policiesForGoal, PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
+import { analysisUnknown, effectsOf } from '../../roadmap/strand.ts'
+import { strengthLookupOf } from '../../roadmap/operations.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
 import type { PortalSection } from '../../roadmap/portalLines.ts'
 import { implementationOffered } from './stepJson.ts'
@@ -168,7 +170,11 @@ function sessionWantedHoursForGoal(goalId: string): number | null {
  */
 export function sessionWantedLongForGoal(goalId: string): string | null {
   const hours = sessionWantedHoursForGoal(goalId)
-  if (hours === null) return null
+  return hours === null ? null : hoursAsDuration(hours)
+}
+
+/** A number of hours as a duration an email can say "expire after". */
+export function hoursAsDuration(hours: number): string {
   if (hours === 1) return 'an hour'
   if (hours < 24) return `${hours} hours`
   if (hours === 24) return 'a day'
@@ -179,6 +185,27 @@ export function sessionWantedLongForGoal(goalId: string): string | null {
 // The combinations a phishing-resistant strength allows: a passkey or key,
 // Windows Hello, a certificate, and the Temporary Access Pass that bootstraps one.
 const PASSKEY_COMBINATIONS = new Set(['fido2', 'windowshelloforbusiness', 'x509certificatemultifactor', 'x509certificatesinglefactor', 'temporaryaccesspassonetime', 'temporaryaccesspassmultiuse'])
+
+/**
+ * True when a step's own policy will require a strength only a passkey (or key)
+ * satisfies. The operation answers for an open policy, against what this tenant
+ * says the strength allows — never the combinations the baseline's author wrote
+ * beside the id. Where the analysis cannot settle it, nothing is claimed; the
+ * baseline speaks only for a step with no policy of its own.
+ */
+export function needsPasskey(step: Step, ctx: Pick<StepVarContext, 'snapshot'>): boolean {
+  const effects = effectsOf(step)
+  if (effects === null) return needsPasskeyForGoal(step.goalId)
+  if (analysisUnknown(step)) return false
+  const lookup = strengthLookupOf(ctx.snapshot as never)
+  for (const e of effects) {
+    const id = e.strength?.id
+    if (id === undefined) continue
+    const combos = lookup.get(id.toLowerCase()) ?? []
+    if (combos.length > 0 && combos.every((c) => PASSKEY_COMBINATIONS.has(String(c).toLowerCase()))) return true
+  }
+  return false
+}
 
 /** True when the goal's mapped baseline policy requires a strength only a passkey (or key) satisfies: the policy needs a passkey. */
 export function needsPasskeyForGoal(goalId: string): boolean {

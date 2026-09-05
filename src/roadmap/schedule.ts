@@ -22,7 +22,7 @@ const CRITICAL = engine.critical
 import { absoluteDate } from '../copy/dates.ts'
 import { unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
-import { effectsOf, familyReading } from './strand.ts'
+import { analysisUnknown, effectsOf, familyReading, policiesOverlap } from './strand.ts'
 import type { Step } from './types.ts'
 
 export type WaveSchedule = {
@@ -320,9 +320,13 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
     // the enforce step — is read by its goal's family, as it always was.
     const effects = effectsOf(s)
     const anyEffect = (test: (e: PolicyEffect) => boolean): boolean => (effects !== null ? effects.some(test) : false)
-    const stopsPeople = effects !== null ? anyEffect((e) => e.blocks || e.usesRisk || (e.usesLocations && !e.asksForMethod)) : family === 'block' || family === 'location' || family === 'risk'
-    const asksForMethod = effects !== null ? anyEffect((e) => e.asksForMethod) : family === 'mfa' || family === 'guest'
-    const usesLocations = effects !== null ? anyEffect((e) => e.usesLocations) : family === 'location'
+    // An open policy whose own analysis cannot settle what it does waits on
+    // everything: a dependency skipped because the reading was empty is a
+    // prerequisite dropped on a guess (roadmap/strand.ts analysisUnknown).
+    const held = analysisUnknown(s)
+    const stopsPeople = held || (effects !== null ? anyEffect((e) => e.blocks || e.usesRisk || (e.usesLocations && !e.asksForMethod)) : family === 'block' || family === 'location' || family === 'risk')
+    const asksForMethod = held || (effects !== null ? anyEffect((e) => e.asksForMethod) : family === 'mfa' || family === 'guest')
+    const usesLocations = held || (effects !== null ? anyEffect((e) => e.usesLocations) : family === 'location')
     if (exclusion) add(s, { stepId: exclusion.id, kind: 'hard', reason: 'exclusion-group' })
     // A policy that stops people needs the way back in to exist first.
     if (stopsPeople && breakGlass) add(s, { stepId: breakGlass.id, kind: 'hard', reason: 'break-glass' })
@@ -340,7 +344,13 @@ export function dependencyGraph(steps: Step[]): Record<string, Dependency[]> {
     for (let j = 0; j < i; j++) {
       const a = enforcement[i]
       const b = enforcement[j]
-      if (overlapShare(a.population.ids, b.population.ids) <= OVERLAP_SHARE) continue
+      // Whether these two changes can prompt the same person is the policies'
+      // own answer, from their own scopes (roadmap/strand.ts policiesOverlap);
+      // the people a step lists are a rollout list, not a scope. A step with no
+      // policy of its own is still bounded by that list, so the two readings
+      // meet: an overlap nobody can settle is treated as one.
+      if (!policiesOverlap(a, b)) continue
+      if (effectsOf(a) === null && effectsOf(b) === null && overlapShare(a.population.ids, b.population.ids) <= OVERLAP_SHARE) continue
       // Two changes enforced in the SAME change window prompt people once, not
       // twice, so the same-people rule does not separate them. It protects
       // people from repeated interruption; changes made together in one

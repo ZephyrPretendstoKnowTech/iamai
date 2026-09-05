@@ -383,10 +383,61 @@ export type PolicyScope = {
   users: { include: string[]; exclude: string[] }
   groups: { include: string[]; exclude: string[] }
   roles: { include: string[]; exclude: string[] }
-  guests: { include: boolean; exclude: boolean }
+  /** The guest clauses, as they stand: which kinds of external user, and from which tenants. */
+  guests: { include: GuestClause | null; exclude: GuestClause | null }
   /** It reaches service principals and no person at all. */
   workloadOnly: boolean
+  /**
+   * Something that says who this policy reaches could not be read as written, so
+   * who it reaches is nobody's answer. Never `out`: a scope IAMAI cannot read is
+   * not a scope that excludes anybody.
+   */
+  unreadable: boolean
   applications: { include: string[]; exclude: string[]; userActions: string[]; authContexts: string[] }
+}
+
+/**
+ * A guest clause as the policy writes it: the kinds of external user it means,
+ * and whether it means them from every tenant or from a named few. Both parts
+ * decide who it reaches, and the scan can answer neither exactly on its own.
+ */
+export type GuestClause = { types: string[]; membershipKind: string; enumerated: boolean }
+
+/**
+ * What kind of external user a directory row could be. Graph says two things
+ * that bear on it: `userType`, Member or Guest, and whether the account carries
+ * an external identity at all (a `#EXT#` principal name, or an invitation state).
+ * Between them:
+ *
+ * - a Guest with no external identity is an internal guest and nothing else;
+ * - a Guest with one is a B2B collaboration guest, another external user or a
+ *   service provider, and no row says which;
+ * - a Member with an external identity is a B2B collaboration member;
+ * - a Member without one is not an external user at all.
+ *
+ * A direct-connect user has no row here, so no account is ever read as one.
+ */
+export type ExternalIdentity = { guest: boolean; external: boolean }
+const KINDS_POSSIBLE_FOR = (who: ExternalIdentity): string[] =>
+  who.guest ? (who.external ? ['b2bcollaborationguest', 'otherexternaluser', 'serviceprovider'] : ['internalguest']) : who.external ? ['b2bcollaborationmember'] : []
+
+/**
+ * What a guest clause says about one account: `yes` where every kind it could be
+ * is named, `no` where none is, and `unknown` where some are — which kind of
+ * external user somebody is, and which tenant they came from, are questions the
+ * directory does not answer.
+ */
+export function guestClauseCovers(clause: GuestClause, who: ExternalIdentity): 'yes' | 'no' | 'unknown' {
+  const kinds = new Set(clause.types.map((t) => t.toLowerCase()))
+  const possible = KINDS_POSSIBLE_FOR(who)
+  const named = possible.filter((k) => kinds.has(k))
+  // No kind it could be is named, so the clause is not about this account at all
+  // — whichever tenants it means.
+  if (named.length === 0) return 'no'
+  // A clause that names its tenants one by one reaches people from those tenants
+  // and nobody else, and no directory row says which tenant an account is from.
+  if (clause.enumerated) return 'unknown'
+  return named.length === possible.length ? 'yes' : 'unknown'
 }
 
 /**
@@ -396,7 +447,8 @@ export type PolicyScope = {
  * may read a step's own population as the policy's reach without this.
  */
 export function scopeBoundedBy(scope: PolicyScope, ids: readonly string[]): boolean {
-  if (scope.workloadOnly || scope.allUsers || scope.guests.include) return false
+  if (scope.unreadable) return false
+  if (scope.workloadOnly || scope.allUsers || scope.guests.include !== null) return false
   if (scope.groups.include.length > 0 || scope.roles.include.length > 0) return false
   if (scope.users.include.length === 0) return false
   const known = new Set(ids.map((i) => i.toLowerCase()))
@@ -438,7 +490,7 @@ export type PolicyEffect = {
   /** It applies only above a risk level. */
   usesRisk: boolean
   /** What it does to a session, where it does anything. */
-  sessionControls: { signInFrequency: boolean; signInFrequencyEveryTime: boolean; persistentBrowser: boolean; tokenProtection: boolean; other: boolean } | null
+  sessionControls: { signInFrequency: boolean; signInFrequencyEveryTime: boolean; signInFrequencyHours: number | null; persistentBrowser: boolean; tokenProtection: boolean; other: boolean } | null
   /** It changes what a session may do or how long it lives. */
   session: boolean
   /** It does something: a grant, or a session control. */
@@ -447,8 +499,21 @@ export type PolicyEffect = {
   unknown: string[]
 }
 
-/** Who a policy's conditions reach, decoded. */
-function scopeOf(conditions: Record<string, unknown>): PolicyScope {
+/** One guest clause, decoded: the kinds it names and where they come from. */
+function guestClauseOf(v: unknown): GuestClause | null {
+  if (!isObject(v)) return null
+  const types = String(v.guestOrExternalUserTypes ?? '').split(',').map((x) => x.trim()).filter((x) => x.length > 0)
+  const tenants = isObject(v.externalTenants) ? v.externalTenants : null
+  const membershipKind = String(tenants?.membershipKind ?? '')
+  return { types, membershipKind, enumerated: membershipKind.toLowerCase() === 'enumerated' }
+}
+
+/**
+ * Who a policy's conditions reach, decoded. `unreadable` is set where the clause
+ * that says who could not be read as written: an unread scope reaches nobody
+ * knowably, which is not the same as reaching nobody.
+ */
+function scopeOf(conditions: Record<string, unknown>, unreadable: boolean): PolicyScope {
   const users = isObject(conditions.users) ? conditions.users : null
   const workload = isObject(conditions.clientApplications) ? conditions.clientApplications : null
   const apps = isObject(conditions.applications) ? conditions.applications : null
@@ -458,8 +523,9 @@ function scopeOf(conditions: Record<string, unknown>): PolicyScope {
     users: { include: include.filter((u) => u.toLowerCase() !== 'all'), exclude: strings(users?.excludeUsers) },
     groups: { include: strings(users?.includeGroups), exclude: strings(users?.excludeGroups) },
     roles: { include: strings(users?.includeRoles), exclude: strings(users?.excludeRoles) },
-    guests: { include: isObject(users?.includeGuestsOrExternalUsers), exclude: isObject(users?.excludeGuestsOrExternalUsers) },
+    guests: { include: guestClauseOf(users?.includeGuestsOrExternalUsers), exclude: guestClauseOf(users?.excludeGuestsOrExternalUsers) },
     workloadOnly: users === null && workload !== null,
+    unreadable,
     applications: {
       include: strings(apps?.includeApplications),
       exclude: strings(apps?.excludeApplications),
@@ -488,13 +554,26 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   if (rawStrength && strength === null) unknown.push('an authentication strength with no id')
   if (grant && nonEmpty(grant.customAuthenticationFactors)) unknown.push('a custom authentication factor')
   if (grant && nonEmpty(grant.termsOfUse)) unknown.push('terms of use')
-  const conditions = isObject(body.conditions) ? body.conditions : {}
-  for (const k of Object.keys(conditions)) {
+  const submitted = isObject(body.conditions) ? body.conditions : {}
+  // A recognised field is not an understood one: the value has to be one
+  // Conditional Access would take, or the condition is held rather than decoded.
+  // A malformed value only ever arrives on an update's target — the tenant's own
+  // policy, which is not IAMAI's to validate — and reading it as though it were
+  // well formed would describe a policy nobody has.
+  const conditions: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(submitted)) {
     if (isAnnotation(k)) continue
     const reading = CONDITION_READING[k as keyof typeof CONDITION_READING]
-    if (reading === undefined) unknown.push(`a condition IAMAI has no reading for: ${k}`)
+    const shape = CONDITION_SHAPES[k as keyof typeof CONDITION_SHAPES] as ((v: unknown) => boolean) | undefined
+    if (reading === undefined || shape === undefined) unknown.push(`a condition IAMAI has no reading for: ${k}`)
+    else if (v === null || v === undefined) continue
+    else if (!shape(v)) unknown.push(`a condition IAMAI cannot read as written: ${k}`)
     else if (!reading) unknown.push(`a condition IAMAI carries but cannot read: ${k}`)
-    if (reading !== true) held.add(`conditions.${k}`)
+    else {
+      conditions[k] = v
+      continue
+    }
+    held.add(`conditions.${k}`)
   }
   if (grant)
     for (const k of Object.keys(grant))
@@ -502,9 +581,16 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
         unknown.push(`a grant setting IAMAI has no reading for: ${k}`)
         held.add(`grantControls.${k}`)
       }
+  // The same for the grant's own values: a control list that is not a list of
+  // controls, or a strength reference carrying anything but an id, is held.
+  if (grant && !listOk(grant.builtInControls)) {
+    unknown.push('a grant control list IAMAI cannot read as written')
+    held.add('grantControls.builtInControls')
+  }
+  if (grant && rawStrength !== null && !isObjectOnly(rawStrength, new Set(['id']))) unknown.push('an authentication strength carrying more than the reference IAMAI submits')
   const locations = isObject(conditions.locations) ? conditions.locations : null
   const locationIds = locations ? { include: strings(locations.includeLocations), exclude: strings(locations.excludeLocations) } : null
-  const scope = scopeOf(conditions)
+  const scope = scopeOf(conditions, held.has('conditions.users') || held.has('conditions.clientApplications'))
   const narrowings: Narrowing[] = []
   const appTypes = strings(conditions.clientAppTypes).map((t) => t.toLowerCase())
   if (appTypes.length > 0 && !appTypes.includes('all')) {
@@ -538,7 +624,21 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   if (scope.applications.authContexts.length > 0) narrowings.push({ kind: 'authContext', ids: scope.applications.authContexts })
   const workloadRisk = strings(conditions.servicePrincipalRiskLevels)
   if (workloadRisk.length > 0) narrowings.push({ kind: 'workloadRisk', levels: workloadRisk })
-  const raw = isObject(body.sessionControls) ? body.sessionControls : null
+  const rawSubmitted = isObject(body.sessionControls) ? body.sessionControls : null
+  const raw = rawSubmitted === null ? null : ((): Record<string, unknown> => {
+    const ok: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(rawSubmitted)) {
+      if (isAnnotation(k) || v === null || v === undefined) continue
+      const shape = SESSION_SHAPES[k as keyof typeof SESSION_SHAPES] as ((v: unknown) => boolean) | undefined
+      if (shape !== undefined && !shape(v)) {
+        unknown.push(`a session control IAMAI cannot read as written: ${k}`)
+        held.add(`sessionControls.${k}`)
+        continue
+      }
+      ok[k] = v
+    }
+    return ok
+  })()
   // A control is on when it is there and not switched off: an empty object says
   // nothing, and a flag written `false` is the setting turned off, not a setting.
   const on = (v: unknown): boolean => (isObject(v) ? v.isEnabled !== false && Object.keys(v).length > 0 : typeof v === 'boolean' ? v : v !== null && v !== undefined)
@@ -548,6 +648,12 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
         // A sign-in frequency of "every time" reauthenticates on every request:
         // the one session setting that can put the person applying it in a loop.
         signInFrequencyEveryTime: on(raw.signInFrequency) && isObject(raw.signInFrequency) && String(raw.signInFrequency.frequencyInterval ?? '') === 'everyTime',
+        // How long a session lives, in hours, where the policy sets a length.
+        signInFrequencyHours: ((): number | null => {
+          const f = raw.signInFrequency
+          if (!on(f) || !isObject(f) || typeof f.value !== 'number') return null
+          return /^day/i.test(String(f.type ?? '')) ? f.value * 24 : f.value
+        })(),
         persistentBrowser: on(raw.persistentBrowser),
         tokenProtection: on(raw.secureSignInSession),
         other: Object.entries(raw).some(([k, v]) => !['signInFrequency', 'persistentBrowser', 'secureSignInSession'].includes(k) && !isAnnotation(k) && on(v)),
@@ -622,6 +728,27 @@ export function strengthLookupOf(snapshot: { config?: Record<string, { rows?: un
   return lookup
 }
 
+/**
+ * Member or Guest, by account id, built once per directory. `accountApplicability`
+ * runs for every person against every policy of every step, so a scan of the
+ * whole directory per call is a scan per person per policy.
+ */
+const identityIndex = new WeakMap<object, Map<string, ExternalIdentity>>()
+function externalIdentityOf(snapshot: { users?: DirectoryRow[] }, accountId: string): ExternalIdentity | null {
+  const users = snapshot.users ?? []
+  let index = identityIndex.get(users)
+  if (index === undefined) {
+    index = new Map()
+    for (const u of users) {
+      if (u.userType === undefined || u.userType === null) continue
+      const external = /#EXT#/i.test(u.userPrincipalName ?? '') || (u.externalUserState !== undefined && u.externalUserState !== null)
+      index.set(u.id, { guest: u.userType === 'guest', external })
+    }
+    identityIndex.set(users, index)
+  }
+  return index.get(accountId) ?? null
+}
+
 /** Whether a policy reaches one account: decided from the policy's own scope, or not decided at all. */
 export type Applicability = 'in' | 'out' | 'unknown'
 
@@ -634,13 +761,18 @@ export type ScopeEvidence = { groupMembers?: Record<string, readonly string[]> }
  * whatever the scan or the plan's own decisions can prove, and a group nothing
  * answers for leaves the whole question unknown rather than guessed.
  */
+/** What `accountApplicability` needs of a directory row, and nothing beyond it. */
+export type DirectoryRow = { id: string; userType?: string | null; userPrincipalName?: string | null; externalUserState?: string | null }
+
 export function accountApplicability(
   scope: PolicyScope,
   accountId: string,
-  snapshot: { roles?: { active?: Record<string, string[]> }; users?: { id: string; userType?: string | null }[] },
+  snapshot: { roles?: { active?: Record<string, string[]> }; users?: DirectoryRow[] },
   evidence: ScopeEvidence = {},
 ): Applicability {
   if (scope.workloadOnly) return 'out'
+  // A clause that says who, that IAMAI could not read, reaches nobody knowably.
+  if (scope.unreadable) return 'unknown'
   const roles = new Set(snapshot.roles?.active?.[accountId] ?? [])
   const members = evidence.groupMembers ?? {}
   const inGroup = (id: string): boolean | null => {
@@ -656,15 +788,16 @@ export function accountApplicability(
     if (member === true) return 'out'
     if (member === null) unsure = true
   }
-  // A guest clause reaches guests. Whether this account is one is the
-  // directory's answer; where the directory holds no row for it, nobody's.
-  const guest = ((): boolean | null => {
-    const row = (snapshot.users ?? []).find((u) => u.id === accountId)
-    return row === undefined || row.userType === undefined || row.userType === null ? null : row.userType === 'guest'
-  })()
-  if (scope.guests.exclude) {
-    if (guest === true) return 'out'
-    if (guest === null) unsure = true
+  // A guest clause names kinds of external user, and the tenants they come
+  // from. The directory says one thing — Member or Guest — so a clause is
+  // answered exactly only where every kind that account could be is named
+  // (guestClauseCovers); anything narrower is a question nothing here settles.
+  const who = externalIdentityOf(snapshot, accountId)
+  const clauseCovers = (clause: GuestClause): 'yes' | 'no' | 'unknown' => (who === null ? 'unknown' : guestClauseCovers(clause, who))
+  if (scope.guests.exclude !== null) {
+    const covered = clauseCovers(scope.guests.exclude)
+    if (covered === 'yes') return 'out'
+    if (covered === 'unknown') unsure = true
   }
   let included = scope.allUsers || scope.users.include.some(same) || scope.roles.include.some((r) => roles.has(r))
   for (const g of scope.groups.include) {
@@ -672,9 +805,10 @@ export function accountApplicability(
     if (member === true) included = true
     else if (member === null) unsure = true
   }
-  if (scope.guests.include) {
-    if (guest === true) included = true
-    else if (guest === null) unsure = true
+  if (scope.guests.include !== null) {
+    const covered = clauseCovers(scope.guests.include)
+    if (covered === 'yes') included = true
+    else if (covered === 'unknown') unsure = true
   }
   if (!included) return unsure ? 'unknown' : 'out'
   return unsure ? 'unknown' : 'in'
@@ -760,9 +894,21 @@ export function isCompletePolicy(body: unknown): body is Record<string, unknown>
   return effectOf(body).any
 }
 
+/**
+ * True when a patch actually submits a value. An empty object submits nothing,
+ * at any depth: `{}`, `{conditions:{}}` and `{conditions:{users:{}}}` are all a
+ * request that changes nothing, and an operation that changes nothing is not an
+ * operation. A field written null *is* a value — it clears what the policy had.
+ */
+function submitsSomething(v: unknown): boolean {
+  if (!isObject(v)) return true
+  const keys = Object.keys(v).filter((k) => !isAnnotation(k))
+  return keys.length > 0 && keys.some((k) => submitsSomething(v[k]))
+}
+
 /** True when the fields an update submits are ones IAMAI writes, in the shapes it writes them. */
 export function isSubmittablePatch(patch: Record<string, unknown>): boolean {
-  if (Object.keys(patch).length === 0) return false
+  if (!submitsSomething(patch)) return false
   return fieldsAreSupported(patch)
 }
 
