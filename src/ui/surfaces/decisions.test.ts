@@ -4,7 +4,8 @@
 // line names the group the exclusions step proposes, never an unnamed thing.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+import { EXCLUSIONS_RECORD_KEY, storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
@@ -81,9 +82,9 @@ test('saving two emergency accounts removes the create instructions', () => {
 })
 
 test('saving a group names it on every policy step; before that, no policy step offers instructions at all', () => {
-  const f = fixture('demo')
-  const r = runFixture(f)
-  // The demo starts without an exclusions group. Every policy the baseline
+  const f = noExclusionsAnswer(fixture('demo'))
+  const r = runFixture(f, { mapping: f.mapping })
+  // Nobody has answered the exclusions-group question. Every policy the baseline
   // writes excludes one, so until the tenant names a group no policy step offers
   // an implementation — no portal instructions, no JSON, no PowerShell, no
   // download (roadmap/resolvePolicy.ts, stepJson.ts implementationOffered). The
@@ -105,8 +106,8 @@ test('saving a group names it on every policy step; before that, no policy step 
   // Save the tenant's group: every exclusions line names it, on the next derivation.
   const gid = [...f.groups.entries()].find(([, g]) => g.displayName === 'Core - Exclusions')![0]
   const decided = applyStepDecisions(f.mapping, { [exclusionsStep.id]: { picked: [gid], at: AT } })
-  assert.equal(decided.records['__globalExclusion'].resolvedId, gid)
-  assert.equal(decided.records['__globalExclusion'].doesNotExist, false)
+  assert.equal(storedExclusionsGroupId(decided), gid)
+  assert.equal(decided.records[EXCLUSIONS_RECORD_KEY].doesNotExist, false)
   const r2 = run(f, decided)
   const after = policyPortals(f, r2, decided)
   assert.ok(after.length >= 5, `with the group, the policy steps offer their instructions (${after.length})`)

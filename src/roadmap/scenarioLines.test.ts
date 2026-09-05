@@ -49,14 +49,18 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
   const reportOnly = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'in-report-only' || s.status === 'ready-to-enforce').length
   const exclusionStep = (r: ReturnType<typeof runFixture>) => r.steps.find((s) => s.id === 's-prereq-exclusion-group')
   assert.equal(unproven(week2), unproven(day1) - 3, 'three of the unproven are proven in week two')
-  // By week two the admins phishing-resistant policy is enforced and the second
-  // emergency account is excluded from the MFA policy: two more steps are in place.
-  assert.equal(inPlace(week2), inPlace(day1) + 2, 'the admins phishing-resistant policy is enforced and emergency access is In place by week two')
+  // By week two the admins phishing-resistant policy is enforced, the second
+  // emergency account is excluded from the MFA policy, and the tenant's policies
+  // carve out the group its technician chose rather than the break-glass group:
+  // three more steps are in place.
+  assert.equal(inPlace(week2), inPlace(day1) + 3, 'phishing-resistant enforced, emergency access and the exclusions group In place by week two')
   assert.equal(reportOnly(week2), 2, 'two Wave 1 policies are in report-only in week two')
-  // The step is on every plan: day one has no group, so it carries the create
-  // instructions (no checks); by week two the group exists and the step checks it.
-  assert.ok(exclusionStep(day1) && !exclusionStep(day1)!.checks, 'day one: no exclusions group is recognised')
-  assert.ok(exclusionStep(week2)?.checks, 'week two: the group exists and the step checks it')
+  // The step is on every plan. Day one: the group its technician chose is not
+  // the one the tenant's policies carve out, so the step has a check to fix; by
+  // week two the policies carve it out and the step is In place.
+  assert.equal(exclusionStep(day1)?.status, 'ready', 'day one: the chosen group is not excluded everywhere yet')
+  assert.ok((exclusionStep(day1)?.checks?.failing ?? 0) > 0, 'day one: the step says which policies do not exclude it')
+  assert.equal(exclusionStep(week2)?.status, 'done', 'week two: the group is excluded everywhere')
 })
 
 const EVIDENCE_KINDS = [

@@ -4,7 +4,8 @@
 // the scan; a session goal fills {wanted} from the baseline policy it maps to.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { missingVars } from '../../content/render.ts'
 import { pages, shared } from '../../content/content.ts'
@@ -40,8 +41,7 @@ test('a session goal fills {wanted} from the policy the step will write, and say
   assert.equal(sessionWantedForGoal('mfa-all-users'), null, 'a grant goal wants no session frequency')
   assert.equal(hoursInWords(168), 'weekly')
   assert.equal(hoursInWords(24), 'daily')
-  const varsFor = (name: Parameters<typeof fixture>[0]): { ex: Record<string, unknown>; hours: number | null } => {
-    const f = fixture(name)
+  const varsFor = (f: Fixture): { ex: Record<string, unknown>; hours: number | null } => {
     const r = runFixture(f)
     const step = r.steps.find((s) => s.goalId === 'admin-session')!
     const hours = (effectsOf(step) ?? []).map((e) => e.sessionControls?.signInFrequencyHours ?? null).find((h) => h !== null) ?? null
@@ -49,7 +49,7 @@ test('a session goal fills {wanted} from the policy the step will write, and say
   }
   // The operation the step will run says how long a session lives — whatever the
   // baseline's own version of the goal wants.
-  const { ex, hours } = varsFor('getiamai')
+  const { ex, hours } = varsFor(fixture('getiamai'))
   assert.equal(hours, 12, 'this tenant’s admin-session policy sets twelve hours')
   assert.equal(ex.wanted, hoursInWords(hours!), 'the manager note "expire after {wanted}" fills from the policy')
   assert.equal(ex.wantedLong, '12 hours', 'the email "expire after {wantedLong}" fills, as a duration')
@@ -57,7 +57,7 @@ test('a session goal fills {wanted} from the policy the step will write, and say
   // The demo cannot write this policy: an object it names is missing. A line
   // that told the operator what their sessions will expire after would be
   // describing the author's policy, not one this tenant is getting.
-  const { ex: held } = varsFor('demo')
+  const { ex: held } = varsFor(noExclusionsAnswer(fixture('demo')))
   assert.equal(held.wanted, undefined, 'a policy the plan cannot write says nothing about the session it would set')
   assert.equal(held.wantedLong, undefined)
   assert.equal(sessionWantedLongForGoal('mfa-all-users'), null)

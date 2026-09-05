@@ -343,6 +343,19 @@ export function buildFixture(spec: Spec): Fixture {
   }
   const bgGroup = guid(seed, 1_000_500)
   const exclusionGroup = guid(seed, 1_000_501)
+  // Which group this tenant's own policies carve out. A tenant whose policies
+  // exclude one group while its technician's answer names another is not a
+  // tenant, it is two facts nobody reconciled — and until Foundation C the
+  // product reconciled them by quietly replacing the answer with whichever group
+  // the policies excluded, which is how the demo shipped every policy carving
+  // out its break-glass group under the name of its exclusions group.
+  //
+  // The demo is the tenant that tells that story: on day one its policies still
+  // carve out the break-glass group, so the exclusions-group step has a check to
+  // fix ("Correct"), and by week two they carve out the confirmed group and the
+  // step is In place (prompt 50 Part 2 item 10, Part 4). The other fixtures keep
+  // the older arrangement their own tests were written against.
+  const carveOut = spec.demo && spec.week2 === true ? exclusionGroup : bgGroup
 
   // ---- policies ----
   const policies: unknown[] = []
@@ -356,7 +369,14 @@ export function buildFixture(spec: Spec): Fixture {
     modifiedDateTime: daysAgo(spec.midflight ? 10 : 100),
     ...body,
   })
-  const exclude = { excludeGroups: [bgGroup] }
+  // The group this tenant's own policies carve out. Where its technician has
+  // confirmed an exclusions group, that is the group they carve out: a tenant
+  // whose policies exclude one group while its answer names another is not a
+  // tenant, it is two facts that were never reconciled — and until Foundation C
+  // the product reconciled them by quietly replacing the answer with whichever
+  // group the policies excluded. The demo's day one has no answer yet, so its
+  // policies carve out the break-glass group, which is what it has.
+  const exclude = { excludeGroups: [carveOut] }
   const templates: [string, string, Record<string, unknown>, string][] = [
     ['Core - Grant - MFA for all users', 'enabled', { conditions: { users: { includeUsers: ['All'], ...exclude }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }, 'mfa-all-users'],
     ['Core - Block - Legacy authentication', 'enabled', { conditions: { users: { includeUsers: ['All'], ...exclude }, applications: { includeApplications: ['All'] }, clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } }, 'block-legacy-auth'],
@@ -386,7 +406,7 @@ export function buildFixture(spec: Spec): Fixture {
   // policies now sitting in report-only with sign-in evidence, and one enforced.
   const week2Results: PolicyAppliedResult[] = []
   if (spec.week2) {
-    const body = { conditions: { users: { includeUsers: ['All'], excludeGroups: [bgGroup] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
+    const body = { conditions: { users: { includeUsers: ['All'], excludeGroups: [carveOut] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
     // Two gates on a report-only policy (tracking.ts): token protection, created
     // the day after week one's scan and evaluated for every person with no
     // failures, is ready now on the evidence; auth transfer, created two days
@@ -465,7 +485,6 @@ export function buildFixture(spec: Spec): Fixture {
 
   // The demo starts with no exclusions group and unconfirmed emergency-access
   // facts; its week-two twin has both done (prompt 50 Part 2 item 10, Part 4).
-  const exclusionExists = !spec.demo || spec.week2 === true
   const demoConfirmed = !spec.demo || spec.week2 === true
   const mapping: MappingState = {
     ...emptyMappingState(tenantId),
@@ -475,8 +494,11 @@ export function buildFixture(spec: Spec): Fixture {
     allowedCountries: spec.multiGeo ? ['AU', 'NZ', 'GB', 'US'] : ['AU'],
     displayTimeZone: 'Australia/Sydney',
     // The exclusions group as its technician confirmed it, through the one
-    // writer of that record (mapping/safetyChoice.ts). The demo has not answered.
-    records: exclusionExists ? { [EXCLUSIONS_RECORD_KEY]: { ...exclusionsGroupRecord(undefined, exclusionGroup), resolvedName: 'Core - Exclusions' } } : {},
+    // writer of that record (mapping/safetyChoice.ts). Every tenant here has
+    // answered: it is a safety-sensitive choice, so a tenant that has not
+    // answered has no plan to show, and the sample is not a place to teach
+    // otherwise.
+    records: { [EXCLUSIONS_RECORD_KEY]: { ...exclusionsGroupRecord(undefined, exclusionGroup), resolvedName: 'Core - Exclusions' } },
     wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, trustedLocations: true, serviceAccounts: true, timeZone: true, applicability: true },
   }
   const groups: GroupMembers = new Map()
@@ -586,6 +608,19 @@ export const HUGE: boolean = typeof process !== 'undefined' && process.env?.HUGE
 
 export function allFixtures(): Fixture[] {
   return FIXTURE_SPECS.filter((s) => s.name !== 'huge' || HUGE).map(buildFixture)
+}
+
+/**
+ * The same tenant with nobody's answer to the exclusions-group question: the
+ * state every tenant is in before an operator answers it, and the one that
+ * proves the unresolved-object contract (Foundation A) and the safety choice
+ * (mapping/safetyChoice.ts). The fixtures themselves all carry an answer,
+ * because a tenant without one has no policy the plan can write.
+ */
+export function noExclusionsAnswer(f: Fixture): Fixture {
+  const records = { ...f.mapping.records }
+  delete records[EXCLUSIONS_RECORD_KEY]
+  return { ...f, mapping: { ...f.mapping, records } }
 }
 
 export function fixture(name: FixtureName): Fixture {

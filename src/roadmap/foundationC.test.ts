@@ -28,7 +28,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { allFixtures, fixture } from './fixtures/index.ts'
+import { allFixtures, fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
@@ -493,8 +493,8 @@ test('a plan whose policies wait on an unchosen safety object says what holds it
   // The demo: two groups qualify, nobody has chosen, so no policy can be
   // written and the calendar dates nothing. The header's held branch has to
   // name what holds it rather than ending at "cannot finish until".
-  const f = fixture('demo')
-  const r = runFixture(f)
+  const f = noExclusionsAnswer(fixture('demo'))
+  const r = runFixture(f, { mapping: f.mapping })
   const fin = planFinish(r.steps, r.schedule.cleanup?.end ?? null)
   assert.equal(fin.finish, null, 'nothing is dated while the policies cannot be written')
   assert.deepEqual(fin.waiting, [], 'and no readiness number holds them')
