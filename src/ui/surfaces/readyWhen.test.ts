@@ -23,7 +23,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { artifactIdOf, semanticsOf } from '../../roadmap/observation.ts'
+import { artifactIdOf, semanticFieldsOf, semanticsOf } from '../../roadmap/observation.ts'
 
 const DAY = 86_400_000
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
@@ -95,7 +95,7 @@ test('rescan: a policy still in report-only past its date stays Report-only and 
   const row = rows.find((p) => p.id === first.tracking?.policyId)
   // The record names the policy it watched, which is what lets the ten days it
   // counted belong to the policy deployed now (observation.ts artifactIdOf).
-  const watched = { [ADMINS]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }
+  const watched = { [ADMINS]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }
   applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, watched)
   const step = run.steps.find((s) => s.id === ADMINS)!
   assert.equal(step.tracking?.reportOnlyAt, seenAt, 'the record\'s observation wins over this scan')

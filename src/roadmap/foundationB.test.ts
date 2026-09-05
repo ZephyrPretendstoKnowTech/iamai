@@ -25,11 +25,13 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { applyProgress } from './progress.ts'
+import { applyProgress, mergePersisted } from './progress.ts'
+import type { SavedStep } from './progress.ts'
+import { generateRoadmap } from './generate.ts'
 import { stepIdForGoal } from './generate.ts'
 import { conditionFor, initialState, nextMilestone, projectStatus, raiseCondition, setState, stateForStatus } from './lifecycle.ts'
 import type { Condition, Lifecycle, StepState } from './lifecycle.ts'
-import { artifactIdOf, observationsFrom, observe, observedStateOf, semanticsOf } from './observation.ts'
+import { artifactIdOf, intentOf, observationsFrom, observe, observedStateOf, semanticFieldsOf, semanticsOf } from './observation.ts'
 import type { StepObservation } from './observation.ts'
 import { observationsOf } from './tracking.ts'
 import { statusOf } from '../ui/surfaces/statusWord.ts'
@@ -252,7 +254,7 @@ test('a rename is not a change: the fingerprint is what the policy does', () => 
 })
 
 test('an unrecorded fingerprint proves nothing, and never restarts a window on its own', () => {
-  const prior: StepObservation = { artifact: 'A', state: 'report-only', semantics: '', firstSeenAt: '2026-08-20T00:00:00.000Z', since: 'first-scan', lastSeenAt: '2026-08-20T00:00:00.000Z', evidenceAt: null }
+  const prior: StepObservation = { artifact: 'A', state: 'report-only', semantics: '', fields: {}, firstSeenAt: '2026-08-20T00:00:00.000Z', since: 'first-scan', lastSeenAt: '2026-08-20T00:00:00.000Z', evidenceAt: null }
   const now = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'abcd', at: '2026-09-05T00:00:00.000Z' })
   assert.equal(now.changed, 'none')
   assert.equal(now.continuity, 'continues', 'a record written before the fingerprint existed is not a rewrite')
@@ -261,7 +263,7 @@ test('an unrecorded fingerprint proves nothing, and never restarts a window on i
 })
 
 test('a material change restarts the observation; a state that moves the way the plan asked does not', () => {
-  const prior: StepObservation = { artifact: 'A', state: 'report-only', semantics: 'aaaa', firstSeenAt: '2026-08-20T00:00:00.000Z', since: 'first-scan', lastSeenAt: '2026-08-28T00:00:00.000Z', evidenceAt: '2026-08-10T00:00:00.000Z' }
+  const prior: StepObservation = { artifact: 'A', state: 'report-only', semantics: 'aaaa', fields: { grantControls: 'g1' }, firstSeenAt: '2026-08-20T00:00:00.000Z', since: 'first-scan', lastSeenAt: '2026-08-28T00:00:00.000Z', evidenceAt: '2026-08-10T00:00:00.000Z' }
   const at = '2026-09-05T00:00:00.000Z'
 
   const same = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'aaaa', at, evidenceAt: '2026-08-10T00:00:00.000Z' })
@@ -295,10 +297,21 @@ test('a material change restarts the observation; a state that moves the way the
   // A change the step's own operation asked for is expected even when the
   // semantics moved, because the plan is what moved them — the window still
   // restarts, because the object was rewritten, and nobody has to look at it.
-  const landed = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'bbbb', at, intended: 'bbbb' })
+  // The intent is per dimension: the grant is what the operation submits, so the
+  // grant moving to it is the plan landing.
+  const landed = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'bbbb', fields: { grantControls: 'g2' }, at, intent: { controls: { grantControls: 'g2' } } })
   assert.equal(landed.expected, true)
   assert.equal(landed.continuity, 'reset', 'the new semantics have been watched for no time at all')
   assert.equal(landed.reviewRequired, false, 'but this is the change the plan submitted, not a drift to review')
+
+  // The same movement with no intent behind it is not expected, and neither is a
+  // movement in a dimension the operation does not submit.
+  const unasked = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'bbbb', fields: { grantControls: 'g2' }, at })
+  assert.equal(unasked.expected, false)
+  assert.equal(unasked.reviewRequired, true)
+  const elsewhere = observe(prior, { artifact: 'A', state: 'report-only', semantics: 'bbbb', fields: { grantControls: 'g1', sessionControls: 's2' }, at, intent: { controls: { grantControls: 'g2' } } })
+  assert.equal(elsewhere.expected, false, 'the session moved and no operation asked it to')
+  assert.equal(elsewhere.reviewRequired, true)
 })
 
 test('observedStateOf reads Graph’s word, and a policy that is not there is not deployed', () => {
@@ -323,7 +336,7 @@ function demoObservation(over: Partial<StepObservation> = {}): Record<string, St
   const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
   // The record names the object it watched: without that, continuity is unknown
   // and the window cannot carry, which is its own test below.
-  return { [ADMINS]: { artifact: artifactIdOf(row?.id), state: 'report-only', semantics: semanticsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null, ...over } }
+  return { [ADMINS]: { artifact: artifactIdOf(row?.id), state: 'report-only', semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null, ...over } }
 }
 
 test('a policy watched for its whole window is ready to enforce; the same policy rewritten is not', () => {
@@ -336,16 +349,18 @@ test('a policy watched for its whole window is ready to enforce; the same policy
 
   // The record says the policy used to mean something else. Whatever it meant,
   // nobody has watched what is deployed now for a single day, so the window
-  // restarts — and what is deployed now is exactly the body this step submits,
-  // so there is nothing for anybody to look at. The two facts are separate, and
-  // this is the case that used to prove they were not.
+  // restarts. And nobody asked for the movement either: this step's operation
+  // submits `{ state: enabled }` and controls no material dimension at all, so
+  // the grant it now carries is not a change the plan can claim. This assertion
+  // used to read the other way, on a comparison against the resolved *target* —
+  // the tenant's own policy with the patch applied, which had already absorbed
+  // the drift, so the drift matched itself and the review was suppressed.
   const rewritten = runFixture(DEMO)
-  applyProgress(rewritten.steps, DEMO.snapshot, rewritten.coverage, DEMO.planId, undefined, null, demoObservation({ semantics: 'deadbeef' }))
+  applyProgress(rewritten.steps, DEMO.snapshot, rewritten.coverage, DEMO.planId, undefined, null, demoObservation({ semantics: 'deadbeef', fields: { grantControls: 'deadbeef' } }))
   const s = rewritten.steps.find((x) => x.id === ADMINS)!
   assert.equal(s.state.observation?.continuity, 'reset', 'these semantics have been watched for no time at all')
-  assert.equal(s.state.observation?.expected, true, 'and they are the ones this step submits')
-  assert.equal(s.state.observation?.reviewRequired, false, 'so nothing asks the operator to look')
-  assert.notEqual(s.state.condition, 'review-required')
+  assert.equal(s.state.observation?.expected, false, 'and the step submits no material dimension, so it asked for none of it')
+  assert.equal(s.state.observation?.reviewRequired, true, 'a movement nobody asked for is one somebody looks at')
   assert.equal(s.state.lifecycle, 'report-only', 'watched from here, not ready to enforce')
   assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf, 'the window starts again at the scan that noticed')
   assert.equal(s.tracking?.reportOnlyAtSource, 'first-seen-by-iamai')
@@ -391,7 +406,7 @@ test('a record written before this contract loads, and cannot vouch for a policy
   // longer does is close a rollout gate on its own.
   const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
   const migrated = observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } })
-  assert.deepEqual(migrated[ADMINS], { artifact: null, state: 'report-only', semantics: '', firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null })
+  assert.deepEqual(migrated[ADMINS], { artifact: null, state: 'report-only', semantics: '', fields: {}, firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null })
   const run = runFixture(DEMO)
   applyProgress(run.steps, DEMO.snapshot, run.coverage, DEMO.planId, undefined, null, migrated)
   const s = run.steps.find((x) => x.id === ADMINS)!
@@ -505,14 +520,12 @@ test('3: the same object materially rewritten is watched from the rewrite, not f
   assert.equal(s.state.observation?.latest.evidenceAt, null, 'records from before it are about what the policy used to be')
   assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf)
   assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'the new semantics have not been watched')
-  // Whether a person also has to look is the other axis, and it is not this one:
-  // this plan is an update, so the body it submits is the tenant's policy with
-  // its patch applied and moves with it. The window restarts either way. The
-  // drift that does need a person — a policy that moved away from what the step
-  // submits — is asserted where the plan is held still against a changed tenant.
-  assert.equal(s.state.observation?.expected, true, 'the step now submits what is deployed')
-  assert.equal(s.state.observation?.reviewRequired, false)
-  assert.notEqual(s.state.condition, 'review-required')
+  // And the other axis: the grant moved and this step's operation submits no
+  // grant, so nothing about the plan accounts for it. Re-deriving the plan from
+  // the drifted tenant does not change that — the update's target now contains
+  // the drift, and the intent contract reads the patch, not the target.
+  assert.equal(s.state.observation?.expected, false, 'a drift is not authorised by being copied into the target')
+  assert.equal(s.state.observation?.reviewRequired, true)
 })
 
 test('4: a replacement that is exactly what the plan meant to deploy resets the window and asks nobody to look', () => {
@@ -525,7 +538,10 @@ test('4: a replacement that is exactly what the plan meant to deploy resets the 
     row.id = B_ID
   }, prior)
   assert.equal(s.state.observation?.continuity, 'reset', 'the new object has its own history to earn')
-  assert.equal(s.state.observation?.expected, true, 'and it is exactly what the plan submits')
+  assert.deepEqual(s.state.observation?.latest.fields, s.state.observation?.prior?.fields, 'and it means exactly what the old one meant')
+  // Nothing material moved, so there is nothing to call expected or unexpected —
+  // and nothing for anybody to look at. Replacing the object is not, by itself,
+  // a reason to put the step into Review required.
   assert.equal(s.state.observation?.reviewRequired, false)
   assert.notEqual(s.state.condition, 'review-required', 'a restarted clock is not a rollout in trouble')
   // The two axes stay orthogonal: where it is, and whether anything is wrong.
@@ -645,6 +661,180 @@ test('10: with the matched policy’s scope unresolved nothing is seen, and noth
   assert.ok((blind.population.activeIds ?? blind.population.ids).length > 0, 'the goal’s people were right there')
   // The time gate is untouched: it is about how long, not about who.
   assert.equal(blind.state.lifecycle, 'ready-to-enforce', 'the window this policy served still counts')
+})
+
+// ---- a saved word is not a lifecycle ----
+//
+// `Step.status` is a projection of the state (lifecycle.ts projectStatus). A plan
+// record that carries the word could hand it back, and `mergePersisted` raised
+// the step's state to whatever the word had stood for — so a saved "ready to
+// enforce" walked straight past the observation contract it was supposed to have
+// come from: past artifact continuity, past a window that had reset, past a
+// legacy record that can prove nothing. For a step that deploys a policy the
+// lifecycle now comes from the current scan and from history whose continuity
+// that scan can prove, or not at all.
+
+/** A saved plan for the demo's admins step, carrying whatever word the last scan projected. */
+const savedWord = (status: StepStatus): Record<string, SavedStep> => ({ [ADMINS]: { status, history: [], skipReason: null } })
+
+/** Fresh steps for the demo, with a saved record merged in and the scan applied over it. */
+function withSaved(saved: Record<string, SavedStep>, observations: Record<string, StepObservation> | null = null): Step {
+  const run = runFixture(DEMO)
+  const steps = generateRoadmap(run.input).steps
+  mergePersisted(steps, saved)
+  applyProgress(steps, DEMO.snapshot, run.coverage, DEMO.planId, undefined, null, observations, {
+    groupMembers: Object.fromEntries([...DEMO.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
+  })
+  return steps.find((x) => x.id === ADMINS) as Step
+}
+
+test('a saved "ready to enforce" cannot make a policy ready whose window this scan does not support', () => {
+  // The record says the last scan projected Ready to enforce. This scan sees the
+  // same policy in report-only with no observation behind it at all, so the
+  // window starts today and nothing is ready.
+  const s = withSaved(savedWord('ready-to-enforce'))
+  assert.equal(s.state.lifecycle, 'report-only', 'the current scan decides where the policy is')
+  assert.notEqual(s.status, 'ready-to-enforce')
+  assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf, 'watched from this scan, not from a word')
+})
+
+test('a saved "enforced" does not survive a policy this scan finds in report-only', () => {
+  const s = withSaved(savedWord('done'))
+  assert.equal(s.state.satisfied, false, 'the saved word does not finish a step the tenant has not finished')
+  assert.notEqual(s.status, 'done')
+  assert.equal(s.state.lifecycle, 'report-only', 'the deployed policy is what says where it is')
+})
+
+test('a saved "ready to enforce" cannot outlive the policy it was about', () => {
+  // The word came from watching object A. Object B is deployed now, meaning
+  // exactly the same thing. Continuity resets, and the word cannot put back what
+  // the reset took away.
+  const prior = demoObservation()
+  const run = runFixture(DEMO)
+  const snapshot = structuredClone(DEMO.snapshot)
+  rowsOf(snapshot).find((p) => p.id === demoPolicyId())!.id = B_ID
+  const fresh = runFixture({ ...DEMO, snapshot })
+  const steps = generateRoadmap(fresh.input).steps
+  mergePersisted(steps, savedWord('ready-to-enforce'))
+  applyProgress(steps, snapshot, fresh.coverage, DEMO.planId, undefined, null, prior)
+  const s = steps.find((x) => x.id === ADMINS) as Step
+  assert.equal(s.state.observation?.continuity, 'reset')
+  assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'the reset wins over the saved projection')
+  void run
+})
+
+test('a saved "ready to enforce" beside a legacy observation still proves nothing', () => {
+  const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
+  const s = withSaved(savedWord('ready-to-enforce'), observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
+  assert.equal(s.state.observation?.continuity, 'unknown', 'the record names no object')
+  assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'and neither of the two can advance it alone')
+})
+
+test('a policy whose window this scan can prove is still ready, with or without a saved word', () => {
+  // The correction must not simply force everything backwards: where the current
+  // artifact, its semantics and a continuous observation establish readiness, the
+  // step is ready — and it gets there without the record ever naming a status.
+  const earned = withSaved({}, demoObservation())
+  assert.equal(earned.state.lifecycle, 'ready-to-enforce', 'the engine reaches it on its own')
+  const alsoSaved = withSaved(savedWord('blocked'), demoObservation())
+  assert.equal(alsoSaved.state.lifecycle, 'ready-to-enforce', 'and a stale word does not hold it back either')
+})
+
+test('the operator’s own decision survives, through its own authority', () => {
+  const s = withSaved({ [ADMINS]: { status: 'skipped', history: [], skipReason: 'not for us' } })
+  assert.equal(s.state.setAside, true, 'setting a step aside is a choice nothing about the tenant re-derives')
+  assert.equal(s.status, 'skipped')
+  assert.equal(s.skipReason, 'not for us')
+})
+
+test('a step that deploys no policy still keeps what the record says it completed', () => {
+  // The correction is about policy lifecycle. A prerequisite somebody carried
+  // out has no tenant object to re-read, so the record stays its authority.
+  const run = runFixture(DEMO)
+  const steps = generateRoadmap(run.input).steps
+  const prereq = steps.find((x) => x.kind === 'prerequisite' && x.status !== 'done') as Step
+  assert.ok(prereq, 'the demo has a prerequisite still to do')
+  mergePersisted(steps, { [prereq.id]: { status: 'done', history: [], skipReason: null } })
+  assert.equal(prereq.status, 'done', 'and it is still restored')
+})
+
+// ---- what the plan actually asked to change ----
+//
+// An update's resolved target is the tenant's own policy with the patch applied,
+// so every field the patch does not touch is a copy of whatever is deployed at
+// the moment the target is built. Comparing the deployed policy against that
+// target asked the tenant whether it agreed with itself. It always did, and a
+// drift became its own authorisation. The intent contract reads the patch.
+
+test('an update authorises only the dimensions its patch actually submits', () => {
+  const prior = { grantControls: 'g1', sessionControls: 's1', 'conditions.users': 'u1' }
+  const at = '2026-09-05T00:00:00.000Z'
+  const base = { artifact: 'A', state: 'report-only' as const, semantics: 'aaaa', fields: prior, firstSeenAt: '2026-08-20T00:00:00.000Z', since: 'first-scan' as const, lastSeenAt: at, evidenceAt: null }
+  // The plan changes the grant, and only the grant.
+  const intent = { controls: { grantControls: 'g2' } }
+
+  // 1: the grant moves to what the plan submits.
+  const landed = observe(base, { artifact: 'A', state: 'report-only', semantics: 'bbbb', fields: { ...prior, grantControls: 'g2' }, at, intent })
+  assert.equal(landed.expected, true, 'the dimension the plan controls reached the value it submits')
+  assert.equal(landed.reviewRequired, false, 'so the intended change is not manufactured into a review')
+  assert.equal(landed.continuity, 'reset', 'the new semantics have still been watched for no time')
+
+  // 2: an untouched dimension moves instead. Nothing asked for it.
+  const drifted = observe(base, { artifact: 'A', state: 'report-only', semantics: 'cccc', fields: { ...prior, sessionControls: 's2' }, at, intent })
+  assert.equal(drifted.expected, false, 'the session is not a dimension this operation submits')
+  assert.equal(drifted.reviewRequired, true)
+
+  // 3: the target may legitimately carry the drift; the intent must not. An
+  // intent built from a *target* would name every dimension, including the
+  // drifted one — that is the shape this contract refuses.
+  const fromTarget = { controls: { ...prior, grantControls: 'g2', sessionControls: 's2' } }
+  const circular = observe(base, { artifact: 'A', state: 'report-only', semantics: 'cccc', fields: { ...prior, sessionControls: 's2' }, at, intent: fromTarget })
+  assert.equal(circular.expected, true, 'this is what reading the target used to do')
+  assert.notDeepEqual(intent.controls, fromTarget.controls, 'and it is why intent comes from the patch, never the target')
+
+  // 4: one dimension lands as planned, another drifts. Not wholly expected.
+  const both = observe(base, { artifact: 'A', state: 'report-only', semantics: 'dddd', fields: { ...prior, grantControls: 'g2', 'conditions.users': 'u2' }, at, intent })
+  assert.equal(both.expected, false, 'the scope moved and no operation asked it to')
+  assert.equal(both.reviewRequired, true)
+
+  // 5: no intent at all, and no dimensions to compare: never expected by guess.
+  assert.equal(observe(base, { artifact: 'A', state: 'report-only', semantics: 'bbbb', fields: { ...prior, grantControls: 'g2' }, at }).reviewRequired, true)
+  const blind = observe({ ...base, fields: {} }, { artifact: 'A', state: 'report-only', semantics: 'bbbb', fields: {}, at, intent })
+  assert.equal(blind.expected, false, 'a record with no dimensions cannot show a movement was asked for')
+})
+
+test('intentOf reads what a body submits, and a patch that sets only a state submits nothing material', () => {
+  // The demo's admins step is exactly this: `{ state: "enabled" }`. It controls no
+  // material dimension, so it authorises no semantic movement whatever — which is
+  // the case the target-based comparison got backwards.
+  assert.deepEqual(intentOf({ state: 'enabled' }), { controls: {} })
+  assert.equal(intentOf(null), null)
+  const patch = { conditions: { applications: { includeApplications: ['Office365'] } } }
+  const controls = intentOf(patch)!.controls
+  assert.deepEqual(Object.keys(controls), ['conditions.applications'], 'only the dimension the patch carries')
+  // And it is the same fingerprint the deployed policy will produce for it.
+  assert.equal(controls['conditions.applications'], semanticFieldsOf(patch)['conditions.applications'])
+  // A whole body (a create) controls every dimension it names.
+  const whole = { conditions: { users: { includeUsers: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
+  assert.deepEqual(Object.keys(intentOf(whole)!.controls).sort(), ['conditions.users', 'grantControls'])
+})
+
+test('a tenant already drifted before the plan is built does not make its drift the plan’s intent', () => {
+  // The whole engine: drift the tenant's session control, then derive the plan
+  // from that drifted tenant so the update's target contains it, and check that
+  // the movement is still not called expected.
+  const prior = demoObservation()
+  const s = rescan((row) => {
+    row.sessionControls = { signInFrequency: { isEnabled: true, type: 'hours', value: 1 } }
+  }, prior)
+  const op = s.action.resolution?.policies[0]
+  assert.ok(op, 'the step still has an operation')
+  assert.equal(intentOf(op!.body)!.controls.sessionControls, undefined, 'the patch does not submit a session control')
+  if (op!.mode === 'update' && op!.target) {
+    assert.ok(semanticFieldsOf(op!.target as Record<string, unknown>).sessionControls, 'though the target carries one, as a valid request must')
+  }
+  assert.equal(s.state.observation?.expected, false, 'and the movement is not adopted as intent')
+  assert.equal(s.state.observation?.reviewRequired, true)
 })
 
 // ---- the next milestone ----

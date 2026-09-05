@@ -38,6 +38,9 @@ export function savedStepOf(step: Step): SavedStep {
   }
 }
 
+/** Step kinds whose state belongs to a Conditional Access policy, and so to the current scan. */
+const DEPLOYS_POLICY: ReadonlySet<Step['kind']> = new Set(['create', 'adjust', 'enforce'])
+
 export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> | null): Step[] {
   if (!saved) return steps
   for (const step of steps) {
@@ -49,11 +52,25 @@ export function mergePersisted(steps: Step[], saved: Record<string, SavedStep> |
     step.tracking = s.tracking ?? null
     if (s.ringActuals) for (const [i, r] of step.rings.entries()) if (s.ringActuals[i]) Object.assign(r, s.ringActuals[i])
     if (typeof s.currentRing === 'number') step.currentRing = Math.min(s.currentRing, Math.max(0, step.rings.length - 1))
-    if (s.status === 'skipped') setState(step, { setAside: true })
-    // Recurring steps are re-evaluated every scan (a drill can become overdue
-    // again); a saved "done" must not pin them. A record holds the old single
-    // word, so it restores the state that word stood for (lifecycle.ts).
-    else if (statusRank(s.status) > statusRank(step.status)) setState(step, stateForStatus(s.status))
+    // Setting a step aside is the operator's own decision, and nothing about the
+    // tenant can re-derive it. It is restored through its own authority.
+    if (s.status === 'skipped') {
+      setState(step, { setAside: true })
+      continue
+    }
+    // Everything else the word stood for is a *projection* of a state this scan
+    // works out again (lifecycle.ts projectStatus). For a step that deploys a
+    // policy it must stay that way: a record saying "ready to enforce last time"
+    // is not evidence that the policy deployed now has been watched, and letting
+    // the word back in walked straight past the observation contract — past
+    // artifact continuity, past a window that reset, past a legacy record that
+    // can prove nothing. The lifecycle comes from the current scan and from the
+    // history whose continuity that scan can prove (tracking.ts), or not at all.
+    if (DEPLOYS_POLICY.has(step.kind)) continue
+    // A step that deploys no policy — a prerequisite somebody carried out, a
+    // verification that was run — has no tenant object to re-read, so the record
+    // is the authority it always was.
+    if (statusRank(s.status) > statusRank(step.status)) setState(step, stateForStatus(s.status))
   }
   return steps
 }
