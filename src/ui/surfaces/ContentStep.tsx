@@ -148,7 +148,13 @@ export function ContentStep({
   const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
   // §8.7: a section with no content is not rendered. A step with nothing to do
   // is a missing content key, logged by the walk, never an empty heading.
-  const hasWhatToDo = Boolean(w.lead) || hasChecks || ((truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || emergencyUnsafe || emergencyUnproven || inPlace || hasSteps || before.length > 0
+  // The lead is a sentence about this step's checks ("{failing} of {total} checks
+  // fail today"), and a step with no object to check has neither number. The
+  // export gates it on the values being there (stepExport.ts whole); this did
+  // not, so the exclusions-group step of a tenant that has not chosen a group
+  // read "Fix each failing check. of checks fail today."
+  const leadWhole = typeof w.lead === 'string' && whole(w.lead, ex)
+  const hasWhatToDo = leadWhole || hasChecks || ((truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || emergencyUnsafe || emergencyUnproven || inPlace || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -196,7 +202,7 @@ export function ContentStep({
       {d && (typeof d.applies !== 'string' || truthy(ex[d.applies])) && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
 
       {hasWhatToDo && <h3>What to do</h3>}
-      {hasWhatToDo && reason === null && w.lead && <p><T s={w.lead} ex={ex} /></p>}
+      {hasWhatToDo && reason === null && leadWhole && <p><T s={w.lead} ex={ex} /></p>}
       {/* A check step (emergency access, exclusions group): one numbered fix line
           per failing check, filled from that check's values (walk-51 item 14). */}
       {Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && w.checkFixes && (
