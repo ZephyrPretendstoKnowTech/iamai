@@ -125,37 +125,36 @@ export function Today({ snapshot }: { snapshot: TenantSnapshot }) {
         {ledgerText(facts)} <span className="quiet">{window_}</span>
       </p>
       <PageTip page="today" text={T.tip} />
-      <LadderHead active={facts.active} />
-      <ul className="ladder">
-        {RUNGS.map((r) => {
-          const n = facts.rungs[r]
-          const w = rungWords(r)
-          const key: ShowKey = `rung-${r}`
-          const on = show === key
-          return [
-            // The rule before the three to prioritise, between rungs 4 and 3.
-            r === PRIORITISE_FROM ? (
-              <li key="rule" className="ladder-divider">
-                {ladderWords.prioritise}
-              </li>
-            ) : null,
-            <li key={r} className={`ladder-row card${on ? ' on' : ''}`} data-rung={r} tabIndex={0} aria-pressed={on} onClick={() => select(on ? 'all' : key)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(on ? 'all' : key) } }}>
-              <span className={`rung-badge rung-${r}`}>{r}</span>
-              <span className="rung-text">
+      <div className="ladder-wrap">
+        <LadderHead active={facts.active} />
+        <ul className="ladder">
+          {RUNGS.map((r) => {
+            const n = facts.rungs[r]
+            const w = rungWords(r)
+            const key: ShowKey = `rung-${r}`
+            const on = show === key
+            return [
+              // The rule before the three to prioritise, between rungs 4 and 3.
+              r === PRIORITISE_FROM ? (
+                <li key="rule" className="ladder-divider">
+                  {ladderWords.prioritise}
+                </li>
+              ) : null,
+              <li key={r} className={`ladder-row card${on ? ' on' : ''}`} data-rung={r} tabIndex={0} aria-pressed={on} onClick={() => select(on ? 'all' : key)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(on ? 'all' : key) } }}>
+                <span className={`rung-badge rung-${r}`}>{r}</span>
                 <span className="rung-title">
                   {w.title}
                   <InfoTip title={w.title} text={w.tip} />
                 </span>
-                <span className="rung-desc">{w.desc}</span>
-              </span>
-              <span className="rung-n">{n}</span>
-              <span className="rung-bar">
-                <i className={`rung-${r}`} style={{ width: pct(n) }} />
-              </span>
-            </li>,
-          ]
-        })}
-      </ul>
+                <span className="rung-n">{n}</span>
+                <span className="rung-bar">
+                  <i className={`rung-${r}`} style={{ width: pct(n) }} />
+                </span>
+              </li>,
+            ]
+          })}
+        </ul>
+      </div>
       <div className="toolbar no-print">
         <input type="search" placeholder={C.search} aria-label={C.search} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
         <label>

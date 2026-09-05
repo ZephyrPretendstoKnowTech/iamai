@@ -1,7 +1,8 @@
 // The scan runs from any page (ui/actions.ts): Connect's tile 3 shows its
 // progress, every other page one line under the header, outside header.app,
-// so the header keeps no scan control and no scan age. Today's content column
-// is the app's page width, so its rungs and its table span it.
+// so the header keeps no scan control and no scan age. Today's table reads
+// better with the wide cap (WIDE_ROUTES); its ladder keeps its own, narrower
+// intrinsic width and sits centered above the wider table (.ladder-wrap).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -24,13 +25,15 @@ test("the scan's line renders under the header on every page but Connect, from t
   assert.equal(app.connect.failed, 'The scan stopped before it finished: {why}')
 })
 
-test("Today's content column is the app's page width: the wide cap keeps Inventory and How", () => {
-  assert.match(shell, /const WIDE_ROUTES = new Set<Route>\(\['inventory', 'how'\]\)/)
+test('the wide cap keeps Today, Inventory and How; Today centers its ladder at its own intrinsic width instead of stretching it to the wide table', () => {
+  assert.match(shell, /const WIDE_ROUTES = new Set<Route>\(\['today', 'inventory', 'how'\]\)/)
   const today = readFileSync('src/ui/surfaces/Today.tsx', 'utf8')
   assert.match(today, /<div className="page-head">[\s\S]*<h1>\{T\.h1\}<\/h1>[\s\S]*CONNECT_WORDS\.scan\.complete\.again/, 'Scan again sits beside the heading')
+  assert.match(today, /<div className="ladder-wrap">[\s\S]*<LadderHead[\s\S]*<ul className="ladder">/, 'the ladder head and rows share one centered, capped wrapper')
   const css = readFileSync('src/ui/app.css', 'utf8')
   assert.match(css, /\.surface \.page-head \{[^}]*justify-content: space-between/)
   assert.match(css, /\.scan-line \{/)
+  assert.match(css, /\.ladder-wrap \{[^}]*max-width: var\(--page\)/, 'the ladder is capped to the page width, not the wide table width')
 })
 
 test('Forget this tenant keeps the sign-in: its words say so', () => {
