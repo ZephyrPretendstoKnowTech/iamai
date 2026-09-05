@@ -143,7 +143,11 @@ export function ContentStep({
   const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
   // §8.7: a section with no content is not rendered. A step with nothing to do
   // is a missing content key, logged by the walk, never an empty heading.
-  const hasWhatToDo = Boolean(w.lead) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || inPlace || hasSteps || before.length > 0
+  // The lead counts only when it is whole: a step whose checks have not run
+  // (nothing confirmed for them to check) would otherwise carry the heading and
+  // "Fix each failing check. of checks fail today." The exports have always
+  // gated it this way (stepExport.ts); the screen now does too.
+  const hasWhatToDo = whole(w.lead, ex) || hasChecks || (truthy(ex.needsCreate) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || inPlace || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -191,7 +195,7 @@ export function ContentStep({
       {d && (typeof d.applies !== 'string' || truthy(ex[d.applies])) && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
 
       {hasWhatToDo && <h3>What to do</h3>}
-      {hasWhatToDo && reason === null && w.lead && <p><T s={w.lead} ex={ex} /></p>}
+      {hasWhatToDo && reason === null && <Line s={w.lead} ex={ex} />}
       {/* A check step (emergency access, exclusions group): one numbered fix line
           per failing check, filled from that check's values (walk-51 item 14). */}
       {Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && w.checkFixes && (
@@ -392,6 +396,14 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   const initial: string[] = saved?.picked ?? (Array.isArray(tickedOf) ? (tickedOf as string[]) : single ? ids.slice(0, 1) : ids)
   const [chips, setChips] = useState<PickerOption[]>(() => initial.map(optionOf))
   const [query, setQuery] = useState('')
+  // A safety-sensitive choice (Foundation C): the step's facts say whether the
+  // plan is acting on somebody's answer or holding a recommendation. While it is
+  // holding one, the picker is not the question — "is this the group?" is, and
+  // it has two answers.
+  const confirm = d.confirm && typeof d.confirm === 'object' ? (d.confirm as { recommended: string; use: string; other: string; ambiguous: string; invalidated: string }) : null
+  const recommendedId = typeof ex.recommendedGroupId === 'string' ? ex.recommendedGroupId : null
+  const unconfirmed = confirm !== null && chips.length === 0 && (recommendedId !== null || truthy(ex.candidateGroups) || truthy(ex.invalidatedGroup))
+  const [choosing, setChoosing] = useState(false)
   const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
   const hasPicker = rows.length > 0 || universe.length > 0
   // The decision's own options, and its question under the picker: a whole
@@ -429,7 +441,31 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
       {decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
         <div className="dlabel">{d.label}</div>
-        {hasPicker && <Picker selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
+        {confirm && unconfirmed && (
+          <>
+            {recommendedId !== null && !choosing && <Line s={confirm.recommended} ex={ex} cls="reason" />}
+            <Line s={confirm.ambiguous} ex={ex} cls="reason" />
+            <Line s={confirm.invalidated} ex={ex} cls="reason" />
+            {recommendedId !== null && !choosing && (
+              <div className="decision-confirm">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const picked = optionOf(recommendedId)
+                    setChips([picked])
+                    onDecide?.({ picked: [recommendedId] })
+                  }}
+                >
+                  {confirm.use}
+                </Button>
+                <Button variant="tertiary" onClick={() => setChoosing(true)}>
+                  {confirm.other}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+        {hasPicker && !(unconfirmed && recommendedId !== null && !choosing) && <Picker selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
         {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} options={options} answer={option} onAnswer={setOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />}
         {decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
         {question && (
@@ -451,7 +487,7 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
             </div>
           </>
         )}
-        <Button variant="secondary" onClick={save}>{d.save || 'Save'}</Button>
+        {!(unconfirmed && recommendedId !== null && !choosing) && <Button variant="secondary" onClick={save}>{d.save || 'Save'}</Button>}
       </div>
     </>
   )

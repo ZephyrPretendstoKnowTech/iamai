@@ -6,6 +6,7 @@ import type { MappingState } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { emptyMappingState } from './types.ts'
 import { answersComplete } from './wizard.ts'
+import { confirmedExclusionsGroupId } from './safetyChoice.ts'
 
 export async function loadMappingState(tenantId: string): Promise<MappingState> {
   const stored = await loadMappingRecord<Partial<MappingState>>(tenantId)
@@ -22,8 +23,11 @@ export async function saveMappingState(state: MappingState): Promise<void> {
 export function toCoverageMapping(state: MappingState, snapshot: TenantSnapshot): NonNullable<CoverageInput['mapping']> {
   const breakGlassUsers = [...state.breakGlassUserIds]
   const exclusionGroups: Record<string, string> = {}
-  const g = state.records['__globalExclusion']
-  if (g?.resolvedId) exclusionGroups[g.resolvedId] = 'breakGlass/globalExclusion'
+  // Foundation C: an exclusion is expected because somebody said the group is
+  // the exclusions group, never because IAMAI thinks it looks like one. Until
+  // then coverage reads the policies' own signatures and says "assumed".
+  const g = confirmedExclusionsGroupId({ snapshot, mapping: state })
+  if (g) exclusionGroups[g] = 'breakGlass/globalExclusion'
   if (state.serviceAccountsGroupId) exclusionGroups[state.serviceAccountsGroupId] = 'serviceAccounts'
   return {
     breakGlassUsers,

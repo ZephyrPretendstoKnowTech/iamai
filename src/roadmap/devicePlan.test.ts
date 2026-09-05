@@ -41,6 +41,8 @@ function ctxFor(f: Fixture, r: FixtureRun, mapping: MappingState): StepVarContex
 const AT = '2026-09-02T00:00:00.000Z'
 /** A service-accounts group this tenant has named, so the compliant-device policy resolves. */
 const SERVICE_ACCOUNTS_GROUP = '00000000-0000-4000-8000-0000000a0001'
+/** The group the operator confirms as the exclusions group, so the policies have one to name. */
+const exclusionsGroupOf = (f: Fixture): string => [...f.groups].find(([, g]) => g.displayName === 'Core - Exclusions')![0]
 const DEVICE = PREREQ_STEP_ID.devicePlan
 const labels = questionLabels(DEVICE)
 
@@ -85,8 +87,12 @@ test('open: the step asks, phones are out of readiness, and only the device step
 test('answered (apps, hybrid): the platform deviation, the enrolment step follows, the campaign says it, readiness counts hybrid', () => {
   const f = fixture('demo')
   // The baseline's compliant-device policy excludes the author's service-accounts
-  // group, so this tenant needs one before the policy can be written at all.
-  const m = { ...applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
+  // group, so this tenant needs one before the policy can be written at all — and
+  // an exclusions group, which is a safety-sensitive choice and only an operator
+  // confirms it (Foundation C, safetyChoice.ts): the demo has two groups that
+  // could be it and IAMAI picks neither.
+  const withGroup = applyStepDecisions(applied(f, decided('Protect the apps only', 'Hybrid-joined is enough')), { [PREREQ_STEP_ID.exclusionsGroup]: { picked: [exclusionsGroupOf(f)], at: AT } })
+  const m = { ...withGroup, serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP }
   const plan = devicePlanOf(m)
   assert.deepEqual(plan && { phones: plan.phones, computers: plan.computers, blockPhones: plan.blockPhones }, { phones: 'apps', computers: 'hybrid', blockPhones: false })
   assert.deepEqual(excludedPlatforms(m), ['android', 'iOS'])
