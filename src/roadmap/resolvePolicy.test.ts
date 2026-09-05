@@ -475,7 +475,7 @@ test('the guests pair carries both policies, in the baseline\'s order, on every 
 test('one unresolved reference in either policy of a pair gates all four channels', () => {
   // The tenant has no exclusions group: both guests policies exclude one, so
   // neither can be written and the step offers nothing.
-  const { of } = bareSteps('demo', {})
+  const { of } = bareSteps('demo', { records: {} })
   const { step, portal } = of('guests-mfa')
   assert.equal((step.action.resolution?.policies ?? []).length, 2, 'both policies are still described')
   assert.ok(missingObjects(step).length > 0, 'something is missing')

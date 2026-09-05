@@ -3,7 +3,7 @@
 // line that names it read the same name, from the plan's own steps.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { proposedObjectNames } from '../../coverage/naming.ts'
@@ -12,9 +12,13 @@ import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
+import { storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 
-const f = fixture('demo')
-const r = runFixture(f)
+// Nobody has answered the exclusions-group question here: that is what makes
+// the policy steps wait on the object the plan proposes to create, which is
+// this file's subject (mapping/safetyChoice.ts).
+const f = noExclusionsAnswer(fixture('demo'))
+const r = runFixture(f, { mapping: f.mapping })
 const base = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
 const withPlan: StepVarContext = { ...base, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
 const prereq = (id: string) => r.steps.find((s) => s.id === id)!
@@ -26,7 +30,7 @@ const portal = (ctx: StepVarContext): { step: string; line: string }[] =>
   })
 
 test('the exclusions-group step names the plan\'s proposal, and the policy steps wait for the group rather than naming a proposal', () => {
-  assert.equal(f.mapping.records['__globalExclusion']?.resolvedId ?? null, null, 'the demo recognises no exclusions group, so the plan proposes one')
+  assert.equal(storedExclusionsGroupId(f.mapping), null, 'nobody has chosen an exclusions group, so the plan proposes one')
   const step = prereq(PREREQ_STEP_ID.exclusionsGroup)
   const proposed = String(step.naming?.proposed)
   assert.ok(proposed.length > 0)
