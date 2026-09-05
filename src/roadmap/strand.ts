@@ -2,7 +2,7 @@
 // lock a given account out? Pure: runs in tests, the worker and the page.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { isOpenPolicy, stepEffects } from './operations.ts'
-import type { PolicyEffect } from './operations.ts'
+import type { PolicyEffect, Requirement } from './operations.ts'
 import { strengthTier } from '../coverage/strength.ts'
 import type { Step } from './types.ts'
 
@@ -55,22 +55,63 @@ export function promptsPeople(step: Step): boolean {
 }
 
 /**
- * The control family one policy imposes, for the account-by-account verdict: the
- * thing a person has to be able to do to get past it. `unknown` where the policy
- * names a strength nothing tells us the shape of — the honest answer is that we
- * cannot say, never the goal's own family.
+ * Whether one account can satisfy one requirement, from what the scan holds.
+ * Each kind of requirement is kept distinct: a device is not an app, and an app
+ * is not a method. Where the scan cannot answer — a strength nothing describes,
+ * an app requirement no sign-in evidence covers — the answer is `unknown`, never
+ * a guess and never the goal's own family.
  */
-export function controlFamilyOf(effect: PolicyEffect): Step['readiness']['family'] | 'unknown' | 'none' {
-  if (effect.blocks) return 'block'
-  if (effect.strength) {
-    if (effect.strength.allowedCombinations.length === 0) return 'unknown'
-    return strengthTier(effect.strength.allowedCombinations) === 'phishingResistant' ? 'admin' : 'mfa'
+function requirementVerdict(req: Requirement, accountId: string, snapshot: TenantSnapshot, allowedCountries: string[]): StrandVerdict {
+  switch (req.kind) {
+    case 'mfa':
+      return accountVerdict('mfa', accountId, snapshot, allowedCountries)
+    case 'strength':
+      if (req.combinations.length === 0) return { stranded: false, unknown: true, reason: 'the strength this policy requires could not be read' }
+      return accountVerdict(strengthTier(req.combinations) === 'phishingResistant' ? 'admin' : 'mfa', accountId, snapshot, allowedCountries)
+    case 'device':
+      return accountVerdict('device', accountId, snapshot, allowedCountries)
+    case 'app':
+      return { stranded: false, unknown: true, reason: 'the scan does not say which apps this account signs in with' }
+    case 'passwordChange':
+      return { stranded: false, unknown: false, reason: 'the account can change its own password' }
+    case 'other':
+      return { stranded: false, unknown: true, reason: `the scan cannot say whether this account satisfies ${req.control}` }
   }
-  if (effect.requiresDevice) return 'device'
-  if (effect.usesLocations) return 'location'
-  if (effect.controls.has('mfa')) return 'mfa'
-  if (effect.session) return 'other'
-  return 'none'
+}
+
+/**
+ * Whether one account is stranded by one policy, read from the policy itself.
+ * A block is judged by what people were seen doing; a policy that names places
+ * by where the account signs in from; a policy that asks for things by whether
+ * the account can satisfy them — every requirement kept apart, combined the way
+ * the policy combines them: all of them for AND, any one of them for OR. Where
+ * the policy says something IAMAI cannot read, the answer is `unknown`, and
+ * under OR an unreadable alternative withdraws a stranded verdict too, because
+ * it may be the way through.
+ */
+export function policyVerdict(effect: PolicyEffect, accountId: string, snapshot: TenantSnapshot, allowedCountries: string[]): StrandVerdict {
+  const decided = ((): StrandVerdict => {
+    // A block is judged by what people were seen doing, or by where they sign in
+    // from when it names places.
+    if (effect.blocks) return accountVerdict(effect.usesLocations ? 'location' : 'block', accountId, snapshot, allowedCountries)
+    const verdicts = effect.requirements.map((r) => requirementVerdict(r, accountId, snapshot, allowedCountries))
+    if (verdicts.length === 0) {
+      // A policy that only scopes a place, or only shortens a session, asks for
+      // nothing a person could fail to have.
+      if (effect.usesLocations) return accountVerdict('location', accountId, snapshot, allowedCountries)
+      return { stranded: false, unknown: false, reason: 'no deny condition' }
+    }
+    if (effect.operator === 'AND') return verdicts.find((v) => v.stranded) ?? verdicts.find((v) => v.unknown) ?? verdicts[0]
+    return verdicts.find((v) => !v.stranded && !v.unknown) ?? verdicts.find((v) => v.unknown) ?? verdicts[0]
+  })()
+  if (effect.unknown.length === 0) return decided
+  // Something in the policy could not be read. It stands only where reading it
+  // could not help: a block is a block, and under AND a requirement already
+  // failed. Under OR the unreadable part may be the way through, so a stranded
+  // verdict is withdrawn rather than asserted.
+  const unreadable = { stranded: false, unknown: true, reason: effect.unknown[0] }
+  if (decided.stranded && (effect.blocks || effect.operator === 'AND')) return decided
+  return unreadable
 }
 
 /**
@@ -83,13 +124,7 @@ export function stepAccountVerdict(step: Step, accountId: string, snapshot: Tena
   if (effects === null) return accountVerdict(step.readiness.family, accountId, snapshot, allowedCountries)
   let unknown: StrandVerdict | null = null
   for (const effect of effects) {
-    const family = controlFamilyOf(effect)
-    if (family === 'none') continue
-    if (family === 'unknown') {
-      unknown = unknown ?? { stranded: false, unknown: true, reason: 'the strength this policy requires could not be read' }
-      continue
-    }
-    const verdict = accountVerdict(family, accountId, snapshot, allowedCountries)
+    const verdict = policyVerdict(effect, accountId, snapshot, allowedCountries)
     if (verdict.stranded) return verdict
     if (verdict.unknown) unknown = unknown ?? verdict
   }

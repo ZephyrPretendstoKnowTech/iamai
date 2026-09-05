@@ -66,11 +66,18 @@ export function buildTranslatorOutput(): Record<string, { steps: string[] }> {
     // lines label with are the author's too. `json` is the same projection the
     // engine writes, so the shared gate (roadmap/operations.ts) opens here as it
     // does in the app.
+    // The body is the policy IAMAI would submit, not the file's record of it:
+    // the author's id, its placeholders and the rest of the baseline's
+    // bookkeeping are not fields a create carries (roadmap/operations.ts).
+    const submitted = (p: Record<string, unknown>): Record<string, unknown> =>
+      Object.fromEntries(
+        (['displayName', 'description', 'state', 'conditions', 'grantControls', 'sessionControls'] as const).filter((k) => p[k] !== undefined).map((k) => [k, p[k]]),
+      )
     const operations = (mapped as unknown as Record<string, unknown>[]).map((p, i) => ({
       sourceName: String(p.displayName ?? i),
       mode: 'create' as const,
       policyId: null,
-      body: p,
+      body: submitted(p),
     }))
     const asStep = {
       goalId,

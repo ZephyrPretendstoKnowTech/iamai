@@ -201,7 +201,9 @@ export function batchClassOf(step: Step): BatchClass {
   const effects = effectsOf(step)
   if (effects !== null) {
     if (effects.some((e) => e.asksForMethod)) return 'mfa'
-    if (effects.some((e) => e.requiresDevice || e.usesLocations)) return 'deviceSession'
+    // A session control is felt the same way a device requirement is: the batch
+    // it belongs to is the one named for both.
+    if (effects.some((e) => e.requiresDevice || e.usesLocations || e.session)) return 'deviceSession'
     return 'other'
   }
   // A risk policy that does apply prompts for MFA, so it batches with the MFA changes.
@@ -594,9 +596,10 @@ export function buildSchedule(
       const soft = deps.filter((d) => d.kind === 'soft' && !(relaxSamePeople && d.reason === 'same-people'))
       const rings = s.rings.length > 0 ? s.rings : null
       // A step with no rings still soaks for as long as what it does deserves: a
-      // policy that asks nothing of anyone needs a day, anything else the band's.
-      const soakEffects = effectsOf(s)
-      const quiet = soakEffects !== null ? !soakEffects.some((e) => e.any) : s.readiness.family === 'other'
+      // change nobody feels needs a day, anything else the band's. What it does
+      // and to whom decides (roadmap/timing.ts nobodyAffected), never the goal
+      // it is filed under.
+      const quiet = effectsOf(s) !== null ? nobodyAffected(s) : s.readiness.family === 'other'
       const soaks = rings ? rings.map((r) => r.soakDays) : [quiet ? 1 : ringBand.soakDays]
       const batch = batchClassOf(s)
       const layout = (from: string): { start: string; windows: { start: string; end: string }[] } => {
