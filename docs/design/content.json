@@ -2411,7 +2411,7 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals"
       },
       "who": {
-        "lead": "{active} active people · {adminCount} admins · the exported policy targets every one of them",
+        "lead": "The policy this baseline exports targets every account in the directory and excludes no administrator.",
         "evidence": [
           "{n} people without an admin role opened an admin portal since {from}: {list:nonAdminPortalUsers}",
           "{n} people without a directory role signed in to Azure since {from}: {list:azureNonAdmins}",

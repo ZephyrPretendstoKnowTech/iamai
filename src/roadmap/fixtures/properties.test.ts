@@ -8,7 +8,8 @@ import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
 import { unavailableReason } from '../operations.ts'
-import { analysisUnknown, canDenyAccess, effectsOf, operationReach, wouldStrand } from '../strand.ts'
+import { analysisUnknown, canDenyAccess, effectsOf, wouldStrand } from '../strand.ts'
+import { rolloutCohort } from '../rings.ts'
 import { localHour } from '../timing.ts'
 import { buildPlanFile } from '../plan.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
@@ -255,12 +256,16 @@ for (const f of fixtures) {
       }
       assert.equal(rings.length, f.expect.rings, `${s.id} has ${f.expect.rings} rings`)
       const members = rings.reduce((n, r) => n + r.targeting.memberCount, 0)
-      // The rings hold the people the step lists that its own policies actually
-      // reach — somebody a policy provably leaves alone is in no ring of it.
-      const effects = effectsOf(s) ?? []
-      const reached = s.population.ids.filter((id) => effects.length === 0 || effects.some((e) => operationReach(e, id, snapshot).answer !== 'out'))
-      assert.equal(members, reached.length, `${s.id}: ring members sum to the people its policies reach`)
-      assert.ok(members <= s.population.total, `${s.id}: and never more than the step lists`)
+      // The rings hold the people the step's own policies name, every one of
+      // them once: the rollout cohort and nothing else (roadmap/rings.ts
+      // rolloutCohort). The population the goal handed the step is neither a
+      // floor nor a ceiling on it — a policy filed under a narrow goal that
+      // names everybody rolls out to everybody.
+      const cohort = rolloutCohort(s)
+      assert.ok(cohort !== null, `${s.id}: a ringed step has a settled cohort`)
+      assert.equal(members, cohort.length, `${s.id}: ring members sum to the people its policies name`)
+      const seen = rings.flatMap((r) => r.targeting.suggestedMemberIds)
+      if (seen.length > 0) assert.deepEqual([...seen].sort(), [...cohort].sort(), `${s.id}: and they are those people, each in one ring`)
     }
   })
 

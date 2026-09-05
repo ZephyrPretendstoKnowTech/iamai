@@ -27,7 +27,7 @@ import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers, notPeopleIds } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { lockoutCount } from './lockout.ts'
-import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach, stepAccountVerdict } from './strand.ts'
+import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach, scopeCohort, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
@@ -192,10 +192,10 @@ function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): P
  * threshold, so the greeting on the step and the audience label on the comms
  * plan cannot disagree about whether these are named people or a crowd.
  */
-function announcementAudience(pop: StepPopulation, admins: boolean, nameOf: (id: string) => string): { kind: string; names?: string[] } {
-  if (pop.total === 0) return { kind: 'none' }
+function announcementAudience(ids: readonly string[], admins: boolean, nameOf: (id: string) => string): { kind: string; names?: string[] } {
+  if (ids.length === 0) return { kind: 'none' }
   if (admins) return { kind: 'admins' }
-  if (pop.ids.length < NAMED_BELOW) return { kind: 'named', names: pop.ids.map(nameOf) }
+  if (ids.length < NAMED_BELOW) return { kind: 'named', names: ids.map(nameOf) }
   return { kind: 'everyone' }
 }
 
@@ -580,6 +580,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     countryLocations,
     strengths: strengthLookupOf(snapshot),
     groupMembers: knownGroupMembers,
+  }
+  // ---- the rollout cohort (Foundation A) ----
+  // Who a step's own policies *name*, read from their user scope and from
+  // nothing else (roadmap/strand.ts scopeCohort): every account in the directory
+  // the policy includes and does not exclude. The rings, the who-line, the names
+  // and the announcement's audience are this; the population the goal handed the
+  // step stays what it always was — a readiness fact about a goal — and answers
+  // none of them for an open policy.
+  //
+  // The universe is the tenant's own directory, never a step's list of people: a
+  // policy filed under a narrow goal that names everybody reaches everybody, and
+  // a policy filed under a broad goal that names four admins reaches four admins.
+  //
+  // Null where the scope could not be settled. Nothing then falls back.
+  const directoryIds = snapshot.users.map((u) => u.id)
+  // One answer per distinct scope, and one array behind it: steps whose policies
+  // name the same people share the cohort, so the ring partition is computed once
+  // for them (rings.ts partitionCache) instead of once per step.
+  const cohortCache = new Map<string, StepPopulation | null>()
+  const cohortFor = (effects: PolicyEffect[]): StepPopulation | null => {
+    const key = JSON.stringify(effects.map((e) => [e.scope, e.unknown.length > 0]))
+    if (!cohortCache.has(key)) {
+      const ids = scopeCohort(effects, directoryIds, snapshot, strandContext)
+      cohortCache.set(key, ids === null ? null : population(ids, popIndex))
+    }
+    return cohortCache.get(key) ?? null
   }
   const exclusionsGroupId = tenantObjects.exclusionsGroupId
   const existingNames = new Set((snapshot.config.caPolicies?.rows ?? []).map((p) => String((p as RawPolicy).displayName ?? '').trim().toLowerCase()).filter(Boolean))
@@ -1104,6 +1130,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // measuredReach). Absent where the answer is not known; zero impact, the
     // notice, the batch class and the soak all read it and nothing else.
     const measured = isOpenPolicy(asStep) ? measuredReach(stepEffects(asStep), activePeople, snapshot, strandContext) : null
+    // The people this step's own policies name (cohortFor above). Null on an open
+    // policy whose scope could not be settled, and absent from the step then: an
+    // exact cohort is proved or it is not claimed, and never filled in from the
+    // goal's population.
+    const cohort = isOpenPolicy(asStep) ? cohortFor(stepEffects(asStep)) : null
     // Safe means known to be safe: a verdict the scan could not settle is not one.
     const operatorSafe = opVerdict === null ? null : !opVerdict.stranded && !opVerdict.unknown
     if (opVerdict?.stranded && !state.satisfied) {
@@ -1154,8 +1185,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         : kind === 'adjust'
           ? adjustSections.size > 0 && [...adjustSections].every((s) => s === 'sessionControls')
           : floorGrant === null && impl.floor.session !== undefined
+    // Who the announcement is addressed to is who the policy names, and for an
+    // open policy that is the cohort: the goal's own idea of who it is for
+    // (expectedWho) and the readiness family both describe a goal, and a step
+    // whose policy names everybody must not greet four admins. An unresolved
+    // cohort writes no announcement at all rather than a named audience nobody
+    // has established.
+    const audienceIds = ownEffects !== null ? (cohort?.ids ?? null) : pop.ids
+    const adminAudience =
+      ownEffects !== null
+        ? audienceIds !== null && audienceIds.length > 0 && audienceIds.every((id) => popIndex.admins.has(id))
+        : impl.expectedWho.kind === 'coreAdmins' || readiness.family === 'admin'
     const comms =
-      state.satisfied || held
+      state.satisfied || held || audienceIds === null
         ? null
         : nobodyAffected
           ? NO_ANNOUNCEMENT
@@ -1168,11 +1210,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
                 // How many people a block reaches is the measured answer, not a
                 // count collected under the goal.
                 affected: ownEffects !== null ? (measured?.length ?? null) : evidenceUsable && readiness.family === 'block' ? evidence.affectedUserIds.length : null,
-                admins: impl.expectedWho.kind === 'coreAdmins',
+                admins: adminAudience,
                 // Named below the threshold the audience model already uses, so
                 // the greeting and the audience label cannot disagree
                 // (prompt 41 §4).
-                audience: announcementAudience(pop, impl.expectedWho.kind === 'coreAdmins' || readiness.family === 'admin', nameOf),
+                audience: announcementAudience(audienceIds, adminAudience, nameOf),
               },
               tenantName,
               '{DATE}',
@@ -1200,6 +1242,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       blockers,
       unblockNotes,
       population: pop,
+      ...(cohort !== null ? { cohort: { ...cohort } } : {}),
       readiness,
       evidence,
       action,
@@ -1454,7 +1497,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const ringCtx = {
     snapshot,
     viability: viabilityById,
-    breakGlassIds: new Set(mapping.breakGlassUserIds),
     highCareIds,
     operatorId,
     naming,

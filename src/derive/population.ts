@@ -12,6 +12,8 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import { enabledUsers, notPeopleIds } from './sets.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { affectedIds } from './whoLine.ts'
+import { effectsOf } from '../roadmap/strand.ts'
+import type { StepPopulation } from '../roadmap/types.ts'
 
 export type StepPopulationView = {
   /** Active people the step acts on — the one denominator (enabled, signed in within 90 days). */
@@ -24,9 +26,29 @@ export type StepPopulationView = {
   names: string[]
 }
 
+/**
+ * The people a step is about, and the one answer behind every count and every
+ * name a surface shows for it.
+ *
+ * For an open policy it is the rollout cohort: the accounts the step's own
+ * policies name, read from their user scope where the snapshot is
+ * (roadmap/strand.ts scopeCohort, carried on the step as `cohort`). The
+ * population the goal handed the step is a readiness fact about that goal — it
+ * still answers the coverage clause beside the who-line — and it is never the
+ * answer to who a policy reaches.
+ *
+ * Null on an open policy whose scope could not be settled: the surfaces then
+ * render no count and no names rather than the goal's people (Foundation A).
+ */
+export function reached(step: Step): StepPopulation | null {
+  if (effectsOf(step) === null) return step.population
+  return step.cohort ?? null
+}
+
 /** The single population object for a step; the row and the step body read it. */
-export function stepPopulation(step: Step): StepPopulationView {
-  const p = step.population
+export function stepPopulation(step: Step): StepPopulationView | null {
+  const p = reached(step)
+  if (p === null) return null
   const ids = affectedIds(p)
   return {
     active: ids.length,

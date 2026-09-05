@@ -6,7 +6,7 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { NamingConvention } from '../coverage/naming.ts'
 import { proposedGroupName } from '../coverage/naming.ts'
 import type { Ring, RingTargeting, Step } from './types.ts'
-import { analysisUnknown, canDenyAccess, effectsOf, operationReach } from './strand.ts'
+import { analysisUnknown, canDenyAccess, effectsOf } from './strand.ts'
 
 /** Ring counts and sizes by active users (roadmap-v2.md §1 table). */
 export type RingBand = {
@@ -62,13 +62,38 @@ export function ringable(step: Step): boolean {
   // says what is missing instead of naming four groups (roadmap/strand.ts
   // analysisUnknown).
   if (analysisUnknown(step)) return false
+  // And where the policy is readable but its scope is not — a group nothing says
+  // who is in — there is no cohort to divide, so there is no ring plan either
+  // (rolloutCohort).
+  if (rolloutCohort(step) === null) return false
   return canDenyAccess(step)
+}
+
+/**
+ * The people this rollout is for.
+ *
+ * For an open policy it is the policy's own user scope, resolved once where the
+ * snapshot is and carried on the step (roadmap/generate.ts over
+ * roadmap/strand.ts scopeCohort): the accounts the policy names, minus the ones
+ * it excludes. The population the goal handed the step is a readiness fact about
+ * a goal, never a reading of a policy, and is not read here — a broad policy
+ * filed under a narrow goal reaches everybody it names, and a narrow policy
+ * filed under a broad goal reaches nobody else.
+ *
+ * Null where that scope could not be settled: the step proposes no rings at all
+ * rather than naming people nobody has established are in scope.
+ *
+ * A step with no policy of its own — one already in place, the enforce step — is
+ * bounded by the people it lists, as it always was.
+ */
+export function rolloutCohort(step: Step): string[] | null {
+  if (effectsOf(step) === null) return step.population.ids
+  return step.cohort?.ids ?? null
 }
 
 export type RingContext = {
   snapshot: TenantSnapshot
   viability: Map<string, MfaViability>
-  breakGlassIds: Set<string>
   highCareIds: Set<string>
   operatorId: string | null
   naming: NamingConvention
@@ -175,13 +200,17 @@ const partitionCache = new WeakMap<string[], { name: string; who: string | null;
 export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   if (!ringable(step)) return []
   const band = ringBandFor(ctx.activeUsers)
-  // The people a ring proposes are the people the policy actually reaches. The
-  // step's list is where the candidates come from; each policy's own scope says
-  // which of them this rollout is about, and somebody it provably leaves alone is
-  // in no ring of it (roadmap/strand.ts operationReach).
-  const effects = effectsOf(step)
-  const reaches = (id: string): boolean => effects === null || effects.some((e) => operationReach(e, id, ctx.snapshot).answer !== 'out')
-  const pool = step.population.ids.filter((id) => !ctx.breakGlassIds.has(id) && reaches(id))
+  // The people a ring proposes are the people the policy names, and they are the
+  // whole of the candidate pool (rolloutCohort). Two things it deliberately does
+  // not do: it does not filter by a circumstance — a risk level, a place, a
+  // platform, a client app — because those say when a policy applies and never
+  // which accounts belong to it, and somebody the records happen not to have
+  // caught this month is still in the rollout; and it does not take the emergency
+  // accounts out on its own. Whether a policy leaves them alone is the policy's
+  // answer, in its own exclude list; a policy that does not exclude them is an
+  // unsafe policy, which is the safety boundary's to hold and never a ring plan's
+  // to paper over.
+  const pool = rolloutCohort(step) ?? []
   const total = pool.length
   const useFilter = total > FILTER_THRESHOLD
   const groupName = (ring: string): string => proposedGroupName(ring, step.title, ctx.naming).name
@@ -193,7 +222,7 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
   }
 
   type Draft = { name: string; who: string | null; ids: string[]; kind: RingTargeting['kind']; departments: string[] }
-  const cached = partitionCache.get(pool.length === step.population.ids.length ? step.population.ids : pool)
+  const cached = partitionCache.get(pool)
   const drafts: Draft[] = cached ? cached : []
   if (!cached) {
   if (band.pilot > 0) {
@@ -213,7 +242,7 @@ export function proposeRings(step: Step, ctx: RingContext): Ring[] {
     drafts.push({ name: 'ring-2', who: null, ids: take(depts.flatMap(([, ids]) => ids)), kind: 'group', departments: names })
   }
   drafts.push({ name: 'everyone', who: null, ids: take([...remaining]), kind: 'all', departments: [] })
-  partitionCache.set(pool.length === step.population.ids.length ? step.population.ids : pool, drafts)
+  partitionCache.set(pool, drafts)
   }
 
 

@@ -94,9 +94,11 @@ function orgName(snapshot: TenantSnapshot): string {
  * key gates its line off. Lists come as name arrays already resolved.
  */
 export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
-  const pop = step.population
   // The one population per step (derive/population.ts): the row's who-line, the
-  // lead's counts and the names all read it.
+  // lead's counts and the names all read it. For an open policy it is the people
+  // that policy names — its own scope — and null where that scope could not be
+  // settled, which leaves every count and name key unset so the lines that name
+  // them render nothing rather than the goal's people (Foundation A).
   const view = stepPopulation(step)
   const ev = step.events
   const enforce = ev?.enforce
@@ -104,13 +106,13 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   const v: Record<string, unknown> = {
     tenant: orgName(ctx.snapshot),
     tenantName: orgName(ctx.snapshot),
-    active: view.active,
-    admins: view.admins,
-    guests: view.guests,
-    total: pop.total,
-    inScope: view.enabledCovered,
-    adminCount: view.admins,
-    memberCount: pop.total,
+    active: view?.active,
+    admins: view?.admins,
+    guests: view?.guests,
+    total: view?.enabledCovered,
+    inScope: view?.enabledCovered,
+    adminCount: view?.admins,
+    memberCount: view?.enabledCovered,
     signature: ctx.signature,
     // Dates: one short format everywhere (absoluteDate), the long form only for
     // emails (longDate), both from the same instant in the display time zone.
@@ -144,10 +146,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // with no policy of its own.
     operatorSignIns: ctx.operatorId && operatorInScope(step, ctx.operatorId) ? operatorSignIns(ctx.snapshot, ctx.operatorId) : undefined,
     operatorNoRecords: ctx.operatorId && operatorInScope(step, ctx.operatorId) && operatorSignIns(ctx.snapshot, ctx.operatorId) === undefined ? ctx.nameOf(ctx.operatorId) : undefined,
-    people: view.active,
+    people: view?.active,
     // The step's people: the active ones it touches, or, for a check step, the
     // accounts it checks (the dormant accounts are by definition not active).
-    n: view.active,
+    n: view?.active,
     // The step's readiness, as the percentage the content line names.
     readiness: step.readiness?.percent != null ? `${step.readiness.percent}%` : undefined,
     // The report-only observation window a policy done-when line names: this
