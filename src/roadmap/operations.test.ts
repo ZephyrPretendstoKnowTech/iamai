@@ -704,9 +704,12 @@ test('the effect is read from the policy: block, method, device, place, risk, se
 test('the strand verdict, the dependencies, the notice and the observation all follow the policy, not the family', () => {
   const snapshot = {
     registrationDetails: [{ id: 'u1', isMfaCapable: false, methodsRegistered: [] }],
-    sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' } },
+    sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' }, signInEvidence: { status: 'ok' } },
     devices: [],
     users: [{ id: 'u1', usageLocation: 'NZ', userType: 'member' }],
+    // Where the account signs in from is the records' answer; the usage location
+    // beside it is a licensing attribute and is never read as one.
+    signInEvidence: { u1: { countries: ['NZ'] } },
     config: { authStrengths: { status: 'ok', reason: null, rows: [{ id: 's', displayName: 'Keys only', allowedCombinations: ['fido2'] }] } },
     evidenceUsage: { legacyAuth: { userIds: ['u1'] }, deviceCode: { userIds: [] }, authTransfer: { userIds: [] } },
   } as never
@@ -753,7 +756,10 @@ test('the strand verdict, the dependencies, the notice and the observation all f
   assert.equal(batchClassOf(strength), 'mfa')
   assert.equal(batchClassOf(device), 'deviceSession')
   // A block nobody was seen using affects nobody; one they were seen using does.
-  const quietBlock = { ...block, evidence: { status: 'ok', lines: [], affectedUserIds: [] } } as unknown as Step
+  // The measured answer is the step's own policies read against the records their
+  // conditions are about (roadmap/strand.ts measuredReach), never evidence filed
+  // under the goal.
+  const quietBlock = { ...block, measured: { ids: [] } } as unknown as Step
   assert.equal(nobodyAffected(quietBlock), true, 'a block nobody used')
   assert.equal(nobodyAffected(block), false)
   assert.equal(noticeDaysFor(quietBlock) < noticeDaysFor(block), true, 'a change nobody feels needs less notice')
@@ -939,7 +945,7 @@ test('a policy IAMAI cannot read in full never reads as safe', () => {
 
 // ---- the consequences are conservative ----
 
-test('zero impact is proved one person at a time, and an unreadable policy is never zero', () => {
+test('zero impact is the measured answer, and neither the goal’s evidence nor the step’s list can stand in for it', () => {
   const step = (body: Record<string, unknown>, over: Record<string, unknown> = {}): Step =>
     ({
       ...stepWith([{ sourceName: 'a', mode: 'create', policyId: null, body }], '{}'),
@@ -951,21 +957,24 @@ test('zero impact is proved one person at a time, and an unreadable policy is ne
       ...over,
     }) as unknown as Step
   const block = policy({ conditions: { ...SCOPE, clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } })
-  assert.equal(nobodyAffected(step(block)), true, 'a block nobody was seen using')
-  assert.equal(nobodyAffected(step(block, { evidence: { status: 'ok', lines: [], affectedUserIds: ['u1'] } })), false)
-  assert.equal(nobodyAffected(step(block, { evidence: { status: 'partial', lines: [], affectedUserIds: [] } })), false, 'records that could not be read are not proof of zero')
-  assert.equal(nobodyAffected(step(policy())), false, 'a policy that asks people for something touches everyone it applies to')
+  // Nothing measured is not a zero, whatever the goal's evidence says and
+  // whatever the step's list of people counts.
+  assert.equal(nobodyAffected(step(block)), false, 'no measured answer is no proof')
+  assert.equal(nobodyAffected(step(block, { evidence: { status: 'ok', lines: [], affectedUserIds: [] } })), false, 'evidence filed under the goal proves nothing about this policy')
   const nobody = { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 }
-  assert.equal(nobodyAffected(step(policy(), { population: nobody })), false, 'a policy for every user reaches people the step never counted')
-  const named = policy({ conditions: { users: { includeUsers: ['u1'] }, applications: { includeApplications: ['All'] } } })
-  assert.equal(nobodyAffected(step(named, { population: nobody })), false, 'and a policy naming somebody the step does not list is no zero either')
+  assert.equal(nobodyAffected(step(block, { population: nobody })), false, 'and neither does an empty list of people')
+  // The measured answer, and only it.
+  assert.equal(nobodyAffected(step(block, { measured: { ids: [] } })), true, 'the records show this policy touching nobody')
+  assert.equal(nobodyAffected(step(block, { measured: { ids: ['u1'] } })), false, 'and somebody is not nobody')
   assert.equal(
-    nobodyAffected(step(named, { population: { total: 1, active: 0, admins: 0, guests: 0, ids: ['u1'], activeIds: [], inScope: 1 } })),
+    nobodyAffected(step(block, { measured: { ids: [] }, evidence: { status: 'ok', lines: [], affectedUserIds: ['u1'] } })),
     true,
-    'unless it names exactly the people the step holds, and none of them is active',
+    'the measured answer is the answer, whatever the goal’s evidence carries',
   )
+  // A policy IAMAI cannot read in full might touch anyone, whatever was measured
+  // against an earlier reading of it.
   const unreadable = { ...policy({ conditions: { ...SCOPE, clientAppTypes: ['exchangeActiveSync', 'other'] } }), grantControls: { operator: 'OR', builtInControls: ['block'], termsOfUse: ['t-1'] } }
-  assert.equal(nobodyAffected(step(unreadable)), false, 'a policy IAMAI cannot read in full is never zero')
+  assert.equal(nobodyAffected(step(unreadable, { measured: { ids: [] } })), false, 'a policy IAMAI cannot read in full is never zero')
   // A session-only policy is felt, so it batches with the device work.
   const sessionOnly = step(policy({ grantControls: null, sessionControls: { signInFrequency: { isEnabled: true, value: 4, type: 'hours' } } }))
   assert.equal(batchClassOf(sessionOnly), 'deviceSession')

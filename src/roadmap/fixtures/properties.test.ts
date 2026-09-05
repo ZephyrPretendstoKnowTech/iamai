@@ -8,7 +8,7 @@ import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
 import { unavailableReason } from '../operations.ts'
-import { canDenyAccess, effectsOf, wouldStrand } from '../strand.ts'
+import { analysisUnknown, canDenyAccess, effectsOf, operationReach, wouldStrand } from '../strand.ts'
 import { localHour } from '../timing.ts'
 import { buildPlanFile } from '../plan.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
@@ -242,13 +242,25 @@ for (const f of fixtures) {
         assert.deepEqual(rings, [], `${s.id} (${unavailableReason(s)}) has no rings`)
         continue
       }
+      // Neither is one whose own analysis cannot settle what it does or who it
+      // reaches: a ring plan would name groups of people nobody has established
+      // are in scope (roadmap/strand.ts analysisUnknown).
+      if (analysisUnknown(s)) {
+        assert.deepEqual(rings, [], `${s.id}: a policy IAMAI cannot read in full has no ring plan`)
+        continue
+      }
       if (!canDenyAccess(s) || s.status === 'done' || s.status === 'skipped') {
         assert.ok(rings.length <= 1, `${s.id} (${s.kind}) has at most one ring`)
         continue
       }
       assert.equal(rings.length, f.expect.rings, `${s.id} has ${f.expect.rings} rings`)
       const members = rings.reduce((n, r) => n + r.targeting.memberCount, 0)
-      assert.equal(members, s.population.total, `${s.id}: ring members sum to the population`)
+      // The rings hold the people the step lists that its own policies actually
+      // reach — somebody a policy provably leaves alone is in no ring of it.
+      const effects = effectsOf(s) ?? []
+      const reached = s.population.ids.filter((id) => effects.length === 0 || effects.some((e) => operationReach(e, id, snapshot).answer !== 'out'))
+      assert.equal(members, reached.length, `${s.id}: ring members sum to the people its policies reach`)
+      assert.ok(members <= s.population.total, `${s.id}: and never more than the step lists`)
     }
   })
 

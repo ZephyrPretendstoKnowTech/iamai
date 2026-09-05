@@ -15,7 +15,9 @@ import type { MappingState } from '../../mapping/types.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
 import { countryName } from '../../mapping/countries.ts'
-import { needsPasskeyForGoal, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
+import { hoursAsDuration, needsPasskey, sessionWantedForGoal, sessionWantedLongForGoal, strengthForGoal, strengthNameOf, promptsPersonForGoal, pairBaselineNames } from './stepPortal.ts'
+import { hoursInWords } from '../../coverage/verdict.ts'
+import { analysisUnknown, effectsOf, promptsPeople } from '../../roadmap/strand.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { stepPopulation } from '../../derive/population.ts'
@@ -136,8 +138,12 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     existingName: step.naming?.fromBaseline ?? undefined,
     // The operator's own sign-in count, when the operator is in the step's population (the "Your account is in scope" line);
     // in scope with no records of their own (signed in for this scan, outside the window), the no-records line names them instead.
-    operatorSignIns: ctx.operatorId && (step.population?.ids ?? []).includes(ctx.operatorId) ? operatorSignIns(ctx.snapshot, ctx.operatorId) : undefined,
-    operatorNoRecords: ctx.operatorId && (step.population?.ids ?? []).includes(ctx.operatorId) && operatorSignIns(ctx.snapshot, ctx.operatorId) === undefined ? ctx.nameOf(ctx.operatorId) : undefined,
+    // Whether the signed-in account is in scope is the policy's own answer,
+    // decided where the scan is and carried on the step (generate.ts
+    // includesOperator). The step's list of people stands in only for a step
+    // with no policy of its own.
+    operatorSignIns: ctx.operatorId && operatorInScope(step, ctx.operatorId) ? operatorSignIns(ctx.snapshot, ctx.operatorId) : undefined,
+    operatorNoRecords: ctx.operatorId && operatorInScope(step, ctx.operatorId) && operatorSignIns(ctx.snapshot, ctx.operatorId) === undefined ? ctx.nameOf(ctx.operatorId) : undefined,
     people: view.active,
     // The step's people: the active ones it touches, or, for a check step, the
     // accounts it checks (the dormant accounts are by definition not active).
@@ -184,15 +190,25 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     v.policyNameB = pair.b
   }
 
-  // The authentication strength the goal's baseline policy requires, for the
-  // who and decision lines that name it (walk-51 item 18).
-  const strength = strengthForGoal(step.goalId)
+  // The strength and the session length these lines name are the ones the step's
+  // own policies will require. For an open policy the operation answers, and
+  // where its own analysis cannot settle what it does the line renders nothing
+  // rather than the author's version of a policy the tenant is not getting. The
+  // baseline speaks only for a step with no policy of its own — one already in
+  // place, the enforce step (roadmap/strand.ts effectsOf, analysisUnknown).
+  const own = effectsOf(step)
+  const held = analysisUnknown(step)
+  const strength = own === null ? strengthForGoal(step.goalId) : held ? null : ((): string | null => {
+    const id = own.flatMap((e) => (e.strength ? [e.strength.id] : []))[0]
+    return id === undefined ? null : strengthNameOf(id, ctx)
+  })()
   if (strength) v.strengthName = strength
-  // The session frequency the baseline wants, for the lines that name {wanted},
-  // and as a duration for the email that says "expire after {wantedLong}".
-  const wanted = sessionWantedForGoal(step.goalId)
+  // The session frequency, for the lines that name {wanted}, and as a duration
+  // for the email that says "expire after {wantedLong}".
+  const hours = own === null ? null : held ? null : own.map((e) => e.sessionControls?.signInFrequencyHours ?? null).find((h) => h !== null) ?? null
+  const wanted = own === null ? sessionWantedForGoal(step.goalId) : hours === null ? null : hoursInWords(hours)
   if (wanted) v.wanted = wanted
-  const wantedLong = sessionWantedLongForGoal(step.goalId)
+  const wantedLong = own === null ? sessionWantedLongForGoal(step.goalId) : hours === null ? null : hoursAsDuration(hours)
   if (wantedLong) v.wantedLong = wantedLong
 
   // Nobody affected (timing.ts, the one definition): the records show nobody
@@ -319,6 +335,11 @@ function answerVars(ctx: StepVarContext, v: Record<string, unknown>): Record<str
   return out
 }
 
+/** Whether this step reaches the signed-in account: the policy's answer, or the step's list where it has no policy. */
+function operatorInScope(step: Step, operatorId: string): boolean {
+  return effectsOf(step) === null ? (step.population?.ids ?? []).includes(operatorId) : step.includesOperator === true
+}
+
 function operatorSignIns(snapshot: TenantSnapshot, operatorId: string): number | undefined {
   const ev = (snapshot as { signInEvidence?: Record<string, { signInCount?: number }> }).signInEvidence
   return ev?.[operatorId]?.signInCount
@@ -326,13 +347,16 @@ function operatorSignIns(snapshot: TenantSnapshot, operatorId: string): number |
 
 export { absoluteDate }
 
+/** No scan: only Microsoft's own strengths can be described (operations.ts strengthLookupOf). */
+const EMPTY_SCAN = { config: {} } as unknown as TenantSnapshot
+
 /**
  * The plan-wide dates a step's variables read (E7), from the plan's steps and
  * schedule: the first enforcement (the campaign's enrol-by), the day Require
  * MFA for Everyone enforces, the campaign's window from the plan's start to
  * that enrol-by, and whether the unmanaged-browser step is on the plan.
  */
-export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies'> {
+export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention, snapshot?: TenantSnapshot): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies'> {
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const mfa = steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')
   const mfaEnforce = mfa?.events?.enforce?.at ?? firstEnforce
@@ -342,10 +366,24 @@ export function planDates(steps: readonly Step[], scheduleStart: string, naming?
   // and names the first policy still to enforce that needs a passkey, by its date.
   const mfaInPlace = mfa?.status === 'done'
   const passkey = steps
-    .filter((s) => s.status !== 'done' && s.status !== 'skipped' && typeof s.events?.enforce?.at === 'string' && needsPasskeyForGoal(s.goalId))
+    // Whether a policy needs a passkey is the policy's own answer, measured
+    // against what this tenant says the strength allows. Without the scan only
+    // Microsoft's own strengths can be read, and a tenant strength nobody can
+    // describe claims nothing (stepPortal.ts needsPasskey).
+    .filter((s) => s.status !== 'done' && s.status !== 'skipped' && typeof s.events?.enforce?.at === 'string' && needsPasskey(s, { snapshot: snapshot ?? EMPTY_SCAN }))
     .sort((a, b) => a.events!.enforce.at.localeCompare(b.events!.enforce.at))[0]
   // The plan's policies that prompt a person (the shared-devices step excludes its accounts from each), by content title, in plan order.
-  const peoplePolicies = [...new Set(steps.filter((s) => s.status !== 'skipped' && s.id !== 's-shared-devices' && (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy' && promptsPersonForGoal(s.goalId)).map((s) => contentTitle(s)))]
+  // Which policies prompt a person is the policies' own answer
+  // (roadmap/strand.ts promptsPeople); the baseline speaks only for a step with
+  // no policy of its own.
+  const peoplePolicies = [
+    ...new Set(
+      steps
+        .filter((s) => s.status !== 'skipped' && s.id !== 's-shared-devices' && (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'policy')
+        .filter((s) => (effectsOf(s) === null ? promptsPersonForGoal(s.goalId) : promptsPeople(s)))
+        .map((s) => contentTitle(s)),
+    ),
+  ]
   // The proposed names, from the plan's prerequisite steps: the prerequisite step and every portal line name the same group and location.
   return { firstEnforce, mfaEnforce, enrolWindowDays, unmanagedBrowserOnPlan, mfaInPlace, passkeyPolicy: passkey ? contentTitle(passkey) : null, passkeyEnforce: passkey?.events?.enforce.at ?? null, proposed: planProposedNames(steps, naming), peoplePolicies }
 }

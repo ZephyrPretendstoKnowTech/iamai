@@ -291,11 +291,14 @@ test('the weekly cap counts change windows, not steps (prompt 41 §5)', () => {
 test('a batch never mixes a zero-affected change with one that has a blast radius (prompt 41 §6)', () => {
   // Same phase, same day available, deliberately different disruption classes.
   // Phase order does not separate these, so only the batch class can.
+  // The zero is the measured answer: the records show this policy touching
+  // nobody (roadmap/strand.ts measuredReach, carried on the step).
   const zero = step({
     id: 'block-legacy',
     phase: 1,
     readiness: { family: 'block', percent: null, lines: [] },
     evidence: { status: 'ok', lines: [], affectedUserIds: [] },
+    measured: { ids: [] },
     population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
     rings: [ring(0, 3, people(20))],
   })
@@ -304,6 +307,7 @@ test('a batch never mixes a zero-affected change with one that has a blast radiu
     phase: 1,
     readiness: { family: 'mfa', percent: 100, lines: [] },
     evidence: { status: 'ok', lines: [], affectedUserIds: people(9, 'a') },
+    measured: { ids: people(9, 'a') },
     population: { total: 20, active: 20, admins: 0, guests: 0, ids: people(20) },
     rings: [ring(0, 3, people(20))],
   })

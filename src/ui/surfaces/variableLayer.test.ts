@@ -14,7 +14,8 @@ import type { StepVarContext } from './stepVars.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { setDisplayTimeZone, absoluteDate, longDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { strengthForGoal } from './stepPortal.ts'
+import { strengthForGoal, strengthNameOf } from './stepPortal.ts'
+import { analysisUnknown, effectsOf } from '../../roadmap/strand.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { todayView } from '../../derive/today.ts'
 import { content } from '../../content/content.ts'
@@ -125,21 +126,36 @@ test('the short and long date forms name the same day, one short format everywhe
 // (the content re-uses {n} for three different counts), so ContentStep drops
 // the line rather than render a hole — item 2's suppression, the design's other
 // branch, is the resolution there.
-test('the guests step fills its strength; the partner line is whole or dropped', () => {
-  assert.ok(strengthForGoal('guests-mfa'), 'the guests strength derives from the baseline')
+test('the guests step names the strength its own policy requires, or says nothing; the partner line is whole or dropped', () => {
+  assert.ok(strengthForGoal('guests-mfa'), 'the baseline names one, for a step with no policy of its own')
   const guestsContent = content.steps.find((s) => s.id === "guests-mfa") as unknown as { who: { evidence: string[] }; decision: { help: string } }
-  let checked = false
+  let named = 0
+  let held = 0
   for (const f of allFixtures()) {
     const run = runFixture(f)
     const guests = run.steps.find((s) => s.goalId === 'guests-mfa')
     if (!guests) continue
     const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: f.snapshot.asOf }
     const ex = stepVars(guests, ctx) as Record<string, unknown>
-    assert.equal(ex.strengthName, strengthForGoal('guests-mfa'), `${f.name}: strengthName is filled`)
-    assert.equal(missingVars(guestsContent.decision.help, ex).length, 0, `${f.name}: the decision help has no hole`)
-    checked = true
+    const own = effectsOf(guests)
+    const strengthId = (own ?? []).flatMap((e) => (e.strength ? [e.strength.id] : []))[0]
+    if (own === null) {
+      // A policy already in place, or the enforce step: the baseline answers.
+      assert.equal(ex.strengthName, strengthForGoal('guests-mfa'), `${f.name}: the baseline names it`)
+      named += 1
+    } else if (analysisUnknown(guests) || strengthId === undefined) {
+      // Nothing the step will write names a strength IAMAI can read, so the line
+      // names none — never the author's name for a policy this tenant is not
+      // getting.
+      assert.equal(ex.strengthName, undefined, `${f.name}: no name is claimed`)
+      held += 1
+    } else {
+      assert.equal(ex.strengthName, strengthNameOf(strengthId, ctx), `${f.name}: the tenant's own name for the strength the policy requires`)
+      assert.equal(missingVars(guestsContent.decision.help, ex).length, 0, `${f.name}: the decision help has no hole`)
+      named += 1
+    }
   }
-  assert.ok(checked, 'a fixture carries the guests step')
+  assert.ok(named + held > 0, 'a fixture carries the guests step')
   const partnerLine = guestsContent.who.evidence.find((l) => l.includes('{partners}'))!
   assert.ok(missingVars(partnerLine, { n: 3, from: 'Aug 1' }).includes('partners'), 'the partner line drops when partners is not derived')
 })

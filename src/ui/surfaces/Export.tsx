@@ -167,7 +167,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const csvTables = [todayTable(snapshot, data.mapping ?? undefined), ...inventoryTables(snapshot, data.groups)]
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
   // the same variables the Plan builds for a step, then the same view.
-  const dates = planDates(steps, schedule.start, coverage.organisation.naming)
+  const dates = planDates(steps, schedule.start, coverage.organisation.naming, snapshot)
   const stepCtx = (s: typeof steps[number]): StepVarContext => ({ snapshot, mapping: data.mapping ?? ({ breakGlassUserIds: [], serviceAccountUserIds: [] } as never), nameOf, signature: data.signature, operatorId, now: snapshot.asOf, ...dates, reportOnlyAt: schedule.reportOnlyAt[s.id] ?? null, groups: data.groups, naming: coverage.organisation.naming })
   const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s))
   // The Cleanup rows as the screen says them (E4): calendar entries, the pack's and the bundle's cleanup list.

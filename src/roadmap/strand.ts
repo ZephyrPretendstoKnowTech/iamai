@@ -23,6 +23,9 @@ export type StrandContext = ScopeEvidence & {
   allowedCountries?: string[]
 }
 
+/** The sign-in risk levels Identity Protection's records actually carry. */
+const MEASURED_RISK_LEVELS = new Set(['high', 'medium'])
+
 const PHISHING_RESISTANT = new Set([
   'fido2SecurityKey',
   'passKeyDeviceBound',
@@ -58,6 +61,19 @@ export function effectsOf(step: Step): PolicyEffect[] | null {
  * the fallback is unreachable for an open policy by construction rather than by
  * each caller remembering to guard it.
  */
+/**
+ * True when a step is an open policy whose own analysis cannot settle what it
+ * does: the plan cannot write it at all, or something in it could not be read.
+ * Everything that would otherwise fill the gap — a ring plan, a batch, a
+ * dependency it can skip, a word about the strength it requires — takes the
+ * conservative branch or says nothing at all.
+ */
+export function analysisUnknown(step: Step): boolean {
+  const effects = effectsOf(step)
+  if (effects === null) return false
+  return effects.length === 0 || effects.some((e) => e.unknown.length > 0)
+}
+
 export function familyReading(step: Step): Step['readiness']['family'] | null {
   return isOpenPolicy(step) ? null : step.readiness.family
 }
@@ -134,6 +150,19 @@ export function strengthSatisfaction(combinations: readonly string[], methodsReg
 /** An applicability answer with the words for it. */
 type Reached = { answer: Applicability; reason: string }
 
+/**
+ * The countries the records show one account signing in from. A place condition
+ * is about where somebody signs in, and `usageLocation` is a licensing attribute
+ * somebody typed into the directory: it is not evidence of a sign-in and is
+ * never read as one. Null where the records hold nothing for the account.
+ */
+export function signInCountries(accountId: string, snapshot: TenantSnapshot): string[] | null {
+  if (snapshot.sources?.signInEvidence?.status !== 'ok' && snapshot.sources?.signInEvidence?.status !== 'partial') return null
+  const row = (snapshot.signInEvidence ?? {})[accountId]
+  const countries = row?.countries ?? null
+  return countries === null || countries.length === 0 ? null : countries.map((c) => c.toUpperCase())
+}
+
 /** The place a policy names, matched to the countries the plan resolved it to. */
 function locationReach(ids: { include: string[]; exclude: string[] }, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext): Reached {
   const unresolved = { answer: 'unknown' as const, reason: 'the place this policy names has not been matched to the countries it holds' }
@@ -145,14 +174,20 @@ function locationReach(ids: { include: string[]; exclude: string[] }, accountId:
   // has not resolved, and so cannot be judged.
   if (named.some((x) => x.toLowerCase() === 'all' || x.toLowerCase() === 'alltrusted')) return unresolved
   if (named.some((x) => countriesOf(x) === null)) return unresolved
-  const user = (snapshot.users ?? []).find((x) => x.id === accountId)
-  if (!user?.usageLocation) return { answer: 'unknown', reason: 'no usage location on the account' }
-  const here = user.usageLocation.toUpperCase()
-  const has = (id: string): boolean => (countriesOf(id) ?? []).some((c) => c.toUpperCase() === here)
-  const reaches = includesAll || ids.include.length === 0 ? !ids.exclude.some(has) : ids.include.some(has)
-  return reaches
-    ? { answer: 'in', reason: `the account is in a country (${here}) the step blocks` }
-    : { answer: 'out', reason: 'the account signs in from a country this policy leaves alone' }
+  const here = signInCountries(accountId, snapshot)
+  if (here === null) return { answer: 'unknown', reason: 'the records hold no sign-in country for this account' }
+  // One sign-in at a time: a place condition is about where a sign-in came from,
+  // so the policy reaches the account if any country it signed in from is one the
+  // condition includes and none of the ones it excludes. An account that works
+  // from two countries is reached on the sign-ins from the one that is in scope.
+  const holds = (id: string, country: string): boolean => (countriesOf(id) ?? []).some((c) => c.toUpperCase() === country)
+  const reached = here.filter((country) => {
+    if (ids.exclude.some((id) => holds(id, country))) return false
+    return includesAll || ids.include.length === 0 || ids.include.some((id) => holds(id, country))
+  })
+  return reached.length > 0
+    ? { answer: 'in', reason: `the account signs in from a country (${reached.join(', ')}) the step blocks` }
+    : { answer: 'out', reason: 'the account signs in only from countries this policy leaves alone' }
 }
 
 /**
@@ -184,10 +219,13 @@ function narrowingReach(n: Narrowing, accountId: string, snapshot: TenantSnapsho
       if (!usage) return { answer: 'unknown', reason: 'no sign-in evidence' }
       const levels = n.levels.map((l) => l.toLowerCase())
       const signals = [...(levels.includes('high') ? [usage.riskHigh] : []), ...(levels.includes('medium') ? [usage.riskMedium] : [])]
+      // Being seen at a level the records do measure settles it. Not being seen
+      // does not, while the policy also acts on a level they do not measure: a
+      // policy on high *and* low is not answered by the high sign-ins alone.
+      if (signals.some((sig) => sig.userIds.includes(accountId))) return { answer: 'in', reason: 'the account was seen signing in at the risk level this policy acts on' }
+      if (levels.some((l) => !MEASURED_RISK_LEVELS.has(l))) return { answer: 'unknown', reason: 'the policy acts on a risk level the records do not measure' }
       if (signals.length === 0) return { answer: 'unknown', reason: 'a risk level the scan does not measure' }
-      return signals.some((sig) => sig.userIds.includes(accountId))
-        ? { answer: 'in', reason: 'the account was seen signing in at the risk level this policy acts on' }
-        : { answer: 'out', reason: 'no sign-in at the risk level this policy acts on' }
+      return { answer: 'out', reason: 'no sign-in at the risk level this policy acts on' }
     }
     case 'userRisk':
       // The records hold the risk of a sign-in. The risk carried by an account
@@ -234,6 +272,69 @@ export function operationReach(effect: PolicyEffect, accountId: string, snapshot
     else why = why ?? reached
   }
   return unsure ?? why ?? { answer: 'in', reason: 'the policy reaches this account' }
+}
+
+/**
+ * Whether two steps' own policies can reach the same people, from the policies'
+ * own scopes. `true` wherever either side cannot be settled: the rule this
+ * answers protects people from being prompted twice in a week, so an unknown
+ * overlap is treated as an overlap rather than waved through.
+ *
+ * The step's list of people is not the policy's scope and is never read here.
+ */
+export function policiesOverlap(a: Step, b: Step): boolean {
+  const ea = effectsOf(a)
+  const eb = effectsOf(b)
+  // A step with no policy of its own is bounded by the people it lists, and two
+  // of them share the list they were built from.
+  if (ea === null || eb === null) return true
+  if (analysisUnknown(a) || analysisUnknown(b)) return true
+  const reach = (effects: PolicyEffect[]): { all: boolean; ids: Set<string> } => {
+    const ids = new Set<string>()
+    let all = false
+    for (const e of effects) {
+      if (e.scope.allUsers || e.scope.guests.include !== null) all = true
+      for (const x of [...e.scope.users.include, ...e.scope.groups.include, ...e.scope.roles.include]) ids.add(x.toLowerCase())
+    }
+    return { all, ids }
+  }
+  const ra = reach(ea)
+  const rb = reach(eb)
+  if (ra.all || rb.all) return true
+  return [...ra.ids].some((x) => rb.ids.has(x))
+}
+
+/**
+ * Who the records show a step's own policies touching, person by person, from
+ * each policy's own conditions and the evidence those conditions are about.
+ * Null — not empty — wherever the answer is not known: a policy IAMAI cannot
+ * read in full, a scope nothing settles, a circumstance the records do not
+ * measure. A zero has to be proved, and it is proved here or nowhere.
+ *
+ * This is the one answer behind zero impact, the courtesy notice, the zero batch
+ * class and the short soak. None of them reads evidence filed under the goal:
+ * evidence collected for one question is not an answer to another, and a policy
+ * on the risk carried by an account is not answered by the risky sign-ins.
+ */
+export function measuredReach(
+  effects: readonly PolicyEffect[],
+  people: readonly string[],
+  snapshot: TenantSnapshot,
+  ctx: StrandContext = {},
+): string[] | null {
+  if (effects.length === 0) return null
+  if (effects.some((e) => e.unknown.length > 0)) return null
+  const touched: string[] = []
+  for (const id of people) {
+    let reached = false
+    for (const effect of effects) {
+      const answer = operationReach(effect, id, snapshot, ctx).answer
+      if (answer === 'unknown') return null
+      if (answer === 'in') reached = true
+    }
+    if (reached) touched.push(id)
+  }
+  return touched
 }
 
 /**
@@ -411,11 +512,15 @@ export function accountVerdict(family: Step['readiness']['family'], accountId: s
         : { stranded: false, unknown: false, reason: 'no observed use of what the step blocks' }
     }
     case 'location': {
-      const u = snapshot.users.find((x) => x.id === accountId)
-      if (!u?.usageLocation) return { stranded: false, unknown: true, reason: 'no usage location on the account' }
-      return allowedCountries.includes(u.usageLocation)
-        ? { stranded: false, unknown: false, reason: 'the account is in an allowed country' }
-        : { stranded: true, unknown: false, reason: `the account is in a country (${u.usageLocation}) the step blocks` }
+      // Where somebody signs in from is the records' answer, never the licensing
+      // country typed into the directory (signInCountries).
+      const here = signInCountries(accountId, snapshot)
+      if (here === null) return { stranded: false, unknown: true, reason: 'the records hold no sign-in country for this account' }
+      const allowed = allowedCountries.map((c) => c.toUpperCase())
+      const outside = here.filter((c) => !allowed.includes(c))
+      return outside.length === 0
+        ? { stranded: false, unknown: false, reason: 'the account signs in from allowed countries' }
+        : { stranded: true, unknown: false, reason: `the account signs in from a country (${outside.join(', ')}) the step blocks` }
     }
     default:
       return { stranded: false, unknown: false, reason: 'no deny condition' }

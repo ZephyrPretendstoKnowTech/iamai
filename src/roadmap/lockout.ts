@@ -34,6 +34,10 @@ function lockoutPeople(
 ): string[] | null {
   const withStrength = effects.filter((e) => e.requirements.some((r) => r.kind === 'strength'))
   if (withStrength.length === 0) return null
+  // A policy IAMAI cannot read in full may stop somebody this count would miss:
+  // a person who satisfies the strength and fails the part nobody could read.
+  // A number that is only a lower bound is not a number anybody can act on.
+  if (effects.some((e) => e.unknown.length > 0)) return null
   const ctx = { ...evidence, strengths }
   const stopped: string[] = []
   for (const person of viability) {

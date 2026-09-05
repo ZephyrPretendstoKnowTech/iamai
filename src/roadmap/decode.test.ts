@@ -27,7 +27,8 @@ const grantOf = (over: Record<string, unknown>): Record<string, unknown> => poli
 function scan(over: Record<string, unknown> = {}): never {
   return {
     registrationDetails: [],
-    sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' } },
+    sources: { registrationDetails: { status: 'ok' }, devices: { status: 'ok' }, signInEvidence: { status: 'ok' } },
+    signInEvidence: {},
     devices: [],
     users: [],
     roles: { active: {}, eligible: {} },
@@ -191,8 +192,10 @@ test('a device requirement and an app requirement are two different requirements
   assert.equal(app.unknown, true, 'the scan does not say which apps this account signs in with')
 })
 
-test('a place is judged by the place the policy names, never by a list of countries beside it', () => {
-  const snapshot = scan({ users: [{ id: 'u1', usageLocation: 'NZ' }] })
+test('a place is where the records show somebody signing in, never a list of countries beside the policy or an attribute on the account', () => {
+  const signedInFrom = (countries: string[], usageLocation = 'AU'): never =>
+    scan({ users: [{ id: 'u1', usageLocation }], signInEvidence: { u1: { countries } } }) as never
+  const snapshot = signedInFrom(['NZ'])
   const effect = effectOf(policy({ conditions: { ...SCOPE, locations: { includeLocations: ['All'], excludeLocations: ['loc-allowed'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }))
   // Without a resolved named location, the countries the operator picked say
   // nothing about what this policy blocks.
@@ -202,7 +205,11 @@ test('a place is judged by the place the policy names, never by a list of countr
   const v = policyVerdict(effect, 'u1', snapshot, resolved)
   assert.equal(v.stranded, true)
   assert.match(v.reason, /NZ/)
-  assert.equal(policyVerdict(effect, 'u1', scan({ users: [{ id: 'u1', usageLocation: 'AU' }] }), resolved).stranded, false)
+  assert.equal(policyVerdict(effect, 'u1', signedInFrom(['AU'], 'NZ'), resolved).stranded, false, 'the sign-ins decide, not the usage location on the account')
+  // Two countries, one of them in scope: the policy reaches the sign-ins from it.
+  assert.equal(policyVerdict(effect, 'u1', signedInFrom(['AU', 'NZ']), resolved).stranded, true)
+  // No sign-in country on record is not proof the account is somewhere allowed.
+  assert.equal(policyVerdict(effect, 'u1', scan({ users: [{ id: 'u1', usageLocation: 'AU' }] }), resolved).unknown, true)
   // A named location the plan cannot resolve is still unknown, whatever else is resolved.
   const other = effectOf(policy({ conditions: { ...SCOPE, locations: { includeLocations: ['loc-somewhere-else'] } }, grantControls: { operator: 'OR', builtInControls: ['block'] } }))
   assert.equal(policyVerdict(other, 'u1', snapshot, resolved).unknown, true)

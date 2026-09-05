@@ -189,6 +189,14 @@ export type Step = {
   /** A strength policy's lockout count (roadmap/lockout.ts): the people in scope with no phishing-resistant method today; the row shows it when it is not zero. */
   lockout?: number
   /**
+   * Who the records show this step's own policies touching (roadmap/strand.ts
+   * measuredReach), computed where the snapshot is. Absent wherever the answer
+   * is not known, and a zero is then never claimed: zero impact, the courtesy
+   * notice, the zero batch class and the short soak all read this and nothing
+   * filed under the goal.
+   */
+  measured?: { ids: string[] }
+  /**
    * The one binding reason while blocked (target-state §8.5): at most twelve
    * words, in one of three shapes; null otherwise. The full list is `blockers`.
    */
