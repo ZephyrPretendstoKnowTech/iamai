@@ -15,6 +15,8 @@ import { suggestCountries, countryName } from '../../mapping/countries.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
 import { DECISION_STEPS, applyStepDecisions } from '../../roadmap/decisions.ts'
+import { exclusionsGroupChoice, storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
+import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { StepDecision } from '../../roadmap/decisions.ts'
 import { contentLists } from '../../derive/contentLists.ts'
 import { fillText, missingVars } from '../../content/render.ts'
@@ -26,6 +28,8 @@ export type PickerContext = {
   nameOf: (id: string) => string
   /** The groups the plan loaded (every group a policy names, and the plan's own). */
   groups?: GroupMembers
+  /** What this scan's directory reads established about those groups (Foundation C). */
+  directory?: DirectoryEvidence
 }
 
 /** The picker's variables: `<key>` holds the rows, `<key>Ids` the ids behind them, `<key>Ticked` the ids ticked before a decision; `pickerKey` names the key, so a picker never reads another step's list. */
@@ -95,21 +99,30 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
 
   // The exclusions group: every group the plan knows (the ones policies name
   // and the ones it loaded) with how many policies already exclude each; the
-  // group the mapping recognised first, then the most excluded.
+  // operator's own answer first, then the groups the detection puts forward,
+  // then the most excluded.
+  //
+  // Nothing is ticked that nobody ticked. This is a safety-sensitive choice
+  // (Foundation C): the group every policy excludes decides who still gets in
+  // when a policy goes wrong, a tick here is applied as the plan's own decision
+  // (defaultDecisions), and every fixture in this repo has two groups that
+  // qualify — so a pre-tick was a coin toss written into a policy. IAMAI shows
+  // what it would put forward; the operator ticks it or does not.
   if (DECISION_STEPS.exclusions.has(stepId)) {
     const known = new Map<string, string>()
     for (const [id] of ctx.groups ?? []) known.set(lc(id), id)
     for (const p of policies) for (const id of [...policyGroups(p).include, ...policyGroups(p).exclude]) if (!known.has(lc(id))) known.set(lc(id), id)
-    const resolved = mapping.records['__globalExclusion']?.resolvedId ?? null
-    const isResolved = (id: string): number => (resolved !== null && lc(id) === lc(resolved) ? 1 : 0)
+    const stored = storedExclusionsGroupId(mapping)
+    const choice = exclusionsGroupChoice({ snapshot, mapping, groups: ctx.groups, directory: ctx.directory })
+    const candidate = new Set(choice.candidates.map((c) => lc(c.id)))
+    const isStored = (id: string): number => (stored !== null && lc(id) === lc(stored) ? 1 : 0)
     const excludedFrom = (id: string): number => policies.filter((p) => policyGroups(p).exclude.some((g) => lc(g) === lc(id))).length
-    const ids = [...known.values()].sort((a, b) => isResolved(b) - isResolved(a) || excludedFrom(b) - excludedFrom(a) || nameOf(a).localeCompare(nameOf(b)))
+    const ids = [...known.values()].sort((a, b) => isStored(b) - isStored(a) || Number(candidate.has(lc(b))) - Number(candidate.has(lc(a))) || excludedFrom(b) - excludedFrom(a) || nameOf(a).localeCompare(nameOf(b)))
     const rows = ids.map((id) => {
       const g = ctx.groups?.get(id)
       return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount, excludedFrom: excludedFrom(id), policyCount: policies.length })
     })
-    const ticked = ids.filter((id) => isResolved(id) === 1)
-    return vars('groups', rows, ids, ticked.length > 0 ? ticked : ids.slice(0, 1))
+    return vars('groups', rows, ids, ids.filter((id) => isStored(id) === 1))
   }
 
   // Allowed countries: every country the sign-in records or a usage location
@@ -187,7 +200,9 @@ export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecis
     if (Array.isArray(ticked) && ticked.length > 0) out[stepId] = { picked: ticked, at }
   }
   for (const id of DECISION_STEPS.emergency) pick(id, 'emergencyCandidates')
-  for (const id of DECISION_STEPS.exclusions) pick(id, 'groups')
+  // The exclusions group is not here and must not be: it is a safety-sensitive
+  // choice, and a default applied as the plan's decision is exactly the
+  // detection-becomes-confirmation this repo had (mapping/safetyChoice.ts).
   pick(DECISION_STEPS.countries, 'countriesWithCounts')
   pick(DECISION_STEPS.trustedLocation, 'locationsWithMatches')
   pick(DECISION_STEPS.serviceAccounts, 'accountsWithSignals')

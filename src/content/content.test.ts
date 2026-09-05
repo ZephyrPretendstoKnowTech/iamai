@@ -53,6 +53,14 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.gapSuffix.guests-mfa',
   '.pages.export.unredactedWarning',
   '.pages.how.tip',
+  // The exclusions group's not-in-use states (Foundation C): the review's
+  // example has a group in use, so none of their lines render. The suggestion
+  // line is not here — it shares its "members · excluded from" wording with the
+  // in-use line, which does render.
+  '.steps[1].who.unverified',
+  '.steps[1].who.missing',
+  '.steps[1].who.several',
+  '.steps[1].who.cannotTell',
   '.steps[1].who.none',
   '.steps[3].decision.location.none',
   '.steps[5].who.none',

@@ -142,10 +142,12 @@ export function applyDetectedDefaults(state: MappingState, snapshot: TenantSnaps
 
   const suggestCtx: GroupSuggestContext = { snapshot, tenantPolicies, knownGroups: ctx.knownGroups, breakGlassUserIds: next.breakGlassUserIds }
   if (detectable('globalExclusion')) {
+    // A detection nominates; it does not answer. The exclusions group decides
+    // who a policy still reaches when it goes wrong, so its record is written
+    // by an operator's confirmation and by nothing else
+    // (mapping/safetyChoice.ts). What a scan can see is offered on the step, as
+    // a candidate the operator either takes or does not.
     const best = suggestGroups('globalExclusion', suggestCtx).find((x) => x.rank === 0) ?? null
-    next.records['__globalExclusion'] = best
-      ? auto('__globalExclusion', 'group', 'globalExclusion', best.id, best.name)
-      : auto('__globalExclusion', 'group', 'globalExclusion', null, null, true)
     mark('globalExclusion', best !== null)
   }
 

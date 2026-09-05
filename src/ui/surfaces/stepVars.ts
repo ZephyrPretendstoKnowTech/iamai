@@ -37,11 +37,15 @@ import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
+import { exclusionsGroupChoice, groupEvidence } from '../../mapping/safetyChoice.ts'
+import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 
 export type StepVarContext = {
   snapshot: TenantSnapshot
   mapping: MappingState
   nameOf: (id: string) => string
+  /** What this scan's directory reads established about the plan's groups (Foundation C). */
+  directory?: DirectoryEvidence
   /** The technician's sign-off name, from Plan settings (default "IT"). */
   signature: string
   /** The operator's own account id, when in scope, for the operator-evidence line. */
@@ -264,21 +268,59 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The exclusions group: the recognised group's own line (name, members, how
   // many policies exclude it) and its members; the create instructions show
   // while no group is recognised (its checks need a group to check).
+  // The exclusions group's four facts kept apart (Foundation C,
+  // mapping/safetyChoice.ts): the group in use is the one the operator
+  // confirmed *and* this scan read, so only that state fills {exclusionsGroup}
+  // and its counts. A choice this scan could not verify says so and keeps the
+  // operator's answer; one Graph proved gone says that instead; a candidate is
+  // named as a suggestion and nothing more; and the create instructions show
+  // only where the detection was complete enough to say nothing qualifies.
   if (DECISION_STEPS.exclusions.has(step.id)) {
-    const record = ctx.mapping.records['__globalExclusion'] ?? null
-    const id = record?.resolvedId ?? null
-    v.needsCreate = id === null
-    // No group: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
+    const choice = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory })
+    const policies = ctx.snapshot.config.caPolicies?.rows ?? []
+    const excludedFrom = (id: string): number => policies.filter((p) => ((p as { conditions?: { users?: { excludeGroups?: string[] } } }).conditions?.users?.excludeGroups ?? []).some((x) => x.toLowerCase() === id.toLowerCase())).length
+    const id = choice.actionableId
+    v.needsCreate = choice.status === 'none-found'
+    v.policyCount = policies.length
+    // No group in use: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
     if (id === null) delete v.total
     if (id !== null) {
       const g = ctx.groups?.get(id) ?? [...(ctx.groups ?? [])].find(([k]) => k.toLowerCase() === id.toLowerCase())?.[1] ?? null
-      const policies = ctx.snapshot.config.caPolicies?.rows ?? []
-      const excludes = (p: unknown): boolean => ((p as { conditions?: { users?: { excludeGroups?: string[] } } }).conditions?.users?.excludeGroups ?? []).some((x) => x.toLowerCase() === id.toLowerCase())
-      v.exclusionsGroup = g?.displayName ?? record?.resolvedName ?? ctx.nameOf(id)
-      v.memberCount = g?.memberCount ?? 0
-      v.excludedFrom = policies.filter(excludes).length
-      v.policyCount = policies.length
-      v.members = (g?.memberIds ?? []).map(ctx.nameOf)
+      const read = groupEvidence({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }, id)
+      const name = g?.displayName ?? read?.displayName ?? choice.actionableName ?? ctx.nameOf(id)
+      const memberCount = g?.memberCount ?? read?.memberCount ?? null
+      v.excludedFrom = excludedFrom(id)
+      // The group's own line carries a member count, so it renders where a scan
+      // read the members. Where the object was read and the membership was not,
+      // the count is not zero and is not the emergency accounts: the group is
+      // named with what is known about it and nothing more.
+      if (memberCount === null) {
+        // The step's own base value for {memberCount} is the population's, which
+        // is zero on a prerequisite: nothing here may read as the group's size.
+        delete v.memberCount
+        v.exclusionsGroupNoMembers = [name]
+      }
+      else {
+        v.exclusionsGroup = name
+        v.memberCount = memberCount
+        v.members = (g?.memberIds ?? []).map(ctx.nameOf)
+      }
+    }
+    // The operator's own answer, named back to them wherever it cannot be used.
+    // Two different sentences, because they are two different facts: "IAMAI
+    // could not check it" is not "it was deleted".
+    const chosen = choice.storedId === null ? null : (choice.storedName ?? ctx.nameOf(choice.storedId))
+    if (choice.status === 'unverified' && chosen) v.unverifiedGroup = [chosen]
+    if (choice.status === 'invalidated' && chosen) v.missingGroup = [chosen]
+    if (choice.recommended) {
+      v.suggestedGroup = [choice.recommended.name]
+      if (choice.recommended.memberCount !== null) v.suggestedMemberCount = choice.recommended.memberCount
+      v.suggestedExcludedFrom = choice.recommended.excludedFrom ?? 0
+    }
+    if (choice.status === 'ambiguous') v.candidateGroups = choice.candidates.map((c) => c.name)
+    if (choice.status === 'undetermined') {
+      // Which half of the reading came up short, in the engine's own words.
+      v.detectionGap = [(ctx.snapshot.config.caPolicies?.status ?? 'error') === 'ok' ? engine.detectionGap.groups : engine.detectionGap.policies]
     }
   }
   // A check step with nothing checked (no target the scan could read) shows no count.

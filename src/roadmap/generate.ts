@@ -185,6 +185,8 @@ import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
+import { exclusionsGroupChoice } from '../mapping/safetyChoice.ts'
+import type { DirectoryEvidence } from '../mapping/safetyChoice.ts'
 import { conditionFor, initialState, projectStatus, raiseCondition, setState, stateFields } from './lifecycle.ts'
 import type { StepState } from './lifecycle.ts'
 
@@ -208,6 +210,13 @@ export type RoadmapInput = {
   names?: NameDirectory
   /** Cached group memberships: the confirmed exclusion groups leave every step's population. */
   groupMembers?: GroupMembers
+  /**
+   * What this scan's own directory reads established about the objects a safety
+   * choice rests on (Foundation C, mapping/safetyChoice.ts). Absent means the
+   * caller has only the memberships it loaded, which tell it nothing about the
+   * objects it did not: those stay unknown, never absent.
+   */
+  directory?: DirectoryEvidence
   /**
    * A date range in which nothing is enforced (roadmap-v2.md §2). With the
    * start date, the only schedule input there is (target-state §9): no pace,
@@ -504,6 +513,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // Role names travel with the scan ($expand=roleDefinition); learn them before any label is built.
   learnRoleNames(input.snapshot.config.roleAssignments?.rows ?? [])
   const { snapshot, mapping, viability, planId } = input
+  // The exclusions group as a safety-sensitive choice (Foundation C): what the
+  // operator confirmed, whether this scan could read it, and therefore whether
+  // any policy the plan writes may name it. Resolved once, here, so no branch
+  // below reaches the stored record on its own.
+  const exclusions = exclusionsGroupChoice({ snapshot, mapping, groups: input.groupMembers, directory: input.directory })
   // The device decision (E2), from its stored answers: which platforms the
   // device policies cover and what counts as a managed computer. Open: phones
   // out, compliant computers only, and the device steps wait on the decision.
@@ -570,7 +584,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // strength templates via excludeRoles in goals.json.
   const sharedDevices = sharedDeviceUsers(snapshot)
   for (const id of sharedDeviceIds(snapshot)) excluded.add(id)
-  const exclusionGroupIds = [mapping.records['__globalExclusion']?.resolvedId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
+  const exclusionGroupIds = [exclusions.actionableId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
   for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
   const prereq = (id: string, title?: string): Step => ({
@@ -608,7 +622,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // the policy body and the body says so, naming the Preparation step that
   // creates the object.
   const countriesLocationId = tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null
-  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId)
+  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId, exclusions.actionableId)
   /**
    * The resolved policy with its authentication strength as the request may
    * carry it: the tenant's id, and nothing that describes the object it points
@@ -631,12 +645,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // (roadmap/strand.ts StrandContext).
   // Who is in a group, where the scan read the whole group: a sampled list
   // proves somebody is a member and never that somebody is not, so it answers
-  // nothing here. The plan's own exclusions group answers for itself — the
-  // emergency accounts are its members by the rule that puts them there.
+  // nothing here.
+  //
+  // The exclusions group used to answer for itself — the emergency accounts
+  // were taken as its members by the rule that puts them there. That is what the
+  // plan intends the group to hold, not what a scan read of it, and it was
+  // written in exactly the case where nothing had been read (Foundation C: a
+  // group whose object exists and whose membership would not enumerate has
+  // unknown members, and an unknown membership is not an empty one or an
+  // assumed one). A policy's reach is measured from readings, so the group's
+  // members are here when a scan read them and the reach is unknown when it
+  // did not.
   const knownGroupMembers: Record<string, string[]> = {}
   for (const [gid, g] of input.groupMembers?.entries() ?? []) if (g.sampled !== true) knownGroupMembers[gid.toLowerCase()] = [...g.memberIds]
-  if (tenantObjects.exclusionsGroupId && knownGroupMembers[tenantObjects.exclusionsGroupId.toLowerCase()] === undefined)
-    knownGroupMembers[tenantObjects.exclusionsGroupId.toLowerCase()] = [...mapping.breakGlassUserIds]
   const countryLocations: Record<string, string[]> = {}
   for (const raw of snapshot.config.namedLocations?.rows ?? []) {
     const l = raw as { id?: string; '@odata.type'?: string; countriesAndRegions?: unknown }
@@ -751,7 +772,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // instructions while no group is recognised. Every object the plan asks for
   // carries a proposed name in the tenant's own convention (prompt 43 item 4).
   const geStepId = PREREQ_STEP_ID.exclusionsGroup
-  const recognisedGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
+  const recognisedGroupId = exclusions.actionableId
   if (canUseConditionalAccess) {
     const proposed = proposedObjectNames(naming).exclusionsGroup
     steps.push({ ...prereq(geStepId), naming: { proposed: proposed.name, fromBaseline: null } })
@@ -888,7 +909,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const groupFacts = [...(input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
   const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability, drillDates: input.cleanupRecord?.drills ?? [] })
   const validationReports: SubjectReport[] = [breakGlassReport(validationCtx)]
-  const exclusionGroupId = mapping.records['__globalExclusion']?.resolvedId ?? null
+  const exclusionGroupId = exclusions.actionableId
   if (exclusionGroupId !== null) {
     validationReports.push(reportFor('exclusionGroup', [groupFacts.find((g) => g.groupId === exclusionGroupId) ?? null], validationCtx))
   }
@@ -939,7 +960,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // it; an empty array: nothing to put there and nothing to wait for.
   const templateValues: TemplateValues = {
     '{namePrefix}': naming.prefix ?? 'CA',
-    '{exclusionsGroup}': mapping.records['__globalExclusion']?.resolvedId ?? null,
+    '{exclusionsGroup}': exclusions.actionableId,
     '{breakGlass}': mapping.breakGlassUserIds.length > 0 ? mapping.breakGlassUserIds : null,
     '{serviceAccountsGroup}': mapping.serviceAccountsGroupId ?? (mapping.serviceAccountUserIds.length === 0 ? [] : null),
     '{trustedLocations}': mapping.trustedLocationIds.length > 0 ? mapping.trustedLocationIds : mapping.wizardAnswered.trustedLocations === true ? [] : null,

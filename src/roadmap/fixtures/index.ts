@@ -8,6 +8,7 @@ import { scenarioRows, sharedId } from './scenarioRows.ts'
 import type { BaselinePackage } from '../../baseline/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { emptyMappingState } from '../../mapping/types.ts'
+import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../../mapping/safetyChoice.ts'
 import { emptyCapabilities } from '../../licensing/capabilities.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from '../generate.ts'
@@ -473,9 +474,9 @@ export function buildFixture(spec: Spec): Fixture {
     serviceAccountUserIds: svcIds,
     allowedCountries: spec.multiGeo ? ['AU', 'NZ', 'GB', 'US'] : ['AU'],
     displayTimeZone: 'Australia/Sydney',
-    records: {
-      __globalExclusion: { placeholder: '__globalExclusion', kind: 'group', group: 'globalExclusion', resolvedId: exclusionExists ? exclusionGroup : null, resolvedName: exclusionExists ? 'Core - Exclusions' : null, provenance: 'confirmed', doesNotExist: !exclusionExists, validation: null },
-    },
+    // The exclusions group as its technician confirmed it, through the one
+    // writer of that record (mapping/safetyChoice.ts). The demo has not answered.
+    records: exclusionExists ? { [EXCLUSIONS_RECORD_KEY]: { ...exclusionsGroupRecord(undefined, exclusionGroup), resolvedName: 'Core - Exclusions' } } : {},
     wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, trustedLocations: true, serviceAccounts: true, timeZone: true, applicability: true },
   }
   const groups: GroupMembers = new Map()

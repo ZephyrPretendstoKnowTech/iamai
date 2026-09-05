@@ -378,7 +378,7 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   const ids: string[] = Array.isArray(idsOf) && (idsOf as string[]).length === rows.length ? (idsOf as string[]) : rows
   // A group, a location or a strength is one choice: one chip.
   const single = !d.multi && SINGLE_CHOICE_SOURCES.includes(String(source ?? key ?? ''))
-  const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups }
+  const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }
   const universe = useMemo(() => (d.pickerRow ? pickerUniverse(stepId, source, pickerCtx) : []), [d.pickerRow, stepId, source, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
   const byId = useMemo(() => new Map(universe.map((o) => [o.id, o])), [universe])
   const nominated: PickerOption[] = ids.map((id, i) => {

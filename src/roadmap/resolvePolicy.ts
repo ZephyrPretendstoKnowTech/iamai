@@ -47,7 +47,7 @@ export const PLACEHOLDER_STEP: Record<Exclude<TemplatePlaceholder, '{namePrefix}
  * tenant that has no such object yet, and the reference stays unresolved.
  */
 export type TenantObjects = {
-  /** The recognised exclusions group (`__globalExclusion`), excluded from every policy the plan writes. */
+  /** The confirmed, currently verified exclusions group, excluded from every policy the plan writes; null wherever the choice is unresolved. */
   exclusionsGroupId: string | null
   /** The confirmed service-accounts group, where the tenant has one. */
   serviceAccountsGroupId: string | null
@@ -60,18 +60,27 @@ export type TenantObjects = {
 }
 
 /**
- * The tenant objects the mapping holds. The countries location is the one
- * object the mapping cannot name on its own — the caller matches the tenant's
- * named locations against the allowed list and passes the result in.
+ * The tenant objects the mapping holds. Two of them the mapping cannot name on
+ * its own and the caller passes in: the countries location, which the caller
+ * matches against the tenant's named locations; and the exclusions group, which
+ * is a safety-sensitive choice, so what may go into a policy is the id the
+ * operator confirmed and this scan read, and nothing else
+ * (mapping/safetyChoice.ts actionableExclusionsGroupId). Both default to null —
+ * an object nobody vouched for is an object this tenant does not have, and the
+ * reference stays unresolved.
  */
-export function tenantObjectsOf(mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId' | 'trustedLocationIds'>, allowedCountriesLocationId: string | null = null): TenantObjects {
+export function tenantObjectsOf(
+  mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId' | 'trustedLocationIds'>,
+  allowedCountriesLocationId: string | null = null,
+  exclusionsGroupId: string | null = null,
+): TenantObjects {
   const confirmed = new Map<string, string>()
   for (const r of Object.values(mapping.records ?? {})) {
     // `__`-prefixed keys are the wizard's own answers, not author references.
     if (r.resolvedId !== null && !r.placeholder.startsWith('__')) confirmed.set(r.placeholder.toLowerCase(), r.resolvedId)
   }
   return {
-    exclusionsGroupId: mapping.records?.['__globalExclusion']?.resolvedId ?? null,
+    exclusionsGroupId,
     serviceAccountsGroupId: mapping.serviceAccountsGroupId ?? null,
     allowedCountriesLocationId,
     trustedLocationIds: mapping.trustedLocationIds ?? [],

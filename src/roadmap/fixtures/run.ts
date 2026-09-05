@@ -12,6 +12,7 @@
 import { computeCoverage } from '../../coverage/coverage.ts'
 import { buildStrengthLookup } from '../../coverage/strength.ts'
 import { toCoverageMapping } from '../../mapping/store.ts'
+import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../../mapping/safetyChoice.ts'
 import { buildViabilityInputs } from '../../scoring/fromSnapshot.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import { activePeopleIds } from '../../derive/population.ts'
@@ -57,6 +58,13 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
   const t0 = performance.now()
   const { snapshot } = f
   const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
+  // What the fixture's scan read of each group. A fixture holds the groups its
+  // scan loaded, so those are present with the membership it holds; a group it
+  // does not hold is one nothing read, which is unknown and not absent
+  // (mapping/safetyChoice.ts). A fixture that wants an object proved gone says
+  // so by passing its own `directory`.
+  const directory = over.directory ?? directoryEvidenceFromGroups(f.groups)
+  const exclusionsGroupId = actionableExclusionsGroupId({ snapshot, mapping: f.mapping, groups: f.groups, directory })
   const coverage = computeCoverage({
     snapshot,
     tenantPolicies: snapshot.config.caPolicies?.rows ?? [],
@@ -64,7 +72,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
     baselineUnusable: f.baseline.report.warnings,
     strengths,
     groupMembers: f.groups,
-    mapping: toCoverageMapping(f.mapping, snapshot),
+    mapping: toCoverageMapping(f.mapping, snapshot, exclusionsGroupId),
     facetOverrides: f.mapping.facetOverrides,
     goalMap: over.goalMap,
   })
@@ -85,6 +93,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
     operatorUserId: f.operatorId,
     names,
     groupMembers: f.groups,
+    directory,
     // What the fixture's technician recorded on Cleanup (E3), as the app reads it from the plan record.
     cleanupRecord: cleanupRecord(f.checkpoints ?? []),
     ...over,

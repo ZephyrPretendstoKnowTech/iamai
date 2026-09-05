@@ -540,7 +540,10 @@ try {
   let demoText = await text()
   const demoDay1Header = (demoText.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
   check('Demo: the banner says nothing is from a real tenant and offers to leave', /Sample data . nothing here is from a real tenant/.test(demoText) && /Leave the demo/.test(demoText))
-  check('Demo: the plan header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |nothing is dated)/.test(demoText), demoDay1Header)
+  // Three branches, and the held one has to name what holds it: a plan whose
+  // policies wait on a safety object nobody has chosen is the ordinary first
+  // visit, and 'cannot finish until' with nothing after it is a hole.
+  check('Demo: the plan header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes \w|nothing is dated|cannot finish until \S)/.test(demoText), demoDay1Header)
   check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts/.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // Item 4: a readiness-held step renders as a Blocked row whose date column
