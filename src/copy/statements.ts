@@ -295,6 +295,9 @@ export const FINISH = {
     const word = (family: string): string => (family === 'mfa' || family === 'guest' ? 'MFA' : family === 'admin' ? 'admin' : family === 'device' ? 'device' : family)
     return waiting.map((w) => `${w.count} ${word(w.family)} ${w.count === 1 ? 'step waits' : 'steps wait'} for ${w.measure}`).join(' · ')
   },
+  /** "9 steps wait on Create or Correct Exclusions Group": what holds a plan the calendar cannot date and no readiness number holds. */
+  unwritable: (count: number, titles: string[]): string =>
+    count === 0 ? '' : `${count} ${count === 1 ? 'step waits' : 'steps wait'} on ${titles.length > 0 ? list(titles) : 'an object this plan does not have yet'}`,
   line: (date: string | null, waiting: { measure: string; count: number; family: string }[]): string => {
     const head = date ? `finishes ${date}` : 'nothing is dated'
     return waiting.length === 0 ? head : `${head} · ${FINISH.waiting(waiting)}`

@@ -33,7 +33,10 @@ import { proposedStart } from '../../derive/planStart.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
-import { getGroupMembers } from '../../graph/collect/onDemand.ts'
+import { readGroup } from '../../graph/collect/onDemand.ts'
+import type { GroupRead } from '../../graph/collect/presence.ts'
+import { actionableExclusionsGroupId, directoryEvidenceOf, storedExclusionsGroupId } from '../../mapping/safetyChoice.ts'
+import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NameDirectory } from '../../names.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
@@ -86,6 +89,8 @@ export type PlanData = {
   /** Tick a recorded-by-hand emergency-access fact (prompt 49 item 5); stored in the mapping and the plan file. */
   tickAnswer: (key: 'credentialStorage' | 'signInMonitoring', done: boolean) => void
   groups: GroupMembers
+  /** What this scan's directory reads established about those groups (Foundation C): present, gone, or could not tell. */
+  directory: DirectoryEvidence
   /** Every picker's saved decision, by step id (prompt 52 Part 3): in the plan record and the plan file. */
   stepDecisions: Record<string, StepDecision>
   /** A picker's Save: record the decision and regenerate the plan around it. */
@@ -124,6 +129,11 @@ export function usePlanData(
   const [saved, setSaved] = useState<PlanDecisions | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [groups, setGroups] = useState<GroupMembers>(new Map())
+  // What this scan's own reads said about each of those groups: present, gone,
+  // or could not tell (Foundation C). Recomputed with the groups on every scan
+  // and never carried across one — a previous scan's reading is not evidence
+  // about now.
+  const [directory, setDirectory] = useState<DirectoryEvidence>({ groups: new Map() })
   const [groupsLoaded, setGroupsLoaded] = useState(false)
   // The snapshot each load was made for: the plan computes only when the
   // mapping and the groups belong to the snapshot on screen, so a scan (or the
@@ -140,6 +150,7 @@ export function usePlanData(
       setSaved(null)
       setMappingFor(null)
       setGroups(new Map())
+      setDirectory({ groups: new Map() })
       setGroupsFor(null)
       setLoaded(false)
       return
@@ -181,21 +192,29 @@ export function usePlanData(
     // group the mapping names — whether or not a policy references them yet:
     // the checks on the exclusions group read its members, and without them the
     // week-two demo kept a "correct the group" step for a group already right.
-    const ge = decided.records['__globalExclusion']?.resolvedId
+    // Storage only, and only to decide what to read: the operator's answer says
+    // which group this scan has to go and look at. What may go into a policy is
+    // decided afterwards, from the reading (mapping/safetyChoice.ts).
+    const ge = storedExclusionsGroupId(decided)
     if (ge) ids.add(ge)
     if (decided.serviceAccountsGroupId) ids.add(decided.serviceAccountsGroupId)
     void (async () => {
       const map: GroupMembers = new Map()
+      const reads: GroupRead[] = []
       for (const id of ids) {
-        try {
-          const g = await getGroupMembers(snapshot.tenantId, id)
-          map.set(id, { memberIds: g.memberIds, memberCount: g.memberCount, sampled: g.sampled, displayName: g.displayName })
-        } catch {
-          // unresolved
+        // Existence and membership are read as two facts and kept as two
+        // (readGroup): a group Graph says is gone is absent, a request that
+        // failed leaves it unknown, and a group that exists whose members would
+        // not enumerate is present with no member count invented for it.
+        const r = await readGroup(snapshot.tenantId, id, { since: snapshot.asOf })
+        reads.push(r)
+        if (r.presence === 'present' && r.members !== 'unknown' && r.memberCount !== null) {
+          map.set(id, { memberIds: r.memberIds, memberCount: r.memberCount, sampled: r.members === 'sampled', displayName: r.object?.displayName ?? null })
         }
       }
       if (!cancelled) {
         setGroups(map)
+        setDirectory(directoryEvidenceOf(reads))
         setGroupsFor(snapshot)
         setGroupsLoaded(true)
       }
@@ -237,7 +256,9 @@ export function usePlanData(
       baselineUnusable: baseline.pkg.report.warnings,
       strengths,
       groupMembers: groups,
-      mapping: toCoverageMapping(mapping, snapshot),
+      // Only a group the operator confirmed and this scan read carves anybody
+      // out of a policy's reach (Foundation C).
+      mapping: toCoverageMapping(mapping, snapshot, actionableExclusionsGroupId({ snapshot, mapping, groups, directory })),
       facetOverrides: mapping.facetOverrides,
       goalMap: baseline.goalMap,
     })
@@ -257,6 +278,7 @@ export function usePlanData(
       operatorUserId: null,
       names,
       groupMembers: groups,
+      directory,
       changeFreeze: freeze,
       goalMap: baseline.goalMap,
       // What the checkpoints record about Cleanup (E3): each row's Done, and the drill dates.
@@ -276,7 +298,7 @@ export function usePlanData(
     annotateStateReasons(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, saved, planId, version, startDate, band, freeze, mappingFor, groupsFor])
+  }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, band, freeze, mappingFor, groupsFor])
 
   // Persist the decisions only, so a Skip and the start/freeze survive a reload;
   // the plan itself is regenerated, never stored. Writing here also completes the
@@ -318,6 +340,7 @@ export function usePlanData(
     band,
     freeze,
     groups,
+    directory,
     saveMapping: (next) => {
       setMapping(next)
       void saveMappingState(next)

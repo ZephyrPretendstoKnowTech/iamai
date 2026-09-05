@@ -15,6 +15,14 @@ export type PlanFinish = {
   /** Steps a readiness threshold holds, by the measure that holds them, in plan order of first appearance. */
   waiting: { measure: string; count: number; family: Step['readiness']['family'] }[]
   waitingCount: number
+  /**
+   * Steps whose policy the plan cannot write at all, and the Preparation steps
+   * they are waiting on, in plan order. They date nothing and no number holds
+   * them, so without this the header had nothing to name and the line ended at
+   * "cannot finish until". A plan waiting on a safety object nobody has chosen
+   * is the ordinary first visit (mapping/safetyChoice.ts), not an edge.
+   */
+  unwritable: { count: number; waitsOn: string[] }
 }
 
 /** The step waits whose decision the threshold is measured against: while the decision is open, the wait binds, not the number (E2: device readiness follows the device decision). */
@@ -32,11 +40,17 @@ const lastRingEnd = (s: Step): string | null => s.rings.at(-1)?.plannedEnd ?? nu
 export function planFinish(steps: Step[], cleanupEnd: string | null = null): PlanFinish {
   let finish: string | null = null
   const waiting = new Map<string, { measure: string; count: number; family: Step['readiness']['family'] }>()
+  let unwritable = 0
+  const waitsOn: string[] = []
   for (const s of steps) {
     if (s.status === 'done' || s.status === 'skipped') continue
     // A policy the plan cannot write is neither dated nor waiting on readiness:
     // it waits on the thing it names, which is not a number that can rise.
-    if (unavailableReason(s) !== null) continue
+    if (unavailableReason(s) !== null) {
+      unwritable += 1
+      for (const m of s.action.missing ?? []) if (m.stepId && !waitsOn.includes(m.stepId)) waitsOn.push(m.stepId)
+      continue
+    }
     if (heldByReadiness(s)) {
       const measure = READINESS_MEASURE[s.readiness.family] ?? 'readiness'
       const w = waiting.get(measure) ?? { measure, count: 0, family: s.readiness.family }
@@ -51,5 +65,5 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
   // never dates a plan whose enforcement is still held.
   if (finish !== null && cleanupEnd !== null && cleanupEnd > finish) finish = cleanupEnd
   const list = [...waiting.values()]
-  return { finish, waiting: list, waitingCount: list.reduce((n, w) => n + w.count, 0) }
+  return { finish, waiting: list, waitingCount: list.reduce((n, w) => n + w.count, 0), unwritable: { count: unwritable, waitsOn } }
 }

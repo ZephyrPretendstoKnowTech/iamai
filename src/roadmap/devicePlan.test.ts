@@ -33,7 +33,13 @@ import { stepById } from '../content/content.ts'
 function applied(f: Fixture, decisions: Record<string, StepDecision> | null): MappingState {
   const nameOf = (id: string): string => f.snapshot.users.find((u) => u.id === id)?.displayName ?? id
   const defaults = applyStepDecisions(f.mapping, defaultDecisions({ snapshot: f.snapshot, mapping: f.mapping, nameOf, groups: f.groups, now: f.snapshot.asOf }), 'detected')
-  return applyStepDecisions(defaults, decisions)
+  // The exclusions group is a safety-sensitive choice with no pre-ticked
+  // default (mapping/safetyChoice.ts): the demo's two qualifying groups are
+  // ambiguous until a person picks one, and until they do no policy the plan
+  // writes carries a body. This file is about the device decision, so it runs
+  // on a tenant whose technician has answered that question.
+  const chosen = applyStepDecisions(defaults, { [PREREQ_STEP_ID.exclusionsGroup]: { picked: [EXCLUSIONS_GROUP], at: AT } })
+  return applyStepDecisions(chosen, decisions)
 }
 function ctxFor(f: Fixture, r: FixtureRun, mapping: MappingState): StepVarContext {
   return { snapshot: f.snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: null, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
@@ -41,6 +47,8 @@ function ctxFor(f: Fixture, r: FixtureRun, mapping: MappingState): StepVarContex
 const AT = '2026-09-02T00:00:00.000Z'
 /** A service-accounts group this tenant has named, so the compliant-device policy resolves. */
 const SERVICE_ACCOUNTS_GROUP = '00000000-0000-4000-8000-0000000a0001'
+/** The demo's exclusions group, as its technician would confirm it on the step. */
+const EXCLUSIONS_GROUP = [...fixture('demo').groups].find(([, g]) => g.displayName === 'Core - Exclusions')![0]
 const DEVICE = PREREQ_STEP_ID.devicePlan
 const labels = questionLabels(DEVICE)
 

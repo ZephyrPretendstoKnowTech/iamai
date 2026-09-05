@@ -122,7 +122,7 @@ test('midflight: a re-plan after a baseline update keeps every done step, its ev
     baselineUnusable: [],
     strengths,
     groupMembers: f.groups,
-    mapping: toCoverageMapping(f.mapping, f.snapshot),
+    mapping: toCoverageMapping(f.mapping, f.snapshot, f.mapping.records['__globalExclusion']?.resolvedId ?? null),
   })
   const second = generateRoadmap({ ...first.input, coverage, baseline: updated })
   mergePersisted(second.steps, persisted)

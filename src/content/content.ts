@@ -88,5 +88,7 @@ export type EngineWords = {
   milestone: Record<string, string>
   /** What this scan saw against what the last one saw (roadmap/observation.ts). */
   observation: Record<string, string> & { states: { absent: string; disabled: string; reportOnly: string; enforced: string; unknown: string } }
+  /** Which half of a safety choice's detection came up short (mapping/safetyChoice.ts). */
+  detectionGap: { groups: string; policies: string }
 }
 export const engine = shared.engine as unknown as EngineWords

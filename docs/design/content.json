@@ -167,6 +167,10 @@
         "semanticsChanged": "the policy itself changed by {date}: what was watched before this is no longer what is deployed",
       "artifactReplaced": "a different policy is delivering this as of {date}: the one watched before it is not the one deployed, so the window starts again",
       "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now"
+      },
+      "detectionGap": {
+        "groups": "some of the groups its policies name would not open",
+        "policies": "its Conditional Access policies could not be read"
       }
     }
   },
@@ -1089,7 +1093,13 @@
       "who": {
         "lead": "The group and its members:",
         "group": "{exclusionsGroup} · {memberCount} members · excluded from {excludedFrom} of {policyCount} policies",
+        "groupMembersUnread": "{list:exclusionsGroupNoMembers} · excluded from {excludedFrom} of {policyCount} policies. IAMAI could not read who is in it in this scan.",
         "members": "{list:members}",
+        "unverified": "IAMAI could not check {list:unverifiedGroup} in this scan, so no policy here names it yet. Your choice is kept and stands again the moment a scan can read the group.",
+        "missing": "{list:missingGroup} is not in {tenant} any more. Your choice is kept: IAMAI has not chosen another group and has not created one.",
+        "suggested": "IAMAI suggests {list:suggestedGroup} · {suggestedMemberCount} members · excluded from {suggestedExcludedFrom} of {policyCount} policies. Nothing uses it until you choose it.",
+        "several": "More than one group in {tenant} could be this one: {list:candidateGroups}. IAMAI does not choose between them.",
+        "cannotTell": "IAMAI cannot say whether a group in {tenant} already does this: {list:detectionGap}. Nothing has been chosen and nothing has been created.",
         "none": "No exclusions group recognised in {tenant}."
       },
       "decision": {

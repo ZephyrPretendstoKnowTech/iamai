@@ -17,13 +17,19 @@ export async function saveMappingState(state: MappingState): Promise<void> {
   await saveMappingRecord(state.tenantId, { ...state, updatedAt: new Date().toISOString() })
 }
 
-// Coverage consumes confirmed exclusions; the assumed banner drops once the
-// required wizard questions are answered (2026-08-27 redesign).
-export function toCoverageMapping(state: MappingState, snapshot: TenantSnapshot): NonNullable<CoverageInput['mapping']> {
+/**
+ * Coverage consumes confirmed exclusions; the assumed banner drops once the
+ * required wizard questions are answered (2026-08-27 redesign).
+ *
+ * The exclusions group is passed in, never read from the record: coverage
+ * counts the people a carve-out takes out of a policy's reach, so it may only
+ * be told about a group the operator chose and this scan read
+ * (mapping/safetyChoice.ts actionableExclusionsGroupId).
+ */
+export function toCoverageMapping(state: MappingState, snapshot: TenantSnapshot, exclusionsGroupId: string | null): NonNullable<CoverageInput['mapping']> {
   const breakGlassUsers = [...state.breakGlassUserIds]
   const exclusionGroups: Record<string, string> = {}
-  const g = state.records['__globalExclusion']
-  if (g?.resolvedId) exclusionGroups[g.resolvedId] = 'breakGlass/globalExclusion'
+  if (exclusionsGroupId) exclusionGroups[exclusionsGroupId] = 'breakGlass/globalExclusion'
   if (state.serviceAccountsGroupId) exclusionGroups[state.serviceAccountsGroupId] = 'serviceAccounts'
   return {
     breakGlassUsers,
