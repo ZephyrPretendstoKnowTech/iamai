@@ -125,6 +125,19 @@ export type Action = {
    * exactly as a missing object leaves it.
    */
   emergencyExposure?: { reached: string[]; unproven: string[] }
+  /**
+   * The emergency-access foundation this step is held behind while its own
+   * checks have not passed (roadmap/blockerSteps.ts GATING_SUBJECTS): the
+   * break-glass accounts, or the exclusions group. Set only on a step that can
+   * deny access, which is what those two hold.
+   *
+   * The step already carried this as a `blockedBy` edge and a status. Holding it
+   * here as well is what makes the hold an implementation fact rather than a
+   * word: the design says no enforcement is offered while the way back in is
+   * unverified, and a step whose Portal, JSON, PowerShell and Download were all
+   * there under the heading "Blocked" was offering exactly that.
+   */
+  escapeHatch?: { stepId: string }
 }
 
 /**

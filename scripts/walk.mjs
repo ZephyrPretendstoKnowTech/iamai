@@ -414,6 +414,11 @@ async function walkFixture(fx) {
   let rowReasons = []
   let rowTitlesOpen = []
   let rowReasonsOpen = []
+  // The steps whose policy the plan cannot write yet, by title, and the campaign's
+  // day-one email: the email names the first policy that needs a passkey, and a
+  // policy the plan is holding is not one it may promise a date for.
+  const escapeHeld = new Set()
+  let campaignEmail = null
   let rowTitlesAfter = []
   let rowReasonsAfter = []
   let exclusionBody = null
@@ -948,13 +953,21 @@ async function walkFixture(fx) {
         // implementationOffered). It says which step comes first, or that there
         // is nothing to do but keep the policy. The checks below read the
         // instructions, so they apply only where the instructions are offered.
-        const waitsOnAnObject = / first: this policy names an object /.test(bodyText) || /in place already: nothing to create/.test(bodyText)
+        // A third way it happens, and it is the same fact: the operation would turn
+        // the policy on the moment it ran and the way back in is not verified, so
+        // nothing is offered until the foundation's checks pass
+        // (roadmap/operations.ts `escape-hatch-unverified`).
+        const cannotWriteYet =
+          / first: this policy names an object /.test(bodyText) ||
+          /in place already: nothing to create/.test(bodyText) ||
+          /the way back in to .+ is not verified yet/.test(bodyText)
+        if (cannotWriteYet) escapeHeld.add(title)
         // A policy in report-only says when it may be enforced, on the row and in
         // the step: the date column reads ready <date> · ready now · ready since
         // <date>, and Done when carries both gates with today's numbers.
         // A policy the plan cannot write yet has nothing to enforce, so it carries
         // no completion gates; what it must carry is what it waits on.
-        if (rowStatuses[i] === 'Report-only' && !waitsOnAnObject) {
+        if (rowStatuses[i] === 'Report-only' && !cannotWriteYet) {
           if (!/^ready (now|since .+|\S.*\d{4})$/.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say when it may be enforced (ready <date> · ready now · ready since <date>)`)
           if (!/Time: in report-only since .+, ready (on|since) /.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
           if (!/Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days)\./.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
@@ -1010,8 +1023,8 @@ async function walkFixture(fx) {
             if (!week2 && /on the allowed list now/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line shows before any answer`)
           }
           if (/^Require MFA for Guests$/.test(title) || /Countries Not Allowed/.test(title)) {
-            if (week2 && !waitsOnAnObject && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the policy's What to do`)
-            if (week2 && !waitsOnAnObject && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the service-provider exclusion is not shown beside the baseline's version`)
+            if (week2 && !cannotWriteYet && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the policy's What to do`)
+            if (week2 && !cannotWriteYet && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the service-provider exclusion is not shown beside the baseline's version`)
             if (!week2 && /the baseline's version/.test(bodyText)) add('P0', `${slabel}: a deviation from the baseline shows before any answer`)
           }
           if (/^Block Legacy Authentication$/.test(title)) {
@@ -1029,10 +1042,10 @@ async function walkFixture(fx) {
             if (named < 2) add('P0', `${slabel}: the step lists ${named} admin(s) with mail or Teams sign-ins; the demo has two`)
             if (!/^Skip this step$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step is not skippable`)
           }
-          if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
+          if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !cannotWriteYet && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
           // The lockout list (E8): the demo's admins not yet at Passkey or security
           // key, proven are named (three or fewer), and the line counts the names it lists.
-          if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
+          if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !cannotWriteYet) {
             const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet at Passkey or security key, proven; register before .+:\s*$/m)
             if (!m) add('P0', `${slabel}: the step does not say how many admins are not yet at Passkey or security key, proven today`)
             else {
@@ -1068,8 +1081,8 @@ async function walkFixture(fx) {
             }
           }
           if (/Require a Managed Device/.test(title)) {
-            if (week2 && !waitsOnAnObject && !/Device platforms → Include: Any device; Exclude: Android, iOS/.test(bodyText)) add('P0', `${slabel}: the device decision (phones protected by their apps) did not scope phones out of the compliant-device policy`)
-            if (week2 && !waitsOnAnObject && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the platform deviation is not shown beside the baseline's version`)
+            if (week2 && !cannotWriteYet && !/Device platforms → Include: Any device; Exclude: Android, iOS/.test(bodyText)) add('P0', `${slabel}: the device decision (phones protected by their apps) did not scope phones out of the compliant-device policy`)
+            if (week2 && !cannotWriteYet && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the platform deviation is not shown beside the baseline's version`)
             if (!week2 && /Device platforms/.test(bodyText)) add('P0', `${slabel}: a platform condition shows before the device decision`)
           }
           // The admin-sessions email says how long a session lasts (the merge
@@ -1094,7 +1107,7 @@ async function walkFixture(fx) {
             // passkey version, and on day one it names the admins policy as the
             // first one that needs a passkey (enforced by week two, so no line then).
             if (!/You already confirm sign-ins/.test(emailText) || /will ask you to confirm with the Microsoft Authenticator app/.test(emailText)) add('P0', `${slabel}: Require MFA for Everyone is in place, and the campaign email is not the passkey version`)
-            if (!week2 && !/Require Phishing-Resistant MFA for Admins requires a passkey/.test(emailText)) add('P0', `${slabel}: the passkey email does not name the first policy that needs a passkey`)
+            if (!week2) campaignEmail = emailText
           }
           // A strength policy's row carries its lockout count in the who-column
           // when it is not zero, and the count is the step's own.
@@ -1106,9 +1119,9 @@ async function walkFixture(fx) {
             else if (m && suffix && suffix[1] !== m[1]) add('P0', `${slabel}: the row says ${suffix[1]} not yet at rung 5 and the step says ${m[1]}`)
             else if (!m && suffix) add('P0', `${slabel}: the row carries a lockout count the step does not`)
           }
-          if (/Require a Managed Device/.test(title) && !waitsOnAnObject && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
+          if (/Require a Managed Device/.test(title) && !cannotWriteYet && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
           // A policy the plan cannot write yet announces nothing at all.
-          if (/Require a Managed Device/.test(title) && waitsOnAnObject && emailText.trim() !== '') add('P0', `${slabel}: it waits on an object and still announces a change`)
+          if (/Require a Managed Device/.test(title) && cannotWriteYet && emailText.trim() !== '') add('P0', `${slabel}: it waits on an object and still announces a change`)
           if (/^Register Your Own Passkey$/.test(title) && !/or a hardware security key/.test(bodyText)) add('P0', `${slabel}: step 12 asks for a key and a passkey; either is enough`)
           // Small engine items (E9), on the demo: the admin-portals step names the
           // developer who opened the Azure portal; the service-accounts block is
@@ -1117,8 +1130,8 @@ async function walkFixture(fx) {
           // one somebody did.
           if (/^Block the Admin Portals for Non-Admins$/.test(title) && !/^1 person without a directory role signed in to Azure since /m.test(bodyText)) add('P0', `${slabel}: the step does not name the person without a directory role who signed in to Azure`)
           if (/^Restrict Service Accounts to the Trusted Network$/.test(title)) {
-            if (!waitsOnAnObject && !/Users → Include: Groups: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not name the service-accounts group`)
-            if (!waitsOnAnObject && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
+            if (!cannotWriteYet && !/Users → Include: Groups: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not name the service-accounts group`)
+            if (!cannotWriteYet && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
           if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title)) {
@@ -1171,7 +1184,7 @@ async function walkFixture(fx) {
         // portal lines (the merge follow-up): on the step, each line is present and
         // sits before the portal root line.
         for (const b of BEFORE_LINES) {
-          if (b.title !== title || b.lines.length === 0 || waitsOnAnObject) continue
+          if (b.title !== title || b.lines.length === 0 || cannotWriteYet) continue
           const root = bodyText.indexOf('Conditional Access → Policies → New policy')
           for (const line of b.lines) {
             const at = bodyText.indexOf(line.replace(/\{[a-zA-Z0-9_:]+\}/g, '').split(' ').slice(0, 6).join(' '))
@@ -1296,6 +1309,15 @@ async function walkFixture(fx) {
   if (fx.name.startsWith('demo') && !rowTitles.some((t) => /^Use Separate Accounts for Admin Work$/.test(t))) add('P0', `${fx.name}: no Preparation row asks for separate admin accounts, although two admins use theirs for mail or Teams`)
   // The consolidation row exists whenever a step's existingCoverage line rendered, and only then (E3).
   if (fx.name.startsWith('demo') && sawExistingCoverage !== rowTitlesAfter.some((t) => /Consolidate Overlapping Policies/.test(t))) add('P0', `${fx.name}: ${sawExistingCoverage ? 'a step found existing coverage but Cleanup has no Consolidate Overlapping Policies row' : 'Cleanup has a Consolidate Overlapping Policies row but no step found existing coverage'}`)
+  if (campaignEmail !== null && /You already confirm sign-ins/.test(campaignEmail)) {
+    const passkeyStep = 'Require Phishing-Resistant MFA for Admins'
+    const named = new RegExp(`${passkeyStep} requires a passkey`).test(campaignEmail)
+    if (escapeHeld.has(passkeyStep)) {
+      if (named) add('P0', `${fx.name}: the campaign email dates a policy the plan is holding behind the way back in`)
+    } else if (!named && rowTitlesOpen.includes(passkeyStep)) {
+      add('P0', `${fx.name}: the passkey email does not name the first policy that needs a passkey`)
+    }
+  }
   if (fx.week2 && exclusionBody !== null && /No exclusions group recognised|New group/.test(exclusionBody)) add('P0', `${fx.name}: the exclusions-group step still offers to create the group in week two, although the re-scan recognised it`)
   // A policy in report-only (Report-only in the status column) says when it may
   // be enforced in the date column, from two gates. The demo's week one has one

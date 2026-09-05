@@ -746,6 +746,7 @@
       "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
       "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
       "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
+      "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",

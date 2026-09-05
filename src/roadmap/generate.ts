@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { emergencyExposureOf, isOpenPolicy, isValidOperation, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import { emergencyExposureOf, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -984,10 +984,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // What each template placeholder is worth in this tenant (prompt 46 item
   // 12). null: nothing yet, so the step waits on the Wave 0 step that creates
   // it; an empty array: nothing to put there and nothing to wait for.
+  //
+  // There is no entry for the emergency accounts. A template's `{breakGlass}`
+  // used to be filled with `mapping.breakGlassUserIds` and written straight into
+  // `conditions.users.excludeUsers`, which gave the emergency carve-out a second
+  // authority: the validated exclusions group an operator can inspect, and a
+  // list of user ids IAMAI put in the policy itself. The second one repaired
+  // policies quietly — a goal whose group was missing, unverified or unsafe
+  // still came out excluding the accounts by name, so the group's checks decided
+  // nothing and the boundary the product documents was not the boundary the
+  // policy used. Emergency safety is the group, and only the group
+  // (resolvePolicy.ts adds it to every policy the plan writes); with no group to
+  // name, the policy waits on the step that fixes the group. The emergency
+  // accounts are still read — to validate the group, and to prove each account
+  // structurally out of the finished policy — and never written.
   const templateValues: TemplateValues = {
     '{namePrefix}': naming.prefix ?? 'CA',
     '{exclusionsGroup}': policyUsableExclusionsGroupId,
-    '{breakGlass}': mapping.breakGlassUserIds.length > 0 ? mapping.breakGlassUserIds : null,
     '{serviceAccountsGroup}': mapping.serviceAccountsGroupId ?? (mapping.serviceAccountUserIds.length === 0 ? [] : null),
     '{trustedLocations}': mapping.trustedLocationIds.length > 0 ? mapping.trustedLocationIds : mapping.wizardAnswered.trustedLocations === true ? [] : null,
     '{allowedCountriesLocation}': tenantCountryLocation(snapshot, mapping.allowedCountries)?.id ?? null,
@@ -1243,7 +1256,32 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         denyEffects !== null
           ? denyEffects.length === 0 || denyEffects.some((e) => e.any)
           : impl.floor.grant !== undefined || impl.floor.session !== undefined || readiness.family === 'block' || readiness.family === 'location'
-      if (deniesAccess && gate !== null) blockByStep(gate.stepId, gate.label)
+      // The gate, as a dependency edge and — where running the operation *is*
+      // the enforcement — as an implementation fact.
+      //
+      // The design's words are exact: no enforcement is offered while the escape
+      // hatch is unverified (roadmap/blockerSteps.ts). A create the plan proposes
+      // lands in report-only, which denies nobody, and its enforce event is a
+      // later step this gate already sequences ahead of; withholding that body
+      // would be the tool requiring strictness rather than helping with it. An
+      // operation that submits `state: enabled` is not that: it turns the policy
+      // on the moment it is run, so submitting it is the enforcement and there is
+      // nothing left for the schedule to hold back. That is what the gate did not
+      // hold. The step read "Blocked · after: Create or Correct Exclusions Group"
+      // with the portal lines, the JSON, the PowerShell and Download JSON beside
+      // it, and running any of them enforced the policy that afternoon with the
+      // way back in unverified.
+      //
+      // Deliberately not here: a change to a policy the tenant already enforces.
+      // That policy is already on and already denying; the step still carries the
+      // gate as a dependency and a status, and refusing to describe a change to
+      // something already running would leave an operator with a policy they
+      // cannot see how to correct.
+      if (deniesAccess && gate !== null) {
+        blockByStep(gate.stepId, gate.label)
+        const turnsOn = (step: Step): boolean => operationsOf(step).some((o) => o.mode === 'update' && String((o.body as { state?: unknown }).state ?? '') === 'enabled')
+        if (turnsOn(denyStep)) action = { ...action, escapeHatch: { stepId: gate.stepId } }
+      }
       if (blockedBy.length > 0) state = { ...state, condition: conditionFor(blockers) }
     }
 

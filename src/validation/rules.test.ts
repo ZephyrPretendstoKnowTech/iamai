@@ -14,6 +14,7 @@ import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { FIELD_PRACTICE, RULE_TEXT } from '../copy/validation.ts'
 import { canDenyAccess } from '../roadmap/strand.ts'
+import { stepEffects } from '../roadmap/operations.ts'
 import { blockerStepId } from '../roadmap/blockerSteps.ts'
 
 // ---- the regression test (design §6) ---------------------------------------
@@ -585,8 +586,14 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
   const { steps } = runFixture(broken)
   const gate = steps.find((s) => s.id === blockerStepId('breakGlass'))
   assert.ok(gate, 'the plan carries the emergency-access step')
-  const denying = steps.filter((s) => canDenyAccess(s) && s.status !== 'done' && s.status !== 'skipped')
-  assert.ok(denying.length > 0, 'the fixture has steps that can deny access')
+  // Every policy the plan is still trying to write. `canDenyAccess` is not the
+  // selector here: it reads what the step's own operations would ask of people,
+  // and a step whose exclusions group is unusable has no operations at all, so
+  // it answers "denies nothing" for exactly the steps this gate exists to hold.
+  // The gate is what is under test, so the steps it holds are.
+  const denying = steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done' && s.status !== 'skipped')
+  assert.ok(denying.length > 0, 'the fixture has policy steps the plan is still trying to write')
+  assert.equal(denying.some((s) => canDenyAccess(s)) || denying.every((s) => stepEffects(s).length === 0), true, 'each either denies access or cannot be written at all')
   for (const s of denying) {
     assert.equal(s.status, 'blocked', `${s.id} is offered while the way back in is unverified`)
     assert.ok(s.blockedBy.includes(gate.id), `${s.id} does not name the emergency-access step`)
@@ -595,7 +602,11 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
     // so naming a prerequisite there would read as the operator's fault
     // (roadmap/baselineConflict.ts, stateReason.ts).
     if (hasBaselineConflict(s.goalId)) continue
-    assert.match(s.blockedReason ?? '', /emergency access/i, `${s.id}: the blocked reason names the subject`)
+    // The row shows the binding reason, and both foundations hold these steps:
+    // where the exclusions group is also unusable its own step is the nearer
+    // next action and is the one named. Either way the reason is a foundation
+    // the operator has to finish, never a readiness number or silence.
+    assert.match(s.blockedReason ?? '', /emergency access|exclusions group/i, `${s.id}: the blocked reason names a foundation (${s.blockedReason})`)
   }
 })
 

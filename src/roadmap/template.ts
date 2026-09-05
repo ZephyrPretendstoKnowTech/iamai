@@ -10,11 +10,21 @@ import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 
 export type TemplateBody = Record<string, unknown>
 
-/** The only placeholders a template may use; anything else is a bug in goals.json. */
+/**
+ * The only placeholders a template may use; anything else is a bug in goals.json.
+ *
+ * There is no placeholder for the emergency accounts, and that is the product's
+ * safety contract rather than an omission. A template used to write them into
+ * `conditions.users.excludeUsers` as a `{breakGlass}` list, which made the
+ * emergency carve-out two objects — a group an operator can inspect and
+ * validate, and a set of user ids IAMAI substituted in — where the design has
+ * one. The boundary is the exclusions group, in a group field
+ * (`{exclusionsGroup}`, and resolvePolicy.ts adds it to every policy the plan
+ * writes); a template that wants emergency access protected asks for the group.
+ */
 export const TEMPLATE_PLACEHOLDERS = [
   '{namePrefix}',
   '{exclusionsGroup}',
-  '{breakGlass}',
   '{trustedLocations}',
   '{allowedCountriesLocation}',
   '{serviceAccountsGroup}',
@@ -50,7 +60,7 @@ export function placeholdersIn(template: unknown): TemplatePlaceholder[] {
   return out
 }
 
-/** Strings shaped like a placeholder that are not one of the seven: a typo in goals.json. */
+/** Strings shaped like a placeholder that are not one of the six: a typo in goals.json. */
 export function unknownPlaceholdersIn(template: unknown): string[] {
   const out = new Set<string>()
   const walk = (v: unknown): void => {
@@ -127,7 +137,6 @@ export function resolveTemplate(template: TemplateBody, values: TemplateValues):
 export const SAMPLE_VALUES: TemplateValues = {
   '{namePrefix}': 'CA',
   '{exclusionsGroup}': '11111111-1111-4111-8111-111111111111',
-  '{breakGlass}': ['22222222-2222-4222-8222-222222222221', '22222222-2222-4222-8222-222222222222'],
   '{trustedLocations}': ['33333333-3333-4333-8333-333333333333'],
   '{allowedCountriesLocation}': '44444444-4444-4444-8444-444444444444',
   '{serviceAccountsGroup}': '55555555-5555-4555-8555-555555555555',

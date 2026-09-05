@@ -15,6 +15,16 @@ export function missingObjects(step: Step): { token: string; stepId: string | nu
 }
 
 /**
+ * The emergency-access foundation holding this step, by the name it carries on
+ * the plan; empty where nothing holds it (roadmap/operations.ts
+ * `escape-hatch-unverified`).
+ */
+export function heldByTitle(step: Step): string {
+  const id = step.action.escapeHatch?.stepId
+  return (id && stepById[id]?.title) || ''
+}
+
+/**
  * The operations the step runs: one per policy, each with its mode, the tenant
  * policy an update names, and the exact body to submit. Empty when the step
  * offers no implementation, so no channel can render one.

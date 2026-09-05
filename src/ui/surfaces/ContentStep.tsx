@@ -23,7 +23,7 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText, stepOperations } from './stepJson.ts'
+import { heldByTitle, implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText, stepOperations } from './stepJson.ts'
 import { commsFor, datesLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
@@ -139,6 +139,9 @@ export function ContentStep({
   // not read enough to say it does not — and offers no instructions either way.
   const emergencyUnsafe = reason === 'unsafe-emergency-access'
   const emergencyUnproven = reason === 'unverified-emergency-exclusion'
+  // The tenant-wide half: this operation would enforce the moment it is
+  // submitted, and the way back in is not verified yet.
+  const escapeHatch = reason === 'escape-hatch-unverified'
   const inPlace = suppressed && reason === null && isPreserved(step)
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
@@ -154,7 +157,7 @@ export function ContentStep({
   // not, so the exclusions-group step of a tenant that has not chosen a group
   // read "Fix each failing check. of checks fail today."
   const leadWhole = typeof w.lead === 'string' && whole(w.lead, ex)
-  const hasWhatToDo = leadWhole || hasChecks || ((truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || emergencyUnsafe || emergencyUnproven || inPlace || hasSteps || before.length > 0
+  const hasWhatToDo = leadWhole || hasChecks || ((truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || emergencyUnsafe || emergencyUnproven || escapeHatch || inPlace || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -256,6 +259,8 @@ export function ContentStep({
         <p className="reason">{fillText(app.plan.emergencyUnsafe, { tenant: String(ex.tenant ?? '') })}</p>
       ) : emergencyUnproven ? (
         <p className="reason">{fillText(app.plan.emergencyUnproven, { tenant: String(ex.tenant ?? '') })}</p>
+      ) : escapeHatch ? (
+        <p className="reason">{fillText(app.plan.escapeHatchHeld, { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) })}</p>
       ) : inPlace ? (
         <p className="reason">{app.plan.inPlaceKeep}</p>
       ) : (

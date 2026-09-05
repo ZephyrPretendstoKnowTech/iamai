@@ -189,6 +189,19 @@ export function fixtureSnapshot(): TenantSnapshot {
 }
 
 /** The gallery's synthetic baseline: one legacy-auth block with a tenant-specific exclusion group. */
+/**
+ * The mock tenant's own exclusions group, and its one member: the emergency
+ * account the fixture's policies name.
+ *
+ * Every fixture in this repository carries one, deliberately — a tenant that has
+ * not chosen an exclusions group has no policy IAMAI may write, so it exercises
+ * none of the surfaces these mocks exist to check. This one had none, and got a
+ * plan anyway because the goal templates used to carve the emergency accounts
+ * out by name; with that second authority gone (data/goals.json), the mock needs
+ * the object the product actually uses.
+ */
+export const FIXTURE_EXCLUSIONS_GROUP = { id: 'g-exclusions', displayName: 'Core - Exclusions', memberIds: ['u-4'] }
+
 export function fixtureBaseline(): BaselineResult {
   return {
   source: 'synthetic baseline',
