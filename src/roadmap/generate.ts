@@ -17,6 +17,7 @@ import { hasBaselineConflict } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
+import { memberKeyOf } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
@@ -326,6 +327,13 @@ export { PLACEHOLDER_STEP }
 export type StepPolicyInput = {
   /** The baseline's own name for the policy. */
   sourceName: string
+  /**
+   * The baseline's own stable key for this policy (goalMap.ts `policyKey`), from
+   * which the member identity is taken (observation.ts `memberKeyOf`). Absent
+   * where the baseline holds no policy for the goal and the body is the goal's
+   * own template; the member then falls back to its position.
+   */
+  sourceKey?: string
   /** The resolved policy, with its unresolved references. */
   resolved: ResolvedPolicy
   /** The name this tenant's policy takes (the plan's proposal, or the existing policy's). */
@@ -411,9 +419,28 @@ export function buildCreateAction(
   goalId: string,
   opts: { sections?: ReadonlySet<ChangedSection> } = {},
 ): Action {
-  const tag = `[IAMAI:${planId}:${stepId}]`
+  /**
+   * Which member of the step each policy is (observation.ts `memberKeyOf`), from
+   * the baseline's own key and never from position where a key exists. Deduped
+   * within the step, because two members sharing one identity would be two
+   * members sharing one history.
+   */
+  const memberKeys: string[] = []
+  for (const [i, p] of policies.entries()) {
+    let key = memberKeyOf(p.sourceKey ?? '', i)
+    if (memberKeys.includes(key)) key = `${key}-${i}`
+    memberKeys.push(key)
+  }
+  /**
+   * The plan tag a created policy carries: the plan, the step, and *which member
+   * of the step* this policy is. Without the last part both halves of a pair
+   * carried one tag, and a search for it returned whichever came first — one
+   * object standing for two required policies. `findTaggedPolicies` reads a tag
+   * written before this too, which names no member.
+   */
+  const tagFor = (i: number): string => `[IAMAI:${planId}:${stepId}:${memberKeys[i]}]`
   /** One policy as the whole policy it is meant to be in this tenant. */
-  const artifact = (source: RawPolicy, p: StepPolicyInput): RawPolicy => {
+  const artifact = (source: RawPolicy, p: StepPolicyInput, tag: string): RawPolicy => {
     const body = structuredClone(source)
     const sourceDescription = body.description
     delete body.id
@@ -430,7 +457,9 @@ export function buildCreateAction(
   const sections = opts.sections ?? new Set<ChangedSection>()
   const missing: NonNullable<Action['missing']> = []
   const operations: PolicyOperation[] = []
-  for (const p of policies) {
+  for (const [i, p] of policies.entries()) {
+    const tag = tagFor(i)
+    const memberKey = memberKeys[i]
     // The person's answers, applied as recorded deviations (deviations.ts) —
     // once, here. Where an answer changed the policy, the baseline's own version
     // travels with it so the step can show the choice beside it.
@@ -439,9 +468,9 @@ export function buildCreateAction(
     const deviated = answered !== clone
     // Nothing is dropped silently: an object the tenant does not have comes back
     // in `missing`, and while any does there is no operation to run.
-    const whole = implementable(artifact(answered, p), p.resolved.unresolved)
+    const whole = implementable(artifact(answered, p, tag), p.resolved.unresolved)
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
-    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p), p.resolved.unresolved).policy : undefined
+    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved.unresolved).policy : undefined
     const target = p.target ?? null
     if (target) {
       const patch = patchOf(whole.policy, sections)
@@ -452,6 +481,7 @@ export function buildCreateAction(
       const current = target.policy
       operations.push({
         sourceName: p.sourceName,
+        memberKey,
         mode: 'update',
         policyId: target.policyId,
         body: patch,
@@ -459,7 +489,7 @@ export function buildCreateAction(
         target: current ? withPatch(current, patch) : undefined,
       })
     } else {
-      operations.push({ sourceName: p.sourceName, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline })
+      operations.push({ sourceName: p.sourceName, memberKey, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline })
     }
   }
   // `json` is a projection of the operations, for the plan file and the exports;
@@ -1052,8 +1082,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
      * the instruction and the name in the body are the one name.
      */
     const stepPolicies = (): StepPolicyInput[] =>
-      stepSources.map((m) => ({ sourceName: m.facts.name, resolved: resolveOne(m.policy as RawPolicy, input.baseline.policies) }))
-    const templatePolicy = (): StepPolicyInput[] => [{ sourceName: goal.id, resolved: resolveOne(resolveTemplate(impl.template as TemplateBody, templateValues).body as RawPolicy, []) }]
+      stepSources.map((m) => ({ sourceName: m.facts.name, sourceKey: m.key, resolved: resolveOne(m.policy as RawPolicy, input.baseline.policies) }))
+    const templatePolicy = (): StepPolicyInput[] => [{ sourceName: goal.id, sourceKey: `template:${goal.id}`, resolved: resolveOne(resolveTemplate(impl.template as TemplateBody, templateValues).body as RawPolicy, []) }]
     const named = (policies: StepPolicyInput[], first: string): StepPolicyInput[] =>
       policies.map((p, i) => ({ ...p, displayName: i === 0 ? first : policyPairNames(first, p.sourceName, naming ?? null).b }))
 
@@ -1067,8 +1097,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const readinessKey = goalFamily(goal.id)
     if (!readinessCache.has(readinessKey)) readinessCache.set(readinessKey, readinessFor(goal.id, popIds, rowsFor(popIds), snapshot))
     const readiness = { ...(readinessCache.get(readinessKey) as Readiness), lines: [...(readinessCache.get(readinessKey) as Readiness).lines] }
-    const matchedPolicyId = findTaggedPolicy(snapshot, planId, stepId)
-    const evidence = evidenceFor(goal.id, snapshot, matchedPolicyId)
+    // Every policy this plan tagged for the step, not the first: a pair's two
+    // halves both belong to it (evidence.ts).
+    const matchedPolicyIds = findTaggedPolicies(snapshot, planId, stepId).map((t) => t.policyId)
+    const evidence = evidenceFor(goal.id, snapshot, matchedPolicyIds)
 
     const doc = source ? docFor(input.baseline.docs, source.facts.name) : undefined
     const rawWhy = doc?.intent ?? goal.tldr ?? goal.description
@@ -1867,11 +1899,36 @@ export function planIdFor(tenantId: string): string {
   return `plan-${tenantId.slice(0, 8)}`
 }
 
-export function findTaggedPolicy(snapshot: TenantSnapshot, planId: string, stepId: string): string | null {
-  const tag = `[IAMAI:${planId}:${stepId}]`
+/**
+ * Every tenant policy carrying this plan's tag for this step, and which member
+ * of the step each one says it is.
+ *
+ * The tag used to name the plan and the step alone, so both halves of a pair
+ * carried the same one and nothing told them apart. It now names the member too
+ * (`buildCreateAction`), and this reads either: `memberKey` is null for a policy
+ * created before members were tagged, which says the tag proves the step and not
+ * which required policy of it — the caller has to establish that some other
+ * exact way, or leave the member unresolved.
+ */
+export function findTaggedPolicies(snapshot: TenantSnapshot, planId: string, stepId: string): { policyId: string; memberKey: string | null }[] {
+  const escape = (v: string): string => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(`\\[IAMAI:${escape(planId)}:${escape(stepId)}(?::([A-Za-z0-9_-]+))?\\]`)
+  const out: { policyId: string; memberKey: string | null }[] = []
   for (const raw of snapshot.config.caPolicies?.rows ?? []) {
     const p = raw as { id?: string; description?: string }
-    if (typeof p.description === 'string' && p.description.includes(tag)) return p.id ?? null
+    if (typeof p.description !== 'string' || typeof p.id !== 'string') continue
+    const m = re.exec(p.description)
+    if (m) out.push({ policyId: p.id, memberKey: m[1] ?? null })
   }
-  return null
+  return out
+}
+
+/**
+ * The first tenant policy carrying this plan's tag for this step, whichever
+ * member it is. Kept for the goal-level readings that predate members (the
+ * step's own evidence lines); anything that has to know *which* required policy
+ * an object is reads `findTaggedPolicies`.
+ */
+export function findTaggedPolicy(snapshot: TenantSnapshot, planId: string, stepId: string): string | null {
+  return findTaggedPolicies(snapshot, planId, stepId)[0]?.policyId ?? null
 }

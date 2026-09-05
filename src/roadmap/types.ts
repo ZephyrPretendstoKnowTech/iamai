@@ -48,6 +48,19 @@ type PolicyOperationBase = {
   /** The baseline's own name for the policy, so a merged goal can label Policy A and Policy B. */
   sourceName: string
   /**
+   * Which required member of the step this operation is — Policy A or Policy B —
+   * as a stable opaque key over the baseline's own key for the policy
+   * (observation.ts `memberKeyOf`). Not the tenant policy's id, which says which
+   * object delivers the member today and nothing about which member it is, and
+   * not `sourceName`, which is mutable display text.
+   *
+   * Foundation B keeps one observation, one artifact identity, one window and
+   * one intent per member under this key, and the policies IAMAI creates carry
+   * it in their plan tag so a pair cannot collapse to whichever half a search
+   * happened to reach first.
+   */
+  memberKey: string
+  /**
    * The exact Graph request body to submit: the whole policy for a create, only
    * the fields that change for an update. Every field this body does not carry
    * is left as it is on the tenant's policy.
@@ -313,9 +326,75 @@ export type CleanupExport = { kind: string; day: string; done: string | null; ti
 export type StepEvent = { kind: 'announce' | 'remind' | 'enforce'; at: string; reason: string; outOfHours: boolean }
 export type StepEvents = { announce: StepEvent | null; remind: StepEvent | null; remindMorning: StepEvent | null; enforce: StepEvent; noticeDays: number }
 
+/**
+ * One required policy member of a step, as this scan found it (Foundation B).
+ *
+ * A step is a row of the plan and a goal the baseline implements with two
+ * policies is one step delivering two deployed artifacts. Everything temporal
+ * belongs to the artifact, not to the row: the object watched, the window it has
+ * served, Microsoft's evidence about it, the movement its own operation asked
+ * for. So each member holds its own, and the step's aggregate below is derived
+ * from all of them rather than taken from whichever one was found first.
+ */
+export type MemberTracking = {
+  /** The member's stable identity (observation.ts `memberKeyOf`). */
+  key: string
+  /** The baseline's own name for this member, for the record. */
+  sourceName: string
+  /** The one tenant policy delivering this member; null where none is resolved. */
+  policyId: string | null
+  policyName: string | null
+  /**
+   * How the member was tied to that object, strongest first: the operation's own
+   * target (Foundation A already settled it), the member's own plan tag, a plan
+   * tag from before members were tagged plus the name the plan gives this member,
+   * or — on a step with a single member only — the goal's coverage fingerprint.
+   */
+  matchedBy: 'operation-target' | 'member-tag' | 'step-tag' | 'member-name' | 'fingerprint' | null
+  /**
+   * The plan cannot say which object is this member: more than one candidate, or
+   * a pair whose halves nothing tells apart. Nothing advances on a guess.
+   */
+  ambiguous: boolean
+  /** Where this member's own policy is; never another member's stage. */
+  lifecycle: import('./lifecycle.ts').Lifecycle
+  /** Graph's own state for the matched policy, or `absent` where none is. */
+  state: string
+  createdAt: string | null
+  modifiedAt: string | null
+  reportOnlyAt: string | null
+  reportOnlyAtSource: 'sign-in-evidence' | 'first-seen-by-iamai' | null
+  enforcedAt: string | null
+  enforcedAtSource: 'policy-modified' | 'policy-created' | 'carried-forward' | null
+  /** This member has served its own window or met its own evidence gate. Never another member's. */
+  ready: boolean
+  /** This member's semantics moved somewhere its own operation did not ask for. */
+  reviewRequired: boolean
+  daysInReportOnly: number
+  readyOn: string | null
+  readyNow: boolean
+  seenInScope: number | null
+  activeInScope: number | null
+  signIns: number
+  failures: number
+  failuresByUser: { userId: string; count: number }[]
+  evidenceQuality: 'enough' | 'thin' | 'none'
+}
+
 export type StepTracking = {
-  policyId: string
-  policyName: string
+  /**
+   * Every required policy member of the step, resolved or not. The authority:
+   * every aggregate field below is derived from these, and a surface that needs
+   * one member's own fact reads it here rather than off the step.
+   */
+  members: MemberTracking[]
+  /**
+   * The one tenant policy delivering the step, where there is one. Null on a
+   * step the baseline implements with two policies: no single object describes
+   * the pair, and naming Policy A would say the step is what Policy A is.
+   */
+  policyId: string | null
+  policyName: string | null
   matchedBy: 'tag' | 'fingerprint'
   note: string
   createdAt: string | null

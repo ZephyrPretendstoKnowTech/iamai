@@ -60,13 +60,58 @@ export type StepState = {
   inPlace: boolean
   /** The operator set the step aside, or said it does not apply here. */
   setAside: boolean
-  /** What this scan saw against what the last one saw; null on a step with no policy to observe. */
+  /**
+   * What this scan saw of each of the step's *required policy members*, against
+   * what the last one saw of that same member: the authority. A goal the
+   * baseline implements with two policies has two, and neither of them ever
+   * stands for the other.
+   *
+   * Empty on a step with no policy to observe.
+   */
+  members: MemberObservation[]
+  /**
+   * The step's one observation, *derived* from `members` and never assigned
+   * beside them (`aggregateObservation`): the member whose news binds hardest,
+   * so a surface that shows one line shows the one that matters. On a step with
+   * a single member it is that member's own change, exactly as before.
+   *
+   * Null on a step with no policy to observe.
+   */
   observation: ObservationChange | null
+}
+
+/**
+ * One required policy member's own observation. `key` is the member identity
+ * (observation.ts `memberKeyOf`), not the deployed object's.
+ */
+export type MemberObservation = {
+  key: string
+  sourceName: string
+  change: ObservationChange
+}
+
+/**
+ * The one observation a surface reads for a step, from every member's.
+ *
+ * Conservative and derived, in that order: a member wanting a person to look
+ * outranks a member whose window did not carry, which outranks anything quiet.
+ * Nothing here is an authority — every fact it returns belongs to the member it
+ * came from, and the gates read the members.
+ */
+export function aggregateObservation(members: readonly MemberObservation[]): ObservationChange | null {
+  if (members.length === 0) return null
+  if (members.length === 1) return members[0].change
+  return (
+    members.find((m) => m.change.reviewRequired)?.change ??
+    members.find((m) => historyReset(m.change))?.change ??
+    members.find((m) => m.change.changed !== 'none' && m.change.changed !== 'first-scan')?.change ??
+    members[0].change
+  )
 }
 
 /** A step nobody has deployed, nothing is wrong with, and nobody has set aside. */
 export function initialState(): StepState {
-  return { lifecycle: null, condition: 'healthy', satisfied: false, inPlace: false, setAside: false, observation: null }
+  return { lifecycle: null, condition: 'healthy', satisfied: false, inPlace: false, setAside: false, members: [], observation: null }
 }
 
 /**

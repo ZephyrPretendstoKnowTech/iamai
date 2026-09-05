@@ -10,6 +10,7 @@ import type { MfaViability } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from './generate.ts'
 import type { RoadmapInput } from './generate.ts'
 import { observationsFrom } from './observation.ts'
+import { SOLE_MEMBER } from './tracking.ts'
 import { applyProgress, mergePersisted, skipStep } from './progress.ts'
 import { setState } from './lifecycle.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from './observation.ts'
@@ -183,7 +184,11 @@ test('2: absent goal with mapped references → create step JSON has mapped ids,
   assert.match(step.action.json!, /new-group-id/)
   assert.doesNotMatch(step.action.json!, /old-group-id/)
   assert.match(step.action.json!, /enabledForReportingButNotEnforced/)
-  assert.ok(step.action.json!.includes(`[IAMAI:${PLAN}:${step.id}]`))
+  // The tag names the plan, the step and which required policy of the step this
+  // is (generate.ts buildCreateAction), so both halves of a pair can be told
+  // apart by their own tags.
+  const member = step.action.resolution!.policies[0].memberKey
+  assert.ok(step.action.json!.includes(`[IAMAI:${PLAN}:${step.id}:${member}]`))
 })
 
 test('4: partial weaker-control → adjust step with the exact field change', () => {
@@ -226,7 +231,7 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   // saw *this policy* in report-only, past the observation window. The record
   // names the object it watched; one that does not cannot carry the window
   // (observation.ts artifactIdOf), which is asserted below.
-  const watched = { [step.id]: { artifact: artifactIdOf('created-1'), state: 'report-only' as const, semantics: semanticsOf(rowsOf(snap2)[0]), fields: semanticFieldsOf(rowsOf(snap2)[0]), firstSeenAt: '2026-08-18T00:00:00Z', since: 'first-scan' as const, lastSeenAt: '2026-08-18T00:00:00Z', evidenceAt: null } }
+  const watched = { [step.id]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf('created-1'), state: 'report-only' as const, semantics: semanticsOf(rowsOf(snap2)[0]), fields: semanticFieldsOf(rowsOf(snap2)[0]), firstSeenAt: '2026-08-18T00:00:00Z', since: 'first-scan' as const, lastSeenAt: '2026-08-18T00:00:00Z', evidenceAt: null } }, unattributed: null } }
   applyProgress(steps, snap2, input.coverage, PLAN, undefined, null, watched)
   assert.equal(step.status, 'ready-to-enforce')
 

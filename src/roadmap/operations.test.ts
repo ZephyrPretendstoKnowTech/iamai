@@ -33,8 +33,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** A create Graph would accept: a name, who it applies to, and something to do about them. */
-const CREATE: PolicyOperation = { sourceName: 'author', mode: 'create', policyId: null, body: { displayName: 'A', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
-const UPDATE: PolicyOperation = { sourceName: 'author', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { id: 'p-1', displayName: 'the tenant’s own', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+const CREATE: PolicyOperation = { sourceName: 'author', memberKey: 'author', mode: 'create', policyId: null, body: { displayName: 'A', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+const UPDATE: PolicyOperation = { sourceName: 'author', memberKey: 'author', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: { id: 'p-1', displayName: 'the tenant’s own', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
 
 /** A step carrying the operations given, with whatever `action.json` the caller wants to plant. */
 const stepWith = (ops: PolicyOperation[], json: string | null): Step =>
@@ -95,8 +95,8 @@ test('a stale action.json cannot make the JSON or the download disagree with the
 })
 
 test('two operations are two bodies, in the step’s order, on every channel', () => {
-  const a: PolicyOperation = { sourceName: 'A', mode: 'create', policyId: null, body: { displayName: 'A', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
-  const b: PolicyOperation = { sourceName: 'B', mode: 'update', policyId: 'p-b', body: { state: 'enabled' }, target: { id: 'p-b', displayName: 'B', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+  const a: PolicyOperation = { sourceName: 'A', memberKey: 'A', mode: 'create', policyId: null, body: { displayName: 'A', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+  const b: PolicyOperation = { sourceName: 'B', memberKey: 'B', mode: 'update', policyId: 'p-b', body: { state: 'enabled' }, target: { id: 'p-b', displayName: 'B', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
   const step = stepWith([a, b], '{"displayName":"stale"}')
   assert.deepEqual(policyJson(step), [a.body, b.body])
   assert.equal(policyJsonText(step), JSON.stringify([a.body, b.body], null, 2))
@@ -395,7 +395,7 @@ test('an update leaves the tenant’s untouched fields alone, and every channel 
 test('an update with no complete target, or a target its body contradicts, makes the whole step unavailable', () => {
   // The target is the whole policy the change leaves behind, not a stub.
   const whole = { id: 'p-1', displayName: 'x', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
-  const base: PolicyOperation = { sourceName: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: whole }
+  const base: PolicyOperation = { sourceName: 'a', memberKey: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target: whole }
   assert.equal(isValidOperation(base), true)
   const noTarget = { ...base, target: undefined } as PolicyOperation
   const emptyTarget = { ...base, target: {} } as PolicyOperation
@@ -427,8 +427,8 @@ test('an update with no complete target, or a target its body contradicts, makes
 // ---- impact is the target's, not the family's ----
 
 test('the goal family never overrules a policy’s own final target', () => {
-  const quiet: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, sessionControls: { persistentBrowser: null } } }
-  const denying: PolicyOperation = { sourceName: 'a', mode: 'create', policyId: null, body: { displayName: 'a', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
+  const quiet: PolicyOperation = { sourceName: 'a', memberKey: 'a', mode: 'create', policyId: null, body: { displayName: 'a', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, sessionControls: { persistentBrowser: null } } }
+  const denying: PolicyOperation = { sourceName: 'a', memberKey: 'a', mode: 'create', policyId: null, body: { displayName: 'a', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } } }
   const asStep = (op: PolicyOperation, family: string): Step =>
     ({ ...stepWith([op], '{}'), kind: 'create', status: 'ready', readiness: { family, percent: 100, lines: [] } }) as unknown as Step
   assert.equal(canDenyAccess(asStep(quiet, 'mfa')), false, 'a policy that denies nothing denies nothing, whatever its family says')
@@ -526,7 +526,7 @@ test('an incomplete create is not an operation, and one bad member spoils the se
 
 test('deny, prompt, strand and batching follow the policy, not the goal it is filed under', () => {
   const asStep = (body: Record<string, unknown>, family: string): Step =>
-    ({ ...stepWith([{ sourceName: 'a', mode: 'create', policyId: null, body }], '{}'), kind: 'create', status: 'ready', readiness: { family, percent: 100, lines: [] }, evidence: { status: 'none', lines: [], affectedUserIds: [] }, population: { total: 3, active: 3, admins: 0, guests: 0, ids: ['u1', 'u2', 'u3'], activeIds: ['u1', 'u2', 'u3'], inScope: 3 } }) as unknown as Step
+    ({ ...stepWith([{ sourceName: 'a', memberKey: 'a', mode: 'create', policyId: null, body }], '{}'), kind: 'create', status: 'ready', readiness: { family, percent: 100, lines: [] }, evidence: { status: 'none', lines: [], affectedUserIds: [] }, population: { total: 3, active: 3, admins: 0, guests: 0, ids: ['u1', 'u2', 'u3'], activeIds: ['u1', 'u2', 'u3'], inScope: 3 } }) as unknown as Step
   const users = { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }
   const block = asStep({ displayName: 'b', state: 'enabled', conditions: users, grantControls: { operator: 'OR', builtInControls: ['block'] } }, 'mfa')
   const mfa = asStep({ displayName: 'm', state: 'enabled', conditions: users, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }, 'block')
@@ -715,7 +715,7 @@ test('the strand verdict, the dependencies, the notice and the observation all f
   } as never
   const asStep = (body: Record<string, unknown>, family: string, id = 's-x'): Step =>
     ({
-      ...stepWith([{ sourceName: 'a', mode: 'create', policyId: null, body }], '{}'),
+      ...stepWith([{ sourceName: 'a', memberKey: 'a', mode: 'create', policyId: null, body }], '{}'),
       id,
       kind: 'create',
       phase: 1,
@@ -799,7 +799,7 @@ test('a step with several policies is stranded by any of them, and an unavailabl
       evidence: { status: 'none', lines: [], affectedUserIds: [] },
       population: { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 },
     }) as unknown as Step
-  const op = (body: Record<string, unknown>, name: string): PolicyOperation => ({ sourceName: name, mode: 'create', policyId: null, body })
+  const op = (body: Record<string, unknown>, name: string): PolicyOperation => ({ sourceName: name, memberKey: name, mode: 'create', policyId: null, body })
   const canMfa = op(policy(), 'A')
   const needsPasskey = op(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: 's' } } }), 'B')
   const both = withOps([canMfa, needsPasskey])
@@ -871,7 +871,7 @@ test('an update validates what it submits, and reads the tenant policy it does n
     conditions: { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] }, insiderRiskLevels: 'elevated' },
     grantControls: { operator: 'OR', builtInControls: ['mfa'], termsOfUse: ['t-1'] },
   }
-  const op = { sourceName: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target } as unknown as PolicyOperation
+  const op = { sourceName: 'a', memberKey: 'a', mode: 'update', policyId: 'p-1', body: { state: 'enabled' }, target } as unknown as PolicyOperation
   assert.equal(isValidOperation(op), true, 'the tenant may carry anything; only the submitted state is checked')
   assert.equal(isSubmittablePatch({ state: 'enabled' }), true)
   assert.equal(isSubmittablePatch({ state: 'paused' }), false)
@@ -948,7 +948,7 @@ test('a policy IAMAI cannot read in full never reads as safe', () => {
 test('zero impact is the measured answer, and neither the goal’s evidence nor the step’s list can stand in for it', () => {
   const step = (body: Record<string, unknown>, over: Record<string, unknown> = {}): Step =>
     ({
-      ...stepWith([{ sourceName: 'a', mode: 'create', policyId: null, body }], '{}'),
+      ...stepWith([{ sourceName: 'a', memberKey: 'a', mode: 'create', policyId: null, body }], '{}'),
       kind: 'create',
       status: 'ready',
       readiness: { family: 'other', percent: 100, lines: [] },

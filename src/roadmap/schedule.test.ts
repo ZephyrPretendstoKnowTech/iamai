@@ -61,7 +61,7 @@ function step(over: Partial<Step> & { id: string }): Step {
       json: '{}',
       portalSteps: [],
       missing: [],
-      resolution: { policies: [{ sourceName: over.id, mode: 'create' as const, policyId: null, body: policyBodyFor(over.readiness?.family ?? 'mfa', over.id) }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } },
+      resolution: { policies: [{ sourceName: over.id, memberKey: over.id, mode: 'create' as const, policyId: null, body: policyBodyFor(over.readiness?.family ?? 'mfa', over.id) }], tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } },
     },
     history: [],
     skipReason: null,

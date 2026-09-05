@@ -32,10 +32,14 @@ import { generateRoadmap } from './generate.ts'
 import { stepIdForGoal } from './generate.ts'
 import { conditionFor, initialState, nextMilestone, projectStatus, raiseCondition, setState, stateForStatus } from './lifecycle.ts'
 import type { Condition, Lifecycle, StepState } from './lifecycle.ts'
-import { artifactIdOf, intentOf, observationsFrom, observe, observedStateOf, semanticFieldsOf, semanticsOf } from './observation.ts'
-import type { StepObservation } from './observation.ts'
-import { observationsOf } from './tracking.ts'
+import { artifactIdOf, intentOf, memberKeyOf, observationsFrom, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf } from './observation.ts'
+import type { StepObservation, StepObservationRecord } from './observation.ts'
+import { SOLE_MEMBER, matchMembers, observationsOf, requiredMembers } from './tracking.ts'
 import { statusOf } from '../ui/surfaces/statusWord.ts'
+import { PINNED_GOAL_MAP } from './goalMap.ts'
+import { activePeopleIds } from '../derive/population.ts'
+import { notPeopleIds } from '../derive/sets.ts'
+import type { PolicyOperation } from './types.ts'
 import type { Step, StepStatus } from './types.ts'
 
 const fixtures = allFixtures()
@@ -194,23 +198,32 @@ test('every date the tracking claims names where it came from', () => {
     for (const s of r.steps) {
       const t = s.tracking
       if (!t) continue
+      // Every date belongs to one deployed object, so every date is checked
+      // against the member that holds it — never against whichever policy the
+      // step happened to be filed under.
+      for (const m of t.members) {
+        const where = `${name}/${s.id}/${m.key}`
+        if (m.reportOnlyAt === null) assert.equal(m.reportOnlyAtSource, null, `${where}: a source for a date that is not there`)
+        else {
+          assert.ok(m.reportOnlyAtSource !== null, `${where}: in report-only since a date with no provenance`)
+          const first = s.state.members.find((x) => x.key === m.key)?.change.latest.firstSeenAt ?? null
+          const evidence = r.input.snapshot.evidencePolicyResults.find((p) => p.policyId === m.policyId)?.firstReportOnlyAt ?? null
+          if (m.reportOnlyAtSource === 'first-seen-by-iamai') assert.equal(m.reportOnlyAt, first, `${where}: a first sighting IAMAI did not make`)
+          else assert.equal(m.reportOnlyAt, evidence, `${where}: a sign-in date the records do not hold`)
+        }
+        if (m.enforcedAt === null) assert.equal(m.enforcedAtSource, null, `${where}: a source for a date that is not there`)
+        else {
+          const row = rows.find((p) => p.id === m.policyId)
+          const known = [row?.modifiedDateTime ?? null, row?.createdDateTime ?? null]
+          if (m.enforcedAtSource === 'policy-modified') assert.equal(m.enforcedAt, row?.modifiedDateTime ?? null, `${where}`)
+          else if (m.enforcedAtSource === 'policy-created') assert.equal(m.enforcedAt, row?.createdDateTime ?? null, `${where}`)
+          else if (m.enforcedAtSource !== 'carried-forward') wrong.push(`${where}: enforced on ${m.enforcedAt} from nowhere (${String(m.enforcedAtSource)}), known: ${known.join(', ')}`)
+        }
+      }
+      // And the step's own aggregate says nothing a member does not hold.
       const where = `${name}/${s.id}`
-      if (t.reportOnlyAt === null) assert.equal(t.reportOnlyAtSource, null, `${where}: a source for a date that is not there`)
-      else {
-        assert.ok(t.reportOnlyAtSource !== null, `${where}: in report-only since a date with no provenance`)
-        const first = s.state.observation?.latest.firstSeenAt ?? null
-        const evidence = r.input.snapshot.evidencePolicyResults.find((p) => p.policyId === t.policyId)?.firstReportOnlyAt ?? null
-        if (t.reportOnlyAtSource === 'first-seen-by-iamai') assert.equal(t.reportOnlyAt, first, `${where}: a first sighting IAMAI did not make`)
-        else assert.equal(t.reportOnlyAt, evidence, `${where}: a sign-in date the records do not hold`)
-      }
-      if (t.enforcedAt === null) assert.equal(t.enforcedAtSource, null, `${where}: a source for a date that is not there`)
-      else {
-        const row = rows.find((p) => p.id === t.policyId)
-        const known = [row?.modifiedDateTime ?? null, row?.createdDateTime ?? null]
-        if (t.enforcedAtSource === 'policy-modified') assert.equal(t.enforcedAt, row?.modifiedDateTime ?? null, `${where}`)
-        else if (t.enforcedAtSource === 'policy-created') assert.equal(t.enforcedAt, row?.createdDateTime ?? null, `${where}`)
-        else if (t.enforcedAtSource !== 'carried-forward') wrong.push(`${where}: enforced on ${t.enforcedAt} from nowhere (${String(t.enforcedAtSource)}), known: ${known.join(', ')}`)
-      }
+      if (t.reportOnlyAt !== null) assert.ok(t.members.some((m) => m.reportOnlyAt === t.reportOnlyAt), `${where}: a step date no member holds`)
+      if (t.enforcedAt !== null) assert.ok(t.members.some((m) => m.enforcedAt === t.enforcedAt), `${where}: a step date no member holds`)
     }
   }
   assert.deepEqual(wrong, [])
@@ -331,15 +344,18 @@ const DEMO_WEEK2 = fixtures.find((f) => f.name === 'demo-week2')!
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
 const TEN_DAYS = 10 * 86_400_000
 
-function demoObservation(over: Partial<StepObservation> = {}): Record<string, StepObservation> {
+function demoObservation(over: Partial<StepObservation> = {}): Record<string, StepObservationRecord> {
   const run = runFixture(DEMO)
   const step = run.steps.find((s) => s.id === ADMINS)!
   const row = ((DEMO.snapshot.config.caPolicies?.rows ?? []) as { id?: string }[]).find((p) => p.id === step.tracking?.policyId)
   const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
   // The record names the object it watched: without that, continuity is unknown
   // and the window cannot carry, which is its own test below.
-  return { [ADMINS]: { artifact: artifactIdOf(row?.id), state: 'report-only', semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null, ...over } }
+  return { [ADMINS]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(row?.id), state: 'report-only', semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null, ...over } }, unattributed: null } }
 }
+
+/** The one member of a single-policy step's stored record. */
+const soleOf = (rec: Record<string, StepObservationRecord>, id: string): StepObservation => rec[id].members[SOLE_MEMBER]
 
 test('a policy watched for its whole window is ready to enforce; the same policy rewritten is not', () => {
   const kept = runFixture(DEMO)
@@ -408,7 +424,7 @@ test('a record written before this contract loads, and cannot vouch for a policy
   // longer does is close a rollout gate on its own.
   const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
   const migrated = observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } })
-  assert.deepEqual(migrated[ADMINS], { artifact: null, state: 'report-only', semantics: '', fields: {}, firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null })
+  assert.deepEqual(migrated[ADMINS], { members: {}, unattributed: { artifact: null, state: 'report-only', semantics: '', fields: {}, firstSeenAt: seenAt, since: 'first-scan', lastSeenAt: seenAt, evidenceAt: null } }, 'a record of that vintage names no member, and is filed as one nobody has attributed')
   const run = runFixture(DEMO)
   applyProgress(run.steps, DEMO.snapshot, run.coverage, DEMO.planId, undefined, null, migrated)
   const s = run.steps.find((x) => x.id === ADMINS)!
@@ -421,8 +437,8 @@ test('a record written before this contract loads, and cannot vouch for a policy
   // A record of this vintage is read once and written back in the new shape,
   // naming the object from here on.
   const kept = observationsOf(run.steps)
-  assert.equal(kept[ADMINS].semantics.length, 8, 'the fingerprint is recorded from here on')
-  assert.equal(kept[ADMINS].artifact, artifactIdOf(s.tracking?.policyId), 'and so is the object')
+  assert.equal(soleOf(kept, ADMINS).semantics.length, 8, 'the fingerprint is recorded from here on')
+  assert.equal(soleOf(kept, ADMINS).artifact, artifactIdOf(s.tracking?.policyId), 'and so is the object')
   assert.deepEqual(observationsFrom({ observations: kept }), kept, 'what the record holds reads back as what it holds')
 })
 
@@ -433,8 +449,8 @@ test('the observation the record keeps is the one history a regeneration cannot 
       const deploys = s.kind === 'create' || s.kind === 'adjust'
       assert.equal(s.id in kept, deploys, `${name}/${s.id}: a ${s.kind} step ${deploys ? 'should' : 'should not'} be observed`)
       if (!deploys) continue
-      assert.equal(kept[s.id].firstSeenAt, r.input.snapshot.asOf, `${name}/${s.id}: a first scan sees everything for the first time`)
-      assert.equal(kept[s.id].state, observedStateOf(((r.input.snapshot.config.caPolicies?.rows ?? []) as { id?: string; state?: string }[]).find((p) => p.id === s.tracking?.policyId)?.state ?? null))
+      assert.equal(soleOf(kept, s.id).firstSeenAt, r.input.snapshot.asOf, `${name}/${s.id}: a first scan sees everything for the first time`)
+      assert.equal(soleOf(kept, s.id).state, observedStateOf(((r.input.snapshot.config.caPolicies?.rows ?? []) as { id?: string; state?: string }[]).find((p) => p.id === s.tracking?.policyId)?.state ?? null))
     }
     assert.deepEqual(observationsFrom({ observations: kept }), kept, `${name}: the record round-trips`)
   }
@@ -455,14 +471,14 @@ const B_ID = '0b0b0b0b-0000-4000-8000-00000000000b'
 const rowsOf = (snap: { config: { caPolicies?: { rows?: unknown[] } | null } }): Row[] => (snap.config.caPolicies?.rows ?? []) as Row[]
 
 /** The object the demo's admins step is delivered by on an untouched scan. */
-const demoPolicyId = (): string => runFixture(DEMO).steps.find((s) => s.id === ADMINS)!.tracking!.policyId
+const demoPolicyId = (): string => runFixture(DEMO).steps.find((s) => s.id === ADMINS)!.tracking!.policyId as string
 
 /**
  * A second scan of the demo tenant: its admins policy edited however the case
  * needs, the plan derived afresh from that snapshot, and the record the previous
  * scan left behind carried in. The whole engine, not a helper.
  */
-function rescan(edit: (row: Row, snapshot: ReturnType<typeof structuredClone<typeof DEMO.snapshot>>) => void, prior: Record<string, StepObservation>, scopeEvidence?: Parameters<typeof applyProgress>[7]): Step {
+function rescan(edit: (row: Row, snapshot: ReturnType<typeof structuredClone<typeof DEMO.snapshot>>) => void, prior: Record<string, StepObservationRecord>, scopeEvidence?: Parameters<typeof applyProgress>[7]): Step {
   const snapshot = structuredClone(DEMO.snapshot)
   const row = rowsOf(snapshot).find((p) => p.id === demoPolicyId())!
   edit(row, snapshot)
@@ -473,7 +489,7 @@ function rescan(edit: (row: Row, snapshot: ReturnType<typeof structuredClone<typ
 
 test('1: a policy replaced by a different object meaning the same thing inherits none of its history', () => {
   const prior = demoObservation()
-  const watched = prior[ADMINS]
+  const watched = soleOf(prior, ADMINS)
   const s = rescan((row) => {
     row.id = B_ID
   }, prior)
@@ -490,8 +506,8 @@ test('1: a policy replaced by a different object meaning the same thing inherits
   assert.equal(s.tracking?.reportOnlyAtSource, 'first-seen-by-iamai')
   assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'ten days on another object enforce nothing')
   // The record now names the object it is about.
-  assert.equal(observationsOf([s])[ADMINS].artifact, artifactIdOf(B_ID))
-  assert.notEqual(observationsOf([s])[ADMINS].artifact, watched.artifact)
+  assert.equal(soleOf(observationsOf([s]), ADMINS).artifact, artifactIdOf(B_ID))
+  assert.notEqual(soleOf(observationsOf([s]), ADMINS).artifact, watched.artifact)
 })
 
 test('2: a rename of the same object keeps the window it earned', () => {
@@ -504,8 +520,8 @@ test('2: a rename of the same object keeps the window it earned', () => {
   assert.equal(s.state.observation?.changed, 'none', 'a name and a fresh stamp are not a change')
   assert.equal(s.state.observation?.continuity, 'continues')
   assert.equal(s.state.observation?.reviewRequired, false)
-  assert.equal(s.state.observation?.latest.artifact, prior[ADMINS].artifact, 'the same object')
-  assert.equal(s.state.observation?.latest.firstSeenAt, prior[ADMINS].firstSeenAt, 'the window survives')
+  assert.equal(s.state.observation?.latest.artifact, soleOf(prior, ADMINS).artifact, 'the same object')
+  assert.equal(s.state.observation?.latest.firstSeenAt, soleOf(prior, ADMINS).firstSeenAt, 'the window survives')
   assert.equal(s.state.lifecycle, 'ready-to-enforce', 'and the rename moved nothing backwards')
 })
 
@@ -514,10 +530,10 @@ test('3: the same object materially rewritten is watched from the rewrite, not f
   const s = rescan((row) => {
     row.grantControls = { operator: 'OR', builtInControls: ['block'] }
   }, prior)
-  assert.equal(s.state.observation?.latest.artifact, prior[ADMINS].artifact, 'the same object')
+  assert.equal(s.state.observation?.latest.artifact, soleOf(prior, ADMINS).artifact, 'the same object')
   assert.equal(s.state.observation?.changed, 'semantics')
   assert.equal(s.state.observation?.continuity, 'reset')
-  assert.notEqual(s.state.observation?.latest.semantics, prior[ADMINS].semantics)
+  assert.notEqual(s.state.observation?.latest.semantics, soleOf(prior, ADMINS).semantics)
   assert.equal(s.state.observation?.latest.firstSeenAt, DEMO.snapshot.asOf, 'the clock restarts at the rewrite')
   assert.equal(s.state.observation?.latest.evidenceAt, null, 'records from before it are about what the policy used to be')
   assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf)
@@ -554,7 +570,7 @@ test('4: a replacement that is exactly what the plan meant to deploy resets the 
 test('5: a legacy record loads, explains itself, and closes no gate — unless this policy’s own evidence does', () => {
   const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
   const legacy = observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } })
-  assert.equal(legacy[ADMINS].artifact, null, 'a record of that vintage names no object')
+  assert.equal(legacy[ADMINS].unattributed?.artifact, null, 'a record of that vintage names no object')
 
   const s = rescan(() => {}, legacy)
   assert.equal(s.state.observation?.continuity, 'unknown', 'so it cannot be shown to be about this policy')
@@ -588,7 +604,7 @@ test('6: the history follows the policy the step matched, never the step id', ()
   }, prior)
   assert.equal(after.id, before.id, 'the same row of the plan')
   assert.notEqual(after.tracking?.policyId, before.tracking?.policyId, 'a different policy delivering it')
-  assert.notEqual(observationsOf([after])[ADMINS].artifact, prior[ADMINS].artifact, 'and the record says so')
+  assert.notEqual(soleOf(observationsOf([after]), ADMINS).artifact, soleOf(prior, ADMINS).artifact, 'and the record says so')
   assert.equal(after.state.observation?.latest.firstSeenAt, DEMO.snapshot.asOf, 'so none of the timing came across')
 })
 
@@ -610,7 +626,7 @@ test('7: a new object may use its own current evidence, and never the old object
   assert.equal(s.state.observation?.continuity, 'reset', 'still a different object')
   assert.equal(s.state.observation?.latest.firstSeenAt, DEMO.snapshot.asOf, 'IAMAI first saw it this scan')
   assert.equal(s.state.observation?.latest.evidenceAt, provenAt, 'and the tenant proves this policy is older than that')
-  assert.notEqual(provenAt, prior[ADMINS].firstSeenAt, 'the date is the new policy’s own, not the old record’s')
+  assert.notEqual(provenAt, soleOf(prior, ADMINS).firstSeenAt, 'the date is the new policy’s own, not the old record’s')
   assert.equal(s.tracking?.reportOnlyAt, provenAt)
   assert.equal(s.tracking?.reportOnlyAtSource, 'sign-in-evidence', 'told truthfully as Microsoft’s, not as IAMAI’s sighting')
 })
@@ -623,12 +639,18 @@ test('8: the record round-trips the object, the fingerprint and the state, and c
     for (const s of r.steps) {
       const held = kept[s.id]
       if (!held) continue
-      assert.equal(held.artifact, artifactIdOf(s.tracking?.policyId), `${name}/${s.id}: the object it was about`)
-      assert.equal(typeof held.semantics, 'string')
-      assert.ok(['absent', 'disabled', 'report-only', 'enforced', 'unknown'].includes(held.state))
+      assert.equal(held.unattributed, null, `${name}/${s.id}: written in the member shape`)
+      const members = s.tracking?.members ?? []
+      for (const [key, o] of Object.entries(held.members)) {
+        // Each member's record is about that member's own object, and no other's.
+        const member = members.find((x) => x.key === key)
+        if (member) assert.equal(o.artifact, artifactIdOf(member.policyId), `${name}/${s.id}/${key}: the object it was about`)
+        assert.equal(typeof o.semantics, 'string')
+        assert.ok(['absent', 'disabled', 'report-only', 'enforced', 'unknown'].includes(o.state))
+      }
       // The identity is opaque: equality is the only question asked of it, so the
       // tenant's own object id never has to be written into a saved plan.
-      if (s.tracking?.policyId) assert.equal(serialised.includes(s.tracking.policyId), false, `${name}/${s.id}: the raw policy id is not persisted`)
+      for (const m of members) if (m.policyId) assert.equal(serialised.includes(m.policyId), false, `${name}/${s.id}: the raw policy id is not persisted`)
     }
   }
 })
@@ -680,7 +702,7 @@ test('10: with the matched policy’s scope unresolved nothing is seen, and noth
 const savedWord = (status: StepStatus): Record<string, SavedStep> => ({ [ADMINS]: { status, history: [], skipReason: null } })
 
 /** Fresh steps for the demo, with a saved record merged in and the scan applied over it. */
-function withSaved(saved: Record<string, SavedStep>, observations: Record<string, StepObservation> | null = null): Step {
+function withSaved(saved: Record<string, SavedStep>, observations: Record<string, StepObservationRecord> | null = null): Step {
   const run = runFixture(DEMO)
   const steps = generateRoadmap(run.input).steps
   mergePersisted(steps, saved)
@@ -993,4 +1015,448 @@ test('a stored word reads back as the state it stood for, and only there', () =>
     setState(step, stateForStatus(word))
     assert.equal(step.status, word, `${word} did not read back as itself`)
   }
+})
+
+// ---- a goal the baseline implements with two policies ----
+//
+// One step is not one policy. The pinned baseline implements `guests-mfa` with
+// two — Policy A and Policy B — and the product shows them as one step with two
+// blocks. Foundation B read one deployed policy per step, so everything
+// temporal was transferable between the halves: A's earned window enforced B,
+// A's records satisfied B's gate, B's absence vanished behind A, a replacement
+// of one reset the other, and B's rewrite was compared against A's patch.
+//
+// These run the real pinned pair through the generator and then through a scan,
+// because the numbers that matter are worked out during a scan.
+
+const GUESTS = stepIdForGoal('guests-mfa')
+const W2 = fixtures.find((f) => f.name === 'demo-week2') as Fixture
+const A_ID = '0a11a11a-0000-4000-8000-00000000000a'
+const B_PAIR_ID = '0b22b22b-0000-4000-8000-00000000000b'
+const B_OTHER_ID = '0c33c33c-0000-4000-8000-00000000000c'
+type PairRow = Record<string, unknown>
+
+/**
+ * demo-week2 with none of its own Conditional Access policies: the tenant has
+ * the pinned pair to write, so the step carries both of the baseline's policies
+ * as its two required members.
+ */
+function pairPlan(): { bare: typeof W2.snapshot; run: ReturnType<typeof runFixture> } {
+  const ca = W2.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
+  const bare = { ...W2.snapshot, config: { ...W2.snapshot.config, caPolicies: { ...ca, rows: [] } } }
+  return { bare, run: runFixture({ ...W2, snapshot: bare }, { snapshot: bare } as never) }
+}
+
+const pairScope = (): Parameters<typeof applyProgress>[7] => ({
+  groupMembers: Object.fromEntries([...W2.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
+  activePeople: activePeopleIds(W2.snapshot, W2.snapshot.asOf, notPeopleIds(W2.mapping)),
+})
+
+const at = (daysAgo: number): string => new Date(Date.parse(W2.snapshot.asOf) - daysAgo * 86_400_000).toISOString()
+
+/** One member's policy as the tenant would hold it: the body the plan submits, deployed. */
+const deployed = (op: PolicyOperation, id: string, state: string, over: PairRow = {}): PairRow => ({
+  ...(structuredClone(op.body) as PairRow),
+  id,
+  state,
+  createdDateTime: at(30),
+  modifiedDateTime: at(30),
+  ...over,
+})
+
+/** What a scan `daysAgo` would have recorded of that policy. */
+const watching = (row: PairRow, daysAgo: number, over: Partial<StepObservation> = {}): StepObservation => ({
+  artifact: artifactIdOf(String(row.id)),
+  state: observedStateOf(String(row.state)),
+  semantics: semanticsOf(row),
+  fields: semanticFieldsOf(row),
+  firstSeenAt: at(daysAgo),
+  since: 'first-scan',
+  lastSeenAt: at(daysAgo),
+  evidenceAt: null,
+  ...over,
+})
+
+const held = (members: Record<string, StepObservation>, unattributed: StepObservation | null = null): Record<string, StepObservationRecord> => ({ [GUESTS]: { members, unattributed } })
+
+/** Microsoft's own record of one policy having been evaluated in report-only. */
+const evidenceOf = (policyId: string, firstReportOnlyAt: string): unknown => ({
+  policyId,
+  displayName: '',
+  counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: 0, enforcedFailure: 0, enforcedSuccess: 0 },
+  affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] },
+  firstReportOnlyAt,
+})
+
+/** The same coverage with the guests goal delivered: the goal-delivery contract agreeing. */
+function inPlaceCoverage(c: ReturnType<typeof runFixture>['coverage']): ReturnType<typeof runFixture>['coverage'] {
+  return { ...c, results: c.results.map((r) => (r.goal.id === 'guests-mfa' ? { ...r, status: 'enforced', verdict: 'inPlace' } : r)) as typeof c.results }
+}
+
+/**
+ * A scan of demo-week2 whose Conditional Access policies are whatever the case
+ * plants, over the pair the generator produced from the same tenant with none.
+ * The whole engine, not a helper.
+ */
+function pairScan(
+  rowsFor: (a: PolicyOperation, b: PolicyOperation) => PairRow[],
+  prior: Record<string, StepObservationRecord> = {},
+  opts: { evidence?: unknown[]; inPlace?: boolean } = {},
+): Step {
+  const { bare, run } = pairPlan()
+  const ops = (run.steps.find((s) => s.id === GUESTS) as Step).action.resolution!.policies
+  const snapshot = structuredClone(bare)
+  snapshot.config.caPolicies = { status: 'ok', reason: null, rows: rowsFor(ops[0], ops[1]) } as typeof snapshot.config.caPolicies
+  if (opts.evidence) snapshot.evidencePolicyResults = opts.evidence as typeof snapshot.evidencePolicyResults
+  applyProgress(run.steps, snapshot, opts.inPlace ? inPlaceCoverage(run.coverage) : run.coverage, W2.planId, undefined, null, prior, pairScope())
+  return run.steps.find((s) => s.id === GUESTS) as Step
+}
+
+/** The step's two members, in the baseline's order. */
+const pairOps = (): PolicyOperation[] => (pairPlan().run.steps.find((s) => s.id === GUESTS) as Step).action.resolution!.policies
+const memberOf = (step: Step, key: string) => step.tracking?.members.find((m) => m.key === key)
+const observationOf = (step: Step, key: string) => step.state.members.find((m) => m.key === key)?.change
+
+test('pair 1: the real default baseline implements the guests goal with two required members', () => {
+  // The guard on every case below: if this step ever becomes one policy again,
+  // the pair tests would pass by testing nothing.
+  assert.equal(PINNED_GOAL_MAP['guests-mfa'].length, 2, 'the pinned baseline maps guests-mfa to two policies')
+  const step = pairPlan().run.steps.find((s) => s.id === GUESTS) as Step
+  const members = requiredMembers(step)
+  assert.equal(members.length, 2, 'so the step has two required policy members')
+  assert.notEqual(members[0].key, members[1].key, 'and they are two identities, not one')
+  // The identity is the baseline's own key for the policy, not the tenant's
+  // object, not the position, and not the display name.
+  assert.deepEqual(members.map((m) => m.key), PINNED_GOAL_MAP['guests-mfa'].map((k, i) => memberKeyOf(k, i)))
+  // Each member's created policy carries its own tag, so the two are told apart
+  // by what the plan wrote on them.
+  const [a, b] = step.action.resolution!.policies
+  assert.match(String((a.body as PairRow).description), new RegExp(`\\[IAMAI:${W2.planId}:${GUESTS}:${a.memberKey}\\]`))
+  assert.match(String((b.body as PairRow).description), new RegExp(`\\[IAMAI:${W2.planId}:${GUESTS}:${b.memberKey}\\]`))
+  assert.notEqual((a.body as PairRow).displayName, (b.body as PairRow).displayName)
+})
+
+test('pair 2: two report-only members are two observations, each about its own object', () => {
+  const [a, b] = pairOps()
+  const step = pairScan((x, y) => [deployed(x, A_ID, 'enabledForReportingButNotEnforced'), deployed(y, B_PAIR_ID, 'enabledForReportingButNotEnforced')])
+  assert.equal(step.state.members.length, 2, 'two members, two histories')
+  assert.equal(observationOf(step, a.memberKey)?.latest.artifact, artifactIdOf(A_ID))
+  assert.equal(observationOf(step, b.memberKey)?.latest.artifact, artifactIdOf(B_PAIR_ID))
+  assert.notEqual(observationOf(step, a.memberKey)?.latest.artifact, observationOf(step, b.memberKey)?.latest.artifact, 'neither overwrote the other')
+  assert.equal(memberOf(step, a.memberKey)?.policyId, A_ID)
+  assert.equal(memberOf(step, b.memberKey)?.policyId, B_PAIR_ID)
+  assert.equal(memberOf(step, a.memberKey)?.matchedBy, 'member-tag', 'each found by its own tag')
+  assert.equal(memberOf(step, b.memberKey)?.matchedBy, 'member-tag')
+  assert.equal(step.state.lifecycle, 'report-only', 'the whole pair is deployed and being watched')
+  assert.equal(step.tracking?.policyId, null, 'and no one object is what the step is')
+})
+
+test('pair 3: A ready and B not is not a ready pair', () => {
+  const [a, b] = pairOps()
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+  // A has been watched for thirty days; B was first seen at this scan.
+  const step = pairScan(() => [rowA, rowB], held({ [a.memberKey]: watching(rowA, 30) }))
+  assert.equal(memberOf(step, a.memberKey)?.ready, true, 'A has served its own window')
+  assert.equal(memberOf(step, b.memberKey)?.ready, false, 'B has served none of one')
+  assert.equal(step.state.lifecycle, 'report-only', 'so the pair is still being watched')
+  assert.notEqual(step.status, 'ready-to-enforce', 'one ready member cannot make the pair ready')
+  assert.equal(memberOf(step, b.memberKey)?.daysInReportOnly, 0, 'and B borrowed none of A’s thirty days')
+})
+
+test('pair 4: A ready and B absent is not a deployed pair, and B inherits nothing', () => {
+  const [a, b] = pairOps()
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const step = pairScan(() => [rowA], held({ [a.memberKey]: watching(rowA, 30) }))
+  assert.equal(memberOf(step, a.memberKey)?.ready, true, 'A earned its window')
+  assert.equal(memberOf(step, b.memberKey)?.policyId, null, 'B’s absence is represented rather than hidden')
+  assert.equal(memberOf(step, b.memberKey)?.lifecycle, 'not-deployed')
+  assert.equal(observationOf(step, b.memberKey)?.latest.state, 'absent', 'and recorded as an observation of nothing')
+  assert.equal(step.state.lifecycle, 'not-deployed', 'a pair with one half deployed has not been deployed')
+  assert.notEqual(step.status, 'ready-to-enforce')
+  // A's own history is still there, and none of it reached B.
+  assert.equal(observationOf(step, a.memberKey)?.latest.firstSeenAt, at(30))
+  assert.equal(observationOf(step, b.memberKey)?.latest.firstSeenAt, W2.snapshot.asOf)
+  assert.equal(observationOf(step, b.memberKey)?.prior, null, 'B has no prior of its own to speak from')
+})
+
+test('pair 5: the pair is ready when every member is ready on its own window', () => {
+  const [a, b] = pairOps()
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+  const both = held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 20) })
+  const step = pairScan(() => [rowA, rowB], both)
+  assert.equal(memberOf(step, a.memberKey)?.ready, true)
+  assert.equal(memberOf(step, b.memberKey)?.ready, true)
+  assert.equal(step.state.lifecycle, 'ready-to-enforce')
+  assert.equal(step.status, 'ready-to-enforce')
+  // Both gates participated: the pair's date is the later member's, never the earlier.
+  assert.equal(step.tracking?.readyOn, memberOf(step, b.memberKey)?.readyOn, 'ready on the day the last member became ready')
+  assert.ok(Date.parse(memberOf(step, a.memberKey)!.readyOn as string) < Date.parse(step.tracking!.readyOn as string))
+  // Take either member's window away and the pair is not ready.
+  for (const key of [a.memberKey, b.memberKey]) {
+    const one = held(Object.fromEntries(Object.entries(both[GUESTS].members).filter(([k]) => k !== key)))
+    assert.notEqual(pairScan(() => [rowA, rowB], one).status, 'ready-to-enforce', `${key} alone did not carry the pair`)
+  }
+})
+
+test('pair 6: A enforced and B ready is a pair to enforce, and not a finished one', () => {
+  const [a, b] = pairOps()
+  const rowA = deployed(a, A_ID, 'enabled')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+  const step = pairScan(() => [rowA, rowB], held({ [b.memberKey]: watching(rowB, 30) }), { inPlace: true })
+  assert.equal(memberOf(step, a.memberKey)?.lifecycle, 'enforced')
+  assert.equal(memberOf(step, b.memberKey)?.ready, true)
+  assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the remaining member may be enforced')
+  assert.equal(step.state.satisfied, false, 'one enforced member does not finish a two-policy goal')
+  assert.notEqual(step.status, 'done')
+})
+
+test('pair 7: the pair is done when both members are enforced and coverage agrees the goal is in place', () => {
+  const [a, b] = pairOps()
+  const rows = (x: PolicyOperation, y: PolicyOperation): PairRow[] => [deployed(x, A_ID, 'enabled'), deployed(y, B_PAIR_ID, 'enabled')]
+  const done = pairScan(rows, {}, { inPlace: true })
+  assert.equal(memberOf(done, a.memberKey)?.lifecycle, 'enforced')
+  assert.equal(memberOf(done, b.memberKey)?.lifecycle, 'enforced')
+  assert.equal(done.state.lifecycle, 'enforced')
+  assert.equal(done.state.satisfied, true)
+  assert.equal(done.status, 'done')
+  // The same coverage with only one member enforced does not finish it.
+  const half = pairScan((x, y) => [deployed(x, A_ID, 'enabled'), deployed(y, B_PAIR_ID, 'disabled')], {}, { inPlace: true })
+  assert.notEqual(half.state.lifecycle, 'enforced', 'a disabled half is not an enforced pair')
+  assert.notEqual(half.status, 'done')
+  // And with the goal not delivered, both members enforced is still not done.
+  const uncovered = pairScan(rows)
+  assert.equal(uncovered.state.satisfied, false, 'the goal-delivery contract still has to agree')
+})
+
+test('pair 8: replacing one member resets that member’s history and no other’s', () => {
+  const [a, b] = pairOps()
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+  const prior = held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 30) })
+  // B is deleted and replaced by a different object meaning exactly the same thing.
+  const step = pairScan(() => [rowA, { ...rowB, id: B_OTHER_ID }], prior)
+  assert.equal(observationOf(step, a.memberKey)?.continuity, 'continues', 'A is the object it was')
+  assert.equal(observationOf(step, a.memberKey)?.latest.firstSeenAt, at(30), 'and keeps the window it earned')
+  assert.equal(observationOf(step, b.memberKey)?.changed, 'artifact')
+  assert.equal(observationOf(step, b.memberKey)?.continuity, 'reset')
+  assert.equal(observationOf(step, b.memberKey)?.latest.firstSeenAt, W2.snapshot.asOf, 'B is watched from this scan')
+  assert.equal(memberOf(step, a.memberKey)?.ready, true)
+  assert.equal(memberOf(step, b.memberKey)?.ready, false)
+  assert.notEqual(step.status, 'ready-to-enforce', 'and A’s completed window does not cover B')
+})
+
+test('pair 9: an unexpected rewrite of one member is the whole step’s condition', () => {
+  const [a, b] = pairOps()
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+  const prior = held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 30) })
+  // B's grant is replaced with something no operation submits.
+  const drifted = { ...rowB, grantControls: { operator: 'OR', builtInControls: ['block'], customAuthenticationFactors: [], termsOfUse: [] } }
+  const step = pairScan(() => [rowA, drifted], prior)
+  assert.equal(memberOf(step, b.memberKey)?.reviewRequired, true, 'B moved somewhere nobody asked for')
+  assert.equal(memberOf(step, a.memberKey)?.reviewRequired, false, 'A is untouched')
+  assert.equal(observationOf(step, a.memberKey)?.continuity, 'continues', 'and still healthy')
+  assert.equal(step.state.condition, 'review-required', 'a healthy other half does not settle it')
+})
+
+test('pair 10: each member is compared against its own operation, never the first', () => {
+  // A grants multifactor; B grants an authentication strength. They are different
+  // submitted changes, which is what makes this decidable.
+  const [a, b] = pairOps()
+  assert.notDeepEqual((a.body as PairRow).grantControls, (b.body as PairRow).grantControls, 'the pinned pair asks for two different grants')
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+  // B carrying A's grant: not what B's own operation submits.
+  const bAsA = { ...rowB, grantControls: structuredClone((a.body as PairRow).grantControls) }
+
+  // 1: B moves into exactly what B's operation submits.
+  const landed = pairScan(() => [rowA, rowB], held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(bAsA, 30) }))
+  assert.equal(observationOf(landed, b.memberKey)?.changed, 'semantics')
+  assert.equal(observationOf(landed, b.memberKey)?.expected, true, 'B reached the value B’s own operation submits')
+  assert.equal(observationOf(landed, b.memberKey)?.reviewRequired, false)
+
+  // 2: B moves into what *A's* operation submits. Under a policies[0] intent this
+  // was expected; against B's own operation it is a rewrite nobody asked for.
+  const wrong = pairScan(() => [rowA, bAsA], held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 30) }))
+  assert.equal(observationOf(wrong, b.memberKey)?.expected, false, 'A’s intent does not authorise a change to B')
+  assert.equal(observationOf(wrong, b.memberKey)?.reviewRequired, true)
+  assert.equal(wrong.state.condition, 'review-required')
+})
+
+test('pair 11: one shared step tag does not collapse the pair into one policy', () => {
+  const [a, b] = pairOps()
+  // Two policies created before the tag named the member: they carry the same
+  // step tag, and the names the plan gives each member are what tells them apart.
+  const legacyTag = `[IAMAI:${W2.planId}:${GUESTS}]`
+  const step = pairScan((x, y) => [
+    { ...deployed(x, A_ID, 'enabledForReportingButNotEnforced'), description: legacyTag },
+    { ...deployed(y, B_PAIR_ID, 'enabledForReportingButNotEnforced'), description: legacyTag },
+  ])
+  assert.equal(memberOf(step, a.memberKey)?.policyId, A_ID)
+  assert.equal(memberOf(step, b.memberKey)?.policyId, B_PAIR_ID)
+  assert.equal(memberOf(step, a.memberKey)?.matchedBy, 'member-name')
+  assert.equal(new Set(step.tracking!.members.map((m) => m.policyId)).size, 2, 'two distinct artifacts')
+  assert.equal(step.state.lifecycle, 'report-only', 'and the pair is deployed')
+})
+
+test('pair 12: a pair the tag cannot tell apart is left unresolved, never guessed', () => {
+  const [a, b] = pairOps()
+  const legacyTag = `[IAMAI:${W2.planId}:${GUESTS}]`
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+  const prior = held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 30) })
+  const renamed = [
+    { ...rowA, description: legacyTag, displayName: 'Something somebody renamed' },
+    { ...rowB, description: legacyTag, displayName: 'Something else entirely' },
+  ]
+  // The association itself: two tagged policies, and nothing says which member
+  // either of them is.
+  const { bare, run } = pairPlan()
+  const snapshot = structuredClone(bare)
+  snapshot.config.caPolicies = { status: 'ok', reason: null, rows: renamed } as typeof snapshot.config.caPolicies
+  const matched = matchMembers(run.steps.find((x) => x.id === GUESTS) as Step, snapshot, run.coverage, W2.planId)
+  assert.deepEqual(matched.map((m) => m.policy?.id ?? null), [null, null], 'no arbitrary first policy wins')
+  assert.ok(matched.every((m) => m.ambiguous), 'both members say so rather than guessing')
+
+  const step = pairScan(() => renamed, prior)
+  assert.ok(step.state.members.every((m) => m.change.latest.artifact === null), 'and no member claims an object')
+  assert.notEqual(step.status, 'ready-to-enforce', 'nothing advances on a guess')
+  assert.equal(step.state.lifecycle, 'not-deployed')
+  assert.ok(step.state.members.every((m) => m.change.latest.firstSeenAt === W2.snapshot.asOf), 'and no history is borrowed')
+
+  // Two policies carrying one member's own tag are that member's ambiguity.
+  const twice = structuredClone(bare)
+  twice.config.caPolicies = {
+    status: 'ok',
+    reason: null,
+    rows: [deployed(a, A_ID, 'enabledForReportingButNotEnforced'), { ...deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced'), description: String((a.body as PairRow).description) }],
+  } as typeof twice.config.caPolicies
+  const doubled = matchMembers(pairPlan().run.steps.find((x) => x.id === GUESTS) as Step, twice, run.coverage, W2.planId)
+  assert.equal(doubled[0].ambiguous, true, 'two candidates for one member is not a match')
+  assert.equal(doubled[0].policy, null)
+})
+
+test('pair 13: one member’s Microsoft evidence closes no other member’s gate', () => {
+  const [a, b] = pairOps()
+  const provenAt = at(30)
+  const step = pairScan(
+    (x, y) => [deployed(x, A_ID, 'enabledForReportingButNotEnforced'), deployed(y, B_PAIR_ID, 'enabledForReportingButNotEnforced')],
+    {},
+    { evidence: [evidenceOf(A_ID, provenAt)] },
+  )
+  assert.equal(memberOf(step, a.memberKey)?.reportOnlyAt, provenAt, 'A’s own record dates A')
+  assert.equal(memberOf(step, a.memberKey)?.reportOnlyAtSource, 'sign-in-evidence')
+  assert.equal(memberOf(step, a.memberKey)?.ready, true, 'and carries A through its window')
+  assert.equal(memberOf(step, b.memberKey)?.reportOnlyAt, W2.snapshot.asOf, 'B has records of its own: none')
+  assert.equal(memberOf(step, b.memberKey)?.reportOnlyAtSource, 'first-seen-by-iamai')
+  assert.equal(memberOf(step, b.memberKey)?.ready, false)
+  assert.notEqual(step.status, 'ready-to-enforce', 'so the pair is not ready because A is')
+  assert.equal(step.tracking?.reportOnlyAt, W2.snapshot.asOf, 'the pair has been watched since its later member')
+})
+
+test('pair 16: a record from before members is attributed on identity, and never copied to both', () => {
+  const [a, b] = pairOps()
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+
+  // The stored record names an object, and exactly one member is delivered by it.
+  const attributable = pairScan(() => [rowA, rowB], held({}, watching(rowA, 30)))
+  assert.equal(observationOf(attributable, a.memberKey)?.latest.firstSeenAt, at(30), 'it belongs to A, and A keeps it')
+  assert.equal(observationOf(attributable, a.memberKey)?.continuity, 'continues')
+  assert.equal(observationOf(attributable, b.memberKey)?.prior, null, 'B inherits nothing')
+  assert.equal(observationOf(attributable, b.memberKey)?.latest.firstSeenAt, W2.snapshot.asOf)
+  assert.equal(memberOf(attributable, b.memberKey)?.ready, false)
+  assert.notEqual(attributable.status, 'ready-to-enforce', 'so one attributed window does not make the pair ready')
+
+  // A record that names no object proves no member identity at all.
+  const legacy = observationsFrom({ reportOnlySeen: { [GUESTS]: at(30) } })
+  const blind = pairScan(() => [rowA, rowB], legacy)
+  assert.ok(blind.state.members.every((m) => m.change.prior === null), 'no member takes a record that names nobody')
+  assert.ok(blind.state.members.every((m) => m.change.latest.firstSeenAt === W2.snapshot.asOf), 'and both are watched from this scan')
+  assert.notEqual(blind.status, 'ready-to-enforce')
+  // Nor does an object no member is delivered by.
+  const foreign = pairScan(() => [rowA, rowB], held({}, watching({ ...rowA, id: B_OTHER_ID }, 30)))
+  assert.ok(foreign.state.members.every((m) => m.change.prior === null), 'an object nothing here is does not attribute either')
+})
+
+test('pair 17: the record keeps both members apart, and carries no tenant id', () => {
+  const [a, b] = pairOps()
+  const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
+  const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
+  const step = pairScan(() => [rowA, rowB], held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 20) }))
+  const kept = observationsOf([step])
+  assert.deepEqual(Object.keys(kept[GUESTS].members).sort(), [a.memberKey, b.memberKey].sort(), 'one record per member')
+  assert.equal(kept[GUESTS].unattributed, null)
+  assert.equal(kept[GUESTS].members[a.memberKey].artifact, artifactIdOf(A_ID))
+  assert.equal(kept[GUESTS].members[b.memberKey].artifact, artifactIdOf(B_PAIR_ID))
+  assert.notEqual(kept[GUESTS].members[a.memberKey].firstSeenAt, kept[GUESTS].members[b.memberKey].firstSeenAt, 'two clocks')
+  assert.deepEqual(observationsFrom({ observations: kept }), kept, 'and it reads back as what it holds')
+  const serialised = JSON.stringify(kept)
+  for (const id of [A_ID, B_PAIR_ID]) assert.equal(serialised.includes(id), false, 'the raw policy id is not persisted')
+  // Reloaded, the two members are still the two members.
+  const again = pairScan(() => [rowA, rowB], observationsFrom({ observations: kept }))
+  assert.equal(observationOf(again, a.memberKey)?.latest.firstSeenAt, at(30))
+  assert.equal(observationOf(again, b.memberKey)?.latest.firstSeenAt, at(20))
+})
+
+// ---- 14 + 15: a step with one policy is what it always was ----
+
+test('single 14: every one-policy step has one member, and the step’s tracking is that member', () => {
+  let checked = 0
+  for (const { f: { name }, r } of runs) {
+    for (const s of r.steps) {
+      if (s.kind !== 'create' && s.kind !== 'adjust') continue
+      const ops = s.action.resolution?.policies ?? []
+      if (ops.length > 1) continue
+      assert.deepEqual(s.state.members.map((m) => m.key), [SOLE_MEMBER], `${name}/${s.id}: one policy, one member, under a key a re-pin cannot move`)
+      assert.equal(s.state.observation, s.state.members[0].change, `${name}/${s.id}: and the step's observation is that member's`)
+      const t = s.tracking
+      if (!t) continue
+      const m = t.members[0]
+      assert.equal(t.members.length, 1)
+      // Field for field, the aggregate is the member: nothing about a one-policy
+      // step reads differently than it did before members existed.
+      assert.deepEqual(
+        [t.policyId, t.policyName, t.state, t.reportOnlyAt, t.reportOnlyAtSource, t.enforcedAt, t.enforcedAtSource, t.readyOn, t.readyNow, t.daysInReportOnly, t.seenInScope, t.activeInScope, t.signIns, t.failures, t.evidenceQuality],
+        [m.policyId, m.policyName, m.state, m.reportOnlyAt, m.reportOnlyAtSource, m.enforcedAt, m.enforcedAtSource, m.readyOn, m.readyNow, m.daysInReportOnly, m.seenInScope, m.activeInScope, m.signIns, m.failures, m.evidenceQuality],
+        `${name}/${s.id}`,
+      )
+      checked += 1
+    }
+  }
+  assert.ok(checked > 10, `the fixtures track one-policy steps: ${checked}`)
+})
+
+test('single 15: a stored observation from before members belongs to a one-policy step’s only member', () => {
+  // The migration is exact where the step has one member, because a step with one
+  // member has one history and it can only be that member's.
+  const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
+  const flat = { artifact: artifactIdOf(demoPolicyId()), state: 'report-only' as const, semantics: '', fields: {}, firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null }
+  const loaded = observationsFrom({ observations: { [ADMINS]: flat } })
+  assert.deepEqual(loaded[ADMINS], { members: {}, unattributed: flat }, 'a flat record loads as one nobody has attributed yet')
+  assert.deepEqual(priorFor(loaded[ADMINS], SOLE_MEMBER, flat.artifact, true), flat, 'and a step with one member takes it')
+  assert.equal(priorFor(loaded[ADMINS], SOLE_MEMBER, artifactIdOf('some-other-policy'), false), null, 'and a step with two members takes it only where the object proves whose it is')
+  assert.equal(priorFor(loaded[ADMINS], SOLE_MEMBER, null, false), null, 'never for a member with no object at all')
+  const s = rescan(() => {}, loaded)
+  assert.equal(s.state.observation?.prior?.firstSeenAt, seenAt, 'the window it earned carries over')
+  assert.equal(s.state.observation?.continuity, 'continues', 'because it names the object this step is delivered by')
+  assert.equal(s.state.lifecycle, 'ready-to-enforce')
+  // And it is written back in the member shape, so the next scan reads it there.
+  assert.equal(observationsOf([s])[ADMINS].unattributed, null)
+  assert.equal(soleOf(observationsOf([s]), ADMINS).firstSeenAt, seenAt)
+})
+
+test('the pair’s members are matched one object each, and never one object twice', () => {
+  const [a, b] = pairOps()
+  const { bare, run } = pairPlan()
+  const step = run.steps.find((s) => s.id === GUESTS) as Step
+  const snapshot = structuredClone(bare)
+  // One policy carrying A's tag and B's name: it can be one member, not both.
+  snapshot.config.caPolicies = { status: 'ok', reason: null, rows: [{ ...deployed(a, A_ID, 'enabledForReportingButNotEnforced'), displayName: (b.body as PairRow).displayName }] } as typeof snapshot.config.caPolicies
+  const matched = matchMembers(step, snapshot, run.coverage, W2.planId)
+  assert.equal(matched.length, 2)
+  assert.equal(matched.filter((m) => m.policy !== null).length, 1, 'one object satisfies one member')
+  assert.equal(new Set(matched.map((m) => m.policy?.id).filter(Boolean)).size, 1)
 })

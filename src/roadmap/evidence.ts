@@ -15,10 +15,17 @@ function riskIds(signals: (UsageSignal | undefined)[]): string[] {
   return [...new Set(present.flatMap((s) => s.userIds))]
 }
 
+/**
+ * `matchedPolicyIds` is every policy this plan tagged for the step, not one of
+ * them: a goal the baseline implements with two policies is one step delivering
+ * both, and the people Policy A's report-only results failed are not the people
+ * the step affects — they are the people A affects. The step's line is the union
+ * over its own policies.
+ */
 export function evidenceFor(
   goalId: string,
   snapshot: TenantSnapshot,
-  matchedPolicyId: string | null,
+  matchedPolicyIds: readonly string[],
 ): Evidence {
   const src = snapshot.sources.signInEvidence
   const status = (src?.status ?? 'pending') as Evidence['status']
@@ -36,14 +43,12 @@ export function evidenceFor(
   else if (RISK_HIGH_GOALS.has(goalId)) base.affectedUserIds = riskIds([usage?.riskHigh])
   else if (RISK_MEDIUM_GOALS.has(goalId)) base.affectedUserIds = riskIds([usage?.riskMedium, usage?.riskHigh])
 
-  if (matchedPolicyId !== null) {
-    const pr = snapshot.evidencePolicyResults.find((p) => p.policyId === matchedPolicyId)
-    if (pr) {
-      const failedUsers = [
-        ...new Set([...pr.affectedUserIds.reportOnlyFailure, ...pr.affectedUserIds.reportOnlyInterrupted]),
-      ]
-      if (failedUsers.length > 0) base.affectedUserIds = failedUsers
-    }
+  if (matchedPolicyIds.length > 0) {
+    const results = snapshot.evidencePolicyResults.filter((p) => matchedPolicyIds.includes(p.policyId))
+    const failedUsers = [
+      ...new Set(results.flatMap((pr) => [...pr.affectedUserIds.reportOnlyFailure, ...pr.affectedUserIds.reportOnlyInterrupted])),
+    ]
+    if (failedUsers.length > 0) base.affectedUserIds = failedUsers
   }
   return base
 }

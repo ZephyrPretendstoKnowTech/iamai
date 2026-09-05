@@ -13,7 +13,7 @@ import { demoTenant } from '../demo.ts'
 import { DEMO_TENANT_ID } from '../demoMode.ts'
 import { applyProgress } from '../../roadmap/progress.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
-import { observationsOf } from '../../roadmap/tracking.ts'
+import { SOLE_MEMBER, observationsOf } from '../../roadmap/tracking.ts'
 import { observationsFrom } from '../../roadmap/observation.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { rowWhen } from './rowWhen.ts'
@@ -43,7 +43,7 @@ test('week one: a policy the scan first sees in report-only is ready on the scan
   assert.equal(statusOf(step).word, 'Report-only')
   assert.equal(rowWhen(step), `ready ${absoluteDate(readyOn)}`)
   // The observation the plan record keeps, so the next scan continues the clock.
-  const kept = observationsOf(run.steps)[ADMINS]
+  const kept = observationsOf(run.steps)[ADMINS].members[SOLE_MEMBER]
   assert.equal(kept.state, 'report-only')
   assert.equal(kept.firstSeenAt, f.snapshot.asOf)
   assert.equal(kept.since, 'first-scan', 'the first time IAMAI looked, not a transition it watched')
@@ -95,7 +95,7 @@ test('rescan: a policy still in report-only past its date stays Report-only and 
   const row = rows.find((p) => p.id === first.tracking?.policyId)
   // The record names the policy it watched, which is what lets the ten days it
   // counted belong to the policy deployed now (observation.ts artifactIdOf).
-  const watched = { [ADMINS]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }
+  const watched = { [ADMINS]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }, unattributed: null } }
   applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, watched)
   const step = run.steps.find((s) => s.id === ADMINS)!
   assert.equal(step.tracking?.reportOnlyAt, seenAt, 'the record\'s observation wins over this scan')
