@@ -7,6 +7,9 @@ import type { TenantRhythm } from './rhythm.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
 import { unavailableReason } from './operations.ts'
 import { effectsOf } from './strand.ts'
+
+/** The circumstances the records can answer; anything else is not proof of a zero. */
+const MEASURED_NARROWINGS = new Set(['legacyClients', 'signInFlow', 'risk', 'locations'])
 import type { Step, StepEvent, StepEvents } from './types.ts'
 
 /**
@@ -162,17 +165,16 @@ export function nobodyAffected(step: Step): boolean {
   // touch anyone (roadmap/operations.ts PolicyEffect.unknown).
   if (effects.some((e) => e.unknown.length > 0)) return false
   for (const effect of effects) {
-    // A policy that stops a protocol or applies only above a risk level touches
-    // whoever was seen doing it — and only where the records could be read. So
-    // does one that names places and asks for nothing: it stops people, rather
-    // than prompting them.
-    if (effect.blocks || effect.usesRisk || (effect.usesLocations && !effect.asksForMethod && !effect.requiresDevice)) {
-      if (step.evidence.status !== 'ok') return false
-      if (step.evidence.affectedUserIds.length > 0) return false
+    // A policy that applies only in some circumstance touches whoever the
+    // records show in it — and only where every one of those circumstances is
+    // one the records answer (roadmap/strand.ts narrowingReach).
+    if (effect.narrowings.length > 0) {
+      if (!effect.narrowings.every((n) => MEASURED_NARROWINGS.has(n.kind))) return false
+      if (step.evidence.status !== 'ok' || step.evidence.affectedUserIds.length > 0) return false
       continue
     }
-    // Anything else asks people for something, so it touches everyone it
-    // applies to.
+    // Anything else applies whenever the people it names sign in, so it touches
+    // everyone it reaches.
     if (step.population.active > 0) return false
   }
   return true

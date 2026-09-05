@@ -29,7 +29,9 @@ function ring(index: number, soakDays: number, ids: string[]): Ring {
  */
 function policyBodyFor(family: string, name: string): Record<string, unknown> {
   const conditions: Record<string, unknown> = { users: { includeUsers: ['All'] }, applications: { includeApplications: ['All'] } }
-  if (family === 'location') conditions.locations = { includeLocations: ['All'] }
+  if (family === 'location') conditions.locations = { includeLocations: ['All'], excludeLocations: ['loc-allowed'] }
+  // A block is a block of something: the old protocols, which the records answer.
+  if (family === 'block') conditions.clientAppTypes = ['exchangeActiveSync', 'other']
   const controls = family === 'device' ? ['compliantDevice'] : family === 'block' || family === 'location' ? ['block'] : ['mfa']
   return { displayName: name, state: 'enabledForReportingButNotEnforced', conditions, grantControls: { operator: 'OR', builtInControls: controls } }
 }

@@ -2,7 +2,7 @@
 // lock a given account out? Pure: runs in tests, the worker and the page.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { accountApplicability, isOpenPolicy, stepEffects, strengthLookupOf } from './operations.ts'
-import type { Applicability, PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
+import type { Applicability, Narrowing, PolicyEffect, Requirement, ScopeEvidence } from './operations.ts'
 import type { Step } from './types.ts'
 
 export type StrandVerdict = { stranded: boolean; unknown: boolean; reason: string }
@@ -117,11 +117,12 @@ export function strengthSatisfaction(combinations: readonly string[], methodsReg
   return unsure ? 'unknown' : 'no'
 }
 
+/** An applicability answer with the words for it. */
+type Reached = { answer: Applicability; reason: string }
+
 /** The place a policy names, matched to the countries the plan resolved it to. */
-function locationVerdict(effect: PolicyEffect, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext): StrandVerdict {
-  const unresolved = { stranded: false, unknown: true, reason: 'the place this policy names has not been matched to the countries it holds' }
-  const ids = effect.locationIds
-  if (ids === null) return { stranded: false, unknown: false, reason: 'no deny condition' }
+function locationReach(ids: { include: string[]; exclude: string[] }, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext): Reached {
+  const unresolved = { answer: 'unknown' as const, reason: 'the place this policy names has not been matched to the countries it holds' }
   const resolved = ctx.countryLocations ?? {}
   const countriesOf = (id: string): readonly string[] | null => resolved[id] ?? resolved[id.toLowerCase()] ?? null
   const includesAll = ids.include.some((x) => x.toLowerCase() === 'all')
@@ -131,19 +132,81 @@ function locationVerdict(effect: PolicyEffect, accountId: string, snapshot: Tena
   if (named.some((x) => x.toLowerCase() === 'all' || x.toLowerCase() === 'alltrusted')) return unresolved
   if (named.some((x) => countriesOf(x) === null)) return unresolved
   const user = (snapshot.users ?? []).find((x) => x.id === accountId)
-  if (!user?.usageLocation) return { stranded: false, unknown: true, reason: 'no usage location on the account' }
+  if (!user?.usageLocation) return { answer: 'unknown', reason: 'no usage location on the account' }
   const here = user.usageLocation.toUpperCase()
   const has = (id: string): boolean => (countriesOf(id) ?? []).some((c) => c.toUpperCase() === here)
-  if (includesAll || ids.include.length === 0) {
-    // Everywhere except the places it excludes.
-    return ids.exclude.some(has)
-      ? { stranded: false, unknown: false, reason: 'the account is in an allowed country' }
-      : { stranded: true, unknown: false, reason: `the account is in a country (${here}) the step blocks` }
+  const reaches = includesAll || ids.include.length === 0 ? !ids.exclude.some(has) : ids.include.some(has)
+  return reaches
+    ? { answer: 'in', reason: `the account is in a country (${here}) the step blocks` }
+    : { answer: 'out', reason: 'the account signs in from a country this policy leaves alone' }
+}
+
+/**
+ * Whether one condition that narrows *when* a policy applies lets it reach this
+ * account. The scan answers four of them exactly — the old protocols, the
+ * device-code and authentication-transfer flows, a risk level, and a place it
+ * has resolved. It answers none of the others, and says so rather than reading
+ * the policy as though the condition were not there.
+ */
+function narrowingReach(n: Narrowing, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext): Reached {
+  const usage = snapshot.evidenceUsage
+  const seenIn = (signals: { userIds: string[] }[]): Reached =>
+    signals.some((sig) => sig.userIds.includes(accountId))
+      ? { answer: 'in', reason: 'the account was seen using what the step blocks' }
+      : { answer: 'out', reason: 'no observed use of what the step blocks' }
+  switch (n.kind) {
+    case 'legacyClients':
+      return usage ? seenIn([usage.legacyAuth]) : { answer: 'unknown', reason: 'no sign-in evidence' }
+    case 'signInFlow': {
+      if (!usage) return { answer: 'unknown', reason: 'no sign-in evidence' }
+      const wanted = n.methods.map((m) => m.toLowerCase())
+      const signals = [
+        ...(wanted.includes('devicecodeflow') ? [usage.deviceCode] : []),
+        ...(wanted.includes('authenticationtransfer') ? [usage.authTransfer] : []),
+      ]
+      return signals.length > 0 ? seenIn(signals) : { answer: 'unknown', reason: 'a sign-in flow the scan does not measure' }
+    }
+    case 'risk': {
+      if (!usage) return { answer: 'unknown', reason: 'no sign-in evidence' }
+      const levels = n.levels.map((l) => l.toLowerCase())
+      const signals = [...(levels.includes('high') ? [usage.riskHigh] : []), ...(levels.includes('medium') ? [usage.riskMedium] : [])]
+      if (signals.length === 0) return { answer: 'unknown', reason: 'a risk level the scan does not measure' }
+      return signals.some((sig) => sig.userIds.includes(accountId))
+        ? { answer: 'in', reason: 'the account was seen signing in at the risk level this policy acts on' }
+        : { answer: 'out', reason: 'no sign-in at the risk level this policy acts on' }
+    }
+    case 'locations':
+      return locationReach({ include: n.include, exclude: n.exclude }, accountId, snapshot, ctx)
+    case 'clientAppTypes':
+      return { answer: 'unknown', reason: 'the scan does not say which kind of client this account signs in with' }
+    case 'platforms':
+      return { answer: 'unknown', reason: 'the scan does not say which platforms this account signs in from' }
+    case 'applications':
+      return { answer: 'unknown', reason: 'the scan does not say which applications this account signs in to' }
+    case 'userActions':
+      return { answer: 'unknown', reason: 'the scan does not say when this account will register security information or a device' }
+    case 'deviceFilter':
+      return { answer: 'unknown', reason: 'the policy narrows by a device rule the scan cannot evaluate' }
   }
-  // Only from the places it names: a person elsewhere never meets it.
-  return ids.include.some(has)
-    ? { stranded: true, unknown: false, reason: `the account is in a country (${here}) the step blocks` }
-    : { stranded: false, unknown: false, reason: 'the policy does not reach this account' }
+}
+
+/**
+ * Whether a policy reaches one account at all: who it names, and then every
+ * condition that decides when it applies. One `out` settles it; one condition
+ * nothing answers leaves the whole question unknown.
+ */
+export function operationReach(effect: PolicyEffect, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext = {}): Reached {
+  const subject = accountApplicability(effect.scope, accountId, snapshot as never, ctx)
+  if (subject === 'out') return { answer: 'out', reason: 'the policy does not reach this account: it is out of scope' }
+  let unsure: Reached | null = subject === 'unknown' ? { answer: 'unknown', reason: 'nothing in the scan settles whether this policy reaches the account' } : null
+  let why: Reached | null = null
+  for (const n of effect.narrowings) {
+    const reached = narrowingReach(n, accountId, snapshot, ctx)
+    if (reached.answer === 'out') return reached
+    if (reached.answer === 'unknown') unsure = unsure ?? reached
+    else why = why ?? reached
+  }
+  return unsure ?? why ?? { answer: 'in', reason: 'the policy reaches this account' }
 }
 
 /**
@@ -200,18 +263,17 @@ function requirementVerdict(req: Requirement, accountId: string, snapshot: Tenan
  * it may be the way through.
  */
 export function policyVerdict(effect: PolicyEffect, accountId: string, snapshot: TenantSnapshot, ctx: StrandContext = {}): StrandVerdict {
-  const reaches = accountApplicability(effect.scope, accountId, snapshot as never, ctx)
-  if (reaches === 'out') return { stranded: false, unknown: false, reason: 'the policy does not reach this account: it is out of scope' }
-  if (reaches === 'unknown') return { stranded: false, unknown: true, reason: 'nothing in the scan settles whether this policy reaches the account' }
+  const reached = operationReach(effect, accountId, snapshot, ctx)
+  if (reached.answer === 'out') return { stranded: false, unknown: false, reason: reached.reason }
+  if (reached.answer === 'unknown') return { stranded: false, unknown: true, reason: reached.reason }
   const decided = ((): StrandVerdict => {
-    if (effect.blocks) return effect.usesLocations ? locationVerdict(effect, accountId, snapshot, ctx) : accountVerdict('block', accountId, snapshot, [])
+    // It reaches the account, and it stops the sign-in. The reason is whichever
+    // condition put the account inside it.
+    if (effect.blocks) return { stranded: true, unknown: false, reason: reached.reason }
     const verdicts = effect.requirements.map((r) => requirementVerdict(r, accountId, snapshot, ctx))
-    if (verdicts.length === 0) {
-      // A policy that only scopes a place, or only shortens a session, asks for
-      // nothing a person could fail to have.
-      if (effect.usesLocations) return locationVerdict(effect, accountId, snapshot, ctx)
-      return { stranded: false, unknown: false, reason: 'no deny condition' }
-    }
+    // A policy that only narrows where or when people sign in, or only shortens
+    // a session, asks for nothing a person could fail to have.
+    if (verdicts.length === 0) return { stranded: false, unknown: false, reason: 'no deny condition' }
     if (effect.operator === 'AND') return verdicts.find((v) => v.stranded) ?? verdicts.find((v) => v.unknown) ?? verdicts[0]
     return verdicts.find((v) => !v.stranded && !v.unknown) ?? verdicts.find((v) => v.unknown) ?? verdicts[0]
   })()
@@ -222,7 +284,6 @@ export function policyVerdict(effect: PolicyEffect, accountId: string, snapshot:
   // through, so a stranded verdict is withdrawn rather than asserted.
   const unreadable = { stranded: false, unknown: true, reason: effect.unknown[0] }
   if (decided.stranded && (effect.blocks || effect.operator === 'AND')) return decided
-  if (!decided.stranded && !decided.unknown && effect.blocks) return decided
   return unreadable
 }
 
@@ -258,7 +319,7 @@ export function stepApplicability(step: Step, accountId: string, snapshot: Tenan
   const effects = effectsOf(step)
   if (effects === null) return step.population.ids.includes(accountId) ? 'in' : 'out'
   if (effects.length === 0) return 'unknown'
-  const answers = effects.map((e) => accountApplicability(e.scope, accountId, snapshot as never, ctx))
+  const answers = effects.map((e) => operationReach(e, accountId, snapshot, ctx).answer)
   if (answers.includes('in')) return 'in'
   return answers.includes('unknown') ? 'unknown' : 'out'
 }

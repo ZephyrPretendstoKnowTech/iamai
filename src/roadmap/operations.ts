@@ -71,21 +71,40 @@ const CONDITION_SHAPES: Record<string, (v: unknown) => boolean> = {
     isObjectOnly(v, new Set(['includeApplications', 'excludeApplications', 'includeUserActions', 'includeAuthenticationContextClassReferences'])) &&
     listOk(v.includeApplications) &&
     listOk(v.excludeApplications) &&
-    listOk(v.includeUserActions) &&
+    listOk(v.includeUserActions, USER_ACTIONS) &&
     listOk(v.includeAuthenticationContextClassReferences),
   clientApplications: (v) => isWorkloadScope(v),
   clientAppTypes: (v) => Array.isArray(v) && v.length > 0 && listOk(v, CLIENT_APP_TYPES),
   locations: (v) =>
     isObjectOnly(v, new Set(['includeLocations', 'excludeLocations'])) && listOk(v.includeLocations) && listOk(v.excludeLocations) && (nonEmpty(v.includeLocations) || nonEmpty(v.excludeLocations)),
-  platforms: (v) => isObjectOnly(v, new Set(['includePlatforms', 'excludePlatforms'])) && listOk(v.includePlatforms) && listOk(v.excludePlatforms) && nonEmpty(v.includePlatforms),
+  platforms: (v) => isObjectOnly(v, new Set(['includePlatforms', 'excludePlatforms'])) && listOk(v.includePlatforms, PLATFORMS) && listOk(v.excludePlatforms, PLATFORMS) && nonEmpty(v.includePlatforms),
   devices: (v) => isObjectOnly(v, new Set(['deviceFilter'])) && isFilter(v.deviceFilter),
   signInRiskLevels: (v) => listOk(v, RISK_LEVELS),
   userRiskLevels: (v) => listOk(v, RISK_LEVELS),
   servicePrincipalRiskLevels: (v) => listOk(v, RISK_LEVELS),
-  authenticationFlows: (v) => isObjectOnly(v, new Set(['transferMethods'])) && word(v.transferMethods),
+  authenticationFlows: (v) => isObjectOnly(v, new Set(['transferMethods'])) && tokens(v.transferMethods, TRANSFER_METHODS),
 }
 const RISK_LEVELS = new Set(['low', 'medium', 'high', 'none', 'hidden', 'unknownfuturevalue'])
 const CLIENT_APP_TYPES = new Set(['all', 'browser', 'mobileappsanddesktopclients', 'exchangeactivesync', 'easunsupported', 'other'])
+/** The client app kinds that are the old protocols: a policy naming only these is the legacy-authentication block. */
+const LEGACY_CLIENT_APP_TYPES = new Set(['exchangeactivesync', 'easunsupported', 'other'])
+const PLATFORMS = new Set(['all', 'android', 'ios', 'windows', 'windowsphone', 'macos', 'linux', 'unknownfuturevalue'])
+const USER_ACTIONS = new Set(['urn:user:registersecurityinfo', 'urn:user:registerdevice'])
+const TRANSFER_METHODS = new Set(['devicecodeflow', 'authenticationtransfer'])
+const GUEST_TYPES = new Set([
+  'internalguest',
+  'b2bcollaborationguest',
+  'b2bcollaborationmember',
+  'b2bdirectconnectuser',
+  'otherexternaluser',
+  'serviceprovider',
+  'unknownfuturevalue',
+])
+const SIGN_IN_FREQUENCY_TYPES = new Set(['days', 'hours'])
+const FREQUENCY_INTERVALS = new Set(['timeBased', 'everyTime'])
+const AUTHENTICATION_TYPES = new Set(['primaryAndSecondaryAuthentication', 'secondaryAuthentication'])
+const PERSISTENT_BROWSER_MODES = new Set(['always', 'never'])
+const CLOUD_APP_SECURITY_TYPES = new Set(['mcasConfigured', 'monitorOnly', 'blockDownloads', 'unknownFutureValue'])
 const USER_SCOPE_FIELDS = new Set([
   'includeUsers',
   'excludeUsers',
@@ -98,16 +117,28 @@ const USER_SCOPE_FIELDS = new Set([
 ])
 const MEMBERSHIP_KINDS = new Set(['all', 'enumerated', 'unknownfuturevalue'])
 
+/** A comma-joined list of names, every one of them one Conditional Access has. */
+const tokens = (v: unknown, allowed: ReadonlySet<string>): boolean => {
+  if (typeof v !== 'string') return false
+  const parts = v.split(',').map((x) => x.trim().toLowerCase()).filter((x) => x.length > 0)
+  return parts.length > 0 && parts.every((x) => allowed.has(x))
+}
+/** Whether a session control is switched on: an absent flag is on, `false` is off. */
+const enabled = (v: unknown): boolean => isObject(v) && v.isEnabled !== false
+
 /** A filter has a mode and a rule, or it filters nothing. */
 const isFilter = (v: unknown): boolean => isObjectOnly(v, new Set(['mode', 'rule'])) && ['include', 'exclude'].includes(String(v.mode).toLowerCase()) && word(v.rule)
 
 /** A guest clause names the kinds of guest it means, and which tenants they come from. */
 function isGuestClause(v: unknown): boolean {
   if (!isObjectOnly(v, new Set(['guestOrExternalUserTypes', 'externalTenants']))) return false
-  if (!word(v.guestOrExternalUserTypes)) return false
+  if (!tokens(v.guestOrExternalUserTypes, GUEST_TYPES)) return false
   const tenants = v.externalTenants
   if (!isObjectOnly(tenants, new Set(['membershipKind', 'members']))) return false
-  return MEMBERSHIP_KINDS.has(String(tenants.membershipKind).toLowerCase())
+  const kind = String(tenants.membershipKind).toLowerCase()
+  if (!MEMBERSHIP_KINDS.has(kind)) return false
+  // A clause that names its tenants one by one has to name them.
+  return kind !== 'enumerated' || nonEmpty(tenants.members)
 }
 
 /** The people clause: lists of ids, and guest clauses that say what they mean. */
@@ -159,17 +190,41 @@ const POLICY_STATES = new Set(['enabled', 'disabled', 'enabledForReportingButNot
 
 /** The session controls IAMAI writes or carries, each with the shape it has to have. */
 const SESSION_SHAPES: Record<string, (v: unknown) => boolean> = {
-  signInFrequency: (v) =>
-    isObjectOnly(v, new Set(['isEnabled', 'type', 'value', 'authenticationType', 'frequencyInterval'])) &&
-    (v.type === undefined || v.type === null || ['days', 'hours'].includes(String(v.type))) &&
-    (v.value === undefined || v.value === null || typeof v.value === 'number') &&
-    (v.frequencyInterval === undefined || v.frequencyInterval === null || ['timeBased', 'everyTime'].includes(String(v.frequencyInterval))),
-  persistentBrowser: (v) => isObjectOnly(v, new Set(['isEnabled', 'mode'])) && (v.mode === undefined || v.mode === null || ['always', 'never'].includes(String(v.mode))),
-  secureSignInSession: (v) => isObjectOnly(v, new Set(['isEnabled'])),
-  applicationEnforcedRestrictions: (v) => isObjectOnly(v, new Set(['isEnabled'])),
-  cloudAppSecurity: (v) => isObjectOnly(v, new Set(['isEnabled', 'cloudAppSecurityType'])),
+  // A sign-in frequency that is on says how often: every time, or a number of
+  // hours or days. "On", with nothing else, is not a setting Graph can apply.
+  signInFrequency: (v) => {
+    if (!isObjectOnly(v, new Set(['isEnabled', 'type', 'value', 'authenticationType', 'frequencyInterval']))) return false
+    if (v.authenticationType !== undefined && !AUTHENTICATION_TYPES.has(String(v.authenticationType))) return false
+    if (!enabled(v)) return true
+    if (v.frequencyInterval !== undefined && !FREQUENCY_INTERVALS.has(String(v.frequencyInterval))) return false
+    // "Every time" carries no interval of its own; Graph writes the two fields as null.
+    if (v.frequencyInterval === 'everyTime') return (v.type ?? null) === null && (v.value ?? null) === null
+    return SIGN_IN_FREQUENCY_TYPES.has(String(v.type)) && typeof v.value === 'number' && Number.isFinite(v.value) && v.value > 0
+  },
+  persistentBrowser: (v) => isObjectOnly(v, new Set(['isEnabled', 'mode'])) && (!enabled(v) || PERSISTENT_BROWSER_MODES.has(String(v.mode))),
+  secureSignInSession: (v) => isObjectOnly(v, new Set(['isEnabled'])) && typeof v.isEnabled === 'boolean',
+  applicationEnforcedRestrictions: (v) => isObjectOnly(v, new Set(['isEnabled'])) && typeof v.isEnabled === 'boolean',
+  cloudAppSecurity: (v) => isObjectOnly(v, new Set(['isEnabled', 'cloudAppSecurityType'])) && (!enabled(v) || CLOUD_APP_SECURITY_TYPES.has(String(v.cloudAppSecurityType))),
   disableResilienceDefaults: (v) => typeof v === 'boolean' || v === null,
 }
+
+/**
+ * A condition that decides *when* a policy applies, rather than who it names.
+ * Some of these the tenant scan can answer for one account exactly — the old
+ * protocols, the device-code and authentication-transfer flows, a risk level, a
+ * place. The rest it cannot answer at all, and a policy carrying one is held
+ * unknown rather than read as though the condition were not there.
+ */
+export type Narrowing =
+  | { kind: 'legacyClients' }
+  | { kind: 'clientAppTypes'; types: string[] }
+  | { kind: 'signInFlow'; methods: string[] }
+  | { kind: 'risk'; levels: string[] }
+  | { kind: 'locations'; include: string[]; exclude: string[] }
+  | { kind: 'platforms' }
+  | { kind: 'applications'; ids: string[] }
+  | { kind: 'userActions'; actions: string[] }
+  | { kind: 'deviceFilter' }
 
 /** One thing a policy asks a person for. Kept apart: a device is not an app, and neither is a method. */
 export type Requirement =
@@ -214,6 +269,8 @@ export type PolicyEffect = {
   requirements: Requirement[]
   /** Who and what it reaches. */
   scope: PolicyScope
+  /** The conditions that decide when it applies, each kept as it stands. */
+  narrowings: Narrowing[]
   /** The built-in grant controls it requires, lowercased. */
   controls: ReadonlySet<string>
   /** The authentication strength it requires, as the reference the request carries. */
@@ -276,11 +333,27 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
   const conditions = isObject(body.conditions) ? body.conditions : {}
   for (const k of Object.keys(conditions)) if (CONDITION_SHAPES[k] === undefined && !isAnnotation(k)) unknown.push(`a condition IAMAI has no reading for: ${k}`)
   if (grant) for (const k of Object.keys(grant)) if (!GRANT_FIELDS.has(k) && !isAnnotation(k)) unknown.push(`a grant setting IAMAI has no reading for: ${k}`)
-  // A device filter narrows the policy by a rule IAMAI cannot evaluate.
-  if (isObject(conditions.devices)) unknown.push('a device filter')
   const locations = isObject(conditions.locations) ? conditions.locations : null
   const locationIds = locations ? { include: strings(locations.includeLocations), exclude: strings(locations.excludeLocations) } : null
   const riskLevels = [...strings(conditions.signInRiskLevels), ...strings(conditions.userRiskLevels)]
+  const scope = scopeOf(conditions)
+  const narrowings: Narrowing[] = []
+  const appTypes = strings(conditions.clientAppTypes).map((t) => t.toLowerCase())
+  if (appTypes.length > 0 && !appTypes.includes('all')) {
+    if (appTypes.every((t) => LEGACY_CLIENT_APP_TYPES.has(t))) narrowings.push({ kind: 'legacyClients' })
+    else narrowings.push({ kind: 'clientAppTypes', types: appTypes })
+  }
+  const flows = isObject(conditions.authenticationFlows) ? String(conditions.authenticationFlows.transferMethods ?? '') : ''
+  if (flows.trim().length > 0) narrowings.push({ kind: 'signInFlow', methods: flows.split(',').map((x) => x.trim()).filter((x) => x.length > 0) })
+  if (riskLevels.length > 0) narrowings.push({ kind: 'risk', levels: riskLevels })
+  if (locationIds !== null && (locationIds.include.length > 0 || locationIds.exclude.length > 0)) narrowings.push({ kind: 'locations', ...locationIds })
+  if (isObject(conditions.platforms)) narrowings.push({ kind: 'platforms' })
+  if (isObject(conditions.devices)) narrowings.push({ kind: 'deviceFilter' })
+  // A policy for every resource narrows nothing; one naming resources or a user
+  // action applies only there, and nothing in the scan says where a person goes.
+  const namedApps = scope.applications.include.filter((a) => !['all', 'none'].includes(a.toLowerCase()))
+  if (namedApps.length > 0) narrowings.push({ kind: 'applications', ids: namedApps })
+  if (scope.applications.userActions.length > 0) narrowings.push({ kind: 'userActions', actions: scope.applications.userActions })
   const raw = isObject(body.sessionControls) ? body.sessionControls : null
   const on = (v: unknown): boolean => (isObject(v) ? v.isEnabled !== false && Object.keys(v).length > 0 : v !== null && v !== undefined)
   const sessionControls = raw
@@ -312,7 +385,8 @@ export function effectOf(body: Record<string, unknown>): PolicyEffect {
     blocks: controls.has('block'),
     operator,
     requirements,
-    scope: scopeOf(conditions),
+    scope,
+    narrowings,
     controls,
     strength,
     requiresDevice: requirements.some((r) => r.kind === 'device'),

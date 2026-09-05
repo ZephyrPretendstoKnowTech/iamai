@@ -725,7 +725,9 @@ test('the strand verdict, the dependencies, the notice and the observation all f
   const opts = { breakGlass: false, allowedCountries: ['AU'], countryLocations: { 'loc-au': ['AU'] } }
   // A block filed under mfa: the account is stranded because it was seen using
   // what the policy blocks, not because it has no method.
-  const block = asStep(policy({ grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'mfa', 's-block')
+  // A block is a block of something: the old protocols, here, which the records
+  // can answer for one account.
+  const block = asStep(policy({ conditions: { ...SCOPE, clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } }), 'mfa', 's-block')
   assert.match(wouldStrand(block, 'u1', snapshot, opts).reason, /seen using what the step blocks/)
   // MFA filed under block: the account is stranded for having no method.
   const mfa = asStep(policy(), 'block', 's-mfa')
@@ -948,13 +950,13 @@ test('zero impact is proved one person at a time, and an unreadable policy is ne
       population: { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 },
       ...over,
     }) as unknown as Step
-  const block = policy({ grantControls: { operator: 'OR', builtInControls: ['block'] } })
+  const block = policy({ conditions: { ...SCOPE, clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } })
   assert.equal(nobodyAffected(step(block)), true, 'a block nobody was seen using')
   assert.equal(nobodyAffected(step(block, { evidence: { status: 'ok', lines: [], affectedUserIds: ['u1'] } })), false)
   assert.equal(nobodyAffected(step(block, { evidence: { status: 'partial', lines: [], affectedUserIds: [] } })), false, 'records that could not be read are not proof of zero')
   assert.equal(nobodyAffected(step(policy())), false, 'a policy that asks people for something touches everyone it applies to')
   assert.equal(nobodyAffected(step(policy(), { population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 } })), true, 'unless it applies to nobody')
-  const unreadable = { ...policy(), grantControls: { operator: 'OR', builtInControls: ['block'], termsOfUse: ['t-1'] } }
+  const unreadable = { ...policy({ conditions: { ...SCOPE, clientAppTypes: ['exchangeActiveSync', 'other'] } }), grantControls: { operator: 'OR', builtInControls: ['block'], termsOfUse: ['t-1'] } }
   assert.equal(nobodyAffected(step(unreadable)), false, 'a policy IAMAI cannot read in full is never zero')
   // A session-only policy is felt, so it batches with the device work.
   const sessionOnly = step(policy({ grantControls: null, sessionControls: { signInFrequency: { isEnabled: true, value: 4, type: 'hours' } } }))
@@ -983,7 +985,8 @@ test('the lockout count comes from the strength the step will leave behind, not 
   } as never
   const strengths = strengthLookupOf(snapshot)
   const scope = ['u1', 'u2', 'u3']
-  const count = (effects: PolicyEffect[], ids: string[] = scope): number | null => lockoutCount(effects, ids, viability, snapshot, strengths)
+  const count = (effects: PolicyEffect[], only: string[] = scope): number | null =>
+    lockoutCount(effects, viability.filter((v: { userId: string }) => only.includes(v.userId)), snapshot, strengths)
   const strong = effectOf(policy({ grantControls: { operator: 'OR', authenticationStrength: { id: FIDO_ONLY } } }))
   assert.equal(count([strong]), 1, 'the active person with push only; the dormant one is not counted')
   assert.equal(count([strong], ['u2']), 0, 'the scope is the policy’s own')
