@@ -319,7 +319,10 @@ const READ_LEAVES = new Set([
 /**
  * The leaves a policy actually carries, at the depth the reading is decided:
  * `conditions.<field>.<part>` and `grantControls.<control>`. Graph's own
- * annotations are not fields.
+ * annotations are not fields, and neither is a field written null: a tenant's
+ * own policy comes back with `platforms`, `locations` and `devices` written null
+ * whenever it sets none of them, and a field that carries nothing has nothing to
+ * read or to ignore.
  */
 function semanticLeaves(body: Record<string, unknown>): string[] {
   const out: string[] = []
@@ -327,9 +330,9 @@ function semanticLeaves(body: Record<string, unknown>): string[] {
     const value = body[section]
     if (!isObject(value)) continue
     for (const [k, v] of Object.entries(value)) {
-      if (isAnnotation(k)) continue
+      if (isAnnotation(k) || v === null || v === undefined) continue
       if (deep && isObject(v)) {
-        for (const k2 of Object.keys(v)) if (!isAnnotation(k2)) out.push(`${section}.${k}.${k2}`)
+        for (const [k2, v2] of Object.entries(v)) if (!isAnnotation(k2) && v2 !== null && v2 !== undefined) out.push(`${section}.${k}.${k2}`)
         continue
       }
       out.push(`${section}.${k}`)
