@@ -86,7 +86,6 @@ test('the rung follows the method that travels, and proof is the sign-in the rec
 
 test("the campaign step's groups and the admin steps' lockout counts read the ladder; the 90% gate renders nowhere on Today, the Plan strip or Connect", async () => {
   const { contentLists } = await import('./contentLists.ts')
-  const { lockoutIds } = await import('../roadmap/lockout.ts')
   const { adminUserIds } = await import('../roles.ts')
   const { pages } = await import('../content/content.ts')
   const { readFileSync } = await import('node:fs')
@@ -102,7 +101,9 @@ test("the campaign step's groups and the admin steps' lockout counts read the la
     const bg = new Set(f.mapping.breakGlassUserIds)
     const below = [...l.viability.values()].filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && rungOf(v) !== 5).map((v) => v.userId).sort()
     assert.ok(l.rungs[5].length > 0 || name === 'getiamai', `${name}: someone holds a passkey and proved it`)
-    assert.deepEqual(lockoutIds('admins-phishing-resistant', [...l.viability.values()], f.snapshot, bg).sort(), below, `${name}: the admin lockout is the admins not yet at rung 5`)
+    // The readiness list names the admins not yet at rung 5; what a policy would
+    // stop is the policy's own answer, counted on the step (roadmap/lockout.ts).
+    assert.deepEqual([...cl.adminsWithout].sort(), below, `${name}: the admin readiness list is the admins not yet at rung 5`)
   }
   // The five titles are the words the campaign's groups and the admin steps use.
   const campaign = JSON.stringify((await import('../content/content.ts')).stepById['s-verify-mfa'])

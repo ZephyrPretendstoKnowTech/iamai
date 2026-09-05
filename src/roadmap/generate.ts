@@ -25,7 +25,7 @@ import { campaignIds } from '../derive/population.ts'
 import { isNonPerson, notActiveUsers, notPeopleIds } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { lockoutCount } from './lockout.ts'
-import { accountVerdict, operationReach, stepAccountVerdict } from './strand.ts'
+import { accountVerdict, effectsOf, familyReading, operationReach, stepAccountVerdict } from './strand.ts'
 import { tenantRhythm } from './rhythm.ts'
 import { eventsFor, nobodyAffected as nobodyAffectedBy } from './timing.ts'
 import { MANAGER, MANAGER_BY_GOAL } from '../copy/plain.ts'
@@ -1227,7 +1227,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   if (verifyStep) {
     for (const s of steps) {
       if (s.status !== 'blocked' || !s.blockers.some((b) => b.kind === 'readiness')) continue
-      if (s.readiness.family !== 'mfa' && s.readiness.family !== 'guest') continue
+      // What the step waits on is what its policies ask for: a policy that asks
+      // for a sign-in method waits for people to have one. The goal's family
+      // answers only for a step with no policy of its own.
+      const effects = effectsOf(s)
+      const family = familyReading(s)
+      const asksForMethod = effects !== null ? effects.some((e) => e.asksForMethod) : family === 'mfa' || family === 'guest'
+      if (!asksForMethod) continue
       // Only ever a backward edge. A phase 0 step (security-info registration)
       // that waits on the phase 2 campaign would order the plan against itself;
       // it keeps the readiness reason without the dependency.
@@ -1299,8 +1305,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // allow list, and before the list itself passes its checks.
   const countriesReport = validationReports.find((r) => r.subject === 'allowedCountries')
   if (countriesReport && countriesReport.blocking.length > 0) {
+    // Which steps a bad country list can hurt is the policies' own answer: the
+    // ones that will name a place. A step with no policy of its own — one
+    // already in place, the enforce step — is read by its goal's family, as it
+    // always was (roadmap/strand.ts familyReading).
     for (const s of steps) {
-      if (s.readiness.family === 'location') blockLate(s, 'countries-unsafe', null, blockerStepId('allowedCountries'))
+      const effects = effectsOf(s)
+      const namesAPlace = effects !== null ? effects.some((e) => e.usesLocations) : familyReading(s) === 'location'
+      if (namesAPlace) blockLate(s, 'countries-unsafe', null, blockerStepId('allowedCountries'))
     }
   }
 
@@ -1318,11 +1330,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // sign-in every time without MFA in the same policy is Microsoft's own
   // documented hazard (steps/session-controls.md).
   for (const s of steps) {
-    const impl = input.coverage.results.find((r) => r.goal.id === s.goalId)?.goal.implementations[0]
-    const floor = impl?.floor
-    if (floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined) {
-      blockLate(s, 'session-loop', BLOCKED_REASON.exist(1, 'MFA grant on this policy', 0))
-    }
+    // The policy the step will actually leave behind decides: a sign-in
+    // frequency of "every time" with nothing granting a way through is the loop,
+    // whatever the goal's floor was written as. The floor answers only for a
+    // step with no policy of its own (roadmap/operations.ts stepEffects).
+    const effects = effectsOf(s)
+    const loops =
+      effects !== null
+        ? effects.some((e) => e.sessionControls?.signInFrequencyEveryTime === true && !e.asksForMethod)
+        : (() => {
+            const floor = input.coverage.results.find((r) => r.goal.id === s.goalId)?.goal.implementations[0]?.floor
+            return floor?.session?.signInFrequencyEveryTime === true && floor.grant === undefined
+          })()
+    if (loops) blockLate(s, 'session-loop', BLOCKED_REASON.exist(1, 'MFA grant on this policy', 0))
   }
 
   // ---- Ordering: phase, then risk score ----

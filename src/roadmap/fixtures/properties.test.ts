@@ -8,7 +8,7 @@ import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
 import { unavailableReason } from '../operations.ts'
-import { canDenyAccess, wouldStrand } from '../strand.ts'
+import { canDenyAccess, effectsOf, wouldStrand } from '../strand.ts'
 import { localHour } from '../timing.ts'
 import { buildPlanFile } from '../plan.ts'
 import { NO_ANNOUNCEMENT } from '../../copy/announcements.ts'
@@ -403,17 +403,32 @@ test('no wave whose only occupants are zero-class steps (small, getiamai, and ev
   }
 })
 
-test('risk goals affect nobody when the collected sign-ins carry no risk verdict', () => {
-  // Risk policies need a P2 licence, so the P1 tenants (small, getiamai) plan none; the P2 tenants prove the rule.
-  let seen = 0
+test('a sign-in-risk policy affects nobody when the collected sign-ins carry no risk verdict; a user-risk policy is never proved to', () => {
+  // Risk policies need a P2 licence, so the P1 tenants (small, getiamai) plan
+  // none; the P2 tenants prove the rule. The two conditions are two questions:
+  // the records hold the risk of a sign-in, so a policy that acts on that can be
+  // proved to touch nobody; the risk carried by an *account* is Identity
+  // Protection's own running judgement, which the scan does not hold, so a
+  // policy acting on it is held rather than called quiet (operations.ts
+  // Narrowing, strand.ts narrowingReach).
+  let signIn = 0
+  let user = 0
   for (const f of fixtures) {
     const r = runFixture(f)
     for (const s of r.steps.filter((x) => x.readiness.family === 'risk')) {
       if (s.evidence.status !== 'ok') continue
-      seen += 1
+      const kinds = new Set((effectsOf(s) ?? []).flatMap((e) => e.narrowings.map((n) => n.kind)))
+      if (kinds.has('userRisk')) {
+        user += 1
+        assert.notEqual(batchClassOf(s), 'zero', `${f.name} ${s.id}: an account's own risk is not a measure the scan holds`)
+        continue
+      }
+      if (!kinds.has('signInRisk')) continue
+      signIn += 1
       assert.equal(s.evidence.affectedUserIds.length, 0, `${f.name} ${s.id}: nobody had a flagged sign-in`)
       assert.equal(batchClassOf(s), 'zero', `${f.name} ${s.id} is zero-class`)
     }
   }
-  assert.ok(seen >= 4, `risk steps with usable evidence across the fixtures: ${seen}`)
+  assert.ok(signIn >= 2, `sign-in-risk steps with usable evidence across the fixtures: ${signIn}`)
+  assert.ok(user >= 2, `user-risk steps across the fixtures: ${user}`)
 })
