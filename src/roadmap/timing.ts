@@ -5,7 +5,7 @@
 import { EVENT } from '../copy/timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
-import { unavailableReason } from './operations.ts'
+import { scopeBoundedBy, unavailableReason } from './operations.ts'
 import { effectsOf } from './strand.ts'
 
 /** The circumstances the records can answer; anything else is not proof of a zero. */
@@ -174,7 +174,11 @@ export function nobodyAffected(step: Step): boolean {
       continue
     }
     // Anything else applies whenever the people it names sign in, so it touches
-    // everyone it reaches.
+    // everyone it reaches. The step's own list answers for that only where the
+    // policy names nobody the list does not hold: a policy that reaches a group,
+    // a role or every user reaches people the step never counted, and an empty
+    // count is then no proof of anything (roadmap/operations.ts scopeBoundedBy).
+    if (!scopeBoundedBy(effect.scope, step.population.ids)) return false
     if (step.population.active > 0) return false
   }
   return true

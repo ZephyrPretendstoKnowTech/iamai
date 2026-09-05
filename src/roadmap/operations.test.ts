@@ -955,7 +955,15 @@ test('zero impact is proved one person at a time, and an unreadable policy is ne
   assert.equal(nobodyAffected(step(block, { evidence: { status: 'ok', lines: [], affectedUserIds: ['u1'] } })), false)
   assert.equal(nobodyAffected(step(block, { evidence: { status: 'partial', lines: [], affectedUserIds: [] } })), false, 'records that could not be read are not proof of zero')
   assert.equal(nobodyAffected(step(policy())), false, 'a policy that asks people for something touches everyone it applies to')
-  assert.equal(nobodyAffected(step(policy(), { population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 } })), true, 'unless it applies to nobody')
+  const nobody = { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 }
+  assert.equal(nobodyAffected(step(policy(), { population: nobody })), false, 'a policy for every user reaches people the step never counted')
+  const named = policy({ conditions: { users: { includeUsers: ['u1'] }, applications: { includeApplications: ['All'] } } })
+  assert.equal(nobodyAffected(step(named, { population: nobody })), false, 'and a policy naming somebody the step does not list is no zero either')
+  assert.equal(
+    nobodyAffected(step(named, { population: { total: 1, active: 0, admins: 0, guests: 0, ids: ['u1'], activeIds: [], inScope: 1 } })),
+    true,
+    'unless it names exactly the people the step holds, and none of them is active',
+  )
   const unreadable = { ...policy({ conditions: { ...SCOPE, clientAppTypes: ['exchangeActiveSync', 'other'] } }), grantControls: { operator: 'OR', builtInControls: ['block'], termsOfUse: ['t-1'] } }
   assert.equal(nobodyAffected(step(unreadable)), false, 'a policy IAMAI cannot read in full is never zero')
   // A session-only policy is felt, so it batches with the device work.
