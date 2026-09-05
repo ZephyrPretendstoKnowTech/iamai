@@ -16,7 +16,8 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { advanceState, raiseCondition, setState, statusRank } from './lifecycle.ts'
 import type { StepState } from './lifecycle.ts'
-import { artifactIdOf, historyReset, observe, observedStateOf, semanticsOf } from './observation.ts'
+import { artifactIdOf, historyReset, intentOf, observe, observedStateOf, semanticFieldsOf, semanticsOf } from './observation.ts'
+import type { IntentSemantics } from './observation.ts'
 import type { ObservationChange, StepObservation } from './observation.ts'
 
 const TRACK = engine.tracking
@@ -117,17 +118,26 @@ function reportOnlySince(change: ObservationChange): { at: string; source: NonNu
 }
 
 /**
- * What the step's own operation would leave on the tenant, fingerprinted the
- * same way an observation is, so a change that matches it is the plan's own work
- * landing rather than somebody editing the policy. Null where the operation is a
- * partial update with no whole policy behind it: the plan cannot tell, and a
- * change it cannot tell about is not one it may claim to have asked for.
+ * What the step's own operation asks to change, and to what — the body it puts on
+ * the wire, and nothing it merely carries (observation.ts intentOf).
+ *
+ * This used to read the *resolved target*: for an update, the tenant's own policy
+ * with the patch applied. Every field the patch does not touch is copied from
+ * whatever is deployed at the moment the target is built, so a drift somebody
+ * introduced between scans arrived inside the thing it was about to be compared
+ * against, and matched. The tenant was asked whether it agreed with itself, said
+ * yes, and the review that movement should have raised was suppressed. The target
+ * is still exactly right for Foundation A — it is the request that has to be valid
+ * — and is simply not a statement of what IAMAI meant to change.
+ *
+ * So: the whole body for a create, and only the fields the patch carries for an
+ * update. A step whose patch sets nothing but `state` controls no material
+ * dimension at all, and authorises no semantic movement whatever.
  */
-function intendedSemantics(step: Step): string | null {
+function intentOfStep(step: Step): IntentSemantics | null {
   const op = step.action.resolution?.policies[0]
   if (!op) return null
-  const whole = op.mode === 'create' ? op.body : op.target
-  return whole ? semanticsOf(whole) : null
+  return intentOf(op.body)
 }
 
 /**
@@ -261,11 +271,14 @@ export function trackExecution(
       artifact: artifactIdOf(policyRow?.id),
       state: observedState,
       semantics: semanticsOf(policyRow as Record<string, unknown> | null),
+      // The same policy dimension by dimension, so a movement can be attributed
+      // to the part that moved rather than to the policy as a whole.
+      fields: semanticFieldsOf(policyRow as Record<string, unknown> | null),
       at: snapshot.asOf,
       // The one transition a tenant can prove: a sign-in evaluated under the
       // policy in report-only says it was in report-only that day.
       evidenceAt: observedState === 'report-only' ? pr?.firstReportOnlyAt ?? null : null,
-      intended: intendedSemantics(step),
+      intent: intentOfStep(step),
     })
     setState(step, { observation: change })
     advanceState(step, { lifecycle: observedState === 'report-only' ? 'report-only' : observedState === 'enforced' ? 'enforced' : 'not-deployed' })

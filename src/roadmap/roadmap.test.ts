@@ -11,7 +11,8 @@ import { generateRoadmap } from './generate.ts'
 import type { RoadmapInput } from './generate.ts'
 import { observationsFrom } from './observation.ts'
 import { applyProgress, mergePersisted, skipStep } from './progress.ts'
-import { artifactIdOf, semanticsOf } from './observation.ts'
+import { setState } from './lifecycle.ts'
+import { artifactIdOf, semanticFieldsOf, semanticsOf } from './observation.ts'
 
 /** The tenant's Conditional Access rows, as the tests build them. */
 const rowsOf = (snap: { config: { caPolicies?: { rows?: unknown[] } | null } }): Record<string, unknown>[] => (snap.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
@@ -225,7 +226,7 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   // saw *this policy* in report-only, past the observation window. The record
   // names the object it watched; one that does not cannot carry the window
   // (observation.ts artifactIdOf), which is asserted below.
-  const watched = { [step.id]: { artifact: artifactIdOf('created-1'), state: 'report-only' as const, semantics: semanticsOf(rowsOf(snap2)[0]), firstSeenAt: '2026-08-18T00:00:00Z', since: 'first-scan' as const, lastSeenAt: '2026-08-18T00:00:00Z', evidenceAt: null } }
+  const watched = { [step.id]: { artifact: artifactIdOf('created-1'), state: 'report-only' as const, semantics: semanticsOf(rowsOf(snap2)[0]), fields: semanticFieldsOf(rowsOf(snap2)[0]), firstSeenAt: '2026-08-18T00:00:00Z', since: 'first-scan' as const, lastSeenAt: '2026-08-18T00:00:00Z', evidenceAt: null } }
   applyProgress(steps, snap2, input.coverage, PLAN, undefined, null, watched)
   assert.equal(step.status, 'ready-to-enforce')
 
@@ -260,7 +261,11 @@ test('7: regression after done → re-opened with a dated note (missing policy: 
   const { input } = build({ baselinePolicies: [baseline] })
   const steps = generateRoadmap(input).steps
   const step = stepFor(steps, 'mfa-all-users')
-  mergePersisted(steps, { [step.id]: { status: 'done', history: [{ at: '2026-08-01T00:00:00Z', from: 'ready', to: 'done', note: null }], skipReason: null } })
+  // Where the last scan left it. It is set through the state, not restored from a
+  // saved status word: a word is a projection, and a policy step's lifecycle comes
+  // from the current scan (progress.ts mergePersisted).
+  step.history = [{ at: '2026-08-01T00:00:00Z', from: 'ready', to: 'done', note: null }]
+  setState(step, { satisfied: true, inPlace: true })
   assert.equal(step.status, 'done')
   // coverage for this run says absent (no tenant policy) → drift reopen.
   applyProgress(steps, mkSnapshot(), input.coverage, PLAN)

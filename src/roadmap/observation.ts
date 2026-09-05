@@ -73,6 +73,17 @@ export type StepObservation = {
    * fingerprint is never read as a change.
    */
   semantics: string
+  /**
+   * The same material semantics, dimension by dimension: the grant, the session
+   * and each condition fingerprinted on its own (`semanticFieldsOf`).
+   *
+   * The whole-policy fingerprint says *that* a policy changed. This says *which
+   * part of it*, which is the only way to ask whether the part that moved is a
+   * part the plan asked to move. Empty means it was not recorded — a record
+   * written before this contract, or no policy at all — and an unrecorded
+   * dimension proves nothing either way.
+   */
+  fields: Record<string, string>
   /** The scan (snapshot.asOf) that first saw this state with these semantics. IAMAI's own sighting, not a transition time. */
   firstSeenAt: string
   /**
@@ -210,6 +221,61 @@ export function semanticsOf(policy: Record<string, unknown> | null | undefined):
   return hash(JSON.stringify(material))
 }
 
+/**
+ * The material dimensions of a policy, each fingerprinted on its own: the grant,
+ * the session, and every condition separately — who it names, which resources,
+ * which client apps, which platforms, which places, which risk levels, the device
+ * filter. The keys are the policy's own field names, so this is a projection of
+ * the body and not a second reading of it.
+ *
+ * `state` is deliberately absent: where a policy is in its lifecycle is the other
+ * axis, and turning one on changes nothing about what it means.
+ */
+export function semanticFieldsOf(policy: Record<string, unknown> | null | undefined): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!policy) return out
+  const put = (key: string, value: unknown): void => {
+    if (value === undefined) return
+    out[key] = hash(JSON.stringify(canonical(value) ?? null))
+  }
+  const conditions = policy.conditions
+  if (conditions && typeof conditions === 'object' && !Array.isArray(conditions)) {
+    for (const [k, v] of Object.entries(conditions as Record<string, unknown>)) put(`conditions.${k}`, v)
+  } else put('conditions', conditions)
+  put('grantControls', policy.grantControls)
+  put('sessionControls', policy.sessionControls)
+  return out
+}
+
+/**
+ * What the step's own operation intends to *change*, and to what.
+ *
+ * This is not the policy the operation leaves behind. An update's resolved target
+ * is the tenant's own policy with a patch applied, so every field the patch does
+ * not touch is a copy of whatever is deployed right now — including a drift
+ * somebody introduced between scans. Comparing what is deployed against that
+ * target asked whether the tenant matches itself, and answered yes: a drift
+ * became its own authorisation, and the review it should have raised was
+ * suppressed. Foundation A is right to build the target that way — it is the
+ * request that has to be valid on the wire — and Foundation B must not read it as
+ * a statement of intent.
+ *
+ * `controls` is therefore taken from what the operation actually submits: the
+ * whole body for a create, and only the fields the patch carries for an update.
+ * A dimension that is not in here is one the plan is not asking to move, whatever
+ * the target happens to contain.
+ */
+export type IntentSemantics = {
+  /** Dimension → the fingerprint it is meant to have once the operation has run. */
+  controls: Record<string, string>
+}
+
+/** The intent of one submitted body: what it sets, and nothing it merely carries. */
+export function intentOf(body: Record<string, unknown> | null | undefined): IntentSemantics | null {
+  if (!body) return null
+  return { controls: semanticFieldsOf(body) }
+}
+
 // ---- the comparison ----
 
 /** The lifecycle direction: a move up this list is the plan's own work landing. */
@@ -225,8 +291,10 @@ export type Sighting = {
   at: string
   /** Microsoft's own evidence for when this state began, where the tenant proves it. */
   evidenceAt?: string | null
-  /** The semantics the step's own operation would leave behind, where the plan can read them; null when it cannot tell. */
-  intended?: string | null
+  /** The same policy dimension by dimension (`semanticFieldsOf`); empty where there is no policy. */
+  fields?: Record<string, string>
+  /** The dimensions the step's own operation asks to change, and to what (`intentOf`); null when the plan cannot tell. */
+  intent?: IntentSemantics | null
 }
 
 const STATE_WORD: Record<ObservedState, string> = {
@@ -269,11 +337,12 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
   const { state, semantics, at } = sighting
   const artifact = sighting.artifact ?? null
   const evidenceAt = sighting.evidenceAt ?? null
-  const intended = sighting.intended ?? null
+  const intent = sighting.intent ?? null
+  const fields = sighting.fields ?? {}
   const date = absoluteDate(at)
   if (!prior) {
     return {
-      latest: { artifact, state, semantics, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt },
+      latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt },
       prior: null,
       changed: 'first-scan',
       // A first sighting is nothing the plan can claim to have asked for.
@@ -295,6 +364,23 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
   // rewrite would restart every observation window on the upgrade alone.
   const semanticsKnown = prior.semantics.length > 0 && semantics.length > 0
   const semanticsMoved = semanticsKnown && prior.semantics !== semantics
+  /**
+   * Which dimensions moved, and whether every one of them moved because the plan
+   * asked it to. A dimension the operation does not submit is one nobody asked to
+   * change, so a tenant-side mutation in it is never expected — however valid the
+   * request that carries it along would be.
+   *
+   * Null where it cannot be established: a record with no dimensions of its own,
+   * or a step with no operation to compare against. Unknown never suppresses a
+   * review; a drift is called expected on positive evidence or not at all.
+   */
+  const priorFields = prior.fields ?? {}
+  const dimensionsKnown = Object.keys(priorFields).length > 0 && Object.keys(fields).length > 0
+  const movedFields: string[] | null = dimensionsKnown
+    ? [...new Set([...Object.keys(priorFields), ...Object.keys(fields)])].filter((d) => priorFields[d] !== fields[d])
+    : null
+  const intendedMovement =
+    intent !== null && movedFields !== null && movedFields.length > 0 && movedFields.every((d) => intent.controls[d] !== undefined && intent.controls[d] === fields[d])
   const changed: ObservationChanged =
     artifactAnswer === 'different' ? 'artifact' : stateMoved && semanticsMoved ? 'both' : semanticsMoved ? 'semantics' : stateMoved ? 'state' : 'none'
   /**
@@ -307,10 +393,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
    */
   const continuity: ObservationContinuity =
     artifactAnswer === 'unknown' ? 'unknown' : artifactAnswer === 'different' || semanticsMoved ? 'reset' : 'continues'
-  const expected =
-    changed === 'none' ||
-    (intended !== null && intended.length > 0 && semantics === intended) ||
-    (!semanticsMoved && rank(state) > rank(prior.state))
+  const expected = changed === 'none' || intendedMovement || (!semanticsMoved && rank(state) > rank(prior.state))
   /**
    * A person looks when what the policy *means* is not what the plan asked for.
    * Not when the window restarts: a policy replaced by exactly the one the plan
@@ -337,6 +420,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
       artifact,
       state,
       semantics,
+      fields,
       firstSeenAt,
       since,
       lastSeenAt: at,
@@ -356,6 +440,14 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
 }
 
 // ---- the plan record ----
+
+/** A stored dimension map: opaque fingerprints by field name, and nothing else. */
+function readFields(v: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out
+  for (const [k, value] of Object.entries(v as Record<string, unknown>)) if (typeof value === 'string' && value.length > 0) out[k] = value
+  return out
+}
 
 function isObserved(v: unknown): v is ObservedState {
   return v === 'absent' || v === 'disabled' || v === 'report-only' || v === 'enforced' || v === 'unknown'
@@ -377,6 +469,10 @@ export function observationsFrom(rec: { observations?: unknown; reportOnlySeen?:
         artifact: typeof o.artifact === 'string' && o.artifact.length > 0 ? o.artifact : null,
         state: isObserved(o.state) ? o.state : 'unknown',
         semantics: typeof o.semantics === 'string' ? o.semantics : '',
+        // Dimensions, where the record holds them. A record that holds none
+        // cannot say which part of a policy moved, so nothing it carries can
+        // show a later movement was the one the plan asked for.
+        fields: readFields(o.fields),
         firstSeenAt,
         since: o.since === 'observed-change' ? 'observed-change' : 'first-scan',
         lastSeenAt: typeof o.lastSeenAt === 'string' && !Number.isNaN(Date.parse(o.lastSeenAt)) ? o.lastSeenAt : firstSeenAt,
@@ -393,7 +489,7 @@ export function observationsFrom(rec: { observations?: unknown; reportOnlySeen?:
   if (legacy && typeof legacy === 'object') {
     for (const [id, at] of Object.entries(legacy as Record<string, unknown>)) {
       if (out[id] || typeof at !== 'string' || Number.isNaN(Date.parse(at))) continue
-      out[id] = { artifact: null, state: 'report-only', semantics: '', firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt: null }
+      out[id] = { artifact: null, state: 'report-only', semantics: '', fields: {}, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt: null }
     }
   }
   return out
