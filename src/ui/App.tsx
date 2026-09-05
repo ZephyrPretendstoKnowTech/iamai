@@ -64,6 +64,14 @@ export function App() {
   // flight. ui/actions.ts changes it from any page's button; this reads it.
   const { account, tenantName, lastScan, scan, demoWeek2 } = useSession()
   const [ready, setReady] = useState(false)
+  // Which week of the sample is on screen, as against which week the visitor
+  // asked for. `demoWeek2` is the request: Scan again flips it, and the effect
+  // below reads it to decide which fixture to load. The banner is a label for
+  // the data, and labelling it from the request put "week 2" over week one's
+  // plan for as long as the sample took to load — long enough for anything
+  // reading the banner to know what it was looking at to read it wrong, and for
+  // a visitor to see the wrong week under the right name.
+  const [demoWeekShown, setDemoWeekShown] = useState(false)
   // A sign-in that returned an error, classified (graph/authError.ts): Connect's first tile shows one of three states from it.
   const [authError, setAuthError] = useState<SignInError | null>(null)
   const [baseline, setBaseline] = useState<BaselineResult | null>(null)
@@ -133,6 +141,8 @@ export function App() {
           tenantName: 'Contoso Pty Ltd',
           lastScan: { snapshot: d.snapshot, at: d.snapshot.asOf },
         })
+        // The label moves with the snapshot it names, in the same breath.
+        setDemoWeekShown(demoWeek2)
         // The scan has landed: back to the page that asked for it, reopened on the new plan (ui/actions.ts scan).
         const returnTo = scan.returnTo
         if (returnTo) {
@@ -302,7 +312,7 @@ export function App() {
       route={route}
       state={shellState}
       snapshot={lastScan?.snapshot ?? null}
-      demoWeek2={demoWeek2}
+      demoWeek2={demoWeekShown}
     >
       {!ready ? (
         app.shell.loading
