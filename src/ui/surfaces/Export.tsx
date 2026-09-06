@@ -102,7 +102,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const tenantName = (snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const planId = planIdFor(snapshot.tenantId)
   const operator = { userId: account.localAccountId, userPrincipalName: account.username }
-  // The verification window's people, from the one facts function (derive/facts.ts): still to set up is nothing set up or never used for MFA.
+  // The verification window's people, from the one facts function (derive/facts.ts): still to set up is nothing set up or set up but not proven.
   const tenantFacts = data.mapping ? facts(snapshot, data.mapping) : null
   const toSetUp = tenantFacts ? tenantFacts.rungs[1] + tenantFacts.rungs[2] : 0
   const copy = (id: string, text: string): void => {

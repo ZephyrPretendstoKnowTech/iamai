@@ -11,7 +11,10 @@
 //   3  Windows Hello only                Windows Hello for Business or a certificate, and no method
 //                                        that travels: it works on that PC and nowhere else, so the
 //                                        rung stands whatever the records show
-//   2  Set up, never used for MFA        a method, and no MFA sign-in in the records that proves it
+//   2  Set up, not proven                a method, and no sign-in in the records that names it. A
+//                                        record that only says MFA happened is evidence that MFA
+//                                        happened, never proof of the method it was done with, so
+//                                        the person stands here with that record beside them
 //   1  Nothing set up                    no MFA-capable method
 //
 // The rung is the account's, from its methods and its records alone: who is

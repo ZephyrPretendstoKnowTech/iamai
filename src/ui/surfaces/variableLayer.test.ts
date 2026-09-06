@@ -64,7 +64,7 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   // Today's ladder over the same people: the campaign's groups are its rungs (derive/ladder.ts).
   const tv = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
   assert.equal(cl.noMethod.length, tv.ladder.rungs[1].length, 'Nothing set up matches Today')
-  assert.equal(cl.unproven.length, tv.ladder.rungs[2].length, 'Set up, never used for MFA matches Today')
+  assert.equal(cl.unproven.length, tv.ladder.rungs[2].length, 'Set up, not proven matches Today')
   assert.ok(cl.noMethod.length > 0 && cl.unproven.length > 0, 'the demo has people in these buckets')
   assert.ok(cl.specialCare.length > 0, 'the special-care picker has people')
   for (const row of cl.specialCare) {

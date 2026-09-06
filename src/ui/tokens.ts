@@ -29,7 +29,7 @@ export type Palette = {
   wait: string
   stop: string
   idle: string
-  /** Set up, never used for MFA: the ladder's rung 2, between amber and red (docs/design/mockups/today-v2.html). */
+  /** Set up, not proven: the ladder's rung 2, between amber and red (docs/design/mockups/today-v2.html). */
   unproven: string
 }
 

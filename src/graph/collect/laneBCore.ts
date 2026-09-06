@@ -235,6 +235,9 @@ export function riskLevelOf(row: StoredSignIn): 'none' | 'low' | 'medium' | 'hig
   return top === 3 ? 'high' : top === 2 ? 'medium' : top === 1 ? 'low' : 'none'
 }
 
+/** The record that says MFA happened and names no method: mfaSuccessOf's fallback. */
+export const GENERIC_MFA = 'MFA'
+
 function mfaSuccessOf(row: StoredSignIn): string | null {
   if (row.status?.errorCode !== 0) return null
   const step = (row.authenticationDetails ?? [])?.find(
@@ -243,15 +246,24 @@ function mfaSuccessOf(row: StoredSignIn): string | null {
       typeof d.authenticationMethod === 'string' &&
       !/^password$|^previously satisfied$/i.test(d.authenticationMethod),
   )
-  if (row.authenticationRequirement === 'multiFactorAuthentication') {
-    return row.mfaDetail?.authMethod ?? step?.authenticationMethod ?? 'MFA'
-  }
-  return row.mfaDetail?.authMethod ?? step?.authenticationMethod ?? null
+  // A blank method field names nothing: on a record that says MFA was required
+  // it is the generic fact (MFA happened), never a method and never silence.
+  const named = ((row.mfaDetail?.authMethod || step?.authenticationMethod) ?? '').trim()
+  if (row.authenticationRequirement === 'multiFactorAuthentication') return named || GENERIC_MFA
+  return named || null
 }
 
 // Per-user evidence (lastMfaSuccess etc.) — the table §10 consumes.
 export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvidence> {
   const perUser: Record<string, UserEvidence> = {}
+  // The latest record of each kind, kept apart while the rows are read: a
+  // record that names a method is proof of that method, a generic one is
+  // proof only that MFA happened. Graph returns the newest row first, so one
+  // "latest wins" slot let the generic record arrive first and hide the method
+  // the person proved — the ladder then read a passkey holder as rung 2 with
+  // "MFA completed an hour ago" beside it (derive/ladder.ts rungOf).
+  const named = new Map<string, { at: string; method: string }>()
+  const generic = new Map<string, { at: string; method: string }>()
   for (const row of rows) {
     if (!row.userId) continue
     const u = (perUser[row.userId] ??= { signInCount: 0, lastSignIn: null, lastMfaSuccess: null, countries: [] })
@@ -259,14 +271,17 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
     if (row.country && !u.countries?.includes(row.country)) (u.countries ??= []).push(row.country)
     const at = row.createdDateTime
     if (u.lastSignIn === null || at > u.lastSignIn) u.lastSignIn = at
-    // The latest MFA success, by the method the record names: a later sign-in
-    // satisfied by an earlier claim (the generic 'MFA') never hides the method
-    // the person proved, which the ladder reads (derive/ladder.ts rungOf).
     const method = mfaSuccessOf(row)
-    if (method && (u.lastMfaSuccess === null || (at > u.lastMfaSuccess.at && (method !== 'MFA' || u.lastMfaSuccess.method === 'MFA')))) {
-      u.lastMfaSuccess = { at, method }
+    if (method) {
+      const into = method === GENERIC_MFA ? generic : named
+      const held = into.get(row.userId)
+      if (held === undefined || at > held.at) into.set(row.userId, { at, method })
     }
   }
+  // The method the person proved outlives every later record that names none,
+  // in whatever order the rows arrived; a generic record stands alone only when
+  // no record in the window named a method.
+  for (const [id, u] of Object.entries(perUser)) u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
   return perUser
 }
 
