@@ -1878,6 +1878,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     }
     // A change to an existing policy has no ring of its own: its dates come from where the schedule placed it.
     s.events = eventsFor(s, { rhythm, timeZone: mapping.displayTimeZone ?? 'UTC' }, s.kind === 'adjust' ? (schedule.startAt[s.id] ?? null) : null)
+    // The report-only deployment day, off the schedule and onto the step: the
+    // Dates line, the calendar entry and the step's values all read this one.
+    s.reportOnlyAt = schedule.reportOnlyAt[s.id] ?? null
   }
 
   // The lockout-scenario lines, once every step has its enforce date (prompt 48

@@ -112,8 +112,15 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
   const strengthId = typeof strength?.id === 'string' ? strength.id : null
   const strengthName = strength ? (strengthId ? (names.strengthNameFor?.(strengthId) ?? null) : null) : (names.strengthName ?? null)
   const exclusionsGroup = exclusionsGroupId ? nameOf(exclusionsGroupId) : 'the exclusions group'
+  // The description the operation's own body carries (the plan tag), read off
+  // that body and never rebuilt here: the portal instruction sets the same field
+  // the JSON, the PowerShell and the download set, so a policy created by hand
+  // is the one the next scan matches to this step.
+  const description = (p as unknown as { description?: unknown }).description
+  const descriptionLine = typeof description === 'string' && description.length > 0 ? (shared.descriptionLine as string).replace('{description}', description) : null
   return {
     policyName,
+    descriptionLine,
     nameOf,
     strengthName,
     portalRoot: shared.portalRoot as string,

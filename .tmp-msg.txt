@@ -1,0 +1,23 @@
+fix: an undeployed policy dates no enforcement, and the portal creates the tagged policy
+
+Three corrections to the canonical Not deployed / Implement case
+(demo-week2 / s-goal-admin-session), all downstream of the frozen
+Foundations.
+
+The portal instruction now carries the description the operation writes -
+the plan tag the next scan reads to know the created policy is this
+step's. It is read off the operation's own body, never rebuilt, so a
+policy created through the portal is the artifact the JSON, the
+PowerShell and the download create. New shared key: descriptionLine.
+
+The export leads with the next action the frozen Step Contract states.
+Where a step's content carries no whatToDo.lead the calendar entry, the
+prompt pack and the bundle began at the portal path with the operation
+itself never said; they now say what the screen says.
+
+And nothing dates an enforcement while the policy is not deployed. The
+schedule keeps its planned enforcement day - it places the plan's waves
+with it - but the Dates line, the export, the prompt pack and the
+calendar entry state only the report-only deployment until a scan finds
+the policy in report-only. New shared key: datesDeploy. The report-only
+day is carried on the step, so those surfaces read one date.

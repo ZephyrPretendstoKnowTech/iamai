@@ -27,6 +27,8 @@ import { readyWhen } from '../../derive/readyWhen.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
+import { findTaggedPolicies } from '../../roadmap/generate.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract } from './stepContract.ts'
@@ -172,12 +174,20 @@ test('004.5: nothing claims report-only evidence, readiness or enforcement befor
   )
   assert.doesNotMatch(c.doneWhen.join(' | '), /changed settings|after the change/i)
   for (const line of c.doneWhen) assert.doesNotMatch(line, HOLE, `a hole in Done when: ${line}`)
-  // The dates the plan does have, in order: announce, then the report-only
-  // deployment, then the enforcement it earns. Nothing is dated ahead of them.
+  // The one date the plan has earned: the report-only deployment. The schedule
+  // holds a planned enforcement day for its own waves, and no surface states it
+  // while the policy is not deployed — a window nothing has been watched in
+  // cannot have produced a change date.
   const reportOnlyAt = ctx.reportOnlyAt
   assert.ok(reportOnlyAt, 'the plan schedules the report-only deployment')
-  assert.ok(Date.parse(reportOnlyAt!) < Date.parse(step.events!.enforce.at), 'enforcement cannot precede the report-only deployment')
-  assert.ok(Date.parse(step.events!.announce!.at) < Date.parse(step.events!.enforce.at))
+  const dates = String(stepExportView(step, ctx).dates)
+  assert.match(dates, /Report-only from/)
+  assert.match(dates, new RegExp(absoluteDate(reportOnlyAt!)))
+  assert.doesNotMatch(dates, /Enforce |Change /, `an enforcement date beside a policy that does not exist: ${dates}`)
+  assert.doesNotMatch(dates, new RegExp(absoluteDate(step.events!.enforce.at)), `the planned enforcement day reached the Dates line: ${dates}`)
+  assert.doesNotMatch(dates, HOLE, `a hole in the Dates line: ${dates}`)
+  // The screen reads the same line the export does, so neither can drift.
+  assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesDeploy}')
 })
 
 // ---- 5. the screen the operator reads ----
@@ -251,13 +261,17 @@ test('004.9: the export view says what the screen says about this case', () => {
   // The export never suppresses an implementation the screen offers, and never
   // rewrites the completion the frozen contract states.
   assert.deepEqual(v.whatToDo.slice(-portal.length), portal, 'the export carries the same portal instructions the screen shows')
+  // And it leads with the same next action: the frozen contract's sentence,
+  // not the portal path with the operation itself left unsaid.
+  assert.equal(v.whatToDo[0], c.whatToDo.text, 'the export must lead with the action the screen states')
+  assert.match(v.whatToDo[0], /report-only/i)
   assert.deepEqual(v.doneWhen, c.doneWhen, 'the export must not invent a second Done when')
   // The dates and the rollback follow the operation, not the words the step's
   // content was written with: a created policy has a report-only deployment to
   // date and no settings to put back.
-  assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesNew}')
+  assert.equal(datesLineFor(step, contentStepFor(step) as Record<string, unknown>), '{datesDeploy}')
   assert.equal(ifWrongLineFor(step, contentStepFor(step) as Record<string, unknown>), '{policyIfWrong}')
-  assert.doesNotMatch(String(v.dates), /Change /, 'a create announces and deploys to report-only; it does not "Change"')
+  assert.doesNotMatch(String(v.dates), /Change /, 'a create deploys to report-only; it does not "Change"')
   assert.match(String(v.ifWrong), /report-only, or delete it/)
   assert.doesNotMatch(String(v.ifWrong), /back to what they were/, 'a created policy has no previous settings to restore')
 })
@@ -278,4 +292,56 @@ test('004.10: the calendar entry and the prompt pack carry the same create-in-re
   const prompt = stepContext(step, view)
   assert.match(prompt, /Report-only/)
   assert.doesNotMatch(prompt, /changed settings|after the change/i)
+})
+
+// ---- 8. no enforcement is dated, on any surface, while the policy is absent ----
+
+test('004.11: no surface emits an enforcement date or event while the policy is Not deployed', () => {
+  const { step, ctx, steps, planId } = canonical()
+  assert.equal(step.state.lifecycle, 'not-deployed')
+  assert.equal(step.tracking, null)
+  assert.equal(readyWhen(step), null)
+  // The schedule keeps its planned enforcement day — it places the plan's waves
+  // with it — and no operator-facing surface states it until a scan has found
+  // the policy in report-only and watched it there.
+  const enforceDay = absoluteDate(step.events!.enforce.at)
+  const view = (s: Step): ReturnType<typeof stepExportView> => stepExportView(s, ctx)
+  const v = view(step)
+  assert.match(String(v.dates), /Report-only from/)
+  assert.doesNotMatch(String(v.dates), new RegExp(enforceDay), `the Dates line dates an enforcement: ${v.dates}`)
+  assert.doesNotMatch(stepContext(step, view), new RegExp(enforceDay), 'the prompt pack dates an enforcement')
+  // The calendar entry is the report-only deployment day, and not the
+  // enforcement rings the schedule has proposed and nothing has earned.
+  const event = buildIcs(steps, 'Fixture tenant', planId, view)
+    .split('BEGIN:VEVENT')
+    .find((b) => b.includes(`${planId}-${step.id}@iamai`))!
+  const day = (iso: string): string => iso.slice(0, 10).replaceAll('-', '')
+  assert.ok(event.includes(`DTSTART;VALUE=DATE:${day(ctx.reportOnlyAt!)}`), event)
+  assert.ok(!event.includes(`DTSTART;VALUE=DATE:${day(step.events!.enforce.at)}`), 'the calendar books the enforcement day')
+  assert.ok(step.rings.length > 0, 'the schedule still proposes the rings it plans with')
+  assert.ok(!event.includes(`DTSTART;VALUE=DATE:${day(step.rings[0].plannedStart)}`), 'the calendar books the enforcement rings')
+})
+
+// ---- 9. a policy created from the Portal instructions is this step's ----
+
+test('004.12: the Portal instructions carry the operation’s description, and the next scan matches the created policy to this step', () => {
+  const { step, ctx, planId } = canonical()
+  const op = operationsOf(step)[0]
+  const description = String((op.body as Record<string, unknown>).description)
+  assert.ok(description.startsWith('[IAMAI:'), 'the canonical operation tags the policy it creates')
+  // The instruction hands the operator the operation's own description, whole —
+  // it is not rebuilt here and it is not left out, so a policy created through
+  // the Portal is the artifact the JSON, the PowerShell and the download create.
+  const line = portalOf(step, ctx).find((l) => l.startsWith('Description: '))
+  assert.ok(line, 'the Portal instructions omit the description the operation carries')
+  const pasted = line!.slice('Description: '.length).split(' — ')[0]
+  assert.equal(pasted, description)
+  assert.ok(policyJsonText(step).includes(description), 'the JSON carries the same description')
+  assert.ok(powershellFor(stepOperations(step)).includes(description), 'the PowerShell carries the same description')
+  // The policy a person creates by following those instructions, read back by
+  // the next scan: it is this step's, and this member of it.
+  assert.deepEqual(findTaggedPolicies(ctx.snapshot, planId, step.id), [], 'the canonical case has no tagged policy in the tenant yet')
+  const snapshot = structuredClone(ctx.snapshot)
+  snapshot.config.caPolicies!.rows.push({ id: 'portal-created-policy', displayName: step.naming!.proposed, description: pasted, state: 'enabledForReportingButNotEnforced' } as never)
+  assert.deepEqual(findTaggedPolicies(snapshot, planId, step.id), [{ policyId: 'portal-created-policy', memberKey: op.memberKey }], 'a policy created from the Portal instructions is not matched to this step')
 })
