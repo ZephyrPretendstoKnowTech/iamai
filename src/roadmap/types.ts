@@ -424,7 +424,8 @@ export type MemberTracking = {
   seenInScope: number | null
   activeInScope: number | null
   signIns: number
-  failures: number
+  /** Failing or interrupted records for this member's own policy; null where its records were not read at all. */
+  failures: number | null
   failuresByUser: { userId: string; count: number }[]
   evidenceQuality: 'enough' | 'thin' | 'none'
 }
@@ -492,8 +493,18 @@ export type StepTracking = {
   activeInScope: number | null
   /** Records of this policy in the scan's window (any result). */
   signIns: number
-  /** Failing or interrupted records since reportOnlyAt (the gate's zero). */
-  failures: number
+  /**
+   * Failing or interrupted records since reportOnlyAt (the gate's zero).
+   *
+   * Null where the records this policy would be judged on were not read at all:
+   * a scan with no sign-in evidence, a window that covers none of it, a policy
+   * the evidence carries no result for. No records is not a clean window, and a
+   * zero drawn from an empty set reads to a person exactly like a zero the
+   * records prove (coverage/coverage.ts reportOnlyObservation says the same of
+   * the same fact). The evidence gate cannot open either way, so nothing turns
+   * on it but the words.
+   */
+  failures: number | null
   failuresByUser: { userId: string; count: number }[]
   evidenceQuality: 'enough' | 'thin' | 'none'
 }

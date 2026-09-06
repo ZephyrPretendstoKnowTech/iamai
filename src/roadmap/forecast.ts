@@ -36,6 +36,14 @@ export type EnforcementBasis =
   | 'none'
   /** Projected by the schedule; no evidence has earned it. */
   | 'forecast'
+  /**
+   * The policy is deployed and being watched, and the only thing left to submit
+   * is its enforcement, which Foundation B has not granted. There is an instant
+   * on the step and it is withheld: this step has a milestone a person can act
+   * on — the review its own gates derive — and a projection handed over beside
+   * it reads as the day the change lands. `statedEnforcement` carries no `at`.
+   */
+  | 'unearned'
   /** Foundation B's evidence supports enforcing: an actionable milestone. */
   | 'committed'
 
@@ -128,4 +136,33 @@ export function forecastEnforcement(step: Step): boolean {
 export function enforcementUnearned(step: Step): boolean {
   if (step.state.lifecycle !== 'report-only') return false
   return operationsOf(step).some(enforcesOnRun)
+}
+
+/**
+ * The enforcement instant a surface may state for this step, and what it is
+ * worth. Every consumer that prints a date, or hands one to another tool, reads
+ * this rather than `enforcementTiming`.
+ *
+ * The difference between the two is the difference between the roadmap's own
+ * forecast and what a person receives. `enforcementTiming` classifies the
+ * schedule's instant and always carries it: the plan draws a whole rollout with
+ * it, and a step whose policy is not in the tenant at all has nothing else to
+ * draw. `statedEnforcement` answers the narrower question the prompt pack and
+ * the grounding bundle actually ask — *is there an enforcement date to give this
+ * step?* — and while the policy sits in report-only with its window open the
+ * answer is no. That step already has a grounded milestone, from Foundation B's
+ * own two gates (derive/readyWhen.ts): the day its observation is reviewed. A
+ * projection stated beside it is the one this step does not need and cannot
+ * support, and a bare instant in a JSON bundle is indistinguishable from a date
+ * a policy has earned.
+ *
+ * So the rings, the wave and the enforce event stay on the step — that is the
+ * roadmap — and no surface hands one to a person or a tool as this step's
+ * enforcement. The sibling readings are `rowWhen` (the row's date column),
+ * `stepExport` (the Dates line, `{datesObserve}`), `buildIcs` (the calendar
+ * books the review) and `nextMilestone` (Observe): five surfaces, one answer.
+ */
+export function statedEnforcement(step: Step): EnforcementTiming {
+  if (enforcementUnearned(step)) return { basis: 'unearned', at: null }
+  return enforcementTiming(step)
 }

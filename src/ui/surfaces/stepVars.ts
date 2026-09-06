@@ -184,12 +184,20 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // scope. Where that scope could not be settled there is no count to show, so
     // the key is left unset and the line it sits in renders nothing rather than a
     // number nobody established (tracking.ts trackedScope).
+    //
+    // "0 failing or interrupted" is a count of records, so it needs records: with
+    // none read for this policy the failure count is unknown, and the line says
+    // that instead of printing the zero an empty set adds up to
+    // (roadmap/tracking.ts). The people-seen half is a true count either way —
+    // nobody was seen — and stays.
     v.evidenceGate =
       ready.kind === 'now'
         ? fillText(TRACK.readyNow, { n: ready.days })
         : ready.seen === null || ready.people === null
           ? undefined
-          : fillText(TRACK.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days })
+          : ready.failures === null
+            ? fillText(TRACK.evidenceTodayUnread, { seen: ready.seen, people: ready.people, n: ready.days })
+            : fillText(TRACK.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days })
   }
 
   // A campaign has no enforcement date of its own; its enrol-by is the plan's

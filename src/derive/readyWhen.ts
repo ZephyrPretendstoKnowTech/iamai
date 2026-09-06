@@ -13,8 +13,13 @@ export type ReadyWhen = {
   date: string
   /** Days in report-only at the scan. */
   days: number
-  /** Failing or interrupted records since the policy entered report-only. */
-  failures: number
+  /**
+   * Failing or interrupted records since the policy entered report-only. Null
+   * where this policy's own records were not read at all: no records is not a
+   * clean window, and the line that states the gate's numbers says so rather
+   * than printing a zero nothing counted (roadmap/tracking.ts).
+   */
+  failures: number | null
   /**
    * Active people in scope the records have seen, over the active people in
    * scope of the matched tenant policy. Both null where that policy's scope
