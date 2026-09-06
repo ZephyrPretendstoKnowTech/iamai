@@ -9,7 +9,7 @@ import type { CaPolicy } from '../baseline/types.ts'
 import type { MappingRecord, MappingState, QuestionGroup } from './types.ts'
 import { detectServiceAccounts } from './serviceAccounts.ts'
 import { suggestCountries } from './countries.ts'
-import { autoEmergencyAccess } from './emergencyAccess.ts'
+import { recommendedEmergencyAccess } from './emergencyAccess.ts'
 import { operatorAnsweredExclusions } from './safetyChoice.ts'
 
 export type WizardQuestionId = 'breakGlass' | 'globalExclusion' | 'countries' | 'trustedLocations' | 'serviceAccounts' | 'timeZone' | 'applicability'
@@ -145,10 +145,13 @@ export function applyDetectedDefaults(state: MappingState, snapshot: TenantSnaps
   }
 
   if (detectable('breakGlass')) {
-    // Only the accounts the tenant named for the job (emergencyAccess.ts): a
-    // circumstantial nomination is offered in the picker, never classified here.
-    const candidates = autoEmergencyAccess(snapshot, tenantPolicies)
-    next.breakGlassUserIds = candidates.map((c) => c.id)
+    // A detection recommends; it does not answer. These ids take an account out
+    // of the people population and become what every policy must exclude, so
+    // they are written by an operator's confirmation and by nothing else
+    // (mapping/emergencyChoice.ts). What a scan can see is offered on the step,
+    // as a candidate the operator either takes or does not. What a scan can
+    // still say for itself is that it found nothing named for the job at all.
+    const candidates = recommendedEmergencyAccess(snapshot, tenantPolicies)
     if (candidates.length > 0) delete next.records['__breakGlassMissing']
     else next.records['__breakGlassMissing'] = auto('__breakGlassMissing', 'user', 'breakGlass', null, null, true)
     mark('breakGlass', candidates.length > 0)

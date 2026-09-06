@@ -5,12 +5,17 @@ import type { CoverageInput } from '../coverage/coverage.ts'
 import type { MappingState } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { emptyMappingState } from './types.ts'
+import { migrateEmergencySelection } from './emergencyChoice.ts'
 import { answersComplete } from './wizard.ts'
 
 export async function loadMappingState(tenantId: string): Promise<MappingState> {
   const stored = await loadMappingRecord<Partial<MappingState>>(tenantId)
   // Merge over defaults so states saved before new wizard fields still load.
-  return { ...emptyMappingState(tenantId), ...(stored ?? {}), tenantId }
+  // Then the one migration a load owes the record: emergency-access ids nothing
+  // proves a person chose are kept as prior context and stop being authoritative
+  // (mapping/emergencyChoice.ts). The operator's own decision lives in the plan
+  // record and is applied over this, so a real confirmation survives.
+  return migrateEmergencySelection({ ...emptyMappingState(tenantId), ...(stored ?? {}), tenantId })
 }
 
 export async function saveMappingState(state: MappingState): Promise<void> {
@@ -27,6 +32,8 @@ export async function saveMappingState(state: MappingState): Promise<void> {
  * (mapping/safetyChoice.ts actionableExclusionsGroupId).
  */
 export function toCoverageMapping(state: MappingState, snapshot: TenantSnapshot, exclusionsGroupId: string | null): NonNullable<CoverageInput['mapping']> {
+  // The confirmed emergency accounts only; a nomination is not one of them
+  // (mapping/emergencyChoice.ts), and the prior ids are context, never input.
   const breakGlassUsers = [...state.breakGlassUserIds]
   const exclusionGroups: Record<string, string> = {}
   if (exclusionsGroupId) exclusionGroups[exclusionsGroupId] = 'breakGlass/globalExclusion'

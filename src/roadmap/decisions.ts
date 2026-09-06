@@ -100,7 +100,8 @@ export const DECISION_STEPS = {
 
 /**
  * The mapping with every saved step decision applied (target-state §6.4):
- * emergency access accounts → the break-glass ids; the exclusions group → the
+ * emergency access accounts → the break-glass ids, on an operator's confirmation
+ * only; the exclusions group → the
  * exclusions record, on an operator's confirmation only; allowed countries → the country codes; the trusted
  * network → the trusted location ids; service accounts → their ids; the
  * campaign's special care → the high-care ids; and a chosen option or a
@@ -114,7 +115,9 @@ export const DECISION_STEPS = {
  *
  * A picker's pre-ticked default is the plan's decision until the person changes
  * it: the derivation applies every detected default through here first, marked
- * `detected`, and the saved decisions after, so a Save only overrides.
+ * `detected`, and the saved decisions after, so a Save only overrides. The two
+ * safety-sensitive pickers have no pre-ticked default and refuse one here as
+ * well, so a future default cannot reopen the door either.
  */
 export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<string, StepDecision> | null | undefined, provenance: 'detected' | 'confirmed' = 'confirmed'): MappingState {
   if (!stepDecisions || Object.keys(stepDecisions).length === 0) return mapping
@@ -134,10 +137,18 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     if (!Array.isArray(d.picked)) continue
     const picked = d.picked.map(String)
     if (DECISION_STEPS.emergency.has(stepId)) {
-      next.breakGlassUserIds = picked
-      answered('breakGlass')
-      const missing = next.records['__breakGlassMissing']
-      if (missing) next.records['__breakGlassMissing'] = { ...missing, doesNotExist: picked.length === 0, provenance: recordProvenance }
+      // The other decision a detection may not make (mapping/emergencyChoice.ts).
+      // These ids are what leaves the people population, what a policy's
+      // emergency exposure is measured against and what the exclusions group
+      // must contain, so only an operator's own confirmation writes them: the
+      // detected pass carries a picker's pre-ticked default, and this picker has
+      // none to carry.
+      if (provenance === 'confirmed') {
+        next.breakGlassUserIds = picked
+        answered('breakGlass')
+        const missing = next.records['__breakGlassMissing']
+        if (missing) next.records['__breakGlassMissing'] = { ...missing, doesNotExist: picked.length === 0, provenance: recordProvenance }
+      }
     } else if (DECISION_STEPS.exclusions.has(stepId)) {
       // The one decision a detection may not make (Foundation C,
       // mapping/safetyChoice.ts). The group every policy excludes decides who

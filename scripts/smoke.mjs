@@ -631,7 +631,10 @@ try {
   const recordBefore = await planRecord()
   check(
     'Demo: the record holds the decision, the skip and the start',
-    typeof recordBefore === 'string' && /"stepDecisions":\{[^}]*"s-prereq-service-accounts-group"/.test(recordBefore) && /"skips":\{[^}]*"s-goal-admin-portals-protected"/.test(recordBefore) && /"startDate":"2026-10-05/.test(recordBefore),
+    // The decision is looked for by key, not by position: the record also holds
+    // the sample technician's own decisions (the emergency accounts), and which
+    // one JSON writes first is not what this check is about.
+    typeof recordBefore === 'string' && /"stepDecisions":\{/.test(recordBefore) && /"s-prereq-service-accounts-group":/.test(recordBefore) && /"skips":\{[^}]*"s-goal-admin-portals-protected"/.test(recordBefore) && /"startDate":"2026-10-05/.test(recordBefore),
     String(recordBefore).slice(0, 200),
   )
   await demoGo('plan')

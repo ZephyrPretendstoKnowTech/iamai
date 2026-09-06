@@ -62,7 +62,14 @@ export type MappingState = {
    *  scope for this tenant" — never "risk accepted"). */
   targetState: Record<string, { include: boolean; reason: string | null }>
   // ---- Setup wizard answers (the 5–9 questions a human actually sees) ----
+  /** The emergency-access accounts the operator chose. Written by a decision
+   *  saved on the emergency step and by nothing else: a detection nominates
+   *  and recommends, it never answers (mapping/emergencyChoice.ts). */
   breakGlassUserIds: string[]
+  /** Ids an older record or an imported plan file carried with no proof a person
+   *  chose them: offered in the picker as prior context, authoritative nowhere,
+   *  until the operator confirms them (mapping/emergencyChoice.ts). */
+  breakGlassPriorIds?: string[]
   /** The two emergency-access facts Microsoft Graph exposes nowhere
    *  (validation-rules.md §3): asked once alongside the accounts themselves,
    *  recorded in the plan file, and a Phase 0 step when either is no. */

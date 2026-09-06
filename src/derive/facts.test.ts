@@ -1,8 +1,8 @@
 // One fact, one function (derive/facts.ts): every surface's numbers are the
 // facts, identical on both fixtures, and no surface computes a count of its
-// own; the emergency accounts are recognised on every scan through the
-// population's mapping (pickerRows.ts appliedMapping), so a re-scan never
-// loses the kind.
+// own; the emergency accounts the operator confirmed are carried on every scan
+// through the population's mapping (pickerRows.ts appliedMapping), so a re-scan
+// never loses the kind and a detection never adds one.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -15,6 +15,7 @@ import { contentLists } from './contentLists.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
 import { appliedMapping } from '../ui/surfaces/pickerRows.ts'
 import { emptyMappingState } from '../mapping/types.ts'
+import { BREAK_GLASS_STEP_ID } from '../roadmap/stepIds.ts'
 
 test("every surface's facts are identical on both fixtures: Today, the ladder, the campaign step and the sample facts read one function", () => {
   for (const name of ['demo', 'getiamai'] as const) {
@@ -47,19 +48,29 @@ test('no surface computes a count: the three surfaces, the print, the sample fac
   assert.doesNotMatch(readFileSync('src/derive/planHeader.ts', 'utf8'), /planCounts/, 'the header has no count of its own')
 })
 
-test('the emergency accounts are recognised on every scan: after a simulated re-scan with nothing saved, the emergency kind survives', () => {
+test('the confirmed emergency accounts survive a re-scan, and a detection adds none', () => {
   const f = fixture('demo')
   const stored = emptyMappingState(f.snapshot.tenantId)
-  const applied = (snapshot: typeof f.snapshot) => appliedMapping({ snapshot, mapping: stored, nameOf: (id) => id, now: snapshot.asOf }, null)
-  const first = applied(f.snapshot)
-  assert.ok(first.breakGlassUserIds.length > 0, 'the scan detects the emergency accounts with nothing saved')
+  // The operator's own decision, as the emergency picker saves it. Nothing else
+  // makes an account emergency access (mapping/emergencyChoice.ts): a scan
+  // recommends, and with nothing saved the tenant has none and says so.
+  const chosen = [...f.mapping.breakGlassUserIds]
+  const saved = { [BREAK_GLASS_STEP_ID]: { picked: chosen, at: f.snapshot.asOf } }
+  const applied = (snapshot: typeof f.snapshot, decisions: typeof saved | null) =>
+    appliedMapping({ snapshot, mapping: stored, nameOf: (id) => id, now: snapshot.asOf }, decisions)
+  assert.deepEqual(applied(f.snapshot, null).breakGlassUserIds, [], 'with nothing saved the scan classifies nobody')
+  assert.equal(facts(f.snapshot, applied(f.snapshot, null)).kinds.emergency, 0, 'and every account is still a person')
+
+  const first = applied(f.snapshot, saved)
+  assert.deepEqual([...first.breakGlassUserIds].sort(), [...chosen].sort(), 'the decision is the emergency set')
   const before = facts(f.snapshot, first)
-  assert.equal(before.kinds.emergency, first.breakGlassUserIds.length)
-  // The re-scan: the same tenant a day later, the stored mapping still empty.
+  assert.equal(before.kinds.emergency, chosen.length)
+  // The re-scan: the same tenant a day later, the stored mapping still empty,
+  // the decision still saved.
   const rescan = structuredClone(f.snapshot)
   rescan.asOf = new Date(Date.parse(f.snapshot.asOf) + 86_400_000).toISOString()
-  const second = applied(rescan)
-  assert.deepEqual([...second.breakGlassUserIds].sort(), [...first.breakGlassUserIds].sort(), 'the same accounts are recognised')
+  const second = applied(rescan, saved)
+  assert.deepEqual([...second.breakGlassUserIds].sort(), [...first.breakGlassUserIds].sort(), 'the same accounts are carried')
   const after = facts(rescan, second)
   assert.equal(after.kinds.emergency, before.kinds.emergency, 'the emergency kind survives the re-scan')
   for (const id of second.breakGlassUserIds) {
