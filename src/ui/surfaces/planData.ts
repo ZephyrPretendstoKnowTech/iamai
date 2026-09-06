@@ -26,6 +26,7 @@ import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap, planIdFor } from '../../roadmap/generate.ts'
 import { annotateStateReasons } from '../../roadmap/stateReason.ts'
 import { applySkips, decisionsOf, applyProgress } from '../../roadmap/progress.ts'
+import { settleForecast } from '../../roadmap/forecast.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
@@ -303,6 +304,11 @@ export function usePlanData(
       groupMembers: Object.fromEntries([...groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])),
       activePeople: activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(mapping)),
     })
+    // Tracking has settled every lifecycle, so the schedule's own forecast can be
+    // taken off the steps it was never earned for: an enforcement wave and an
+    // enforce event were placed on every step before the scan found which
+    // policies already exist (roadmap/forecast.ts settleForecast).
+    settleForecast(steps, schedule)
     annotateStateReasons(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps

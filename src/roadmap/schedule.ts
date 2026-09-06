@@ -84,6 +84,18 @@ export type Schedule = {
   /** step id → the wave it enforces in (0 for day 0 / done). */
   waveOf: Record<string, number>
   /**
+   * The rollout drawn for a step whose enforcement Foundation B has not granted,
+   * once its lifecycle is known: not a wave, not a milestone, not actionable.
+   *
+   * Everything above is built while every step's lifecycle is still
+   * `not-deployed` — tracking settles it afterwards — so a policy the scan finds
+   * sitting in report-only is placed in an enforcement wave and dated before
+   * anyone knows it exists. `settleForecast` (roadmap/forecast.ts) moves that
+   * placement here, out of `waves` and `waveOf`, where nothing reads it as the
+   * step's scheduled milestone. Filled on the finished plan; absent until then.
+   */
+  forecastOnly?: Record<string, import('./forecast.ts').ForecastPlacement>
+  /**
    * step id → the other steps enforced in the same change window (prompt 41 §9).
    *
    * Empty for a step enforced on its own, and for a safe-today step, which

@@ -57,7 +57,12 @@ test('step 15 names the admins not yet at Passkey or security key, proven on the
   // back counting whatever list is left.
   const ready = runFixture({ ...f, snapshot }, { snapshot, viability: adminsAtRung5(r.viability, f.snapshot.asOf) } as never)
   const dated = ready.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
-  assert.ok(dated.events, 'the change is dated once admin readiness reaches the threshold')
+  // The readiness hold is released, so the plan dates the change again. Where it
+  // holds that date is Foundation B's: this policy is in report-only and the one
+  // thing left to submit turns it on, so the rollout the schedule drew is kept
+  // apart from the step's own milestones (roadmap/forecast.ts settleForecast)
+  // and no line names it until the observation window earns it.
+  assert.ok(dated.events ?? ready.schedule.forecastOnly?.[dated.id]?.events, 'the change is dated once admin readiness reaches the threshold')
   // Past three, the count line stands in for the names.
   const many = contentLists({ snapshot: { ...f.snapshot, roles: { ...f.snapshot.roles, active: Object.fromEntries(r.viability.filter((v) => v.activity === 'active').slice(0, 12).map((v) => [v.userId, ['62e90394-69f5-4237-9190-012177145e10']])) } }, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
   assert.deepEqual(many.adminsWithout, [], 'more than three: no names')

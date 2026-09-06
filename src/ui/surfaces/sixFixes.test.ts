@@ -16,6 +16,7 @@ import { app, pages, stepById } from '../../content/content.ts'
 import { RUNGS } from '../../derive/ladder.ts'
 import { rungWords, showWord } from './todayCells.ts'
 import { rowWhen } from './rowWhen.ts'
+import { enforcementUnearned } from '../../roadmap/forecast.ts'
 import { rowWho } from './rowWho.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import { rungOf } from '../../derive/ladder.ts'
@@ -32,14 +33,20 @@ function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
   return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
 }
 
-test('(1) the campaign email is the passkey version once Require MFA for Everyone is in place, naming the first policy that needs a passkey', () => {
+test('(1) the campaign email is the passkey version once Require MFA for Everyone is in place, and names no policy whose day nothing has earned', () => {
   const f = fixture('demo-week2')
   const snapshot = adminsInReportOnly(f)
-  // The campaign names the first *dated* policy that needs a passkey, so the
-  // admins policy has to be one the plan will actually enforce: its readiness
-  // prerequisite is met here (roadmap/operations.ts readinessGate), which is the
-  // case this line is about. Held, there is no date to name and no line — the
-  // counterpart is asserted in roadmap/readinessGate.test.ts.
+  // The campaign names the first *dated* policy that needs a passkey. This
+  // scenario has none: the admins policy is in report-only with its readiness
+  // prerequisite met (roadmap/operations.ts readinessGate), so the only thing
+  // left to submit is the enforcement, and Foundation B has not granted it. The
+  // schedule's projection for it is kept off the step (roadmap/forecast.ts
+  // settleForecast) and this email is why — "From September 14, Require
+  // Phishing-Resistant MFA for Admins requires a passkey" is a day, sent to
+  // everyone in the tenant, that a two-day-old observation window has not
+  // earned. The body is still the passkey version; the deadline line is not
+  // written. Held on readiness, the counterpart is roadmap/readinessGate.test.ts;
+  // withheld on observation, ui/surfaces/reportOnlyObserve.test.ts.
   const viability = adminsAtRung5(runFixture({ ...f, snapshot }, { snapshot } as never).viability, f.snapshot.asOf)
   const r = runFixture({ ...f, snapshot }, { snapshot, viability } as never)
   const camp = r.steps.find((s) => s.id === 's-verify-mfa')!
@@ -50,9 +57,15 @@ test('(1) the campaign email is the passkey version once Require MFA for Everyon
   const email = commsFor(cs, ex, camp)!
   assert.match(email.body, /^You already confirm sign-ins to Contoso Pty Ltd with the Microsoft Authenticator app\. Over the next \d+ days, add a passkey/)
   const admins = r.steps.find((s) => s.goalId === 'admins-phishing-resistant')!
-  assert.equal(ex.passkeyPolicy, 'Require Phishing-Resistant MFA for Admins', 'the first policy that needs a passkey')
-  assert.equal(ex.passkeyEnforceLong, longDate(admins.events!.enforce.at))
-  assert.ok(email.extra.some((l) => l === `From ${longDate(admins.events!.enforce.at)}, Require Phishing-Resistant MFA for Admins requires a passkey.`), email.extra.join(' | '))
+  assert.equal(admins.state.lifecycle, 'report-only')
+  assert.equal(enforcementUnearned(admins), true, 'the one thing left to submit is the enforcement')
+  assert.equal(admins.events, null, 'so the step has no day of its own')
+  const projected = r.schedule.forecastOnly?.[admins.id]?.events?.enforce.at
+  assert.ok(projected, 'though the schedule projected one')
+  assert.equal(ex.passkeyPolicy, undefined, 'and the campaign names no policy on the strength of it')
+  assert.equal(ex.passkeyEnforceLong, undefined)
+  assert.ok(!email.extra.some((l) => /requires a passkey/.test(l)), email.extra.join(' | '))
+  assert.ok(!email.extra.some((l) => l.includes(longDate(projected!))), email.extra.join(' | '))
   // Week two: the admins policy is enforced, so no policy needs a passkey yet; the line drops, the body stays.
   const f2 = fixture('demo-week2')
   const r2 = runFixture(f2)

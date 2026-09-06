@@ -11,6 +11,8 @@ import { missingVars } from '../../content/render.ts'
 import { pages, shared } from '../../content/content.ts'
 import { sessionWantedForGoal, sessionWantedLongForGoal } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
+import { datesLineFor } from './stepExport.ts'
+import { contentStepFor } from '../../content/stepTitle.ts'
 import { hoursInWords } from '../../coverage/verdict.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 
@@ -33,7 +35,14 @@ test('a policy already in report-only dates its Report-only line from the scan',
   assert.ok(step.tracking?.reportOnlyAt, 'the scan dates the report-only policy')
   const ex = stepVars(step, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: null, now: f.snapshot.asOf, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null })
   assert.ok(typeof ex.reportOnly === 'string' && ex.reportOnly.length > 0, 'reportOnly is filled from tracking')
-  assert.deepEqual(missingVars('{datesNew}', ex), [], 'the Dates line has no hole')
+  // Its line is the observation line, not the create's three dates: the only
+  // thing left to submit is the enforcement and nothing has earned it, so the
+  // plan states the day it entered report-only and the review its own gates
+  // derive (roadmap/forecast.ts). The point stands on the line it renders — the
+  // report-only date comes from the scan and nothing about the line has a hole.
+  const cs = contentStepFor(step) as Record<string, unknown>
+  assert.equal(datesLineFor(step, cs), '{datesObserve}')
+  assert.deepEqual(missingVars('{datesObserve}', ex), [], 'the Dates line has no hole')
 })
 
 test('a session goal fills {wanted} from the policy the step will write, and says nothing where it cannot read one', () => {
