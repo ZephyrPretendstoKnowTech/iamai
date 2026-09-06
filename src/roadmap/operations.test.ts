@@ -15,6 +15,7 @@ import type { PolicyEffect } from './operations.ts'
 import { undatedRows } from '../ui/surfaces/planRows.ts'
 import { buildSchedule } from './schedule.ts'
 import type { PolicyOperation, Step } from './types.ts'
+import { stateFields } from './lifecycle.ts'
 import { jsonOffered, policyJson, policyJsonText, stepOperations } from '../ui/surfaces/stepJson.ts'
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 import { fixture } from './fixtures/index.ts'
@@ -38,7 +39,7 @@ const UPDATE: PolicyOperation = { sourceName: 'author', memberKey: 'author', mod
 
 /** A step carrying the operations given, with whatever `action.json` the caller wants to plant. */
 const stepWith = (ops: PolicyOperation[], json: string | null): Step =>
-  ({ id: 's-x', goalId: 'block-legacy-auth', action: { kind: 'create', summary: [], portalSteps: [], json, missing: [], resolution: { policies: ops, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } } }) as unknown as Step
+  ({ id: 's-x', goalId: 'block-legacy-auth', ...stateFields(), action: { kind: 'create', summary: [], portalSteps: [], json, missing: [], resolution: { policies: ops, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } } }) as unknown as Step
 
 // ---- 2 + 3: a create and an update are different things ----
 

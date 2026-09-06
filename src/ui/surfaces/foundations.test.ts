@@ -1,6 +1,10 @@
 // Emergency access is a foundation: on every plan, In place when every bg.*
 // check passes, Ready otherwise, never removed by a pick or a detection. A
-// change to an existing policy carries a Dates line and a calendar entry.
+// change to an existing policy carries a Dates line and a calendar entry, and
+// which dates it carries is Foundation B's: a policy already in report-only,
+// with nothing left to submit but the enforcement its window has not earned,
+// carries the days it has — the day it entered report-only and its review
+// milestone — not "Announce · Change" (roadmap/forecast.ts enforcementUnearned).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -34,16 +38,21 @@ test('emergency access is on every plan: Ready with one failing check on the dem
   for (const s of day1.steps) if (s.kind === 'create' && s.status !== 'done' && s.status !== 'skipped') assert.ok(s.blockedBy.includes(BG) || s.status === 'blocked', `${s.id} waits while emergency access is unverified`)
 })
 
-test('a change step carries Announce and Change dates and a calendar entry, on the demo and GetIAMAI', () => {
-  const cases: { name: 'demo-week2' | 'getiamai'; stepId: string; adminsReady?: boolean; snapshot?: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture>['snapshot'] }[] = [
+test('a change step carries a Dates line and a calendar entry, on the demo and GetIAMAI', () => {
+  const cases: { name: 'demo-week2' | 'getiamai'; stepId: string; dates: RegExp; adminsReady?: boolean; snapshot?: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture>['snapshot'] }[] = [
     // Week two, with its admins policy back in report-only: a change the plan can
     // write, so it is dated. A policy naming an object the tenant lacks is not —
     // and neither is one whose readiness prerequisite is unmet, which is why the
     // admins here are at the rung their own policy asks for (roadmap/operations.ts
     // readinessGate; the held counterpart is roadmap/readinessGate.test.ts).
+    //
+    // The policy is in report-only and meets the baseline, so the only thing the
+    // step has left to submit is `{"state":"enabled"}` — the enforcement. Its
+    // window has not closed, so the days it states are the ones it has.
     {
       name: 'demo-week2',
       stepId: 's-goal-admins-phishing-resistant',
+      dates: /^Report-only since .+ · Review .+ · Enforcement is dated once the observation window closes$/,
       adminsReady: true,
       snapshot: (f) => {
         const ca = f.snapshot.config.caPolicies!
@@ -51,9 +60,13 @@ test('a change step carries Announce and Change dates and a calendar entry, on t
         return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
       },
     },
+    // GetIAMAI's token-protection policy is already enabled and short of the
+    // baseline: the change is live the moment it lands, so it announces and
+    // changes on the schedule's own days.
     {
       name: 'getiamai',
       stepId: 's-goal-token-protection',
+      dates: /^Announce .+ · Change .+$/,
       snapshot: (f) => {
         const exclusions = f.mapping.records['__globalExclusion']?.resolvedId
         const policy = { id: 'p-token', displayName: 'Core - Require - Token Protection (Windows)', state: 'enabled', createdDateTime: '2026-01-10T00:00:00Z', conditions: { users: { includeUsers: ['All'], excludeUsers: [...f.mapping.breakGlassUserIds], excludeGroups: exclusions ? [exclusions] : [] }, applications: { includeApplications: ['00000002-0000-0ff1-ce00-000000000000', '00000003-0000-0ff1-ce00-000000000000'] }, platforms: { includePlatforms: ['windows'] }, clientAppTypes: ['mobileAppsAndDesktopClients'] }, grantControls: null, sessionControls: { secureSignInSession: { isEnabled: true } } }
@@ -74,7 +87,7 @@ test('a change step carries Announce and Change dates and a calendar entry, on t
     assert.ok(step.events!.announce && step.events!.announce.at < step.events!.enforce.at, `${c.name}: announce, then change`)
     const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
     const view = stepExportView(step, ctx)
-    assert.ok(view.dates && /^Announce .+ · Change .+$/.test(view.dates), `${c.name}: the Dates line (${view.dates})`)
+    assert.ok(view.dates && c.dates.test(view.dates), `${c.name}: the Dates line (${view.dates})`)
     const ics = buildIcs(r.steps, 'Tenant', 'plan-1', (s) => stepExportView(s, ctx))
     assert.ok(ics.includes(`UID:plan-1-${step.id}@iamai`), `${c.name}: in the calendar`)
   }

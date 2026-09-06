@@ -19,6 +19,7 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText, stepOperations } from '../ui/surfaces/stepJson.ts'
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
+import { enforcementUnearned } from './forecast.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { applyDeviations } from './deviations.ts'
@@ -268,6 +269,7 @@ test('6: an object the tenant does not have withholds Portal, JSON, PowerShell a
   const { rows } = policySteps('demo-week2')
   let gated = 0
   let offered = 0
+  let unearned = 0
   for (const { step, portal } of rows) {
     if ((step.action.resolution?.policies.length ?? 0) === 0) continue
     if (missingObjects(step).length > 0) {
@@ -277,12 +279,25 @@ test('6: an object the tenant does not have withholds Portal, JSON, PowerShell a
       assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download`)
       continue
     }
-    offered += 1
+    // Foundation A offers it; whether today is the day to run it is Foundation
+    // B's (roadmap/forecast.ts enforcementUnearned). A policy already in
+    // report-only whose only remaining submission is the enforcement its window
+    // has not earned shuts all four channels together, exactly as a missing
+    // object does — and for the same reason: nothing may hand over a change the
+    // plan itself says to wait for.
     assert.equal(implementationOffered(step), true, `${step.id}: the gate is open`)
+    if (enforcementUnearned(step)) {
+      unearned += 1
+      assert.equal(portal, null, `${step.id}: no portal instructions while the window is open`)
+      assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download either`)
+      continue
+    }
+    offered += 1
     if (step.action.json) assert.equal(jsonOffered(step), true, `${step.id}: the JSON is offered with it`)
   }
   assert.ok(gated >= 2, `more than one gated policy exercised (${gated})`)
   assert.ok(offered >= 5, `more than one offered policy exercised (${offered})`)
+  assert.ok(unearned >= 1, `the report-only case exercised (${unearned})`)
 })
 
 test('6: the countries block waits on the allowed-countries location, and nothing actionable escapes', () => {

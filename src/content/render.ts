@@ -61,7 +61,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
   const sharedRefs: Record<string, unknown> = {
     portalRoot: S.portalRoot, reportOnlyLine: S.reportOnlyLine, exclusionsLine: S.exclusionsLine,
     signature: ex && ex.signature !== undefined ? ex.signature : S.signatureDefault,
-    policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, datesNew: S.datesNew, datesChange: S.datesChange, datesDeploy: S.datesDeploy,
+    policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, datesNew: S.datesNew, datesChange: S.datesChange, datesDeploy: S.datesDeploy, datesObserve: S.datesObserve,
     portalOpen: S.portalOpen, existingCoverage: S.existingCoverage ?? '', syncRoleNote: S.syncRoleNote ?? '', strengthName: (ex && ex.strengthName) ?? '',
     certificatePrompt: S.certificatePrompt ?? '',
   }
@@ -95,7 +95,7 @@ export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts',
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
 export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'strengths']
 
-const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt'])
+const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt'])
 
 /**
  * The variables a content line names that `ex` does not fill (walk-51 item 2). A
@@ -225,6 +225,7 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     datesNew: S.datesNew,
     datesChange: S.datesChange,
     datesDeploy: S.datesDeploy,
+    datesObserve: S.datesObserve,
     portalOpen: S.portalOpen,
     existingCoverage: S.existingCoverage ?? '',
     syncRoleNote: S.syncRoleNote ?? '',
