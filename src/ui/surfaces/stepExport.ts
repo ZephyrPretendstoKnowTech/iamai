@@ -16,17 +16,40 @@ import { fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
-import { heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
+import { createsNewPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 
 export type { ExportStep }
 
-/** The step's Dates line: a change to an existing policy announces and changes (shared.datesChange); a new policy has its own line. */
+/**
+ * The step's Dates line: a change to an existing policy announces and changes
+ * (shared.datesChange); a new policy is deployed in report-only first and
+ * enforced after (shared.datesNew).
+ *
+ * The operation decides (stepJson.ts createsNewPolicy), and it decides first: a
+ * step whose content was written for the change case is still a create in a
+ * tenant that has no such policy, and a create's dates are the report-only
+ * deployment and the enforcement it earns, never "Announce · Change" with the
+ * report-only stage missing from between them.
+ */
 export function datesLineFor(step: Step, cs: Record<string, unknown>): string | null {
+  if (createsNewPolicy(step)) return '{datesNew}'
   if (step.kind === 'adjust') return '{datesChange}'
   return typeof cs.dates === 'string' ? cs.dates : null
+}
+
+/**
+ * The step's If-it-goes-wrong line, by the same rule and for the same reason:
+ * putting a created policy back means setting it to report-only or deleting it
+ * (shared.policyIfWrong), because there were no settings to restore. The change
+ * line is kept for a step that changes a policy the tenant already had —
+ * "delete it" would delete the tenant's own policy.
+ */
+export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string | null {
+  const line = typeof cs.ifWrong === 'string' ? cs.ifWrong : null
+  return line === '{changeIfWrong}' && createsNewPolicy(step) ? '{policyIfWrong}' : line
 }
 
 /** The step as the screen says it, for an export. */
@@ -89,7 +112,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
     why: fillText(cs.why, ex),
     whatToDo: lines,
     doneWhen,
-    ifWrong: reason === null && cs.ifWrong && whole(cs.ifWrong, ex) ? fillText(cs.ifWrong, ex) : null,
+    ifWrong: reason === null && ifWrongLineFor(step, cs) && whole(ifWrongLineFor(step, cs), ex) ? fillText(ifWrongLineFor(step, cs), ex) : null,
     dates: reason === null && whole(datesLineFor(step, cs), ex) && datesLineFor(step, cs) ? fillText(datesLineFor(step, cs), ex) : null,
   }
 }

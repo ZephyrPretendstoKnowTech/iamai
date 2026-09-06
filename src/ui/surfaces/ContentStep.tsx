@@ -24,7 +24,7 @@ import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { jsonOffered, missingObjects, policyJsonText, stepOperations } from './stepJson.ts'
-import { commsFor, datesLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
+import { commsFor, datesLineFor, ifWrongLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -263,10 +263,13 @@ export function ContentStep({
           Done when at all (stepContract.ts doneWhenOf). */}
       <DoneWhen heading="Done when" lines={contract.doneWhen} />
 
-      {reason === null && cs.ifWrong && whole(cs.ifWrong, ex) && (
+      {/* The rollback the step's operation earns, not the one its content was
+          written with: a created policy is set back to report-only or deleted,
+          a changed one has its settings put back (stepExport.ts ifWrongLineFor). */}
+      {reason === null && ifWrongLineFor(step, cs) && whole(ifWrongLineFor(step, cs), ex) && (
         <>
           <h3>If it goes wrong</h3>
-          <p className="line"><T s={cs.ifWrong} ex={ex} /></p>
+          <p className="line"><T s={ifWrongLineFor(step, cs)} ex={ex} /></p>
         </>
       )}
       {cs.lockedOut && (

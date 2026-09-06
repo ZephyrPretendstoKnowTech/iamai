@@ -54,3 +54,25 @@ export function policyJsonText(step: Step): string {
 export function jsonOffered(step: Step): boolean {
   return implementationOffered(step)
 }
+
+/**
+ * True when every operation this step will submit writes a policy the tenant
+ * does not have — a create, not a change to something already there.
+ *
+ * The operation is the truth (roadmap/operations.ts). A step's content is
+ * written once, for the tenant its author had in mind, and the same goal is a
+ * create in one tenant and a change in another: Shorten Admin Sessions carries
+ * the change-shaped Dates line, Done when and rollback, and in a tenant with no
+ * such policy the plan creates one. So the step said "Announce … · Change …"
+ * with no report-only deployment in it, promised the settings would "match the
+ * baseline on the next scan" without ever naming the report-only days that earn
+ * enforcement, and told the operator to put settings back that had never been
+ * there.
+ *
+ * False where the step submits an update, and false where it submits nothing at
+ * all — those keep the words their content gives them.
+ */
+export function createsNewPolicy(step: Step): boolean {
+  const ops = operationsOf(step)
+  return ops.length > 0 && ops.every((o) => o.mode === 'create')
+}
