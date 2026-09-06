@@ -1,4 +1,4 @@
-// The campaign's "{n} people at Set up, never used for MFA" line
+// The campaign's "{n} people at Set up, not proven" line
 // renders only while Require MFA for Everyone is not enforced (stepVars): once
 // the policy is in place every sign-in completes MFA, and the line is untrue.
 import { test } from 'node:test'
@@ -12,8 +12,8 @@ import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepLines } from './stepExport.ts'
 
-// The campaign's rung-2 line (derive/ladder.ts; the ladder's title): "{n} people at Set up, never used for MFA; ask each for one MFA sign-in:".
-const UNPROVEN = /at Set up, never used for MFA;/
+// The campaign's rung-2 line (derive/ladder.ts; the ladder's title): "{n} people at Set up, not proven; ask each for one MFA sign-in:".
+const UNPROVEN = /at Set up, not proven;/
 const campaignOn = (name: FixtureName) => {
   const f = fixture(name)
   const r = runFixture(f)

@@ -997,12 +997,12 @@ async function walkFixture(fx) {
           const group = (re) => { const m = bodyText.match(re); return m ? Number(m[1]) : null }
           if (/MFA Registration Campaign/.test(title)) {
             const noMethod = group(/^(\d+) (?:people|person) at Nothing set up;/m) ?? 0
-            const unproven = group(/^(\d+) (?:people|person) at Set up, never used for MFA;/m) ?? 0
+            const unproven = group(/^(\d+) (?:people|person) at Set up, not proven;/m) ?? 0
             if (noMethod !== stripCounts['Nothing set up']) add('P0', `${slabel}: the campaign lists ${noMethod} at Nothing set up and the ladder counts ${stripCounts['Nothing set up']}`)
             // With Require MFA for Everyone in place (the passkey email), the campaign asks nobody for one MFA sign-in while the ladder keeps the records' fact.
             const mfaInPlace = /You already confirm sign-ins to/.test(bodyText)
-            if (mfaInPlace && unproven !== 0) add('P0', `${slabel}: the campaign lists ${unproven} set up, never used although Require MFA for Everyone is in place`)
-            if (!mfaInPlace && unproven !== stripCounts['Set up, never used for MFA']) add('P0', `${slabel}: the campaign lists ${unproven} set up, never used and the ladder counts ${stripCounts['Set up, never used for MFA']}`)
+            if (mfaInPlace && unproven !== 0) add('P0', `${slabel}: the campaign lists ${unproven} at Set up, not proven although Require MFA for Everyone is in place`)
+            if (!mfaInPlace && unproven !== stripCounts['Set up, not proven']) add('P0', `${slabel}: the campaign lists ${unproven} at Set up, not proven and the ladder counts ${stripCounts['Set up, not proven']}`)
           }
         }
         // A count of one reads as one, noun and verb: never "1 people", never "1 person hold".

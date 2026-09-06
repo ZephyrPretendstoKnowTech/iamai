@@ -220,7 +220,7 @@
         "links": [
           "How IAMAI works →",
           "Microsoft: Global Reader",
-          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, never used for MFA|Nothing set up)\\s*\\d+$"
+          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, not proven|Nothing set up)\\s*\\d+$"
         ]
       },
       "budget": {
@@ -292,7 +292,7 @@
           "Passkey or security key, proven",
           "Authenticator app, proven",
           "Windows Hello only",
-          "Set up, never used for MFA",
+          "Set up, not proven",
           "Nothing set up"
         ],
         "columns": [
@@ -463,7 +463,7 @@
         ],
         "links": [
           "Plan settings",
-          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, never used for MFA|Nothing set up)\\s*\\d+$"
+          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, not proven|Nothing set up)\\s*\\d+$"
         ]
       },
       "budget": {

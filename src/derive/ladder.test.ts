@@ -94,7 +94,7 @@ test("the campaign step's groups and the admin steps' lockout counts read the la
     const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
     const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
     assert.deepEqual(cl.noMethod.sort(), l.rungs[1].map((p) => p.id).sort(), `${name}: Nothing set up is rung 1`)
-    assert.deepEqual(cl.unproven.sort(), l.rungs[2].map((p) => p.id).sort(), `${name}: Set up, never used for MFA is rung 2`)
+    assert.deepEqual(cl.unproven.sort(), l.rungs[2].map((p) => p.id).sort(), `${name}: Set up, not proven is rung 2`)
     assert.deepEqual(cl.rung3.sort(), l.rungs[3].map((p) => p.id).sort(), `${name}: Windows Hello only is rung 3`)
     assert.deepEqual(cl.rung4.sort(), l.rungs[4].map((p) => p.id).sort(), `${name}: Authenticator app, proven is rung 4`)
     const admins = adminUserIds(f.snapshot.roles)
@@ -107,7 +107,7 @@ test("the campaign step's groups and the admin steps' lockout counts read the la
   }
   // The five titles are the words the campaign's groups and the admin steps use.
   const campaign = JSON.stringify((await import('../content/content.ts')).stepById['s-verify-mfa'])
-  for (const t of ['Nothing set up', 'Set up, never used for MFA', 'Windows Hello only', 'Authenticator app, proven']) assert.ok(campaign.includes(t), `the campaign names ${t}`)
+  for (const t of ['Nothing set up', 'Set up, not proven', 'Windows Hello only', 'Authenticator app, proven']) assert.ok(campaign.includes(t), `the campaign names ${t}`)
   assert.ok(JSON.stringify((await import('../content/content.ts')).stepById['admins-phishing-resistant']).includes('Passkey or security key, proven'))
   // The 90% gate stays in the engine (roadmap/constants.ts) and renders on none of the three surfaces.
   const words = JSON.stringify({ ladder: pages.ladder, today: pages.today, connect: (pages.connect as { plan: unknown }).plan })

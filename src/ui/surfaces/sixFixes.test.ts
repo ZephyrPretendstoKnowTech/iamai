@@ -91,7 +91,7 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
 })
 
 test("(3) Today's rungs are the ladder's titles, and the Show list offers each by the same title", () => {
-  assert.deepEqual(RUNGS.map((r) => rungWords(r).title), ['Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, never used for MFA', 'Nothing set up'])
+  assert.deepEqual(RUNGS.map((r) => rungWords(r).title), ['Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, not proven', 'Nothing set up'])
   for (const r of RUNGS) assert.equal(showWord(`rung-${r}`), rungWords(r).title, `rung ${r} in the Show list`)
   const show = (pages.today as { show: Record<string, string> }).show
   assert.equal(showWord('all'), show.all)

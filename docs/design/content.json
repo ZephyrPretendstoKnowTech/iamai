@@ -418,9 +418,9 @@
           "desc": "Passes MFA on that PC only; a phone or a new device is blocked."
         },
         "r2": {
-          "title": "Set up, never used for MFA",
-          "tip": "A method is registered, but the sign-in records show no MFA with it, so it is unproven.",
-          "desc": "Has a method; has not passed MFA with it yet."
+          "title": "Set up, not proven",
+          "tip": "A method is registered, and no sign-in record names it, so IAMAI cannot prove the person can pass MFA with it.",
+          "desc": "Has a method; no sign-in record proves it works."
         },
         "r1": {
           "title": "Nothing set up",
@@ -815,7 +815,7 @@
         "admin": "Admin",
         "guest": "Guest",
         "mfaVia": "MFA via {method} {when}",
-        "mfaCompleted": "MFA completed {when}",
+        "mfaCompleted": "MFA completed {when} · the record names no method",
         "neverSignedIn": "no sign-in on record",
         "inactiveSince": "inactive since {date}",
         "noMethodEvidence": "no MFA-capable method registered",
@@ -2146,7 +2146,7 @@
         "groups": {
           "$comment": "The campaign's groups are the ladder's rungs (derive/ladder.ts; pages.ladder titles), worst first; rung 5 needs nothing.",
           "noMethod": "{n} people at Nothing set up; issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
-          "unproven": "{n} people at Set up, never used for MFA; ask each for one MFA sign-in:",
+          "unproven": "{n} people at Set up, not proven; ask each for one MFA sign-in:",
           "rung3": "{n} people at Windows Hello only; register a passkey in Microsoft Authenticator, so a phone or a new PC works too:",
           "rung4": "{n} people at Authenticator app, proven; add a passkey in Authenticator; a risky sign-in requires one:",
           "holdouts": "{n} people past the enrol-by date with nothing done; review each; they are locked out when the policy enforces:"
@@ -2238,7 +2238,7 @@
         "signature": "IT",
         "noMethod": [],
         "unproven": [
-          "Lachlan Robinette (guest) · never prompted"
+          "Lachlan Robinette (guest) · method not proven"
         ],
         "rung3": [],
         "rung4": [],
@@ -2283,7 +2283,7 @@
         "evidence": [
           "The baseline's floor for everyone is the Multifactor authentication strength: a passkey, Authenticator approval, a security key, and a text message or call, which is why the campaign removes phone numbers. The campaign registers passkeys because the admin and risk policies require one, and a passkey cannot be phished.",
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
-          "{n} people registered but never seen to complete MFA: their first prompt is enforcement: {list:unproven}",
+          "{n} people have a registered method that no sign-in record proves: enforcement is its first test: {list:unproven}",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"

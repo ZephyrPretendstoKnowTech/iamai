@@ -82,7 +82,7 @@ test("Today's Show list: every account, the five rungs by title, the not active,
   const { showWord } = await import('./todayCells.ts')
   assert.deepEqual(
     SHOW_KEYS.map(showWord),
-    ['All accounts', 'Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, never used for MFA', 'Nothing set up', 'Not active', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'],
+    ['All accounts', 'Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, not proven', 'Nothing set up', 'Not active', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'],
   )
   assert.ok(!('tiles' in (pages.today as Record<string, unknown>)), 'the four tiles are gone: the ladder stands in their place')
 })
