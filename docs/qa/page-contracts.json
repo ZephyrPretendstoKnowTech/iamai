@@ -637,7 +637,9 @@
           "Done when",
           "If it goes wrong",
           "If a change locks you out",
-          "Tell your people"
+          "Tell your people",
+          "What IAMAI found",
+          "Fix before continuing"
         ],
         "tabs": [
           "Portal steps",

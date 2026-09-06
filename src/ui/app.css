@@ -1141,6 +1141,72 @@ footer.app a {
 .step-body h3 {
   margin: 18px 0 6px;
 }
+/* ================= the Step Contract (Foundation D) =================
+   One structure for every step: where it is now, why, what IAMAI found, who it
+   touches, what to do, what to fix first, done when, More. The hierarchy is
+   typographic — the action carries the weight, the state and the evidence
+   recede, and nothing is boxed inside the step's own box. */
+
+/* Where the step is, on both axes (roadmap/lifecycle.ts): the stage, then the
+   condition. Small caps-free, no pill: two words that read as a state, not as a
+   badge, so a step that also carries the row's status word does not read as
+   three labels for one fact. */
+.step-body .step-state {
+  margin: 2px 0 0;
+  font-size: var(--t-2);
+  color: var(--ink-2);
+}
+.step-body .step-state .stage {
+  font-weight: 500;
+  color: var(--ink);
+}
+/* A condition with something to say takes the ink; a healthy one recedes. The
+   state colours live in .status and nowhere else (design lint 5), and they would
+   be redundant here anyway: the word is the signal, and the row above already
+   carries the tone. */
+.step-body .step-state .condition-blocked,
+.step-body .step-state .condition-baseline-conflict,
+.step-body .step-state .condition-needs-decision,
+.step-body .step-state .condition-review-required {
+  color: var(--ink);
+  font-weight: 500;
+}
+/* The next milestone, and only where Foundation B has a date for it. */
+.step-body .step-next {
+  margin: 2px 0 0;
+  font-size: var(--t-2);
+  color: var(--ink-2);
+}
+/* A goal the baseline implements with two policies: each member on its own row,
+   with its own name and its own stage. Absent on a step with one policy. */
+.step-body .step-members {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0 0 0 12px;
+  border-left: 2px solid var(--rule);
+  font-size: var(--t-2);
+  color: var(--ink-2);
+}
+.step-body .step-members > li {
+  margin: 2px 0;
+}
+.step-body .step-members .member-label {
+  font-weight: 500;
+  color: var(--ink);
+}
+/* The one action. It is the sentence the step exists for, so it takes the weight
+   the old status pill used to take. */
+.step-body .do-lead {
+  margin: 6px 0 10px;
+  font-weight: 500;
+}
+/* Nothing about a blocker is optional advice: the list keeps a rule of its own so
+   it cannot be read as the paragraph before it. */
+.step-body ol.sections.blocking {
+  border-left: 2px solid var(--rule-strong);
+  padding-left: 20px;
+  margin-left: 2px;
+}
 .step-body pre.mono {
   background: var(--bg-inset);
   padding: 12px;

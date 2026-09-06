@@ -22,7 +22,7 @@ import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
-import { Button, InfoTip, Status } from '../components/index.ts'
+import { Button, InfoTip } from '../components/index.ts'
 import { LadderTiles } from './LadderTiles.tsx'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -31,6 +31,7 @@ import { rowWhen } from './rowWhen.ts'
 import { rowWho } from './rowWho.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
+import { PlanRow } from './StepSections.tsx'
 import { planDates } from './stepVars.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { stepById } from '../../content/content.ts'
@@ -253,14 +254,8 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan, 
   const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null)
   return (
     <>
-      <div className="plan-row" tabIndex={0} onClick={onToggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}>
-        <span className="plan-row-main">
-          <Status tone={status.tone}>{status.word}</Status>
-          <span className="step-title">{entry.title}</span>
-          <span className="who">{who}</span>
-          <span className="when">{cleanupWhen(row)}</span>
-        </span>
-      </div>
+      {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
+      <PlanRow word={status.word} tone={status.tone} title={entry.title} who={who} when={cleanupWhen(row)} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
     </>
   )
@@ -296,18 +291,24 @@ function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, na
   const status = statusOf(step)
   return (
     <>
-      <div className="plan-row" tabIndex={0} onClick={onToggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}>
-        <span className="plan-row-main">
-          <Status tone={status.tone}>{status.word}</Status>
-          {isNext && <span className="next-mark" aria-label={PP.next}>{PP.next}</span>}
-          <span className="step-title">{contentTitle(step)}</span>
-          <span className="who">{rowWho(step, nameOf)}</span>
-          <span className={`when${heldByReadiness(step) ? ' when-reason' : ''}`}>{rowWhen(step, waveStart)}</span>
-        </span>
-        {/* The one binding reason, already in a pages.plan.blocked shape (the
-            engine fills those); a readiness hold reads in the date column instead. */}
-        {step.status === 'blocked' && step.blockedReason && !heldByReadiness(step) && <span className="plan-row-reason">{step.blockedReason}</span>}
-      </div>
+      {/* The one row shape the Plan draws (StepSections.tsx PlanRow). It stays thin
+          on purpose: at a baseline of ~38 policies the collapsed rows are what
+          makes the Plan readable, so a row says only enough to decide whether to
+          open it — the state, the title, who it touches, when. The one binding
+          reason sits under it, already in a pages.plan.blocked shape (the engine
+          fills those); a readiness hold reads in the date column instead. */}
+      <PlanRow
+        word={status.word}
+        tone={status.tone}
+        title={contentTitle(step)}
+        who={rowWho(step, nameOf)}
+        when={rowWhen(step, waveStart)}
+        whenReason={heldByReadiness(step)}
+        reason={step.status === 'blocked' && step.blockedReason && !heldByReadiness(step) ? step.blockedReason : null}
+        nextLabel={isNext ? PP.next : null}
+        open={open}
+        onToggle={onToggle}
+      />
       {open && (
         <ContentStep
           key={snapshot.asOf}
