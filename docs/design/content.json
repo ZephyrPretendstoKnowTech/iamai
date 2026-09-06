@@ -1014,7 +1014,7 @@
       },
       "decision": {
         "label": "Emergency access accounts",
-        "help": "Add every account that exists only for this purpose; two are needed. IAMAI nominated these from names, roles and exclusions; a nomination is not a choice, so nothing counts as an emergency account until you tick it and save.",
+        "help": "Add every account that exists only for this purpose; two are needed. IAMAI nominated these from names, roles and exclusions; a nomination is not a choice, so no account is emergency access until you choose it here and save.",
         "pickerRow": "{name} · {upn} · {signals}",
         "save": "Save",
         "multi": true
