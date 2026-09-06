@@ -5,7 +5,7 @@
 // bundle, redacted by default. Pure.
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { awaitingDeployment, enforcementTiming, forecastEnforcement } from './forecast.ts'
+import { awaitingDeployment, forecastEnforcement, statedEnforcement } from './forecast.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
@@ -81,10 +81,14 @@ export function stepContext(step: Step, view?: StepView): string {
   // (roadmap/forecast.ts).
   //
   // A policy that does exist but has not yet earned its enforcement — sitting in
-  // report-only with the window still open — has a day, and it is a target. It
-  // is stated on the same terms the email under it uses (shared.commsForecastDate),
-  // so the facts block and the draft cannot disagree about what the day is worth.
-  const timing = enforcementTiming(step)
+  // report-only with its window still open — is dated by no enforcement either.
+  // Its next day is the review its own gates derive, and What to do below names
+  // it; the projection the schedule holds is withheld, because a prompt pack is
+  // the text a person hands to a model to write an announcement from, and
+  // "takes effect Sep 8" is what comes back (roadmap/forecast.ts
+  // `statedEnforcement`, which reads the same for the row, the Dates line and
+  // the calendar entry).
+  const timing = statedEnforcement(step)
   const when =
     timing.at === null || awaitingDeployment(step)
       ? 'not yet dated'
@@ -201,18 +205,23 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
       // `committed` is a milestone Foundation B's evidence supports. The
       // fallback below still carries the schedule's own events and rings, and
       // this is what says which of the two they are.
-      enforcement: enforcementTiming(s),
+      enforcement: statedEnforcement(s),
     }
+    // A policy in report-only whose enforcement Foundation B has not granted has
+    // no enforcement instant to give (`unearned`), so the fallback's engine
+    // fields do not smuggle the same projection back in under another name: the
+    // schedule's events and rings are the instant, and absent is how the bundle
+    // says a date is not this step's to state.
+    const withheld = data.enforcement.basis === 'unearned'
     return v
       ? { ...data, title: v.title, why: v.why, whatToDo: v.whatToDo, doneWhen: v.doneWhen, dates: v.dates, ifWrong: v.ifWrong, population: reached(s)?.active ?? null }
       : {
           ...data,
-          events: s.events,
+          ...(withheld ? {} : { events: s.events, rings: s.rings.map((r) => ({ name: r.name, plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })) }),
           title: s.title,
           plainTitle: s.plainTitle,
           why: s.why,
           population: reached(s)?.active ?? null,
-          rings: s.rings.map((r) => ({ name: r.name, plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })),
           forManager: s.forManager,
         }
   })

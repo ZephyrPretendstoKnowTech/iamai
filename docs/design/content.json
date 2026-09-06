@@ -101,6 +101,7 @@
         "readySince": "ready since {date}",
         "readyNow": "ready now: 0 failures in {n} days",
         "evidenceToday": "{failures} failing or interrupted, {seen} of {people} active people seen in {n} days",
+        "evidenceTodayUnread": "no sign-in records read for this policy, {seen} of {people} active people seen in {n} days",
         "regression": {
           "disabled": "{name} was disabled after {since}; the goal is open again",
           "deleted": "{name} was deleted after {since}; the goal is open again",

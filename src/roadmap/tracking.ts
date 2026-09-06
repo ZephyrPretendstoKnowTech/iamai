@@ -320,7 +320,11 @@ function gates(
   const active = trackedScope(policy, snapshot, ctx, activeSet)
   const daysInReportOnly = since ? daysBetween(since, snapshot.asOf) : 0
   const readyOn = since ? new Date(Date.parse(since) + observationDaysFor(step) * DAY).toISOString() : null
-  if (!pr) return { daysInReportOnly, readyOn, readyNow: false, seenInScope: active === null ? null : 0, activeInScope: active?.length ?? null, signIns: 0, failures: 0, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
+  // No result for this policy at all: nothing was read about it, so there is no
+  // failure count. A zero here is the shape of an empty set, not a clean window,
+  // and every line under it reads "0 failing or interrupted" exactly as it reads
+  // a zero twenty-four records prove (types.ts StepTracking.failures).
+  if (!pr) return { daysInReportOnly, readyOn, readyNow: false, seenInScope: active === null ? null : 0, activeInScope: active?.length ?? null, signIns: 0, failures: null, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
   const c = pr.counts
   const signIns = c.reportOnlyFailure + c.reportOnlyInterrupted + c.reportOnlySuccess + c.enforcedFailure + c.enforcedSuccess
   // Failing or interrupted records since `since`: by day where the snapshot
@@ -346,7 +350,10 @@ function gates(
     seenInScope,
     activeInScope: active?.length ?? null,
     signIns,
-    failures,
+    // A result whose window holds no record of this policy is the same empty set
+    // as no result at all: the sum above can only be zero, and the zero says
+    // nothing. Only records make a count.
+    failures: signIns === 0 ? null : failures,
     failuresByUser: [...byUser.entries()].map(([userId, n]) => ({ userId, count: n })).sort((a, b) => b.count - a.count),
     evidenceQuality: signIns >= MIN_SIGNINS_TO_JUDGE ? 'enough' : signIns > 0 ? 'thin' : 'none',
   }
@@ -359,7 +366,7 @@ const noGates = (snapshot: TenantSnapshot): Gates => ({
   seenInScope: null,
   activeInScope: null,
   signIns: 0,
-  failures: 0,
+  failures: null,
   failuresByUser: [],
   evidenceQuality: snapshot.sources.signInEvidence?.coveredWindow ? 'thin' : 'none',
 })
@@ -503,7 +510,10 @@ function aggregateTracking(members: MemberTracking[], observed: ObservedState[],
     seenInScope: sumOrNull(watched.map((m) => m.seenInScope)),
     activeInScope: sumOrNull(watched.map((m) => m.activeInScope)),
     signIns: members.reduce((n, m) => n + m.signIns, 0),
-    failures: members.reduce((n, m) => n + m.failures, 0),
+    // One member nobody read records for leaves the pair's count unknown: adding
+    // its silence in as a zero would state the other member's clean window as
+    // the pair's.
+    failures: members.some((m) => m.failures === null) ? null : members.reduce((n, m) => n + (m.failures ?? 0), 0),
     failuresByUser: members.flatMap((m) => m.failuresByUser),
     evidenceQuality: members.some((m) => m.evidenceQuality === 'none') ? 'none' : members.some((m) => m.evidenceQuality === 'thin') ? 'thin' : 'enough',
   }
