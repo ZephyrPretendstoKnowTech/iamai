@@ -19,14 +19,14 @@
 // saying something the screen does not.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { implementationOffered, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
-import { stepContext } from '../../roadmap/prompts.ts'
+import { groundingBundle, stepContext } from '../../roadmap/prompts.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
@@ -38,6 +38,7 @@ import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { rowWhen } from './rowWhen.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
+import { awaitingDeployment, enforcementTiming } from '../../roadmap/forecast.ts'
 import { statusOf } from './statusWord.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -47,6 +48,8 @@ const FIXTURE = 'demo-week2'
 const STEP_ID = 's-goal-admin-session'
 
 const HOLE = /\{[a-zA-Z0-9_:]+\}/
+/** A date as `absoluteDate` writes one, so a row that states a reason instead of a date is not read as one. */
+const DATE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
 const GUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i
 
 function canonical(): { step: Step; ctx: StepVarContext; steps: Step[]; planId: string } {
@@ -303,11 +306,20 @@ test('004.11: every date the operator reads on this step is the report-only depl
   assert.equal(step.state.lifecycle, 'not-deployed')
   assert.equal(step.tracking, null)
   assert.equal(readyWhen(step), null)
-  // The plan keeps a forecast for this policy — the rings it placed and the wave
-  // it read back off them — because forecasting the rollout is what a plan is.
-  // What it may not do is hand that forecast to a person as this step's date. So
-  // every place a person reads a date for this step reads the one day the plan
-  // has actually scheduled: the report-only deployment.
+  // The plan keeps a forecast for this policy — the rings it placed, the wave it
+  // read back off them, the enforcement instant they end on — because drawing a
+  // whole rollout before any policy exists is what a roadmap is for. What it may
+  // not do is hand that forecast to a person as this step's date, so the forecast
+  // is a classified fact rather than a bare instant: roadmap/forecast.ts calls it
+  // `forecast`, never `committed`, and it stays that until a scan finds the
+  // policy in report-only and Foundation B's evidence carries it further.
+  const timing = enforcementTiming(step)
+  assert.equal(timing.basis, 'forecast', 'the schedule’s enforcement instant for an absent policy is a projection, not a commitment')
+  assert.equal(timing.at, step.events!.enforce.at, 'the projection is the schedule’s own instant; nothing here recomputes it')
+  assert.equal(awaitingDeployment(step), true)
+  assert.notEqual(nextMilestone(step).kind, 'enforce', 'a forecast never becomes the step’s actionable milestone')
+  // And every place a person reads a date for this step reads the one day the
+  // plan has actually scheduled: the report-only deployment.
   const enforceDay = absoluteDate(step.events!.enforce.at)
   const reportOnlyDay = absoluteDate(ctx.reportOnlyAt!)
   assert.notEqual(enforceDay, reportOnlyDay, 'the two days differ, so the assertions below can tell them apart')
@@ -361,4 +373,60 @@ test('004.12: the Portal instructions carry the operation’s description, and t
   const snapshot = structuredClone(ctx.snapshot)
   snapshot.config.caPolicies!.rows.push({ id: 'portal-created-policy', displayName: step.naming!.proposed, description: pasted, state: 'enabledForReportingButNotEnforced' } as never)
   assert.deepEqual(findTaggedPolicies(snapshot, planId, step.id), [{ policyId: 'portal-created-policy', memberKey: op.memberKey }], 'a policy created from the Portal instructions is not matched to this step')
+})
+
+// ---- 10. the forecast is carried as a forecast, and never as a commitment ----
+
+test('004.13: the grounding bundle states what the step’s enforcement date is worth, beside the date', () => {
+  const f = fixture(FIXTURE)
+  const r = runFixture(f)
+  const step = r.steps.find((st) => st.id === STEP_ID)!
+  const { ctx } = canonical()
+  const view = (st: Step): ReturnType<typeof stepExportView> => stepExportView(st, ctx)
+  // Both branches of the bundle: the one the Export page builds, which speaks
+  // from the screen's view, and the fallback, which emits the schedule's own
+  // events and rings. A tool reading either gets an instant; without the basis
+  // beside it, it cannot tell a projection from a milestone something earned.
+  for (const withView of [true, false]) {
+    const bundle = groundingBundle({
+      view: withView ? view : undefined,
+      tenant: 'Fixture tenant',
+      snapshot: f.snapshot,
+      coverage: r.coverage,
+      steps: r.steps,
+      schedule: r.schedule,
+      redacted: false,
+      generated: f.snapshot.asOf,
+    })
+    const plan = bundle.plan as { steps: Record<string, unknown>[] }
+    const row = plan.steps.find((x) => x.id === STEP_ID)!
+    assert.deepEqual(row.enforcement, { basis: 'forecast', at: step.events!.enforce.at }, `the bundle does not say the enforcement instant is a forecast (view: ${withView})`)
+  }
+})
+
+test('004.14: across every fixture, a forecast enforcement never becomes an actionable one', () => {
+  for (const f of allFixtures()) {
+    const r = runFixture(f)
+    for (const st of r.steps) {
+      const t = enforcementTiming(st)
+      // Only a policy Foundation B has already carried to ready-to-enforce or
+      // beyond has an enforcement anything has earned. Everything before that —
+      // including a policy sitting healthily in report-only whose window has not
+      // closed — is the roadmap projecting forward, and the projection is never
+      // the step's next action.
+      if (t.basis === 'committed') assert.ok(st.state.lifecycle === 'ready-to-enforce' || st.state.lifecycle === 'enforced', `${f.name}/${st.id}: an enforcement is called committed at ${st.state.lifecycle}`)
+      if (t.basis === 'forecast') assert.notEqual(nextMilestone(st).kind, 'enforce', `${f.name}/${st.id}: a forecast enforcement is the step's milestone`)
+      if (!awaitingDeployment(st)) continue
+      // A policy that is not in the tenant: the forecast stays on the step, and
+      // no surface hands it to a person as this step's date.
+      assert.notEqual(t.basis, 'committed', `${f.name}/${st.id}: an absent policy has a committed enforcement`)
+      assert.equal(readyWhen(st), null, `${f.name}/${st.id}: an absent policy is ready to enforce`)
+      // The row's date column: a readiness hold states its reason there instead
+      // of a date, so only a row that is a date is checked, and the only date it
+      // may be is the report-only deployment.
+      const row = rowWhen(st)
+      if (t.at !== null) assert.notEqual(row, absoluteDate(t.at), `${f.name}/${st.id}: the row dates the forecast enforcement`)
+      if (DATE.test(row)) assert.equal(row, absoluteDate(st.reportOnlyAt ?? ''), `${f.name}/${st.id}: the row dates something other than the report-only deployment`)
+    }
+  }
 })

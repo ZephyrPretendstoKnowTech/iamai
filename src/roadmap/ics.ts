@@ -1,6 +1,7 @@
 // ICS export (roadmap-v2.md §8): one calendar entry per scheduled step, from
 // its first ring to its last, and one per Cleanup row on its day (E4). Pure; the
 // file is built in the browser.
+import { awaitingDeployment } from './forecast.ts'
 import { unavailableReason } from './operations.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 
@@ -37,12 +38,13 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // A change to an existing policy has no ring: its enforcement instant is its day.
     const planned = s.rings[0]?.plannedStart ?? s.events?.enforce.at ?? null
     // A policy that is not deployed has one day in the calendar and it is not an
-    // enforcement: the day it is created in report-only (Foundation B). Its rings
-    // are the rollout of an enforcement no window has been watched for, so
-    // putting the entry on them books a change nothing has earned. The rings are
-    // the entry again once a scan finds the policy in report-only. Which steps
-    // the calendar carries does not change; the day one of them sits on does.
-    const deploying = s.state.lifecycle === 'not-deployed'
+    // enforcement: the day it is created in report-only (roadmap/forecast.ts,
+    // over Foundation B). Its rings are the roadmap's forecast of an enforcement
+    // no window has been watched for, so booking the entry on them puts a
+    // projection in a person's calendar as a commitment. The rings are the entry
+    // again once a scan finds the policy in report-only. Which steps the
+    // calendar carries does not change; the day one of them sits on does.
+    const deploying = awaitingDeployment(s)
     const start = planned === null ? null : deploying ? (s.reportOnlyAt ?? null) : planned
     const end = start === null ? null : deploying ? start : (s.rings.at(-1)?.plannedEnd ?? start)
     if (!start || !end) continue
