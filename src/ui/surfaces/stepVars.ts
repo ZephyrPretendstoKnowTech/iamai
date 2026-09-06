@@ -87,7 +87,8 @@ function short(iso: string | null | undefined): string | undefined {
   return iso ? absoluteDate(iso) : undefined
 }
 
-function orgName(snapshot: TenantSnapshot): string {
+/** The tenant's own name, from the one place a snapshot carries it: every surface that names the tenant reads this. */
+export function tenantNameOf(snapshot: TenantSnapshot): string {
   const org = snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined
   return org?.displayName ?? ''
 }
@@ -108,8 +109,8 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   const enforce = ev?.enforce
   const announce = ev?.announce
   const v: Record<string, unknown> = {
-    tenant: orgName(ctx.snapshot),
-    tenantName: orgName(ctx.snapshot),
+    tenant: tenantNameOf(ctx.snapshot),
+    tenantName: tenantNameOf(ctx.snapshot),
     active: view?.active,
     admins: view?.admins,
     guests: view?.guests,

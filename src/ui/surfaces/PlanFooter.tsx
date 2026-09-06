@@ -9,8 +9,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { REDACTED, exportDownload } from '../exportGuard.ts'
-import { Button, Status } from '../components/index.ts'
-import { statusOf } from './statusWord.ts'
+import { Button } from '../components/index.ts'
 import type { PlanComputed } from './planData.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../derive/notLicensed.ts'
@@ -18,7 +17,7 @@ import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../deri
 type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
 const F = (pages.plan as { footer: FooterWords }).footer
 
-export function PlanFooter({ computed, nameOf, onPutBack, renderRow }: { computed: PlanComputed; nameOf: (id: string) => string; onPutBack: (stepId: string) => void; /** An In place row as the plan's own row, so it opens in place: a done step still carries its decisions (a policy in place keeps its partner question; a made device decision keeps its effect lines). */ renderRow?: (step: Step) => ReactNode }) {
+export function PlanFooter({ computed, nameOf, onPutBack, renderRow }: { computed: PlanComputed; nameOf: (id: string) => string; onPutBack: (stepId: string) => void; /** An In place row as the plan's own row, so it opens in place: a done step still carries its decisions (a policy in place keeps its partner question; a made device decision keeps its effect lines). One renderer, always: the footer had a row of its own behind an optional prop that nothing ever left unset, and it had drifted to a different shape. */ renderRow: (step: Step) => ReactNode }) {
   void nameOf
   // The steps the person said do not apply here (mapping.notApplicable), with
   // the reason as given and a way back; the engine's own not-applicable goals follow.
@@ -44,7 +43,9 @@ export function PlanFooter({ computed, nameOf, onPutBack, renderRow }: { compute
       {inPlace.length > 0 && (
         <details>
           <summary>{fillText(F.inPlace, { n: inPlace.length })}</summary>
-          {inPlace.map((s) => (renderRow ? <Fragment key={s.id}>{renderRow(s)}</Fragment> : <FooterRow key={s.id} step={s} />))}
+          {inPlace.map((s) => (
+            <Fragment key={s.id}>{renderRow(s)}</Fragment>
+          ))}
         </details>
       )}
       {said.length > 0 && (
@@ -93,16 +94,6 @@ export function PlanFooter({ computed, nameOf, onPutBack, renderRow }: { compute
           </ul>
         </details>
       )}
-    </div>
-  )
-}
-
-function FooterRow({ step }: { step: Step }) {
-  const status = statusOf(step)
-  return (
-    <div className="plan-row">
-      <Status tone={status.tone}>{status.word}</Status>
-      <span className="step-title">{step.plainTitle || step.title}</span>
     </div>
   )
 }

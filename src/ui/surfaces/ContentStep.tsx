@@ -13,7 +13,7 @@ import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, listCountVars, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { hasBaselineConflict } from '../../roadmap/baselineConflict.ts'
-import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
+import { unavailableReason } from '../../roadmap/operations.ts'
 import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
@@ -23,16 +23,16 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { heldByTitle, implementationOffered, jsonOffered, missingObjects, policyJson, policyJsonText, stepOperations } from './stepJson.ts'
+import { jsonOffered, missingObjects, policyJsonText, stepOperations } from './stepJson.ts'
 import { commsFor, datesLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
-import { Button, Status } from '../components/index.ts'
-import { statusOf } from './statusWord.ts'
-import { doneWhenTemplates } from './doneWhen.ts'
+import { Button } from '../components/index.ts'
+import { stepContract } from './stepContract.ts'
+import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepState, WhatIamaiFound, WhatToDoLead } from './StepSections.tsx'
 
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
@@ -96,8 +96,11 @@ export function ContentStep({
   const [copied, setCopied] = useState<string | null>(null)
   // The content step (resolved the same way the plan row resolves its title).
   const cs = contentStepFor(step) as Record<string, any> | undefined
-  const status = statusOf(step)
   const ex = stepVars(step, ctx) as Ex
+  // The Step Contract (stepContract.ts): the state, the next milestone, the one
+  // action, the blockers and the completion, worked out once from Foundations A,
+  // B and C. Everything below renders it; nothing below asks them again.
+  const contract = stepContract(step, ctx, ex as Record<string, unknown>)
   const copy = (id: string, text: string): void => {
     void exportClipboard(text, REDACTED).then((ok) => {
       if (!ok) return
@@ -124,50 +127,30 @@ export function ContentStep({
   // A goal the baseline holds no policy for has no portal lines; an empty list is
   // not a What to do (the shared-devices step rendered an empty section).
   const portal = portalLines && portalLines.length > 0 ? portalLines : null
-  // No implementation is offered unless the step has an artifact, every object
-  // it names exists, and nothing suppresses it (stepJson.ts
-  // implementationOffered). What the step says instead: the objects it waits on
-  // and the steps that create them, or — for a goal already in place, which has
-  // nothing to create — that there is nothing to do but keep it.
+  // Why an implementation is not offered — a missing object, an unmatched pair,
+  // an emergency account in reach, an unverified way back in, a readiness
+  // threshold, a baseline that contradicts itself — is one question with one
+  // answer, and the contract's action line carries it (stepContract.ts). What is
+  // still read here is only whether the step has *dates* and a rollback to show,
+  // which it does not while its policy cannot be written.
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
-  const suppressed = cs.kind === 'policy' && !implementationOffered(step)
-  const waiting = reason === 'missing-object'
-  const unmatched = reason === 'unmatched-pair'
-  const noOperation = reason === 'no-operation'
-  // The emergency-access boundary (roadmap/operations.ts): the step says which
-  // of the two facts it is — the policy reaches the way back in, or IAMAI could
-  // not read enough to say it does not — and offers no instructions either way.
-  const emergencyUnsafe = reason === 'unsafe-emergency-access'
-  const emergencyUnproven = reason === 'unverified-emergency-exclusion'
-  // The tenant-wide half: this operation would enforce the moment it is
-  // submitted, and the way back in is not verified yet.
-  const escapeHatch = reason === 'escape-hatch-unverified'
-  // The readiness half of the same boundary: running this would change what
-  // people have to do straight away, and the number the plan says to wait for
-  // has not been reached (roadmap/operations.ts readinessGate).
-  const readinessHeld = reason === 'readiness-unmet'
-  const inPlace = suppressed && reason === null && isPreserved(step)
-  const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
   // The content's leading "before" lines (a setting to change before the policy
   // is created: the device-settings toggle, password writeback, the SharePoint
   // access control) stay above the translator's portal lines, numbered with them.
   const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
-  // §8.7: a section with no content is not rendered. A step with nothing to do
-  // is a missing content key, logged by the walk, never an empty heading.
-  // The lead is a sentence about this step's checks ("{failing} of {total} checks
-  // fail today"), and a step with no object to check has neither number. The
-  // export gates it on the values being there (stepExport.ts whole); this did
-  // not, so the exclusions-group step of a tenant that has not chosen a group
-  // read "Fix each failing check. of checks fail today."
-  const leadWhole = typeof w.lead === 'string' && whole(w.lead, ex)
-  const hasWhatToDo = leadWhole || hasChecks || ((truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || emergencyUnsafe || emergencyUnproven || escapeHatch || readinessHeld || inPlace || hasSteps || before.length > 0
+  // Who the step reaches is the contract's answer (Foundation A): a reach this
+  // scan could not settle says so in one line and shows no count, which is why
+  // the section renders even where the step's own who-lines could not fill.
+  const showWho = whoHasContent(who, ex) || (contract.who !== null && !contract.who.known)
 
   return (
     <div className="step-body">
       <p className="line">
-        <span className="step-title">{cs.title}</span> <Status tone={status.tone}>{status.word}</Status>
+        <span className="step-title">{cs.title}</span>
       </p>
+      <StepState contract={contract} />
+      <PolicyMembers members={contract.members} />
       <Line s={cs.changeLine} ex={ex} cls="reason" />
       {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
           the step says so and offers no instructions. The words are the content
@@ -185,7 +168,9 @@ export function ContentStep({
         )}
       </p>
 
-      {whoHasContent(who, ex) && <h3>Who this touches</h3>}
+      <WhatIamaiFound found={contract.found} />
+
+      {showWho && <h3>Who this touches</h3>}
       {whoLead(who, ex) && <Line s={who.lead} ex={ex} cls="line" />}
       {evidenceLines(who, ex).filter((line) => whole(line, ex)).map((line, i) => (
         <WhoLine key={i} line={line} ex={ex} />
@@ -204,21 +189,22 @@ export function ContentStep({
       })}
       {who.groups && who.overlap && <Line s={who.overlap} ex={ex} cls="sub" />}
       {who.groups && who.adminsNote && truthy(ex.adminNames) && <p className="reason"><T s={who.adminsNote} ex={ex} /></p>}
+      {/* Foundation A settled the reach and could not: no count, no names, and
+          one line saying so rather than the goal's people standing in. */}
+      {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
 
-      {/* A decision with an `applies` key is offered only while its condition holds (the risk policy's first-enforcement rung, while anyone has only Authenticator approval). */}
+      <h3>What to do</h3>
+      {/* The one action, always. Where nothing overrules the lifecycle this is the
+          step's own lead; where an authority does — a policy the plan may not
+          write, a goal already in place, a question waiting on a person — it is
+          that authority's answer instead (stepContract.ts actionOf). */}
+      <WhatToDoLead contract={contract} />
+      {/* The decision comes before the instructions, and on a step that needs one
+          it *is* the action: IAMAI cannot choose, so nothing is offered to submit
+          until a person has (Foundation C). A decision with an `applies` key is
+          offered only while its condition holds (the risk policy's first-enforcement
+          rung, while anyone has only Authenticator approval). */}
       {d && (typeof d.applies !== 'string' || truthy(ex[d.applies])) && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
-
-      {hasWhatToDo && <h3>What to do</h3>}
-      {hasWhatToDo && reason === null && leadWhole && <p><T s={w.lead} ex={ex} /></p>}
-      {/* A check step (emergency access, exclusions group): one numbered fix line
-          per failing check, filled from that check's values (walk-51 item 14). */}
-      {Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && w.checkFixes && (
-        <ol className="sections">
-          {(ex.failingChecks as [string, Record<string, unknown>][]).map(([key, vals], i) =>
-            (w.checkFixes as Record<string, string>)[key] ? <li key={i}>{fillText((w.checkFixes as Record<string, string>)[key], { ...(ex as Record<string, unknown>), ...vals })}</li> : null,
-          )}
-        </ol>
-      )}
       {/* The create instructions. `needsCreate` is a proof that nothing
           qualifies; `createIfNeeded` is the same instructions offered to an
           operator who knows they need one, on a reading that could not prove it
@@ -253,25 +239,16 @@ export function ContentStep({
             </p>
           )}
         </>
-      ) : waiting ? (
-        <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
-      ) : unmatched ? (
-        <p className="reason">{fillText(app.plan.pairUnmatched, { tenant: String(ex.tenant ?? '') })}</p>
-      ) : noOperation ? (
-        <p className="reason">{fillText(app.plan.noOperation, { tenant: String(ex.tenant ?? '') })}</p>
-      ) : emergencyUnsafe ? (
-        <p className="reason">{fillText(app.plan.emergencyUnsafe, { tenant: String(ex.tenant ?? '') })}</p>
-      ) : emergencyUnproven ? (
-        <p className="reason">{fillText(app.plan.emergencyUnproven, { tenant: String(ex.tenant ?? '') })}</p>
-      ) : escapeHatch ? (
-        <p className="reason">{fillText(app.plan.escapeHatchHeld, { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) })}</p>
-      ) : readinessHeld ? (
-        <p className="reason">{fillText(app.plan.readinessHeld, { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) })}</p>
-      ) : inPlace ? (
-        <p className="reason">{app.plan.inPlaceKeep}</p>
       ) : (
+        // Why an implementation is not offered is the contract's action line and
+        // is said once, above. This is only the step's own instructions where it
+        // has them; the eight reason branches that used to stand here were the
+        // same eight sentences a second time, chosen by a second reading of
+        // Foundation A inside the JSX.
         (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...(hasSteps ? (w.steps as unknown[]).map((l) => <T s={l} ex={ex} />) : [])].map((node, i) => <li key={i}>{node}</li>)}</ol>
       )}
+
+      <FixBeforeContinuing fix={contract.fix} />
 
       {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
         <>
@@ -280,19 +257,11 @@ export function ContentStep({
         </>
       )}
 
-      {(() => {
-        // Expand the shared policy/change done-when placeholders (a policy in
-        // report-only gets its two gates with today's numbers), then drop any
-        // line with a hole; the heading appears only if a line survives (§8.7).
-        const dw = reason !== null ? [] : doneWhenTemplates(step, (cs.doneWhen || []) as unknown[]).filter((x: unknown) => whole(x, ex))
-        if (dw.length === 0) return null
-        return (
-          <>
-            <h3>Done when</h3>
-            <ul className="sections">{dw.map((x: unknown, i: number) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
-          </>
-        )
-      })()}
+      {/* Every step has a completion, and it is concrete. The step's own gates
+          where it has them; where a policy cannot be written yet, what would
+          clear that instead — which is exactly the step that used to render no
+          Done when at all (stepContract.ts doneWhenOf). */}
+      <DoneWhen heading="Done when" lines={contract.doneWhen} />
 
       {reason === null && cs.ifWrong && whole(cs.ifWrong, ex) && (
         <>
