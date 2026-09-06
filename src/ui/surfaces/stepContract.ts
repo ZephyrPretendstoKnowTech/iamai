@@ -24,8 +24,8 @@
 import type { Step } from '../../roadmap/types.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
-import type { UnavailableReason } from '../../roadmap/operations.ts'
-import { implementationOffered, isPreserved, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
+import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
+import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
@@ -144,8 +144,20 @@ export type ContractMember = {
   line: string
 }
 
-/** Whether the four implementation channels are offered, and why not when they are not (Foundation A). */
-export type ContractImplementation = { offered: true; operations: number } | { offered: false; reason: UnavailableReason | null; because: string | null }
+/**
+ * Whether the four implementation channels are offered, and why not when they
+ * are not (Foundation A).
+ *
+ * Two different "no". `reason` is a policy that cannot be written at all and
+ * says what is missing; `hold` is a sound operation whose day has not come —
+ * the policy is deployed in report-only and the only thing left to submit turns
+ * it on, so the step's action is to keep watching and nothing here is a blocker
+ * (roadmap/operations.ts `policyHold`). Both are the one answer the channels
+ * read; neither is re-decided downstream.
+ */
+export type ContractImplementation =
+  | { offered: true; operations: number }
+  | { offered: false; reason: UnavailableReason | null; hold: PolicyHold | null; because: string | null }
 
 export type StepContract = {
   id: string
@@ -459,6 +471,6 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     multiPolicy: members.length > 1,
     implementation: implementationOffered(step)
       ? { offered: true, operations: operationsOf(step).length }
-      : { offered: false, reason, because: reason === null ? null : reasonLine(step, reason, tenant) },
+      : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant) },
   }
 }

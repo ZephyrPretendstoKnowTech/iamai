@@ -1039,7 +1039,7 @@ export function enforcesOnRun(op: PolicyOperation): boolean {
 }
 
 /** What any of this applies to: a step that describes a policy. */
-type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status'>>
+type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state'>>
 
 /**
  * True when this step's enforcement is held behind a readiness prerequisite
@@ -1066,9 +1066,25 @@ export function isOpenPolicy(step: PolicyStep): boolean {
 }
 
 /**
+ * Why a step that *has* a sound operation still has nothing to hand over today.
+ *
+ * A hold is not a reason a policy cannot be written. Nothing is missing, nothing
+ * contradicts itself, no safety gate is outstanding: the operation is valid and
+ * will be handed over, on a later day than this one. It is the difference
+ * between "IAMAI cannot write this" and "not yet".
+ *
+ * `observation-incomplete`: the policy is already deployed in report-only and
+ * the only thing left to submit turns it on (`enforcesOnRun`), which Foundation
+ * B grants at `ready-to-enforce` and not before. Submitting it today enforces on
+ * day two of a window the plan itself has not closed.
+ */
+export type PolicyHold = 'observation-incomplete'
+
+/**
  * What a step's policy work is, in one answer:
  *
  * - `implementable`: operations to run, and nothing stopping them;
+ * - `held`: operations that hold together, and today is not the day to run them;
  * - `unavailable`: an open policy the plan cannot write, and why;
  * - `preserved`: a goal already in place — nothing to write, and nothing wrong;
  * - `not-policy`: a step that describes no policy, or one set aside.
@@ -1080,6 +1096,7 @@ export function isOpenPolicy(step: PolicyStep): boolean {
  */
 export type PolicyResult =
   | { kind: 'implementable'; operations: PolicyOperation[] }
+  | { kind: 'held'; hold: PolicyHold; operations: PolicyOperation[] }
   | { kind: 'unavailable'; reason: UnavailableReason }
   | { kind: 'preserved' }
   | { kind: 'not-policy' }
@@ -1126,7 +1143,19 @@ export function policyResult(step: PolicyStep): PolicyResult {
   const valid = validOperations(step.action)
   if (declared.length > 0 && valid.length === 0) return { kind: 'unavailable', reason: 'no-operation' }
   if (valid.length === 0) return step.status === 'done' ? { kind: 'preserved' } : { kind: 'unavailable', reason: 'no-operation' }
-  return step.status === 'done' ? { kind: 'preserved' } : { kind: 'implementable', operations: valid }
+  if (step.status === 'done') return { kind: 'preserved' }
+  // Foundation B's gate, in the one place that decides whether IAMAI hands an
+  // implementation over. The policy is deployed and being watched and the only
+  // thing left to submit turns it on; the window has not closed and the records
+  // have not seen everybody, so the operation is sound and today is not its day.
+  //
+  // This sits below every unavailable reason because those name something to go
+  // and do, and above `implementable` because nothing that enforces on run is
+  // offered while it holds. It withholds nothing else: a create lands in
+  // report-only and a patch that leaves a report-only policy in report-only deny
+  // nobody, so they stay offered — that is how the window is spent well.
+  if (step.state?.lifecycle === 'report-only' && valid.some(enforcesOnRun)) return { kind: 'held', hold: 'observation-incomplete', operations: valid }
+  return { kind: 'implementable', operations: valid }
 }
 
 /**
@@ -1139,6 +1168,24 @@ export function policyResult(step: PolicyStep): PolicyResult {
 export function unavailableReason(step: PolicyStep): UnavailableReason | null {
   const result = policyResult(step)
   return result.kind === 'unavailable' ? result.reason : null
+}
+
+/**
+ * Why a sound implementation is not being handed over today, or null when
+ * nothing holds it back.
+ *
+ * The counterpart of `unavailableReason` for the "not yet" answer, and the one
+ * reading every consumer makes: the portal instructions, the JSON, the
+ * PowerShell, the download and the step's own What-to-do lines are withheld
+ * while it is non-null (ui/surfaces/stepInstructions.ts), and the plan takes the
+ * step's projected enforcement off the schedule on the strength of it
+ * (roadmap/forecast.ts `enforcementUnearned`). Unlike an unavailable reason it
+ * blocks nothing else: the step is dated, scheduled, explained and rendered as
+ * the healthy report-only work it is, and its next action is to keep watching.
+ */
+export function policyHold(step: PolicyStep): PolicyHold | null {
+  const result = policyResult(step)
+  return result.kind === 'held' ? result.hold : null
 }
 
 /**
@@ -1170,22 +1217,38 @@ export function isPreserved(step: PolicyStep): boolean {
  * - every confirmed emergency access account is structurally out of scope of
  *   every policy the step will leave behind (`action.emergencyExposure`);
  * - the way back in is verified: the emergency accounts and the exclusions group
- *   have no blocking check outstanding (`action.escapeHatch`).
+ *   have no blocking check outstanding (`action.escapeHatch`);
+ * - nothing holds it for a day that has not come — the policy is deployed in
+ *   report-only and the only thing left to submit turns it on, which Foundation
+ *   B grants at `ready-to-enforce` and not before (`policyHold`).
  *
  * The portal instructions, the JSON, the PowerShell and the download are offered
  * together or none of them is, and a step that offers none is not scheduled: no
  * wave, no start, no ring dates, no enforcement or announcement event. The step
  * still says what is missing and which step comes first; that is an explanation,
  * not an implementation.
+ *
+ * This is the one answer. There is no second reading downstream that decides a
+ * channel is due when this says otherwise: the Step Contract reports it
+ * (`contract.implementation.offered`) and the four channels read it
+ * (ui/surfaces/stepJson.ts, stepPortal.ts).
  */
 export function implementationOffered(step: PolicyStep): boolean {
   return policyResult(step).kind === 'implementable'
 }
 
-/** The operations a step actually runs: its own, when it offers an implementation at all. */
+/**
+ * The operations a step actually runs: its own, when they hold together.
+ *
+ * A held step keeps them. They are what the step *will* submit, and everything
+ * that reads what the change means — what it can deny, whom it would strand,
+ * whether it enforces on run — needs them to say so while the window is open.
+ * Whether today is the day is `implementationOffered`, and the channels that
+ * hand a body to a person read that first (ui/surfaces/stepJson.ts).
+ */
 export function operationsOf(step: PolicyStep): PolicyOperation[] {
   const result = policyResult(step)
-  return result.kind === 'implementable' ? result.operations : []
+  return result.kind === 'implementable' || result.kind === 'held' ? result.operations : []
 }
 
 /** The bodies those operations submit: one body, or one per policy in the baseline's order. */
