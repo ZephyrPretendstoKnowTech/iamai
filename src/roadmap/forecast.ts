@@ -29,7 +29,8 @@
 // lifecycle, moves a step forward, or lets a forecast satisfy a gate.
 import type { Step, StepEvents } from './types.ts'
 import type { Schedule } from './schedule.ts'
-import { enforcesOnRun, operationsOf } from './operations.ts'
+import { readBackPlacement } from './schedule.ts'
+import { policyHold } from './operations.ts'
 
 /** What a step's enforcement date is worth. */
 export type EnforcementBasis =
@@ -118,15 +119,12 @@ export function forecastEnforcement(step: Step): boolean {
  * of a window the plan itself had not closed, with nine of the thirty-one people
  * in scope still unseen in the records.
  *
- * Foundation A already draws this boundary for the one gate it owns: a readiness
- * threshold holds the operations that enforce on run and lets the safe
- * preparation through (`policyResult`, `readiness-unmet`). This is the same
- * boundary for Foundation B's gate, which Foundation A cannot see. It withholds
- * nothing else: a create lands in report-only, and a patch that leaves a
- * report-only policy in report-only — a scope to correct, a control to raise —
- * denies nobody and stays offered, because that is how the window is spent well.
- * `ready-to-enforce` is Foundation B granting the enforcement, and it releases
- * it.
+ * Foundation A draws this boundary itself, in the one place that decides whether
+ * IAMAI hands an implementation over (`policyResult`, `observation-incomplete`),
+ * beside the readiness threshold it already held the same way. This is that
+ * answer under the name the plan's dating reads it by. It is not a second
+ * decision: there is one authority for whether a channel may offer the change,
+ * and `implementationOffered` is false for exactly these steps.
  *
  * It is also the sibling of `awaitingDeployment` for every surface that dates a
  * step: while the one thing left to submit is an enforcement, the rollout the
@@ -136,8 +134,7 @@ export function forecastEnforcement(step: Step): boolean {
  * the plan on the strength of this reading.
  */
 export function enforcementUnearned(step: Step): boolean {
-  if (step.state.lifecycle !== 'report-only') return false
-  return operationsOf(step).some(enforcesOnRun)
+  return policyHold(step) === 'observation-incomplete'
 }
 
 /**
@@ -175,15 +172,27 @@ export function statedEnforcement(step: Step): EnforcementTiming {
  * The rollout the schedule drew for a step whose enforcement Foundation B has
  * not granted: kept, because it is the roadmap, and kept out of the plan.
  *
- * `wave` is the enforcement wave the step was placed in before its lifecycle was
- * known, `null` where the schedule placed it nowhere; `events` is the announce /
- * remind / enforce set the generator dated it with. Neither is a milestone. A
- * consumer that wants to draw the projected shape of the rollout reads this and
- * has to say what it is; a consumer that wants the step's next dated thing reads
- * `statedEnforcement`, `readyWhen` and `nextMilestone` and finds no enforcement
- * in any of them.
+ * The whole placement the schedule had given it: the enforcement wave, the day
+ * it was to enforce on, the change window it shared, whether it ran past the
+ * band, and the announce / remind / enforce set the generator dated it with.
+ * None of them is a milestone, and none of them is still anywhere in the plan.
+ * A consumer that wants to draw the projected shape of the rollout reads this,
+ * under this name, and has to say what it is; a consumer that wants the step's
+ * next dated thing reads `statedEnforcement`, `readyWhen` and `nextMilestone`
+ * and finds no enforcement in any of them.
  */
-export type ForecastPlacement = { wave: number | null; events: StepEvents | null }
+export type ForecastPlacement = {
+  /** The enforcement wave it had been placed in, `null` where the schedule placed it nowhere. */
+  wave: number | null
+  /** The announce / remind / enforce set the generator dated it with. */
+  events: StepEvents | null
+  /** The day the schedule had it enforcing on (`Schedule.startAt`), which no longer names it. */
+  startAt: string | null
+  /** The other steps the schedule had landing in the same change window (`Schedule.batchWith`). */
+  batchWith: string[]
+  /** Whether the schedule had counted it among the steps running past the band's expected length. */
+  extended: boolean
+}
 
 /**
  * Take the projected enforcement off a step Foundation B has not granted one.
@@ -208,6 +217,17 @@ export type ForecastPlacement = { wave: number | null; events: StepEvents | null
  * (ui/surfaces/planRows.ts) — the row still says Report-only and dates the review
  * its own gates derive.
  *
+ * The placement is withdrawn whole, not unpicked field by field. The schedule's
+ * wave membership, the day the step was to enforce on (`startAt`), the change
+ * window it shared (`batchWith`), the overrun list, the waves' own dates, the
+ * plan's end and the critical path are every one of them read off the same
+ * placement (roadmap/schedule.ts `readBackPlacement`), so the step comes out of
+ * that placement and the whole shape is read again from what is left. Removing
+ * it from `waveOf` alone left its enforcement date sitting in `startAt`, its id
+ * in another step's change window, an empty wave with dates on it, and a plan
+ * end and critical path still measured to a rollout the plan had stopped
+ * carrying — five places for one fact, four of them stale.
+ *
  * What stays is the step's rings. They are the shape of the rollout, not a
  * milestone, no surface dates this step from them, and the calendar needs one to
  * book the review entry on the review day (roadmap/ics.ts).
@@ -229,15 +249,21 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
     if (!enforcementUnearned(step)) continue
     // Called twice on one plan, the second pass finds the projection already
     // taken off and must not record its own absence over it.
-    forecastOnly[step.id] ??= { wave: schedule.waveOf[step.id] ?? null, events: step.events }
+    forecastOnly[step.id] ??= {
+      wave: schedule.waveOf[step.id] ?? null,
+      events: step.events,
+      startAt: schedule.startAt[step.id] ?? null,
+      batchWith: schedule.batchWith[step.id] ?? [],
+      extended: schedule.extendedBy.includes(step.id),
+    }
     step.events = null
     step.comms = null
-    delete schedule.waveOf[step.id]
-    for (const wave of schedule.waves) {
-      const at = wave.stepIds.indexOf(step.id)
-      if (at !== -1) wave.stepIds.splice(at, 1)
-    }
   }
   schedule.forecastOnly = forecastOnly
+  const withdrawn = new Set(Object.keys(forecastOnly))
+  // Read the plan's shape again from the placement without them. Idempotent:
+  // the placement itself is never edited, so the second pass withdraws the same
+  // set from the same input and lands on the same schedule.
+  if (withdrawn.size > 0 && schedule.placement) Object.assign(schedule, readBackPlacement([...steps], schedule.placement, withdrawn))
   return schedule
 }

@@ -18,7 +18,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { adminsAtRung5, runFixture } from './fixtures/run.ts'
-import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, unavailableReason } from './operations.ts'
+import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from './operations.ts'
 import { readinessFor } from './readiness.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
 import { stepExportView } from '../ui/surfaces/stepExport.ts'
@@ -191,11 +191,22 @@ test('5: a material change to an already-enabled policy is held while its readin
   const view = stepExportView(step, ctxFor(f, r, snapshot))
   assert.ok(view.whatToDo.some((l) => l.includes('admin readiness is 33%') && l.includes('100%')), view.whatToDo.join(' | '))
 
-  // With the prerequisite met, the same operation is offered.
+  // With the prerequisite met, the readiness gate releases the same operation.
   const ready = runFixture({ ...f, snapshot }, { snapshot, viability: adminsAtRung5(r.viability, f.snapshot.asOf) } as never)
   const met = ready.steps.find((s) => s.id === ADMINS) as Step
   assert.equal(met.readiness.percent, 100)
-  assert.equal(implementationOffered(met), true)
+  assert.equal(unavailableReason(met), null, 'the readiness gate has released')
+  assert.deepEqual(
+    operationsOf(met).map((o) => o.body),
+    [{ state: 'enabled' }],
+    'and the operation it releases is the same enforcement',
+  )
+  // The policy this fixture put back in report-only is still being watched, so
+  // the one gate now holds that same operation for the observation window
+  // instead of the readiness number. Two prerequisites, one after the other,
+  // one authority: neither offers the enforcement today.
+  assert.equal(policyHold(met), 'observation-incomplete')
+  assert.equal(implementationOffered(met), false)
   // And dated. The policy is in report-only and the operation enforces on run,
   // so Foundation B holds that date as the plan's projection rather than the
   // step's milestone (roadmap/forecast.ts settleForecast): a readiness gate

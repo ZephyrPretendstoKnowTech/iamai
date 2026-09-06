@@ -26,8 +26,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { enforcesOnRun, implementationOffered, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
-import { enforcementTiming, enforcementUnearned, statedEnforcement } from '../../roadmap/forecast.ts'
+import { readBackPlacement } from '../../roadmap/schedule.ts'
+import { enforcesOnRun, implementationOffered, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { enforcementTiming, enforcementUnearned, settleForecast, statedEnforcement } from '../../roadmap/forecast.ts'
 import { artifactIdOf } from '../../roadmap/observation.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
@@ -386,11 +387,20 @@ test('005.6: What to do is keep it in report-only, on the screen and in every ar
 
 test('005.7: the four channels stand down — no portal change, no JSON, no PowerShell, no download', () => {
   const { step, ctx } = canonical()
-  // Foundation A is unchanged and the frozen contract still reports its answer:
-  // this is a policy the plan will write. Whether today is the day is Foundation
-  // B's, and it says the enforcement has not been earned.
-  assert.equal(implementationOffered(step), true, 'Foundation A offers the implementation')
-  assert.equal(stepContract(step, ctx).implementation.offered, true, 'and the frozen contract reports it unchanged')
+  // One authority, one answer. Foundation A holds the implementation itself
+  // (`observation-incomplete`): the operation is sound and today is not its day.
+  // That is not the same as a policy the plan cannot write, so nothing is
+  // blocked and no reason is given — the step's action is to keep watching.
+  assert.equal(policyHold(step), 'observation-incomplete', 'Foundation A holds the implementation')
+  assert.equal(unavailableReason(step), null, 'and holds it without calling anything unavailable')
+  assert.equal(implementationOffered(step), false, 'so no implementation is offered today')
+  const impl = stepContract(step, ctx).implementation
+  assert.equal(impl.offered, false, 'and the frozen contract reports the same answer')
+  assert.equal(impl.offered === false && impl.hold, 'observation-incomplete', 'naming the hold, not a blocker')
+  assert.equal(impl.offered === false && impl.reason, null)
+  assert.equal(impl.offered === false && impl.because, null, 'no reason line, because nothing is wrong')
+  // The operations survive the hold — they are what the step will submit, and
+  // what makes it enforcing is read off them.
   const ops = operationsOf(step)
   assert.equal(ops.length, 1)
   assert.equal(ops[0].mode, 'update', 'the policy exists, so there is nothing to create')
@@ -404,6 +414,11 @@ test('005.7: the four channels stand down — no portal change, no JSON, no Powe
   const ps = powershellFor(stepOperations(step))
   assert.doesNotMatch(ps, /Update-MgIdentityConditionalAccessPolicy/)
   assert.doesNotMatch(ps, /New-MgIdentityConditionalAccessPolicy/, 'and no second policy either')
+  // And no consumer can find a second answer to disagree with: every channel is
+  // the contract's own, so an implementation offered by one is offered by all.
+  assert.equal(jsonOffered(step), impl.offered)
+  assert.equal(portalOf(step, ctx) !== null, impl.offered)
+  assert.equal(stepOperations(step).length > 0, impl.offered)
 })
 
 // ---- 8. no enforcement date, wave or calendar entry ----
@@ -779,4 +794,98 @@ test('005.15: a Report-only policy whose content turns off the setting it replac
   // Nor does any other artifact a person or a tool reads carry it.
   const said = [...stepLines(step, observing.ctx), ...v.doneWhen, v.dates ?? '', stepContext(step, observing.view)].join(' | ')
   assert.doesNotMatch(said, PREREQ_LINE, `an artifact still states the prerequisite: ${said}`)
+})
+
+// ---- 16. the plan carries no placement for the step at all ----
+
+test('005.16: the whole schedule placement is withdrawn — no start date, no batch, no overrun, no empty wave', () => {
+  const { step, run } = canonical()
+  const sch = run.schedule
+  // `startAt` is the day a step enforces on. The step has no such day.
+  assert.equal(sch.startAt[step.id], undefined, 'the schedule still dates the step’s enforcement')
+  assert.equal(sch.waveOf[step.id], undefined, 'no wave enforces it')
+  for (const w of sch.waves) assert.ok(!w.stepIds.includes(step.id), `wave ${w.wave} still carries the step`)
+  // Nor does any wave survive with nothing in it: an empty wave is a dated
+  // rollout phase with no rollout, and its dates were the withdrawn step’s.
+  for (const w of sch.waves) if (w.wave >= 1) assert.ok(w.stepIds.length > 0, `wave ${w.wave} is empty`)
+  assert.deepEqual(
+    sch.waves.map((w) => w.wave),
+    sch.waves.map((_, i) => i),
+    'and the waves are still numbered without a gap',
+  )
+  // No change window names it, in either direction.
+  assert.equal(sch.batchWith[step.id], undefined, 'the step still shares a change window')
+  for (const [id, ids] of Object.entries(sch.batchWith)) assert.ok(!ids.includes(step.id), `${id} still lands in the same window as the step`)
+  assert.ok(!sch.extendedBy.includes(step.id), 'the step is still counted among those running past the band')
+  // Every wave’s dates come from a step the wave still carries.
+  for (const w of sch.waves) {
+    if (w.wave < 1) continue
+    assert.ok(
+      w.stepIds.some((id) => sch.startAt[id] === w.start),
+      `wave ${w.wave} starts on a day no step in it starts on`,
+    )
+  }
+  // The plan’s end and its critical path are measured to what the plan carries.
+  const last = Object.values(sch.startAt).reduce((m, x) => (x > m ? x : m), sch.start)
+  assert.ok(sch.targetEnd >= last, 'the plan ends no earlier than its last placed step')
+  assert.ok(!sch.derivation.chain.includes(step.id), `the critical path runs through the withdrawn step: ${sch.derivation.chain.join(' → ')}`)
+  assert.ok(!sch.derivation.criticalPath.includes(contentStepFor(step)!.title as string), `the critical-path sentence names the withdrawn step: ${sch.derivation.criticalPath}`)
+  // What was withdrawn is kept, whole, under the one name that says what it is
+  // worth — and it is not the empty record that would hide the withdrawal.
+  const kept = sch.forecastOnly?.[step.id]
+  assert.ok(kept, 'the rollout the schedule drew is kept')
+  assert.equal(typeof kept!.startAt, 'string', 'including the day it had been dated to enforce on')
+  assert.ok(kept!.events, 'and the events the generator wrote')
+})
+
+// ---- 17. the exported plan conclusions cannot be the step’s ----
+
+test('005.17: the grounding bundle’s plan end, length and critical path are read from a plan without the step', () => {
+  const { step, steps, snapshot, view, run } = canonical()
+  const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot, coverage: run.coverage, steps, schedule: run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as {
+    plan: { targetEnd: string; weeks: number; criticalPath: string }
+  }
+  const withdrawn = new Set(Object.keys(run.schedule.forecastOnly ?? {}))
+  assert.ok(withdrawn.has(step.id), 'the step was settled, or this proves nothing')
+  // The three conclusions the bundle exports are the read-back of a placement
+  // the step is not in — not the build's, patched afterwards.
+  const without = readBackPlacement(run.steps, run.schedule.placement!, withdrawn)
+  assert.equal(bundle.plan.targetEnd, without.targetEnd)
+  assert.equal(bundle.plan.weeks, without.weeks)
+  assert.equal(bundle.plan.criticalPath, without.derivation.criticalPath)
+  // And they are not the step's own: the day the schedule had it enforcing on
+  // ends nothing, and the sentence about what sets the plan's length does not
+  // name it.
+  const projected = run.schedule.forecastOnly?.[step.id]!
+  assert.equal(typeof projected.startAt, 'string', 'the step had a placement to withdraw')
+  assert.ok(!without.derivation.chain.includes(step.id), 'the critical path runs through the withdrawn step')
+  assert.ok(!bundle.plan.criticalPath.includes(contentStepFor(step)!.title as string), `the exported critical path names the withdrawn step: ${bundle.plan.criticalPath}`)
+  assert.ok(!bundle.plan.criticalPath.includes(absoluteDate(projected.startAt!)), 'the exported critical path carries the withdrawn enforcement day')
+  // The same read-back with the step still in it is a different plan, so the
+  // withdrawal is what these values are measured without.
+  const with_ = readBackPlacement(run.steps, run.schedule.placement!)
+  assert.notDeepEqual(with_.startAt, without.startAt, 'withdrawing the placement is what makes the difference')
+})
+
+// ---- 18. withdrawing is the whole read-back, and it is idempotent ----
+
+test('005.18: settling is a read-back of the placement, so it is the same answer whether it runs once or twice', () => {
+  const f = fixture(FIXTURE)
+  const run = runFixture(f)
+  const before = JSON.stringify(run.schedule)
+  // The plan pipeline calls it once; a regeneration can call it again on a plan
+  // already settled. The second pass must not settle a second time over its own
+  // absence — no wave renumbered again, no start removed twice, no shorter plan.
+  settleForecast(run.steps, run.schedule)
+  assert.equal(JSON.stringify(run.schedule), before, 'a second settle moved the plan')
+  // And with nothing to withdraw the read-back is exactly what the build
+  // produced, so the recomputation itself changes no plan that has no held step.
+  const untouched = runFixture(fixture(FIXTURE))
+  const rebuilt = readBackPlacement(untouched.steps, untouched.schedule.placement!)
+  const settled = new Set(Object.keys(untouched.schedule.forecastOnly ?? {}))
+  assert.ok(settled.size > 0, 'the fixture has a settled step, or this proves nothing')
+  const again = readBackPlacement(untouched.steps, untouched.schedule.placement!, settled)
+  assert.equal(JSON.stringify(again.waves), JSON.stringify(untouched.schedule.waves), 'the plan is the read-back of its own placement, minus the withdrawn steps')
+  assert.notEqual(JSON.stringify(rebuilt.startAt), JSON.stringify(again.startAt), 'and withdrawing them is what makes the difference')
+  for (const id of settled) assert.ok(rebuilt.startAt[id] !== undefined, `${id} had a placement to withdraw`)
 })

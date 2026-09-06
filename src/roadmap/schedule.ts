@@ -96,6 +96,17 @@ export type Schedule = {
    */
   forecastOnly?: Record<string, import('./forecast.ts').ForecastPlacement>
   /**
+   * Where every step landed, and what put it there: the one input every field
+   * the placement decides is read back from (`readBackPlacement`).
+   *
+   * Not a milestone and not a surface's to read. It exists so that withdrawing a
+   * step's placement — the report-only policy whose enforcement Foundation B has
+   * not granted — recomputes the batches, the waves, the overrun list, the plan's
+   * end and the critical path from what is left, instead of leaving each of them
+   * describing a rollout the plan no longer carries.
+   */
+  placement?: Placement
+  /**
    * step id → the other steps enforced in the same change window (prompt 41 §9).
    *
    * Empty for a step enforced on its own, and for a safe-today step, which
@@ -423,7 +434,7 @@ function topological(steps: Step[], graph: Record<string, Dependency[]>): Step[]
   return order
 }
 
-type Placed = {
+export type Placed = {
   start: string
   end: string
   reason: { kind: ConstraintKind; ref: string | null }
@@ -707,16 +718,120 @@ export function buildSchedule(
   }
   const { placed, reportOnlyAt } = result
 
+  // Both from the one blocked set, so the count and the question list cannot
+  // describe different populations (prompt 40 §9).
+  const byQuestion = waitingOnSetupQ(steps)
+  const waitingOnSetup = new Set([...byQuestion.values()].flatMap((list) => list.map((s) => s.id))).size
+  const waitingOnSetupQuestions = [...byQuestion.keys()].sort((a, b) => a - b)
+
+  // Everything else about the plan's shape is read back off the placement, and
+  // it is read back by one function so that it can be read back again: when a
+  // step's placement is withdrawn (roadmap/forecast.ts settleForecast) the
+  // batches, the waves, the overrun list, the plan's end and the critical path
+  // are all recomputed from what is left, rather than patched wherever somebody
+  // noticed the step was still named.
+  const placement: Placement = {
+    placed: Object.fromEntries(placed),
+    context: {
+      start: day0,
+      day0End,
+      day0Days,
+      verification,
+      observation,
+      expectedDays,
+      relaxed,
+      cap,
+      freeze,
+      verifyStepId: verifyStep?.id ?? null,
+      prerequisiteCount: steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length,
+      day0StepIds: steps.filter((s) => !isEnforcement(s) && !nothingToRun(s)).map((s) => s.id),
+      enforcementIds: steps.filter(isEnforcement).map((s) => s.id),
+    },
+  }
+
+  return {
+    band,
+    bandSource: bandOverride ? 'override' : 'auto',
+    activeUsers,
+    expectedDays,
+    start: day0,
+    verification,
+    waitingOnSetup,
+    waitingOnSetupQuestions,
+    graph,
+    reportOnlyAt,
+    enforcementCap: cap,
+    freeze,
+    placement,
+    ...readBackPlacement(steps, placement),
+  }
+}
+
+/**
+ * Everything the read-back needs that is not the placement itself, captured
+ * while the plan is built.
+ *
+ * The step lists are ids, not predicates, on purpose. Placement happens before
+ * tracking settles a single lifecycle, so re-classifying the steps later would
+ * answer a different question: a policy the scan then found already enforced is
+ * `done`, and running `isEnforcement` over it a second time would quietly drop
+ * it from the plan's shape. Read back again, the only thing that may differ is
+ * which placements have been withdrawn.
+ */
+export type PlacementContext = {
+  start: string
+  day0End: string
+  day0Days: number
+  verification: Schedule['verification']
+  /** The observation window as it was sized, before the first wave moved its end. */
+  observation: { start: string; end: string; days: number }
+  expectedDays: number
+  relaxed: string[]
+  cap: number
+  freeze: ChangeFreeze | null
+  verifyStepId: string | null
+  prerequisiteCount: number
+  day0StepIds: string[]
+  enforcementIds: string[]
+}
+
+/** The placement itself: where every step landed, and what put it there. */
+export type Placement = { context: PlacementContext; placed: Record<string, Placed> }
+
+/** The part of a Schedule the placement decides, and the only part withdrawing a step can change. */
+export type PlacementReadBack = Pick<Schedule, 'waves' | 'waveOf' | 'batchWith' | 'extendedBy' | 'targetEnd' | 'totalDays' | 'weeks' | 'withinBand' | 'observation' | 'startAt' | 'derivation'>
+
+/**
+ * The plan's shape, read off the placement: the batches, the waves, the overrun
+ * list, the observation window, each step's start, the plan's end and the
+ * critical path.
+ *
+ * `withdrawn` is the steps whose placement the plan no longer carries — a policy
+ * already deployed in report-only whose enforcement Foundation B has not granted
+ * (roadmap/forecast.ts). They are taken out before anything is read, so nothing
+ * the placement decides can still describe them: no start date, no batch, no
+ * wave, no place in the overrun list, and no share in the plan's end or its
+ * critical path. With an empty set this returns exactly what the build produced.
+ */
+export function readBackPlacement(steps: Step[], placement: Placement, withdrawn: ReadonlySet<string> = new Set()): PlacementReadBack {
+  const ctx = placement.context
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  const placed = new Map<string, Placed>(Object.entries(placement.placed).filter(([id]) => !withdrawn.has(id)))
+  const day0 = ctx.start
+  const observation = ctx.observation
+  const verifyStep = ctx.verifyStepId !== null ? (byId.get(ctx.verifyStepId) ?? null) : null
+  const enforcementIds = ctx.enforcementIds.filter((id) => !withdrawn.has(id))
+
   // ---- Batches read back from the placed dates: one per day and class ----
   const batchWith: Record<string, string[]> = {}
   {
     const byEvent = new Map<string, string[]>()
-    for (const s of steps) {
-      if (!isEnforcement(s)) continue
-      const at = placed.get(s.id)?.start
-      if (!at) continue
+    for (const id of enforcementIds) {
+      const s = byId.get(id)
+      const at = placed.get(id)?.start
+      if (!s || !at) continue
       const key = `${at.slice(0, 10)}|${batchClassOf(s)}`
-      byEvent.set(key, [...(byEvent.get(key) ?? []), s.id])
+      byEvent.set(key, [...(byEvent.get(key) ?? []), id])
     }
     for (const ids of byEvent.values()) {
       for (const id of ids) batchWith[id] = ids.filter((x) => x !== id)
@@ -726,20 +841,18 @@ export function buildSchedule(
   // ---- Waves read back from the ring dates: one wave per enforcement start week ----
   const waveOf: Record<string, number> = {}
   const waves: WaveSchedule[] = []
-  // A policy the plan cannot write yet is in no enforcement wave: it has no
-  // start, no report-only date, no ring dates and no enforcement event. It stays
-  // in the foundation wave so the plan still shows it — a step in no wave at all
-  // renders nowhere — waiting beside the Preparation work it needs.
   // A policy the plan cannot write yet is in no wave at all — not the foundation
   // wave either, whose dates are the Preparation work's and not this policy's.
   // The Plan renders it in its own undated group instead (Plan.tsx heldRows).
-  const day0Steps = steps.filter((s) => !isEnforcement(s) && !nothingToRun(s)).map((s) => s.id)
+  const day0Steps = ctx.day0StepIds.filter((id) => !withdrawn.has(id))
   for (const id of day0Steps) waveOf[id] = 0
-  waves.push({ wave: 0, phase: 0, phases: [0], start: day0, end: day0End, days: day0Days, stepIds: day0Steps, note: null })
-  const enforcement = steps.filter(isEnforcement).filter((s) => placed.has(s.id))
-  const weeks = [...new Set(enforcement.map((s) => weekKey(placed.get(s.id)!.start)))].sort()
-  for (const [i, wk] of weeks.entries()) {
-    const ids = enforcement.filter((s) => weekKey(placed.get(s.id)!.start) === wk).map((s) => s.id)
+  waves.push({ wave: 0, phase: 0, phases: [0], start: day0, end: ctx.day0End, days: ctx.day0Days, stepIds: day0Steps, note: null })
+  const enforcement = enforcementIds.filter((id) => placed.has(id))
+  // A week nothing starts in is not a wave: withdrawing the only step placed in
+  // one leaves no empty wave behind, and no gap in the numbering either.
+  const startWeeks = [...new Set(enforcement.map((id) => weekKey(placed.get(id)!.start)))].sort()
+  for (const [i, wk] of startWeeks.entries()) {
+    const ids = enforcement.filter((id) => weekKey(placed.get(id)!.start) === wk)
     const start = ids.map((id) => placed.get(id)!.start).reduce((m, x) => (x < m ? x : m))
     const end = ids.map((id) => placed.get(id)!.end).reduce((m, x) => (x > m ? x : m))
     // The wave is named by its most common phase, never by a stray lower one.
@@ -752,16 +865,11 @@ export function buildSchedule(
     waves.push({ wave: i + 1, phase, phases, start, end, days: Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000), stepIds: ids, note: null })
   }
 
-  const targetEnd = max(day0End, verification.end, ...waves.map((w) => w.end))
+  const targetEnd = max(ctx.day0End, ctx.verification.end, ...waves.map((w) => w.end))
   const totalDays = Math.round((Date.parse(targetEnd) - Date.parse(day0)) / 86_400_000)
-  const expectedEnd = addDays(day0, expectedDays + 7)
-  const extendedBy = enforcement.filter((s) => Date.parse(placed.get(s.id)!.end) > Date.parse(expectedEnd)).map((s) => s.id)
-  if (!verificationComplete && verifyStep && Date.parse(verification.end) > Date.parse(expectedEnd)) extendedBy.unshift(verifyStep.id)
-  // Both from the one blocked set, so the count and the question list cannot
-  // describe different populations (prompt 40 §9).
-  const byQuestion = waitingOnSetupQ(steps)
-  const waitingOnSetup = new Set([...byQuestion.values()].flatMap((list) => list.map((s) => s.id))).size
-  const waitingOnSetupQuestions = [...byQuestion.keys()].sort((a, b) => a - b)
+  const expectedEnd = addDays(day0, ctx.expectedDays + 7)
+  const extendedBy = enforcement.filter((id) => Date.parse(placed.get(id)!.end) > Date.parse(expectedEnd))
+  if (!ctx.verification.complete && verifyStep && Date.parse(ctx.verification.end) > Date.parse(expectedEnd)) extendedBy.unshift(verifyStep.id)
 
   // The window stays open until the wave it informs (prompt 40 §18). Placement
   // treats observation.end as the floor an enforcement start may not precede;
@@ -782,47 +890,33 @@ export function buildSchedule(
       : observation
 
   return {
-    band,
-    bandSource: bandOverride ? 'override' : 'auto',
-    activeUsers,
-    expectedDays,
-    start: day0,
     targetEnd,
     totalDays,
     weeks: Math.max(1, Math.round(totalDays / 7)),
-    withinBand: totalDays <= expectedDays + 7,
-    verification,
+    withinBand: totalDays <= ctx.expectedDays + 7,
     observation: observed,
     waves,
     waveOf,
     batchWith,
     extendedBy,
-    waitingOnSetup,
-    waitingOnSetupQuestions,
-    graph,
-    reportOnlyAt,
     startAt: Object.fromEntries([...placed.entries()].map(([id, p]) => [id, p.start])),
-    derivation: derive(steps, placed, verification, observation, totalDays, relaxed, cap, freeze, verifyStep),
-    enforcementCap: cap,
-    freeze,
+    derivation: derive(byId, enforcement, placed, ctx, totalDays, verifyStep),
   }
 }
 
 /** The critical path: the last step to finish and why it starts when it does (§2). */
 function derive(
-  steps: Step[],
+  byId: Map<string, Step>,
+  /** The enforcement steps still placed, in plan order: a withdrawn step is not one of them and cannot set the plan's length. */
+  enforcementIds: string[],
   placed: Map<string, Placed>,
-  verification: Schedule['verification'],
-  observation: Schedule['observation'],
+  ctx: PlacementContext,
   totalDays: number,
-  relaxed: string[],
-  cap: number,
-  freeze: ChangeFreeze | null,
   verifyStep: Step | null,
 ): Derivation {
-  const byId = new Map(steps.map((s) => [s.id, s]))
+  const { verification, observation, relaxed, cap, freeze } = ctx
   const weeks = Math.max(1, Math.round(totalDays / 7))
-  const enforcement = steps.filter((s) => isEnforcement(s) && placed.has(s.id))
+  const enforcement = enforcementIds.map((id) => byId.get(id)).filter((s): s is Step => s !== undefined)
   if (enforcement.length === 0) {
     if (verifyStep && !verification.complete) {
       const only = fillText(CRITICAL.verificationOnly, { people: verifyStep.population.total, weeks: Math.max(1, Math.round(verification.days / 7)) })
@@ -834,7 +928,7 @@ function derive(
         relaxed,
       }
     }
-    const prereqs = steps.filter((s) => isWork(s) && (s.kind === 'prerequisite' || s.kind === 'check')).length
+    const prereqs = ctx.prerequisiteCount
     const first = fillText(CRITICAL.prerequisites, { n: prereqs })
     return prereqs > 0
       ? { criticalPath: fillText(CRITICAL.sentence, { weeks, reason: first }), reason: first, constraint: 'prerequisites', chain: [], relaxed }

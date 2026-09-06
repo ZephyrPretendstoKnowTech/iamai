@@ -279,19 +279,20 @@ test('6: an object the tenant does not have withholds Portal, JSON, PowerShell a
       assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download`)
       continue
     }
-    // Foundation A offers it; whether today is the day to run it is Foundation
-    // B's (roadmap/forecast.ts enforcementUnearned). A policy already in
+    // The same one gate, held for the other reason it has: a policy already in
     // report-only whose only remaining submission is the enforcement its window
-    // has not earned shuts all four channels together, exactly as a missing
-    // object does — and for the same reason: nothing may hand over a change the
-    // plan itself says to wait for.
-    assert.equal(implementationOffered(step), true, `${step.id}: the gate is open`)
+    // has not earned (`observation-incomplete`). All four channels shut
+    // together, exactly as a missing object shuts them — and for the same
+    // reason, that nothing may hand over a change the plan itself says to wait
+    // for. There is no second answer anywhere downstream.
     if (enforcementUnearned(step)) {
       unearned += 1
+      assert.equal(implementationOffered(step), false, `${step.id}: the one gate is shut while the window is open`)
       assert.equal(portal, null, `${step.id}: no portal instructions while the window is open`)
       assert.equal(jsonOffered(step), false, `${step.id}: no JSON, no PowerShell, no download either`)
       continue
     }
+    assert.equal(implementationOffered(step), true, `${step.id}: the gate is open`)
     offered += 1
     if (step.action.json) assert.equal(jsonOffered(step), true, `${step.id}: the JSON is offered with it`)
   }
