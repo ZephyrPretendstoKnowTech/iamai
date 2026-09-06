@@ -12,6 +12,7 @@ import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { Step } from './types.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
 import { canDenyAccess } from './strand.ts'
+import { enforcesOnRun, enforcementHeld, implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
 
 const NAMES = FIXTURE_SPECS.map((s) => s.name)
@@ -83,6 +84,41 @@ for (const name of NAMES) {
         s.readiness.percent >= 90,
         `${s.id} is offered at ${s.readiness.percent}% readiness`,
       )
+    }
+  })
+
+  test(`${name}: nothing that enforces is offered or dated while a readiness prerequisite is unmet`, () => {
+    // The plan names a threshold and tells the operator to wait for it. That has
+    // to be a fact about the implementation, not a word beside one: the step used
+    // to carry the portal lines, the JSON, the PowerShell, the download, its
+    // rings, its enforcement event and its calendar entry while the number it
+    // named was less than half of what it asked for.
+    //
+    // Deliberately not "a blocker means no implementation": a safe report-only
+    // preparation is still offered, because it denies nobody and it is how
+    // readiness reaches the threshold in the first place. What is held is every
+    // operation that changes what people have to do the moment it is submitted,
+    // and every date that promises one.
+    for (const s of steps) {
+      const gate = s.action.readinessGate
+      if (!gate || !open(s)) continue
+      const where = `${s.id} (${gate.measure} is ${gate.value}, wants ${gate.threshold})`
+      for (const o of operationsOf(s)) assert.equal(enforcesOnRun(o), false, `${where} offers an operation that enforces at once`)
+      assert.equal(s.events, null, `${where} carries an enforcement date`)
+      assert.deepEqual(s.rings, [], `${where} carries a ring plan`)
+      assert.equal(enforcementHeld(s), true, `${where} is not recorded as held`)
+    }
+  })
+
+  test(`${name}: a readiness prerequisite holds the enforcement and not the preparation`, () => {
+    // The other half of the same rule, so it cannot be satisfied by withholding
+    // everything: where a held step's own operations all land in report-only,
+    // they stay on offer.
+    for (const s of steps) {
+      if (!s.action.readinessGate || !open(s) || unavailableReason(s) !== null) continue
+      const ops = s.action.resolution?.policies ?? []
+      if (ops.length === 0 || ops.some(enforcesOnRun)) continue
+      assert.equal(implementationOffered(s), true, `${s.id}: a report-only preparation is withheld by a readiness threshold`)
     }
   })
 

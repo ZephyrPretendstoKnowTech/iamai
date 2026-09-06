@@ -24,6 +24,7 @@ import { applyProgress } from '../progress.ts'
 import { cleanupRecord } from '../cleanupDone.ts'
 import type { Fixture } from './index.ts'
 import type { RoadmapInput } from '../generate.ts'
+import type { MfaViability } from '../../scoring/mfaViability.ts'
 
 export type FixtureRun = ReturnType<typeof generateRoadmap> & {
   input: RoadmapInput
@@ -112,4 +113,16 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
   annotateStateReasons(result.steps)
   const end = performance.now()
   return { ...result, input, coverage, viability, ms: end - t0, roadmapMs: end - t1 }
+}
+
+/**
+ * The same tenant with its admins already at the rung the admins policy asks
+ * for. The plan holds every enforcement behind the readiness threshold it names
+ * (roadmap/operations.ts readinessGate), so a case about *what an update
+ * submits* has to meet that prerequisite first or it is testing the hold
+ * instead. Rung 5 is a portable phishing-resistant method the records prove
+ * (derive/ladder.ts rungOf).
+ */
+export function adminsAtRung5(viability: MfaViability[], at: string): MfaViability[] {
+  return viability.map((v) => (v.isAdmin ? { ...v, kinds: [...new Set([...v.kinds, 'passkey' as const])], evidence: { at, method: 'Passkey' } } : v))
 }

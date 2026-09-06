@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { emergencyExposureOf, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import { emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -1128,6 +1128,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // projection of it (lifecycle.ts), read where a helper still takes the word.
     let state: StepState = initialState()
     const statusNow = (): StepStatus => projectStatus(state)
+    // The readiness hold, recorded here and put on the action last of all
+    // (below). Every reading between here and there asks what this step's policy
+    // *does* — who it reaches, whether it can deny access, whether it would
+    // strand the operator, who the announcement is for — and those answers are
+    // facts about the policy, not about whether the instructions may be handed
+    // over yet. Attaching the gate early made `stepEffects` return nothing for a
+    // held step, which turned every one of those readings into its unknown.
+    let readinessGate: NonNullable<Action['readinessGate']> | null = null
     let namingNote: { name: string; note: string | null } | null = null
     let existing: GoalResult['candidates'][number] | null = null
     let existingRaw: RawPolicy | null = null
@@ -1271,8 +1279,29 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             : readiness.family === 'device'
               ? READINESS_THRESHOLD_DEVICES_PERCENT
               : null
-      if (threshold !== null && readiness.percent !== null && readiness.percent < threshold) {
-        blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(READINESS_MEASURE[readiness.family] ?? 'readiness', `${threshold}%`, `${readiness.percent}%`) })
+      // A readiness threshold the plan itself says to wait for, unmet — or never
+      // measured, which is not the same as met. The gate used to require a
+      // number: a family with a threshold whose readiness the scan could not
+      // work out produced no blocker at all, so a tenant IAMAI knew least about
+      // was the one it held back least.
+      //
+      // The blocker is the word; `action.readinessGate` is the fact, and it is
+      // what holds the enforcement (roadmap/operations.ts policyResult,
+      // enforcementHeld). The step read "Blocked · when device readiness reaches
+      // 80% (now 29%)" with four dated rings, an enforcement event, a calendar
+      // entry and every implementation channel beside it.
+      // Below the line, or never read. Not "nobody in scope": a threshold there
+      // is nothing to measure against is not one anybody can reach, and holding
+      // a step whose policy reaches nobody would wait for a number that can
+      // never arrive (roadmap/readiness.ts `unmeasured`).
+      const unmet = threshold !== null && (readiness.percent === null ? readiness.unmeasured === 'unreadable' : readiness.percent < threshold)
+      if (unmet) {
+        readinessGate = {
+          measure: READINESS_MEASURE[readiness.family] ?? 'readiness',
+          threshold: `${threshold}%`,
+          value: readiness.percent === null ? engine.readiness.notMeasured : `${readiness.percent}%`,
+        }
+        blockers.push({ kind: 'readiness', label: 'readiness', binding: BLOCKED_REASON.reaches(readinessGate.measure, readinessGate.threshold, readinessGate.value) })
         state = { ...state, condition: conditionFor(blockers) }
       }
       // Nothing that can deny access is offered while the way back in is
@@ -1515,6 +1544,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // (prompt 17 §4): a create step observes in report-only, then enforces;
     // an adjust step to an enforced policy just has to land cleanly.
 
+
+    // Last of all: the readiness hold becomes an implementation fact. From here
+    // the step offers no operation that would enforce the moment it is run, and
+    // nothing about it is dated (roadmap/operations.ts policyResult,
+    // enforcementHeld).
+    if (readinessGate) action = { ...action, readinessGate }
 
     steps.push({
       id: stepId,
@@ -1778,7 +1813,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // date a rollout for a policy it cannot write (roadmap/operations.ts).
   // A policy the plan cannot write yet gets no rings either: it does not date a
   // rollout for a policy it cannot write (roadmap/operations.ts).
-  for (const s of steps) s.rings = unavailableReason(s) !== null ? [] : proposeRings(s, ringCtx)
+  // And a step whose enforcement waits on a readiness threshold has no rings
+  // either: the rings are the rollout of that enforcement, and dating them is
+  // the promise that it lands (roadmap/operations.ts enforcementHeld).
+  for (const s of steps) s.rings = unavailableReason(s) !== null || enforcementHeld(s) ? [] : proposeRings(s, ringCtx)
 
   // ---- Schedule: the dependency graph places every ring (roadmap-v2.md §2) ----
   const rhythm = tenantRhythm(snapshot, mapping.displayTimeZone)

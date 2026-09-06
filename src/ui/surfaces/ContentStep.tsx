@@ -142,6 +142,10 @@ export function ContentStep({
   // The tenant-wide half: this operation would enforce the moment it is
   // submitted, and the way back in is not verified yet.
   const escapeHatch = reason === 'escape-hatch-unverified'
+  // The readiness half of the same boundary: running this would change what
+  // people have to do straight away, and the number the plan says to wait for
+  // has not been reached (roadmap/operations.ts readinessGate).
+  const readinessHeld = reason === 'readiness-unmet'
   const inPlace = suppressed && reason === null && isPreserved(step)
   const hasChecks = Array.isArray(ex.failingChecks) && (ex.failingChecks as unknown[]).length > 0 && Boolean(w.checkFixes)
   const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
@@ -157,7 +161,7 @@ export function ContentStep({
   // not, so the exclusions-group step of a tenant that has not chosen a group
   // read "Fix each failing check. of checks fail today."
   const leadWhole = typeof w.lead === 'string' && whole(w.lead, ex)
-  const hasWhatToDo = leadWhole || hasChecks || ((truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || emergencyUnsafe || emergencyUnproven || escapeHatch || inPlace || hasSteps || before.length > 0
+  const hasWhatToDo = leadWhole || hasChecks || ((truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)) || portal !== null || waiting || unmatched || noOperation || emergencyUnsafe || emergencyUnproven || escapeHatch || readinessHeld || inPlace || hasSteps || before.length > 0
 
   return (
     <div className="step-body">
@@ -261,6 +265,8 @@ export function ContentStep({
         <p className="reason">{fillText(app.plan.emergencyUnproven, { tenant: String(ex.tenant ?? '') })}</p>
       ) : escapeHatch ? (
         <p className="reason">{fillText(app.plan.escapeHatchHeld, { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) })}</p>
+      ) : readinessHeld ? (
+        <p className="reason">{fillText(app.plan.readinessHeld, { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) })}</p>
       ) : inPlace ? (
         <p className="reason">{app.plan.inPlaceKeep}</p>
       ) : (
