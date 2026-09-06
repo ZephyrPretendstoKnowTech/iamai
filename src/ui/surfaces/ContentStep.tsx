@@ -281,7 +281,7 @@ export function ContentStep({
 
       {(() => {
         // The email as the exports say it (stepExport.ts commsFor): the body keyed on the tenant's state, the extra lines only when whole.
-        const comms = reason !== null ? null : commsFor(cs, ex as Record<string, unknown>)
+        const comms = reason !== null ? null : commsFor(cs, ex as Record<string, unknown>, step)
         if (!comms) return null
         const text = [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n')
         return (

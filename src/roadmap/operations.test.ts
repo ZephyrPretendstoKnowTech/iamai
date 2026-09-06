@@ -204,7 +204,7 @@ function assertNothingRollsOut(step: Step, ctx: StepVarContext, label: string): 
   assert.equal(view.ifWrong, null, `${label}: no rollback`)
   assert.equal(view.dates, null, `${label}: no dates`)
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
-  if (cs) assert.equal(commsFor(cs, stepVars(step, ctx) as Record<string, unknown>), null, `${label}: nothing announced`)
+  if (cs) assert.equal(commsFor(cs, stepVars(step, ctx) as Record<string, unknown>, step), null, `${label}: nothing announced`)
 }
 
 test('A: an open policy whose operations are gone offers nothing and rolls nothing out, whatever its body says', () => {

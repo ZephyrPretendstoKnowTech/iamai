@@ -18,12 +18,15 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepContract } from './stepContract.ts'
 import { createsNewPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
-import { awaitingDeployment } from '../../roadmap/forecast.ts'
+import { awaitingDeployment, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 
 export type { ExportStep }
+
+/** The shared lines this module fills; the words live in content.json, as every other line's do. */
+const SHARED = content.shared as unknown as { commsForecastNote: string }
 
 /**
  * The step's Dates line: a change to an existing policy announces and changes
@@ -187,8 +190,18 @@ export type CommsView = { salutation: string; body: string; extra: string[]; sig
  * and the signature. The campaign carries a second body for a tenant where
  * Require MFA for Everyone is already in place (comms.bodyMfaInPlace, with
  * comms.extraMfaInPlace), the passkey version; otherwise comms.body.
+ *
+ * The step's own enforcement day reaches the email through `{enforceLong}`, and
+ * what that day is worth is not the email's decision (roadmap/forecast.ts
+ * `forecastEnforcement`). While it is the roadmap's projection the message says
+ * so, in its own paragraph under the one that states the day, so the email and
+ * the Dates line above it answer "when" the same way instead of the line
+ * withholding an enforcement date the email underneath commits to. Once
+ * Foundation B's evidence has earned the date the email states it plainly, with
+ * nothing added — the same words the prompt pack's draft carries
+ * (roadmap/prompts.ts `announcementDraft`).
  */
-export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown>): CommsView | null {
+export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown>, step: Step): CommsView | null {
   const comms = (cs.comms ?? null) as Record<string, unknown> | null
   if (!comms) return null
   // A step already in place asks nobody to do anything: no email (stepVars stepDone).
@@ -199,7 +212,13 @@ export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown
   // tests' lines: the email renders whole or not at all, like any other line.
   if (![comms.salutation, body, comms.signature].every((part) => typeof part === 'string' && whole(part, ex))) return null
   const extraRaw = inPlace && comms.extraMfaInPlace !== undefined ? comms.extraMfaInPlace : comms.extra
-  const extra = (Array.isArray(extraRaw) ? extraRaw : extraRaw === undefined || extraRaw === null ? [] : [extraRaw]).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex))
+  const extraTemplates = (Array.isArray(extraRaw) ? extraRaw : extraRaw === undefined || extraRaw === null ? [] : [extraRaw]).filter((l): l is string => typeof l === 'string' && whole(l, ex))
+  // Only a message that actually states this step's enforcement day is
+  // qualified: a template that names no date has nothing to qualify, and a
+  // committed date needs no qualifying.
+  const forecast = forecastEnforcement(step) && [body as string, ...extraTemplates].some((t) => t.includes('{enforceLong}'))
+  const extra = extraTemplates.map((l) => fillText(l, ex))
+  if (forecast) extra.push(SHARED.commsForecastNote)
   return { salutation: fillText(comms.salutation, ex), body: fillText(body, ex), extra, signature: fillText(comms.signature, ex) }
 }
 
@@ -270,7 +289,7 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   for (const l of Array.isArray(more.helpDesk) ? more.helpDesk : []) add(l)
   const manager = managerText(cs, ex)
   if (manager) out.push(manager)
-  const comms = commsFor(cs, ex)
+  const comms = commsFor(cs, ex, step)
   if (comms) out.push(comms.salutation, comms.body, ...comms.extra, comms.signature)
   return out
 }
@@ -282,7 +301,7 @@ export function copyBoxes(step: Step, ctx: StepVarContext): { kind: 'comms' | 'h
   const ex = stepVars(step, ctx) as Record<string, unknown>
   const after = String((content.shared as Record<string, unknown>).adaptLine)
   const out: { kind: 'comms' | 'helpDesk' | 'manager'; text: string; after: string }[] = []
-  const comms = commsFor(cs, ex)
+  const comms = commsFor(cs, ex, step)
   if (comms) out.push({ kind: 'comms', text: [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n'), after })
   const more = (cs.more ?? {}) as Record<string, unknown>
   const helpDesk = (Array.isArray(more.helpDesk) ? more.helpDesk : []).filter((x) => whole(x, ex))

@@ -133,7 +133,7 @@ test('on the demo, an email body fills every variable it names', () => {
     if (!implementationOffered(s)) {
       // A policy naming an object this tenant does not have has no date to
       // announce and nothing to announce yet: no email at all, and no hole.
-      assert.equal(commsFor(cs as unknown as Record<string, unknown>, ex), null, `${goalId}: nothing to announce while it waits`)
+      assert.equal(commsFor(cs as unknown as Record<string, unknown>, ex, s), null, `${goalId}: nothing to announce while it waits`)
       assert.deepEqual(stepExportView(s, ctx).doneWhen, [], `${goalId}: no completion criteria while it waits`)
       assert.equal(stepExportView(s, ctx).dates, null, `${goalId}: no dates while it waits`)
       continue

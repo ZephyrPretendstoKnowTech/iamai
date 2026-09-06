@@ -26,13 +26,14 @@ import { effectsOf } from '../../roadmap/strand.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
-import { groundingBundle, stepContext } from '../../roadmap/prompts.ts'
+import { announcementDraft, groundingBundle, promptPack, stepContext } from '../../roadmap/prompts.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
-import { absoluteDate } from '../../copy/dates.ts'
+import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
+import { content } from '../../content/content.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract } from './stepContract.ts'
-import { stepExportView, datesLineFor, ifWrongLineFor } from './stepExport.ts'
+import { stepExportView, commsFor, copyBoxes, datesLineFor, ifWrongLineFor, stepLines } from './stepExport.ts'
 import { policyJsonText, jsonOffered, stepOperations, createsNewPolicy } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
@@ -428,5 +429,128 @@ test('004.14: across every fixture, a forecast enforcement never becomes an acti
       if (t.at !== null) assert.notEqual(row, absoluteDate(t.at), `${f.name}/${st.id}: the row dates the forecast enforcement`)
       if (DATE.test(row)) assert.equal(row, absoluteDate(st.reportOnlyAt ?? ''), `${f.name}/${st.id}: the row dates something other than the report-only deployment`)
     }
+  }
+})
+
+// ---- 11. the send-ready communication states the forecast as a forecast ----
+
+/** The words the content file gives a message that names a date the roadmap projected. */
+const FORECAST_NOTE = String((content.shared as unknown as Record<string, unknown>).commsForecastNote)
+
+test('004.15: the canonical step keeps its projected enforcement date in the email, and the email says the date is a target', () => {
+  const { step, ctx } = canonical()
+  assert.equal(step.state.lifecycle, 'not-deployed')
+  assert.equal(enforcementTiming(step).basis, 'forecast')
+  const cs = contentStepFor(step) as Record<string, unknown>
+  const ex = stepVars(step, ctx) as Record<string, unknown>
+  const email = commsFor(cs, ex, step)
+  assert.ok(email, 'the canonical step renders no email')
+  // The roadmap's projected enforcement day is still in the message. This is not
+  // fixed by deleting the date: a rollout planner has to be able to draw a whole
+  // path before a policy exists, and the operator has to be able to tell people
+  // what it is (owner decision, 004 correction 2).
+  const projected = String(ex.enforceLong)
+  assert.equal(projected, longDate(step.events!.enforce.at), 'the email’s day is the schedule’s own projection')
+  assert.ok(email!.body.includes(projected), `the projected date left the email: ${email!.body}`)
+  // And the message says what that day is worth, in its own paragraph, in the
+  // words the content file gives it — never a sentence composed here.
+  assert.ok(email!.extra.includes(FORECAST_NOTE), `the email states a projected date as a commitment: ${[email!.body, ...email!.extra].join(' / ')}`)
+  assert.match(FORECAST_NOTE, /not a commitment/)
+  assert.match(FORECAST_NOTE, /report-only/)
+  // The Dates line above it withholds the enforcement date entirely; the email
+  // below it names the day and qualifies it. Both say the same thing about what
+  // the plan has earned, which is what they disagreed about.
+  const dates = String(stepExportView(step, ctx).dates)
+  assert.doesNotMatch(dates, new RegExp(absoluteDate(step.events!.enforce.at)), dates)
+  assert.match(dates, /Report-only from/)
+  // The authoritative action is unmoved: this step deploys in report-only.
+  assert.equal(nextMilestone(step).kind, 'deploy')
+  assert.equal(rowWhen(step), absoluteDate(ctx.reportOnlyAt!))
+})
+
+test('004.16: what the screen copies and what the exports render is the one email, qualification included', () => {
+  const { step, ctx } = canonical()
+  const cs = contentStepFor(step) as Record<string, unknown>
+  const email = commsFor(cs, stepVars(step, ctx) as Record<string, unknown>, step)!
+  const text = [email.salutation, email.body, ...email.extra, email.signature].join('\n\n')
+  // The copy button's text (ContentStep.tsx joins the same four parts) and the
+  // lines every export reads: an operator cannot copy a version of this message
+  // without the qualification, from either.
+  const box = copyBoxes(step, ctx).find((b) => b.kind === 'comms')
+  assert.ok(box, 'the canonical step renders no Tell your people box')
+  assert.equal(box!.text, text)
+  assert.ok(box!.text.includes(FORECAST_NOTE), 'the copied email drops the qualification')
+  assert.ok(stepLines(step, ctx).includes(FORECAST_NOTE), 'the rendered lines drop the qualification')
+})
+
+test('004.17: the prompt pack’s draft announcement carries the same qualification the screen does', () => {
+  const r = runFixture(fixture(FIXTURE))
+  const steps = r.steps
+  const source = steps.find((s) => s.comms)!
+  // The draft the pack sends is the first step's, and that step's enforcement
+  // is not one Foundation B has earned — including the case the schedule never
+  // placed, which has no enforcement instant of its own and whose draft is
+  // dated from the plan's start all the same.
+  assert.equal(source.state.lifecycle, 'not-deployed')
+  assert.notEqual(enforcementTiming(source).basis, 'committed', 'the draft the pack sends states a date Foundation B has earned')
+  const draft = announcementDraft(steps)
+  assert.ok(draft, 'the pack has no draft to send')
+  // The draft the generator wrote is unchanged apart from the paragraph that
+  // says what its date is worth, and that paragraph sits under the one naming
+  // the day and above the sign-off.
+  const parts = draft!.split('\n\n')
+  assert.equal(parts[2], FORECAST_NOTE, draft!)
+  assert.deepEqual([...parts.slice(0, 2), ...parts.slice(3)], source.comms!.split('\n\n'), 'the draft says something other than what the step wrote')
+  // And the pack a person actually copies carries it, in both prompts built
+  // from the draft (rewrite, translate) — not only in the facts block.
+  const pack = promptPack({ tenant: 'Fixture tenant', steps, schedule: r.schedule, changeRecord: '', planSummary: '', announcement: draft })
+  const carrying = pack.filter((p) => p.prompt.includes(source.comms!.split('\n\n')[1]))
+  assert.ok(carrying.length >= 2, `the pack builds ${carrying.length} prompts from the draft`)
+  for (const p of carrying) assert.ok(p.prompt.includes(FORECAST_NOTE), `${p.title}: the prompt hands a model a projected date as a commitment`)
+})
+
+test('004.18: an enforcement Foundation B has earned is stated plainly — the qualification is not added to every message', () => {
+  const f = fixture(FIXTURE)
+  const r = runFixture(f)
+  // A real step on the same fixture that Foundation B has carried to
+  // ready-to-enforce: its date is committed, and its draft is untouched.
+  const committed = r.steps.find((s) => s.comms && enforcementTiming(s).basis === 'committed')
+  assert.ok(committed, `${FIXTURE} no longer carries a step with an earned enforcement and a draft`)
+  assert.ok(committed!.state.lifecycle === 'ready-to-enforce' || committed!.state.lifecycle === 'enforced')
+  assert.equal(announcementDraft([committed!]), committed!.comms, 'a committed enforcement is downgraded to a target')
+  assert.ok(!announcementDraft([committed!])!.includes(FORECAST_NOTE))
+  // The screen reads the same authority. Same content, same tenant values, only
+  // the step whose lifecycle classifies the date changed — and the paragraph
+  // goes away.
+  const { step, ctx } = canonical()
+  const cs = contentStepFor(step) as Record<string, unknown>
+  const ex = stepVars(step, ctx) as Record<string, unknown>
+  assert.ok(commsFor(cs, ex, step)!.extra.includes(FORECAST_NOTE))
+  assert.ok(!commsFor(cs, ex, committed!)!.extra.includes(FORECAST_NOTE), 'the screen qualifies a date that has been earned')
+})
+
+test('004.19: across every fixture, a message names a projected enforcement date only with the paragraph that says so', () => {
+  for (const f of allFixtures()) {
+    const r = runFixture(f)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+    for (const s of r.steps) {
+      const cs = contentStepFor(s) as Record<string, unknown> | undefined
+      if (!cs) continue
+      const email = commsFor(cs, stepVars(s, ctx) as Record<string, unknown>, s)
+      if (!email) continue
+      // Only a message that states this step's own enforcement day is at issue.
+      const names = String((cs.comms as Record<string, unknown>).body ?? '').includes('{enforceLong}')
+      const qualified = email.extra.includes(FORECAST_NOTE)
+      if (!names) {
+        assert.equal(qualified, false, `${f.name}/${s.id}: a message that names no enforcement date is qualified anyway`)
+        continue
+      }
+      assert.equal(qualified, enforcementTiming(s).basis !== 'committed', `${f.name}/${s.id}: the email and roadmap/forecast.ts disagree about what the date is worth`)
+    }
+    // The draft the pack would send, on the same terms.
+    const draft = announcementDraft(r.steps)
+    const source = r.steps.find((s) => s.comms)
+    if (draft === null || source === undefined) continue
+    assert.equal(draft.includes(FORECAST_NOTE), enforcementTiming(source).basis !== 'committed' && source.comms!.split('\n\n').length >= 3, `${f.name}: the pack’s draft and roadmap/forecast.ts disagree`)
   }
 })

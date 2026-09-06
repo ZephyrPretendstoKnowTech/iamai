@@ -47,7 +47,7 @@ test('(1) the campaign email is the passkey version once Require MFA for Everyon
   const ex = stepVars(camp, ctxFor(f, r)) as Record<string, unknown>
   assert.equal(ex.mfaInPlace, true)
   const cs = stepById['s-verify-mfa'] as unknown as Record<string, unknown>
-  const email = commsFor(cs, ex)!
+  const email = commsFor(cs, ex, camp)!
   assert.match(email.body, /^You already confirm sign-ins to Contoso Pty Ltd with the Microsoft Authenticator app\. Over the next \d+ days, add a passkey/)
   const admins = r.steps.find((s) => s.goalId === 'admins-phishing-resistant')!
   assert.equal(ex.passkeyPolicy, 'Require Phishing-Resistant MFA for Admins', 'the first policy that needs a passkey')
@@ -56,16 +56,18 @@ test('(1) the campaign email is the passkey version once Require MFA for Everyon
   // Week two: the admins policy is enforced, so no policy needs a passkey yet; the line drops, the body stays.
   const f2 = fixture('demo-week2')
   const r2 = runFixture(f2)
-  const ex2 = stepVars(r2.steps.find((s) => s.id === 's-verify-mfa')!, ctxFor(f2, r2)) as Record<string, unknown>
-  const email2 = commsFor(cs, ex2)!
+  const camp2 = r2.steps.find((s) => s.id === 's-verify-mfa')!
+  const ex2 = stepVars(camp2, ctxFor(f2, r2)) as Record<string, unknown>
+  const email2 = commsFor(cs, ex2, camp2)!
   assert.match(email2.body, /^You already confirm/)
   assert.ok(!email2.extra.some((l) => /requires a passkey/.test(l)))
   // MFA not yet enforced (GetIAMAI): the old body.
   const g = fixture('getiamai')
   const rg = runFixture(g)
-  const exg = stepVars(rg.steps.find((s) => s.id === 's-verify-mfa')!, ctxFor(g, rg)) as Record<string, unknown>
+  const campg = rg.steps.find((s) => s.id === 's-verify-mfa')!
+  const exg = stepVars(campg, ctxFor(g, rg)) as Record<string, unknown>
   assert.equal(exg.mfaInPlace, undefined)
-  assert.match(commsFor(cs, exg)!.body, /^From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), .+ signing in to Fixture getiamai will ask you to confirm/)
+  assert.match(commsFor(cs, exg, campg)!.body, /^From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), .+ signing in to Fixture getiamai will ask you to confirm/)
 })
 
 test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line reads as one on GetIAMAI', () => {

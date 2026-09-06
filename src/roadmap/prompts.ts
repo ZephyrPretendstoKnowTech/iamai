@@ -5,13 +5,17 @@
 // bundle, redacted by default. Pure.
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { awaitingDeployment, enforcementTiming } from './forecast.ts'
+import { awaitingDeployment, enforcementTiming, forecastEnforcement } from './forecast.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 import { redactDeep as redactDeepShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
 import { reached } from '../derive/population.ts'
+import { content } from '../content/content.ts'
+
+/** The shared lines this module states a date with; the words live in content.json. */
+const SHARED = content.shared as unknown as { commsForecastDate: string; commsForecastNote: string }
 
 export type PromptKind = 'announcement' | 'reminder' | 'helpDesk' | 'manager' | 'changeRecord' | 'executive' | 'wholePlan'
 
@@ -75,13 +79,51 @@ export function stepContext(step: Step, view?: StepView): string {
   // announcement from, so a projection stated here comes back as a commitment.
   // The one reading, with the Dates line, the row and the calendar entry
   // (roadmap/forecast.ts).
-  const when = step.events?.enforce && !awaitingDeployment(step) ? absoluteDate(step.events.enforce.at) : 'not yet dated'
+  //
+  // A policy that does exist but has not yet earned its enforcement — sitting in
+  // report-only with the window still open — has a day, and it is a target. It
+  // is stated on the same terms the email under it uses (shared.commsForecastDate),
+  // so the facts block and the draft cannot disagree about what the day is worth.
+  const timing = enforcementTiming(step)
+  const when =
+    timing.at === null || awaitingDeployment(step)
+      ? 'not yet dated'
+      : timing.basis === 'forecast'
+        ? SHARED.commsForecastDate.replace('{date}', absoluteDate(timing.at))
+        : absoluteDate(timing.at)
   if (view) {
     // What the step says on screen (prompt 53 queue item 7), never the engine's own prose.
     const v = view(step)
     return `${v.title}. ${v.why} Takes effect: ${when}. What to do: ${v.whatToDo.join(' | ') || 'nothing'}. Done when: ${v.doneWhen.join(' | ') || 'the next scan confirms it'}.`
   }
   return `${step.plainTitle || step.title}. ${step.why} Takes effect: ${when}.`
+}
+
+/** A blank line between paragraphs, the way every announcement is composed. */
+const PARA = '\n\n'
+
+/**
+ * The draft announcement the prompt pack hands to a model, on the terms the
+ * date it names is worth.
+ *
+ * The generator writes this draft before Foundation B's lifecycle is settled —
+ * tracking advances it afterwards — so the draft leaves the generator dated and
+ * unclassified, and the classification happens here, on the finished plan. While
+ * the step's enforcement is the roadmap's projection the draft says so in its
+ * own paragraph, under the one that names the day and above the sign-off, in the
+ * same words the screen's Tell your people box carries
+ * (stepExport.ts `commsFor`). A step with no announcement to make ("nobody is
+ * affected") names no day and gains no paragraph.
+ */
+export function announcementDraft(steps: readonly Step[]): string | null {
+  const step = steps.find((s) => s.comms)
+  const draft = step?.comms ?? null
+  if (step === undefined || draft === null) return null
+  const parts = draft.split(PARA)
+  // Salutation, body, sign-off: fewer paragraphs than that is not a dated
+  // announcement, so there is no day to qualify.
+  if (parts.length < 3 || !forecastEnforcement(step)) return draft
+  return [...parts.slice(0, 2), SHARED.commsForecastNote, ...parts.slice(2)].join(PARA)
 }
 
 export type PackItem = { title: string; prompt: string }
