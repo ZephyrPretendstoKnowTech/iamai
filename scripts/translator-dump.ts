@@ -15,6 +15,7 @@ import { steps as contentSteps } from '../src/content/content.ts'
 import { PINNED_GOAL_MAP, policiesForGoal } from '../src/roadmap/goalMap.ts'
 import { stepPortalLines } from '../src/ui/surfaces/stepPortal.ts'
 import type { Step } from '../src/roadmap/types.ts'
+import { stateFields } from '../src/roadmap/lifecycle.ts'
 import { buildNameDirectory } from '../src/names.ts'
 
 type PinnedPolicy = { placeholders?: Record<string, string> }
@@ -88,6 +89,10 @@ export function buildTranslatorOutput(): Record<string, { steps: string[] }> {
     }))
     const asStep = {
       goalId,
+      // The review page's step is a policy nothing has deployed: no lifecycle, no
+      // condition, no observation. It carries the state behind that word rather
+      // than leaving the field off, because the surfaces read it (lifecycle.ts).
+      ...stateFields(),
       action: {
         kind: 'create',
         summary: [],

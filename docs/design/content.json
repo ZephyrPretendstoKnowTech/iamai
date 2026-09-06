@@ -52,6 +52,7 @@
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
     "datesChange": "Announce {announce} · Change {enforce}",
     "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
+    "datesObserve": "Report-only since {reportOnly} · Review {readyOn} · Enforcement is dated once the observation window closes",
     "commsForecastDate": "{date} at the earliest",
     "commsForecastNote": "That date is our target, not a commitment: we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
     "portalRoot": "Entra admin center → Entra ID → Conditional Access → Policies → New policy",

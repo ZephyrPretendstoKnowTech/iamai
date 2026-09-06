@@ -1,7 +1,8 @@
 // ICS export (roadmap-v2.md §8): one calendar entry per scheduled step, from
 // its first ring to its last, and one per Cleanup row on its day (E4). Pure; the
 // file is built in the browser.
-import { awaitingDeployment } from './forecast.ts'
+import { awaitingDeployment, enforcementUnearned } from './forecast.ts'
+import { readyWhen } from '../derive/readyWhen.ts'
 import { unavailableReason } from './operations.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 
@@ -45,8 +46,15 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // again once a scan finds the policy in report-only. Which steps the
     // calendar carries does not change; the day one of them sits on does.
     const deploying = awaitingDeployment(s)
-    const start = planned === null ? null : deploying ? (s.reportOnlyAt ?? null) : planned
-    const end = start === null ? null : deploying ? start : (s.rings.at(-1)?.plannedEnd ?? start)
+    // A policy already in report-only with nothing left to submit but its
+    // enforcement has one day too, and it is not an enforcement either: the day
+    // its observation is reviewed, from Foundation B's own two gates
+    // (derive/readyWhen.ts, roadmap/forecast.ts). Booking the rings would put the
+    // enforcement wave of a window that has not closed — and whose evidence has
+    // not been collected — in a person's calendar as the day the change lands.
+    const reviewing = !deploying && enforcementUnearned(s) ? readyWhen(s) : null
+    const start = planned === null ? null : deploying ? (s.reportOnlyAt ?? null) : reviewing ? reviewing.date : planned
+    const end = start === null ? null : deploying || reviewing ? start : (s.rings.at(-1)?.plannedEnd ?? start)
     if (!start || !end) continue
     const endExclusive = new Date(Date.parse(end) + 86_400_000).toISOString()
     lines.push('BEGIN:VEVENT')

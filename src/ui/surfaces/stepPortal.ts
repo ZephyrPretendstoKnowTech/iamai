@@ -19,8 +19,10 @@
 //
 // While the step names an object this tenant does not have yet, or has no
 // artifact at all, no implementation is offered: no portal lines, no JSON, no
-// PowerShell, no download (stepJson.ts implementationOffered). The step says
-// what is missing and which Preparation step creates it instead.
+// PowerShell, no download (stepJson.ts implementationDue). The same holds while
+// the only thing left to submit is an enforcement the policy's report-only
+// window has not earned. The step says what is missing, or what it is waiting
+// for, instead.
 //
 // Pure: no DOM, no network.
 import pinned from '../../../baselines/jhope188-conditionalaccesspolicies.pinned.json' with { type: 'json' }
@@ -32,7 +34,7 @@ import { analysisUnknown, effectsOf } from '../../roadmap/strand.ts'
 import { strengthLookupOf } from '../../roadmap/operations.ts'
 import { labelledBlocks, portalLines } from '../../roadmap/portalLines.ts'
 import type { PortalSection } from '../../roadmap/portalLines.ts'
-import { implementationOffered } from './stepJson.ts'
+import { implementationDue } from './stepJson.ts'
 import type { PortalContext } from '../../roadmap/portalLines.ts'
 import type { Step, StepResolution } from '../../roadmap/types.ts'
 import { shared } from '../../content/content.ts'
@@ -272,7 +274,7 @@ export function strengthForGoal(goalId: string): string | null {
  * get the same answer.
  */
 export function stepPortalLines(step: Step, names: PortalNames): string[] | null {
-  if (!implementationOffered(step)) return null
+  if (!implementationDue(step)) return null
   const resolution = step.action.resolution
   const mapped = resolution?.policies ?? []
   if (mapped.length === 0) return null

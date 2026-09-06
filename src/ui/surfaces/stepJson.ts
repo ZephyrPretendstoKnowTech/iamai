@@ -5,9 +5,28 @@
 // writes for the plan file and the exports. Pure.
 import type { Step } from '../../roadmap/types.ts'
 import { stepById } from '../../content/content.ts'
-import { implementationOffered, operationBodies, operationsOf } from '../../roadmap/operations.ts'
+import { implementationOffered, operationsOf } from '../../roadmap/operations.ts'
+import { enforcementUnearned } from '../../roadmap/forecast.ts'
 
 export { implementationOffered }
+
+/**
+ * Whether the step has something to hand over *now*: Foundation A offers an
+ * implementation, and Foundation B has not put what it would submit behind a
+ * gate of its own (roadmap/forecast.ts `enforcementUnearned`).
+ *
+ * The four channels read this and nothing else, so they cannot answer it four
+ * ways. Foundation A's answer is unchanged and the Step Contract still reports
+ * it (`contract.implementation`): the step is a policy the plan will write, and
+ * this is whether today is the day. A policy the plan deployed into report-only
+ * two days ago has an enforcement to submit and has not earned it, so the tabs,
+ * the download and the portal lines stand down and What to do says the one true
+ * thing — leave it in report-only — instead of saying it above a button that
+ * would turn the policy on.
+ */
+export function implementationDue(step: Step): boolean {
+  return implementationOffered(step) && !enforcementUnearned(step)
+}
 
 /** The objects the body names that the tenant lacks, with the step that creates each (its content title). */
 export function missingObjects(step: Step): { token: string; stepId: string | null; title: string }[] {
@@ -30,7 +49,7 @@ export function heldByTitle(step: Step): string {
  * offers no implementation, so no channel can render one.
  */
 export function stepOperations(step: Step): ReturnType<typeof operationsOf> {
-  return operationsOf(step)
+  return implementationDue(step) ? operationsOf(step) : []
 }
 
 /**
@@ -40,7 +59,7 @@ export function stepOperations(step: Step): ReturnType<typeof operationsOf> {
  * would then describe a policy the operations do not.
  */
 export function policyJson(step: Step): unknown {
-  const bodies = operationBodies(step)
+  const bodies = stepOperations(step).map((o) => o.body)
   if (bodies.length === 0) return { note: 'Portal steps show the policy to create.' }
   return bodies.length === 1 ? bodies[0] : bodies
 }
@@ -52,7 +71,7 @@ export function policyJsonText(step: Step): string {
 
 /** The same decision, under the name the JSON, PowerShell and Download tabs read. */
 export function jsonOffered(step: Step): boolean {
-  return implementationOffered(step)
+  return implementationDue(step)
 }
 
 /**

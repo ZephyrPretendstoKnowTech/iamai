@@ -18,7 +18,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepContract } from './stepContract.ts'
 import { createsNewPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
-import { awaitingDeployment, forecastEnforcement } from '../../roadmap/forecast.ts'
+import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
@@ -40,17 +40,28 @@ const SHARED = content.shared as unknown as { commsForecastNote: string }
  * report-only stage missing from between them.
  *
  * Foundation B decides before either of them (roadmap/forecast.ts
- * `awaitingDeployment`). While the policy is not deployed there is nothing in
- * the tenant to enforce and nothing has been watched, so the plan states the
- * report-only deployment it can keep and dates no enforcement
+ * `awaitingDeployment`, `enforcementUnearned`). While the policy is not deployed
+ * there is nothing in the tenant to enforce and nothing has been watched, so the
+ * plan states the report-only deployment it can keep and dates no enforcement
  * (shared.datesDeploy). The enforcement date the schedule holds is the roadmap's
  * forecast for a window that has not opened; printing it beside a policy that
- * does not exist announces a change on a day nothing can have earned. The date
- * returns — with the announcement it needs — once a scan finds the policy in
- * report-only.
+ * does not exist announces a change on a day nothing can have earned.
+ *
+ * The window opening does not date the enforcement either. A policy two days
+ * into report-only with nothing left to submit but the enforcement read
+ * "Announce Sep 6 · Change Sep 7", while the row beside it read "ready Aug 29"
+ * and its Done-when lines named nine people the records had not seen — the same
+ * step answering "when" three ways, one of them a change dated on a day nothing
+ * had earned. So the line states the two days Foundation B does hold: the day
+ * the policy entered report-only, and the review milestone its own gates derive
+ * (shared.datesObserve). The enforcement date returns, as a date rather than a
+ * forecast, once the evidence makes it `ready-to-enforce`. A report-only policy
+ * with a real correction still to make keeps its change dates: that patch leaves
+ * it in report-only, it is work for today, and it is not this case.
  */
 export function datesLineFor(step: Step, cs: Record<string, unknown>): string | null {
   if (awaitingDeployment(step)) return '{datesDeploy}'
+  if (enforcementUnearned(step)) return '{datesObserve}'
   if (createsNewPolicy(step)) return '{datesNew}'
   if (step.kind === 'adjust') return '{datesChange}'
   return typeof cs.dates === 'string' ? cs.dates : null
@@ -87,6 +98,12 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // cannot be shown not to — each carry their own next action and none of them
   // carries a rollout.
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
+  // The step has an implementation and today is not the day to run it: its
+  // policy is in report-only and the only thing left to submit is the
+  // enforcement the window has not earned (roadmap/forecast.ts). The artifacts
+  // carry what the screen carries — the next action, which is to keep watching —
+  // and none of the instructions for making the change.
+  const unearned = cs.kind === 'policy' && enforcementUnearned(step)
   const suppressed = cs.kind === 'policy' && !implementationOffered(step)
   const waiting = reason === 'missing-object'
   const unmatched = reason === 'unmatched-pair'
@@ -103,8 +120,8 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // setting to change before it is created. While it cannot be written they say
   // nothing here either, on any surface that reads this view (the exports, the
   // print, the prompts, the grounding bundle): the next action stands alone.
-  if (reason === null && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
-  if (reason === null && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
+  if (reason === null && !unearned && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
+  if (reason === null && !unearned && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
   else if (waiting) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.jsonWaits), { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') }))
   else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))
@@ -115,7 +132,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   else if (escapeHatch) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.escapeHatchHeld), { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) }))
   else if (readinessHeld) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.readinessHeld), { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) }))
   else if (inPlace) lines.push(String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep))
-  else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
+  else if (!unearned && Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   // The next action the screen states, in the artifact. Where the step's content
   // carries a lead it is already the first line above and the contract's action
   // is that same sentence; where it carries none the contract falls back to

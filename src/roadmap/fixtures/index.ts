@@ -412,16 +412,43 @@ export function buildFixture(spec: Spec): Fixture {
     // the day after week one's scan and evaluated for every person with no
     // failures, is ready now on the evidence; auth transfer, created two days
     // ago and seen for 24 people so far, waits for its observation window.
-    const advanced: [string, string, PolicyResultClass, number, string[]][] = [
-      ['token-protection', 'enabledForReportingButNotEnforced', 'reportOnlySuccess', 7, ids],
-      ['block-auth-transfer', 'enabledForReportingButNotEnforced', 'reportOnlySuccess', 2, ids.slice(0, 24)],
+    //
+    // Auth transfer carries the policy the plan actually deploys for its goal,
+    // under the name the plan proposes, because that is what a policy IAMAI
+    // created last week is. A deployed policy that means something else is a
+    // goal nothing covers, and its step is a correction case whatever the tag
+    // says: the plan reads it as report-only and offers to create a second
+    // policy beside it. With the goal covered, the only thing left to submit is
+    // the enforcement the observation window has not earned, which is the
+    // canonical Report-only / Observe case.
+    const advanced: { goalId: string; name: string; state: string; cls: PolicyResultClass; days: number; seenIds: string[]; body: Record<string, unknown> }[] = [
+      { goalId: 'token-protection', name: 'Core - Require - token-protection', state: 'enabledForReportingButNotEnforced', cls: 'reportOnlySuccess', days: 7, seenIds: ids, body },
+      {
+        goalId: 'block-auth-transfer',
+        name: 'Core - Block - Authentication transfer',
+        state: 'enabledForReportingButNotEnforced',
+        cls: 'reportOnlySuccess',
+        days: 2,
+        seenIds: ids.slice(0, 24),
+        body: {
+          conditions: {
+            applications: { excludeApplications: [], includeApplications: ['All'], includeAuthenticationContextClassReferences: [], includeUserActions: [] },
+            authenticationFlows: { transferMethods: 'authenticationTransfer' },
+            clientAppTypes: ['all'],
+            servicePrincipalRiskLevels: [],
+            signInRiskLevels: [],
+            userRiskLevels: [],
+            users: { excludeGroups: [carveOut], excludeRoles: [], excludeUsers: [], includeGroups: [], includeRoles: [], includeUsers: ['All'] },
+          },
+          grantControls: { builtInControls: ['block'], customAuthenticationFactors: [], operator: 'OR', termsOfUse: [] },
+        },
+      },
     ]
     const zero = { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: 0, enforcedFailure: 0, enforcedSuccess: 0 } as const
     const noIds = { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] } as Record<PolicyResultClass, string[]>
-    for (const [goalId, state, cls, days, seenIds] of advanced) {
+    for (const { goalId, name, state, cls, days, seenIds, body: policyBody } of advanced) {
       const pid = guid(seed, 2_200_000 + policies.length)
-      const name = `Core - Require - ${goalId}`
-      policies.push({ id: pid, displayName: name, state, description: `[IAMAI:${planId}:${stepIdForGoal(goalId)}]`, createdDateTime: daysAgo(days), modifiedDateTime: daysAgo(days), ...body })
+      policies.push({ id: pid, displayName: name, state, description: `[IAMAI:${planId}:${stepIdForGoal(goalId)}]`, createdDateTime: daysAgo(days), modifiedDateTime: daysAgo(days), ...policyBody })
       week2Results.push({ policyId: pid, displayName: name, counts: { ...zero, [cls]: seenIds.length }, affectedUserIds: { ...noIds, [cls]: seenIds }, firstReportOnlyAt: daysAgo(days) })
     }
   }

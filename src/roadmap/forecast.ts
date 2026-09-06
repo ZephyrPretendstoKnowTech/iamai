@@ -28,6 +28,7 @@
 // says which of the two the step's enforcement date is. Nothing here writes a
 // lifecycle, moves a step forward, or lets a forecast satisfy a gate.
 import type { Step } from './types.ts'
+import { enforcesOnRun, operationsOf } from './operations.ts'
 
 /** What a step's enforcement date is worth. */
 export type EnforcementBasis =
@@ -91,4 +92,40 @@ export function awaitingDeployment(step: Step): boolean {
  */
 export function forecastEnforcement(step: Step): boolean {
   return enforcementTiming(step).basis !== 'committed'
+}
+
+/**
+ * The step's policy is deployed and being watched, and the operation it would
+ * hand over turns that policy on.
+ *
+ * The lifecycle and the enforcement are one question asked twice. Foundation B
+ * says a policy sitting in report-only has not earned its enforcement — that is
+ * what `enforcementTiming` above calls a forecast — and Foundation A says which
+ * operations enforce the moment they are submitted (`enforcesOnRun`). Between
+ * them there was nothing, so the plan could say "Leave it in report-only until
+ * Aug 29" and, in the tab beside it, hand the operator {"state": "enabled"}, the
+ * PowerShell that submits it and the portal path that ends on "Enable policy:
+ * On → Save". Running any of them enforced the policy that afternoon, on day two
+ * of a window the plan itself had not closed, with nine of the thirty-one people
+ * in scope still unseen in the records.
+ *
+ * Foundation A already draws this boundary for the one gate it owns: a readiness
+ * threshold holds the operations that enforce on run and lets the safe
+ * preparation through (`policyResult`, `readiness-unmet`). This is the same
+ * boundary for Foundation B's gate, which Foundation A cannot see. It withholds
+ * nothing else: a create lands in report-only, and a patch that leaves a
+ * report-only policy in report-only — a scope to correct, a control to raise —
+ * denies nobody and stays offered, because that is how the window is spent well.
+ * `ready-to-enforce` is Foundation B granting the enforcement, and it releases
+ * it.
+ *
+ * It is also the sibling of `awaitingDeployment` for every surface that dates a
+ * step: while the one thing left to submit is an enforcement, the rings, the
+ * wave and the enforce event are the roadmap's forecast for a window that has
+ * not closed, and the days the step has earned are the day it entered
+ * report-only and the review milestone its own gates derive.
+ */
+export function enforcementUnearned(step: Step): boolean {
+  if (step.state.lifecycle !== 'report-only') return false
+  return operationsOf(step).some(enforcesOnRun)
 }

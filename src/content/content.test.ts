@@ -56,6 +56,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // scan found in report-only (doneWhen.ts); the review's example steps are all new.
   '.shared.policyDoneWhenTracked[0]',
   '.shared.policyDoneWhenTracked[1]',
+  // The Dates line of a policy already in report-only with nothing left to
+  // submit but the enforcement its window has not earned (stepExport.ts
+  // datesLineFor, over roadmap/forecast.ts): the same reason again — the review
+  // page has no scan, so no example step is in report-only.
+  '.shared.datesObserve',
   '.pages.home.metaTitle',
   '.pages.plan.gapSuffix.guests-mfa',
   '.pages.export.unredactedWarning',
