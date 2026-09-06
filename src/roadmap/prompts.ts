@@ -5,6 +5,7 @@
 // bundle, redacted by default. Pure.
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { absoluteDate } from '../copy/dates.ts'
+import { awaitingDeployment, enforcementTiming } from './forecast.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
@@ -69,9 +70,12 @@ export function promptFor(kind: PromptKind, tenant: string, context: string, dra
 
 export function stepContext(step: Step, view?: StepView): string {
   // A policy that is not in the tenant takes effect on no date: the schedule's
-  // enforcement day is a plan for a report-only window that has not opened, and
-  // the prompt pack says what the Dates line says (ui/surfaces/stepExport.ts).
-  const when = step.events?.enforce && step.state.lifecycle !== 'not-deployed' ? absoluteDate(step.events.enforce.at) : 'not yet dated'
+  // enforcement day is the roadmap's forecast for a report-only window that has
+  // not opened, and a prompt pack is text a person hands to a model to draft an
+  // announcement from, so a projection stated here comes back as a commitment.
+  // The one reading, with the Dates line, the row and the calendar entry
+  // (roadmap/forecast.ts).
+  const when = step.events?.enforce && !awaitingDeployment(step) ? absoluteDate(step.events.enforce.at) : 'not yet dated'
   if (view) {
     // What the step says on screen (prompt 53 queue item 7), never the engine's own prose.
     const v = view(step)
@@ -148,6 +152,14 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
       kind: s.kind,
       status: s.status,
       tracking: s.tracking ? { state: s.tracking.state, enforcedAt: s.tracking.enforcedAt, evidenceQuality: s.tracking.evidenceQuality } : null,
+      // What the step's enforcement instant is worth (roadmap/forecast.ts). The
+      // bundle is read by another tool, and a bare instant is indistinguishable
+      // from one a policy has earned, so the basis travels with the date:
+      // `forecast` is the roadmap's projected path and authorises nothing;
+      // `committed` is a milestone Foundation B's evidence supports. The
+      // fallback below still carries the schedule's own events and rings, and
+      // this is what says which of the two they are.
+      enforcement: enforcementTiming(s),
     }
     return v
       ? { ...data, title: v.title, why: v.why, whatToDo: v.whatToDo, doneWhen: v.doneWhen, dates: v.dates, ifWrong: v.ifWrong, population: reached(s)?.active ?? null }

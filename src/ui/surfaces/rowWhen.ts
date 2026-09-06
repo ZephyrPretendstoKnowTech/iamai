@@ -10,6 +10,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
+import { awaitingDeployment } from '../../roadmap/forecast.ts'
 import { heldByReadiness } from '../../derive/finish.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 
@@ -34,11 +35,12 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // A policy the tenant does not have yet reads the day the plan creates it in
   // report-only: the next thing that actually happens to it, and the only day it
   // has (Foundation B, roadmap/types.ts reportOnlyAt). Its rings and its
-  // enforcement instant are the schedule's forecast for a window that has not
-  // opened, and the row is where a person reads a step's date, so the row says
-  // what the Dates line, the calendar entry and the milestone already say
-  // instead of dating an enforcement nothing has earned.
-  if (step.state.lifecycle === 'not-deployed') return step.reportOnlyAt ? absoluteDate(step.reportOnlyAt) : ''
+  // enforcement instant stay on the step as the roadmap's forecast, and the row
+  // is where a person reads a step's date, so the row says what the Dates line,
+  // the calendar entry and the prompt pack say — all four from the one reading
+  // in roadmap/forecast.ts — instead of handing a projection over as a date
+  // something has earned.
+  if (awaitingDeployment(step)) return step.reportOnlyAt ? absoluteDate(step.reportOnlyAt) : ''
   const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? (step.status === 'blocked' ? waveStart : null)
   return at ? absoluteDate(at) : PLAN.now
 }

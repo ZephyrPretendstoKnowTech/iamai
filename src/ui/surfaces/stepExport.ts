@@ -18,6 +18,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepContract } from './stepContract.ts'
 import { createsNewPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
+import { awaitingDeployment } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
@@ -35,16 +36,18 @@ export type { ExportStep }
  * deployment and the enforcement it earns, never "Announce · Change" with the
  * report-only stage missing from between them.
  *
- * Foundation B decides before either of them. While the policy is not deployed
- * there is nothing in the tenant to enforce and nothing has been watched, so the
- * plan states the report-only deployment it can keep and dates no enforcement
- * (shared.datesDeploy). The enforcement date the schedule holds is a plan for a
- * window that has not opened; presenting it beside a policy that does not exist
- * announces a change on a day nothing can have earned. The date returns — with
- * the announcement it needs — once a scan finds the policy in report-only.
+ * Foundation B decides before either of them (roadmap/forecast.ts
+ * `awaitingDeployment`). While the policy is not deployed there is nothing in
+ * the tenant to enforce and nothing has been watched, so the plan states the
+ * report-only deployment it can keep and dates no enforcement
+ * (shared.datesDeploy). The enforcement date the schedule holds is the roadmap's
+ * forecast for a window that has not opened; printing it beside a policy that
+ * does not exist announces a change on a day nothing can have earned. The date
+ * returns — with the announcement it needs — once a scan finds the policy in
+ * report-only.
  */
 export function datesLineFor(step: Step, cs: Record<string, unknown>): string | null {
-  if (step.state.lifecycle === 'not-deployed') return '{datesDeploy}'
+  if (awaitingDeployment(step)) return '{datesDeploy}'
   if (createsNewPolicy(step)) return '{datesNew}'
   if (step.kind === 'adjust') return '{datesChange}'
   return typeof cs.dates === 'string' ? cs.dates : null
