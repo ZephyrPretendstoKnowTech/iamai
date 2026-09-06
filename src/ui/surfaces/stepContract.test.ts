@@ -155,11 +155,13 @@ test('contract 4: an outstanding prerequisite is an instruction under Fix before
 // ---- 5. the implementation authority, whatever the status word says ----
 
 test('contract 5: a step whose status has run ahead of Foundation A offers no implementation', () => {
-  // demo-week2's token-protection step is "ready to enforce" by its lifecycle and
-  // names an object the tenant does not have. The lifecycle is right and it is
-  // not the authority: nothing is offered, and the action is not to enforce.
-  const { all } = contracts('demo-week2')
-  const token = all.find(({ step }) => step.id === 's-goal-token-protection')!
+  // Re-anchor the missing-object example on a genuinely tenant-specific object:
+  // the operator has not confirmed the exclusions group. Microsoft first-party
+  // application IDs are global resource IDs and are not missing tenant objects.
+  const f = noExclusionsAnswer(fixture('demo-week2'))
+  const r = runFixture(f)
+  const step = r.steps.find((candidate) => candidate.id === 's-goal-token-protection')!
+  const token = { step, c: stepContract(step, ctxFor(f, r, step)) }
   assert.equal(token.step.status, 'ready-to-enforce', 'the status word has run ahead')
   assert.equal(token.c.state.lifecycle, 'ready-to-enforce', 'and so has the lifecycle')
   assert.equal(token.c.milestone.kind, 'enforce', 'and the milestone says enforce')

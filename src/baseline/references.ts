@@ -1,4 +1,5 @@
 import type { CaPolicy, Reference, ReferenceKind, ReferenceUse, Portability } from "./types.ts";
+import firstParty from "../../data/first-party-apps.json" with { type: "json" };
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -9,6 +10,15 @@ const BUILTIN_AUTH_STRENGTHS = new Set([
   "00000000-0000-0000-0000-000000000004", // Phishing-resistant MFA
 ]);
 
+/** Microsoft first-party application IDs are global Conditional Access resource IDs. */
+const FIRST_PARTY_APPLICATION_IDS = new Set(
+  (firstParty as { apps: { appId: string }[] }).apps.map((app) => app.appId.toLowerCase()),
+);
+
+export function isFirstPartyApplicationId(id: string): boolean {
+  return FIRST_PARTY_APPLICATION_IDS.has(id.toLowerCase());
+}
+
 /** Keyword targets that are not identifiers. */
 const KEYWORDS = new Set(["all", "none", "office365", "microsoftadminportals", "guestsorexternalusers"]);
 
@@ -17,9 +27,9 @@ function portabilityFor(kind: ReferenceKind, id: string): Portability {
     case "role":
       return "stable";
     case "application":
-      // First-party app ids are global; the target tenant may still lack the
-      // service principal, so mapping must verify presence and offer a how-to.
-      return "verify";
+      // Microsoft first-party application IDs are global Conditional Access
+      // resource IDs. Unknown application GUIDs remain tenant-specific.
+      return isFirstPartyApplicationId(id) ? "stable" : "tenantSpecific";
     case "authenticationStrength":
       return BUILTIN_AUTH_STRENGTHS.has(id.toLowerCase()) ? "stable" : "tenantSpecific";
     default:
@@ -89,5 +99,5 @@ export function inventoryReferences(policies: CaPolicy[]): Reference[] {
 
 /** Only what a target tenant must supply before the baseline can be compared. */
 export function unresolvedReferences(refs: Reference[]): Reference[] {
-  return refs.filter((r) => r.portability !== "stable");
+  return refs.filter((r) => r.portability === "tenantSpecific");
 }
