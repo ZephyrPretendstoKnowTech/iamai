@@ -36,6 +36,8 @@ import { stepExportView, datesLineFor, ifWrongLineFor } from './stepExport.ts'
 import { policyJsonText, jsonOffered, stepOperations, createsNewPolicy } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
+import { rowWhen } from './rowWhen.ts'
+import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { statusOf } from './statusWord.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -296,19 +298,33 @@ test('004.10: the calendar entry and the prompt pack carry the same create-in-re
 
 // ---- 8. no enforcement is dated, on any surface, while the policy is absent ----
 
-test('004.11: no surface emits an enforcement date or event while the policy is Not deployed', () => {
+test('004.11: every date the operator reads on this step is the report-only deployment, never an enforcement', () => {
   const { step, ctx, steps, planId } = canonical()
   assert.equal(step.state.lifecycle, 'not-deployed')
   assert.equal(step.tracking, null)
   assert.equal(readyWhen(step), null)
-  // The schedule keeps its planned enforcement day — it places the plan's waves
-  // with it — and no operator-facing surface states it until a scan has found
-  // the policy in report-only and watched it there.
+  // The plan keeps a forecast for this policy — the rings it placed and the wave
+  // it read back off them — because forecasting the rollout is what a plan is.
+  // What it may not do is hand that forecast to a person as this step's date. So
+  // every place a person reads a date for this step reads the one day the plan
+  // has actually scheduled: the report-only deployment.
   const enforceDay = absoluteDate(step.events!.enforce.at)
+  const reportOnlyDay = absoluteDate(ctx.reportOnlyAt!)
+  assert.notEqual(enforceDay, reportOnlyDay, 'the two days differ, so the assertions below can tell them apart')
   const view = (s: Step): ReturnType<typeof stepExportView> => stepExportView(s, ctx)
   const v = view(step)
+  // The collapsed row's date column, which is where a person reads a step's date
+  // without opening it.
+  assert.equal(rowWhen(step), reportOnlyDay)
+  assert.notEqual(rowWhen(step), enforceDay, 'the row dates an enforcement for a policy that does not exist')
+  // The Dates line the opened step and the export both read.
   assert.match(String(v.dates), /Report-only from/)
+  assert.match(String(v.dates), new RegExp(reportOnlyDay))
   assert.doesNotMatch(String(v.dates), new RegExp(enforceDay), `the Dates line dates an enforcement: ${v.dates}`)
+  // The next milestone Foundation B states for the step.
+  assert.equal(nextMilestone(step).kind, 'deploy')
+  assert.notEqual(nextMilestone(step).at, step.events!.enforce.at)
+  // The prompt pack.
   assert.doesNotMatch(stepContext(step, view), new RegExp(enforceDay), 'the prompt pack dates an enforcement')
   // The calendar entry is the report-only deployment day, and not the
   // enforcement rings the schedule has proposed and nothing has earned.
@@ -320,6 +336,7 @@ test('004.11: no surface emits an enforcement date or event while the policy is 
   assert.ok(!event.includes(`DTSTART;VALUE=DATE:${day(step.events!.enforce.at)}`), 'the calendar books the enforcement day')
   assert.ok(step.rings.length > 0, 'the schedule still proposes the rings it plans with')
   assert.ok(!event.includes(`DTSTART;VALUE=DATE:${day(step.rings[0].plannedStart)}`), 'the calendar books the enforcement rings')
+  assert.doesNotMatch(String(v.dates), new RegExp(absoluteDate(step.rings[0].plannedStart)), 'a ring date reached the Dates line')
 })
 
 // ---- 9. a policy created from the Portal instructions is this step's ----

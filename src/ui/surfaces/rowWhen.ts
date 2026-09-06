@@ -1,7 +1,8 @@
 // The plan row's date column, once, for the row and the tests: a readiness hold
 // reads its reason; a policy in report-only reads when it may be enforced (ready
 // <date> · ready now · ready since <date>, from the tracking's two gates); a
-// prerequisite or check is now; a dated step reads its enforcement instant; a
+// prerequisite or check is now; a policy that is not deployed reads the day it
+// is created in report-only; another dated step reads its enforcement instant; a
 // blocked step with no date of its own reads its wave's start, so a row reads
 // Blocked · <date>, Report-only · ready <date> or Ready · now, never Blocked · now.
 import { unavailableReason } from '../../roadmap/operations.ts'
@@ -30,6 +31,14 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // already has keeps its observation reading above — that is the scan's fact,
   // not a rollout this plan invented.
   if (unavailableReason(step) !== null) return ''
+  // A policy the tenant does not have yet reads the day the plan creates it in
+  // report-only: the next thing that actually happens to it, and the only day it
+  // has (Foundation B, roadmap/types.ts reportOnlyAt). Its rings and its
+  // enforcement instant are the schedule's forecast for a window that has not
+  // opened, and the row is where a person reads a step's date, so the row says
+  // what the Dates line, the calendar entry and the milestone already say
+  // instead of dating an enforcement nothing has earned.
+  if (step.state.lifecycle === 'not-deployed') return step.reportOnlyAt ? absoluteDate(step.reportOnlyAt) : ''
   const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? (step.status === 'blocked' ? waveStart : null)
   return at ? absoluteDate(at) : PLAN.now
 }
