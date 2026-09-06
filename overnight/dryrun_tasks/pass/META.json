@@ -1,0 +1,14 @@
+{
+  "id": "pass",
+  "depends_on": [],
+  "risk": "low",
+  "max_corrections": 0,
+  "max_review_retries": 2,
+  "task_budget_usd": 3.5,
+  "claude_model": "opus",
+  "claude_effort": "high",
+  "relevant_files": [
+    "overnight/runner.py",
+    "overnight/GLOBAL_CONTRACT.md"
+  ]
+}
