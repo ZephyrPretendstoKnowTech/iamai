@@ -16,6 +16,7 @@ import { fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
+import { stepContract } from './stepContract.ts'
 import { createsNewPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { list } from '../../copy/statements.ts'
@@ -33,8 +34,17 @@ export type { ExportStep }
  * tenant that has no such policy, and a create's dates are the report-only
  * deployment and the enforcement it earns, never "Announce · Change" with the
  * report-only stage missing from between them.
+ *
+ * Foundation B decides before either of them. While the policy is not deployed
+ * there is nothing in the tenant to enforce and nothing has been watched, so the
+ * plan states the report-only deployment it can keep and dates no enforcement
+ * (shared.datesDeploy). The enforcement date the schedule holds is a plan for a
+ * window that has not opened; presenting it beside a policy that does not exist
+ * announces a change on a day nothing can have earned. The date returns — with
+ * the announcement it needs — once a scan finds the policy in report-only.
  */
 export function datesLineFor(step: Step, cs: Record<string, unknown>): string | null {
+  if (step.state.lifecycle === 'not-deployed') return '{datesDeploy}'
   if (createsNewPolicy(step)) return '{datesNew}'
   if (step.kind === 'adjust') return '{datesChange}'
   return typeof cs.dates === 'string' ? cs.dates : null
@@ -100,6 +110,17 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   else if (readinessHeld) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.readinessHeld), { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) }))
   else if (inPlace) lines.push(String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep))
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
+  // The next action the screen states, in the artifact. Where the step's content
+  // carries a lead it is already the first line above and the contract's action
+  // is that same sentence; where it carries none the contract falls back to
+  // Foundation B's milestone ("Create the policy in report-only."), and without
+  // this the calendar entry, the prompt pack and the bundle began at the portal
+  // path with the operation itself never said. Read from the frozen Step
+  // Contract, not decided again here.
+  if (reason === null) {
+    const action = stepContract(step, ctx).whatToDo.text
+    if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
+  }
   // Nothing that implies the policy can be rolled out while it cannot be written:
   // no completion criteria, no rollback, no dates.
   const doneWhen = reason !== null

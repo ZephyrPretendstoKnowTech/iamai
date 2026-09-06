@@ -27,6 +27,15 @@ export type PortalContext = {
   portalRoot: string
   /** shared.portalOpen, for a change to an existing policy (no `Name:` line). */
   portalOpen?: string
+  /**
+   * shared.descriptionLine, resolved with the description the operation's own
+   * body carries — the plan tag the next scan reads to know the created policy
+   * is this step's (roadmap/generate.ts findTaggedPolicies). A create typed by
+   * hand without it is a policy IAMAI cannot recognise, so the instruction
+   * carries the same field the JSON, the PowerShell and the download do. Null
+   * where the operation's body sets no description.
+   */
+  descriptionLine?: string | null
   /** shared.changeUntouched — an update changes the fields it lists and no others. */
   changeUntouched?: string
   /** shared.enableLine — an update that turns a report-only policy on. */
@@ -273,6 +282,10 @@ export function portalLines(f: PolicyFacts, ctx: PortalContext, opts: { mode?: P
   const out: string[] = []
   out.push(mode === 'change' ? (ctx.portalOpen ?? ctx.portalRoot) : ctx.portalRoot)
   if (mode !== 'change') out.push(`Name: ${ctx.policyName}`)
+  // The description the operation writes, on the create that writes it: without
+  // it the policy a person types by hand is not the policy IAMAI planned, and
+  // the next scan cannot match it to this step.
+  if (mode !== 'change' && ctx.descriptionLine) out.push(ctx.descriptionLine)
   out.push(usersLine(f, ctx))
   const res = resourcesLine(f, ctx)
   if (res) out.push(res)

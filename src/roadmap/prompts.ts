@@ -68,7 +68,10 @@ export function promptFor(kind: PromptKind, tenant: string, context: string, dra
 }
 
 export function stepContext(step: Step, view?: StepView): string {
-  const when = step.events?.enforce ? absoluteDate(step.events.enforce.at) : 'not yet dated'
+  // A policy that is not in the tenant takes effect on no date: the schedule's
+  // enforcement day is a plan for a report-only window that has not opened, and
+  // the prompt pack says what the Dates line says (ui/surfaces/stepExport.ts).
+  const when = step.events?.enforce && step.state.lifecycle !== 'not-deployed' ? absoluteDate(step.events.enforce.at) : 'not yet dated'
   if (view) {
     // What the step says on screen (prompt 53 queue item 7), never the engine's own prose.
     const v = view(step)

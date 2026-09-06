@@ -11,6 +11,7 @@ import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepExportView, stepLines } from './stepExport.ts'
+import { stepContract } from './stepContract.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 
 const HOLE = /\{[a-zA-Z:]+\}/
@@ -24,7 +25,9 @@ test('on a baseline with no shared-device policy, the step renders its instructi
   const ex = stepVars(step, ctx) as Record<string, unknown>
   assert.equal(stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), null, 'the pinned baseline holds no shared-device policy')
   const view = stepExportView(step, ctx)
-  assert.equal(view.whatToDo.length, 8, JSON.stringify(view.whatToDo))
+  // The frozen contract's next action leads, then the step's own lines (stepExport.ts).
+  assert.equal(view.whatToDo.length, 9, JSON.stringify(view.whatToDo))
+  assert.equal(view.whatToDo[0], stepContract(step, ctx).whatToDo.text, 'the export leads with the action the screen states')
   for (const l of view.whatToDo) assert.ok(!HOLE.test(l), `no hole: ${l}`)
   const shared = ex.sharedDevices as string[]
   assert.ok(shared.length > 0)

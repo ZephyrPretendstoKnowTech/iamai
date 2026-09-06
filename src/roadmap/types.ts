@@ -327,6 +327,15 @@ export type Step = {
   // ---- prompt 28 ----
   /** Announce, remind, enforce: local day, date, time and reason (scheduling-and-onboarding.md §2.2). */
   events: StepEvents | null
+  /**
+   * The day the plan deploys this step's policy in report-only (the schedule's
+   * own `reportOnlyAt`, carried on the step so every surface reads one date).
+   * It is the only day a step whose policy is not deployed has: the rings and
+   * the enforce event are a plan for a window that has not opened, and no
+   * surface dates an enforcement from them until a scan finds the policy in
+   * report-only. Null on a step that creates no policy.
+   */
+  reportOnlyAt?: string | null
   /** The plain-language title; `title` stays the technical name (§3.1). */
   plainTitle: string
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
