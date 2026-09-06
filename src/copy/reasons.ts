@@ -15,6 +15,11 @@ export const REASON = {
         : `No enabled policy includes these ${count(n, 'user')}`,
   reportOnly: 'Covered only by a report-only policy, so nothing is enforced yet',
   appsNarrower: (policy: string): string => `${policy} covers fewer apps than the goal expects`,
+  /** The tenant policy leaves out applications the baseline member covers (Part C: an exclusion is never silently discarded). */
+  appsExcluded: (policy: string, n: number): string =>
+    `${policy} leaves ${n === 1 ? 'an application' : `${n} applications`} out that the baseline covers`,
+  /** An application filter narrows the scope by an amount IAMAI does not evaluate, so the scope is not proven. */
+  appsFiltered: (policy: string): string => `${policy} narrows its applications with a filter IAMAI cannot read`,
   weakerControl: (policy: string, floor: string): string => `${policy} applies but is weaker than the goal needs (${floor})`,
   belowBaseline: (policy: string, floor: string): string => `${policy} meets the goal but not the baseline's stricter version (${floor})`,
   disabledCandidates: (names: string[]): string =>

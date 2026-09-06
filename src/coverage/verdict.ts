@@ -63,7 +63,7 @@ export function gapSentenceOf(r: GoalResult): string | null {
     const missing = new Set(uncovered).size
     return `covers ${Math.max(0, r.expectedCount - missing)} of ${r.expectedCount} people`
   }
-  if (r.reasons.some((x) => x.kind === 'apps-narrower')) return 'covers fewer apps than the baseline'
+  if (r.reasons.some((x) => x.kind === 'apps-narrower' || x.kind === 'apps-excluded')) return 'covers fewer apps than the baseline'
   if (r.reportOnlyIds.length > 0 && r.enforcedIds.length === 0) return 'report-only, not enforced'
   return null
 }

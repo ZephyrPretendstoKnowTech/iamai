@@ -286,6 +286,12 @@ function evaluateGoal(
     return { ...base, status: 'not-applicable', statement: notApplicableStatement(goal.name, reason), applicability: { facet: 'serviceAccounts', reason } }
   }
 
+  // The baseline member's own resource exclusions. A tenant policy that excludes
+  // exactly what the baseline member excludes delivers the same scope; one that
+  // excludes more delivers a narrower scope, and an exclusion IAMAI drops here
+  // would let a narrower policy pass as the baseline's equal.
+  const baselineExcludedApps = new Set([...(baselineMatches[0]?.apps.excludedIds ?? [])].map((a) => a.toLowerCase()))
+
   // Candidates (§7.1).
   const candidates = tenantFacts.filter((f) => matchesSignature(f, impl.signature))
   if (impl.expectedWho.kind === 'workload') {
@@ -307,7 +313,12 @@ function evaluateGoal(
   for (const c of candidates) {
     const caveats: string[] = []
     if (impl.expectedApps === 'all' && !c.apps.all) caveats.push('apps-narrower')
-    if (c.apps.excludedIds.size > 0) caveats.push('apps-excluded')
+    // Resource scope the baseline member does not give away: applications this
+    // policy excludes and the baseline member does not, or an application filter
+    // whose rule IAMAI does not evaluate (exact or unknown, never assumed equal).
+    const extraExcluded = [...c.apps.excludedIds].filter((a) => !baselineExcludedApps.has(a.toLowerCase()))
+    const unreadableAppFilter = c.apps.filterRule !== null
+    if (extraExcluded.length > 0 || unreadableAppFilter) caveats.push('apps-excluded')
     const live = c.state === 'enabled' || c.state === 'enabledForReportingButNotEnforced'
 
     const who = resolveFactsWho(c, input.snapshot, input.groupMembers)
@@ -343,6 +354,13 @@ function evaluateGoal(
           kind: 'apps-narrower',
           userIds: [...strongPop],
           detail: REASON.appsNarrower(c.name),
+        })
+      }
+      if (caveats.includes('apps-excluded')) {
+        reasons.push({
+          kind: 'apps-excluded',
+          userIds: [...strongPop],
+          detail: unreadableAppFilter ? REASON.appsFiltered(c.name) : REASON.appsExcluded(c.name, extraExcluded.length),
         })
       }
     } else {
@@ -452,7 +470,7 @@ function evaluateGoal(
   // fewer apps than the goal expects" in one breath is the contradiction the
   // review caught (T13): the caveat is the finding, so it decides the status
   // rather than trailing after it.
-  const appsNarrower = reasons.some((r) => r.kind === 'apps-narrower')
+  const appsNarrower = reasons.some((r) => r.kind === 'apps-narrower' || r.kind === 'apps-excluded')
 
   let status: GoalResult['status']
   if (anyUnresolved) status = 'unknown'
@@ -599,7 +617,7 @@ function buildStatement(
   // Which accounts, not just how many, when this goal excludes fewer than the
   // tenant's full break-glass set (prompt 37 §5, T14).
   const breakGlassMissing = [...allBreakGlass].filter((id) => !breakGlassIds.has(id))
-  const narrower = base.reasons.some((r) => r.kind === 'apps-narrower') ? ' Covers fewer apps than the goal expects.' : ''
+  const narrower = base.reasons.some((r) => r.kind === 'apps-narrower' || r.kind === 'apps-excluded') ? ' Covers fewer apps than the goal expects.' : ''
 
   if (status === 'enforced') return inPlaceStatement(goal.name, strongNames, breakGlass, allBreakGlass.size, breakGlassMissing) + est
   if (status === 'absent') return missingStatement(goal.name, null, baselineMatches[0]?.name ?? null)
