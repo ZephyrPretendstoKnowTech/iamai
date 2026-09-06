@@ -1172,7 +1172,9 @@
         "checkFixes": {
           "all-emergency-accounts": "Add {list:missingAccounts} to the group: every policy excludes the group and never an account by name, so an emergency account outside it is covered by every policy the group is excluded from.",
           "members-only-emergency": "Remove {list:extraMembers}: only the emergency accounts belong here, and anyone else in this group is outside every policy it is excluded from.",
+          "members-only-emergency-unconfirmed": "In the group and not an emergency account you have chosen: {list:extraMembers}. If those are the tenant's emergency accounts, choose them on Create or Correct Emergency Access Accounts first; otherwise remove them from the group, because anyone in it who is not an emergency account is outside every policy it is excluded from.",
           "no-admin-members": "{name} holds {role} and is in the group besides the emergency accounts; an excluded administrator is the most valuable unprotected account in the tenant. Remove them.",
+          "no-admin-members-unconfirmed": "{name} holds {role} and is in the group without being an emergency account you have chosen. Choose the tenant's emergency accounts on Create or Correct Emergency Access Accounts first, then remove from the group whoever is left besides them: an excluded administrator that is not the way back in is the most valuable unprotected account in the tenant.",
           "not-dynamic": "The group is dynamic; recreate it with assigned membership.",
           "excluded-from-every-policy": "Exclude the group from {list:policies}: open each policy → Users → Exclude → Groups.",
           "not-mail-enabled": "The group is mail-enabled or licensed; recreate it as a plain security group."

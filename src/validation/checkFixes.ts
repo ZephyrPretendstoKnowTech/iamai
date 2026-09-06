@@ -37,6 +37,15 @@ export const RULE_TO_FIX: Record<string, string> = {
 }
 
 /**
+ * The templates a rule renders instead of its default when the facts it found
+ * make the default untrue (`RuleEval.fix`). One rule, one check, one fix line
+ * still: these are the same check said in the words its own values earn — the
+ * exclusions-group member checks tell an operator to confirm an account IAMAI is
+ * recommending before removing it, rather than to remove it outright.
+ */
+export const ALTERNATE_FIXES = new Set(['members-only-emergency-unconfirmed', 'no-admin-members-unconfirmed'])
+
+/**
  * Rules that carry no checkFixes template — informational notes, per-user-MFA
  * state Graph cannot read structurally, and the group-size rule, whose fact
  * (an extra member) is the members-only-emergency line (step-audit item 2: one
@@ -62,6 +71,6 @@ export function stepChecks(report: SubjectReport): StepChecks {
   return {
     failing: fails.length,
     total: ran.length,
-    items: fails.map((r) => ({ fix: RULE_TO_FIX[r.id], subject: r.subject, target: r.target, values: { ...(r.values ?? {}) } })),
+    items: fails.map((r) => ({ fix: r.fix && ALTERNATE_FIXES.has(r.fix) ? r.fix : RULE_TO_FIX[r.id], subject: r.subject, target: r.target, values: { ...(r.values ?? {}) } })),
   }
 }

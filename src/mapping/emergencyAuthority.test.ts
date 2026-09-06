@@ -25,6 +25,12 @@ import { ladder } from '../derive/ladder.ts'
 import { factsOf } from '../derive/facts.ts'
 import { notPeopleIds } from '../derive/sets.ts'
 import type { FixtureRun } from '../roadmap/fixtures/run.ts'
+import type { Step } from '../roadmap/types.ts'
+import { EXCLUSION_GROUP_STEP_ID } from '../roadmap/stepIds.ts'
+import { stepVars } from '../ui/surfaces/stepVars.ts'
+import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
+import { fillText } from '../content/render.ts'
+import { stepById } from '../content/content.ts'
 
 const BG_BLOCKER = blockerStepId('breakGlass')
 const bgStep = (r: FixtureRun) => r.steps.find((s) => s.id === BG_BLOCKER || s.id === BREAK_GLASS_STEP_ID)
@@ -33,6 +39,15 @@ const failingFixes = (r: FixtureRun): string[] => (bgStep(r)?.checks?.items ?? [
 /** Every deny-capable step held behind the emergency prerequisite. */
 const heldByEmergency = (r: FixtureRun): string[] => r.steps.filter((s) => (s.blockedBy ?? []).includes(BG_BLOCKER)).map((s) => s.id).sort()
 const offeredPolicies = (r: FixtureRun): string[] => r.steps.filter((s) => isOpenPolicy(s) && implementationOffered(s)).map((s) => s.id).sort()
+const XG_BLOCKER = blockerStepId('exclusionGroup')
+const xgStep = (r: FixtureRun) => r.steps.find((s) => s.id === XG_BLOCKER || s.id === EXCLUSION_GROUP_STEP_ID)
+/** The exclusions-group fix lines as the step renders them: the content template filled with the check's own values. */
+function fixLines(step: Step, f: Fixture): [string, string][] {
+  const cs = stepById['s-prereq-exclusion-group'] as unknown as { whatToDo: { checkFixes: Record<string, string> } }
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const ex = stepVars(step, ctx) as Record<string, unknown>
+  return ((ex.failingChecks as [string, Record<string, unknown>][]) ?? []).map(([key, vals]) => [key, fillText(cs.whatToDo.checkFixes[key], { ...ex, ...vals })] as [string, string])
+}
 
 /** The same tenant with its emergency ids as an older auto-application left them: in the field, with nothing saying a person chose them. */
 function unconfirmed(f: Fixture): Fixture {
@@ -118,6 +133,48 @@ test('10. one population: Today, the Plan strip and the campaign lists read the 
     assert.equal(F.accounts, f.snapshot.users.length, `${name}: every account is counted once`)
   }
   assert.equal(facts(cases[1][1].snapshot, cases[1][1].mapping).kinds.emergency, 0, 'an unconfirmed tenant has no emergency accounts, and its administrators are people')
+})
+
+test('9b. an exclusions group that already holds the recommended accounts is never told to remove them', () => {
+  const f = fixture('small')
+  const chosen = [...f.mapping.breakGlassUserIds]
+  const before = unconfirmed(f)
+  const group = [...f.groups.values()].find((g) => chosen.every((id) => g.memberIds.includes(id)))
+  assert.ok(group, 'the fixture ships the tenant a Breakglass account already in the exclusions group')
+
+  // Nothing is confirmed: the emergency step recommends these accounts, and the
+  // exclusions group holds them and no one else.
+  const r0 = runFixture(before, { mapping: before.mapping })
+  assert.ok(
+    recommendedEmergencyAccess(before.snapshot, before.snapshot.config.caPolicies?.rows ?? []).map((c) => c.id).some((id) => chosen.includes(id)),
+    'the same accounts are what the emergency step recommends',
+  )
+  const xg0 = xgStep(r0)
+  const fixes0 = (xg0?.checks?.items ?? []).map((i) => i.fix)
+  assert.ok(fixes0.includes('members-only-emergency-unconfirmed'), 'the member check says confirm-or-remove, not remove')
+  assert.ok(fixes0.includes('no-admin-members-unconfirmed'), 'and so does the admin check')
+  assert.ok(!fixes0.includes('members-only-emergency') && !fixes0.includes('no-admin-members'), 'neither unconditional removal line is rendered')
+  // The words on screen, through the same fill the step renders with.
+  const memberLines = fixLines(xg0!, before).filter(([key]) => key.startsWith('members-only') || key.startsWith('no-admin'))
+  assert.equal(memberLines.length, 2, 'both member checks render a line')
+  for (const [, line] of memberLines) {
+    assert.doesNotMatch(line, /^Remove /, 'no fix line opens by telling the operator to remove them')
+    assert.match(line, /Create or Correct Emergency Access Accounts first/i, 'the line offers confirmation first')
+    assert.doesNotMatch(line, /\{[a-zA-Z]/, 'and renders with no hole')
+  }
+  // The check still fails and the group is still blocked: a recommendation
+  // approves nobody.
+  assert.ok((xg0?.checks?.failing ?? 0) >= 2, 'the member checks still fail')
+  assert.notEqual(xg0?.status, 'done', 'the exclusions group is not cleared by a recommendation')
+  assert.deepEqual(offeredPolicies(r0), [], 'and no policy operation is offered')
+
+  // The operator confirms exactly those accounts, and the same members are accepted.
+  const decided = applyStepDecisions(before.mapping, { [BREAK_GLASS_STEP_ID]: { picked: chosen, at: f.snapshot.asOf } })
+  const r1 = runFixture({ ...f, mapping: decided }, { mapping: decided })
+  const fixes1 = (xgStep(r1)?.checks?.items ?? []).map((i) => i.fix)
+  for (const key of ['members-only-emergency', 'members-only-emergency-unconfirmed', 'no-admin-members', 'no-admin-members-unconfirmed']) {
+    assert.ok(!fixes1.includes(key), `${key}: confirmation accepts the members the group already had`)
+  }
 })
 
 test('no fixture depends on a detection to classify: every emergency account in this repo says a person chose it', () => {

@@ -79,6 +79,13 @@ export type RuleEval = {
    * template needs only `{name}` sets nothing here.
    */
   values?: Record<string, unknown>
+  /**
+   * The checkFixes key this result renders, when the rule's own template is not
+   * the truthful line for the facts it found (validation/checkFixes.ts
+   * RULE_TO_FIX holds the default). The outcome is untouched: an alternate
+   * template changes the words, never whether the check failed.
+   */
+  fix?: string
 }
 
 export type RuleResult = RuleEval & {
@@ -99,6 +106,18 @@ export type ValidationContext = {
   allowedCountries: string[]
   serviceAccountIds: string[]
   approvedExclusionIds: string[]
+  /**
+   * The accounts the emergency step itself puts forward and nobody has confirmed
+   * (mapping/emergencyChoice.ts: recommended nominations and the prior ids of a
+   * record with no proof a person chose them).
+   *
+   * Wording only. Nothing here is an emergency account: it is not in
+   * `breakGlassIds`, so no rule may approve it, exclude it from the population or
+   * let it reach a policy operation. It exists so the exclusions-group checks do
+   * not tell an operator to remove the very accounts IAMAI is recommending they
+   * confirm — the group stays blocked either way.
+   */
+  unconfirmedEmergencyIds: string[]
   viability: MfaViability[]
   /** The two facts no tenant exposes, answered once in Setup. */
   answers: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
@@ -160,7 +179,7 @@ export function missingNeeds(rule: { needs: NeedKey[] }, ctx: ValidationContext)
 }
 
 const PASS: RuleEval = { outcome: 'pass', finding: null }
-const fail = (finding: string, values?: Record<string, unknown>): RuleEval => ({ outcome: 'fail', finding, values })
+const fail = (finding: string, values?: Record<string, unknown>, fix?: string): RuleEval => ({ outcome: 'fail', finding, values, fix })
 const unknown = (finding: string): RuleEval => ({ outcome: 'unknown', finding })
 const pass = (finding: string | null = null): RuleEval => ({ outcome: 'pass', finding })
 
@@ -621,6 +640,21 @@ const xgContainsEmergency: ValidationRule<GroupTarget> = {
   },
 }
 
+/**
+ * True where an unapproved member is one of the accounts the emergency step is
+ * asking the operator to confirm.
+ *
+ * The check still fails and the group is still blocked — an unconfirmed account
+ * is not an emergency account, here or anywhere. Only the fix line changes: a
+ * tenant whose exclusions group already holds its Breakglass accounts was being
+ * told to remove them while the emergency step recommended the same accounts,
+ * and following that would have taken the way back in out of the group.
+ */
+function unconfirmedEmergency(ctx: ValidationContext, ids: string[]): boolean {
+  const offered = new Set(ctx.unconfirmedEmergencyIds.map((id) => id.toLowerCase()))
+  return ids.some((id) => offered.has(id.toLowerCase()))
+}
+
 const xgMembersApproved: ValidationRule<GroupTarget> = {
   id: 'xg.membersApproved',
   subject: 'exclusionGroup',
@@ -631,7 +665,9 @@ const xgMembersApproved: ValidationRule<GroupTarget> = {
     if (entry.sampled) return unknown(UNKNOWN.needs([NEED_LABEL.groupMembers]))
     const approved = new Set([...ctx.breakGlassIds, ...ctx.approvedExclusionIds])
     const extra = entry.memberIds.filter((id) => !approved.has(id))
-    return extra.length === 0 ? PASS : fail(F.xgUnapproved(extra.map((id) => nameOf(ctx, id))), { extraMembers: extra.map((id) => nameOf(ctx, id)) })
+    if (extra.length === 0) return PASS
+    const names = extra.map((id) => nameOf(ctx, id))
+    return fail(F.xgUnapproved(names), { extraMembers: names }, unconfirmedEmergency(ctx, extra) ? 'members-only-emergency-unconfirmed' : undefined)
   },
 }
 
@@ -644,7 +680,9 @@ const xgNoExtraAdmins: ValidationRule<GroupTarget> = {
     if (!entry) return groupUnknown()
     const bg = new Set(ctx.breakGlassIds)
     const admins = entry.memberIds.filter((id) => !bg.has(id) && (ctx.snapshot.roles.active[id] ?? []).length > 0)
-    return admins.length === 0 ? PASS : fail(F.xgAdmins(admins.map((id) => nameOf(ctx, id))), { name: admins.map((id) => nameOf(ctx, id)).join(', '), role: 'an administrator role' })
+    if (admins.length === 0) return PASS
+    const names = admins.map((id) => nameOf(ctx, id))
+    return fail(F.xgAdmins(names), { name: names.join(', '), role: 'an administrator role' }, unconfirmedEmergency(ctx, admins) ? 'no-admin-members-unconfirmed' : undefined)
   },
 }
 

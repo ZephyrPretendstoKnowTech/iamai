@@ -8,6 +8,7 @@ import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { operatorUserId } from '../derive/operator.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import type { MappingState, ValidationResult } from '../mapping/types.ts'
+import { emergencySelection } from '../mapping/emergencyChoice.ts'
 import { evaluateSubject, isBlocking } from './rules.ts'
 import type { GroupFacts, RuleResult, RuleSubject, ValidationContext } from './rules.ts'
 import { HOUSEKEEPING } from '../copy/validation.ts'
@@ -28,6 +29,12 @@ export function operatorIdOf(snapshot: TenantSnapshot): string | null {
 
 export function buildContext(i: ValidationInputs): ValidationContext {
   const answers = i.state.breakGlassAnswers ?? { credentialStorage: null, signInMonitoring: null }
+  // What the emergency step is offering and nobody has confirmed
+  // (mapping/emergencyChoice.ts). It reaches the rules as wording and nothing
+  // else: `breakGlassIds` below is the operator's own set, and it is the only
+  // set any rule approves, excludes or counts.
+  const sel = emergencySelection({ snapshot: i.snapshot, mapping: i.state })
+  const confirmed = new Set(i.state.breakGlassUserIds.map((id) => id.toLowerCase()))
   return {
     snapshot: i.snapshot,
     tenantPolicies: i.snapshot.config.caPolicies?.rows ?? [],
@@ -37,6 +44,7 @@ export function buildContext(i: ValidationInputs): ValidationContext {
     allowedCountries: i.state.allowedCountries,
     serviceAccountIds: i.state.serviceAccountUserIds,
     approvedExclusionIds: [...i.state.breakGlassUserIds, ...i.state.serviceAccountUserIds],
+    unconfirmedEmergencyIds: [...new Set([...sel.recommendedIds, ...sel.priorIds])].filter((id) => !confirmed.has(id.toLowerCase())),
     viability: i.viability ?? [],
     answers,
     drillDates: i.drillDates ?? [],
