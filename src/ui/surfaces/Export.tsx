@@ -4,8 +4,8 @@
 // the prompt pack, the grounding bundle, and the print layout.
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
-import baselineIndex from '../../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { PINNED, PINNED_BASELINE } from '../baseline.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { SizeBand } from '../../roadmap/constants.ts'
 import { BANDS } from '../../roadmap/constants.ts'
@@ -45,6 +45,20 @@ const P = pages.export as unknown as ExportPage
 const buttons = (card: keyof ExportPage['cards']): string[] => P.cards[card][2].split(' · ')
 const A = app.export
 const S = app.shell
+
+/** The commit the plan was derived from: the active baseline's own, never the index's. */
+function pinOf(baseline: BaselineResult | null): string | null {
+  const origin = baseline?.origin ?? null
+  if (origin !== null && origin.kind === 'upload') return null
+  return origin?.commit ?? PINNED.commit
+}
+
+/** The plan record's baseline source: one fact, read from the baseline the plan used. */
+function planBaselineSource(baseline: BaselineResult | null): { kind: 'github'; owner: string; repo: string; commit: string } | { kind: 'upload'; fileName: string } {
+  const origin = baseline?.origin ?? null
+  if (origin !== null && origin.kind === 'upload') return { kind: 'upload', fileName: baseline?.source ?? '' }
+  return { kind: 'github', owner: origin?.owner ?? PINNED_BASELINE.owner, repo: origin?.repo ?? PINNED_BASELINE.repo, commit: origin?.commit ?? PINNED.commit }
+}
 
 export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSnapshot; at: string } | null; baseline: BaselineResult | null; account: AccountInfo | null }) {
   const operatorId = operatorIdOf(scan?.snapshot ?? null, account)
@@ -118,7 +132,11 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     const summary = summarizeTenant(viability)
     const exclusionGroups = [...data.groups.entries()].map(([groupId, g]) => ({ groupId, memberCount: g.memberCount, memberIds: g.memberIds }))
     const checkpoint = makeCheckpoint({ snapshot, coverage, summary, exclusionGroups, breakGlassIds: data.mapping.breakGlassUserIds })
-    const baselineSource = { kind: 'github' as const, owner: baselineIndex.owner, repo: baselineIndex.repo, commit: baselineIndex.commit ?? '' }
+    // The plan's provenance is the baseline the plan was derived FROM: the pinned
+    // package's own commit (pinned.json), never the index's file-list commit,
+    // which is the previous pin and would name a source this plan never read.
+    // An uploaded baseline is recorded as an upload, not attributed to the author.
+    const baselineSource = planBaselineSource(baseline)
     // The saved checkpoints travel (each Cleanup row's Done is one, E3), then this save's own.
     const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, startedAt: data.startedAt ?? undefined, signature: data.signature })
     // The person's own working state, to load back on this tenant: names in full (the card says so).
@@ -261,7 +279,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           tenantName={tenantName}
           baselineLabel={baseline?.source ?? ''}
           operator={operator.userPrincipalName}
-          baselinePin={baselineIndex.commit ?? null}
+          baselinePin={pinOf(baseline)}
           steps={steps}
           schedule={schedule}
           verificationNote={tenantFacts && toSetUp > 0 ? `${toSetUp} of ${tenantFacts.active} active people still to set up.` : 'Everyone active is ready.'}
