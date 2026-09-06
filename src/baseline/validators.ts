@@ -5,7 +5,7 @@
 // layer are deferred with the case (prompt 51 Part 3); the ones checkable on the
 // normalised policy objects are here. Pure.
 import type { CaPolicy } from './types.ts'
-import firstParty from '../../data/first-party-apps.json' with { type: 'json' }
+import { isFirstPartyApplicationId } from './references.ts'
 
 export type Level = 'must' | 'warn' | 'info'
 export type ValidatorFinding = { id: string; level: Level; policy: string; detail: string }
@@ -50,11 +50,8 @@ export function runBaselineValidators(policies: CaPolicy[]): ValidatorFinding[] 
     if (!hasGrant && !hasSession) out.push({ id: 'shape-01', level: 'must', policy: p.displayName, detail: 'has neither a grant nor a session control' })
 
     // app-01 (warn): author-specific app exclusions should have been stripped at pin time.
-    for (const a of s(p.conditions?.applications?.excludeApplications)) if (GUID.test(a) && !FIRST_PARTY_HINT.has(a.toLowerCase())) out.push({ id: 'app-01', level: 'warn', policy: p.displayName, detail: `an author-specific app exclusion (${a}) survived normalisation` })
+    for (const a of s(p.conditions?.applications?.excludeApplications)) if (GUID.test(a) && !isFirstPartyApplicationId(a)) out.push({ id: 'app-01', level: 'warn', policy: p.displayName, detail: `an author-specific app exclusion (${a}) survived normalisation` })
   }
   return out
 }
 
-// The authoritative first-party list (the same one drives the strip at pin time);
-// app-01 flags only a GUID exclusion that is NOT first-party and survived.
-const FIRST_PARTY_HINT = new Set((firstParty as { apps: { appId: string }[] }).apps.map((a) => a.appId.toLowerCase()))

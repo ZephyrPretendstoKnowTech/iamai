@@ -21,7 +21,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { allFixtures } from './fixtures/index.ts'
+import { allFixtures, noExclusionsAnswer } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { accountApplicability, effectOf, emergencyExposureOf, implementationOffered, isOpenPolicy, isSubmittablePatch, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
 import { analysisUnknown, canDenyAccess, effectsOf, familyReading, measuredReach, operationReach, promptsPeople, scopeCohort, stepAccountVerdict, stepApplicability, wouldStrand } from './strand.ts'
@@ -559,12 +559,13 @@ test('where the plan’s own policy is the one deployed, the records are counted
 
 test('the week-two policy that is ready to enforce is ready on its own scope', () => {
   // The demo's token-protection step advances on the evidence gate. Its planned
-  // operation names objects this tenant has not got, so there is no cohort and no
+  // test deliberately withholds the tenant-specific exclusions-group decision,
+  // so the planned operation still has a genuine missing object and no cohort or
   // ring plan; what the gate reads is the policy the tenant actually deployed,
   // and every active person that policy reaches has been seen. Nothing here comes
   // from the goal: with the memberships withheld the step falls back to the time
   // gate rather than to the goal's thirty people.
-  const f = fixtures.find((x) => x.name === 'demo-week2') as Fixture
+  const f = noExclusionsAnswer(fixture('demo-week2'))
   const step = retrack(f).find((x) => x.id === 's-goal-token-protection') as Step
   assert.equal(unavailableReason(step), 'missing-object', 'the plan cannot write this one')
   assert.equal(step.cohort, undefined, 'so it has no cohort of its own')
