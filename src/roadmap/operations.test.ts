@@ -18,7 +18,7 @@ import type { PolicyOperation, Step } from './types.ts'
 import { jsonOffered, policyJson, policyJsonText, stepOperations } from '../ui/surfaces/stepJson.ts'
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 import { fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { adminsAtRung5, runFixture } from './fixtures/run.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -173,12 +173,15 @@ test('a step the plan cannot write is not scheduled, and the rest of the plan is
 // ---- A + B: an open policy with nothing valid to run is unavailable everywhere ----
 
 /** The demo's week two, with the tenant's own policies replaced and the mapping overridden. */
-function demoRun(rows: Record<string, unknown>[] = [], mappingOver: Record<string, unknown> = {}, snapshotOver: (f: ReturnType<typeof fixture>) => Record<string, unknown> = () => ({})) {
+function demoRun(rows: Record<string, unknown>[] = [], mappingOver: Record<string, unknown> = {}, snapshotOver: (f: ReturnType<typeof fixture>) => Record<string, unknown> = () => ({}), opts: { adminsReady?: boolean } = {}) {
   const f = fixture('demo-week2')
   const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } }, ...snapshotOver(f) } as typeof f.snapshot
   const mapping = { ...f.mapping, ...mappingOver } as typeof f.mapping
-  const r = runFixture({ ...f, snapshot, mapping }, { snapshot, mapping } as never)
+  // A case about the admins policy meets the readiness prerequisite the plan
+  // names for it first; otherwise the hold is what it would be testing.
+  const viability = opts.adminsReady ? adminsAtRung5(runFixture({ ...f, snapshot, mapping }, { snapshot, mapping } as never).viability, f.snapshot.asOf) : undefined
+  const r = runFixture({ ...f, snapshot, mapping }, { snapshot, mapping, ...(viability ? { viability } : {}) } as never)
   const ctx: StepVarContext = { snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   return { f, r, ctx, snapshot, mapping }
 }
@@ -363,7 +366,7 @@ test('an update leaves the tenant’s untouched fields alone, and every channel 
     sessionControls: { persistentBrowser: { isEnabled: true, mode: 'never' } },
   }
   const rows = ((f.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? own : p))
-  const { r, ctx } = demoRun(rows)
+  const { r, ctx } = demoRun(rows, {}, () => ({}), { adminsReady: true })
   const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant' && s.kind !== 'verify')!
   assert.equal(implementationOffered(step), true)
   const op = stepOperations(step)[0]

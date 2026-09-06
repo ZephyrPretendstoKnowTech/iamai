@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { adminsAtRung5, runFixture } from './fixtures/run.ts'
 import { contentLists, NAMES_UP_TO } from '../derive/contentLists.ts'
 import { adminUserIds } from '../roles.ts'
 import { stepById } from '../content/content.ts'
@@ -42,8 +42,22 @@ test('step 15 names the admins not yet at Passkey or security key, proven on the
   assert.ok(without.length > 0 && without.length <= NAMES_UP_TO, `the demo has ${without.length} admins not yet at rung 5`)
   assert.equal(ex.adminsWithout.length, without.length, 'named, not counted')
   assert.equal(ex.adminsWithoutCount, undefined)
+  // The line names a day to register before, and there is no such day while the
+  // plan is holding the enforcement behind the very readiness these admins are
+  // short of (roadmap/operations.ts readinessGate): the demo's admins are 33% of
+  // the way to the 100% the step asks for, so nothing about it is dated and the
+  // line does not render. The list itself is unchanged, and the row says what it
+  // is waiting for.
   const lines = stepLines(s, ctxFor(f, r))
-  assert.ok(lines.some((l) => new RegExp(`^${without.length} admins? (?:is|are) not yet at Passkey or security key, proven; register before .+: `).test(l)), `the line counts its own list: ${lines.filter((l) => /Passkey or security key/.test(l)).join(' | ')}`)
+  assert.equal(s.action.readinessGate?.value, '33%', 'the step waits on admin readiness')
+  assert.ok(!s.events, 'so nothing about it is dated')
+  assert.deepEqual(lines.filter((l) => /Passkey or security key/.test(l)), [], 'and a line that names a deadline does not invent one')
+  assert.ok(s.blockers.some((b) => b.binding === 'when admin readiness reaches 100% (now 33%)'), JSON.stringify(s.blockers))
+  // With the prerequisite met the enforcement is dated again, and the line comes
+  // back counting whatever list is left.
+  const ready = runFixture({ ...f, snapshot }, { snapshot, viability: adminsAtRung5(r.viability, f.snapshot.asOf) } as never)
+  const dated = ready.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
+  assert.ok(dated.events, 'the change is dated once admin readiness reaches the threshold')
   // Past three, the count line stands in for the names.
   const many = contentLists({ snapshot: { ...f.snapshot, roles: { ...f.snapshot.roles, active: Object.fromEntries(r.viability.filter((v) => v.activity === 'active').slice(0, 12).map((v) => [v.userId, ['62e90394-69f5-4237-9190-012177145e10']])) } }, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
   assert.deepEqual(many.adminsWithout, [], 'more than three: no names')

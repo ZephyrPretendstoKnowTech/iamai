@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { adminsAtRung5, runFixture } from '../../roadmap/fixtures/run.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { stepExportView } from './stepExport.ts'
@@ -35,12 +35,16 @@ test('emergency access is on every plan: Ready with one failing check on the dem
 })
 
 test('a change step carries Announce and Change dates and a calendar entry, on the demo and GetIAMAI', () => {
-  const cases: { name: 'demo-week2' | 'getiamai'; stepId: string; snapshot?: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture>['snapshot'] }[] = [
+  const cases: { name: 'demo-week2' | 'getiamai'; stepId: string; adminsReady?: boolean; snapshot?: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture>['snapshot'] }[] = [
     // Week two, with its admins policy back in report-only: a change the plan can
-    // write, so it is dated. A policy naming an object the tenant lacks is not.
+    // write, so it is dated. A policy naming an object the tenant lacks is not —
+    // and neither is one whose readiness prerequisite is unmet, which is why the
+    // admins here are at the rung their own policy asks for (roadmap/operations.ts
+    // readinessGate; the held counterpart is roadmap/readinessGate.test.ts).
     {
       name: 'demo-week2',
       stepId: 's-goal-admins-phishing-resistant',
+      adminsReady: true,
       snapshot: (f) => {
         const ca = f.snapshot.config.caPolicies!
         const rows = (ca.rows as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
@@ -61,7 +65,9 @@ test('a change step carries Announce and Change dates and a calendar entry, on t
   for (const c of cases) {
     const f = fixture(c.name)
     const snapshot = c.snapshot ? c.snapshot(f) : f.snapshot
-    const r = c.snapshot ? runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>) : runFixture(f)
+    const first = c.snapshot ? runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>) : runFixture(f)
+    const over = { ...(c.snapshot ? { snapshot } : {}), ...(c.adminsReady ? { viability: adminsAtRung5(first.viability, f.snapshot.asOf) } : {}) }
+    const r = Object.keys(over).length > 0 ? runFixture({ ...f, snapshot }, over as Partial<RoadmapInput>) : first
     const step = r.steps.find((s) => s.id === c.stepId)!
     assert.equal(step.kind, 'adjust', `${c.name}: a change step`)
     assert.ok(step.events, `${c.name}: the change is dated`)

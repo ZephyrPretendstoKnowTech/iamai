@@ -32,7 +32,13 @@ export function goalFamily(goalId: string): Readiness['family'] {
   return 'other'
 }
 
-/** The family and its percentage; null when nobody is in scope, or the source could not be read (never a number that masquerades). */
+/**
+ * The family and its percentage; null when nobody is in scope, or the source
+ * could not be read (never a number that masquerades). `unmeasured` says which
+ * of the two, because they are opposite facts: nothing to be ready, or nothing
+ * read. A gate that cannot tell them apart either waits forever for a tenant
+ * with nobody in scope, or treats a tenant it could read nothing about as ready.
+ */
 export function readinessFor(
   goalId: string,
   populationIds: string[],
@@ -45,11 +51,11 @@ export function readinessFor(
   // A source the scan could not read never masquerades as a number (roadmap-v2.md §7, hostile).
   const registration = snapshot.sources?.registrationDetails
   if ((family === 'mfa' || family === 'guest' || family === 'admin') && registration && registration.status !== 'ok' && registration.status !== 'partial') {
-    return { family, percent: null, lines: [] }
+    return { family, percent: null, unmeasured: 'unreadable', lines: [] }
   }
   const devicesSource = snapshot.sources?.devices
   if (family === 'device' && devicesSource && devicesSource.status !== 'ok' && devicesSource.status !== 'partial') {
-    return { family, percent: null, lines: [] }
+    return { family, percent: null, unmeasured: 'unreadable', lines: [] }
   }
   const pop = new Set(populationIds)
   const rows = viability.length === populationIds.length && viability.every((v, i) => v.userId === populationIds[i]) ? viability : viability.filter((v) => pop.has(v.userId))
@@ -60,13 +66,13 @@ export function readinessFor(
     for (const v of rows) if (v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')) good += 1
     // Nobody in scope → nothing to be ready; null so the gate does not block.
     const percent = active.length > 0 ? Math.round((good / active.length) * 100) : null
-    return { family, percent, lines: [] }
+    return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
   }
   if (family === 'admin') {
     // One definition of enough (E7): an admin is ready at Passkey or security key, proven (derive/ladder.ts rung 5), the same rung the lockout list reads.
     const ready = rows.filter((v) => rungOf(v) === 5).length
     const percent = rows.length > 0 ? Math.round((ready / rows.length) * 100) : null
-    return { family, percent, lines: [] }
+    return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
   }
   if (family === 'device') {
     // A device counts when its platform is in the decision's scope and it is
@@ -80,7 +86,9 @@ export function readinessFor(
     // Same population on both sides of the ratio: active members only.
     const withDevice = [...activeIds].filter((id) => owners.has(id)).length
     const percent = members > 0 ? Math.round((withDevice / members) * 100) : null
-    return { family, percent, lines: [] }
+    return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
   }
-  return { family, percent: null, lines: [] }
+  // A family with no threshold of its own: a block, a location, a risk policy.
+  // Their readiness is evidence, not a percentage, and nothing gates on it.
+  return { family, percent: null, unmeasured: 'no-population', lines: [] }
 }

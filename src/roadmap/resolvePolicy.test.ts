@@ -12,7 +12,7 @@ import { implementable, resolveTenantPolicy } from './resolvePolicy.ts'
 import type { TenantObjects } from './resolvePolicy.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
 import { fixture } from './fixtures/index.ts'
-import { runFixture } from './fixtures/run.ts'
+import { adminsAtRung5, runFixture } from './fixtures/run.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -88,11 +88,15 @@ function bareSteps(name: Parameters<typeof fixture>[0], mappingOver: Partial<Map
 }
 
 /** The demo's week two with the tenant's own policies replaced, so a goal can be partly covered. */
-function withTenantPolicies(rows: Record<string, unknown>[], edit: (p: Record<string, unknown>) => Record<string, unknown> = (p) => p) {
+function withTenantPolicies(rows: Record<string, unknown>[], edit: (p: Record<string, unknown>) => Record<string, unknown> = (p) => p, opts: { adminsReady?: boolean } = {}) {
   const f = fixture('demo-week2')
   const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: rows.map(edit) } } }
-  const r = runFixture({ ...f, snapshot }, { snapshot } as never)
+  // A case about the admins policy meets the readiness prerequisite the plan
+  // names for it first (roadmap/operations.ts readinessGate); otherwise the hold
+  // is what it would be testing rather than the update boundary.
+  const viability = opts.adminsReady ? adminsAtRung5(runFixture({ ...f, snapshot }, { snapshot } as never).viability, f.snapshot.asOf) : undefined
+  const r = runFixture({ ...f, snapshot }, { snapshot, ...(viability ? { viability } : {}) } as never)
   const nameOf = (id: string): string => r.input.names!.label(id)
   const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   const of = (goalId: string): { step: Step; portal: string[] | null } => {
@@ -505,7 +509,7 @@ test('a single-policy change is one update operation, and every channel carries 
   const f = fixture('demo-week2')
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
   const rows = ((f.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? weakAdminsPolicy(exclusions) : p))
-  const { of, ctx } = withTenantPolicies(rows)
+  const { of, ctx } = withTenantPolicies(rows, (p) => p, { adminsReady: true })
   const { step, portal } = of('admins-phishing-resistant')
   assert.equal(step.kind, 'adjust')
   assert.equal(implementationOffered(step), true)

@@ -116,7 +116,10 @@ test('the short and long date forms name the same day, one short format everywhe
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[policy.id] }
   const ex = stepVars(policy, ctx) as Record<string, string>
   assert.equal(ex.enforce, absoluteDate(policy.events!.enforce.at), 'the enforce date is the one short format')
-  assert.equal(ex.reportOnly, absoluteDate(run.schedule.reportOnlyAt[policy.id]), 'report-only is filled and in the short format')
+  // A policy the scan already found in report-only takes its date from the
+  // tracking, and only a policy the plan has yet to deploy takes the schedule's
+  // (stepVars.ts). Either way it is the one short format.
+  assert.equal(ex.reportOnly, absoluteDate(policy.tracking?.reportOnlyAt ?? run.schedule.reportOnlyAt[policy.id]), 'report-only is filled and in the short format')
   assert.doesNotMatch(ex.enforce, /Sept/, 'not the en-AU "29 Sept 2026" second format')
 })
 

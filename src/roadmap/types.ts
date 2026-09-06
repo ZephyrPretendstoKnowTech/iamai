@@ -28,6 +28,20 @@ export type StepPopulation = {
 export type Readiness = {
   family: 'mfa' | 'admin' | 'device' | 'guest' | 'block' | 'location' | 'risk' | 'other'
   percent: number | null // null when readiness is evidence (block goals)
+  /**
+   * Why there is no percentage, where there is none. The two are opposite facts
+   * and were one `null`:
+   *
+   * - `no-population`: nobody is in scope, so there is nothing to be ready and
+   *   no threshold to wait for. A step gated on this would wait for a number
+   *   that can never arrive.
+   * - `unreadable`: the source the number comes from could not be read, so
+   *   readiness is *unknown*. Unknown is not met, and it holds enforcement
+   *   exactly as a number below the line does (roadmap/generate.ts).
+   *
+   * Absent where `percent` is a number.
+   */
+  unmeasured?: 'no-population' | 'unreadable'
   lines: string[] // plain-language numbers per §4
 }
 
@@ -138,6 +152,31 @@ export type Action = {
    * exactly as a missing object leaves it.
    */
   emergencyExposure?: { reached: string[]; unproven: string[] }
+  /**
+   * The readiness prerequisite this step's *enforcement* is held behind: the
+   * measure, what it has to reach, and where it is now (roadmap/constants.ts
+   * thresholds). Set on any open policy step whose threshold is unmet — and on
+   * one whose readiness the scan could not measure at all, because a number
+   * nobody established is not a number that has been reached.
+   *
+   * It is here, on the action, for the same reason the escape hatch is: the hold
+   * has to be an implementation fact rather than a word. A step reading
+   * "Blocked · when device readiness reaches 80% (now 29%)" still carried the
+   * portal lines, the JSON, the PowerShell, four dated rings and an enforcement
+   * event, and the calendar export handed the operator a dated entry for it.
+   *
+   * What it holds: every enforcement. Nothing is dated — no rings, no
+   * enforcement event, no announcement, no calendar entry (`enforcementHeld`) —
+   * and an operation that would enforce the moment it is submitted is not
+   * offered at all (roadmap/operations.ts `policyResult`).
+   *
+   * What it deliberately does not hold: a safe report-only preparation. A new
+   * policy lands in report-only and a patch that leaves a report-only policy in
+   * report-only denies nobody; withholding those would be the tool requiring
+   * strictness rather than helping with it, and they are how readiness gets to
+   * the threshold in the first place.
+   */
+  readinessGate?: { measure: string; threshold: string; value: string }
   /**
    * The emergency-access foundation this step is held behind while its own
    * checks have not passed (roadmap/blockerSteps.ts GATING_SUBJECTS): the

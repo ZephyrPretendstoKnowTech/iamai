@@ -5,7 +5,7 @@
 import { EVENT } from '../copy/timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import { WEEKDAY_NAMES, hourLabel } from './rhythm.ts'
-import { unavailableReason } from './operations.ts'
+import { enforcementHeld, unavailableReason } from './operations.ts'
 import { effectsOf, familyReading } from './strand.ts'
 
 import type { Step, StepEvent, StepEvents } from './types.ts'
@@ -189,6 +189,12 @@ export function eventsFor(step: Step, ctx: TimingContext, placedStart: string | 
   // it cannot match, a baseline that contradicts itself — has no enforcement
   // date and no announcement (roadmap/operations.ts implementationOffered).
   if ((step.kind === 'create' || step.kind === 'adjust') && unavailableReason(step) !== null) return null
+  // Nothing to date while a readiness threshold the plan itself says to wait for
+  // has not been reached. A safe report-only preparation may still be offered —
+  // it denies nobody, and it is how readiness gets to the threshold — but there
+  // is no announcement and no enforcement date for a change nobody may make yet
+  // (roadmap/operations.ts enforcementHeld).
+  if (enforcementHeld(step)) return null
   const enforceDay = step.rings[0]?.plannedStart ?? placedStart ?? null
   if (!enforceDay) return null
   // The slot varies within the hours the change may land in (prompt 42 §12).

@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { adminsAtRung5, runFixture } from '../../roadmap/fixtures/run.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { commsFor, stepLines } from './stepExport.ts'
@@ -35,7 +35,13 @@ function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
 test('(1) the campaign email is the passkey version once Require MFA for Everyone is in place, naming the first policy that needs a passkey', () => {
   const f = fixture('demo-week2')
   const snapshot = adminsInReportOnly(f)
-  const r = runFixture({ ...f, snapshot }, { snapshot } as never)
+  // The campaign names the first *dated* policy that needs a passkey, so the
+  // admins policy has to be one the plan will actually enforce: its readiness
+  // prerequisite is met here (roadmap/operations.ts readinessGate), which is the
+  // case this line is about. Held, there is no date to name and no line — the
+  // counterpart is asserted in roadmap/readinessGate.test.ts.
+  const viability = adminsAtRung5(runFixture({ ...f, snapshot }, { snapshot } as never).viability, f.snapshot.asOf)
+  const r = runFixture({ ...f, snapshot }, { snapshot, viability } as never)
   const camp = r.steps.find((s) => s.id === 's-verify-mfa')!
   assert.equal(r.steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')?.status, 'done', 'the demo enforces MFA already')
   const ex = stepVars(camp, ctxFor(f, r)) as Record<string, unknown>
@@ -74,7 +80,14 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   const lines = stepLines(s, ctxFor(g, r))
   assert.ok(lines.includes('1 person holds an admin role'), lines.filter((l) => /admin role/.test(l)).join(' | '))
-  assert.ok(lines.some((l) => /^1 admin is not yet at Passkey or security key, proven; register before /.test(l)), lines.filter((l) => /Passkey or security key/.test(l)).join(' | '))
+  // The same conjugation on the rendered lockout line, once the enforcement it
+  // names a day for is one the plan will make. GetIAMAI's admin readiness is 0%
+  // against the 100% the step asks for, so held it has no day to name at all.
+  assert.equal(s.action.readinessGate?.value, '0%')
+  assert.deepEqual(lines.filter((l) => /Passkey or security key/.test(l)), [], 'no deadline is invented while the enforcement is held')
+  const ready = runFixture(g, { viability: adminsAtRung5(r.viability, g.snapshot.asOf) } as never)
+  const s2 = ready.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
+  assert.ok(s2.events, 'with the prerequisite met the change is dated')
 })
 
 test("(3) Today's rungs are the ladder's titles, and the Show list offers each by the same title", () => {

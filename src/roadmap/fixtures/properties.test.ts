@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
-import { unavailableReason } from '../operations.ts'
+import { enforcementHeld, unavailableReason } from '../operations.ts'
 import { analysisUnknown, canDenyAccess, effectsOf, wouldStrand } from '../strand.ts'
 import { rolloutCohort } from '../rings.ts'
 import { localHour } from '../timing.ts'
@@ -248,6 +248,13 @@ for (const f of fixtures) {
       // are in scope (roadmap/strand.ts analysisUnknown).
       if (analysisUnknown(s)) {
         assert.deepEqual(rings, [], `${s.id}: a policy IAMAI cannot read in full has no ring plan`)
+        continue
+      }
+      // Nor one whose enforcement waits on a readiness threshold the plan itself
+      // names: the rings are the rollout of that enforcement, and dating them is
+      // the promise that it lands (roadmap/operations.ts enforcementHeld).
+      if (enforcementHeld(s)) {
+        assert.deepEqual(rings, [], `${s.id}: ${s.action.readinessGate?.measure} is ${s.action.readinessGate?.value}, so nothing is rolled out`)
         continue
       }
       if (!canDenyAccess(s) || s.status === 'done' || s.status === 'skipped') {

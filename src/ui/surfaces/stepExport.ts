@@ -56,6 +56,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const emergencyUnsafe = reason === 'unsafe-emergency-access'
   const emergencyUnproven = reason === 'unverified-emergency-exclusion'
   const escapeHatch = reason === 'escape-hatch-unverified'
+  const readinessHeld = reason === 'readiness-unmet'
   const inPlace = suppressed && reason === null && isPreserved(step)
   const w = (cs.whatToDo ?? {}) as Record<string, unknown>
   const lines: string[] = []
@@ -73,6 +74,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   else if (emergencyUnsafe) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnsafe), { tenant: String(ex.tenant ?? '') }))
   else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))
   else if (escapeHatch) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.escapeHatchHeld), { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) }))
+  else if (readinessHeld) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.readinessHeld), { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) }))
   else if (inPlace) lines.push(String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep))
   else if (Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   // Nothing that implies the policy can be rolled out while it cannot be written:

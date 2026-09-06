@@ -992,6 +992,10 @@ export function validOperations(action: Pick<Action, 'resolution'>): PolicyOpera
  * separate facts — "this policy covers the way back in" and "IAMAI cannot prove
  * it does not" — and an operator acts differently on each.
  *
+ * The fourth is about the people: a readiness threshold the plan itself says to
+ * wait for is not met, or was never measured, and the operation would enforce
+ * the moment it is submitted (`enforcesOnRun`).
+ *
  * The third is about the tenant: the emergency accounts or the exclusions group
  * have blocking checks outstanding, so the way back in is unverified and nothing
  * that can deny access is offered until it is. That is a different question from
@@ -1008,9 +1012,48 @@ export type UnavailableReason =
   | 'unsafe-emergency-access'
   | 'unverified-emergency-exclusion'
   | 'escape-hatch-unverified'
+  | 'readiness-unmet'
+
+/**
+ * True when running this operation changes what the tenant enforces the moment
+ * it is submitted.
+ *
+ * The whole policy the operation leaves behind decides, never the patch on its
+ * own: an update to a policy the tenant already has on is enforcing whatever
+ * section it changes, because the change is live as soon as it lands; one that
+ * leaves a report-only policy in report-only is not, whatever it changes,
+ * because report-only denies nobody. A create is never one — every policy IAMAI
+ * writes lands in report-only (roadmap/generate.ts buildCreateAction).
+ *
+ * A policy that is on but asks for nothing enforces nothing. A policy IAMAI
+ * cannot read in full is one that does: `effectOf` names what it could not read
+ * and `any` carries that, so unknown is never read as harmless.
+ */
+export function enforcesOnRun(op: PolicyOperation): boolean {
+  const after = op.mode === 'update' ? op.target : op.body
+  // An update with no complete target is not a valid operation in the first
+  // place; if one reaches here nothing can be said about what it leaves behind.
+  if (!isObject(after)) return true
+  if (String(after.state ?? '') !== 'enabled') return false
+  return effectOf(after).any
+}
 
 /** What any of this applies to: a step that describes a policy. */
 type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status'>>
+
+/**
+ * True when this step's enforcement is held behind a readiness prerequisite
+ * nobody has met (`Action.readinessGate`).
+ *
+ * Nothing about the step is dated while it holds: no rings, no enforcement
+ * event, no announcement, no calendar entry — whether or not a safe report-only
+ * preparation is still offered beside it. The date is the promise that the
+ * change lands, and there is no such promise while the number the plan itself
+ * says to wait for has not been reached.
+ */
+export function enforcementHeld(step: PolicyStep): boolean {
+  return step.action.readinessGate !== undefined && step.status !== 'done' && step.status !== 'skipped'
+}
 
 /**
  * True when the step is a policy the plan is still trying to write. A goal
@@ -1064,6 +1107,21 @@ export function policyResult(step: PolicyStep): PolicyResult {
   if (step.action.escapeHatch) return { kind: 'unavailable', reason: 'escape-hatch-unverified' }
   if (step.action.unmatchedPair === true) return { kind: 'unavailable', reason: 'unmatched-pair' }
   if ((step.action.missing ?? []).length > 0) return { kind: 'unavailable', reason: 'missing-object' }
+  // The readiness prerequisite, and the same boundary the escape hatch draws: a
+  // threshold the plan itself says to wait for holds every enforcement, and a
+  // threshold nothing measured has not been met either. It sits below the
+  // reasons that name something to go and do — an object to create, a pair to
+  // sort out — because those are the more actionable answer where both apply.
+  //
+  // It holds the operations that enforce the moment they are submitted, and
+  // those alone. A create lands in report-only and a patch that leaves a
+  // report-only policy in report-only deny nobody; they are safe preparation and
+  // they are how readiness reaches the threshold, so withholding them would slow
+  // the tenant down without making anybody safer. A goal already in place has
+  // nothing to run and stays what it is.
+  if (step.action.readinessGate && step.status !== 'done' && validOperations(step.action).some(enforcesOnRun)) {
+    return { kind: 'unavailable', reason: 'readiness-unmet' }
+  }
   const declared = step.action.resolution?.policies ?? []
   const valid = validOperations(step.action)
   if (declared.length > 0 && valid.length === 0) return { kind: 'unavailable', reason: 'no-operation' }

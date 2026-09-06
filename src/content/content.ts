@@ -90,5 +90,7 @@ export type EngineWords = {
   observation: Record<string, string> & { states: { absent: string; disabled: string; reportOnly: string; enforced: string; unknown: string } }
   /** Which half of a safety choice's detection came up short (mapping/safetyChoice.ts). */
   detectionGap: { groups: string; policies: string }
+  /** The value a readiness threshold is stated against where the scan measured none (roadmap/generate.ts). */
+  readiness: { notMeasured: string }
 }
 export const engine = shared.engine as unknown as EngineWords
