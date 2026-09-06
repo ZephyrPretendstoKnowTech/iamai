@@ -22,7 +22,7 @@ import type { PlanDecisions } from '../../roadmap/progress.ts'
 import { planIdFor } from '../../roadmap/generate.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { facts } from '../../derive/facts.ts'
-import { groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
+import { announcementDraft, groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
 import { savePlanRecord } from '../../graph/collect/cache.ts'
 import { saveMappingState } from '../../mapping/store.ts'
 import { REDACTED, exportClipboard, exportDownload, exportPrint, unredactedFrom } from '../exportGuard.ts'
@@ -190,7 +190,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s))
   // The Cleanup rows as the screen says them (E4): calendar entries, the pack's and the bundle's cleanup list.
   const cleanupViews = cleanupExportViews(schedule.cleanup, data.mapping?.notAssessedNotes ?? {})
-  const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: steps.find((s) => s.comms)?.comms ?? null, cleanup: cleanupViews })
+  const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: announcementDraft(steps), cleanup: cleanupViews })
 
   return (
     <section className="surface export">

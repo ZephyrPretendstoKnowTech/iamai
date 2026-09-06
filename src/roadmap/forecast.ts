@@ -71,3 +71,24 @@ export function enforcementTiming(step: Step): EnforcementTiming {
 export function awaitingDeployment(step: Step): boolean {
   return step.state.lifecycle === 'not-deployed'
 }
+
+/**
+ * A date this step's communications state is one the roadmap projected.
+ *
+ * The step's Dates line can say "enforcement is dated once the policy has been
+ * watched in report-only" while the email under it says "From 21 September,
+ * admin sessions expire" — the same step, the same instant, one of them a
+ * projection and the other a promise to the people who receive it. An email is
+ * the one artifact IAMAI writes that leaves the tenant, so it is the last place
+ * a forecast may pass for a commitment.
+ *
+ * The rule is the classification above, read the way a message has to read it:
+ * anything short of `committed` is a projection, including a step the schedule
+ * never placed and so gave no enforcement instant of its own — its message
+ * still names a day. While that holds, the message says what the day waits on;
+ * once Foundation B's evidence makes the date `committed` the message is
+ * definitive again, with no qualification added and none to take away.
+ */
+export function forecastEnforcement(step: Step): boolean {
+  return enforcementTiming(step).basis !== 'committed'
+}

@@ -43,6 +43,13 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // "only these fields" note and the enable-and-save line. Every mapped policy
   // in the example is created new, so neither is emitted here.
   '.shared.changeUntouched',
+  // What a message says about a date the roadmap projected but nothing has
+  // earned (roadmap/forecast.ts): the paragraph the email and the prompt pack's
+  // draft add under the day they name, and the way the pack's facts block
+  // states the same day. Both are composed at render time from the step's
+  // lifecycle, and the review page has no lifecycle to read.
+  '.shared.commsForecastDate',
+  '.shared.commsForecastNote',
   '.shared.enableLine',
   '.shared.syncRoleNote',
   // The two gates with today's numbers render only on a step whose policy the

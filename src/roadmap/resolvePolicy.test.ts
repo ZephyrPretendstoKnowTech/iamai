@@ -626,7 +626,7 @@ test('an unresolved step is not scheduled and carries nothing that implies a rol
   assert.equal(view.ifWrong, null, 'no rollback instructions')
   assert.equal(view.dates, null, 'no rollout dates')
   const cs = contentStepFor(step) as Record<string, unknown>
-  assert.equal(commsFor(cs, stepVars(step, ctx) as Record<string, unknown>), null, 'nothing to announce')
+  assert.equal(commsFor(cs, stepVars(step, ctx) as Record<string, unknown>, step), null, 'nothing to announce')
   // What it does say: the object it waits on and the step that creates it.
   assert.ok(view.whatToDo.some((l) => /first: this policy names an object/.test(l)), view.whatToDo.join(' | '))
   assert.ok(view.whatToDo.some((l) => /Service Accounts Group/.test(l)), 'the Preparation step is named')
@@ -657,7 +657,7 @@ test('an unmatched pair and a contradictory baseline carry a next action and no 
     assert.equal(view.ifWrong, null, `${c.label}: no rollback`)
     assert.equal(view.dates, null, `${c.label}: no dates`)
     const cs = contentStepFor(c.step) as Record<string, unknown>
-    assert.equal(commsFor(cs, stepVars(c.step, c.ctx) as Record<string, unknown>), null, `${c.label}: nothing announced`)
+    assert.equal(commsFor(cs, stepVars(c.step, c.ctx) as Record<string, unknown>, c.step), null, `${c.label}: nothing announced`)
     assert.ok(view.whatToDo.some((l) => c.says.test(l)), `${c.label}: it says what to do — ${view.whatToDo.join(' | ')}`)
   }
 })

@@ -52,6 +52,8 @@
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
     "datesChange": "Announce {announce} · Change {enforce}",
     "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
+    "commsForecastDate": "{date} at the earliest",
+    "commsForecastNote": "That date is our target, not a commitment: we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
     "portalRoot": "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
     "portalOpen": "Entra admin center → Entra ID → Conditional Access → Policies → open \"{policy}\"",
     "descriptionLine": "Description: {description} — paste this exactly; it is how IAMAI recognises the policy it planned when it next reads the tenant.",
