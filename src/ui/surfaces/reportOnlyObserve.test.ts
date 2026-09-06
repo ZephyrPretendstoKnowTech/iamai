@@ -23,6 +23,7 @@
 // everybody seen.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { enforcesOnRun, implementationOffered, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
@@ -42,6 +43,7 @@ import { commsFor, copyBoxes, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, policyJsonText, stepOperations } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
+import { stepInstructions } from './stepInstructions.ts'
 import { rowWhen } from './rowWhen.ts'
 import { statusOf } from './statusWord.ts'
 import { stepVars } from './stepVars.ts'
@@ -54,6 +56,10 @@ const STEP_ID = 's-goal-block-auth-transfer'
 const OTHER_ID = 's-goal-token-protection'
 /** The goal one over, whose content step carries an email that names the enforcement day (005.13). */
 const COMMS_STEP_ID = 's-goal-all-users-no-persistence'
+/** The one goal in the plan whose content carries a tenant change to make *before* the policy (005.14). */
+const PREREQ_STEP_ID = 's-goal-device-registration-mfa'
+/** That change: it turns off the setting the policy replaces. */
+const PREREQ_LINE = /Require Multifactor Authentication to register or join devices: No/
 
 /** Words that would tell the operator to do something other than keep watching. */
 const DOING = /\b(create|creating|change|changing|update|updating|enforce|enforcing|enable|submit|resolve|delete|remove)\b/i
@@ -168,6 +174,79 @@ function portalOf(step: Step, ctx: StepVarContext): string[] | null {
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
   const ex = stepVars(step, ctx)
   return stepPortalLines(step, portalNamesFor(ctx, ex, String(cs?.title ?? step.title)))
+}
+
+/**
+ * What the opened step would put under What to do: the one selection
+ * ContentStep.tsx renders from (stepInstructions.ts), read here rather than a
+ * second reading of the same authorities.
+ */
+function instructionsOf(step: Step, ctx: StepVarContext): ReturnType<typeof stepInstructions> {
+  const cs = contentStepFor(step) as Record<string, unknown> | undefined
+  const ex = stepVars(step, ctx) as Record<string, unknown>
+  return stepInstructions(step, cs, ex, portalNamesFor(ctx, ex, String(cs?.title ?? step.title)))
+}
+
+/** The service-accounts group the demo tenant's scan did not hold, with its own members. */
+const SERVICE_ACCOUNTS_GROUP_ID = '00b2c9ad-2f3e-4c81-9a3d-7c1f6e4b5a01'
+
+/**
+ * The same demo tenant one step further on: its people have working MFA, so the
+ * readiness the plan waits for is met, and it has the service-accounts group the
+ * device-registration policy excludes. That clears everything holding
+ * `s-goal-device-registration-mfa` — the one goal in the plan whose content
+ * carries a *prerequisite* instruction, and a destructive one: the tenant's own
+ * "Require Multifactor Authentication to register or join devices" is turned off
+ * because the Conditional Access policy replaces it.
+ *
+ * With the policy then deployed by the plan and sitting in report-only, the step
+ * is the canonical Observe case carrying a tenant change in its content. Nothing
+ * here is hand-built: the group is a group, the readiness is the tenant's own
+ * people scored ready, and the policy body is the one IAMAI's own operation
+ * would submit.
+ */
+function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
+  const f = fixture(FIXTURE)
+  const anyGroup = [...f.groups][0][1]
+  const members = f.mapping.serviceAccountUserIds ?? []
+  const groups = new Map([...f.groups, [SERVICE_ACCOUNTS_GROUP_ID, { ...anyGroup, memberIds: members, memberCount: members.length, displayName: 'Core - Service accounts' }]])
+  const mapping = { ...f.mapping, serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP_ID }
+  // The tenant's own viability rows with its active people ready on MFA: the
+  // readiness percentage is derived from these (roadmap/readiness.ts), so this
+  // is a tenant whose people can pass the policy, not a gate switched off.
+  const scored = runFixture({ ...f, groups, mapping })
+  const viability = scored.viability.map((v) => (v.activity === 'active' ? { ...v, mfa: 'likelyViable' as const } : v))
+  const asCase = (r: ReturnType<typeof runFixture>, snapshot: TenantSnapshot): Case => {
+    const step = r.steps.find((x) => x.id === PREREQ_STEP_ID)
+    assert.ok(step, `${FIXTURE} no longer carries ${PREREQ_STEP_ID}`)
+    const ctx: StepVarContext = {
+      snapshot,
+      mapping,
+      nameOf: (id: string) => r.input.names!.label(id),
+      signature: 'IT',
+      operatorId: f.operatorId,
+      now: snapshot.asOf,
+      groups,
+      reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null,
+    }
+    return { step, ctx, steps: r.steps, snapshot, view: (x: Step) => stepExportView(x, ctx), run: r }
+  }
+  const due = asCase(runFixture({ ...f, groups, mapping }, { viability }), f.snapshot)
+  const op = operationsOf(due.step).find((o) => o.mode === 'create')
+  assert.ok(op, `${PREREQ_STEP_ID} is no longer a policy the plan would create`)
+  const at = new Date(Date.parse(f.snapshot.asOf) - days * 86_400_000).toISOString()
+  const policyId = 'e5d0d3c6-0b6e-4a2e-9a3f-9c4b7a1d0006'
+  const people = (f.snapshot.users ?? []).slice(0, 20).map((u) => String(u.id))
+  const none = { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] }
+  const snapshot = {
+    ...f.snapshot,
+    config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows: [...(f.snapshot.config.caPolicies?.rows ?? []), { id: policyId, createdDateTime: at, modifiedDateTime: at, ...(op!.body as Record<string, unknown>) }] } },
+    evidencePolicyResults: [
+      ...(f.snapshot.evidencePolicyResults ?? []),
+      { policyId, displayName: String((op!.body as Record<string, unknown>).displayName), counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: people.length, enforcedFailure: 0, enforcedSuccess: 0 }, affectedUserIds: { ...none, reportOnlySuccess: people }, firstReportOnlyAt: at },
+    ],
+  } as TenantSnapshot
+  return { due, observing: asCase(runFixture({ ...f, groups, mapping, snapshot }, { snapshot, viability }), snapshot) }
 }
 
 // ---- 1. the case is real, and it is genuinely Report-only and Healthy ----
@@ -506,6 +585,15 @@ test('005.11: no fixture hands over an enforcement while its policy is still in 
       assert.equal(step.comms, null, `${where}: a dated announcement draft survives on the step`)
       assert.equal(jsonOffered(step), false, `${where}: the JSON, PowerShell and download tabs are open`)
       assert.equal(portalOf(step, ctx), null, `${where}: the portal lines tell the operator to change it`)
+      // And the opened step has no instructions of its own to put in their
+      // place. This is the selection the screen renders from
+      // (stepInstructions.ts), so the same reading answers for the tabs, the
+      // leading prerequisite lines and the step's own numbered instructions.
+      const screen = instructionsOf(step, ctx)
+      assert.equal(screen.held, true, `${where}: the screen does not know the change is held`)
+      assert.equal(screen.portal, null, `${where}: the screen renders portal instructions`)
+      assert.deepEqual(screen.before, [], `${where}: the screen tells the operator to change the tenant before a policy that is only watching`)
+      assert.deepEqual(screen.steps, [], `${where}: the screen renders the step's change instructions`)
       const v = stepExportView(step, ctx)
       assert.doesNotMatch(v.whatToDo.join(' | '), /Enable policy/i, `${where}: the export tells the operator to enforce it`)
       assert.equal(nextMilestone(step).kind, 'observe', `${where}: the next milestone is not observation`)
@@ -604,4 +692,91 @@ test('005.13: a healthy Report-only policy with an email to send states no enfor
   assert.equal(step.comms, null)
   const draft = announcementDraft(run.steps)
   if (draft !== null) assert.ok(!draft.includes(forecastDay), `the draft announcement states it: ${draft}`)
+})
+
+// ---- 14. the opened step instructs nothing while the window is open ----
+
+test('005.14: the screen renders its What-to-do instructions from the one selection, and it is empty while the change is held', () => {
+  const { step, ctx, view } = canonical()
+  const c = stepContract(step, ctx)
+  // The selection ContentStep.tsx renders from: no portal block, no leading
+  // prerequisite lines, no instructions of the step's own.
+  const screen = instructionsOf(step, ctx)
+  assert.equal(screen.held, true, 'an authority holds the change')
+  assert.equal(screen.portal, null)
+  assert.deepEqual(screen.before, [])
+  assert.deepEqual(screen.steps, [])
+  // So the only thing under What to do is the contract's action, and the export
+  // carries the same one line: the screen and the artifacts cannot disagree.
+  const v = view(step)
+  assert.deepEqual(v.whatToDo, [c.whatToDo.text])
+  assert.match(c.whatToDo.text, /report-only/i)
+  assert.doesNotMatch(c.whatToDo.text, DOING)
+  // The screen has no second reading of the content to fall back on: the JSX
+  // renders `instructions`, and the `whatToDo.before` / `whatToDo.steps` arrays
+  // it used to build unconditionally are no longer reachable from it.
+  const jsx = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  assert.doesNotMatch(jsx, /w\.before/, 'ContentStep builds the leading lines itself again')
+  assert.doesNotMatch(jsx, /w\.steps/, 'ContentStep reads the step instructions itself again')
+})
+
+// ---- 15. and the held instruction is the one that would undo the protection ----
+
+test('005.15: a Report-only policy whose content turns off the setting it replaces offers that instruction only while the change is due', () => {
+  const { due, observing } = observingWithAPrerequisite()
+  const cs = contentStepFor(due.step) as Record<string, any>
+  // The step exists to be the destructive case: its first instruction turns off
+  // the tenant's own MFA-at-device-registration setting because the policy
+  // replaces it.
+  const before = ((cs.whatToDo ?? {}).before ?? []) as string[]
+  assert.ok(before.some((l) => PREREQ_LINE.test(l)), `the content no longer carries the prerequisite: ${JSON.stringify(before)}`)
+
+  // Today is the day to make the change: nothing holds it, so the screen offers
+  // the prerequisite above the portal lines and the export carries it too.
+  assert.deepEqual(due.step.blockers, [], `still blocked: ${JSON.stringify(due.step.blockers)}`)
+  assert.equal(unavailableReason(due.step), null)
+  assert.equal(implementationOffered(due.step), true)
+  const dueScreen = instructionsOf(due.step, due.ctx)
+  assert.equal(dueScreen.held, false)
+  assert.ok(dueScreen.portal && dueScreen.portal.length > 0, 'the policy is offered')
+  assert.ok(dueScreen.before.some((l) => PREREQ_LINE.test(l)), `the prerequisite is not offered when it should be: ${JSON.stringify(dueScreen.before)}`)
+  assert.ok(due.view(due.step).whatToDo.some((l) => PREREQ_LINE.test(l)), 'and the export carries it')
+
+  // The plan then deploys that same policy, and it sits in report-only with two
+  // days behind it: healthy, nothing wrong with it, and the only thing left to
+  // submit is the enforcement it has not earned.
+  const step = observing.step
+  assert.equal(step.state.lifecycle, 'report-only')
+  assert.equal(step.state.condition, 'healthy')
+  assert.deepEqual(step.blockers, [])
+  assert.equal(unavailableReason(step), null)
+  assert.equal(enforcementUnearned(step), true)
+  const t = step.tracking!
+  assert.equal(t.evidenceQuality, 'enough')
+  assert.equal(t.failures, 0)
+  assert.equal(t.readyNow, false)
+  assert.ok(t.seenInScope! < t.activeInScope!, `people in scope are still unseen (${t.seenInScope} of ${t.activeInScope})`)
+
+  // So the screen withholds it. Telling the operator to turn off the setting the
+  // policy replaces, while the replacement is only watching, would leave device
+  // registration with neither.
+  const screen = instructionsOf(step, observing.ctx)
+  assert.equal(screen.held, true)
+  assert.equal(screen.portal, null)
+  assert.deepEqual(screen.before, [], 'the screen still instructs the tenant change')
+  assert.deepEqual(screen.steps, [])
+  assert.equal(jsonOffered(step), false)
+  assert.deepEqual(stepOperations(step), [])
+
+  // And the export says exactly what the screen says: the contract's action,
+  // which is to keep watching, and nothing else.
+  const v = observing.view(step)
+  const c = stepContract(step, observing.ctx)
+  assert.deepEqual(v.whatToDo, [c.whatToDo.text])
+  assert.doesNotMatch(v.whatToDo.join(' | '), PREREQ_LINE)
+  assert.match(v.whatToDo.join(' | '), /report-only/i)
+  assert.doesNotMatch(v.whatToDo.join(' | '), DOING)
+  // Nor does any other artifact a person or a tool reads carry it.
+  const said = [...stepLines(step, observing.ctx), ...v.doneWhen, v.dates ?? '', stepContext(step, observing.view)].join(' | ')
+  assert.doesNotMatch(said, PREREQ_LINE, `an artifact still states the prerequisite: ${said}`)
 })
