@@ -1,0 +1,37 @@
+{
+    "hard_budget_usd":  60.0,
+    "preflight_budget_reserve_usd":  1.0,
+    "openai_review_model":  "gpt-5.6-sol",
+    "openai_reasoning_effort":  "high",
+    "openai_input_usd_per_mtok":  4.0,
+    "openai_output_usd_per_mtok":  20.0,
+    "openai_max_output_tokens":  12000,
+    "review_reserve_usd":  2.0,
+    "review_token_estimate_chars":  3.0,
+    "openai_long_context_threshold_tokens":  272000,
+    "openai_long_context_input_multiplier":  2.0,
+    "openai_long_context_output_multiplier":  1.5,
+    "claude_max_per_call_usd":  3.0,
+    "claude_timeout_minutes":  75,
+    "review_timeout_seconds":  240,
+    "ci_timeout_minutes":  45,
+    "poll_seconds":  15,
+    "max_relevant_file_bytes":  225000,
+    "max_declared_source_bytes":  700000,
+    "max_diff_bytes":  250000,
+    "max_review_prompt_bytes":  1000000,
+    "required_workflows":  {
+                               "ci":  [
+                                          "ci"
+                                      ],
+                               "deploy-pages":  [
+                                                    "walk",
+                                                    "build",
+                                                    "deploy"
+                                                ]
+                           },
+    "task_stability_seconds":  15,
+    "idle_poll_seconds":  30,
+    "idle_timeout_minutes":  60,
+    "min_task_start_budget_usd":  4.0
+}

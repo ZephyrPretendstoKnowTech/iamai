@@ -1,0 +1,14 @@
+{
+  "id": "correction",
+  "depends_on": [],
+  "risk": "low",
+  "max_corrections": 1,
+  "max_review_retries": 2,
+  "task_budget_usd": 6.5,
+  "claude_model": "opus",
+  "claude_effort": "high",
+  "relevant_files": [
+    "overnight/runner.py",
+    "overnight/GLOBAL_CONTRACT.md"
+  ]
+}
