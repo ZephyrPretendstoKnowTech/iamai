@@ -142,12 +142,23 @@ def cmd(args: list[str], *, cwd: Path = ROOT, check: bool = True, timeout: float
         if resolved:
             if Path(resolved).suffix.lower() in {".cmd", ".bat"}:
                 comspec = os.environ.get("COMSPEC") or shutil.which("cmd.exe") or "cmd.exe"
+
+                # cmd.exe requires the executable path and its arguments to be
+                # presented as one command string. Do not use list2cmdline on
+                # the executable itself here; that produces escaped quotes
+                # that cmd.exe interprets literally.
+                arg_text = subprocess.list2cmdline(args[1:]) if len(args) > 1 else ""
+                command_text = f'""{resolved}"'
+                if arg_text:
+                    command_text += f" {arg_text}"
+                command_text += '"'
+
                 run_args = [
                     comspec,
                     "/d",
                     "/s",
                     "/c",
-                    subprocess.list2cmdline([resolved, *args[1:]]),
+                    command_text,
                 ]
             else:
                 run_args = [resolved, *args[1:]]
