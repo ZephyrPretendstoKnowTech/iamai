@@ -131,13 +131,50 @@ def config() -> dict[str, Any]:
 
 def cmd(args: list[str], *, cwd: Path = ROOT, check: bool = True, timeout: float | None = 120,
         input_text: str | None = None) -> subprocess.CompletedProcess[str]:
+    original_args = list(args)
+    run_args = list(args)
+
+    # On Windows, tools installed through npm commonly resolve to .cmd/.bat
+    # shims. PowerShell launches them transparently, but subprocess with
+    # shell=False does not reliably do so from the bare command name.
+    if os.name == "nt" and args:
+        resolved = shutil.which(args[0])
+        if resolved:
+            if Path(resolved).suffix.lower() in {".cmd", ".bat"}:
+                comspec = os.environ.get("COMSPEC") or shutil.which("cmd.exe") or "cmd.exe"
+                run_args = [
+                    comspec,
+                    "/d",
+                    "/s",
+                    "/c",
+                    subprocess.list2cmdline([resolved, *args[1:]]),
+                ]
+            else:
+                run_args = [resolved, *args[1:]]
+
     try:
-        p = subprocess.run(args, cwd=cwd, text=True, input=input_text, capture_output=True, timeout=timeout)
+        p = subprocess.run(
+            run_args,
+            cwd=cwd,
+            text=True,
+            input=input_text,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except FileNotFoundError as e:
+        raise RunnerError(
+            f"required command could not be launched: {original_args[0]} "
+            f"(resolved={shutil.which(original_args[0])!r})"
+        ) from e
     except subprocess.TimeoutExpired as e:
-        raise RunnerError(f"command timed out: {' '.join(args)}") from e
+        raise RunnerError(f"command timed out: {' '.join(original_args)}") from e
+
     if check and p.returncode != 0:
         tail = (p.stderr or p.stdout or "").strip()[-3000:]
-        raise RunnerError(f"command failed ({p.returncode}): {' '.join(args)}\n{tail}")
+        raise RunnerError(
+            f"command failed ({p.returncode}): {' '.join(original_args)}\n{tail}"
+        )
+
     return p
 
 
