@@ -3,14 +3,17 @@
 // behind the rows and the ones ticked before any decision is saved. The ticked
 // set is the plan's current value (the mapping), so the picker shows what the
 // plan uses; where the mapping holds nothing yet, everything nominated starts
-// ticked. The rows come from the detections the plan already runs, never a
-// second reading of the tenant.
+// ticked — except on the two safety-sensitive pickers, the exclusions group and
+// the emergency-access accounts, where nothing is ticked that nobody ticked.
+// The rows come from the detections the plan already runs, never a second
+// reading of the tenant.
 //
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import type { TenantSnapshot, UserRow } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
-import { detectEmergencyAccess, emergencySignals } from '../../mapping/emergencyAccess.ts'
+import { emergencySignals } from '../../mapping/emergencyAccess.ts'
+import { emergencySelection } from '../../mapping/emergencyChoice.ts'
 import { suggestCountries, countryName } from '../../mapping/countries.ts'
 import { detectServiceAccounts } from '../../mapping/serviceAccounts.ts'
 import { sharedDeviceUsers, sharedDeviceSignals } from '../../derive/sharedDevices.ts'
@@ -80,21 +83,25 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
   const policies = snapshot.config.caPolicies?.rows ?? []
   const userOf = (id: string): UserRow | undefined => snapshot.users.find((u) => u.id === id)
 
-  // Emergency access: the accounts the signals nominate, the named ones first,
-  // then any the plan already holds that the signals missed. Every nomination
-  // is offered; only the ones the tenant named for the job are ticked before a
-  // person decides (emergencyAccess.ts), because a tick here is the plan's
-  // classification — it takes the account out of the people population.
+  // Emergency access: the accounts the signals nominate, the recommended ones
+  // first, then whatever the operator confirmed or an older record left behind.
+  //
+  // Nothing is ticked that nobody ticked. A tick here is the plan's
+  // classification — it takes the account out of the people population, decides
+  // what a policy's emergency exposure is measured against, and decides what the
+  // exclusions group must contain (mapping/emergencyChoice.ts). An ordinary
+  // Global Administrator on the initial domain with no licence carries three of
+  // the five signals, and even an account plainly named "Breakglass" is a
+  // reading of a name and not a person's answer. IAMAI shows what it would put
+  // forward; the operator ticks it or does not.
   if (DECISION_STEPS.emergency.has(stepId)) {
-    const candidates = detectEmergencyAccess(snapshot, policies)
-    const ids = [...new Set([...candidates.map((c) => c.id), ...mapping.breakGlassUserIds])]
-    const rows = ids.map((id) => {
+    const sel = emergencySelection({ snapshot, mapping, tenantPolicies: policies })
+    const rows = sel.offeredIds.map((id) => {
       const u = userOf(id)
-      const signals = candidates.find((c) => c.id === id)?.signals ?? (u ? emergencySignals(u, snapshot, policies) : [])
+      const signals = sel.candidates.find((c) => c.id === id)?.signals ?? (u ? emergencySignals(u, snapshot, policies) : [])
       return row(template, { name: nameOf(id), upn: u?.userPrincipalName ?? undefined, signals: signals.map((s) => engine.emergencySignals[s] ?? s).join(', ') || undefined })
     })
-    const automatic = candidates.filter((c) => c.automatic).map((c) => c.id)
-    return vars('emergencyCandidates', rows, ids, tickedFrom(mapping.breakGlassUserIds, ids, automatic))
+    return vars('emergencyCandidates', rows, sel.offeredIds, sel.offeredIds.filter((id) => sel.confirmedIds.includes(id)))
   }
 
   // The exclusions group: every group the plan knows (the ones policies name
@@ -192,11 +199,19 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
 export type DefaultsContext = PickerContext & { now: string }
 
 /**
- * Every picker's pre-ticked default as a decision: the detected emergency
- * accounts, exclusions group, allowed countries, trusted network, service
- * accounts and special care. The derivation applies these as if saved, so the
- * step, its checks and every portal line read them on first open; a Save only
- * overrides. The shared-devices picker has no mapping field and is not here.
+ * Every picker's pre-ticked default as a decision: the allowed countries,
+ * trusted network, service accounts and special care. The derivation applies
+ * these as if saved, so the step, its checks and every portal line read them on
+ * first open; a Save only overrides. The shared-devices picker has no mapping
+ * field and is not here.
+ *
+ * The two safety-sensitive pickers are not here and must not be: the exclusions
+ * group (mapping/safetyChoice.ts) and the emergency-access accounts
+ * (mapping/emergencyChoice.ts). Both decide who still gets in when a policy goes
+ * wrong, and a default applied as the plan's decision is exactly the
+ * detection-becomes-confirmation this repo had — a Global Administrator with
+ * enough circumstantial signals stopped being a person without anybody saying
+ * so. Both stay operator actions until an operator acts.
  */
 export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecision> {
   const at = ctx.snapshot.asOf
@@ -205,10 +220,6 @@ export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecis
     const ticked = pickerVars(stepId, '', ctx)?.[`${key}Ticked`]
     if (Array.isArray(ticked) && ticked.length > 0) out[stepId] = { picked: ticked, at }
   }
-  for (const id of DECISION_STEPS.emergency) pick(id, 'emergencyCandidates')
-  // The exclusions group is not here and must not be: it is a safety-sensitive
-  // choice, and a default applied as the plan's decision is exactly the
-  // detection-becomes-confirmation this repo had (mapping/safetyChoice.ts).
   pick(DECISION_STEPS.countries, 'countriesWithCounts')
   pick(DECISION_STEPS.trustedLocation, 'locationsWithMatches')
   pick(DECISION_STEPS.serviceAccounts, 'accountsWithSignals')
@@ -220,10 +231,10 @@ export function defaultDecisions(ctx: DefaultsContext): Record<string, StepDecis
 /**
  * The mapping the plan and every surface derive from (target-state §6.4): the
  * stored record with every picker's detected default applied as the plan's
- * decision, then every saved step decision over it. The emergency and service
- * accounts a scan detects are recognised through this on every scan, whether or
- * not the person has saved a decision, so Today, the Plan and Connect read one
- * population (derive/facts.ts) and a re-scan never loses a kind.
+ * decision, then every saved step decision over it. Today, the Plan and Connect
+ * all read this, so there is one population (derive/facts.ts). The emergency
+ * accounts are not in the detected pass: they are the operator's own decision,
+ * carried in the saved decisions and recognised again from there on every scan.
  */
 export function appliedMapping(ctx: DefaultsContext, saved: Record<string, StepDecision> | null | undefined): MappingState {
   return applyStepDecisions(applyStepDecisions(ctx.mapping, defaultDecisions(ctx), 'detected'), saved ?? null)

@@ -144,7 +144,14 @@ export function fileStep(s: Step): Step {
   }
 }
 
-/** The answers without the wizard's provenance map, which is derived again on every load. */
+/**
+ * The answers without the wizard's provenance map, which is derived again on
+ * every load. The map is the reason the file's `breakGlassUserIds` proves
+ * nothing on its own: a load cannot tell an operator's choice from a scan's
+ * reading, so it asks again (mapping/emergencyChoice.ts). What carries that
+ * answer across a file is the decisions block below, which holds the operator's
+ * saved decision on the emergency step and nothing a machine wrote.
+ */
 function withoutProvenance(mapping: MappingState): MappingState {
   const out = { ...mapping }
   delete out.assumed

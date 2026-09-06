@@ -12,6 +12,7 @@ import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../../mapping/safe
 import { emptyCapabilities } from '../../licensing/capabilities.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from '../generate.ts'
+import { BREAK_GLASS_STEP_ID } from '../stepIds.ts'
 import { questionLabels } from '../decisions.ts'
 import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
@@ -500,6 +501,12 @@ export function buildFixture(spec: Spec): Fixture {
     // otherwise.
     records: { [EXCLUSIONS_RECORD_KEY]: { ...exclusionsGroupRecord(undefined, exclusionGroup), resolvedName: 'Core - Exclusions' } },
     wizardAnswered: { breakGlass: true, globalExclusion: true, countries: true, trustedLocations: true, serviceAccounts: true, timeZone: true, applicability: true },
+    // The emergency accounts as its technician confirmed them, said in the one
+    // way a record can say it (mapping/emergencyChoice.ts). Every tenant here
+    // has answered: a detection may recommend these accounts and may not choose
+    // them, so a tenant that has not answered has no plan to show, and the
+    // sample is not a place to teach otherwise.
+    assumed: { breakGlass: 'confirmed' },
   }
   const groups: GroupMembers = new Map()
   groups.set(bgGroup, { memberIds: bgIds, memberCount: bgIds.length, sampled: false, displayName: 'Core - Break glass' })
@@ -520,8 +527,13 @@ export function buildFixture(spec: Spec): Fixture {
   // seen waiting on it, and the walk makes it on its step.
   let decisions: Record<string, StepDecision> | undefined
   let checkpoints: unknown[] | undefined
+  // Both weeks carry the one answer the sample tenant cannot do without: which
+  // accounts are its emergency access. A scan recommends them and may not choose
+  // them (mapping/emergencyChoice.ts), so this is the technician's own decision,
+  // saved on the step, and it is what travels through a plan file.
+  if (spec.demo) decisions = { [BREAK_GLASS_STEP_ID]: { picked: [...bgIds], at: NOW } }
   if (spec.demo && spec.week2) {
-    decisions = {}
+    decisions = { ...decisions }
     const countries = questionLabels(PREREQ_STEP_ID.allowedCountries)
     if (countries.question) decisions[PREREQ_STEP_ID.allowedCountries] = { picked: [...mapping.allowedCountries], answers: { [countries.question]: 'Regularly: add: NZ' }, at: NOW }
     const guests = questionLabels(stepIdForGoal('guests-mfa'))

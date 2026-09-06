@@ -1,36 +1,38 @@
 // Emergency-access detection (prompt 46 item 20, target-state §5): the
 // accounts a tenant keeps for the day everything else is locked out. Nothing
 // in Microsoft Graph labels them, so they are recognised by what they look
-// like. Five signals — and two kinds of answer, because the two questions are
-// not the same question:
+// like. Five signals — and everything here is evidence, never an answer:
 //
 //   nominate  — "is this worth showing in the emergency-access picker?"
-//   classify  — "is this account not a person, so it leaves the campaign,
-//                the readiness population and the exclusions?"
+//   recommend — "and is the evidence strong enough to put it forward first?"
 //
-// Classifying wrongly is the expensive one: an ordinary administrator turned
-// into a non-person silently shrinks the population a rollout is meant to
-// protect. Only the explicit name signal — a purpose phrase the tenant wrote
-// itself ("break glass", "emergency access", "bg" as its own token), never a
-// loose word — classifies on its own. The circumstantial four — a Global
-// Administrator, a .onmicrosoft.com address, no licence, excluded from every
-// policy — describe most first admins of a small tenant just as well as they
-// describe an emergency account, so two or more of them nominate a candidate
-// and nothing more: the picker offers it, the person decides, and until they
-// do the account stays a person. Pure.
+// Neither one classifies. Classifying is what takes an account out of the
+// people population (derive/sets.ts notPeopleIds), what a policy's emergency
+// exposure is measured against (roadmap/operations.ts emergencyExposureOf) and
+// what the exclusions group is checked to contain (validation/rules.ts
+// xg.containsEmergency) — so it is an operator's decision and only theirs
+// (mapping/emergencyChoice.ts). The explicit name signal — a purpose phrase the
+// tenant wrote itself ("break glass", "emergency access", "bg" as its own
+// token), never a loose word — is strong enough to recommend an account on its
+// own. The circumstantial four — a Global Administrator, a .onmicrosoft.com
+// address, no licence, excluded from every policy — describe most first admins
+// of a small tenant just as well as they describe an emergency account, so two
+// or more of them nominate a candidate and nothing more. Either way the picker
+// offers it and the person decides; until they do the account stays a person.
+// Pure.
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
 
 export type EmergencySignal = 'name' | 'onmicrosoft' | 'globalAdmin' | 'excludedEverywhere' | 'noLicence'
-/** `automatic` marks the candidates the deciding signal classifies without asking; the rest are suggestions. */
-export type EmergencyCandidate = { id: string; signals: EmergencySignal[]; automatic: boolean }
+/** `recommended` marks the candidates the strong signal puts forward first; the rest are nominations. Neither is a decision. */
+export type EmergencyCandidate = { id: string; signals: EmergencySignal[]; recommended: boolean }
 
 export const EMERGENCY_MIN_SIGNALS = 2
-/** The one signal strong enough to classify an account on its own: the tenant named it for the job. */
-export const EMERGENCY_DECIDING_SIGNAL: EmergencySignal = 'name'
+/** The one signal strong enough to recommend an account on its own: the tenant named it for the job. */
+export const EMERGENCY_STRONG_SIGNAL: EmergencySignal = 'name'
 const GA_ROLE = '62e90394-69f5-4237-9190-012177145e10'
 /**
  * The names a tenant gives an account it created for the job, and nothing else.
- * Because this signal classifies on its own, the matcher favours precision over
+ * Because this signal recommends on its own, the matcher favours precision over
  * recall: it recognises a whole purpose phrase standing as its own token, never
  * a substring of a longer word.
  *
@@ -55,7 +57,7 @@ const GA_ROLE = '62e90394-69f5-4237-9190-012177145e10'
  * boundary like any other: the phrase is its own token inside a longer name.
  *
  * A name that misses all three is still nominated when two circumstantial
- * signals point at it; it is just not classified without a person.
+ * signals point at it; it is just not put forward first.
  */
 const EMERGENCY_NAME_PATTERNS = [
   /(?:^|[^a-z0-9])break[\s._-]*glass\d*(?![a-z0-9])/i,
@@ -83,39 +85,39 @@ export function emergencySignals(u: UserRow, snapshot: TenantSnapshot, tenantPol
   return out
 }
 
-/** The deciding signal is present: this account classifies itself, with no decision saved. */
-export function isAutomaticEmergency(signals: readonly EmergencySignal[]): boolean {
-  return signals.includes(EMERGENCY_DECIDING_SIGNAL)
+/** The strong signal is present: worth recommending ahead of the rest. Still not a decision. */
+export function isRecommendedEmergency(signals: readonly EmergencySignal[]): boolean {
+  return signals.includes(EMERGENCY_STRONG_SIGNAL)
 }
 
 /** Worth putting in front of a person: named for the job, or circumstantial enough to ask about. */
 export function isEmergencyCandidate(signals: readonly EmergencySignal[]): boolean {
-  return isAutomaticEmergency(signals) || signals.length >= EMERGENCY_MIN_SIGNALS
+  return isRecommendedEmergency(signals) || signals.length >= EMERGENCY_MIN_SIGNALS
 }
 
 /**
- * The enabled member accounts the signals nominate, the named ones first.
- * A suggestion, not a classification: read `automatic` (or use
- * `autoEmergencyAccess`) for the accounts a scan may classify by itself.
- * An empty list is an answer too: the plan then starts by creating them.
+ * The enabled member accounts the signals nominate, the recommended ones first.
+ * A suggestion, not a classification: read `recommended` (or use
+ * `recommendedEmergencyAccess`) for the ones the strong signal puts forward.
+ * An empty list is evidence too: the plan then offers to create them.
  */
 export function detectEmergencyAccess(snapshot: TenantSnapshot, tenantPolicies: unknown[]): EmergencyCandidate[] {
   const out: EmergencyCandidate[] = []
   for (const u of snapshot.users) {
     if (u.userType === 'guest' || u.accountEnabled === false) continue
     const signals = emergencySignals(u, snapshot, tenantPolicies)
-    if (isEmergencyCandidate(signals)) out.push({ id: u.id, signals, automatic: isAutomaticEmergency(signals) })
+    if (isEmergencyCandidate(signals)) out.push({ id: u.id, signals, recommended: isRecommendedEmergency(signals) })
   }
-  return out.sort((a, b) => Number(b.automatic) - Number(a.automatic) || b.signals.length - a.signals.length || a.id.localeCompare(b.id))
+  return out.sort((a, b) => Number(b.recommended) - Number(a.recommended) || b.signals.length - a.signals.length || a.id.localeCompare(b.id))
 }
 
 /**
- * The accounts a fresh scan classifies as emergency access with nothing saved:
- * the nominations carrying the deciding signal. This is the one automatic
- * source of `breakGlassUserIds` — the wizard's detected default and the
- * emergency picker's default tick both read it, so the population never
- * depends on a weak signal and never on who is signed in.
+ * The nominations carrying the strong signal: what IAMAI recommends when it is
+ * asked what this tenant's emergency accounts look like. A recommendation and
+ * no more — nothing here reaches `breakGlassUserIds`, which an operator's own
+ * decision writes and nothing else does (mapping/emergencyChoice.ts). An
+ * obvious "Breakglass" is recommended on every scan and confirmed on none.
  */
-export function autoEmergencyAccess(snapshot: TenantSnapshot, tenantPolicies: unknown[]): EmergencyCandidate[] {
-  return detectEmergencyAccess(snapshot, tenantPolicies).filter((c) => c.automatic)
+export function recommendedEmergencyAccess(snapshot: TenantSnapshot, tenantPolicies: unknown[]): EmergencyCandidate[] {
+  return detectEmergencyAccess(snapshot, tenantPolicies).filter((c) => c.recommended)
 }

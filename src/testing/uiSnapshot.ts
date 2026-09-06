@@ -202,6 +202,16 @@ export function fixtureSnapshot(): TenantSnapshot {
  */
 export const FIXTURE_EXCLUSIONS_GROUP = { id: 'g-exclusions', displayName: 'Core - Exclusions', memberIds: ['u-4'] }
 
+/**
+ * The emergency accounts the mock tenant's operator chose, for the same reason
+ * the exclusions group above is chosen: a detection recommends these accounts
+ * and may not select them (mapping/emergencyChoice.ts), so a tenant that has
+ * not answered has no emergency access, its exclusions group holds an account
+ * nothing approves, and the plan the mocks exist to check cannot finish. Seeded
+ * through the writer a Save uses, never by writing the field.
+ */
+export const FIXTURE_EMERGENCY_ACCOUNTS = ['u-4']
+
 export function fixtureBaseline(): BaselineResult {
   return {
   source: 'synthetic baseline',

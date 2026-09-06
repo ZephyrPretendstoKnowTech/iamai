@@ -1,14 +1,19 @@
-// Emergency-access detection (prompt 46 item 20): five signals nominate; only
-// the explicit name classifies, because taking an account out of the people
-// population is not a guess a scan is allowed to make. None found is an answer
-// that puts the accounts in Wave 0.
+// Emergency-access detection (prompt 46 item 20): five signals nominate and
+// the explicit name recommends. Nothing here classifies — taking an account out
+// of the people population is the operator's decision and only theirs
+// (mapping/emergencyChoice.ts), so this file also holds the proof that a
+// detection cannot become one.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { autoEmergencyAccess, detectEmergencyAccess, emergencySignals, isEmergencyName } from './emergencyAccess.ts'
+import { readFileSync } from 'node:fs'
+import { detectEmergencyAccess, emergencySignals, isEmergencyName, recommendedEmergencyAccess } from './emergencyAccess.ts'
+import { emergencySelection, migrateEmergencySelection, operatorConfirmedEmergency } from './emergencyChoice.ts'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { emptyMappingState } from './types.ts'
+import type { MappingState } from './types.ts'
 import { applyDetectedDefaults } from './wizard.ts'
-import { appliedMapping } from '../ui/surfaces/pickerRows.ts'
+import { appliedMapping, defaultDecisions, pickerVars } from '../ui/surfaces/pickerRows.ts'
+import { DECISION_STEPS, applyStepDecisions } from '../roadmap/decisions.ts'
 import { facts } from '../derive/facts.ts'
 import { BREAK_GLASS_STEP_ID } from '../roadmap/generate.ts'
 import type { TenantSnapshot, UserRow } from '../graph/collect/types.ts'
@@ -33,9 +38,9 @@ const user = (over: Partial<UserRow>): UserRow => ({
   ...over,
 })
 
-// The name signal classifies on its own, so it reads a purpose phrase the
+// The name signal recommends on its own, so it reads a purpose phrase the
 // tenant wrote, never a word that happens to appear in somebody's name.
-test('the automatic name is a purpose phrase: every way a tenant writes one', () => {
+test('the recommending name is a purpose phrase: every way a tenant writes one', () => {
   for (const name of [
     'Breakglass',
     'Break Glass',
@@ -120,7 +125,7 @@ test('the automatic name never fires on an ordinary name that contains the words
   }
 })
 
-test('a person whose surname is Glass keeps every weak signal and is still not classified', () => {
+test('a person whose surname is Glass keeps every weak signal and is still not recommended', () => {
   const s = fixtureSnapshot()
   s.config.caPolicies!.rows = []
   s.roles = { active: { alice: [GA] }, eligible: {} }
@@ -131,7 +136,7 @@ test('a person whose surname is Glass keeps every weak signal and is still not c
   assert.deepEqual(emergencySignals(s.users[0], s, []), ['onmicrosoft', 'globalAdmin', 'noLicence'], 'no name signal')
   assert.deepEqual(emergencySignals(s.users[1], s, []), ['name', 'onmicrosoft', 'noLicence'])
   assert.deepEqual(detectEmergencyAccess(s, []).map((c) => c.id), ['bg', 'alice'], 'both nominated, the named one first')
-  assert.deepEqual(autoEmergencyAccess(s, []).map((c) => c.id), ['bg'], 'only the account named for the job is classified')
+  assert.deepEqual(recommendedEmergencyAccess(s, []).map((c) => c.id), ['bg'], 'only the account named for the job is recommended')
 })
 
 test('each signal is read from the tenant, and "bg" only as its own token', () => {
@@ -163,11 +168,11 @@ test('the name nominates on its own, two weak signals nominate together; guests 
   const found = detectEmergencyAccess(s, [])
   assert.deepEqual(found.map((c) => c.id), ['a', 'b', 'e'], 'the named ones first, then the circumstantial one')
   assert.deepEqual(found[0].signals, ['name', 'onmicrosoft', 'noLicence'])
-  assert.deepEqual(found.map((c) => c.automatic), [true, true, false])
-  assert.deepEqual(autoEmergencyAccess(s, []).map((c) => c.id), ['a', 'b'], 'only the tenant’s own naming classifies')
+  assert.deepEqual(found.map((c) => c.recommended), [true, true, false])
+  assert.deepEqual(recommendedEmergencyAccess(s, []).map((c) => c.id), ['a', 'b'], 'only the tenant’s own naming recommends')
 })
 
-test('weak signals never classify: a Global Administrator that is unlicensed and .onmicrosoft.com stays a person', () => {
+test('weak signals never recommend: a Global Administrator that is unlicensed and .onmicrosoft.com stays a person', () => {
   const s = fixtureSnapshot()
   s.config.caPolicies!.rows = []
   s.roles = { active: { ga: [GA] }, eligible: {} }
@@ -179,10 +184,10 @@ test('weak signals never classify: a Global Administrator that is unlicensed and
   const signals = emergencySignals(s.users[0], s, [])
   assert.deepEqual(signals, ['onmicrosoft', 'globalAdmin', 'noLicence'], 'three weak signals')
   assert.deepEqual(detectEmergencyAccess(s, []).map((c) => c.id), ['ga'], 'still offered in the picker')
-  assert.equal(detectEmergencyAccess(s, [])[0].automatic, false)
-  assert.deepEqual(autoEmergencyAccess(s, []), [], 'and classified by nothing')
+  assert.equal(detectEmergencyAccess(s, [])[0].recommended, false)
+  assert.deepEqual(recommendedEmergencyAccess(s, []), [], 'and recommended by nothing')
   const state = applyDetectedDefaults(emptyMappingState(s.tenantId), s, { knownGroups: [] })
-  assert.deepEqual(state.breakGlassUserIds, [], 'the detected default leaves the administrator in the people population')
+  assert.deepEqual(state.breakGlassUserIds, [], 'the detected pass leaves the administrator in the people population')
   assert.equal(state.assumed?.breakGlass, 'noneFound')
 })
 
@@ -192,7 +197,6 @@ test('none found is an empty list, not an error', () => {
   s.users = [user({ id: 'a' }), user({ id: 'b', displayName: 'Sam Lee' })]
   assert.deepEqual(detectEmergencyAccess(s, []), [])
 })
-
 // ---- The account ledger of a small tenant, end to end ----
 
 /**
@@ -200,7 +204,8 @@ test('none found is an empty list, not an error', () => {
  * administrator whose address is the tenant's initial domain, a licensed
  * person, one account the tenant named for emergencies, and a mailbox with
  * sign-in blocked. The administrator carries three circumstantial signals and
- * is still a person.
+ * the named account carries the strong one; neither is an emergency account
+ * until somebody says so.
  */
 function smallTenant(operatorId: string): TenantSnapshot {
   const s = fixtureSnapshot()
@@ -247,43 +252,152 @@ function smallTenant(operatorId: string): TenantSnapshot {
 const applied = (s: TenantSnapshot, stored = emptyMappingState(s.tenantId), saved: Record<string, { picked: string[]; at: string }> | null = null) =>
   appliedMapping({ snapshot: s, mapping: stored, nameOf: (id) => id, now: s.asOf }, saved)
 
-test('a fresh scan of a four-account tenant: 2 active people, 1 emergency access, 1 sign-in disabled', () => {
+const ticked = (s: TenantSnapshot, m = emptyMappingState(s.tenantId)): string[] =>
+  (pickerVars(BREAK_GLASS_STEP_ID, '{name}', { snapshot: s, mapping: m, nameOf: (id) => id })?.emergencyCandidatesTicked ?? []) as string[]
+const offered = (s: TenantSnapshot, m = emptyMappingState(s.tenantId)): string[] =>
+  (pickerVars(BREAK_GLASS_STEP_ID, '{name}', { snapshot: s, mapping: m, nameOf: (id) => id })?.emergencyCandidatesIds ?? []) as string[]
+
+// 1. Detected is not confirmed.
+test('a fresh scan of a four-account tenant confirms nothing: 3 active people, 0 emergency access, 1 sign-in disabled', () => {
   const s = smallTenant('admin')
   const m = applied(s)
-  assert.deepEqual(m.breakGlassUserIds, ['bg'], 'the named account, and only it')
+  assert.deepEqual(m.breakGlassUserIds, [], 'a scan nominates and recommends; it does not choose')
+  const sel = emergencySelection({ snapshot: s, mapping: m })
+  assert.deepEqual(sel.candidates.map((c) => c.id), ['bg', 'admin'], 'both are candidates, the named one first')
+  assert.deepEqual(sel.recommendedIds, ['bg'], 'and the named one is what IAMAI recommends')
+  assert.equal(sel.unresolved, true)
   const F = facts(s, m)
   assert.deepEqual(
     { accounts: F.accounts, active: F.active, emergency: F.kinds.emergency, disabled: F.kinds.disabled, service: F.kinds.service, notActive: F.notActive },
-    { accounts: 4, active: 2, emergency: 1, disabled: 1, service: 0, notActive: 0 },
+    { accounts: 4, active: 3, emergency: 0, disabled: 1, service: 0, notActive: 0 },
+    'the administrator and the nominated account are both still people',
   )
 })
 
+// 2. The obvious Breakglass candidate is recommended on every scan and confirmed on none.
+test('an obvious Breakglass account is recommended on every scan and silently confirmed on none of them', () => {
+  const s = smallTenant('admin')
+  for (let scan = 0; scan < 3; scan++) {
+    const rescan = smallTenant('admin')
+    rescan.asOf = new Date(Date.parse(s.asOf) + scan * 86_400_000).toISOString()
+    assert.deepEqual(recommendedEmergencyAccess(rescan, []).map((c) => c.id), ['bg'], `scan ${scan}: still recommended`)
+    assert.ok(offered(rescan).includes('bg'), `scan ${scan}: still offered in the picker`)
+    assert.deepEqual(ticked(rescan), [], `scan ${scan}: and ticked by nobody`)
+    assert.deepEqual(applied(rescan).breakGlassUserIds, [], `scan ${scan}: and authoritative nowhere`)
+  }
+  // The default-decision pass is the door this used to come through; it is shut.
+  for (const id of DECISION_STEPS.emergency) {
+    assert.equal(defaultDecisions({ snapshot: s, mapping: emptyMappingState(s.tenantId), nameOf: (x) => x, now: s.asOf })[id], undefined, `${id} has a pre-ticked default`)
+  }
+  // And a detected pass holding a decision in hand still refuses to write it.
+  const forced = applyStepDecisions(emptyMappingState(s.tenantId), { [BREAK_GLASS_STEP_ID]: { picked: ['bg'], at: s.asOf } }, 'detected')
+  assert.deepEqual(forced.breakGlassUserIds, [], 'a detected pass wrote the emergency accounts')
+  assert.notEqual(forced.assumed?.breakGlass, 'confirmed', 'and did not claim a person answered')
+})
+
+// 3 (unit half). Explicit confirmation, through the decision path a Save uses.
+test('a saved decision is the authority: the accounts a person picked are the emergency accounts', () => {
+  const s = smallTenant('admin')
+  const saved = { [BREAK_GLASS_STEP_ID]: { picked: ['bg', 'admin'], at: s.asOf } }
+  const m = applied(s, emptyMappingState(s.tenantId), saved)
+  assert.deepEqual(m.breakGlassUserIds, ['bg', 'admin'], 'the decision, and only the decision')
+  assert.equal(m.assumed?.breakGlass, 'confirmed', 'the record says a person answered')
+  assert.equal(operatorConfirmedEmergency(m), true)
+  assert.deepEqual(ticked(s, m), ['bg', 'admin'], 'and the picker shows it back ticked')
+  const F = facts(s, m)
+  assert.deepEqual({ active: F.active, emergency: F.kinds.emergency }, { active: 1, emergency: 2 }, 'now they leave the people population')
+  // A person may confirm an account no signal recommended.
+  const odd = applied(s, emptyMappingState(s.tenantId), { [BREAK_GLASS_STEP_ID]: { picked: ['person'], at: s.asOf } })
+  assert.deepEqual(odd.breakGlassUserIds, ['person'], 'the operator is not limited to the nominations')
+})
+
+// 4. The signed-in identity changes nothing.
 test('the ledger is the same whoever is signed in: the operator changes no classification', () => {
+  const saved = { [BREAK_GLASS_STEP_ID]: { picked: ['bg'], at: smallTenant('admin').asOf } }
   const base = facts(smallTenant('admin'), applied(smallTenant('admin')))
+  const baseConfirmed = facts(smallTenant('admin'), applied(smallTenant('admin'), emptyMappingState('t'), saved))
   for (const operator of ['admin', 'person', 'bg', 'mailbox']) {
     const s = smallTenant(operator)
-    const m = applied(s)
-    assert.deepEqual(m.breakGlassUserIds, ['bg'], `signed in as ${operator}: the same emergency account`)
-    assert.deepEqual(facts(s, m), base, `signed in as ${operator}: the same facts`)
+    assert.deepEqual(applied(s).breakGlassUserIds, [], `signed in as ${operator}: still nobody's decision`)
+    assert.deepEqual(emergencySelection({ snapshot: s, mapping: applied(s) }).recommendedIds, ['bg'], `signed in as ${operator}: the same recommendation`)
+    assert.deepEqual(facts(s, applied(s)), base, `signed in as ${operator}: the same facts`)
+    const m = applied(s, emptyMappingState(s.tenantId), saved)
+    assert.deepEqual(m.breakGlassUserIds, ['bg'], `signed in as ${operator}: the same confirmed set`)
+    assert.deepEqual(facts(s, m), baseConfirmed, `signed in as ${operator}: the same facts once confirmed`)
   }
+  // The one rule in words: no path anywhere says the signed-in account cannot be one.
+  const sources = ['src/mapping/emergencyAccess.ts', 'src/mapping/emergencyChoice.ts', 'src/ui/surfaces/pickerRows.ts', 'src/roadmap/decisions.ts']
+  for (const file of sources) assert.doesNotMatch(readFileSync(file, 'utf8'), /operatorId|currentUser|config\.me/, `${file} reads who is signed in`)
 })
 
-test('a saved decision is authoritative: the accounts a person picked are the emergency accounts', () => {
+// 5. Enumeration order cannot decide safety.
+test('two plausible candidates: whatever order they enumerate in, nothing is chosen', () => {
   const s = smallTenant('admin')
-  const saved = { [BREAK_GLASS_STEP_ID]: { picked: ['admin'], at: s.asOf } }
-  const m = applied(s, emptyMappingState(s.tenantId), saved)
-  assert.deepEqual(m.breakGlassUserIds, ['admin'], 'the decision wins over the detection')
-  // And the stored mapping alone says the same, with no decision saved on the step.
-  const stored = { ...emptyMappingState(s.tenantId), breakGlassUserIds: ['admin'] }
-  assert.deepEqual(applied(s, stored).breakGlassUserIds, ['admin'], 'the plan’s own value is never widened by a nomination')
+  // A second plainly-named account, so the recommended list has two of them.
+  s.users.push(user({ id: 'bg2', displayName: 'Emergency Access 2', userPrincipalName: 'ea2@contoso.onmicrosoft.com', assignedPlans: [] }))
+  const forward = applied(s)
+  const reversed = structuredClone(s)
+  reversed.users.reverse()
+  const back = applied(reversed)
+  assert.deepEqual(forward.breakGlassUserIds, [], 'forward order chooses nobody')
+  assert.deepEqual(back.breakGlassUserIds, [], 'reversed order chooses nobody')
+  assert.deepEqual(ticked(s), [], 'and neither ticks anything')
+  assert.deepEqual(ticked(reversed), [])
+  assert.deepEqual([...emergencySelection({ snapshot: s, mapping: forward }).recommendedIds].sort(), ['bg', 'bg2'], 'both are recommended')
+  assert.deepEqual(facts(s, forward).kinds.emergency, 0, 'and neither leaves the population')
 })
 
-test('the classification survives a rescan: the same account, with nothing saved', () => {
+// 6. A re-scan neither loses a confirmation nor adds to it.
+test('a re-scan keeps the operator’s choice exactly: nothing added, nothing dropped', () => {
   const s = smallTenant('admin')
-  const first = applied(s)
+  const saved = { [BREAK_GLASS_STEP_ID]: { picked: ['bg'], at: s.asOf } }
+  const first = applied(s, emptyMappingState(s.tenantId), saved)
+  assert.deepEqual(first.breakGlassUserIds, ['bg'])
+  // The same tenant a day later, with a second obvious candidate appearing.
   const rescan = smallTenant('person')
   rescan.asOf = new Date(Date.parse(s.asOf) + 86_400_000).toISOString()
-  const second = applied(rescan)
-  assert.deepEqual(second.breakGlassUserIds, first.breakGlassUserIds)
-  assert.equal(facts(rescan, second).kinds.emergency, 1)
+  rescan.users.push(user({ id: 'bg2', displayName: 'Break Glass 2', userPrincipalName: 'bg2@contoso.onmicrosoft.com', assignedPlans: [] }))
+  const second = applied(rescan, emptyMappingState(s.tenantId), saved)
+  assert.deepEqual(second.breakGlassUserIds, ['bg'], 'the newly detected account is not silently added')
+  assert.ok(offered(rescan, second).includes('bg2'), 'it is offered as a candidate')
+  assert.deepEqual(ticked(rescan, second), ['bg'], 'and only the confirmed one is ticked')
+  assert.equal(facts(rescan, second).kinds.emergency, 1, 'the emergency kind survives the re-scan and does not grow')
+})
+
+// 8. A legacy record with no proof of authorship.
+test('a legacy record’s emergency ids are kept as prior context and re-asked, never inherited as a confirmation', () => {
+  const s = smallTenant('admin')
+  // The shape the old auto-application produced: ids in the field, the wizard
+  // marked answered, and nothing saying a person chose them.
+  const legacy: MappingState = { ...emptyMappingState(s.tenantId), breakGlassUserIds: ['admin', 'bg'], wizardAnswered: { breakGlass: true } }
+  const migrated = migrateEmergencySelection(legacy)
+  assert.deepEqual(migrated.breakGlassUserIds, [], 'not authoritative')
+  assert.deepEqual(migrated.breakGlassPriorIds, ['admin', 'bg'], 'and not thrown away either')
+  assert.equal(operatorConfirmedEmergency(migrated), false)
+  assert.deepEqual(offered(s, migrated), ['bg', 'admin'], 'both are still offered to choose')
+  assert.deepEqual(ticked(s, migrated), [], 'and neither is ticked')
+  assert.deepEqual(applied(s, migrated).breakGlassUserIds, [], 'nothing downstream inherits them')
+  assert.equal(facts(s, applied(s, migrated)).kinds.emergency, 0)
+  // Idempotent: migrating the migrated record moves nothing further.
+  assert.deepEqual(migrateEmergencySelection(migrated), migrated)
+  // A record that does carry the operator's own provenance keeps its decision.
+  const confirmed: MappingState = { ...legacy, assumed: { breakGlass: 'confirmed' } }
+  assert.deepEqual(migrateEmergencySelection(confirmed), confirmed, 'an operator-authored record is untouched')
+  assert.deepEqual(ticked(s, confirmed), ['bg', 'admin'], 'and comes back ticked')
+  // The migration runs where a record is read, not somewhere a caller may forget.
+  assert.match(readFileSync('src/mapping/store.ts', 'utf8'), /migrateEmergencySelection\(\{ \.\.\.emptyMappingState/, 'loadMappingState migrates the record it reads')
+})
+
+// A plan file carries the mapping without provenance and the decisions with it.
+test('a plan file round-trip: the mapping’s ids are prior context, the saved decision is the authority', () => {
+  const s = smallTenant('admin')
+  const confirmedMapping = applied(s, emptyMappingState(s.tenantId), { [BREAK_GLASS_STEP_ID]: { picked: ['bg'], at: s.asOf } })
+  // roadmap/plan.ts strips `assumed` from the file's mappings block.
+  const fromFile = { ...confirmedMapping, assumed: undefined }
+  const reloaded = migrateEmergencySelection({ ...fromFile } as MappingState)
+  assert.deepEqual(reloaded.breakGlassUserIds, [], 'the file’s mapping alone proves nothing')
+  assert.deepEqual(reloaded.breakGlassPriorIds, ['bg'], 'the ids survive as context')
+  // The file's decisions block is restored alongside it, and that is exact authorship.
+  const withDecision = applied(s, reloaded, { [BREAK_GLASS_STEP_ID]: { picked: ['bg'], at: s.asOf } })
+  assert.deepEqual(withDecision.breakGlassUserIds, ['bg'], 'the operator’s own decision comes back')
 })
