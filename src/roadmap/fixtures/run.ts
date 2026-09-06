@@ -21,6 +21,7 @@ import { buildNameDirectory } from '../../names.ts'
 import { generateRoadmap } from '../generate.ts'
 import { annotateStateReasons } from '../stateReason.ts'
 import { applyProgress } from '../progress.ts'
+import { settleForecast } from '../forecast.ts'
 import { cleanupRecord } from '../cleanupDone.ts'
 import type { Fixture } from './index.ts'
 import type { RoadmapInput } from '../generate.ts'
@@ -109,6 +110,11 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
     groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])),
     activePeople: activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(f.mapping)),
   })
+  // Tracking has settled every lifecycle, so the schedule's own forecast can be
+  // taken off the steps it was never earned for: an enforcement wave and an
+  // enforce event were placed on every step before the scan found which policies
+  // already exist (roadmap/forecast.ts settleForecast).
+  settleForecast(result.steps, result.schedule)
   // State reasons read the tracking (the real enforcement date), so they come last.
   annotateStateReasons(result.steps)
   const end = performance.now()

@@ -83,8 +83,14 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
     const r = Object.keys(over).length > 0 ? runFixture({ ...f, snapshot }, over as Partial<RoadmapInput>) : first
     const step = r.steps.find((s) => s.id === c.stepId)!
     assert.equal(step.kind, 'adjust', `${c.name}: a change step`)
-    assert.ok(step.events, `${c.name}: the change is dated`)
-    assert.ok(step.events!.announce && step.events!.announce.at < step.events!.enforce.at, `${c.name}: announce, then change`)
+    // The three dates the plan drew for the step. A policy already in report-only
+    // whose only remaining submission is its enforcement carries none of them:
+    // the plan keeps that rollout apart from the step's milestones
+    // (roadmap/forecast.ts settleForecast), which is why its Dates line below is
+    // the observation line rather than "Announce · Change".
+    const events = step.events ?? r.schedule.forecastOnly?.[step.id]?.events ?? null
+    assert.ok(events, `${c.name}: the change is dated`)
+    assert.ok(events.announce && events.announce.at < events.enforce.at, `${c.name}: announce, then change`)
     const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
     const view = stepExportView(step, ctx)
     assert.ok(view.dates && c.dates.test(view.dates), `${c.name}: the Dates line (${view.dates})`)

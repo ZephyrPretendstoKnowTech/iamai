@@ -27,7 +27,8 @@
 // This module decides neither of those. It *reads* Foundation B's lifecycle and
 // says which of the two the step's enforcement date is. Nothing here writes a
 // lifecycle, moves a step forward, or lets a forecast satisfy a gate.
-import type { Step } from './types.ts'
+import type { Step, StepEvents } from './types.ts'
+import type { Schedule } from './schedule.ts'
 import { enforcesOnRun, operationsOf } from './operations.ts'
 
 /** What a step's enforcement date is worth. */
@@ -128,10 +129,11 @@ export function forecastEnforcement(step: Step): boolean {
  * it.
  *
  * It is also the sibling of `awaitingDeployment` for every surface that dates a
- * step: while the one thing left to submit is an enforcement, the rings, the
- * wave and the enforce event are the roadmap's forecast for a window that has
- * not closed, and the days the step has earned are the day it entered
- * report-only and the review milestone its own gates derive.
+ * step: while the one thing left to submit is an enforcement, the rollout the
+ * schedule drew is the roadmap's forecast for a window that has not closed, and
+ * the days the step has earned are the day it entered report-only and the review
+ * milestone its own gates derive. `settleForecast` below takes that forecast off
+ * the plan on the strength of this reading.
  */
 export function enforcementUnearned(step: Step): boolean {
   if (step.state.lifecycle !== 'report-only') return false
@@ -156,13 +158,86 @@ export function enforcementUnearned(step: Step): boolean {
  * support, and a bare instant in a JSON bundle is indistinguishable from a date
  * a policy has earned.
  *
- * So the rings, the wave and the enforce event stay on the step — that is the
- * roadmap — and no surface hands one to a person or a tool as this step's
+ * So no surface hands a projection to a person or a tool as this step's
  * enforcement. The sibling readings are `rowWhen` (the row's date column),
  * `stepExport` (the Dates line, `{datesObserve}`), `buildIcs` (the calendar
  * books the review) and `nextMilestone` (Observe): five surfaces, one answer.
+ * `settleForecast` below is the same answer written into the plan's own data,
+ * so a consumer that reads the schedule or the step instead of asking here finds
+ * no enforcement wave and no enforce event to read.
  */
 export function statedEnforcement(step: Step): EnforcementTiming {
   if (enforcementUnearned(step)) return { basis: 'unearned', at: null }
   return enforcementTiming(step)
+}
+
+/**
+ * The rollout the schedule drew for a step whose enforcement Foundation B has
+ * not granted: kept, because it is the roadmap, and kept out of the plan.
+ *
+ * `wave` is the enforcement wave the step was placed in before its lifecycle was
+ * known, `null` where the schedule placed it nowhere; `events` is the announce /
+ * remind / enforce set the generator dated it with. Neither is a milestone. A
+ * consumer that wants to draw the projected shape of the rollout reads this and
+ * has to say what it is; a consumer that wants the step's next dated thing reads
+ * `statedEnforcement`, `readyWhen` and `nextMilestone` and finds no enforcement
+ * in any of them.
+ */
+export type ForecastPlacement = { wave: number | null; events: StepEvents | null }
+
+/**
+ * Take the projected enforcement off a step Foundation B has not granted one.
+ *
+ * The generator has to date and place every step before it can know this. It
+ * builds the schedule, puts each step in an enforcement wave and writes its
+ * three events while `state.lifecycle` is still `not-deployed` on all of them:
+ * tracking is what finds the deployed policy and settles the lifecycle, and that
+ * runs afterwards (roadmap/progress.ts). So a step the scan finds sitting in
+ * report-only with its window open — nothing left to submit but the enforcement,
+ * and nothing that has earned it — comes out of the generator carrying an
+ * enforcement date and a place in an enforcement wave that were decided before
+ * anyone knew the policy existed.
+ *
+ * Withholding those from each surface that prints a date was half the job: the
+ * schedule and the step are the plan's data, a wave is a dated rollout phase and
+ * `events.enforce` is a scheduled milestone, and a consumer reading either one
+ * reads a commitment however carefully the screen words itself. So the plan
+ * stops carrying them: the placement moves to `schedule.forecastOnly`, which is
+ * named for what it is worth, and the step's events go with it. The step then
+ * renders in the Plan's undated group, where a step no wave carries belongs
+ * (ui/surfaces/planRows.ts) — the row still says Report-only and dates the review
+ * its own gates derive.
+ *
+ * What stays is the step's rings. They are the shape of the rollout, not a
+ * milestone, no surface dates this step from them, and the calendar needs one to
+ * book the review entry on the review day (roadmap/ics.ts).
+ *
+ * Its dated announcement draft goes too. `Step.comms` is the text the prompt pack
+ * hands to a model (roadmap/prompts.ts `announcementDraft`) with the projected
+ * day already written into it, and the same absence closes the screen's Tell
+ * your people box and every copy of it: with no events there is no `{enforceLong}`
+ * to fill, and a template with an unfillable hole renders nothing at all
+ * (ui/surfaces/stepExport.ts `commsFor`). An email is the one artifact IAMAI
+ * writes that leaves the tenant, and this step has no day to give it.
+ *
+ * Runs once, on the finished plan, after tracking has settled every lifecycle
+ * and before the state reasons read them.
+ */
+export function settleForecast(steps: readonly Step[], schedule: Schedule): Schedule {
+  const forecastOnly: Record<string, ForecastPlacement> = { ...(schedule.forecastOnly ?? {}) }
+  for (const step of steps) {
+    if (!enforcementUnearned(step)) continue
+    // Called twice on one plan, the second pass finds the projection already
+    // taken off and must not record its own absence over it.
+    forecastOnly[step.id] ??= { wave: schedule.waveOf[step.id] ?? null, events: step.events }
+    step.events = null
+    step.comms = null
+    delete schedule.waveOf[step.id]
+    for (const wave of schedule.waves) {
+      const at = wave.stepIds.indexOf(step.id)
+      if (at !== -1) wave.stepIds.splice(at, 1)
+    }
+  }
+  schedule.forecastOnly = forecastOnly
+  return schedule
 }

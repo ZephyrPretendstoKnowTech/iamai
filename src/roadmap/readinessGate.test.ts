@@ -196,7 +196,11 @@ test('5: a material change to an already-enabled policy is held while its readin
   const met = ready.steps.find((s) => s.id === ADMINS) as Step
   assert.equal(met.readiness.percent, 100)
   assert.equal(implementationOffered(met), true)
-  assert.ok(met.events, 'and dated')
+  // And dated. The policy is in report-only and the operation enforces on run,
+  // so Foundation B holds that date as the plan's projection rather than the
+  // step's milestone (roadmap/forecast.ts settleForecast): a readiness gate
+  // releasing is not an observation window closing.
+  assert.ok(met.events ?? ready.schedule.forecastOnly?.[met.id]?.events, 'and dated')
 })
 
 test('6: an already-enabled policy with no material change stays in place, and no readiness holds it', () => {
