@@ -16,6 +16,7 @@ import { fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
+import { instructionsHeld } from './stepInstructions.ts'
 import { stepContract } from './stepContract.ts'
 import { createsNewPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
@@ -104,6 +105,10 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // carry what the screen carries — the next action, which is to keep watching —
   // and none of the instructions for making the change.
   const unearned = cs.kind === 'policy' && enforcementUnearned(step)
+  // The one reading the screen makes too (stepInstructions.ts): while an
+  // authority holds the change, the lead and the "before" lines say nothing on
+  // either surface.
+  const held = instructionsHeld(step, cs)
   const suppressed = cs.kind === 'policy' && !implementationOffered(step)
   const waiting = reason === 'missing-object'
   const unmatched = reason === 'unmatched-pair'
@@ -120,8 +125,8 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // setting to change before it is created. While it cannot be written they say
   // nothing here either, on any surface that reads this view (the exports, the
   // print, the prompts, the grounding bundle): the next action stands alone.
-  if (reason === null && !unearned && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
-  if (reason === null && !unearned && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
+  if (!held && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
+  if (!held && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
   else if (waiting) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.jsonWaits), { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') }))
   else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))

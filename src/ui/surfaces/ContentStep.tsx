@@ -28,7 +28,8 @@ import { commsFor, datesLineFor, ifWrongLineFor, managerText, whoEvidenceLines, 
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
+import { portalNamesFor } from './stepPortal.ts'
+import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
 import { stepContract } from './stepContract.ts'
@@ -119,14 +120,18 @@ export function ContentStep({
   // The tenant's objects behind the baseline's placeholders (a saved decision
   // included), or the names the plan proposes for them, so every line is a name.
   const portalNames = portalNamesFor(ctx, ex, String(cs.title))
-  // The step's own resolved policies through the translator (stepPortal.ts): the
-  // same bodies the JSON, the PowerShell and the download carry. A floor step
-  // (Microsoft recommended, not in this baseline) carries the template the
-  // engine resolved for this tenant, and renders through the same translator.
-  const portalLines = cs.kind === 'policy' ? stepPortalLines(step, portalNames) : null
+  // What to do offers today (stepInstructions.ts): the step's own resolved
+  // policies through the translator — the same bodies the JSON, the PowerShell
+  // and the download carry — the content's leading "before" lines, and the
+  // step's own instruction lines. All three are withheld together while an
+  // authority holds the change: a policy the plan may not write, or one
+  // deployed in report-only whose only remaining submission is the enforcement
+  // its window has not earned. The export view reads the same decision, so the
+  // screen cannot instruct a change the artifacts refuse to describe.
+  const instructions = stepInstructions(step, cs, ex as Record<string, unknown>, portalNames)
   // A goal the baseline holds no policy for has no portal lines; an empty list is
   // not a What to do (the shared-devices step rendered an empty section).
-  const portal = portalLines && portalLines.length > 0 ? portalLines : null
+  const portal = instructions.portal
   // Why an implementation is not offered — a missing object, an unmatched pair,
   // an emergency account in reach, an unverified way back in, a readiness
   // threshold, a baseline that contradicts itself — is one question with one
@@ -134,11 +139,11 @@ export function ContentStep({
   // still read here is only whether the step has *dates* and a rollback to show,
   // which it does not while its policy cannot be written.
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
-  const hasSteps = Array.isArray(w.steps) && (w.steps as unknown[]).length > 0
   // The content's leading "before" lines (a setting to change before the policy
   // is created: the device-settings toggle, password writeback, the SharePoint
   // access control) stay above the translator's portal lines, numbered with them.
-  const before: string[] = (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex as Record<string, unknown>))
+  const before = instructions.before
+  const hasSteps = instructions.steps.length > 0
   // Who the step reaches is the contract's answer (Foundation A): a reach this
   // scan could not settle says so in one line and shows no count, which is why
   // the section renders even where the step's own who-lines could not fill.
@@ -245,7 +250,7 @@ export function ContentStep({
         // has them; the eight reason branches that used to stand here were the
         // same eight sentences a second time, chosen by a second reading of
         // Foundation A inside the JSX.
-        (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...(hasSteps ? (w.steps as unknown[]).map((l) => <T s={l} ex={ex} />) : [])].map((node, i) => <li key={i}>{node}</li>)}</ol>
+        (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...instructions.steps.map((l) => <T s={l} ex={ex} />)].map((node, i) => <li key={i}>{node}</li>)}</ol>
       )}
 
       <FixBeforeContinuing fix={contract.fix} />
