@@ -4,7 +4,7 @@ import { count } from './statements.ts'
 export const INVENTORY = {
   title: 'Inventory',
   heading: 'Everything the scan read',
-  backToToday: '← Today',
+  backToReadiness: '← MFA Readiness',
   tabs: {
     policies: 'Policies',
     locations: 'Named locations',

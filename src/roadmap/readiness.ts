@@ -21,6 +21,31 @@ const GUEST_GOALS = new Set(['guests-mfa'])
 const BLOCK_GOALS = new Set(['block-legacy-auth', 'block-device-code', 'block-auth-transfer', 'block-unsupported-platforms'])
 const LOCATION_GOALS = new Set(['geo-restriction'])
 
+/**
+ * The one reading of "this person can already meet an ordinary MFA
+ * requirement": an active person the scoring has seen pass MFA, or holds a
+ * method it can say will work. It is deliberately *not* rung 5.
+ *
+ * MFA Readiness asks the organisation to get everyone to a proven passkey. A
+ * policy that requires ordinary MFA is not held back because somebody has not
+ * got there yet, and this predicate is why: the percentage below and the
+ * roadmap's own count of who is not ready (roadmap/generate.ts) both read it,
+ * so a step is measured against its own requirement and nothing else.
+ */
+export function mfaReady(v: Pick<MfaViability, 'activity' | 'mfa'>): boolean {
+  return v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')
+}
+
+/**
+ * The one reading of "this admin already meets a phishing-resistant
+ * requirement" (E7): Passkey or security key, proven — derive/ladder.ts rung 5,
+ * the same rung the lockout list reads. A policy that asks for the stronger
+ * method may legitimately wait for it.
+ */
+export function adminReady(v: MfaViability): boolean {
+  return rungOf(v) === 5
+}
+
 export function goalFamily(goalId: string): Readiness['family'] {
   if (MFA_GOALS.has(goalId)) return 'mfa'
   if (ADMIN_GOALS.has(goalId)) return 'admin'
@@ -63,14 +88,14 @@ export function readinessFor(
 
   if (family === 'mfa' || family === 'guest') {
     let good = 0
-    for (const v of rows) if (v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')) good += 1
+    for (const v of rows) if (mfaReady(v)) good += 1
     // Nobody in scope → nothing to be ready; null so the gate does not block.
     const percent = active.length > 0 ? Math.round((good / active.length) * 100) : null
     return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
   }
   if (family === 'admin') {
     // One definition of enough (E7): an admin is ready at Passkey or security key, proven (derive/ladder.ts rung 5), the same rung the lockout list reads.
-    const ready = rows.filter((v) => rungOf(v) === 5).length
+    const ready = rows.filter(adminReady).length
     const percent = rows.length > 0 ? Math.round((ready / rows.length) * 100) : null
     return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
   }

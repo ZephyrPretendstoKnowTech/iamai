@@ -5,9 +5,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { todayView } from '../../derive/today.ts'
-import { todayTable } from './inventoryTables.ts'
-import { methodWord, readinessWord, todayEvidenceText } from './todayCells.ts'
+import { readinessView } from '../../derive/mfaReadiness.ts'
+import { readinessTable } from './inventoryTables.ts'
+import { methodWord, nextStateWord, readinessWord, rowEvidenceText } from './readinessCells.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
@@ -29,17 +29,19 @@ import { fillText } from '../../content/render.ts'
 
 const FIXTURES = ['demo', 'getiamai'] as const
 
-test('Today as CSV writes the readiness word, the method word and the evidence line the Today table renders', () => {
+test('MFA Readiness as CSV writes the readiness word, the method word, the proof line and the next state the table renders', () => {
   for (const name of FIXTURES) {
     const f = fixture(name)
-    const view = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
-    const table = todayTable(f.snapshot, f.mapping)
-    assert.deepEqual(table.header, ['Account', 'Readiness', 'Strongest method', 'Evidence'])
+    const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    const table = readinessTable(f.snapshot, f.mapping)
+    assert.deepEqual(table.header, ['Account', 'Readiness', 'Strongest method', 'Proof', 'Next step'])
+    assert.equal(table.csvName, 'iamai-mfa-readiness.csv')
     assert.equal(table.rows.length, view.rows.length, `${name}: one CSV row per table row`)
     view.rows.forEach((r, i) => {
       assert.equal(table.rows[i][1], readinessWord(r), `${name} row ${i}: the readiness word`)
       assert.equal(table.rows[i][2], methodWord(r.method), `${name} row ${i}: the method word`)
-      assert.equal(table.rows[i][3], todayEvidenceText(r), `${name} row ${i}: the evidence line`)
+      assert.equal(table.rows[i][3], rowEvidenceText(r), `${name} row ${i}: the proof line`)
+      assert.equal(table.rows[i][4], nextStateWord(r), `${name} row ${i}: the next state`)
     })
   }
 })

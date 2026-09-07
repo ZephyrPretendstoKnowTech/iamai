@@ -123,7 +123,7 @@ function sources(dir: string, out: string[] = []): string[] {
 }
 
 test('each action from each location reaches the same function: the surfaces import ui/actions.ts and nothing under src/ui but it touches the library, the store or the collector', () => {
-  const SITES = ['src/ui/shell/AppShell.tsx', 'src/ui/surfaces/Connect.tsx', 'src/ui/surfaces/Today.tsx', 'src/ui/surfaces/Plan.tsx', 'src/ui/scan/ScanProgress.tsx']
+  const SITES = ['src/ui/shell/AppShell.tsx', 'src/ui/surfaces/Connect.tsx', 'src/ui/surfaces/MfaReadiness.tsx', 'src/ui/surfaces/Plan.tsx', 'src/ui/scan/ScanProgress.tsx']
   for (const file of SITES) {
     const src = readFileSync(file, 'utf8')
     assert.match(src, /from '(\.\.\/)+actions\.ts'|from '\.\/actions\.ts'/, `${file} imports the action module`)
@@ -134,7 +134,7 @@ test('each action from each location reaches the same function: the surfaces imp
   // The header menu's two buttons, Connect's tile buttons and Today's Scan again call the actions by name.
   assert.match(readFileSync('src/ui/shell/AppShell.tsx', 'utf8'), /run\(signOut\(\)\)[\s\S]*run\(forgetTenant\(\)\)/)
   assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /run\(signInAnother\(\)\)[\s\S]*run\(signOut\(\)\)/)
-  assert.match(readFileSync('src/ui/surfaces/Today.tsx', 'utf8'), /run\(scan\(todayHref\(show\)\)\)/)
+  assert.match(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /run\(scan\(readinessHref\(show\)\)\)/)
   for (const file of sources('src/ui')) {
     if (file.endsWith('src/ui/actions.ts')) continue
     const src = readFileSync(file, 'utf8')

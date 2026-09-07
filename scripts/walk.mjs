@@ -26,15 +26,15 @@ import { absentStepIds } from '../src/roadmap/baselineScope.ts'
 import { isFloorGoal } from '../src/roadmap/floor.ts'
 import { pages, steps as contentSteps, stepById } from '../src/content/content.ts'
 import { fillText } from '../src/content/render.ts'
-import * as todayModel from '../src/derive/today.ts'
+import * as readinessModel from '../src/derive/mfaReadiness.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
 import { RETIRED_OPENER } from './build-home.ts'
 
 // The ladder's five rung titles, top to bottom (pages.ladder; derive/ladder.ts
-// RUNGS): Today's rows, the Plan strip's tiles and Connect's tiles read them.
+// RUNGS): a person's badge on MFA Readiness and Connect's Plan tile read them.
 // Read through the namespace so a build without the model still walks.
-const RUNG_TITLES = (todayModel.SHOW_KEYS ?? []).filter((k) => k.startsWith('rung-')).map((k) => pages.ladder.rungs[`r${k.slice(5)}`].title)
+const RUNG_TITLES = (readinessModel.COMPAT_SHOW_KEYS ?? []).filter((k) => k.startsWith('rung-')).map((k) => pages.ladder.rungs[`r${k.slice(5)}`].title)
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
@@ -407,7 +407,7 @@ async function walkFixture(fx) {
   }
   mkdirSync(dir, { recursive: true })
   const summary = []
-  const routeContract = { connect: 'connect.signedIn', today: 'today', plan: 'plan', export: 'export', how: 'how', inventory: 'inventory', error: 'error' }
+  const routeContract = { connect: 'connect.signedIn', readiness: 'readiness', plan: 'plan', export: 'export', how: 'how', inventory: 'inventory', error: 'error' }
   let rowTitles = []
   let rowStatuses = []
   let rowWhens = []
@@ -427,13 +427,14 @@ async function walkFixture(fx) {
   // The campaign step's own rung counts, read where the decision is made, for the
   // ladder to agree with once both have been walked.
   let campaignRungs = null
-  // Today's five rung counts by title, for Connect's tiles and the campaign step to agree with.
+  // The five rung counts by title, read from MFA Readiness filtered to each rung,
+  // for Connect's tiles and the campaign step to agree with.
   let ladderCounts = null
   for (const width of WIDTHS) {
     await setWidth(width)
     const wdir = join(dir, String(width))
     mkdirSync(wdir, { recursive: true })
-    for (const route of fx.routes ?? ['plan', 'today', 'export', 'how', 'connect', 'inventory']) {
+    for (const route of fx.routes ?? ['plan', 'readiness', 'export', 'how', 'connect', 'inventory']) {
       const label = `${fx.name} @${width} /${route}`
       await send('Page.navigate', { url: `${fx.base}#/${route}` })
       await sleep(600)
@@ -531,11 +532,11 @@ async function walkFixture(fx) {
       // The signed-in account is a person like any other (derive/operator.ts is
       // display only): with its directory sign-in 200 days stale it reads not
       // active on Today, like anyone else's would, and never "signed in now".
-      if (fx.mock === 'operator' && route === 'today') {
+      if (fx.mock === 'operator' && route === 'readiness') {
         const row = await evaluate(`(() => { const tr = [...document.querySelectorAll('main.page table.datatable tbody tr')].find((r) => /Alex Morgan/.test(r.innerText)); if (!tr) return null; const tds = [...tr.querySelectorAll('td')].map((td) => (td.innerText || '').replace(/\\s+/g, ' ').trim()); return { state: tds[1] || '', evidence: tds[3] || '', text: tr.innerText.replace(/\\s+/g, ' ') } })()`)
-        if (!row) add('P0', `${label}: Today has no row for the signed-in account`)
+        if (!row) add('P0', `${label}: MFA Readiness has no row for the signed-in account`)
         else {
-          if (!/not active/i.test(row.state)) add('P0', `${label}: Today reads the signed-in account's stale directory sign-in as "${row.state}"; not active, like anyone else's`)
+          if (!/not active/i.test(row.state)) add('P0', `${label}: MFA Readiness reads the signed-in account's stale directory sign-in as "${row.state}"; not active, like anyone else's`)
           if (/signed in now/.test(row.evidence)) add('P0', `${label}: the signed-in account's evidence reads "${row.evidence}"; the population never depends on who is signed in`)
         }
       }
@@ -545,12 +546,12 @@ async function walkFixture(fx) {
         add(width < 600 ? 'P1' : 'P1', `${label}: the page overflows the viewport by ${overflow}px (${widest})`)
       }
       summary.push({ width, route, words: text.split(/\s+/).filter(Boolean).length, rows: d.rows.length })
-      // Today's "n admins" is the count of rows tagged Admin (E5); the demo's
+      // The "n admins" is the count of rows tagged Admin (E5); the demo's
       // people fit one page, so the tags on the page are every tag. The ledger
       // line counts every account once, its kinds summing to the accounts; the
-      // ladder is five boxed rungs by title (pages.ladder), the rule before the
-      // three to prioritise, each rung's count the number of rows it filters to.
-      if (route === 'today') {
+      // three group counts sum to the active people, and each filters the table to
+      // exactly the rows it counts (task 012).
+      if (route === 'readiness') {
         const ledger = text.match(/(\d+) accounts?: (.*?)\s*(?:sign-ins [A-Z][a-z]{2} \d+ → |no sign-in records)/)
         if (!ledger) add('P0', `${label}: the ledger line is missing`)
         else {
@@ -558,24 +559,49 @@ async function walkFixture(fx) {
           if (parts.reduce((a, b) => a + b, 0) !== Number(ledger[1])) add('P0', `${label}: the ledger's kinds sum to ${parts.reduce((a, b) => a + b, 0)} and it counts ${ledger[1]} accounts ("${ledger[0].slice(0, 80)}")`)
           if (/\b0 /.test(ledger[2])) add('P0', `${label}: the ledger names a kind at zero ("${ledger[2].slice(0, 80)}")`)
         }
-        const rungs = await evaluate(`[...document.querySelectorAll('main.page .ladder .ladder-row')].map((li) => { const c = li.querySelector('.rung-title').cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return { title: (c.textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((li.querySelector('.rung-n') || {}).textContent || '').trim()), rung: li.getAttribute('data-rung') } })`)
-        if (rungs.length !== RUNG_TITLES.length || rungs.some((r, k) => r.title !== RUNG_TITLES[k])) add('P0', `${label}: the rungs read ${JSON.stringify(rungs.map((r) => r.title))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
+        // The three counts the page shows over the active people. They are a view
+        // of the rungs, so they share the ladder's denominator, and each one filters
+        // the table to exactly the rows it counts.
+        const active = Number((text.match(/of (\d+) active (?:person|people)/i) || [])[1] ?? NaN)
+        const groups = await evaluate(`[...document.querySelectorAll('main.page .group-count')].map((b) => ({ title: ((b.querySelector('.group-title') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.group-n') || {}).textContent || '').trim()) }))`)
+        const GROUP_TITLES = ['Passkey-ready', 'Needs proof', 'Needs a passkey']
+        if (groups.length !== 3 || groups.some((g, k) => g.title !== GROUP_TITLES[k])) add('P0', `${label}: the counts read ${JSON.stringify(groups.map((g) => g.title))}; ${JSON.stringify(GROUP_TITLES)}`)
         else {
-          const active = Number((text.match(/of (\d+) active (?:person|people)/i) || [])[1])
-          if (rungs.reduce((a, r) => a + r.n, 0) !== active) add('P0', `${label}: the rungs sum to ${rungs.reduce((a, r) => a + r.n, 0)} and the header says of ${active} active people`)
-          if ((await evaluate(`document.querySelectorAll('main.page .ladder .ladder-divider').length`)) !== 1) add('P0', `${label}: the rule before the three to prioritise is missing`)
-          // Clicking a rung filters the table to its people; a second click clears it.
+          const summary = text.match(/(\d+) of (\d+) active (?:person|people) have proven/)
+          // A tenant with nobody active says so instead, and has no numbers to state.
+          if (!summary && !/No active people to count/.test(text)) add('P0', `${label}: the readiness summary line is missing`)
+          else if (!summary) void 0
+          else {
+            if (Number(summary[1]) !== groups[0].n) add('P0', `${label}: the summary says ${summary[1]} passkey-ready and the count says ${groups[0].n}`)
+            const total = groups.reduce((x, g) => x + g.n, 0)
+            const notKnown = Number((text.match(/could not be read for (\d+) active people/) || [])[1] ?? 0)
+            if (total + notKnown !== Number(summary[2])) add('P0', `${label}: the groups sum to ${total + notKnown} and the summary counts ${summary[2]} active people`)
+          }
+          // Each count filters the table to its own rows; pressing it again clears it.
           const rowsShown = () => evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
-          for (const r of rungs) {
-            await evaluate(`(() => { const li = document.querySelector('main.page .ladder .ladder-row[data-rung="${r.rung}"]'); li.scrollIntoView({ block: 'center' }); li.click() })()`)
+          for (let k = 0; k < groups.length; k++) {
+            await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .group-count')][${k}]; b.scrollIntoView({ block: 'center' }); b.click() })()`)
             await sleep(200)
             const shown = await rowsShown()
-            if (shown !== r.n) add('P0', `${label}: "${r.title}" counts ${r.n} and the table filtered to it shows ${shown} rows`)
-            await evaluate(`(() => { const li = document.querySelector('main.page .ladder .ladder-row[data-rung="${r.rung}"]'); li.click() })()`)
+            if (shown !== groups[k].n) add('P0', `${label}: "${groups[k].title}" counts ${groups[k].n} and the table filtered to it shows ${shown} rows`)
+            await evaluate(`(() => { [...document.querySelectorAll('main.page .group-count')][${k}].click() })()`)
             await sleep(150)
           }
-          ladderCounts = Object.fromEntries(rungs.map((r) => [r.title, r.n]))
         }
+        // The rungs are still the truth under the groups, and Connect's tiles link
+        // to them: each rung hash filters the table to the people counted on it.
+        const rungCounts = {}
+        for (let r = 5; r >= 1; r--) {
+          await evaluate(`location.hash = '#/readiness/rung-${r}'`)
+          await sleep(400)
+          rungCounts[RUNG_TITLES[5 - r]] = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
+        }
+        await evaluate(`location.hash = '#/readiness'`)
+        await sleep(400)
+        if (!Number.isNaN(active) && Object.values(rungCounts).reduce((x, n) => x + n, 0) !== active) {
+          add('P0', `${label}: the five rungs filter to ${Object.values(rungCounts).reduce((x, n) => x + n, 0)} rows and the page counts ${active} active people`)
+        }
+        ladderCounts = rungCounts
         // The accounts that are not people read "not a person"; with a method set
         // up they carry their rung's badge (every account with a method gets a rung),
         // with nothing set up a grey dash; the rungs' counts never include them.
@@ -622,7 +648,7 @@ async function walkFixture(fx) {
         if (h1 !== 'Plan the journey to your Conditional Access baseline.') add('P0', `${label}: the heading reads "${h1}"; Plan the journey to your Conditional Access baseline.`)
         if (!/IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to help you close the gaps without locking anyone out\. It is read-only and runs in this browser\./.test(text)) add('P0', `${label}: the line under the heading is missing or changed`)
         if (/Connect a tenant/.test(text)) add('P0', `${label}: "Connect a tenant" still renders`)
-        // The ladder's five tiles are links to Today filtered (docs/design/mockups/connect-v2.html), not actions.
+        // The ladder's five tiles are links to MFA Readiness filtered (docs/design/mockups/connect-v2.html), not actions.
         const bare = await evaluate(`[...document.querySelectorAll('main.page section.step-tile a[href]:not(.btn):not(.lnk):not(.rung-tile)')].map((a) => (a.textContent || '').trim())`)
         if (bare.length > 0) add('P0', `${label}: bare link(s) on Connect: ${bare.join(' | ')}; every action is a button in one of three weights`)
         if (/Security Reader|Reports Reader|Directory Readers/.test(text)) add('P0', `${label}: a role other than Global Reader is named on screen`)
@@ -799,7 +825,7 @@ async function walkFixture(fx) {
           if (wantPlan === 'ready') {
             // The state carries the step counts once the plan has computed (docs/design/mockups/connect-v2.html):
             // "ready · N steps, N done · from the scan <age>"; under it the ladder's header and five tiles, each
-            // linking to Today filtered to its rung; no facts row, no drop line.
+            // linking to MFA Readiness filtered to its rung; no facts row, no drop line.
             const counted = await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan /.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
             if (!counted) add('P0', `${label}: the Plan tile never counted its steps in its state line`)
             const state = await evaluate(`((document.querySelectorAll('main.page section.step-tile')[3] || {}).querySelector('h2 .state') || {}).textContent || ''`)
@@ -814,8 +840,8 @@ async function walkFixture(fx) {
               if (tiles.some((t, k) => t.label !== RUNG_TITLES[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
               const active = Number((t4.text.match(/of (\d+) active (?:person|people)/i) || [])[1])
               if (tiles.reduce((a, t) => a + t.n, 0) !== active) add('P0', `${label}: the tiles sum to ${tiles.reduce((a, t) => a + t.n, 0)} and the header says of ${active} active people`)
-              for (const [k, t] of tiles.entries()) if (!new RegExp(`#/today/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; Today filtered to its rung`)
-              if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: Connect's "${t.label}" reads ${t.n} and Today's ${ladderCounts[t.label]}`)
+              for (const [k, t] of tiles.entries()) if (!new RegExp(`#/readiness/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; MFA Readiness filtered to its rung`)
+              if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: Connect's "${t.label}" reads ${t.n} and MFA Readiness filtered to that rung shows ${ladderCounts[t.label]}`)
               // One denominator (E4): the Plan header's counts, read now rather than
               // from the Plan route's capture (the walk's own clicks there mark a
               // Cleanup row done, so an earlier capture is stale by design).
@@ -866,9 +892,9 @@ async function walkFixture(fx) {
           if (!kept) add('P0', `${label}: the last good plan is gone after a scan with gaps`)
         }
       }
-      // The page tips: Today and Export keep theirs; the Plan has none.
+      // The page tips: MFA Readiness and Export keep theirs; the Plan has none.
       const tips = await evaluate(`document.querySelectorAll('main.page .page-tip').length`)
-      if ((route === 'today' || route === 'export') && tips !== 1) add('P0', `${label}: the page renders ${tips} tips; it keeps one`)
+      if ((route === 'readiness' || route === 'export') && tips !== 1) add('P0', `${label}: the page renders ${tips} tips; it keeps one`)
       if (route === 'plan' && tips !== 0) add('P0', `${label}: the Plan still renders a page tip`)
       // The MFA readiness ladder left the Plan (task 011): a tenant-wide diagnostic
       // on a page whose job is the rollout. Today draws it and Connect's Plan tile
@@ -876,7 +902,7 @@ async function walkFixture(fx) {
       // the old readiness strip and the two note lines stay gone.
       if (route === 'plan') {
         const ladders = await evaluate(`document.querySelectorAll('main.page .rung-tiles').length`)
-        if (ladders > 0) add('P0', `${label}: the MFA readiness ladder renders on the Plan; it is Today's`)
+        if (ladders > 0) add('P0', `${label}: the MFA readiness ladder renders on the Plan; the five tiles are Connect's`)
         if ((await evaluate(`document.querySelectorAll('main.page .readiness, main.page .readiness-people').length`)) > 0) add('P0', `${label}: the old readiness strip still renders`)
         if (/Clear the date|Starting locks the dates/.test(text)) add('P0', `${label}: a note under the start date still renders`)
       }
@@ -1306,7 +1332,7 @@ async function walkFixture(fx) {
     }
   }
   // The ladder's numbers are the campaign step's for the same rung, wherever each
-  // is drawn: the campaign is a Plan step and the ladder is Today's.
+  // is drawn: the campaign is a Plan step and the five rung tiles are Connect's.
   if (campaignRungs && ladderCounts) {
     const { label, noMethod, unproven, mfaInPlace } = campaignRungs
     if (noMethod !== ladderCounts['Nothing set up']) add('P0', `${label}: the campaign lists ${noMethod} at Nothing set up and the ladder counts ${ladderCounts['Nothing set up']}`)
@@ -1680,7 +1706,7 @@ let firstLoadMs = null
 const fixtures = [
   { name: 'demo', base: `http://localhost:${PORT}/rollout/?demo=1` },
   // The three-minute path's last stop: Scan to update the plan → week two (queue item 4).
-  { name: 'demo-week2', base: `http://localhost:${PORT}/rollout/?demo=1`, week2: true, routes: ['plan', 'today'] },
+  { name: 'demo-week2', base: `http://localhost:${PORT}/rollout/?demo=1`, week2: true, routes: ['plan', 'readiness'] },
   // The mock tenant's Connect refusals: a token without the roles (the scan does
   // not start), a scan that could not read the policies or the sign-in records
   // (finished with gaps; the last good plan kept), and a licence without sign-in
@@ -1693,7 +1719,7 @@ const fixtures = [
   // A surface that throws while drawing: the error page (pages.app.error).
   { name: 'mock-crash', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&crash=1`, routes: ['error'], mock: 'crash' },
   // The signed-in account with a stale directory sign-in: never dormant, never Not active.
-  { name: 'mock-operator', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&operatorDormant=1`, routes: ['today', 'plan'], mock: 'operator' },
+  { name: 'mock-operator', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&operatorDormant=1`, routes: ['readiness', 'plan'], mock: 'operator' },
   // A scan that read a third of the people and policies the previous one did.
   // The demo with an author update over the pinned package: the review rows.
   // Named mock-, not demo-: the demo's plan checks key on the demo- prefix, and this fixture walks Connect alone.
@@ -1738,7 +1764,7 @@ for (const [line, vals, want] of [
 for (const b of BEFORE_LINES) if (b.lines.length === 0) add('P0', `content ${b.id}: no whatToDo.before line; the setting to change before the policy exists is not above its portal lines`)
 
 // Cross-surface invariants.
-for (const [name, readiness] of readinessBy) for (const [kind, values] of readiness) if (values.size > 1) add('P0', `${name}: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and Today (one readiness per kind)`)
+for (const [name, readiness] of readinessBy) for (const [kind, values] of readiness) if (values.size > 1) add('P0', `${name}: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and MFA Readiness (one readiness per kind)`)
 for (const [name, populations] of populationsBy) if (populations.size > 1) add('P0', `${name}: the active-people count reads ${[...populations].join(' and ')} across surfaces (one population)`)
 // The mock-crash fixture throws on purpose (React logs what the boundary caught); every other console error is a finding.
 for (const e of consoleErrors.filter((x) => !/favicon|microsoftonline|net::|ERR_|mock crash \(\?crash=1\)/.test(x))) add('P0', `demo: console error: ${e.slice(0, 160)}`)

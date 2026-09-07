@@ -175,7 +175,14 @@ The superseded version of this state follows for history and is not built:
 
 ---
 
-## 4. Today
+## 4. Today → MFA Readiness
+
+**Superseded by task 012.** This surface is now **MFA Readiness** at `#/readiness` (`#/today`
+resolves to it): the heading, one sentence, one summary over the active people, three counts
+(passkey-ready · needs proof · needs a passkey, `src/derive/mfaReadiness.ts`), one filter row and
+one table. The five-rung ladder it used to draw is Connect's Plan tile alone; the rung is the
+badge in a person's row. Plan is the hero surface and links here for one step's people
+(`src/derive/stepMfaReadiness.ts`). The rest of this section is the record of what it was.
 
 Answers "where are we now" in one screen. Everything is counted over **active people** (§8.1).
 Nothing on this page asks for a decision.

@@ -2,7 +2,7 @@
 // progress, every other page one line under the header, outside header.app,
 // so the header keeps no scan control and no scan age. Today's table reads
 // better with the wide cap (WIDE_ROUTES); its ladder keeps its own, narrower
-// intrinsic width and sits centered above the wider table (.ladder-wrap).
+// intrinsic width and sits above the wider table.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -35,31 +35,29 @@ const specificity = (selector: string): number => {
   return classes * 1000 + elements
 }
 
-test('the wide cap keeps Today, Inventory and How; Today centers its ladder at its own intrinsic width instead of stretching it to the wide table', () => {
-  assert.match(shell, /const WIDE_ROUTES = new Set<Route>\(\['today', 'inventory', 'how'\]\)/)
-  const today = readFileSync('src/ui/surfaces/Today.tsx', 'utf8')
+test('the wide cap keeps MFA Readiness, Inventory and How; the diagnostic above the table keeps the page column instead of stretching to the wide table', () => {
+  assert.match(shell, /const WIDE_ROUTES = new Set<Route>\(\['readiness', 'inventory', 'how'\]\)/)
+  const today = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
   assert.match(today, /<div className="page-head">[\s\S]*<h1>\{T\.h1\}<\/h1>[\s\S]*CONNECT_WORDS\.scan\.complete\.again/, 'Scan again sits beside the heading')
-  assert.match(today, /<div className="ladder-wrap">[\s\S]*<LadderHead[\s\S]*<ul className="ladder">/, 'the ladder head and rows share one centered, capped wrapper')
+  assert.match(today, /<div className="group-counts">/, 'the three readiness counts, not five equal rung tiles')
   const css = readFileSync('src/ui/app.css', 'utf8')
   assert.match(css, /\.surface \.page-head \{[^}]*justify-content: space-between/)
   assert.match(css, /\.scan-line \{/)
-  assert.match(css, /\.ladder-wrap \{[^}]*max-width: var\(--page\)/, 'the wrapper (head and rows together) is capped to the page width, not the wide table width')
+  assert.match(css, /\.group-counts \{[^}]*max-width: var\(--page\)/, 'the counts are capped to the page width, not the wide table width')
+  assert.match(css, /\.surface\.readiness \.line\.summary \{[^}]*max-width: var\(--page\)/, 'and so is the summary line above them')
 
-  // The generic .surface ul/ol rule (prose lists) sets a prose max-width and a
-  // list indent; both outrank .ladder's own (single-class) rule and would
-  // otherwise leave the rows narrower than .ladder-wrap and flush left inside
-  // it, out of line with the head. .ladder-wrap .ladder must carry a strictly
-  // higher specificity than that generic rule and cancel both properties, or
-  // the rows go crooked again the moment the table widens.
+  // The generic .surface p rule (prose) sets a prose max-width that would
+  // otherwise cap the summary line below the page column the counts under it
+  // sit at. The .surface.readiness override carries a strictly higher
+  // specificity than that generic rule, or the line and the counts go out of
+  // line the moment the table widens.
   const proseRule = /\.surface p,\s*\n\.surface ul,\s*\n\.surface ol \{[^}]*max-width: var\(--measure\)/
   assert.match(css, proseRule, 'the generic prose cap this override must beat is still the one in force')
-  const indentRule = /\.surface ul,\s*\n\.surface ol \{[^}]*padding-left: 20px/
-  assert.match(css, indentRule, 'the generic list indent this override must beat is still the one in force')
-  const overrideBlock = css.match(/\.ladder-wrap \.ladder \{([^}]*)\}/)
-  assert.ok(overrideBlock, '.ladder-wrap .ladder exists to override the generic rule for the ladder specifically')
-  assert.match(overrideBlock![1], /max-width: none/, 'cancels the prose cap so the rows span the same width as .ladder-wrap')
-  assert.match(overrideBlock![1], /padding-left: 0/, 'cancels the list indent so the rows align with the head, not indented under it')
-  assert.ok(specificity('.ladder-wrap .ladder') > specificity('.surface ul'), 'the override must win the cascade against .surface ul, not just exist in the file')
+  assert.ok(specificity('.surface.readiness .line.summary') > specificity('.surface p'), 'the override must win the cascade against .surface p, not just exist in the file')
+  // The five boxed rung rows the page used to draw are gone with the page they
+  // were on: nothing renders them, so nothing styles them.
+  assert.doesNotMatch(css, /\.ladder-row|\.ladder-divider|\.ladder-wrap/, 'the old ladder rows left no dead rules behind')
+  assert.doesNotMatch(today, /ladder-wrap|LadderHead/, 'and the surface does not draw them')
 })
 
 test('Forget this tenant keeps the sign-in: its words say so', () => {

@@ -14,7 +14,7 @@ import { commsFor, stepLines } from './stepExport.ts'
 import { fillText } from '../../content/render.ts'
 import { app, pages, stepById } from '../../content/content.ts'
 import { RUNGS } from '../../derive/ladder.ts'
-import { rungWords, showWord } from './todayCells.ts'
+import { rungWords, showWord } from './readinessCells.ts'
 import { rowWhen } from './rowWhen.ts'
 import { enforcementUnearned } from '../../roadmap/forecast.ts'
 import { rowWho } from './rowWho.ts'
@@ -108,9 +108,9 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
 test("(3) Today's rungs are the ladder's titles, and the Show list offers each by the same title", () => {
   assert.deepEqual(RUNGS.map((r) => rungWords(r).title), ['Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, not proven', 'Nothing set up'])
   for (const r of RUNGS) assert.equal(showWord(`rung-${r}`), rungWords(r).title, `rung ${r} in the Show list`)
-  const show = (pages.today as { show: Record<string, string> }).show
+  const show = (pages.readiness as { show: Record<string, string> }).show
   assert.equal(showWord('all'), show.all)
-  assert.ok(!('tiles' in (pages.today as Record<string, unknown>)), 'the tiles carry no words of their own')
+  assert.ok(!('tiles' in (pages.readiness as Record<string, unknown>)), 'the tiles carry no words of their own')
 })
 
 test('(4) a done step\'s row shows no date word', () => {

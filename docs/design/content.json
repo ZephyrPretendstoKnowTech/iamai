@@ -183,8 +183,8 @@
         "stateChanged": "changed to {state} by {date}, and the plan did not ask for it",
         "stateChangedExpected": "moved to {state} by {date}, as the plan asked",
         "semanticsChanged": "the policy itself changed by {date}: what was watched before this is no longer what is deployed",
-      "artifactReplaced": "a different policy is delivering this as of {date}: the one watched before it is not the one deployed, so the window starts again",
-      "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now"
+        "artifactReplaced": "a different policy is delivering this as of {date}: the one watched before it is not the one deployed, so the window starts again",
+        "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now"
       },
       "detectionGap": {
         "groups": "some of the groups its policies name would not open",
@@ -451,8 +451,8 @@
         }
       }
     },
-    "today": {
-      "h1": "Today",
+    "readiness": {
+      "h1": "MFA Readiness",
       "ledger": {
         "$comment": "One line under the heading: every account once, the kinds summing to the accounts; a kind at zero is left out.",
         "lead": "{accounts} accounts:",
@@ -465,6 +465,11 @@
       },
       "show": {
         "all": "All accounts",
+        "needsAction": "Needs action",
+        "needsPasskey": "Needs a passkey",
+        "needsProof": "Needs proof",
+        "ready": "Passkey-ready",
+        "unknown": "Not known",
         "notActive": "Not active",
         "emergency": "Emergency access",
         "service": "Service accounts",
@@ -477,7 +482,8 @@
         "Account",
         "Readiness",
         "Strongest method",
-        "Evidence"
+        "Proof",
+        "Next step"
       ],
       "kinds": {
         "emergency": "Emergency access",
@@ -505,7 +511,42 @@
       },
       "export": "Export CSV",
       "inventory": "Every account and policy the scan read →",
-      "tip": "Every number here is a share of active people: those who signed in during the last 90 days."
+      "tip": "Every number here is a share of active people: those who signed in during the last 90 days.",
+      "$comment": "MFA Readiness (task 012), the surface that replaced Today: the readiness summary over active people, the three groupings (derive/mfaReadiness.ts), the table, and the quiet line for the populations the campaign does not count.",
+      "lead": "Who can already sign in with a passkey or security key, who still needs to prove one works, and who has none.",
+      "summary": "{ready} of {active} active people have proven a passkey or security key.",
+      "summaryNone": "No active people to count.",
+      "groups": {
+        "$comment": "The three groupings the page shows over the ladder's rungs (derive/mfaReadiness.ts): views of the same evidence, never a second reading of it.",
+        "ready": {
+          "title": "Passkey-ready",
+          "tip": "Holds a passkey or security key and has passed MFA with it. It cannot be phished, and it works from any device.",
+          "next": ""
+        },
+        "needsProof": {
+          "title": "Needs proof",
+          "tip": "A passkey or security key is registered, and no sign-in record names it yet, so IAMAI cannot say it works.",
+          "next": "Sign in once with it"
+        },
+        "needsPasskey": {
+          "title": "Needs a passkey",
+          "tip": "No passkey or security key registered. Whatever else they hold can be phished, or works on one PC only.",
+          "next": "Register a passkey or security key"
+        },
+        "unknown": {
+          "title": "Not known",
+          "tip": "The scan could not read this account's registered methods, so IAMAI will not say whether a passkey is there.",
+          "next": "Not known"
+        }
+      },
+      "unknownMethods": "Registered methods could not be read for {n} active people, so their passkey state is not known.",
+      "separate": "Not counted here:",
+      "planContext": {
+        "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it.",
+        "filtered": "Filtered to the {n} people {step} is waiting on.",
+        "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
+        "back": "← Back to the step"
+      }
     },
     "export": {
       "h1": "Export",
@@ -527,8 +568,8 @@
         ],
         "csv": [
           "CSV",
-          "Today and each inventory table as a spreadsheet.",
-          "Today as CSV · Policies as CSV · …"
+          "MFA readiness and each inventory table as a spreadsheet.",
+          "MFA Readiness as CSV · Policies as CSV · …"
         ],
         "prompts": [
           "Prompts for your own assistant",
@@ -553,10 +594,22 @@
     },
     "footer": {
       "links": [
-        { "text": "IAMAI Home", "href": "https://getiamai.com/" },
-        { "text": "Follow me on LinkedIn", "href": "https://www.linkedin.com/in/lachlanrobinette/" },
-        { "text": "GitHub", "href": "https://github.com/ZephyrPretendstoKnowTech/iamai" },
-        { "text": "feedback@getiamai.com", "href": "mailto:feedback@getiamai.com" }
+        {
+          "text": "IAMAI Home",
+          "href": "https://getiamai.com/"
+        },
+        {
+          "text": "Follow me on LinkedIn",
+          "href": "https://www.linkedin.com/in/lachlanrobinette/"
+        },
+        {
+          "text": "GitHub",
+          "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
+        },
+        {
+          "text": "feedback@getiamai.com",
+          "href": "mailto:feedback@getiamai.com"
+        }
       ]
     },
     "how": {
@@ -665,7 +718,7 @@
         "themeTooltip": "Switch between dark and light themes",
         "navLabel": "Sections",
         "tabs": {
-          "today": "Today",
+          "readiness": "MFA Readiness",
           "plan": "Plan",
           "export": "Export"
         },
@@ -766,13 +819,13 @@
         "constraintTip": "What set the plan length",
         "putBack": "Put this step back",
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
-      "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
-      "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
-      "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
-      "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
-      "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
-      "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
-      "readinessHeld": "Running this would change what {tenant}'s people have to do straight away, and {measure} is {value} - this step waits until it reaches {threshold}. The instructions come back when it does.",
+        "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
+        "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
+        "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
+        "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
+        "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
+        "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
+        "readinessHeld": "Running this would change what {tenant}'s people have to do straight away, and {measure} is {value} - this step waits until it reaches {threshold}. The instructions come back when it does.",
         "footerJson": "JSON",
         "cleanupDoneOn": "Done on",
         "cleanupDone": "Done",
@@ -845,9 +898,13 @@
             "more": "More",
             "namesHeld": "Named, for the record"
           }
-        }
+        },
+        "mfaReadinessHold": "{n} of the people this step reaches cannot meet its sign-in requirement yet.",
+        "mfaReadinessHoldUnknown": "This scan could not work out who cannot meet this step's sign-in requirement yet.",
+        "mfaReadinessLink": "See them in MFA Readiness →",
+        "mfaReadinessLinkUnknown": "Open MFA Readiness →"
       },
-      "today": {
+      "readiness": {
         "lineNoRecords": "no sign-in records",
         "lineNoRecordsReason": "no sign-in records ({reason})",
         "lineNoPeople": "no enabled people · {admins} admins · {records}",
@@ -865,7 +922,8 @@
         "needsScan": "Nothing to show until the first scan.",
         "scanLink": "Scan the tenant",
         "lineNoRecordsLine": "{active} active people of {enabled} enabled · {admins} admins · {records}",
-        "lineRecords": "sign-ins {from} → {to}"
+        "lineRecords": "sign-ins {from} → {to}",
+        "$comment": "The MFA Readiness surface's own words (task 012); pages.app.today until it was renamed."
       },
       "export": {
         "couldNotRead": "could not read the plan file",

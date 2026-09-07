@@ -1,6 +1,6 @@
 // First-run smoke test (prompt 20 §10): starts the dev server, drives headless
 // Chrome over the DevTools protocol with no dependencies beyond Node 22+, and
-// walks Connect → Today → Plan → Export → How → Recovery
+// walks Connect → MFA Readiness → Plan → Export → How → Recovery
 // against the synthetic tenant (?dev=1&mock=1), asserting the key numbers.
 // The same fixture backs src/ui/consistency.test.ts, so the numbers asserted
 // here are the ones the pure tests prove.
@@ -246,7 +246,7 @@ try {
   await sleep(1500)
   check('Preload failure: a second failure in the session does not reload again', !preloadAgain && (await evaluate(`window.__stillHere === 2`)))
 
-  // The walk (prompt 47 Part 6 item 23): Connect signed out, sign in (the mock state), the scan, Today, Inventory, then the legacy Roadmap.
+  // The walk (prompt 47 Part 6 item 23): Connect signed out, sign in (the mock state), the scan, MFA Readiness, Inventory, then the legacy Roadmap.
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await text()
@@ -297,30 +297,53 @@ try {
   check('Connect (scanned): the plan state counts the steps and how many are done', await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan/.test(document.body.innerText)`, 20000), ((await text()).match(/ready · \d+ steps, \d+ done[^\n]*/) ?? [''])[0])
   check('Connect: Global Reader is the only role IAMAI names', !/Security Reader|Reports Reader/.test(t))
   check('Connect (scanned): Change baseline opens the picker with two choices', (await clickText('/^Change baseline$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /How to make one →/.test(document.body.innerText)`)))
-  // Today: where things are now, over active people (target-state §4).
-  await go('today')
-  check('Today: the table renders', await waitFor(`document.querySelectorAll('table.datatable tbody tr').length >= 4`))
+  // MFA Readiness (task 012): who is passkey-ready, who needs proof, who needs a passkey.
+  await go('readiness')
+  check('MFA Readiness: the table renders', await waitFor(`document.querySelectorAll('table.datatable tbody tr').length >= 4`))
   t = await text()
-  // The ledger line (docs/design/mockups/today-v2.html): the accounts, then the kinds that are not zero, summing to the accounts, and the sign-in window.
+  check('MFA Readiness: the heading and its one opening sentence', /MFA Readiness/.test(t) && /Who can already sign in with a passkey/.test(t))
+  // The summary over the active people, then the three counts under it; the three sum to the active people the summary names.
+  const summaryLine = t.match(/(\d+) of (\d+) active (?:person|people) have proven/)
+  const groupCounts = await evaluate(`[...document.querySelectorAll('main.page .group-count')].map((b) => ({ title: ((b.querySelector('.group-title') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.group-n') || {}).textContent || '').trim()) }))`)
+  check('MFA Readiness: the summary counts the active people who have proven a passkey', !!summaryLine, (t.match(/[^\n]*have proven[^\n]*/) ?? [''])[0])
+  check(
+    'MFA Readiness: three counts — passkey-ready, needs proof, needs a passkey — summing to the active people',
+    groupCounts.map((g) => g.title).join(' | ') === 'Passkey-ready | Needs proof | Needs a passkey' &&
+      !!summaryLine &&
+      groupCounts[0].n === Number(summaryLine[1]) &&
+      groupCounts.reduce((x, g) => x + g.n, 0) === Number(summaryLine[2]),
+    groupCounts.map((g) => `${g.title} ${g.n}`).join(' | '),
+  )
+  // The old five-rung ladder is gone from the page; the rung is still the badge in a row.
+  check('MFA Readiness: no five-rung ladder on the page', (await evaluate(`document.querySelectorAll('main.page .ladder, main.page .ladder-row, main.page .rung-tile').length`)) === 0)
+  check('MFA Readiness: the rung is still the badge in a row', (await evaluate(`document.querySelectorAll('main.page td .rung-badge').length`)) >= 4)
+  // The ledger line: the accounts, then the kinds that are not zero, summing to the accounts, and the sign-in window.
   const ledger = (t.match(/(\d+) accounts?: ([^\n]*?)\s*sign-ins [A-Z][a-z]{2} \d+ → [A-Z][a-z]{2} \d+/) ?? [])
-  check('Today: the ledger line counts every account once, the kinds summing to the accounts, with the sign-in window', ledger.length > 0 && Number(ledger[1]) === [...(ledger[2] ?? '').matchAll(/(\d+) /g)].reduce((a, m) => a + Number(m[1]), 0) && /\d+ active (person|people)/.test(ledger[2] ?? ''), (t.match(/[^\n]*accounts?:[^\n]*/) ?? [''])[0])
-  // The ladder: five boxed rungs, the titles in order, the rule before the three to prioritise.
-  const rungTitles = await evaluate(`[...document.querySelectorAll('main.page .ladder .ladder-row .rung-title')].map((e) => { const c = e.cloneNode(true); c.querySelectorAll('.infotip, .infotip-btn, button').forEach((n) => n.remove()); return (c.textContent || '').replace(/\\s+/g, ' ').trim() })`)
-  check('Today: the five rungs by title', rungTitles.join(' | ') === 'Passkey or security key, proven | Authenticator app, proven | Windows Hello only | Set up, not proven | Nothing set up', rungTitles.join(' | '))
-  check('Today: the MFA Readiness header and the rule before the three to prioritise', /MFA Readiness/i.test(t) && /of \d+ active (person|people)/i.test(t) && (await evaluate(`document.querySelectorAll('main.page .ladder .ladder-divider').length`)) === 1)
-  check('Today: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card, .tiles').length`)) === 0)
-  check('Today: one Show dropdown, a search box and Admins only', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)) && /Admins only/.test(t))
-  check('Today: the link to every account and policy the scan read', /Every account and policy the scan read →/.test(t))
+  check('MFA Readiness: the ledger line counts every account once, the kinds summing to the accounts, with the sign-in window', ledger.length > 0 && Number(ledger[1]) === [...(ledger[2] ?? '').matchAll(/(\d+) /g)].reduce((a, m) => a + Number(m[1]), 0) && /\d+ active (person|people)/.test(ledger[2] ?? ''), (t.match(/[^\n]*accounts?:[^\n]*/) ?? [''])[0])
+  check('MFA Readiness: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card, .tiles').length`)) === 0)
+  check('MFA Readiness: one Show dropdown, a search box and Admins only', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)) && /Admins only/.test(t))
+  check('MFA Readiness: the link to every account and policy the scan read', /Every account and policy the scan read →/.test(t))
+  // Connect's rung tiles still land here filtered, and the filter narrows the table.
+  const allRows = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
+  await go('readiness/rung-5')
+  await sleep(500)
+  const rung5Rows = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
+  const rung5Show = await evaluate(`(document.querySelector('main.page select') || {}).value`)
+  check('MFA Readiness: a rung link from Connect still filters the table, and the control says so', rung5Show === 'rung-5' && rung5Rows < allRows, `${rung5Show}: ${rung5Rows} of ${allRows}`)
+  // The old name still reaches the one surface, and the app rewrites the hash.
+  await go('today')
+  check('The old Today hash reaches MFA Readiness', await waitFor(`location.hash === '#/readiness'`))
+  await go('readiness')
+  await sleep(400)
   // Walk fixes (prompt 47.1 Part 2): markers stand off the name; no inner scroll; a hairline header, not a band.
-  check('Today: the Admin marker stands off the name, small and quiet', await evaluate(`(() => { const c = document.querySelector('main.page td .chip:not(.status)'); if (!c) return false; const cs = getComputedStyle(c); return parseFloat(cs.marginLeft) >= 6 && cs.fontSize === '13px' })()`))
-  check('Today: the table has no inner scroll', (await evaluate(`getComputedStyle(document.querySelector('main.page .datatable-wrap')).maxHeight`)) === 'none')
-  check('Today: the header row is a hairline, not a band', await evaluate(`(() => { const cs = getComputedStyle(document.querySelector('main.page table.datatable th')); return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.position === 'static' && cs.textTransform === 'none' })()`))
-
+  check('MFA Readiness: the Admin marker stands off the name, small and quiet', await evaluate(`(() => { const c = document.querySelector('main.page td .chip:not(.status)'); if (!c) return false; const cs = getComputedStyle(c); return parseFloat(cs.marginLeft) >= 6 && cs.fontSize === '13px' })()`))
+  check('MFA Readiness: the table has no inner scroll', (await evaluate(`getComputedStyle(document.querySelector('main.page .datatable-wrap')).maxHeight`)) === 'none')
+  check('MFA Readiness: the header row is a hairline, not a band', await evaluate(`(() => { const cs = getComputedStyle(document.querySelector('main.page table.datatable th')); return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.position === 'static' && cs.textTransform === 'none' })()`))
   // Inventory and Licensing reachable
   await go('inventory')
   check('Inventory: policies table renders', await waitFor(`document.querySelectorAll('table tbody tr').length >= 3`))
   t = await text()
-  check('Inventory: the heading, the ← Today link, and no intro sentence', /Everything the scan read/.test(t) && /← Today/.test(t) && !/as found: no analysis/.test(t))
+  check('Inventory: the heading, the ← MFA Readiness link, and no intro sentence', /Everything the scan read/.test(t) && /← MFA Readiness/.test(t) && !/as found: no analysis/.test(t))
   check('Inventory: the ten tabs', (await evaluate(`document.querySelectorAll('main.page [role=tab]').length`)) === 10)
   // Walk fixes (prompt 47.1 Part 2): the table column, and a hairline header.
   check('Inventory: the page uses the 1040px table column', (await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)) >= 1040, String(await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)))
@@ -342,7 +365,7 @@ try {
   await go('baseline')
   check('Baseline redirects to Connect', await waitFor(`location.hash === '#/connect'`))
   await go('scan')
-  check('Scan redirects to Today', await waitFor(`location.hash === '#/today'`))
+  check('Scan redirects to MFA Readiness', await waitFor(`location.hash === '#/readiness'`))
   await go('roadmap')
   check('Roadmap redirects to Plan', await waitFor(`location.hash === '#/plan'`))
   await go('reads')
@@ -387,6 +410,28 @@ try {
   check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
   check('Plan: the footer names its groups', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Not licensed|Housekeeping/g) || []).length >= 1)
   check('Plan: one status word per row', await evaluate(`[...document.querySelectorAll('main.page .plan-row .chip.status')].length >= 3`))
+  // The Plan → MFA Readiness handoff (task 012): a step whose own enforcement
+  // waits on the people it reaches being able to sign in the way it asks says so
+  // and links there. Opening the link filters the page to those people and keeps
+  // a way back to the step.
+  await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page a[href^="#/readiness/step/"]')) return true; r.click(); await wait(40); } return false })()`)
+  const handoff = await evaluate(`(() => { const a = document.querySelector('main.page a[href^="#/readiness/step/"]'); if (!a) return null; const line = a.closest('p'); return { href: a.getAttribute('href'), text: (line ? line.textContent : a.textContent).replace(/\\s+/g, ' ').trim() } })()`)
+  check('Plan: a step held on its own sign-in requirement links to MFA Readiness', !!handoff && /cannot meet its sign-in requirement/.test(handoff.text), handoff && handoff.text)
+  if (handoff) {
+    const wanted = Number((handoff.text.match(/^(\d+)/) ?? [])[1] ?? NaN)
+    await send('Page.navigate', { url: `${BASE}${handoff.href}` })
+    await sleep(1400)
+    await waitFor(`/MFA Readiness/.test(document.body.innerText)`)
+    const scoped = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
+    const t2 = await text()
+    check('MFA Readiness: opened from a step, it says which step and filters to its people', /Filtered to the \d+ people/.test(t2) && (Number.isNaN(wanted) || scoped === wanted), `${scoped} rows, the step said ${wanted}: ${(t2.match(/Filtered to[^\n]*/) ?? [''])[0]}`)
+    check('MFA Readiness: and offers the way back to that step', /← Back to the step/.test(t2))
+    // The counts above the table stay the whole tenant, not the filtered set.
+    const scopedSummary = t2.match(/(\d+) of (\d+) active (?:person|people) have proven/)
+    check('MFA Readiness: a Plan filter does not change the tenant-wide counts', !!scopedSummary && !!summaryLine && scopedSummary[2] === summaryLine[2], `${scopedSummary && scopedSummary[2]} vs ${summaryLine && summaryLine[2]}`)
+    await go('plan')
+    await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  }
   check('Plan: no v2 vocabulary on the surface', !/Do it|Exit criteria|Assumes|Recovery card|Before anything else|handle-with-care/.test(pt) && !/ Wave /.test(pt))
 
   // Click a control by its exact visible label (a button, link or summary).
@@ -398,7 +443,7 @@ try {
   await go('export')
   await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
   check('Export: six cards render', (await evaluate(`document.querySelectorAll('main.page .export-card').length`)) === 6)
-  for (const label of ['Download calendar (ICS)', 'Today as CSV', 'Download every prompt', 'Download the bundle']) {
+  for (const label of ['Download calendar (ICS)', 'MFA Readiness as CSV', 'Download every prompt', 'Download the bundle']) {
     const before = await evaluate(`window.__dl.length`)
     const clicked = await clickExact(label)
     await sleep(350)
@@ -450,7 +495,7 @@ try {
   await go('plan')
   await waitFor(`/\\bsteps\\b/.test(document.body.innerText)`)
   t = await evaluate(`document.querySelector('header.app').innerText`)
-  check('Header: the three tabs and the controls, no tenant tab (the tenant is on Connect)', !/Contoso Pty Ltd/.test(t) && /Today/.test(t) && /Plan/.test(t) && /Export/.test(t) && !/Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  check('Header: the three tabs and the controls, no tenant tab (the tenant is on Connect)', !/Contoso Pty Ltd/.test(t) && /MFA Readiness/.test(t) && /Plan/.test(t) && /Export/.test(t) && !/Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
   check('Header: no scan control and no scan age on any page', !/Scan to update the plan|scanned|Re-scan/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: the theme and Account controls are text, not button faces', await evaluate(`document.querySelectorAll('header.app .right button').length >= 2 && [...document.querySelectorAll('header.app .right button')].every((b) => { const cs = getComputedStyle(b); return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.paddingLeft === '0px' })`))
@@ -462,7 +507,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await evaluate(`document.querySelector('header.app').innerText`)
-  check('Header (signed out): only the wordmark and the theme control', /IAMAI/.test(t) && !/Today|Account|Recovery/.test(t), t.replace(/\s+/g, ' '))
+  check('Header (signed out): only the wordmark and the theme control', /IAMAI/.test(t) && !/MFA Readiness|Account|Recovery/.test(t), t.replace(/\s+/g, ' '))
 
   // Failure paths and first-visitor tenants (prompt 31 §4): every page reads clearly, nothing breaks.
   await send('Page.navigate', { url: `${BASE}&licence=free#/plan` })
@@ -470,10 +515,10 @@ try {
   check('Unlicensed tenant: the plan renders from configuration and directory data', await waitFor(`/[0-9]+ steps/.test(document.body.innerText)`))
   t = await text()
   check('Unlicensed tenant: the plan footer names what is not licensed', /Not licensed \(\d+\)/.test(t))
-  await send('Page.navigate', { url: `${BASE}&licence=free#/today` })
+  await send('Page.navigate', { url: `${BASE}&licence=free#/readiness` })
   await sleep(1500)
   t = await text()
-  check('Unlicensed tenant: Today says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(/[^\n]*sign-in records[^\n]*/) ?? [''])[0])
+  check('Unlicensed tenant: MFA Readiness says why there are no sign-in records', /no sign-in records \(needs Entra ID P1 or P2\)/.test(t), (t.match(/[^\n]*sign-in records[^\n]*/) ?? [''])[0])
   // The Show list carries the content file's state names, "Proven" included (walk-51 item 10),
   // so the check reads the table's state chips, not the page text.
   check('Unlicensed tenant: nobody is Proven without records', !(await evaluate(`[...document.querySelectorAll('main.page td .status, main.page td .chip')].some((e) => /^Proven$/.test((e.textContent || '').trim()))`)))
@@ -764,9 +809,9 @@ try {
   check('Demo: the loaded plan re-renders with the same decisions, start date and skips', recordAfter === recordBefore, recordAfter === recordBefore ? '' : firstDiff(String(recordBefore), String(recordAfter)))
   check('Demo: the loaded plan renders the same rows as before the save', planTextAfter === planTextBefore, planTextAfter === planTextBefore ? '' : firstDiff(planTextBefore, planTextAfter))
 
-  // Today renders over the sample people.
-  await demoGo('today')
-  check('Demo: Today renders over the sample people', await waitFor(`document.querySelectorAll('main.page table.datatable tbody tr').length >= 4`))
+  // MFA Readiness renders over the sample people.
+  await demoGo('readiness')
+  check('Demo: MFA Readiness renders over the sample people', await waitFor(`document.querySelectorAll('main.page table.datatable tbody tr').length >= 4`))
 
   // Export: print page 1 is the posture summary (item 8).
   await demoGo('export')

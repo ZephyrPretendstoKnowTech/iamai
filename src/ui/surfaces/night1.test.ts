@@ -86,20 +86,23 @@ test('the problematic-accounts check lists the dormant accounts with their state
   assert.equal((ex.accountsWithStateIds as string[]).length, rows.length)
 })
 
-test("Today's Show list: every account, the five rungs by title, the not active, the four kinds, the guests (docs/design/mockups/today-v2.html)", async () => {
-  const { SHOW_KEYS } = await import('../../derive/today.ts')
-  const { showWord } = await import('./todayCells.ts')
+test("MFA Readiness's Show list is the smallest useful set, and every filter a link arrives with still has a word (task 012)", async () => {
+  const { COMPAT_SHOW_KEYS, SHOW_KEYS } = await import('../../derive/mfaReadiness.ts')
+  const { showWord } = await import('./readinessCells.ts')
+  assert.deepEqual(SHOW_KEYS.map(showWord), ['All accounts', 'Needs action', 'Needs a passkey', 'Needs proof', 'Passkey-ready'])
+  // Not on the list, still nameable: the select shows the arriving filter's own
+  // word, so the control always says what is on screen.
   assert.deepEqual(
-    SHOW_KEYS.map(showWord),
-    ['All accounts', 'Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, not proven', 'Nothing set up', 'Not active', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'],
+    COMPAT_SHOW_KEYS.map(showWord),
+    ['Not known', 'Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, not proven', 'Nothing set up', 'Not active', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'],
   )
-  assert.ok(!('tiles' in (pages.today as Record<string, unknown>)), 'the four tiles are gone: the ladder stands in their place')
+  assert.ok(!('tiles' in (pages.readiness as Record<string, unknown>)), 'the four tiles are gone')
 })
 
-test("the Boardroom room is a shared device on Today: listed, not placed, its method never a passkey (walk-51 item 11)", async () => {
-  const { todayView } = await import('../../derive/today.ts')
+test("the Boardroom room is a shared device on MFA Readiness: listed, not placed, its method never a passkey (walk-51 item 11)", async () => {
+  const { readinessView } = await import('../../derive/mfaReadiness.ts')
   const f = fixture('demo')
-  const v = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
+  const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
   const room = v.rows.find((r) => r.user.displayName === 'Boardroom')
   assert.ok(room, 'the demo has the Boardroom room')
   assert.equal(room.kind, 'shared')
