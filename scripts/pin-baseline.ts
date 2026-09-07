@@ -18,13 +18,13 @@ import type { BaselineFile } from '../src/baseline/types.ts'
 import { policyFacts } from '../src/coverage/facts.ts'
 import { mapGoalsToPolicies } from '../src/coverage/goalIdentity.ts'
 import type { GoalMapResult, PolicyForMap } from '../src/coverage/goalIdentity.ts'
-import firstParty from '../data/first-party-apps.json' with { type: 'json' }
+import { pinPolicy } from '../src/baseline/pinSource.ts'
+import type { PinnedPolicy } from '../src/baseline/pinSource.ts'
 import index from '../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 
 const OWNER = index.owner
 const REPO = index.repo
 const BASE = 'jhope188-conditionalaccesspolicies'
-const FIRST_PARTY = new Set((firstParty as { apps: { appId: string }[] }).apps.map((a) => a.appId.toLowerCase()))
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 async function api<T>(url: string): Promise<T> {
@@ -56,8 +56,6 @@ async function fetchFiles(commit: string, paths: string[]): Promise<BaselineFile
 }
 
 const s = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
-
-type PinnedPolicy = { id: string | null; displayName: string; state: string | null; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
 
 /** Classify the author's object GUIDs to placeholder tokens (§2 stage 2), across the policy set. */
 function classify(policies: CaPolicy[]): { placeholderFor: Map<string, string>; strengthIds: Set<string> } {
@@ -97,29 +95,6 @@ function classify(policies: CaPolicy[]): { placeholderFor: Map<string, string>; 
   }
   for (const id of strengthIds) placeholderFor.set(id, 'strength')
   return { placeholderFor, strengthIds }
-}
-
-function pinPolicy(p: CaPolicy, placeholderFor: Map<string, string>): { policy: PinnedPolicy; stripped: string[] } {
-  const placeholders: Record<string, string> = {}
-  const note = (id?: string | null): void => {
-    if (typeof id === 'string' && placeholderFor.has(id.toLowerCase())) placeholders[id] = placeholderFor.get(id.toLowerCase())!
-  }
-  const u = p.conditions?.users
-  for (const g of [...s(u?.includeGroups), ...s(u?.excludeGroups)]) note(g)
-  for (const l of [...s(p.conditions?.locations?.includeLocations), ...s(p.conditions?.locations?.excludeLocations)]) note(l)
-  note(p.grantControls?.authenticationStrength?.id)
-  // Strip author-specific app exclusions: an excluded application id that is not a
-  // Microsoft first-party id is the author's own app (§2 stage 2, validator app-01).
-  const stripped: string[] = []
-  const exApps = s(p.conditions?.applications?.excludeApplications)
-  const keptApps = exApps.filter((a) => {
-    const keep = !GUID.test(a) || FIRST_PARTY.has(a.toLowerCase())
-    if (!keep) stripped.push(a)
-    return keep
-  })
-  const conditions = JSON.parse(JSON.stringify(p.conditions))
-  if (conditions.applications && exApps.length !== keptApps.length) conditions.applications.excludeApplications = keptApps
-  return { policy: { id: p.id ?? null, displayName: p.displayName, state: p.state ?? null, conditions, grantControls: p.grantControls ?? null, sessionControls: p.sessionControls ?? null, placeholders }, stripped: stripped.map((a) => `${p.displayName}: ${a}`) }
 }
 
 async function snapshotAt(commit: string): Promise<{ policies: PinnedPolicy[]; stripped: string[] }> {
