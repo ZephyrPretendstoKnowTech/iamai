@@ -27,20 +27,27 @@ test('every engine status maps to one of the eight words', () => {
   // the tenant has on.
   const words = ['in-report-only', 'ready-to-enforce'].map((x) => statusOf(step(x as StepStatus)).word)
   assert.deepEqual(words, ['Report-only', 'Ready to enforce'])
-  assert.notEqual(statusOf(step('ready-to-enforce')).word, statusOf(step('done', { inPlace: false })).word, 'ready to enforce is not enforced')
+  assert.notEqual(statusOf(step('ready-to-enforce')).word, statusOf(step('done', { inPlace: false, lifecycle: 'enforced' })).word, 'ready to enforce is not enforced')
 })
 
 test('a done goal reads Enforced only where the plan drove its own policy to enforcement', () => {
   // In place is a preservation result for a control the tenant already had, not
-  // a Conditional Access stage — so the stage cannot answer it. A policy the
-  // tenant wrote and switched on is `enforced` in the tenant exactly as one the
-  // plan deployed is, and reading the stage made every goal a tenant already
-  // delivered say Enforced. Foundation B's `inPlace` is the fact that tells
-  // them apart (roadmap/lifecycle.ts), and it is the only thing this reads.
+  // a Conditional Access stage — so the stage alone cannot answer it. A policy
+  // the tenant wrote and switched on is `enforced` in the tenant exactly as one
+  // the plan deployed is, and reading the stage made every goal a tenant
+  // already delivered say Enforced. Foundation B's `inPlace` is the provenance
+  // that tells them apart (roadmap/lifecycle.ts).
   assert.equal(statusOf(step('done')).word, 'In place')
   assert.equal(statusOf(step('done', { lifecycle: 'enforced' })).word, 'In place', 'the tenant own policy is enforced in the tenant too')
   assert.equal(statusOf(step('done', { inPlace: false, lifecycle: 'enforced' })).word, 'Enforced')
-  assert.equal(statusOf(step('done', { inPlace: false, lifecycle: 'report-only' })).word, 'Enforced', 'the plan delivered it; the stage is not what the word reads')
+  // But the provenance alone cannot answer it either, and this is the other
+  // half of the same claim: Enforced says a policy is on, so it takes a policy
+  // that is on. A step with no policy has no provenance to carry and no stage
+  // to reach — a finished verification campaign is `satisfied` with `inPlace`
+  // false and no lifecycle at all — and it used to fall through to Enforced
+  // over a rollout that never happened.
+  assert.equal(statusOf(step('done', { inPlace: false, lifecycle: null })).word, 'In place', 'nothing was deployed, so nothing was enforced')
+  assert.equal(statusOf(step('done', { inPlace: false, lifecycle: 'report-only' })).word, 'In place', 'a policy still being watched is not one the plan turned on')
 })
 
 test('no status word is a verb', () => {

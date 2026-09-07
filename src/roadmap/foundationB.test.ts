@@ -182,15 +182,20 @@ test('nothing reads Enforced unless the plan drove its own policy to enforcement
     const word = statusOf(s).word
     // Enforced is a claim about the rollout, so it takes both: the plan's own
     // policy (`inPlace` is false only where a policy this plan deployed earned
-    // the goal — roadmap/generate.ts), and that policy actually on.
+    // the goal — roadmap/generate.ts), and that policy actually on. A step with
+    // no policy has neither, and a finished verification campaign read Enforced
+    // off the missing provenance alone.
     if (word === 'Enforced' && s.state.lifecycle !== 'enforced') wrong.push(`${name}/${s.id}: Enforced at stage ${s.state.lifecycle}`)
     if (word === 'Enforced' && s.state.inPlace) wrong.push(`${name}/${s.id}: Enforced over a control the tenant already had`)
     // And In place is the other one: a preservation result, whatever stage the
     // tenant's own policy happens to be at. It used to be read off the stage,
     // which cannot tell the two apart — a policy the tenant wrote and switched
     // on is `enforced` too — so every goal a tenant already delivered said
-    // Enforced and no row anywhere said In place.
-    if (word === 'In place' && !s.state.inPlace) wrong.push(`${name}/${s.id}: In place on a policy this plan deployed`)
+    // Enforced and no row anywhere said In place. It is also the word for a
+    // delivered step that deployed no policy at all, which claims the less of
+    // the two; what it may never do is stand over a policy this plan drove
+    // somewhere.
+    if (word === 'In place' && !s.state.inPlace && s.state.lifecycle !== null) wrong.push(`${name}/${s.id}: In place on a policy this plan deployed`)
     // A preservation result never carries a stage the step has no policy for.
     if (s.state.inPlace && !(s.kind === 'create' || s.kind === 'adjust') && s.state.lifecycle !== null) wrong.push(`${name}/${s.id}: an existing control given a policy stage`)
   }

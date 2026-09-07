@@ -9,17 +9,24 @@ export type StatusView = { word: string; tone: StatusTone }
 export function statusOf(step: Step): StatusView {
   switch (step.status) {
     case 'done':
-      // A goal the plan drove to enforcement reads Enforced; one delivered by
-      // something the tenant already had reads In place, which is a
-      // preservation result and not a stage of the lifecycle.
+      // Enforced is a claim about a rollout — IAMAI wrote this policy and drove
+      // it to enforcement — and it takes both of Foundation B's facts, because
+      // either one alone says something else:
       //
-      // Foundation B's `inPlace` is that distinction and the only thing that
-      // answers it (roadmap/lifecycle.ts). The lifecycle cannot: a pre-existing
-      // policy the tenant has switched on is `enforced` too, so reading the
-      // stage made every goal the tenant already delivered say Enforced —
-      // "IAMAI rolled this out" over a control it never touched, and no row
-      // anywhere said In place.
-      return step.state.inPlace ? { word: 'In place', tone: 'ok' } : { word: 'Enforced', tone: 'ok' }
+      //   * `inPlace` is the provenance (roadmap/generate.ts): false only where
+      //     a policy this plan deployed earned the goal. The lifecycle cannot
+      //     answer that — a pre-existing policy the tenant switched on is
+      //     `enforced` too — so reading the stage made every goal the tenant
+      //     already delivered say Enforced, and no row anywhere said In place.
+      //   * the lifecycle is the policy, and reading provenance alone made the
+      //     opposite mistake: a step with no policy at all has no `inPlace` to
+      //     set and no stage to reach, so a finished verification campaign —
+      //     nothing deployed, nothing enforced — read Enforced as well.
+      //
+      // Anything else that is delivered reads In place, which is the lesser of
+      // the two claims: the control is there, and IAMAI is not saying it put it
+      // there.
+      return step.state.inPlace || step.state.lifecycle !== 'enforced' ? { word: 'In place', tone: 'ok' } : { word: 'Enforced', tone: 'ok' }
     case 'ready':
       return { word: 'Ready', tone: 'ok' }
     case 'blocked':

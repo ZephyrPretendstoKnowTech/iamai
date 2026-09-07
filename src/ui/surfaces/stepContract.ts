@@ -186,10 +186,11 @@ const MEMBER_LABELS = 'ABCDEFGH'
 function stageOf(step: Step): string {
   const s = step.state
   if (s.setAside) return CONTRACT.lifecycle['set-aside']
-  // Which of the two done outcomes this is, on Foundation B's own fact and not
-  // on the stage: a policy the tenant already had is `enforced` in the tenant
-  // too, so the stage cannot tell a rollout from a preservation.
-  if (s.satisfied) return s.inPlace ? CONTRACT.lifecycle['in-place'] : CONTRACT.lifecycle.enforced
+  // Which of the two done outcomes this is, on the same reading the collapsed
+  // word makes and for the same reasons (ui/surfaces/statusWord.ts): Enforced
+  // takes the provenance *and* the policy actually on, and everything else
+  // delivered is the preservation result.
+  if (s.satisfied) return !s.inPlace && s.lifecycle === 'enforced' ? CONTRACT.lifecycle.enforced : CONTRACT.lifecycle['in-place']
   return s.lifecycle ? CONTRACT.lifecycle[s.lifecycle] : ''
 }
 
