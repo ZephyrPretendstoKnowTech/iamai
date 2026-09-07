@@ -6,6 +6,14 @@
 // here are the ones the pure tests prove.
 //
 //   npm run smoke            (CHROME=/path/to/chrome to override the binary)
+//
+// The exit code says which kind of failure it was, which is the difference
+// between "IAMAI has a defect" and "this machine could not run the test":
+//
+//   0   every check passed
+//   1   checks failed — the product. Each FAIL line names the check and its detail.
+//   2   the harness never got as far as checking. The line starts "smoke: harness"
+//       and carries whatever vite or Chrome said before giving up.
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
@@ -44,7 +52,7 @@ const CANDIDATES = [
 ].filter(Boolean)
 const CHROME = CANDIDATES.find((p) => existsSync(p))
 if (!CHROME) {
-  console.error('smoke: no Chrome binary found; set CHROME=/path/to/chrome')
+  console.error('smoke: harness — no Chrome binary found; set CHROME=/path/to/chrome')
   process.exit(2)
 }
 
@@ -65,10 +73,31 @@ const skip = (name, why) => {
   skipped.push(name)
 }
 
+/**
+ * The last few lines a child wrote, kept so a harness failure can say why.
+ * Bounded on purpose: this is evidence for a failure, not a log of a good run,
+ * and it is printed only when something did not start. Draining also matters in
+ * its own right — a piped child whose output nobody reads blocks once the pipe
+ * fills, which is a hang with no message at all.
+ */
+const tailOf = (limit = 40) => {
+  const lines = []
+  return {
+    push: (chunk) => {
+      for (const l of String(chunk).split('\n')) if (l.trim()) lines.push(l.trimEnd())
+      while (lines.length > limit) lines.shift()
+    },
+    text: () => lines.join('\n'),
+  }
+}
+
 // ---- dev server ----
 const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port', String(PORT), '--strictPort'], {
   stdio: ['ignore', 'pipe', 'pipe'],
 })
+const viteOut = tailOf()
+vite.stdout?.on('data', (d) => viteOut.push(d))
+vite.stderr?.on('data', (d) => viteOut.push(d))
 let up = false
 for (let i = 0; i < 100 && !up; i++) {
   try {
@@ -79,7 +108,8 @@ for (let i = 0; i < 100 && !up; i++) {
   }
 }
 if (!up) {
-  console.error('smoke: dev server did not start')
+  console.error(`smoke: harness — the dev server did not start on port ${PORT} within 20 s`)
+  if (viteOut.text()) console.error(`--- vite said ---\n${viteOut.text()}\n-----------------`)
   vite.kill()
   process.exit(2)
 }
@@ -94,7 +124,11 @@ const chrome = spawn(CHROME, [
   '--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--hide-scrollbars',
   `--user-data-dir=${profile}`,
   `--remote-debugging-port=${CDP_PORT}`, '--window-size=1440,1000', 'about:blank',
-], { stdio: 'ignore' })
+], { stdio: ['ignore', 'ignore', 'pipe'] })
+// Chrome's own reason for not starting — a missing shared library, a profile it
+// could not lock — otherwise goes nowhere, and the run reads as "no page target".
+const chromeErr = tailOf()
+chrome.stderr?.on('data', (d) => chromeErr.push(d))
 let targets = []
 for (let i = 0; i < 300 && targets.length === 0; i++) {
   try {
@@ -105,7 +139,8 @@ for (let i = 0; i < 300 && targets.length === 0; i++) {
 }
 const page = targets.find((t) => t.type === 'page')
 if (!page) {
-  console.error('smoke: Chrome exposed no page target within 60 s (a slow runner, or a Chrome that could not start)')
+  console.error('smoke: harness — Chrome exposed no page target within 60 s (a slow runner, or a Chrome that could not start)')
+  if (chromeErr.text()) console.error(`--- chrome said ---\n${chromeErr.text()}\n-------------------`)
   chrome.kill()
   vite.kill()
   process.exit(2)
@@ -826,7 +861,10 @@ try {
 
 const note = skipped.length > 0 ? ` (${skipped.length} external check(s) not asked; EXTERNAL_HEALTH=1 asks them)` : ''
 if (failures.length > 0) {
+  // Exit 1, not 2: the harness ran and the product answered wrongly. The names
+  // are repeated here so a reader has the list without scanning the whole log.
   console.error(`\nsmoke: ${failures.length} check(s) failed${note}`)
+  for (const name of failures) console.error(`  FAIL ${name}`)
   process.exit(1)
 }
 console.log(`\nsmoke: every check passed${note}`)
