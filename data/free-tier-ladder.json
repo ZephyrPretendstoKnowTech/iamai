@@ -46,7 +46,7 @@
     {
       "id": "stale-accounts",
       "name": "Disable dormant and never-signed-in accounts",
-      "description": "An account nobody uses is an account nobody notices being used; disable after 90 days of silence."
+      "description": "An account nobody signs into is an account nobody watches; disable after 90 days of silence."
     },
     {
       "id": "authenticator-over-sms",

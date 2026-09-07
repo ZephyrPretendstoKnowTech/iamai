@@ -25,6 +25,32 @@ test('no rendered sentence carries a forbidden word or a broken value', () => {
   assert.deepEqual(hits, [], `rendered text contains forbidden token(s): ${hits.join(', ')}`)
 })
 
+// The step surfaces' own forbidden vocabulary, checked on the file rather than
+// on a rendered page. A step's words come from here, so a phrase the contract
+// bans on plan.step or plan.step.more is a defect in the content: the surface
+// check can only see the steps a fixture happens to draw, and a free-tier rung
+// or a validation blocker is drawn by no fixture the walk visits. The reviewer's
+// transcription of the portal (whatToDoReference) is never on screen, and the
+// engine's own words (shared.engine) and the pages render outside a step.
+test('no step string carries a phrase the step surfaces forbid', () => {
+  const contract = JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')) as { surfaces: { id: string; forbid?: string[] }[] }
+  const forbid = [...new Set(['plan.step', 'plan.step.more'].flatMap((id) => contract.surfaces.find((s) => s.id === id)?.forbid ?? []))]
+  assert.ok(forbid.length > 0, 'the step surfaces name the vocabulary they forbid')
+  const hits: string[] = []
+  const scan = (node: unknown, path: string): void => {
+    if (typeof node === 'string') {
+      if (path.includes('whatToDoReference')) return
+      for (const f of forbid) if (node.includes(f)) hits.push(`${path}: "${f}"`)
+    } else if (Array.isArray(node)) {
+      node.forEach((v, i) => scan(v, `${path}[${i}]`))
+    } else if (node && typeof node === 'object') {
+      for (const [k, v] of Object.entries(node)) if (k !== 'example' && k !== '$comment') scan(v, path ? `${path}.${k}` : k)
+    }
+  }
+  scan({ steps: content.steps, cleanup: content.cleanup, shared: { ...content.shared, engine: undefined } }, '')
+  assert.deepEqual(hits, [], `content carries wording the step surfaces forbid: ${hits.join(', ')}`)
+})
+
 // Every content leaf string that is not surfaced by the review renderer, once
 // the structural keys (ids, risk predicates, picker sources) are set aside.
 // Each is a string the renderer HAS a code path for but this example's data does

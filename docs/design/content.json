@@ -4707,7 +4707,7 @@
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
       "whatToDo": {
-        "lead": "An account nobody uses is an account nobody notices being used. Disable the silent ones.",
+        "lead": "An account nobody signs into is an account nobody watches. Disable the silent ones.",
         "steps": [
           "Entra admin center → Identity → Users, add the Last sign-in column, and sort by it.",
           "For each account silent for 90 days, confirm with its manager that it is not a shared or seasonal login.",
