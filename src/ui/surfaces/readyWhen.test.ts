@@ -24,6 +24,8 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { fillText, whole } from '../../content/render.ts'
+import { content } from '../../content/content.ts'
+import { RE } from '../../content/contentChecks.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from '../../roadmap/observation.ts'
 import { activePeopleIds } from '../../derive/population.ts'
@@ -33,14 +35,33 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 const DAY = 86_400_000
 
 // What the walk reads on every report-only row of the app's demo (scripts/walk.mjs):
-// the row's date column, and the two gate lines of the step's Done-when. The
-// regexes are the walk's own, so the wording of a gate cannot move on one surface
-// without failing here first. The time line speaks about the observation window —
-// closing on a date, or closed already — because readiness is both gates together
-// and no single line may claim it (derive/readyWhen.ts).
-const WALK_ROW = /^(ready now|held until the records clear|ready \S.*\d{4})$/
-const WALK_TIME = /Time: in report-only since .+, the window clos(es|ed) \S.*\d{4}\./
+// the row's date column, and the two gate lines of the step's Done-when. The row
+// and time expectations are the walk's own objects, imported from the one place
+// that holds them (content/contentChecks.ts), so the wording of a gate cannot
+// move on one surface without failing here first. The time line speaks about the
+// observation window — closing on a date, or closed already — because readiness
+// is both gates together and no single line may claim it (derive/readyWhen.ts).
+const WALK_ROW = RE.rowWhen
+const WALK_TIME = RE.gateTime
+// The evidence gate here accepts one form more than the walk's own regex does:
+// the short-window line, which no fixture the walk visits renders. Every form the
+// walk accepts must be accepted here too, which the assertion below proves.
 const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days|the sign-in records read do not cover the whole window, \d+ of \d+ active people seen in \d+ days)\./
+
+test('every evidence line the walk accepts is accepted here', () => {
+  const tracked = (content.shared as { policyDoneWhenTracked: string[] }).policyDoneWhenTracked
+  const gate = (key: string, vals: Record<string, unknown>): string =>
+    fillText((content.shared as { engine: { tracking: Record<string, string> } }).engine.tracking[key], vals)
+  for (const [key, vals] of [
+    ['readyNow', { n: 14 }],
+    ['evidenceToday', { failures: 2, seen: 3, people: 4, n: 14 }],
+    ['evidenceTodayUnread', { seen: 3, people: 4, n: 14 }],
+  ] as [string, Record<string, unknown>][]) {
+    const line = fillText(tracked[1], { reportOnly: '12 Aug', evidenceGate: gate(key, vals) })
+    assert.match(line, RE.gateEvidence, `the walk reads the ${key} evidence line`)
+    assert.match(line, WALK_EVIDENCE, `and so does this file's regex`)
+  }
+})
 
 /** A step's Done-when, filled, exactly as the opened step prints it. */
 function doneWhenOf(step: Parameters<typeof stepVars>[0], f: Pick<Fixture, 'snapshot' | 'mapping' | 'operatorId'>, reportOnlyAt: string | null = null): string {

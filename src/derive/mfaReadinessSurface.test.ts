@@ -32,6 +32,7 @@ import { groupWords, nextStateWord, readinessWord } from '../ui/surfaces/readine
 import { readinessHref, readinessStepHref, resolveHash, showFromReadinessHash, stepFromReadinessHash } from '../ui/shell/routes.ts'
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { RE, headerTabsLine } from '../content/contentChecks.ts'
 
 const TENANTS: FixtureName[] = ['demo', 'getiamai', 'mid', 'messy', 'hostile']
 
@@ -453,11 +454,19 @@ test('there is one MFA Readiness surface, and the old Today route reaches it', (
 // single passkey-ready person fails — content/render.ts pluralise() writes
 // "1 ... has proven" for a count of one. Both are read from the shipped words
 // here, so a rename or a count of one cannot part the check from the page.
+//
+// Both expectations now live in src/content/contentChecks.ts, which `npm test`
+// runs and walk.mjs imports, so this asserts the walk holds no copy of its own
+// and that the shared authority still reads the content.
 test('the walk and the smoke read the shipped words: the tabs from the content, the summary in either tense', () => {
   const walk = readFileSync('scripts/walk.mjs', 'utf8')
   const smoke = readFileSync('scripts/smoke.mjs', 'utf8')
+  const checks = readFileSync('src/content/contentChecks.ts', 'utf8')
   // The tabs: one authority (app.shell.tabs), never a second list inside the check.
-  assert.match(walk, /const HEADER_TABS = \[app\.shell\.tabs\.readiness, app\.shell\.tabs\.plan, app\.shell\.tabs\.export\]/, 'the walk builds its expectation from the words the header renders')
+  assert.match(walk, /const HEADER_TABS = headerTabsLine\(\)/, 'the walk asks the shared authority for the header tabs')
+  assert.match(checks, /pages\.app\.shell\.tabs\.\$\{k\}/, 'and that authority builds the line from the words the header renders')
+  const headerTabs = (pages.app as unknown as { shell: { tabs: Record<string, string> } }).shell.tabs
+  assert.equal(headerTabsLine(), `${headerTabs.readiness} · ${headerTabs.plan} · ${headerTabs.export}`)
   assert.doesNotMatch(walk, /Today . Plan . Export/, 'and holds no retired tab name')
   // The summary: the sentence the page renders, at a count of one and above it.
   const T = pages.readiness as unknown as { summary: string }
@@ -465,11 +474,13 @@ test('the walk and the smoke read the shipped words: the tabs from the content, 
   const many = fillText(T.summary, { ready: 4, active: 30 })
   assert.match(one, /1 of 30 active people has proven/, 'the count governs the verb')
   assert.match(many, /4 of 30 active people have proven/)
-  for (const [name, src] of [['the walk', walk], ['the smoke', smoke]] as const) {
-    const lit = (src.match(/\/\(\\d\+\) of [^\n]*? proven\//) ?? [])[0]
-    assert.ok(lit, `${name} still checks the summary sentence`)
-    const re = new RegExp(lit.slice(1, -1))
-    assert.match(one, re, `${name} reads the summary at a count of one`)
-    assert.match(many, re, `${name} reads it above one`)
-  }
+  // The walk's summary expectation is the shared one; the smoke still carries its own.
+  assert.match(one, RE.readinessSummary, 'the walk reads the summary at a count of one')
+  assert.match(many, RE.readinessSummary, 'the walk reads it above one')
+  assert.doesNotMatch(walk, /\/\(\\d\+\) of [^\n]*? proven\//, 'and holds no copy of the sentence')
+  const lit = (smoke.match(/\/\(\\d\+\) of [^\n]*? proven\//) ?? [])[0]
+  assert.ok(lit, 'the smoke still checks the summary sentence')
+  const re = new RegExp(lit.slice(1, -1))
+  assert.match(one, re, 'the smoke reads the summary at a count of one')
+  assert.match(many, re, 'the smoke reads it above one')
 })

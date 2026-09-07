@@ -24,23 +24,20 @@ import { extname, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { absentStepIds } from '../src/roadmap/baselineScope.ts'
 import { isFloorGoal } from '../src/roadmap/floor.ts'
-import { app, pages, steps as contentSteps, stepById } from '../src/content/content.ts'
-import { fillText } from '../src/content/render.ts'
-import * as readinessModel from '../src/derive/mfaReadiness.ts'
+import { pages, steps as contentSteps } from '../src/content/content.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
+import { RE, beforeLines, headerTabsLine, readinessGroupTitles, rungTitles, staticFindings } from '../src/content/contentChecks.ts'
 import { RETIRED_OPENER } from './build-home.ts'
 
-// The ladder's five rung titles, top to bottom (pages.ladder; derive/ladder.ts
-// RUNGS): a person's badge on MFA Readiness and Connect's Plan tile read them.
-// Read through the namespace so a build without the model still walks.
-const RUNG_TITLES = (readinessModel.COMPAT_SHOW_KEYS ?? []).filter((k) => k.startsWith('rung-')).map((k) => pages.ladder.rungs[`r${k.slice(5)}`].title)
-
-// The three header tabs, in order, read from the words the shell renders
-// (app.shell.tabs; ui/shell/AppShell.tsx). Read rather than repeated, so the
-// walk cannot hold a name the header has stopped using — MFA Readiness
-// replaced Today in task 012.
-const HEADER_TABS = [app.shell.tabs.readiness, app.shell.tabs.plan, app.shell.tabs.export].join(' · ')
+// The ladder's five rung titles, the three header tabs and the three readiness
+// counts, all read from the words the surfaces render rather than repeated here
+// (src/content/contentChecks.ts). That module is the one authority for the
+// walk's browser-free expectations and `npm test` runs it, so a renamed content
+// key fails before a push instead of in this job — MFA Readiness replaced Today
+// in task 012 and the walk cannot hold a name the header has stopped using.
+const RUNG_TITLES = rungTitles()
+const HEADER_TABS = headerTabsLine()
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
@@ -77,15 +74,9 @@ const FORBIDDEN_PHRASES = ['an account IAMAI could not name', 'an unnamed accoun
 const CARVE_OUT_IDS = ['s-question-travel', 's-question-partner', 's-question-mail-devices']
 // The policy steps whose content carries a "before" line (a setting to change
 // before the policy exists) that the step keeps above the translator's portal
-// lines: the device-settings toggle, the Intune compliance settings, password
-// writeback, the SharePoint access control. Read from the content, so a content
-// file without the lines fails here before any step is opened.
-const BEFORE_STEP_IDS = ['device-registration-mfa', 'require-managed-device', 'user-risk', 'user-risk-medium', 'unmanaged-browser']
-const BEFORE_LINES = BEFORE_STEP_IDS.map((id) => {
-  const s = contentSteps.find((x) => x.id === id)
-  const lines = (s?.whatToDo?.before ?? []).filter((l) => typeof l === 'string')
-  return { id, title: s?.title ?? id, lines }
-})
+// lines. The list and the "every one of them has a line" check both live in
+// contentChecks.ts; what is left here is placing each line on the page.
+const BEFORE_LINES = beforeLines()
 
 const CANDIDATES = [
   process.env.CHROME,
@@ -570,20 +561,20 @@ async function walkFixture(fx) {
         // the table to exactly the rows it counts.
         const active = Number((text.match(/of (\d+) active (?:person|people)/i) || [])[1] ?? NaN)
         const groups = await evaluate(`[...document.querySelectorAll('main.page .group-count')].map((b) => ({ title: ((b.querySelector('.group-title') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.group-n') || {}).textContent || '').trim()) }))`)
-        const GROUP_TITLES = ['Passkey-ready', 'Needs proof', 'Needs a passkey']
+        const GROUP_TITLES = readinessGroupTitles()
         if (groups.length !== 3 || groups.some((g, k) => g.title !== GROUP_TITLES[k])) add('P0', `${label}: the counts read ${JSON.stringify(groups.map((g) => g.title))}; ${JSON.stringify(GROUP_TITLES)}`)
         else {
           // The verb follows the count: content/render.ts pluralise() writes
           // "1 … has proven" for a count of one and "2 … have proven" above it,
           // so the sentence is read in either tense rather than one of them.
-          const summary = text.match(/(\d+) of (\d+) active (?:person|people) (?:have|has) proven/)
+          const summary = text.match(RE.readinessSummary)
           // A tenant with nobody active says so instead, and has no numbers to state.
-          if (!summary && !/No active people to count/.test(text)) add('P0', `${label}: the readiness summary line is missing`)
+          if (!summary && !RE.readinessSummaryNone.test(text)) add('P0', `${label}: the readiness summary line is missing`)
           else if (!summary) void 0
           else {
             if (Number(summary[1]) !== groups[0].n) add('P0', `${label}: the summary says ${summary[1]} passkey-ready and the count says ${groups[0].n}`)
             const total = groups.reduce((x, g) => x + g.n, 0)
-            const notKnown = Number((text.match(/could not be read for (\d+) active people/) || [])[1] ?? 0)
+            const notKnown = Number((text.match(RE.readinessUnknown) || [])[1] ?? 0)
             if (total + notKnown !== Number(summary[2])) add('P0', `${label}: the groups sum to ${total + notKnown} and the summary counts ${summary[2]} active people`)
           }
           // Each count filters the table to its own rows; pressing it again clears it.
@@ -998,16 +989,16 @@ async function walkFixture(fx) {
         // A policy the plan cannot write yet has nothing to enforce, so it carries
         // no completion gates; what it must carry is what it waits on.
         if (rowStatuses[i] === 'Report-only' && !cannotWriteYet) {
-          if (!/^(ready now|held until the records clear|ready \S.*\d{4})$/.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say where it stands against its gates (ready <date> · ready now · held until the records clear)`)
-          if (!/Time: in report-only since .+, the window clos(es|ed) \S.*\d{4}\./.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
+          if (!RE.rowWhen.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say where it stands against its gates (ready <date> · ready now · held until the records clear)`)
+          if (!RE.gateTime.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
           // The evidence half reads records: with none read for this policy it says
           // so and still counts the people it has seen, rather than printing the zero
           // an empty set adds up to (roadmap/tracking.ts, readyWhen.ts readyBasis).
-          if (!/Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days)\./.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
-          if (rowWhens[i] === 'ready now' && !/ready now: 0 failures in \d+ days/.test(bodyText)) add('P0', `${slabel}: the row reads ready now but the step's Done when does not say so`)
+          if (!RE.gateEvidence.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
+          if (rowWhens[i] === 'ready now' && !RE.gateReadyNow.test(bodyText)) add('P0', `${slabel}: the row reads ready now but the step's Done when does not say so`)
           // A row held for the records is a window that has closed on them, and the
           // step says the same thing on its time line.
-          if (rowWhens[i] === 'held until the records clear' && !/the window closed \S.*\d{4}\./.test(bodyText)) add('P0', `${slabel}: the row is held until the records clear and the step's Done when does not say the window has closed`)
+          if (rowWhens[i] === 'held until the records clear' && !RE.gateWindowClosed.test(bodyText)) add('P0', `${slabel}: the row is held until the records clear and the step's Done when does not say the window has closed`)
         }
         // One population per step: the row's who-line count is the lead's count.
         const rowWho = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
@@ -1756,21 +1747,12 @@ const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccess
 for (const f of contentFindings(contentFile, pinnedFile, contracts)) add(f.level, f.text)
 for (const href of contentLearnUrls(contentFile)) learnLinks.add(href)
 
-// The pluraliser conjugates the verb with the count wherever {n} precedes a verb
-// (step 15's Who line is the test): a count of one reads as one, noun and verb.
-for (const [line, vals, want] of [
-  [stepById['admins-phishing-resistant']?.who?.lead, { admins: 1 }, '1 person holds an admin role'],
-  [stepById['admins-phishing-resistant']?.who?.lead, { admins: 3 }, '3 people hold an admin role'],
-  [stepById['s-check-separate-admin-accounts']?.who?.lead, { n: 1, from: 'Aug 1' }, '1 person holds a directory role and uses that same account for mail or Teams since Aug 1:'],
-  ['{n} of them have no passkey or key yet.', { n: 1 }, '1 of them has no passkey or key yet.'],
-]) {
-  const got = typeof line === 'string' ? fillText(line, vals) : null
-  if (got !== want) add('P0', `pluraliser: "${line}" with ${JSON.stringify(vals)} reads "${got}", not "${want}"`)
-}
-
-// The before lines exist in the content for every step that carries one (the
-// step check above needs the row on the plan; this fails on the content alone).
-for (const b of BEFORE_LINES) if (b.lines.length === 0) add('P0', `content ${b.id}: no whatToDo.before line; the setting to change before the policy exists is not above its portal lines`)
+// The browser-free expectations, at the same level the walk always used: the
+// authorities the surfaces are named by, the pluraliser's conjugation, the two
+// report-only gates rendered from the content, the before lines. They live in
+// src/content/contentChecks.ts so `npm test` reads them too; this job still
+// fails on every one of them.
+for (const f of staticFindings()) add(f.level, f.text)
 
 // Cross-surface invariants.
 for (const [name, readiness] of readinessBy) for (const [kind, values] of readiness) if (values.size > 1) add('P0', `${name}: ${kind} readiness reads ${[...values].map((v) => `${v}%`).join(' and ')} across rows, steps and MFA Readiness (one readiness per kind)`)
