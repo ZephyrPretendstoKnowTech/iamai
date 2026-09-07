@@ -545,7 +545,11 @@ test('006.11: every artifact says Report-only, held for review, review-and-scan-
   const readyDay = absoluteDate(readyWhen(c.step)!.date)
   const next = [v.dates ?? '', rowWhen(c.step), rowReason(c.step) ?? '', ...v.whatToDo, nextMilestone(c.step).label].join(' | ')
   assert.ok(!next.includes(readyDay), `the window's date is offered as this step's next day: ${next}`)
-  assert.match(stepContext(c.step, c.view), /not yet dated/i, 'the prompt pack dates the change')
+  // The prompt answers "when" with the Dates line above, not with a sentence of
+  // its own: the hold is in it, and the window's date is not offered as the day.
+  const facts = stepContext(c.step, c.view)
+  assert.ok(facts.includes(v.dates!), `the prompt pack dates the change its own way: ${facts}`)
+  assert.match(facts, /Held until/i, 'the prompt pack drops the hold')
 })
 
 // ---- 12. the whole path, held together ----

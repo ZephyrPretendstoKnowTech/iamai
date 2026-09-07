@@ -384,25 +384,27 @@ test('004.13: the grounding bundle states what the step’s enforcement date is 
   const step = r.steps.find((st) => st.id === STEP_ID)!
   const { ctx } = canonical()
   const view = (st: Step): ReturnType<typeof stepExportView> => stepExportView(st, ctx)
-  // Both branches of the bundle: the one the Export page builds, which speaks
-  // from the screen's view, and the fallback, which emits the schedule's own
-  // events and rings. A tool reading either gets an instant; without the basis
-  // beside it, it cannot tell a projection from a milestone something earned.
-  for (const withView of [true, false]) {
-    const bundle = groundingBundle({
-      view: withView ? view : undefined,
-      tenant: 'Fixture tenant',
-      snapshot: f.snapshot,
-      coverage: r.coverage,
-      steps: r.steps,
-      schedule: r.schedule,
-      redacted: false,
-      generated: f.snapshot.asOf,
-    })
-    const plan = bundle.plan as { steps: Record<string, unknown>[] }
-    const row = plan.steps.find((x) => x.id === STEP_ID)!
-    assert.deepEqual(row.enforcement, { basis: 'forecast', at: step.events!.enforce.at }, `the bundle does not say the enforcement instant is a forecast (view: ${withView})`)
-  }
+  // The bundle speaks from the screen's view and has no other branch: the
+  // fallback that emitted the schedule's own events and rings is gone (task
+  // 013), because it was a second description of every step. A tool reading this
+  // gets an instant; without the basis beside it, it could not tell a projection
+  // from a milestone something earned.
+  const bundle = groundingBundle({
+    view,
+    tenant: 'Fixture tenant',
+    snapshot: f.snapshot,
+    coverage: r.coverage,
+    steps: r.steps,
+    schedule: r.schedule,
+    redacted: false,
+    generated: f.snapshot.asOf,
+  })
+  const plan = bundle.plan as { steps: Record<string, unknown>[] }
+  const row = plan.steps.find((x) => x.id === STEP_ID)!
+  assert.deepEqual(row.enforcement, { basis: 'forecast', at: step.events!.enforce.at }, 'the bundle does not say the enforcement instant is a forecast')
+  // And the engine's own field names are in none of it: one reading of a step,
+  // and it is the screen's.
+  for (const key of ['rings', 'events', 'plainTitle', 'forManager']) assert.equal(key in row, false, `the bundle carries the engine's ${key}`)
 })
 
 test('004.14: across every fixture, a forecast enforcement never becomes an actionable one', () => {
@@ -503,7 +505,7 @@ test('004.17: the prompt pack’s draft announcement carries the same qualificat
   assert.deepEqual([...parts.slice(0, 2), ...parts.slice(3)], source.comms!.split('\n\n'), 'the draft says something other than what the step wrote')
   // And the pack a person actually copies carries it, in both prompts built
   // from the draft (rewrite, translate) — not only in the facts block.
-  const pack = promptPack({ tenant: 'Fixture tenant', steps, schedule: r.schedule, changeRecord: '', planSummary: '', announcement: draft })
+  const pack = promptPack({ view: (st: Step) => stepExportView(st, canonical().ctx), tenant: 'Fixture tenant', steps, schedule: r.schedule, changeRecord: '', planSummary: '', announcement: draft })
   const carrying = pack.filter((p) => p.prompt.includes(source.comms!.split('\n\n')[1]))
   assert.ok(carrying.length >= 2, `the pack builds ${carrying.length} prompts from the draft`)
   for (const p of carrying) assert.ok(p.prompt.includes(FORECAST_NOTE), `${p.title}: the prompt hands a model a projected date as a commitment`)

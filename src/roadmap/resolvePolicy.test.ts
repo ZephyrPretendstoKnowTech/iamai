@@ -24,6 +24,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { applyDeviations } from './deviations.ts'
 import { commsFor, stepExportView } from '../ui/surfaces/stepExport.ts'
+import { stepContract } from '../ui/surfaces/stepContract.ts'
 import type { Step } from './types.ts'
 
 const POLICIES = pinned.policies as unknown as CaPolicy[]
@@ -645,7 +646,11 @@ test('an unresolved step is not scheduled and carries nothing that implies a rol
   assert.ok(!step.events, 'no enforcement or announcement event')
   assert.ok(!r.steps.some((x) => x.id === step.id && x.events), 'and no calendar entry can be made from it')
   const view = stepExportView(step, ctx)
-  assert.deepEqual(view.doneWhen, [], 'no completion criteria')
+  // The completion is the one the screen shows, and on a policy waiting on an
+  // object that is what would clear the wait — not the rollout's gates.
+  assert.deepEqual(view.doneWhen, stepContract(step, ctx).doneWhen, "the completion is not the screen's")
+  assert.equal(view.doneWhen.length, 1, `one resolution completion: ${view.doneWhen.join(' | ')}`)
+  assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout completion leaked: ${view.doneWhen.join(' | ')}`)
   assert.equal(view.ifWrong, null, 'no rollback instructions')
   assert.equal(view.dates, null, 'no rollout dates')
   const cs = contentStepFor(step) as Record<string, unknown>
@@ -676,7 +681,9 @@ test('an unmatched pair and a contradictory baseline carry a next action and no 
     assert.ok(!c.step.events, `${c.label}: nothing scheduled`)
     assert.deepEqual(c.step.rings, [], `${c.label}: no rings`)
     const view = stepExportView(c.step, c.ctx)
-    assert.deepEqual(view.doneWhen, [], `${c.label}: no completion criteria`)
+    assert.deepEqual(view.doneWhen, stepContract(c.step, c.ctx).doneWhen, `${c.label}: the completion is not the screen's`)
+    assert.equal(view.doneWhen.length, 1, `${c.label}: one resolution completion — ${view.doneWhen.join(' | ')}`)
+    assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `${c.label}: a rollout completion leaked — ${view.doneWhen.join(' | ')}`)
     assert.equal(view.ifWrong, null, `${c.label}: no rollback`)
     assert.equal(view.dates, null, `${c.label}: no dates`)
     const cs = contentStepFor(c.step) as Record<string, unknown>

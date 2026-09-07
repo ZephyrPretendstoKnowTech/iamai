@@ -5,17 +5,21 @@
 // bundle, redacted by default. Pure.
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { absoluteDate } from '../copy/dates.ts'
-import { awaitingDeployment, forecastEnforcement, statedEnforcement } from './forecast.ts'
+import { forecastEnforcement, statedEnforcement } from './forecast.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
+import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 import { redactDeep as redactDeepShared, tenantVocabulary } from '../redactSnapshot.ts'
 import type { Schedule } from './schedule.ts'
-import { reached } from '../derive/population.ts'
 import { content } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 /** The shared lines this module states a date with; the words live in content.json. */
-const SHARED = content.shared as unknown as { commsForecastDate: string; commsForecastNote: string }
+const SHARED = content.shared as unknown as { commsForecastNote: string }
+
+/** What a prompt in the pack is about, in the page's own words (pages.app.export). */
+const EXPORT = (content.pages.app as unknown as { export: { promptScope: string; promptWholePlan: string } }).export
 
 export type PromptKind = 'announcement' | 'reminder' | 'helpDesk' | 'manager' | 'changeRecord' | 'executive' | 'wholePlan'
 
@@ -72,35 +76,24 @@ export function promptFor(kind: PromptKind, tenant: string, context: string, dra
   ].join('\n\n')
 }
 
-export function stepContext(step: Step, view?: StepView): string {
-  // A policy that is not in the tenant takes effect on no date: the schedule's
-  // enforcement day is the roadmap's forecast for a report-only window that has
-  // not opened, and a prompt pack is text a person hands to a model to draft an
-  // announcement from, so a projection stated here comes back as a commitment.
-  // The one reading, with the Dates line, the row and the calendar entry
-  // (roadmap/forecast.ts).
-  //
-  // A policy that does exist but has not yet earned its enforcement — sitting in
-  // report-only with its window still open — is dated by no enforcement either.
-  // Its next day is the review its own gates derive, and What to do below names
-  // it; the projection the schedule holds is withheld, because a prompt pack is
-  // the text a person hands to a model to write an announcement from, and
-  // "takes effect Sep 8" is what comes back (roadmap/forecast.ts
-  // `statedEnforcement`, which reads the same for the row, the Dates line and
-  // the calendar entry).
-  const timing = statedEnforcement(step)
-  const when =
-    timing.at === null || awaitingDeployment(step)
-      ? 'not yet dated'
-      : timing.basis === 'forecast'
-        ? SHARED.commsForecastDate.replace('{date}', absoluteDate(timing.at))
-        : absoluteDate(timing.at)
-  if (view) {
-    // What the step says on screen (prompt 53 queue item 7), never the engine's own prose.
-    const v = view(step)
-    return `${v.title}. ${v.why} Takes effect: ${when}. What to do: ${v.whatToDo.join(' | ') || 'nothing'}. Done when: ${v.doneWhen.join(' | ') || 'the next scan confirms it'}.`
-  }
-  return `${step.plainTitle || step.title}. ${step.why} Takes effect: ${when}.`
+/**
+ * The step block a prompt is grounded in: the execution context another tool or
+ * person needs to carry out the action the Plan is showing *today*, and nothing
+ * that is not that.
+ *
+ * It is the export view, labelled (roadmap/artifactLines.ts) — the same run of
+ * lines the calendar entry carries — so the prompt and the screen cannot answer
+ * a question two ways. This used to compose its own: it read `statedEnforcement`
+ * a second time to write a "Takes effect:" clause the Dates line already states,
+ * printed "not yet dated" where the view had a whole sentence about what the
+ * step is waiting for, and filled an empty completion with "the next scan
+ * confirms it" — a finish no authority had stated, on exactly the steps whose
+ * policy the plan will not write. The step's prerequisites, its condition and
+ * its reach were in none of it.
+ */
+export function stepContext(step: Step, view: StepView): string {
+  const v = view(step)
+  return [`${v.title}.`, ...stepArtifactLines(v)].join('\n')
 }
 
 /** A blank line between paragraphs, the way every announcement is composed. */
@@ -130,36 +123,68 @@ export function announcementDraft(steps: readonly Step[]): string | null {
   return [...parts.slice(0, 2), SHARED.commsForecastNote, ...parts.slice(2)].join(PARA)
 }
 
-export type PackItem = { title: string; prompt: string }
+/**
+ * One prompt in the pack.
+ *
+ * `scope` is the step it is grounded in, where it is grounded in one. Three of
+ * these prompts are built from a single step and five from the whole plan, and
+ * nothing said so: a person copying "Explain this to a non-technical manager"
+ * had no way to know which of thirty steps they were explaining. Null means the
+ * prompt is about the plan.
+ */
+export type PackItem = { title: string; prompt: string; scope: string | null }
 
-/** The Cleanup rows as one block of facts (E4): each row's title, its day, and what it says to do. */
+/**
+ * The Cleanup rows as one block of facts (E4): each row's title, its day, and
+ * what the row says, in the same labelled run the calendar entry carries
+ * (roadmap/artifactLines.ts).
+ *
+ * It used to compose its own, with two invented fallbacks: a row with nothing
+ * to do said "nothing", and a row with no completion said "the next scan
+ * confirms it" — a finish no authority had stated. A section the row has
+ * nothing for is absent now, the way the screen leaves it out.
+ */
 export function cleanupText(cleanup: CleanupExport[]): string {
-  return cleanup.map((c) => `${c.title} (${c.done ? `done ${absoluteDate(c.done)}` : absoluteDate(c.day)}). ${c.why} What to do: ${c.whatToDo.join(' | ') || 'nothing'}. Done when: ${c.doneWhen.join(' | ') || 'the next scan confirms it'}.`).join('\n')
+  return cleanup.map((c) => [`${c.title} (${c.done ? `done ${absoluteDate(c.done)}` : absoluteDate(c.day)}).`, ...cleanupArtifactLines(c)].join('\n')).join('\n\n')
 }
 
-/** The prompt pack (§2.2), pre-filled from the current plan; the Cleanup rows travel under their own label. */
-export function promptPack(args: { view?: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
+/**
+ * The prompt pack (§2.2), pre-filled from the current plan; the Cleanup rows
+ * travel under their own label.
+ *
+ * `view` is required. It used to be optional, and without it the pack fell back
+ * to the v2 engine's own `plainTitle`/`why` — a second description of a step,
+ * written before Foundation B settled its lifecycle, with no stage, no
+ * condition, no prerequisites and no statement of whether the work can be done
+ * at all. There is one reading of a step for an artifact and this is it.
+ */
+export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
   const { tenant } = args
   const firstStep = args.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done') ?? args.steps[0]
-  const stepText = firstStep && args.view ? stepContext(firstStep, args.view) : firstStep ? `${firstStep.plainTitle} (${firstStep.title}). ${firstStep.why}` : ''
+  // The one step the step-grounded prompts speak for, and its title, so the pack
+  // and the page can say which step that is.
+  const stepText = firstStep ? stepContext(firstStep, args.view) : ''
+  const stepTitle = firstStep ? args.view(firstStep).title : null
   const cleanup = args.cleanup ?? []
   const withFacts = (head: string, label: string, body: string, extra: [string, string][] = []) => [head, dataBlock(label, body), ...extra.map(([l, b]) => dataBlock(l, b)), PROMPTS.noInvent].join('\n\n')
   const planBlocks: [string, string][] = cleanup.length > 0 ? [[PROMPTS.cleanup, cleanupText(cleanup)]] : []
   return [
-    { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement ?? '') },
-    { title: PROMPTS.pack.mfaGuide(tenant).split(',')[0], prompt: [PROMPTS.pack.mfaGuide(tenant), PROMPTS.noInvent].join('\n\n') },
-    { title: PROMPTS.pack.kb(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.kb(tenant), PROMPTS.step, stepText) },
-    { title: PROMPTS.pack.changeRequest(tenant).split(',')[0], prompt: withFacts(PROMPTS.pack.changeRequest(tenant), PROMPTS.record, args.changeRecord) },
-    { title: PROMPTS.pack.explain, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.step, stepText) },
-    { title: PROMPTS.pack.pushback(tenant).split('.')[0], prompt: withFacts(PROMPTS.pack.pushback(tenant), PROMPTS.step, stepText) },
-    { title: PROMPTS.pack.translate(args.language ?? PROMPTS.language).split(',')[0], prompt: withFacts(PROMPTS.pack.translate(args.language ?? PROMPTS.language), PROMPTS.draft, args.announcement ?? '') },
-    { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, args.planSummary, planBlocks) },
+    { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement ?? ''), scope: null },
+    { title: PROMPTS.pack.mfaGuide(tenant).split(',')[0], prompt: [PROMPTS.pack.mfaGuide(tenant), PROMPTS.noInvent].join('\n\n'), scope: null },
+    { title: PROMPTS.pack.kb(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.kb(tenant), PROMPTS.step, stepText), scope: stepTitle },
+    { title: PROMPTS.pack.changeRequest(tenant).split(',')[0], prompt: withFacts(PROMPTS.pack.changeRequest(tenant), PROMPTS.record, args.changeRecord), scope: null },
+    { title: PROMPTS.pack.explain, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.step, stepText), scope: stepTitle },
+    { title: PROMPTS.pack.pushback(tenant).split('.')[0], prompt: withFacts(PROMPTS.pack.pushback(tenant), PROMPTS.step, stepText), scope: stepTitle },
+    { title: PROMPTS.pack.translate(args.language ?? PROMPTS.language).split(',')[0], prompt: withFacts(PROMPTS.pack.translate(args.language ?? PROMPTS.language), PROMPTS.draft, args.announcement ?? ''), scope: null },
+    { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, args.planSummary, planBlocks), scope: null },
   ]
 }
 
 export function promptPackMarkdown(items: PackItem[], tenant: string): string {
   const lines = [`# ${PROMPTS.title}: ${tenant}`, '', PROMPTS.intro, '']
-  for (const it of items) lines.push(`## ${it.title}`, '', '```', it.prompt, '```', '')
+  // What each prompt is about, above the prompt: three of them are grounded in
+  // one step and the file used to read as though all eight were about the plan.
+  for (const it of items) lines.push(`## ${it.title}`, '', it.scope === null ? EXPORT.promptWholePlan : fillText(EXPORT.promptScope, { step: it.scope }), '', '```', it.prompt, '```', '')
   return lines.join('\n')
 }
 
@@ -170,7 +195,7 @@ export function promptPackMarkdown(items: PackItem[], tenant: string): string {
 // which is why the "redacted" bundle still carried policy names, group names,
 // departments and named-location CIDRs (audit redact-02, redact-03, redact-07).
 
-export function groundingBundle(args: { view?: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[] }): Record<string, unknown> {
+export function groundingBundle(args: { view: StepView; tenant: string; snapshot: TenantSnapshot; coverage: CoverageReport; steps: Step[]; schedule: Schedule; redacted: boolean; generated: string; cleanup?: CleanupExport[] }): Record<string, unknown> {
   const { snapshot } = args
   // Every name the tenant contains, not just its users.
   const vocabulary = args.redacted ? tenantVocabulary(snapshot) : new Map<string, string>()
@@ -184,16 +209,24 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
     signInEvidence: snapshot.sources.signInEvidence?.status ?? 'unknown',
     registrationMfaCapable: snapshot.registrationDetails.filter((r) => r.isMfaCapable).length,
   }
-  // With a view the findings are data (goal, status); the engine's statement
-  // prose stays out of a content-era bundle (prompt 53 queue item 7).
-  const findings = args.coverage.results.map((r) => (args.view ? { goal: r.goal.id, name: r.goal.name, status: r.status } : { goal: r.goal.id, name: r.goal.name, status: r.status, statement: r.statement.replace(/\*\*/g, '') }))
-  // With a view, each step is what the screen says (prompt 53 queue item 7):
-  // the content title, why, what to do and done when, beside the data another
-  // tool needs (status, the dates line, tracking) and none of the v2 engine's
-  // field names (rings, events); without one, the engine's own fields.
+  // The findings are data (goal, status). The engine's statement prose stays out
+  // of a content-era bundle (prompt 53 queue item 7).
+  const findings = args.coverage.results.map((r) => ({ goal: r.goal.id, name: r.goal.name, status: r.status }))
+  // Each step is what the screen says, and only that. The export view is the
+  // frozen Step Contract's own answers (ui/surfaces/stepExport.ts), so where the
+  // Plan is showing a policy nobody can write, a decision waiting on a person or
+  // a change held for review, the bundle says so in the same words — and where
+  // the Plan withholds an implementation, `implementation: false` travels with
+  // the step rather than a reader having to infer it from an absent body.
+  //
+  // The engine's own field names (rings, events, plainTitle, forManager) are in
+  // none of it. They used to be the fallback for a bundle built without a view:
+  // a second description of every step, written before Foundation B settled the
+  // lifecycle, which is exactly the disagreement this file cannot afford. There
+  // is one reading now and it is the screen's.
   const steps = args.steps.map((s) => {
-    const v = args.view ? args.view(s) : null
-    const data = {
+    const v = args.view(s)
+    return {
       id: s.id,
       kind: s.kind,
       status: s.status,
@@ -202,28 +235,28 @@ export function groundingBundle(args: { view?: StepView; tenant: string; snapsho
       // bundle is read by another tool, and a bare instant is indistinguishable
       // from one a policy has earned, so the basis travels with the date:
       // `forecast` is the roadmap's projected path and authorises nothing;
-      // `committed` is a milestone Foundation B's evidence supports. The
-      // fallback below still carries the schedule's own events and rings, and
-      // this is what says which of the two they are.
+      // `committed` is a milestone Foundation B's evidence supports; `unearned`
+      // is a policy in report-only that has no enforcement instant to give.
       enforcement: statedEnforcement(s),
+      title: v.title,
+      why: v.why,
+      stage: v.stage,
+      condition: v.condition,
+      statusWord: v.status,
+      next: v.next,
+      who: v.who,
+      // The one denominator the screen states, read from the one population
+      // authority; null where Foundation A could not settle the scope, which is
+      // the same silence `who` keeps. It used to be `reached(s).active`, a stored
+      // number beside the count every surface actually shows.
+      population: v.population,
+      whatToDo: v.whatToDo,
+      fix: v.fix,
+      doneWhen: v.doneWhen,
+      dates: v.dates,
+      ifWrong: v.ifWrong,
+      implementation: v.implementation,
     }
-    // A policy in report-only whose enforcement Foundation B has not granted has
-    // no enforcement instant to give (`unearned`), so the fallback's engine
-    // fields do not smuggle the same projection back in under another name: the
-    // schedule's events and rings are the instant, and absent is how the bundle
-    // says a date is not this step's to state.
-    const withheld = data.enforcement.basis === 'unearned'
-    return v
-      ? { ...data, title: v.title, why: v.why, whatToDo: v.whatToDo, doneWhen: v.doneWhen, dates: v.dates, ifWrong: v.ifWrong, population: reached(s)?.active ?? null }
-      : {
-          ...data,
-          ...(withheld ? {} : { events: s.events, rings: s.rings.map((r) => ({ name: r.name, plannedStart: r.plannedStart, plannedEnd: r.plannedEnd, members: r.targeting.memberCount })) }),
-          title: s.title,
-          plainTitle: s.plainTitle,
-          why: s.why,
-          population: reached(s)?.active ?? null,
-          forManager: s.forManager,
-        }
   })
   const bundle = {
     _readme: GROUNDING.header(args.redacted ? '[the tenant]' : args.tenant, args.redacted, args.generated),

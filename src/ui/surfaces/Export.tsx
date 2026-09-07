@@ -1,7 +1,18 @@
-// Export (prompt 49 Part 2, target-state §7): six cards, each a title, one line,
-// one button. The exporters are the existing ones, moved here from the Roadmap
-// page, not rewritten: the ICS, the plan file (v2, round-tripped), the CSVs,
-// the prompt pack, the grounding bundle, and the print layout.
+// Export: take this plan somewhere else.
+//
+// Six artifacts, each a title, one line and its buttons, grouped by the job the
+// artifact does rather than by its format (task 013): the plan itself, doing the
+// work, timing, and what another tool reads. The exporters are the existing ones
+// — the ICS, the plan file (v2, round-tripped), the CSVs, the prompt pack, the
+// grounding bundle and the print layout — and every one of them speaks from the
+// same export view of a step, which is the frozen Step Contract's own answers
+// (ui/surfaces/stepExport.ts). Nothing on this page decides anything about a
+// policy; the Plan has already decided it.
+//
+// The one thing the page says for itself is where an artifact's scope is not its
+// label: the JSON and the PowerShell belong to one step and are on that step in
+// the Plan, and three of the eight prompts in the pack are grounded in a single
+// step, which the pack now names.
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -40,9 +51,11 @@ import type { StepVarContext } from './stepVars.ts'
 const DASH = String.fromCharCode(0x2014)
 
 // The six cards from pages.export.cards: each a title, one line, and its buttons joined by ' · '.
-type ExportPage = { h1: string; cards: Record<'print' | 'calendar' | 'planFile' | 'csv' | 'prompts' | 'bundle', [string, string, string]> }
+type ExportGroups = { plan: string; implementation: string; implementationNote: string; schedule: string; technical: string }
+type ExportPage = { h1: string; intro: string; groups: ExportGroups; cards: Record<'print' | 'calendar' | 'planFile' | 'csv' | 'prompts' | 'bundle', [string, string, string]> }
 const P = pages.export as unknown as ExportPage
 const buttons = (card: keyof ExportPage['cards']): string[] => P.cards[card][2].split(' · ')
+const G = P.groups
 const A = app.export
 const S = app.shell
 
@@ -195,22 +208,16 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   return (
     <section className="surface export">
       <h1>{P.h1}</h1>
+      <p className="reason">{P.intro}</p>
       <PageTip page="export" text={(pages.export as Record<string, string>).tip} />
+
+      <h2>{G.plan}</h2>
       <div className="export-grid">
         <Card className="export-card" title={P.cards.print[0]}>
           <p className="reason">{P.cards.print[1]}</p>
           <p className="actions no-print">
             <Button variant="primary" onClick={() => setPrinting(true)}>
               {buttons('print')[0]}
-            </Button>
-          </p>
-        </Card>
-
-        <Card className="export-card" title={P.cards.calendar[0]}>
-          <p className="reason">{P.cards.calendar[1]}</p>
-          <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view, cleanupViews), 'text/calendar', REDACTED)}>
-              {buttons('calendar')[0]}
             </Button>
           </p>
         </Card>
@@ -227,18 +234,14 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
             <input ref={fileInput} type="file" accept=".json" hidden aria-hidden onChange={(e) => void loadPlan(e.currentTarget.files)} />
           </p>
         </Card>
+      </div>
 
-        <Card className="export-card" title={P.cards.csv[0]}>
-          <p className="reason">{P.cards.csv[1]}</p>
-          <p className="actions">
-            {csvTables.map((t) => (
-              <Button key={t.id} variant="tertiary" onClick={() => exportDownload(t.csvName, toCsv(t.header, t.rows), 'text/csv', REDACTED)}>
-                {t.id === 'readiness' ? buttons('csv')[0] : fillText(A.csvTab, { label: t.label })}
-              </Button>
-            ))}
-          </p>
-        </Card>
-
+      {/* Doing the work. The machine artifacts for a policy are on that policy's
+          own step in the Plan, because they are one step's, and the note says so
+          rather than the page implying it exports them for the whole plan. */}
+      <h2>{G.implementation}</h2>
+      <p className="reason">{G.implementationNote}</p>
+      <div className="export-grid">
         <Card className="export-card" title={P.cards.prompts[0]}>
           <p className="reason">{P.cards.prompts[1]}</p>
           <p className="actions">
@@ -248,16 +251,47 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           </p>
           <details onToggle={(e) => setShowPrompts(e.currentTarget.open)}>
             <summary>{buttons('prompts')[1]}</summary>
+            {/* Which step a prompt speaks for, beside its title: three of the
+                eight are grounded in one step and five in the plan, and the
+                list used to read as though every one of them were the plan's. */}
             {showPrompts &&
               pack.map((item, i) => (
                 <p key={i} className="reason">
-                  {item.title}{' '}
+                  {item.title} <span className="muted">({item.scope === null ? A.promptWholePlan : fillText(A.promptScope, { step: item.scope })})</span>{' '}
                   <Button variant="tertiary" onClick={() => copy(`p${i}`, item.prompt)}>
                     {copied === `p${i}` ? A.copied : A.promptCopy}
                   </Button>
                 </p>
               ))}
           </details>
+        </Card>
+      </div>
+
+      {/* Timing. */}
+      <h2>{G.schedule}</h2>
+      <div className="export-grid">
+        <Card className="export-card" title={P.cards.calendar[0]}>
+          <p className="reason">{P.cards.calendar[1]}</p>
+          <p className="actions">
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.ics`, buildIcs(steps, tenantName, planId, view, cleanupViews), 'text/calendar', REDACTED)}>
+              {buttons('calendar')[0]}
+            </Button>
+          </p>
+        </Card>
+      </div>
+
+      {/* For another tool: the tables as they are, and the bundle. */}
+      <h2>{G.technical}</h2>
+      <div className="export-grid">
+        <Card className="export-card" title={P.cards.csv[0]}>
+          <p className="reason">{P.cards.csv[1]}</p>
+          <p className="actions">
+            {csvTables.map((t) => (
+              <Button key={t.id} variant="tertiary" onClick={() => exportDownload(t.csvName, toCsv(t.header, t.rows), 'text/csv', REDACTED)}>
+                {t.id === 'readiness' ? buttons('csv')[0] : fillText(A.csvTab, { label: t.label })}
+              </Button>
+            ))}
+          </p>
         </Card>
 
         <Card className="export-card" title={P.cards.bundle[0]}>

@@ -26,6 +26,7 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { buildTranslatorOutput } from '../../scripts/translator-dump.ts'
 import { canDenyAccess } from './strand.ts'
 import { stepExportView, commsFor } from '../ui/surfaces/stepExport.ts'
+import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { rowWhen } from '../ui/surfaces/rowWhen.ts'
 import { planFinish } from '../derive/finish.ts'
@@ -204,7 +205,14 @@ function assertNothingRollsOut(step: Step, ctx: StepVarContext, label: string): 
   assert.equal(withWave, rowWhen(step, null), `${label}: the row takes no date from its wave`)
   assert.ok(!/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(withWave), `${label}: no rollout date on the row (${withWave})`)
   const view = stepExportView(step, ctx)
-  assert.deepEqual(view.doneWhen, [], `${label}: no completion criteria`)
+  // The completion the artifacts carry is the Step Contract's own, which on a
+  // policy nobody can write is what would *clear the reason* and never the
+  // rollout's gates. The artifacts used to carry no completion at all here while
+  // the screen carried that one line, so a step the Plan showed with a way out
+  // left this browser with none.
+  assert.deepEqual(view.doneWhen, stepContract(step, ctx).doneWhen, `${label}: the completion is not the screen's`)
+  assert.equal(view.doneWhen.length, 1, `${label}: one resolution completion, not a rollout's gates`)
+  assert.ok(!/report-only|sign-in failures|per cent|%/i.test(view.doneWhen.join(' ')), `${label}: a rollout completion leaked — ${view.doneWhen.join(' | ')}`)
   assert.equal(view.ifWrong, null, `${label}: no rollback`)
   assert.equal(view.dates, null, `${label}: no dates`)
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
@@ -466,7 +474,8 @@ test('stale rings, events, dates and wave data on an unavailable step reach no c
   assert.equal(jsonOffered(stale), false)
   assert.equal(stepPortalLines(stale, { nameOf: (id) => id, policyName: stale.title }), null)
   const view = stepExportView(stale, ctx)
-  assert.deepEqual(view.doneWhen, [])
+  assert.deepEqual(view.doneWhen, stepContract(stale, ctx).doneWhen, "the completion is not the screen's")
+  assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout completion leaked: ${view.doneWhen.join(' | ')}`)
   assert.equal(view.ifWrong, null)
   assert.equal(view.dates, null)
   assert.equal(view.whatToDo.length, 1, view.whatToDo.join(' | '))
@@ -491,8 +500,15 @@ test('a contradictory baseline renders and exports one resolution action and not
   assert.equal(unavailableReason(step), 'baseline-conflict')
   assertNothingRollsOut(step, ctx, 'baseline conflict')
   const view = stepExportView(step, ctx)
-  assert.equal(view.whatToDo.length, 1, `one next action: ${view.whatToDo.join(' | ')}`)
-  assert.match(view.whatToDo[0], /Both cannot be true/)
+  // The action first, then the contradiction that explains it: the two things
+  // the screen says about this step, in the one field a flat artifact has for
+  // them. The artifacts used to carry the paragraph alone, so the sentence the
+  // Plan puts under What to do — wait for a reviewed baseline, there is nothing
+  // to submit — was on screen and in no file that left the browser. Neither line
+  // is an instruction for writing the policy.
+  assert.equal(view.whatToDo.length, 2, `the action and the contradiction: ${view.whatToDo.join(' | ')}`)
+  assert.equal(view.whatToDo[0], stepContract(step, ctx).whatToDo.text, "the artifact leads with something other than the screen's action")
+  assert.match(view.whatToDo[1], /Both cannot be true/)
 })
 
 
@@ -645,7 +661,7 @@ test('a stale unavailable step goes through the schedule and comes out of every 
   // No date, no calendar entry, no finish — whatever it still carries.
   assert.equal(rowWhen(stale, schedule.waves[0]?.start ?? null), '', 'no row date')
   assert.equal(planFinish([stale]).finish, null, 'no finish contribution')
-  const ics = buildIcs([stale], 'Contoso', 'plan-x', () => ({ title: 'Stale', why: '', whatToDo: [], doneWhen: [], ifWrong: null, dates: null }))
+  const ics = buildIcs([stale], 'Contoso', 'plan-x', () => ({ title: 'Stale', why: '', stage: '', condition: '', status: '', next: null, who: null, population: null, whatToDo: [], fix: [], doneWhen: [], ifWrong: null, dates: null, implementation: false }))
   assert.ok(!ics.includes(stale.id), 'no calendar entry')
   // And exactly one row, in the undated group.
   const undated = undatedRows(steps, schedule.waves)
