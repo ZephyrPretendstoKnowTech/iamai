@@ -156,17 +156,20 @@ function everybodySeen(snapshot: TenantSnapshot, policyId: string, mapping: Retu
     if (r.policyId !== policyId) return r
     const already = new Set(Object.values(r.affectedUserIds).flat())
     const missing = people.filter((id) => !already.has(id))
-    // Seen, and dated: a record the gate cannot place in the window it is
-    // judging is not one it credits (fixtures/records.ts).
-    const dated = seenOn(missing, snapshot.asOf)
+    // Seen, and dated *at this scan*: a record the gate cannot place in the
+    // window it is judging is not one it credits, and the window it is judging
+    // is the observation window behind this scan rather than every day the
+    // policy has been reporting (roadmap/tracking.ts `gates`). The fixture
+    // spreads its own records across the whole episode, so a control scanned
+    // days later would otherwise be a policy whose people were last seen before
+    // the window opened — which is a policy the records do not clear, and not
+    // the healthy control this helper exists to build.
+    const dated = seenOn(people, snapshot.asOf)
     return {
       ...r,
       counts: { ...r.counts, reportOnlySuccess: r.counts.reportOnlySuccess + missing.length },
       affectedUserIds: { ...r.affectedUserIds, reportOnlySuccess: [...r.affectedUserIds.reportOnlySuccess, ...missing] },
-      reportOnlyDated: {
-        signInsByDay: [...(r.reportOnlyDated?.signInsByDay ?? []), ...dated.signInsByDay],
-        lastSeenByUser: { ...r.reportOnlyDated?.lastSeenByUser, ...dated.lastSeenByUser },
-      },
+      reportOnlyDated: { signInsByDay: dated.signInsByDay, lastSeenByUser: { ...r.reportOnlyDated?.lastSeenByUser, ...dated.lastSeenByUser } },
     }
   })
   return { ...snapshot, evidencePolicyResults: results } as TenantSnapshot

@@ -406,10 +406,13 @@ function windowCollected(snapshot: TenantSnapshot, from: string): boolean {
  *     what the window was opened to find (`windowCollected`);
  *   * the records credited have to be inside it. A policy the tenant enforced
  *     and moved back to report-only has report-only records from the earlier
- *     episode in the same totals, and those paid for a window they were never
- *     watched over. Only the dated view can separate them
- *     (collect/types.ts `reportOnlyDated`), and where a result has no dated view
- *     nothing about it is attributable, so nothing about it passes.
+ *     episode in the same totals, and a policy left reporting for forty-five
+ *     days has forty-five days of them; either way the ones outside the window
+ *     paid for a stretch they were never watched over — a tenant that went
+ *     quiet a month ago is not a tenant whose last seven days are clean. Only
+ *     the dated view can separate them (collect/types.ts `reportOnlyDated`),
+ *     and where a result has no dated view nothing about it is attributable, so
+ *     nothing about it passes.
  *
  * Everything it reads is about the one deployed object it was handed: another
  * member's records are another policy's records, and never reach this.
@@ -464,15 +467,32 @@ function gates(
   // a window and the gate cannot open on it (see the header).
   const dated = since === null ? null : (pr.reportOnlyDated ?? null)
   const sinceDay = since ? since.slice(0, 10) : null
+  // The window, as the day the records are dated by. `readFrom` is an instant
+  // and a record is a day, so the gate asks the question at the resolution the
+  // answer exists at: the day the window opens on, and every day after it.
+  const readFromDay = readFrom === null ? null : readFrom.slice(0, 10)
   // Whether what follows is a reading of the window at all: records this scan
   // can place in it, over a collection that reaches across it.
   const windowRead = readFrom !== null && dated !== null && windowCollected(snapshot, readFrom)
-  const signIns = dated && sinceDay ? dated.signInsByDay.reduce((n, d) => (d.day >= sinceDay ? n + d.signIns : n), 0) : judged.reduce((n, k) => n + c[k], 0)
+  // Credit is counted over the window, not over the episode. `windowRead` proves
+  // the collection reached across the last `observationDays`; a record older
+  // than that is outside the stretch that proof is about, so crediting it would
+  // pay for a window on evidence from a week the gate never claimed to have
+  // read. A policy reporting for forty-five days under a seven-day window is
+  // judged on those seven days, in both halves of the evidence gate.
+  const signIns = dated && readFromDay ? dated.signInsByDay.reduce((n, d) => (d.day >= readFromDay ? n + d.signIns : n), 0) : judged.reduce((n, k) => n + c[k], 0)
   // Failing or interrupted records since `since`: by day where the snapshot
   // carries days; the window's totals where it does not (or there is no since).
   // Failure is never discounted the way credit is — an enforced failure this
   // snapshot cannot date could have happened inside the window, so it counts
   // against the gate on either path. Nothing here can turn a failure into a pass.
+  //
+  // Which is why this one interval is the episode and not the window: the
+  // narrowing above exists to stop old records paying for a window they were
+  // never watched over, and applying it here would do the opposite — retire a
+  // failure by waiting out the days it happened on. A person the policy would
+  // have blocked is a fact about the policy, not about the week; the gate keeps
+  // counting it until the tenant resolves it.
   const failures =
     pr.byDay && sinceDay
       ? Object.entries(pr.byDay).reduce((n, [day, d]) => (day >= sinceDay ? n + d.failures : n), 0)
@@ -481,7 +501,7 @@ function gates(
   for (const id of [...pr.affectedUserIds.reportOnlyFailure, ...pr.affectedUserIds.reportOnlyInterrupted, ...pr.affectedUserIds.enforcedFailure]) byUser.set(id, (byUser.get(id) ?? 0) + 1)
   // A record of this policy for a person is that person seen — a record of the
   // state the gate is judging, and no other.
-  const seen = dated && sinceDay ? new Set(Object.entries(dated.lastSeenByUser).filter(([, day]) => day >= sinceDay).map(([id]) => id)) : new Set(judged.flatMap((k) => pr.affectedUserIds[k] ?? []))
+  const seen = dated && readFromDay ? new Set(Object.entries(dated.lastSeenByUser).filter(([, day]) => day >= readFromDay).map(([id]) => id)) : new Set(judged.flatMap((k) => pr.affectedUserIds[k] ?? []))
   const seenInScope = active === null ? null : active.filter((id) => seen.has(id)).length
   return {
     daysInReportOnly,

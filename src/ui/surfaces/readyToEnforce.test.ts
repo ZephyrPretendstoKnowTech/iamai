@@ -508,6 +508,51 @@ test('007.11j: what has to be read across is the observation window, not every d
   assert.equal(c.step.state.lifecycle, 'ready-to-enforce')
 })
 
+test('007.11k: a long episode is judged on the window behind this scan, so records older than it credit nothing', () => {
+  // The other half of 11j, and the half that decides whether the rule is a
+  // safety rule or a loophole. The same forty-five-day episode, the same
+  // seven-day window, the same collection reaching thirty days back — and the
+  // only clean records this policy has are twenty days old.
+  //
+  // The collection did read the week behind this scan, end to end, and what it
+  // found there is nothing: not one sign-in evaluated under this policy, not one
+  // person in scope seen. A tenant that went quiet three weeks ago is not a
+  // tenant whose last seven days are clean, and enforcing on those records would
+  // be enforcing on a window nobody was watched over. So the step stays where it
+  // is and offers nothing.
+  const f = fixture(FIXTURE)
+  const long = new Date(Date.parse(f.snapshot.asOf) - 45 * DAY).toISOString()
+  const stale = new Date(Date.parse(f.snapshot.asOf) - 20 * DAY).toISOString()
+  const aged = (at: string) =>
+    freshScan({
+      edit: (row) => {
+        row.createdDateTime = long
+        row.modifiedDateTime = long
+      },
+      records: (r) => {
+        r.firstReportOnlyAt = long
+        r.reportOnlyDated = seenOn((r.affectedUserIds as Record<string, string[]>).reportOnlySuccess, at)
+      },
+    })
+  const c = aged(stale)
+  const t = c.step.tracking!
+  assert.ok(t.daysInReportOnly > 30, `${t.daysInReportOnly} days in report-only`)
+  assert.equal(t.windowRead, true, 'the week behind the scan was read')
+  assert.equal(t.signIns, 0, 'and holds no record of this policy')
+  assert.equal(t.seenInScope, 0, 'so nobody in scope was seen in it')
+  assert.equal(t.failures, null, 'a zero nothing was counted for is unknown, not a clean window')
+  assert.equal(t.readyNow, false)
+  nothingIsOffered(c)
+
+  // And the same tenant with the same episode, once the window behind the scan
+  // holds the records: that is the only difference, and it is the one that
+  // carries the stage.
+  const now = aged(f.snapshot.asOf)
+  assert.equal(now.step.tracking!.seenInScope, now.step.tracking!.activeInScope)
+  assert.equal(now.step.tracking!.readyNow, true)
+  assert.equal(now.step.state.lifecycle, 'ready-to-enforce')
+})
+
 /** The step's portal lines, as the screen and the exports both render them. */
 function portalOf(step: Step, ctx: StepVarContext): string[] | null {
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
