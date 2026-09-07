@@ -52,10 +52,14 @@ jobs:
 
       # Every Learn URL in content.json answers 2xx. The test still skips itself
       # when Learn cannot be reached at all, so a total outage reads as "not
-      # asked" rather than as a wall of dead links.
+      # asked" rather than as a wall of dead links. Each probe is asked at most
+      # three times and only when the failure was the kind another ask could fix
+      # (src/testing/transient.ts); a 404 is taken at its word the first time.
+      # The output is teed so the failing lines survive as an artifact, not just
+      # in the scrollback of a red step.
       - name: Microsoft Learn — every cited link still opens
         id: learn
-        run: npm run test:external
+        run: set -o pipefail; npm run test:external 2>&1 | tee "$RUNNER_TEMP/learn.log"
         env:
           EXTERNAL_HEALTH: '1'
 
@@ -66,13 +70,15 @@ jobs:
       - name: Microsoft login authority — the sign-in warm reaches it
         id: smoke
         if: always()
-        run: npm run smoke
+        run: set -o pipefail; npm run smoke 2>&1 | tee "$RUNNER_TEMP/smoke.log"
         env:
           CHROME: /usr/bin/google-chrome
           EXTERNAL_HEALTH: '1'
 
       # Which of the two moved, in the run summary, so a reader does not have to
-      # open the logs to find out.
+      # open the logs to find out — and, when one failed, the lines that say why.
+      # Each carries how many attempts it took, so "404 on the first ask" and
+      # "503 after 3 attempts" read as the different news they are.
       - name: Summary
         if: always()
         run: |
@@ -86,6 +92,34 @@ jobs:
             echo "| Every cited Learn link opens | learn.microsoft.com | ${{ steps.learn.outcome }} |"
             echo "| Sign-in warm reaches the authority | login.microsoftonline.com | ${{ steps.smoke.outcome }} |"
             echo
+            if [ "${{ steps.learn.outcome }}" != "success" ] && [ -f "$RUNNER_TEMP/learn.log" ]; then
+              echo "### Learn links that did not open"
+              echo '```'
+              grep -E '→|not reachable' "$RUNNER_TEMP/learn.log" | head -50 || echo "(no link lines; see the step log)"
+              echo '```'
+            fi
+            if [ "${{ steps.smoke.outcome }}" != "success" ] && [ -f "$RUNNER_TEMP/smoke.log" ]; then
+              echo "### Sign-in probe"
+              echo '```'
+              grep -E '^(FAIL|retry|skip) |^smoke:' "$RUNNER_TEMP/smoke.log" | head -30 || echo "(see the step log)"
+              echo '```'
+            fi
+            echo
+            echo "Retries: at most 3 attempts per probe, 400ms then 1200ms apart, and only"
+            echo "for timeouts, resets, temporary DNS failures, 5xx, 408 and 429."
+            echo "A 404, a 410, an NXDOMAIN or a malformed URL is taken at its word the first time."
+            echo
             echo "A failure here does not mean IAMAI has a defect, and does not"
             echo "gate \`ci\` or the deploy. A dead Learn link is still worth fixing."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # The full output of whichever probe ran, kept past the log retention of a
+      # red step, so a failure can be read after the fact rather than re-run.
+      - name: Keep the probe output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-health-${{ github.sha }}
+          path: ${{ runner.temp }}/*.log
+          if-no-files-found: ignore
+          retention-days: 30

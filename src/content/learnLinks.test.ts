@@ -12,38 +12,31 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { content } from './content.ts'
+import { probe } from '../testing/transient.ts'
 
 const urls = new Set<string>()
 for (const s of content.steps) if (s.learn?.url) urls.add(s.learn.url)
 for (const c of Object.values(content.cleanup)) if (c.learn?.url) urls.add(c.learn.url)
-
-async function status(href: string): Promise<number | null> {
-  const ctl = new AbortController()
-  const t = setTimeout(() => ctl.abort(), 12000)
-  try {
-    let r = await fetch(href, { method: 'HEAD', redirect: 'follow', signal: ctl.signal })
-    if (!r.ok) r = await fetch(href, { method: 'GET', redirect: 'follow', signal: ctl.signal })
-    return r.status
-  } catch {
-    return null
-  } finally {
-    clearTimeout(t)
-  }
-}
 
 test('every Learn link answers 2xx (external health; skipped unless EXTERNAL_HEALTH=1)', async (t) => {
   if (process.env.EXTERNAL_HEALTH !== '1') {
     t.skip('external health: set EXTERNAL_HEALTH=1 (external-health.yml) to probe Microsoft Learn')
     return
   }
-  if ((await status('https://learn.microsoft.com/')) === null) {
-    t.skip('offline: Microsoft Learn is not reachable from here')
+  // Learn unreachable altogether is not a broken link, it is no answer, and the
+  // probe has already asked three times before saying so.
+  const reachable = await probe('https://learn.microsoft.com/')
+  if (reachable.status === null) {
+    t.skip(`offline: Microsoft Learn is not reachable from here (${reachable.detail})`)
     return
   }
+  // Each line carries the status, why, and how many attempts it took, so a
+  // failed run in Actions says which links moved and whether the network wobbled
+  // on the way -- a 404 after 1 attempt and a 503 after 3 are different news.
   const bad: string[] = []
   for (const href of urls) {
-    const s = await status(href)
-    if (s === null || s < 200 || s >= 300) bad.push(`${href} → ${s ?? 'no answer'}`)
+    const r = await probe(href)
+    if (r.status === null || r.status < 200 || r.status >= 300) bad.push(`${href} → ${r.detail}${r.transient ? ' [transient, still failing]' : ''}`)
   }
   assert.deepEqual(bad, [], `Learn link(s) that do not open a page:\n${bad.join('\n')}`)
 })

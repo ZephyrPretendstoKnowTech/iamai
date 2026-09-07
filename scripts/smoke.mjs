@@ -9,6 +9,13 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
+// The same "worth asking again" the Learn probe uses, so external-health has one
+// definition of transient rather than two that drift (src/testing/transient.ts).
+import { BACKOFF_MS, MAX_ATTEMPTS, probe } from '../src/testing/transient.ts'
+
+// The authority whose metadata the sign-in warm fetches (src/graph/msal.ts).
+// Asked directly only to tell a wobbling Microsoft apart from a broken IAMAI.
+const AUTHORITY_METADATA = 'https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration'
 
 // No rendered surface and no downloaded artifact may carry a forbidEverywhere
 // string (prompt 49.1 item 1): a placeholder token, a Setup mention, a raw URN.
@@ -520,27 +527,53 @@ try {
   // login.microsoftonline.com's metadata, and loginRedirect writes its request to
   // sessionStorage before it navigates, so a click that started the flow leaves
   // that trace and a no-op leaves none.
-  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
-  // Click as soon as the button exists — during the warm — not after it settles.
-  await waitFor(`!!document.querySelector('.connect .actions button')`)
-  // The warming button carries a spinner but is not disabled, so an early click lands.
-  const clickable = await evaluate(`(() => { const b = document.querySelector('.connect .actions button'); return !!b && !b.disabled })()`)
-  const clickedSignIn = await clickText('/Sign in with Microsoft/')
-  await sleep(2800)
-  // The queued click navigated away once ready; come back to the app's origin and
-  // read the trace it left. The signed-out mock never runs initAuth, so nothing clears it.
-  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
-  await sleep(1000)
-  const msalTrace = await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\\.windows|microsoftonline/.test(k)).length`)
+  // One pass of the sequence: land on Connect signed out, click the button while
+  // it is still warming, then come back and read the trace MSAL left.
+  const signInPass = async () => {
+    await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+    // Click as soon as the button exists — during the warm — not after it settles.
+    await waitFor(`!!document.querySelector('.connect .actions button')`)
+    // The warming button carries a spinner but is not disabled, so an early click lands.
+    const canClick = await evaluate(`(() => { const b = document.querySelector('.connect .actions button'); return !!b && !b.disabled })()`)
+    const clicked = await clickText('/Sign in with Microsoft/')
+    await sleep(2800)
+    // The queued click navigated away once ready; come back to the app's origin and
+    // read the trace it left. The signed-out mock never runs initAuth, so nothing clears it.
+    await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+    await sleep(1000)
+    const trace = await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\\.windows|microsoftonline/.test(k)).length`)
+    return { canClick, clicked, trace }
+  }
+  let pass = await signInPass()
+  const clickable = pass.canClick
+  const clickedSignIn = pass.clicked
   check('Sign-in: the warming button is clickable so an early click is not lost (item 7)', clickable)
   // Two halves of item 7. That the queued click lands on the button is ours and
-  // is asserted here, always. That MSAL then wrote its request is only true when
-  // login.microsoftonline.com answers the metadata fetch, so that half is an
-  // external-health check: a Microsoft outage must not make product CI red.
+  // is asserted here, always, on the first pass. That MSAL then wrote its request
+  // is only true when login.microsoftonline.com answers the metadata fetch, so
+  // that half is an external-health check: a Microsoft outage must not make
+  // product CI red.
   check('Sign-in: the first click after load lands on the button, not lost to the warm (item 7)', clickedSignIn)
-  if (EXTERNAL_HEALTH)
-    check('Sign-in (external): the click starts the flow via the real authority metadata fetch (item 7)', clickedSignIn && msalTrace > 0, `sign-in trace keys=${msalTrace}`)
-  else skip('Sign-in (external): the click starts the flow via the real authority metadata fetch (item 7)', `needs login.microsoftonline.com; runs in external-health. trace keys=${msalTrace}`)
+  if (EXTERNAL_HEALTH) {
+    // No trace can mean two things, and they are not the same news. Ask the
+    // authority directly: if it is wobbling (timeout, reset, 5xx, 429) the pass
+    // is inconclusive and worth repeating; if it answers cleanly then Microsoft
+    // is fine and a missing trace is ours, so stop and say so rather than spend
+    // three passes reaching the same answer. At most MAX_ATTEMPTS passes.
+    let why = `trace keys=${pass.trace}`
+    for (let attempt = 2; pass.trace === 0 && attempt <= MAX_ATTEMPTS; attempt++) {
+      const authority = await probe(AUTHORITY_METADATA)
+      if (!authority.transient) {
+        why = `trace keys=0 after ${attempt - 1} pass(es); authority answered ${authority.detail}, so this is not the network`
+        break
+      }
+      console.log(`retry Sign-in (external): authority ${authority.detail}; pass ${attempt} of ${MAX_ATTEMPTS}`)
+      await sleep(BACKOFF_MS[attempt - 2] ?? BACKOFF_MS[BACKOFF_MS.length - 1])
+      pass = await signInPass()
+      why = `trace keys=${pass.trace} after ${attempt} pass(es); authority ${authority.detail}`
+    }
+    check('Sign-in (external): the click starts the flow via the real authority metadata fetch (item 7)', clickedSignIn && pass.trace > 0, why)
+  } else skip('Sign-in (external): the click starts the flow via the real authority metadata fetch (item 7)', `needs login.microsoftonline.com; runs in external-health. trace keys=${pass.trace}`)
 
   // The demo (prompt 50 item 16): a stranger enters from Connect with no
   // sign-in, walks the whole flow, advances to week two and back, leaves, and no
