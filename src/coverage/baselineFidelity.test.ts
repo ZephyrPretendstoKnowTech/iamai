@@ -346,7 +346,7 @@ test('the Admin Portal conflict is bound to the source policy, not to the goal i
 
   // A baseline whose map hands the same goal to a policy the review did not read
   // is not conflicted: the block is the active baseline's, never the goal's.
-  assert.deepEqual([...baselineConflictGoals({ 'admin-portals-protected': ['a-different-source-policy'] })], [], 'the goal is blocked by its id alone, whatever baseline is active')
+  assert.deepEqual([...baselineConflictGoals({ 'admin-portals-protected': ['a-different-source-policy'] })], [], 'the goal is blocked by its id alone, rather than by the source policy the active baseline maps it to')
   assert.deepEqual([...baselineConflictGoals({})], [])
   // And the same source policy under a different goal id still conflicts.
   assert.deepEqual([...baselineConflictGoals({ 'some-other-goal': ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'] })], ['some-other-goal'])

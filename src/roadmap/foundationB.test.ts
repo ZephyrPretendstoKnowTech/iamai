@@ -38,6 +38,7 @@ import type { StepObservation, StepObservationRecord } from './observation.ts'
 import { SOLE_MEMBER, matchMembers, observationsOf, requiredMembers } from './tracking.ts'
 import { statusOf } from '../ui/surfaces/statusWord.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
+import { hasBaselineConflict } from './baselineConflict.ts'
 import { activePeopleIds } from '../derive/population.ts'
 import { notPeopleIds } from '../derive/sets.ts'
 import type { PolicyOperation } from './types.ts'
@@ -110,7 +111,12 @@ test('nothing but lifecycle.ts assigns a status', () => {
 test('the lifecycle belongs to a policy: a step that deploys none has no stage', () => {
   const wrong: string[] = []
   for (const { name, s } of everyStep()) {
-    const deploys = s.kind === 'create' || s.kind === 'adjust'
+    // A goal whose baseline defines its policy two ways deploys nothing: the
+    // plan withdrew its implementation and refuses to name a rollout it will not
+    // define (roadmap/baselineConflict.ts). So it has no stage, by this rule and
+    // not despite it — the step kind still reads `create`, but there is no
+    // policy being deployed for a stage to be a stage of.
+    const deploys = (s.kind === 'create' || s.kind === 'adjust') && !hasBaselineConflict(s.goalId)
     if (deploys && s.state.lifecycle === null) wrong.push(`${name}/${s.id}: a ${s.kind} step with no lifecycle`)
     if (!deploys && s.state.lifecycle !== null) wrong.push(`${name}/${s.id}: a ${s.kind} step forced into the Conditional Access lifecycle as ${s.state.lifecycle}`)
   }

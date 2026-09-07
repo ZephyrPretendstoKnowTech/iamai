@@ -18,10 +18,32 @@ import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 
 const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; heldForEvidence: string; heldForReview: string; satisfiedBy: string; satisfiedTogether: string }
 
+/**
+ * True when the row's date column is this step's readiness threshold.
+ *
+ * A policy the plan cannot write at all is never one of them, however far the
+ * tenant is from the number. The threshold is a wait for something to happen
+ * *before this policy is deployed*, and there is no deployment: reaching 90%
+ * releases nothing here. Reading it first put a tenant number in the date column
+ * of a row whose cause is not in the tenant at all — the Admin Portal step,
+ * whose baseline defines the policy two ways, read "Blocked · when MFA readiness
+ * reaches 90% (now 52%)" and, because a readiness hold carries no reason line,
+ * said nothing whatever about the baseline. An operator drove MFA enrolment to
+ * 90% and the row did not move, because nothing in their tenant was ever what it
+ * was waiting for.
+ *
+ * `planFinish` asks the same two questions in this order already
+ * (derive/finish.ts): a policy that cannot be written is counted as unwritable
+ * and never as waiting on a threshold. This is the row agreeing with the count.
+ */
+function readsThreshold(step: Step): boolean {
+  return unavailableReason(step) === null && heldByReadiness(step)
+}
+
 export function rowWhen(step: Step, waveStart: string | null = null): string {
   // A done step's row shows no date word: blank, never "now".
   if (step.status === 'done') return ''
-  if (heldByReadiness(step)) {
+  if (readsThreshold(step)) {
     const b = step.blockers.find((x) => x.kind === 'readiness' && typeof x.binding === 'string' && /readiness reaches/.test(x.binding))
     if (b && typeof b.binding === 'string') return b.binding
   }
@@ -74,7 +96,7 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
  * and a step held for review says it is held.
  */
 export function rowWhenWraps(step: Step): boolean {
-  return heldByReadiness(step) || heldForReview(step) || (step.status !== 'ready-to-enforce' && readyWhen(step)?.kind === 'since')
+  return readsThreshold(step) || heldForReview(step) || (step.status !== 'ready-to-enforce' && readyWhen(step)?.kind === 'since')
 }
 
 /**
@@ -123,6 +145,6 @@ export function rowReason(step: Step): string | null {
   // looks at somebody's sign-ins.
   const ready = readyWhen(step)
   if (ready?.kind === 'since') return readyBasis(ready)
-  if (step.status === 'blocked' && step.blockedReason && !heldByReadiness(step)) return step.blockedReason
+  if (step.status === 'blocked' && step.blockedReason && !readsThreshold(step)) return step.blockedReason
   return null
 }
