@@ -1734,6 +1734,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (!hasBaselineConflict(s.goalId) || s.state.setAside) continue
     s.action = { kind: s.action.kind, summary: [], json: null, portalSteps: [] }
     s.deliveredBy = []
+    // And the delivery claim goes with the implementation, for the same reason.
+    // The coverage verdict above may well have found a tenant policy that looks
+    // like this goal and marked the step satisfied — but "satisfied" means the
+    // tenant holds what the baseline asks for, and the baseline asks for two
+    // different things. A policy matching one of them proves the goal is met
+    // only if IAMAI first picks which one was meant, which is the one thing it
+    // will not do. So no delivery is claimed, no policy is named as delivering
+    // it, and no rollout stage is reported for a rollout the plan refuses to
+    // define (Foundation B: no lifecycle progress on a resolution step).
+    // Withdrawing this is conservative in the one direction that matters: it
+    // never turns an unknown into "already done".
+    setState(s, { satisfied: false, inPlace: false, lifecycle: null })
+    delete s.satisfiedBy
     // The safety edges stay (a deny-capable step still waits on the escape
     // hatch); the conflict is added beside them and binds the row's reason
     // ahead of any of them (stateReason.ts), so the cause a person reads is the

@@ -21,6 +21,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicies } from './generate.ts'
+import { hasBaselineConflict } from './baselineConflict.ts'
 import { observationDaysFor } from './schedule.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { effectOf } from './operations.ts'
@@ -868,6 +869,19 @@ export function trackExecution(
     // `observation` is the step's one line, derived from the members and never
     // assigned beside them (lifecycle.ts aggregateObservation).
     setState(step, { members: memberObservations, observation: aggregateObservation(memberObservations) })
+
+    // A goal whose baseline defines its policy two ways has no rollout for this
+    // scan to track (roadmap/baselineConflict.ts). What the tenant holds is
+    // still observed and recorded above — that is evidence, and it is honest —
+    // but nothing below it may be said about a rollout the plan refuses to
+    // define: no lifecycle stage, no review of a change against an intent IAMAI
+    // never settled, and above all no `satisfied`. Everything below this line
+    // reads a match between a tenant policy and what the baseline asked for, and
+    // the baseline asked for two different things; a match against one of them
+    // would silently pick that side and report the goal delivered. Generation
+    // already withdrew the claim (roadmap/generate.ts); this is the same rule at
+    // the one place a later scan could put it back.
+    if (hasBaselineConflict(step.goalId)) continue
 
     const lifecycle = aggregateLifecycle(memberTracking, observed)
     advanceState(step, { lifecycle: lifecycle === 'ready-to-enforce' ? 'report-only' : lifecycle })
