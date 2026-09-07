@@ -84,7 +84,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
     policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, enforceIfWrong: S.enforceIfWrong, datesNew: S.datesNew, datesChange: S.datesChange, datesDeploy: S.datesDeploy, datesObserve: S.datesObserve, datesReview: S.datesReview,
     portalOpen: S.portalOpen, existingCoverage: S.existingCoverage ?? '', syncRoleNote: S.syncRoleNote ?? '', strengthName: (ex && ex.strengthName) ?? '',
     certificatePrompt: S.certificatePrompt ?? '',
-    registerPasskeyLine: sharedRefText('registerPasskeyLine'), methodGuidePointer: sharedRefText('methodGuidePointer'),
+    registerPasskeyLine: sharedRefText('registerPasskeyLine'), methodGuidePointer: sharedRefText('methodGuidePointer'), guestNoTap: sharedRefText('guestNoTap'),
   }
   const subList = (_m: string, key: string): string => {
     const items = (ex as Record<string, unknown>)[key]
@@ -116,18 +116,19 @@ export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts',
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
 export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'strengths']
 
-const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer'])
+const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer', 'guestNoTap'])
 
 /**
- * The string behind a shared reference. Most are a key of `shared`; the two the
- * MFA method guidance owns live inside `shared.methodGuides`, which is the one
- * place that guidance is written (task 014). Read here so `fillText`, `fill`
+ * The string behind a shared reference. Most are a key of `shared`; the three
+ * the MFA method guidance owns live inside `shared.methodGuides`, which is the
+ * one place that guidance is written (task 014). Read here so `fillText`, `fill`
  * and `missingVars` resolve a reference the same way and no line can be filled
  * with a value the hole gate never saw.
  */
 function sharedRefText(key: string): unknown {
   if (key === 'registerPasskeyLine') return (S.methodGuides as Record<string, unknown> | undefined)?.userInstruction
   if (key === 'methodGuidePointer') return (S.methodGuides as Record<string, unknown> | undefined)?.pointer
+  if (key === 'guestNoTap') return (S.methodGuides as Record<string, unknown> | undefined)?.guest
   return (S as Record<string, unknown>)[key]
 }
 
@@ -267,11 +268,13 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     syncRoleNote: S.syncRoleNote ?? '',
     // The certificate-prompt note, said once for the plan and referenced by the steps whose policy carries a device condition (step-audit item 26).
     certificatePrompt: S.certificatePrompt ?? '',
-    // The two lines the MFA method guidance owns (task 014): the campaign
-    // email's one end-user sentence and the Plan's pointer to MFA Readiness.
-    // Written once in shared.methodGuides and referenced, never re-typed.
+    // The three lines the MFA method guidance owns (task 014): the campaign
+    // email's one end-user sentence, the Plan's pointer to MFA Readiness, and
+    // the sentence that says a guest gets no Temporary Access Pass. Written
+    // once in shared.methodGuides and referenced, never re-typed.
     registerPasskeyLine: sharedRefText('registerPasskeyLine'),
     methodGuidePointer: sharedRefText('methodGuidePointer'),
+    guestNoTap: sharedRefText('guestNoTap'),
   }
   const defaults: Record<string, any> = {
     announce: 'Tue Sep 1',

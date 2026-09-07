@@ -160,6 +160,10 @@ function GuideChoice({ id, on, onPick }: { id: MethodGuideId; on: boolean; onPic
  * The two guides that do not reach the page's target stand under their own line
  * (a Temporary Access Pass is a way in; Windows Hello for Business works on one
  * PC). They are offered, and they are not offered as finishing the job.
+ *
+ * It passes the row itself, because whether a guide applies is also the person:
+ * a guest's methods are their home tenant's, so this tenant cannot issue them a
+ * Temporary Access Pass and the panel says so instead of offering one.
  */
 function RemediationPanel({ row, guideId, onPick, onClose }: {
   row: ReadinessRow
@@ -169,7 +173,7 @@ function RemediationPanel({ row, guideId, onPick, onClose }: {
 }) {
   const [copied, setCopied] = useState(false)
   const R = T.remediation
-  const r: Remediation = remediationFor(row.group)
+  const r: Remediation = remediationFor(row.group, row)
   if (r.kind === 'none' || r.kind === 'unknown') return null
   const guide = guideId === null ? null : methodGuide(guideId)
   const name = row.user.displayName ?? row.user.userPrincipalName ?? ''
@@ -192,6 +196,10 @@ function RemediationPanel({ row, guideId, onPick, onClose }: {
           <p className="actions">{r.guides.map((id) => <GuideChoice key={id} id={id} on={id === guideId} onPick={onPick} />)}</p>
           <p className="line">{R.other}</p>
           <p className="actions">{r.other.map((id) => <GuideChoice key={id} id={id} on={id === guideId} onPick={onPick} />)}</p>
+          {/* Why a choice the panel would otherwise offer is absent: a guest gets
+              no Temporary Access Pass from this tenant. The sentence is the one
+              the campaign step already carries (shared.methodGuides.guest). */}
+          {r.note && <p className="reason">{r.note}</p>}
         </>
       )}
       {guide && (
@@ -309,7 +317,7 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
       // scan could not read gets no setup path invented for it — the page's own
       // "scan again" is the action there.
       render: (r) => {
-        const kind = remediationFor(r.group).kind
+        const kind = remediationFor(r.group, r).kind
         if (kind === 'none' || kind === 'unknown') return nextStateWord(r)
         const on = open?.userId === r.user.id
         return (

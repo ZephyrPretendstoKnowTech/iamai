@@ -54,6 +54,7 @@ const MG = (shared as Record<string, unknown>).methodGuides as {
   prereq: string
   pointer: string
   userInstruction: string
+  guest: string
   common: Record<string, string>
   guides: { id: string; title: string; steps: string[]; then?: string[]; learn: { url: string } }[]
 }
@@ -133,7 +134,7 @@ test('the remediation a person is offered is the group their evidence put them i
     const f = fixture(name)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     for (const row of v.rows) {
-      const r = remediationFor(row.group)
+      const r = remediationFor(row.group, row)
       if (row.group === null) {
         assert.equal(r.kind, 'none', `${name}/${row.user.id}: an account the campaign does not count is asked for nothing`)
         assert.deepEqual(guidesOf(r), [])
@@ -172,18 +173,18 @@ test('the remediation a person is offered is the group their evidence put them i
 test('the surface offers the action only where the evidence earns one', () => {
   const src = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
   // The cell decides from the remediation, which decides from the group.
-  assert.match(src, /remediationFor\(r\.group\)/, 'the row control reads the one remediation authority')
+  assert.match(src, /remediationFor\(r\.group, r\)/, 'the row control reads the one remediation authority, person and all')
   assert.match(src, /kind === 'none' \|\| kind === 'unknown'/, 'ready and unknown get the state word and no control')
   // The panel is not on screen until a person's Next step is pressed.
   assert.match(src, /useState<OpenGuide \| null>\(null\)/, 'the panel is closed by default')
-  assert.match(src, /remediationFor\(row\.group\)/, 'the panel reads the same authority as the row')
+  assert.match(src, /remediationFor\(row\.group, row\)/, 'the panel reads the same authority as the row')
 })
 
 // ---- C. Windows Hello is not the passkey target -------------------------------
 
 test('Windows Hello is offered and is never the passkey target', () => {
   assert.equal(reachesTarget('windows-hello'), false)
-  const set = remediationFor('needsPasskey')
+  const set = remediationFor('needsPasskey', { guest: false })
   assert.equal(set.kind, 'setUp')
   if (set.kind !== 'setUp') return
   assert.ok(!set.guides.includes('windows-hello'), 'not among the methods that reach the target')
@@ -201,7 +202,7 @@ test('Windows Hello is offered and is never the passkey target', () => {
   for (const row of helloOnly) {
     assert.equal(row.rung, 3, 'the canonical rung is untouched')
     assert.notEqual(row.group, 'ready', 'and they are not complete for the page target')
-    assert.equal(remediationFor(row.group).kind, 'setUp', 'they are asked for a passkey or key')
+    assert.equal(remediationFor(row.group, row).kind, 'setUp', 'they are asked for a passkey or key')
   }
 })
 
@@ -209,7 +210,7 @@ test('Windows Hello is offered and is never the passkey target', () => {
 
 test('a Temporary Access Pass bootstraps and never becomes passkey-ready', () => {
   assert.equal(reachesTarget('temporary-access-pass'), false)
-  const set = remediationFor('needsPasskey')
+  const set = remediationFor('needsPasskey', { guest: false })
   if (set.kind !== 'setUp') throw new Error('needs a passkey offers setup')
   assert.ok(!set.guides.includes('temporary-access-pass'), 'not among the methods that reach the target')
   assert.ok(set.other.includes('temporary-access-pass'), 'offered as the way in')
@@ -228,6 +229,38 @@ test('a Temporary Access Pass bootstraps and never becomes passkey-ready', () =>
     if (!row.active) continue
     assert.equal(row.rung, rungOf(row.viability!), `${row.user.id}: the rung is the ladder's, before and after any guidance`)
   }
+})
+
+test('a guest is offered no Temporary Access Pass, and is told why', () => {
+  // This tenant cannot issue a guest a pass: their authentication methods are
+  // their home tenant's. The campaign has always said so in words; the panel
+  // now behaves that way, from the row's own guest classification.
+  const guest = remediationFor('needsPasskey', { guest: true })
+  if (guest.kind !== 'setUp') throw new Error('a guest who needs a passkey is still offered setup')
+  assert.ok(!guidesOf(guest).includes('temporary-access-pass'), 'no pass to issue, so no guide to issue one')
+  assert.ok(guest.guides.includes('authenticator-iphone') && guest.guides.includes('authenticator-android') && guest.guides.includes('security-key'), 'the target methods stay: a guest registers them at home')
+  assert.equal(guest.note, MG.guest, 'and the panel says why, in the shared sentence')
+  assert.match(MG.guest, /own tenant|home tenant/, 'which sends the operator to the home tenant that owns the guest')
+  // The member's offer is untouched.
+  assert.ok(guidesOf(remediationFor('needsPasskey', { guest: false })).includes('temporary-access-pass'))
+  // Real guests, from the tenants that have them: same answer, from the row.
+  let seen = 0
+  for (const name of TENANTS) {
+    const f = fixture(name)
+    for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
+      if (!row.guest || row.group !== 'needsPasskey') continue
+      seen++
+      const r = remediationFor(row.group, row)
+      assert.ok(!guidesOf(r).includes('temporary-access-pass'), `${name}/${row.user.id}: a guest is offered no pass`)
+      assert.ok(guidesOf(r).includes('security-key'), `${name}/${row.user.id}: and still has a way to the target`)
+    }
+  }
+  assert.ok(seen > 0, 'the fixtures have an active guest who needs a passkey')
+  // The sentence is written once: the campaign's risk line references it.
+  const risks = (contentStepFor(campaignOf('demo')) as Record<string, any>).more.risks as { text: string }[]
+  assert.ok(risks.some((r) => r.text === '{guestNoTap}'), 'the campaign references the shared sentence rather than retyping it')
+  assert.equal(fillText('{guestNoTap}', {}), MG.guest, 'and it fills to that sentence')
+  assert.ok(whole('{guestNoTap}', {}), 'a shared reference is not a hole')
 })
 
 // ---- E / F. the platforms, and the security key --------------------------------
@@ -355,7 +388,7 @@ test('remediation changes no rung, no proof, no group and no emergency-access cl
     // Ask for every remediation, every guide and every copy: none of it touches
     // the evidence, because none of it is evidence.
     for (const row of before.rows) {
-      const r = remediationFor(row.group)
+      const r = remediationFor(row.group, row)
       for (const id of guidesOf(r)) guideText(id)
     }
     const after = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
@@ -372,7 +405,7 @@ test('remediation changes no rung, no proof, no group and no emergency-access cl
       if (!row) continue
       assert.equal(row.kind, 'emergency', `${name}/${id}: still classified emergency access`)
       assert.equal(row.group, null)
-      assert.deepEqual(guidesOf(remediationFor(row.group)), [], `${name}/${id}: no campaign guidance attached`)
+      assert.deepEqual(guidesOf(remediationFor(row.group, row)), [], `${name}/${id}: no campaign guidance attached`)
     }
   }
 })

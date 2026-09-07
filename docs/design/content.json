@@ -81,6 +81,7 @@
       "prereq": "Passkey (FIDO2) has to be on in the tenant first; Set Up Passkeys to Match the Baseline turns it on.",
       "pointer": "Person-by-person setup steps are on MFA Readiness; work its Needs a passkey and Needs proof lists there.",
       "userInstruction": "Install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone.",
+      "guest": "A guest cannot be issued a Temporary Access Pass; they register from their own tenant or with their own phone.",
       "common": {
         "addPasskey": "On https://aka.ms/mfasetup choose Add sign-in method → Passkey, then Microsoft Authenticator.",
         "useIt": "Have them sign out and sign in once with it.",
@@ -2422,7 +2423,7 @@
             "applies": "always"
           },
           {
-            "text": "A guest cannot be issued a Temporary Access Pass; they register from their own tenant or with their own phone.",
+            "text": "{guestNoTap}",
             "applies": "guestsInScope"
           },
           {
