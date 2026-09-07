@@ -303,8 +303,26 @@ const CLASSES: PolicyResultClass[] = [
 
 // Per-policy applied results across the covered window.
 export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyAppliedResult[] {
-  const byPolicy = new Map<string, { displayName: string | null; sets: Record<PolicyResultClass, Set<string>>; counts: Record<PolicyResultClass, number>; byDay: Map<string, { failures: number; users: Set<string> }>; firstReportOnly: string | null }>()
-  for (const row of rows) {
+  const all = [...rows]
+  // The last record that shows each policy *enforced*. A report-only record
+  // older than that belongs to an episode the tenant ended by turning the policy
+  // on, and the readiness clock does not start there: the window a policy is
+  // being watched over now runs from the report-only records it has made since
+  // it last came off. Counting from the first episode gave the current one a
+  // window it had not served and a coverage it had not earned — last month's
+  // report-only successes completing this month's, with the enforced weeks in
+  // between paying for the days.
+  const lastEnforced = new Map<string, string>()
+  for (const row of all) {
+    for (const applied of row.appliedConditionalAccessPolicies ?? []) {
+      const cls = applied.result ? RESULT_CLASS[applied.result] : undefined
+      if (!applied.id || (cls !== 'enforcedFailure' && cls !== 'enforcedSuccess')) continue
+      const at = lastEnforced.get(applied.id)
+      if (at === undefined || row.createdDateTime > at) lastEnforced.set(applied.id, row.createdDateTime)
+    }
+  }
+  const byPolicy = new Map<string, { displayName: string | null; sets: Record<PolicyResultClass, Set<string>>; counts: Record<PolicyResultClass, number>; byDay: Map<string, { failures: number; users: Set<string> }>; reportOnlyByDay: Map<string, number>; reportOnlyLastSeen: Map<string, string>; firstReportOnly: string | null }>()
+  for (const row of all) {
     for (const applied of row.appliedConditionalAccessPolicies ?? []) {
       const cls = applied.result ? RESULT_CLASS[applied.result] : undefined
       if (!cls || !applied.id) continue
@@ -315,15 +333,32 @@ export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyApplied
           sets: Object.fromEntries(CLASSES.map((c) => [c, new Set<string>()])) as Record<PolicyResultClass, Set<string>>,
           counts: Object.fromEntries(CLASSES.map((c) => [c, 0])) as Record<PolicyResultClass, number>,
           byDay: new Map(),
+          reportOnlyByDay: new Map(),
+          reportOnlyLastSeen: new Map(),
           firstReportOnly: null,
         }
         byPolicy.set(applied.id, entry)
       }
       entry.counts[cls] += 1
       if (row.userId) entry.sets[cls].add(row.userId)
-      // A report-only result on a record dates the policy in report-only on that
-      // day; the earliest one is where the readiness clock starts (tracking.ts).
-      if (cls.startsWith('reportOnly') && (entry.firstReportOnly === null || row.createdDateTime < entry.firstReportOnly)) entry.firstReportOnly = row.createdDateTime
+      // A report-only result made since the policy last came off dates the
+      // policy in report-only on that day; the earliest one is where the
+      // readiness clock starts (tracking.ts), and the same records dated are
+      // what lets a gate judging one window tell them from the ones the same
+      // collection holds from outside it (types.ts `reportOnlyDated`). A day per
+      // record and a day per person: what a gate asks is how many records the
+      // window holds and who has been seen in it, never who signed in on a
+      // particular morning.
+      const off = lastEnforced.get(applied.id)
+      if (cls.startsWith('reportOnly') && (off === undefined || row.createdDateTime > off)) {
+        if (entry.firstReportOnly === null || row.createdDateTime < entry.firstReportOnly) entry.firstReportOnly = row.createdDateTime
+        const day = row.createdDateTime.slice(0, 10)
+        entry.reportOnlyByDay.set(day, (entry.reportOnlyByDay.get(day) ?? 0) + 1)
+        if (row.userId) {
+          const last = entry.reportOnlyLastSeen.get(row.userId)
+          if (last === undefined || day > last) entry.reportOnlyLastSeen.set(row.userId, day)
+        }
+      }
       if (cls === 'enforcedFailure' || cls === 'reportOnlyFailure' || cls === 'reportOnlyInterrupted') {
         const day = row.createdDateTime.slice(0, 10)
         const d = entry.byDay.get(day) ?? { failures: 0, users: new Set<string>() }
@@ -341,6 +376,7 @@ export function derivePolicyResults(rows: Iterable<StoredSignIn>): PolicyApplied
       counts: e.counts,
       affectedUserIds: Object.fromEntries(CLASSES.map((c) => [c, [...e.sets[c]]])) as Record<PolicyResultClass, string[]>,
       byDay: Object.fromEntries([...e.byDay.entries()].map(([day, d]) => [day, { failures: d.failures, userIds: [...d.users] }])),
+      reportOnlyDated: { signInsByDay: [...e.reportOnlyByDay.entries()].map(([day, signIns]) => ({ day, signIns })), lastSeenByUser: Object.fromEntries(e.reportOnlyLastSeen) },
       firstReportOnlyAt: e.firstReportOnly,
     }))
     .sort((a, b) => {

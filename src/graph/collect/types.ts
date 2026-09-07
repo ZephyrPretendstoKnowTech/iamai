@@ -184,7 +184,17 @@ export type PolicyAppliedResult = {
   affectedUserIds: Record<PolicyResultClass, string[]>
   /** Failures (enforced or report-only) per UTC day with the users behind them, for the post-enforcement watch. */
   byDay?: Record<string, { failures: number; userIds: string[] }>
-  /** The earliest record that shows the policy evaluated in report-only: the first day the records saw it in report-only. */
+  /**
+   * The dated view of this policy's *current* report-only episode: how many
+   * records it has made on each UTC day since it last came off, and the last day
+   * each user made one. `counts` and `affectedUserIds` are totals over the whole
+   * collected window, so they cannot say which of those records fall inside the
+   * one window a readiness gate is judging; this can. Absent on a result derived
+   * before this field existed, which is exactly the case where nothing here is
+   * attributable to a window at all (roadmap/tracking.ts `gates`).
+   */
+  reportOnlyDated?: { signInsByDay: { day: string; signIns: number }[]; lastSeenByUser: Record<string, string> }
+  /** Where the readiness clock starts: the earliest record showing the policy in report-only since the last one showing it enforced. */
   firstReportOnlyAt?: string | null
 }
 

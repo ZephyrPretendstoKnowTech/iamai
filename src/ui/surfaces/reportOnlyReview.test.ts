@@ -34,6 +34,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { scannedAt, seenOn } from '../../roadmap/fixtures/records.ts'
 import { SOLE_MEMBER, observationsOf } from '../../roadmap/tracking.ts'
 import { observationsFrom } from '../../roadmap/observation.ts'
 import type { StepObservationRecord } from '../../roadmap/observation.ts'
@@ -119,7 +120,7 @@ function laterScan(over: { edit?: (row: Row) => void; on?: string; days?: number
     over.edit(copy)
     return copy
   })
-  const dated = { ...f.snapshot, asOf, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as TenantSnapshot
+  const dated = scannedAt({ ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as TenantSnapshot, asOf)
   const snapshot = over.seen === false ? dated : everybodySeen(dated, target, f.mapping)
   const record = over.record ? over.record(first.record) : first.record
   const run = runFixture({ ...f, snapshot }, { snapshot }, record)
@@ -155,10 +156,17 @@ function everybodySeen(snapshot: TenantSnapshot, policyId: string, mapping: Retu
     if (r.policyId !== policyId) return r
     const already = new Set(Object.values(r.affectedUserIds).flat())
     const missing = people.filter((id) => !already.has(id))
+    // Seen, and dated: a record the gate cannot place in the window it is
+    // judging is not one it credits (fixtures/records.ts).
+    const dated = seenOn(missing, snapshot.asOf)
     return {
       ...r,
       counts: { ...r.counts, reportOnlySuccess: r.counts.reportOnlySuccess + missing.length },
       affectedUserIds: { ...r.affectedUserIds, reportOnlySuccess: [...r.affectedUserIds.reportOnlySuccess, ...missing] },
+      reportOnlyDated: {
+        signInsByDay: [...(r.reportOnlyDated?.signInsByDay ?? []), ...dated.signInsByDay],
+        lastSeenByUser: { ...r.reportOnlyDated?.lastSeenByUser, ...dated.lastSeenByUser },
+      },
     }
   })
   return { ...snapshot, evidencePolicyResults: results } as TenantSnapshot

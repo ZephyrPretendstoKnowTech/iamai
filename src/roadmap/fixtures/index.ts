@@ -466,7 +466,19 @@ export function buildFixture(spec: Spec): Fixture {
     for (const { goalId, name, state, cls, days, seenIds, body: policyBody } of advanced) {
       const pid = guid(seed, 2_200_000 + policies.length)
       policies.push({ id: pid, displayName: name, state, description: `[IAMAI:${planId}:${stepIdForGoal(goalId)}]`, createdDateTime: daysAgo(days), modifiedDateTime: daysAgo(days), ...policyBody })
-      week2Results.push({ policyId: pid, displayName: name, counts: { ...zero, [cls]: seenIds.length }, affectedUserIds: { ...noIds, [cls]: seenIds }, firstReportOnlyAt: daysAgo(days) })
+      // Microsoft's records dated the way a scan derives them: one record per
+      // person, spread across the days the policy has been reporting, so the
+      // readiness gate can tell this window's records from any other
+      // (collect/types.ts `reportOnlyDated`).
+      const perDay = new Map<string, number>()
+      const lastSeenByUser: Record<string, string> = {}
+      seenIds.forEach((id, i) => {
+        const day = daysAgo(days - 1 - (i % days)).slice(0, 10)
+        perDay.set(day, (perDay.get(day) ?? 0) + 1)
+        lastSeenByUser[id] = day
+      })
+      const signInsByDay = [...perDay.entries()].map(([day, n]) => ({ day, signIns: n }))
+      week2Results.push({ policyId: pid, displayName: name, counts: { ...zero, [cls]: seenIds.length }, affectedUserIds: { ...noIds, [cls]: seenIds }, reportOnlyDated: { signInsByDay, lastSeenByUser }, firstReportOnlyAt: daysAgo(days) })
     }
   }
 

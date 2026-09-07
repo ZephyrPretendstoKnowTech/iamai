@@ -26,6 +26,7 @@ import { join } from 'node:path'
 import { allFixtures } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { cleanReportOnly } from './fixtures/records.ts'
 import { applyProgress, mergePersisted, savedStepOf } from './progress.ts'
 import type { SavedStep } from './progress.ts'
 import { generateRoadmap } from './generate.ts'
@@ -377,13 +378,7 @@ const demoScope = (): Parameters<typeof applyProgress>[7] => ({
  * which is the reading this contract does not have.
  */
 function cleanRecords(policyId: string, people: readonly string[], firstReportOnlyAt: string | null = null): unknown {
-  return {
-    policyId,
-    displayName: '',
-    counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: people.length, enforcedFailure: 0, enforcedSuccess: 0 },
-    affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [...people], enforcedFailure: [], enforcedSuccess: [] },
-    firstReportOnlyAt,
-  }
+  return cleanReportOnly({ policyId, people, asOf: DEMO.snapshot.asOf, firstReportOnlyAt })
 }
 
 /** The active people a scan of each tenant resolves the policies' scopes against. */

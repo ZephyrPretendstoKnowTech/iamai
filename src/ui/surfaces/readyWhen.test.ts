@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { cleanReportOnly } from '../../roadmap/fixtures/records.ts'
 import { stepIdForGoal, findTaggedPolicy, planIdFor } from '../../roadmap/generate.ts'
 import { demoTenant } from '../demo.ts'
 import { DEMO_TENANT_ID } from '../demoMode.ts'
@@ -39,7 +40,7 @@ const DAY = 86_400_000
 // and no single line may claim it (derive/readyWhen.ts).
 const WALK_ROW = /^(ready now|held until the records clear|ready \S.*\d{4})$/
 const WALK_TIME = /Time: in report-only since .+, the window clos(es|ed) \S.*\d{4}\./
-const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days)\./
+const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days|the sign-in records read do not cover the whole window, \d+ of \d+ active people seen in \d+ days)\./
 
 /** A step's Done-when, filled, exactly as the opened step prints it. */
 function doneWhenOf(step: Parameters<typeof stepVars>[0], f: Pick<Fixture, 'snapshot' | 'mapping' | 'operatorId'>, reportOnlyAt: string | null = null): string {
@@ -63,13 +64,7 @@ const scopeOf = (f: Fixture): Parameters<typeof applyProgress>[7] => ({
  */
 function cleanRecords(f: Fixture, policyId: string): unknown {
   const people = activePeopleIds(f.snapshot, f.snapshot.asOf, notPeopleIds(f.mapping))
-  return {
-    policyId,
-    displayName: '',
-    counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: people.length, enforcedFailure: 0, enforcedSuccess: 0 },
-    affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [...people], enforcedFailure: [], enforcedSuccess: [] },
-    firstReportOnlyAt: null,
-  }
+  return cleanReportOnly({ policyId, people, asOf: f.snapshot.asOf })
 }
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
 const TOKEN = stepIdForGoal('token-protection')

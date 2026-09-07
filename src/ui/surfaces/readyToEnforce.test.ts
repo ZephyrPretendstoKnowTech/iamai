@@ -36,6 +36,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { scannedAt, seenOn } from '../../roadmap/fixtures/records.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { StepObservationRecord } from '../../roadmap/observation.ts'
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
@@ -43,6 +44,7 @@ import { enforcesOnRun, finalTargets, implementationOffered, operationsOf, polic
 import { enforcementTiming, enforcementUnearned } from '../../roadmap/forecast.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
+import { derivePolicyResults } from '../../graph/collect/laneBCore.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -130,12 +132,11 @@ function laterScan(over: { edit?: (row: Row) => void; days?: number; evidence?: 
     over.edit(copy)
     return copy
   })
-  const snapshot = {
+  const snapshot = scannedAt({
     ...f.snapshot,
-    asOf,
     config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } },
     evidencePolicyResults: over.evidence === false ? [] : f.snapshot.evidencePolicyResults,
-  } as TenantSnapshot
+  } as TenantSnapshot, asOf)
   const run = runFixture({ ...f, snapshot }, { snapshot }, record)
   return caseOf(run, snapshot, f, STEP_ID)
 }
@@ -151,7 +152,7 @@ function laterScan(over: { edit?: (row: Row) => void; days?: number; evidence?: 
  * under test here. A setting that was already there when the window opened is
  * what the window watched, and the enforcement is still the one change left.
  */
-function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; records?: (result: Row) => void } = {}): Case {
+function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; records?: (result: Row) => void; source?: Partial<TenantSnapshot['sources']['signInEvidence']> } = {}): Case {
   const f = fixture(FIXTURE)
   const target = runFixture(f).steps.find((s) => s.id === STEP_ID)!.tracking!.policyId!
   const rows = ((f.snapshot.config.caPolicies?.rows ?? []) as Row[]).map((r) => {
@@ -171,6 +172,9 @@ function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; record
   })
   const snapshot = {
     ...f.snapshot,
+    // What the scan says about the collection itself: how much of the sign-in
+    // log it managed to read, and over what interval.
+    sources: { ...f.snapshot.sources, signInEvidence: { ...f.snapshot.sources.signInEvidence, ...over.source } },
     config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } },
     evidencePolicyResults: over.evidence === false ? [] : (results as typeof f.snapshot.evidencePolicyResults),
   } as TenantSnapshot
@@ -201,6 +205,9 @@ function nothingIsOffered(c: Case): void {
   assert.deepEqual(stepOperations(c.step), [], 'and nothing for the JSON, PowerShell or Download tabs to serialise')
   assert.doesNotMatch(powershellFor(stepOperations(c.step)), /Update-MgIdentityConditionalAccessPolicy|New-MgIdentityConditionalAccessPolicy/, 'no PowerShell that writes a policy')
   assert.doesNotMatch(policyJsonText(c.step), /"state"/, 'and the download carries no enforcement body')
+  // A step being watched keeps its review entry in the calendar — that is what
+  // the window is for — and `everythingSaid` reads that entry's own body back,
+  // so the last line covers the calendar as well as the row and the exports.
   assert.ok(!/Ready to enforce/.test(everythingSaid(c)), everythingSaid(c))
 }
 
@@ -260,8 +267,10 @@ test('007.11c: clean, complete records before the window closes are not ready ei
     records: (r) => {
       // Microsoft's own record of when this policy began to be evaluated moves
       // with it: the window starts yesterday, and the records still cover
-      // everybody.
+      // everybody — dated inside the window, so nothing here is refused for
+      // being unattributable rather than for being early.
       r.firstReportOnlyAt = yesterday
+      r.reportOnlyDated = seenOn((r.affectedUserIds as Record<string, string[]>).reportOnlySuccess, f.snapshot.asOf)
       r.byDay = null
     },
   })
@@ -331,6 +340,8 @@ test('007.11e: records this policy made while it was enforced do not close its r
       counts.reportOnlySuccess = since.length
       ids.enforcedSuccess = before
       counts.enforcedSuccess = before.length
+      // What it has recorded since it went back to reporting, dated: the two.
+      r.reportOnlyDated = seenOn(since, fixture(FIXTURE).snapshot.asOf)
       r.byDay = null
     },
   })
@@ -346,6 +357,155 @@ test('007.11e: records this policy made while it was enforced do not close its r
   // What is being refused is the composition, not the records: the same sign-ins,
   // all of them made in report-only, are the canonical ready case.
   assert.equal(canonical().step.tracking?.readyNow, true)
+})
+
+
+// ---- control A4: a collection that does not cover the window it is read over ----
+
+test('007.11f: a sign-in read that started after the window did leaves the beginning of it unread, and closes nothing', () => {
+  // Everything about the policy is the canonical ready case: seven days in
+  // report-only, every active person it reaches seen, nothing failing. What is
+  // different is the reading. This tenant's sign-in log was only read back two
+  // days, so the first five days of the window nobody has looked at — and those
+  // are days the policy was evaluating people under conditions this scan has no
+  // record of. Clean records over the part that was read say nothing about the
+  // part that was not, which is the whole reason the window is a window.
+  const f = fixture(FIXTURE)
+  const from = new Date(Date.parse(f.snapshot.asOf) - 2 * DAY).toISOString()
+  const c = freshScan({ source: { coveredWindow: { from, to: f.snapshot.asOf } } })
+  const t = c.step.tracking!
+  assert.ok(Date.parse(t.readyOn!) <= Date.parse(c.snapshot.asOf), 'the window has closed')
+  assert.ok(Date.parse(t.reportOnlyAt!) < Date.parse(from), 'and the collection begins after it opened')
+  assert.equal(t.windowRead, false, 'the reading is short of the window')
+  assert.equal(t.failures, null, 'so there is no failure count over the window to state')
+  assert.equal(t.seenInScope, t.activeInScope, 'though what was read covers everybody it reaches')
+  assert.equal(t.readyNow, false, 'and it is still not a reading of this window')
+  // And the row says which of the two it is, rather than stating the part that
+  // was read as a clean window.
+  assert.equal(rowReason(c.step), readyBasis(readyWhen(c.step)!))
+  assert.match(rowReason(c.step)!, /^the sign-in records read do not cover the whole window/)
+  nothingIsOffered(c)
+  // The word the collection puts on itself decides nothing either way: a read
+  // that stopped short of the thirty days asked for, but still spans this
+  // policy's own window, is a complete reading of the window and is ready.
+  const short = freshScan({ source: { status: 'partial', reason: 'stopped at time budget; covers the most recent 240 h of the requested 30 days' } })
+  assert.equal(short.step.tracking?.readyNow, true, 'the interval is the question, not the label')
+})
+
+test('007.11g: a collection that cannot say what it covered is not a window anybody watched', () => {
+  // The scan read sign-ins and could not establish the interval they came from.
+  // The records that did arrive still name this policy and still cover
+  // everybody. They are not refused for being wrong; they are refused because
+  // nothing says which days they are about, and a gate that cannot place its
+  // evidence has not been passed.
+  //
+  // The source still calls its read usable, which is what isolates the gate:
+  // everything else the plan derives from sign-in records — who has proved MFA,
+  // and so which steps are ready at all — reads that word and would otherwise
+  // move underneath the case.
+  const c = freshScan({ source: { coveredWindow: null, status: 'partial', reason: 'the interval could not be established' } })
+  const t = c.step.tracking!
+  assert.ok(Date.parse(t.readyOn!) <= Date.parse(c.snapshot.asOf), 'the window has closed')
+  assert.equal(t.windowRead, false, 'nothing says the reading is of this window')
+  assert.equal(t.seenInScope, t.activeInScope, 'and the records still cover everybody')
+  assert.equal(t.readyNow, false, 'and unknown is not a passed gate')
+  nothingIsOffered(c)
+  // And the tenant that cannot serve the log at all — no licence for it, or a
+  // read that returned too little to state anything — is the same answer by a
+  // different route: the plan blocks the step on the missing evidence, and the
+  // gate does not open behind it either.
+  const none = freshScan({ source: { status: 'insufficient', coveredWindow: null, reason: 'no sign-in records could be read' } })
+  assert.equal(none.step.tracking?.readyNow, false)
+  assert.equal(none.step.state.lifecycle, 'report-only')
+  assert.equal(implementationOffered(none.step), false)
+})
+
+// ---- control A5: an earlier report-only episode ----
+
+test('007.11h: report-only records from before this policy was last turned on pay for none of the window it is being watched over now', () => {
+  // The tenant ran this policy in report-only a month ago, turned it on, and put
+  // it back into report-only a week ago. Its totals hold the whole month: a
+  // report-only success for every active person it reaches, none of them
+  // failing. Every one of those successes is from the episode that ended when
+  // the policy went on, and the episode running now — the one the plan is
+  // watching, the one the enforcement would be handed over on — has recorded
+  // nothing at all. Counting the totals made an untouched week look like a
+  // watched one.
+  const f = fixture(FIXTURE)
+  const before = new Date(Date.parse(f.snapshot.asOf) - 30 * DAY).toISOString()
+  const c = freshScan({
+    records: (r) => {
+      const ids = r.affectedUserIds as Record<string, string[]>
+      r.reportOnlyDated = seenOn(ids.reportOnlySuccess, before)
+    },
+  })
+  const t = c.step.tracking!
+  assert.ok(Date.parse(t.readyOn!) <= Date.parse(c.snapshot.asOf), 'the window has closed')
+  assert.equal(t.signIns, 0, 'and this episode has recorded nothing')
+  assert.equal(t.seenInScope, 0, 'so nobody it reaches has been seen under it')
+  assert.ok((t.activeInScope ?? 0) > 0, 'though there are plenty of people to see')
+  assert.equal(t.failures, null, 'and a window with no records in it has no failure count')
+  assert.equal(t.readyNow, false)
+  nothingIsOffered(c)
+})
+
+test('007.11i: the records themselves start the clock at the episode running now, never at the one before it', () => {
+  // The same fact where it is decided: what a scan derives from Microsoft's own
+  // rows. One policy, watched in report-only through May, enforced in June, and
+  // put back into report-only on 1 July. The readiness clock starts on 1 July —
+  // the May records are an episode the tenant ended — and the dated view the
+  // gate reads holds July and nothing before it.
+  const row = (at: string, userId: string, result: string) => ({
+    id: `${at}-${userId}`,
+    createdDateTime: at,
+    userId,
+    appliedConditionalAccessPolicies: [{ id: 'p1', displayName: 'P', result }],
+  })
+  const results = derivePolicyResults([
+    row('2026-05-04T09:00:00.000Z', 'u-old', 'reportOnlySuccess'),
+    row('2026-06-10T09:00:00.000Z', 'u-old', 'success'),
+    row('2026-07-01T09:00:00.000Z', 'u-new', 'reportOnlySuccess'),
+    row('2026-07-02T09:00:00.000Z', 'u-new', 'reportOnlySuccess'),
+  ] as never)
+  const p = results.find((r) => r.policyId === 'p1')!
+  assert.equal(p.firstReportOnlyAt, '2026-07-01T09:00:00.000Z', 'the clock starts where the current episode does')
+  assert.deepEqual(p.reportOnlyDated?.signInsByDay, [{ day: '2026-07-01', signIns: 1 }, { day: '2026-07-02', signIns: 1 }])
+  assert.deepEqual(p.reportOnlyDated?.lastSeenByUser, { 'u-new': '2026-07-02' }, 'and the person seen in May is not seen in July')
+  assert.equal(p.counts.reportOnlySuccess, 3, 'while the totals are still the totals')
+})
+
+test('007.11j: what has to be read across is the observation window, not every day the policy has been reporting', () => {
+  // The other edge of the same rule, and the one that decides whether the
+  // product works on a tenant that has been sitting on a report-only policy.
+  // This one has been reporting for forty-five days; Microsoft keeps the
+  // sign-in log for thirty, and IAMAI reads what is there. The first fifteen
+  // days can never be read, by this scan or any later one, and requiring them
+  // would hold the step at Report-only forever.
+  //
+  // What the plan asked for is a week of watching, and the week behind this scan
+  // is read end to end, inside the episode, clean and complete. That is the
+  // window, so the gate opens.
+  const f = fixture(FIXTURE)
+  const long = new Date(Date.parse(f.snapshot.asOf) - 45 * DAY).toISOString()
+  const c = freshScan({
+    edit: (row) => {
+      row.createdDateTime = long
+      row.modifiedDateTime = long
+    },
+    records: (r) => {
+      r.firstReportOnlyAt = long
+      r.reportOnlyDated = seenOn((r.affectedUserIds as Record<string, string[]>).reportOnlySuccess, f.snapshot.asOf)
+    },
+  })
+  const t = c.step.tracking!
+  assert.equal(t.reportOnlyAt, long, 'forty-five days in report-only')
+  assert.ok(t.daysInReportOnly > 30, `${t.daysInReportOnly} days, past anything the log still holds`)
+  assert.ok(Date.parse(c.snapshot.sources.signInEvidence.coveredWindow!.from) > Date.parse(long), 'and the collection cannot reach the start of it')
+  assert.equal(t.windowRead, true, 'but it reads across the window the plan asked for')
+  assert.equal(t.failures, 0)
+  assert.equal(t.seenInScope, t.activeInScope)
+  assert.equal(t.readyNow, true)
+  assert.equal(c.step.state.lifecycle, 'ready-to-enforce')
 })
 
 /** The step's portal lines, as the screen and the exports both render them. */

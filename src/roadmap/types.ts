@@ -421,6 +421,8 @@ export type MemberTracking = {
   daysInReportOnly: number
   readyOn: string | null
   readyNow: boolean
+  /** The sign-in collection covers the whole of this member's own report-only window, so its records are a reading of it. */
+  windowRead: boolean
   seenInScope: number | null
   activeInScope: number | null
   signIns: number
@@ -478,6 +480,19 @@ export type StepTracking = {
   readyOn: string | null
   /** The evidence gate: the records since reportOnlyAt show zero failures and every active person in scope at least once. */
   readyNow: boolean
+  /**
+   * Whether the sign-in collection covers the whole window the evidence gate is
+   * read over — `reportOnlyAt` to this scan — and dates the records it holds
+   * about it (graph/collect/types.ts `reportOnlyDated`).
+   *
+   * False is not a fault in the tenant and not a failing record: it is a reading
+   * that stopped short of the window, and the numbers beside it are what a part
+   * of the window showed rather than what the window did. The gate cannot open
+   * on it (tracking.ts `windowCollected`) and the surfaces say which of the two
+   * they are looking at, so a partial reading is never stated as a clean one.
+   * Meaningful only while the policy is in report-only.
+   */
+  windowRead: boolean
   /** Active people in scope the records since reportOnlyAt have seen, over the active people in scope. */
   /**
    * The evidence gate's two numbers, over the scope of the *matched tenant

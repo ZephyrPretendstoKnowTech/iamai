@@ -26,6 +26,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { cleanReportOnly } from '../../roadmap/fixtures/records.ts'
 import { readBackPlacement } from '../../roadmap/schedule.ts'
 import { enforcesOnRun, implementationOffered, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { enforcementTiming, enforcementUnearned, settleForecast, statedEnforcement } from '../../roadmap/forecast.ts'
@@ -124,13 +125,12 @@ function deployedByThePlan(stepId: string, days = 2): Case {
   const at = new Date(Date.parse(f.snapshot.asOf) - days * 86_400_000).toISOString()
   const policyId = 'e5d0d3c6-0b6e-4a2e-9a3f-9c4b7a1d0005'
   const people = (f.snapshot.users ?? []).slice(0, 20).map((u) => String(u.id))
-  const none = { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] }
   const snapshot = {
     ...f.snapshot,
     config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows: [...(f.snapshot.config.caPolicies?.rows ?? []), { id: policyId, createdDateTime: at, modifiedDateTime: at, ...(op!.body as Record<string, unknown>) }] } },
     evidencePolicyResults: [
       ...(f.snapshot.evidencePolicyResults ?? []),
-      { policyId, displayName: String((op!.body as Record<string, unknown>).displayName), counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: people.length, enforcedFailure: 0, enforcedSuccess: 0 }, affectedUserIds: { ...none, reportOnlySuccess: people }, firstReportOnlyAt: at },
+      cleanReportOnly({ policyId, displayName: String((op!.body as Record<string, unknown>).displayName), people, asOf: f.snapshot.asOf, firstReportOnlyAt: at }),
     ],
   } as TenantSnapshot
   const r = runFixture({ ...f, snapshot }, { snapshot })
@@ -238,13 +238,12 @@ function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
   const at = new Date(Date.parse(f.snapshot.asOf) - days * 86_400_000).toISOString()
   const policyId = 'e5d0d3c6-0b6e-4a2e-9a3f-9c4b7a1d0006'
   const people = (f.snapshot.users ?? []).slice(0, 20).map((u) => String(u.id))
-  const none = { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] }
   const snapshot = {
     ...f.snapshot,
     config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows: [...(f.snapshot.config.caPolicies?.rows ?? []), { id: policyId, createdDateTime: at, modifiedDateTime: at, ...(op!.body as Record<string, unknown>) }] } },
     evidencePolicyResults: [
       ...(f.snapshot.evidencePolicyResults ?? []),
-      { policyId, displayName: String((op!.body as Record<string, unknown>).displayName), counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: people.length, enforcedFailure: 0, enforcedSuccess: 0 }, affectedUserIds: { ...none, reportOnlySuccess: people }, firstReportOnlyAt: at },
+      cleanReportOnly({ policyId, displayName: String((op!.body as Record<string, unknown>).displayName), people, asOf: f.snapshot.asOf, firstReportOnlyAt: at }),
     ],
   } as TenantSnapshot
   return { due, observing: asCase(runFixture({ ...f, groups, mapping, snapshot }, { snapshot, viability }), snapshot) }

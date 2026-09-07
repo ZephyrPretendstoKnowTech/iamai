@@ -11,6 +11,7 @@ import { generateRoadmap } from './generate.ts'
 import type { RoadmapInput } from './generate.ts'
 import { observationsFrom } from './observation.ts'
 import { SOLE_MEMBER } from './tracking.ts'
+import { cleanReportOnly } from './fixtures/records.ts'
 import { applyProgress, mergePersisted, skipStep } from './progress.ts'
 import { setState } from './lifecycle.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from './observation.ts'
@@ -239,15 +240,7 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   const everyone = snap2.users.map((u) => u.id)
   const clean = {
     ...snap2,
-    evidencePolicyResults: [
-      {
-        policyId: 'created-1',
-        displayName: 'Created',
-        counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: everyone.length, enforcedFailure: 0, enforcedSuccess: 0 },
-        affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: everyone, enforcedFailure: [], enforcedSuccess: [] },
-        firstReportOnlyAt: null,
-      },
-    ],
+    evidencePolicyResults: [cleanReportOnly({ policyId: 'created-1', displayName: 'Created', people: everyone, asOf: snap2.asOf })],
   } as unknown as TenantSnapshot
   applyProgress(steps, clean, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone })
   assert.equal(step.status, 'ready-to-enforce')

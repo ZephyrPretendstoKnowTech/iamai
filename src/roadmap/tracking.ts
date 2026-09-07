@@ -338,7 +338,37 @@ function trackedScope(policy: PolicyRow, snapshot: TenantSnapshot, ctx: Tracking
   return bounded === null ? { kind: 'unknown' } : { kind: 'uncountable' }
 }
 
-type Gates = Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 'seenInScope' | 'activeInScope' | 'signIns' | 'failures' | 'failuresByUser' | 'evidenceQuality'>
+type Gates = Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 'windowRead' | 'seenInScope' | 'activeInScope' | 'signIns' | 'failures' | 'failuresByUser' | 'evidenceQuality'>
+
+/**
+ * Whether the sign-in collection provably reaches across `from` to this scan, so
+ * that a clean reading of that stretch is a reading of the whole of it.
+ *
+ * The collection states its own interval (`coveredWindow`), and it is honest
+ * about it: a run that stopped early reports the contiguous stretch it did read,
+ * ending at the scan, not the stretch it was asked for. So the question is
+ * containment, and not a status word alone:
+ *
+ *   * it has to start at or before `from`, or the beginning of the stretch was
+ *     never read. Clean records over the last two days of a seven-day window are
+ *     clean records for two days, which is the reading the time gate exists to
+ *     refuse;
+ *   * it has to run to this scan's own day, or the end was never read either.
+ *     Below a day is the scan's own duration — Lane B dates its window when it
+ *     starts and the snapshot is stamped when every lane has finished — and the
+ *     gate counts by UTC day, so the day is the resolution the question is asked
+ *     at.
+ *
+ * A source that read nothing, or read too little to say what it covered, states
+ * no interval and contains nothing. Unknown is not a passed gate.
+ */
+function windowCollected(snapshot: TenantSnapshot, from: string): boolean {
+  const src = snapshot.sources.signInEvidence
+  if (!src || (src.status !== 'ok' && src.status !== 'partial')) return false
+  const covered = src.coveredWindow
+  if (!covered) return false
+  return Date.parse(covered.from) <= Date.parse(from) && covered.to.slice(0, 10) >= snapshot.asOf.slice(0, 10)
+}
 
 /**
  * The records' verdict on one member's policy, and the two gates on one in
@@ -364,6 +394,23 @@ type Gates = Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 's
  * So neither opens this on its own, and unknown never opens the evidence half:
  * no records read is `failures === null`, which is not zero (see below).
  *
+ * And what the evidence half reads has to be *this* window's records, over the
+ * whole of it. A `PolicyAppliedResult` is a set of totals over whatever the
+ * collection managed to cover, which is a different interval from the one the
+ * gate is judging, and two things follow from the difference:
+ *
+ *   * the collection has to reach across the window. A tenant whose sign-in log
+ *     read stopped short covers the last two days of a seven-day window, and
+ *     clean records over the part that was read say nothing about the part that
+ *     was not — the people missing from it, or the failures in it, are exactly
+ *     what the window was opened to find (`windowCollected`);
+ *   * the records credited have to be inside it. A policy the tenant enforced
+ *     and moved back to report-only has report-only records from the earlier
+ *     episode in the same totals, and those paid for a window they were never
+ *     watched over. Only the dated view can separate them
+ *     (collect/types.ts `reportOnlyDated`), and where a result has no dated view
+ *     nothing about it is attributable, so nothing about it passes.
+ *
  * Everything it reads is about the one deployed object it was handed: another
  * member's records are another policy's records, and never reach this.
  */
@@ -380,7 +427,16 @@ function gates(
   const scope = trackedScope(policy, snapshot, ctx, activeSet)
   const active = scope.kind === 'people' ? scope.ids : null
   const daysInReportOnly = since ? daysBetween(since, snapshot.asOf) : 0
-  const readyOn = since ? new Date(Date.parse(since) + observationDaysFor(step) * DAY).toISOString() : null
+  const observationDays = observationDaysFor(step)
+  const readyOn = since ? new Date(Date.parse(since) + observationDays * DAY).toISOString() : null
+  // The stretch the records have to be a complete reading of: the step's own
+  // observation window, ending at this scan, and never reaching back before the
+  // policy went into report-only. It is the window and not the whole episode
+  // because the window is what the plan asked for — a policy somebody left
+  // reporting for a year is being judged on the week behind it, which is the
+  // week the sign-in log still holds (collect/constants.ts EVIDENCE_WINDOW_DAYS
+  // is longer than any observation window, and shorter than some episodes).
+  const readFrom = since === null ? null : new Date(Math.max(Date.parse(since), Date.parse(snapshot.asOf) - observationDays * DAY)).toISOString()
   // The time gate, as a verdict rather than a date: the step's own observation
   // window has been served by this policy. Half of `readyNow`, and never the
   // whole of it.
@@ -389,20 +445,34 @@ function gates(
   // failure count. A zero here is the shape of an empty set, not a clean window,
   // and every line under it reads "0 failing or interrupted" exactly as it reads
   // a zero twenty-four records prove (types.ts StepTracking.failures).
-  if (!pr) return { daysInReportOnly, readyOn, readyNow: false, seenInScope: active === null ? null : 0, activeInScope: active?.length ?? null, signIns: 0, failures: null, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
+  //
+  // The collection may still have read across the window, though: what it holds
+  // no record of is this policy. Those are two different facts and the line
+  // beside them says which one it is, so a window that was read is reported as
+  // read even where nothing in it is about this object.
+  if (!pr) return { daysInReportOnly, readyOn, readyNow: false, windowRead: readFrom !== null && windowCollected(snapshot, readFrom), seenInScope: active === null ? null : 0, activeInScope: active?.length ?? null, signIns: 0, failures: null, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
   const c = pr.counts
   // Which of this policy's records answer the question being asked of it. In
   // report-only, only the records it made in report-only do (REPORT_ONLY_RESULTS);
   // the enforced ones are the same object in the state this gate exists to earn,
   // and they may not pay for it.
   const judged = since === null ? ALL_RESULTS : REPORT_ONLY_RESULTS
-  const signIns = judged.reduce((n, k) => n + c[k], 0)
+  // And which of *those* fall inside the window being judged. The totals cover
+  // the whole collection; the dated view is the only thing that can say which of
+  // them this window holds, so where a result carries one the counts below are
+  // the window's own, and where it does not nothing about it is attributable to
+  // a window and the gate cannot open on it (see the header).
+  const dated = since === null ? null : (pr.reportOnlyDated ?? null)
+  const sinceDay = since ? since.slice(0, 10) : null
+  // Whether what follows is a reading of the window at all: records this scan
+  // can place in it, over a collection that reaches across it.
+  const windowRead = readFrom !== null && dated !== null && windowCollected(snapshot, readFrom)
+  const signIns = dated && sinceDay ? dated.signInsByDay.reduce((n, d) => (d.day >= sinceDay ? n + d.signIns : n), 0) : judged.reduce((n, k) => n + c[k], 0)
   // Failing or interrupted records since `since`: by day where the snapshot
   // carries days; the window's totals where it does not (or there is no since).
   // Failure is never discounted the way credit is — an enforced failure this
   // snapshot cannot date could have happened inside the window, so it counts
   // against the gate on either path. Nothing here can turn a failure into a pass.
-  const sinceDay = since ? since.slice(0, 10) : null
   const failures =
     pr.byDay && sinceDay
       ? Object.entries(pr.byDay).reduce((n, [day, d]) => (day >= sinceDay ? n + d.failures : n), 0)
@@ -411,7 +481,7 @@ function gates(
   for (const id of [...pr.affectedUserIds.reportOnlyFailure, ...pr.affectedUserIds.reportOnlyInterrupted, ...pr.affectedUserIds.enforcedFailure]) byUser.set(id, (byUser.get(id) ?? 0) + 1)
   // A record of this policy for a person is that person seen — a record of the
   // state the gate is judging, and no other.
-  const seen = new Set(judged.flatMap((k) => pr.affectedUserIds[k] ?? []))
+  const seen = dated && sinceDay ? new Set(Object.entries(dated.lastSeenByUser).filter(([, day]) => day >= sinceDay).map(([id]) => id)) : new Set(judged.flatMap((k) => pr.affectedUserIds[k] ?? []))
   const seenInScope = active === null ? null : active.filter((id) => seen.has(id)).length
   return {
     daysInReportOnly,
@@ -440,14 +510,23 @@ function gates(
     //     and a gap in a scan is not a pass.
     //
     // What none of the three does is let time, or a tally, stand in for evidence.
-    readyNow: windowClosed && since !== null && signIns > 0 && failures === 0 && scope.kind === 'people' && seenInScope === scope.ids.length,
+    //
+    // And all of it over records that are about this window and cover the whole
+    // of it: `dated` because a total is not attributable to an interval, and
+    // `windowCollected` because a reading of part of a window is not a reading
+    // of the window.
+    readyNow: windowClosed && since !== null && windowRead && signIns > 0 && failures === 0 && scope.kind === 'people' && seenInScope === scope.ids.length,
+    windowRead,
     seenInScope,
     activeInScope: active?.length ?? null,
     signIns,
     // A result whose window holds no record of this policy is the same empty set
-    // as no result at all: the sum above can only be zero, and the zero says
-    // nothing. Only records make a count.
-    failures: signIns === 0 ? null : failures,
+    // as no result at all: a zero nothing was counted for says nothing, and only
+    // records make a count. A failure the window cannot date is still a failure
+    // and is still shown — nothing here discounts one. And a zero over a window
+    // the collection did not read across is a zero for the part that was read,
+    // which is not the fact the line beside it states, so that is unknown too.
+    failures: since !== null && !windowRead ? null : failures === 0 && signIns === 0 ? null : failures,
     failuresByUser: [...byUser.entries()].map(([userId, n]) => ({ userId, count: n })).sort((a, b) => b.count - a.count),
     evidenceQuality: signIns >= MIN_SIGNINS_TO_JUDGE ? 'enough' : signIns > 0 ? 'thin' : 'none',
   }
@@ -457,6 +536,7 @@ const noGates = (snapshot: TenantSnapshot): Gates => ({
   daysInReportOnly: 0,
   readyOn: null,
   readyNow: false,
+  windowRead: false,
   seenInScope: null,
   activeInScope: null,
   signIns: 0,
@@ -556,6 +636,7 @@ function aggregateTracking(members: MemberTracking[], observed: ObservedState[],
       daysInReportOnly: m.daysInReportOnly,
       readyOn: m.readyOn,
       readyNow: m.readyNow,
+      windowRead: m.windowRead,
       seenInScope: m.seenInScope,
       activeInScope: m.activeInScope,
       signIns: m.signIns,
@@ -602,6 +683,8 @@ function aggregateTracking(members: MemberTracking[], observed: ObservedState[],
     readyOn,
     // The evidence gate is the pair's only when it is met on every member's own records.
     readyNow: watched.length > 0 && watched.every((m) => m.readyNow),
+    // And the pair's window is read across only when every watched member's is.
+    windowRead: watched.length > 0 && watched.every((m) => m.windowRead),
     seenInScope: sumOrNull(watched.map((m) => m.seenInScope)),
     activeInScope: sumOrNull(watched.map((m) => m.activeInScope)),
     signIns: members.reduce((n, m) => n + m.signIns, 0),
