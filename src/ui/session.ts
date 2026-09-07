@@ -70,6 +70,34 @@ const initial = (): Session => ({ account: null, tenantName: null, lastScan: nul
 let session: Session = initial()
 const listeners = new Set<() => void>()
 
+/**
+ * The tenant's turn in this session, counted. Sign out and Forget this tenant
+ * each end one: from that moment the app holds nothing of the tenant, and work
+ * that was already in flight for it — a baseline being read from the pin or
+ * from the operator's own files, a scan already collecting — belongs to a turn
+ * that is over. Such work reads the turn it began in and, when it has moved,
+ * neither writes to the session nor to the store: a late result may not put a
+ * baseline the operator let go of back on screen, and may not write a row back
+ * under a tenant they just forgot. A tenant id cannot stand in for this, since
+ * Forget this tenant leaves the same tenant signed in.
+ */
+let turn = 0
+
+/** The turn tenant-scoped work is beginning in; hand it back to `stillThisTurn`. */
+export function tenantTurn(): number {
+  return turn
+}
+
+/** End the tenant's turn: everything begun in it is stale from here. Only the two trust actions call this. */
+export function endTenantTurn(): void {
+  turn += 1
+}
+
+/** Work begun in `began` may still land: no trust action has run since. */
+export function stillThisTurn(began: number): boolean {
+  return began === turn
+}
+
 export function getSession(): Session {
   return session
 }
@@ -98,5 +126,6 @@ export function useSession(): Session {
 /** Test support: back to the initial state. */
 export function resetSession(): void {
   session = initial()
+  turn += 1
   for (const fn of listeners) fn()
 }
