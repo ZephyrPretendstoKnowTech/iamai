@@ -772,9 +772,28 @@ export function renderPages(): string {
       `<div class="tip">${esc(td.tip)}<span class="q">?</span></div>`,
   )
   const exP = P.export
+  // Export groups its artifacts by the job each one does (task 013), so the
+  // review page draws them under the same four headings, in the same order, with
+  // the note that says where the per-step machine artifacts actually live.
+  const exG = exP.groups as Record<string, string>
+  const exCard = (k: string): string => {
+    const v = (exP.cards as Record<string, string[]>)[k]
+    return `<div class="card"><b>${esc(v[0])}</b><p>${esc(v[1])}</p><p class="sub">${esc(v[2])}</p></div>`
+  }
   sec(
     'Export and print page 1',
-    Object.values(exP.cards).map((v: any) => `<div class="card"><b>${esc(v[0])}</b><p>${esc(v[1])}</p><p class="sub">${esc(v[2])}</p></div>`).join('') +
+    p(exP.intro, {}) +
+      h(exG.plan) +
+      exCard('print') +
+      exCard('planFile') +
+      h(exG.implementation) +
+      p(exG.implementationNote, {}, 'sub') +
+      exCard('prompts') +
+      h(exG.schedule) +
+      exCard('calendar') +
+      h(exG.technical) +
+      exCard('csv') +
+      exCard('bundle') +
       h('Print page 1') +
       ul([exP.printPage1.title, exP.printPage1.inPlace, exP.printPage1.toDo, exP.printPage1.doesntApply, exP.printPage1.notLicensed], { tenant: 'GetIAMAI', date: 'September 1, 2026', n: 7, finish: 'September 27' }) +
       `<div class="tip">${esc(exP.tip)}<span class="q">?</span></div>`,

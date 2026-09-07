@@ -490,7 +490,12 @@ test('005.9: screen, export, calendar, prompt pack and grounding bundle agree', 
   // lifecycle was known, now kept apart in `schedule.forecastOnly`.
   const projected = [enforcementTiming(step).at, run.schedule.forecastOnly?.[step.id]?.events?.enforce.at ?? null].filter((x): x is string => x !== null)
   const facts = stepContext(step, view)
-  assert.match(facts, /Takes effect: not yet dated/, `the enforcement is not dated: ${facts}`)
+  // The prompt answers "when" with the step's own Dates line and nothing it
+  // composed itself. It used to write a second sentence here ("Takes effect: not
+  // yet dated") that no other surface said, from its own second reading of the
+  // timing; the Dates line is the one authority, and on this step it says the
+  // enforcement is not this step's to state.
+  assert.ok(facts.includes(v.dates!), `the prompt pack dates the step its own way: ${facts}`)
   for (const at of projected) assert.ok(!facts.includes(absoluteDate(at)), `the prompt pack states the projected enforcement day: ${facts}`)
   assert.ok(facts.includes(absoluteDate(readyWhen(step)!.date)), 'and it does name the review day')
   assert.ok(facts.includes(c.whatToDo.text), 'and the action is the screen’s')

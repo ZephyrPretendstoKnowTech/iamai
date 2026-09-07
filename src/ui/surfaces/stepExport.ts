@@ -11,7 +11,6 @@
 import type { ExportStep, Step } from '../../roadmap/types.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
-import { doneWhenTemplates } from './doneWhen.ts'
 import { fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -23,6 +22,7 @@ import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '..
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
+import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 
@@ -117,11 +117,32 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string 
 /** The step as the screen says it, for an export. */
 export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
+  // The frozen Step Contract, once, for every step. It is read and never
+  // re-decided: the stage, the condition, the status word, the dated next line,
+  // the reach, the one action, the outstanding prerequisites, the completion and
+  // whether an implementation is offered are all its answers, and an artifact
+  // that carried its own reading of any of them would be a second authority.
+  const contract = stepContract(step, ctx)
+  const shell = {
+    stage: contract.state.stage,
+    condition: contract.state.conditionLabel,
+    status: contract.state.word,
+    next: contract.milestone.line,
+    who: contract.who?.text ?? null,
+    // The count behind that sentence, from the one population authority
+    // (derive/population.ts), and null on exactly the steps whose scope
+    // Foundation A could not settle — the same steps the contract's `who` says
+    // it does not know. An unknown reach is never written down as a number.
+    population: stepPopulation(step)?.active ?? null,
+    fix: contract.fix.map((f) => f.text),
+    implementation: contract.implementation.offered,
+  }
   if (!cs) {
     // No content entry at all. Every step the plan draws has one now (task 011),
-    // so this is a step nothing has words for: the export carries its title and
-    // none of the engine's prose, exactly as the screen does.
-    return { title: contentTitle(step), why: step.why, whatToDo: [], doneWhen: [], ifWrong: null, dates: null }
+    // so this is a step nothing has words for: the export carries what the
+    // contract knows about it — where it is, what to do next and what would
+    // finish it — and none of the engine's prose, exactly as the screen does.
+    return { title: contentTitle(step), why: contract.why, ...shell, whatToDo: [contract.whatToDo.text], doneWhen: contract.doneWhen, ifWrong: null, dates: null }
   }
   const ex = stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
@@ -182,7 +203,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // it below — so the calendar entry, the prompt pack, the grounding bundle and
   // the plan file all said a policy existed and none of them said which one.
   // Read from the frozen Step Contract's own finding, so the two cannot drift.
-  else if (inPlace) lines.push(...stepContract(step, ctx).found.filter((x) => x.key === 'in-place').map((x) => x.text))
+  else if (inPlace) lines.push(...contract.found.filter((x) => x.key === 'in-place').map((x) => x.text))
   else if (!unearned && Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   // The next action the screen states, in the artifact. Where the step's content
   // carries a lead it is already the first line above and the contract's action
@@ -191,28 +212,29 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // this the calendar entry, the prompt pack and the bundle began at the portal
   // path with the operation itself never said. Read from the frozen Step
   // Contract, not decided again here.
-  const contract = reason === null ? stepContract(step, ctx) : null
-  if (contract) {
-    const action = contract.whatToDo.text
-    if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
-  }
-  // Nothing that implies the policy can be rolled out while it cannot be written:
-  // no completion criteria, no rollback, no dates.
-  const own = reason !== null
-    ? []
-    : doneWhenTemplates(step, (cs.doneWhen ?? []) as unknown[])
-        .filter((x) => whole(x, ex))
-        .map((x) => fillText(x, ex))
-  // The step's own gates, and the completion the contract adds in front of them
-  // where it has one: a policy held for review finishes on the change being
-  // accounted for as well as on its window and its records, and an artifact
-  // listing the gates alone would say the waiting is all that is left. The
-  // contract is read, not repeated — where it adds nothing this is `own`
-  // unchanged.
-  const doneWhen = contract && own.length > 0 ? contract.doneWhen : own
+  //
+  // It is unshifted for every step, an unavailable one included. The reason
+  // branches above state a policy that cannot be written; on the baseline
+  // conflict that is the contradiction's own paragraph, and the action the
+  // screen puts above it — "Wait for a reviewed baseline that settles the
+  // contradiction; there is nothing to submit." — was in no artifact at all.
+  // Where the reason line and the action are the same sentence (a missing
+  // object, an emergency account in reach) the guard below keeps it once.
+  const action = contract.whatToDo.text
+  if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
+  // The completion, from the contract, for every step. Nothing here implies the
+  // policy can be rolled out while it cannot be written: where a reason holds
+  // it, the contract's completion is what would *clear the reason*
+  // ("Create the object this policy names in {tenant}."), never the report-only
+  // days and failure rates of a rollout nobody can start. This used to be an
+  // empty list on exactly those steps — the calendar entry said nothing and the
+  // prompt pack filled the gap with "the next scan confirms it", a completion
+  // no authority had stated.
+  const doneWhen = contract.doneWhen
   return {
     title: contentTitle(step),
-    why: typeof cs.why === 'string' ? fillText(cs.why, ex) : step.why,
+    why: typeof cs.why === 'string' ? fillText(cs.why, ex) : contract.why,
+    ...shell,
     whatToDo: lines,
     doneWhen,
     ifWrong: reason === null && ifWrongLineFor(step, cs) && whole(ifWrongLineFor(step, cs), ex) ? fillText(ifWrongLineFor(step, cs), ex) : null,

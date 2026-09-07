@@ -26,6 +26,10 @@ const deviceNames = snapshot.devices.slice(0, 3).map((d) => d.displayName!)
 const nameOf = (id: string) => snapshot.users.find((u) => u.id === id)?.displayName ?? id
 const viabilityById = new Map(run.viability.map((v) => [v.userId, v]))
 
+// The one reading of a step for an artifact: the Export page's own view
+// (ui/surfaces/stepExport.ts), which is the frozen Step Contract's answers.
+const bundleView = (s: Parameters<typeof stepExportView>[0]) => stepExportView(s, { snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: null, now: snapshot.asOf })
+
 function contains(text: string, needles: string[]): string[] {
   return needles.filter((n) => text.includes(n))
 }
@@ -47,7 +51,7 @@ test('diagnostics: redactIdentifiers removes every sign-in name and every id, ke
 })
 
 test('the redacted grounding bundle holds no sign-in names, display names, tenant id, device names or IP ranges', () => {
-  const bundle = JSON.stringify(groundingBundle({ tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: true, generated: '2026-08-28' }))
+  const bundle = JSON.stringify(groundingBundle({ view: bundleView, tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: true, generated: '2026-08-28' }))
   assert.deepEqual(contains(bundle, upns), [])
   assert.deepEqual(contains(bundle, names), [])
   assert.ok(!bundle.includes(tenantId))
@@ -57,7 +61,7 @@ test('the redacted grounding bundle holds no sign-in names, display names, tenan
 })
 
 test('the unredacted grounding bundle names what it contains in its header', () => {
-  const bundle = JSON.stringify(groundingBundle({ tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: '2026-08-28' }))
+  const bundle = JSON.stringify(groundingBundle({ view: bundleView, tenant: 'Fixture small', snapshot, coverage: run.coverage, steps: run.steps, schedule: run.schedule, redacted: false, generated: '2026-08-28' }))
   assert.match(bundle, /Unredacted: contains user names and sign-in names/)
   assert.ok(bundle.includes(tenantId))
 })

@@ -382,14 +382,45 @@ export type Step = {
  * title, why and done-when lines filled with the tenant's values, the
  * translator's What to do — what the screen says, never the v2 engine's prose.
  * Built by src/ui/surfaces/stepExport.ts; the exporters take it as a function.
+ *
+ * Every field here is the frozen Step Contract's own answer (Foundation D). The
+ * calendar entry, the prompt pack and the grounding bundle used to carry the
+ * title, the why, What to do and Done when and nothing else, so a step the Plan
+ * showed as "Not deployed · Blocked — Fix before continuing: finish Create or
+ * Correct Exclusions Group first" left this browser as eight portal steps with
+ * the thing it waits on nowhere in the file. The stage, the condition, the
+ * dated next line, the reach, the outstanding prerequisites and whether an
+ * implementation is offered at all travel with the step now, read once here and
+ * never worked out again by an artifact builder.
  */
 export type ExportStep = {
   title: string
   why: string
+  /** Foundation B's lifecycle stage in words, or the outcome that stands in its place. */
+  stage: string
+  /** Foundation B's condition in words: Healthy, Blocked, Needs decision, Review required, Baseline conflict. */
+  condition: string
+  /** The one word the Plan's collapsed row shows; a projection of the two above, for scanning. */
+  status: string
+  /** Foundation B's dated next line, where it holds a date for one; null otherwise. */
+  next: string | null
+  /** Who the policy reaches, from the one population authority; null where the step reaches nobody. */
+  who: string | null
+  /**
+   * How many active people the policy reaches: the one denominator the screen
+   * states, from the same population authority, and null where Foundation A
+   * could not settle the scope. A machine artifact reads this rather than a
+   * stored count beside it.
+   */
+  population: number | null
   whatToDo: string[]
+  /** What must be cleared before this step can move (never a passed check); empty where nothing holds it. */
+  fix: string[]
   doneWhen: string[]
   ifWrong: string | null
   dates: string | null
+  /** Whether Foundation A hands over an implementation today: the same answer the JSON, the PowerShell and the download read. */
+  implementation: boolean
 }
 export type StepView = (step: Step) => ExportStep
 

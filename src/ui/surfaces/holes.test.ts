@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { commsFor, stepExportView, stepLines } from './stepExport.ts'
+import { stepContract } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -134,7 +135,10 @@ test('on the demo, an email body fills every variable it names', () => {
       // A policy naming an object this tenant does not have has no date to
       // announce and nothing to announce yet: no email at all, and no hole.
       assert.equal(commsFor(cs as unknown as Record<string, unknown>, ex, s), null, `${goalId}: nothing to announce while it waits`)
-      assert.deepEqual(stepExportView(s, ctx).doneWhen, [], `${goalId}: no completion criteria while it waits`)
+      // What would end the wait, in the artifact as on screen — never the
+      // rollout's own gates, which belong to a policy this tenant cannot hold yet.
+      assert.deepEqual(stepExportView(s, ctx).doneWhen, stepContract(s, ctx).doneWhen, `${goalId}: the completion is not the screen's`)
+      assert.ok(!/report-only|sign-in failures|%/i.test(stepExportView(s, ctx).doneWhen.join(' ')), `${goalId}: a rollout completion leaked while it waits`)
       assert.equal(stepExportView(s, ctx).dates, null, `${goalId}: no dates while it waits`)
       continue
     }

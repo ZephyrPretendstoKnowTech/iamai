@@ -5,6 +5,7 @@ import { awaitingDeployment, enforcementUnearned } from './forecast.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { unavailableReason } from './operations.ts'
 import { heldForReview } from './lifecycle.ts'
+import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 
 function icsDate(iso: string): string {
@@ -30,8 +31,6 @@ function fold(line: string): string {
 export function buildIcs(steps: Step[], tenantName: string, planId: string, view: StepView, cleanup: CleanupExport[] = []): string {
   const lines: string[] = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IAMAI//Conditional Access rollout plan//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${escape(`${tenantName} Conditional Access rollout`)}`]
   const stamp = (): string => `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`
-  const describe = (why: string, dates: string | null, whatToDo: string[], doneWhen: string[], ifWrong: string | null): string =>
-    [why, dates ?? '', whatToDo.length > 0 ? `What to do: ${whatToDo.join(' | ')}` : '', doneWhen.length > 0 ? `Done when: ${doneWhen.join(' | ')}` : '', ifWrong ?? ''].filter(Boolean).join('\n')
   for (const s of steps) {
     if (s.status === 'done' || s.status === 'skipped') continue
     // A policy the plan cannot write has no entry, whatever dates a step loaded
@@ -76,10 +75,15 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     lines.push(`DTEND;VALUE=DATE:${icsDate(endExclusive)}`)
     const v = view(s)
     lines.push(fold(`SUMMARY:${escape(v.title)}`))
-    // The calendar entry is the runbook: what the step says on screen, its why,
-    // its dates, its portal path, its done-when lines and what to do if it goes
-    // wrong (prompt 53 queue item 7).
-    lines.push(fold(`DESCRIPTION:${escape(describe(v.why, v.dates, v.whatToDo, v.doneWhen, v.ifWrong))}`))
+    // The calendar entry is the runbook: what the step says on screen, in the
+    // order the screen states it (roadmap/artifactLines.ts). Where it is, what
+    // comes next, who it reaches, its portal path, what is holding it, its
+    // dates, its done-when lines and the way back. Nothing here chooses which
+    // of those the entry gets: the export view is the one reading and that
+    // module only labels it. The entry used to carry four of the eight, so a
+    // step booked into a person's calendar read as work for that day with the
+    // prerequisite it waits on named nowhere in the file.
+    lines.push(fold(`DESCRIPTION:${escape(stepArtifactLines(v).join('\n'))}`))
     lines.push('END:VEVENT')
   }
   // Cleanup rows are calendar entries on their day (E4); a row marked done is finished, like a done step.
@@ -91,7 +95,7 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     lines.push(`DTSTART;VALUE=DATE:${icsDate(c.day)}`)
     lines.push(`DTEND;VALUE=DATE:${icsDate(new Date(Date.parse(c.day) + 86_400_000).toISOString())}`)
     lines.push(fold(`SUMMARY:${escape(c.title)}`))
-    lines.push(fold(`DESCRIPTION:${escape(describe(c.why, null, c.whatToDo, c.doneWhen, null))}`))
+    lines.push(fold(`DESCRIPTION:${escape(cleanupArtifactLines(c).join('\n'))}`))
     lines.push('END:VEVENT')
   }
   lines.push('END:VCALENDAR')

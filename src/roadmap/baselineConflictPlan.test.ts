@@ -406,7 +406,7 @@ test('no channel offers a policy built from either side of the contradiction', (
   assert.equal(contract.implementation.offered, false)
   // Nothing in what any surface renders carries a policy body or a group id from
   // either reading of the source.
-  const rendered = [...stepLines(step, ctx), JSON.stringify(stepExportView(step, ctx)), stepContext(step)].join('\n')
+  const rendered = [...stepLines(step, ctx), JSON.stringify(stepExportView(step, ctx)), stepContext(step, (x) => stepExportView(x, ctx))].join('\n')
   assert.equal(rendered.includes(SOURCE), false, 'the source policy id reached an artifact')
   assert.equal(/"conditions"|includeUsers|grantControls/.test(rendered), false, 'a policy body reached an artifact')
 })
@@ -463,13 +463,13 @@ test('screen, export and prompt all carry the conflict and none carries an imple
     assert.match(text, /baseline/i, `${where} does not name the baseline`)
     assert.match(text, /Nothing is wrong in your tenant/i, `${where} reads as a tenant failure`)
   }
-  // What ends it, in every output. A policy that cannot be written carries no
-  // Done-when field in the artifacts — that field is the rollout's finish, and
-  // there is no rollout — so the artifacts say it where they say the conflict,
-  // and the screen says it in the contract's own completion. The two agree on
-  // the fact, which is the thing that matters: this is not permanent, and a
-  // reviewed baseline is what ends it.
-  assert.deepEqual(view.doneWhen, [], 'a rollout finish was written for a policy nobody can write')
+  // What ends it, in every output, and the same sentence in each. On a policy
+  // nobody can write, the completion is not the rollout's finish — there is no
+  // rollout — it is what would settle the contradiction, which is exactly what
+  // the screen states. The artifacts used to carry no completion at all, so the
+  // way out of the conflict was on screen and in no file that left the browser.
+  assert.deepEqual(view.doneWhen, contract.doneWhen, "the export's completion is not the screen's")
+  assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout finish was written for a policy nobody can write: ${view.doneWhen.join(' | ')}`)
   assert.match(contract.doneWhen.join(' '), /reviewed baseline/i, 'the screen drops what would end the conflict')
   assert.match(view.whatToDo.join('\n'), /reviewed baseline/i, 'the exports drop what would end the conflict')
   assert.match(context, /reviewed baseline/i, 'the prompt pack drops what would end the conflict')
@@ -635,8 +635,10 @@ test('screen, export and prompt all carry the conflict on whichever goal the map
     assert.match(text, /Nothing is wrong in your tenant/i, `${where} reads as a tenant failure`)
   }
 
-  // And none of them carries an implementation, a completion or a rollout.
-  assert.deepEqual(view.doneWhen, [], 'a rollout finish was written for a policy nobody can write')
+  // And none of them carries an implementation or a rollout. The completion they
+  // do carry is the contradiction's, the screen's own, not a rollout's finish.
+  assert.deepEqual(view.doneWhen, contract.doneWhen, "the export's completion is not the screen's")
+  assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout finish was written for a policy nobody can write: ${view.doneWhen.join(' | ')}`)
   assert.equal(view.dates, null, 'the artifacts carry a Dates line')
   assert.equal(view.ifWrong, null, 'the artifacts carry a rollback for a change IAMAI will not define')
   const rendered = [...stepLines(s, ctx), JSON.stringify(view), context].join(NEWLINE)

@@ -58,7 +58,6 @@
     "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
     "datesObserve": "Report-only since {reportOnly} · Review {readyOn} · Enforcement is dated once the observation window closes and the sign-in records are clear and complete",
     "datesReview": "Report-only since {reportOnly} · Held until the change somebody made to the policy has been looked at · No enforcement date while it is held",
-    "commsForecastDate": "{date} at the earliest",
     "commsForecastNote": "That date is our target, not a commitment: we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
     "portalRoot": "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
     "portalOpen": "Entra admin center → Entra ID → Conditional Access → Policies → open \"{policy}\"",
@@ -550,6 +549,15 @@
     },
     "export": {
       "h1": "Export",
+      "intro": "Take this plan somewhere else. Every file here is built in this browser; nothing is uploaded anywhere.",
+      "groups": {
+        "$comment": "Export groups its artifacts by the job each one does, not by its format. A note under a heading says what is not on this page for that job.",
+        "plan": "The plan",
+        "implementation": "Doing the work",
+        "implementationNote": "The JSON and the PowerShell for a policy are on that step in the Plan. They belong to one step, so they are not offered here for the whole plan.",
+        "schedule": "Timing",
+        "technical": "For another tool"
+      },
       "cards": {
         "print": [
           "Print or save as PDF",
@@ -936,7 +944,9 @@
         "csvTab": "{label} as CSV",
         "promptCopy": "Copy prompt",
         "copied": "Copied",
-        "redactedLabel": "Include names and addresses (unredacted)"
+        "redactedLabel": "Include names and addresses (unredacted)",
+        "promptScope": "About one step: {step}",
+        "promptWholePlan": "About the whole plan"
       },
       "print": {
         "runningHeader": "IAMAI plan · {tenant} · {date}",
