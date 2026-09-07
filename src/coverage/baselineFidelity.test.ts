@@ -11,7 +11,7 @@ import firstParty from '../../data/first-party-apps.json' with { type: 'json' }
 import { PINNED, pinnedPackage } from '../baseline/pinned.ts'
 import { runBaselineValidators } from '../baseline/validators.ts'
 import { PINNED_GOAL_MAP, goalMapFor, policiesForGoal, policyKey } from '../roadmap/goalMap.ts'
-import { BASELINE_CONFLICT_GOALS, baselineConflictGoals, hasBaselineConflict } from '../roadmap/baselineConflict.ts'
+import { baselineConflictGoals, inBaselineConflict } from '../roadmap/baselineConflict.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { policyResult } from '../roadmap/operations.ts'
@@ -340,8 +340,7 @@ test('an unresolved placeholder yields no implementation, never an equivalence',
 test('the Admin Portal conflict is bound to the source policy, not to the goal id', () => {
   // It holds for the pinned default, because this baseline maps the goal to the
   // policy the review read.
-  assert.deepEqual([...BASELINE_CONFLICT_GOALS], ['admin-portals-protected'])
-  assert.equal(hasBaselineConflict('admin-portals-protected'), true)
+  assert.deepEqual([...baselineConflictGoals(PINNED_GOAL_MAP)], ['admin-portals-protected'])
   assert.deepEqual(PINNED_GOAL_MAP['admin-portals-protected'], ['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'])
 
   // A baseline whose map hands the same goal to a policy the review did not read

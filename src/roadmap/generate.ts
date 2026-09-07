@@ -13,7 +13,7 @@ import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
-import { hasBaselineConflict } from './baselineConflict.ts'
+import { BASELINE_CONFLICT, baselineConflictGoals } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
@@ -787,6 +787,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // fallback for a package that does not carry the mapped policy — the
   // synthetic test fixtures, which stand in for the pinned baseline.
   const goalMap = input.goalMap ?? PINNED_GOAL_MAP
+  // Read once, from the map this run is planning against (baselineConflict.ts):
+  // the conflict belongs to the source policy the active baseline hands the
+  // goal, so an uploaded baseline is judged by its own map and never by the pin.
+  const conflictGoals = baselineConflictGoals(goalMap)
   const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
   const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
   // The map describes this package when its keys resolve in it (the pinned
@@ -1308,6 +1312,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       }
     }
 
+    // The baseline's own contradiction, read from this run's goal map
+    // (baselineConflict.ts). Carried on every reading of the step below,
+    // including the synthetic ones the gating pass builds: a source policy whose
+    // two definitions cannot both hold is never read for what its policy would
+    // do — no operation, no effects, no reach, no announcement — and step 0 of
+    // the sequence pass records the same reading on the step itself.
+    const conflictState = typeof goal.id === 'string' && conflictGoals.has(goal.id) ? { state: { condition: BASELINE_CONFLICT } } : {}
+
     // Gating (roadmap.md §6).
     if (!state.satisfied) {
       const threshold =
@@ -1347,7 +1359,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // unverified (validation-rules.md §2). What the step will actually leave
       // behind decides (roadmap/operations.ts stepEffects); the floor and the
       // goal's family answer only for a step with no policy of its own.
-      const denyStep = { goalId: goal.id, kind, status: statusNow(), action } as unknown as Step
+      const denyStep = { goalId: goal.id, kind, status: statusNow(), action, ...conflictState } as unknown as Step
       // What the step will actually leave behind decides. A policy the plan
       // cannot read at all is treated as one that can deny access: the way back
       // in is never withheld on a guess (roadmap/operations.ts stepEffects).
@@ -1388,7 +1400,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Whether the signed-in account is in scope is the policy's own answer, from
     // its include and exclude lists (roadmap/operations.ts accountApplicability);
     // a step with no policy of its own is bounded by the people it lists.
-    const asStep = { goalId: goal.id, kind, status: statusNow(), action, readiness, population: pop } as unknown as Step
+    const asStep = { goalId: goal.id, kind, status: statusNow(), action, readiness, population: pop, ...conflictState } as unknown as Step
     const operatorEffects = isOpenPolicy(asStep) ? stepEffects(asStep) : []
     const includesOperator =
       operatorId !== null &&
@@ -1731,7 +1743,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // including done: a policy the tenant already holds cannot make a
   // contradictory definition safe to act on.
   for (const s of steps) {
-    if (!hasBaselineConflict(s.goalId) || s.state.setAside) continue
+    if (!(typeof s.goalId === 'string' && conflictGoals.has(s.goalId)) || s.state.setAside) continue
     s.action = { kind: s.action.kind, summary: [], json: null, portalSteps: [] }
     s.deliveredBy = []
     // And the delivery claim goes with the implementation, for the same reason.
@@ -1751,8 +1763,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // hatch); the conflict is added beside them and binds the row's reason
     // ahead of any of them (stateReason.ts), so the cause a person reads is the
     // baseline's, never a prerequisite in their tenant.
-    if (!s.blockers.some((b) => b.label === 'baseline-conflict')) s.blockers.push({ kind: 'evidence', label: 'baseline-conflict', binding: BLOCKED_REASON.baseline })
-    raiseCondition(s, 'baseline-conflict')
+    if (!s.blockers.some((b) => b.label === BASELINE_CONFLICT)) s.blockers.push({ kind: 'evidence', label: BASELINE_CONFLICT, binding: BLOCKED_REASON.baseline })
+    raiseCondition(s, BASELINE_CONFLICT)
   }
 
   // 1. Security-info registration is the policy that asks for MFA in order to

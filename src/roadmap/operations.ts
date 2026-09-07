@@ -18,7 +18,7 @@
 //
 // Pure data: no DOM, no network.
 import type { Action, PolicyOperation, Step } from './types.ts'
-import { hasBaselineConflict } from './baselineConflict.ts'
+import { inBaselineConflict } from './baselineConflict.ts'
 import builtinStrengths from '../../data/builtin-strengths.json' with { type: 'json' }
 
 const isObject = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -1135,7 +1135,7 @@ export function policyResult(step: PolicyStep): PolicyResult {
   const kind = step.kind ?? step.action.kind
   if (kind !== 'create' && kind !== 'adjust') return { kind: 'not-policy' }
   if (step.status === 'skipped') return { kind: 'not-policy' }
-  if (hasBaselineConflict(step.goalId)) return { kind: 'unavailable', reason: 'baseline-conflict' }
+  if (inBaselineConflict(step)) return { kind: 'unavailable', reason: 'baseline-conflict' }
   // The emergency-access boundary, and it comes before every other reason
   // because it is the one that must not be traded away. A policy whose final
   // user scope reaches an emergency access account — or whose scope this scan

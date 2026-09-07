@@ -20,12 +20,21 @@
 // The conflict is a property of the ACTIVE baseline, not of the goal id: it is
 // bound to the stable key of the source policy the review read, so a baseline
 // whose map hands the same goal to a policy that does not contradict itself is
-// not blocked. `admin-portals-protected` is forbidden here because this pin maps
-// it to fafaa50c, never because the goal is forever forbidden.
+// not blocked. `admin-portals-protected` is forbidden under the pinned map
+// because that map hands it to fafaa50c, never because the goal is forever
+// forbidden.
+//
+// That reading is made once, in `generateRoadmap`, against the goal map of the
+// run's own baseline (`RoadmapInput.goalMap`), and it is recorded on the step it
+// belongs to: the `baseline-conflict` blocker and the condition that blocker
+// raises (lifecycle.ts `conditionFor`). Everything downstream — tracking, the
+// operations authority, the Step Contract, the row, the artifacts — reads the
+// step, never the pinned map again. A second reading against the pin would judge
+// an uploaded baseline by a map it does not use.
 //
 // Pure data: no DOM, no network.
-import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { GoalMap } from './goalMap.ts'
+import type { Step } from './types.ts'
 
 /**
  * The source policies a review found self-contradictory, by the stable key the
@@ -33,6 +42,9 @@ import type { GoalMap } from './goalMap.ts'
  * none). One entry today: Jon Hope's `IAC - ZTCA - GLOBAL - BLOCK - Admin Portal`.
  */
 export const CONFLICTED_SOURCE_POLICIES: ReadonlySet<string> = new Set(['fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'])
+
+/** The label the conflict carries as a blocker, and the condition it raises. */
+export const BASELINE_CONFLICT = 'baseline-conflict'
 
 /** The goals a baseline's own map hands to one of those source policies. */
 export function baselineConflictGoals(map: GoalMap): ReadonlySet<string> {
@@ -43,12 +55,16 @@ export function baselineConflictGoals(map: GoalMap): ReadonlySet<string> {
   return out
 }
 
-/** Goal ids whose mapped baseline policy contradicts its own documentation. */
-export const BASELINE_CONFLICT_GOALS: ReadonlySet<string> = baselineConflictGoals(PINNED_GOAL_MAP)
-
-/** True when the baseline's definition of this goal's policy contradicts itself. */
-export function hasBaselineConflict(goalId: string | null | undefined): boolean {
-  return typeof goalId === 'string' && BASELINE_CONFLICT_GOALS.has(goalId)
+/**
+ * True when generation read this step's own baseline source as self-contradictory.
+ *
+ * The one question every consumer asks, and it is asked of the step rather than
+ * of a goal id: the goal id is a label, and the same label means a different
+ * source policy under a different baseline. A step with no state has not been
+ * through generation and carries no such reading.
+ */
+export function inBaselineConflict(step: Partial<Pick<Step, 'state'>>): boolean {
+  return step.state?.condition === BASELINE_CONFLICT
 }
 
 /**

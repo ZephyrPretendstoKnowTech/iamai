@@ -14,12 +14,19 @@
 // uses, and the assertions are the six ways this can go wrong: choosing a side,
 // reviving the admins group, offering an implementation, dating a rollout,
 // reading In place, and taking the rest of the plan down with it.
+//
+// Section 9 runs the same path over a baseline whose map hands the goals to
+// different sources. It is the whole point of the design and the one thing an
+// assertion at the helper alone cannot show: the conflict follows the source
+// policy through generation, tracking and every surface, so the goal id that is
+// blocked under the pinned map is planned normally under another map, and the
+// goal carrying the contradicted source is blocked wherever it sits.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { CONFLICTED_SOURCE_POLICIES, baselineConflictGoals, hasBaselineConflict } from './baselineConflict.ts'
+import { CONFLICTED_SOURCE_POLICIES, baselineConflictGoals, inBaselineConflict } from './baselineConflict.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { nextMilestone } from './lifecycle.ts'
 import { blockedReasonFor } from './stateReason.ts'
@@ -289,7 +296,110 @@ test('the rest of the plan keeps its implementations, its states and its dates',
   )
   // Every other conflicted goal is only this one: nothing else in the plan was
   // caught by the same rule.
-  assert.deepEqual(r.steps.filter((s) => hasBaselineConflict(s.goalId)).map((s) => s.id), [step.id])
+  assert.deepEqual(r.steps.filter((s) => inBaselineConflict(s)).map((s) => s.id), [step.id])
   // And the artifacts still describe the rest of the plan.
   assert.ok(others.some((s) => stepExportView(s, ctx).whatToDo.length > 0), 'the artifacts lost the rest of the plan')
+})
+
+// ---- 9: the same path over a baseline that maps the sources differently ----
+
+/**
+ * The pinned map with two goals' sources exchanged: `admin-portals-protected`
+ * now stands for the admin-session source policy, and `admin-session` stands for
+ * the contradicted Admin Portal one. Nothing else moves, so anything that
+ * differs from the pinned run is the source policy and not the goal id.
+ */
+const SWAPPED_MAP = { ...PINNED_GOAL_MAP, [GOAL]: PINNED_GOAL_MAP['admin-session'], 'admin-session': [SOURCE] }
+
+/** The same wiring the Plan page uses, planning against that map instead of the pin. */
+function swapped(): { r: ReturnType<typeof runFixture>; ctx: StepVarContext } {
+  const f = fixture('demo-week2')
+  const r = runFixture(f, { goalMap: SWAPPED_MAP })
+  const nameOf = (id: string): string => r.input.names!.label(id)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
+  return { r, ctx }
+}
+
+test('a goal handed to another source is planned normally, all the way to the screen', () => {
+  const { r, ctx } = swapped()
+  const step = r.steps.find((s) => s.goalId === GOAL)
+  assert.ok(step, 'the admin-portals step is still in the plan')
+  const s = step as Step
+
+  // This is the goal id the pinned map blocks. Under this map its source is a
+  // policy no review found self-contradictory, so nothing about it is held by
+  // the baseline: not the step, not the operations authority, not the row.
+  assert.equal(inBaselineConflict(s), false, 'the goal id alone still blocks the step')
+  assert.notEqual(s.state.condition, 'baseline-conflict')
+  assert.deepEqual(s.blockers.filter((b) => b.label === 'baseline-conflict'), [], 'a conflict blocker was raised for a source that carries no conflict')
+  assert.notEqual(s.blockedReason, BLOCKED_REASON.baseline, "the row read a contradiction the step's own source does not have")
+  const result = policyResult(s as never)
+  assert.notEqual(result.kind === 'unavailable' ? result.reason : null, 'baseline-conflict', 'the operations authority still read the pinned map')
+
+  // And the implementation really is there: a body, a rollout stage, and a Step
+  // Contract that is not the resolve-the-conflict one.
+  assert.equal(typeof s.action.json, 'string', 'no policy body was written for a source that has one')
+  assert.notEqual(s.state.lifecycle, null, 'the step lost its rollout stage')
+  const contract = stepContract(s, ctx, stepVars(s, ctx))
+  assert.notEqual(contract.state.conditionLabel, 'Baseline conflict')
+  assert.equal(contract.implementation.offered, true, 'the implementation was withdrawn from a source that carries no contradiction')
+  // The step is behind this tenant's own MFA readiness number, which is a
+  // reason of the tenant's and reads as one; nothing on it asks anybody to wait
+  // for a reviewed baseline.
+  assert.doesNotMatch(contract.whatToDo.text, /reviewed baseline|baseline defines/i, 'the next action is the resolve-the-conflict one')
+  assert.doesNotMatch(contract.doneWhen.join(' '), /reviewed baseline/i, 'the completion is the resolve-the-conflict one')
+})
+
+test('the contradicted source blocks whatever goal carries it, and takes nothing else with it', () => {
+  const { r, ctx } = swapped()
+  const step = r.steps.find((s) => s.goalId === 'admin-session')
+  assert.ok(step, 'the admin-session step is in the plan')
+  const s = step as Step
+
+  // This goal is planned, dated and offered under the pinned map — it is the
+  // product's canonical "Not deployed / Implement" case. Carrying the
+  // contradicted source is the only thing that changed, and it withdraws the
+  // whole rollout.
+  assert.deepEqual([...baselineConflictGoals(SWAPPED_MAP)], ['admin-session'], 'the map itself names the goal the source conflicts')
+  assert.equal(inBaselineConflict(s), true, 'the conflict did not follow the source policy')
+  assert.equal(s.state.condition, 'baseline-conflict')
+  assert.equal(s.status, 'blocked')
+  assert.equal(s.blockedReason, BLOCKED_REASON.baseline)
+  assert.deepEqual(r.steps.filter((x) => inBaselineConflict(x)).map((x) => x.id), [s.id], 'the block stayed on the goal the pinned map blocks')
+
+  // No implementation, on any channel.
+  const result = policyResult(s as never)
+  assert.equal(result.kind, 'unavailable')
+  assert.equal(result.kind === 'unavailable' ? result.reason : null, 'baseline-conflict')
+  assert.equal(s.action.json, null, 'a submittable body survived the conflict')
+  assert.deepEqual(s.action.portalSteps, [])
+  assert.equal(jsonOffered(s), false, 'the JSON, PowerShell and Download tabs are offered')
+
+  // No lifecycle, and no claim of delivery — the same withdrawal generation and
+  // tracking both make, reached through this run's map rather than through the pin.
+  assert.equal(s.state.lifecycle, null, 'a rollout stage was reported for a rollout the plan refuses to define')
+  assert.equal(s.state.satisfied, false)
+  assert.equal(s.state.inPlace, false)
+  assert.deepEqual(s.deliveredBy, [])
+
+  // No dates, no events, no calendar entry.
+  assert.equal(nextMilestone(s).at, null)
+  assert.equal(rowWhen(s), '', 'the row put a date in the date column')
+  assert.equal(rowReason(s), BLOCKED_REASON.baseline)
+  assert.equal(s.events, null, 'an enforcement or completion event survived the conflict')
+  assert.equal(s.reportOnlyAt ?? null, null)
+  assert.deepEqual(s.rings.map((x) => x.plannedStart).filter(Boolean), [])
+  const sch = r.schedule as unknown as Record<string, Record<string, unknown> | undefined>
+  assert.equal(sch.waveOf?.[s.id], undefined, 'the schedule put it in a wave')
+  assert.equal(sch.startAt?.[s.id], undefined, 'the schedule gave it a start date')
+  const view = stepExportView(s, ctx)
+  assert.equal(view.dates, null, 'the artifacts carry a Dates line')
+  const ics = buildIcs(r.steps, 'Contoso Pty Ltd', 'plan-swapped', (x) => stepExportView(x, ctx))
+  assert.equal(ics.includes(s.id), false, 'a calendar entry was booked for a policy nobody can write')
+
+  // And the rest of the plan is untouched.
+  const others = r.steps.filter((x) => x.id !== s.id)
+  assert.ok(others.some((x) => typeof x.action.json === 'string'), 'the rest of the plan lost its bodies')
+  assert.ok(others.some((x) => x.state.lifecycle !== null), 'the other steps lost their lifecycle')
+  assert.ok(ics.split('BEGIN:VEVENT').length > 2, 'the rest of the plan lost its calendar entries')
 })
