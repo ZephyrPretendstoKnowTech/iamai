@@ -6,11 +6,12 @@
 // under the header elsewhere); sign-in, sign-out and forget reject on failure,
 // and the button that called them renders the error beside itself
 // (ui/useAction.ts). No handler swallows.
+import type { AccountInfo } from '@azure/msal-browser'
 import type { ScanHandle } from '../graph/collect/runScan.ts'
 import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { RoleGapError } from '../graph/collect/tokenRoles.ts'
 import type { SectionEvent, WorkerOutMessage } from '../graph/collect/types.ts'
-import { forgetTenant as forgetStored, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
+import { forgetTenant as forgetStored, loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import * as auth from '../graph/auth.ts'
 import { app } from '../content/content.ts'
 import { isDemo } from './demoMode.ts'
@@ -23,7 +24,16 @@ import { IDLE_SCAN, endTenantTurn, getSession, setScan, setSession, stillThisTur
 /** The sign-in library behind the actions (graph/auth.ts). A test replaces these: the real one needs a browser. */
 export const authLib = { signIn: auth.signIn, signInAnother: auth.signInAnother, signOut: auth.signOut }
 /** The store behind the actions (graph/collect/cache.ts). A test replaces these: the real one needs IndexedDB. */
-export const storeLib = { forgetTenant: forgetStored, saveSnapshotRecord, saveBaselineRecord }
+export const storeLib = { forgetTenant: forgetStored, saveSnapshotRecord, saveBaselineRecord, loadSnapshotRecord, loadBaselineRecord }
+/**
+ * The tenant's name from the directory (graph/organization.ts), read by sign-in
+ * restoration. Loaded on demand, as the collector and the sign-in library are:
+ * it reaches Graph through MSAL, which reads `window` as it loads and so may
+ * not be in this module's own chunk. A test replaces it: the real one fetches.
+ */
+export const tenantLib = {
+  fetchTenantName: async (): Promise<string | null> => (await import('../graph/organization.ts')).fetchTenantName(),
+}
 /** The baseline reader behind the restore action (ui/baseline.ts). A test replaces it: the real one fetches. */
 export const baselineLib = { restoreBaseline }
 /** The collector, loaded when the first scan starts: it carries the sign-in library, which needs a browser. */
@@ -186,11 +196,15 @@ export async function forgetTenant(): Promise<void> {
  * The reading happens inside the action, in the turn it began in, so Sign out
  * and Forget this tenant take an unfinished read with them (ui/session.ts):
  * a package that arrives after either action is applied to nothing and stored
- * nowhere. Rejects when the package cannot be read: the tile that asked for it
- * renders the failure beside itself (ui/useAction.ts).
+ * nowhere. `began` is that turn: a caller already working inside one hands it
+ * down rather than letting this read start a turn of its own, or a read the
+ * signed-out tenant's restoration asked for would pass the test by beginning
+ * after the Sign out it should have been cancelled by. Rejects when the package
+ * cannot be read: the tile that asked for it renders the failure beside itself
+ * (ui/useAction.ts).
  */
-export async function chooseBaseline(read: () => Promise<BaselineResult>, chosen: boolean): Promise<void> {
-  const turn = tenantTurn()
+export async function chooseBaseline(read: () => Promise<BaselineResult>, chosen: boolean, began: number = tenantTurn()): Promise<void> {
+  const turn = began
   const account = getSession().account
   const result = await read()
   if (!stillThisTurn(turn)) return
@@ -204,13 +218,57 @@ export async function chooseBaseline(read: () => Promise<BaselineResult>, chosen
  * pick, so nothing is written back. There is no button behind this one, so a
  * package that cannot be rebuilt is reported in the session and Connect offers
  * the choice again; a tenant let go of while it was being rebuilt is told
- * nothing, because there is no longer anyone it is about.
+ * nothing, because there is no longer anyone it is about. `began` is the turn
+ * the restoration this belongs to began in (`restoreSession`), not the turn
+ * this call happens to start in: the choice being read is the stored one of the
+ * tenant that was signed in then.
  */
-export async function restoreChosenBaseline(origin: BaselineResult['origin']): Promise<void> {
-  const turn = tenantTurn()
+export async function restoreChosenBaseline(origin: BaselineResult['origin'], began: number = tenantTurn()): Promise<void> {
+  const turn = began
   try {
-    await chooseBaseline(() => baselineLib.restoreBaseline(origin), false)
+    await chooseBaseline(() => baselineLib.restoreBaseline(origin), false, turn)
   } catch (e) {
     if (stillThisTurn(turn)) setSession({ baselineRestoreError: e instanceof Error ? e.message : String(e) })
   }
+}
+
+/**
+ * Restore the session for the account the sign-in library returned: who is
+ * signed in, the tenant's name, the scan this device stored for it, and the
+ * baseline its stored choice names. The whole sequence is one turn's work
+ * (ui/session.ts), captured the moment the account is adopted and carried
+ * through every read to the baseline restore at the end of it. Sign out and
+ * Forget this tenant end that turn, and from there each read still in flight
+ * arrives to nobody: no name, no scan and no baseline of a tenant the operator
+ * has already let go of is put back on a page that says they have.
+ *
+ * The reads happen here and not in App.tsx for the same reason the baseline's
+ * do: only the action module knows the turn, and a tenant fact read anywhere
+ * else is a fact no trust action can cancel. Awaited to the end, so the shell
+ * draws on a restored session and Connect does not load its default over a
+ * baseline that was about to come back. Never rejects: a store or a directory
+ * that will not answer leaves the tenant with less on screen, not an error page.
+ */
+export async function restoreSession(account: AccountInfo | null): Promise<void> {
+  setSession({ account })
+  if (!account) return
+  const turn = tenantTurn()
+  // The name is not waited for: the header fills it in when Graph answers, and
+  // only while this tenant is still the one the app has.
+  void tenantLib
+    .fetchTenantName()
+    .then((name) => {
+      if (stillThisTurn(turn)) setSession({ tenantName: name })
+    })
+    .catch(() => {})
+  // The last scan comes back so nobody re-scans just to look around. Where the
+  // app lands depends on it (target-state §2: a scanned tenant lands on Plan).
+  const stored = await storeLib.loadSnapshotRecord<ScanRecord>(account.tenantId).catch(() => null)
+  if (!stillThisTurn(turn)) return
+  if (stored?.snapshot) setSession({ lastScan: { snapshot: stored.snapshot, at: stored.at } })
+  // The baseline the tenant chose (prompt 14 §6): the pinned index by commit,
+  // or the operator's own uploaded files.
+  const origin = await storeLib.loadBaselineRecord<BaselineResult['origin']>(account.tenantId).catch(() => null)
+  if (!stillThisTurn(turn) || !origin) return
+  await restoreChosenBaseline(origin, turn)
 }

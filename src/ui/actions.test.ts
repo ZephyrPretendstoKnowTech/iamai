@@ -424,3 +424,167 @@ test('the tenant\'s turn is ended by the two trust actions and by nothing else, 
     assert.doesNotMatch(readFileSync(file, 'utf8'), /endTenantTurn/, `${file} ends the tenant's turn outside the action module`)
   }
 })
+
+
+// Sign-in restoration, interrupted (task 015 correction 3). Restoring a session
+// is four reads about one tenant — its name from the directory, its stored scan,
+// its stored baseline choice, and the package that choice names — and any of
+// them can still be in flight when the operator lets the tenant go. Each read is
+// bound to the turn the account was adopted in, so a trust action cancels the
+// ones that have not landed and the ones that have not started: what comes back
+// afterwards belongs to nobody and is applied to nothing. Without that binding
+// the last read was the worst of them, because it began after the Sign out and
+// so began in a turn that had not ended — an uploaded package the operator had
+// let go of, drawn on the signed-out Connect.
+
+/** The four reads a restoration makes, each finished by the test when it chooses. */
+function hydration() {
+  const name = deferred<string | null>()
+  const snapshot = deferred<{ snapshot: unknown; at: string } | null>()
+  const origin = deferred<unknown>()
+  const pkg = deferred<BaselineResult>()
+  actions.tenantLib.fetchTenantName = () => name.promise
+  actions.storeLib.loadSnapshotRecord = (() => snapshot.promise) as typeof actions.storeLib.loadSnapshotRecord
+  actions.storeLib.loadBaselineRecord = (() => origin.promise) as typeof actions.storeLib.loadBaselineRecord
+  actions.baselineLib.restoreBaseline = () => pkg.promise
+  return { name, snapshot, origin, pkg }
+}
+
+/** Let every settled read run its handlers before the assertions read the session. */
+const flush = async (): Promise<void> => {
+  for (let i = 0; i < 5; i += 1) await Promise.resolve()
+  await new Promise((r) => setTimeout(r, 0))
+}
+
+/** Nothing of the tenant is left in the session; `signedIn` is the account Forget leaves behind. */
+function assertReleased(signedIn: AccountInfo | null): void {
+  const s = getSession()
+  assert.equal(s.account, signedIn, 'the wrong account is signed in after the tenant was let go of')
+  assert.equal(s.lastScan, null, 'a stored scan landed after the tenant was let go of')
+  assert.equal(s.baseline, null, 'a baseline landed after the tenant was let go of')
+  assert.equal(s.baselineRestoreError, null, 'a page with no tenant was told about one')
+  if (!signedIn) assert.equal(s.tenantName, null, 'a signed-out page kept the tenant name')
+}
+
+test('Sign out while the stored scan is still being read leaves nothing of the tenant: no name, no scan, no baseline', async () => {
+  actions.authLib.signOut = async () => {}
+  const h = hydration()
+  const restoring = actions.restoreSession(account)
+  assert.equal(getSession().account, account, 'the account the library returned is adopted at once')
+  await actions.signOut()
+  // Every read answers after the operator has signed out.
+  h.name.settle('Contoso')
+  h.snapshot.settle(record)
+  h.origin.settle(uploaded.origin)
+  h.pkg.settle(uploaded)
+  await restoring
+  await flush()
+  assertReleased(null)
+})
+
+test("Sign out while the tenant's stored baseline choice is being read never puts the package it names on the signed-out page", async () => {
+  actions.authLib.signOut = async () => {}
+  const h = hydration()
+  const restoring = actions.restoreSession(account)
+  // The scan lands while the tenant is still the app's; the choice is read next.
+  h.snapshot.settle(record)
+  await flush()
+  assert.equal(getSession().lastScan?.at, record.at, 'the restoration did not reach the stored scan')
+  await actions.signOut()
+  // The stored choice — the operator's own uploaded package — comes back after
+  // the Sign out. Restoring it here would begin a turn of its own, and a turn
+  // that begins after the Sign out is one no Sign out has ended.
+  h.origin.settle(uploaded.origin)
+  h.pkg.settle(uploaded)
+  h.name.settle('Contoso')
+  await restoring
+  await flush()
+  assertReleased(null)
+})
+
+test('Sign out while the chosen package is being rebuilt leaves the signed-out page with no package and nothing to say about one', async () => {
+  actions.authLib.signOut = async () => {}
+  const h = hydration()
+  const restoring = actions.restoreSession(account)
+  h.snapshot.settle(record)
+  await flush()
+  h.origin.settle(uploaded.origin)
+  await flush()
+  await actions.signOut()
+  h.pkg.settle(uploaded)
+  h.name.settle('Contoso')
+  await restoring
+  await flush()
+  assertReleased(null)
+})
+
+test('Forget this tenant while it is still being restored keeps the operator signed in and writes nothing back under the tenant it just deleted', async () => {
+  const rows = new Map<string, unknown>([['t-1', { kind: 'upload' }]])
+  actions.storeLib.forgetTenant = async (tenantId: string) => {
+    rows.delete(tenantId)
+  }
+  actions.storeLib.saveBaselineRecord = async (tenantId: string, value: Record<string, unknown>) => {
+    rows.set(tenantId, value)
+  }
+  const h = hydration()
+  const restoring = actions.restoreSession(account)
+  h.snapshot.settle(record)
+  await flush()
+  await actions.forgetTenant()
+  h.origin.settle(uploaded.origin)
+  h.pkg.settle(uploaded)
+  h.name.settle('Contoso')
+  await restoring
+  await flush()
+  // Still signed in, as Forget this tenant leaves it, and holding none of what
+  // the delete was meant to remove.
+  assertReleased(account)
+  assert.equal(rows.has('t-1'), false, "a read still in flight wrote the deleted tenant's baseline row back")
+})
+
+test('with nobody letting go of the tenant the whole restoration lands: the name, the stored scan and the chosen package, and the choice is not recorded again', async () => {
+  const saved: string[] = []
+  actions.storeLib.saveBaselineRecord = async (tenantId: string) => {
+    saved.push(tenantId)
+  }
+  const h = hydration()
+  const restoring = actions.restoreSession(account)
+  h.name.settle('Contoso')
+  h.snapshot.settle(record)
+  h.origin.settle(uploaded.origin)
+  h.pkg.settle(uploaded)
+  await restoring
+  await flush()
+  const s = getSession()
+  assert.equal(s.account, account)
+  assert.equal(s.tenantName, 'Contoso')
+  assert.equal(s.lastScan?.at, record.at)
+  assert.equal(s.baseline, uploaded, "the tenant's chosen package did not come back")
+  assert.equal(s.baselineRestoreError, null)
+  assert.deepEqual(saved, [], 'restoring a stored choice recorded it a second time')
+})
+
+test('nobody signed in restores nothing: the session is left signed out and the store is never asked', async () => {
+  let asked = 0
+  const h = hydration()
+  actions.storeLib.loadSnapshotRecord = (() => {
+    asked += 1
+    return h.snapshot.promise
+  }) as typeof actions.storeLib.loadSnapshotRecord
+  await actions.restoreSession(null)
+  await flush()
+  assertReleased(null)
+  assert.equal(asked, 0, 'the store was read with nobody signed in')
+})
+
+test('every read the restoration makes is bound to the turn it began in, and the baseline restore is handed that turn rather than starting one', () => {
+  const src = readFileSync('src/ui/actions.ts', 'utf8')
+  const restore = src.slice(src.indexOf('export async function restoreSession'))
+  assert.match(restore, /const turn = tenantTurn\(\)/, 'the restoration does not capture a turn')
+  // The name, the stored scan and the stored choice each check the turn before
+  // they touch the session or read on.
+  assert.match(restore, /fetchTenantName\(\)[\s\S]*?if \(stillThisTurn\(turn\)\) setSession\(\{ tenantName: name \}\)/, 'a late tenant name is written to the session unchecked')
+  assert.match(restore, /loadSnapshotRecord<ScanRecord>[\s\S]*?if \(!stillThisTurn\(turn\)\) return/, 'a late stored scan is written to the session unchecked')
+  assert.match(restore, /loadBaselineRecord<BaselineResult\['origin'\]>[\s\S]*?if \(!stillThisTurn\(turn\) \|\| !origin\) return/, 'a late baseline choice is acted on unchecked')
+  assert.match(restore, /await restoreChosenBaseline\(origin, turn\)/, "the baseline restore starts a turn of its own instead of being handed the restoration's")
+})
