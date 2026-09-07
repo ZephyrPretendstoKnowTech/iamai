@@ -21,12 +21,21 @@
 // Foundation A's answer, already made, and this only names the people behind a
 // hold that already exists.
 //
-// Unknown stays unknown. Where the scan could not measure the family's readiness
-// the ids are null, and the Plan says it could not work out who rather than
-// showing nobody. Pure: no DOM, no network.
+// Who the step reaches is not decided here either. It is derive/population.ts's
+// `reached`, the one answer the row's who-line and every count already read: an
+// open policy's own scope, the goal's population otherwise. A handoff that took
+// the goal's people for an open policy would name a set the step does not act
+// on — people it excludes, missing people it reaches — and the page would filter
+// to it.
+//
+// Unknown stays unknown. Where the scan could not measure the family's readiness,
+// or could not settle the policy's scope, the ids are null and the Plan says it
+// could not work out who rather than showing nobody. A reach that is settled and
+// empty is the opposite fact and stays an empty list. Pure: no DOM, no network.
 import type { Step } from '../roadmap/types.ts'
 import { enforcementHeld } from '../roadmap/operations.ts'
 import { adminReady, goalFamily, mfaReady } from '../roadmap/readiness.ts'
+import { reached } from './population.ts'
 import { affectedIds } from './whoLine.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 
@@ -38,10 +47,11 @@ export type StepMfaHold = {
   /** The step's own measure. `admin` asks for rung 5; `mfa` and `guest` ask only that the person can pass MFA. */
   family: MfaHoldFamily
   /**
-   * The people in scope who cannot meet this step's own requirement yet. Null
-   * where this scan could not measure it: a readiness
-   * source it could not read, or a scope it could not resolve. Never an empty
-   * list standing in for either.
+   * The people the step reaches who cannot meet its own requirement yet. Null
+   * where this scan could not measure it: a readiness source it could not read,
+   * or a policy scope it could not settle. Never an empty list standing in for
+   * either — an empty list is a reach this scan settled, and nobody in it is
+   * waiting.
    */
   ids: string[] | null
 }
@@ -62,12 +72,17 @@ export function stepMfaHold(step: Step, scored: readonly MfaViability[]): StepMf
   const measure = family as MfaHoldFamily
   // A source the scan could not read is not an empty list of people.
   if (step.readiness.unmeasured === 'unreadable') return { family: measure, ids: null }
-  // The admin threshold is measured over everyone in scope, the MFA one over the
-  // active people in scope: the same population each percentage was taken over
-  // (roadmap/readiness.ts), so the names cannot disagree with the number.
-  const scope = measure === 'admin' ? step.population.ids : affectedIds(step.population)
-  if (scope.length === 0) return { family: measure, ids: null }
-  const inScope = new Set(scope)
+  // The people the step reaches (derive/population.ts), not the people its goal
+  // handed it: for an open policy those are the accounts its own policies name.
+  // A scope this scan could not settle is an unknown reach, not nobody.
+  const of = reached(step)
+  if (of === null) return { family: measure, ids: null }
+  // The admin threshold is measured over everyone in reach, the MFA one over the
+  // active people in reach: the same population each percentage was taken over
+  // (roadmap/readiness.ts), so the names cannot disagree with the number. A reach
+  // that is settled and empty gives an empty list, which the Plan renders as no
+  // line at all — it does not become unknown.
+  const inScope = new Set(measure === 'admin' ? of.ids : affectedIds(of))
   const ready = measure === 'admin' ? adminReady : mfaReady
   const ids: string[] = []
   for (const v of scored) {

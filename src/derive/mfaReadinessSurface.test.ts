@@ -27,6 +27,7 @@ import { adminUserIds } from '../roles.ts'
 import { adminReady, goalFamily, mfaReady } from '../roadmap/readiness.ts'
 import { enforcementHeld } from '../roadmap/operations.ts'
 import { affectedIds } from './whoLine.ts'
+import { reached } from './population.ts'
 import { groupWords, nextStateWord, readinessWord } from '../ui/surfaces/readinessCells.ts'
 import { readinessHref, readinessStepHref, resolveHash, showFromReadinessHash, stepFromReadinessHash } from '../ui/shell/routes.ts'
 import { pages } from '../content/content.ts'
@@ -211,8 +212,20 @@ test("a step's handoff is that step's own requirement, never the page's passkey 
         continue
       }
       assert.ok(hold, `${name}/${step.id}: an MFA-family step held on readiness names its people`)
-      if (hold.ids === null) continue
-      const inScope = new Set(family === 'admin' ? step.population.ids : affectedIds(step.population))
+      // The people the step reaches, from the one authority that answers it
+      // (derive/population.ts): its own policy's scope for an open policy, its
+      // goal's population otherwise. A reach that could not be settled is the
+      // only reason a measured step names nobody.
+      const of = reached(step)
+      if (of === null) {
+        assert.equal(hold.ids, null, `${name}/${step.id}: an unsettled reach is unknown, not a list`)
+        continue
+      }
+      if (hold.ids === null) {
+        assert.equal(step.readiness.unmeasured, 'unreadable', `${name}/${step.id}: only unreadable readiness makes a settled reach unknown`)
+        continue
+      }
+      const inScope = new Set(family === 'admin' ? of.ids : affectedIds(of))
       for (const id of hold.ids) assert.ok(inScope.has(id), `${name}/${step.id}: only people the step reaches`)
       if (family === 'admin') {
         sawAdmin += 1
@@ -248,8 +261,11 @@ test('an ordinary-MFA step is not held by the passkey target: the demo proves th
   const run = runFixture(f)
   const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  const step = run.steps.find((s) => s.goalId === 'device-registration-mfa')!
+  // A step whose reach the scan settled: the list is people, so the two can be
+  // compared at all.
+  const step = run.steps.find((s) => s.goalId === 'register-info-protected')!
   assert.equal(goalFamily(step.goalId), 'mfa')
+  assert.ok(reached(step) !== null, 'the demo settles this policy scope')
   const hold = stepMfaHold(step, scored)!
   assert.ok(hold.ids)
   const notReady = v.facts.active - v.groups.ready
@@ -277,6 +293,92 @@ test('a step whose readiness this scan could not measure names nobody, and never
     seen += 1
   }
   assert.ok(seen > 0, 'the hostile tenant holds MFA steps on readiness it could not measure')
+})
+
+test("the handoff names the people the policy reaches, not the people its goal handed the step", () => {
+  // The demo's register-info step is an open policy whose own scope is not its
+  // goal's population: more accounts in scope, a different active set. The
+  // handoff must follow the policy, because that is who the step acts on.
+  for (const name of ['demo', 'demo-week2'] as const) {
+    const f = fixture(name)
+    const run = runFixture(f)
+    const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
+    const step = run.steps.find((s) => s.goalId === 'register-info-protected')!
+    const of = reached(step)
+    assert.ok(of !== null)
+    const policy = affectedIds(of)
+    const goal = affectedIds(step.population)
+    assert.notDeepEqual(policy, goal, `${name}: this fixture's policy cohort differs from its goal population`)
+    const hold = stepMfaHold(step, scored)!
+    assert.ok(hold.ids)
+    const cohort = new Set(policy)
+    for (const id of hold.ids) assert.ok(cohort.has(id), `${name}/${id}: named only because the policy reaches them`)
+    // And nobody the policy reaches, who cannot pass MFA, is left out because the
+    // goal's population did not list them.
+    for (const id of policy) {
+      const v = scored.find((x) => x.userId === id)
+      if (v === undefined || v.activity !== 'active' || mfaReady(v)) continue
+      assert.ok(hold.ids.includes(id), `${name}/${id}: the policy reaches them and they cannot pass MFA`)
+    }
+  }
+  // The two directions, on a cohort built to differ from the goal's population in
+  // both: the demo's fixtures happen to name the same people either way, and the
+  // rule is not that they coincide.
+  const f = fixture('demo')
+  const run = runFixture(f)
+  const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
+  const step = run.steps.find((s) => s.goalId === 'register-info-protected')!
+  const held = affectedIds(reached(step)!).filter((id) => {
+    const v = scored.find((x) => x.userId === id)
+    return v !== undefined && v.activity === 'active' && !mfaReady(v)
+  })
+  assert.ok(held.length > 2, 'the demo holds this step on several people')
+  const pop = (ids: string[]) => ({ total: ids.length, active: ids.length, admins: 0, guests: 0, ids, activeIds: ids })
+  // Reached but not in the goal's population: the step acts on them, so it waits
+  // on them.
+  const beyond = { ...step, population: pop(held.slice(1)) }
+  const sorted = (ids: readonly string[]) => [...ids].sort()
+  assert.deepEqual(sorted(stepMfaHold(beyond, scored)!.ids!), sorted(held), 'a person the policy reaches is named though the goal did not list them')
+  // In the goal's population but outside the policy's scope: the step does not
+  // act on them, so it is not waiting on them.
+  const narrow = { ...step, cohort: pop(held.slice(1)) }
+  assert.deepEqual(sorted(stepMfaHold(narrow, scored)!.ids!), sorted(held.slice(1)), 'a person outside the policy scope is not named')
+})
+
+test("a policy scope this scan could not settle is an unknown reach, never the goal's people", () => {
+  let seen = 0
+  for (const name of ['demo', 'demo-week2', 'messy', 'midflight'] as const) {
+    const f = fixture(name)
+    const run = runFixture(f)
+    const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
+    for (const step of run.steps) {
+      const hold = stepMfaHold(step, scored)
+      if (!hold || reached(step) !== null) continue
+      // Readiness measured, scope not: the old reading named the goal's people
+      // here, which the step does not act on.
+      assert.notEqual(step.population.ids.length, 0, `${name}/${step.id}: the goal did hand it people`)
+      assert.equal(hold.ids, null, `${name}/${step.id}: an unsettled scope names nobody`)
+      seen += 1
+    }
+  }
+  assert.ok(seen > 0, 'the fixtures hold MFA steps whose policy scope could not be settled')
+})
+
+test('a reach this scan settled as empty stays an empty list, and is not unknown', () => {
+  const f = fixture('demo')
+  const run = runFixture(f)
+  const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
+  const step = run.steps.find((s) => s.goalId === 'register-info-protected')!
+  // The same step, its policy reaching nobody: a settled fact, the opposite of a
+  // scope that could not be read.
+  const empty = { ...step, cohort: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [] } }
+  const hold = stepMfaHold(empty, scored)!
+  assert.ok(hold, 'the step is still held on its own readiness')
+  assert.deepEqual(hold.ids, [], 'nobody is waiting, and that is known')
+  assert.notEqual(hold.ids, null, 'a known-empty reach is not unknown')
+  // The Plan renders no line for it: the handoff is about people.
+  const handoff = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8')
+  assert.match(handoff, /if \(n === 0\) return null/, 'nobody to hand off, so no line')
 })
 
 test('the handoff link carries the step and nothing about the people', () => {
