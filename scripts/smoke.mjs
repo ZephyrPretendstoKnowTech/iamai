@@ -46,6 +46,17 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? `  (${detail})` : ''}`)
   if (!ok) failures.push(name)
 }
+// A check that cannot pass without a third party answering (Microsoft's login
+// authority) is not a statement about IAMAI, so it is off by default and runs
+// only in .github/workflows/external-health.yml, where a red run means the
+// outside world moved rather than the product broke. The line is still printed
+// so a reader of the core run can see what was not asked.
+const EXTERNAL_HEALTH = process.env.EXTERNAL_HEALTH === '1'
+const skipped = []
+const skip = (name, why) => {
+  console.log(`skip ${name}  (${why})`)
+  skipped.push(name)
+}
 
 // ---- dev server ----
 const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port', String(PORT), '--strictPort'], {
@@ -522,7 +533,14 @@ try {
   await sleep(1000)
   const msalTrace = await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\\.windows|microsoftonline/.test(k)).length`)
   check('Sign-in: the warming button is clickable so an early click is not lost (item 7)', clickable)
-  check('Sign-in: the first click after load starts the flow, via the real metadata fetch (item 7)', clickedSignIn && msalTrace > 0, `sign-in trace keys=${msalTrace}`)
+  // Two halves of item 7. That the queued click lands on the button is ours and
+  // is asserted here, always. That MSAL then wrote its request is only true when
+  // login.microsoftonline.com answers the metadata fetch, so that half is an
+  // external-health check: a Microsoft outage must not make product CI red.
+  check('Sign-in: the first click after load lands on the button, not lost to the warm (item 7)', clickedSignIn)
+  if (EXTERNAL_HEALTH)
+    check('Sign-in (external): the click starts the flow via the real authority metadata fetch (item 7)', clickedSignIn && msalTrace > 0, `sign-in trace keys=${msalTrace}`)
+  else skip('Sign-in (external): the click starts the flow via the real authority metadata fetch (item 7)', `needs login.microsoftonline.com; runs in external-health. trace keys=${msalTrace}`)
 
   // The demo (prompt 50 item 16): a stranger enters from Connect with no
   // sign-in, walks the whole flow, advances to week two and back, leaves, and no
@@ -773,9 +791,10 @@ try {
   vite.kill()
 }
 
+const note = skipped.length > 0 ? ` (${skipped.length} external check(s) not asked; EXTERNAL_HEALTH=1 asks them)` : ''
 if (failures.length > 0) {
-  console.error(`\nsmoke: ${failures.length} check(s) failed`)
+  console.error(`\nsmoke: ${failures.length} check(s) failed${note}`)
   process.exit(1)
 }
-console.log('\nsmoke: every check passed')
+console.log(`\nsmoke: every check passed${note}`)
 process.exit(0)

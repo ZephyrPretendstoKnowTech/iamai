@@ -1,0 +1,91 @@
+# The checks that ask the outside world a question.
+#
+# Nothing here is a statement about IAMAI's own correctness, so nothing here is a
+# required status check and nothing here gates a deploy. A red run means one of
+# these moved:
+#
+#   learn.microsoft.com          every Learn link the content cites still opens
+#   login.microsoftonline.com    the authority metadata the sign-in warm fetches
+#
+# Both are real and worth knowing about — a Learn page Microsoft retired is a
+# broken link in the product — but a 429 from a shared runner address, a Learn
+# outage or a login-service incident would otherwise redden `ci` and say
+# "IAMAI has a defect" when it does not. That is the whole reason this file
+# exists. The deterministic halves of both checks stay in ci.yml: that every
+# step *carries* a Learn link, and that the first sign-in click lands on the
+# button, are asserted there on every push and are not repeated here.
+#
+# Runs on main (so a merge that adds a dead link is seen), daily (so a link that
+# rots later is seen), and on demand. Not on pull_request: a contributor must not
+# be blocked, or confused, by Microsoft's uptime.
+name: external-health
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 07:20 UTC daily. Off the hour, where scheduled-run contention is worst.
+    - cron: '20 7 * * *'
+  workflow_dispatch:
+
+# Never cancel a run for being slow behind another; these are cheap and the
+# newest answer is the one worth having.
+concurrency:
+  group: external-health-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  external-health:
+    name: external-health
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # Every Learn URL in content.json answers 2xx. The test still skips itself
+      # when Learn cannot be reached at all, so a total outage reads as "not
+      # asked" rather than as a wall of dead links.
+      - name: Microsoft Learn — every cited link still opens
+        id: learn
+        run: npm run test:external
+        env:
+          EXTERNAL_HEALTH: '1'
+
+      # The smoke in external mode: the same deterministic walk, plus the one
+      # check that needs login.microsoftonline.com to serve the authority
+      # metadata before MSAL will write its request. `if: always()` so a Learn
+      # failure above does not hide the sign-in answer.
+      - name: Microsoft login authority — the sign-in warm reaches it
+        id: smoke
+        if: always()
+        run: npm run smoke
+        env:
+          CHROME: /usr/bin/google-chrome
+          EXTERNAL_HEALTH: '1'
+
+      # Which of the two moved, in the run summary, so a reader does not have to
+      # open the logs to find out.
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## external-health"
+            echo
+            echo "These check other people's estates, not IAMAI's correctness."
+            echo
+            echo "| Check | Host | Result |"
+            echo "| --- | --- | --- |"
+            echo "| Every cited Learn link opens | learn.microsoft.com | ${{ steps.learn.outcome }} |"
+            echo "| Sign-in warm reaches the authority | login.microsoftonline.com | ${{ steps.smoke.outcome }} |"
+            echo
+            echo "A failure here does not mean IAMAI has a defect, and does not"
+            echo "gate \`ci\` or the deploy. A dead Learn link is still worth fixing."
+          } >> "$GITHUB_STEP_SUMMARY"
