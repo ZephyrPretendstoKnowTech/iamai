@@ -15,6 +15,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { PLAN_HREF, READINESS_HREF } from './shell/routes.ts'
+import { TOOL_PATH } from '../../scripts/toolPath.ts'
 
 const app = readFileSync('src/ui/App.tsx', 'utf8')
 const msal = readFileSync('src/graph/msal.ts', 'utf8')
@@ -73,10 +74,19 @@ test('the app routes by hash: the folder the bundle is published under is one de
   assert.doesNotMatch(app, /\/rollout\/|\/planner\//)
   assert.equal(PLAN_HREF, '#/plan')
   assert.equal(READINESS_HREF, '#/readiness')
-  // One place names the folder: the site assembler, from the environment. The
-  // bundle's base follows it, and MSAL's redirect URI follows the base — which
-  // is why moving it is an app-registration decision as much as a build one.
-  assert.match(readFileSync('scripts/assemble-site.mjs', 'utf8'), /const TOOL_PATH = process\.env\.TOOL_PATH \?\? '[a-z]+'/)
+  // One place names the folder: scripts/toolPath.ts, in the source and not in a
+  // deployment variable that can go unset. The bundle's base follows it, the
+  // site assembler lays out dist/ under it, and MSAL's redirect URI follows the
+  // base — which is why moving it is an app-registration decision as much as a
+  // build one. It is /planner/ (owner decision, task 015): the registered SPA
+  // redirect URI, and a hard cut with no /rollout/ left behind.
+  const tool = readFileSync('scripts/toolPath.ts', 'utf8')
+  assert.match(tool, /export const TOOL_NAME = 'planner'/)
+  assert.equal(TOOL_PATH, 'planner')
+  for (const file of ['vite.config.ts', 'scripts/assemble-site.mjs', 'scripts/walk.mjs', '.github/workflows/deploy-pages.yml']) {
+    // The path form only: "rollout" is also an ordinary word in this product.
+    assert.doesNotMatch(readFileSync(file, 'utf8'), /\/rollout\b|['"]rollout['"]/, `${file} still names the retired /rollout/ path`)
+  }
   assert.match(msal, /redirectUri: window\.location\.origin \+ \(import\.meta\.env\.BASE_URL \?\? '\/'\)/)
 })
 

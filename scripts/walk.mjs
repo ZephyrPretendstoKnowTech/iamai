@@ -29,6 +29,7 @@ import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
 import { RE, beforeLines, headerTabsLine, readinessGroupTitles, rungTitles, staticFindings } from '../src/content/contentChecks.ts'
 import { RETIRED_OPENER } from './build-home.ts'
+import { TOOL_PATH } from './toolPath.ts'
 
 // The ladder's five rung titles, the three header tabs and the three readiness
 // counts, all read from the words the surfaces render rather than repeated here
@@ -121,7 +122,7 @@ const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port',
 let up = false
 for (let i = 0; i < 120 && !up; i++) {
   try {
-    up = (await fetch(`http://localhost:${PORT}/rollout/`)).ok
+    up = (await fetch(`http://localhost:${PORT}/${TOOL_PATH}/`)).ok
   } catch {
     await sleep(200)
   }
@@ -1560,7 +1561,7 @@ async function walkHome(url) {
         await shot(join(wdir, 'home-catches.png'))
         await clickText('details.catches summary', /./, 'main.page')
       }
-      const wantButtons = [{ t: pl.open, w: 'primary', href: '/rollout/#/connect' }, { t: pl.demo, w: 'secondary', href: '/rollout/?demo=1#/plan' }]
+      const wantButtons = [{ t: pl.open, w: 'primary', href: `/${TOOL_PATH}/#/connect` }, { t: pl.demo, w: 'secondary', href: `/${TOOL_PATH}/?demo=1#/plan` }]
       if (JSON.stringify(card.buttons) !== JSON.stringify(wantButtons)) add('P0', `${label}: the card's buttons are ${card.buttons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ') || 'missing'}; ${wantButtons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ')}`)
       const wantMeta = `${pl.meta.baseline} · ${pl.meta.role} · ${pl.meta.code}`
       if (!card.meta) add('P0', `${label}: the card has no meta line`)
@@ -1637,11 +1638,11 @@ const started = new Date().toISOString()
 let firstLoadMs = null
 {
   const STATIC_PORT = PORT + 1
-  let built = existsSync('dist/rollout/index.html')
+  let built = existsSync(`dist/${TOOL_PATH}/index.html`)
   if (!built) {
     try {
-      execSync('npx vite build', { stdio: 'ignore', env: { ...process.env, TOOL_PATH: 'rollout' } })
-      built = existsSync('dist/rollout/index.html')
+      execSync('npx vite build', { stdio: 'ignore' })
+      built = existsSync(`dist/${TOOL_PATH}/index.html`)
     } catch {
       built = false
     }
@@ -1673,7 +1674,7 @@ let firstLoadMs = null
     await send('Network.enable')
     await send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 })
     const t0 = Date.now()
-    await send('Page.navigate', { url: `http://localhost:${STATIC_PORT}/rollout/?demo=1#/plan` })
+    await send('Page.navigate', { url: `http://localhost:${STATIC_PORT}/${TOOL_PATH}/?demo=1#/plan` })
     const ok = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 30000)
     firstLoadMs = ok ? Date.now() - t0 : null
     await send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 })
@@ -1682,13 +1683,13 @@ let firstLoadMs = null
     // bundle too: the signed-out app fetches no demo-*.js; the demo just did.
     const demoChunkInDemo = await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/assets\\/demo-[^/]*\\.js/.test(e.name))`)
     if (!demoChunkInDemo) add('P0', 'production bundle, demo: the demo chunk (demo-*.js) did not load in demo mode')
-    await send('Page.navigate', { url: `http://localhost:${STATIC_PORT}/rollout/#/connect` })
+    await send('Page.navigate', { url: `http://localhost:${STATIC_PORT}/${TOOL_PATH}/#/connect` })
     await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 30000)
     const demoChunkSignedOut = await evaluate(`performance.getEntriesByType('resource').filter((e) => /\\/assets\\/demo(Facts)?-[^/]*\\.js/.test(e.name)).map((e) => e.name.split('/').pop())`)
     if (demoChunkSignedOut.length > 0) add('P0', `production bundle, signed out: the demo chunk loaded outside demo mode (${demoChunkSignedOut.join(', ')})`)
     // The home page, assembled over this bundle (dist/index.html) and served from the same root.
     try {
-      execSync('node scripts/assemble-site.mjs', { stdio: 'ignore', env: { ...process.env, TOOL_PATH: 'rollout' } })
+      execSync('node scripts/assemble-site.mjs', { stdio: 'ignore' })
     } catch {
       /* reported below */
     }
@@ -1704,31 +1705,31 @@ let firstLoadMs = null
   }
 }
 const fixtures = [
-  { name: 'demo', base: `http://localhost:${PORT}/rollout/?demo=1` },
+  { name: 'demo', base: `http://localhost:${PORT}/${TOOL_PATH}/?demo=1` },
   // The three-minute path's last stop: Scan to update the plan → week two (queue item 4).
-  { name: 'demo-week2', base: `http://localhost:${PORT}/rollout/?demo=1`, week2: true, routes: ['plan', 'readiness'] },
+  { name: 'demo-week2', base: `http://localhost:${PORT}/${TOOL_PATH}/?demo=1`, week2: true, routes: ['plan', 'readiness'] },
   // The mock tenant's Connect refusals: a token without the roles (the scan does
   // not start), a scan that could not read the policies or the sign-in records
   // (finished with gaps; the last good plan kept), and a licence without sign-in
   // records (the scan line says so). Dev-only, on the dev server the walk runs.
-  { name: 'mock-roles', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&roles=none`, routes: ['connect'], mock: 'roles' },
-  { name: 'mock-gaps', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=gaps`, routes: ['connect'], mock: 'gaps' },
-  { name: 'mock-free', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&licence=free`, routes: ['connect'], mock: 'free' },
-  { name: 'mock-scanning', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=scanning`, routes: ['connect'], mock: 'scanning' },
-  { name: 'mock-ready', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=noScan`, routes: ['connect'], mock: 'ready' },
+  { name: 'mock-roles', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&roles=none`, routes: ['connect'], mock: 'roles' },
+  { name: 'mock-gaps', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&state=gaps`, routes: ['connect'], mock: 'gaps' },
+  { name: 'mock-free', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&licence=free`, routes: ['connect'], mock: 'free' },
+  { name: 'mock-scanning', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&state=scanning`, routes: ['connect'], mock: 'scanning' },
+  { name: 'mock-ready', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&state=noScan`, routes: ['connect'], mock: 'ready' },
   // A surface that throws while drawing: the error page (pages.app.error).
-  { name: 'mock-crash', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&crash=1`, routes: ['error'], mock: 'crash' },
+  { name: 'mock-crash', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&crash=1`, routes: ['error'], mock: 'crash' },
   // The signed-in account with a stale directory sign-in: never dormant, never Not active.
-  { name: 'mock-operator', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&operatorDormant=1`, routes: ['readiness', 'plan'], mock: 'operator' },
+  { name: 'mock-operator', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&operatorDormant=1`, routes: ['readiness', 'plan'], mock: 'operator' },
   // A scan that read a third of the people and policies the previous one did.
   // The demo with an author update over the pinned package: the review rows.
   // Named mock-, not demo-: the demo's plan checks key on the demo- prefix, and this fixture walks Connect alone.
-  { name: 'mock-author', base: `http://localhost:${PORT}/rollout/?demo=1&author=1`, routes: ['connect'], mock: 'author' },
+  { name: 'mock-author', base: `http://localhost:${PORT}/${TOOL_PATH}/?demo=1&author=1`, routes: ['connect'], mock: 'author' },
   // The same page before sign-in, and tile 1 after a sign-in that did not succeed.
-  { name: 'mock-signedout', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut`, routes: ['connect'], mock: 'signedOut' },
-  { name: 'mock-auth-consent', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut&auth=consent`, routes: ['connect'], mock: 'consent' },
-  { name: 'mock-auth-personal', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut&auth=personal`, routes: ['connect'], mock: 'personal' },
-  { name: 'mock-auth-cancelled', base: `http://localhost:${PORT}/rollout/?dev=1&mock=1&state=signedOut&auth=cancelled`, routes: ['connect'], mock: 'cancelled' },
+  { name: 'mock-signedout', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&state=signedOut`, routes: ['connect'], mock: 'signedOut' },
+  { name: 'mock-auth-consent', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&state=signedOut&auth=consent`, routes: ['connect'], mock: 'consent' },
+  { name: 'mock-auth-personal', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&state=signedOut&auth=personal`, routes: ['connect'], mock: 'personal' },
+  { name: 'mock-auth-cancelled', base: `http://localhost:${PORT}/${TOOL_PATH}/?dev=1&mock=1&state=signedOut&auth=cancelled`, routes: ['connect'], mock: 'cancelled' },
 ]
 const summaries = {}
 for (const fx of fixtures) {

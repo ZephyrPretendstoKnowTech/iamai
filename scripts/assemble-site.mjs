@@ -15,9 +15,9 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { assembleHome } from './build-home.ts'
+import { TOOL_PATH } from './toolPath.ts'
 
 const root = resolve(import.meta.dirname, '..')
-const TOOL_PATH = process.env.TOOL_PATH ?? 'rollout'
 const dist = join(root, 'dist')
 const home = join(root, 'home')
 

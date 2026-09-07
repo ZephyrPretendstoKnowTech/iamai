@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { TOOL_PATH } from '../scripts/toolPath.ts'
 
 // api.github.com is the one runtime call added in prompt 51 (decision 1): an
 // unauthenticated read of the author repo's latest commit, so Connect can show
@@ -125,7 +126,7 @@ const ARTIFACT_ONLY = new Map([
   ['download.microsoft.com', 'data/product-names.json provenance field'],
 ])
 
-const DIST = 'dist/rollout/assets'
+const DIST = join('dist', TOOL_PATH, 'assets')
 const built = (): string[] => {
   try {
     return readdirSync(DIST)

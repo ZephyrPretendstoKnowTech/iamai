@@ -72,7 +72,7 @@ IAMAI Planner · <tenant name>    Today   Plan   Export    Scan to update the pl
 
 The product is **IAMAI Planner**; its descriptor, `Conditional Access rollout planner`, is the
 page title and the home-page row; its tagline is `Plan the journey to your Conditional Access
-baseline.` The path stays `/rollout/` until the demo rebuild.
+baseline.` The path is `/planner/` (owner decision, task 015; scripts/toolPath.ts).
 
 Signed out, the header shows only the wordmark and theme; the page is the opener (§3).
 
@@ -615,7 +615,7 @@ tabs, `Prompts for your own assistant` and `Copy as prompt`, the Inventory.
 
 ## 12. Acceptance
 
-After each prompt, the reviewer walks getiamai.com/rollout against GetIAMAI and the demo with
+After each prompt, the reviewer walks getiamai.com/planner against GetIAMAI and the demo with
 Chrome and answers, per surface:
 
 - Does the screen have one job, and is it the job in §1's table?
