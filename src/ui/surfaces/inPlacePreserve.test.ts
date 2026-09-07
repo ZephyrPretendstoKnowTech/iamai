@@ -51,6 +51,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import { goalCounts } from '../../derive/sets.ts'
+import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { implementationOffered, isPreserved, operationsOf, unavailableReason } from '../../roadmap/operations.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
@@ -637,7 +638,8 @@ test('across every fixture, a done step names what satisfied it, says which outc
       const tagged = findTaggedPolicies(run.input.snapshot, run.input.planId, step.id).length > 0
       const word = statusOf(step).word
       if (tagged && step.state.inPlace) wrong.push(`${where}: a policy this plan deployed read as something the tenant already had`)
-      if (word !== (step.state.inPlace ? 'In place' : 'Enforced')) wrong.push(`${where}: the word is ${word} at inPlace=${step.state.inPlace}`)
+      const enforcedByPlan = !step.state.inPlace && step.state.lifecycle === 'enforced'
+      if (word !== (enforcedByPlan ? 'Enforced' : 'In place')) wrong.push(`${where}: the word is ${word} at inPlace=${step.state.inPlace}, stage ${step.state.lifecycle}`)
       if (stepContract(step, ctx).state.stage !== word) wrong.push(`${where}: the opened step and the row disagree about the outcome`)
       // Every policy the classifier counted is named, and a singular sentence
       // is used only for one it proved covers the goal alone.
@@ -691,4 +693,65 @@ test("the demo's week two: the tenant switched its own policy on, so the row rea
 
   const claimed = run.steps.filter((s) => statusOf(s).word === 'Enforced').map((s) => s.id)
   assert.deepEqual(claimed, [], "the plan's policies are still in report-only in week two")
+})
+
+// ---- 20: the done outcome of a step that deploys no policy ----
+
+/**
+ * The same tenant, with everybody's MFA proved by the sign-in records this scan
+ * read: every active person has a successful MFA sign-in, so nobody is left to
+ * set up and the verification campaign is complete. The edit goes in the
+ * snapshot, so the scoring reads it first and the campaign's own state is
+ * derived from it exactly as it would be in a tenant that had finished.
+ */
+function everybodyProven(name: Parameters<typeof fixture>[0]): { f: Fixture; run: ReturnType<typeof runFixture> } {
+  const base = fixture(name)
+  const snapshot = structuredClone(base.snapshot)
+  const evidence = (snapshot as unknown as { signInEvidence: Record<string, { lastSignIn: string | null; lastMfaSuccess: unknown }> }).signInEvidence
+  for (const [id, row] of Object.entries(evidence)) {
+    evidence[id] = { ...row, lastMfaSuccess: { at: row.lastSignIn ?? snapshot.asOf, method: 'Mobile app notification' } }
+  }
+  const f: Fixture = { ...base, snapshot }
+  return { f, run: runFixture(f) }
+}
+
+test('a finished verification campaign is delivered, and says so without claiming the plan enforced anything', () => {
+  // The other kind of done step, and the one the two-outcome word was written
+  // without: a step that deploys no policy at all. The MFA verification
+  // campaign is complete when nobody is left to set up, and then it is
+  // `satisfied` with no provenance to carry (`inPlace` is false — nothing was
+  // preserved either) and no lifecycle, because there is no policy to have a
+  // stage. Reading the provenance alone, everything that was not a preservation
+  // was a rollout, so the campaign read "Enforced" — IAMAI enforced a policy it
+  // never wrote, on the ordinary successful path of a tenant that already runs
+  // MFA.
+  const { f, run } = everybodyProven('mid')
+  assert.equal(summarizeTenant(run.viability).rollout.toSetUp, 0, 'nobody is left to set up')
+  const step = run.steps.find((s) => s.id === 's-verify-mfa')
+  assert.ok(step, 'the verification campaign left the plan')
+  assert.equal(step.status, 'done')
+  assert.equal(step.state.satisfied, true)
+  assert.equal(step.state.lifecycle, null, 'a campaign is not a stage of a policy')
+  assert.equal(isPreserved(step), false, 'there is no policy to preserve')
+  const ctx: StepVarContext = {
+    snapshot: f.snapshot,
+    mapping: f.mapping,
+    nameOf: (id: string) => run.input.names!.label(id),
+    signature: 'IT',
+    operatorId: f.operatorId,
+    now: f.snapshot.asOf,
+    groups: f.groups,
+    reportOnlyAt: run.schedule.reportOnlyAt[step.id] ?? null,
+  }
+  assert.equal(statusOf(step).word, 'In place')
+  assert.equal(stepContract(step, ctx).state.stage, 'In place')
+  // And nothing else says a rollout happened either: no policy was deployed, so
+  // there is nothing to keep and nothing left to do.
+  assert.equal(nextMilestone(step).kind, 'none')
+
+  // The same rule over the whole plan, which is where the campaign's word came
+  // from: Enforced is a claim about a policy that is on, and no row may make it
+  // without one.
+  const claimed = run.steps.filter((s) => statusOf(s).word === 'Enforced' && s.state.lifecycle !== 'enforced').map((s) => s.id)
+  assert.deepEqual(claimed, [], 'a step read Enforced with no enforced policy behind it')
 })
