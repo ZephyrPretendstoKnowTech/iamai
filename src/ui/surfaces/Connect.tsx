@@ -293,7 +293,7 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
           <Act action={t1.actions[0]} loading={opening} busy={!signInReady} onClick={() => setOpening(true)} />
           <Act action={t1.actions[1]} href={demoUrl()} />
         </div>
-        {actionError && <p className="quiet">{actionError}</p>}
+        {actionError && <p className="quiet" role="status">{actionError}</p>}
         <details className="permissions">
           <summary>{t1.permissions.summary}</summary>
           <p className="quiet">{t1.permissions.lead}</p>

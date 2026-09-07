@@ -374,9 +374,6 @@ details > *:not(summary) {
   align-items: center;
   justify-content: center;
 }
-.infotip-btn:focus-visible {
-  box-shadow: var(--focus-ring);
-}
 .infotip-pop {
   position: fixed;
   z-index: 20;
@@ -428,9 +425,6 @@ details > *:not(summary) {
   color: var(--ink);
   border-bottom-color: var(--accent);
   background: transparent;
-}
-.tab:focus-visible {
-  box-shadow: var(--focus-ring);
 }
 .tab-badge {
   color: var(--ink-2);
@@ -1710,9 +1704,6 @@ td .not-person {
   color: inherit;
   cursor: pointer;
 }
-.group-count:focus-visible {
-  outline: none;
-}
 .group-count .group-title {
   display: flex;
   align-items: center;
@@ -1766,5 +1757,35 @@ td .group-word {
      word (task 017). */
   .plan-row-main .status {
     flex: 0 0 auto;
+  }
+}
+
+/* ================= focus, after every reset ================= */
+
+/* The ring is declared once, at the top of this sheet. Every `all: unset`
+   control reset below it is later in the sheet and at least as specific, so
+   each one erases both the ring and the forced-colours outline for the control
+   it styles — a sortable column header lost its ring outright, and a tab, an
+   info tip and a sortable header lost the outline that is the only indicator a
+   forced-colours mode paints.
+
+   So the indicator is restated here, last in the sheet and above every reset in
+   specificity. This block is the one place a reset control's focus is
+   described; nothing above restores it a second time (task 017). */
+th .th-sort:focus-visible,
+.infotip-btn:focus-visible,
+.tab:focus-visible,
+.tabs .tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+@media (forced-colors: active) {
+  :focus-visible,
+  th .th-sort:focus-visible,
+  .infotip-btn:focus-visible,
+  .tab:focus-visible,
+  .tabs .tab:focus-visible {
+    outline: 2px solid;
+    outline-offset: 1px;
   }
 }
