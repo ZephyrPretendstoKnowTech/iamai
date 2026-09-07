@@ -2,6 +2,10 @@
 // Chrome over the DevTools protocol with no dependencies beyond Node 22+, and
 // walks Connect → MFA Readiness → Plan → Export → How → Recovery
 // against the synthetic tenant (?dev=1&mock=1), asserting the key numbers.
+// It then drives the two trust actions against real storage (task 015): with a
+// second tenant's rows seeded beside the mock tenant's, Sign out leaves every
+// row where it is and Forget this tenant deletes one tenant's rows and no
+// other's.
 // The same fixture backs src/ui/consistency.test.ts, so the numbers asserted
 // here are the ones the pure tests prove.
 //
@@ -941,6 +945,93 @@ try {
     'Demo: no console errors during the demo walk',
     consoleErrors.slice(demoErrBase).filter((e) => !/authmethods|favicon|microsoftonline|net::|ERR_/.test(e)).length === 0,
     consoleErrors.slice(demoErrBase).slice(0, 3).join(' | '),
+  )
+
+  // Sign out, Forget this tenant, and two tenants on one device (task 015).
+  // Real IndexedDB and the real Account menu, because the whole question is
+  // what each action leaves behind. A second tenant's rows are seeded beside
+  // the mock tenant's, and every check reads the store rather than the page.
+  const MOCK_TENANT = '00000000-0000-0000-0000-000000000000'
+  const OTHER_TENANT = 'smoke-second-tenant'
+  // Every row in the store, as store:tenantId, sorted: the shape both actions
+  // are judged by.
+  const storedRows = () =>
+    evaluate(
+      `(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const out = []; for (const name of [...db.objectStoreNames]) { const rows = await new Promise((r) => { const q = db.transaction(name).objectStore(name).getAll(); q.onsuccess = () => r(q.result) }); for (const x of rows) if (x && x.tenantId) out.push(name + ':' + x.tenantId) } db.close(); return out.sort() })()`,
+    )
+  const rowsFor = async (tenantId) => (await storedRows()).filter((k) => k.endsWith(':' + tenantId))
+  // A row in every store for the other tenant, on the key paths the app uses,
+  // so forgetting one tenant has something real of the other to leave alone.
+  const seedOtherTenant = () =>
+    evaluate(
+      `(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const t = ${JSON.stringify(OTHER_TENANT)}; const put = (store, value) => new Promise((res, rej) => { const q = db.transaction(store, 'readwrite').objectStore(store).put(value); q.onsuccess = () => res(); q.onerror = () => rej(q.error) }); await put('signin-rows', { tenantId: t, id: 'row-1', userId: 'u-9' }); await put('evidence-meta', { tenantId: t, covered: { from: '2026-08-01', to: '2026-09-01' }, asOf: '2026-09-01T00:00:00.000Z', schema: 1 }); await put('group-members', { tenantId: t, groupId: 'g-9', displayName: 'Other exclusions', membershipRule: null, memberCount: 1, memberIds: ['u-9'], sampled: false, asOf: '2026-09-01T00:00:00.000Z' }); await put('mapping', { tenantId: t, breakGlassUserIds: ['u-9'] }); await put('plan', { tenantId: t, planId: 'other', skips: {} }); await put('snapshot', { tenantId: t, snapshot: { tenantId: t }, at: '2026-09-01T00:00:00.000Z' }); await put('baseline', { tenantId: t, kind: 'github' }); db.close(); return true })()`,
+    )
+  // The Account menu in the header, and the two buttons in it. Opening it is a
+  // render, so the item is waited for rather than looked for in the same tick.
+  const menuItem = async (label) => {
+    const opened = await evaluate(
+      `(() => { const b = document.querySelector('header.app .menu button.text-control'); if (!b) return false; if (b.getAttribute('aria-expanded') !== 'true') b.click(); return true })()`,
+    )
+    if (!opened) return 'no Account menu'
+    if (!(await waitFor(`document.querySelectorAll('header.app .menu-list button').length >= 2`, 4000))) return 'the menu did not open'
+    const hit = await evaluate(
+      `(() => { const b = [...document.querySelectorAll('header.app .menu-list button')].find((x) => (x.textContent || '').trim() === ${JSON.stringify(label)}); if (!b) return false; b.click(); return true })()`,
+    )
+    return hit ? 'clicked' : `no ${label} item`
+  }
+  const signedIn = () => evaluate(`!!document.querySelector('header.app .menu button.text-control')`)
+
+  await send('Page.navigate', { url: `${BASE}#/plan` })
+  await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  await seedOtherTenant()
+  const bothTenants = await storedRows()
+  const mockRowsBefore = await rowsFor(MOCK_TENANT)
+  const otherRowsBefore = await rowsFor(OTHER_TENANT)
+  check(
+    'Session: both tenants have records on this device before either action',
+    mockRowsBefore.length > 0 && otherRowsBefore.length === 7,
+    `mock=[${mockRowsBefore.join(', ')}] other=[${otherRowsBefore.join(', ')}]`,
+  )
+
+  // Sign out: authentication goes, records stay. This is also the proof that a
+  // full local store is not a sign-in — the app draws the signed-out Connect
+  // over a store still holding every row of both tenants.
+  const signOutClick = await menuItem('Sign out')
+  const signedOutUi = await waitFor(`location.hash === '#/connect' && /Sign in with Microsoft/.test(document.body.innerText)`)
+  const afterSignOut = await storedRows()
+  check('Sign out: the app is signed out and Connect asks for a sign-in again', signOutClick === 'clicked' && signedOutUi, signOutClick)
+  check('Sign out: the header no longer offers the Account menu', (await signedIn()) === false)
+  check(
+    'Sign out: nothing this device stored was deleted, so a full local store is not a sign-in',
+    afterSignOut.length === bothTenants.length && afterSignOut.every((k, i) => k === bothTenants[i]),
+    `before=${bothTenants.length} after=${afterSignOut.length}`,
+  )
+  check('Sign out: the tenant is gone from the header', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)))
+
+  // Signing in again takes back this tenant's own records, and only its own.
+  await send('Page.navigate', { url: `${BASE}#/plan` })
+  const backIn = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  check('Sign in again: the tenant that was signed out of comes back with its own plan', backIn && (await signedIn()))
+
+  // Forget this tenant: this tenant's records go, the other tenant's stay, and
+  // the operator is still signed in — which is what makes it the other action.
+  const forgetClick = await menuItem('Forget this tenant')
+  const forgotUi = await waitFor(`location.hash === '#/connect'`)
+  await sleep(800)
+  const mockRowsAfter = await rowsFor(MOCK_TENANT)
+  const otherRowsAfter = await rowsFor(OTHER_TENANT)
+  check('Forget this tenant: the page returns to Connect', forgetClick === 'clicked' && forgotUi, forgetClick)
+  check('Forget this tenant: every record this device held for it is gone', mockRowsAfter.length === 0, mockRowsAfter.join(', '))
+  check(
+    "Forget this tenant: the other tenant's records are untouched",
+    otherRowsAfter.length === otherRowsBefore.length && otherRowsAfter.every((k, i) => k === otherRowsBefore[i]),
+    `before=[${otherRowsBefore.join(', ')}] after=[${otherRowsAfter.join(', ')}]`,
+  )
+  check('Forget this tenant: the operator is still signed in, which is what holds it apart from Sign out', await signedIn())
+  check(
+    'Forget this tenant: Connect shows the tenant not scanned, and no plan is drawn from the forgotten scan',
+    (await waitFor(`document.querySelectorAll('main.page section.step-tile').length > 0`)) &&
+      !/Open the plan/.test(await evaluate(`(document.querySelector('main.page') || document.body).innerText`)),
   )
 
   // The error page (pages.app.error), through the mock's ?crash=1: the words and

@@ -54,7 +54,8 @@ const PACKAGE_HREF = '#/how#package'
 type BaselineProps = {
   baseline: BaselineResult | null
   baselineRestoreError: string | null
-  onBaseline: (r: BaselineResult) => void
+  /** A baseline is now loaded. `chosen` is the operator's own pick from the picker; the default the tile loads for itself is not one, and is not recorded for the tenant. */
+  onBaseline: (r: BaselineResult, chosen: boolean) => void
   /** Test support (dev builds, ?author=1): an author update in place of the network check. */
   authorUpdate?: BaselineUpdate | null
 }
@@ -449,22 +450,23 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdat
  * Tile 2, in both states: the baseline's name and count as its state, the
  * approved sentences, the author-update rows (added / removed / changed ·
  * policy · the step that changes), and Change baseline, which opens the picker
- * with two choices. The default loads itself when nothing is saved.
+ * with two choices. The default loads itself when nothing is saved, and says
+ * so: a default nobody picked is not a choice to record against the tenant.
  */
-function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate }: { baseline: BaselineResult | null; restoreError: string | null; onBaseline: (r: BaselineResult) => void; locked: boolean; authorUpdate?: BaselineUpdate | null }) {
+function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate }: { baseline: BaselineResult | null; restoreError: string | null; onBaseline: (r: BaselineResult, chosen: boolean) => void; locked: boolean; authorUpdate?: BaselineUpdate | null }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadingRef = useRef(false)
   const update = useAuthorUpdate(authorUpdate)
 
-  const loadPinned = async () => {
+  const loadPinned = async (chosen: boolean) => {
     if (loadingRef.current) return
     loadingRef.current = true
     setBusy(PINNED_BASELINE.label)
     setError(null)
     try {
-      onBaseline(await loadPinnedBaseline())
+      onBaseline(await loadPinnedBaseline(), chosen)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -478,7 +480,7 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate
     setError(null)
     try {
       const files: BaselineFile[] = await Promise.all([...fileList].map(async (f) => ({ path: f.name, text: await f.text() })))
-      onBaseline(loadUploadedBaseline(files))
+      onBaseline(loadUploadedBaseline(files), true)
       setOpen(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -486,10 +488,10 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate
       setBusy(null)
     }
   }
-  // Nothing saved, nothing failed: the default loads itself.
+  // Nothing saved, nothing failed: the default loads itself, and is not a pick.
   useEffect(() => {
     if (baseline || restoreError || busy || error) return
-    void loadPinned()
+    void loadPinned(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseline, restoreError])
 
@@ -541,7 +543,7 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate
             variant="secondary"
             onClick={() => {
               setOpen(false)
-              void loadPinned()
+              void loadPinned(true)
             }}
           >
             {PINNED_BASELINE.label}

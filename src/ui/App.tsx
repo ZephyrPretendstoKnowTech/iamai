@@ -63,9 +63,12 @@ const MOCK = DEV_PANEL && new URLSearchParams(window.location.search).get('mock'
 const DEMO = isDemo()
 
 export function App() {
-  // The session (ui/session.ts): who is signed in, the stored scan, the scan in
-  // flight. ui/actions.ts changes it from any page's button; this reads it.
-  const { account, tenantName, lastScan, scan, demoWeek2 } = useSession()
+  // The session (ui/session.ts): who is signed in, the stored scan, the baseline
+  // the tenant is planned against, the scan in flight. ui/actions.ts changes it
+  // from any page's button; this reads it. Every tenant fact is held there and
+  // nowhere in this component, so Sign out and Forget this tenant let go of all
+  // of it at once and no page goes on rendering a tenant the operator has left.
+  const { account, tenantName, lastScan, scan, demoWeek2, baseline, baselineRestoreError } = useSession()
   const [ready, setReady] = useState(false)
   // Which week of the sample is on screen, as against which week the visitor
   // asked for. `demoWeek2` is the request: Scan again flips it, and the effect
@@ -77,8 +80,6 @@ export function App() {
   const [demoWeekShown, setDemoWeekShown] = useState(false)
   // A sign-in that returned an error, classified (graph/authError.ts): Connect's first tile shows one of three states from it.
   const [authError, setAuthError] = useState<SignInError | null>(null)
-  const [baseline, setBaseline] = useState<BaselineResult | null>(null)
-  const [baselineRestoreError, setBaselineRestoreError] = useState<string | null>(null)
   const [storageWarning, setStorageWarning] = useState<string | null>(null)
   // Test support (dev builds, ?author=1): an author update over the pinned package, no network.
   const [mockAuthorUpdate, setMockAuthorUpdate] = useState<BaselineUpdate | null>(null)
@@ -154,7 +155,7 @@ export function App() {
         }
         // The demo derives through the product's pinned baseline and goal map
         // (walk-51 item 9); the fixture's package is that same one.
-        setBaseline(await loadPinnedBaseline())
+        setSession({ baseline: await loadPinnedBaseline() })
         setReady(true)
       })
       return () => {
@@ -243,7 +244,7 @@ export function App() {
           } as AccountInfo,
           tenantName: 'Contoso Pty Ltd',
         })
-        setBaseline(fixtureBaseline())
+        setSession({ baseline: fixtureBaseline() })
         if (state === 'scanning') {
           // A scan frozen two lanes in (configuration read, people in progress),
           // for the 'scanning' mock state (prompt 46 Part 1 item 2): the progress
@@ -291,10 +292,10 @@ export function App() {
           const origin = await loadBaselineRecord<BaselineResult['origin']>(a.tenantId).catch(() => null)
           if (origin) {
             try {
-              setBaseline(await restoreBaseline(origin))
+              setSession({ baseline: await restoreBaseline(origin) })
             } catch (e) {
               // Connect says so and offers the choice again.
-              setBaselineRestoreError(e instanceof Error ? e.message : String(e))
+              setSession({ baselineRestoreError: e instanceof Error ? e.message : String(e) })
             }
           }
         }
@@ -344,10 +345,15 @@ export function App() {
               authError={authError}
               baseline={baseline}
               baselineRestoreError={baselineRestoreError}
-              onBaseline={(r) => {
-                setBaseline(r)
-                setBaselineRestoreError(null)
-                if (account) void saveBaselineRecord(account.tenantId, r.origin)
+              onBaseline={(r, chosen) => {
+                setSession({ baseline: r, baselineRestoreError: null })
+                // Only a baseline the operator picked is recorded for the
+                // tenant. Tile 2 loads the default whenever nothing is stored,
+                // and recording that would put a row back under a tenant the
+                // operator had just forgotten — while recording nothing, since
+                // restoreBaseline rebuilds the author's baseline from the pin
+                // whatever a record holds (ui/baseline.ts).
+                if (account && chosen) void saveBaselineRecord(account.tenantId, r.origin)
               }}
               lastScan={lastScan}
               authorUpdate={mockAuthorUpdate}
