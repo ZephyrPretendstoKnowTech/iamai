@@ -122,25 +122,35 @@ export async function signInAnother(): Promise<void> {
  * whether or not MSAL had an active account; MSAL's cache is cleared, and an
  * account it held is signed out through its redirect (graph/msal.ts). Rejects
  * when the library fails, with the app already signed out.
+ *
+ * Authentication only: what this device stored for the tenant is left where it
+ * is (the menu's Forget this tenant is the action that deletes it). What the
+ * app was holding in memory goes, so nothing of the tenant — its snapshot, its
+ * name, the baseline it was planned against — is still on screen beside a page
+ * that says nobody is signed in.
  */
 export async function signOut(): Promise<void> {
   stopScan()
-  setSession({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, demoWeek2: false })
+  setSession({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
   go(CONNECT_HREF)
   await authLib.signOut()
 }
 
 /**
  * Forget this tenant: every record stored for it on this device (the scan, the
- * sign-in rows, the groups, the mapping, the plan, the baseline choice) and the
- * snapshot, plan and mapping in memory; Connect then shows its not-scanned
- * state, still signed in. Rejects when the store cannot be cleared.
+ * sign-in rows, the groups, the mapping, the plan, the baseline choice) and
+ * everything the app was holding of it in memory — the snapshot, the plan, the
+ * mapping and the baseline the choice named; Connect then shows its not-scanned
+ * state, still signed in. Only this tenant's id is named, so another tenant's
+ * records on the same device are untouched. Rejects when the store cannot be
+ * cleared, and nothing in memory is let go of first: a forget that failed must
+ * not read as one that worked.
  */
 export async function forgetTenant(): Promise<void> {
   const account = getSession().account
   if (!account) throw new Error(app.shell.scanNeedsConnect)
   stopScan()
   await storeLib.forgetTenant(account.tenantId)
-  setSession({ lastScan: null, scan: IDLE_SCAN, demoWeek2: false })
+  setSession({ lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
   go(CONNECT_HREF)
 }

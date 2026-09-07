@@ -3,10 +3,11 @@
 // week-two snapshot, and the step is on that plan to reopen.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/generate.ts'
-import { PLAN_HREF, afterScanHref, resolveHash, returnToStep, stepFromPlanHash } from './routes.ts'
+import { PLAN_HREF, READINESS_HREF, afterScanHref, resolveHash, returnToStep, stepFromPlanHash } from './routes.ts'
 
 test('the in-step scan ends at the step: the demo advances to week two and the countries step reopens', () => {
   const id = PREREQ_STEP_ID.allowedCountries
@@ -30,4 +31,20 @@ test('the in-step scan ends at the step: the demo advances to week two and the c
   const week2 = runFixture(fixture('demo-week2'))
   assert.ok(day1.steps.some((s) => s.id === id), 'the step is on the day-one plan')
   assert.ok(week2.steps.some((s) => s.id === id), 'and on the week-two plan, so the landing opens it')
+})
+
+test('every page that starts a scan gets its own page back, and Connect gets what Connect asks for', () => {
+  // MFA Readiness (the surface that replaced Today) and the Plan each name
+  // themselves, so a scan started there lands there.
+  assert.equal(afterScanHref(READINESS_HREF), READINESS_HREF)
+  assert.equal(afterScanHref(PLAN_HREF), PLAN_HREF)
+  assert.match(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /scan\(readinessHref\(show\)\)/, 'MFA Readiness no longer asks for itself, with its filter')
+  assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /runScan\(returnTo\)/, "the Plan no longer asks for the step the scan was started in")
+  // Connect's two scans (surfaces/Connect.tsx): the first tenant scan asks for
+  // nowhere, so the page stays on Connect and its tiles fill in under the
+  // operator; Scan again on an already-scanned tenant asks for the Plan by name.
+  assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /runScan\(first \? null : PLAN_HREF\)/)
+  assert.match(readFileSync('src/ui/actions.ts', 'utf8'), /if \(returnTo !== null\) go\(afterScanHref\(returnTo\)\)/, 'a scan that asked for nowhere now moves the page')
+  // And if Connect ever did ask for itself by name, it would get itself.
+  assert.equal(afterScanHref('#/connect'), '#/connect')
 })

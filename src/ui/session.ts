@@ -1,6 +1,9 @@
 // The app's session, in one store: who is signed in, the tenant's name, the
-// stored scan, and the scan in flight (its lane, its pause, its failure, where
-// it returns to). ui/actions.ts changes it; App.tsx and the shell read it
+// stored scan, the baseline the tenant is planned against, and the scan in
+// flight (its lane, its pause, its failure, where it returns to). Everything
+// the app holds about the current tenant is here, so Sign out and Forget this
+// tenant each let go of it in one statement and nothing of the tenant is left
+// rendering from a component's own state. ui/actions.ts changes it; App.tsx and the shell read it
 // through useSession. A scan started from any page shows on every page (tile
 // 3's bar on Connect, one line under the header elsewhere) because its state
 // lives here and nowhere in a component. Pure store: no DOM, so Node tests
@@ -11,6 +14,7 @@ import type { TokenSource } from '../graph/collect/runScan.ts'
 import type { CoreGap } from '../graph/collect/coreSections.ts'
 import type { RoleGap } from '../graph/collect/tokenRoles.ts'
 import type { ScanRecord } from './scan/scanRecord.ts'
+import type { BaselineResult } from './baseline.ts'
 
 export type SectionRow = { source: string; status: string; rows?: number; reason?: string; ms?: number }
 export type ScanPhase = 'idle' | 'running' | 'paused' | 'done' | 'failed'
@@ -42,6 +46,17 @@ export type Session = {
   /** The stored scan (scan/scanRecord.ts); null before the first scan and after Forget this tenant. */
   lastScan: ScanRecord | null
   scan: ScanState
+  /**
+   * The baseline this tenant's plan is read against (ui/baseline.ts): the pinned
+   * package, or the one the operator uploaded, restored from the tenant's stored
+   * choice. It belongs to the tenant, so it lives with the tenant's other facts
+   * and is cleared by the same two actions that clear them — Forget this tenant
+   * deletes the stored choice, and an uploaded package is the operator's own
+   * file, so neither may stay on screen after the tenant is let go.
+   */
+  baseline: BaselineResult | null
+  /** Why the tenant's stored baseline choice could not be restored; cleared with the baseline it is about. */
+  baselineRestoreError: string | null
   /** The demo's week-two snapshot is showing (App.tsx loads it); the demo's scan flips this. */
   demoWeek2: boolean
   /** The mock's token stand-in; MSAL otherwise. Never set outside the mock. */
@@ -50,7 +65,7 @@ export type Session = {
 
 export const IDLE_SCAN: ScanState = { state: 'idle', sections: {}, laneB: null, slow: false, error: null, gaps: [], unread: [], roleGap: null, startedAt: null, nowTick: 0, returnTo: null }
 
-const initial = (): Session => ({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, demoWeek2: false, getToken: null })
+const initial = (): Session => ({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false, getToken: null })
 
 let session: Session = initial()
 const listeners = new Set<() => void>()
