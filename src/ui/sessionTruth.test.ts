@@ -98,8 +98,11 @@ test('a baseline nobody picked is not recorded for the tenant, so the page Forge
   assert.match(connect, /void loadPinned\(false\)/, "the tile's own default load now claims to be a choice")
   // The picker's two answers are picks, and are remembered.
   assert.match(connect, /void loadPinned\(true\)/)
-  assert.match(connect, /onBaseline\(loadUploadedBaseline\(files\), true\)/)
-  // And only a pick reaches the store, so forgetting a tenant leaves no row of
-  // it behind and none is written back a moment later.
-  assert.match(app, /if \(account && chosen\) void saveBaselineRecord\(account\.tenantId, r\.origin\)/)
+  assert.match(connect, /chooseBaseline\(async \(\) => \{[\s\S]*loadUploadedBaseline\(files\)[\s\S]*\}, true\)/)
+  // And only a pick reaches the store, from the one action that applies a
+  // baseline, so forgetting a tenant leaves no row of it behind and none is
+  // written back a moment later.
+  const actions = readFileSync('src/ui/actions.ts', 'utf8')
+  assert.match(actions, /if \(!chosen \|\| !account\) return\s+baselineSave = storeLib\.saveBaselineRecord\(account\.tenantId, result\.origin\)/)
+  assert.doesNotMatch(app, /saveBaselineRecord/, "App writes the tenant's baseline row itself again")
 })

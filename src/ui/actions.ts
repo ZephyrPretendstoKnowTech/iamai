@@ -10,18 +10,22 @@ import type { ScanHandle } from '../graph/collect/runScan.ts'
 import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { RoleGapError } from '../graph/collect/tokenRoles.ts'
 import type { SectionEvent, WorkerOutMessage } from '../graph/collect/types.ts'
-import { forgetTenant as forgetStored, saveSnapshotRecord } from '../graph/collect/cache.ts'
+import { forgetTenant as forgetStored, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
 import * as auth from '../graph/auth.ts'
 import { app } from '../content/content.ts'
 import { isDemo } from './demoMode.ts'
 import { afterScanHref } from './shell/routes.ts'
 import type { ScanRecord } from './scan/scanRecord.ts'
-import { IDLE_SCAN, getSession, setScan, setSession } from './session.ts'
+import type { BaselineResult } from './baseline.ts'
+import { restoreBaseline } from './baseline.ts'
+import { IDLE_SCAN, endTenantTurn, getSession, setScan, setSession, stillThisTurn, tenantTurn } from './session.ts'
 
 /** The sign-in library behind the actions (graph/auth.ts). A test replaces these: the real one needs a browser. */
 export const authLib = { signIn: auth.signIn, signInAnother: auth.signInAnother, signOut: auth.signOut }
 /** The store behind the actions (graph/collect/cache.ts). A test replaces these: the real one needs IndexedDB. */
-export const storeLib = { forgetTenant: forgetStored, saveSnapshotRecord }
+export const storeLib = { forgetTenant: forgetStored, saveSnapshotRecord, saveBaselineRecord }
+/** The baseline reader behind the restore action (ui/baseline.ts). A test replaces it: the real one fetches. */
+export const baselineLib = { restoreBaseline }
 /** The collector, loaded when the first scan starts: it carries the sign-in library, which needs a browser. */
 const collector = () => import('../graph/collect/runScan.ts')
 
@@ -33,6 +37,12 @@ const go = (hash: string): void => {
 
 let handle: ScanHandle | null = null
 let stopped = false
+/**
+ * The tenant's baseline record being written, or nothing: Forget this tenant
+ * waits on it before it deletes, so a row already being written cannot outlive
+ * the delete that was meant to remove it.
+ */
+let baselineSave: Promise<void> = Promise.resolve()
 
 /**
  * Scan the signed-in tenant, from any page. The scan's state is the session's
@@ -57,6 +67,7 @@ export async function scan(returnTo: string | null = null): Promise<void> {
     return
   }
   stopped = false
+  const turn = tenantTurn()
   setScan({ ...IDLE_SCAN, state: 'running', startedAt: Date.now(), nowTick: Date.now(), returnTo })
   const tick = setInterval(() => setScan({ nowTick: Date.now() }), 1000)
   const onEvent = (m: WorkerOutMessage): void => {
@@ -73,6 +84,9 @@ export async function scan(returnTo: string | null = null): Promise<void> {
     const { startScan } = await collector()
     handle = startScan(account.tenantId, onEvent, s.getToken ?? undefined)
     const result = await handle.done
+    // Sign out or Forget this tenant landed while the collector was still
+    // reading: this snapshot is the previous turn's and belongs to nobody now.
+    if (!stillThisTurn(turn)) return
     const found = coreGaps(result)
     setScan({ state: 'done', gaps: found, unread: found.length > 0 ? unreadSources(result) : [] })
     if (found.length > 0) return
@@ -131,6 +145,7 @@ export async function signInAnother(): Promise<void> {
  */
 export async function signOut(): Promise<void> {
   stopScan()
+  endTenantTurn()
   setSession({ account: null, tenantName: null, lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
   go(CONNECT_HREF)
   await authLib.signOut()
@@ -150,7 +165,52 @@ export async function forgetTenant(): Promise<void> {
   const account = getSession().account
   if (!account) throw new Error(app.shell.scanNeedsConnect)
   stopScan()
+  // The turn ends before the delete, not after it: baseline work already in
+  // flight may neither land nor start a write from here, and a write that had
+  // already begun is waited for, so the delete is the last word on the tenant's
+  // rows. A forget the store refuses still ends the turn — the operator asked
+  // to let the tenant go, and a package still loading for it is not an answer.
+  endTenantTurn()
+  await baselineSave.catch(() => {})
   await storeLib.forgetTenant(account.tenantId)
   setSession({ lastScan: null, scan: IDLE_SCAN, baseline: null, baselineRestoreError: null, demoWeek2: false })
   go(CONNECT_HREF)
+}
+
+/**
+ * Read a baseline and make it this tenant's: it renders from the session, and
+ * a pick — the operator's answer in tile 2's picker or their own uploaded
+ * package — is recorded for the tenant so it comes back on the next sign-in.
+ * The default tile 2 loads for itself is not a pick and is not recorded.
+ *
+ * The reading happens inside the action, in the turn it began in, so Sign out
+ * and Forget this tenant take an unfinished read with them (ui/session.ts):
+ * a package that arrives after either action is applied to nothing and stored
+ * nowhere. Rejects when the package cannot be read: the tile that asked for it
+ * renders the failure beside itself (ui/useAction.ts).
+ */
+export async function chooseBaseline(read: () => Promise<BaselineResult>, chosen: boolean): Promise<void> {
+  const turn = tenantTurn()
+  const account = getSession().account
+  const result = await read()
+  if (!stillThisTurn(turn)) return
+  setSession({ baseline: result, baselineRestoreError: null })
+  if (!chosen || !account) return
+  baselineSave = storeLib.saveBaselineRecord(account.tenantId, result.origin)
+}
+
+/**
+ * The baseline the tenant's stored choice names, restored on sign-in. Not a
+ * pick, so nothing is written back. There is no button behind this one, so a
+ * package that cannot be rebuilt is reported in the session and Connect offers
+ * the choice again; a tenant let go of while it was being rebuilt is told
+ * nothing, because there is no longer anyone it is about.
+ */
+export async function restoreChosenBaseline(origin: BaselineResult['origin']): Promise<void> {
+  const turn = tenantTurn()
+  try {
+    await chooseBaseline(() => baselineLib.restoreBaseline(origin), false)
+  } catch (e) {
+    if (stillThisTurn(turn)) setSession({ baselineRestoreError: e instanceof Error ? e.message : String(e) })
+  }
 }

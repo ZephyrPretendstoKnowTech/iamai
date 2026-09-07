@@ -39,7 +39,7 @@ import { PINNED_BASELINE, baselineChanges, checkAuthorHead, loadPinnedBaseline, 
 import type { BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
 import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
-import { scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
+import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { W, accountTile, baselineTile, planTile, scanTile, signInTile } from '../scan/connectView.ts'
@@ -54,8 +54,6 @@ const PACKAGE_HREF = '#/how#package'
 type BaselineProps = {
   baseline: BaselineResult | null
   baselineRestoreError: string | null
-  /** A baseline is now loaded. `chosen` is the operator's own pick from the picker; the default the tile loads for itself is not one, and is not recorded for the tenant. */
-  onBaseline: (r: BaselineResult, chosen: boolean) => void
   /** Test support (dev builds, ?author=1): an author update in place of the network check. */
   authorUpdate?: BaselineUpdate | null
 }
@@ -74,7 +72,7 @@ export function Connect(
     <section className="surface connect">
       <h1>{W.h1}</h1>
       <p className="lede">{W.intro}</p>
-      {account ? <SignedIn {...props} account={account} /> : <SignedOut error={props.authError} baseline={props.baseline} baselineRestoreError={props.baselineRestoreError} onBaseline={props.onBaseline} authorUpdate={props.authorUpdate} />}
+      {account ? <SignedIn {...props} account={account} /> : <SignedOut error={props.authError} baseline={props.baseline} baselineRestoreError={props.baselineRestoreError} authorUpdate={props.authorUpdate} />}
     </section>
   )
 }
@@ -225,7 +223,7 @@ function PlanTileView({ tile, actions }: { tile: PlanTile; actions: ReactNode })
  * states from the MSAL error code), the baseline, what happens next for your
  * tenant, and what the sample tenant produced.
  */
-function SignedOut({ error, baseline, baselineRestoreError, onBaseline, authorUpdate }: BaselineProps & { error: SignInError | null }) {
+function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: BaselineProps & { error: SignInError | null }) {
   // The redirect takes seconds to start; the button must not look inert.
   const [opening, setOpening] = useState(false)
   // MSAL is warming: until it is ready the button carries a spinner but stays
@@ -284,7 +282,7 @@ function SignedOut({ error, baseline, baselineRestoreError, onBaseline, authorUp
           <p className="quiet">{t1.permissions.removal}</p>
         </details>
       </Tile>
-      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={false} authorUpdate={authorUpdate} />
+      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} />
       <ScanTileView tile={t3} upn={null} actions={null} />
       <PlanTileView
         tile={t4}
@@ -303,7 +301,6 @@ function SignedIn({
   tenantName,
   baseline,
   baselineRestoreError,
-  onBaseline,
   authorUpdate,
   lastScan,
 }: BaselineProps & {
@@ -400,7 +397,7 @@ function SignedIn({
         </div>
         {tile1.error && <p className="quiet">{tile1.error}</p>}
       </Tile>
-      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} onBaseline={onBaseline} locked={scanning} authorUpdate={authorUpdate} />
+      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} />
       <ScanTileView
         tile={t3}
         upn={upn}
@@ -453,7 +450,11 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdat
  * with two choices. The default loads itself when nothing is saved, and says
  * so: a default nobody picked is not a choice to record against the tenant.
  */
-function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate }: { baseline: BaselineResult | null; restoreError: string | null; onBaseline: (r: BaselineResult, chosen: boolean) => void; locked: boolean; authorUpdate?: BaselineUpdate | null }) {
+// The tile asks; the action reads the package, makes it the tenant's and
+// records a pick (ui/actions.ts). Reading it there and not here is what lets
+// Sign out and Forget this tenant take an unfinished read with them: a package
+// that arrives after either action is applied to nothing and stored nowhere.
+function BaselineTile({ baseline, restoreError, locked, authorUpdate }: { baseline: BaselineResult | null; restoreError: string | null; locked: boolean; authorUpdate?: BaselineUpdate | null }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -466,7 +467,7 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate
     setBusy(PINNED_BASELINE.label)
     setError(null)
     try {
-      onBaseline(await loadPinnedBaseline(), chosen)
+      await chooseBaseline(() => loadPinnedBaseline(), chosen)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -479,8 +480,10 @@ function BaselineTile({ baseline, restoreError, onBaseline, locked, authorUpdate
     setBusy(C.uploadedSource)
     setError(null)
     try {
-      const files: BaselineFile[] = await Promise.all([...fileList].map(async (f) => ({ path: f.name, text: await f.text() })))
-      onBaseline(loadUploadedBaseline(files), true)
+      await chooseBaseline(async () => {
+        const files: BaselineFile[] = await Promise.all([...fileList].map(async (f) => ({ path: f.name, text: await f.text() })))
+        return loadUploadedBaseline(files)
+      }, true)
       setOpen(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))

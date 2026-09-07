@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/auth.ts'
 import { fetchTenantName } from '../graph/organization.ts'
-import { loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
+import { loadBaselineRecord, loadSnapshotRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
 import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { GLOBAL_ADMINISTRATOR } from '../graph/collect/tokenRoles.ts'
 import { authErrorOf, classifyAuthError } from '../graph/authError.ts'
@@ -15,11 +15,12 @@ import type { ShellState } from './shell/AppShell.tsx'
 import { Connect } from './surfaces/Connect.tsx'
 import type { BaselineUpdate } from './scan/connectView.ts'
 import type { ScanRecord } from './scan/scanRecord.ts'
-import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
+import { loadPinnedBaseline } from './baseline.ts'
 import type { BaselineResult } from './baseline.ts'
 import { Plan } from './surfaces/Plan.tsx'
 import { MfaReadiness } from './surfaces/MfaReadiness.tsx'
 import { IDLE_SCAN, setScan, setSession, useSession } from './session.ts'
+import { restoreChosenBaseline } from './actions.ts'
 // The surfaces a first visit does not open arrive on demand (prompt 53 queue
 // item 8): Export carries the print and every exporter, Inventory its tables,
 // How its endpoint tables. Plan, MFA Readiness and Connect stay in the first chunk.
@@ -290,14 +291,10 @@ export function App() {
           // commit, or the uploaded files themselves. Awaited, so Connect does
           // not load the default over a baseline that was about to be restored.
           const origin = await loadBaselineRecord<BaselineResult['origin']>(a.tenantId).catch(() => null)
-          if (origin) {
-            try {
-              setSession({ baseline: await restoreBaseline(origin) })
-            } catch (e) {
-              // Connect says so and offers the choice again.
-              setSession({ baselineRestoreError: e instanceof Error ? e.message : String(e) })
-            }
-          }
+          // The action rebuilds it and, when it cannot, says so where Connect
+          // reads it; a tenant signed out of or forgotten while it was being
+          // rebuilt keeps neither (ui/actions.ts).
+          if (origin) await restoreChosenBaseline(origin)
         }
       })
       .catch((e: unknown) => setAuthError(classifyAuthError(authErrorOf(e))))
@@ -345,16 +342,6 @@ export function App() {
               authError={authError}
               baseline={baseline}
               baselineRestoreError={baselineRestoreError}
-              onBaseline={(r, chosen) => {
-                setSession({ baseline: r, baselineRestoreError: null })
-                // Only a baseline the operator picked is recorded for the
-                // tenant. Tile 2 loads the default whenever nothing is stored,
-                // and recording that would put a row back under a tenant the
-                // operator had just forgotten — while recording nothing, since
-                // restoreBaseline rebuilds the author's baseline from the pin
-                // whatever a record holds (ui/baseline.ts).
-                if (account && chosen) void saveBaselineRecord(account.tenantId, r.origin)
-              }}
               lastScan={lastScan}
               authorUpdate={mockAuthorUpdate}
             />
