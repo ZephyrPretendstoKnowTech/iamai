@@ -371,6 +371,7 @@
       "readyNow": "ready now",
       "heldForEvidence": "held until the records clear",
       "heldForReview": "held until reviewed",
+      "satisfiedBy": "Satisfied by {policies} — no change needed",
       "settingsLink": "Plan settings",
       "settings": {
         "h3": "Plan settings",
@@ -803,6 +804,7 @@
           "whoUnknown": "IAMAI cannot establish exactly who this reaches: this scan could not settle the policy's scope, so no count is shown.",
           "foundReadiness": "{measure} is {value} today; enforcement waits for {threshold}.",
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
+          "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
           "doneSatisfied": "Already satisfied: {tenant} has this, and the step is to keep it that way.",
           "doneBlocked": "Everything under Fix before continuing is cleared.",
           "doneConflict": "A reviewed baseline version settles which of its two definitions of this policy is meant.",

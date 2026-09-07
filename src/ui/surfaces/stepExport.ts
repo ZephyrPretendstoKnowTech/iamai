@@ -82,6 +82,17 @@ export function datesLineFor(step: Step, cs: Record<string, unknown>): string | 
  */
 export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string | null {
   const line = typeof cs.ifWrong === 'string' ? cs.ifWrong : null
+  // A goal the tenant already delivers has no way back, because nothing went
+  // forward: this step creates no policy and submits no change, so there is no
+  // inverse to describe. Every rollback line the content offers is written for a
+  // change that was made, and over a policy IAMAI neither created nor touched
+  // they all read as instructions to take a working control away — "Set the
+  // policy back to report-only, or delete it" was rendering on the screen, the
+  // exports, the print, the calendar entry and the prompt pack of every step
+  // that was already satisfied, over the tenant's own policy. The rule the
+  // module already applies to a policy that cannot be written (no completion
+  // criteria, no rollback, no dates) is the rule here: preserve means preserve.
+  if (isPreserved(step)) return null
   if (line === '{changeIfWrong}' && createsNewPolicy(step)) return '{policyIfWrong}'
   // And the same rule the other way. A step whose content was written for a
   // policy IAMAI creates is submitting an update once that policy exists, and
@@ -158,7 +169,13 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))
   else if (escapeHatch) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.escapeHatchHeld), { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) }))
   else if (readinessHeld) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.readinessHeld), { tenant: String(ex.tenant ?? ''), ...(step.action.readinessGate ?? {}) }))
-  else if (inPlace) lines.push(String((content.pages.app as Record<string, Record<string, string>>).plan.inPlaceKeep))
+  // A goal the tenant already delivers says *which* policy delivers it, in the
+  // artifacts as on the screen. The line used to be the bare "nothing to
+  // create", which is also the contract's action and is unshifted in front of
+  // it below — so the calendar entry, the prompt pack, the grounding bundle and
+  // the plan file all said a policy existed and none of them said which one.
+  // Read from the frozen Step Contract's own finding, so the two cannot drift.
+  else if (inPlace) lines.push(...stepContract(step, ctx).found.filter((x) => x.key === 'in-place').map((x) => x.text))
   else if (!unearned && Array.isArray(w.steps)) for (const l of w.steps) if (whole(l, ex)) lines.push(fillText(l, ex))
   // The next action the screen states, in the artifact. Where the step's content
   // carries a lead it is already the first line above and the contract's action

@@ -5,7 +5,9 @@
 // is created in report-only; another dated step reads its enforcement instant; a
 // blocked step with no date of its own reads its wave's start, so a row reads
 // Blocked · <date>, Report-only · ready <date> or Ready · now, never Blocked · now.
-import { unavailableReason } from '../../roadmap/operations.ts'
+import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
+import { trackedPolicyNames } from '../../roadmap/tracking.ts'
+import { list } from '../../copy/statements.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { pages } from '../../content/content.ts'
@@ -15,7 +17,7 @@ import { awaitingDeployment } from '../../roadmap/forecast.ts'
 import { heldByReadiness } from '../../derive/finish.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 
-const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; heldForEvidence: string; heldForReview: string }
+const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; heldForEvidence: string; heldForReview: string; satisfiedBy: string }
 
 export function rowWhen(step: Step, waveStart: string | null = null): string {
   // A done step's row shows no date word: blank, never "now".
@@ -85,6 +87,19 @@ export function rowWhenWraps(step: Step): boolean {
  * instead and carries no reason line.
  */
 export function rowReason(step: Step): string | null {
+  // A goal the tenant already delivers, said on the row: which policy satisfies
+  // it, and that nothing is being asked of the operator. The row carried no
+  // reason at all, so the four rows under "In place" said a state, a title and a
+  // headcount and nothing about *what* was in place — an operator had to open
+  // every one of them to find out which policy they were being asked to keep.
+  // The date column is deliberately blank on a done step (`rowWhen` above:
+  // preserved work earns no rollout date), so this is the row's only chance to
+  // say it. Null where this scan has no name for the policy: nothing here
+  // invents one.
+  if (isPreserved(step)) {
+    const names = trackedPolicyNames(step)
+    return names.length > 0 ? fillText(PLAN.satisfiedBy, { policies: list(names) }) : null
+  }
   if (heldForReview(step)) return step.state.observation?.note ?? null
   // What earned the enforcement, beside the word that offers it: the two gates'
   // own numbers, in the one reading the step's Done-when also uses
