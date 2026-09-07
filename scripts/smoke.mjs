@@ -575,7 +575,16 @@ try {
   await go('plan')
   await waitFor(`/\\bsteps\\b/.test(document.body.innerText)`)
   t = await evaluate(`document.querySelector('header.app').innerText`)
-  check('Header: the three tabs and the controls, no tenant tab (the tenant is on Connect)', !/Contoso Pty Ltd/.test(t) && /MFA Readiness/.test(t) && /Plan/.test(t) && /Export/.test(t) && !/Recovery card/.test(t) && /Account/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
+  // The five destinations, in the product's order: the Plan before the readiness
+  // diagnostic that reads the people it waits on (task 017).
+  check(
+    'Header: the five destinations in order and the controls, no tenant tab (the tenant is on Connect)',
+    !/Contoso Pty Ltd/.test(t) &&
+      (await evaluate(`[...document.querySelectorAll('header.app nav a')].map((a) => a.textContent.trim()).join(' · ')`)) === 'Connect · Plan · MFA Readiness · Export · How' &&
+      !/Recovery card/.test(t) &&
+      /Account/.test(t),
+    t.replace(/\s+/g, ' ').slice(0, 120),
+  )
   check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
   check('Header: no scan control and no scan age on any page', !/Scan to update the plan|scanned|Re-scan/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: the theme and Account controls are text, not button faces', await evaluate(`document.querySelectorAll('header.app .right button').length >= 2 && [...document.querySelectorAll('header.app .right button')].every((b) => { const cs = getComputedStyle(b); return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.paddingLeft === '0px' })`))
@@ -583,7 +592,15 @@ try {
   check('Header: the theme control names the mode it switches to', /Light theme|Dark theme/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=noScan#/plan` })
   await sleep(1200)
-  check('Header (no scan): the tabs are disabled until the first scan', (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].length`)) === 3 && (await evaluate(`document.querySelector('header.app nav a').title`)) === 'after the first scan')
+  // The three destinations that read a scan wait for one and say why; Connect
+  // and How hold no tenant data, so they are never offered dead (task 017).
+  check(
+    'Header (no scan): the three tabs that read a scan wait for one, and Connect and How stay live',
+    (await evaluate(`[...document.querySelectorAll('header.app nav a[aria-disabled="true"]')].map((a) => a.textContent.trim()).join(' · ')`)) === 'Plan · MFA Readiness · Export' &&
+      (await evaluate(`document.querySelector('header.app nav a[aria-disabled="true"]').title`)) === 'after the first scan' &&
+      (await evaluate(`[...document.querySelectorAll('header.app nav a:not([aria-disabled])')].map((a) => a.textContent.trim()).join(' · ')`)) === 'Connect · How',
+    await evaluate(`[...document.querySelectorAll('header.app nav a')].map((a) => a.textContent.trim() + (a.getAttribute('aria-disabled') ? ' (waiting)' : '')).join(' · ')`),
+  )
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await evaluate(`document.querySelector('header.app').innerText`)

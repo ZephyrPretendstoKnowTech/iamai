@@ -797,9 +797,11 @@
         "themeTooltip": "Switch between dark and light themes",
         "navLabel": "Sections",
         "tabs": {
-          "readiness": "MFA Readiness",
+          "connect": "Connect",
           "plan": "Plan",
-          "export": "Export"
+          "readiness": "MFA Readiness",
+          "export": "Export",
+          "how": "How"
         },
         "tabsAfterScan": "after the first scan",
         "account": "Account",
@@ -1018,6 +1020,7 @@
         "madeFor": "the tenant it was made for",
         "csvTab": "{label} as CSV",
         "promptCopy": "Copy prompt",
+        "promptCopyOf": "Copy prompt: {title}",
         "copied": "Copied",
         "redactedLabel": "Include names and addresses (unredacted)",
         "promptScope": "About one step: {step}",

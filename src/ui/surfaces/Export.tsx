@@ -258,7 +258,10 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
               pack.map((item, i) => (
                 <p key={i} className="reason">
                   {item.title} <span className="muted">({item.scope === null ? A.promptWholePlan : fillText(A.promptScope, { step: item.scope })})</span>{' '}
-                  <Button variant="tertiary" onClick={() => copy(`p${i}`, item.prompt)}>
+                  {/* Eight rows, eight controls reading "Copy prompt": the
+                      accessible name says which prompt (task 017), while the
+                      visible words stay the short ones the row can carry. */}
+                  <Button variant="tertiary" aria-label={fillText(A.promptCopyOf, { title: item.title })} onClick={() => copy(`p${i}`, item.prompt)}>
                     {copied === `p${i}` ? A.copied : A.promptCopy}
                   </Button>
                 </p>

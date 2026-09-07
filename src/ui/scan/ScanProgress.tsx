@@ -50,7 +50,7 @@ export function PausedNotice() {
       <Button variant="primary" onClick={() => run(resumeScan())}>
         {CONNECT.signInAgain}
       </Button>
-      {error && <span className="quiet"> {error}</span>}
+      {error && <span className="quiet" role="status"> {error}</span>}
     </Callout>
   )
 }

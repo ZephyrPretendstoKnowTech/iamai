@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Icon } from './Icon.tsx'
 import { Button } from './Button.tsx'
 import { app } from '../../content/content.ts'
@@ -18,6 +18,17 @@ export type PickerOption = {
 // list shows the nominations with their signal text; typing filters every object
 // of the kind (the caller filters); chips are the selection. The list stays open
 // until Escape, a click outside, or Done.
+//
+// The combobox is the ARIA one, coherently (task 017): DOM focus stays on the
+// input, `aria-activedescendant` names the highlighted option, and the options
+// themselves are not tab stops — Arrow keys move, Enter picks, Escape closes.
+// The list holds options and nothing else; the heading, the "searching" note
+// and the Done row sit outside it, because a listbox with prose in it is a
+// listbox a screen reader reads wrong.
+//
+// None of this touches what the picker decides: which options exist, which are
+// nominated, which are selected and when the selection is saved are the
+// caller's, exactly as before.
 export function Picker({
   selected,
   options,
@@ -27,6 +38,7 @@ export function Picker({
   placeholder = T.placeholder,
   single = false,
   loading = false,
+  labelledBy,
 }: {
   selected: PickerOption[]
   options: PickerOption[] // results for the current query (caller filters/searches)
@@ -36,12 +48,16 @@ export function Picker({
   placeholder?: string
   single?: boolean
   loading?: boolean
+  /** The id of the label above the picker (a decision's `.dlabel`), where there is one. */
+  labelledBy?: string
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
-  const listId = useMemo(() => `picker-list-${Math.random().toString(36).slice(2, 8)}`, [])
+  const base = useId()
+  const listId = `${base}-list`
+  const optionId = (i: number): string => `${base}-option-${i}`
 
   useEffect(() => {
     onSearch?.(query)
@@ -62,6 +78,7 @@ export function Picker({
   const list = (empty ? suggestions : options).filter((o) => !selectedIds.has(o.id)).slice(0, 8)
   // Empty and nothing nominated remains: just the field, no header, no Done.
   const showList = open && (!empty || loading || list.length > 0)
+  const at = Math.min(focused, Math.max(0, list.length - 1))
 
   const pick = (o: PickerOption): void => {
     onChange(single ? [o] : [...selected, o])
@@ -71,7 +88,7 @@ export function Picker({
   const remove = (id: string): void => onChange(selected.filter((s) => s.id !== id))
 
   return (
-    <div className="picker" ref={ref}>
+    <div className="picker" ref={ref} role="group" aria-labelledby={labelledBy}>
       {selected.length > 0 && (
         <div className="picker-chips">
           {selected.map((s) => (
@@ -93,6 +110,7 @@ export function Picker({
           aria-label={placeholder}
           aria-expanded={showList}
           aria-controls={listId}
+          aria-activedescendant={showList && list[at] ? optionId(at) : undefined}
           role="combobox"
           aria-autocomplete="list"
           onFocus={() => {
@@ -120,32 +138,37 @@ export function Picker({
               e.preventDefault()
               setFocused((f) => Math.max(f - 1, 0))
             }
-            if (e.key === 'Enter' && list[focused]) {
+            if (e.key === 'Enter' && list[at]) {
               e.preventDefault()
-              pick(list[focused])
+              pick(list[at])
             }
           }}
         />
       </div>
       {showList && (
-        <div className="picker-list" role="listbox" id={listId}>
+        <div className="picker-list">
           {empty && list.length > 0 && <div className="picker-heading">{T.suggestions}</div>}
           {loading && <div className="picker-footer">{T.searching}</div>}
           {list.length === 0 && !loading && <div className="picker-footer">{T.noMatches}</div>}
-          {list.map((o, i) => (
-            <button
-              key={o.id}
-              type="button"
-              role="option"
-              aria-selected={i === focused}
-              className={`picker-option ${i === focused ? 'focused' : ''}`}
-              onMouseEnter={() => setFocused(i)}
-              onClick={() => pick(o)}
-            >
-              <span className="picker-option-name">{o.name}</span>
-              {(o.why ?? o.secondary) && <span className="picker-option-secondary">{o.why ?? o.secondary}</span>}
-            </button>
-          ))}
+          <div role="listbox" id={listId} aria-label={placeholder}>
+            {list.map((o, i) => (
+              <div
+                key={o.id}
+                id={optionId(i)}
+                role="option"
+                aria-selected={i === at}
+                className={`picker-option ${i === at ? 'focused' : ''}`}
+                onMouseEnter={() => setFocused(i)}
+                // The input keeps DOM focus (aria-activedescendant), so a press
+                // must not move it: mousedown is where a browser would.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(o)}
+              >
+                <span className="picker-option-name">{o.name}</span>
+                {(o.why ?? o.secondary) && <span className="picker-option-secondary">{o.why ?? o.secondary}</span>}
+              </div>
+            ))}
+          </div>
           <div className="picker-footer">
             <Button size="sm" variant="tertiary" onClick={() => setOpen(false)}>
               {T.done}
@@ -156,5 +179,4 @@ export function Picker({
       )}
     </div>
   )
-
 }

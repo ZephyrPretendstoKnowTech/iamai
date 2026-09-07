@@ -468,7 +468,10 @@ test('the walk and the smoke read the shipped words: the tabs from the content, 
   assert.match(walk, /const HEADER_TABS = headerTabsLine\(\)/, 'the walk asks the shared authority for the header tabs')
   assert.match(checks, /pages\.app\.shell\.tabs\.\$\{k\}/, 'and that authority builds the line from the words the header renders')
   const headerTabs = (pages.app as unknown as { shell: { tabs: Record<string, string> } }).shell.tabs
-  assert.equal(headerTabsLine(), `${headerTabs.readiness} · ${headerTabs.plan} · ${headerTabs.export}`)
+  // The five destinations, in the product's order (task 017): the Plan is the
+  // destination after a scan, so it is named before the readiness diagnostic
+  // that reads the people it waits on.
+  assert.equal(headerTabsLine(), `${headerTabs.connect} · ${headerTabs.plan} · ${headerTabs.readiness} · ${headerTabs.export} · ${headerTabs.how}`)
   assert.doesNotMatch(walk, /Today . Plan . Export/, 'and holds no retired tab name')
   // The summary: the sentence the page renders, at a count of one and above it.
   const T = pages.readiness as unknown as { summary: string }

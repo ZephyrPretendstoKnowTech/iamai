@@ -30,7 +30,7 @@
 // resolved here from the plan this page computes, over the same rows the table
 // shows (derive/stepMfaReadiness.ts). The counts above the table stay the whole
 // tenant's — the callout says what the filter is.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
@@ -73,10 +73,17 @@ type ReadinessCopy = {
 const T = pages.readiness as unknown as ReadinessCopy
 const C = app.readiness
 
-/** The rung's badge: the number in the rung's colour, its title as the accessible name; a grey dash where nothing is set up on an uncounted account. */
+/**
+ * The rung's badge: the number in the rung's colour, its title as the
+ * accessible name; a grey dash where nothing is set up on an uncounted account.
+ *
+ * `role="img"` is what makes the label carry (task 017): `aria-label` on a bare
+ * span is ignored by most assistive technology, so the badge read as the bare
+ * digit "3" beside the group word instead of the rung it names.
+ */
 function RungBadge({ rung }: { rung: Rung | null }) {
   return (
-    <span className={`rung-badge rung-${rung ?? 0}`} title={rung ? rungWords(rung).title : undefined} aria-label={rung ? rungWords(rung).title : undefined}>
+    <span className={`rung-badge rung-${rung ?? 0}`} role={rung ? 'img' : undefined} title={rung ? rungWords(rung).title : undefined} aria-label={rung ? rungWords(rung).title : undefined}>
       {rung ?? '–'}
     </span>
   )
@@ -138,6 +145,9 @@ function ReadinessForStep({ scan: lastScan, baseline, stepId }: {
  */
 type OpenGuide = { userId: string; guideId: MethodGuideId | null }
 
+/** The one remediation panel on the page: the row control that opens it names it. */
+const GUIDE_PANEL_ID = 'readiness-guide-panel'
+
 /** The guide's title as a choice: pressed shows it, pressed again puts it away. */
 function GuideChoice({ id, on, onPick }: { id: MethodGuideId; on: boolean; onPick: (id: MethodGuideId | null) => void }) {
   return (
@@ -186,7 +196,7 @@ function RemediationPanel({ row, guideId, onPick, onClose }: {
     })
   }
   return (
-    <section className="guide-panel card">
+    <section className="guide-panel card" id={GUIDE_PANEL_ID} tabIndex={-1}>
       <h3>{fillText(R.heading, { name })}</h3>
       <p className="reason">{PASSKEY_TARGET}</p>
       {r.kind === 'setUp' && (
@@ -241,6 +251,13 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
   // The remediation panel: closed until a person's Next step is pressed, so the
   // page's first screen stays the diagnostic it was built as.
   const [open, setOpen] = useState<OpenGuide | null>(null)
+  // The control the panel was opened from, so Close puts focus back on it
+  // instead of dropping it on the body at the top of the page.
+  const trigger = useRef<HTMLElement | null>(null)
+  const closeGuide = (): void => {
+    setOpen(null)
+    trigger.current?.focus()
+  }
   useEffect(() => {
     const onHash = () => setShow(showKeyOf(showFromReadinessHash(window.location.hash)) ?? 'all')
     window.addEventListener('hashchange', onHash)
@@ -324,9 +341,16 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
           <Button
             variant="tertiary"
             aria-expanded={on}
-            onClick={() => setOpen(on ? null : { userId: r.user.id, guideId: kind === 'prove' ? 'prove' : null })}
+            aria-controls={GUIDE_PANEL_ID}
+            onClick={(e) => {
+              // Where focus goes back to when the panel closes: the row's own
+              // control, not the top of the document (task 017).
+              trigger.current = e.currentTarget
+              setOpen(on ? null : { userId: r.user.id, guideId: kind === 'prove' ? 'prove' : null })
+            }}
           >
-            {nextStateWord(r)} →
+            {nextStateWord(r)}
+            <span aria-hidden="true"> →</span>
           </Button>
         )
       },
@@ -344,7 +368,7 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
         <Button variant="tertiary" onClick={() => again.run(scan(readinessHref(show)))}>
           {CONNECT_WORDS.scan.complete.again}
         </Button>
-        {again.error && <span className="quiet">{again.error}</span>}
+        {again.error && <span className="quiet" role="status">{again.error}</span>}
       </span>
     </div>
   )
@@ -379,6 +403,9 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
           // button is not markup a browser or a screen reader can make sense of.
           return (
             <div key={g} className={`group-tile card${on ? ' on' : ''}`}>
+              {/* Pressed is `aria-pressed` for a screen reader and, in CSS, a
+                  check mark before the title as well as the accent border: the
+                  filter that is on must not be the accent alone (task 017). */}
               <button type="button" className="group-count" aria-pressed={on} onClick={() => select(on ? 'all' : g)}>
                 <span className="group-title">{w.title}</span>
                 <b className={`group-n stat-num group-${g}`}>{groups[g]}</b>
@@ -415,7 +442,7 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
           row={openRow}
           guideId={open.guideId}
           onPick={(guideId) => setOpen({ userId: open.userId, guideId })}
-          onClose={() => setOpen(null)}
+          onClose={closeGuide}
         />
       )}
       {/* Quiet, under the table: every account once, then the populations the

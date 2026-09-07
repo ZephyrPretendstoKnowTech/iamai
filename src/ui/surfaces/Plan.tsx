@@ -43,6 +43,9 @@ type PlanPage = { h1: string; next: string; now: string; settingsLink: string; s
 const PP = pages.plan as unknown as PlanPage
 const S = app.shell
 
+/** The settings panel the Plan settings link opens in place. */
+const PLAN_SETTINGS_ID = 'plan-settings'
+
 // The plan only renders once a mapping is loaded (usePlanData returns computed
 // only then), so this fallback is never the live value; it keeps ContentStep's
 // contentLists total when a step opens a frame before the mapping settles.
@@ -170,8 +173,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
       ) : null}
       {/* A started plan: the date is locked, so the field and its note go; the header line carries the start, once. */}
 
+      {/* A link that opens a panel in place, so it says so: expanded state and
+          the panel it controls, or a screen reader hears a navigation that goes
+          nowhere (task 017). */}
       <p className="line no-print">
-        <a href="#/plan" onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>
+        <a href="#/plan" aria-expanded={showSettings} aria-controls={PLAN_SETTINGS_ID} onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>
           {PP.settingsLink}
         </a>
       </p>
@@ -343,7 +349,7 @@ function Settings({ data, onClose }: { data: ReturnType<typeof usePlanData>; onC
   const zone = data.timeZone ?? ''
   const options = zone && !zones.includes(zone) ? [zone, ...zones] : zones
   return (
-    <div className="plan-settings">
+    <div className="plan-settings" id={PLAN_SETTINGS_ID}>
       <h3>{PP.settings.h3}</h3>
       <label className="rows">
         <span>{PP.settings.freeze}</span>

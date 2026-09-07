@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button } from './Button.tsx'
 import { EmptyState } from './EmptyState.tsx'
@@ -48,6 +48,27 @@ export function DataTable<T>({
   const [page, setPage] = useState(0)
   const [openRow, setOpenRow] = useState<string | null>(null)
   const shown = columns.filter((c) => !c.hidden)
+  const wrap = useRef<HTMLDivElement>(null)
+  // A wide table scrolls inside its own box rather than widening the page
+  // (task 017), and a region that scrolls has to be reachable by keyboard —
+  // but only while it actually scrolls, or every table on How would be a tab
+  // stop that goes nowhere.
+  const [scrolls, setScrolls] = useState(false)
+  useEffect(() => {
+    const el = wrap.current
+    if (!el) return
+    const measure = () => setScrolls(el.scrollWidth > el.clientWidth + 1)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [rows, columns])
+
+  const toggleSort = useCallback(
+    (key: string) => setSort((s) => (s?.key === key ? (s.dir === 1 ? { key, dir: -1 } : null) : { key, dir: 1 })),
+    [],
+  )
 
   const sorted = useMemo(() => {
     if (!sort) return rows
@@ -88,35 +109,35 @@ export function DataTable<T>({
 
   return (
     <div>
-      <div className="datatable-wrap">
+      <div className="datatable-wrap" ref={wrap} tabIndex={scrolls ? 0 : undefined}>
         <table className="datatable">
           {caption && <caption>{caption}</caption>}
           <thead>
             <tr>
               {shown.map((c) => (
+                // A sortable column keeps being a column header: the control
+                // goes *inside* the th (task 017), where before `role="button"`
+                // on the th itself replaced the header semantic a screen reader
+                // needs to say which column a cell belongs to. `aria-sort` stays
+                // on the header, which is the element it describes.
                 <th
                   key={c.key}
                   scope="col"
                   style={c.minWidth ? { minWidth: c.minWidth } : undefined}
                   className={c.sortValue ? 'sortable' : ''}
                   aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}
-                  tabIndex={c.sortValue ? 0 : undefined}
-                  role={c.sortValue ? 'button' : undefined}
-                  onClick={() =>
-                    c.sortValue && setSort((s) => (s?.key === c.key ? (s.dir === 1 ? { key: c.key, dir: -1 } : null) : { key: c.key, dir: 1 }))
-                  }
-                  onKeyDown={(e) => {
-                    if (c.sortValue && (e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault()
-                      setSort((s) => (s?.key === c.key ? (s.dir === 1 ? { key: c.key, dir: -1 } : null) : { key: c.key, dir: 1 }))
-                    }
-                  }}
                 >
-                  {c.header}
-                  {sort?.key === c.key && (
-                    <span className="icon" aria-hidden>
-                      {sort.dir === 1 ? ' ▲' : ' ▼'}
-                    </span>
+                  {c.sortValue ? (
+                    <button type="button" className="th-sort" onClick={() => toggleSort(c.key)}>
+                      {c.header}
+                      {sort?.key === c.key && (
+                        <span className="icon" aria-hidden>
+                          {sort.dir === 1 ? ' ▲' : ' ▼'}
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    c.header
                   )}
                 </th>
               ))}

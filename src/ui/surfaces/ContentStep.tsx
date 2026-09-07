@@ -25,7 +25,7 @@
 // And it does not decide anything. What the step is, whether an implementation
 // is offered, what blocks it and what finishes it are the contract's answers,
 // asked once, below the UI.
-import { useState, useMemo } from 'react'
+import { useId, useState, useMemo } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
@@ -34,8 +34,8 @@ import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
-import { Picker } from '../components/index.ts'
-import type { PickerOption } from '../components/index.ts'
+import { Picker, TabList, onePanelProps } from '../components/index.ts'
+import type { PickerOption, TabItem } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
@@ -61,6 +61,13 @@ import type { WhoBlock } from './whoBlocks.ts'
 
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
+
+/** The three implementation channels, in the order the step offers them. */
+const DO_TABS: TabItem[] = [
+  { id: 'portal', label: 'Portal steps' },
+  { id: 'json', label: 'JSON' },
+  { id: 'ps', label: 'PowerShell' },
+]
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
 
@@ -128,6 +135,7 @@ export function ContentStep({
   printing?: boolean
 }) {
   const [tab, setTab] = useState<DoTab>('portal')
+  const doBase = useId()
   const [copied, setCopied] = useState<string | null>(null)
   // The content step (resolved the same way the plan row resolves its title).
   // The step's own words, where the content file has any. A step it has no entry
@@ -258,22 +266,24 @@ export function ContentStep({
       )}
       {portal ? (
         <>
-          <div className="tabs no-print" role="tablist">
-            {([['portal', 'Portal steps'], ['json', 'JSON'], ['ps', 'PowerShell']] as [DoTab, string][]).map(([id, label]) => (
-              <button key={id} type="button" role="tab" aria-selected={tab === id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
-                {label}
-              </button>
-            ))}
+          {/* One panel, three tabs (task 017): each names the panel it controls
+              and the panel names the tab that labels it, so the three channels
+              read as one control and not as three loose buttons. Which channels
+              carry anything is unchanged — the JSON and PowerShell tabs stay
+              selectable and say what they are waiting on, because withholding
+              the tab would hide the reason. */}
+          <TabList base={doBase} tabs={DO_TABS} active={tab} onSelect={(id) => setTab(id as DoTab)} panelId={() => `${doBase}-panel`} />
+          <div {...onePanelProps(doBase, tab)}>
+            {tab === 'portal' && <ol className="sections">{[...before, ...portal].map((l, i) => <li key={i}>{l}</li>)}</ol>}
+            {/* The JSON and PowerShell tabs render only when every object the body
+                names exists in the tenant; otherwise one line names the Preparation
+                step that creates it, and Download JSON is not offered. */}
+            {(tab === 'json' || tab === 'ps') && !jsonOffered(step) && (
+              <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
+            )}
+            {tab === 'json' && jsonOffered(step) && <pre className="mono">{policyJsonText(step)}</pre>}
+            {tab === 'ps' && jsonOffered(step) && <pre className="mono">{powershellFor(stepOperations(step))}</pre>}
           </div>
-          {tab === 'portal' && <ol className="sections">{[...before, ...portal].map((l, i) => <li key={i}>{l}</li>)}</ol>}
-          {/* The JSON and PowerShell tabs render only when every object the body
-              names exists in the tenant; otherwise one line names the Preparation
-              step that creates it, and Download JSON is not offered. */}
-          {(tab === 'json' || tab === 'ps') && !jsonOffered(step) && (
-            <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
-          )}
-          {tab === 'json' && jsonOffered(step) && <pre className="mono">{policyJsonText(step)}</pre>}
-          {tab === 'ps' && jsonOffered(step) && <pre className="mono">{powershellFor(stepOperations(step))}</pre>}
           {jsonOffered(step) && (
             <p className="actions">
               <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, policyJsonText(step), 'application/json', REDACTED)}>
@@ -391,6 +401,7 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   // its answer is its one option's words, under its own label.
   const strict = d.strict && typeof d.strict.label === 'string' && typeof d.strict.option === 'string' ? (d.strict as { label: string; option: string; help?: string }) : null
   const [strictOn, setStrictOn] = useState<boolean>(strict ? saved?.answers?.[strict.label] === strict.option : false)
+  const base = useId()
   const save = (): void =>
     onDecide?.({
       ...(hasPicker ? { picked: chips.map((c) => c.id) } : {}),
@@ -410,15 +421,18 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
     <>
       {decisionAnswer === null && <Line s={decisionLine(d, null)} ex={ex} cls="reason" />}
       <div className="decision">
-        <div className="dlabel">{d.label}</div>
-        {hasPicker && <Picker selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
-        {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} options={options} answer={option} onAnswer={setOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />}
+        {/* Each label is an element the controls under it can name (task 017):
+            the picker takes it as its group label, the radios as their
+            radiogroup's, so a decision is heard as a question with answers. */}
+        <div className="dlabel" id={`${base}-decision`}>{d.label}</div>
+        {hasPicker && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
+        {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} options={options} answer={option} onAnswer={setOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />}
         {decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
         {question && (
           <>
-            <div className="dlabel">{question.label}</div>
+            <div className="dlabel" id={`${base}-question`}>{question.label}</div>
             <p className="reason"><T s={question.text} ex={ex} /></p>
-            <Options name={answerKey(stepId, question.label)} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />
+            <Options name={answerKey(stepId, question.label)} labelledBy={`${base}-question`} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />
             {questionEffect && whole(questionEffect, ex) && <p className="reason effect"><T s={questionEffect} ex={ex} /></p>}
           </>
         )}
@@ -439,8 +453,15 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   )
 }
 
-/** Options as radios; the one that needs a value as a picker, its chips the answer in the option's own words. */
-function Options({ name, options, answer, onAnswer, ex, universe, nameOf }: { name: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string }) {
+/**
+ * Options as radios; the one that needs a value as a picker, its chips the
+ * answer in the option's own words.
+ *
+ * `labelledBy` is the id of the `.dlabel` above (task 017): without it a screen
+ * reader reads each option on its own and never the question they answer, and
+ * two decisions on one step read as one undifferentiated run of radios.
+ */
+function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, nameOf }: { name: string; labelledBy: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string }) {
   const parts = answerParts(answer, options)
   const valued = options.find((o) => o.needs !== null) ?? null
   const [chips, setChips] = useState<PickerOption[]>(() => (parts?.option.needs ? parts.picked.map((id) => universe.find((u) => u.id === id) ?? { id, name: nameOf(id) }) : []))
@@ -450,8 +471,11 @@ function Options({ name, options, answer, onAnswer, ex, universe, nameOf }: { na
     setChips(next)
     if (valued) onAnswer(next.length > 0 ? answerText(valued, next.map((c) => c.id)) : null)
   }
+  // A group of radios only where they are radios: an option that takes a value
+  // renders a picker instead, and a radiogroup around a combobox is a lie.
+  const radios = options.every((o) => o.needs === null)
   return (
-    <div className="picker">
+    <div className="picker" role={radios ? 'radiogroup' : 'group'} aria-labelledby={labelledBy}>
       {options.map((o, i) => {
         if (o.needs === null) {
           return (
